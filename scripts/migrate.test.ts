@@ -102,4 +102,66 @@ describe('migrate.ts (end-to-end via CLI)', () => {
     expect(finished.count).toBe(1);
     expect(subs.count).toBe(1);
   });
+
+  it('prevents duplicate data insertion on second run without --clear', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bean-tracker-migrate-'));
+    const xlsxPath = join(dir, 'sample.xlsx');
+    const dbPath = join(dir, 'out.db');
+    await buildSampleWorkbook(xlsxPath);
+
+    // First migration succeeds
+    execFileSync('node', ['scripts/migrate.ts', '--file', xlsxPath, '--db', dbPath], {
+      encoding: 'utf-8'
+    });
+
+    // Second migration without --clear should fail
+    expect(() => {
+      execFileSync('node', ['scripts/migrate.ts', '--file', xlsxPath, '--db', dbPath], {
+        encoding: 'utf-8'
+      });
+    }).toThrow();
+
+    // Verify data was not duplicated
+    const db = new DatabaseSync(dbPath);
+    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'active'`).get() as {
+      count: number;
+    };
+    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'finished'`).get() as {
+      count: number;
+    };
+    const subs = db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get() as { count: number };
+    expect(active.count).toBe(2);
+    expect(finished.count).toBe(1);
+    expect(subs.count).toBe(1);
+  });
+
+  it('allows re-running migration with --clear flag', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bean-tracker-migrate-'));
+    const xlsxPath = join(dir, 'sample.xlsx');
+    const dbPath = join(dir, 'out.db');
+    await buildSampleWorkbook(xlsxPath);
+
+    // First migration
+    execFileSync('node', ['scripts/migrate.ts', '--file', xlsxPath, '--db', dbPath], {
+      encoding: 'utf-8'
+    });
+
+    // Second migration with --clear succeeds
+    execFileSync('node', ['scripts/migrate.ts', '--file', xlsxPath, '--db', dbPath, '--clear'], {
+      encoding: 'utf-8'
+    });
+
+    // Verify data has the expected counts (not doubled)
+    const db = new DatabaseSync(dbPath);
+    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'active'`).get() as {
+      count: number;
+    };
+    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'finished'`).get() as {
+      count: number;
+    };
+    const subs = db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get() as { count: number };
+    expect(active.count).toBe(2);
+    expect(finished.count).toBe(1);
+    expect(subs.count).toBe(1);
+  });
 });

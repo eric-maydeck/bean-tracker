@@ -57,12 +57,13 @@ async function main() {
     options: {
       file: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
-      db: { type: 'string', default: 'data/bean-tracker.db' }
+      db: { type: 'string', default: 'data/bean-tracker.db' },
+      clear: { type: 'boolean', default: false }
     }
   });
 
   if (!values.file) {
-    console.error('Usage: node scripts/migrate.ts --file "<path to xlsx>" [--dry-run] [--db <path>]');
+    console.error('Usage: node scripts/migrate.ts --file "<path to xlsx>" [--dry-run] [--clear] [--db <path>]');
     process.exit(1);
   }
 
@@ -94,6 +95,23 @@ async function main() {
   }
 
   const db = createDb(values.db);
+
+  // Check for existing data to prevent duplicate insertion on re-run
+  const coffeeCount = (db.prepare('SELECT COUNT(*) as count FROM coffees').get() as { count: number }).count;
+  const subCount = (db.prepare('SELECT COUNT(*) as count FROM subscriptions').get() as { count: number }).count;
+
+  if ((coffeeCount > 0 || subCount > 0) && !values.clear) {
+    console.error('Error: target database already contains data.');
+    console.error('Re-running the migration would duplicate existing rows.');
+    console.error('To clear existing coffees and subscriptions and re-run, use the --clear flag:');
+    console.error('  node scripts/migrate.ts --file "<path>" --clear --db <path>');
+    process.exit(1);
+  }
+
+  if (values.clear && (coffeeCount > 0 || subCount > 0)) {
+    db.exec('DELETE FROM coffees');
+    db.exec('DELETE FROM subscriptions');
+  }
 
   for (const row of activeRows) {
     createCoffee(db, { ...row, status: 'active' });
