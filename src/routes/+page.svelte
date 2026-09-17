@@ -18,6 +18,12 @@
       <h2>{coffee.coffee_name}</h2>
       <p class="text-muted">{coffee.roaster}</p>
       <p>{coffee.origin ?? 'Origin unknown'} · {coffee.roast_level ?? 'Roast level unknown'}</p>
+      <p class="text-muted">
+        {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
+        {#if coffee.status === 'active' && coffee.drink_before}
+          · Drink by {coffee.drink_before}
+        {/if}
+      </p>
       {#if coffee.status === 'finished'}
         <span class="badge badge-fresh">Finished</span>
       {:else}
