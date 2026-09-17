@@ -4,7 +4,6 @@
 </script>
 
 <h1>Subscriptions</h1>
-<a class="button button-secondary" href="/manage">&larr; Back to dashboard</a>
 
 <table class="data-table">
   <thead>

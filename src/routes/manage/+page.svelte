@@ -47,6 +47,3 @@
   </table>
 </section>
 
-<a class="button" href="/manage/coffees/new">Add coffee</a>
-<a class="button button-secondary" href="/manage/archive">Archive</a>
-<a class="button button-secondary" href="/manage/subscriptions">Subscriptions</a>

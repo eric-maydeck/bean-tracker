@@ -11,7 +11,6 @@
 </script>
 
 <h1>Archive</h1>
-<a class="button button-secondary" href="/manage">&larr; Back to dashboard</a>
 
 <input class="search-input" placeholder="Search roaster, coffee…" bind:value={query} />
 

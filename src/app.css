@@ -171,3 +171,42 @@ nav.site-nav {
   border-bottom: 1px solid var(--color-border);
   font-weight: 600;
 }
+
+nav.site-nav a {
+  text-decoration: none;
+}
+
+nav.site-nav a.active {
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.tab-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tab-group button {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tab-group button.active {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
