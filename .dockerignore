@@ -1,0 +1,9 @@
+node_modules
+.git
+.svelte-kit
+build
+data
+.superpowers
+.claude
+*.db
+.env
