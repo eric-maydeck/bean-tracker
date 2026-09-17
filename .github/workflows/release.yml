@@ -20,6 +20,16 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
+      # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
+      # raise `release: published` for events created by that token, so
+      # publish-image.yml would never fire. A GitHub App installation token
+      # doesn't have that restriction and needs no long-lived credential.
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -29,4 +39,4 @@ jobs:
 
       - run: npx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

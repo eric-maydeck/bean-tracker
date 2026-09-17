@@ -89,6 +89,15 @@ data-access layer, form validation, and the migration script.
   versioning: once CI passes on `main`, `semantic-release` computes the next
   version from the commits since the last release and, if one is warranted,
   cuts a git tag, a GitHub Release, and a `CHANGELOG.md` entry.
+- `semantic-release` authenticates as a dedicated GitHub App
+  (`RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY` repo secrets), not the
+  workflow's built-in `GITHUB_TOKEN` — GitHub does not raise `release:
+  published` for events created by `GITHUB_TOKEN`, which would otherwise
+  leave the Docker publish step permanently, silently unreachable.
 - A published release triggers a Docker image build (targeting the server's
   `linux/arm64`, via `buildx`/QEMU emulation) pushed to
   `ghcr.io/eric-maydeck/bean-tracker`.
+- `@semantic-release/git` pushes the version-bump commit directly to `main`.
+  If branch protection ever requires PRs on this repo, the release App will
+  need an explicit bypass allowance for that push — otherwise every release
+  starts failing at that step.
