@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.0.2...v1.1.0) (2026-09-17)
+
+
+### Features
+
+* make the backlog the home page, add site nav and view toggle
+
 ## [1.0.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.0.1...v1.0.2) (2026-09-17)
 
 
