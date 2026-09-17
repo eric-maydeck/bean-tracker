@@ -79,3 +79,16 @@ npm run test
 Covers the urgency/drink-window algorithm (ported line-for-line from the
 original spreadsheet formula, including frozen-period edge cases), the
 data-access layer, form validation, and the migration script.
+
+## Continuous Integration & Deployment
+
+- Every push and PR runs the `CI` workflow (`npm test`, `npm run build`).
+- Every commit on `main` must follow [Conventional Commits](https://www.conventionalcommits.org/)
+  (`feat:`, `fix:`, `chore:`, etc.) — enforced locally by a Husky `commit-msg`
+  hook and backstopped in CI. This drives fully automatic semantic
+  versioning: once CI passes on `main`, `semantic-release` computes the next
+  version from the commits since the last release and, if one is warranted,
+  cuts a git tag, a GitHub Release, and a `CHANGELOG.md` entry.
+- A published release triggers a Docker image build (targeting the server's
+  `linux/arm64`, via `buildx`/QEMU emulation) pushed to
+  `ghcr.io/eric-maydeck/bean-tracker`.
