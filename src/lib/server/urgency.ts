@@ -91,6 +91,7 @@ export function computeDrinkBefore(input: UrgencyInput, today: Date): string | n
   }
   const frozenEnd = parseDate(input.frozen_end_date);
   const frozenDays = diffDays(frozenEnd, frozenStart);
+  // Unlike drink_after, drink_before is unclamped per original spreadsheet formula (no floor constraint on deadline)
   return formatDate(addDays(origDrinkBefore, frozenDays));
 }
 

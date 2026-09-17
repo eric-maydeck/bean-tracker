@@ -82,6 +82,19 @@ describe('computeDrinkAfter / computeDrinkBefore', () => {
     expect(computeDrinkAfter(thawed, new Date('2026-02-01T00:00:00Z'))).toBe('2026-01-21');
     expect(computeDrinkBefore(thawed, new Date('2026-02-01T00:00:00Z'))).toBe('2026-01-28');
   });
+
+  it('drink_before unclamped when window closed before freeze (unlike drink_after)', () => {
+    // orig_drink_before = 2026-01-01 + 0 + 7 = 2026-01-08 (deadline passed before freeze)
+    // frozenDays = 2 (2026-01-10 to 2026-01-12)
+    // result = 2026-01-08 + 2 = 2026-01-10 (NOT clamped to frozen_end 2026-01-12)
+    const thawed = input({
+      roast_date: '2026-01-01',
+      rest_days_high: 0,
+      frozen_start_date: '2026-01-10',
+      frozen_end_date: '2026-01-12'
+    });
+    expect(computeDrinkBefore(thawed, new Date('2026-01-15T00:00:00Z'))).toBe('2026-01-10');
+  });
 });
 
 describe('computeUrgencyRating', () => {
