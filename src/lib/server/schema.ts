@@ -1,3 +1,4 @@
+export const schema = `
 CREATE TABLE IF NOT EXISTS coffees (
   id INTEGER PRIMARY KEY,
   roaster TEXT NOT NULL,
@@ -46,3 +47,4 @@ INSERT OR IGNORE INTO roast_levels (roast_level, degrees_of_roast) VALUES
   ('Medium', 4.0),
   ('Medium/Dark', 4.5),
   ('Dark', 5.0);
+`;

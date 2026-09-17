@@ -1,12 +1,9 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, mkdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
-
-const SCHEMA_PATH = join(dirname(fileURLToPath(import.meta.url)), 'schema.sql');
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { schema } from './schema.ts';
 
 export function applySchema(db: DatabaseSync): void {
-  const schema = readFileSync(SCHEMA_PATH, 'utf-8');
   db.exec(schema);
 }
 
