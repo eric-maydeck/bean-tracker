@@ -1,0 +1,97 @@
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import type { CoffeeRow } from '$lib/types';
+  import type { RoastLevelRow } from '$lib/types';
+
+  let {
+    coffee = null,
+    roastLevels,
+    formError = null
+  }: { coffee?: CoffeeRow | null; roastLevels: RoastLevelRow[]; formError?: string | null } = $props();
+</script>
+
+<form method="POST" use:enhance>
+  {#if formError}
+    <p class="badge badge-urgent">{formError}</p>
+  {/if}
+
+  <div class="form-field">
+    <label for="roaster">Roaster</label>
+    <input id="roaster" name="roaster" required value={coffee?.roaster ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="coffee_name">Coffee</label>
+    <input id="coffee_name" name="coffee_name" required value={coffee?.coffee_name ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="origin">Origin</label>
+    <input id="origin" name="origin" value={coffee?.origin ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="roast_level">Roast level</label>
+    <select id="roast_level" name="roast_level">
+      <option value="">—</option>
+      {#each roastLevels as level (level.roast_level)}
+        <option value={level.roast_level} selected={coffee?.roast_level === level.roast_level}>
+          {level.roast_level}
+        </option>
+      {/each}
+    </select>
+  </div>
+
+  <div class="form-field">
+    <label for="processing">Processing</label>
+    <input id="processing" name="processing" value={coffee?.processing ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="amount_g">Amount (g)</label>
+    <input id="amount_g" name="amount_g" type="number" step="1" value={coffee?.amount_g ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="cost">Cost</label>
+    <input id="cost" name="cost" type="number" step="0.01" value={coffee?.cost ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="roast_date">Roast date</label>
+    <input id="roast_date" name="roast_date" type="date" value={coffee?.roast_date ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="frozen_start_date">Frozen start date</label>
+    <input
+      id="frozen_start_date"
+      name="frozen_start_date"
+      type="date"
+      value={coffee?.frozen_start_date ?? ''}
+    />
+  </div>
+
+  <div class="form-field">
+    <label for="frozen_end_date">Frozen end date</label>
+    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="rest_days_low">Recommended rest days (low)</label>
+    <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={coffee?.rest_days_low ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="rest_days_high">Recommended rest days (high)</label>
+    <input
+      id="rest_days_high"
+      name="rest_days_high"
+      type="number"
+      step="1"
+      value={coffee?.rest_days_high ?? ''}
+    />
+  </div>
+
+  <button class="button" type="submit">Save</button>
+</form>
