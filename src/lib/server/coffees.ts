@@ -17,6 +17,7 @@ export interface NewCoffeeInput {
   rest_days_high: number | null;
   image_url: string | null;
   status?: 'backlog' | 'open' | 'archive';
+  moved_date?: string | null;
 }
 
 export function getBacklogCoffees(db: DatabaseSync): CoffeeRow[] {
@@ -47,7 +48,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
   const now = new Date().toISOString();
   const status = input.status ?? 'backlog';
   const drank = status === 'archive' ? 1 : 0;
-  const movedDate = status === 'archive' ? now : null;
+  const movedDate = status === 'archive' ? (input.moved_date ?? now) : null;
   const slug = uniqueSlug(
     db,
     generateBaseSlug({

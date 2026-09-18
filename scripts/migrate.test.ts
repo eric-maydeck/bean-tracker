@@ -54,7 +54,8 @@ async function buildSampleWorkbook(path: string): Promise<void> {
   ]);
   finished.addRow([
     'Roaster C', 'Coffee C', 'Colombia', 'Dark', 'Washed', 200, 15, null,
-    new Date(Date.UTC(2025, 11, 1)), null, null, 5, 10, null, null, null, 'Yes', null
+    new Date(Date.UTC(2025, 11, 1)), null, null, 5, 10, null, null, null, 'Yes',
+    new Date(Date.UTC(2026, 0, 15))
   ]);
 
   const subs = workbook.addWorksheet('Subscriptions');
@@ -101,6 +102,11 @@ describe('migrate.ts (end-to-end via CLI)', () => {
     expect(active.count).toBe(2);
     expect(finished.count).toBe(1);
     expect(subs.count).toBe(1);
+
+    const finishedRow = db.prepare(`SELECT moved_date FROM coffees WHERE status = 'archive'`).get() as {
+      moved_date: string;
+    };
+    expect(finishedRow.moved_date).toBe('2026-01-15');
   });
 
   it('prevents duplicate data insertion on second run without --clear', async () => {

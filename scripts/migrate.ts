@@ -26,7 +26,7 @@ export function excelSerialToISODate(value: unknown): string | null {
 
 interface ParsedCoffeeRow extends Omit<NewCoffeeInput, 'status'> {}
 
-function readCoffeeSheet(worksheet: ExcelJS.Worksheet): ParsedCoffeeRow[] {
+function readCoffeeSheet(worksheet: ExcelJS.Worksheet, options: { readMovedDate?: boolean } = {}): ParsedCoffeeRow[] {
   const rows: ParsedCoffeeRow[] = [];
   worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -47,7 +47,10 @@ function readCoffeeSheet(worksheet: ExcelJS.Worksheet): ParsedCoffeeRow[] {
       frozen_end_date: excelSerialToISODate(get(11)),
       rest_days_low: cellNumber(get(12)),
       rest_days_high: cellNumber(get(13)),
-      image_url: null
+      image_url: null,
+      // Column R ("Moved date") only has this meaning on the "Finished beans" sheet —
+      // on "Bean backlog" the same column is "Urgency Rating", an unrelated computed value.
+      moved_date: options.readMovedDate ? excelSerialToISODate(get(18)) : null
     });
   });
   return rows;
@@ -81,7 +84,7 @@ async function main() {
   }
 
   const activeRows = readCoffeeSheet(backlogSheet);
-  const finishedRows = readCoffeeSheet(finishedSheet);
+  const finishedRows = readCoffeeSheet(finishedSheet, { readMovedDate: true });
   const badRows = [...activeRows, ...finishedRows].filter((r) => !r.roaster || !r.coffee_name);
 
   console.log(`Active coffees found: ${activeRows.length}`);
