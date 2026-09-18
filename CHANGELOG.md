@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.6.0...v1.7.0) (2026-09-18)
+
+
+### Features
+
+* track last-deployed alongside last-updated, both durable in the db
+
 # [1.6.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.5.0...v1.6.0) (2026-09-18)
 
 
