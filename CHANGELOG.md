@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.2.0...v1.3.0) (2026-09-18)
+
+
+### Features
+
+* coffee images, redesigned detail page, sortable list, footer
+
 # [1.2.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.1.0...v1.2.0) (2026-09-18)
 
 
