@@ -1,10 +1,19 @@
 <script lang="ts">
+  import { invalidateAll } from '$app/navigation';
   import { urgencyColorStyle } from '$lib/urgencyColor';
 
   let { data } = $props();
+
+  async function refresh() {
+    await invalidateAll();
+  }
 </script>
 
 <h1>On Deck</h1>
+
+<div class="search-row">
+  <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
+</div>
 
 <section>
   <h2>Currently open</h2>
