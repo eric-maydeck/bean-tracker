@@ -14,8 +14,10 @@ CREATE TABLE IF NOT EXISTS coffees (
   rest_days_low INTEGER,
   rest_days_high INTEGER,
   image_url TEXT,
+  slug TEXT,
+  opened_date TEXT,
   drank INTEGER NOT NULL DEFAULT 0,
-  status TEXT NOT NULL DEFAULT 'active',
+  status TEXT NOT NULL DEFAULT 'backlog',
   moved_date TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

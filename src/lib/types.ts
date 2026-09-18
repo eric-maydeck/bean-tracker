@@ -13,8 +13,10 @@ export interface CoffeeRow {
   rest_days_low: number | null;
   rest_days_high: number | null;
   image_url: string | null;
+  slug: string;
+  opened_date: string | null;
   drank: number;
-  status: 'active' | 'finished';
+  status: 'backlog' | 'open' | 'archive';
   moved_date: string | null;
   created_at: string;
   updated_at: string;
