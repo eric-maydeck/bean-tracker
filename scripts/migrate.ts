@@ -115,10 +115,10 @@ async function main() {
   }
 
   for (const row of activeRows) {
-    createCoffee(db, { ...row, status: 'active' });
+    createCoffee(db, { ...row, status: 'backlog' });
   }
   for (const row of finishedRows) {
-    createCoffee(db, { ...row, status: 'finished' });
+    createCoffee(db, { ...row, status: 'archive' });
   }
 
   if (subsSheet) {

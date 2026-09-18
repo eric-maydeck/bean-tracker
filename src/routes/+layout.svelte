@@ -11,7 +11,8 @@
 
   const links = [
     { href: '/', label: 'Home' },
-    { href: '/manage', label: 'Dashboard' },
+    { href: '/on-deck', label: 'On Deck' },
+    { href: '/manage', label: 'Manage' },
     { href: '/manage/archive', label: 'Archive' },
     { href: '/manage/subscriptions', label: 'Subscriptions' },
     { href: '/manage/coffees/new', label: 'Add coffee' }

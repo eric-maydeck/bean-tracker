@@ -91,10 +91,10 @@ describe('migrate.ts (end-to-end via CLI)', () => {
     });
 
     const db = new DatabaseSync(dbPath);
-    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'active'`).get() as {
+    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'backlog'`).get() as {
       count: number;
     };
-    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'finished'`).get() as {
+    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'archive'`).get() as {
       count: number;
     };
     const subs = db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get() as { count: number };
@@ -123,10 +123,10 @@ describe('migrate.ts (end-to-end via CLI)', () => {
 
     // Verify data was not duplicated
     const db = new DatabaseSync(dbPath);
-    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'active'`).get() as {
+    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'backlog'`).get() as {
       count: number;
     };
-    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'finished'`).get() as {
+    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'archive'`).get() as {
       count: number;
     };
     const subs = db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get() as { count: number };
@@ -153,10 +153,10 @@ describe('migrate.ts (end-to-end via CLI)', () => {
 
     // Verify data has the expected counts (not doubled)
     const db = new DatabaseSync(dbPath);
-    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'active'`).get() as {
+    const active = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'backlog'`).get() as {
       count: number;
     };
-    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'finished'`).get() as {
+    const finished = db.prepare(`SELECT COUNT(*) as count FROM coffees WHERE status = 'archive'`).get() as {
       count: number;
     };
     const subs = db.prepare(`SELECT COUNT(*) as count FROM subscriptions`).get() as { count: number };
