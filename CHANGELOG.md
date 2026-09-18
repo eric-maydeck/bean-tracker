@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.1.0...v1.2.0) (2026-09-18)
+
+
+### Features
+
+* design refresh — typography, dark mode toggle, responsive tables
+
 # [1.1.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.0.2...v1.1.0) (2026-09-17)
 
 
