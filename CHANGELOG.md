@@ -1,3 +1,26 @@
+# [1.4.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.3.1...v1.4.0) (2026-09-18)
+
+
+### Bug Fixes
+
+* store frozen dates as date-only and guard status transitions
+* use explicit .ts extension importing slug module
+
+
+### Features
+
+* add coffee status lifecycle migration and URL slug generation
+* add slug generation utility for coffee URL identifiers
+* add the On Deck page
+* home-page polish — reset button, stable columns, thumbnails, urgency gradient
+* make the coffee URL slug editable from the edit form
+* point nav at On Deck/Manage and migrate script at the new status values
+* reduce Manage to an uncapped action list for the new lifecycle
+* rework coffees data layer for the backlog/open/archive lifecycle
+* show frozen/opened/archived dates on the Archive page
+* switch the coffee detail page to slug-based URLs
+* update the home page for the three-state coffee lifecycle
+
 ## [1.3.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.3.0...v1.3.1) (2026-09-18)
 
 
