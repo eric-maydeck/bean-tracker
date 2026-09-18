@@ -1,8 +1,15 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
+  import RoastBeans from '$lib/components/RoastBeans.svelte';
 
   let { data } = $props();
+
+  let roastDegrees = $derived(new Map(data.roastLevels.map((r) => [r.roast_level, r.degrees_of_roast])));
+  function degreesFor(roastLevel: string | null): number {
+    if (!roastLevel) return 0;
+    return roastDegrees.get(roastLevel) ?? 0;
+  }
   let query = $state('');
   let filter = $state<'backlog' | 'open' | 'archive' | 'all'>('backlog');
   let view = $state<'cards' | 'list'>('list');
@@ -63,11 +70,21 @@
 
   let coffees = $derived(
     source.filter((c) =>
-      `${c.roaster} ${c.coffee_name} ${c.origin ?? ''}`.toLowerCase().includes(query.toLowerCase())
+      `${c.roaster} ${c.coffee_name} ${c.origin ?? ''} ${c.roast_level ?? ''}`
+        .toLowerCase()
+        .includes(query.toLowerCase())
     )
   );
 
-  type SortKey = 'roaster' | 'coffee_name' | 'cost_per_gram' | 'amount_g' | 'roast_date' | 'urgency';
+  type SortKey =
+    | 'roaster'
+    | 'coffee_name'
+    | 'origin'
+    | 'roast_level'
+    | 'cost_per_gram'
+    | 'amount_g'
+    | 'roast_date'
+    | 'urgency';
   let sortKey = $state<SortKey | null>(null);
   let sortDir = $state<'asc' | 'desc'>('asc');
 
@@ -86,6 +103,10 @@
         return c.roaster.toLowerCase();
       case 'coffee_name':
         return c.coffee_name.toLowerCase();
+      case 'origin':
+        return c.origin?.toLowerCase() ?? '';
+      case 'roast_level':
+        return degreesFor(c.roast_level);
       case 'cost_per_gram':
         return c.cost_per_gram ?? -Infinity;
       case 'amount_g':
@@ -147,7 +168,11 @@
         {/if}
         <h2>{coffee.coffee_name}</h2>
         <p class="text-muted">{coffee.roaster}</p>
-        <p>{coffee.origin ?? 'Origin unknown'} · {coffee.roast_level ?? 'Roast level unknown'}</p>
+        <p>{coffee.origin ?? 'Origin unknown'}</p>
+        <p class="roast-row">
+          <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
+          <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
+        </p>
         {#if coffee.processing}
           <p class="text-muted">{coffee.processing}</p>
         {/if}
@@ -179,15 +204,16 @@
     <table class="data-table compact">
       <colgroup>
         <col style="width: 9%" />
-        <col style="width: 18%" />
-        <col style="width: 11%" />
-        <col style="width: 12%" />
-        <col style="width: 6%" />
-        <col style="width: 6%" />
+        <col style="width: 17%" />
+        <col style="width: 9%" />
+        <col style="width: 9%" />
         <col style="width: 10%" />
-        <col style="width: 8%" />
         <col style="width: 6%" />
-        <col style="width: 14%" />
+        <col style="width: 6%" />
+        <col style="width: 9%" />
+        <col style="width: 7%" />
+        <col style="width: 6%" />
+        <col style="width: 12%" />
       </colgroup>
       <thead>
         <tr>
@@ -207,7 +233,22 @@
               >
             </button>
           </th>
-          <th>Origin · Roast</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('origin')}>
+              Origin
+              <span class="sort-indicator"
+                >{sortKey === 'origin' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('roast_level')}>
+              Roast
+              <span class="sort-indicator"
+                >{sortKey === 'roast_level' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>Processing</th>
           <th>
             <button class="sort-button" onclick={() => toggleSort('cost_per_gram')}>
@@ -250,7 +291,10 @@
           <tr>
             <td>{coffee.roaster}</td>
             <td><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></td>
-            <td>{coffee.origin ?? '—'} · {coffee.roast_level ?? '—'}</td>
+            <td>{coffee.origin ?? '—'}</td>
+            <td>
+              <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
+            </td>
             <td>{coffee.processing ?? '—'}</td>
             <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
             <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
