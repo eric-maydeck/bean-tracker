@@ -12,10 +12,10 @@ export const load: PageServerLoad = () => {
 export const actions: Actions = {
   default: async ({ request }) => {
     const formData = await request.formData();
-    let id: number;
+    let slug: string;
     try {
       const input = parseCoffeeForm(formData);
-      id = createCoffee(getDb(), input);
+      ({ slug } = createCoffee(getDb(), input));
     } catch (err) {
       if (err instanceof CoffeeFormError) {
         return fail(400, { error: err.message });
@@ -26,6 +26,6 @@ export const actions: Actions = {
     // only shows the top 10 by urgency, and a freshly added coffee with no
     // roast date sorts last (urgency -100) — it would silently vanish from
     // view, making a successful save look like it did nothing.
-    redirect(303, `/coffees/${id}`);
+    redirect(303, `/coffees/${slug}`);
   }
 };

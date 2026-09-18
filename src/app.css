@@ -199,6 +199,11 @@ input:focus-visible {
   color: var(--color-fresh);
 }
 
+.badge-neutral {
+  background: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
+  color: var(--color-text-muted);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
