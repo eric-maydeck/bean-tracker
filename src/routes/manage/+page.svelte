@@ -6,6 +6,8 @@
 
 <h1>Manage</h1>
 
+<p><a class="button button-secondary" href="/manage/subscriptions/new">+ Add subscription</a></p>
+
 <div class="table-scroll">
   <table class="data-table">
     <thead>
