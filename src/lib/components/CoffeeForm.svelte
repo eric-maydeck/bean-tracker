@@ -98,6 +98,13 @@
     <label for="image_url">Image URL (label or roaster logo)</label>
     <input id="image_url" name="image_url" type="url" value={coffee?.image_url ?? ''} />
   </div>
+
+  {#if coffee}
+    <div class="form-field">
+      <label for="slug">URL slug</label>
+      <input id="slug" name="slug" required value={coffee.slug} />
+    </div>
+  {/if}
   </div>
 
   <button class="button" type="submit">Save</button>

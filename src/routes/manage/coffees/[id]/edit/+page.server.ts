@@ -3,7 +3,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getCoffeeById, updateCoffee } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
-import { parseCoffeeForm, CoffeeFormError } from '$lib/server/coffeeFormValidation';
+import { parseCoffeeForm, parseSlugField, CoffeeFormError } from '$lib/server/coffeeFormValidation';
+import { slugify, slugExists } from '$lib/server/slug';
 
 export const load: PageServerLoad = ({ params }) => {
   const db = getDb();
@@ -17,9 +18,21 @@ export const load: PageServerLoad = ({ params }) => {
 export const actions: Actions = {
   default: async ({ request, params }) => {
     const formData = await request.formData();
+    const id = Number(params.id);
     try {
       const input = parseCoffeeForm(formData);
-      updateCoffee(getDb(), Number(params.id), input);
+      const rawSlug = parseSlugField(formData);
+      if (!rawSlug) {
+        return fail(400, { error: 'URL slug is required' });
+      }
+      const slug = slugify(rawSlug);
+      if (!slug) {
+        return fail(400, { error: 'URL slug must contain at least one letter or number' });
+      }
+      if (slugExists(getDb(), slug, id)) {
+        return fail(400, { error: 'That URL is already in use by another coffee' });
+      }
+      updateCoffee(getDb(), id, input, slug);
     } catch (err) {
       if (err instanceof CoffeeFormError) {
         return fail(400, { error: err.message });
