@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { CoffeeRow } from '../types';
-import { generateBaseSlug, uniqueSlug } from './slug';
+import { generateBaseSlug, uniqueSlug } from './slug.ts';
 
 export interface NewCoffeeInput {
   roaster: string;
