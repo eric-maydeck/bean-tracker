@@ -15,7 +15,7 @@
     { href: '/manage', label: 'Manage' },
     { href: '/manage/archive', label: 'Archive' },
     { href: '/manage/subscriptions', label: 'Subscriptions' },
-    { href: '/manage/coffees/new', label: 'Add coffee' }
+    { href: '/manage/coffees/new', label: 'Add Coffee' }
   ];
 
   let theme = $state<'light' | 'dark'>('light');

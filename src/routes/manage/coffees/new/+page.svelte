@@ -3,5 +3,11 @@
   let { data, form } = $props();
 </script>
 
-<h1>Add coffee</h1>
-<CoffeeForm roastLevels={data.roastLevels} formError={form?.error ?? null} />
+<h1>Add Coffee</h1>
+<CoffeeForm
+  roastLevels={data.roastLevels}
+  roasters={data.roasters}
+  origins={data.origins}
+  processingMethods={data.processingMethods}
+  formError={form?.error ?? null}
+/>

@@ -165,6 +165,12 @@ input:focus-visible {
   border: 1px solid var(--color-accent);
 }
 
+.button-danger {
+  background: transparent;
+  color: var(--color-urgency-high);
+  border: 1px solid var(--color-urgency-high);
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;

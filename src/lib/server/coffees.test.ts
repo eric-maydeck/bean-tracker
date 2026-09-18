@@ -16,6 +16,8 @@ import {
   thawCoffee,
   archiveCoffee,
   restoreCoffee,
+  deleteCoffee,
+  getDistinctFieldValues,
   type NewCoffeeInput
 } from './coffees';
 import { withComputedFields } from './urgency';
@@ -99,6 +101,42 @@ describe('status queries', () => {
     expect(getOpenCoffees(db)).toHaveLength(1);
     expect(getArchivedCoffees(db)).toHaveLength(1);
     expect(getNonArchivedCoffees(db)).toHaveLength(2);
+  });
+
+  it('orders results by roaster then coffee name, case-insensitively', () => {
+    createCoffee(db, sampleInput({ roaster: 'zeta roasters', coffee_name: 'Blend' }));
+    createCoffee(db, sampleInput({ roaster: 'Alpha Roasters', coffee_name: 'Blend' }));
+    createCoffee(db, sampleInput({ roaster: 'Alpha Roasters', coffee_name: 'apple' }));
+    createCoffee(db, sampleInput({ roaster: 'Alpha Roasters', coffee_name: 'Banana' }));
+
+    const names = getBacklogCoffees(db).map((c) => `${c.roaster}/${c.coffee_name}`);
+    expect(names).toEqual([
+      'Alpha Roasters/apple',
+      'Alpha Roasters/Banana',
+      'Alpha Roasters/Blend',
+      'zeta roasters/Blend'
+    ]);
+  });
+});
+
+describe('deleteCoffee', () => {
+  it('permanently removes the coffee', () => {
+    const { id } = createCoffee(db, sampleInput());
+    deleteCoffee(db, id);
+    expect(getCoffeeById(db, id)).toBeUndefined();
+    expect(getBacklogCoffees(db)).toHaveLength(0);
+  });
+});
+
+describe('getDistinctFieldValues', () => {
+  it('returns sorted, deduped, non-empty values for the given column', () => {
+    createCoffee(db, sampleInput({ roaster: 'Shoebox' }));
+    createCoffee(db, sampleInput({ roaster: 'Shoebox' }));
+    createCoffee(db, sampleInput({ roaster: 'Lume' }));
+    createCoffee(db, sampleInput({ roaster: 'Anchorhead', origin: null }));
+
+    expect(getDistinctFieldValues(db, 'roaster')).toEqual(['Anchorhead', 'Lume', 'Shoebox']);
+    expect(getDistinctFieldValues(db, 'origin')).toEqual(['Ethiopia']);
   });
 });
 

@@ -1,7 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getCoffeeById, updateCoffee } from '$lib/server/coffees';
+import { getCoffeeById, updateCoffee, deleteCoffee, getDistinctFieldValues } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { parseCoffeeForm, parseSlugField, CoffeeFormError } from '$lib/server/coffeeFormValidation';
 import { slugify, slugExists } from '$lib/server/slug';
@@ -12,11 +12,21 @@ export const load: PageServerLoad = ({ params }) => {
   if (!coffee) {
     error(404, 'Coffee not found');
   }
-  return { coffee, roastLevels: getRoastLevels(db) };
+  return {
+    coffee,
+    roastLevels: getRoastLevels(db),
+    roasters: getDistinctFieldValues(db, 'roaster'),
+    origins: getDistinctFieldValues(db, 'origin'),
+    processingMethods: getDistinctFieldValues(db, 'processing')
+  };
 };
 
 export const actions: Actions = {
-  default: async ({ request, params }) => {
+  delete: async ({ params }) => {
+    deleteCoffee(getDb(), Number(params.id));
+    redirect(303, '/manage');
+  },
+  save: async ({ request, params }) => {
     const formData = await request.formData();
     const id = Number(params.id);
     try {

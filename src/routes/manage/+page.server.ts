@@ -6,7 +6,8 @@ import {
   unopenCoffee,
   freezeCoffee,
   thawCoffee,
-  archiveCoffee
+  archiveCoffee,
+  deleteCoffee
 } from '$lib/server/coffees';
 import {
   getSubscriptions,
@@ -68,6 +69,11 @@ export const actions: Actions = {
   archive: async ({ request }) => {
     const formData = await request.formData();
     archiveCoffee(getDb(), Number(formData.get('id')));
+    return { success: true };
+  },
+  delete: async ({ request }) => {
+    const formData = await request.formData();
+    deleteCoffee(getDb(), Number(formData.get('id')));
     return { success: true };
   },
   subCreate: async ({ request }) => {

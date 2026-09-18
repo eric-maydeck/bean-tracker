@@ -6,19 +6,45 @@
   let {
     coffee = null,
     roastLevels,
+    roasters = [],
+    origins = [],
+    processingMethods = [],
     formError = null
-  }: { coffee?: CoffeeRow | null; roastLevels: RoastLevelRow[]; formError?: string | null } = $props();
+  }: {
+    coffee?: CoffeeRow | null;
+    roastLevels: RoastLevelRow[];
+    roasters?: string[];
+    origins?: string[];
+    processingMethods?: string[];
+    formError?: string | null;
+  } = $props();
 </script>
 
-<form method="POST" use:enhance>
+<form method="POST" action={coffee ? '?/save' : undefined} use:enhance>
   {#if formError}
     <p class="badge badge-urgent">{formError}</p>
   {/if}
 
+  <datalist id="roaster-suggestions">
+    {#each roasters as name (name)}
+      <option value={name}></option>
+    {/each}
+  </datalist>
+  <datalist id="origin-suggestions">
+    {#each origins as name (name)}
+      <option value={name}></option>
+    {/each}
+  </datalist>
+  <datalist id="processing-suggestions">
+    {#each processingMethods as name (name)}
+      <option value={name}></option>
+    {/each}
+  </datalist>
+
   <div class="form-grid">
   <div class="form-field">
     <label for="roaster">Roaster</label>
-    <input id="roaster" name="roaster" required value={coffee?.roaster ?? ''} />
+    <input id="roaster" name="roaster" required value={coffee?.roaster ?? ''} list="roaster-suggestions" autocomplete="off" />
   </div>
 
   <div class="form-field">
@@ -28,7 +54,7 @@
 
   <div class="form-field">
     <label for="origin">Origin</label>
-    <input id="origin" name="origin" value={coffee?.origin ?? ''} />
+    <input id="origin" name="origin" value={coffee?.origin ?? ''} list="origin-suggestions" autocomplete="off" />
   </div>
 
   <div class="form-field">
@@ -45,7 +71,13 @@
 
   <div class="form-field">
     <label for="processing">Processing</label>
-    <input id="processing" name="processing" value={coffee?.processing ?? ''} />
+    <input
+      id="processing"
+      name="processing"
+      value={coffee?.processing ?? ''}
+      list="processing-suggestions"
+      autocomplete="off"
+    />
   </div>
 
   <div class="form-field">

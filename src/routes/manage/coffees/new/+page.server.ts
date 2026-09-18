@@ -1,12 +1,18 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { createCoffee } from '$lib/server/coffees';
+import { createCoffee, getDistinctFieldValues } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { parseCoffeeForm, CoffeeFormError } from '$lib/server/coffeeFormValidation';
 
 export const load: PageServerLoad = () => {
-  return { roastLevels: getRoastLevels(getDb()) };
+  const db = getDb();
+  return {
+    roastLevels: getRoastLevels(db),
+    roasters: getDistinctFieldValues(db, 'roaster'),
+    origins: getDistinctFieldValues(db, 'origin'),
+    processingMethods: getDistinctFieldValues(db, 'processing')
+  };
 };
 
 export const actions: Actions = {

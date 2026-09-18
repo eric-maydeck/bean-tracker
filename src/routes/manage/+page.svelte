@@ -71,6 +71,20 @@
                   <input type="hidden" name="id" value={coffee.id} />
                   <button class="button button-secondary" type="submit">Archive</button>
                 </form>
+                <form method="POST" action="?/delete" use:enhance>
+                  <input type="hidden" name="id" value={coffee.id} />
+                  <button
+                    class="button button-danger"
+                    type="submit"
+                    onclick={(e) => {
+                      if (!confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    Delete
+                  </button>
+                </form>
               </div>
             </td>
           </tr>
