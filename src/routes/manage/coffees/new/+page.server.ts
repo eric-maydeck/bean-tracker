@@ -12,15 +12,20 @@ export const load: PageServerLoad = () => {
 export const actions: Actions = {
   default: async ({ request }) => {
     const formData = await request.formData();
+    let id: number;
     try {
       const input = parseCoffeeForm(formData);
-      createCoffee(getDb(), input);
+      id = createCoffee(getDb(), input);
     } catch (err) {
       if (err instanceof CoffeeFormError) {
         return fail(400, { error: err.message });
       }
       throw err;
     }
-    redirect(303, '/manage');
+    // Redirect to the new coffee itself, not the dashboard: the dashboard
+    // only shows the top 10 by urgency, and a freshly added coffee with no
+    // roast date sorts last (urgency -100) — it would silently vanish from
+    // view, making a successful save look like it did nothing.
+    redirect(303, `/coffees/${id}`);
   }
 };
