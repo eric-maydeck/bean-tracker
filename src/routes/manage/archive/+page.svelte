@@ -20,7 +20,10 @@
       <tr>
         <th>Coffee</th>
         <th>Roaster</th>
-        <th>Moved date</th>
+        <th>Frozen</th>
+        <th>Unfrozen</th>
+        <th>Opened</th>
+        <th>Archived</th>
         <th></th>
       </tr>
     </thead>
@@ -29,6 +32,9 @@
         <tr>
           <td>{coffee.coffee_name}</td>
           <td>{coffee.roaster}</td>
+          <td>{coffee.frozen_start_date ?? '—'}</td>
+          <td>{coffee.frozen_end_date ?? '—'}</td>
+          <td>{coffee.opened_date?.slice(0, 10) ?? '—'}</td>
           <td>{coffee.moved_date?.slice(0, 10) ?? '—'}</td>
           <td>
             <form method="POST" action="?/restore" use:enhance>

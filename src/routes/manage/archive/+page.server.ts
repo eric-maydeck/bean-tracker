@@ -1,12 +1,12 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getFinishedCoffees, restoreCoffee } from '$lib/server/coffees';
+import { getArchivedCoffees, restoreCoffee } from '$lib/server/coffees';
 import { withComputedFields } from '$lib/server/urgency';
 
 export const load: PageServerLoad = () => {
   const db = getDb();
   const today = new Date();
-  const coffees = getFinishedCoffees(db)
+  const coffees = getArchivedCoffees(db)
     .map((c) => withComputedFields(c, today))
     .sort((a, b) => (b.moved_date ?? '').localeCompare(a.moved_date ?? ''));
   return { coffees };
