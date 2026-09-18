@@ -1,6 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getActiveCoffees, markAsDrank } from '$lib/server/coffees';
+import { getNonArchivedCoffees, openCoffee, freezeCoffee, thawCoffee, archiveCoffee } from '$lib/server/coffees';
 import { withComputedFields, type CoffeeWithComputed } from '$lib/server/urgency';
 
 function sortBySpreadsheetOrder(a: CoffeeWithComputed, b: CoffeeWithComputed): number {
@@ -23,21 +23,31 @@ function sortBySpreadsheetOrder(a: CoffeeWithComputed, b: CoffeeWithComputed): n
 export const load: PageServerLoad = () => {
   const db = getDb();
   const today = new Date();
-  const coffees = getActiveCoffees(db)
+  const coffees = getNonArchivedCoffees(db)
     .map((c) => withComputedFields(c, today))
     .sort(sortBySpreadsheetOrder);
-
-  return {
-    coffees,
-    suggestedNext: coffees[0] ?? null
-  };
+  return { coffees };
 };
 
 export const actions: Actions = {
-  markDrank: async ({ request }) => {
+  open: async ({ request }) => {
     const formData = await request.formData();
-    const id = Number(formData.get('id'));
-    markAsDrank(getDb(), id);
+    openCoffee(getDb(), Number(formData.get('id')));
+    return { success: true };
+  },
+  freeze: async ({ request }) => {
+    const formData = await request.formData();
+    freezeCoffee(getDb(), Number(formData.get('id')));
+    return { success: true };
+  },
+  thaw: async ({ request }) => {
+    const formData = await request.formData();
+    thawCoffee(getDb(), Number(formData.get('id')));
+    return { success: true };
+  },
+  archive: async ({ request }) => {
+    const formData = await request.formData();
+    archiveCoffee(getDb(), Number(formData.get('id')));
     return { success: true };
   }
 };

@@ -1,51 +1,64 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   let { data } = $props();
-  const topUrgency = $derived(data.coffees.slice(0, 10));
 </script>
 
-<h1>Dashboard</h1>
+<h1>Manage</h1>
 
-{#if data.suggestedNext}
-  <section class="card">
-    <h2>Suggested next</h2>
-    <p><strong>{data.suggestedNext.coffee_name}</strong> — {data.suggestedNext.roaster}</p>
-    <p class="text-muted">Urgency: {Math.round(Number(data.suggestedNext.urgency_rating))}</p>
-  </section>
-{:else}
-  <p class="text-muted">No active coffees. Add one to get started.</p>
-{/if}
-
-<section>
-  <h2>Top urgency</h2>
-  <div class="table-scroll">
-    <table class="data-table">
-      <thead>
+<div class="table-scroll">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Coffee</th>
+        <th>Roaster</th>
+        <th>Status</th>
+        <th>Urgency</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {#each data.coffees as coffee (coffee.id)}
         <tr>
-          <th>Coffee</th>
-          <th>Roaster</th>
-          <th>Urgency</th>
-          <th>Drink before</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each topUrgency as coffee (coffee.id)}
-          <tr>
-            <td><a href={`/manage/coffees/${coffee.id}/edit`}>{coffee.coffee_name}</a></td>
-            <td>{coffee.roaster}</td>
-            <td>{Math.round(Number(coffee.urgency_rating))}</td>
-            <td>{coffee.drink_before ?? '—'}</td>
-            <td>
-              <form method="POST" action="?/markDrank" use:enhance>
+          <td><a href={`/manage/coffees/${coffee.id}/edit`}>{coffee.coffee_name}</a></td>
+          <td>{coffee.roaster}</td>
+          <td>
+            {#if coffee.status === 'open'}
+              <span class="badge badge-warm">Open</span>
+            {:else}
+              <span class="badge badge-neutral">Backlog</span>
+            {/if}
+            {#if coffee.frozen_start_date && !coffee.frozen_end_date}
+              <span class="badge badge-neutral">Frozen</span>
+            {/if}
+          </td>
+          <td>{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</td>
+          <td>
+            <div class="action-buttons">
+              {#if coffee.status === 'backlog'}
+                {#if coffee.frozen_start_date && !coffee.frozen_end_date}
+                  <form method="POST" action="?/thaw" use:enhance>
+                    <input type="hidden" name="id" value={coffee.id} />
+                    <button class="button button-secondary" type="submit">Thaw</button>
+                  </form>
+                {:else}
+                  <form method="POST" action="?/freeze" use:enhance>
+                    <input type="hidden" name="id" value={coffee.id} />
+                    <button class="button button-secondary" type="submit">Freeze</button>
+                  </form>
+                {/if}
+                <form method="POST" action="?/open" use:enhance>
+                  <input type="hidden" name="id" value={coffee.id} />
+                  <button class="button" type="submit">Open</button>
+                </form>
+              {/if}
+              <form method="POST" action="?/archive" use:enhance>
                 <input type="hidden" name="id" value={coffee.id} />
-                <button class="button" type="submit">Mark as drank</button>
+                <button class="button button-secondary" type="submit">Archive</button>
               </form>
-            </td>
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
-</section>
-
+            </div>
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>
