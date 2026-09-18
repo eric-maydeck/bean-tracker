@@ -1,10 +1,18 @@
 import type { LayoutServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb, getLastDeployed } from '$lib/server/db';
 
 export const load: LayoutServerLoad = () => {
   const db = getDb();
-  const row = db.prepare('SELECT MAX(updated_at) as lastUpdated FROM coffees').get() as {
-    lastUpdated: string | null;
-  };
-  return { lastUpdated: row.lastUpdated };
+  const row = db
+    .prepare(
+      `SELECT MAX(updated_at) as dataUpdated FROM (
+        SELECT updated_at FROM coffees
+        UNION ALL
+        SELECT updated_at FROM subscriptions
+      )`
+    )
+    .get() as { dataUpdated: string | null };
+  const lastDeployed = getLastDeployed(db);
+  const lastUpdated = [row.dataUpdated, lastDeployed].filter((v): v is string => v != null).sort().at(-1) ?? null;
+  return { lastUpdated, lastDeployed };
 };

@@ -69,6 +69,6 @@
 <main class="container">
   {@render children()}
   <footer class="site-footer">
-    Last updated: {formatUpdated(data.lastUpdated)}
+    Last updated: {formatUpdated(data.lastUpdated)} · Last deployed: {formatUpdated(data.lastDeployed)}
   </footer>
 </main>

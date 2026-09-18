@@ -45,9 +45,30 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'image_url', 'TEXT');
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');
+  ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   migrateStatusValues(db);
   backfillSlugs(db);
+  db.exec(
+    `UPDATE subscriptions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE updated_at IS NULL`
+  );
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_coffees_slug ON coffees(slug)`);
+}
+
+// Called once per process start (createDb runs once via the getDb() singleton),
+// so this timestamp tracks "when this server process booted" — which, since the
+// container is recreated on every real deploy, doubles as "last deployed" without
+// needing any CI/build-time wiring.
+function recordDeploy(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  db.prepare(`INSERT INTO app_meta (key, value) VALUES ('last_deployed', ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
+}
+
+export function getLastDeployed(db: DatabaseSync): string | null {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = 'last_deployed'`).get() as
+    | { value: string }
+    | undefined;
+  return row?.value ?? null;
 }
 
 export function createDb(path: string): DatabaseSync {
@@ -56,6 +77,7 @@ export function createDb(path: string): DatabaseSync {
   }
   const db = new DatabaseSync(path);
   applySchema(db);
+  recordDeploy(db);
   return db;
 }
 

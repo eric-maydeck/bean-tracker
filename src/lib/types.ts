@@ -30,6 +30,7 @@ export interface SubscriptionRow {
   bag_count: number | null;
   amount_per_bag_g: number | null;
   purchased: number;
+  updated_at: string | null;
 }
 
 export interface RoastLevelRow {

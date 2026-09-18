@@ -18,24 +18,29 @@ export function getSubscriptionById(db: DatabaseSync, id: number): SubscriptionR
 }
 
 export function createSubscription(db: DatabaseSync, input: NewSubscriptionInput): number {
+  const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO subscriptions (roaster_service, subscription_name, price, bag_count, amount_per_bag_g, purchased)
-       VALUES (?, ?, ?, ?, ?, 0)`
+      `INSERT INTO subscriptions
+        (roaster_service, subscription_name, price, bag_count, amount_per_bag_g, purchased, updated_at)
+       VALUES (?, ?, ?, ?, ?, 0, ?)`
     )
     .run(
       input.roaster_service,
       input.subscription_name,
       input.price,
       input.bag_count,
-      input.amount_per_bag_g
+      input.amount_per_bag_g,
+      now
     );
   return Number(result.lastInsertRowid);
 }
 
 export function updateSubscription(db: DatabaseSync, id: number, input: NewSubscriptionInput): void {
+  const now = new Date().toISOString();
   db.prepare(
-    `UPDATE subscriptions SET roaster_service = ?, subscription_name = ?, price = ?, bag_count = ?, amount_per_bag_g = ?
+    `UPDATE subscriptions SET roaster_service = ?, subscription_name = ?, price = ?, bag_count = ?,
+      amount_per_bag_g = ?, updated_at = ?
      WHERE id = ?`
   ).run(
     input.roaster_service,
@@ -43,6 +48,7 @@ export function updateSubscription(db: DatabaseSync, id: number, input: NewSubsc
     input.price,
     input.bag_count,
     input.amount_per_bag_g,
+    now,
     id
   );
 }
@@ -52,7 +58,10 @@ export function deleteSubscription(db: DatabaseSync, id: number): void {
 }
 
 export function toggleSubscriptionPurchased(db: DatabaseSync, id: number): void {
-  db.prepare(`UPDATE subscriptions SET purchased = CASE purchased WHEN 1 THEN 0 ELSE 1 END WHERE id = ?`).run(id);
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE subscriptions SET purchased = CASE purchased WHEN 1 THEN 0 ELSE 1 END, updated_at = ? WHERE id = ?`
+  ).run(now, id);
 }
 
 export function withTotalGrams(

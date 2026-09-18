@@ -33,7 +33,13 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   price REAL,
   bag_count REAL,
   amount_per_bag_g REAL,
-  purchased INTEGER NOT NULL DEFAULT 0
+  purchased INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+  key TEXT PRIMARY KEY,
+  value TEXT
 );
 
 CREATE TABLE IF NOT EXISTS roast_levels (
