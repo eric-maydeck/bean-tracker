@@ -23,6 +23,10 @@ function textField(formData: FormData, key: string): string | null {
   return trimmed === '' ? null : trimmed;
 }
 
+export function parseSlugField(formData: FormData): string | null {
+  return textField(formData, 'slug');
+}
+
 function numberField(formData: FormData, key: string): number | null {
   const raw = formData.get(key);
   if (typeof raw !== 'string' || raw.trim() === '') return null;

@@ -3,11 +3,17 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import {
   createCoffee,
-  getActiveCoffees,
-  getFinishedCoffees,
-  getCoffeeById,
   updateCoffee,
-  markAsDrank,
+  getBacklogCoffees,
+  getOpenCoffees,
+  getArchivedCoffees,
+  getNonArchivedCoffees,
+  getCoffeeById,
+  getCoffeeBySlug,
+  openCoffee,
+  freezeCoffee,
+  thawCoffee,
+  archiveCoffee,
   restoreCoffee,
   type NewCoffeeInput
 } from './coffees';
@@ -37,55 +43,118 @@ beforeEach(() => {
   db = createDb(':memory:');
 });
 
-describe('createCoffee / getActiveCoffees / getFinishedCoffees', () => {
-  it('creates a coffee as active by default', () => {
-    createCoffee(db, sampleInput());
-    expect(getActiveCoffees(db)).toHaveLength(1);
-    expect(getFinishedCoffees(db)).toHaveLength(0);
-    expect(getActiveCoffees(db)[0].coffee_name).toBe('Sample Blend');
+describe('createCoffee', () => {
+  it('creates a coffee as backlog by default, with a generated slug', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    expect(getBacklogCoffees(db)).toHaveLength(1);
+    expect(slug).toBe('2026-test-roasters-sample-blend');
+    expect(getCoffeeById(db, id)?.slug).toBe(slug);
   });
 
-  it('creates a coffee directly as finished when status is passed', () => {
-    createCoffee(db, { ...sampleInput(), status: 'finished' });
-    expect(getActiveCoffees(db)).toHaveLength(0);
-    expect(getFinishedCoffees(db)).toHaveLength(1);
-    expect(getFinishedCoffees(db)[0].drank).toBe(1);
+  it('creates a coffee directly as open or archive when status is passed', () => {
+    const { id } = createCoffee(db, { ...sampleInput(), status: 'archive' });
+    expect(getArchivedCoffees(db)).toHaveLength(1);
+    expect(getCoffeeById(db, id)?.drank).toBe(1);
+  });
+
+  it('dedupes slugs for coffees with the same roaster/name/year', () => {
+    const first = createCoffee(db, sampleInput());
+    const second = createCoffee(db, sampleInput());
+    expect(second.slug).toBe(`${first.slug}-2`);
   });
 });
 
-describe('getCoffeeById', () => {
-  it('returns the created row by id', () => {
-    const id = createCoffee(db, sampleInput());
-    const found = getCoffeeById(db, id);
-    expect(found?.roaster).toBe('Test Roasters');
+describe('getCoffeeBySlug', () => {
+  it('returns the coffee with that slug', () => {
+    const { slug } = createCoffee(db, sampleInput());
+    expect(getCoffeeBySlug(db, slug)?.coffee_name).toBe('Sample Blend');
   });
 
-  it('returns undefined for an unknown id', () => {
-    expect(getCoffeeById(db, 9999)).toBeUndefined();
+  it('returns undefined for an unknown slug', () => {
+    expect(getCoffeeBySlug(db, 'nope')).toBeUndefined();
   });
 });
 
 describe('updateCoffee', () => {
-  it('overwrites the editable fields', () => {
-    const id = createCoffee(db, sampleInput());
-    updateCoffee(db, id, sampleInput({ coffee_name: 'Renamed Blend', cost: 22 }));
+  it('overwrites the editable fields and the slug', () => {
+    const { id } = createCoffee(db, sampleInput());
+    updateCoffee(db, id, sampleInput({ coffee_name: 'Renamed Blend', cost: 22 }), 'custom-slug');
     const found = getCoffeeById(db, id);
     expect(found?.coffee_name).toBe('Renamed Blend');
     expect(found?.cost).toBe(22);
+    expect(found?.slug).toBe('custom-slug');
   });
 });
 
-describe('markAsDrank / restoreCoffee', () => {
-  it('moves a coffee from active to finished and back', () => {
-    const id = createCoffee(db, sampleInput());
-    markAsDrank(db, id);
-    expect(getActiveCoffees(db)).toHaveLength(0);
-    expect(getFinishedCoffees(db)).toHaveLength(1);
+describe('status queries', () => {
+  it('separates backlog, open, archive, and non-archived coffees', () => {
+    createCoffee(db, sampleInput({ coffee_name: 'A' }));
+    const { id: openId } = createCoffee(db, sampleInput({ coffee_name: 'B' }));
+    openCoffee(db, openId);
+    createCoffee(db, sampleInput({ coffee_name: 'C', status: 'archive' }));
+
+    expect(getBacklogCoffees(db)).toHaveLength(1);
+    expect(getOpenCoffees(db)).toHaveLength(1);
+    expect(getArchivedCoffees(db)).toHaveLength(1);
+    expect(getNonArchivedCoffees(db)).toHaveLength(2);
+  });
+});
+
+describe('openCoffee', () => {
+  it('moves backlog to open and sets opened_date', () => {
+    const { id } = createCoffee(db, sampleInput());
+    openCoffee(db, id);
+    const found = getCoffeeById(db, id);
+    expect(found?.status).toBe('open');
+    expect(found?.opened_date).not.toBeNull();
+  });
+
+  it('clears frozen_end_date to today if the coffee was frozen and not yet thawed', () => {
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_end_date).toBeNull();
+    openCoffee(db, id);
+    const found = getCoffeeById(db, id);
+    expect(found?.frozen_start_date).not.toBeNull();
+    expect(found?.frozen_end_date).not.toBeNull();
+  });
+
+  it('does not touch frozen_end_date if the coffee was never frozen', () => {
+    const { id } = createCoffee(db, sampleInput());
+    openCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_end_date).toBeNull();
+  });
+});
+
+describe('freezeCoffee / thawCoffee', () => {
+  it('sets frozen_start_date and frozen_end_date independently', () => {
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_start_date).not.toBeNull();
+    expect(getCoffeeById(db, id)?.frozen_end_date).toBeNull();
+    thawCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_end_date).not.toBeNull();
+  });
+});
+
+describe('archiveCoffee / restoreCoffee', () => {
+  it('moves a coffee to archive and back to backlog', () => {
+    const { id } = createCoffee(db, sampleInput());
+    archiveCoffee(db, id);
+    expect(getArchivedCoffees(db)).toHaveLength(1);
     expect(getCoffeeById(db, id)?.moved_date).not.toBeNull();
+    expect(getCoffeeById(db, id)?.drank).toBe(1);
 
     restoreCoffee(db, id);
-    expect(getActiveCoffees(db)).toHaveLength(1);
-    expect(getFinishedCoffees(db)).toHaveLength(0);
+    expect(getBacklogCoffees(db)).toHaveLength(1);
     expect(getCoffeeById(db, id)?.moved_date).toBeNull();
+    expect(getCoffeeById(db, id)?.drank).toBe(0);
+  });
+
+  it('archives an open coffee directly', () => {
+    const { id } = createCoffee(db, sampleInput());
+    openCoffee(db, id);
+    archiveCoffee(db, id);
+    expect(getArchivedCoffees(db)).toHaveLength(1);
   });
 });
