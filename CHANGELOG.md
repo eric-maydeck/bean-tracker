@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.3.0...v1.3.1) (2026-09-18)
+
+
+### Bug Fixes
+
+* redirect to the new coffee after adding it, not the dashboard
+
 # [1.3.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.2.0...v1.3.0) (2026-09-18)
 
 
