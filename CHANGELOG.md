@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.7.0...v1.8.0) (2026-09-18)
+
+
+### Features
+
+* add coffee delete, On Deck detail, and add-coffee autocomplete
+
 # [1.7.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.6.0...v1.7.0) (2026-09-18)
 
 
