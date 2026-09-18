@@ -18,6 +18,7 @@
   let view = $state<'cards' | 'list'>('list');
 
   let editMode = $state(false);
+  let canEdit = $derived(editMode && data.isAdmin);
   let expandedId = $state<number | 'new' | null>(null);
 
   async function refresh() {
@@ -261,7 +262,7 @@
   {/if}
 </div>
 
-{#if editMode}
+{#if canEdit}
   <div class="search-row">
     <button class="button" type="button" onclick={toggleAdd}>
       {expandedId === 'new' ? 'Cancel add' : '+ Add Coffee'}
@@ -283,7 +284,7 @@
 {#if view === 'cards'}
   <section class="grid">
     {#each coffees as coffee (coffee.id)}
-      {#if editMode && data.isAdmin}
+      {#if canEdit}
         <div class="card">
           {#if expandedId === coffee.id}
             {@render expandedForm(coffee)}
@@ -377,7 +378,7 @@
         <col style="width: 6%" />
         <col style="width: 5%" />
         <col style="width: 10%" />
-        {#if editMode && data.isAdmin}
+        {#if canEdit}
           <col style="width: 13%" />
         {/if}
       </colgroup>
@@ -450,7 +451,7 @@
             </button>
           </th>
           <th>Status</th>
-          {#if editMode && data.isAdmin}
+          {#if canEdit}
             <th>Actions</th>
           {/if}
         </tr>
@@ -490,7 +491,7 @@
                 <span class="badge badge-neutral">Backlog</span>
               {/if}
             </td>
-            {#if editMode && data.isAdmin}
+            {#if canEdit}
               <td>
                 <div class="action-buttons">
                   {@render adminActions(coffee)}
@@ -498,9 +499,9 @@
               </td>
             {/if}
           </tr>
-          {#if editMode && expandedId === coffee.id}
+          {#if canEdit && expandedId === coffee.id}
             <tr>
-              <td colspan={data.isAdmin ? 12 : 11}>
+              <td colspan={canEdit ? 12 : 11}>
                 {@render expandedForm(coffee)}
               </td>
             </tr>

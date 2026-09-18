@@ -3,6 +3,7 @@
   let { data, form } = $props();
 
   let editMode = $state(false);
+  let canEdit = $derived(editMode && data.isAdmin);
 </script>
 
 <h1>Subscriptions</h1>
@@ -32,11 +33,11 @@
         <th>Name</th>
         <th>Price</th>
         <th>Total grams</th>
-        {#if editMode}
+        {#if canEdit}
           <th>Bags × g/bag</th>
         {/if}
         <th>Purchased?</th>
-        {#if editMode}
+        {#if canEdit}
           <th>Actions</th>
         {/if}
       </tr>
@@ -45,42 +46,46 @@
       {#each data.subscriptions as sub (sub.id)}
         <tr>
           <td>
-            {#if editMode}
+            {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="roaster_service" required value={sub.roaster_service} />
             {:else}
               {sub.roaster_service}
             {/if}
           </td>
           <td>
-            {#if editMode}
+            {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={sub.subscription_name ?? ''} />
             {:else}
               {sub.subscription_name ?? '—'}
             {/if}
           </td>
           <td>
-            {#if editMode}
+            {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={sub.price ?? ''} />
             {:else}
               {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
             {/if}
           </td>
           <td>{sub.total_grams ?? '—'}</td>
-          {#if editMode}
+          {#if canEdit}
             <td>
               <input class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" placeholder="# bags" value={sub.bag_count ?? ''} />
               <input class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" placeholder="g/bag" value={sub.amount_per_bag_g ?? ''} />
             </td>
           {/if}
           <td>
-            <form method="POST" action="?/togglePurchased" use:enhance>
-              <input type="hidden" name="id" value={sub.id} />
-              <button class="button button-secondary" type="submit">
-                {sub.purchased ? 'Purchased' : 'Not yet'}
-              </button>
-            </form>
+            {#if canEdit}
+              <form method="POST" action="?/togglePurchased" use:enhance>
+                <input type="hidden" name="id" value={sub.id} />
+                <button class="button button-secondary" type="submit">
+                  {sub.purchased ? 'Purchased' : 'Not yet'}
+                </button>
+              </form>
+            {:else}
+              {sub.purchased ? 'Purchased' : 'Not yet'}
+            {/if}
           </td>
-          {#if editMode}
+          {#if canEdit}
             <td>
               <form id={`sub-form-${sub.id}`} method="POST" action="?/update" use:enhance>
                 <input type="hidden" name="id" value={sub.id} />
@@ -106,7 +111,7 @@
   </table>
 </div>
 
-{#if editMode}
+{#if canEdit}
   <h2>Add subscription</h2>
   <form method="POST" action="?/create" use:enhance>
     <div class="form-grid">

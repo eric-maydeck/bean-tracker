@@ -6,6 +6,7 @@
   let { data, form } = $props();
 
   let editMode = $state(false);
+  let canEdit = $derived(editMode && data.isAdmin);
 </script>
 
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
@@ -23,7 +24,7 @@
   </div>
 {/if}
 
-{#if editMode}
+{#if canEdit}
   <CoffeeForm
     coffee={data.coffee}
     roastLevels={data.roastLevels}
