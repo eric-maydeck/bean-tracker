@@ -22,10 +22,8 @@ export const actions: Actions = {
       }
       throw err;
     }
-    // Redirect to the new coffee itself, not the dashboard: the dashboard
-    // only shows the top 10 by urgency, and a freshly added coffee with no
-    // roast date sorts last (urgency -100) — it would silently vanish from
-    // view, making a successful save look like it did nothing.
+    // Redirect to the new coffee itself, rather than back to Manage, so the
+    // save is visibly confirmed instead of looking like it did nothing.
     redirect(303, `/coffees/${slug}`);
   }
 };

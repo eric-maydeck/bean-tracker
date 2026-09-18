@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseCoffeeForm, CoffeeFormError } from './coffeeFormValidation';
+import { parseCoffeeForm, parseSlugField, CoffeeFormError } from './coffeeFormValidation';
 
 function formData(fields: Record<string, string>): FormData {
   const fd = new FormData();
@@ -67,5 +67,24 @@ describe('parseCoffeeForm', () => {
     expect(() =>
       parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample', amount_g: 'lots' }))
     ).toThrow(CoffeeFormError);
+  });
+});
+
+describe('parseSlugField', () => {
+  it('passes through a valid slug unchanged', () => {
+    expect(parseSlugField(formData({ slug: 'custom-slug' }))).toBe('custom-slug');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(parseSlugField(formData({ slug: '  custom-slug  ' }))).toBe('custom-slug');
+  });
+
+  it('returns null for an empty or whitespace-only slug', () => {
+    expect(parseSlugField(formData({ slug: '' }))).toBeNull();
+    expect(parseSlugField(formData({ slug: '   ' }))).toBeNull();
+  });
+
+  it('returns null when the slug field is missing entirely', () => {
+    expect(parseSlugField(formData({}))).toBeNull();
   });
 });

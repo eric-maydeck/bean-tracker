@@ -14,6 +14,9 @@ CREATE TABLE IF NOT EXISTS coffees (
   rest_days_low INTEGER,
   rest_days_high INTEGER,
   image_url TEXT,
+  -- Nullable here (unlike types.ts's non-optional 'slug: string') because SQLite
+  -- can't ALTER TABLE ADD COLUMN NOT NULL without a default; the unique index plus
+  -- the startup backfill migration are what actually guarantee every row has one.
   slug TEXT,
   opened_date TEXT,
   drank INTEGER NOT NULL DEFAULT 0,
