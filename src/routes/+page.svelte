@@ -3,7 +3,7 @@
 
   let { data } = $props();
   let query = $state('');
-  let filter = $state<'active' | 'finished' | 'all'>('active');
+  let filter = $state<'backlog' | 'open' | 'archive' | 'all'>('backlog');
   let view = $state<'cards' | 'list'>('list');
 
   $effect(() => {
@@ -26,11 +26,13 @@
   }
 
   let source = $derived(
-    filter === 'active'
-      ? data.active
-      : filter === 'finished'
-        ? data.finished
-        : [...data.active, ...data.finished]
+    filter === 'backlog'
+      ? data.backlog
+      : filter === 'open'
+        ? data.open
+        : filter === 'archive'
+          ? data.archive
+          : [...data.backlog, ...data.open, ...data.archive]
   );
 
   let coffees = $derived(
@@ -87,11 +89,14 @@
 
 <div class="toolbar">
   <div class="tab-group">
-    <button aria-pressed={filter === 'active'} onclick={() => (filter = 'active')}>
-      Backlog ({data.active.length})
+    <button aria-pressed={filter === 'backlog'} onclick={() => (filter = 'backlog')}>
+      Backlog ({data.backlog.length})
     </button>
-    <button aria-pressed={filter === 'finished'} onclick={() => (filter = 'finished')}>
-      Finished ({data.finished.length})
+    <button aria-pressed={filter === 'open'} onclick={() => (filter = 'open')}>
+      Open ({data.open.length})
+    </button>
+    <button aria-pressed={filter === 'archive'} onclick={() => (filter = 'archive')}>
+      Archive ({data.archive.length})
     </button>
     <button aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
   </div>
@@ -107,7 +112,7 @@
 {#if view === 'cards'}
   <section class="grid">
     {#each coffees as coffee (coffee.id)}
-      <a class="card" href={`/coffees/${coffee.id}`}>
+      <a class="card" href={`/coffees/${coffee.slug}`}>
         <h2>{coffee.coffee_name}</h2>
         <p class="text-muted">{coffee.roaster}</p>
         <p>{coffee.origin ?? 'Origin unknown'} · {coffee.roast_level ?? 'Roast level unknown'}</p>
@@ -124,13 +129,15 @@
             {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
           </p>
         {/if}
-        {#if coffee.status === 'active' && coffee.drink_after && coffee.drink_before}
+        {#if coffee.status === 'open' && coffee.drink_after && coffee.drink_before}
           <p class="text-muted">Rest window: {coffee.drink_after} – {coffee.drink_before}</p>
         {/if}
-        {#if coffee.status === 'finished'}
-          <span class="badge badge-fresh">Finished</span>
+        {#if coffee.status === 'archive'}
+          <span class="badge badge-fresh">Archive</span>
+        {:else if coffee.status === 'open'}
+          <span class="badge badge-warm">Open</span>
         {:else}
-          <span class="badge badge-warm">In rotation</span>
+          <span class="badge badge-neutral">Backlog</span>
         {/if}
       </a>
     {/each}
@@ -198,7 +205,7 @@
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><a href={`/coffees/${coffee.id}`}>{coffee.coffee_name}</a></td>
+            <td><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></td>
             <td>{coffee.origin ?? '—'} · {coffee.roast_level ?? '—'}</td>
             <td>{coffee.processing ?? '—'}</td>
             <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
@@ -208,7 +215,7 @@
               {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
             </td>
             <td>
-              {#if coffee.status === 'active' && coffee.drink_after && coffee.drink_before}
+              {#if coffee.status === 'open' && coffee.drink_after && coffee.drink_before}
                 {coffee.drink_after} – {coffee.drink_before}
               {:else}
                 —
@@ -216,10 +223,12 @@
             </td>
             <td>{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</td>
             <td>
-              {#if coffee.status === 'finished'}
-                <span class="badge badge-fresh">Finished</span>
+              {#if coffee.status === 'archive'}
+                <span class="badge badge-fresh">Archive</span>
+              {:else if coffee.status === 'open'}
+                <span class="badge badge-warm">Open</span>
               {:else}
-                <span class="badge badge-warm">In rotation</span>
+                <span class="badge badge-neutral">Backlog</span>
               {/if}
             </td>
           </tr>

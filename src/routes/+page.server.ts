@@ -1,12 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getActiveCoffees, getFinishedCoffees } from '$lib/server/coffees';
+import { getBacklogCoffees, getOpenCoffees, getArchivedCoffees } from '$lib/server/coffees';
 import { withComputedFields } from '$lib/server/urgency';
 
 export const load: PageServerLoad = () => {
   const db = getDb();
   const today = new Date();
-  const active = getActiveCoffees(db).map((c) => withComputedFields(c, today));
-  const finished = getFinishedCoffees(db).map((c) => withComputedFields(c, today));
-  return { active, finished };
+  const backlog = getBacklogCoffees(db).map((c) => withComputedFields(c, today));
+  const open = getOpenCoffees(db).map((c) => withComputedFields(c, today));
+  const archive = getArchivedCoffees(db).map((c) => withComputedFields(c, today));
+  return { backlog, open, archive };
 };
