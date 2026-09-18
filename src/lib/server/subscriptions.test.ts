@@ -4,6 +4,7 @@ import { createDb } from './db';
 import {
   createSubscription,
   getSubscriptions,
+  getSubscriptionById,
   updateSubscription,
   deleteSubscription,
   toggleSubscriptionPurchased,
@@ -53,6 +54,12 @@ describe('subscriptions CRUD', () => {
     const id = createSubscription(db, sampleInput());
     deleteSubscription(db, id);
     expect(getSubscriptions(db)).toHaveLength(0);
+  });
+
+  it('gets a subscription by id', () => {
+    const id = createSubscription(db, sampleInput());
+    expect(getSubscriptionById(db, id)?.roaster_service).toBe('Airworks');
+    expect(getSubscriptionById(db, id + 1000)).toBeUndefined();
   });
 });
 

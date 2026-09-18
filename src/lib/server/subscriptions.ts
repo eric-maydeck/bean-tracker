@@ -13,6 +13,10 @@ export function getSubscriptions(db: DatabaseSync): SubscriptionRow[] {
   return db.prepare(`SELECT * FROM subscriptions ORDER BY roaster_service ASC`).all() as SubscriptionRow[];
 }
 
+export function getSubscriptionById(db: DatabaseSync, id: number): SubscriptionRow | undefined {
+  return db.prepare(`SELECT * FROM subscriptions WHERE id = ?`).get(id) as SubscriptionRow | undefined;
+}
+
 export function createSubscription(db: DatabaseSync, input: NewSubscriptionInput): number {
   const result = db
     .prepare(
