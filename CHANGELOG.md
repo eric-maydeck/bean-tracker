@@ -1,3 +1,16 @@
+# [1.5.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.4.0...v1.5.0) (2026-09-18)
+
+
+### Bug Fixes
+
+* import the real Moved date for archived coffees from the spreadsheet
+* urgency gradient clamps at zero and Manage buttons stay aligned
+
+
+### Features
+
+* move subscription creation to a dedicated Manage page
+
 # [1.4.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.3.1...v1.4.0) (2026-09-18)
 
 
