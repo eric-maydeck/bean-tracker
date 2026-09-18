@@ -14,28 +14,30 @@
 
 <input class="search-input" placeholder="Search roaster, coffee…" bind:value={query} />
 
-<table class="data-table">
-  <thead>
-    <tr>
-      <th>Coffee</th>
-      <th>Roaster</th>
-      <th>Moved date</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    {#each coffees as coffee (coffee.id)}
+<div class="table-scroll">
+  <table class="data-table">
+    <thead>
       <tr>
-        <td>{coffee.coffee_name}</td>
-        <td>{coffee.roaster}</td>
-        <td>{coffee.moved_date?.slice(0, 10) ?? '—'}</td>
-        <td>
-          <form method="POST" action="?/restore" use:enhance>
-            <input type="hidden" name="id" value={coffee.id} />
-            <button class="button button-secondary" type="submit">Restore</button>
-          </form>
-        </td>
+        <th>Coffee</th>
+        <th>Roaster</th>
+        <th>Moved date</th>
+        <th></th>
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each coffees as coffee (coffee.id)}
+        <tr>
+          <td>{coffee.coffee_name}</td>
+          <td>{coffee.roaster}</td>
+          <td>{coffee.moved_date?.slice(0, 10) ?? '—'}</td>
+          <td>
+            <form method="POST" action="?/restore" use:enhance>
+              <input type="hidden" name="id" value={coffee.id} />
+              <button class="button button-secondary" type="submit">Restore</button>
+            </form>
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</div>

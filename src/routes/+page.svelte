@@ -44,18 +44,18 @@
 
 <div class="toolbar">
   <div class="tab-group">
-    <button class:active={filter === 'active'} onclick={() => (filter = 'active')}>
+    <button aria-pressed={filter === 'active'} onclick={() => (filter = 'active')}>
       Backlog ({data.active.length})
     </button>
-    <button class:active={filter === 'finished'} onclick={() => (filter = 'finished')}>
+    <button aria-pressed={filter === 'finished'} onclick={() => (filter = 'finished')}>
       Finished ({data.finished.length})
     </button>
-    <button class:active={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
+    <button aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
   </div>
 
   <div class="tab-group">
-    <button class:active={view === 'list'} onclick={() => setView('list')}>List</button>
-    <button class:active={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
+    <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
+    <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
   </div>
 </div>
 
@@ -93,36 +93,51 @@
     {/each}
   </section>
 {:else}
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>Coffee</th>
-        <th>Roaster</th>
-        <th>Origin · Roast</th>
-        <th>Cost/g</th>
-        <th>Amount</th>
-        <th>Roasted</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each coffees as coffee (coffee.id)}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
         <tr>
-          <td><a href={`/coffees/${coffee.id}`}>{coffee.coffee_name}</a></td>
-          <td>{coffee.roaster}</td>
-          <td>{coffee.origin ?? '—'} · {coffee.roast_level ?? '—'}</td>
-          <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
-          <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
-          <td>{coffee.roast_date ?? '—'}</td>
-          <td>
-            {#if coffee.status === 'finished'}
-              <span class="badge badge-fresh">Finished</span>
-            {:else}
-              <span class="badge badge-warm">In rotation</span>
-            {/if}
-          </td>
+          <th>Coffee</th>
+          <th>Roaster</th>
+          <th>Origin · Roast</th>
+          <th>Processing</th>
+          <th>Cost/g</th>
+          <th>Amount</th>
+          <th>Roasted</th>
+          <th>Rest window</th>
+          <th>Status</th>
         </tr>
-      {/each}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {#each coffees as coffee (coffee.id)}
+          <tr>
+            <td><a href={`/coffees/${coffee.id}`}>{coffee.coffee_name}</a></td>
+            <td>{coffee.roaster}</td>
+            <td>{coffee.origin ?? '—'} · {coffee.roast_level ?? '—'}</td>
+            <td>{coffee.processing ?? '—'}</td>
+            <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
+            <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
+            <td>
+              {coffee.roast_date ?? '—'}
+              {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+            </td>
+            <td>
+              {#if coffee.status === 'active' && coffee.drink_after && coffee.drink_before}
+                {coffee.drink_after} – {coffee.drink_before}
+              {:else}
+                —
+              {/if}
+            </td>
+            <td>
+              {#if coffee.status === 'finished'}
+                <span class="badge badge-fresh">Finished</span>
+              {:else}
+                <span class="badge badge-warm">In rotation</span>
+              {/if}
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 {/if}

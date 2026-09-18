@@ -18,32 +18,34 @@
 
 <section>
   <h2>Top urgency</h2>
-  <table class="data-table">
-    <thead>
-      <tr>
-        <th>Coffee</th>
-        <th>Roaster</th>
-        <th>Urgency</th>
-        <th>Drink before</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {#each topUrgency as coffee (coffee.id)}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
         <tr>
-          <td><a href={`/manage/coffees/${coffee.id}/edit`}>{coffee.coffee_name}</a></td>
-          <td>{coffee.roaster}</td>
-          <td>{Math.round(Number(coffee.urgency_rating))}</td>
-          <td>{coffee.drink_before ?? '—'}</td>
-          <td>
-            <form method="POST" action="?/markDrank" use:enhance>
-              <input type="hidden" name="id" value={coffee.id} />
-              <button class="button" type="submit">Mark as drank</button>
-            </form>
-          </td>
+          <th>Coffee</th>
+          <th>Roaster</th>
+          <th>Urgency</th>
+          <th>Drink before</th>
+          <th></th>
         </tr>
-      {/each}
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        {#each topUrgency as coffee (coffee.id)}
+          <tr>
+            <td><a href={`/manage/coffees/${coffee.id}/edit`}>{coffee.coffee_name}</a></td>
+            <td>{coffee.roaster}</td>
+            <td>{Math.round(Number(coffee.urgency_rating))}</td>
+            <td>{coffee.drink_before ?? '—'}</td>
+            <td>
+              <form method="POST" action="?/markDrank" use:enhance>
+                <input type="hidden" name="id" value={coffee.id} />
+                <button class="button" type="submit">Mark as drank</button>
+              </form>
+            </td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
 </section>
 
