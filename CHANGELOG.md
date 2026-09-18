@@ -1,3 +1,12 @@
+# [1.6.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.5.0...v1.6.0) (2026-09-18)
+
+
+### Features
+
+* add an Unopen action to undo Open on the Manage page
+* add Manage tabs for coffees and subscriptions
+* split Origin/Roast into separate sortable, searchable columns
+
 # [1.5.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.4.0...v1.5.0) (2026-09-18)
 
 
