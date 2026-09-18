@@ -1,0 +1,78 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import type { DatabaseSync } from 'node:sqlite';
+import { createDb } from '$lib/server/db';
+import { createCoffee, getBacklogCoffees, getOpenCoffees, openCoffee, type NewCoffeeInput } from '$lib/server/coffees';
+import { buildOnDeckData } from './onDeckData';
+
+function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
+  return {
+    roaster: 'Test Roasters',
+    coffee_name: 'Sample Blend',
+    origin: 'Ethiopia',
+    roast_level: 'Light',
+    processing: 'Washed',
+    amount_g: 200,
+    cost: 18,
+    roast_date: '2026-01-01',
+    frozen_start_date: null,
+    frozen_end_date: null,
+    rest_days_low: 10,
+    rest_days_high: 20,
+    image_url: null,
+    ...overrides
+  };
+}
+
+let db: DatabaseSync;
+
+beforeEach(() => {
+  db = createDb(':memory:');
+});
+
+describe('buildOnDeckData', () => {
+  it('ranks the open list by urgency, descending', () => {
+    // Roasted 12 days ago, into its resting window -> positive urgency.
+    const { id: readyId } = createCoffee(db, sampleInput({ coffee_name: 'Ready', roast_date: '2026-09-05' }));
+    openCoffee(db, readyId);
+    // Roasted 2 days ago, still resting (before rest_days_low) -> negative urgency.
+    const { id: restingId } = createCoffee(db, sampleInput({ coffee_name: 'Resting', roast_date: '2026-09-15' }));
+    openCoffee(db, restingId);
+
+    const today = new Date('2026-09-17T00:00:00Z');
+    const { open } = buildOnDeckData(getOpenCoffees(db), [], today);
+
+    expect(open).toHaveLength(2);
+    expect(open[0].coffee_name).toBe('Ready');
+    expect(open[1].coffee_name).toBe('Resting');
+    expect(open[0].urgency_rating).toBeGreaterThan(open[1].urgency_rating as number);
+  });
+
+  it('slices the backlog candidates list to the top 5 by urgency', () => {
+    for (let i = 0; i < 7; i++) {
+      // Stagger roast dates so each coffee has a distinct urgency rank.
+      createCoffee(
+        db,
+        sampleInput({ coffee_name: `Backlog ${i}`, roast_date: `2026-0${(i % 9) + 1}-01` })
+      );
+    }
+
+    const today = new Date('2026-09-17T00:00:00Z');
+    const { nextUp } = buildOnDeckData([], getBacklogCoffees(db), today);
+
+    expect(nextUp).toHaveLength(5);
+    // Sorted descending by urgency.
+    for (let i = 1; i < nextUp.length; i++) {
+      expect(nextUp[i - 1].urgency_rating as number).toBeGreaterThanOrEqual(nextUp[i].urgency_rating as number);
+    }
+  });
+
+  it('returns an empty open array when there are zero open coffees', () => {
+    createCoffee(db, sampleInput());
+
+    const today = new Date('2026-09-17T00:00:00Z');
+    const { open, nextUp } = buildOnDeckData(getOpenCoffees(db), getBacklogCoffees(db), today);
+
+    expect(open).toEqual([]);
+    expect(nextUp).toHaveLength(1);
+  });
+});
