@@ -9,7 +9,9 @@
     roasters = [],
     origins = [],
     processingMethods = [],
-    formError = null
+    formError = null,
+    oncancel = null,
+    onsuccess = null
   }: {
     coffee?: CoffeeRow | null;
     roastLevels: RoastLevelRow[];
@@ -17,10 +19,23 @@
     origins?: string[];
     processingMethods?: string[];
     formError?: string | null;
+    oncancel?: (() => void) | null;
+    onsuccess?: (() => void) | null;
   } = $props();
 </script>
 
-<form method="POST" action={coffee ? '?/save' : undefined} use:enhance>
+<form
+  method="POST"
+  action={coffee ? '?/save' : '?/create'}
+  use:enhance={() => {
+    return async ({ result, update }) => {
+      await update();
+      if (result.type === 'success') {
+        onsuccess?.();
+      }
+    };
+  }}
+>
   {#if formError}
     <p class="badge badge-urgent">{formError}</p>
   {/if}
@@ -132,6 +147,7 @@
   </div>
 
   {#if coffee}
+    <input type="hidden" name="id" value={coffee.id} />
     <div class="form-field">
       <label for="slug">URL slug</label>
       <input id="slug" name="slug" required value={coffee.slug} />
@@ -140,4 +156,7 @@
   </div>
 
   <button class="button" type="submit">Save</button>
+  {#if oncancel}
+    <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
+  {/if}
 </form>
