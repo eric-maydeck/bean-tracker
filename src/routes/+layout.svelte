@@ -2,6 +2,7 @@
   import '../app.css';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
+  import { enhance } from '$app/forms';
   let { children, data } = $props();
 
   function formatUpdated(iso: string | null): string {
@@ -10,12 +11,9 @@
   }
 
   const links = [
-    { href: '/', label: 'Home' },
+    { href: '/', label: 'Coffees' },
     { href: '/on-deck', label: 'On Deck' },
-    { href: '/manage', label: 'Manage' },
-    { href: '/manage/archive', label: 'Archive' },
-    { href: '/manage/subscriptions', label: 'Subscriptions' },
-    { href: '/manage/coffees/new', label: 'Add Coffee' }
+    { href: '/subscriptions', label: 'Subscriptions' }
   ];
 
   let theme = $state<'light' | 'dark'>('light');
@@ -56,6 +54,13 @@
         {link.label}
       </a>
     {/each}
+    {#if data.isAdmin}
+      <form method="POST" action="/login?/logout" use:enhance>
+        <button class="nav-link-button" type="submit">Log out</button>
+      </form>
+    {:else}
+      <a href="/login" aria-current={page.url.pathname === '/login' ? 'page' : undefined}>Sign in</a>
+    {/if}
   </div>
   <button
     class="icon-button"
