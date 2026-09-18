@@ -17,6 +17,7 @@ import {
   restoreCoffee,
   type NewCoffeeInput
 } from './coffees';
+import { withComputedFields } from './urgency';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -156,5 +157,52 @@ describe('archiveCoffee / restoreCoffee', () => {
     openCoffee(db, id);
     archiveCoffee(db, id);
     expect(getArchivedCoffees(db)).toHaveLength(1);
+  });
+});
+
+describe('regression: frozen dates written by coffees.ts stay parseable by urgency.ts', () => {
+  // urgency.ts's parseDate() splits on '-' expecting YYYY-MM-DD only; a full ISO
+  // timestamp in frozen_start_date/frozen_end_date breaks it. These tests prove the
+  // date format written by freeze/thaw/open round-trips through withComputedFields
+  // without throwing.
+  it('freezeCoffee writes a date-only frozen_start_date usable by withComputedFields', () => {
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    const row = getCoffeeById(db, id)!;
+    expect(row.frozen_start_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    let computed;
+    expect(() => {
+      computed = withComputedFields(row, new Date());
+    }).not.toThrow();
+    expect(computed!.urgency_rating === 'Done' || Number.isFinite(computed!.urgency_rating)).toBe(true);
+  });
+
+  it('thawCoffee writes a date-only frozen_end_date usable by withComputedFields', () => {
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    thawCoffee(db, id);
+    const row = getCoffeeById(db, id)!;
+    expect(row.frozen_end_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    let computed;
+    expect(() => {
+      computed = withComputedFields(row, new Date());
+    }).not.toThrow();
+    expect(computed!.urgency_rating === 'Done' || Number.isFinite(computed!.urgency_rating)).toBe(true);
+  });
+
+  it('openCoffee auto-thaw writes a date-only frozen_end_date usable by withComputedFields', () => {
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    openCoffee(db, id);
+    const row = getCoffeeById(db, id)!;
+    expect(row.frozen_end_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    let computed;
+    expect(() => {
+      computed = withComputedFields(row, new Date());
+    }).not.toThrow();
+    expect(computed!.urgency_rating === 'Done' || Number.isFinite(computed!.urgency_rating)).toBe(true);
   });
 });

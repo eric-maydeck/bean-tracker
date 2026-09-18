@@ -121,41 +121,52 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
 
 export function openCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
+  const today = new Date().toISOString().slice(0, 10);
   const coffee = getCoffeeById(db, id);
   const needsThaw = coffee?.frozen_start_date != null && coffee?.frozen_end_date == null;
   if (needsThaw) {
     db.prepare(
-      `UPDATE coffees SET status = 'open', opened_date = ?, frozen_end_date = ?, updated_at = ? WHERE id = ?`
-    ).run(now, now, now, id);
+      `UPDATE coffees SET status = 'open', opened_date = ?, frozen_end_date = ?, updated_at = ?
+       WHERE id = ? AND status = 'backlog'`
+    ).run(now, today, now, id);
   } else {
-    db.prepare(`UPDATE coffees SET status = 'open', opened_date = ?, updated_at = ? WHERE id = ?`).run(
-      now,
-      now,
-      id
-    );
+    db.prepare(
+      `UPDATE coffees SET status = 'open', opened_date = ?, updated_at = ?
+       WHERE id = ? AND status = 'backlog'`
+    ).run(now, now, id);
   }
 }
 
 export function freezeCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
-  db.prepare(`UPDATE coffees SET frozen_start_date = ?, updated_at = ? WHERE id = ?`).run(now, now, id);
+  const today = new Date().toISOString().slice(0, 10);
+  db.prepare(
+    `UPDATE coffees SET frozen_start_date = ?, frozen_end_date = NULL, updated_at = ?
+     WHERE id = ? AND status = 'backlog'`
+  ).run(today, now, id);
 }
 
 export function thawCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
-  db.prepare(`UPDATE coffees SET frozen_end_date = ?, updated_at = ? WHERE id = ?`).run(now, now, id);
+  const today = new Date().toISOString().slice(0, 10);
+  db.prepare(
+    `UPDATE coffees SET frozen_end_date = ?, updated_at = ?
+     WHERE id = ? AND status = 'backlog'`
+  ).run(today, now, id);
 }
 
 export function archiveCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
   db.prepare(
-    `UPDATE coffees SET drank = 1, status = 'archive', moved_date = ?, updated_at = ? WHERE id = ?`
+    `UPDATE coffees SET drank = 1, status = 'archive', moved_date = ?, updated_at = ?
+     WHERE id = ? AND status != 'archive'`
   ).run(now, now, id);
 }
 
 export function restoreCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
   db.prepare(
-    `UPDATE coffees SET drank = 0, status = 'backlog', moved_date = NULL, updated_at = ? WHERE id = ?`
+    `UPDATE coffees SET drank = 0, status = 'backlog', moved_date = NULL, opened_date = NULL, updated_at = ?
+     WHERE id = ?`
   ).run(now, id);
 }
