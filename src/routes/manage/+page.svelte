@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { urgencyColorStyle } from '$lib/urgencyColor';
   let { data } = $props();
 </script>
 
@@ -31,7 +32,9 @@
               <span class="badge badge-neutral">Frozen</span>
             {/if}
           </td>
-          <td>{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</td>
+          <td style={urgencyColorStyle(coffee.urgency_rating)}>
+            {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+          </td>
           <td>
             <div class="action-buttons">
               {#if coffee.status === 'backlog'}

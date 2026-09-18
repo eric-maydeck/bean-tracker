@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { urgencyColorStyle } from '$lib/urgencyColor';
+
   let { data } = $props();
 </script>
 
@@ -57,7 +59,7 @@
       </div>
       <div class="stat">
         <span class="stat-label">Urgency</span>
-        <span class="stat-value">
+        <span class="stat-value" style={urgencyColorStyle(data.coffee.urgency_rating)}>
           {data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}
         </span>
       </div>

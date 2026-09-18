@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { urgencyColorStyle } from '$lib/urgencyColor';
+
   let { data } = $props();
 </script>
 
@@ -12,10 +14,15 @@
     <section class="grid">
       {#each data.open as coffee (coffee.id)}
         <a class="card" href={`/coffees/${coffee.slug}`}>
+          {#if coffee.image_url}
+            <img src={coffee.image_url} alt="" class="card-thumb" />
+          {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
           <p class="text-muted">
-            Urgency: {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+            Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
+              >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
+            >
           </p>
           {#if coffee.drink_before}
             <p class="text-muted">Drink before {coffee.drink_before}</p>
@@ -34,10 +41,15 @@
     <section class="grid">
       {#each data.nextUp as coffee (coffee.id)}
         <a class="card" href={`/coffees/${coffee.slug}`}>
+          {#if coffee.image_url}
+            <img src={coffee.image_url} alt="" class="card-thumb" />
+          {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
           <p class="text-muted">
-            Urgency: {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+            Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
+              >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
+            >
           </p>
         </a>
       {/each}

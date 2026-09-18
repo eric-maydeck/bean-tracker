@@ -245,6 +245,31 @@ input:focus-visible {
   margin-bottom: var(--space-4);
 }
 
+.search-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.search-row .search-input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.search-row .button {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.card-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: var(--space-2);
+}
+
 .text-muted {
   color: var(--color-text-muted);
   font-size: 0.9rem;
@@ -279,6 +304,11 @@ table.data-table tbody tr:hover {
 
 table.data-table.compact {
   font-size: 0.8rem;
+  table-layout: fixed;
+}
+
+table.data-table.compact td {
+  overflow-wrap: break-word;
 }
 
 table.data-table.compact th {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { urgencyColorStyle } from '$lib/urgencyColor';
 
   let { data } = $props();
   let query = $state('');
@@ -9,8 +10,17 @@
   $effect(() => {
     if (!browser) return;
     try {
-      const saved = localStorage.getItem('bean-tracker-view');
-      if (saved === 'cards' || saved === 'list') view = saved;
+      const savedView = localStorage.getItem('bean-tracker-view');
+      if (savedView === 'cards' || savedView === 'list') view = savedView;
+      const savedFilter = localStorage.getItem('bean-tracker-filter');
+      if (
+        savedFilter === 'backlog' ||
+        savedFilter === 'open' ||
+        savedFilter === 'archive' ||
+        savedFilter === 'all'
+      ) {
+        filter = savedFilter;
+      }
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
     }
@@ -23,6 +33,22 @@
     } catch {
       // ignore — per-viewer convenience only
     }
+  }
+
+  function setFilter(next: 'backlog' | 'open' | 'archive' | 'all') {
+    filter = next;
+    try {
+      localStorage.setItem('bean-tracker-filter', next);
+    } catch {
+      // ignore — per-viewer convenience only
+    }
+  }
+
+  function resetView() {
+    query = '';
+    setFilter('backlog');
+    sortKey = null;
+    sortDir = 'asc';
   }
 
   let source = $derived(
@@ -89,16 +115,16 @@
 
 <div class="toolbar">
   <div class="tab-group">
-    <button aria-pressed={filter === 'backlog'} onclick={() => (filter = 'backlog')}>
+    <button aria-pressed={filter === 'backlog'} onclick={() => setFilter('backlog')}>
       Backlog ({data.backlog.length})
     </button>
-    <button aria-pressed={filter === 'open'} onclick={() => (filter = 'open')}>
+    <button aria-pressed={filter === 'open'} onclick={() => setFilter('open')}>
       Open ({data.open.length})
     </button>
-    <button aria-pressed={filter === 'archive'} onclick={() => (filter = 'archive')}>
+    <button aria-pressed={filter === 'archive'} onclick={() => setFilter('archive')}>
       Archive ({data.archive.length})
     </button>
-    <button aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
+    <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
   </div>
 
   <div class="tab-group">
@@ -107,12 +133,18 @@
   </div>
 </div>
 
-<input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={query} />
+<div class="search-row">
+  <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={query} />
+  <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
+</div>
 
 {#if view === 'cards'}
   <section class="grid">
     {#each coffees as coffee (coffee.id)}
       <a class="card" href={`/coffees/${coffee.slug}`}>
+        {#if coffee.image_url}
+          <img src={coffee.image_url} alt="" class="card-thumb" />
+        {/if}
         <h2>{coffee.coffee_name}</h2>
         <p class="text-muted">{coffee.roaster}</p>
         <p>{coffee.origin ?? 'Origin unknown'} · {coffee.roast_level ?? 'Roast level unknown'}</p>
@@ -145,6 +177,18 @@
 {:else}
   <div class="table-scroll">
     <table class="data-table compact">
+      <colgroup>
+        <col style="width: 9%" />
+        <col style="width: 18%" />
+        <col style="width: 11%" />
+        <col style="width: 12%" />
+        <col style="width: 6%" />
+        <col style="width: 6%" />
+        <col style="width: 10%" />
+        <col style="width: 8%" />
+        <col style="width: 6%" />
+        <col style="width: 14%" />
+      </colgroup>
       <thead>
         <tr>
           <th>
@@ -221,7 +265,9 @@
                 —
               {/if}
             </td>
-            <td>{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</td>
+            <td style={urgencyColorStyle(coffee.urgency_rating)}>
+              {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+            </td>
             <td>
               {#if coffee.status === 'archive'}
                 <span class="badge badge-fresh">Archive</span>
