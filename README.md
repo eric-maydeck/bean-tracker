@@ -30,15 +30,26 @@ path with the `DB_PATH` environment variable.
 
 ## Routes
 
-One app, two route namespaces, access controlled at the network edge rather
-than in application code:
+One app. Public pages are read-only for everyone; write actions appear
+inline on the same pages once the site owner signs in — there is no
+separate "Manage" destination.
 
-- **Public** (`/`, `/coffees/[id]`) — read-only showcase of the collection.
-  No write actions live here.
-- **Private** (`/manage/**`) — the working dashboard (urgency-sorted,
-  "suggested next"), the add/edit coffee form, the archive (with undo), and
-  subscriptions. In production this path is meant to sit behind an access-control
-  policy at the edge — the app itself does no authentication.
+- **Public** — `/` (Coffees), `/coffees/[slug]`, `/on-deck`,
+  `/subscriptions`. Read-only for anonymous visitors.
+- **`/login`** — the site owner signs in with a single shared password.
+  On success, a signed session cookie (`bt_session`, 24h expiry) unlocks an
+  "Edit" toggle on the Coffees, coffee detail, and Subscriptions pages —
+  editable fields, status actions (Open/Freeze/Thaw/Archive/Restore),
+  delete, and inline "+ Add" controls appear in place. No page or route is
+  network-gated; authentication is entirely owned by the app itself (see
+  `docs/superpowers/specs/2026-09-18-auth-and-inline-editing-design.md`).
+
+Requires two additional environment variables beyond `DB_PATH`:
+
+| Variable | Purpose |
+|---|---|
+| `ADMIN_PASSWORD_HASH` | `<saltHex>:<hashHex>`, produced by `npx tsx scripts/hash-password.ts <password>` |
+| `SESSION_SECRET` | A long random string, generated once — e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
 ## Scripts
 
