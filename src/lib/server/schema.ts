@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS coffees (
   frozen_end_date TEXT,
   rest_days_low INTEGER,
   rest_days_high INTEGER,
+  image_url TEXT,
   drank INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active',
   moved_date TEXT,

@@ -26,6 +26,7 @@ function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
     frozen_end_date: null,
     rest_days_low: 10,
     rest_days_high: 20,
+    image_url: null,
     ...overrides
   };
 }

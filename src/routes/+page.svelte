@@ -38,6 +38,49 @@
       `${c.roaster} ${c.coffee_name} ${c.origin ?? ''}`.toLowerCase().includes(query.toLowerCase())
     )
   );
+
+  type SortKey = 'roaster' | 'coffee_name' | 'cost_per_gram' | 'amount_g' | 'roast_date' | 'urgency';
+  let sortKey = $state<SortKey | null>(null);
+  let sortDir = $state<'asc' | 'desc'>('asc');
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortKey = key;
+      sortDir = 'asc';
+    }
+  }
+
+  function sortValue(c: (typeof coffees)[number], key: SortKey): string | number {
+    switch (key) {
+      case 'roaster':
+        return c.roaster.toLowerCase();
+      case 'coffee_name':
+        return c.coffee_name.toLowerCase();
+      case 'cost_per_gram':
+        return c.cost_per_gram ?? -Infinity;
+      case 'amount_g':
+        return c.amount_g ?? -Infinity;
+      case 'roast_date':
+        return c.roast_date ?? '';
+      case 'urgency':
+        return typeof c.urgency_rating === 'number' ? c.urgency_rating : -Infinity;
+    }
+  }
+
+  let sortedCoffees = $derived.by(() => {
+    if (!sortKey) return coffees;
+    const key = sortKey;
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...coffees].sort((a, b) => {
+      const av = sortValue(a, key);
+      const bv = sortValue(b, key);
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  });
 </script>
 
 <h1>Coffee Collection</h1>
@@ -94,25 +137,68 @@
   </section>
 {:else}
   <div class="table-scroll">
-    <table class="data-table">
+    <table class="data-table compact">
       <thead>
         <tr>
-          <th>Coffee</th>
-          <th>Roaster</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('roaster')}>
+              Roaster
+              <span class="sort-indicator"
+                >{sortKey === 'roaster' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('coffee_name')}>
+              Coffee
+              <span class="sort-indicator"
+                >{sortKey === 'coffee_name' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>Origin · Roast</th>
           <th>Processing</th>
-          <th>Cost/g</th>
-          <th>Amount</th>
-          <th>Roasted</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('cost_per_gram')}>
+              Cost/g
+              <span class="sort-indicator"
+                >{sortKey === 'cost_per_gram' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('amount_g')}>
+              Amount
+              <span class="sort-indicator"
+                >{sortKey === 'amount_g' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('roast_date')}>
+              Roasted
+              <span class="sort-indicator"
+                >{sortKey === 'roast_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>Rest window</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('urgency')}>
+              Urgency
+              <span class="sort-indicator"
+                >{sortKey === 'urgency' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>Status</th>
         </tr>
       </thead>
       <tbody>
-        {#each coffees as coffee (coffee.id)}
+        {#each sortedCoffees as coffee (coffee.id)}
           <tr>
-            <td><a href={`/coffees/${coffee.id}`}>{coffee.coffee_name}</a></td>
             <td>{coffee.roaster}</td>
+            <td><a href={`/coffees/${coffee.id}`}>{coffee.coffee_name}</a></td>
             <td>{coffee.origin ?? '—'} · {coffee.roast_level ?? '—'}</td>
             <td>{coffee.processing ?? '—'}</td>
             <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
@@ -128,6 +214,7 @@
                 —
               {/if}
             </td>
+            <td>{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</td>
             <td>
               {#if coffee.status === 'finished'}
                 <span class="badge badge-fresh">Finished</span>

@@ -2,7 +2,12 @@
   import '../app.css';
   import { page } from '$app/state';
   import { browser } from '$app/environment';
-  let { children } = $props();
+  let { children, data } = $props();
+
+  function formatUpdated(iso: string | null): string {
+    if (!iso) return 'no data yet';
+    return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
+  }
 
   const links = [
     { href: '/', label: 'Home' },
@@ -62,4 +67,7 @@
 
 <main class="container">
   {@render children()}
+  <footer class="site-footer">
+    Last updated: {formatUpdated(data.lastUpdated)}
+  </footer>
 </main>

@@ -1,53 +1,109 @@
 <script lang="ts">
   let { data } = $props();
+  let c = $derived(data.coffee);
 </script>
 
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
 
-<article class="card">
-  <h1>{data.coffee.coffee_name}</h1>
-  <p class="text-muted">{data.coffee.roaster}</p>
+<article class="detail">
+  <div class="detail-media">
+    {#if c.image_url}
+      <img src={c.image_url} alt={`${c.coffee_name} label`} />
+    {:else}
+      <div class="detail-media-placeholder" aria-hidden="true">☕</div>
+    {/if}
+  </div>
 
-  <dl>
-    <dt>Origin</dt>
-    <dd>{data.coffee.origin ?? '—'}</dd>
-    <dt>Roast level</dt>
-    <dd>{data.coffee.roast_level ?? '—'}</dd>
-    <dt>Processing</dt>
-    <dd>{data.coffee.processing ?? '—'}</dd>
-    <dt>Amount</dt>
-    <dd>{data.coffee.amount_g ?? '—'} g</dd>
-    <dt>Cost</dt>
-    <dd>{data.coffee.cost != null ? `$${data.coffee.cost.toFixed(2)}` : '—'}</dd>
-    <dt>Cost per gram</dt>
-    <dd>{data.coffee.cost_per_gram != null ? `$${data.coffee.cost_per_gram.toFixed(3)}` : '—'}</dd>
-    <dt>Roast date</dt>
-    <dd>{data.coffee.roast_date ?? '—'}</dd>
-    <dt>Drink after</dt>
-    <dd>{data.coffee.drink_after ?? '—'}</dd>
-    <dt>Drink before</dt>
-    <dd>{data.coffee.drink_before ?? '—'}</dd>
-    <dt>Days since roast</dt>
-    <dd>{data.coffee.days_since_roast ?? '—'}{data.coffee.days_since_roast != null ? ' days' : ''}</dd>
-    <dt>Urgency</dt>
-    <dd>{data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}</dd>
-    <dt>Status</dt>
-    <dd>{data.coffee.status === 'active' ? 'In rotation' : 'Finished'}</dd>
-    {#if data.coffee.frozen_start_date}
-      <dt>Frozen start date</dt>
-      <dd>{data.coffee.frozen_start_date}</dd>
-    {/if}
-    {#if data.coffee.frozen_end_date}
-      <dt>Frozen end date</dt>
-      <dd>{data.coffee.frozen_end_date}</dd>
-    {/if}
-    <dt>Recommended rest days</dt>
-    <dd>
-      {data.coffee.rest_days_low ?? '—'}–{data.coffee.rest_days_high ?? '—'}
-    </dd>
-    {#if data.coffee.status === 'finished' && data.coffee.moved_date}
-      <dt>Finished on</dt>
-      <dd>{data.coffee.moved_date.slice(0, 10)}</dd>
-    {/if}
-  </dl>
+  <div class="detail-body">
+    <div class="detail-header">
+      <div>
+        <h1>{c.coffee_name}</h1>
+        <p class="text-muted">{c.roaster}</p>
+      </div>
+      {#if c.status === 'finished'}
+        <span class="badge badge-fresh">Finished</span>
+      {:else}
+        <span class="badge badge-warm">In rotation</span>
+      {/if}
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat">
+        <span class="stat-label">Origin</span>
+        <span class="stat-value">{c.origin ?? '—'}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Roast level</span>
+        <span class="stat-value">{c.roast_level ?? '—'}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Processing</span>
+        <span class="stat-value">{c.processing ?? '—'}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Amount</span>
+        <span class="stat-value">{c.amount_g != null ? `${c.amount_g}g` : '—'}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Cost</span>
+        <span class="stat-value">{c.cost != null ? `$${c.cost.toFixed(2)}` : '—'}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Cost/gram</span>
+        <span class="stat-value">
+          {c.cost_per_gram != null ? `$${c.cost_per_gram.toFixed(3)}` : '—'}
+        </span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Urgency</span>
+        <span class="stat-value">
+          {c.urgency_rating === 'Done' ? 'Done' : Math.round(Number(c.urgency_rating))}
+        </span>
+      </div>
+    </div>
+
+    <section class="detail-section">
+      <h2>Timing</h2>
+      <div class="stat-grid">
+        <div class="stat">
+          <span class="stat-label">Roast date</span>
+          <span class="stat-value">{c.roast_date ?? '—'}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Days since roast</span>
+          <span class="stat-value">{c.days_since_roast != null ? `${c.days_since_roast}d` : '—'}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Drink after</span>
+          <span class="stat-value">{c.drink_after ?? '—'}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Drink before</span>
+          <span class="stat-value">{c.drink_before ?? '—'}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Recommended rest</span>
+          <span class="stat-value">{c.rest_days_low ?? '—'}–{c.rest_days_high ?? '—'} days</span>
+        </div>
+        {#if c.frozen_start_date}
+          <div class="stat">
+            <span class="stat-label">Frozen start</span>
+            <span class="stat-value">{c.frozen_start_date}</span>
+          </div>
+        {/if}
+        {#if c.frozen_end_date}
+          <div class="stat">
+            <span class="stat-label">Frozen end</span>
+            <span class="stat-value">{c.frozen_end_date}</span>
+          </div>
+        {/if}
+        {#if c.status === 'finished' && c.moved_date}
+          <div class="stat">
+            <span class="stat-label">Finished on</span>
+            <span class="stat-value">{c.moved_date.slice(0, 10)}</span>
+          </div>
+        {/if}
+      </div>
+    </section>
+  </div>
 </article>

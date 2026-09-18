@@ -14,6 +14,7 @@ export interface NewCoffeeInput {
   frozen_end_date: string | null;
   rest_days_low: number | null;
   rest_days_high: number | null;
+  image_url: string | null;
   status?: 'active' | 'finished';
 }
 
@@ -40,8 +41,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): number {
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, drank, status, moved_date, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        rest_days_low, rest_days_high, image_url, drank, status, moved_date, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       input.roaster,
@@ -56,6 +57,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): number {
       input.frozen_end_date,
       input.rest_days_low,
       input.rest_days_high,
+      input.image_url,
       drank,
       status,
       movedDate,
@@ -72,7 +74,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     `UPDATE coffees SET
       roaster = ?, coffee_name = ?, origin = ?, roast_level = ?, processing = ?,
       amount_g = ?, cost = ?, roast_date = ?, frozen_start_date = ?, frozen_end_date = ?,
-      rest_days_low = ?, rest_days_high = ?, updated_at = ?
+      rest_days_low = ?, rest_days_high = ?, image_url = ?, updated_at = ?
     WHERE id = ?`
   ).run(
     input.roaster,
@@ -87,6 +89,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     input.frozen_end_date,
     input.rest_days_low,
     input.rest_days_high,
+    input.image_url,
     now,
     id
   );

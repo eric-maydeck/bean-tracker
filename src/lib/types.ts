@@ -12,6 +12,7 @@ export interface CoffeeRow {
   frozen_end_date: string | null;
   rest_days_low: number | null;
   rest_days_high: number | null;
+  image_url: string | null;
   drank: number;
   status: 'active' | 'finished';
   moved_date: string | null;

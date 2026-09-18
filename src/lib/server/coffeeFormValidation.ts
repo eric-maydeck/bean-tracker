@@ -11,6 +11,7 @@ export interface ValidatedCoffeeInput {
   frozen_end_date: string | null;
   rest_days_low: number | null;
   rest_days_high: number | null;
+  image_url: string | null;
 }
 
 export class CoffeeFormError extends Error {}
@@ -65,6 +66,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     frozen_start_date: dateField(formData, 'frozen_start_date'),
     frozen_end_date: dateField(formData, 'frozen_end_date'),
     rest_days_low: numberField(formData, 'rest_days_low'),
-    rest_days_high: numberField(formData, 'rest_days_high')
+    rest_days_high: numberField(formData, 'rest_days_high'),
+    image_url: textField(formData, 'image_url')
   };
 }

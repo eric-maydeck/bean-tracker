@@ -15,6 +15,7 @@
     <p class="badge badge-urgent">{formError}</p>
   {/if}
 
+  <div class="form-grid">
   <div class="form-field">
     <label for="roaster">Roaster</label>
     <input id="roaster" name="roaster" required value={coffee?.roaster ?? ''} />
@@ -91,6 +92,12 @@
       step="1"
       value={coffee?.rest_days_high ?? ''}
     />
+  </div>
+
+  <div class="form-field">
+    <label for="image_url">Image URL (label or roaster logo)</label>
+    <input id="image_url" name="image_url" type="url" value={coffee?.image_url ?? ''} />
+  </div>
   </div>
 
   <button class="button" type="submit">Save</button>

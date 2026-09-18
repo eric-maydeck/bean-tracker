@@ -46,7 +46,8 @@ function readCoffeeSheet(worksheet: ExcelJS.Worksheet): ParsedCoffeeRow[] {
       frozen_start_date: excelSerialToISODate(get(10)),
       frozen_end_date: excelSerialToISODate(get(11)),
       rest_days_low: cellNumber(get(12)),
-      rest_days_high: cellNumber(get(13))
+      rest_days_high: cellNumber(get(13)),
+      image_url: null
     });
   });
   return rows;
