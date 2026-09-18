@@ -138,6 +138,14 @@ export function openCoffee(db: DatabaseSync, id: number): void {
   }
 }
 
+export function unopenCoffee(db: DatabaseSync, id: number): void {
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE coffees SET status = 'backlog', opened_date = NULL, updated_at = ?
+     WHERE id = ? AND status = 'open'`
+  ).run(now, id);
+}
+
 export function freezeCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
   const today = new Date().toISOString().slice(0, 10);

@@ -11,6 +11,7 @@ import {
   getCoffeeById,
   getCoffeeBySlug,
   openCoffee,
+  unopenCoffee,
   freezeCoffee,
   thawCoffee,
   archiveCoffee,
@@ -124,6 +125,23 @@ describe('openCoffee', () => {
     const { id } = createCoffee(db, sampleInput());
     openCoffee(db, id);
     expect(getCoffeeById(db, id)?.frozen_end_date).toBeNull();
+  });
+});
+
+describe('unopenCoffee', () => {
+  it('moves an open coffee back to backlog and clears opened_date', () => {
+    const { id } = createCoffee(db, sampleInput());
+    openCoffee(db, id);
+    unopenCoffee(db, id);
+    const found = getCoffeeById(db, id);
+    expect(found?.status).toBe('backlog');
+    expect(found?.opened_date).toBeNull();
+  });
+
+  it('is a no-op on a coffee that is not open', () => {
+    const { id } = createCoffee(db, sampleInput());
+    unopenCoffee(db, id);
+    expect(getCoffeeById(db, id)?.status).toBe('backlog');
   });
 });
 
