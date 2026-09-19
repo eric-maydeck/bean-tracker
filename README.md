@@ -51,6 +51,12 @@ Requires two additional environment variables beyond `DB_PATH`:
 | `ADMIN_PASSWORD_HASH` | `<saltHex>:<hashHex>`, produced by `node scripts/hash-password.ts <password>` |
 | `SESSION_SECRET` | A long random string, generated once — e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
+Both are secrets — never commit real values. For local dev, export them in
+your shell before running the server. For the Docker deployment, `deploy/docker-compose.yml`
+reads them from a gitignored `deploy/.env` file (copy `deploy/.env.example`
+to `deploy/.env` and fill in real values); `docker compose` loads `.env`
+automatically from its own directory, no extra flags needed.
+
 ## Scripts
 
 | Command | What it does |
