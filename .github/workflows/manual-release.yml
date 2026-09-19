@@ -1,0 +1,119 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Version bump'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      release_notes:
+        description: 'Release notes (shown on the GitHub Release and CHANGELOG.md)'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
+      # raise `release: published` for events created by that token, so
+      # publish-image.yml would never fire. A GitHub App installation token
+      # doesn't have that restriction and needs no long-lived credential.
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run tests and build
+        run: |
+          npm test
+          npm run build
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+        run: |
+          OLD_VERSION="v$(node -p "require('./package.json').version")"
+          NEW_TAG=$(npm --no-git-tag-version version "$RELEASE_TYPE")
+          npm install --package-lock-only
+          echo "old_tag=$OLD_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${NEW_TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Update CHANGELOG.md
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          OLD_TAG: ${{ steps.bump.outputs.old_tag }}
+          NEW_TAG: ${{ steps.bump.outputs.tag }}
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          # Patch releases get a level-2 heading, minor/major a level-1
+          # heading — matches semantic-release's own generated headings.
+          if [ "$RELEASE_TYPE" = "patch" ]; then
+            HEADING="##"
+          else
+            HEADING="#"
+          fi
+          NOTES="$RELEASE_NOTES"
+          if [ -z "$NOTES" ]; then
+            NOTES="Manual $RELEASE_TYPE release."
+          fi
+          {
+            echo "$HEADING [$NEW_VERSION](https://github.com/${{ github.repository }}/compare/$OLD_TAG...$NEW_TAG) ($(date -u +%Y-%m-%d))"
+            echo ""
+            echo "$NOTES"
+            echo ""
+            if [ -f CHANGELOG.md ]; then cat CHANGELOG.md; fi
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+
+      - name: Commit and tag
+        run: |
+          git add package.json package-lock.json CHANGELOG.md
+          git commit -m "chore(release): ${{ steps.bump.outputs.version }} [skip ci]"
+          git tag ${{ steps.bump.outputs.tag }}
+          git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
+          git push origin main
+          git push origin ${{ steps.bump.outputs.tag }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          NEW_TAG: ${{ steps.bump.outputs.tag }}
+        run: |
+          NOTES="$RELEASE_NOTES"
+          if [ -z "$NOTES" ]; then
+            NOTES="Manual $RELEASE_TYPE release."
+          fi
+          gh release create "$NEW_TAG" --title "$NEW_TAG" --notes "$NOTES"
