@@ -474,6 +474,10 @@
                 <div><span class="eyebrow">Roast</span><br />{coffee.roast_level ?? '—'}</div>
                 <div><span class="eyebrow">Processing</span><br />{coffee.processing ?? '—'}</div>
                 <div>
+                  <span class="eyebrow">Cost/g · amount</span><br />
+                  {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : '—'}{coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
+                </div>
+                <div>
                   <span class="eyebrow">Roasted</span><br />
                   {coffee.roast_date ?? '—'}{#if coffee.days_since_roast != null} ({coffee.days_since_roast}d ago){/if}
                 </div>

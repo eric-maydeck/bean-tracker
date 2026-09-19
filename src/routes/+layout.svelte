@@ -45,6 +45,11 @@
     document.documentElement.dataset.theme = theme;
   });
 
+  $effect(() => {
+    page.url.pathname;
+    showMore = false;
+  });
+
   function toggleTheme() {
     theme = theme === 'light' ? 'dark' : 'light';
     try {

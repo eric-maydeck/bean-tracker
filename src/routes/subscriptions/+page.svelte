@@ -289,6 +289,9 @@
       </div>
     {/each}
   </div>
+  <div class="compact-row-detail" style="border-top: 1px solid var(--color-border); padding-top: var(--space-3); margin-top: var(--space-2);">
+    <strong>Totals:</strong> {totalPrice != null ? `$${totalPrice.toFixed(2)}` : '—'} · {totalGrams ?? '—'}g
+  </div>
 {/if}
 
 {#if canEdit}
