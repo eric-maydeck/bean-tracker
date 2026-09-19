@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.12.0...v1.12.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* address 6 deferred mobile-responsive polish items
+
 # [1.12.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.11.0...v1.12.0) (2026-09-19)
 
 
