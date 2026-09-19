@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.0...v1.9.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* session cookie was silently marked Secure over plain HTTP
+
 # [1.9.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.8.0...v1.9.0) (2026-09-19)
 
 
