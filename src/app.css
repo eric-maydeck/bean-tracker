@@ -647,7 +647,7 @@ nav.site-nav a[aria-current='page'] {
   }
 }
 
-/* Coffees Table view: real horizontal scroll instead of squeezed columns (≤640px only) */
+/* Table view (Coffees + Subscriptions): real horizontal scroll instead of squeezed columns (≤640px only) */
 @media (max-width: 640px) {
   table.data-table.compact {
     table-layout: auto;
@@ -658,8 +658,13 @@ nav.site-nav a[aria-current='page'] {
     width: auto !important;
   }
 
-  table.data-table.compact th,
-  table.data-table.compact td {
+  table.data-table:not(.compact) {
+    table-layout: auto;
+    min-width: 700px;
+  }
+
+  table.data-table th,
+  table.data-table td {
     white-space: nowrap;
     overflow-wrap: normal;
   }
