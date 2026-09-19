@@ -18,6 +18,14 @@
 
   let theme = $state<'light' | 'dark'>('light');
 
+  let showMore = $state(false);
+
+  const tabIcons: Record<string, string> = {
+    '/': '☕',
+    '/on-deck': '📋',
+    '/subscriptions': '🔁'
+  };
+
   $effect(() => {
     if (!browser) return;
     try {
@@ -70,6 +78,39 @@
     {theme === 'light' ? '🌙' : '☀️'}
   </button>
 </nav>
+
+<nav class="bottom-tabs">
+  {#each links as link (link.href)}
+    <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
+      <span class="bottom-tabs-icon" aria-hidden="true">{tabIcons[link.href]}</span>
+      {link.label}
+    </a>
+  {/each}
+  <button
+    class="bottom-tabs-more"
+    type="button"
+    aria-expanded={showMore}
+    onclick={() => (showMore = !showMore)}
+  >
+    <span class="bottom-tabs-icon" aria-hidden="true">⋯</span>
+    More
+  </button>
+</nav>
+
+{#if showMore}
+  <div class="bottom-tabs-more-panel">
+    {#if data.isAdmin}
+      <form method="POST" action="/login?/logout" use:enhance>
+        <button class="nav-link-button" type="submit">Log out</button>
+      </form>
+    {:else}
+      <a href="/login">Sign in</a>
+    {/if}
+    <button class="nav-link-button" type="button" onclick={toggleTheme}>
+      {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
+    </button>
+  </div>
+{/if}
 
 <main class="container">
   {@render children()}
