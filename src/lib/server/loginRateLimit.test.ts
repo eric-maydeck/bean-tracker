@@ -5,6 +5,7 @@ import {
   recordFailedAttempt,
   recordSuccessfulAttempt,
   attemptLogin,
+  resolveClientIp,
   _resetForTests
 } from './loginRateLimit';
 
@@ -91,5 +92,33 @@ describe('attemptLogin', () => {
     for (let i = 0; i < 4; i++) attemptLogin('9.9.9.9', 'wrong-password', hash);
     expect(attemptLogin('9.9.9.9', 'correct-password', hash)).toEqual({ ok: true });
     expect(isLockedOut('9.9.9.9')).toBe(false);
+  });
+});
+
+describe('resolveClientIp', () => {
+  const getClientAddress = () => '10.0.0.1';
+
+  it('uses the cf-connecting-ip header when present', () => {
+    const request = new Request('http://localhost/login', {
+      headers: { 'cf-connecting-ip': '1.2.3.4' }
+    });
+    expect(resolveClientIp(request, getClientAddress)).toBe('1.2.3.4');
+  });
+
+  it('falls back to getClientAddress() when the header is absent', () => {
+    const request = new Request('http://localhost/login');
+    expect(resolveClientIp(request, getClientAddress)).toBe('10.0.0.1');
+  });
+
+  it('falls back to getClientAddress() when the header is empty or whitespace-only', () => {
+    const emptyHeaderRequest = new Request('http://localhost/login', {
+      headers: { 'cf-connecting-ip': '' }
+    });
+    expect(resolveClientIp(emptyHeaderRequest, getClientAddress)).toBe('10.0.0.1');
+
+    const whitespaceHeaderRequest = new Request('http://localhost/login', {
+      headers: { 'cf-connecting-ip': '   ' }
+    });
+    expect(resolveClientIp(whitespaceHeaderRequest, getClientAddress)).toBe('10.0.0.1');
   });
 });

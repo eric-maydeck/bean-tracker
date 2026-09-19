@@ -1,5 +1,18 @@
 import { verifyPassword } from './auth';
 
+// Trustworthy only because bean-tracker's container has no host port
+// mapping — the proxy is the only thing that can reach it directly, and
+// The proxy sets this header reliably on proxied traffic (see
+// docs/superpowers/specs/2026-09-19-public-access-design.md,
+// Decision 7/8). Falls back to the direct socket address for local dev
+// (`npm run dev`), where there is no proxy hop at all, and for the
+// (theoretical) case of an empty/whitespace-only header value.
+export function resolveClientIp(request: Request, getClientAddress: () => string): string {
+  const header = request.headers.get('cf-connecting-ip');
+  if (header && header.trim() !== '') return header.trim();
+  return getClientAddress();
+}
+
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
 

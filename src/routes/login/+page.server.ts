@@ -1,17 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
 import { SESSION_COOKIE_NAME, createSessionCookieValue } from '$lib/server/auth';
-import { attemptLogin } from '$lib/server/loginRateLimit';
-
-// Trustworthy only because bean-tracker's container has no host port
-// mapping — the proxy is the only thing that can reach it directly, and
-// The proxy sets this header reliably on proxied traffic (see
-// docs/superpowers/specs/2026-09-19-public-access-design.md,
-// Decision 7/8). Falls back to the direct socket address for local dev
-// (`npm run dev`), where there is no proxy hop at all.
-function resolveClientIp(request: Request, getClientAddress: () => string): string {
-  return request.headers.get('cf-connecting-ip') ?? getClientAddress();
-}
+import { attemptLogin, resolveClientIp } from '$lib/server/loginRateLimit';
 
 export const actions: Actions = {
   login: async ({ request, cookies, getClientAddress }) => {
