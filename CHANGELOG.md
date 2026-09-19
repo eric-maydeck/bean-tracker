@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.1...v1.9.2) (2026-09-19)
+
+
+### Bug Fixes
+
+* default Coffees list to Urgency descending, persist sort choice
+
 ## [1.9.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.0...v1.9.1) (2026-09-19)
 
 
