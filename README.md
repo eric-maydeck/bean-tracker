@@ -48,7 +48,7 @@ Requires two additional environment variables beyond `DB_PATH`:
 
 | Variable | Purpose |
 |---|---|
-| `ADMIN_PASSWORD_HASH` | `<saltHex>:<hashHex>`, produced by `npx tsx scripts/hash-password.ts <password>` |
+| `ADMIN_PASSWORD_HASH` | `<saltHex>:<hashHex>`, produced by `node scripts/hash-password.ts <password>` |
 | `SESSION_SECRET` | A long random string, generated once — e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
 ## Scripts
