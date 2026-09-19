@@ -1,3 +1,24 @@
+# [1.9.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.8.0...v1.9.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* give the list-view Actions column real width in the colgroup
+* re-check admin status before rendering edit affordances
+
+
+### Features
+
+* add a Refresh button to On Deck
+* add app-owned admin authentication and login page
+* add password hashing and session cookie signing
+* inline coffee editing on the Coffees page
+* inline editing on the coffee detail page
+* move coffee write actions onto the Coffees page
+* move Subscriptions to a top-level route with inline editing
+* show the running app version in the footer
+* support inline create/cancel in CoffeeForm
+
 # [1.8.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.7.0...v1.8.0) (2026-09-18)
 
 
