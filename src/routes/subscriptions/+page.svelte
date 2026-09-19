@@ -87,7 +87,23 @@
           </td>
           {#if canEdit}
             <td>
-              <form id={`sub-form-${sub.id}`} method="POST" action="?/update" use:enhance>
+              <form
+                id={`sub-form-${sub.id}`}
+                method="POST"
+                action="?/update"
+                use:enhance={() => {
+                  return async ({ update }) => {
+                    // This form's fields live in earlier <td> cells, associated only
+                    // via the `form=""` attribute — use:enhance's default success
+                    // behavior calls the native form.reset(), which per the HTML spec
+                    // still resets those externally-associated fields to blank. Since
+                    // the underlying value doesn't change on a no-op save, Svelte's own
+                    // diffing never re-writes the DOM to correct it, leaving the row
+                    // visibly blank even though the save succeeded correctly.
+                    await update({ reset: false });
+                  };
+                }}
+              >
                 <input type="hidden" name="id" value={sub.id} />
                 <button class="button" type="submit">Save</button>
               </form>

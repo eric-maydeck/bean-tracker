@@ -61,6 +61,14 @@ describe('subscriptions CRUD', () => {
     expect(getSubscriptionById(db, id)?.roaster_service).toBe('Airworks');
     expect(getSubscriptionById(db, id + 1000)).toBeUndefined();
   });
+
+  it('orders results by roaster/service, case-insensitively', () => {
+    createSubscription(db, sampleInput({ roaster_service: 'zephyr coffee' }));
+    createSubscription(db, sampleInput({ roaster_service: 'Airworks' }));
+    createSubscription(db, sampleInput({ roaster_service: 'Bloom Roasters' }));
+    const names = getSubscriptions(db).map((s) => s.roaster_service);
+    expect(names).toEqual(['Airworks', 'Bloom Roasters', 'zephyr coffee']);
+  });
 });
 
 describe('withTotalGrams', () => {

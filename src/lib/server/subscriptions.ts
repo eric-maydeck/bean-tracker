@@ -10,7 +10,9 @@ export interface NewSubscriptionInput {
 }
 
 export function getSubscriptions(db: DatabaseSync): SubscriptionRow[] {
-  return db.prepare(`SELECT * FROM subscriptions ORDER BY roaster_service ASC`).all() as SubscriptionRow[];
+  return db
+    .prepare(`SELECT * FROM subscriptions ORDER BY roaster_service COLLATE NOCASE ASC`)
+    .all() as SubscriptionRow[];
 }
 
 export function getSubscriptionById(db: DatabaseSync, id: number): SubscriptionRow | undefined {
