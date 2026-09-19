@@ -1,3 +1,10 @@
+## [1.9.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.3...v1.9.4) (2026-09-19)
+
+
+### Bug Fixes
+
+* coffees list-view table layout issues
+
 ## [1.9.3](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.2...v1.9.3) (2026-09-19)
 
 
