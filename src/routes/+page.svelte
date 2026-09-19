@@ -428,7 +428,26 @@
     {#each sortedCoffees as coffee (coffee.id)}
       <div class="compact-row-wrap">
         {#if canEdit}
-          <!-- Task 5 fills this branch in -->
+          <div class="compact-row">
+            <div class="compact-row-main">
+              <div class="compact-row-title">
+                <a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a>
+                {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
+              </div>
+              <div class="compact-row-sub text-muted">
+                {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
+              </div>
+            </div>
+            <div class="compact-row-urgency" style={urgencyColorStyle(coffee.urgency_rating)}>
+              {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+            </div>
+          </div>
+          <div class="action-buttons">
+            {@render adminActions(coffee)}
+          </div>
+          {#if expandedId === coffee.id}
+            {@render expandedForm(coffee)}
+          {/if}
         {:else}
           <button
             type="button"
