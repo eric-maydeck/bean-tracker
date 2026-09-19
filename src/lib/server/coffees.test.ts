@@ -66,6 +66,16 @@ describe('createCoffee', () => {
     const second = createCoffee(db, sampleInput());
     expect(second.slug).toBe(`${first.slug}-2`);
   });
+
+  it('defaults decaf to false when not specified', () => {
+    const { id } = createCoffee(db, sampleInput());
+    expect(getCoffeeById(db, id)?.decaf).toBe(0);
+  });
+
+  it('stores decaf as true when specified', () => {
+    const { id } = createCoffee(db, { ...sampleInput(), decaf: true });
+    expect(getCoffeeById(db, id)?.decaf).toBe(1);
+  });
 });
 
 describe('getCoffeeBySlug', () => {
@@ -87,6 +97,12 @@ describe('updateCoffee', () => {
     expect(found?.coffee_name).toBe('Renamed Blend');
     expect(found?.cost).toBe(22);
     expect(found?.slug).toBe('custom-slug');
+  });
+
+  it('updates decaf', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    updateCoffee(db, id, { ...sampleInput(), decaf: true }, slug);
+    expect(getCoffeeById(db, id)?.decaf).toBe(1);
   });
 });
 

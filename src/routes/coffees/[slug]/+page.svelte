@@ -72,6 +72,9 @@
         {:else}
           <span class="badge badge-neutral">Backlog</span>
         {/if}
+        {#if data.coffee.decaf}
+          <span class="badge badge-neutral">Decaf</span>
+        {/if}
       </div>
 
       <div class="stat-grid">

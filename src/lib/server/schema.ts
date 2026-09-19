@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS coffees (
   drank INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'backlog',
   moved_date TEXT,
+  decaf INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -33,7 +34,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   price REAL,
   bag_count REAL,
   amount_per_bag_g REAL,
-  purchased INTEGER NOT NULL DEFAULT 0,
+  renewal_day INTEGER,
   updated_at TEXT
 );
 

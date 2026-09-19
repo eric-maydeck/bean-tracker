@@ -68,6 +68,16 @@ describe('parseCoffeeForm', () => {
       parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample', amount_g: 'lots' }))
     ).toThrow(CoffeeFormError);
   });
+
+  it('treats a checked decaf checkbox as true', () => {
+    const result = parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample', decaf: 'on' }));
+    expect(result.decaf).toBe(true);
+  });
+
+  it('treats a missing decaf field (unchecked checkbox) as false', () => {
+    const result = parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample' }));
+    expect(result.decaf).toBe(false);
+  });
 });
 
 describe('parseSlugField', () => {

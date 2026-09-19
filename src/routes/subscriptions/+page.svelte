@@ -4,6 +4,18 @@
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
+
+  let totalPrice = $derived.by(() => {
+    const withPrice = data.subscriptions.filter((s) => s.price != null);
+    if (withPrice.length === 0) return null;
+    return withPrice.reduce((sum, s) => sum + (s.price ?? 0), 0);
+  });
+
+  let totalGrams = $derived.by(() => {
+    const withGrams = data.subscriptions.filter((s) => s.total_grams != null);
+    if (withGrams.length === 0) return null;
+    return withGrams.reduce((sum, s) => sum + (s.total_grams ?? 0), 0);
+  });
 </script>
 
 <h1>Subscriptions</h1>
@@ -33,11 +45,10 @@
         <th>Name</th>
         <th>Price</th>
         <th>Total grams</th>
+        <th>Next renewal</th>
         {#if canEdit}
           <th>Bags × g/bag</th>
-        {/if}
-        <th>Purchased?</th>
-        {#if canEdit}
+          <th>Renewal day</th>
           <th>Actions</th>
         {/if}
       </tr>
@@ -67,25 +78,25 @@
             {/if}
           </td>
           <td>{sub.total_grams ?? '—'}</td>
+          <td>{sub.next_renewal_date ?? '—'}</td>
           {#if canEdit}
             <td>
               <input class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" placeholder="# bags" value={sub.bag_count ?? ''} />
               <input class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" placeholder="g/bag" value={sub.amount_per_bag_g ?? ''} />
             </td>
-          {/if}
-          <td>
-            {#if canEdit}
-              <form method="POST" action="?/togglePurchased" use:enhance>
-                <input type="hidden" name="id" value={sub.id} />
-                <button class="button button-secondary" type="submit">
-                  {sub.purchased ? 'Purchased' : 'Not yet'}
-                </button>
-              </form>
-            {:else}
-              {sub.purchased ? 'Purchased' : 'Not yet'}
-            {/if}
-          </td>
-          {#if canEdit}
+            <td>
+              <input
+                class="inline-input"
+                form={`sub-form-${sub.id}`}
+                name="renewal_day"
+                type="number"
+                step="1"
+                min="1"
+                max="31"
+                placeholder="day"
+                value={sub.renewal_day ?? ''}
+              />
+            </td>
             <td>
               <form
                 id={`sub-form-${sub.id}`}
@@ -124,11 +135,24 @@
         </tr>
       {/each}
     </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="2"><strong>Totals</strong></td>
+        <td><strong>{totalPrice != null ? `$${totalPrice.toFixed(2)}` : '—'}</strong></td>
+        <td><strong>{totalGrams ?? '—'}</strong></td>
+        <td></td>
+        {#if canEdit}
+          <td></td>
+          <td></td>
+          <td></td>
+        {/if}
+      </tr>
+    </tfoot>
   </table>
 </div>
 
 {#if canEdit}
-  <h2>Add subscription</h2>
+  <h2 class="section-heading">Add subscription</h2>
   <form method="POST" action="?/create" use:enhance>
     <div class="form-grid">
       <div class="form-field">
@@ -150,6 +174,10 @@
       <div class="form-field">
         <label for="amount_per_bag_g">Amount per bag/tin (g)</label>
         <input id="amount_per_bag_g" name="amount_per_bag_g" type="number" step="1" />
+      </div>
+      <div class="form-field">
+        <label for="renewal_day">Renewal day of month</label>
+        <input id="renewal_day" name="renewal_day" type="number" step="1" min="1" max="31" />
       </div>
     </div>
     <button class="button" type="submit">Add</button>

@@ -4,10 +4,22 @@ import { dirname } from 'node:path';
 import { schema } from './schema.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 
-function ensureColumn(db: DatabaseSync, table: string, column: string, type: string): void {
+// Returns true the moment the column is actually added, false if it already
+// existed — callers use this to run a backfill exactly once, rather than on
+// every process boot (which would clobber any manual edit made afterward).
+function ensureColumn(db: DatabaseSync, table: string, column: string, type: string): boolean {
   const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
   if (!columns.some((c) => c.name === column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`);
+    return true;
+  }
+  return false;
+}
+
+function dropColumnIfExists(db: DatabaseSync, table: string, column: string): void {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (columns.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} DROP COLUMN ${column}`);
   }
 }
 
@@ -46,6 +58,16 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
+  ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
+  dropColumnIfExists(db, 'subscriptions', 'purchased');
+  const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
+  if (decafJustAdded) {
+    // One-time backfill for pre-existing rows: several coffees already had
+    // "Decaf" in their name before this column existed. Only runs the moment
+    // the column is added, never again — so a later manual override always
+    // sticks, even across restarts.
+    db.exec(`UPDATE coffees SET decaf = 1 WHERE coffee_name LIKE '%decaf%' COLLATE NOCASE`);
+  }
   migrateStatusValues(db);
   backfillSlugs(db);
   db.exec(

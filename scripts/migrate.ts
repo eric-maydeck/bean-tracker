@@ -134,7 +134,8 @@ async function main() {
         subscription_name: cellText(row.getCell(2).value),
         price: cellNumber(row.getCell(3).value),
         bag_count: cellNumber(row.getCell(4).value),
-        amount_per_bag_g: cellNumber(row.getCell(5).value)
+        amount_per_bag_g: cellNumber(row.getCell(5).value),
+        renewal_day: null
       });
     });
   }

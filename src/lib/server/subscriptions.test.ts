@@ -7,8 +7,9 @@ import {
   getSubscriptionById,
   updateSubscription,
   deleteSubscription,
-  toggleSubscriptionPurchased,
   withTotalGrams,
+  computeNextRenewalDate,
+  withNextRenewalDate,
   type NewSubscriptionInput
 } from './subscriptions';
 
@@ -19,6 +20,7 @@ function sampleInput(overrides: Partial<NewSubscriptionInput> = {}): NewSubscrip
     price: 66,
     bag_count: 3,
     amount_per_bag_g: 200,
+    renewal_day: null,
     ...overrides
   };
 }
@@ -41,13 +43,11 @@ describe('subscriptions CRUD', () => {
     expect(getSubscriptions(db)[0].price).toBe(70);
   });
 
-  it('toggles purchased', () => {
-    const id = createSubscription(db, sampleInput());
-    expect(getSubscriptions(db)[0].purchased).toBe(0);
-    toggleSubscriptionPurchased(db, id);
-    expect(getSubscriptions(db)[0].purchased).toBe(1);
-    toggleSubscriptionPurchased(db, id);
-    expect(getSubscriptions(db)[0].purchased).toBe(0);
+  it('stores and updates renewal_day', () => {
+    const id = createSubscription(db, sampleInput({ renewal_day: 15 }));
+    expect(getSubscriptions(db)[0].renewal_day).toBe(15);
+    updateSubscription(db, id, sampleInput({ renewal_day: 3 }));
+    expect(getSubscriptions(db)[0].renewal_day).toBe(3);
   });
 
   it('deletes a subscription', () => {
@@ -73,12 +73,47 @@ describe('subscriptions CRUD', () => {
 
 describe('withTotalGrams', () => {
   it('multiplies bag count by amount per bag', () => {
-    const sub = { ...sampleInput(), id: 1, purchased: 0 };
+    const sub = { ...sampleInput(), id: 1 };
     expect(withTotalGrams(sub).total_grams).toBe(600);
   });
 
   it('returns null when either input is missing', () => {
-    const sub = { ...sampleInput({ bag_count: null }), id: 1, purchased: 0 };
+    const sub = { ...sampleInput({ bag_count: null }), id: 1 };
     expect(withTotalGrams(sub).total_grams).toBeNull();
+  });
+});
+
+describe('computeNextRenewalDate', () => {
+  it('returns null when no renewal day is set', () => {
+    expect(computeNextRenewalDate(null, new Date('2026-03-10T00:00:00.000Z'))).toBeNull();
+  });
+
+  it('returns this month when today is on or before the renewal day', () => {
+    expect(computeNextRenewalDate(15, new Date('2026-03-10T00:00:00.000Z'))).toBe('2026-03-15');
+    expect(computeNextRenewalDate(15, new Date('2026-03-15T00:00:00.000Z'))).toBe('2026-03-15');
+  });
+
+  it('returns next month when today is past the renewal day', () => {
+    expect(computeNextRenewalDate(15, new Date('2026-03-20T00:00:00.000Z'))).toBe('2026-04-15');
+  });
+
+  it('rolls over into next year in December', () => {
+    expect(computeNextRenewalDate(5, new Date('2026-12-20T00:00:00.000Z'))).toBe('2027-01-05');
+  });
+
+  it('clamps to the last real day of a shorter month', () => {
+    // 2026 is not a leap year — February has 28 days.
+    expect(computeNextRenewalDate(31, new Date('2026-02-10T00:00:00.000Z'))).toBe('2026-02-28');
+    // April has 30 days.
+    expect(computeNextRenewalDate(31, new Date('2026-04-15T00:00:00.000Z'))).toBe('2026-04-30');
+  });
+});
+
+describe('withNextRenewalDate', () => {
+  it('adds next_renewal_date while preserving other fields', () => {
+    const sub = { ...sampleInput({ renewal_day: 10 }), id: 1 };
+    const result = withNextRenewalDate(sub, new Date('2026-03-01T00:00:00.000Z'));
+    expect(result.next_renewal_date).toBe('2026-03-10');
+    expect(result.roaster_service).toBe('Airworks');
   });
 });

@@ -146,6 +146,13 @@
     <input id="image_url" name="image_url" type="url" value={coffee?.image_url ?? ''} />
   </div>
 
+  <div class="form-field form-field-checkbox">
+    <label for="decaf">
+      <input id="decaf" name="decaf" type="checkbox" checked={coffee?.decaf === 1} />
+      Decaf
+    </label>
+  </div>
+
   {#if coffee}
     <input type="hidden" name="id" value={coffee.id} />
     <div class="form-field">

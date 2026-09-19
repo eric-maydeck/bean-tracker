@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DatabaseSync } from 'node:sqlite';
 import { createDb, applySchema } from './db';
 
 describe('createDb', () => {
@@ -80,5 +81,52 @@ describe('legacy data migration', () => {
       db.prepare(`SELECT slug FROM coffees WHERE coffee_name = 'Once'`).get() as { slug: string }
     ).slug;
     expect(secondSlug).toBe(firstSlug);
+  });
+
+  it('backfills decaf=1 for pre-existing coffees whose name contains "decaf", only once', () => {
+    // Simulate a real pre-migration database: a coffees table that predates
+    // the decaf column entirely, not one created via the current schema.
+    const raw = new DatabaseSync(':memory:');
+    raw.exec(`
+      CREATE TABLE coffees (
+        id INTEGER PRIMARY KEY,
+        roaster TEXT NOT NULL,
+        coffee_name TEXT NOT NULL,
+        roast_date TEXT,
+        slug TEXT,
+        status TEXT NOT NULL DEFAULT 'backlog',
+        drank INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+    raw.exec(
+      `INSERT INTO coffees (roaster, coffee_name, slug, created_at, updated_at)
+       VALUES ('R', 'Ethiopia Decaf', 'r-ethiopia-decaf', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+    );
+    raw.exec(
+      `INSERT INTO coffees (roaster, coffee_name, slug, created_at, updated_at)
+       VALUES ('R', 'Regular Blend', 'r-regular-blend', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+    );
+
+    applySchema(raw);
+
+    const decafRow = raw
+      .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Ethiopia Decaf'`)
+      .get() as { decaf: number };
+    const regularRow = raw
+      .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Regular Blend'`)
+      .get() as { decaf: number };
+    expect(decafRow.decaf).toBe(1);
+    expect(regularRow.decaf).toBe(0);
+
+    // Simulate a manual override, then confirm a later applySchema call (e.g.
+    // the next server restart) never re-runs the backfill and clobbers it.
+    raw.exec(`UPDATE coffees SET decaf = 0 WHERE coffee_name = 'Ethiopia Decaf'`);
+    applySchema(raw);
+    const afterSecondApply = raw
+      .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Ethiopia Decaf'`)
+      .get() as { decaf: number };
+    expect(afterSecondApply.decaf).toBe(0);
   });
 });

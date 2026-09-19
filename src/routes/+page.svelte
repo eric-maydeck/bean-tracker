@@ -347,6 +347,9 @@
             {:else}
               <span class="badge badge-neutral">Backlog</span>
             {/if}
+            {#if coffee.decaf}
+              <span class="badge badge-neutral">Decaf</span>
+            {/if}
             <div class="action-buttons">
               {@render adminActions(coffee)}
             </div>
@@ -386,6 +389,9 @@
             <span class="badge badge-warm">Open</span>
           {:else}
             <span class="badge badge-neutral">Backlog</span>
+          {/if}
+          {#if coffee.decaf}
+            <span class="badge badge-neutral">Decaf</span>
           {/if}
         </a>
       {/if}
@@ -508,7 +514,7 @@
             <td>{coffee.frozen_end_date ?? '—'}</td>
             <td>
               {#if coffee.drink_after && coffee.drink_before}
-                {coffee.drink_after}<br />– {coffee.drink_before}
+                {coffee.drink_after} –<br />{coffee.drink_before}
               {:else}
                 —
               {/if}
@@ -523,6 +529,9 @@
                 <span class="badge badge-warm">Open</span>
               {:else}
                 <span class="badge badge-neutral">Backlog</span>
+              {/if}
+              {#if coffee.decaf}
+                <span class="badge badge-neutral">Decaf</span>
               {/if}
             </td>
             {#if canEdit}

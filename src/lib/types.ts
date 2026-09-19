@@ -18,6 +18,7 @@ export interface CoffeeRow {
   drank: number;
   status: 'backlog' | 'open' | 'archive';
   moved_date: string | null;
+  decaf: number;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +30,7 @@ export interface SubscriptionRow {
   price: number | null;
   bag_count: number | null;
   amount_per_bag_g: number | null;
-  purchased: number;
+  renewal_day: number | null;
   updated_at: string | null;
 }
 

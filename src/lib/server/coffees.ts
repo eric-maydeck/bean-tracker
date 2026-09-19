@@ -18,6 +18,7 @@ export interface NewCoffeeInput {
   image_url: string | null;
   status?: 'backlog' | 'open' | 'archive';
   moved_date?: string | null;
+  decaf?: boolean;
 }
 
 const ORDER_BY_NAME = `ORDER BY roaster COLLATE NOCASE, coffee_name COLLATE NOCASE`;
@@ -65,6 +66,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
   const status = input.status ?? 'backlog';
   const drank = status === 'archive' ? 1 : 0;
   const movedDate = status === 'archive' ? (input.moved_date ?? now) : null;
+  const decaf = input.decaf ? 1 : 0;
   const slug = uniqueSlug(
     db,
     generateBaseSlug({
@@ -80,8 +82,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, image_url, slug, drank, status, moved_date, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        rest_days_low, rest_days_high, image_url, slug, drank, status, moved_date, decaf, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       input.roaster,
@@ -101,6 +103,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       drank,
       status,
       movedDate,
+      decaf,
       now,
       now
     );
@@ -110,11 +113,12 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
 
 export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput, slug: string): void {
   const now = new Date().toISOString();
+  const decaf = input.decaf ? 1 : 0;
   db.prepare(
     `UPDATE coffees SET
       roaster = ?, coffee_name = ?, origin = ?, roast_level = ?, processing = ?,
       amount_g = ?, cost = ?, roast_date = ?, frozen_start_date = ?, frozen_end_date = ?,
-      rest_days_low = ?, rest_days_high = ?, image_url = ?, slug = ?, updated_at = ?
+      rest_days_low = ?, rest_days_high = ?, image_url = ?, slug = ?, decaf = ?, updated_at = ?
     WHERE id = ?`
   ).run(
     input.roaster,
@@ -131,6 +135,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     input.rest_days_high,
     input.image_url,
     slug,
+    decaf,
     now,
     id
   );

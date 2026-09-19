@@ -4,6 +4,9 @@
 
   let { data } = $props();
 
+  let filter = $state<'all' | 'caffeinated' | 'decaf'>('all');
+  let current = $derived(data[filter]);
+
   async function refresh() {
     await invalidateAll();
   }
@@ -12,16 +15,23 @@
 <h1>On Deck</h1>
 
 <div class="search-row">
+  <div class="tab-group">
+    <button aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
+    <button aria-pressed={filter === 'caffeinated'} onclick={() => (filter = 'caffeinated')}>
+      Caffeinated
+    </button>
+    <button aria-pressed={filter === 'decaf'} onclick={() => (filter = 'decaf')}>Decaf</button>
+  </div>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>
 
 <section>
   <h2>Currently open</h2>
-  {#if data.open.length === 0}
+  {#if current.open.length === 0}
     <p class="text-muted">Nothing open right now.</p>
   {:else}
     <section class="grid">
-      {#each data.open as coffee (coffee.id)}
+      {#each current.open as coffee (coffee.id)}
         <a class="card" href={`/coffees/${coffee.slug}`}>
           {#if coffee.image_url}
             <img src={coffee.image_url} alt="" class="card-thumb" />
@@ -53,11 +63,11 @@
 
 <section class="detail-section">
   <h2>Next up from backlog</h2>
-  {#if data.nextUp.length === 0}
+  {#if current.nextUp.length === 0}
     <p class="text-muted">Backlog is empty.</p>
   {:else}
     <section class="grid">
-      {#each data.nextUp as coffee (coffee.id)}
+      {#each current.nextUp as coffee (coffee.id)}
         <a class="card" href={`/coffees/${coffee.slug}`}>
           {#if coffee.image_url}
             <img src={coffee.image_url} alt="" class="card-thumb" />
