@@ -611,3 +611,38 @@ nav.site-nav a[aria-current='page'] {
 .stat-value {
   font-weight: 600;
 }
+
+/* Mobile touch-target and input-zoom fixes (≤640px only — desktop unchanged) */
+@media (max-width: 640px) {
+  .search-input,
+  .inline-input,
+  .form-field input:not([type='checkbox']),
+  .form-field select,
+  .form-field textarea {
+    font-size: 16px;
+  }
+
+  .button,
+  .tab-group button,
+  .nav-link-button {
+    min-height: 44px;
+  }
+
+  .button,
+  .tab-group button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-link-button {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--space-2);
+  }
+
+  .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+}
