@@ -51,6 +51,14 @@
       ) {
         filter = savedFilter;
       }
+      const savedSortKey = localStorage.getItem('bean-tracker-sort-key');
+      if (savedSortKey && (SORT_KEYS as readonly string[]).includes(savedSortKey)) {
+        sortKey = savedSortKey as SortKey;
+      }
+      const savedSortDir = localStorage.getItem('bean-tracker-sort-dir');
+      if (savedSortDir === 'asc' || savedSortDir === 'desc') {
+        sortDir = savedSortDir;
+      }
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
     }
@@ -77,8 +85,7 @@
   function resetView() {
     query = '';
     setFilter('backlog');
-    sortKey = null;
-    sortDir = 'asc';
+    setSort(DEFAULT_SORT_KEY, DEFAULT_SORT_DIR);
   }
 
   let source = $derived(
@@ -108,15 +115,37 @@
     | 'amount_g'
     | 'roast_date'
     | 'urgency';
-  let sortKey = $state<SortKey | null>(null);
-  let sortDir = $state<'asc' | 'desc'>('asc');
+  const SORT_KEYS = [
+    'roaster',
+    'coffee_name',
+    'origin',
+    'roast_level',
+    'cost_per_gram',
+    'amount_g',
+    'roast_date',
+    'urgency'
+  ] as const satisfies readonly SortKey[];
+  const DEFAULT_SORT_KEY: SortKey = 'urgency';
+  const DEFAULT_SORT_DIR: 'asc' | 'desc' = 'desc';
+  let sortKey = $state<SortKey>(DEFAULT_SORT_KEY);
+  let sortDir = $state<'asc' | 'desc'>(DEFAULT_SORT_DIR);
+
+  function setSort(key: SortKey, dir: 'asc' | 'desc') {
+    sortKey = key;
+    sortDir = dir;
+    try {
+      localStorage.setItem('bean-tracker-sort-key', key);
+      localStorage.setItem('bean-tracker-sort-dir', dir);
+    } catch {
+      // ignore — per-viewer convenience only
+    }
+  }
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
-      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      setSort(key, sortDir === 'asc' ? 'desc' : 'asc');
     } else {
-      sortKey = key;
-      sortDir = 'asc';
+      setSort(key, 'asc');
     }
   }
 
@@ -142,7 +171,6 @@
   }
 
   let sortedCoffees = $derived.by(() => {
-    if (!sortKey) return coffees;
     const key = sortKey;
     const dir = sortDir === 'asc' ? 1 : -1;
     return [...coffees].sort((a, b) => {
