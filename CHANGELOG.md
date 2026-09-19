@@ -1,3 +1,23 @@
+# [1.12.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.11.0...v1.12.0) (2026-09-19)
+
+
+### Bug Fixes
+
+* address final-review findings on mobile-responsive plan
+* bump mobile input font-size and touch targets to avoid iOS zoom and cramped taps
+* coffees table view scrolls horizontally instead of squeezing columns under 640px
+* subscriptions table view scrolls horizontally instead of squeezing columns under 640px
+
+
+### Features
+
+* add bottom tab bar navigation for mobile
+* add defaultViewForWidth helper for mobile view defaulting
+* add read-only Compact view to the Coffees page
+* add read-only Compact view to the Subscriptions page
+* wire admin editing into the Coffees Compact view
+* wire admin editing into the Subscriptions Compact view
+
 # [1.11.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.10.0...v1.11.0) (2026-09-19)
 
 
