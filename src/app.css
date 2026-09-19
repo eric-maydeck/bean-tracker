@@ -388,7 +388,7 @@ table.data-table tbody tr:hover {
 }
 
 table.data-table.compact {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   table-layout: fixed;
 }
 
@@ -397,12 +397,12 @@ table.data-table.compact td {
 }
 
 table.data-table.compact th {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
 }
 
 table.data-table.compact th,
 table.data-table.compact td {
-  padding: 0.35rem 0.5rem;
+  padding: 0.3rem 0.4rem;
 }
 
 .sort-button {

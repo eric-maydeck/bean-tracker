@@ -377,7 +377,7 @@
               {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
             </p>
           {/if}
-          {#if coffee.status === 'open' && coffee.drink_after && coffee.drink_before}
+          {#if coffee.drink_after && coffee.drink_before}
             <p class="text-muted">Rest window: {coffee.drink_after} – {coffee.drink_before}</p>
           {/if}
           {#if coffee.status === 'archive'}
@@ -395,17 +395,19 @@
   <div class="table-scroll">
     <table class="data-table compact">
       <colgroup>
-        <col style="width: 8%" />
-        <col style="width: 15%" />
-        <col style="width: 8%" />
-        <col style="width: 8%" />
-        <col style="width: 9%" />
-        <col style="width: 5%" />
-        <col style="width: 5%" />
-        <col style="width: 8%" />
+        <col style="width: 7%" />
+        <col style="width: 12%" />
         <col style="width: 6%" />
+        <col style="width: 6%" />
+        <col style="width: 7%" />
         <col style="width: 5%" />
-        <col style="width: 10%" />
+        <col style="width: 5%" />
+        <col style="width: 7%" />
+        <col style="width: 6%" />
+        <col style="width: 6%" />
+        <col style="width: 8%" />
+        <col style="width: 5%" />
+        <col style="width: 7%" />
         {#if canEdit}
           <col style="width: 13%" />
         {/if}
@@ -469,6 +471,8 @@
               >
             </button>
           </th>
+          <th>Frozen</th>
+          <th>Unfrozen</th>
           <th>Rest window</th>
           <th>
             <button class="sort-button" onclick={() => toggleSort('urgency')}>
@@ -498,11 +502,13 @@
             <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
             <td>
               {coffee.roast_date ?? '—'}
-              {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+              {#if coffee.days_since_roast != null}<br />({coffee.days_since_roast}d ago){/if}
             </td>
+            <td>{coffee.frozen_start_date ?? '—'}</td>
+            <td>{coffee.frozen_end_date ?? '—'}</td>
             <td>
-              {#if coffee.status === 'open' && coffee.drink_after && coffee.drink_before}
-                {coffee.drink_after} – {coffee.drink_before}
+              {#if coffee.drink_after && coffee.drink_before}
+                {coffee.drink_after}<br />– {coffee.drink_before}
               {:else}
                 —
               {/if}
@@ -529,7 +535,7 @@
           </tr>
           {#if canEdit && expandedId === coffee.id}
             <tr>
-              <td colspan={canEdit ? 12 : 11}>
+              <td colspan={canEdit ? 14 : 13}>
                 {@render expandedForm(coffee)}
               </td>
             </tr>
