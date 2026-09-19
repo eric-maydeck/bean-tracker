@@ -664,3 +664,77 @@ nav.site-nav a[aria-current='page'] {
     overflow-wrap: normal;
   }
 }
+
+/* Compact (tap-to-expand row) view — shared shape used by Coffees and Subscriptions */
+.compact-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.compact-row-wrap {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.compact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-3) var(--space-1);
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.compact-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.compact-row-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.compact-row-sub {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-row-urgency {
+  flex-shrink: 0;
+  font-weight: 700;
+}
+
+.compact-row-detail {
+  padding: 0 var(--space-1) var(--space-3);
+}
+
+.compact-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+  font-size: 0.85rem;
+  margin-bottom: var(--space-2);
+}
+
+.eyebrow {
+  display: block;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}

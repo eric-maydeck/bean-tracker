@@ -5,6 +5,7 @@
   import { invalidateAll } from '$app/navigation';
   import { enhance } from '$app/forms';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import { defaultViewForWidth } from '$lib/defaultView';
 
   let { data, form } = $props();
 
@@ -15,7 +16,7 @@
   }
   let query = $state('');
   let filter = $state<'backlog' | 'open' | 'archive' | 'all'>('backlog');
-  let view = $state<'cards' | 'list'>('list');
+  let view = $state<'cards' | 'list' | 'compact'>('list');
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
@@ -41,7 +42,11 @@
     if (!browser) return;
     try {
       const savedView = localStorage.getItem('bean-tracker-view');
-      if (savedView === 'cards' || savedView === 'list') view = savedView;
+      if (savedView === 'cards' || savedView === 'list' || savedView === 'compact') {
+        view = savedView;
+      } else {
+        view = defaultViewForWidth(window.innerWidth);
+      }
       const savedFilter = localStorage.getItem('bean-tracker-filter');
       if (
         savedFilter === 'backlog' ||
@@ -64,7 +69,7 @@
     }
   });
 
-  function setView(next: 'cards' | 'list') {
+  function setView(next: 'cards' | 'list' | 'compact') {
     view = next;
     try {
       localStorage.setItem('bean-tracker-view', next);
@@ -286,6 +291,7 @@
   </div>
 
   <div class="tab-group">
+    <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
     <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
     <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
   </div>
@@ -417,6 +423,61 @@
       {/if}
     {/each}
   </section>
+{:else if view === 'compact'}
+  <div class="compact-list">
+    {#each sortedCoffees as coffee (coffee.id)}
+      <div class="compact-row-wrap">
+        {#if canEdit}
+          <!-- Task 5 fills this branch in -->
+        {:else}
+          <button
+            type="button"
+            class="compact-row"
+            aria-expanded={expandedId === coffee.id}
+            onclick={() => toggleEdit(coffee.id)}
+          >
+            <div class="compact-row-main">
+              <div class="compact-row-title">
+                {coffee.coffee_name}
+                {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
+              </div>
+              <div class="compact-row-sub text-muted">
+                {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
+              </div>
+            </div>
+            <div class="compact-row-urgency" style={urgencyColorStyle(coffee.urgency_rating)}>
+              {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
+            </div>
+          </button>
+          {#if expandedId === coffee.id}
+            <div class="compact-row-detail">
+              <div class="compact-detail-grid">
+                <div><span class="eyebrow">Roast</span><br />{coffee.roast_level ?? '—'}</div>
+                <div><span class="eyebrow">Processing</span><br />{coffee.processing ?? '—'}</div>
+                <div>
+                  <span class="eyebrow">Roasted</span><br />
+                  {coffee.roast_date ?? '—'}{#if coffee.days_since_roast != null} ({coffee.days_since_roast}d ago){/if}
+                </div>
+                <div>
+                  <span class="eyebrow">Rest window</span><br />
+                  {#if coffee.drink_after && coffee.drink_before}{coffee.drink_after} – {coffee.drink_before}{:else}—{/if}
+                </div>
+                <div><span class="eyebrow">Frozen</span><br />{coffee.frozen_start_date ?? '—'}</div>
+                <div><span class="eyebrow">Unfrozen</span><br />{coffee.frozen_end_date ?? '—'}</div>
+              </div>
+              {#if coffee.status === 'archive'}
+                <span class="badge badge-fresh">Archive</span>
+              {:else if coffee.status === 'open'}
+                <span class="badge badge-warm">Open</span>
+              {:else}
+                <span class="badge badge-neutral">Backlog</span>
+              {/if}
+            </div>
+          {/if}
+        {/if}
+      </div>
+    {/each}
+  </div>
 {:else}
   <div class="table-scroll">
     <table class="data-table compact">
