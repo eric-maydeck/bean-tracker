@@ -696,7 +696,14 @@ nav.site-nav a[aria-current='page'] {
   cursor: pointer;
 }
 
+/* The admin-mode row is a plain (non-interactive) div, not the button used
+   in read-only mode — only its child link/buttons are actually clickable. */
+div.compact-row {
+  cursor: default;
+}
+
 .compact-row-main {
+  display: block;
   min-width: 0;
   flex: 1;
 }
@@ -713,13 +720,17 @@ nav.site-nav a[aria-current='page'] {
 }
 
 .compact-row-sub {
+  display: block;
   font-size: 0.85rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.compact-row-urgency {
+/* Named generically — used for urgency on Coffees, price on Subscriptions;
+   both are just "the trailing value" for a compact row. */
+.compact-row-trailing {
+  display: block;
   flex-shrink: 0;
   font-weight: 700;
 }

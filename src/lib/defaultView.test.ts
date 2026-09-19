@@ -7,8 +7,12 @@ describe('defaultViewForWidth', () => {
     expect(defaultViewForWidth(639)).toBe('compact');
   });
 
-  it('returns list at or above the 640px breakpoint', () => {
-    expect(defaultViewForWidth(640)).toBe('list');
+  it('returns compact at exactly 640px, matching the inclusive CSS breakpoint', () => {
+    expect(defaultViewForWidth(640)).toBe('compact');
+  });
+
+  it('returns list above the 640px breakpoint', () => {
+    expect(defaultViewForWidth(641)).toBe('list');
     expect(defaultViewForWidth(1280)).toBe('list');
   });
 });

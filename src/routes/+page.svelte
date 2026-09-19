@@ -438,7 +438,7 @@
                 {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
               </div>
             </div>
-            <div class="compact-row-urgency" style={urgencyColorStyle(coffee.urgency_rating)}>
+            <div class="compact-row-trailing" style={urgencyColorStyle(coffee.urgency_rating)}>
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </div>
           </div>
@@ -455,18 +455,18 @@
             aria-expanded={expandedId === coffee.id}
             onclick={() => toggleEdit(coffee.id)}
           >
-            <div class="compact-row-main">
-              <div class="compact-row-title">
+            <span class="compact-row-main">
+              <span class="compact-row-title">
                 {coffee.coffee_name}
                 {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
-              </div>
-              <div class="compact-row-sub text-muted">
+              </span>
+              <span class="compact-row-sub text-muted">
                 {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
-              </div>
-            </div>
-            <div class="compact-row-urgency" style={urgencyColorStyle(coffee.urgency_rating)}>
+              </span>
+            </span>
+            <span class="compact-row-trailing" style={urgencyColorStyle(coffee.urgency_rating)}>
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
-            </div>
+            </span>
           </button>
           {#if expandedId === coffee.id}
             <div class="compact-row-detail">

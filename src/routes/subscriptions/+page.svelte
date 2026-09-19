@@ -241,6 +241,13 @@
                 action="?/update"
                 use:enhance={() => {
                   return async ({ update }) => {
+                    // This form's fields live in earlier <div> cells, associated only
+                    // via the `form=""` attribute — use:enhance's default success
+                    // behavior calls the native form.reset(), which per the HTML spec
+                    // still resets those externally-associated fields to blank. Since
+                    // the underlying value doesn't change on a no-op save, Svelte's own
+                    // diffing never re-writes the DOM to correct it, leaving the row
+                    // visibly blank even though the save succeeded correctly.
                     await update({ reset: false });
                   };
                 }}
@@ -269,13 +276,13 @@
             aria-expanded={expandedId === sub.id}
             onclick={() => toggleExpanded(sub.id)}
           >
-            <div class="compact-row-main">
-              <div class="compact-row-title">{sub.roaster_service}</div>
-              <div class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</div>
-            </div>
-            <div class="compact-row-urgency">
+            <span class="compact-row-main">
+              <span class="compact-row-title">{sub.roaster_service}</span>
+              <span class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</span>
+            </span>
+            <span class="compact-row-trailing">
               {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
-            </div>
+            </span>
           </button>
           {#if expandedId === sub.id}
             <div class="compact-row-detail">
