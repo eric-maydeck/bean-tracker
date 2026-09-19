@@ -36,7 +36,9 @@ separate "Manage" destination.
 
 - **Public** — `/` (Coffees), `/coffees/[slug]`, `/on-deck`,
   `/subscriptions`. Read-only for anonymous visitors.
-- **`/login`** — the site owner signs in with a single shared password.
+- **`/login`** — the site owner signs in with a single shared password;
+  repeated failed attempts from the same IP (5) trigger a 15-minute lockout
+  ("Too many attempts. Try again later.").
   On success, a signed session cookie (`bt_session`, 24h expiry) unlocks an
   "Edit" toggle on the Coffees, coffee detail, and Subscriptions pages —
   editable fields, status actions (Open/Freeze/Thaw/Archive/Restore),
