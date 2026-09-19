@@ -100,7 +100,7 @@
 
   let coffees = $derived(
     source.filter((c) =>
-      `${c.roaster} ${c.coffee_name} ${c.origin ?? ''} ${c.roast_level ?? ''}`
+      `${c.roaster} ${c.coffee_name} ${c.origin ?? ''} ${c.roast_level ?? ''} ${c.decaf ? 'decaf' : 'caffeinated'}`
         .toLowerCase()
         .includes(query.toLowerCase())
     )
@@ -111,18 +111,28 @@
     | 'coffee_name'
     | 'origin'
     | 'roast_level'
+    | 'decaf'
+    | 'processing'
     | 'cost_per_gram'
     | 'amount_g'
     | 'roast_date'
+    | 'frozen_start_date'
+    | 'frozen_end_date'
+    | 'rest_window'
     | 'urgency';
   const SORT_KEYS = [
     'roaster',
     'coffee_name',
     'origin',
     'roast_level',
+    'decaf',
+    'processing',
     'cost_per_gram',
     'amount_g',
     'roast_date',
+    'frozen_start_date',
+    'frozen_end_date',
+    'rest_window',
     'urgency'
   ] as const satisfies readonly SortKey[];
   const DEFAULT_SORT_KEY: SortKey = 'urgency';
@@ -159,12 +169,22 @@
         return c.origin?.toLowerCase() ?? '';
       case 'roast_level':
         return degreesFor(c.roast_level);
+      case 'decaf':
+        return c.decaf ? 1 : 0;
+      case 'processing':
+        return c.processing?.toLowerCase() ?? '';
       case 'cost_per_gram':
         return c.cost_per_gram ?? -Infinity;
       case 'amount_g':
         return c.amount_g ?? -Infinity;
       case 'roast_date':
         return c.roast_date ?? '';
+      case 'frozen_start_date':
+        return c.frozen_start_date ?? '';
+      case 'frozen_end_date':
+        return c.frozen_end_date ?? '';
+      case 'rest_window':
+        return c.drink_after ?? '';
       case 'urgency':
         return typeof c.urgency_rating === 'number' ? c.urgency_rating : -Infinity;
     }
@@ -402,18 +422,18 @@
     <table class="data-table compact">
       <colgroup>
         <col style="width: 7%" />
-        <col style="width: 12%" />
+        <col style="width: 13%" />
         <col style="width: 6%" />
         <col style="width: 6%" />
+        <col style="width: 5%" />
         <col style="width: 7%" />
         <col style="width: 5%" />
         <col style="width: 5%" />
         <col style="width: 7%" />
         <col style="width: 6%" />
         <col style="width: 6%" />
-        <col style="width: 8%" />
+        <col style="width: 9%" />
         <col style="width: 5%" />
-        <col style="width: 7%" />
         {#if canEdit}
           <col style="width: 13%" />
         {/if}
@@ -452,7 +472,22 @@
               >
             </button>
           </th>
-          <th>Processing</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('decaf')}>
+              Decaf
+              <span class="sort-indicator"
+                >{sortKey === 'decaf' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('processing')}>
+              Processing
+              <span class="sort-indicator"
+                >{sortKey === 'processing' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>
             <button class="sort-button" onclick={() => toggleSort('cost_per_gram')}>
               Cost/g
@@ -477,9 +512,30 @@
               >
             </button>
           </th>
-          <th>Frozen</th>
-          <th>Unfrozen</th>
-          <th>Rest window</th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('frozen_start_date')}>
+              Frozen
+              <span class="sort-indicator"
+                >{sortKey === 'frozen_start_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('frozen_end_date')}>
+              Unfrozen
+              <span class="sort-indicator"
+                >{sortKey === 'frozen_end_date' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
+          <th>
+            <button class="sort-button" onclick={() => toggleSort('rest_window')}>
+              Rest window
+              <span class="sort-indicator"
+                >{sortKey === 'rest_window' ? (sortDir === 'asc' ? '▲' : '▼') : ''}</span
+              >
+            </button>
+          </th>
           <th>
             <button class="sort-button" onclick={() => toggleSort('urgency')}>
               Urgency
@@ -488,7 +544,6 @@
               >
             </button>
           </th>
-          <th>Status</th>
           {#if canEdit}
             <th>Actions</th>
           {/if}
@@ -503,6 +558,7 @@
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
             </td>
+            <td>{coffee.decaf ? 'Yes' : 'No'}</td>
             <td>{coffee.processing ?? '—'}</td>
             <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
             <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
@@ -521,18 +577,6 @@
             </td>
             <td style={urgencyColorStyle(coffee.urgency_rating)}>
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
-            </td>
-            <td>
-              {#if coffee.status === 'archive'}
-                <span class="badge badge-fresh">Archive</span>
-              {:else if coffee.status === 'open'}
-                <span class="badge badge-warm">Open</span>
-              {:else}
-                <span class="badge badge-neutral">Backlog</span>
-              {/if}
-              {#if coffee.decaf}
-                <span class="badge badge-neutral">Decaf</span>
-              {/if}
             </td>
             {#if canEdit}
               <td>
