@@ -193,7 +193,75 @@
     {#each data.subscriptions as sub (sub.id)}
       <div class="compact-row-wrap">
         {#if canEdit}
-          <!-- Task 7 fills this branch in -->
+          <div class="compact-row">
+            <div class="compact-row-main">
+              <div class="compact-row-title">{sub.roaster_service}</div>
+              <div class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</div>
+            </div>
+            <button
+              type="button"
+              class="nav-link-button"
+              aria-expanded={expandedId === sub.id}
+              onclick={() => toggleExpanded(sub.id)}
+            >
+              {expandedId === sub.id ? 'Done' : 'Edit'}
+            </button>
+          </div>
+          {#if expandedId === sub.id}
+            <div class="compact-row-detail">
+              <div class="form-grid">
+                <div class="form-field">
+                  <label for={`compact-roaster-${sub.id}`}>Roaster/Service</label>
+                  <input id={`compact-roaster-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="roaster_service" required value={sub.roaster_service} />
+                </div>
+                <div class="form-field">
+                  <label for={`compact-name-${sub.id}`}>Subscription name</label>
+                  <input id={`compact-name-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={sub.subscription_name ?? ''} />
+                </div>
+                <div class="form-field">
+                  <label for={`compact-price-${sub.id}`}>Price</label>
+                  <input id={`compact-price-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={sub.price ?? ''} />
+                </div>
+                <div class="form-field">
+                  <label for={`compact-bags-${sub.id}`}># bags</label>
+                  <input id={`compact-bags-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" value={sub.bag_count ?? ''} />
+                </div>
+                <div class="form-field">
+                  <label for={`compact-grams-${sub.id}`}>g/bag</label>
+                  <input id={`compact-grams-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" value={sub.amount_per_bag_g ?? ''} />
+                </div>
+                <div class="form-field">
+                  <label for={`compact-day-${sub.id}`}>Renewal day</label>
+                  <input id={`compact-day-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="renewal_day" type="number" step="1" min="1" max="31" value={sub.renewal_day ?? ''} />
+                </div>
+              </div>
+              <form
+                id={`sub-form-${sub.id}`}
+                method="POST"
+                action="?/update"
+                use:enhance={() => {
+                  return async ({ update }) => {
+                    await update({ reset: false });
+                  };
+                }}
+              >
+                <input type="hidden" name="id" value={sub.id} />
+                <button class="button" type="submit">Save</button>
+              </form>
+              <form method="POST" action="?/delete" use:enhance>
+                <input type="hidden" name="id" value={sub.id} />
+                <button
+                  class="button button-danger"
+                  type="submit"
+                  onclick={(e) => {
+                    if (!confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) e.preventDefault();
+                  }}
+                >
+                  Delete
+                </button>
+              </form>
+            </div>
+          {/if}
         {:else}
           <button
             type="button"
