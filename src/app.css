@@ -369,7 +369,7 @@ input:focus-visible {
 }
 
 .roast-bean-fill path:first-child {
-  fill: var(--color-text);
+  fill: var(--color-accent);
 }
 
 .roast-bean-fill .roast-bean-crease {
