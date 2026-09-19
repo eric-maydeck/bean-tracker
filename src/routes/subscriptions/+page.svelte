@@ -1,9 +1,41 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { browser } from '$app/environment';
+  import { defaultViewForWidth } from '$lib/defaultView';
   let { data, form } = $props();
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
+
+  let view = $state<'compact' | 'list'>('list');
+  let expandedId = $state<number | null>(null);
+
+  $effect(() => {
+    if (!browser) return;
+    try {
+      const savedView = localStorage.getItem('bean-tracker-subscriptions-view');
+      if (savedView === 'compact' || savedView === 'list') {
+        view = savedView;
+      } else {
+        view = defaultViewForWidth(window.innerWidth);
+      }
+    } catch {
+      // ignore — localStorage may be unavailable (private browsing, etc.)
+    }
+  });
+
+  function setView(next: 'compact' | 'list') {
+    view = next;
+    try {
+      localStorage.setItem('bean-tracker-subscriptions-view', next);
+    } catch {
+      // ignore — per-viewer convenience only
+    }
+  }
+
+  function toggleExpanded(id: number) {
+    expandedId = expandedId === id ? null : id;
+  }
 
   let totalPrice = $derived.by(() => {
     const withPrice = data.subscriptions.filter((s) => s.price != null);
@@ -37,6 +69,12 @@
   <p class="badge badge-urgent">{form.error}</p>
 {/if}
 
+<div class="tab-group">
+  <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
+  <button aria-pressed={view === 'list'} onclick={() => setView('list')}>Table</button>
+</div>
+
+{#if view === 'list'}
 <div class="table-scroll">
   <table class="data-table">
     <thead>
@@ -150,6 +188,40 @@
     </tfoot>
   </table>
 </div>
+{:else}
+  <div class="compact-list">
+    {#each data.subscriptions as sub (sub.id)}
+      <div class="compact-row-wrap">
+        {#if canEdit}
+          <!-- Task 7 fills this branch in -->
+        {:else}
+          <button
+            type="button"
+            class="compact-row"
+            aria-expanded={expandedId === sub.id}
+            onclick={() => toggleExpanded(sub.id)}
+          >
+            <div class="compact-row-main">
+              <div class="compact-row-title">{sub.roaster_service}</div>
+              <div class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</div>
+            </div>
+            <div class="compact-row-urgency">
+              {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
+            </div>
+          </button>
+          {#if expandedId === sub.id}
+            <div class="compact-row-detail">
+              <div class="compact-detail-grid">
+                <div><span class="eyebrow">Total grams</span><br />{sub.total_grams ?? '—'}</div>
+                <div><span class="eyebrow">Next renewal</span><br />{sub.next_renewal_date ?? '—'}</div>
+              </div>
+            </div>
+          {/if}
+        {/if}
+      </div>
+    {/each}
+  </div>
+{/if}
 
 {#if canEdit}
   <h2 class="section-heading">Add subscription</h2>
