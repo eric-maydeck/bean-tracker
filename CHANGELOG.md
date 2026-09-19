@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.4...v1.10.0) (2026-09-19)
+
+
+### Features
+
+* subscription totals/renewal date, decaf tracking, minor polish
+
 ## [1.9.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.9.3...v1.9.4) (2026-09-19)
 
 
