@@ -1,3 +1,11 @@
+## [1.14.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.14.0...v1.14.1) (2026-09-20)
+
+
+### Bug Fixes
+
+* extend the decaf backfill to also check processing, not just name
+* move status/decaf badges inline next to the coffee name
+
 # [1.14.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.13.0...v1.14.0) (2026-09-20)
 
 
