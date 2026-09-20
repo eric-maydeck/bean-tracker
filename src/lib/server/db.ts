@@ -63,10 +63,16 @@ export function applySchema(db: DatabaseSync): void {
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {
     // One-time backfill for pre-existing rows: several coffees already had
-    // "Decaf" in their name before this column existed. Only runs the moment
-    // the column is added, never again — so a later manual override always
-    // sticks, even across restarts.
-    db.exec(`UPDATE coffees SET decaf = 1 WHERE coffee_name LIKE '%decaf%' COLLATE NOCASE`);
+    // "Decaf"/"Decaffeinated" in their name or processing method before this
+    // column existed (e.g. processing "Natural, EA Decaf" or "Thermal Shock
+    // Decaffeinated Washed" with a coffee_name that doesn't mention it at
+    // all). Only runs the moment the column is added, never again — so a
+    // later manual override always sticks, even across restarts.
+    db.exec(
+      `UPDATE coffees SET decaf = 1
+       WHERE coffee_name LIKE '%decaf%' COLLATE NOCASE
+          OR processing LIKE '%decaf%' COLLATE NOCASE`
+    );
   }
   migrateStatusValues(db);
   backfillSlugs(db);

@@ -83,15 +83,19 @@ describe('legacy data migration', () => {
     expect(secondSlug).toBe(firstSlug);
   });
 
-  it('backfills decaf=1 for pre-existing coffees whose name contains "decaf", only once', () => {
+  it('backfills decaf=1 for pre-existing coffees whose name OR processing contains "decaf", only once', () => {
     // Simulate a real pre-migration database: a coffees table that predates
     // the decaf column entirely, not one created via the current schema.
+    // `processing` is included here because real pre-decaf-column databases
+    // already had it (it's an original schema field, never added via
+    // ensureColumn) — unlike this test's other omitted columns.
     const raw = new DatabaseSync(':memory:');
     raw.exec(`
       CREATE TABLE coffees (
         id INTEGER PRIMARY KEY,
         roaster TEXT NOT NULL,
         coffee_name TEXT NOT NULL,
+        processing TEXT,
         roast_date TEXT,
         slug TEXT,
         status TEXT NOT NULL DEFAULT 'backlog',
@@ -105,6 +109,10 @@ describe('legacy data migration', () => {
        VALUES ('R', 'Ethiopia Decaf', 'r-ethiopia-decaf', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     );
     raw.exec(
+      `INSERT INTO coffees (roaster, coffee_name, processing, slug, created_at, updated_at)
+       VALUES ('R', 'Marlon Bolanos', 'Natural, EA Decaf', 'r-marlon-bolanos', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+    );
+    raw.exec(
       `INSERT INTO coffees (roaster, coffee_name, slug, created_at, updated_at)
        VALUES ('R', 'Regular Blend', 'r-regular-blend', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
     );
@@ -114,10 +122,14 @@ describe('legacy data migration', () => {
     const decafRow = raw
       .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Ethiopia Decaf'`)
       .get() as { decaf: number };
+    const decafProcessingRow = raw
+      .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Marlon Bolanos'`)
+      .get() as { decaf: number };
     const regularRow = raw
       .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Regular Blend'`)
       .get() as { decaf: number };
     expect(decafRow.decaf).toBe(1);
+    expect(decafProcessingRow.decaf).toBe(1);
     expect(regularRow.decaf).toBe(0);
 
     // Simulate a manual override, then confirm a later applySchema call (e.g.
