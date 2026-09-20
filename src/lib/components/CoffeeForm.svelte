@@ -11,7 +11,8 @@
     processingMethods = [],
     formError = null,
     oncancel = null,
-    onsuccess = null
+    onsuccess = null,
+    onstage = null
   }: {
     coffee?: CoffeeRow | null;
     roastLevels: RoastLevelRow[];
@@ -21,13 +22,29 @@
     formError?: string | null;
     oncancel?: (() => void) | null;
     onsuccess?: (() => void) | null;
+    onstage?: ((fields: Record<string, string>) => void) | null;
   } = $props();
 </script>
 
 <form
   method="POST"
   action={coffee ? '?/save' : '?/create'}
-  use:enhance={() => {
+  use:enhance={({ formData, cancel }) => {
+    if (onstage) {
+      // Staged mode: capture the form's current values and hand them to
+      // the parent instead of actually submitting. `cancel()` is
+      // use:enhance's own supported hook for aborting a submission
+      // before any request is sent — using it here (rather than a
+      // separate onsubmit handler) avoids any risk of both an onsubmit
+      // handler AND enhance's own fetch both firing for the same click.
+      cancel();
+      const fields: Record<string, string> = {};
+      for (const [key, value] of formData.entries()) {
+        if (typeof value === 'string') fields[key] = value;
+      }
+      onstage(fields);
+      return;
+    }
     return async ({ result, update }) => {
       await update();
       if (result.type === 'success') {
@@ -162,7 +179,7 @@
   {/if}
   </div>
 
-  <button class="button" type="submit">Save</button>
+  <button class="button" type="submit">{onstage ? 'Update' : 'Save'}</button>
   {#if oncancel}
     <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
   {/if}
