@@ -59,44 +59,57 @@
     saving = true;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
 
-    const validateRes = await fetch('/api/coffees/validate-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ changes })
-    });
-    const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
-    if (errors.length > 0) {
-      const newErrors = new Map<number, string>();
-      for (const e of errors) newErrors.set(e.id, e.error);
-      commitErrors = newErrors;
-      // Re-open the first failing row so its inline error is immediately
-      // visible, rather than leaving the user to guess which row failed.
-      expandedId = errors[0].id;
-      saving = false;
-      return;
-    }
+    try {
+      const validateRes = await fetch('/api/coffees/validate-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      if (!validateRes.ok) throw new Error('Validation request failed');
+      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
+      if (errors.length > 0) {
+        const newErrors = new Map<number, string>();
+        for (const e of errors) newErrors.set(e.id, e.error);
+        commitErrors = newErrors;
+        // Re-open the first failing row so its inline error is immediately
+        // visible, rather than leaving the user to guess which row failed.
+        expandedId = errors[0].id;
+        saving = false;
+        return;
+      }
 
-    const commitRes = await fetch('/api/coffees/commit-batch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ changes })
-    });
-    const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
-    if (!commitResult.success) {
-      // Atomic commit failed as a whole (Decision 5/3) — nothing was
-      // partially applied. Not tied to any one row, so it isn't keyed by
-      // id; surfaced via commitErrors.get(-1) in the template instead.
-      commitErrors = new Map([[-1, commitResult.error ?? 'Save failed']]);
-      saving = false;
-      return;
-    }
+      const commitRes = await fetch('/api/coffees/commit-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      if (!commitRes.ok) throw new Error('Commit request failed');
+      const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+      if (!commitResult.success) {
+        // Atomic commit failed as a whole (Decision 5/3) — nothing was
+        // partially applied. Not tied to any one row, so it isn't keyed by
+        // id; surfaced via commitErrors.get(-1) in the template instead.
+        commitErrors = new Map([[-1, commitResult.error ?? 'Save failed']]);
+        saving = false;
+        return;
+      }
 
-    pending = new SvelteMap();
-    commitErrors = new Map();
-    editMode = false;
-    expandedId = null;
-    saving = false;
-    await invalidateAll();
+      pending = new SvelteMap();
+      commitErrors = new Map();
+      editMode = false;
+      expandedId = null;
+      saving = false;
+      await invalidateAll();
+    } catch {
+      // Network error, non-2xx response, or an unexpected response shape
+      // (e.g. an expired session serializing as something other than
+      // {errors: [...]} / {success: ...}) — none of these are tied to a
+      // specific row, so surface generically via commitErrors.get(-1) and
+      // make sure `saving` always gets reset (otherwise the disabled
+      // "Save changes" button would stay stuck until a page reload).
+      commitErrors = new Map([[-1, 'Something went wrong saving your changes. Please check your connection and try again.']]);
+      saving = false;
+    }
   }
 
   function discardChanges() {
@@ -426,7 +439,9 @@
       <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
         {saving ? 'Saving…' : 'Save changes'}
       </button>
-      <button class="button button-danger" type="button" onclick={discardChanges}>Discard changes</button>
+      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>
+        Discard changes
+      </button>
     {:else}
       <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
     {/if}
