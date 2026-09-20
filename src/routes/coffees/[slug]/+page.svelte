@@ -1,28 +1,131 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
+  import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
+  import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
+  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import { SvelteMap } from 'svelte/reactivity';
 
-  let { data, form } = $props();
+  let { data } = $props();
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
+
+  // Plain `$state(new Map())` does NOT give reactive Map operations in
+  // Svelte 5 — $state only deep-proxies plain objects/arrays, not built-in
+  // Map/Set, so in-place `.set()`/`.delete()` calls (exactly what
+  // stageFieldChange/stageStatusAction/clearPending perform) would silently
+  // fail to trigger re-renders. `SvelteMap` from `svelte/reactivity` is the
+  // reactive, API-compatible replacement (found the hard way — via live
+  // browser testing — while implementing this task originally).
+  let pending = $state(new SvelteMap<number, PendingChange>());
+  let commitError = $state<string | null>(null);
+  let saving = $state(false);
+
+  function stageFields(fields: Record<string, string>) {
+    stageFieldChange(pending, data.coffee.id, fields);
+  }
+
+  function stageDelete() {
+    if (confirm(`Delete ${data.coffee.coffee_name} by ${data.coffee.roaster}? This cannot be undone.`)) {
+      stageStatusAction(pending, data.coffee.id, 'delete');
+    }
+  }
+
+  async function saveChanges() {
+    saving = true;
+    commitError = null;
+    try {
+      const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+
+      const validateRes = await fetch('/api/coffees/validate-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      if (!validateRes.ok) throw new Error('Validation request failed');
+      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
+      if (errors.length > 0) {
+        commitError = errors[0].error;
+        saving = false;
+        return;
+      }
+
+      const commitRes = await fetch('/api/coffees/commit-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      if (!commitRes.ok) throw new Error('Commit request failed');
+      const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+      if (!commitResult.success) {
+        commitError = commitResult.error ?? 'Save failed';
+        saving = false;
+        return;
+      }
+
+      const wasDeleted = pending.get(data.coffee.id)?.statusAction === 'delete';
+      const stagedFields = pending.get(data.coffee.id)?.fields;
+      pending = new SvelteMap();
+      editMode = false;
+      saving = false;
+
+      if (wasDeleted) {
+        await goto('/');
+        return;
+      }
+      if (stagedFields?.slug && stagedFields.slug !== data.coffee.slug) {
+        await goto(`/coffees/${stagedFields.slug}`);
+        return;
+      }
+      await invalidateAll();
+    } catch {
+      commitError = 'Something went wrong saving your changes. Please check your connection and try again.';
+      saving = false;
+    }
+  }
+
+  function discardChanges() {
+    pending = new SvelteMap();
+    commitError = null;
+    editMode = false;
+  }
+
+  beforeNavigate(({ cancel }) => {
+    if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
+      cancel();
+    }
+  });
+
+  $effect(() => {
+    if (!browser) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasPending(pending)) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
 </script>
 
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
 
 {#if data.isAdmin}
   <div class="search-row">
-    <button
-      class="button button-secondary"
-      type="button"
-      aria-pressed={editMode}
-      onclick={() => (editMode = !editMode)}
-    >
-      {editMode ? 'Done editing' : 'Edit'}
-    </button>
+    {#if editMode}
+      <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+        {saving ? 'Saving…' : 'Save changes'}
+      </button>
+      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
+    {:else}
+      <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
+    {/if}
   </div>
+  {#if commitError}
+    <p class="badge badge-urgent">{commitError}</p>
+  {/if}
 {/if}
 
 {#if canEdit}
@@ -32,24 +135,12 @@
     roasters={data.roasters}
     origins={data.origins}
     processingMethods={data.processingMethods}
-    formError={form?.error ?? null}
-    onsuccess={() => (editMode = false)}
+    onstage={stageFields}
   />
 
-  <form method="POST" action="?/delete" use:enhance>
-    <input type="hidden" name="id" value={data.coffee.id} />
-    <button
-      class="button button-danger"
-      type="submit"
-      onclick={(e) => {
-        if (!confirm(`Delete ${data.coffee.coffee_name} by ${data.coffee.roaster}? This cannot be undone.`)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      Delete this coffee
-    </button>
-  </form>
+  <button class="button button-danger" type="button" onclick={stageDelete}>
+    {pending.get(data.coffee.id)?.statusAction === 'delete' ? 'Pending: delete (Save to confirm)' : 'Delete this coffee'}
+  </button>
 {:else}
   <article class="detail">
     <div class="detail-media">
