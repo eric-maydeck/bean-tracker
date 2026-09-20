@@ -2,11 +2,12 @@
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import RoastBeans from '$lib/components/RoastBeans.svelte';
-  import { invalidateAll } from '$app/navigation';
-  import { enhance } from '$app/forms';
+  import { invalidateAll, beforeNavigate } from '$app/navigation';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import { originWithFlag } from '$lib/countryFlags';
+  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import { SvelteMap } from 'svelte/reactivity';
 
   let { data, form } = $props();
 
@@ -23,6 +24,17 @@
   let canEdit = $derived(editMode && data.isAdmin);
   let expandedId = $state<number | 'new' | null>(null);
 
+  // Plain `Map` wrapped in `$state()` is NOT deeply reactive in Svelte 5 —
+  // `$state()`'s proxy only wraps plain objects/arrays, so in-place
+  // `.set()`/`.delete()` calls (as `stageFieldChange`/`stageStatusAction`
+  // perform) would silently fail to trigger re-renders. `SvelteMap` from
+  // `svelte/reactivity` is the reactive, API-compatible replacement that
+  // tracks per-key reads/writes. `commitErrors` doesn't need this — it's
+  // always replaced wholesale via reassignment, never mutated in place.
+  let pending = $state(new SvelteMap<number, PendingChange>());
+  let commitErrors = $state(new Map<number, string>());
+  let saving = $state(false);
+
   async function refresh() {
     await invalidateAll();
   }
@@ -38,6 +50,78 @@
   function closeExpanded() {
     expandedId = null;
   }
+
+  function enterEditMode() {
+    editMode = true;
+  }
+
+  async function saveChanges() {
+    saving = true;
+    const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+
+    const validateRes = await fetch('/api/coffees/validate-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changes })
+    });
+    const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
+    if (errors.length > 0) {
+      const newErrors = new Map<number, string>();
+      for (const e of errors) newErrors.set(e.id, e.error);
+      commitErrors = newErrors;
+      // Re-open the first failing row so its inline error is immediately
+      // visible, rather than leaving the user to guess which row failed.
+      expandedId = errors[0].id;
+      saving = false;
+      return;
+    }
+
+    const commitRes = await fetch('/api/coffees/commit-batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changes })
+    });
+    const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+    if (!commitResult.success) {
+      // Atomic commit failed as a whole (Decision 5/3) — nothing was
+      // partially applied. Not tied to any one row, so it isn't keyed by
+      // id; surfaced via commitErrors.get(-1) in the template instead.
+      commitErrors = new Map([[-1, commitResult.error ?? 'Save failed']]);
+      saving = false;
+      return;
+    }
+
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+    saving = false;
+    await invalidateAll();
+  }
+
+  function discardChanges() {
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+  }
+
+  beforeNavigate(({ cancel }) => {
+    if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
+      cancel();
+    }
+  });
+
+  $effect(() => {
+    if (!browser) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasPending(pending)) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
 
   $effect(() => {
     if (!browser) return;
@@ -211,54 +295,86 @@
 
 {#snippet adminActions(coffee)}
   {#if coffee.status === 'archive'}
-    <form method="POST" action="?/restore" use:enhance>
-      <input type="hidden" name="id" value={coffee.id} />
-      <button class="button button-secondary" type="submit">Restore</button>
-    </form>
+    <button class="button button-secondary" type="button" onclick={() => toggleEdit(coffee.id)}>
+      {expandedId === coffee.id ? 'Cancel' : 'Edit'}
+    </button>
+    <button
+      class="button button-secondary"
+      type="button"
+      aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
+      onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
+    >
+      Restore
+    </button>
   {:else}
     <button class="button button-secondary" type="button" onclick={() => toggleEdit(coffee.id)}>
       {expandedId === coffee.id ? 'Cancel' : 'Edit'}
     </button>
     {#if coffee.status === 'backlog'}
       {#if coffee.frozen_start_date && !coffee.frozen_end_date}
-        <form method="POST" action="?/thaw" use:enhance>
-          <input type="hidden" name="id" value={coffee.id} />
-          <button class="button button-secondary" type="submit">Thaw</button>
-        </form>
+        <button
+          class="button button-secondary"
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
+          onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
+        >
+          Thaw
+        </button>
       {:else}
-        <form method="POST" action="?/freeze" use:enhance>
-          <input type="hidden" name="id" value={coffee.id} />
-          <button class="button button-secondary" type="submit">Freeze</button>
-        </form>
+        <button
+          class="button button-secondary"
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
+          onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
+        >
+          Freeze
+        </button>
       {/if}
-      <form method="POST" action="?/open" use:enhance>
-        <input type="hidden" name="id" value={coffee.id} />
-        <button class="button" type="submit">Open</button>
-      </form>
-    {:else if coffee.status === 'open'}
-      <form method="POST" action="?/unopen" use:enhance>
-        <input type="hidden" name="id" value={coffee.id} />
-        <button class="button button-secondary" type="submit">Unopen</button>
-      </form>
-    {/if}
-    <form method="POST" action="?/archive" use:enhance>
-      <input type="hidden" name="id" value={coffee.id} />
-      <button class="button button-secondary" type="submit">Archive</button>
-    </form>
-    <form method="POST" action="?/delete" use:enhance>
-      <input type="hidden" name="id" value={coffee.id} />
       <button
-        class="button button-danger"
-        type="submit"
-        onclick={(e) => {
-          if (!confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
-            e.preventDefault();
-          }
-        }}
+        class="button"
+        type="button"
+        aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
+        onclick={() => stageStatusAction(pending, coffee.id, 'open')}
       >
-        Delete
+        Open
       </button>
-    </form>
+    {:else if coffee.status === 'open'}
+      <button
+        class="button button-secondary"
+        type="button"
+        aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
+        onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
+      >
+        Unopen
+      </button>
+    {/if}
+    <button
+      class="button button-secondary"
+      type="button"
+      aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
+      onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
+    >
+      Archive
+    </button>
+    <button
+      class="button button-danger"
+      type="button"
+      aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
+      onclick={() => {
+        if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
+          stageStatusAction(pending, coffee.id, 'delete');
+        }
+      }}
+    >
+      Delete
+    </button>
+  {/if}
+  {#if pending.has(coffee.id)}
+    <span class="badge badge-neutral">
+      {pending.get(coffee.id)?.statusAction
+        ? `Pending: ${pending.get(coffee.id)?.statusAction}`
+        : 'Pending: edited'}
+    </span>
   {/if}
 {/snippet}
 
@@ -269,9 +385,12 @@
     roasters={data.roasters}
     origins={data.origins}
     processingMethods={data.processingMethods}
-    formError={form?.error ?? null}
+    formError={commitErrors.get(coffee.id) ?? null}
     oncancel={closeExpanded}
-    onsuccess={closeExpanded}
+    onstage={(fields) => {
+      stageFieldChange(pending, coffee.id, fields);
+      closeExpanded();
+    }}
   />
 {/snippet}
 
@@ -303,17 +422,17 @@
   <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   {#if data.isAdmin}
-    <button
-      class="button button-secondary"
-      type="button"
-      aria-pressed={editMode}
-      onclick={() => {
-        editMode = !editMode;
-        expandedId = null;
-      }}
-    >
-      {editMode ? 'Done editing' : 'Edit'}
-    </button>
+    {#if editMode}
+      <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+        {saving ? 'Saving…' : 'Save changes'}
+      </button>
+      <button class="button button-danger" type="button" onclick={discardChanges}>Discard changes</button>
+    {:else}
+      <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
+    {/if}
+  {/if}
+  {#if commitErrors.get(-1)}
+    <p class="badge badge-urgent">{commitErrors.get(-1)}</p>
   {/if}
 </div>
 
