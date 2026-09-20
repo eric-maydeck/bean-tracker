@@ -63,19 +63,21 @@
     <div class="detail-body">
       <div class="detail-header">
         <div>
-          <h1>{data.coffee.coffee_name}</h1>
+          <h1>
+            {data.coffee.coffee_name}
+            {#if data.coffee.status === 'archive'}
+              <span class="badge badge-fresh">Archive</span>
+            {:else if data.coffee.status === 'open'}
+              <span class="badge badge-warm">Open</span>
+            {:else}
+              <span class="badge badge-neutral">Backlog</span>
+            {/if}
+            {#if data.coffee.decaf}
+              <span class="badge badge-neutral">Decaf</span>
+            {/if}
+          </h1>
           <p class="text-muted">{data.coffee.roaster}</p>
         </div>
-        {#if data.coffee.status === 'archive'}
-          <span class="badge badge-fresh">Archive</span>
-        {:else if data.coffee.status === 'open'}
-          <span class="badge badge-warm">Open</span>
-        {:else}
-          <span class="badge badge-neutral">Backlog</span>
-        {/if}
-        {#if data.coffee.decaf}
-          <span class="badge badge-neutral">Decaf</span>
-        {/if}
       </div>
 
       <div class="stat-grid">

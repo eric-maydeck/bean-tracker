@@ -212,6 +212,7 @@ input:focus-visible {
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 600;
+  vertical-align: middle;
 }
 
 .badge-urgent {
