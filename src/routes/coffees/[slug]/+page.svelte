@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import { originWithFlag } from '$lib/countryFlags';
 
   let { data, form } = $props();
 
@@ -80,7 +81,7 @@
       <div class="stat-grid">
         <div class="stat">
           <span class="stat-label">Origin</span>
-          <span class="stat-value">{data.coffee.origin ?? '—'}</span>
+          <span class="stat-value">{data.coffee.origin ? originWithFlag(data.coffee.origin) : '—'}</span>
         </div>
         <div class="stat">
           <span class="stat-label">Roast level</span>

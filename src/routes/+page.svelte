@@ -6,6 +6,7 @@
   import { enhance } from '$app/forms';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
+  import { originWithFlag } from '$lib/countryFlags';
 
   let { data, form } = $props();
 
@@ -348,7 +349,7 @@
             {/if}
             <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
             <p class="text-muted">{coffee.roaster}</p>
-            <p>{coffee.origin ?? 'Origin unknown'}</p>
+            <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
             <p class="roast-row">
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
               <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
@@ -388,7 +389,7 @@
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
-          <p>{coffee.origin ?? 'Origin unknown'}</p>
+          <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
           <p class="roast-row">
             <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
             <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
@@ -435,7 +436,7 @@
                 {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
               </div>
               <div class="compact-row-sub text-muted">
-                {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
+                {coffee.roaster} · {coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}
               </div>
             </div>
             <div class="compact-row-trailing" style={urgencyColorStyle(coffee.urgency_rating)}>
@@ -461,7 +462,7 @@
                 {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
               </span>
               <span class="compact-row-sub text-muted">
-                {coffee.roaster} · {coffee.origin ?? 'Origin unknown'}
+                {coffee.roaster} · {coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}
               </span>
             </span>
             <span class="compact-row-trailing" style={urgencyColorStyle(coffee.urgency_rating)}>
@@ -638,7 +639,7 @@
           <tr>
             <td>{coffee.roaster}</td>
             <td><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></td>
-            <td>{coffee.origin ?? '—'}</td>
+            <td>{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
             </td>
