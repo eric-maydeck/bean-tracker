@@ -14,5 +14,11 @@
     <label for="password">Password</label>
     <input id="password" name="password" type="password" required autofocus />
   </div>
+  <div class="form-field form-field-checkbox">
+    <label for="remember">
+      <input id="remember" name="remember" type="checkbox" />
+      Stay signed in
+    </label>
+  </div>
   <button class="button" type="submit">Sign in</button>
 </form>

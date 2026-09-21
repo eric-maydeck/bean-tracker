@@ -4,6 +4,8 @@ import {
   hashPassword,
   verifyPassword,
   SESSION_COOKIE_NAME,
+  SESSION_DURATION_MS,
+  REMEMBERED_SESSION_DURATION_MS,
   signSessionExpiry,
   createSessionCookieValue,
   verifySessionCookieValue,
@@ -71,6 +73,30 @@ describe('session cookie signing', () => {
 
   it('rejects garbage input', () => {
     expect(verifySessionCookieValue('not-a-real-cookie-value')).toBe(false);
+  });
+
+  it('defaults to the standard session duration', () => {
+    const before = Date.now();
+    const value = createSessionCookieValue();
+    const after = Date.now();
+    // Split on the LAST '.' — the ISO timestamp itself contains one before
+    // the milliseconds, so split('.')[0] truncates off "Z" and parses as
+    // local time instead of UTC. See verifySessionCookieValue's own comment.
+    const expiresAt = value.slice(0, value.lastIndexOf('.'));
+    const expiresAtMs = Date.parse(expiresAt);
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + SESSION_DURATION_MS);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + SESSION_DURATION_MS);
+  });
+
+  it('accepts a custom duration for a "remembered" session', () => {
+    const before = Date.now();
+    const value = createSessionCookieValue(REMEMBERED_SESSION_DURATION_MS);
+    const after = Date.now();
+    const expiresAt = value.slice(0, value.lastIndexOf('.'));
+    const expiresAtMs = Date.parse(expiresAt);
+    expect(expiresAtMs).toBeGreaterThanOrEqual(before + REMEMBERED_SESSION_DURATION_MS);
+    expect(expiresAtMs).toBeLessThanOrEqual(after + REMEMBERED_SESSION_DURATION_MS);
+    expect(verifySessionCookieValue(value)).toBe(true);
   });
 });
 

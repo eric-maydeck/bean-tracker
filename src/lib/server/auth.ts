@@ -19,7 +19,8 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 export const SESSION_COOKIE_NAME = 'bt_session';
-const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+export const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
+export const REMEMBERED_SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 function getSessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
@@ -36,8 +37,8 @@ export function signSessionExpiry(expiresAtIso: string): string {
   return `${expiresAtIso}.${hmac}`;
 }
 
-export function createSessionCookieValue(): string {
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
+export function createSessionCookieValue(durationMs: number = SESSION_DURATION_MS): string {
+  const expiresAt = new Date(Date.now() + durationMs).toISOString();
   return signSessionExpiry(expiresAt);
 }
 

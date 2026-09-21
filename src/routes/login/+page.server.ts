@@ -1,12 +1,18 @@
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { SESSION_COOKIE_NAME, createSessionCookieValue } from '$lib/server/auth';
+import {
+  SESSION_COOKIE_NAME,
+  SESSION_DURATION_MS,
+  REMEMBERED_SESSION_DURATION_MS,
+  createSessionCookieValue
+} from '$lib/server/auth';
 import { attemptLogin, resolveClientIp } from '$lib/server/loginRateLimit';
 
 export const actions: Actions = {
   login: async ({ request, cookies, getClientAddress }) => {
     const formData = await request.formData();
     const password = String(formData.get('password') ?? '');
+    const remember = formData.get('remember') != null;
     const ip = resolveClientIp(request, getClientAddress);
     const result = attemptLogin(ip, password, process.env.ADMIN_PASSWORD_HASH);
     if (!result.ok) {
@@ -15,7 +21,8 @@ export const actions: Actions = {
       }
       return fail(400, { error: 'Incorrect password' });
     }
-    cookies.set(SESSION_COOKIE_NAME, createSessionCookieValue(), {
+    const durationMs = remember ? REMEMBERED_SESSION_DURATION_MS : SESSION_DURATION_MS;
+    cookies.set(SESSION_COOKIE_NAME, createSessionCookieValue(durationMs), {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
@@ -25,7 +32,7 @@ export const actions: Actions = {
       // on. See docs/superpowers/specs/2026-09-19-public-
       // access-design.md, Decision 9.
       secure: true,
-      maxAge: 60 * 60 * 24
+      maxAge: durationMs / 1000
     });
     redirect(303, '/');
   },
