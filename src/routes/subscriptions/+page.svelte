@@ -1,7 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
+  import { invalidateAll, beforeNavigate } from '$app/navigation';
   import { defaultViewForWidth } from '$lib/defaultView';
+  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import { SvelteMap } from 'svelte/reactivity';
   let { data, form } = $props();
 
   let editMode = $state(false);
@@ -9,6 +12,17 @@
 
   let view = $state<'compact' | 'list'>('list');
   let expandedId = $state<number | null>(null);
+
+  // Plain `$state(new Map())` does NOT give reactive Map operations in
+  // Svelte 5 — $state only deep-proxies plain objects/arrays, not built-in
+  // Map/Set, so in-place `.set()`/`.delete()` calls (exactly what
+  // stageFieldChange/stageStatusAction/clearPending perform) would silently
+  // fail to trigger re-renders. `SvelteMap` from `svelte/reactivity` is the
+  // reactive, API-compatible replacement (found the hard way — via live
+  // browser testing — while implementing this task originally).
+  let pending = $state(new SvelteMap<number, PendingChange>());
+  let commitErrors = $state(new Map<number, string>());
+  let saving = $state(false);
 
   $effect(() => {
     if (!browser) return;
@@ -37,6 +51,107 @@
     expandedId = expandedId === id ? null : id;
   }
 
+  function stageFieldsFor(sub: { id: number }, formEl: HTMLFormElement) {
+    const formData = new FormData(formEl);
+    const fields: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string') fields[key] = value;
+    }
+    stageFieldChange(pending, sub.id, fields);
+  }
+
+  function stageDelete(sub: { id: number; roaster_service: string }) {
+    if (pending.get(sub.id)?.statusAction === 'delete') {
+      stageStatusAction(pending, sub.id, 'delete');
+    } else if (confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) {
+      stageStatusAction(pending, sub.id, 'delete');
+    }
+  }
+
+  async function saveChanges() {
+    saving = true;
+    commitErrors = new Map();
+    const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+
+    try {
+      const validateRes = await fetch('/api/subscriptions/validate-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      if (!validateRes.ok) throw new Error('Validation request failed');
+      const { errors } = (await validateRes.json()) as { errors: { id: number; error: string }[] };
+      if (errors.length > 0) {
+        const newErrors = new Map<number, string>();
+        for (const e of errors) newErrors.set(e.id, e.error);
+        commitErrors = newErrors;
+        expandedId = errors[0].id;
+        saving = false;
+        return;
+      }
+
+      const commitRes = await fetch('/api/subscriptions/commit-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes })
+      });
+      // commit-batch returns a real JSON body ({success, error}) even on a
+      // non-2xx status, so parse it regardless of `.ok` — only fall back to
+      // the generic error if parsing itself fails (network failure or a
+      // genuinely non-JSON response).
+      let commitResult: { success: boolean; error?: string };
+      try {
+        commitResult = await commitRes.json();
+      } catch {
+        throw new Error('Commit request failed');
+      }
+      if (!commitResult.success) {
+        commitErrors = new Map([[-1, commitResult.error ?? 'Save failed']]);
+        saving = false;
+        return;
+      }
+    } catch {
+      commitErrors = new Map([[-1, 'Something went wrong saving your changes. Please check your connection and try again.']]);
+      saving = false;
+      return;
+    }
+
+    // Outside the try/catch above on purpose: the commit itself already
+    // succeeded by this point, so a failure in invalidateAll() must not be
+    // misattributed to the save as a whole via the generic catch-all error
+    // message.
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+    saving = false;
+    await invalidateAll();
+  }
+
+  function discardChanges() {
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+  }
+
+  beforeNavigate(({ cancel }) => {
+    if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
+      cancel();
+    }
+  });
+
+  $effect(() => {
+    if (!browser) return;
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasPending(pending)) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  });
+
   let totalPrice = $derived.by(() => {
     const withPrice = data.subscriptions.filter((s) => s.price != null);
     if (withPrice.length === 0) return null;
@@ -54,15 +169,18 @@
 
 {#if data.isAdmin}
   <div class="search-row">
-    <button
-      class="button button-secondary"
-      type="button"
-      aria-pressed={editMode}
-      onclick={() => (editMode = !editMode)}
-    >
-      {editMode ? 'Done editing' : 'Edit'}
-    </button>
+    {#if editMode}
+      <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+        {saving ? 'Saving…' : 'Save changes'}
+      </button>
+      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
+    {:else}
+      <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
+    {/if}
   </div>
+  {#if commitErrors.get(-1)}
+    <p class="badge badge-urgent">{commitErrors.get(-1)}</p>
+  {/if}
 {/if}
 
 {#if form?.error}
@@ -139,35 +257,23 @@
               <form
                 id={`sub-form-${sub.id}`}
                 method="POST"
-                action="?/update"
-                use:enhance={() => {
-                  return async ({ update }) => {
-                    // This form's fields live in earlier <td> cells, associated only
-                    // via the `form=""` attribute — use:enhance's default success
-                    // behavior calls the native form.reset(), which per the HTML spec
-                    // still resets those externally-associated fields to blank. Since
-                    // the underlying value doesn't change on a no-op save, Svelte's own
-                    // diffing never re-writes the DOM to correct it, leaving the row
-                    // visibly blank even though the save succeeded correctly.
-                    await update({ reset: false });
-                  };
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  stageFieldsFor(sub, e.currentTarget as HTMLFormElement);
                 }}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit">Save</button>
+                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <form method="POST" action="?/delete" use:enhance>
-                <input type="hidden" name="id" value={sub.id} />
-                <button
-                  class="button button-danger"
-                  type="submit"
-                  onclick={(e) => {
-                    if (!confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) e.preventDefault();
-                  }}
-                >
-                  Delete
-                </button>
-              </form>
+              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
+                {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
+              </button>
+              {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}
+                <span class="badge badge-neutral">Pending: edited</span>
+              {/if}
+              {#if commitErrors.get(sub.id)}
+                <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
+              {/if}
             </td>
           {/if}
         </tr>
@@ -238,35 +344,23 @@
               <form
                 id={`sub-form-${sub.id}`}
                 method="POST"
-                action="?/update"
-                use:enhance={() => {
-                  return async ({ update }) => {
-                    // This form's fields live in earlier <div> cells, associated only
-                    // via the `form=""` attribute — use:enhance's default success
-                    // behavior calls the native form.reset(), which per the HTML spec
-                    // still resets those externally-associated fields to blank. Since
-                    // the underlying value doesn't change on a no-op save, Svelte's own
-                    // diffing never re-writes the DOM to correct it, leaving the row
-                    // visibly blank even though the save succeeded correctly.
-                    await update({ reset: false });
-                  };
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  stageFieldsFor(sub, e.currentTarget as HTMLFormElement);
                 }}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit">Save</button>
+                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <form method="POST" action="?/delete" use:enhance>
-                <input type="hidden" name="id" value={sub.id} />
-                <button
-                  class="button button-danger"
-                  type="submit"
-                  onclick={(e) => {
-                    if (!confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) e.preventDefault();
-                  }}
-                >
-                  Delete
-                </button>
-              </form>
+              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
+                {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
+              </button>
+              {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}
+                <span class="badge badge-neutral">Pending: edited</span>
+              {/if}
+              {#if commitErrors.get(sub.id)}
+                <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
+              {/if}
             </div>
           {/if}
         {:else}
