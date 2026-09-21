@@ -139,7 +139,17 @@
   // into <input value=...> attributes, which stringifies regardless.
   function formCoffeeFor(coffee: CoffeeRow): CoffeeRow {
     const pendingFields = pending.get(coffee.id)?.fields;
-    return pendingFields ? ({ ...coffee, ...pendingFields } as CoffeeRow) : coffee;
+    if (!pendingFields) return coffee;
+    return {
+      ...coffee,
+      ...pendingFields,
+      // FormData omits an unchecked checkbox entirely and represents a
+      // checked one as the string "on" — convert back to the 0/1 integer
+      // CoffeeForm's `checked={coffee?.decaf === 1}` comparison expects.
+      // Presence of the key (regardless of its exact string value) means
+      // it was checked when staged; absence means it was unchecked.
+      decaf: pendingFields.decaf != null ? 1 : 0
+    } as CoffeeRow;
   }
 
   beforeNavigate(({ cancel }) => {
