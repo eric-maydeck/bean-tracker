@@ -28,17 +28,30 @@
   }
 
   function stageDelete() {
-    if (confirm(`Delete ${data.coffee.coffee_name} by ${data.coffee.roaster}? This cannot be undone.`)) {
+    if (pending.get(data.coffee.id)?.statusAction === 'delete') {
+      stageStatusAction(pending, data.coffee.id, 'delete');
+    } else if (confirm(`Delete ${data.coffee.coffee_name} by ${data.coffee.roaster}? This cannot be undone.`)) {
       stageStatusAction(pending, data.coffee.id, 'delete');
     }
   }
 
+  // The merge intentionally produces a value whose fields may be strings
+  // where CoffeeRow expects numbers (pending.fields comes from captured
+  // FormData) — safe here because CoffeeForm only ever interpolates these
+  // into <input value=...> attributes, which stringifies regardless.
+  let formCoffee = $derived.by(() => {
+    const pendingFields = pending.get(data.coffee.id)?.fields;
+    return pendingFields ? ({ ...data.coffee, ...pendingFields } as typeof data.coffee) : data.coffee;
+  });
+
   async function saveChanges() {
     saving = true;
     commitError = null;
-    try {
-      const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+    const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+    const wasDeleted = pending.get(data.coffee.id)?.statusAction === 'delete';
+    const stagedFields = pending.get(data.coffee.id)?.fields;
 
+    try {
       const validateRes = await fetch('/api/coffees/validate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,33 +70,44 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changes })
       });
-      if (!commitRes.ok) throw new Error('Commit request failed');
-      const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+      // commit-batch returns a real JSON body ({success, error}) even on a
+      // non-2xx status, so parse it regardless of `.ok` — only fall back to
+      // the generic error if parsing itself fails (network failure or a
+      // genuinely non-JSON response).
+      let commitResult: { success: boolean; error?: string };
+      try {
+        commitResult = await commitRes.json();
+      } catch {
+        throw new Error('Commit request failed');
+      }
       if (!commitResult.success) {
         commitError = commitResult.error ?? 'Save failed';
         saving = false;
         return;
       }
-
-      const wasDeleted = pending.get(data.coffee.id)?.statusAction === 'delete';
-      const stagedFields = pending.get(data.coffee.id)?.fields;
-      pending = new SvelteMap();
-      editMode = false;
-      saving = false;
-
-      if (wasDeleted) {
-        await goto('/');
-        return;
-      }
-      if (stagedFields?.slug && stagedFields.slug !== data.coffee.slug) {
-        await goto(`/coffees/${stagedFields.slug}`);
-        return;
-      }
-      await invalidateAll();
     } catch {
       commitError = 'Something went wrong saving your changes. Please check your connection and try again.';
       saving = false;
+      return;
     }
+
+    // Outside the try/catch above on purpose: the commit itself already
+    // succeeded by this point, so a failure in goto()/invalidateAll() must
+    // not be misattributed to the save as a whole via the generic
+    // catch-all error message.
+    pending = new SvelteMap();
+    editMode = false;
+    saving = false;
+
+    if (wasDeleted) {
+      await goto('/');
+      return;
+    }
+    if (stagedFields?.slug && stagedFields.slug !== data.coffee.slug) {
+      await goto(`/coffees/${stagedFields.slug}`);
+      return;
+    }
+    await invalidateAll();
   }
 
   function discardChanges() {
@@ -130,7 +154,7 @@
 
 {#if canEdit}
   <CoffeeForm
-    coffee={data.coffee}
+    coffee={formCoffee}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
     origins={data.origins}
@@ -138,7 +162,7 @@
     onstage={stageFields}
   />
 
-  <button class="button button-danger" type="button" onclick={stageDelete}>
+  <button class="button button-danger" type="button" disabled={saving} onclick={stageDelete}>
     {pending.get(data.coffee.id)?.statusAction === 'delete' ? 'Pending: delete (Save to confirm)' : 'Delete this coffee'}
   </button>
 {:else}

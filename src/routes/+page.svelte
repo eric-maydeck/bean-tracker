@@ -8,6 +8,7 @@
   import { originWithFlag } from '$lib/countryFlags';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
+  import type { CoffeeRow } from '$lib/types';
 
   let { data, form } = $props();
 
@@ -83,8 +84,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changes })
       });
-      if (!commitRes.ok) throw new Error('Commit request failed');
-      const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+      // commit-batch returns a real JSON body ({success, error}) even on a
+      // non-2xx status, so parse it regardless of `.ok` — only fall back to
+      // the generic error if parsing itself fails (network failure or a
+      // genuinely non-JSON response).
+      let commitResult: { success: boolean; error?: string };
+      try {
+        commitResult = await commitRes.json();
+      } catch {
+        throw new Error('Commit request failed');
+      }
       if (!commitResult.success) {
         // Atomic commit failed as a whole (Decision 5/3) — nothing was
         // partially applied. Not tied to any one row, so it isn't keyed by
@@ -93,13 +102,6 @@
         saving = false;
         return;
       }
-
-      pending = new SvelteMap();
-      commitErrors = new Map();
-      editMode = false;
-      expandedId = null;
-      saving = false;
-      await invalidateAll();
     } catch {
       // Network error, non-2xx response, or an unexpected response shape
       // (e.g. an expired session serializing as something other than
@@ -109,7 +111,19 @@
       // "Save changes" button would stay stuck until a page reload).
       commitErrors = new Map([[-1, 'Something went wrong saving your changes. Please check your connection and try again.']]);
       saving = false;
+      return;
     }
+
+    // Outside the try/catch above on purpose: the commit itself already
+    // succeeded by this point, so a failure in invalidateAll() (or
+    // anything else here) must not be misattributed to the save as a
+    // whole via the generic catch-all error message.
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+    saving = false;
+    await invalidateAll();
   }
 
   function discardChanges() {
@@ -117,6 +131,15 @@
     commitErrors = new Map();
     editMode = false;
     expandedId = null;
+  }
+
+  // The merge intentionally produces a value whose fields may be strings
+  // where CoffeeRow expects numbers (pending.fields comes from captured
+  // FormData) — safe here because CoffeeForm only ever interpolates these
+  // into <input value=...> attributes, which stringifies regardless.
+  function formCoffeeFor(coffee: CoffeeRow): CoffeeRow {
+    const pendingFields = pending.get(coffee.id)?.fields;
+    return pendingFields ? ({ ...coffee, ...pendingFields } as CoffeeRow) : coffee;
   }
 
   beforeNavigate(({ cancel }) => {
@@ -308,19 +331,20 @@
 
 {#snippet adminActions(coffee)}
   {#if coffee.status === 'archive'}
-    <button class="button button-secondary" type="button" onclick={() => toggleEdit(coffee.id)}>
+    <button class="button button-secondary" type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}>
       {expandedId === coffee.id ? 'Cancel' : 'Edit'}
     </button>
     <button
       class="button button-secondary"
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
+      disabled={saving}
       onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
     >
       Restore
     </button>
   {:else}
-    <button class="button button-secondary" type="button" onclick={() => toggleEdit(coffee.id)}>
+    <button class="button button-secondary" type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}>
       {expandedId === coffee.id ? 'Cancel' : 'Edit'}
     </button>
     {#if coffee.status === 'backlog'}
@@ -329,6 +353,7 @@
           class="button button-secondary"
           type="button"
           aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
+          disabled={saving}
           onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
         >
           Thaw
@@ -338,6 +363,7 @@
           class="button button-secondary"
           type="button"
           aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
+          disabled={saving}
           onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
         >
           Freeze
@@ -347,6 +373,7 @@
         class="button"
         type="button"
         aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
+        disabled={saving}
         onclick={() => stageStatusAction(pending, coffee.id, 'open')}
       >
         Open
@@ -356,6 +383,7 @@
         class="button button-secondary"
         type="button"
         aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
+        disabled={saving}
         onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
       >
         Unopen
@@ -365,6 +393,7 @@
       class="button button-secondary"
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
+      disabled={saving}
       onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
     >
       Archive
@@ -373,8 +402,11 @@
       class="button button-danger"
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
+      disabled={saving}
       onclick={() => {
-        if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
+        if (pending.get(coffee.id)?.statusAction === 'delete') {
+          stageStatusAction(pending, coffee.id, 'delete');
+        } else if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
           stageStatusAction(pending, coffee.id, 'delete');
         }
       }}
@@ -393,7 +425,7 @@
 
 {#snippet expandedForm(coffee)}
   <CoffeeForm
-    {coffee}
+    coffee={formCoffeeFor(coffee)}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
     origins={data.origins}

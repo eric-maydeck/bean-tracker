@@ -61,7 +61,9 @@
   }
 
   function stageDelete(sub: { id: number; roaster_service: string }) {
-    if (confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) {
+    if (pending.get(sub.id)?.statusAction === 'delete') {
+      stageStatusAction(pending, sub.id, 'delete');
+    } else if (confirm(`Delete ${sub.roaster_service}? This cannot be undone.`)) {
       stageStatusAction(pending, sub.id, 'delete');
     }
   }
@@ -69,9 +71,9 @@
   async function saveChanges() {
     saving = true;
     commitErrors = new Map();
-    try {
-      const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+    const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
 
+    try {
       const validateRes = await fetch('/api/subscriptions/validate-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,24 +95,37 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changes })
       });
-      if (!commitRes.ok) throw new Error('Commit request failed');
-      const commitResult = (await commitRes.json()) as { success: boolean; error?: string };
+      // commit-batch returns a real JSON body ({success, error}) even on a
+      // non-2xx status, so parse it regardless of `.ok` — only fall back to
+      // the generic error if parsing itself fails (network failure or a
+      // genuinely non-JSON response).
+      let commitResult: { success: boolean; error?: string };
+      try {
+        commitResult = await commitRes.json();
+      } catch {
+        throw new Error('Commit request failed');
+      }
       if (!commitResult.success) {
         commitErrors = new Map([[-1, commitResult.error ?? 'Save failed']]);
         saving = false;
         return;
       }
-
-      pending = new SvelteMap();
-      commitErrors = new Map();
-      editMode = false;
-      expandedId = null;
-      saving = false;
-      await invalidateAll();
     } catch {
       commitErrors = new Map([[-1, 'Something went wrong saving your changes. Please check your connection and try again.']]);
       saving = false;
+      return;
     }
+
+    // Outside the try/catch above on purpose: the commit itself already
+    // succeeded by this point, so a failure in invalidateAll() must not be
+    // misattributed to the save as a whole via the generic catch-all error
+    // message.
+    pending = new SvelteMap();
+    commitErrors = new Map();
+    editMode = false;
+    expandedId = null;
+    saving = false;
+    await invalidateAll();
   }
 
   function discardChanges() {
@@ -248,9 +263,9 @@
                 }}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit">Update</button>
+                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <button class="button button-danger" type="button" onclick={() => stageDelete(sub)}>
+              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
                 {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
               </button>
               {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}
@@ -335,9 +350,9 @@
                 }}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit">Update</button>
+                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <button class="button button-danger" type="button" onclick={() => stageDelete(sub)}>
+              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
                 {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
               </button>
               {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}

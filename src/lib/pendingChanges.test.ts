@@ -43,6 +43,36 @@ describe('stageStatusAction', () => {
     stageStatusAction(pending, 2, 'archive');
     expect(pending.get(2)).toEqual({ statusAction: 'archive' });
   });
+
+  it('un-stages when the same status action is staged twice, removing the entry if no fields remain', () => {
+    const pending = new Map<number, PendingChange>();
+    stageStatusAction(pending, 2, 'archive');
+    stageStatusAction(pending, 2, 'archive');
+    expect(pending.has(2)).toBe(false);
+  });
+
+  it('un-stages just the status action when the same action is staged twice with fields also present, keeping the fields', () => {
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, 2, { roaster: 'Sey' });
+    stageStatusAction(pending, 2, 'archive');
+    stageStatusAction(pending, 2, 'archive');
+    expect(pending.get(2)).toEqual({ fields: { roaster: 'Sey' } });
+  });
+
+  it('staging delete clears any existing staged fields for that entry', () => {
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, 2, { roaster: 'Sey' });
+    stageStatusAction(pending, 2, 'delete');
+    expect(pending.get(2)).toEqual({ statusAction: 'delete' });
+  });
+
+  it('staging a different (non-repeat) status action does not clear existing staged fields', () => {
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, 2, { roaster: 'Sey' });
+    stageStatusAction(pending, 2, 'open');
+    stageStatusAction(pending, 2, 'archive');
+    expect(pending.get(2)).toEqual({ fields: { roaster: 'Sey' }, statusAction: 'archive' });
+  });
 });
 
 describe('clearPending', () => {
