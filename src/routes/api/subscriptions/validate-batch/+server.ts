@@ -5,7 +5,11 @@ import { validateSubscriptionBatch, type SubscriptionBatchChange } from '$lib/se
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
-  const { changes } = (await request.json()) as { changes: SubscriptionBatchChange[] };
+  const body = await request.json();
+  if (!Array.isArray(body.changes)) {
+    return json({ error: 'Invalid request: changes must be an array' }, { status: 400 });
+  }
+  const changes = body.changes as SubscriptionBatchChange[];
   const errors = validateSubscriptionBatch(changes);
   return json({ errors });
 };

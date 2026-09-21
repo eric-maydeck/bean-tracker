@@ -6,7 +6,11 @@ import { commitSubscriptionBatch, type SubscriptionBatchChange } from '$lib/serv
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
-  const { changes } = (await request.json()) as { changes: SubscriptionBatchChange[] };
+  const body = await request.json();
+  if (!Array.isArray(body.changes)) {
+    return json({ error: 'Invalid request: changes must be an array' }, { status: 400 });
+  }
+  const changes = body.changes as SubscriptionBatchChange[];
   try {
     commitSubscriptionBatch(getDb(), changes);
     return json({ success: true });

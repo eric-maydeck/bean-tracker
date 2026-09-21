@@ -6,7 +6,11 @@ import { commitCoffeeBatch, type CoffeeBatchChange } from '$lib/server/coffeeBat
 
 export const POST: RequestHandler = async ({ request, locals }) => {
   requireAdmin(locals);
-  const { changes } = (await request.json()) as { changes: CoffeeBatchChange[] };
+  const body = await request.json();
+  if (!Array.isArray(body.changes)) {
+    return json({ error: 'Invalid request: changes must be an array' }, { status: 400 });
+  }
+  const changes = body.changes as CoffeeBatchChange[];
   try {
     commitCoffeeBatch(getDb(), changes);
     return json({ success: true });

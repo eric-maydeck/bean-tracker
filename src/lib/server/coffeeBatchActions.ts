@@ -103,11 +103,13 @@ export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]
 
 // Each of these WHERE-guarded UPDATEs (openCoffee, freezeCoffee, etc.) is
 // a no-op — not a throw — if the row doesn't exist or isn't in the
-// expected starting status. That's correct behavior for their original,
-// single-action callers (nothing to warn about), but wrong for a batch
-// that must roll back on a genuine failure — so this wrapper checks the
-// underlying statement actually affected a row and throws if not, giving
-// commitCoffeeBatch something real to catch and roll back on.
+// expected starting status. This wrapper only checks that the row exists
+// BEFORE calling the status function, giving commitCoffeeBatch something
+// real to catch and roll back on for a genuinely nonexistent id. It does
+// NOT verify that the underlying UPDATE actually changed anything — an
+// invalid state transition on an existing row (e.g. `thaw` on a coffee
+// that isn't frozen) remains a silent no-op that still reports success.
+// That's a known, pre-existing limitation, not something fixed here.
 function applyStatusAction(db: DatabaseSync, id: number, action: CoffeeStatusAction): void {
   const before = db.prepare(`SELECT id FROM coffees WHERE id = ?`).get(id);
   if (!before) {
@@ -135,5 +137,7 @@ function applyStatusAction(db: DatabaseSync, id: number, action: CoffeeStatusAct
     case 'delete':
       deleteCoffee(db, id);
       break;
+    default:
+      throw new Error(`Unknown status action: ${action}`);
   }
 }
