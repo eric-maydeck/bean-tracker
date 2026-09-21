@@ -1,13 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import {
-  getSubscriptions,
-  createSubscription,
-  updateSubscription,
-  deleteSubscription,
-  withTotalGrams,
-  withNextRenewalDate
-} from '$lib/server/subscriptions';
+import { getSubscriptions, createSubscription, withTotalGrams, withNextRenewalDate } from '$lib/server/subscriptions';
 import { requireAdmin } from '$lib/server/auth';
 
 function readSubscriptionFields(formData: FormData) {
@@ -37,25 +30,6 @@ export const actions: Actions = {
       return { error: 'Roaster/service is required' };
     }
     createSubscription(getDb(), { roaster_service: roasterService, ...readSubscriptionFields(formData) });
-    return { success: true };
-  },
-  update: async ({ request, locals }) => {
-    requireAdmin(locals);
-    const formData = await request.formData();
-    const roasterService = String(formData.get('roaster_service') ?? '').trim();
-    if (!roasterService) {
-      return { error: 'Roaster/service is required' };
-    }
-    updateSubscription(getDb(), Number(formData.get('id')), {
-      roaster_service: roasterService,
-      ...readSubscriptionFields(formData)
-    });
-    return { success: true };
-  },
-  delete: async ({ request, locals }) => {
-    requireAdmin(locals);
-    const formData = await request.formData();
-    deleteSubscription(getDb(), Number(formData.get('id')));
     return { success: true };
   }
 };
