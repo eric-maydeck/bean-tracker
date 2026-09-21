@@ -1,3 +1,11 @@
+# [1.16.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.15.0...v1.16.0) (2026-09-21)
+
+
+### Features
+
+* add a 'Stay signed in' checkbox for 30-day remembered sessions
+* show 10 coffees on the On Deck next-up list instead of 5
+
 # [1.15.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.14.1...v1.15.0) (2026-09-21)
 
 
