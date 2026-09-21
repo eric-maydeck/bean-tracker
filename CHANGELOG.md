@@ -1,3 +1,25 @@
+# [1.15.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.14.1...v1.15.0) (2026-09-21)
+
+
+### Bug Fixes
+
+* correctly display staged Decaf checkbox edits on reopen
+* harden batch actions with a default case and request-body validation
+* harden saveChanges error handling and guard Discard during save
+* staged-edit un-stage affordance, stale form data, and save-flow error handling
+
+
+### Features
+
+* add atomic batch validate/commit actions for coffees
+* add atomic batch validate/commit actions for subscriptions
+* add batch validate/commit API routes for coffees and subscriptions
+* add shared pending-changes module for staged edit sessions
+* add staged-mode support to CoffeeForm and a button-success style
+* convert coffee detail page to a staged Save changes / Discard changes session
+* convert Coffees page to a staged Save changes / Discard changes session
+* convert Subscriptions page to a staged Save changes / Discard changes session
+
 ## [1.14.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.14.0...v1.14.1) (2026-09-20)
 
 
