@@ -18,10 +18,10 @@ function byCaffeineFilter(rows: CoffeeWithComputed[], filter: CaffeineFilter): C
 // (Kept out of +page.server.ts because SvelteKit only allows a fixed set of named
 // exports — load, actions, etc. — from route files.)
 //
-// The Caffeinated/Decaf/All split happens BEFORE the "top 5" slice, not after —
+// The Caffeinated/Decaf/All split happens BEFORE the "top 10" slice, not after —
 // slicing the mixed list first and filtering client-side would silently make
 // "Next up" look empty for a small category (e.g. this project's 3 decaf
-// coffees), since a handful of items are unlikely to land in an overall top 5.
+// coffees), since a handful of items are unlikely to land in an overall top 10.
 // Each of the three variants below is independently correct on its own terms.
 export function buildOnDeckData(openRows: CoffeeRow[], backlogRows: CoffeeRow[], today: Date) {
   const openComputed = openRows.map((c) => withComputedFields(c, today)).sort(byUrgencyDesc);
@@ -30,7 +30,7 @@ export function buildOnDeckData(openRows: CoffeeRow[], backlogRows: CoffeeRow[],
   function forFilter(filter: CaffeineFilter) {
     return {
       open: byCaffeineFilter(openComputed, filter),
-      nextUp: byCaffeineFilter(backlogComputed, filter).slice(0, 5)
+      nextUp: byCaffeineFilter(backlogComputed, filter).slice(0, 10)
     };
   }
 

@@ -47,8 +47,8 @@ describe('buildOnDeckData', () => {
     expect(all.open[0].urgency_rating).toBeGreaterThan(all.open[1].urgency_rating as number);
   });
 
-  it('slices the backlog candidates list to the top 5 by urgency', () => {
-    for (let i = 0; i < 7; i++) {
+  it('slices the backlog candidates list to the top 10 by urgency', () => {
+    for (let i = 0; i < 12; i++) {
       // Stagger roast dates so each coffee has a distinct urgency rank.
       createCoffee(
         db,
@@ -59,7 +59,7 @@ describe('buildOnDeckData', () => {
     const today = new Date('2026-09-17T00:00:00Z');
     const { all } = buildOnDeckData([], getBacklogCoffees(db), today);
 
-    expect(all.nextUp).toHaveLength(5);
+    expect(all.nextUp).toHaveLength(10);
     // Sorted descending by urgency.
     for (let i = 1; i < all.nextUp.length; i++) {
       expect(all.nextUp[i - 1].urgency_rating as number).toBeGreaterThanOrEqual(
@@ -78,10 +78,10 @@ describe('buildOnDeckData', () => {
     expect(all.nextUp).toHaveLength(1);
   });
 
-  it('splits caffeinated vs decaf independently, each with its own top-5 slice', () => {
-    // 7 caffeinated backlog coffees (more than 5, to prove the "all" top-5
+  it('splits caffeinated vs decaf independently, each with its own top-10 slice', () => {
+    // 12 caffeinated backlog coffees (more than 10, to prove the "all" top-10
     // doesn't starve the decaf slice) plus 2 decaf ones.
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 12; i++) {
       createCoffee(db, sampleInput({ coffee_name: `Caff ${i}`, roast_date: `2026-0${(i % 9) + 1}-01` }));
     }
     createCoffee(db, sampleInput({ coffee_name: 'Decaf A', roast_date: '2026-08-01', decaf: true }));
@@ -90,8 +90,8 @@ describe('buildOnDeckData', () => {
     const today = new Date('2026-09-17T00:00:00Z');
     const { all, caffeinated, decaf } = buildOnDeckData([], getBacklogCoffees(db), today);
 
-    expect(all.nextUp).toHaveLength(5);
-    expect(caffeinated.nextUp).toHaveLength(5);
+    expect(all.nextUp).toHaveLength(10);
+    expect(caffeinated.nextUp).toHaveLength(10);
     expect(caffeinated.nextUp.every((c) => c.decaf === 0)).toBe(true);
     expect(decaf.nextUp).toHaveLength(2);
     expect(decaf.nextUp.every((c) => c.decaf === 1)).toBe(true);
