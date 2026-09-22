@@ -142,9 +142,11 @@
         action="?/updateRates"
         class="rate-edit-form"
         use:enhance={() => {
-          return async ({ update }) => {
-            editingRates = false;
+          return async ({ update, result }) => {
             await update();
+            if (result.type === 'success') {
+              editingRates = false;
+            }
           };
         }}
       >
