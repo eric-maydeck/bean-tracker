@@ -113,6 +113,14 @@
   );
   let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
 
+  // Same "top N of M" treatment the charts above get, applied to the
+  // not-yet-tracked candidate list: a real export produces a couple hundred
+  // unmatched beans, and rendering every one of them buries the rest of the
+  // page. The list is already ordered newest-bean-first, so the cap keeps
+  // the most relevant candidates.
+  const UNMATCHED_BEAN_LIMIT = 20;
+  let visibleUnmatchedBeans = $derived(data.unmatchedBeans.slice(0, UNMATCHED_BEAN_LIMIT));
+
   let bcRatingsDates = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.date));
   let bcRatingsValues = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.rating));
 
@@ -443,8 +451,9 @@
 
   {#if data.unmatchedBeans.length > 0}
     <h3>Not yet tracked ({data.unmatchedBeans.length})</h3>
+    <p class="text-muted">Showing top {visibleUnmatchedBeans.length} of {data.unmatchedBeans.length}.</p>
     <div class="stat-row">
-      {#each data.unmatchedBeans as bean (bean.id)}
+      {#each visibleUnmatchedBeans as bean (bean.id)}
         <div class="stat-item">
           <span class="stat-value">{bean.name}</span>
           <span class="stat-label">{bean.roaster ?? 'Unknown roaster'}</span>
@@ -613,6 +622,7 @@
           roasters={data.roasters}
           origins={data.origins}
           processingMethods={data.processingMethods}
+          formError={form?.error ?? null}
           oncancel={() => (createModalBean = null)}
           onsuccess={closeCreateModal}
         />

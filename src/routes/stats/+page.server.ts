@@ -67,7 +67,16 @@ export const actions: Actions = {
     } catch {
       return fail(400, { error: 'Could not read that file as an Excel workbook' });
     }
-    const parsed = parseBeanConquerorWorkbook(workbook);
+    // Separate try/catch from the load above: parsing throws a specific,
+    // admin-readable message when the export's column layout no longer
+    // matches what the positional parsers expect, and that has to surface
+    // as a clean 400 rather than an unhandled 500.
+    let parsed;
+    try {
+      parsed = parseBeanConquerorWorkbook(workbook);
+    } catch (err) {
+      return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
+    }
     importBeanConquerorData(getDb(), parsed);
     return { success: true as const };
   },

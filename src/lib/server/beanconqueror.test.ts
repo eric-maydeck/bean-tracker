@@ -25,6 +25,22 @@ const BEANS_HEADERS = [
   '2. Processing', '2. Harvested', '2. Percentage', '2. Bean certification'
 ];
 
+const BREWS_HEADERS = [
+  'Grind Setting', 'Ground Coffee (gr)', 'Brew Temperature', 'Preparation method',
+  'Bean Type', 'Grinder', 'Grind Speed (rpm)', 'Grind Time', 'Profile',
+  'Preparation tools', 'Temperature Time', 'Time', 'Bloom Time / Pre-infusion',
+  'First drip time', 'Amount of water', 'Coffee Type', 'Coffee Concentration',
+  'Rating', 'Notes', 'Beverage quantity', 'Total dissolved solids %',
+  'Extraction Yield %', 'Creation Date', 'Brew Ratio', 'Bean Age', 'Archived',
+  'Bean Id', 'Preparation Id', 'Mill Id', 'Water'
+];
+
+const METHODS_HEADERS = [
+  'Preparation method', 'Name', 'Preparation style', 'Preparation tools', 'Notes', 'Archived', 'Creation date', 'Preparation Id'
+];
+
+const GRINDERS_HEADERS = ['Name', 'Notes', 'Archived', 'Creation date', 'Mill Id'];
+
 const roastDate = new Date(Date.UTC(2026, 5, 1));
 const createdAt = new Date(Date.UTC(2026, 5, 1, 12, 30, 0));
 
@@ -88,15 +104,7 @@ describe('parseBeanConquerorWorkbook', () => {
     const wb = await buildWorkbook({
       Beans: { headers: BEANS_HEADERS, rows: [] },
       Brews: {
-        headers: [
-          'Grind Setting', 'Ground Coffee (gr)', 'Brew Temperature', 'Preparation method',
-          'Bean Type', 'Grinder', 'Grind Speed (rpm)', 'Grind Time', 'Profile',
-          'Preparation tools', 'Temperature Time', 'Time', 'Bloom Time / Pre-infusion',
-          'First drip time', 'Amount of water', 'Coffee Type', 'Coffee Concentration',
-          'Rating', 'Notes', 'Beverage quantity', 'Total dissolved solids %',
-          'Extraction Yield %', 'Creation Date', 'Brew Ratio', 'Bean Age', 'Archived',
-          'Bean Id', 'Preparation Id', 'Mill Id', 'Water'
-        ],
+        headers: BREWS_HEADERS,
         rows: [[
           '1.7.0', 20.1, 91, 'Gabi Master A', 'Type A', 'A4Z', 0, '0', null, null, '0',
           '260', '0', '0', 333.7, null, null, 7.5, null, 0, 0, '0', createdAt,
@@ -104,11 +112,11 @@ describe('parseBeanConquerorWorkbook', () => {
         ]]
       },
       Methods: {
-        headers: ['Preparation method', 'Name', 'Preparation style', 'Preparation tools', 'Notes', 'Archived', 'Creation date', 'Preparation Id'],
+        headers: METHODS_HEADERS,
         rows: [['Gabi Master A', 'V60', 'Pourover', null, null, false, createdAt, 'prep-1']]
       },
       Grinders: {
-        headers: ['Name', 'Notes', 'Archived', 'Creation date', 'Mill Id'],
+        headers: GRINDERS_HEADERS,
         rows: [['A4Z', null, false, createdAt, 'mill-1']]
       }
     });
@@ -119,6 +127,95 @@ describe('parseBeanConquerorWorkbook', () => {
     expect(parsed.methods[0]).toMatchObject({ id: 'prep-1', name: 'V60' });
     expect(parsed.grinders).toHaveLength(1);
     expect(parsed.grinders[0]).toMatchObject({ id: 'mill-1', name: 'A4Z' });
+  });
+});
+
+describe('parseBeanConquerorWorkbook header validation', () => {
+  const beanRow = [
+    'Test Bean', 'Test Roaster', roastDate, 'Filter', 2.5, null, null, 'Single Origin',
+    200, 18, null, null, false, null, null, null, 7, createdAt, 'bean-1', false
+  ];
+
+  it('throws a clear error when a fixed Beans column is renamed', async () => {
+    const headers = [...BEANS_HEADERS];
+    headers[18] = 'Bean UUID'; // column 19, where the parser reads the bean id
+    const wb = await buildWorkbook({
+      Beans: { headers, rows: [beanRow] },
+      Brews: { headers: [], rows: [] },
+      Methods: { headers: [], rows: [] },
+      Grinders: { headers: [], rows: [] }
+    });
+    expect(() => parseBeanConquerorWorkbook(wb)).toThrow(
+      /expected column 19 of the Beans sheet to be 'Bean Id', found 'Bean UUID'/
+    );
+  });
+
+  it('throws rather than silently shifting every field when a column is inserted upstream', async () => {
+    // The actual failure mode this guards against: Bean Conqueror adds a
+    // column mid-sheet, so every later column slides one to the right and a
+    // positional parser writes each value into the wrong field.
+    const headers = [...BEANS_HEADERS];
+    headers.splice(2, 0, 'Roast Profile');
+    const row = [...beanRow];
+    row.splice(2, 0, 'some profile');
+    const wb = await buildWorkbook({
+      Beans: { headers, rows: [row] },
+      Brews: { headers: [], rows: [] },
+      Methods: { headers: [], rows: [] },
+      Grinders: { headers: [], rows: [] }
+    });
+    expect(() => parseBeanConquerorWorkbook(wb)).toThrow(/Bean Conqueror export format has changed/);
+  });
+
+  it('validates the Brews, Methods, and Grinders sheets too', async () => {
+    const brewsHeaders = [...BREWS_HEADERS];
+    brewsHeaders[26] = 'Bean UUID'; // column 27, the brew's bean id
+    const wb = await buildWorkbook({
+      Beans: { headers: BEANS_HEADERS, rows: [] },
+      Brews: {
+        headers: brewsHeaders,
+        rows: [[
+          '1.7.0', 20.1, 91, 'Gabi Master A', 'Type A', 'A4Z', 0, '0', null, null, '0',
+          '260', '0', '0', 333.7, null, null, 7.5, null, 0, 0, '0', createdAt,
+          '1 / 16.60', 43, false, 'bean-1', 'prep-1', 'mill-1', 'Lotus'
+        ]]
+      },
+      Methods: { headers: METHODS_HEADERS, rows: [] },
+      Grinders: { headers: GRINDERS_HEADERS, rows: [] }
+    });
+    expect(() => parseBeanConquerorWorkbook(wb)).toThrow(/column 27 of the Brews sheet to be 'Bean Id'/);
+
+    const grindersHeaders = [...GRINDERS_HEADERS];
+    grindersHeaders[4] = 'Grinder Id';
+    const wb2 = await buildWorkbook({
+      Beans: { headers: BEANS_HEADERS, rows: [] },
+      Brews: { headers: BREWS_HEADERS, rows: [] },
+      Methods: { headers: METHODS_HEADERS, rows: [] },
+      Grinders: { headers: grindersHeaders, rows: [['A4Z', null, false, createdAt, 'mill-1']] }
+    });
+    expect(() => parseBeanConquerorWorkbook(wb2)).toThrow(/column 5 of the Grinders sheet to be 'Mill Id'/);
+  });
+
+  it('accepts headers that differ only in capitalization or surrounding whitespace', async () => {
+    const headers = BEANS_HEADERS.map((h, i) => (i === 18 ? '  bean id  ' : h));
+    const wb = await buildWorkbook({
+      Beans: { headers, rows: [beanRow] },
+      Brews: { headers: [], rows: [] },
+      Methods: { headers: [], rows: [] },
+      Grinders: { headers: [], rows: [] }
+    });
+    expect(parseBeanConquerorWorkbook(wb).beans).toHaveLength(1);
+  });
+
+  it('skips validation for a sheet with no data rows, since nothing can be mis-parsed', async () => {
+    const wb = await buildWorkbook({
+      Beans: { headers: BEANS_HEADERS, rows: [beanRow] },
+      Brews: { headers: ['Totally', 'Different'], rows: [] },
+      Methods: { headers: [], rows: [] },
+      Grinders: { headers: [], rows: [] }
+    });
+    expect(parseBeanConquerorWorkbook(wb).beans).toHaveLength(1);
+    expect(parseBeanConquerorWorkbook(wb).brews).toHaveLength(0);
   });
 });
 
@@ -211,6 +308,25 @@ describe('getUnmatchedBeanConquerorBeans', () => {
     const unmatched = getUnmatchedBeanConquerorBeans(db);
     expect(unmatched).toHaveLength(1);
     expect(unmatched[0]).toMatchObject({ id: 'b1', name: 'New Bean', origin: 'Ethiopia', processing: 'Washed' });
+  });
+
+  it('orders candidates newest-bean-first by their Bean Conqueror creation date', () => {
+    const db = createDb(':memory:');
+    const base = { roaster: 'Roaster A', roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcArchived: false };
+    // All three arrive in one import, so they share an identical
+    // imported_at — only bc_created_at can order them.
+    importBeanConquerorData(db, {
+      beans: [
+        { ...base, id: 'b1', name: 'Oldest', bcCreatedAt: '2026-01-01T00:00:00.000Z' },
+        { ...base, id: 'b2', name: 'Newest', bcCreatedAt: '2026-06-01T00:00:00.000Z' },
+        { ...base, id: 'b3', name: 'Middle', bcCreatedAt: '2026-03-01T00:00:00.000Z' }
+      ],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    expect(getUnmatchedBeanConquerorBeans(db).map((b) => b.name)).toEqual(['Newest', 'Middle', 'Oldest']);
   });
 
   it('excludes a dismissed bean even though it has no matching coffee', () => {

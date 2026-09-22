@@ -100,6 +100,78 @@ export interface ParsedBeanConquerorData {
 const BEAN_FIXED_COLUMN_COUNT = 20;
 const BEAN_ORIGIN_GROUP_SIZE = 10;
 
+// Every parser below reads fixed column INDEXES (`get(19)` is the Bean Id,
+// and so on). That's fast and simple, but it silently writes garbage into
+// the wrong fields if Bean Conqueror ever inserts or reorders a column in
+// their export — every field past the insertion point shifts by one and
+// nothing errors. These arrays pin the expected header text at each of
+// those fixed positions so a format change fails loudly, at import time,
+// instead of quietly corrupting the database.
+//
+// Index 0 of each array is column 1, matching the `get(N)` calls below.
+// The Beans sheet's "Roast type" really does appear twice (columns 4 and
+// 6) in the real export — that's upstream's doing, not a typo here.
+const BEANS_EXPECTED_HEADERS = [
+  'Name', 'Roaster', 'Roast date', 'Roast type', 'Degree of Roast',
+  'Roast type', 'Custom degree of Roast', 'Blend', 'Weight', 'Cost',
+  'Flavour profile', 'Cupping points', 'Decaffeinated', 'Website',
+  'EAN / Articlenumber', 'Notes', 'Rating', 'Creation date',
+  'Bean Id', 'Archived'
+];
+
+const BREWS_EXPECTED_HEADERS = [
+  'Grind Setting', 'Ground Coffee (gr)', 'Brew Temperature', 'Preparation method',
+  'Bean Type', 'Grinder', 'Grind Speed (rpm)', 'Grind Time', 'Profile',
+  'Preparation tools', 'Temperature Time', 'Time', 'Bloom Time / Pre-infusion',
+  'First drip time', 'Amount of water', 'Coffee Type', 'Coffee Concentration',
+  'Rating', 'Notes', 'Beverage quantity', 'Total dissolved solids %',
+  'Extraction Yield %', 'Creation Date', 'Brew Ratio', 'Bean Age',
+  'Archived', 'Bean Id', 'Preparation Id', 'Mill Id', 'Water'
+];
+
+const METHODS_EXPECTED_HEADERS = [
+  'Preparation method', 'Name', 'Preparation style', 'Preparation tools',
+  'Notes', 'Archived', 'Creation date', 'Preparation Id'
+];
+
+const GRINDERS_EXPECTED_HEADERS = ['Name', 'Notes', 'Archived', 'Creation date', 'Mill Id'];
+
+// Whether this sheet has anything the parsers would actually read. A sheet
+// with no data rows can't corrupt anything no matter what its header row
+// says, so header validation skips it — that keeps a genuinely empty
+// (or header-less placeholder) sheet from aborting an otherwise fine
+// import. The row filter matches what the parsers themselves iterate.
+function hasDataRows(worksheet: ExcelJS.Worksheet): boolean {
+  let found = false;
+  worksheet.eachRow({ includeEmpty: false }, (_row, rowNumber) => {
+    if (rowNumber > 1) found = true;
+  });
+  return found;
+}
+
+function validateHeaders(
+  worksheet: ExcelJS.Worksheet | undefined,
+  sheetName: string,
+  expected: string[]
+): void {
+  if (!worksheet || !hasDataRows(worksheet)) return;
+  const headerRow = worksheet.getRow(1);
+  for (let i = 0; i < expected.length; i++) {
+    const column = i + 1;
+    const actual = cellText(headerRow.getCell(column).value);
+    // Compared case-insensitively and trimmed: upstream has been known to
+    // adjust capitalization/spacing without changing the column's meaning,
+    // and only a genuine rename or reorder should abort an import.
+    if ((actual ?? '').toLowerCase() !== expected[i].toLowerCase()) {
+      throw new Error(
+        `Bean Conqueror export format has changed: expected column ${column} of the ${sheetName} sheet to be ` +
+          `'${expected[i]}', found '${actual ?? ''}'. Import aborted — the parsing logic needs to be updated ` +
+          `for the new format.`
+      );
+    }
+  }
+}
+
 function parseBeans(worksheet: ExcelJS.Worksheet | undefined): { beans: ParsedBean[]; beanOrigins: ParsedBeanOrigin[] } {
   const beans: ParsedBean[] = [];
   const beanOrigins: ParsedBeanOrigin[] = [];
@@ -255,6 +327,14 @@ function parseGrinders(worksheet: ExcelJS.Worksheet | undefined): ParsedGrinder[
 }
 
 export function parseBeanConquerorWorkbook(workbook: ExcelJS.Workbook): ParsedBeanConquerorData {
+  // Validate every sheet's headers before parsing a single data row, so a
+  // changed export format aborts the whole import rather than half-writing
+  // shifted values.
+  validateHeaders(workbook.getWorksheet('Beans'), 'Beans', BEANS_EXPECTED_HEADERS);
+  validateHeaders(workbook.getWorksheet('Brews'), 'Brews', BREWS_EXPECTED_HEADERS);
+  validateHeaders(workbook.getWorksheet('Methods'), 'Methods', METHODS_EXPECTED_HEADERS);
+  validateHeaders(workbook.getWorksheet('Grinders'), 'Grinders', GRINDERS_EXPECTED_HEADERS);
+
   const { beans, beanOrigins } = parseBeans(workbook.getWorksheet('Beans'));
   return {
     beans,
@@ -391,7 +471,13 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[
            SELECT 1 FROM coffees c
            WHERE c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date
          )
-       ORDER BY b.imported_at DESC`
+       -- Ordered by the bean's own Bean Conqueror creation timestamp, not
+       -- by imported_at: every row from a single import shares one
+       -- imported_at value (set once per importBeanConquerorData call), so
+       -- ordering by it ties on every row and SQLite falls back to
+       -- arbitrary rowid order. bc_created_at actually differs per bean,
+       -- giving a genuine newest-bean-first list.
+       ORDER BY b.bc_created_at DESC`
     )
     .all() as Array<{
     id: string;
