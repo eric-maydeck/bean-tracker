@@ -12,6 +12,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Bean Tracker - On Deck</title>
+</svelte:head>
+
 <h1>On Deck</h1>
 
 <div class="search-row">

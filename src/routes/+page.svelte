@@ -387,6 +387,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Bean Tracker - Coffees</title>
+</svelte:head>
+
 {#snippet adminActions(coffee)}
   {#if coffee.status === 'archive'}
     <button class="button button-secondary" type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}>

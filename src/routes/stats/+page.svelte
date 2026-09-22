@@ -157,6 +157,10 @@
   }
 </script>
 
+<svelte:head>
+  <title>Bean Tracker - Stats</title>
+</svelte:head>
+
 <h1>Stats</h1>
 
 {#if data.isAdmin}

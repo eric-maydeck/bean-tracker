@@ -3,6 +3,10 @@
   let { form } = $props();
 </script>
 
+<svelte:head>
+  <title>Bean Tracker - Sign In</title>
+</svelte:head>
+
 <h1>Sign in</h1>
 
 {#if form?.error}

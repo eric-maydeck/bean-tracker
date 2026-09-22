@@ -161,6 +161,10 @@
   });
 </script>
 
+<svelte:head>
+  <title>Bean Tracker - {data.coffee.coffee_name}</title>
+</svelte:head>
+
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
 
 <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
