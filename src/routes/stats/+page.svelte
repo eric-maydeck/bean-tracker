@@ -25,7 +25,7 @@
   let breakdownValues = $derived(breakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
 
   function formatGrams(g: number): string {
-    return `${Math.round(g).toLocaleString()}g`;
+    return `${Math.round(g).toLocaleString('en-US')}g`;
   }
 
   function formatKg(g: number): string {
@@ -46,7 +46,7 @@
 <section class="stats-hero">
   <div class="stats-hero-tile">
     <span class="stat-value">{data.stats.totalBacklogCount}</span>
-    <span class="stat-label">bags in the backlog</span>
+    <span class="stat-label">bags on hand</span>
   </div>
   <div class="stats-hero-tile">
     <span class="stat-value">{formatKg(data.stats.totalBacklogGrams)}</span>
@@ -72,7 +72,7 @@
   </div>
   <div class="stat-item">
     <span class="stat-value">{formatGrams(data.stats.unopenedBacklogGrams)}</span>
-    <span class="stat-label">Unopened in backlog</span>
+    <span class="stat-label">Unopened weight</span>
   </div>
   <div class="stat-item">
     <span class="stat-value">{formatGrams(data.stats.totalBacklogGrams)}</span>
@@ -84,7 +84,7 @@
   </div>
   <div class="stat-item">
     <span class="stat-value">{data.stats.unopenedBacklogCount}</span>
-    <span class="stat-label">Unopened in backlog</span>
+    <span class="stat-label">Unopened bags</span>
   </div>
   <div class="stat-item">
     <span class="stat-value">{data.stats.totalBacklogCount}</span>
@@ -183,12 +183,16 @@
 
 <section class="chart-panel">
   <h2>Open vs. backlog</h2>
-  <Chart
-    type="doughnut"
-    labels={['Open', 'Unopened backlog']}
-    values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
-    datasetLabel="Grams"
-  />
+  {#if data.stats.totalBacklogGrams === 0}
+    <p class="text-muted">Nothing in the backlog yet.</p>
+  {:else}
+    <Chart
+      type="doughnut"
+      labels={['Open', 'Unopened backlog']}
+      values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
+      datasetLabel="Grams"
+    />
+  {/if}
 </section>
 
 <section class="chart-panel">
