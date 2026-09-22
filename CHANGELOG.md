@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.19.0...v1.20.0) (2026-09-22)
+
+
+### Features
+
+* expand stats page timing/rate detail and improve chart readability
+
 # [1.19.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.18.0...v1.19.0) (2026-09-22)
 
 
