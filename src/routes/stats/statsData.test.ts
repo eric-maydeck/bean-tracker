@@ -46,7 +46,7 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 2, amount_g: 200, status: 'backlog' }),
       sampleRow({ id: 3, amount_g: 300, status: 'backlog' })
     ];
-    const stats = buildBacklogStats(open, backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats(open, backlog, [], rates, roastLevels, today);
     expect(stats.openedGrams).toBe(100);
     expect(stats.unopenedBacklogGrams).toBe(500);
     expect(stats.totalBacklogGrams).toBe(600);
@@ -55,30 +55,45 @@ describe('buildBacklogStats', () => {
     expect(stats.totalBacklogCount).toBe(3);
   });
 
+  it('sums finished grams and counts from archived rows separately', () => {
+    const archived = [
+      sampleRow({ id: 1, amount_g: 100, status: 'archive' }),
+      sampleRow({ id: 2, amount_g: 250, status: 'archive' })
+    ];
+    const stats = buildBacklogStats([], [], archived, rates, roastLevels, today);
+    expect(stats.finishedGrams).toBe(350);
+    expect(stats.finishedCount).toBe(2);
+    // Finished coffees never count toward the backlog/open totals.
+    expect(stats.totalBacklogGrams).toBe(0);
+    expect(stats.totalBacklogCount).toBe(0);
+  });
+
   it('computes days-to-clear by rounding up, and a UTC clear-by date', () => {
     const backlog = [sampleRow({ amount_g: 730 })]; // not evenly divisible by 72
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.daysToClearSelf).toBe(Math.ceil(730 / 72));
     expect(stats.clearByDateSelf).toBe('2026-10-02'); // today + 11 days
     expect(stats.daysToClearHousehold).toBe(Math.ceil(730 / 144));
   });
 
   it('returns null time-to-clear figures when there is nothing in the backlog', () => {
-    const stats = buildBacklogStats([], [], rates, roastLevels, today);
+    const stats = buildBacklogStats([], [], [], rates, roastLevels, today);
     expect(stats.daysToClearSelf).toBeNull();
     expect(stats.clearByDateSelf).toBeNull();
     expect(stats.daysToClearHousehold).toBeNull();
     expect(stats.clearByDateHousehold).toBeNull();
   });
 
-  it('sums cost only over rows with a non-null cost', () => {
+  it('sums cost only over rows with a non-null cost, and separately sums all-time including archived', () => {
     const backlog = [
       sampleRow({ id: 1, cost: 20 }),
       sampleRow({ id: 2, cost: null }),
       sampleRow({ id: 3, cost: 15 })
     ];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const archived = [sampleRow({ id: 4, cost: 30, status: 'archive' })];
+    const stats = buildBacklogStats([], backlog, archived, rates, roastLevels, today);
     expect(stats.totalCost).toBe(35);
+    expect(stats.totalSpentAllTime).toBe(65);
   });
 
   it('counts distinct roasters across open and backlog', () => {
@@ -87,7 +102,7 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 2, roaster: 'Roaster A' }),
       sampleRow({ id: 3, roaster: 'Roaster B' })
     ];
-    const stats = buildBacklogStats(open, backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats(open, backlog, [], rates, roastLevels, today);
     expect(stats.distinctRoasterCount).toBe(2);
   });
 
@@ -96,15 +111,15 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 1, coffee_name: 'Newer', roast_date: '2026-08-01' }),
       sampleRow({ id: 2, coffee_name: 'Older', roast_date: '2026-06-01' })
     ];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.oldestUnopenedBag?.coffeeName).toBe('Older');
     expect(stats.oldestUnopenedBag?.daysOld).toBe(112); // 2026-06-01 -> 2026-09-21
   });
 
   it('returns a null oldest-bag when the backlog is empty or has no roast dates', () => {
-    expect(buildBacklogStats([], [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+    expect(buildBacklogStats([], [], [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
     const backlog = [sampleRow({ roast_date: null })];
-    expect(buildBacklogStats([], backlog, rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+    expect(buildBacklogStats([], backlog, [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
   });
 
   it('averages bag size over rows with a known weight, skipping nulls', () => {
@@ -113,13 +128,42 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 2, amount_g: null }),
       sampleRow({ id: 3, amount_g: 300 })
     ];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.averageBagSizeGrams).toBe(200);
+  });
+
+  it('averages days from roast to open across open/backlog/archived, skipping rows never opened', () => {
+    const open = [sampleRow({ id: 1, roast_date: '2026-08-01', opened_date: '2026-08-11' })]; // 10 days
+    const backlog = [sampleRow({ id: 2, roast_date: '2026-08-01', opened_date: null })]; // never opened, excluded
+    const archived = [sampleRow({ id: 3, roast_date: '2026-07-01', opened_date: '2026-07-21', status: 'archive' })]; // 20 days
+    const stats = buildBacklogStats(open, backlog, archived, rates, roastLevels, today);
+    expect(stats.averageDaysToOpen).toBe(15);
+  });
+
+  it('returns null averageDaysToOpen when no row has both a roast date and an opened date', () => {
+    const backlog = [sampleRow({ roast_date: '2026-08-01', opened_date: null })];
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
+    expect(stats.averageDaysToOpen).toBeNull();
+  });
+
+  it('averages days from open to finish over archived rows with both dates, skipping ones without', () => {
+    const archived = [
+      sampleRow({ id: 1, opened_date: '2026-06-01', moved_date: '2026-06-11', status: 'archive' }), // 10 days
+      sampleRow({ id: 2, opened_date: '2026-06-01', moved_date: '2026-06-21', status: 'archive' }), // 20 days
+      sampleRow({ id: 3, opened_date: null, moved_date: '2026-06-21', status: 'archive' }) // missing opened_date, excluded
+    ];
+    const stats = buildBacklogStats([], [], archived, rates, roastLevels, today);
+    expect(stats.averageDaysToFinish).toBe(15);
+  });
+
+  it('returns null averageDaysToFinish when there are no archived rows with both dates', () => {
+    const stats = buildBacklogStats([], [], [], rates, roastLevels, today);
+    expect(stats.averageDaysToFinish).toBeNull();
   });
 
   it('buckets a null origin/processing/roast_level into "Unknown"', () => {
     const backlog = [sampleRow({ origin: null, processing: null, roast_level: null })];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.breakdowns.origin.map((e) => e.label)).toEqual(['Unknown']);
     expect(stats.breakdowns.processing.map((e) => e.label)).toEqual(['Unknown']);
     expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Unknown']);
@@ -131,13 +175,13 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 2, roast_level: 'Light' }),
       sampleRow({ id: 3, roast_level: 'Medium' })
     ];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Light', 'Medium', 'Dark']);
   });
 
   it('always includes both Caffeinated and Decaf in the caffeine breakdown, even at zero', () => {
     const backlog = [sampleRow({ decaf: 0 })];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     const labels = stats.breakdowns.caffeine.map((e) => e.label).sort();
     expect(labels).toEqual(['Caffeinated', 'Decaf']);
     const decafEntry = stats.breakdowns.caffeine.find((e) => e.label === 'Decaf');
@@ -149,7 +193,14 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 1, roaster: 'Small', amount_g: 100 }),
       sampleRow({ id: 2, roaster: 'Big', amount_g: 500 })
     ];
-    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.breakdowns.roaster.map((e) => e.label)).toEqual(['Big', 'Small']);
+  });
+
+  it('excludes archived rows from the composition breakdowns', () => {
+    const backlog = [sampleRow({ id: 1, roaster: 'Backlog Roaster' })];
+    const archived = [sampleRow({ id: 2, roaster: 'Archived Roaster', status: 'archive' })];
+    const stats = buildBacklogStats([], backlog, archived, rates, roastLevels, today);
+    expect(stats.breakdowns.roaster.map((e) => e.label)).toEqual(['Backlog Roaster']);
   });
 });

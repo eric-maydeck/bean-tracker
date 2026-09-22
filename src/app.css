@@ -898,11 +898,18 @@ div.compact-row {
   color: var(--color-text-muted);
 }
 
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+/* Each .stat-row is its own flex row, not one shared grid — that guarantees
+   related tiles (e.g. all the gram figures) always land on the same row
+   together, regardless of viewport width, instead of an auto-fill grid
+   wrapping wherever it happens to run out of space. Flex (rather than grid)
+   plus a max-width per tile keeps sparse rows (2-3 tiles) compact and
+   centered instead of stretching to fill the full row width. */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-4);
 }
 
 .stat-item {
@@ -910,6 +917,8 @@ div.compact-row {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: var(--space-4);
+  flex: 1 1 200px;
+  max-width: 280px;
 }
 
 .stat-item .stat-value {
@@ -929,6 +938,17 @@ div.compact-row {
   border-radius: var(--radius);
   padding: var(--space-4);
   margin-bottom: var(--space-6);
+}
+
+.chart-panel-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.chart-panel-row .chart-panel {
+  margin-bottom: 0;
 }
 
 .chart-panel-controls {

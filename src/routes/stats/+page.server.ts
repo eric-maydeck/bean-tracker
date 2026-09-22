@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getStatsRates, setStatsRates } from '$lib/server/db';
-import { getBacklogCoffees, getOpenCoffees } from '$lib/server/coffees';
+import { getArchivedCoffees, getBacklogCoffees, getOpenCoffees } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { requireAdmin } from '$lib/server/auth';
 import { buildBacklogStats } from './statsData';
@@ -11,9 +11,10 @@ export const load: PageServerLoad = () => {
   const today = new Date();
   const openRows = getOpenCoffees(db);
   const backlogRows = getBacklogCoffees(db);
+  const archivedRows = getArchivedCoffees(db);
   const rates = getStatsRates(db);
   const roastLevels = getRoastLevels(db);
-  const stats = buildBacklogStats(openRows, backlogRows, rates, roastLevels, today);
+  const stats = buildBacklogStats(openRows, backlogRows, archivedRows, rates, roastLevels, today);
   return { stats, rates };
 };
 

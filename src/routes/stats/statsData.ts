@@ -12,9 +12,11 @@ export interface BacklogStats {
   openedGrams: number;
   unopenedBacklogGrams: number;
   totalBacklogGrams: number;
+  finishedGrams: number;
   openedCount: number;
   unopenedBacklogCount: number;
   totalBacklogCount: number;
+  finishedCount: number;
 
   daysToClearSelf: number | null;
   clearByDateSelf: string | null;
@@ -22,9 +24,12 @@ export interface BacklogStats {
   clearByDateHousehold: string | null;
 
   totalCost: number;
+  totalSpentAllTime: number;
   distinctRoasterCount: number;
   oldestUnopenedBag: { coffeeName: string; roaster: string; roastDate: string; daysOld: number } | null;
   averageBagSizeGrams: number | null;
+  averageDaysToOpen: number | null;
+  averageDaysToFinish: number | null;
 
   breakdowns: {
     roaster: BreakdownEntry[];
@@ -74,26 +79,63 @@ function buildCaffeineBreakdown(rows: CoffeeRow[]): BreakdownEntry[] {
   return [caffeinated, decaf];
 }
 
+function sumCost(rows: CoffeeRow[]): number {
+  return rows.filter((r) => r.cost != null).reduce((total, r) => total + (r.cost as number), 0);
+}
+
+function averageDaysBetween(
+  rows: CoffeeRow[],
+  startDate: (row: CoffeeRow) => string | null,
+  endDate: (row: CoffeeRow) => string | null
+): number | null {
+  const diffs: number[] = [];
+  for (const row of rows) {
+    const start = startDate(row);
+    const end = endDate(row);
+    if (start != null && end != null) {
+      diffs.push(diffDays(parseDate(end), parseDate(start)));
+    }
+  }
+  if (diffs.length === 0) return null;
+  return diffs.reduce((a, b) => a + b, 0) / diffs.length;
+}
+
 export function buildBacklogStats(
   openRows: CoffeeRow[],
   backlogRows: CoffeeRow[],
+  archivedRows: CoffeeRow[],
   rates: StatsRates,
   roastLevels: RoastLevelRow[],
   today: Date
 ): BacklogStats {
   const allRows = [...openRows, ...backlogRows];
+  const everyRow = [...allRows, ...archivedRows];
 
   const openedGrams = sumGrams(openRows);
   const unopenedBacklogGrams = sumGrams(backlogRows);
   const totalBacklogGrams = openedGrams + unopenedBacklogGrams;
+  const finishedGrams = sumGrams(archivedRows);
   const openedCount = openRows.length;
   const unopenedBacklogCount = backlogRows.length;
   const totalBacklogCount = openedCount + unopenedBacklogCount;
+  const finishedCount = archivedRows.length;
 
   const daysSelf = daysToClear(totalBacklogGrams, rates.selfGPerDay);
   const daysHousehold = daysToClear(totalBacklogGrams, rates.householdGPerDay);
 
-  const totalCost = allRows.filter((r) => r.cost != null).reduce((total, r) => total + (r.cost as number), 0);
+  const totalCost = sumCost(allRows);
+  const totalSpentAllTime = sumCost(everyRow);
+
+  const averageDaysToOpen = averageDaysBetween(
+    everyRow,
+    (r) => r.roast_date,
+    (r) => r.opened_date
+  );
+  const averageDaysToFinish = averageDaysBetween(
+    archivedRows,
+    (r) => r.opened_date,
+    (r) => r.moved_date
+  );
 
   const distinctRoasterCount = new Set(allRows.map((r) => r.roaster)).size;
 
@@ -121,17 +163,22 @@ export function buildBacklogStats(
     openedGrams,
     unopenedBacklogGrams,
     totalBacklogGrams,
+    finishedGrams,
     openedCount,
     unopenedBacklogCount,
     totalBacklogCount,
+    finishedCount,
     daysToClearSelf: daysSelf,
     clearByDateSelf: clearByDate(daysSelf, today),
     daysToClearHousehold: daysHousehold,
     clearByDateHousehold: clearByDate(daysHousehold, today),
     totalCost,
+    totalSpentAllTime,
     distinctRoasterCount,
     oldestUnopenedBag,
     averageBagSizeGrams,
+    averageDaysToOpen,
+    averageDaysToFinish,
     breakdowns: {
       roaster: buildBreakdown(allRows, (r) => r.roaster),
       origin: buildBreakdown(allRows, (r) => r.origin ?? 'Unknown'),

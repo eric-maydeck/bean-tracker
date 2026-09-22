@@ -21,8 +21,16 @@
   let editingRates = $state(false);
 
   let breakdownEntries = $derived(data.stats.breakdowns[dimension]);
-  let breakdownLabels = $derived(breakdownEntries.map((e) => e.label));
-  let breakdownValues = $derived(breakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
+  // Roast Level keeps its intentional light-to-dark order regardless of
+  // metric — every other dimension re-sorts by whichever metric is active,
+  // since "Big" by grams isn't necessarily "Big" by count.
+  let sortedBreakdownEntries = $derived(
+    dimension === 'roastLevel'
+      ? breakdownEntries
+      : [...breakdownEntries].sort((a, b) => (metric === 'grams' ? b.grams - a.grams : b.count - a.count))
+  );
+  let breakdownLabels = $derived(sortedBreakdownEntries.map((e) => e.label));
+  let breakdownValues = $derived(sortedBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
 
   function formatGrams(g: number): string {
     return `${Math.round(g).toLocaleString('en-US')}g`;
@@ -38,6 +46,10 @@
       day: 'numeric',
       timeZone: 'UTC'
     });
+  }
+
+  function formatDays(days: number): string {
+    return `${days.toLocaleString('en-US', { maximumFractionDigits: 1 })}d`;
   }
 </script>
 
@@ -65,7 +77,7 @@
   </div>
 </section>
 
-<section class="stat-grid">
+<section class="stat-row">
   <div class="stat-item">
     <span class="stat-value">{formatGrams(data.stats.openedGrams)}</span>
     <span class="stat-label">Opened</span>
@@ -79,6 +91,13 @@
     <span class="stat-label">Total (opened + unopened)</span>
   </div>
   <div class="stat-item">
+    <span class="stat-value">{formatGrams(data.stats.finishedGrams)}</span>
+    <span class="stat-label">Finished</span>
+  </div>
+</section>
+
+<section class="stat-row">
+  <div class="stat-item">
     <span class="stat-value">{data.stats.openedCount}</span>
     <span class="stat-label">Coffees opened</span>
   </div>
@@ -90,6 +109,13 @@
     <span class="stat-value">{data.stats.totalBacklogCount}</span>
     <span class="stat-label">Total coffees</span>
   </div>
+  <div class="stat-item">
+    <span class="stat-value">{data.stats.finishedCount}</span>
+    <span class="stat-label">Finished</span>
+  </div>
+</section>
+
+<section class="stat-row">
   <div class="stat-item">
     <span class="stat-value">
       {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
@@ -110,14 +136,30 @@
         : ''}
     </span>
   </div>
+</section>
+
+<section class="stat-row">
   <div class="stat-item">
     <span class="stat-value">${data.stats.totalCost.toFixed(2)}</span>
     <span class="stat-label">Tied up in backlog + open</span>
   </div>
   <div class="stat-item">
+    <span class="stat-value">${data.stats.totalSpentAllTime.toFixed(2)}</span>
+    <span class="stat-label">Spent all-time</span>
+  </div>
+  <div class="stat-item">
     <span class="stat-value">{data.stats.distinctRoasterCount}</span>
     <span class="stat-label">Distinct roasters</span>
   </div>
+  {#if data.stats.averageBagSizeGrams !== null}
+    <div class="stat-item">
+      <span class="stat-value">{formatGrams(data.stats.averageBagSizeGrams)}</span>
+      <span class="stat-label">Average bag size</span>
+    </div>
+  {/if}
+</section>
+
+<section class="stat-row">
   {#if data.stats.oldestUnopenedBag}
     <div class="stat-item">
       <span class="stat-value">{data.stats.oldestUnopenedBag.daysOld}d old</span>
@@ -126,10 +168,16 @@
       >
     </div>
   {/if}
-  {#if data.stats.averageBagSizeGrams !== null}
+  {#if data.stats.averageDaysToOpen !== null}
     <div class="stat-item">
-      <span class="stat-value">{formatGrams(data.stats.averageBagSizeGrams)}</span>
-      <span class="stat-label">Average bag size</span>
+      <span class="stat-value">{formatDays(data.stats.averageDaysToOpen)}</span>
+      <span class="stat-label">Average time in backlog before opening</span>
+    </div>
+  {/if}
+  {#if data.stats.averageDaysToFinish !== null}
+    <div class="stat-item">
+      <span class="stat-value">{formatDays(data.stats.averageDaysToFinish)}</span>
+      <span class="stat-label">Average time to finish an opened bag</span>
     </div>
   {/if}
 </section>
@@ -181,19 +229,35 @@
   </div>
 {/if}
 
-<section class="chart-panel">
-  <h2>Open vs. backlog</h2>
-  {#if data.stats.totalBacklogGrams === 0}
-    <p class="text-muted">Nothing in the backlog yet.</p>
-  {:else}
-    <Chart
-      type="doughnut"
-      labels={['Open', 'Unopened backlog']}
-      values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
-      datasetLabel="Grams"
-    />
-  {/if}
-</section>
+<div class="chart-panel-row">
+  <section class="chart-panel">
+    <h2>Open vs. backlog</h2>
+    {#if data.stats.totalBacklogGrams === 0}
+      <p class="text-muted">Nothing in the backlog yet.</p>
+    {:else}
+      <Chart
+        type="doughnut"
+        labels={['Open', 'Unopened backlog']}
+        values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
+        datasetLabel="Grams"
+      />
+    {/if}
+  </section>
+
+  <section class="chart-panel">
+    <h2>Finished vs. still have</h2>
+    {#if data.stats.finishedGrams === 0 && data.stats.totalBacklogGrams === 0}
+      <p class="text-muted">Nothing tracked yet.</p>
+    {:else}
+      <Chart
+        type="doughnut"
+        labels={['Finished', 'Still have']}
+        values={[data.stats.finishedGrams, data.stats.totalBacklogGrams]}
+        datasetLabel="Grams"
+      />
+    {/if}
+  </section>
+</div>
 
 <section class="chart-panel">
   <h2>Composition</h2>

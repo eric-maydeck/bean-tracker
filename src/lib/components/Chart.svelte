@@ -1,6 +1,36 @@
 <script lang="ts">
-  import { Chart as ChartJS, registerables } from 'chart.js';
-  ChartJS.register(...registerables);
+  import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
+
+  // Only draws for horizontal bar charts (this app's composition breakdown) —
+  // Chart.js has no built-in "show the value next to each bar" option, and
+  // pulling in the chartjs-plugin-datalabels package for one small feature
+  // isn't worth a new dependency when the plugin API already covers it.
+  const valueLabelsPlugin: Plugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw(chart) {
+      if (chart.config.type !== 'bar') return;
+      const { ctx } = chart;
+      const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        if (meta.hidden) return;
+        meta.data.forEach((element, index) => {
+          const value = dataset.data[index];
+          if (value == null) return;
+          const { x, y } = element.tooltipPosition(true);
+          ctx.save();
+          ctx.fillStyle = textColor;
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(Number(value).toLocaleString('en-US'), x + 6, y);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
+  ChartJS.register(...registerables, valueLabelsPlugin);
 
   let {
     type,
@@ -54,6 +84,9 @@
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 400 },
+        // Leaves room on the right so the value-label plugin's text doesn't
+        // get clipped when a bar's own value already reaches the chart edge.
+        layout: type === 'bar' ? { padding: { right: 48 } } : undefined,
         plugins: {
           legend: { display: type === 'doughnut', labels: { color: textColor } },
           tooltip: { enabled: true }
