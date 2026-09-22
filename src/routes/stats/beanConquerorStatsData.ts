@@ -57,7 +57,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     `SELECT bean.roaster AS label, AVG(brew.rating) AS averageRating, COUNT(*) AS brewCount
      FROM beanconqueror_brews brew
      JOIN beanconqueror_beans bean ON brew.bean_id = bean.id
-     WHERE bean.roaster IS NOT NULL
+     WHERE bean.roaster IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY bean.roaster
      ORDER BY averageRating DESC`
   );
@@ -72,7 +72,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      FROM beanconqueror_brews brew
      JOIN beanconqueror_beans bean ON brew.bean_id = bean.id
      JOIN beanconqueror_bean_origins origin ON origin.bean_id = bean.id AND origin.component_number = 1
-     WHERE origin.country IS NOT NULL
+     WHERE origin.country IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY origin.country
      ORDER BY averageRating DESC`
   );
@@ -83,7 +83,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      FROM beanconqueror_brews brew
      JOIN beanconqueror_beans bean ON brew.bean_id = bean.id
      JOIN beanconqueror_bean_origins origin ON origin.bean_id = bean.id AND origin.component_number = 1
-     WHERE origin.processing IS NOT NULL
+     WHERE origin.processing IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY origin.processing
      ORDER BY averageRating DESC`
   );
@@ -99,7 +99,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      FROM beanconqueror_brews brew
      JOIN beanconqueror_beans bean ON brew.bean_id = bean.id
      JOIN roast_levels rl ON rl.degrees_of_roast = bean.degree_of_roast
-     WHERE bean.degree_of_roast IS NOT NULL
+     WHERE bean.degree_of_roast IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY rl.roast_level
      ORDER BY averageRating DESC`
   );
@@ -109,7 +109,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     `SELECT method.name AS label, AVG(brew.rating) AS averageRating, COUNT(*) AS brewCount
      FROM beanconqueror_brews brew
      JOIN beanconqueror_methods method ON brew.preparation_id = method.id
-     WHERE method.name IS NOT NULL
+     WHERE method.name IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY method.name
      ORDER BY averageRating DESC`
   );
@@ -119,7 +119,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     `SELECT grinder.name AS label, AVG(brew.rating) AS averageRating, COUNT(*) AS brewCount
      FROM beanconqueror_brews brew
      JOIN beanconqueror_grinders grinder ON brew.mill_id = grinder.id
-     WHERE grinder.name IS NOT NULL
+     WHERE grinder.name IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY grinder.name
      ORDER BY averageRating DESC`
   );

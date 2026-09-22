@@ -47,4 +47,43 @@ describe('buildBeanConquerorStats', () => {
     expect(stats.averageRating).toBeNull();
     expect(stats.favoritesByRoaster).toEqual([]);
   });
+
+  it('excludes groups whose only brews are unrated, rather than surfacing a null averageRating', () => {
+    const db = createDb(':memory:');
+    seed(db);
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b3', name: 'Bean C', roaster: 'Roaster C', roastDate: '2026-06-01', roastType: null, degreeOfRoast: 5.0, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 20, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [
+        { beanId: 'b3', componentNumber: 1, country: 'Kenya', region: null, farm: null, farmer: null, elevation: null, variety: null, processing: 'Honey', certification: null, harvested: null, percentage: null }
+      ],
+      methods: [
+        { id: 'm2', preparationMethod: 'AeroPress', name: 'AeroPress', preparationStyle: null, preparationTools: null, notes: null, bcArchived: false, bcCreatedAt: null }
+      ],
+      grinders: [{ id: 'g2', name: 'Niche Zero', notes: null, bcArchived: false, bcCreatedAt: null }],
+      brews: [
+        { bcCreatedAt: '2026-06-12T08:00:00.000Z', beanId: 'b3', preparationId: 'm2', millId: 'g2', grindSetting: null, groundCoffeeG: 20, brewTemperature: 92, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: 300, coffeeType: null, coffeeConcentration: null, rating: null, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null }
+      ]
+    });
+
+    const stats = buildBeanConquerorStats(db);
+
+    // The unrated brew still counts toward the raw totals...
+    expect(stats.totalBrews).toBe(3);
+    expect(stats.totalBeans).toBe(3);
+    // ...but since every brew for "Roaster C" / Kenya / Honey / AeroPress /
+    // Niche Zero / Dark is unrated, AVG(rating) over that group would be SQL
+    // NULL — those groups must be excluded from the RatedGroup breakdowns
+    // entirely rather than surfacing with a `null` averageRating (the
+    // `RatedGroup` type declares it as `number`, not `number | null`).
+    expect(stats.favoritesByRoaster.find((g) => g.label === 'Roaster C')).toBeUndefined();
+    expect(stats.favoritesByOrigin.find((g) => g.label === 'Kenya')).toBeUndefined();
+    expect(stats.favoritesByProcessing.find((g) => g.label === 'Honey')).toBeUndefined();
+    expect(stats.favoritesByRoastLevel.find((g) => g.label === 'Dark')).toBeUndefined();
+    expect(stats.byMethod.find((g) => g.label === 'AeroPress')).toBeUndefined();
+    expect(stats.byGrinder.find((g) => g.label === 'Niche Zero')).toBeUndefined();
+    // Existing rated groups are unaffected by the new unrated brew.
+    expect(stats.favoritesByRoaster.find((g) => g.label === 'Roaster A')?.averageRating).toBe(8);
+  });
 });
