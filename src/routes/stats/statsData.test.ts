@@ -1,0 +1,155 @@
+import { describe, it, expect } from 'vitest';
+import type { CoffeeRow, RoastLevelRow } from '$lib/types';
+import { buildBacklogStats } from './statsData';
+
+function sampleRow(overrides: Partial<CoffeeRow> = {}): CoffeeRow {
+  return {
+    id: 1,
+    roaster: 'Test Roasters',
+    coffee_name: 'Sample Blend',
+    origin: 'Ethiopia',
+    roast_level: 'Light',
+    processing: 'Washed',
+    amount_g: 200,
+    cost: 18,
+    roast_date: '2026-06-01',
+    frozen_start_date: null,
+    frozen_end_date: null,
+    rest_days_low: 10,
+    rest_days_high: 20,
+    image_url: null,
+    slug: 'test-roasters-sample-blend',
+    opened_date: null,
+    drank: 0,
+    status: 'backlog',
+    moved_date: null,
+    decaf: 0,
+    created_at: '2026-01-01T00:00:00.000Z',
+    updated_at: '2026-01-01T00:00:00.000Z',
+    ...overrides
+  };
+}
+
+const roastLevels: RoastLevelRow[] = [
+  { roast_level: 'Light', degrees_of_roast: 2.5 },
+  { roast_level: 'Medium', degrees_of_roast: 4.0 },
+  { roast_level: 'Dark', degrees_of_roast: 5.0 }
+];
+
+const rates = { selfGPerDay: 72, householdGPerDay: 144 };
+const today = new Date('2026-09-21T00:00:00Z');
+
+describe('buildBacklogStats', () => {
+  it('sums grams and counts across open and backlog separately and combined', () => {
+    const open = [sampleRow({ id: 1, amount_g: 100, status: 'open' })];
+    const backlog = [
+      sampleRow({ id: 2, amount_g: 200, status: 'backlog' }),
+      sampleRow({ id: 3, amount_g: 300, status: 'backlog' })
+    ];
+    const stats = buildBacklogStats(open, backlog, rates, roastLevels, today);
+    expect(stats.openedGrams).toBe(100);
+    expect(stats.unopenedBacklogGrams).toBe(500);
+    expect(stats.totalBacklogGrams).toBe(600);
+    expect(stats.openedCount).toBe(1);
+    expect(stats.unopenedBacklogCount).toBe(2);
+    expect(stats.totalBacklogCount).toBe(3);
+  });
+
+  it('computes days-to-clear by rounding up, and a UTC clear-by date', () => {
+    const backlog = [sampleRow({ amount_g: 730 })]; // not evenly divisible by 72
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.daysToClearSelf).toBe(Math.ceil(730 / 72));
+    expect(stats.clearByDateSelf).toBe('2026-10-02'); // today + 11 days
+    expect(stats.daysToClearHousehold).toBe(Math.ceil(730 / 144));
+  });
+
+  it('returns null time-to-clear figures when there is nothing in the backlog', () => {
+    const stats = buildBacklogStats([], [], rates, roastLevels, today);
+    expect(stats.daysToClearSelf).toBeNull();
+    expect(stats.clearByDateSelf).toBeNull();
+    expect(stats.daysToClearHousehold).toBeNull();
+    expect(stats.clearByDateHousehold).toBeNull();
+  });
+
+  it('sums cost only over rows with a non-null cost', () => {
+    const backlog = [
+      sampleRow({ id: 1, cost: 20 }),
+      sampleRow({ id: 2, cost: null }),
+      sampleRow({ id: 3, cost: 15 })
+    ];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.totalCost).toBe(35);
+  });
+
+  it('counts distinct roasters across open and backlog', () => {
+    const open = [sampleRow({ id: 1, roaster: 'Roaster A' })];
+    const backlog = [
+      sampleRow({ id: 2, roaster: 'Roaster A' }),
+      sampleRow({ id: 3, roaster: 'Roaster B' })
+    ];
+    const stats = buildBacklogStats(open, backlog, rates, roastLevels, today);
+    expect(stats.distinctRoasterCount).toBe(2);
+  });
+
+  it('finds the oldest unopened bag by roast date and its days-old count', () => {
+    const backlog = [
+      sampleRow({ id: 1, coffee_name: 'Newer', roast_date: '2026-08-01' }),
+      sampleRow({ id: 2, coffee_name: 'Older', roast_date: '2026-06-01' })
+    ];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.oldestUnopenedBag?.coffeeName).toBe('Older');
+    expect(stats.oldestUnopenedBag?.daysOld).toBe(112); // 2026-06-01 -> 2026-09-21
+  });
+
+  it('returns a null oldest-bag when the backlog is empty or has no roast dates', () => {
+    expect(buildBacklogStats([], [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+    const backlog = [sampleRow({ roast_date: null })];
+    expect(buildBacklogStats([], backlog, rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+  });
+
+  it('averages bag size over rows with a known weight, skipping nulls', () => {
+    const backlog = [
+      sampleRow({ id: 1, amount_g: 100 }),
+      sampleRow({ id: 2, amount_g: null }),
+      sampleRow({ id: 3, amount_g: 300 })
+    ];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.averageBagSizeGrams).toBe(200);
+  });
+
+  it('buckets a null origin/processing/roast_level into "Unknown"', () => {
+    const backlog = [sampleRow({ origin: null, processing: null, roast_level: null })];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.breakdowns.origin.map((e) => e.label)).toEqual(['Unknown']);
+    expect(stats.breakdowns.processing.map((e) => e.label)).toEqual(['Unknown']);
+    expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Unknown']);
+  });
+
+  it('orders the roast-level breakdown by roast order, not alphabetically', () => {
+    const backlog = [
+      sampleRow({ id: 1, roast_level: 'Dark' }),
+      sampleRow({ id: 2, roast_level: 'Light' }),
+      sampleRow({ id: 3, roast_level: 'Medium' })
+    ];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Light', 'Medium', 'Dark']);
+  });
+
+  it('always includes both Caffeinated and Decaf in the caffeine breakdown, even at zero', () => {
+    const backlog = [sampleRow({ decaf: 0 })];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    const labels = stats.breakdowns.caffeine.map((e) => e.label).sort();
+    expect(labels).toEqual(['Caffeinated', 'Decaf']);
+    const decafEntry = stats.breakdowns.caffeine.find((e) => e.label === 'Decaf');
+    expect(decafEntry).toEqual({ label: 'Decaf', grams: 0, count: 0 });
+  });
+
+  it('sorts roaster/origin/processing breakdowns by grams descending', () => {
+    const backlog = [
+      sampleRow({ id: 1, roaster: 'Small', amount_g: 100 }),
+      sampleRow({ id: 2, roaster: 'Big', amount_g: 500 })
+    ];
+    const stats = buildBacklogStats([], backlog, rates, roastLevels, today);
+    expect(stats.breakdowns.roaster.map((e) => e.label)).toEqual(['Big', 'Small']);
+  });
+});

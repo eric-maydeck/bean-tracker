@@ -19,22 +19,22 @@ export interface ComputedFields {
 
 export type CoffeeWithComputed = CoffeeRow & ComputedFields;
 
-function parseDate(value: string): Date {
+export function parseDate(value: string): Date {
   const [y, m, d] = value.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, d));
 }
 
-function addDays(date: Date, days: number): Date {
+export function addDays(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
   return result;
 }
 
-function diffDays(a: Date, b: Date): number {
+export function diffDays(a: Date, b: Date): number {
   return Math.round((a.getTime() - b.getTime()) / 86_400_000);
 }
 
-function formatDate(date: Date): string {
+export function formatDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
