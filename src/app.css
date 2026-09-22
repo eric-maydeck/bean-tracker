@@ -12,6 +12,14 @@
   --color-urgency-low: #16a34a;
   --color-urgency-mid: #f59e0b;
   --color-urgency-high: #dc2626;
+  --chart-color-1: #8a5a3b;
+  --chart-color-2: #2f7d6b;
+  --chart-color-3: #c77b2e;
+  --chart-color-4: #4f6d9a;
+  --chart-color-5: #a24f79;
+  --chart-color-6: #6b8e23;
+  --chart-color-7: #b23b3b;
+  --chart-color-8: #6a5acd;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -41,6 +49,14 @@
     --color-urgency-low: #4ade80;
     --color-urgency-mid: #fbbf24;
     --color-urgency-high: #f87171;
+    --chart-color-1: #d99a6c;
+    --chart-color-2: #5fb89e;
+    --chart-color-3: #e8a95c;
+    --chart-color-4: #7d9bcf;
+    --chart-color-5: #cf82ab;
+    --chart-color-6: #a3c15c;
+    --chart-color-7: #e07a7a;
+    --chart-color-8: #a79ce0;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
@@ -60,6 +76,14 @@
   --color-urgency-low: #4ade80;
   --color-urgency-mid: #fbbf24;
   --color-urgency-high: #f87171;
+  --chart-color-1: #d99a6c;
+  --chart-color-2: #5fb89e;
+  --chart-color-3: #e8a95c;
+  --chart-color-4: #7d9bcf;
+  --chart-color-5: #cf82ab;
+  --chart-color-6: #a3c15c;
+  --chart-color-7: #e07a7a;
+  --chart-color-8: #a79ce0;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
 }
@@ -840,4 +864,9 @@ div.compact-row {
     gap: var(--space-3);
     min-width: 160px;
   }
+}
+
+.chart-container {
+  position: relative;
+  height: 320px;
 }
