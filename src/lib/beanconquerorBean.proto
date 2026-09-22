@@ -1,0 +1,124 @@
+syntax = "proto3";
+package beanconqueror;
+
+message BeanProto {
+  string name = 1;
+  optional string buyDate = 2;
+  optional string roastingDate = 3;
+  optional string note = 4;
+
+  optional string roaster = 5;
+  optional Config config = 6;
+  optional Roast roast = 7;
+  optional uint64 roast_range = 8;
+  optional BeanMix beanMix = 9;
+
+  optional string roast_custom = 10;
+  optional string aromatics = 11;
+  optional double weight = 12;
+  optional bool finished = 13;
+  optional double cost = 14;
+  repeated string attachments = 15;
+  optional string cupping_points = 16;
+  optional bool decaffeinated = 17;
+  optional string url = 18;
+  optional string ean_article_number = 19;
+
+  optional double rating = 20;
+
+  repeated BeanInformation bean_information = 21;
+
+  optional BeanRoastingType bean_roasting_type = 22;
+  optional BeanRoastInformation bean_roast_information = 23;
+
+  optional string qr_code = 24;
+
+  optional bool favourite = 25;
+  optional bool shared = 26;
+  optional ICupping cupping = 27;
+  optional IFlavor cupped_flavor = 28;
+  repeated string external_images = 29;
+}
+
+message Config {
+  string uuid = 1;
+  uint64 unix_timestamp = 2;
+}
+
+message BeanInformation {
+  optional string country = 1;
+  optional string region = 2;
+  optional string farm = 3;
+  optional string farmer = 4;
+  optional string elevation = 5;
+  optional string harvest_time = 6;
+  optional string variety = 7;
+  optional string processing = 8;
+  optional string certification = 9;
+  optional double percentage = 10;
+  optional double purchasing_price = 11;
+  optional double fob_price = 12;
+}
+
+message BeanRoastInformation {
+  optional double drop_temperature = 1;
+  optional double roast_length = 2;
+  optional string roaster_machine = 3;
+  optional double green_bean_weight = 4;
+  optional double outside_temperature = 5;
+  optional double humidity = 6;
+  optional string bean_uuid = 7;
+  optional double first_crack_minute = 8;
+  optional double first_crack_temperature = 9;
+  optional double second_crack_minute = 10;
+  optional double second_crack_temperature = 11;
+}
+
+message ICupping {
+  optional double dry_fragrance = 1;
+  optional double wet_aroma = 2;
+  optional double brightness = 3;
+  optional double flavor = 4;
+  optional double body = 5;
+  optional double finish = 6;
+  optional double sweetness = 7;
+  optional double clean_cup = 8;
+  optional double complexity = 9;
+  optional double uniformity = 10;
+  optional double cuppers_correction = 11;
+}
+
+message IFlavor {
+  repeated uint64 predefined_flavors = 1;
+  repeated string custom_flavors = 2;
+}
+
+enum Roast {
+  UNKNOWN_ROAST = 0;
+  CINNAMON_ROAST = 1;
+  AMERICAN_ROAST = 2;
+  NEW_ENGLAND_ROAST = 3;
+  HALF_CITY_ROAST = 4;
+  MODERATE_LIGHT_ROAST = 5;
+  CITY_ROAST = 6;
+  CITY_PLUS_ROAST = 7;
+  FULL_CITY_ROAST = 8;
+  FULL_CITY_PLUS_ROAST = 9;
+  ITALIAN_ROAST = 10;
+  VIEANNA_ROAST = 11;
+  FRENCH_ROAST = 12;
+  CUSTOM_ROAST = 13;
+}
+
+enum BeanMix {
+  UNKNOWN_BEAN_MIX = 0;
+  SINGLE_ORIGIN = 1;
+  BLEND = 2;
+}
+
+enum BeanRoastingType {
+  UNKNOWN_BEAN_ROASTING_TYPE = 0;
+  FILTER = 1;
+  ESPRESSO = 2;
+  OMNI = 3;
+}

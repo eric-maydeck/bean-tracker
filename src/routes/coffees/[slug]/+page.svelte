@@ -6,8 +6,19 @@
   import { originWithFlag } from '$lib/countryFlags';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
+  import { buildShareUrl } from '$lib/beanConquerorShare';
+  import QRCode from 'qrcode';
 
   let { data } = $props();
+
+  let shareUrl = $state<string | null>(null);
+  let shareQrDataUrl = $state<string | null>(null);
+
+  async function shareToBeanConqueror() {
+    const url = await buildShareUrl(data.coffee, data.roastLevels);
+    shareUrl = url;
+    shareQrDataUrl = await QRCode.toDataURL(url);
+  }
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
@@ -145,6 +156,16 @@
 </script>
 
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
+
+<button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
+  Send to Bean Conqueror
+</button>
+{#if shareUrl && shareQrDataUrl}
+  <div class="chart-panel">
+    <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="200" height="200" />
+    <a href={shareUrl}>{shareUrl}</a>
+  </div>
+{/if}
 
 {#if data.isAdmin}
   <div class="search-row">
