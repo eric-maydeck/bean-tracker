@@ -25,6 +25,12 @@ describe('cell parsing helpers', () => {
     expect(excelSerialToISODate(null)).toBeNull();
   });
 
+  it('excelSerialToISODate converts a slash-formatted date string (as seen in Bean Conqueror exports)', () => {
+    expect(excelSerialToISODate('02/09/2026')).toBe('2026-02-09');
+    expect(excelSerialToISODate('not a date')).toBeNull();
+    expect(excelSerialToISODate('')).toBeNull();
+  });
+
   it('cellBoolean returns true only for the boolean true value', () => {
     expect(cellBoolean(true)).toBe(true);
     expect(cellBoolean('true')).toBe(false);
@@ -39,6 +45,11 @@ describe('cell parsing helpers', () => {
     );
     expect(excelSerialToISOTimestamp('2026-01-01')).toBeNull();
     expect(excelSerialToISOTimestamp(null)).toBeNull();
+  });
+
+  it('excelSerialToISOTimestamp converts a slash-formatted timestamp string (as seen in Bean Conqueror exports)', () => {
+    expect(excelSerialToISOTimestamp('09/21/2026 15:57:39')).toBe('2026-09-21T15:57:39.000Z');
+    expect(excelSerialToISOTimestamp('not a timestamp')).toBeNull();
   });
 });
 
