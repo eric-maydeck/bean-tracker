@@ -6,8 +6,6 @@
   import { originWithFlag } from '$lib/countryFlags';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
-  import { buildShareUrl } from '$lib/beanConquerorShare';
-  import QRCode from 'qrcode';
 
   let { data } = $props();
 
@@ -15,6 +13,14 @@
   let shareQrDataUrl = $state<string | null>(null);
 
   async function shareToBeanConqueror() {
+    // Imported here rather than at the top of the module on purpose:
+    // protobufjs and qrcode together are ~160KB of JS that every visitor to
+    // every coffee page would otherwise download, for a button most of them
+    // never press. Dynamic import moves both into a chunk fetched on click.
+    const [{ buildShareUrl }, { default: QRCode }] = await Promise.all([
+      import('$lib/beanConquerorShare'),
+      import('qrcode')
+    ]);
     const url = await buildShareUrl(data.coffee, data.roastLevels);
     shareUrl = url;
     shareQrDataUrl = await QRCode.toDataURL(url);
