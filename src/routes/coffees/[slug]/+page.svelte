@@ -158,7 +158,7 @@
 <a class="button button-secondary" href="/">&larr; Back to collection</a>
 
 <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
-  Send to Bean Conqueror
+  Import into Bean Conqueror
 </button>
 {#if shareUrl && shareQrDataUrl}
   <div class="chart-panel">
