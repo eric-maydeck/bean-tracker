@@ -1,3 +1,10 @@
+## [1.24.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.1...v1.24.2) (2026-09-22)
+
+
+### Bug Fixes
+
+* center stats tile subtext symmetrically between value and label
+
 ## [1.24.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.0...v1.24.1) (2026-09-22)
 
 
