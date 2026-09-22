@@ -1,3 +1,31 @@
+# [1.22.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.21.0...v1.22.0) (2026-09-22)
+
+
+### Bug Fixes
+
+* exclude unrated-only groups from Bean Conqueror RatedGroup breakdowns
+* match Bean Conqueror's shipped proto wire types for weight/cost
+* parse slash-formatted date/timestamp strings from Bean Conqueror xlsx exports
+* rename Bean Conqueror share button to "Import into Bean Conqueror"
+* require a minimum brew count for rated Bean Conqueror groups
+* use expression-based unique index for beanconqueror_brews identity instead of trigger
+* validate export headers and tidy the candidate list
+
+
+### Features
+
+* add Bean Conqueror candidate list, Dismiss, and create-coffee modal
+* add Bean Conqueror data model and shared Excel parsing helpers
+* add Bean Conqueror stats and breakdowns tabs
+* add Bean Conqueror xlsx import action and upload UI
+* add Bean Conqueror xlsx parsing and diff/upsert import
+* add Send to Bean Conqueror QR/link share button
+
+
+### Performance Improvements
+
+* load protobufjs and qrcode only when sharing a coffee
+
 # [1.21.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.20.2...v1.21.0) (2026-09-22)
 
 
