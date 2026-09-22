@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import ExcelJS from 'exceljs';
-import { parseBeanConquerorWorkbook, importBeanConquerorData } from './beanconqueror';
+import { parseBeanConquerorWorkbook, importBeanConquerorData, getUnmatchedBeanConquerorBeans, dismissBeanConquerorBean } from './beanconqueror';
+import { createCoffee } from './coffees';
 import { createDb } from './db';
 
 async function buildWorkbook(sheets: Record<string, { headers: string[]; rows: unknown[][] }>): Promise<ExcelJS.Workbook> {
@@ -167,5 +168,78 @@ describe('importBeanConquerorData', () => {
     const rows = db.prepare('SELECT rating FROM beanconqueror_brews').all() as { rating: number }[];
     expect(rows).toHaveLength(1);
     expect(rows[0].rating).toBe(9);
+  });
+});
+
+describe('getUnmatchedBeanConquerorBeans', () => {
+  it('excludes a bean that matches an existing coffee by roaster, name, and roast date', () => {
+    const db = createDb(':memory:');
+    createCoffee(db, {
+      roaster: 'Roaster A',
+      coffee_name: 'Bean X',
+      origin: null,
+      roast_level: null,
+      processing: null,
+      amount_g: null,
+      cost: null,
+      roast_date: '2026-06-01',
+      frozen_start_date: null,
+      frozen_end_date: null,
+      rest_days_low: null,
+      rest_days_high: null,
+      image_url: null
+    });
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'Bean X', roaster: 'Roaster A', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    expect(getUnmatchedBeanConquerorBeans(db)).toHaveLength(0);
+  });
+
+  it('includes a bean with no matching coffee, with its first origin component attached', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'New Bean', roaster: 'Roaster A', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 18, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }],
+      beanOrigins: [{ beanId: 'b1', componentNumber: 1, country: 'Ethiopia', region: null, farm: null, farmer: null, elevation: null, variety: null, processing: 'Washed', certification: null, harvested: null, percentage: null }],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    const unmatched = getUnmatchedBeanConquerorBeans(db);
+    expect(unmatched).toHaveLength(1);
+    expect(unmatched[0]).toMatchObject({ id: 'b1', name: 'New Bean', origin: 'Ethiopia', processing: 'Washed' });
+  });
+
+  it('excludes a dismissed bean even though it has no matching coffee', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'Dismissed Bean', roaster: null, roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    dismissBeanConquerorBean(db, 'b1');
+    expect(getUnmatchedBeanConquerorBeans(db)).toHaveLength(0);
+  });
+});
+
+describe('dismissBeanConquerorBean', () => {
+  it('sets dismissed_at without touching other fields', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [{ id: 'b1', name: 'Bean', roaster: null, roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    dismissBeanConquerorBean(db, 'b1');
+    const row = db.prepare('SELECT name, dismissed_at FROM beanconqueror_beans WHERE id = ?').get('b1') as { name: string; dismissed_at: string };
+    expect(row.name).toBe('Bean');
+    expect(row.dismissed_at).toBeTruthy();
   });
 });

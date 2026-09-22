@@ -1,9 +1,37 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import Chart from '$lib/components/Chart.svelte';
+  import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import type { UnmatchedBean } from '$lib/server/beanconqueror';
+  import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  let createModalBean = $state<UnmatchedBean | null>(null);
+
+  function prefillFor(bean: UnmatchedBean): Partial<CoffeeRow> {
+    return {
+      roaster: bean.roaster ?? '',
+      coffee_name: bean.name,
+      origin: bean.origin,
+      processing: bean.processing,
+      amount_g: bean.weightG,
+      cost: bean.cost,
+      roast_date: bean.roastDate,
+      decaf: bean.decaffeinated ? 1 : 0
+    };
+  }
+
+  function openCreateModal(bean: UnmatchedBean) {
+    createModalBean = bean;
+  }
+
+  async function closeCreateModal() {
+    createModalBean = null;
+    await invalidateAll();
+  }
 
   type Dimension = 'roaster' | 'origin' | 'processing' | 'roastLevel' | 'caffeine';
   type Metric = 'grams' | 'count';
@@ -353,5 +381,53 @@
     {#if form?.error}
       <p class="badge badge-urgent">{form.error}</p>
     {/if}
+  {/if}
+
+  {#if data.unmatchedBeans.length > 0}
+    <h3>Not yet tracked ({data.unmatchedBeans.length})</h3>
+    <div class="stat-row">
+      {#each data.unmatchedBeans as bean (bean.id)}
+        <div class="stat-item">
+          <span class="stat-value">{bean.name}</span>
+          <span class="stat-label">{bean.roaster ?? 'Unknown roaster'}</span>
+          {#if data.isAdmin}
+            <div class="chart-panel-controls">
+              <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>
+                Create coffee
+              </button>
+              <form
+                method="POST"
+                action="?/dismissBeanConqueror"
+                use:enhance={() => {
+                  return async ({ update }) => {
+                    await update();
+                  };
+                }}
+              >
+                <input type="hidden" name="id" value={bean.id} />
+                <button class="button button-danger" type="submit">Dismiss</button>
+              </form>
+            </div>
+          {/if}
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if createModalBean}
+    <div class="modal-backdrop">
+      <div class="modal">
+        <h2>Create coffee from {createModalBean.name}</h2>
+        <CoffeeForm
+          prefill={prefillFor(createModalBean)}
+          roastLevels={data.roastLevels}
+          roasters={data.roasters}
+          origins={data.origins}
+          processingMethods={data.processingMethods}
+          oncancel={() => (createModalBean = null)}
+          onsuccess={closeCreateModal}
+        />
+      </div>
+    </div>
   {/if}
 </section>

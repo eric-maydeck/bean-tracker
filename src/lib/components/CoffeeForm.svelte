@@ -5,6 +5,7 @@
 
   let {
     coffee = null,
+    prefill = null,
     roastLevels,
     roasters = [],
     origins = [],
@@ -15,6 +16,7 @@
     onstage = null
   }: {
     coffee?: CoffeeRow | null;
+    prefill?: Partial<CoffeeRow> | null;
     roastLevels: RoastLevelRow[];
     roasters?: string[];
     origins?: string[];
@@ -76,17 +78,17 @@
   <div class="form-grid">
   <div class="form-field">
     <label for="roaster">Roaster</label>
-    <input id="roaster" name="roaster" required value={coffee?.roaster ?? ''} list="roaster-suggestions" autocomplete="off" />
+    <input id="roaster" name="roaster" required value={(coffee?.roaster ?? prefill?.roaster) ?? ''} list="roaster-suggestions" autocomplete="off" />
   </div>
 
   <div class="form-field">
     <label for="coffee_name">Coffee</label>
-    <input id="coffee_name" name="coffee_name" required value={coffee?.coffee_name ?? ''} />
+    <input id="coffee_name" name="coffee_name" required value={(coffee?.coffee_name ?? prefill?.coffee_name) ?? ''} />
   </div>
 
   <div class="form-field">
     <label for="origin">Origin</label>
-    <input id="origin" name="origin" value={coffee?.origin ?? ''} list="origin-suggestions" autocomplete="off" />
+    <input id="origin" name="origin" value={(coffee?.origin ?? prefill?.origin) ?? ''} list="origin-suggestions" autocomplete="off" />
   </div>
 
   <div class="form-field">
@@ -94,7 +96,7 @@
     <select id="roast_level" name="roast_level">
       <option value="">—</option>
       {#each roastLevels as level (level.roast_level)}
-        <option value={level.roast_level} selected={coffee?.roast_level === level.roast_level}>
+        <option value={level.roast_level} selected={(coffee?.roast_level ?? prefill?.roast_level) === level.roast_level}>
           {level.roast_level}
         </option>
       {/each}
@@ -106,7 +108,7 @@
     <input
       id="processing"
       name="processing"
-      value={coffee?.processing ?? ''}
+      value={(coffee?.processing ?? prefill?.processing) ?? ''}
       list="processing-suggestions"
       autocomplete="off"
     />
@@ -114,17 +116,17 @@
 
   <div class="form-field">
     <label for="amount_g">Amount (g)</label>
-    <input id="amount_g" name="amount_g" type="number" step="1" value={coffee?.amount_g ?? ''} />
+    <input id="amount_g" name="amount_g" type="number" step="1" value={(coffee?.amount_g ?? prefill?.amount_g) ?? ''} />
   </div>
 
   <div class="form-field">
     <label for="cost">Cost</label>
-    <input id="cost" name="cost" type="number" step="0.01" value={coffee?.cost ?? ''} />
+    <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
   </div>
 
   <div class="form-field">
     <label for="roast_date">Roast date</label>
-    <input id="roast_date" name="roast_date" type="date" value={coffee?.roast_date ?? ''} />
+    <input id="roast_date" name="roast_date" type="date" value={(coffee?.roast_date ?? prefill?.roast_date) ?? ''} />
   </div>
 
   <div class="form-field">
@@ -165,7 +167,7 @@
 
   <div class="form-field form-field-checkbox">
     <label for="decaf">
-      <input id="decaf" name="decaf" type="checkbox" checked={coffee?.decaf === 1} />
+      <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
       Decaf
     </label>
   </div>

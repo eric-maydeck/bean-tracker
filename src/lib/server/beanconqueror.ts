@@ -376,3 +376,77 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
     throw err;
   }
 }
+
+export interface UnmatchedBean extends ParsedBean {
+  origin: string | null;
+  processing: string | null;
+}
+
+export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[] {
+  const rows = db
+    .prepare(
+      `SELECT b.* FROM beanconqueror_beans b
+       WHERE b.dismissed_at IS NULL
+         AND NOT EXISTS (
+           SELECT 1 FROM coffees c
+           WHERE c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date
+         )
+       ORDER BY b.imported_at DESC`
+    )
+    .all() as Array<{
+    id: string;
+    name: string;
+    roaster: string | null;
+    roast_date: string | null;
+    roast_type: string | null;
+    degree_of_roast: number | null;
+    custom_degree_of_roast: string | null;
+    blend: string | null;
+    weight_g: number | null;
+    cost: number | null;
+    aromatics: string | null;
+    cupping_points: string | null;
+    decaffeinated: number;
+    url: string | null;
+    ean_article_number: string | null;
+    notes: string | null;
+    rating: number | null;
+    bc_created_at: string | null;
+    bc_archived: number;
+  }>;
+
+  return rows.map((r) => {
+    const origin = db
+      .prepare(
+        `SELECT country, processing FROM beanconqueror_bean_origins WHERE bean_id = ? ORDER BY component_number ASC LIMIT 1`
+      )
+      .get(r.id) as { country: string | null; processing: string | null } | undefined;
+    return {
+      id: r.id,
+      name: r.name,
+      roaster: r.roaster,
+      roastDate: r.roast_date,
+      roastType: r.roast_type,
+      degreeOfRoast: r.degree_of_roast,
+      customDegreeOfRoast: r.custom_degree_of_roast,
+      blend: r.blend,
+      weightG: r.weight_g,
+      cost: r.cost,
+      aromatics: r.aromatics,
+      cuppingPoints: r.cupping_points,
+      decaffeinated: r.decaffeinated === 1,
+      url: r.url,
+      eanArticleNumber: r.ean_article_number,
+      notes: r.notes,
+      rating: r.rating,
+      bcCreatedAt: r.bc_created_at,
+      bcArchived: r.bc_archived === 1,
+      origin: origin?.country ?? null,
+      processing: origin?.processing ?? null
+    };
+  });
+}
+
+export function dismissBeanConquerorBean(db: DatabaseSync, id: string): void {
+  db.prepare(`UPDATE beanconqueror_beans SET dismissed_at = ? WHERE id = ?`).run(new Date().toISOString(), id);
+}
