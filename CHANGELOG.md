@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.20.2...v1.21.0) (2026-09-22)
+
+
+### Features
+
+* add visible-list totals and decaf/frozen filters to the Coffees page
+
 ## [1.20.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.20.1...v1.20.2) (2026-09-22)
 
 
