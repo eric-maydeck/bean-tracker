@@ -23,6 +23,13 @@ export interface BeanConquerorStats {
   costPerGramByRoaster: { label: string; averageCostPerGram: number }[];
 }
 
+// Minimum number of rated brews a group needs before it can appear in a
+// Favorites/Brewing breakdown. Without it a single lucky 10/10 brew tops
+// every chart, which the spec explicitly calls out. 3 is a deliberately
+// modest default for a home-scale dataset; it's a pure display filter, so
+// it can be retuned later with no schema or data impact.
+const MIN_BREWS_PER_RATED_GROUP = 3;
+
 // Every dimension below is a small "group brews by X, average their rating"
 // query — same GROUP BY/AVG/COUNT shape, only the join and grouped column
 // differ, so they all run through this one helper rather than duplicating
@@ -59,6 +66,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN beanconqueror_beans bean ON brew.bean_id = bean.id
      WHERE bean.roaster IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY bean.roaster
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
@@ -74,6 +82,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN beanconqueror_bean_origins origin ON origin.bean_id = bean.id AND origin.component_number = 1
      WHERE origin.country IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY origin.country
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
@@ -85,6 +94,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN beanconqueror_bean_origins origin ON origin.bean_id = bean.id AND origin.component_number = 1
      WHERE origin.processing IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY origin.processing
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
@@ -101,6 +111,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN roast_levels rl ON rl.degrees_of_roast = bean.degree_of_roast
      WHERE bean.degree_of_roast IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY rl.roast_level
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
@@ -111,6 +122,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN beanconqueror_methods method ON brew.preparation_id = method.id
      WHERE method.name IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY method.name
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
@@ -121,6 +133,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      JOIN beanconqueror_grinders grinder ON brew.mill_id = grinder.id
      WHERE grinder.name IS NOT NULL AND brew.rating IS NOT NULL
      GROUP BY grinder.name
+     HAVING COUNT(*) >= ${MIN_BREWS_PER_RATED_GROUP}
      ORDER BY averageRating DESC`
   );
 
