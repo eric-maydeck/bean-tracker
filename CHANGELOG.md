@@ -1,3 +1,10 @@
+## [1.24.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.0...v1.24.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* harden stats rates handling and close two staged-edit gaps
+
 # [1.24.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.23.0...v1.24.0) (2026-09-22)
 
 
