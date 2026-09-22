@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.23.0...v1.24.0) (2026-09-22)
+
+
+### Features
+
+* redesign stats page tiles with static sizing and overflow-safe formatting
+
 # [1.23.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.22.1...v1.23.0) (2026-09-22)
 
 
