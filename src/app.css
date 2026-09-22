@@ -953,6 +953,10 @@ div.compact-row {
   margin-bottom: 0;
 }
 
+.chart-panel .stat-row {
+  margin-bottom: 0;
+}
+
 .chart-panel-controls {
   display: flex;
   flex-wrap: wrap;
