@@ -1,3 +1,18 @@
+// Mirrors Bean Conqueror's bean share schema as shipped on their released
+// `master` branch / `v8.7.0` tag, verified 2026-09-22.
+//
+// Deliberately NOT their `develop` branch: `develop` is ahead of what any
+// installed Bean Conqueror app actually runs, and it widens several fields
+// from varint (uint32/uint64) to `double`. Those two encodings use different
+// protobuf wire types (varint = 0, double = fixed64 = 1), and the shipped
+// app's generated decoder has an exact per-field tag guard that silently
+// SKIPS a field whose wire type doesn't match — so a `double` weight/cost
+// encoded here would simply vanish on import, with no error anywhere.
+//
+// When re-syncing this file from upstream, copy from the newest RELEASED
+// tag, not from `develop`, and re-check the varint fields below
+// (BeanProto.weight/cost/rating, BeanInformation.percentage/
+// purchasing_price/fob_price).
 syntax = "proto3";
 package beanconqueror;
 
@@ -15,16 +30,16 @@ message BeanProto {
 
   optional string roast_custom = 10;
   optional string aromatics = 11;
-  optional double weight = 12;
+  optional uint64 weight = 12;
   optional bool finished = 13;
-  optional double cost = 14;
+  optional uint64 cost = 14;
   repeated string attachments = 15;
   optional string cupping_points = 16;
   optional bool decaffeinated = 17;
   optional string url = 18;
   optional string ean_article_number = 19;
 
-  optional double rating = 20;
+  optional uint32 rating = 20;
 
   repeated BeanInformation bean_information = 21;
 
@@ -55,9 +70,9 @@ message BeanInformation {
   optional string variety = 7;
   optional string processing = 8;
   optional string certification = 9;
-  optional double percentage = 10;
-  optional double purchasing_price = 11;
-  optional double fob_price = 12;
+  optional uint32 percentage = 10;
+  optional uint32 purchasing_price = 11;
+  optional uint32 fob_price = 12;
 }
 
 message BeanRoastInformation {

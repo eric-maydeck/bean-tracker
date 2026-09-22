@@ -77,6 +77,74 @@ describe('buildShareUrl', () => {
     expect(decoded.roast_range).toBe(3);
   });
 
+  // Regression test for the wire-type bug this schema once had: our .proto
+  // was copied from Bean Conqueror's `develop` branch, where weight/cost are
+  // `double` (wire type 1, fixed64), while their SHIPPED app (master/v8.7.0)
+  // decodes them as `uint64` (wire type 0, varint). Their generated decoder
+  // guards on the exact tag byte per field and silently skips anything whose
+  // wire type differs, so weight/cost vanished on import with no error — and
+  // our own round-trip test above couldn't catch it, because it decodes with
+  // the very same (wrong) local schema.
+  //
+  // This second schema is defined independently, inline, with the varint
+  // types Bean Conqueror's real decoder expects. If someone ever reintroduces
+  // a `double`/`float` where upstream expects a varint, the bytes we emit
+  // stop decoding here and this test fails.
+  const BEANCONQUEROR_SHIPPED_SCHEMA = `
+    syntax = "proto3";
+    package beanconqueror_shipped;
+
+    message BeanProto {
+      string name = 1;
+      optional string roaster = 5;
+      optional uint64 roast_range = 8;
+      optional uint64 weight = 12;
+      optional uint64 cost = 14;
+      optional bool decaffeinated = 17;
+    }
+  `;
+
+  it('emits bytes that decode against an independent schema using Bean Conqueror\'s shipped varint wire types', async () => {
+    const shippedRoot = protobuf.parse(BEANCONQUEROR_SHIPPED_SCHEMA).root;
+    const ShippedBeanProto = shippedRoot.lookupType('beanconqueror_shipped.BeanProto');
+
+    // Fractional amount/cost on purpose: a uint64 field can only carry whole
+    // numbers, so buildShareUrl must round before encoding.
+    const url = await buildShareUrl(
+      sampleCoffee({
+        roaster: 'Wire Type Roasters',
+        coffee_name: 'Varint Coffee',
+        amount_g: 250.4,
+        cost: 21.6,
+        decaf: 1,
+        roast_level: 'Dark'
+      }),
+      roastLevels
+    );
+    const query = new URL(url).searchParams;
+    let base64 = '';
+    for (let i = 0; ; i++) {
+      const part = query.get(`shareUserBean${i}`);
+      if (part == null) break;
+      base64 += part;
+    }
+
+    const decoded = ShippedBeanProto.decode(Buffer.from(base64, 'base64')) as unknown as {
+      name: string;
+      roaster: string;
+      weight: number;
+      cost: number;
+      decaffeinated: boolean;
+      roast_range: number;
+    };
+    expect(decoded.name).toBe('Varint Coffee');
+    expect(decoded.roaster).toBe('Wire Type Roasters');
+    expect(decoded.weight).toBe(250);
+    expect(decoded.cost).toBe(22);
+    expect(decoded.decaffeinated).toBe(true);
+    expect(decoded.roast_range).toBe(5);
+  });
+
   it('maps roast_level to roast_range via the matching roast_levels.degrees_of_roast entry', async () => {
     const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
     const BeanProto = root.lookupType('beanconqueror.BeanProto');

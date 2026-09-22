@@ -75,8 +75,12 @@ export async function buildShareUrl(coffee: CoffeeRow, roastLevels: RoastLevelRo
     name: coffee.coffee_name,
     roaster: coffee.roaster ?? undefined,
     roastingDate: coffee.roast_date ?? undefined,
-    weight: coffee.amount_g ?? undefined,
-    cost: coffee.cost ?? undefined,
+    // Rounded because Bean Conqueror's shipped schema carries weight/cost as
+    // uint64 varints (whole numbers only) — a real constraint of their app,
+    // not a limitation of ours; protobufjs would otherwise truncate or reject
+    // a fractional value here.
+    weight: coffee.amount_g != null ? Math.round(coffee.amount_g) : undefined,
+    cost: coffee.cost != null ? Math.round(coffee.cost) : undefined,
     decaffeinated: coffee.decaf === 1,
     roast_range: degreeOfRoastFor(coffee.roast_level, roastLevels),
     bean_information: [
