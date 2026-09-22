@@ -1,0 +1,210 @@
+<script lang="ts">
+  import { enhance } from '$app/forms';
+  import Chart from '$lib/components/Chart.svelte';
+  import type { PageData, ActionData } from './$types';
+
+  let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  type Dimension = 'roaster' | 'origin' | 'processing' | 'roastLevel' | 'caffeine';
+  type Metric = 'grams' | 'count';
+
+  const dimensionLabels: Record<Dimension, string> = {
+    roaster: 'Roaster',
+    origin: 'Origin',
+    processing: 'Processing',
+    roastLevel: 'Roast Level',
+    caffeine: 'Caffeinated vs. Decaf'
+  };
+
+  let dimension = $state<Dimension>('roaster');
+  let metric = $state<Metric>('grams');
+  let editingRates = $state(false);
+
+  let breakdownEntries = $derived(data.stats.breakdowns[dimension]);
+  let breakdownLabels = $derived(breakdownEntries.map((e) => e.label));
+  let breakdownValues = $derived(breakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
+
+  function formatGrams(g: number): string {
+    return `${Math.round(g).toLocaleString()}g`;
+  }
+
+  function formatKg(g: number): string {
+    return `${(g / 1000).toFixed(1)} kg`;
+  }
+
+  function formatClearBy(iso: string): string {
+    return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC'
+    });
+  }
+</script>
+
+<h1>Stats</h1>
+
+<section class="stats-hero">
+  <div class="stats-hero-tile">
+    <span class="stat-value">{data.stats.totalBacklogCount}</span>
+    <span class="stat-label">bags in the backlog</span>
+  </div>
+  <div class="stats-hero-tile">
+    <span class="stat-value">{formatKg(data.stats.totalBacklogGrams)}</span>
+    <span class="stat-label">total weight</span>
+  </div>
+  <div class="stats-hero-tile">
+    {#if data.stats.daysToClearHousehold === null || data.stats.clearByDateHousehold === null}
+      <span class="stat-value">🎉</span>
+      <span class="stat-label">Nothing left to drink through!</span>
+    {:else}
+      <span class="stat-value">{data.stats.daysToClearHousehold}d</span>
+      <span class="stat-label"
+        >to clear as a household — empty by {formatClearBy(data.stats.clearByDateHousehold)}</span
+      >
+    {/if}
+  </div>
+</section>
+
+<section class="stat-grid">
+  <div class="stat-item">
+    <span class="stat-value">{formatGrams(data.stats.openedGrams)}</span>
+    <span class="stat-label">Opened</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{formatGrams(data.stats.unopenedBacklogGrams)}</span>
+    <span class="stat-label">Unopened in backlog</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{formatGrams(data.stats.totalBacklogGrams)}</span>
+    <span class="stat-label">Total (opened + unopened)</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{data.stats.openedCount}</span>
+    <span class="stat-label">Coffees opened</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{data.stats.unopenedBacklogCount}</span>
+    <span class="stat-label">Unopened in backlog</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{data.stats.totalBacklogCount}</span>
+    <span class="stat-label">Total coffees</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">
+      {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
+    </span>
+    <span class="stat-label">
+      To clear solo{data.stats.clearByDateSelf
+        ? ` — empty by ${formatClearBy(data.stats.clearByDateSelf)}`
+        : ''}
+    </span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">
+      {data.stats.daysToClearHousehold === null ? '—' : `${data.stats.daysToClearHousehold}d`}
+    </span>
+    <span class="stat-label">
+      To clear as a household{data.stats.clearByDateHousehold
+        ? ` — empty by ${formatClearBy(data.stats.clearByDateHousehold)}`
+        : ''}
+    </span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">${data.stats.totalCost.toFixed(2)}</span>
+    <span class="stat-label">Tied up in backlog + open</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">{data.stats.distinctRoasterCount}</span>
+    <span class="stat-label">Distinct roasters</span>
+  </div>
+  {#if data.stats.oldestUnopenedBag}
+    <div class="stat-item">
+      <span class="stat-value">{data.stats.oldestUnopenedBag.daysOld}d old</span>
+      <span class="stat-label"
+        >Oldest unopened: {data.stats.oldestUnopenedBag.coffeeName} ({data.stats.oldestUnopenedBag.roaster})</span
+      >
+    </div>
+  {/if}
+  {#if data.stats.averageBagSizeGrams !== null}
+    <div class="stat-item">
+      <span class="stat-value">{formatGrams(data.stats.averageBagSizeGrams)}</span>
+      <span class="stat-label">Average bag size</span>
+    </div>
+  {/if}
+</section>
+
+{#if data.isAdmin}
+  <div class="rate-edit">
+    {#if editingRates}
+      <form
+        method="POST"
+        action="?/updateRates"
+        class="rate-edit-form"
+        use:enhance={() => {
+          return async ({ update }) => {
+            editingRates = false;
+            await update();
+          };
+        }}
+      >
+        <label>
+          Your rate (g/day)
+          <input type="number" name="selfGPerDay" min="1" step="1" value={data.rates.selfGPerDay} required />
+        </label>
+        <label>
+          Household rate (g/day)
+          <input
+            type="number"
+            name="householdGPerDay"
+            min="1"
+            step="1"
+            value={data.rates.householdGPerDay}
+            required
+          />
+        </label>
+        <button class="button" type="submit">Save</button>
+        <button class="button button-secondary" type="button" onclick={() => (editingRates = false)}>
+          Cancel
+        </button>
+      </form>
+      {#if form?.error}
+        <p class="badge badge-urgent">{form.error}</p>
+      {/if}
+    {:else}
+      <button class="button button-secondary" type="button" onclick={() => (editingRates = true)}>
+        ✏️ Edit consumption rates
+      </button>
+    {/if}
+  </div>
+{/if}
+
+<section class="chart-panel">
+  <h2>Open vs. backlog</h2>
+  <Chart
+    type="doughnut"
+    labels={['Open', 'Unopened backlog']}
+    values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
+    datasetLabel="Grams"
+  />
+</section>
+
+<section class="chart-panel">
+  <h2>Composition</h2>
+  <div class="chart-panel-controls">
+    <div class="tab-group">
+      {#each Object.entries(dimensionLabels) as [key, label] (key)}
+        <button aria-pressed={dimension === key} onclick={() => (dimension = key as Dimension)}>{label}</button>
+      {/each}
+    </div>
+    <div class="tab-group">
+      <button aria-pressed={metric === 'grams'} onclick={() => (metric = 'grams')}>Grams</button>
+      <button aria-pressed={metric === 'count'} onclick={() => (metric = 'count')}>Count</button>
+    </div>
+  </div>
+  {#if breakdownEntries.length === 0}
+    <p class="text-muted">Nothing in the backlog yet.</p>
+  {:else}
+    <Chart type="bar" labels={breakdownLabels} values={breakdownValues} datasetLabel={dimensionLabels[dimension]} />
+  {/if}
+</section>
