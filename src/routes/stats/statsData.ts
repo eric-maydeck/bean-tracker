@@ -8,6 +8,14 @@ export interface BreakdownEntry {
   count: number;
 }
 
+export interface BagHighlight {
+  coffeeName: string;
+  roaster: string;
+  roastDate: string;
+  daysOld: number;
+  slug: string;
+}
+
 export interface BacklogStats {
   openedGrams: number;
   unopenedBacklogGrams: number;
@@ -26,8 +34,10 @@ export interface BacklogStats {
   totalCost: number;
   totalSpentAllTime: number;
   distinctRoasterCount: number;
-  oldestUnopenedBag: { coffeeName: string; roaster: string; roastDate: string; daysOld: number } | null;
+  oldestUnopenedBag: BagHighlight | null;
+  youngestUnopenedBag: BagHighlight | null;
   averageBagSizeGrams: number | null;
+  averageAgeBacklogAndOpen: number | null;
   averageDaysToOpen: number | null;
   averageDaysToFinish: number | null;
 
@@ -140,19 +150,35 @@ export function buildBacklogStats(
   const distinctRoasterCount = new Set(allRows.map((r) => r.roaster)).size;
 
   const backlogWithRoastDate = backlogRows.filter((r): r is CoffeeRow & { roast_date: string } => r.roast_date != null);
-  let oldestUnopenedBag: BacklogStats['oldestUnopenedBag'] = null;
-  if (backlogWithRoastDate.length > 0) {
-    const oldest = backlogWithRoastDate.reduce((a, b) => (parseDate(a.roast_date) < parseDate(b.roast_date) ? a : b));
-    oldestUnopenedBag = {
-      coffeeName: oldest.coffee_name,
-      roaster: oldest.roaster,
-      roastDate: oldest.roast_date,
-      daysOld: diffDays(today, parseDate(oldest.roast_date))
-    };
-  }
+  const toBagHighlight = (row: CoffeeRow & { roast_date: string }): BagHighlight => ({
+    coffeeName: row.coffee_name,
+    roaster: row.roaster,
+    roastDate: row.roast_date,
+    daysOld: diffDays(today, parseDate(row.roast_date)),
+    slug: row.slug
+  });
+  const oldestUnopenedBag =
+    backlogWithRoastDate.length > 0
+      ? toBagHighlight(
+          backlogWithRoastDate.reduce((a, b) => (parseDate(a.roast_date) < parseDate(b.roast_date) ? a : b))
+        )
+      : null;
+  const youngestUnopenedBag =
+    backlogWithRoastDate.length > 0
+      ? toBagHighlight(
+          backlogWithRoastDate.reduce((a, b) => (parseDate(a.roast_date) > parseDate(b.roast_date) ? a : b))
+        )
+      : null;
 
   const bagsWithWeight = allRows.filter((r) => r.amount_g != null);
   const averageBagSizeGrams = bagsWithWeight.length > 0 ? sumGrams(bagsWithWeight) / bagsWithWeight.length : null;
+
+  const rowsWithRoastDate = allRows.filter((r): r is CoffeeRow & { roast_date: string } => r.roast_date != null);
+  const averageAgeBacklogAndOpen =
+    rowsWithRoastDate.length > 0
+      ? rowsWithRoastDate.reduce((total, r) => total + diffDays(today, parseDate(r.roast_date)), 0) /
+        rowsWithRoastDate.length
+      : null;
 
   const roastOrder = new Map(roastLevels.map((r) => [r.roast_level, r.degrees_of_roast]));
   const roastLevelBreakdown = buildBreakdown(allRows, (r) => r.roast_level ?? 'Unknown').sort(
@@ -176,7 +202,9 @@ export function buildBacklogStats(
     totalSpentAllTime,
     distinctRoasterCount,
     oldestUnopenedBag,
+    youngestUnopenedBag,
     averageBagSizeGrams,
+    averageAgeBacklogAndOpen,
     averageDaysToOpen,
     averageDaysToFinish,
     breakdowns: {

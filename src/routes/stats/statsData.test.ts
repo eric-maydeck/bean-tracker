@@ -106,20 +106,27 @@ describe('buildBacklogStats', () => {
     expect(stats.distinctRoasterCount).toBe(2);
   });
 
-  it('finds the oldest unopened bag by roast date and its days-old count', () => {
+  it('finds the oldest and youngest unopened bags by roast date, with slug for linking', () => {
     const backlog = [
-      sampleRow({ id: 1, coffee_name: 'Newer', roast_date: '2026-08-01' }),
-      sampleRow({ id: 2, coffee_name: 'Older', roast_date: '2026-06-01' })
+      sampleRow({ id: 1, coffee_name: 'Newer', roast_date: '2026-08-01', slug: 'newer-slug' }),
+      sampleRow({ id: 2, coffee_name: 'Older', roast_date: '2026-06-01', slug: 'older-slug' })
     ];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.oldestUnopenedBag?.coffeeName).toBe('Older');
     expect(stats.oldestUnopenedBag?.daysOld).toBe(112); // 2026-06-01 -> 2026-09-21
+    expect(stats.oldestUnopenedBag?.slug).toBe('older-slug');
+    expect(stats.youngestUnopenedBag?.coffeeName).toBe('Newer');
+    expect(stats.youngestUnopenedBag?.slug).toBe('newer-slug');
   });
 
-  it('returns a null oldest-bag when the backlog is empty or has no roast dates', () => {
-    expect(buildBacklogStats([], [], [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+  it('returns a null oldest/youngest bag when the backlog is empty or has no roast dates', () => {
+    const empty = buildBacklogStats([], [], [], rates, roastLevels, today);
+    expect(empty.oldestUnopenedBag).toBeNull();
+    expect(empty.youngestUnopenedBag).toBeNull();
     const backlog = [sampleRow({ roast_date: null })];
-    expect(buildBacklogStats([], backlog, [], rates, roastLevels, today).oldestUnopenedBag).toBeNull();
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
+    expect(stats.oldestUnopenedBag).toBeNull();
+    expect(stats.youngestUnopenedBag).toBeNull();
   });
 
   it('averages bag size over rows with a known weight, skipping nulls', () => {
@@ -130,6 +137,22 @@ describe('buildBacklogStats', () => {
     ];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
     expect(stats.averageBagSizeGrams).toBe(200);
+  });
+
+  it('averages the age (days since roast) of backlog + open rows, excluding archived and null roast dates', () => {
+    const open = [sampleRow({ id: 1, roast_date: '2026-08-01' })]; // 51 days old
+    const backlog = [
+      sampleRow({ id: 2, roast_date: '2026-09-01' }), // 20 days old
+      sampleRow({ id: 3, roast_date: null }) // excluded
+    ];
+    const archived = [sampleRow({ id: 4, roast_date: '2026-01-01', status: 'archive' })]; // excluded
+    const stats = buildBacklogStats(open, backlog, archived, rates, roastLevels, today);
+    expect(stats.averageAgeBacklogAndOpen).toBe(35.5); // (51 + 20) / 2
+  });
+
+  it('returns null averageAgeBacklogAndOpen when no backlog/open row has a roast date', () => {
+    const stats = buildBacklogStats([], [], [], rates, roastLevels, today);
+    expect(stats.averageAgeBacklogAndOpen).toBeNull();
   });
 
   it('averages days from roast to open across open/backlog/archived, skipping rows never opened', () => {

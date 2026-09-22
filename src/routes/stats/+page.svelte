@@ -20,6 +20,11 @@
   let metric = $state<Metric>('grams');
   let editingRates = $state(false);
 
+  // Caps how many bars the composition chart draws — without this, a
+  // dimension like Roaster with 20+ distinct values crams so many bars into
+  // the chart that Chart.js starts skipping y-axis labels to avoid overlap.
+  const COMPOSITION_BAR_LIMIT = 10;
+
   let breakdownEntries = $derived(data.stats.breakdowns[dimension]);
   // Roast Level keeps its intentional light-to-dark order regardless of
   // metric — every other dimension re-sorts by whichever metric is active,
@@ -29,8 +34,13 @@
       ? breakdownEntries
       : [...breakdownEntries].sort((a, b) => (metric === 'grams' ? b.grams - a.grams : b.count - a.count))
   );
-  let breakdownLabels = $derived(sortedBreakdownEntries.map((e) => e.label));
-  let breakdownValues = $derived(sortedBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
+  let visibleBreakdownEntries = $derived(sortedBreakdownEntries.slice(0, COMPOSITION_BAR_LIMIT));
+  let breakdownLabels = $derived(visibleBreakdownEntries.map((e) => e.label));
+  let breakdownValues = $derived(visibleBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
+  // A fixed per-bar thickness (rather than a fixed chart height) keeps bars
+  // a consistent size across dimensions/tabs instead of stretching thin
+  // with many categories or ballooning thick with few.
+  let compositionChartHeight = $derived(Math.max(220, visibleBreakdownEntries.length * 34 + 40));
 
   function formatGrams(g: number): string {
     return `${Math.round(g).toLocaleString('en-US')}g`;
@@ -112,7 +122,7 @@
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.totalBacklogCount}</span>
-      <span class="stat-label">Total coffees</span>
+      <span class="stat-label">Total backlog</span>
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.finishedCount}</span>
@@ -121,31 +131,83 @@
   </div>
 </section>
 
-<section class="chart-panel">
-  <h2>Time to Clear</h2>
-  <div class="stat-row">
-    <div class="stat-item">
-      <span class="stat-value">
-        {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
-      </span>
-      <span class="stat-label">
-        To clear solo{data.stats.clearByDateSelf
-          ? ` — empty by ${formatClearBy(data.stats.clearByDateSelf)}`
-          : ''}
-      </span>
+<div class="chart-panel-row">
+  <section class="chart-panel">
+    <h2>Time to Clear</h2>
+    <div class="stat-row">
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
+        </span>
+        <span class="stat-label">
+          To clear solo{data.stats.clearByDateSelf
+            ? ` — empty by ${formatClearBy(data.stats.clearByDateSelf)}`
+            : ''}
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.daysToClearHousehold === null ? '—' : `${data.stats.daysToClearHousehold}d`}
+        </span>
+        <span class="stat-label">
+          To clear as a household{data.stats.clearByDateHousehold
+            ? ` — empty by ${formatClearBy(data.stats.clearByDateHousehold)}`
+            : ''}
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{data.rates.selfGPerDay}g/day</span>
+        <span class="stat-label">Your rate</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">{data.rates.householdGPerDay}g/day</span>
+        <span class="stat-label">Household rate</span>
+      </div>
     </div>
-    <div class="stat-item">
-      <span class="stat-value">
-        {data.stats.daysToClearHousehold === null ? '—' : `${data.stats.daysToClearHousehold}d`}
-      </span>
-      <span class="stat-label">
-        To clear as a household{data.stats.clearByDateHousehold
-          ? ` — empty by ${formatClearBy(data.stats.clearByDateHousehold)}`
-          : ''}
-      </span>
+  </section>
+
+  <section class="chart-panel">
+    <h2>Coffee Age</h2>
+    <div class="stat-row">
+      {#if data.stats.oldestUnopenedBag}
+        <div class="stat-item">
+          <span class="stat-value">{data.stats.oldestUnopenedBag.daysOld}d</span>
+          <span class="stat-label">Oldest unopened</span>
+          <a class="stat-sublink" href={`/coffees/${data.stats.oldestUnopenedBag.slug}`}
+            >{data.stats.oldestUnopenedBag.coffeeName} · {data.stats.oldestUnopenedBag.roaster}</a
+          >
+        </div>
+      {/if}
+      {#if data.stats.youngestUnopenedBag}
+        <div class="stat-item">
+          <span class="stat-value">{data.stats.youngestUnopenedBag.daysOld}d</span>
+          <span class="stat-label">Youngest unopened</span>
+          <a class="stat-sublink" href={`/coffees/${data.stats.youngestUnopenedBag.slug}`}
+            >{data.stats.youngestUnopenedBag.coffeeName} · {data.stats.youngestUnopenedBag.roaster}</a
+          >
+        </div>
+      {/if}
+      {#if data.stats.averageAgeBacklogAndOpen !== null}
+        <div class="stat-item">
+          <span class="stat-value">{formatDays(data.stats.averageAgeBacklogAndOpen)}</span>
+          <span class="stat-label">Average age (backlog + open)</span>
+        </div>
+      {/if}
+      {#if data.stats.averageDaysToOpen !== null}
+        <div class="stat-item">
+          <span class="stat-value">{formatDays(data.stats.averageDaysToOpen)}</span>
+          <span class="stat-label">Average time in backlog before opening</span>
+        </div>
+      {/if}
+      {#if data.stats.averageDaysToFinish !== null}
+        <div class="stat-item">
+          <span class="stat-value">{formatDays(data.stats.averageDaysToFinish)}</span>
+          <span class="stat-label">Average time to finish an opened bag</span>
+        </div>
+      {/if}
     </div>
-  </div>
-</section>
+  </section>
+</div>
 
 <section class="chart-panel">
   <h2>Economics</h2>
@@ -166,32 +228,6 @@
       <div class="stat-item">
         <span class="stat-value">{formatGrams(data.stats.averageBagSizeGrams)}</span>
         <span class="stat-label">Average bag size</span>
-      </div>
-    {/if}
-  </div>
-</section>
-
-<section class="chart-panel">
-  <h2>Timing</h2>
-  <div class="stat-row">
-    {#if data.stats.oldestUnopenedBag}
-      <div class="stat-item">
-        <span class="stat-value">{data.stats.oldestUnopenedBag.daysOld}d old</span>
-        <span class="stat-label"
-          >Oldest unopened: {data.stats.oldestUnopenedBag.coffeeName} ({data.stats.oldestUnopenedBag.roaster})</span
-        >
-      </div>
-    {/if}
-    {#if data.stats.averageDaysToOpen !== null}
-      <div class="stat-item">
-        <span class="stat-value">{formatDays(data.stats.averageDaysToOpen)}</span>
-        <span class="stat-label">Average time in backlog before opening</span>
-      </div>
-    {/if}
-    {#if data.stats.averageDaysToFinish !== null}
-      <div class="stat-item">
-        <span class="stat-value">{formatDays(data.stats.averageDaysToFinish)}</span>
-        <span class="stat-label">Average time to finish an opened bag</span>
       </div>
     {/if}
   </div>
@@ -290,6 +326,15 @@
   {#if breakdownEntries.length === 0}
     <p class="text-muted">Nothing in the backlog yet.</p>
   {:else}
-    <Chart type="bar" labels={breakdownLabels} values={breakdownValues} datasetLabel={dimensionLabels[dimension]} />
+    {#if breakdownEntries.length > COMPOSITION_BAR_LIMIT}
+      <p class="text-muted">Showing top {COMPOSITION_BAR_LIMIT} of {breakdownEntries.length}.</p>
+    {/if}
+    <Chart
+      type="bar"
+      labels={breakdownLabels}
+      values={breakdownValues}
+      datasetLabel={dimensionLabels[dimension]}
+      height={compositionChartHeight}
+    />
   {/if}
 </section>

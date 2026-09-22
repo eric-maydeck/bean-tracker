@@ -1,10 +1,12 @@
 <script lang="ts">
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
+  import ChartDataLabels from 'chartjs-plugin-datalabels';
 
   // Only draws for horizontal bar charts (this app's composition breakdown) —
   // Chart.js has no built-in "show the value next to each bar" option, and
-  // pulling in the chartjs-plugin-datalabels package for one small feature
-  // isn't worth a new dependency when the plugin API already covers it.
+  // chartjs-plugin-datalabels (used below for the doughnut in-slice labels)
+  // doesn't anchor cleanly past the end of a horizontal bar the way this
+  // does, so both live here for their own chart type.
   const valueLabelsPlugin: Plugin = {
     id: 'valueLabels',
     afterDatasetsDraw(chart) {
@@ -30,18 +32,20 @@
     }
   };
 
-  ChartJS.register(...registerables, valueLabelsPlugin);
+  ChartJS.register(...registerables, valueLabelsPlugin, ChartDataLabels);
 
   let {
     type,
     labels,
     values,
-    datasetLabel = ''
+    datasetLabel = '',
+    height = 320
   }: {
     type: 'bar' | 'doughnut';
     labels: string[];
     values: number[];
     datasetLabel?: string;
+    height?: number;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -89,7 +93,22 @@
         layout: type === 'bar' ? { padding: { right: 48 } } : undefined,
         plugins: {
           legend: { display: type === 'doughnut', labels: { color: textColor } },
-          tooltip: { enabled: true }
+          tooltip: { enabled: true },
+          datalabels:
+            type === 'doughnut'
+              ? {
+                  color: '#fff',
+                  font: { weight: 'bold', size: 12 },
+                  // Only label a slice once it's big enough for the text to
+                  // actually fit inside it without looking cramped.
+                  formatter: (value: number, ctx) => {
+                    const data = (ctx.chart.data.datasets[0]?.data ?? []) as number[];
+                    const total = data.reduce((sum, v) => sum + (v ?? 0), 0);
+                    const share = total > 0 ? value / total : 0;
+                    return share >= 0.08 ? value.toLocaleString('en-US') : '';
+                  }
+                }
+              : { display: false }
         },
         scales:
           type === 'bar'
@@ -123,6 +142,6 @@
   });
 </script>
 
-<div class="chart-container">
+<div class="chart-container" style="height: {height}px">
   <canvas bind:this={canvasEl}></canvas>
 </div>
