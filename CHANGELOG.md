@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.20.1...v1.20.2) (2026-09-22)
+
+
+### Bug Fixes
+
+* eliminate NaN day counts, equalize panel/tile heights, polish layout
+
 ## [1.20.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.20.0...v1.20.1) (2026-09-22)
 
 
