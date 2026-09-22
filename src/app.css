@@ -902,12 +902,13 @@ div.compact-row {
    related tiles (e.g. all the gram figures) always land on the same row
    together, regardless of viewport width, instead of an auto-fill grid
    wrapping wherever it happens to run out of space. Flex (rather than grid)
-   plus a max-width per tile keeps sparse rows (2-3 tiles) compact and
-   centered instead of stretching to fill the full row width. */
+   plus a max-width per tile keeps sparse rows (2-3 tiles) compact instead
+   of stretching to fill the full row width; the row itself stays
+   left-aligned (like the full rows) rather than floating as a centered
+   group, with each tile's own content centered instead. */
 .stat-row {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -919,6 +920,7 @@ div.compact-row {
   padding: var(--space-4);
   flex: 1 1 200px;
   max-width: 280px;
+  text-align: center;
 }
 
 .stat-item .stat-value {
