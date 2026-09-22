@@ -60,4 +60,100 @@ INSERT OR IGNORE INTO roast_levels (roast_level, degrees_of_roast) VALUES
   ('Medium', 4.0),
   ('Medium/Dark', 4.5),
   ('Dark', 5.0);
+
+CREATE TABLE IF NOT EXISTS beanconqueror_beans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  roaster TEXT,
+  roast_date TEXT,
+  roast_type TEXT,
+  degree_of_roast REAL,
+  custom_degree_of_roast TEXT,
+  blend TEXT,
+  weight_g REAL,
+  cost REAL,
+  aromatics TEXT,
+  cupping_points TEXT,
+  decaffeinated INTEGER NOT NULL DEFAULT 0,
+  url TEXT,
+  ean_article_number TEXT,
+  notes TEXT,
+  rating REAL,
+  bc_created_at TEXT,
+  bc_archived INTEGER NOT NULL DEFAULT 0,
+  imported_at TEXT NOT NULL,
+  dismissed_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS beanconqueror_bean_origins (
+  id INTEGER PRIMARY KEY,
+  bean_id TEXT NOT NULL REFERENCES beanconqueror_beans(id),
+  component_number INTEGER NOT NULL,
+  country TEXT,
+  region TEXT,
+  farm TEXT,
+  farmer TEXT,
+  elevation TEXT,
+  variety TEXT,
+  processing TEXT,
+  certification TEXT,
+  harvested TEXT,
+  percentage REAL,
+  UNIQUE(bean_id, component_number)
+);
+
+CREATE TABLE IF NOT EXISTS beanconqueror_methods (
+  id TEXT PRIMARY KEY,
+  preparation_method TEXT,
+  name TEXT,
+  preparation_style TEXT,
+  preparation_tools TEXT,
+  notes TEXT,
+  bc_archived INTEGER NOT NULL DEFAULT 0,
+  bc_created_at TEXT,
+  imported_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS beanconqueror_grinders (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  notes TEXT,
+  bc_archived INTEGER NOT NULL DEFAULT 0,
+  bc_created_at TEXT,
+  imported_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS beanconqueror_brews (
+  id INTEGER PRIMARY KEY,
+  bc_created_at TEXT NOT NULL,
+  bean_id TEXT REFERENCES beanconqueror_beans(id),
+  preparation_id TEXT REFERENCES beanconqueror_methods(id),
+  mill_id TEXT REFERENCES beanconqueror_grinders(id),
+  grind_setting TEXT,
+  ground_coffee_g REAL,
+  brew_temperature REAL,
+  bean_type TEXT,
+  grind_speed_rpm REAL,
+  grind_time TEXT,
+  profile TEXT,
+  preparation_tools TEXT,
+  temperature_time TEXT,
+  brew_time TEXT,
+  bloom_time TEXT,
+  first_drip_time TEXT,
+  water_amount_g REAL,
+  coffee_type TEXT,
+  coffee_concentration TEXT,
+  rating REAL,
+  notes TEXT,
+  beverage_quantity REAL,
+  tds_percent REAL,
+  extraction_yield_percent REAL,
+  brew_ratio TEXT,
+  bean_age_days INTEGER,
+  bc_archived INTEGER NOT NULL DEFAULT 0,
+  water TEXT,
+  imported_at TEXT NOT NULL,
+  UNIQUE(bc_created_at, bean_id)
+);
 `;

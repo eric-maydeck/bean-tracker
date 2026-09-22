@@ -3,26 +3,7 @@ import { parseArgs } from 'node:util';
 import { createDb } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
-
-export function cellText(value: unknown): string | null {
-  if (value == null) return null;
-  const s = String(value).trim();
-  return s === '' ? null : s;
-}
-
-export function cellNumber(value: unknown): number | null {
-  if (value == null || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-export function excelSerialToISODate(value: unknown): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
-  }
-  return null;
-}
+import { cellText, cellNumber, excelSerialToISODate } from '../src/lib/server/excelHelpers.ts';
 
 interface ParsedCoffeeRow extends Omit<NewCoffeeInput, 'status'> {}
 

@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cellText, cellNumber, excelSerialToISODate } from './migrate';
+import { cellText, cellNumber, excelSerialToISODate } from '../src/lib/server/excelHelpers.ts';
 
 describe('cell parsing helpers', () => {
   it('cellText trims and nulls out blanks', () => {

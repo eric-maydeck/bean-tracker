@@ -10,7 +10,17 @@ describe('createDb', () => {
         name: string;
       }[]
     ).map((row) => row.name);
-    expect(tables).toEqual(['app_meta', 'coffees', 'roast_levels', 'subscriptions']);
+    expect(tables).toEqual([
+      'app_meta',
+      'beanconqueror_bean_origins',
+      'beanconqueror_beans',
+      'beanconqueror_brews',
+      'beanconqueror_grinders',
+      'beanconqueror_methods',
+      'coffees',
+      'roast_levels',
+      'subscriptions'
+    ]);
   });
 
   it('seeds roast_levels with the 11 reference rows', () => {
