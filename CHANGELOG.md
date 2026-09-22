@@ -1,3 +1,15 @@
+# [1.18.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.17.0...v1.18.0) (2026-09-22)
+
+
+### Bug Fixes
+
+* left-align sparse stat rows, center each tile's own content
+
+
+### Features
+
+* add finished-coffee stats, second donut, and composition chart fixes
+
 # [1.17.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.16.0...v1.17.0) (2026-09-22)
 
 
