@@ -1,3 +1,10 @@
+# [1.23.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.22.1...v1.23.0) (2026-09-22)
+
+
+### Features
+
+* add per-page titles and a coffee-cup favicon
+
 ## [1.22.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.22.0...v1.22.1) (2026-09-22)
 
 
