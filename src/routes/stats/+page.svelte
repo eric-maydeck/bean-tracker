@@ -336,3 +336,22 @@
     />
   {/if}
 </section>
+
+<section class="chart-panel">
+  <h2>Bean Conqueror</h2>
+  <p class="text-muted">
+    Last updated:
+    {data.beanConquerorLastImportedAt
+      ? new Date(data.beanConquerorLastImportedAt).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC'
+      : 'never'}
+  </p>
+  {#if data.isAdmin}
+    <form method="POST" action="?/importBeanConqueror" enctype="multipart/form-data" use:enhance>
+      <input type="file" name="file" accept=".xlsx" required />
+      <button class="button" type="submit">Import</button>
+    </form>
+    {#if form?.error}
+      <p class="badge badge-urgent">{form.error}</p>
+    {/if}
+  {/if}
+</section>
