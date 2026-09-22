@@ -77,6 +77,21 @@ describe('validateCoffeeBatch', () => {
     expect(errors[0].error).toMatch(/already in use/i);
   });
 
+  it('flags two batch entries staging the same brand-new slug against each other', () => {
+    const first = createCoffee(db, sampleInput({ coffee_name: 'First' }));
+    const second = createCoffee(db, sampleInput({ coffee_name: 'Second' }));
+    const changes: CoffeeBatchChange[] = [
+      { id: first.id, fields: fieldsFor(first.id, 'brand-new-shared-slug') },
+      { id: second.id, fields: fieldsFor(second.id, 'brand-new-shared-slug') }
+    ];
+    const errors = validateCoffeeBatch(db, changes);
+    expect(errors).toHaveLength(2);
+    expect(errors.map((e) => e.id).sort()).toEqual([first.id, second.id].sort());
+    for (const error of errors) {
+      expect(error.error).toMatch(/same batch/i);
+    }
+  });
+
   it('does not write anything to the database', () => {
     const { id, slug } = createCoffee(db, sampleInput());
     validateCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { roaster: 'Should Not Persist' }) }]);

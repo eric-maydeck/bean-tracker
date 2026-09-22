@@ -40,6 +40,7 @@ function toFormData(fields: Record<string, string>): FormData {
 // entries with only a statusAction are skipped here.
 export function validateCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]): BatchFieldError[] {
   const errors: BatchFieldError[] = [];
+  const slugsById = new Map<number, string>();
   for (const change of changes) {
     if (!change.fields) continue;
     const formData = toFormData(change.fields);
@@ -64,6 +65,24 @@ export function validateCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange
     }
     if (slugExists(db, slug, change.id)) {
       errors.push({ id: change.id, error: 'That URL is already in use by another coffee' });
+      continue;
+    }
+    slugsById.set(change.id, slug);
+  }
+  // slugExists above only checks each slug against the DB individually, so
+  // two entries in the same batch both staging an identical brand-new slug
+  // each pass it on their own. Catch that case here, across the batch.
+  const idsBySlug = new Map<string, number[]>();
+  for (const [id, slug] of slugsById) {
+    const ids = idsBySlug.get(slug) ?? [];
+    ids.push(id);
+    idsBySlug.set(slug, ids);
+  }
+  for (const ids of idsBySlug.values()) {
+    if (ids.length > 1) {
+      for (const id of ids) {
+        errors.push({ id, error: 'That URL is used by another coffee in this same batch' });
+      }
     }
   }
   return errors;

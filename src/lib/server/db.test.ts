@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, getStatsRates, setStatsRates } from './db';
+import { createDb, applySchema, getStatsRates, setStatsRates, InvalidRatesError } from './db';
 
 describe('createDb', () => {
   it('creates all expected tables', () => {
@@ -190,6 +190,15 @@ describe('stats rate settings', () => {
 
   it('rejects a NaN rate', () => {
     const db = createDb(':memory:');
-    expect(() => setStatsRates(db, { selfGPerDay: NaN, householdGPerDay: 144 })).toThrow();
+    expect(() => setStatsRates(db, { selfGPerDay: NaN, householdGPerDay: 144 })).toThrow(InvalidRatesError);
+  });
+
+  it('falls back to defaults instead of returning NaN when app_meta holds a corrupted rate value', () => {
+    const db = createDb(':memory:');
+    db.prepare(
+      `INSERT INTO app_meta (key, value) VALUES (?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    ).run('stats_rate_self_g_per_day', 'not-a-number');
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
   });
 });

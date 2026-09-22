@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
@@ -26,6 +27,19 @@
     onsuccess?: (() => void) | null;
     onstage?: ((fields: Record<string, string>) => void) | null;
   } = $props();
+
+  // Staged mode's `action` attribute points at `?/save`, which no longer
+  // exists as a server action now that staged editing intercepts the
+  // submit client-side via use:enhance — a click in the narrow window
+  // before hydration/enhance attaches would otherwise fall through to a
+  // real native POST there and lose whatever was typed. Gating the submit
+  // button on mount closes that window. Non-staged (create) submissions
+  // deliberately skip this guard: `?/create` is a real action, so that
+  // path still works with JS disabled entirely.
+  let mounted = $state(false);
+  onMount(() => {
+    mounted = true;
+  });
 </script>
 
 <form
@@ -181,7 +195,7 @@
   {/if}
   </div>
 
-  <button class="button" type="submit">{onstage ? 'Update' : 'Save'}</button>
+  <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
   {#if oncancel}
     <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
   {/if}

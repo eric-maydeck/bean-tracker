@@ -104,6 +104,8 @@ export interface StatsRates {
   householdGPerDay: number;
 }
 
+export class InvalidRatesError extends Error {}
+
 const DEFAULT_SELF_RATE_G_PER_DAY = 72;
 const DEFAULT_HOUSEHOLD_RATE_G_PER_DAY = 144;
 const SELF_RATE_KEY = 'stats_rate_self_g_per_day';
@@ -116,18 +118,21 @@ export function getStatsRates(db: DatabaseSync): StatsRates {
   const map = new Map(rows.map((r) => [r.key, r.value]));
   const self = map.get(SELF_RATE_KEY);
   const household = map.get(HOUSEHOLD_RATE_KEY);
+  const selfRate = self != null ? Number(self) : NaN;
+  const householdRate = household != null ? Number(household) : NaN;
   return {
-    selfGPerDay: self != null ? Number(self) : DEFAULT_SELF_RATE_G_PER_DAY,
-    householdGPerDay: household != null ? Number(household) : DEFAULT_HOUSEHOLD_RATE_G_PER_DAY
+    selfGPerDay: Number.isFinite(selfRate) && selfRate > 0 ? selfRate : DEFAULT_SELF_RATE_G_PER_DAY,
+    householdGPerDay:
+      Number.isFinite(householdRate) && householdRate > 0 ? householdRate : DEFAULT_HOUSEHOLD_RATE_G_PER_DAY
   };
 }
 
 export function setStatsRates(db: DatabaseSync, rates: StatsRates): void {
   if (!Number.isFinite(rates.selfGPerDay) || rates.selfGPerDay <= 0) {
-    throw new Error('selfGPerDay must be a positive number');
+    throw new InvalidRatesError('selfGPerDay must be a positive number');
   }
   if (!Number.isFinite(rates.householdGPerDay) || rates.householdGPerDay <= 0) {
-    throw new Error('householdGPerDay must be a positive number');
+    throw new InvalidRatesError('householdGPerDay must be a positive number');
   }
   db.prepare(
     `INSERT INTO app_meta (key, value) VALUES (?, ?)

@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import ExcelJS from 'exceljs';
 import type { Actions, PageServerLoad } from './$types';
-import { getDb, getStatsRates, setStatsRates } from '$lib/server/db';
+import { getDb, getStatsRates, setStatsRates, InvalidRatesError } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getOpenCoffees } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { requireAdmin } from '$lib/server/auth';
@@ -48,8 +48,11 @@ export const actions: Actions = {
     const householdGPerDay = Number(formData.get('householdGPerDay'));
     try {
       setStatsRates(getDb(), { selfGPerDay, householdGPerDay });
-    } catch {
-      return fail(400, { error: 'Both rates must be positive numbers' });
+    } catch (err) {
+      if (err instanceof InvalidRatesError) {
+        return fail(400, { error: 'Both rates must be positive numbers' });
+      }
+      throw err;
     }
     return { success: true };
   },
