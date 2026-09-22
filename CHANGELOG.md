@@ -1,3 +1,20 @@
+# [1.17.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.16.0...v1.17.0) (2026-09-22)
+
+
+### Bug Fixes
+
+* disambiguate stat labels, pin locale, and guard the donut against an empty backlog
+* keep the stats rate-edit form open so save errors are visible
+
+
+### Features
+
+* add /stats route load, rate-update action, and nav link
+* add Chart.js and a theme-aware reusable chart component
+* add editable stats consumption-rate settings to app_meta
+* add pure backlog-stats computation module
+* build the backlog stats page UI
+
 # [1.16.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.15.0...v1.16.0) (2026-09-21)
 
 
