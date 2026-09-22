@@ -13,6 +13,7 @@ import {
 } from '$lib/server/beanconqueror';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
 import { buildBacklogStats } from './statsData';
+import { buildBeanConquerorStats } from './beanConquerorStatsData';
 
 export const load: PageServerLoad = () => {
   const db = getDb();
@@ -30,6 +31,7 @@ export const load: PageServerLoad = () => {
     stats,
     rates,
     beanConquerorLastImportedAt: lastImportedRow?.value ?? null,
+    beanConquerorStats: buildBeanConquerorStats(db),
     unmatchedBeans: getUnmatchedBeanConquerorBeans(db),
     roastLevels,
     roasters: getDistinctFieldValues(db, 'roaster'),

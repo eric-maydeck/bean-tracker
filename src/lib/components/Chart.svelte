@@ -41,7 +41,7 @@
     datasetLabel = '',
     height = 320
   }: {
-    type: 'bar' | 'doughnut';
+    type: 'bar' | 'doughnut' | 'line';
     labels: string[];
     values: number[];
     datasetLabel?: string;
@@ -68,19 +68,38 @@
     const gridColor = themeColor('--color-border');
     const surfaceColor = themeColor('--color-surface');
 
+    // A line chart is a single trend over time, not a set of discrete
+    // categories — one line color (for the line and its point markers)
+    // reads more naturally than the bar/doughnut per-category palette, and
+    // filling the area under the line would visually overstate a rating
+    // scale that doesn't start at 0.
+    const lineColor = themeColor('--chart-color-1');
+
     chart?.destroy();
     chart = new ChartJS(canvasEl, {
       type,
       data: {
         labels,
         datasets: [
-          {
-            label: datasetLabel,
-            data: values,
-            backgroundColor: paletteColors(labels.length),
-            borderWidth: type === 'doughnut' ? 2 : 0,
-            borderColor: surfaceColor
-          }
+          type === 'line'
+            ? {
+                label: datasetLabel,
+                data: values,
+                borderColor: lineColor,
+                backgroundColor: lineColor,
+                pointBackgroundColor: lineColor,
+                borderWidth: 2,
+                pointRadius: 3,
+                tension: 0.25,
+                fill: false
+              }
+            : {
+                label: datasetLabel,
+                data: values,
+                backgroundColor: paletteColors(labels.length),
+                borderWidth: type === 'doughnut' ? 2 : 0,
+                borderColor: surfaceColor
+              }
         ]
       },
       options: {
@@ -138,7 +157,12 @@
                   }
                 }
               }
-            : undefined
+            : type === 'line'
+              ? {
+                  x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                  y: { ticks: { color: textColor }, grid: { color: gridColor } }
+                }
+              : undefined
       }
     });
   }

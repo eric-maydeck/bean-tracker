@@ -70,6 +70,64 @@
   // with many categories or ballooning thick with few.
   let compositionChartHeight = $derived(Math.max(220, visibleBreakdownEntries.length * 34 + 40));
 
+  // --- Bean Conqueror stats/breakdowns ---
+
+  type BcTab = 'overview' | 'favorites' | 'brewing' | 'economics';
+  type BcFavoriteDimension = 'roaster' | 'origin' | 'processing' | 'roastLevel';
+
+  const bcFavoriteDimensionLabels: Record<BcFavoriteDimension, string> = {
+    roaster: 'Roaster',
+    origin: 'Origin',
+    processing: 'Processing',
+    roastLevel: 'Roast Level'
+  };
+
+  let bcTab = $state<BcTab>('overview');
+  let bcFavoriteDimension = $state<BcFavoriteDimension>('roaster');
+  let bcBrewingMetric = $state<'rating' | 'count'>('rating');
+
+  // Same reasoning as COMPOSITION_BAR_LIMIT above, applied to the Bean
+  // Conqueror breakdowns — capping how many bars a chart draws keeps bar
+  // thickness/label legibility consistent across dimensions with wildly
+  // different cardinalities (a handful of grinders vs. dozens of roasters).
+  const BEANCONQUEROR_BAR_LIMIT = 10;
+
+  let bcFavoriteGroups = $derived(
+    {
+      roaster: data.beanConquerorStats.favoritesByRoaster,
+      origin: data.beanConquerorStats.favoritesByOrigin,
+      processing: data.beanConquerorStats.favoritesByProcessing,
+      roastLevel: data.beanConquerorStats.favoritesByRoastLevel
+    }[bcFavoriteDimension]
+  );
+  let bcVisibleFavoriteGroups = $derived(bcFavoriteGroups.slice(0, BEANCONQUEROR_BAR_LIMIT));
+  let bcFavoriteChartHeight = $derived(Math.max(220, bcVisibleFavoriteGroups.length * 34 + 40));
+
+  let bcVisibleMethodGroups = $derived(data.beanConquerorStats.byMethod.slice(0, BEANCONQUEROR_BAR_LIMIT));
+  let bcVisibleGrinderGroups = $derived(data.beanConquerorStats.byGrinder.slice(0, BEANCONQUEROR_BAR_LIMIT));
+  let bcMethodChartHeight = $derived(Math.max(220, bcVisibleMethodGroups.length * 34 + 40));
+  let bcGrinderChartHeight = $derived(Math.max(220, bcVisibleGrinderGroups.length * 34 + 40));
+
+  let bcVisibleCostByRoaster = $derived(
+    data.beanConquerorStats.costPerGramByRoaster.slice(0, BEANCONQUEROR_BAR_LIMIT)
+  );
+  let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
+
+  let bcRatingsDates = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.date));
+  let bcRatingsValues = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.rating));
+
+  function formatRating(value: number | null): string {
+    return value === null ? '—' : value.toFixed(1);
+  }
+
+  function formatPercent(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(1)}%`;
+  }
+
+  function formatCostPerGram(value: number | null): string {
+    return value === null ? '—' : `$${value.toFixed(3)}/g`;
+  }
+
   function formatGrams(g: number): string {
     return `${Math.round(g).toLocaleString('en-US')}g`;
   }
@@ -412,6 +470,137 @@
         </div>
       {/each}
     </div>
+  {/if}
+
+  {#if data.beanConquerorStats.totalBrews > 0 || data.beanConquerorStats.totalBeans > 0}
+    <h3>Stats &amp; breakdowns</h3>
+    <div class="chart-panel-controls">
+      <div class="tab-group">
+        <button aria-pressed={bcTab === 'overview'} onclick={() => (bcTab = 'overview')}>Overview</button>
+        <button aria-pressed={bcTab === 'favorites'} onclick={() => (bcTab = 'favorites')}>Favorites</button>
+        <button aria-pressed={bcTab === 'brewing'} onclick={() => (bcTab = 'brewing')}>Brewing</button>
+        <button aria-pressed={bcTab === 'economics'} onclick={() => (bcTab = 'economics')}>Economics</button>
+      </div>
+    </div>
+
+    {#if bcTab === 'overview'}
+      <div class="stat-row">
+        <div class="stat-item">
+          <span class="stat-value">{data.beanConquerorStats.totalBrews}</span>
+          <span class="stat-label">Total brews</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{data.beanConquerorStats.totalBeans}</span>
+          <span class="stat-label">Total beans</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{formatRating(data.beanConquerorStats.averageRating)}</span>
+          <span class="stat-label">Average rating</span>
+        </div>
+      </div>
+      {#if bcRatingsDates.length === 0}
+        <p class="text-muted">No rated brews yet.</p>
+      {:else}
+        <Chart type="line" labels={bcRatingsDates} values={bcRatingsValues} datasetLabel="Rating" />
+      {/if}
+    {:else if bcTab === 'favorites'}
+      <div class="chart-panel-controls">
+        <div class="tab-group">
+          {#each Object.entries(bcFavoriteDimensionLabels) as [key, label] (key)}
+            <button
+              aria-pressed={bcFavoriteDimension === key}
+              onclick={() => (bcFavoriteDimension = key as BcFavoriteDimension)}>{label}</button
+            >
+          {/each}
+        </div>
+      </div>
+      {#if bcFavoriteGroups.length === 0}
+        <p class="text-muted">No rated brews yet.</p>
+      {:else}
+        <p class="text-muted">Showing top {bcVisibleFavoriteGroups.length} of {bcFavoriteGroups.length}.</p>
+        <Chart
+          type="bar"
+          labels={bcVisibleFavoriteGroups.map((g) => g.label)}
+          values={bcVisibleFavoriteGroups.map((g) => g.averageRating)}
+          datasetLabel="Average rating"
+          height={bcFavoriteChartHeight}
+        />
+      {/if}
+    {:else if bcTab === 'brewing'}
+      <div class="stat-row">
+        <div class="stat-item">
+          <span class="stat-value">{formatPercent(data.beanConquerorStats.averageExtractionYieldPercent)}</span>
+          <span class="stat-label">Average extraction yield</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{formatPercent(data.beanConquerorStats.averageTdsPercent)}</span>
+          <span class="stat-label">Average TDS</span>
+        </div>
+      </div>
+      <div class="chart-panel-controls">
+        <div class="tab-group">
+          <button aria-pressed={bcBrewingMetric === 'rating'} onclick={() => (bcBrewingMetric = 'rating')}
+            >Rating</button
+          >
+          <button aria-pressed={bcBrewingMetric === 'count'} onclick={() => (bcBrewingMetric = 'count')}
+            >Count</button
+          >
+        </div>
+      </div>
+      <div class="chart-panel-row">
+        <div>
+          <h3>By Method</h3>
+          {#if bcVisibleMethodGroups.length === 0}
+            <p class="text-muted">No rated brews yet.</p>
+          {:else}
+            <Chart
+              type="bar"
+              labels={bcVisibleMethodGroups.map((g) => g.label)}
+              values={bcVisibleMethodGroups.map((g) => (bcBrewingMetric === 'rating' ? g.averageRating : g.brewCount))}
+              datasetLabel={bcBrewingMetric === 'rating' ? 'Average rating' : 'Brews'}
+              height={bcMethodChartHeight}
+            />
+          {/if}
+        </div>
+        <div>
+          <h3>By Grinder</h3>
+          {#if bcVisibleGrinderGroups.length === 0}
+            <p class="text-muted">No rated brews yet.</p>
+          {:else}
+            <Chart
+              type="bar"
+              labels={bcVisibleGrinderGroups.map((g) => g.label)}
+              values={bcVisibleGrinderGroups.map((g) =>
+                bcBrewingMetric === 'rating' ? g.averageRating : g.brewCount
+              )}
+              datasetLabel={bcBrewingMetric === 'rating' ? 'Average rating' : 'Brews'}
+              height={bcGrinderChartHeight}
+            />
+          {/if}
+        </div>
+      </div>
+    {:else if bcTab === 'economics'}
+      <div class="stats-hero">
+        <div class="stats-hero-tile">
+          <span class="stat-value">{formatCostPerGram(data.beanConquerorStats.averageCostPerGram)}</span>
+          <span class="stat-label">Average cost per gram</span>
+        </div>
+      </div>
+      {#if bcVisibleCostByRoaster.length === 0}
+        <p class="text-muted">No cost data yet.</p>
+      {:else}
+        <p class="text-muted">
+          Showing top {bcVisibleCostByRoaster.length} of {data.beanConquerorStats.costPerGramByRoaster.length}.
+        </p>
+        <Chart
+          type="bar"
+          labels={bcVisibleCostByRoaster.map((g) => g.label)}
+          values={bcVisibleCostByRoaster.map((g) => g.averageCostPerGram)}
+          datasetLabel="Cost per gram ($)"
+          height={bcCostChartHeight}
+        />
+      {/if}
+    {/if}
   {/if}
 
   {#if createModalBean}
