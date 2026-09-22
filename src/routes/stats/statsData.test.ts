@@ -129,6 +129,18 @@ describe('buildBacklogStats', () => {
     expect(stats.youngestUnopenedBag).toBeNull();
   });
 
+  it('treats an unparseable (e.g. empty-string) roast date as absent rather than producing NaN', () => {
+    const backlog = [
+      sampleRow({ id: 1, roast_date: '' }),
+      sampleRow({ id: 2, roast_date: 'not-a-date' }),
+      sampleRow({ id: 3, roast_date: '2026-06-01' })
+    ];
+    const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
+    expect(stats.oldestUnopenedBag?.roastDate).toBe('2026-06-01');
+    expect(Number.isFinite(stats.oldestUnopenedBag?.daysOld)).toBe(true);
+    expect(Number.isFinite(stats.averageAgeBacklogAndOpen)).toBe(true);
+  });
+
   it('averages bag size over rows with a known weight, skipping nulls', () => {
     const backlog = [
       sampleRow({ id: 1, amount_g: 100 }),
@@ -161,6 +173,15 @@ describe('buildBacklogStats', () => {
     const archived = [sampleRow({ id: 3, roast_date: '2026-07-01', opened_date: '2026-07-21', status: 'archive' })]; // 20 days
     const stats = buildBacklogStats(open, backlog, archived, rates, roastLevels, today);
     expect(stats.averageDaysToOpen).toBe(15);
+  });
+
+  it('skips a row with an unparseable roast or opened date instead of producing NaN', () => {
+    const open = [
+      sampleRow({ id: 1, roast_date: '', opened_date: '2026-08-11' }),
+      sampleRow({ id: 2, roast_date: '2026-08-01', opened_date: '2026-08-11' }) // 10 days
+    ];
+    const stats = buildBacklogStats(open, [], [], rates, roastLevels, today);
+    expect(stats.averageDaysToOpen).toBe(10);
   });
 
   it('returns null averageDaysToOpen when no row has both a roast date and an opened date', () => {

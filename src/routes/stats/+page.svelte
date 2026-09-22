@@ -65,6 +65,53 @@
 
 <h1>Stats</h1>
 
+{#if data.isAdmin}
+  <div class="rate-edit">
+    {#if editingRates}
+      <form
+        method="POST"
+        action="?/updateRates"
+        class="rate-edit-form"
+        use:enhance={() => {
+          return async ({ update, result }) => {
+            await update();
+            if (result.type === 'success') {
+              editingRates = false;
+            }
+          };
+        }}
+      >
+        <label>
+          Your rate (g/day)
+          <input type="number" name="selfGPerDay" min="1" step="1" value={data.rates.selfGPerDay} required />
+        </label>
+        <label>
+          Household rate (g/day)
+          <input
+            type="number"
+            name="householdGPerDay"
+            min="1"
+            step="1"
+            value={data.rates.householdGPerDay}
+            required
+          />
+        </label>
+        <button class="button" type="submit">Save</button>
+        <button class="button button-secondary" type="button" onclick={() => (editingRates = false)}>
+          Cancel
+        </button>
+      </form>
+      {#if form?.error}
+        <p class="badge badge-urgent">{form.error}</p>
+      {/if}
+    {:else}
+      <button class="button button-secondary" type="button" onclick={() => (editingRates = true)}>
+        ✏️ Edit consumption rates
+      </button>
+    {/if}
+  </div>
+{/if}
+
 <section class="stats-hero">
   <div class="stats-hero-tile">
     <span class="stat-value">{data.stats.totalBacklogCount}</span>
@@ -181,7 +228,7 @@
       {#if data.stats.youngestUnopenedBag}
         <div class="stat-item">
           <span class="stat-value">{data.stats.youngestUnopenedBag.daysOld}d</span>
-          <span class="stat-label">Youngest unopened</span>
+          <span class="stat-label">Newest unopened</span>
           <a class="stat-sublink" href={`/coffees/${data.stats.youngestUnopenedBag.slug}`}
             >{data.stats.youngestUnopenedBag.coffeeName} · {data.stats.youngestUnopenedBag.roaster}</a
           >
@@ -232,53 +279,6 @@
     {/if}
   </div>
 </section>
-
-{#if data.isAdmin}
-  <div class="rate-edit">
-    {#if editingRates}
-      <form
-        method="POST"
-        action="?/updateRates"
-        class="rate-edit-form"
-        use:enhance={() => {
-          return async ({ update, result }) => {
-            await update();
-            if (result.type === 'success') {
-              editingRates = false;
-            }
-          };
-        }}
-      >
-        <label>
-          Your rate (g/day)
-          <input type="number" name="selfGPerDay" min="1" step="1" value={data.rates.selfGPerDay} required />
-        </label>
-        <label>
-          Household rate (g/day)
-          <input
-            type="number"
-            name="householdGPerDay"
-            min="1"
-            step="1"
-            value={data.rates.householdGPerDay}
-            required
-          />
-        </label>
-        <button class="button" type="submit">Save</button>
-        <button class="button button-secondary" type="button" onclick={() => (editingRates = false)}>
-          Cancel
-        </button>
-      </form>
-      {#if form?.error}
-        <p class="badge badge-urgent">{form.error}</p>
-      {/if}
-    {:else}
-      <button class="button button-secondary" type="button" onclick={() => (editingRates = true)}>
-        ✏️ Edit consumption rates
-      </button>
-    {/if}
-  </div>
-{/if}
 
 <div class="chart-panel-row">
   <section class="chart-panel">

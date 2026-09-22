@@ -909,6 +909,7 @@ div.compact-row {
 .stat-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: stretch;
   gap: var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -921,22 +922,28 @@ div.compact-row {
   flex: 1 1 200px;
   max-width: 280px;
   text-align: center;
+  /* Tiles on the same flex line stretch to equal height by default; a
+     tile with less content (no sublink, shorter label) centers what it
+     has in that stretched box instead of leaving it pinned to the top
+     with dead space below. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
 }
 
 .stat-item .stat-value {
   display: block;
-  font-size: 1.5rem;
+  font-size: 1.85rem;
   font-weight: 600;
 }
 
 .stat-item .stat-label {
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.78rem;
 }
 
 .stat-sublink {
-  display: block;
-  margin-top: var(--space-1);
   font-size: 0.85rem;
   color: var(--color-accent);
   text-decoration: none;

@@ -93,6 +93,15 @@ function sumCost(rows: CoffeeRow[]): number {
   return rows.filter((r) => r.cost != null).reduce((total, r) => total + (r.cost as number), 0);
 }
 
+// A non-null date string isn't necessarily a *parseable* one (an empty
+// string, or a value in some other format than this app's own YYYY-MM-DD,
+// would slip past a plain `!= null` check and silently produce NaN day
+// counts downstream). Every date used for day-math below is filtered
+// through this first.
+function isValidDateString(value: string | null): value is string {
+  return value != null && Number.isFinite(parseDate(value).getTime());
+}
+
 function averageDaysBetween(
   rows: CoffeeRow[],
   startDate: (row: CoffeeRow) => string | null,
@@ -102,7 +111,7 @@ function averageDaysBetween(
   for (const row of rows) {
     const start = startDate(row);
     const end = endDate(row);
-    if (start != null && end != null) {
+    if (isValidDateString(start) && isValidDateString(end)) {
       diffs.push(diffDays(parseDate(end), parseDate(start)));
     }
   }
@@ -149,7 +158,9 @@ export function buildBacklogStats(
 
   const distinctRoasterCount = new Set(allRows.map((r) => r.roaster)).size;
 
-  const backlogWithRoastDate = backlogRows.filter((r): r is CoffeeRow & { roast_date: string } => r.roast_date != null);
+  const backlogWithRoastDate = backlogRows.filter(
+    (r): r is CoffeeRow & { roast_date: string } => isValidDateString(r.roast_date)
+  );
   const toBagHighlight = (row: CoffeeRow & { roast_date: string }): BagHighlight => ({
     coffeeName: row.coffee_name,
     roaster: row.roaster,
@@ -173,7 +184,9 @@ export function buildBacklogStats(
   const bagsWithWeight = allRows.filter((r) => r.amount_g != null);
   const averageBagSizeGrams = bagsWithWeight.length > 0 ? sumGrams(bagsWithWeight) / bagsWithWeight.length : null;
 
-  const rowsWithRoastDate = allRows.filter((r): r is CoffeeRow & { roast_date: string } => r.roast_date != null);
+  const rowsWithRoastDate = allRows.filter(
+    (r): r is CoffeeRow & { roast_date: string } => isValidDateString(r.roast_date)
+  );
   const averageAgeBacklogAndOpen =
     rowsWithRoastDate.length > 0
       ? rowsWithRoastDate.reduce((total, r) => total + diffDays(today, parseDate(r.roast_date)), 0) /
