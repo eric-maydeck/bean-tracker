@@ -105,7 +105,10 @@
                     const data = (ctx.chart.data.datasets[0]?.data ?? []) as number[];
                     const total = data.reduce((sum, v) => sum + (v ?? 0), 0);
                     const share = total > 0 ? value / total : 0;
-                    return share >= 0.08 ? value.toLocaleString('en-US') : '';
+                    if (share < 0.08) return '';
+                    // Two lines (value, then percentage) reads more cleanly
+                    // inside a narrow slice than one long concatenated string.
+                    return [value.toLocaleString('en-US'), `(${Math.round(share * 100)}%)`];
                   }
                 }
               : { display: false }
@@ -114,7 +117,26 @@
           type === 'bar'
             ? {
                 x: { ticks: { color: textColor }, grid: { color: gridColor } },
-                y: { ticks: { color: textColor }, grid: { display: false } }
+                y: {
+                  ticks: {
+                    color: textColor,
+                    // Truncate to a fixed max length so the space Chart.js
+                    // reserves for y-axis labels — and therefore the bar
+                    // plot area's effective width — stays constant across
+                    // dimensions/tabs, instead of shrinking whenever a
+                    // dimension happens to have longer label text. The
+                    // tooltip (below) still shows the untruncated label.
+                    callback(_value, index) {
+                      const label = labels[index] ?? '';
+                      const maxLen = 20;
+                      return label.length > maxLen ? `${label.slice(0, maxLen - 1)}…` : label;
+                    }
+                  },
+                  grid: { display: false },
+                  afterFit(scale) {
+                    scale.width = 170;
+                  }
+                }
               }
             : undefined
       }

@@ -311,7 +311,7 @@
 </div>
 
 <section class="chart-panel">
-  <h2>Composition</h2>
+  <h2>Top Coffees by Category</h2>
   <div class="chart-panel-controls">
     <div class="tab-group">
       {#each Object.entries(dimensionLabels) as [key, label] (key)}
@@ -326,9 +326,7 @@
   {#if breakdownEntries.length === 0}
     <p class="text-muted">Nothing in the backlog yet.</p>
   {:else}
-    {#if breakdownEntries.length > COMPOSITION_BAR_LIMIT}
-      <p class="text-muted">Showing top {COMPOSITION_BAR_LIMIT} of {breakdownEntries.length}.</p>
-    {/if}
+    <p class="text-muted">Showing top {visibleBreakdownEntries.length} of {breakdownEntries.length}.</p>
     <Chart
       type="bar"
       labels={breakdownLabels}
