@@ -136,12 +136,53 @@
     return value === null ? '—' : `$${value.toFixed(3)}/g`;
   }
 
+  // Section tiles are dense enough that every character counts toward how
+  // large the value font can go before it overflows — switching to a
+  // decimal-kg reading above 1000g is both more scannable and 1-2 chars
+  // shorter than the equivalent comma-grouped gram figure (e.g. "10.6kg"
+  // vs "10,587g"). A one-decimal kg reading only fits the tile up to
+  // ~100kg (measured live: "200.8kg" already spills past the tile edge) —
+  // past that, drop the decimal and round instead. No thousands separator
+  // here even though every other count on this page has one: measured
+  // live, the comma alone is enough to push a 4-digit kg reading (e.g.
+  // "1,000kg") past the tile edge, while the same digits with no comma
+  // ("1000kg") stay safely within it up through "9999kg".
   function formatGrams(g: number): string {
+    if (g >= 100000) {
+      return `${Math.round(g / 1000)}kg`;
+    }
+    if (g >= 1000) {
+      return `${(g / 1000).toFixed(1)}kg`;
+    }
     return `${Math.round(g).toLocaleString('en-US')}g`;
+  }
+
+  // Only meaningful once formatGrams has rounded away the decimal (the
+  // >=100kg case) — null otherwise, so the caller knows not to render a
+  // tooltip when the displayed value is already exact.
+  function formatGramsTooltip(g: number): string | null {
+    if (g >= 100000) {
+      return `${(g / 1000).toFixed(1)}kg`;
+    }
+    return null;
   }
 
   function formatKg(g: number): string {
     return `${(g / 1000).toFixed(1)} kg`;
+  }
+
+  const currencyCompactFormatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    notation: 'compact',
+    maximumFractionDigits: 1
+  });
+
+  // "$1860.41" -> "$1.9K": a hero-adjacent tile doesn't need exact cents,
+  // and the shorter string leaves far more room for a larger value font
+  // before it overflows the tile.
+  function formatCurrencyCompact(amount: number): string {
+    return currencyCompactFormatter.format(amount);
   }
 
   function formatClearBy(iso: string): string {
@@ -213,21 +254,29 @@
 <section class="stats-hero">
   <div class="stats-hero-tile">
     <span class="stat-value">{data.stats.totalBacklogCount}</span>
-    <span class="stat-label">bags on hand</span>
+    <div class="stat-caption">
+      <span class="stat-label">bags on hand</span>
+    </div>
   </div>
   <div class="stats-hero-tile">
     <span class="stat-value">{formatKg(data.stats.totalBacklogGrams)}</span>
-    <span class="stat-label">total weight</span>
+    <div class="stat-caption">
+      <span class="stat-label">total weight</span>
+    </div>
   </div>
   <div class="stats-hero-tile">
     {#if data.stats.daysToClearHousehold === null || data.stats.clearByDateHousehold === null}
       <span class="stat-value">🎉</span>
-      <span class="stat-label">Nothing left to drink through!</span>
+      <div class="stat-caption">
+        <span class="stat-label">Nothing left to drink through!</span>
+      </div>
     {:else}
       <span class="stat-value">{data.stats.daysToClearHousehold}d</span>
-      <span class="stat-label"
-        >to clear as a household — empty by {formatClearBy(data.stats.clearByDateHousehold)}</span
-      >
+      <div class="stat-caption">
+        <span class="stat-label"
+          >to clear as a household — empty by {formatClearBy(data.stats.clearByDateHousehold)}</span
+        >
+      </div>
     {/if}
   </div>
 </section>
@@ -236,20 +285,36 @@
   <h2>Weight</h2>
   <div class="stat-row">
     <div class="stat-item">
-      <span class="stat-value">{formatGrams(data.stats.openedGrams)}</span>
-      <span class="stat-label">Opened</span>
+      <span class="stat-value" title={formatGramsTooltip(data.stats.openedGrams)}
+        >{formatGrams(data.stats.openedGrams)}</span
+      >
+      <div class="stat-caption">
+        <span class="stat-label">Opened</span>
+      </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value">{formatGrams(data.stats.unopenedBacklogGrams)}</span>
-      <span class="stat-label">Unopened weight</span>
+      <span class="stat-value" title={formatGramsTooltip(data.stats.unopenedBacklogGrams)}
+        >{formatGrams(data.stats.unopenedBacklogGrams)}</span
+      >
+      <div class="stat-caption">
+        <span class="stat-label">Unopened weight</span>
+      </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value">{formatGrams(data.stats.totalBacklogGrams)}</span>
-      <span class="stat-label">Total (opened + unopened)</span>
+      <span class="stat-value" title={formatGramsTooltip(data.stats.totalBacklogGrams)}
+        >{formatGrams(data.stats.totalBacklogGrams)}</span
+      >
+      <div class="stat-caption">
+        <span class="stat-label">Total (opened + unopened)</span>
+      </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value">{formatGrams(data.stats.finishedGrams)}</span>
-      <span class="stat-label">Finished</span>
+      <span class="stat-value" title={formatGramsTooltip(data.stats.finishedGrams)}
+        >{formatGrams(data.stats.finishedGrams)}</span
+      >
+      <div class="stat-caption">
+        <span class="stat-label">Finished</span>
+      </div>
     </div>
   </div>
 </section>
@@ -259,122 +324,155 @@
   <div class="stat-row">
     <div class="stat-item">
       <span class="stat-value">{data.stats.openedCount}</span>
-      <span class="stat-label">Coffees opened</span>
+      <div class="stat-caption">
+        <span class="stat-label">Coffees opened</span>
+      </div>
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.unopenedBacklogCount}</span>
-      <span class="stat-label">Unopened bags</span>
+      <div class="stat-caption">
+        <span class="stat-label">Unopened bags</span>
+      </div>
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.totalBacklogCount}</span>
-      <span class="stat-label">Total backlog</span>
+      <div class="stat-caption">
+        <span class="stat-label">Total backlog</span>
+      </div>
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.finishedCount}</span>
-      <span class="stat-label">Finished</span>
+      <div class="stat-caption">
+        <span class="stat-label">Finished</span>
+      </div>
     </div>
   </div>
 </section>
 
-<div class="chart-panel-row">
-  <section class="chart-panel">
-    <h2>Time to Clear</h2>
+<section class="chart-panel">
+  <h2>Time to Clear</h2>
     <div class="stat-row">
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
         </span>
-        <span class="stat-label">
-          To clear solo{data.stats.clearByDateSelf
-            ? ` — empty by ${formatClearBy(data.stats.clearByDateSelf)}`
-            : ''}
-        </span>
+        {#if data.stats.clearByDateSelf}
+          <span class="stat-unit">by {formatClearBy(data.stats.clearByDateSelf)}</span>
+        {/if}
+        <div class="stat-caption">
+          <span class="stat-label">To clear solo</span>
+        </div>
       </div>
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.daysToClearHousehold === null ? '—' : `${data.stats.daysToClearHousehold}d`}
         </span>
-        <span class="stat-label">
-          To clear as a household{data.stats.clearByDateHousehold
-            ? ` — empty by ${formatClearBy(data.stats.clearByDateHousehold)}`
-            : ''}
-        </span>
+        {#if data.stats.clearByDateHousehold}
+          <span class="stat-unit">by {formatClearBy(data.stats.clearByDateHousehold)}</span>
+        {/if}
+        <div class="stat-caption">
+          <span class="stat-label">To clear as a household</span>
+        </div>
       </div>
       <div class="stat-item">
-        <span class="stat-value">{data.rates.selfGPerDay}g/day</span>
-        <span class="stat-label">Your rate</span>
+        <span class="stat-value">{data.rates.selfGPerDay}g</span>
+        <span class="stat-unit">per day</span>
+        <div class="stat-caption">
+          <span class="stat-label">Your rate</span>
+        </div>
       </div>
       <div class="stat-item">
-        <span class="stat-value">{data.rates.householdGPerDay}g/day</span>
-        <span class="stat-label">Household rate</span>
+        <span class="stat-value">{data.rates.householdGPerDay}g</span>
+        <span class="stat-unit">per day</span>
+        <div class="stat-caption">
+          <span class="stat-label">Household rate</span>
+        </div>
       </div>
     </div>
-  </section>
+</section>
 
-  <section class="chart-panel">
-    <h2>Coffee Age</h2>
+<section class="chart-panel">
+  <h2>Coffee Age</h2>
     <div class="stat-row">
-      {#if data.stats.oldestUnopenedBag}
-        <div class="stat-item">
-          <span class="stat-value">{data.stats.oldestUnopenedBag.daysOld}d</span>
-          <span class="stat-label">Oldest unopened</span>
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.oldestUnopenedBag ? `${data.stats.oldestUnopenedBag.daysOld}d` : '—'}
+        </span>
+        {#if data.stats.oldestUnopenedBag}
           <a class="stat-sublink" href={`/coffees/${data.stats.oldestUnopenedBag.slug}`}
-            >{data.stats.oldestUnopenedBag.coffeeName} · {data.stats.oldestUnopenedBag.roaster}</a
+            >{data.stats.oldestUnopenedBag.roaster} · {data.stats.oldestUnopenedBag.coffeeName}</a
           >
+        {/if}
+        <div class="stat-caption">
+          <span class="stat-label">Oldest unopened</span>
         </div>
-      {/if}
-      {#if data.stats.youngestUnopenedBag}
-        <div class="stat-item">
-          <span class="stat-value">{data.stats.youngestUnopenedBag.daysOld}d</span>
-          <span class="stat-label">Newest unopened</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.youngestUnopenedBag ? `${data.stats.youngestUnopenedBag.daysOld}d` : '—'}
+        </span>
+        {#if data.stats.youngestUnopenedBag}
           <a class="stat-sublink" href={`/coffees/${data.stats.youngestUnopenedBag.slug}`}
-            >{data.stats.youngestUnopenedBag.coffeeName} · {data.stats.youngestUnopenedBag.roaster}</a
+            >{data.stats.youngestUnopenedBag.roaster} · {data.stats.youngestUnopenedBag.coffeeName}</a
           >
+        {/if}
+        <div class="stat-caption">
+          <span class="stat-label">Newest unopened</span>
         </div>
-      {/if}
-      {#if data.stats.averageAgeBacklogAndOpen !== null}
-        <div class="stat-item">
-          <span class="stat-value">{formatDays(data.stats.averageAgeBacklogAndOpen)}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.averageAgeBacklogAndOpen === null ? '—' : formatDays(data.stats.averageAgeBacklogAndOpen)}
+        </span>
+        <div class="stat-caption">
           <span class="stat-label">Average age (backlog + open)</span>
         </div>
-      {/if}
-      {#if data.stats.averageDaysToOpen !== null}
-        <div class="stat-item">
-          <span class="stat-value">{formatDays(data.stats.averageDaysToOpen)}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value">
+          {data.stats.averageDaysToOpen === null ? '—' : formatDays(data.stats.averageDaysToOpen)}
+        </span>
+        <div class="stat-caption">
           <span class="stat-label">Average time in backlog before opening</span>
         </div>
-      {/if}
-      {#if data.stats.averageDaysToFinish !== null}
-        <div class="stat-item">
-          <span class="stat-value">{formatDays(data.stats.averageDaysToFinish)}</span>
-          <span class="stat-label">Average time to finish an opened bag</span>
-        </div>
-      {/if}
+      </div>
     </div>
-  </section>
-</div>
+</section>
 
 <section class="chart-panel">
   <h2>Economics</h2>
   <div class="stat-row">
     <div class="stat-item">
-      <span class="stat-value">${data.stats.totalCost.toFixed(2)}</span>
-      <span class="stat-label">Tied up in backlog + open</span>
+      <span class="stat-value">{formatCurrencyCompact(data.stats.totalCost)}</span>
+      <div class="stat-caption">
+        <span class="stat-label">Tied up in backlog + open</span>
+      </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value">${data.stats.totalSpentAllTime.toFixed(2)}</span>
-      <span class="stat-label">Spent all-time</span>
+      <span class="stat-value">{formatCurrencyCompact(data.stats.totalSpentAllTime)}</span>
+      <div class="stat-caption">
+        <span class="stat-label">Spent all-time</span>
+      </div>
     </div>
     <div class="stat-item">
       <span class="stat-value">{data.stats.distinctRoasterCount}</span>
-      <span class="stat-label">Distinct roasters</span>
+      <div class="stat-caption">
+        <span class="stat-label">Distinct roasters</span>
+      </div>
     </div>
-    {#if data.stats.averageBagSizeGrams !== null}
-      <div class="stat-item">
-        <span class="stat-value">{formatGrams(data.stats.averageBagSizeGrams)}</span>
+    <div class="stat-item">
+      <span
+        class="stat-value"
+        title={data.stats.averageBagSizeGrams === null
+          ? null
+          : formatGramsTooltip(data.stats.averageBagSizeGrams)}
+      >
+        {data.stats.averageBagSizeGrams === null ? '—' : formatGrams(data.stats.averageBagSizeGrams)}
+      </span>
+      <div class="stat-caption">
         <span class="stat-label">Average bag size</span>
       </div>
-    {/if}
+    </div>
   </div>
 </section>
 
@@ -458,7 +556,7 @@
     <p class="text-muted">Showing top {visibleUnmatchedBeans.length} of {data.unmatchedBeans.length}.</p>
     <div class="stat-row">
       {#each visibleUnmatchedBeans as bean (bean.id)}
-        <div class="stat-item">
+        <div class="candidate-tile">
           <span class="stat-value">{bean.name}</span>
           <span class="stat-label">{bean.roaster ?? 'Unknown roaster'}</span>
           {#if data.isAdmin}
@@ -500,15 +598,21 @@
       <div class="stat-row">
         <div class="stat-item">
           <span class="stat-value">{data.beanConquerorStats.totalBrews}</span>
-          <span class="stat-label">Total brews</span>
+          <div class="stat-caption">
+            <span class="stat-label">Total brews</span>
+          </div>
         </div>
         <div class="stat-item">
           <span class="stat-value">{data.beanConquerorStats.totalBeans}</span>
-          <span class="stat-label">Total beans</span>
+          <div class="stat-caption">
+            <span class="stat-label">Total beans</span>
+          </div>
         </div>
         <div class="stat-item">
           <span class="stat-value">{formatRating(data.beanConquerorStats.averageRating)}</span>
-          <span class="stat-label">Average rating</span>
+          <div class="stat-caption">
+            <span class="stat-label">Average rating</span>
+          </div>
         </div>
       </div>
       {#if bcRatingsDates.length === 0}
@@ -543,11 +647,15 @@
       <div class="stat-row">
         <div class="stat-item">
           <span class="stat-value">{formatPercent(data.beanConquerorStats.averageExtractionYieldPercent)}</span>
-          <span class="stat-label">Average extraction yield</span>
+          <div class="stat-caption">
+            <span class="stat-label">Average extraction yield</span>
+          </div>
         </div>
         <div class="stat-item">
           <span class="stat-value">{formatPercent(data.beanConquerorStats.averageTdsPercent)}</span>
-          <span class="stat-label">Average TDS</span>
+          <div class="stat-caption">
+            <span class="stat-label">Average TDS</span>
+          </div>
         </div>
       </div>
       <div class="chart-panel-controls">
@@ -596,7 +704,9 @@
       <div class="stats-hero">
         <div class="stats-hero-tile">
           <span class="stat-value">{formatCostPerGram(data.beanConquerorStats.averageCostPerGram)}</span>
-          <span class="stat-label">Average cost per gram</span>
+          <div class="stat-caption">
+            <span class="stat-label">Average cost per gram</span>
+          </div>
         </div>
       </div>
       {#if bcVisibleCostByRoaster.length === 0}

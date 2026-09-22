@@ -63,6 +63,62 @@
     return colors;
   }
 
+  function hexToHsl(hex: string): { h: number; s: number; l: number } {
+    const clean = hex.replace('#', '');
+    const r = parseInt(clean.slice(0, 2), 16) / 255;
+    const g = parseInt(clean.slice(2, 4), 16) / 255;
+    const b = parseInt(clean.slice(4, 6), 16) / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    if (d === 0) return { h: 0, s: 0, l };
+    const s = d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    switch (max) {
+      case r:
+        h = ((g - b) / d) % 6;
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+    }
+    h *= 60;
+    if (h < 0) h += 360;
+    return { h, s, l };
+  }
+
+  function hslToHex(h: number, s: number, l: number): string {
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+    let [r, g, b] = [0, 0, 0];
+    if (h < 60) [r, g, b] = [c, x, 0];
+    else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x];
+    else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c];
+    else [r, g, b] = [c, 0, x];
+    const toHex = (v: number) =>
+      Math.round((v + m) * 255)
+        .toString(16)
+        .padStart(2, '0');
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  }
+
+  // Always a shade of the slice's own hue, never plain white/black: a light
+  // slice gets a dark label in the same hue (dark green on light green), a
+  // dark slice gets a light label in the same hue (light green on dark
+  // green). Keeping the background's own saturation, only pushing lightness
+  // toward one end, is what keeps the label reading as "the same color,
+  // darker/lighter" rather than a generic neutral overlay.
+  function datalabelColorFor(backgroundHex: string): string {
+    const { h, s, l } = hexToHsl(backgroundHex);
+    return hslToHex(h, s, l > 0.5 ? 0.22 : 0.82);
+  }
+
   function render() {
     const textColor = themeColor('--color-text');
     const gridColor = themeColor('--color-border');
@@ -74,6 +130,7 @@
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
     const lineColor = themeColor('--chart-color-1');
+    const bgColors = paletteColors(labels.length);
 
     chart?.destroy();
     chart = new ChartJS(canvasEl, {
@@ -96,7 +153,7 @@
             : {
                 label: datasetLabel,
                 data: values,
-                backgroundColor: paletteColors(labels.length),
+                backgroundColor: bgColors,
                 borderWidth: type === 'doughnut' ? 2 : 0,
                 borderColor: surfaceColor
               }
@@ -116,8 +173,8 @@
           datalabels:
             type === 'doughnut'
               ? {
-                  color: '#fff',
-                  font: { weight: 'bold', size: 12 },
+                  color: (ctx) => datalabelColorFor(bgColors[ctx.dataIndex % bgColors.length]),
+                  font: { weight: 'bold', size: 15 },
                   // Only label a slice once it's big enough for the text to
                   // actually fit inside it without looking cramped.
                   formatter: (value: number, ctx) => {

@@ -887,30 +887,56 @@ div.compact-row {
   height: 320px;
 }
 
+/* Flex + max-width (not a grid's 1fr columns), matching .stat-row/.stat-item
+   below — a grid track stretches to fill its share of the row regardless of
+   a minmax() floor, so the hero tiles never actually got smaller on a wide
+   screen. Flex with a max-width per tile gives a real, enforced ceiling. */
 .stats-hero {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  /* Same reasoning as .chart-panel:has(.stat-row) below: a definite width
+     via min(), not fit-content/auto-margins, so it doesn't fall into the
+     flex-wrap shrink-to-fit ambiguity — capped to exactly 3 hero tiles
+     wide and centered instead of left-aligned with trailing empty space. */
+  width: min(calc(3 * 262px + 2 * var(--space-3)), 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .stats-hero-tile {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: var(--space-5);
-  text-align: center;
+  aspect-ratio: 1;
+  /* Basis well below max-width for the same reason as .stat-item's —
+     avoids flex-wrap's basis-sum wrap check kicking in at in-between
+     container widths even though shrinking would still fit. */
+  flex: 1 1 150px;
+  max-width: 262px;
+  position: relative;
 }
 
 .stats-hero-tile .stat-value {
-  display: block;
-  font-size: 2.25rem;
+  top: 3.5rem;
+  font-size: 4.6rem;
   font-weight: 700;
   color: var(--color-accent);
 }
 
+.stats-hero-tile .stat-unit {
+  top: 8.4rem;
+  color: var(--color-accent);
+}
+
+.stats-hero-tile .stat-caption {
+  top: 12rem;
+}
+
 .stats-hero-tile .stat-label {
   color: var(--color-text-muted);
+  font-size: 0.95rem;
 }
 
 /* Each .stat-row is its own flex row, not one shared grid — that guarantees
@@ -925,32 +951,109 @@ div.compact-row {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
 .stat-item {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: var(--space-4);
-  flex: 1 1 200px;
-  max-width: 280px;
+  /* flex-basis is intentionally well below max-width: flex-wrap decides
+     whether a 4th tile fits using the *basis* sum, not the post-shrink
+     size, so a basis close to max-width can wrap a 4th tile to its own
+     line inside the narrower two-column .chart-panel-row layout even
+     though there's visibly enough room. A lower basis leaves margin;
+     flex-grow still lets tiles reach max-width whenever space allows. */
+  flex: 1 1 100px;
+  max-width: 188px;
+  aspect-ratio: 1;
+  position: relative;
+}
+
+/* The value is pinned at a fixed distance from the tile's TOP edge — not
+   centered — so it starts in the same spot regardless of how much caption
+   content follows below it. .stat-unit/.stat-sublink (the optional "per
+   day"/"by ..."/coffee-link subtext line) are pinned at their own fixed
+   top offset sized to clear the value, so a tile with neither just leaves
+   that space empty. .stat-caption (see below) is ALSO pinned at its own
+   fixed top offset — calibrated to where a 2-line label already sits, so
+   every label starts at the same height whether it's 1 or 2 lines. */
+.stat-item .stat-value,
+.stats-hero-tile .stat-value,
+.stat-item .stat-unit,
+.stats-hero-tile .stat-unit,
+.stat-item .stat-sublink,
+.stats-hero-tile .stat-sublink {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
   text-align: center;
-  /* Tiles on the same flex line stretch to equal height by default; a
-     tile with less content (no sublink, shorter label) centers what it
-     has in that stretched box instead of leaving it pinned to the top
-     with dead space below. */
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-1);
+}
+
+/* .stat-sublink is deliberately left out here — it needs display:-webkit-box
+   (for its 2-line clamp) and a taller line-height than 1, set alongside its
+   other subtext styling further down. Setting display/line-height on it
+   here too would win on specificity and silently break the line-clamp. */
+.stat-item .stat-value,
+.stats-hero-tile .stat-value,
+.stat-item .stat-unit,
+.stats-hero-tile .stat-unit {
+  display: block;
+  line-height: 1;
 }
 
 .stat-item .stat-value {
-  display: block;
-  font-size: 1.85rem;
+  top: 2.8rem;
+  font-size: 3rem;
   font-weight: 600;
+}
+
+/* .stat-unit and .stat-sublink occupy the same "subtext" slot right below
+   the value — a tile only ever has one or the other (rate/clear-by tiles
+   get a unit line, oldest/newest-unopened tiles get a coffee link), never
+   both, so sharing one fixed offset is safe. */
+.stat-item .stat-unit,
+.stat-item .stat-sublink {
+  top: 5.95rem;
+}
+
+/* A fixed top offset, not bottom-anchored — every label starts at exactly
+   the same height, whether it's one line or wraps to two. The offset is
+   calibrated to where a real 2-line label ("Average time in backlog
+   before opening") already sits: since captions are capped at 2 lines
+   (below), that's the tallest case, so this is the latest a label can
+   start while still leaving a consistent gap under a 2-line one — a
+   shorter 1-line label just has a little more room below it before the
+   tile's bottom edge instead of starting later. */
+.stat-caption {
+  position: absolute;
+  left: var(--space-2);
+  right: var(--space-2);
+  top: 8.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  overflow: hidden;
+  text-align: center;
+}
+
+/* Subtext (the value's unit/link line) reads a couple of steps smaller
+   than .stat-label — it's a secondary qualifier on the value above it, not
+   the tile's primary caption. .stat-unit (dates/rates) is always short
+   enough to stay one line; .stat-sublink (a roaster + coffee name) is
+   allowed to spill to a second line, with a tight line-height so it still
+   clears the label's fixed position below (see the top-offset comment
+   above .stat-item .stat-unit). */
+.stat-unit {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .stat-item .stat-label {
@@ -958,8 +1061,24 @@ div.compact-row {
   font-size: 0.78rem;
 }
 
+/* Caps the label at 2 lines — a longer label spills to a second line
+   within the caption's own clipped zone instead of pushing anything else
+   or overflowing the tile. */
+.stat-label {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .stat-sublink {
-  font-size: 0.85rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 0.8rem;
+  line-height: 1.15;
   color: var(--color-accent);
   text-decoration: none;
 }
@@ -968,19 +1087,88 @@ div.compact-row {
   text-decoration: underline;
 }
 
+/* The Bean Conqueror candidate list reuses .stat-row for layout, but each
+   tile shows a bean NAME (arbitrary length, no "big number" reading) plus
+   admin action buttons — not a metric, so it keeps the older
+   flex-column-centered layout instead of .stat-item's absolute-positioned
+   value/caption, which assumes single-line, glanceable numeric content. */
+.candidate-tile {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  flex: 1 1 200px;
+  max-width: 280px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.candidate-tile .stat-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.candidate-tile .stat-label {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+/* At phone widths, 3-4 tiles per row leaves each one only ~100-110px wide.
+   .stat-value has no wrap/ellipsis fallback (unlike .stat-label/.stat-unit)
+   since truncating the actual number would hide real data — an
+   unbreakable string like "66.6d" at the desktop font-size is wider than
+   that, and silently overflows past the tile (and the viewport) instead
+   of wrapping, since browsers don't break arbitrary characters. Shrinking
+   the font (and its paired fixed offsets) at this breakpoint keeps every
+   value within its own tile's width. */
+@media (max-width: 640px) {
+  .stat-item .stat-value {
+    top: 2.15rem;
+    font-size: 2rem;
+  }
+
+  .stat-item .stat-unit,
+  .stat-item .stat-sublink {
+    top: 4.1rem;
+  }
+
+  .stat-item .stat-unit,
+  .stat-item .stat-sublink {
+    font-size: 0.7rem;
+  }
+
+  .stats-hero-tile .stat-value {
+    top: 2.5rem;
+    font-size: 2.75rem;
+  }
+
+  .stats-hero-tile .stat-unit {
+    top: 5.55rem;
+  }
+}
+
 .chart-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   padding: var(--space-4);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-5);
+}
+
+.chart-panel > h2,
+.chart-panel > h3 {
+  margin-bottom: var(--space-3);
 }
 
 .chart-panel-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-4);
-  margin-bottom: var(--space-6);
+  grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
 }
 
 .chart-panel-row .chart-panel {
@@ -989,6 +1177,25 @@ div.compact-row {
 
 .chart-panel .stat-row {
   margin-bottom: 0;
+}
+
+/* A group of 4 tiles (the standard row) shouldn't stretch its panel to the
+   full page width with empty space past the last tile — cap the panel at
+   exactly 4-tiles-wide and center it. Two gotchas ruled out simpler-looking
+   approaches: `width: fit-content` on a block containing a flex-wrap child
+   computes ambiguously (the browser can shrink-to-fit down to a single
+   item's width, since wrapping means any narrower width is technically
+   valid); and `max-width` plus auto margins has the same problem, because
+   auto margins on a grid/flex item switch its own sizing to that same
+   ambiguous shrink-to-fit algorithm instead of stretching to the track.
+   `width: min(<4 tiles>, 100%)` is a definite value either way — never a
+   shrink-to-fit computation — so it sidesteps both. Scoped to panels that
+   actually hold tiles (via :has), so panels holding a Chart.js canvas
+   (which does want the full available width) are unaffected. */
+.chart-panel:has(.stat-row) {
+  width: min(calc(4 * 188px + 3 * var(--space-3) + 2 * var(--space-4)), 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .chart-panel-controls {
