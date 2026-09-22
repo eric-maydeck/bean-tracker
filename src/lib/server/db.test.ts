@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema } from './db';
+import { createDb, applySchema, getStatsRates, setStatsRates } from './db';
 
 describe('createDb', () => {
   it('creates all expected tables', () => {
@@ -140,5 +140,46 @@ describe('legacy data migration', () => {
       .prepare(`SELECT decaf FROM coffees WHERE coffee_name = 'Ethiopia Decaf'`)
       .get() as { decaf: number };
     expect(afterSecondApply.decaf).toBe(0);
+  });
+});
+
+describe('stats rate settings', () => {
+  it('defaults to 72/144 g per day when nothing has been saved', () => {
+    const db = createDb(':memory:');
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
+  });
+
+  it('persists and reads back saved rates', () => {
+    const db = createDb(':memory:');
+    setStatsRates(db, { selfGPerDay: 90, householdGPerDay: 180 });
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 90, householdGPerDay: 180 });
+  });
+
+  it('overwrites a previously saved rate rather than duplicating rows', () => {
+    const db = createDb(':memory:');
+    setStatsRates(db, { selfGPerDay: 90, householdGPerDay: 180 });
+    setStatsRates(db, { selfGPerDay: 60, householdGPerDay: 120 });
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 60, householdGPerDay: 120 });
+    const count = db.prepare(`SELECT COUNT(*) as count FROM app_meta WHERE key LIKE 'stats_rate_%'`).get() as {
+      count: number;
+    };
+    expect(count.count).toBe(2);
+  });
+
+  it('rejects a non-positive self rate without writing anything', () => {
+    const db = createDb(':memory:');
+    expect(() => setStatsRates(db, { selfGPerDay: 0, householdGPerDay: 144 })).toThrow();
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
+  });
+
+  it('rejects a non-positive household rate without writing anything', () => {
+    const db = createDb(':memory:');
+    expect(() => setStatsRates(db, { selfGPerDay: 72, householdGPerDay: -1 })).toThrow();
+    expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
+  });
+
+  it('rejects a NaN rate', () => {
+    const db = createDb(':memory:');
+    expect(() => setStatsRates(db, { selfGPerDay: NaN, householdGPerDay: 144 })).toThrow();
   });
 });
