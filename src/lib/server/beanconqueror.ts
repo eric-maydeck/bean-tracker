@@ -342,7 +342,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
            coffee_concentration, rating, notes, beverage_quantity, tds_percent,
            extraction_yield_percent, brew_ratio, bean_age_days, bc_archived, water, imported_at
          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(bc_created_at, bean_id) DO UPDATE SET
+         ON CONFLICT(bc_created_at, COALESCE(bean_id, '')) DO UPDATE SET
            preparation_id = excluded.preparation_id, mill_id = excluded.mill_id,
            grind_setting = excluded.grind_setting, ground_coffee_g = excluded.ground_coffee_g,
            brew_temperature = excluded.brew_temperature, bean_type = excluded.bean_type,
