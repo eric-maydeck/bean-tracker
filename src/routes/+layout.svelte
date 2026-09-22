@@ -13,7 +13,8 @@
   const links = [
     { href: '/', label: 'Coffees' },
     { href: '/on-deck', label: 'On Deck' },
-    { href: '/subscriptions', label: 'Subscriptions' }
+    { href: '/subscriptions', label: 'Subscriptions' },
+    { href: '/stats', label: 'Stats' }
   ];
 
   let theme = $state<'light' | 'dark'>('light');
@@ -23,7 +24,8 @@
   const tabIcons: Record<string, string> = {
     '/': '☕',
     '/on-deck': '📋',
-    '/subscriptions': '🔁'
+    '/subscriptions': '🔁',
+    '/stats': '📊'
   };
 
   $effect(() => {
