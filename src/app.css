@@ -925,8 +925,20 @@ div.compact-row {
   color: var(--color-accent);
 }
 
+/* Same symmetric-centering calculation as .stat-item's subtext offset
+   above, just against the hero tile's own value/caption geometry (value
+   bottom at 8.1rem, caption top at 12rem): the up-to-2-line subtext block
+   (still 0.8rem/1.15 line-height — subtext stays the same size across tile
+   sizes) is centered between them, and .stat-sublink shares the same top
+   for the same reason (a 1-line subtext aligns with a 2-line one's first
+   line). No hero tile currently renders a .stat-sublink, but this keeps
+   the rule correct if one ever does instead of leaving it unpositioned. */
+.stats-hero-tile .stat-unit,
+.stats-hero-tile .stat-sublink {
+  top: 9.13rem;
+}
+
 .stats-hero-tile .stat-unit {
-  top: 8.4rem;
   color: var(--color-accent);
 }
 
@@ -1012,10 +1024,18 @@ div.compact-row {
 /* .stat-unit and .stat-sublink occupy the same "subtext" slot right below
    the value — a tile only ever has one or the other (rate/clear-by tiles
    get a unit line, oldest/newest-unopened tiles get a coffee link), never
-   both, so sharing one fixed offset is safe. */
+   both, so sharing one fixed offset is safe. The offset is calculated, not
+   eyeballed: .stat-sublink can wrap to 2 lines (font-size 0.8rem,
+   line-height 1.15 => a 1.84rem tall block), and this top is picked so the
+   gap from the value's bottom edge to this block's top equals the gap from
+   this block's bottom edge to .stat-caption's top — the up-to-2-line
+   subtext block sits vertically centered in the space between value and
+   label. A 1-line .stat-unit starts at this same top rather than being
+   independently centered on its own single line, so it lines up with
+   where a 2-line .stat-sublink's first line would start. */
 .stat-item .stat-unit,
 .stat-item .stat-sublink {
-  top: 5.95rem;
+  top: 6.28rem;
 }
 
 /* A fixed top offset, not bottom-anchored — every label starts at exactly
@@ -1131,9 +1151,13 @@ div.compact-row {
     font-size: 2rem;
   }
 
+  /* Recentered for the smaller mobile value/font sizes, same symmetric
+     calculation as the desktop rule above (value bottom 4.15rem, caption
+     top unchanged at 8.6rem, subtext block height 1.61rem at this
+     breakpoint's smaller 0.7rem subtext font). */
   .stat-item .stat-unit,
   .stat-item .stat-sublink {
-    top: 4.1rem;
+    top: 5.57rem;
   }
 
   .stat-item .stat-unit,
@@ -1146,8 +1170,12 @@ div.compact-row {
     font-size: 2.75rem;
   }
 
-  .stats-hero-tile .stat-unit {
-    top: 5.55rem;
+  /* Same symmetric calculation again (hero value bottom 5.25rem, hero
+     caption top unchanged at 12rem, subtext block still 1.84rem — hero
+     subtext font doesn't shrink at this breakpoint). */
+  .stats-hero-tile .stat-unit,
+  .stats-hero-tile .stat-sublink {
+    top: 7.71rem;
   }
 }
 
