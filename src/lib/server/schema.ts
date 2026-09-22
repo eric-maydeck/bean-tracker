@@ -156,4 +156,45 @@ CREATE TABLE IF NOT EXISTS beanconqueror_brews (
   imported_at TEXT NOT NULL,
   UNIQUE(bc_created_at, bean_id)
 );
+
+CREATE TRIGGER IF NOT EXISTS beanconqueror_brews_upsert
+BEFORE INSERT ON beanconqueror_brews
+WHEN EXISTS (
+  SELECT 1 FROM beanconqueror_brews
+  WHERE bc_created_at = NEW.bc_created_at
+    AND COALESCE(bean_id, '') = COALESCE(NEW.bean_id, '')
+)
+BEGIN
+  UPDATE beanconqueror_brews
+  SET preparation_id = NEW.preparation_id,
+      mill_id = NEW.mill_id,
+      grind_setting = NEW.grind_setting,
+      ground_coffee_g = NEW.ground_coffee_g,
+      brew_temperature = NEW.brew_temperature,
+      bean_type = NEW.bean_type,
+      grind_speed_rpm = NEW.grind_speed_rpm,
+      grind_time = NEW.grind_time,
+      profile = NEW.profile,
+      preparation_tools = NEW.preparation_tools,
+      temperature_time = NEW.temperature_time,
+      brew_time = NEW.brew_time,
+      bloom_time = NEW.bloom_time,
+      first_drip_time = NEW.first_drip_time,
+      water_amount_g = NEW.water_amount_g,
+      coffee_type = NEW.coffee_type,
+      coffee_concentration = NEW.coffee_concentration,
+      rating = NEW.rating,
+      notes = NEW.notes,
+      beverage_quantity = NEW.beverage_quantity,
+      tds_percent = NEW.tds_percent,
+      extraction_yield_percent = NEW.extraction_yield_percent,
+      brew_ratio = NEW.brew_ratio,
+      bean_age_days = NEW.bean_age_days,
+      bc_archived = NEW.bc_archived,
+      water = NEW.water,
+      imported_at = NEW.imported_at
+  WHERE bc_created_at = NEW.bc_created_at
+    AND COALESCE(bean_id, '') = COALESCE(NEW.bean_id, '');
+  SELECT RAISE(IGNORE);
+END;
 `;
