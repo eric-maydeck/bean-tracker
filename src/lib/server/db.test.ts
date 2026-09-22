@@ -11,6 +11,7 @@ describe('createDb', () => {
       }[]
     ).map((row) => row.name);
     expect(tables).toEqual([
+      'alerts',
       'app_meta',
       'beanconqueror_bean_origins',
       'beanconqueror_beans',

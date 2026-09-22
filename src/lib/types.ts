@@ -38,3 +38,13 @@ export interface RoastLevelRow {
   roast_level: string;
   degrees_of_roast: number;
 }
+
+export interface AlertRow {
+  id: number;
+  source: string;
+  message: string;
+  severity: string;
+  created_at: string;
+  read_at: string | null;
+  dismissed_at: string | null;
+}

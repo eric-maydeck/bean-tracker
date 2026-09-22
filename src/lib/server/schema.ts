@@ -43,6 +43,16 @@ CREATE TABLE IF NOT EXISTS app_meta (
   value TEXT
 );
 
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY,
+  source TEXT NOT NULL,
+  message TEXT NOT NULL,
+  severity TEXT NOT NULL DEFAULT 'error',
+  created_at TEXT NOT NULL,
+  read_at TEXT,
+  dismissed_at TEXT
+);
+
 CREATE TABLE IF NOT EXISTS roast_levels (
   roast_level TEXT PRIMARY KEY,
   degrees_of_roast REAL
