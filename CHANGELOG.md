@@ -1,3 +1,10 @@
+## [1.22.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.22.0...v1.22.1) (2026-09-22)
+
+
+### Bug Fixes
+
+* correct remaining wire-type mismatches in beanconquerorBean.proto
+
 # [1.22.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.21.0...v1.22.0) (2026-09-22)
 
 
