@@ -1,5 +1,6 @@
 import type { LayoutServerLoad } from './$types';
 import { getDb, getLastDeployed } from '$lib/server/db';
+import { getActiveAlerts } from '$lib/server/alerts';
 import { version } from '../../package.json';
 
 export const load: LayoutServerLoad = ({ locals }) => {
@@ -15,5 +16,6 @@ export const load: LayoutServerLoad = ({ locals }) => {
     .get() as { dataUpdated: string | null };
   const lastDeployed = getLastDeployed(db);
   const lastUpdated = [row.dataUpdated, lastDeployed].filter((v): v is string => v != null).sort().at(-1) ?? null;
-  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version };
+  const alerts = locals.isAdmin ? getActiveAlerts(db) : [];
+  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts };
 };
