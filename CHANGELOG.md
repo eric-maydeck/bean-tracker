@@ -1,3 +1,10 @@
+## [1.28.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.1...v1.28.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* harden release pipeline against the workflow_run stale-ref race
+
 ## [1.28.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.0...v1.28.1) (2026-09-23)
 
 
