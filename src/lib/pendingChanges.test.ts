@@ -1,5 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { stageFieldChange, stageStatusAction, clearPending, hasPending, type PendingChange } from './pendingChanges';
+import {
+  stageFieldChange,
+  stageStatusAction,
+  clearPending,
+  hasPending,
+  mergeStagedCoffee,
+  type PendingChange
+} from './pendingChanges';
+import type { CoffeeRow } from './types';
+
+const baseCoffee: CoffeeRow = {
+  id: 1,
+  roaster: 'Sey',
+  coffee_name: 'Ethiopia Guji',
+  origin: 'Ethiopia',
+  roast_level: 'Light',
+  processing: 'Washed',
+  amount_g: 250,
+  cost: 20,
+  roast_date: '2026-01-01',
+  frozen_start_date: null,
+  frozen_end_date: null,
+  rest_days_low: 7,
+  rest_days_high: 14,
+  image_url: null,
+  slug: 'sey-ethiopia-guji',
+  opened_date: null,
+  drank: 0,
+  status: 'backlog',
+  moved_date: null,
+  decaf: 0,
+  created_at: '2026-01-01T00:00:00.000Z',
+  updated_at: '2026-01-01T00:00:00.000Z'
+};
 
 describe('stageFieldChange', () => {
   it('adds a field change for a fresh id', () => {
@@ -99,5 +132,33 @@ describe('hasPending', () => {
     const pending = new Map<number, PendingChange>();
     stageStatusAction(pending, 1, 'open');
     expect(hasPending(pending)).toBe(true);
+  });
+});
+
+describe('mergeStagedCoffee', () => {
+  it('returns the original coffee unchanged when there are no pending fields', () => {
+    expect(mergeStagedCoffee(baseCoffee, undefined)).toEqual(baseCoffee);
+  });
+
+  it('merges a staged non-checkbox field over the original', () => {
+    const result = mergeStagedCoffee(baseCoffee, { roaster: 'Scenery' });
+    expect(result.roaster).toBe('Scenery');
+  });
+
+  // The bug this guards against (8a0e889): FormData represents a checked
+  // checkbox as the string "on" — decaf must come back as 1, not the
+  // literal string, or CoffeeForm's `checked={coffee?.decaf === 1}` fails.
+  it('normalizes a staged checked decaf checkbox ("on") to 1', () => {
+    const result = mergeStagedCoffee(baseCoffee, { decaf: 'on' });
+    expect(result.decaf).toBe(1);
+  });
+
+  // FormData omits an unchecked checkbox entirely — the staged fields
+  // object won't have a decaf key at all in that case, and that absence
+  // (not any particular value) must map to 0.
+  it('normalizes a staged unchecked decaf checkbox (key absent) to 0', () => {
+    const checkedCoffee: CoffeeRow = { ...baseCoffee, decaf: 1 };
+    const result = mergeStagedCoffee(checkedCoffee, { roaster: 'Scenery' });
+    expect(result.decaf).toBe(0);
   });
 });

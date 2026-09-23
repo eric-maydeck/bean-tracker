@@ -10,6 +10,8 @@
 // `pending = pendingWithChange(pending, ...)` reassignment dance needed
 // at call sites either way.
 
+import type { CoffeeRow } from './types';
+
 export interface PendingChange {
   fields?: Record<string, string>;
   statusAction?: string;
@@ -60,4 +62,22 @@ export function clearPending(pending: Map<number, PendingChange>, id: number): v
 
 export function hasPending(pending: Map<number, PendingChange>): boolean {
   return pending.size > 0;
+}
+
+// The merge intentionally produces a value whose fields may be strings
+// where CoffeeRow expects numbers (pendingFields comes from captured
+// FormData) — safe here because CoffeeForm only ever interpolates these
+// into <input value=...> attributes, which stringifies regardless.
+export function mergeStagedCoffee(coffee: CoffeeRow, pendingFields: Record<string, string> | undefined): CoffeeRow {
+  if (!pendingFields) return coffee;
+  return {
+    ...coffee,
+    ...pendingFields,
+    // FormData omits an unchecked checkbox entirely and represents a
+    // checked one as the string "on" — convert back to the 0/1 integer
+    // CoffeeForm's `checked={coffee?.decaf === 1}` comparison expects.
+    // Presence of the key (regardless of its exact string value) means
+    // it was checked when staged; absence means it was unchecked.
+    decaf: pendingFields.decaf != null ? 1 : 0
+  } as CoffeeRow;
 }

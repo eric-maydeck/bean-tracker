@@ -6,7 +6,13 @@
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import { originWithFlag } from '$lib/countryFlags';
-  import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
+  import {
+    stageFieldChange,
+    stageStatusAction,
+    hasPending,
+    mergeStagedCoffee,
+    type PendingChange
+  } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
   import type { CoffeeRow } from '$lib/types';
 
@@ -135,23 +141,8 @@
     expandedId = null;
   }
 
-  // The merge intentionally produces a value whose fields may be strings
-  // where CoffeeRow expects numbers (pending.fields comes from captured
-  // FormData) — safe here because CoffeeForm only ever interpolates these
-  // into <input value=...> attributes, which stringifies regardless.
   function formCoffeeFor(coffee: CoffeeRow): CoffeeRow {
-    const pendingFields = pending.get(coffee.id)?.fields;
-    if (!pendingFields) return coffee;
-    return {
-      ...coffee,
-      ...pendingFields,
-      // FormData omits an unchecked checkbox entirely and represents a
-      // checked one as the string "on" — convert back to the 0/1 integer
-      // CoffeeForm's `checked={coffee?.decaf === 1}` comparison expects.
-      // Presence of the key (regardless of its exact string value) means
-      // it was checked when staged; absence means it was unchecked.
-      decaf: pendingFields.decaf != null ? 1 : 0
-    } as CoffeeRow;
+    return mergeStagedCoffee(coffee, pending.get(coffee.id)?.fields);
   }
 
   beforeNavigate(({ cancel }) => {
