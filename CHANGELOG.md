@@ -1,3 +1,7 @@
+## [1.27.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.3...v1.27.4) (2026-09-23)
+
+Manual patch release.
+
 ## [1.27.3](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.2...v1.27.3) (2026-09-23)
 
 
