@@ -1,3 +1,7 @@
+# [1.26.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.25.2...v1.26.0) (2026-09-23)
+
+Bean Conqueror import fixes (413 error, ratings chart aggregation) and a /stats mobile layout redesign. Semantic-release couldn't auto-cut this one due to a workflow_run race condition against a docs-only follow-up commit.
+
 ## [1.25.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.25.1...v1.25.2) (2026-09-23)
 
 
