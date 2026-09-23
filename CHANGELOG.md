@@ -1,3 +1,15 @@
+# [1.28.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.5...v1.28.0) (2026-09-23)
+
+
+### Bug Fixes
+
+* roast_range floor + redesign the Bean Conqueror share panel
+
+
+### Features
+
+* highlight the exact roast level and cost after a Bean Conqueror import
+
 ## [1.27.5](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.4...v1.27.5) (2026-09-23)
 
 
