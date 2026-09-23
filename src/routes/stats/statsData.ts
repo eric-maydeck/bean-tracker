@@ -41,13 +41,28 @@ export interface BacklogStats {
   averageDaysToOpen: number | null;
   averageDaysToFinish: number | null;
 
-  breakdowns: {
-    roaster: BreakdownEntry[];
-    origin: BreakdownEntry[];
-    processing: BreakdownEntry[];
-    roastLevel: BreakdownEntry[];
-    caffeine: BreakdownEntry[];
-  };
+  // Keyed by a '+'-joined status combo (see statusComboKey) — every
+  // non-empty combination of the three statuses is precomputed so the page
+  // can toggle any mix without re-querying.
+  breakdowns: Record<string, Breakdowns>;
+}
+
+export interface Breakdowns {
+  roaster: BreakdownEntry[];
+  origin: BreakdownEntry[];
+  processing: BreakdownEntry[];
+  roastLevel: BreakdownEntry[];
+  caffeine: BreakdownEntry[];
+}
+
+export const BREAKDOWN_STATUSES = ['backlog', 'open', 'archived'] as const;
+export type BreakdownStatus = (typeof BREAKDOWN_STATUSES)[number];
+
+// Canonical order regardless of selection order, so any given mix maps to
+// exactly one key.
+export function statusComboKey(selected: Iterable<BreakdownStatus>): string {
+  const set = new Set(selected);
+  return BREAKDOWN_STATUSES.filter((s) => set.has(s)).join('+');
 }
 
 function sumGrams(rows: CoffeeRow[]): number {
@@ -194,9 +209,26 @@ export function buildBacklogStats(
       : null;
 
   const roastOrder = new Map(roastLevels.map((r) => [r.roast_level, r.degrees_of_roast]));
-  const roastLevelBreakdown = buildBreakdown(allRows, (r) => r.roast_level ?? 'Unknown').sort(
-    (a, b) => (roastOrder.get(a.label) ?? Infinity) - (roastOrder.get(b.label) ?? Infinity)
-  );
+  const buildBreakdowns = (rows: CoffeeRow[]): Breakdowns => ({
+    roaster: buildBreakdown(rows, (r) => r.roaster),
+    origin: buildBreakdown(rows, (r) => r.origin ?? 'Unknown'),
+    processing: buildBreakdown(rows, (r) => r.processing ?? 'Unknown'),
+    roastLevel: buildBreakdown(rows, (r) => r.roast_level ?? 'Unknown').sort(
+      (a, b) => (roastOrder.get(a.label) ?? Infinity) - (roastOrder.get(b.label) ?? Infinity)
+    ),
+    caffeine: buildCaffeineBreakdown(rows)
+  });
+  const rowsByStatus: Record<BreakdownStatus, CoffeeRow[]> = {
+    backlog: backlogRows,
+    open: openRows,
+    archived: archivedRows
+  };
+  const breakdowns: Record<string, Breakdowns> = {};
+  // Every non-empty subset of the 3 statuses (7 combos), via bitmask.
+  for (let mask = 1; mask < 1 << BREAKDOWN_STATUSES.length; mask++) {
+    const combo = BREAKDOWN_STATUSES.filter((_, i) => mask & (1 << i));
+    breakdowns[statusComboKey(combo)] = buildBreakdowns(combo.flatMap((s) => rowsByStatus[s]));
+  }
 
   return {
     openedGrams,
@@ -220,12 +252,6 @@ export function buildBacklogStats(
     averageAgeBacklogAndOpen,
     averageDaysToOpen,
     averageDaysToFinish,
-    breakdowns: {
-      roaster: buildBreakdown(allRows, (r) => r.roaster),
-      origin: buildBreakdown(allRows, (r) => r.origin ?? 'Unknown'),
-      processing: buildBreakdown(allRows, (r) => r.processing ?? 'Unknown'),
-      roastLevel: roastLevelBreakdown,
-      caffeine: buildCaffeineBreakdown(allRows)
-    }
+    breakdowns
   };
 }

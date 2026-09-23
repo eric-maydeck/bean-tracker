@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { CoffeeRow, RoastLevelRow } from '$lib/types';
-import { buildBacklogStats } from './statsData';
+import { buildBacklogStats, statusComboKey } from './statsData';
 
 function sampleRow(overrides: Partial<CoffeeRow> = {}): CoffeeRow {
   return {
@@ -208,9 +208,9 @@ describe('buildBacklogStats', () => {
   it('buckets a null origin/processing/roast_level into "Unknown"', () => {
     const backlog = [sampleRow({ origin: null, processing: null, roast_level: null })];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
-    expect(stats.breakdowns.origin.map((e) => e.label)).toEqual(['Unknown']);
-    expect(stats.breakdowns.processing.map((e) => e.label)).toEqual(['Unknown']);
-    expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Unknown']);
+    expect(stats.breakdowns['backlog+open'].origin.map((e) => e.label)).toEqual(['Unknown']);
+    expect(stats.breakdowns['backlog+open'].processing.map((e) => e.label)).toEqual(['Unknown']);
+    expect(stats.breakdowns['backlog+open'].roastLevel.map((e) => e.label)).toEqual(['Unknown']);
   });
 
   it('orders the roast-level breakdown by roast order, not alphabetically', () => {
@@ -220,15 +220,15 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 3, roast_level: 'Medium' })
     ];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
-    expect(stats.breakdowns.roastLevel.map((e) => e.label)).toEqual(['Light', 'Medium', 'Dark']);
+    expect(stats.breakdowns['backlog+open'].roastLevel.map((e) => e.label)).toEqual(['Light', 'Medium', 'Dark']);
   });
 
   it('always includes both Caffeinated and Decaf in the caffeine breakdown, even at zero', () => {
     const backlog = [sampleRow({ decaf: 0 })];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
-    const labels = stats.breakdowns.caffeine.map((e) => e.label).sort();
+    const labels = stats.breakdowns['backlog+open'].caffeine.map((e) => e.label).sort();
     expect(labels).toEqual(['Caffeinated', 'Decaf']);
-    const decafEntry = stats.breakdowns.caffeine.find((e) => e.label === 'Decaf');
+    const decafEntry = stats.breakdowns['backlog+open'].caffeine.find((e) => e.label === 'Decaf');
     expect(decafEntry).toEqual({ label: 'Decaf', grams: 0, count: 0 });
   });
 
@@ -238,13 +238,24 @@ describe('buildBacklogStats', () => {
       sampleRow({ id: 2, roaster: 'Big', amount_g: 500 })
     ];
     const stats = buildBacklogStats([], backlog, [], rates, roastLevels, today);
-    expect(stats.breakdowns.roaster.map((e) => e.label)).toEqual(['Big', 'Small']);
+    expect(stats.breakdowns['backlog+open'].roaster.map((e) => e.label)).toEqual(['Big', 'Small']);
   });
 
-  it('excludes archived rows from the composition breakdowns', () => {
-    const backlog = [sampleRow({ id: 1, roaster: 'Backlog Roaster' })];
-    const archived = [sampleRow({ id: 2, roaster: 'Archived Roaster', status: 'archive' })];
-    const stats = buildBacklogStats([], backlog, archived, rates, roastLevels, today);
-    expect(stats.breakdowns.roaster.map((e) => e.label)).toEqual(['Backlog Roaster']);
+  it('builds a composition breakdown for every status combo', () => {
+    const open = [sampleRow({ id: 1, roaster: 'Open Roaster', status: 'open', amount_g: 300 })];
+    const backlog = [sampleRow({ id: 2, roaster: 'Backlog Roaster', amount_g: 200 })];
+    const archived = [sampleRow({ id: 3, roaster: 'Archived Roaster', status: 'archive', amount_g: 100 })];
+    const stats = buildBacklogStats(open, backlog, archived, rates, roastLevels, today);
+    const roasters = (key: string) => stats.breakdowns[key].roaster.map((e) => e.label);
+    expect(Object.keys(stats.breakdowns)).toHaveLength(7);
+    expect(roasters('backlog+open')).toEqual(['Open Roaster', 'Backlog Roaster']);
+    expect(roasters('archived')).toEqual(['Archived Roaster']);
+    expect(roasters('backlog+archived')).toEqual(['Backlog Roaster', 'Archived Roaster']);
+    expect(roasters('backlog+open+archived')).toHaveLength(3);
+  });
+
+  it('keys status combos in canonical order regardless of selection order', () => {
+    expect(statusComboKey(['archived', 'backlog'])).toBe('backlog+archived');
+    expect(statusComboKey(new Set(['open', 'backlog'] as const))).toBe('backlog+open');
   });
 });

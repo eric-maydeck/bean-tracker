@@ -68,7 +68,21 @@
   // the chart that Chart.js starts skipping y-axis labels to avoid overlap.
   const COMPOSITION_BAR_LIMIT = 10;
 
-  let breakdownEntries = $derived(data.stats.breakdowns[dimension]);
+  // Multi-select status filter. Iterating statusLabels (backlog, open,
+  // archived) keeps the key in the server's canonical combo order.
+  const statusLabels = { backlog: 'Backlog', open: 'Open', archived: 'Completed' } as const;
+  type Status = keyof typeof statusLabels;
+  let selectedStatuses = $state<Status[]>(['backlog', 'open']);
+  function toggleStatus(status: Status) {
+    if (!selectedStatuses.includes(status)) selectedStatuses = [...selectedStatuses, status];
+    // Refuse to deselect the last one — an empty selection has no chart.
+    else if (selectedStatuses.length > 1) selectedStatuses = selectedStatuses.filter((s) => s !== status);
+  }
+  let statusKey = $derived(
+    (Object.keys(statusLabels) as Status[]).filter((s) => selectedStatuses.includes(s)).join('+')
+  );
+
+  let breakdownEntries = $derived(data.stats.breakdowns[statusKey][dimension]);
   // Roast Level keeps its intentional light-to-dark order regardless of
   // metric — every other dimension re-sorts by whichever metric is active,
   // since "Big" by grams isn't necessarily "Big" by count.
@@ -545,9 +559,16 @@
       <button aria-pressed={metric === 'grams'} onclick={() => (metric = 'grams')}>Grams</button>
       <button aria-pressed={metric === 'count'} onclick={() => (metric = 'count')}>Count</button>
     </div>
+    <div class="tab-group">
+      {#each Object.entries(statusLabels) as [key, label] (key)}
+        <button aria-pressed={selectedStatuses.includes(key as Status)} onclick={() => toggleStatus(key as Status)}
+          >{label}</button
+        >
+      {/each}
+    </div>
   </div>
   {#if breakdownEntries.length === 0}
-    <p class="text-muted">Nothing in the backlog yet.</p>
+    <p class="text-muted">No coffees with the selected status.</p>
   {:else}
     <p class="text-muted">Showing top {visibleBreakdownEntries.length} of {breakdownEntries.length}.</p>
     <Chart
