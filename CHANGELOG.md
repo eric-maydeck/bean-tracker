@@ -1,3 +1,10 @@
+## [1.27.3](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.2...v1.27.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* left-align top tile groups and widen Bean Conqueror panel to full width
+
 ## [1.27.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.1...v1.27.2) (2026-09-23)
 
 
