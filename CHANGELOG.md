@@ -1,3 +1,10 @@
+## [1.27.5](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.4...v1.27.5) (2026-09-23)
+
+
+### Bug Fixes
+
+* stack By Method/By Grinder charts on mobile, not just donuts
+
 ## [1.27.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.3...v1.27.4) (2026-09-23)
 
 Manual patch release.
