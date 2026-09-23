@@ -1111,9 +1111,23 @@ div.compact-row {
    is easier to tap" — equal width regardless of the (now-shorter) button
    text, unlike the min-width-only floor .action-buttons uses everywhere
    else (Coffees' Edit/Freeze/Archive row, where buttons are deliberately
-   different widths). */
+   different widths). Grid, not flex: Create is a bare <button> (a direct
+   child of .candidate-actions) but Dismiss is a <button> wrapped in a
+   <form> (needed for its POST action) — flexbox's flex:1 still measured
+   each child's own min-content floor (the form's floor came from its
+   nested button, the bare button's from itself) before distributing grow
+   space, so the two never actually landed on the same width even with
+   identical flex-grow (verified: 171px vs 137px, not the intended
+   50/50). A 2-column grid's 1fr tracks divide the row's width up front,
+   independent of either child's content — both cells are exactly equal
+   regardless of what's inside them. */
+.candidate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
 .candidate-actions .button {
-  flex: 1;
+  width: 100%;
 }
 
 /* At phone widths, 3-4 tiles per row leaves each one only ~100-110px wide.
@@ -1125,18 +1139,27 @@ div.compact-row {
    the font (and its paired fixed offsets) at this breakpoint keeps every
    value within its own tile's width. */
 @media (max-width: 640px) {
+  /* Font bumped from 2rem to 2.4rem to match desktop's own value-to-tile
+     ratio: desktop is 48px/188px = 25.5%; the mobile 2-column grid tile
+     (~148px, see .stat-row-4up below) at the old 32px/2rem value was only
+     21.5% — visibly smaller relative to its tile than desktop, which is
+     exactly the "fonts look small, tiles look silly" report. 38.4px/2.4rem
+     over 148px = 25.9%, matching desktop within rounding. `top` stays at
+     2.15rem (unchanged) — only the font grew, so the value's top edge
+     doesn't move, just its bottom edge (new value bottom: 4.55rem). */
   .stat-item .stat-value {
     top: 2.15rem;
-    font-size: 2rem;
+    font-size: 2.4rem;
   }
 
-  /* Recentered for the smaller mobile value/font sizes, same symmetric
-     calculation as the desktop rule above (value bottom 4.15rem, caption
-     top unchanged at 8.6rem, subtext block height 1.61rem at this
-     breakpoint's smaller 0.7rem subtext font). */
+  /* Recentered for the new 2.4rem value font (value bottom 4.55rem,
+     caption top unchanged at 8.6rem, subtext block height still 1.61rem
+     at this breakpoint's 0.7rem subtext font) — same symmetric-centering
+     calculation as everywhere else in this file, just re-solved for the
+     new value bottom. */
   .stat-item .stat-unit,
   .stat-item .stat-sublink {
-    top: 5.57rem;
+    top: 5.77rem;
   }
 
   .stat-item .stat-unit,
@@ -1144,26 +1167,40 @@ div.compact-row {
     font-size: 0.7rem;
   }
 
+  /* Safety floor for EVERY .stat-row, not just the 5 four-tile groups
+     below: the Bean Conqueror Overview row (3 tiles: total brews/beans/
+     rating) has no grid override, so its tiles fall back to flex-wrap's
+     own shrink behavior — which, with the base flex:1 1 100px basis, can
+     squeeze all 3 onto one line down to ~100px each on a narrow phone.
+     At that size the tile's own aspect-ratio-driven height (~100px) is
+     shorter than where .stat-caption's fixed top:8.6rem (137.6px) actually
+     sits, so the label renders BELOW the tile's own bottom edge entirely —
+     spilling onto whatever content follows (confirmed live: the Overview
+     labels rendering on top of the ratings-over-time chart below them).
+     A 140px floor forces flex-wrap to drop to 2-per-row instead once 3
+     tiles no longer fit at a safe size, keeping every tile tall enough for
+     its caption to actually land inside it. */
+  .stat-item {
+    min-width: 140px;
+  }
+
   /* One hero tile per row instead of wrapping 2 across at this width — a
      100% flex-basis claims the whole row on its own, no change to
-     .stats-hero's own flex-wrap needed. Capped at 320px (not
-     max-width:none): without a cap, the tile keeps growing with the
-     viewport all the way to 640px (up to ~600px+ square), badly
-     outgrowing the desktop-calibrated value font below it — a 320px cap
-     keeps the tile's actual rendered size close to a narrow band
-     (~288-320px) across the whole mobile range, small enough that
-     reusing the desktop's own value/subtext top+font-size (declared
-     earlier in this file, not overridden here) already reads at a
-     sensible, non-tiny-looking proportion — no separate mobile-specific
-     font numbers needed. .stats-hero gets centered so the now-capped
-     tile doesn't hug the left edge with dead space beside it. */
+     .stats-hero's own flex-wrap needed. Capped at 262px — desktop's own
+     hero tile size — rather than something bigger: reusing desktop's
+     exact value/subtext font+position numbers (declared earlier in this
+     file, not overridden here) only reads at the same proportion desktop
+     does if the tile is *also* the same size desktop uses; a bigger cap
+     with the same font would repeat the original too-small-font problem,
+     just at a different tile size. .stats-hero gets centered so the
+     capped tile doesn't hug the left edge with dead space beside it. */
   .stats-hero {
     justify-content: center;
   }
 
   .stats-hero-tile {
     flex: 1 1 100%;
-    max-width: 320px;
+    max-width: 262px;
   }
 
   /* The 5 numeric tile groups (Weight, Bag Count, Time to Clear, Coffee
@@ -1222,6 +1259,15 @@ div.compact-row {
 
 .chart-panel-row .chart-panel {
   margin-bottom: 0;
+  /* Grid items default to min-width:auto, which floors them at their own
+     content's intrinsic size — normally invisible, but Chart.js's canvas
+     can get stuck reporting a stale (larger) width from before a resize
+     (e.g. a mobile browser's address bar collapsing on scroll), and
+     without this, the grid item refuses to shrink back down to the track
+     width the grid actually offers, pushing the whole row (and the page)
+     wider than the viewport. min-width:0 lets the item — and therefore
+     Chart.js's own ResizeObserver — always shrink to fit. */
+  min-width: 0;
 }
 
 .chart-panel .stat-row {
