@@ -1,3 +1,10 @@
+## [1.26.3](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.2...v1.26.3) (2026-09-23)
+
+
+### Bug Fixes
+
+* disable mobile browser auto text-size-adjust (real page-wide overflow)
+
 ## [1.26.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.1...v1.26.2) (2026-09-23)
 
 
