@@ -609,8 +609,8 @@
                 <p class="text-muted">
                   Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
                     >{bean.likelyMatch.coffeeName}</a
-                  ><br />
-                  {bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status}
+                  >
+                  ({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})
                 </p>
               {/if}
             </div>
