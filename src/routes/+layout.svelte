@@ -167,8 +167,14 @@
   </footer>
 </main>
 
+<svelte:window
+  onkeydown={(e) => {
+    if (showAlerts && e.key === 'Escape') showAlerts = false;
+  }}
+/>
+
 {#if showAlerts}
-  <div class="modal-backdrop" onclick={() => (showAlerts = false)}>
+  <div class="modal-backdrop" onclick={() => (showAlerts = false)} role="presentation">
     <div class="modal" onclick={(e) => e.stopPropagation()}>
       <h2>Alerts</h2>
       {#if data.alerts.length === 0}
