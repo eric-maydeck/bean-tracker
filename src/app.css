@@ -92,6 +92,26 @@
   box-sizing: border-box;
 }
 
+/* Firefox for Android has its own "font inflation" feature that auto-
+   enlarges text on narrow viewports to improve readability on pages not
+   designed for mobile — helpful for a page that never considered mobile
+   at all, actively harmful here: it grows rendered text past what every
+   fixed-width tile/offset in this file assumes, without touching any of
+   the surrounding layout, pushing content wider than the viewport
+   page-wide (confirmed: Firefox 157 on Android 16, overflow present from
+   first load, everywhere on the page — not resize-triggered, so a
+   different root cause than the Chart.js/grid min-width bug fixed
+   elsewhere in this file). Chrome for Android has a similar heuristic
+   under the -webkit- prefix; this repo's own explicit @media
+   (max-width: 640px) rules already are the deliberate, tested mobile
+   design, so neither browser's automatic "helpful" adjustment is
+   wanted. */
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
