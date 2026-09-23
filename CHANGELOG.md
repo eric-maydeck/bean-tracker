@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.25.0...v1.25.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* raise BODY_SIZE_LIMIT so Bean Conqueror imports don't 413
+
 # [1.25.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.2...v1.25.0) (2026-09-23)
 
 
