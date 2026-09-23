@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.1...v1.26.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* mobile stats — font proportion, overflow, and button sizing bugs
+
 ## [1.26.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.0...v1.26.1) (2026-09-23)
 
 
