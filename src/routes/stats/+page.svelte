@@ -1,8 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
+  import { browser } from '$app/environment';
   import Chart from '$lib/components/Chart.svelte';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import { defaultViewForWidth } from '$lib/defaultView';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
   import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
@@ -10,6 +12,18 @@
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let createModalBean = $state<UnmatchedBean | null>(null);
+
+  // Same width-based default the Coffees/Subscriptions pages use (List on
+  // desktop, Compact on mobile) — deliberately no manual toggle or
+  // localStorage persistence here, unlike those pages: this is a
+  // candidate-review section, not a page people spend a lot of time
+  // choosing a preferred layout for.
+  let candidateView = $state<'list' | 'compact'>('list');
+
+  $effect(() => {
+    if (!browser) return;
+    candidateView = defaultViewForWidth(window.innerWidth);
+  });
 
   function prefillFor(bean: UnmatchedBean): Partial<CoffeeRow> {
     return {
@@ -283,7 +297,7 @@
 
 <section class="chart-panel">
   <h2>Weight</h2>
-  <div class="stat-row">
+  <div class="stat-row stat-row-4up">
     <div class="stat-item">
       <span class="stat-value" title={formatGramsTooltip(data.stats.openedGrams)}
         >{formatGrams(data.stats.openedGrams)}</span
@@ -321,7 +335,7 @@
 
 <section class="chart-panel">
   <h2>Bag Count</h2>
-  <div class="stat-row">
+  <div class="stat-row stat-row-4up">
     <div class="stat-item">
       <span class="stat-value">{data.stats.openedCount}</span>
       <div class="stat-caption">
@@ -351,7 +365,7 @@
 
 <section class="chart-panel">
   <h2>Time to Clear</h2>
-    <div class="stat-row">
+    <div class="stat-row stat-row-4up">
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
@@ -393,7 +407,7 @@
 
 <section class="chart-panel">
   <h2>Coffee Age</h2>
-    <div class="stat-row">
+    <div class="stat-row stat-row-4up">
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.oldestUnopenedBag ? `${data.stats.oldestUnopenedBag.daysOld}d` : '—'}
@@ -441,7 +455,7 @@
 
 <section class="chart-panel">
   <h2>Economics</h2>
-  <div class="stat-row">
+  <div class="stat-row stat-row-4up">
     <div class="stat-item">
       <span class="stat-value">{formatCurrencyCompact(data.stats.totalCost)}</span>
       <div class="stat-caption">
@@ -476,7 +490,7 @@
   </div>
 </section>
 
-<div class="chart-panel-row">
+<div class="chart-panel-row chart-panel-row-donuts">
   <section class="chart-panel">
     <h2>Open vs. backlog</h2>
     {#if data.stats.totalBacklogGrams === 0}
@@ -551,36 +565,75 @@
     {/if}
   {/if}
 
+  {#snippet candidateActions(bean: UnmatchedBean)}
+    <div class="action-buttons candidate-actions">
+      <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>Create</button>
+      <form
+        method="POST"
+        action="?/dismissBeanConqueror"
+        use:enhance={() => {
+          return async ({ update }) => {
+            await update();
+          };
+        }}
+      >
+        <input type="hidden" name="id" value={bean.id} />
+        <button class="button button-danger" type="submit">Dismiss</button>
+      </form>
+    </div>
+  {/snippet}
+
   {#if data.unmatchedBeans.length > 0}
     <h3>Not yet tracked ({data.unmatchedBeans.length})</h3>
     <p class="text-muted">Showing top {visibleUnmatchedBeans.length} of {data.unmatchedBeans.length}.</p>
-    <div class="stat-row">
-      {#each visibleUnmatchedBeans as bean (bean.id)}
-        <div class="candidate-tile">
-          <span class="stat-value">{bean.name}</span>
-          <span class="stat-label">{bean.roaster ?? 'Unknown roaster'}</span>
-          {#if data.isAdmin}
-            <div class="chart-panel-controls">
-              <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>
-                Create coffee
-              </button>
-              <form
-                method="POST"
-                action="?/dismissBeanConqueror"
-                use:enhance={() => {
-                  return async ({ update }) => {
-                    await update();
-                  };
-                }}
-              >
-                <input type="hidden" name="id" value={bean.id} />
-                <button class="button button-danger" type="submit">Dismiss</button>
-              </form>
+    {#if candidateView === 'compact'}
+      <div class="compact-list">
+        {#each visibleUnmatchedBeans as bean (bean.id)}
+          <div class="compact-row-wrap">
+            <div class="compact-row">
+              <div class="compact-row-main">
+                <div class="compact-row-title">{bean.name}</div>
+                <div class="compact-row-sub text-muted">{bean.roaster ?? 'Unknown roaster'}</div>
+              </div>
             </div>
-          {/if}
-        </div>
-      {/each}
-    </div>
+            {#if data.isAdmin}
+              {@render candidateActions(bean)}
+            {/if}
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Roaster</th>
+              <th>Origin</th>
+              <th>Processing</th>
+              <th>Roast date</th>
+              <th>Decaf</th>
+              {#if data.isAdmin}<th>Actions</th>{/if}
+            </tr>
+          </thead>
+          <tbody>
+            {#each visibleUnmatchedBeans as bean (bean.id)}
+              <tr>
+                <td>{bean.name}</td>
+                <td>{bean.roaster ?? 'Unknown roaster'}</td>
+                <td>{bean.origin ?? '—'}</td>
+                <td>{bean.processing ?? '—'}</td>
+                <td>{bean.roastDate ?? '—'}</td>
+                <td>{bean.decaffeinated ? 'Yes' : 'No'}</td>
+                {#if data.isAdmin}
+                  <td>{@render candidateActions(bean)}</td>
+                {/if}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
   {/if}
 
   {#if data.beanConquerorStats.totalBrews > 0 || data.beanConquerorStats.totalBeans > 0}

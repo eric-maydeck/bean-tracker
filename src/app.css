@@ -1107,34 +1107,13 @@ div.compact-row {
   text-decoration: underline;
 }
 
-/* The Bean Conqueror candidate list reuses .stat-row for layout, but each
-   tile shows a bean NAME (arbitrary length, no "big number" reading) plus
-   admin action buttons — not a metric, so it keeps the older
-   flex-column-centered layout instead of .stat-item's absolute-positioned
-   value/caption, which assumes single-line, glanceable numeric content. */
-.candidate-tile {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  padding: var(--space-3);
-  flex: 1 1 200px;
-  max-width: 280px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-2);
-}
-
-.candidate-tile .stat-value {
-  display: block;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.candidate-tile .stat-label {
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
+/* Create/Dismiss should read as one deliberate choice, not "pick whichever
+   is easier to tap" — equal width regardless of the (now-shorter) button
+   text, unlike the min-width-only floor .action-buttons uses everywhere
+   else (Coffees' Edit/Freeze/Archive row, where buttons are deliberately
+   different widths). */
+.candidate-actions .button {
+  flex: 1;
 }
 
 /* At phone widths, 3-4 tiles per row leaves each one only ~100-110px wide.
@@ -1176,6 +1155,42 @@ div.compact-row {
   .stats-hero-tile .stat-unit,
   .stats-hero-tile .stat-sublink {
     top: 7.71rem;
+  }
+
+  /* One hero tile per row instead of wrapping 2 across at this width — a
+     100% flex-basis claims the whole row on its own, no change to
+     .stats-hero's own flex-wrap needed. Still square (aspect-ratio: 1 is
+     unchanged), just bigger. */
+  .stats-hero-tile {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
+  /* The 5 numeric tile groups (Weight, Bag Count, Time to Clear, Coffee
+     Age, Economics) switch from flex-wrap to a fixed 2-column grid, so
+     tiles stretch to fill half the row instead of staying capped at the
+     desktop's 188px — same square aspect ratio, same value/label font
+     rules above, just bigger tiles using the full width. Scoped to
+     .stat-row-4up specifically: the Bean Conqueror Overview/Favorites
+     .stat-rows share the base .stat-row class but have a different tile
+     count and are intentionally untouched here. */
+  .stat-row.stat-row-4up {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-row.stat-row-4up .stat-item {
+    max-width: none;
+    width: 100%;
+  }
+
+  /* The Open-vs-backlog / Finished-vs-still-have donut pair stacks to one
+     per row instead of two, giving each donut's percentage labels more
+     room. Scoped to .chart-panel-row-donuts so the unrelated By Method/By
+     Grinder bar-chart pair (plain .chart-panel-row, no modifier) keeps its
+     existing auto-fit behavior untouched. */
+  .chart-panel-row-donuts {
+    grid-template-columns: 1fr;
   }
 }
 
