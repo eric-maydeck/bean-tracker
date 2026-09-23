@@ -1,3 +1,12 @@
+# [1.25.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.2...v1.25.0) (2026-09-23)
+
+
+### Features
+
+* add admin-gated mark-read/dismiss routes for alerts
+* add admin-only alerts bell and panel to the nav
+* add alerts data layer for operational failure notifications
+
 ## [1.24.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.24.1...v1.24.2) (2026-09-22)
 
 
