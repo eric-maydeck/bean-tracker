@@ -160,9 +160,10 @@
   Import into Bean Conqueror
 </button>
 {#if shareUrl && shareQrDataUrl}
-  <div class="chart-panel">
-    <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="200" height="200" />
-    <a href={shareUrl}>{shareUrl}</a>
+  <div class="chart-panel share-panel">
+    <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
+    <p class="text-muted share-panel-hint">Scan the QR code on the left or click the button on the right.</p>
+    <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
   </div>
 {/if}
 

@@ -74,7 +74,9 @@ describe('buildShareUrl', () => {
     expect(decoded.weight).toBe(250);
     expect(decoded.cost).toBe(22);
     expect(decoded.decaffeinated).toBe(true);
-    expect(decoded.roast_range).toBe(3);
+    // 'Light' is 2.5 on this app's scale; floored (not rounded) to 2 since
+    // the uint64 wire format can't carry the half-step.
+    expect(decoded.roast_range).toBe(2);
   });
 
   // Regression test for the wire-type bug this schema once had: our .proto
@@ -158,5 +160,25 @@ describe('buildShareUrl', () => {
     }
     const decoded = BeanProto.decode(Buffer.from(base64, 'base64')) as unknown as { roast_range: number };
     expect(decoded.roast_range).toBe(5);
+  });
+
+  // Regression test for a real live-testing report: 'Light' (2.5 on this
+  // app's scale) was rounding to Bean Conqueror's "3", which read as
+  // visibly darker than intended in their app. Floors instead, so a
+  // half-step roast level always maps to the lighter of its two
+  // neighboring whole numbers rather than the darker one.
+  it('floors a half-step roast_level rather than rounding to the nearest whole number', async () => {
+    const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
+    const BeanProto = root.lookupType('beanconqueror.BeanProto');
+    const url = await buildShareUrl(sampleCoffee({ roast_level: 'Light' }), roastLevels);
+    const query = new URL(url).searchParams;
+    let base64 = '';
+    for (let i = 0; ; i++) {
+      const part = query.get(`shareUserBean${i}`);
+      if (part == null) break;
+      base64 += part;
+    }
+    const decoded = BeanProto.decode(Buffer.from(base64, 'base64')) as unknown as { roast_range: number };
+    expect(decoded.roast_range).toBe(2);
   });
 });

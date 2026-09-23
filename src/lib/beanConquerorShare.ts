@@ -45,10 +45,20 @@ function loadRoot(): protobuf.Root {
   return cachedRoot;
 }
 
+// Bean Conqueror's own in-app roast slider (ion-range, step="0.5", max="5")
+// genuinely supports half-steps in its live data model — but the shipped
+// share/QR wire format (roast_range in bean.proto) is a uint64, whole
+// numbers only, confirmed against Bean Conqueror's real master-branch
+// source. A half-step roast level (this app's own Hyperlight/Nordic
+// Light/Light/Medium-Dark, at .5/.5/2.5/4.5) can never survive the share
+// exactly — Math.floor (not round) per the user's explicit preference
+// after testing live: a "Light" (2.5) bean showing as Bean Conqueror's "3"
+// read as visibly darker than intended, so rounding toward the lighter
+// whole number is the less-wrong direction for this app's own use.
 function degreeOfRoastFor(roastLevel: string | null, roastLevels: RoastLevelRow[]): number {
   if (!roastLevel) return 0;
   const match = roastLevels.find((r) => r.roast_level === roastLevel);
-  return match ? Math.round(match.degrees_of_roast) : 0;
+  return match ? Math.floor(match.degrees_of_roast) : 0;
 }
 
 // `Buffer` isn't defined in the browser — it's a Node global that

@@ -1255,6 +1255,23 @@ div.compact-row {
   margin-bottom: var(--space-3);
 }
 
+/* QR code | hint text | "Open in Bean Conqueror" button, in a row on wide
+   screens. flex-wrap (not a fixed row) so a narrow phone stacks them
+   instead of squeezing three items into too little width. The hint's own
+   max-width keeps it from stretching to fill all the row's leftover
+   space when the button/image are much narrower than the panel. */
+.share-panel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.share-panel-hint {
+  max-width: 220px;
+  margin: 0;
+}
+
 .chart-panel-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
