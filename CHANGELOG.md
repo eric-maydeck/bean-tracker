@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.4...v1.27.0) (2026-09-23)
+
+
+### Features
+
+* flag likely BeanConqueror duplicate matches for human confirmation
+
 ## [1.26.4](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.3...v1.26.4) (2026-09-23)
 
 
