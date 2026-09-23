@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.0...v1.28.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* vertically align the QR hint text with the button next to it
+
 # [1.28.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.5...v1.28.0) (2026-09-23)
 
 
