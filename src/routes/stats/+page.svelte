@@ -609,8 +609,8 @@
                 <p class="text-muted">
                   Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
                     >{bean.likelyMatch.coffeeName}</a
-                  >
-                  ({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})
+                  ><br />
+                  {bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status}
                 </p>
               {/if}
             </div>
@@ -646,8 +646,8 @@
                 <td>{bean.decaffeinated ? 'Yes' : 'No'}</td>
                 <td>
                   {#if bean.likelyMatch}
-                    <a href={`/coffees/${bean.likelyMatch.slug}`}>{bean.likelyMatch.coffeeName}</a>
-                    <span class="text-muted">({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})</span>
+                    <a href={`/coffees/${bean.likelyMatch.slug}`}>{bean.likelyMatch.coffeeName}</a><br />
+                    <span class="text-muted">{bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status}</span>
                   {:else}
                     —
                   {/if}
