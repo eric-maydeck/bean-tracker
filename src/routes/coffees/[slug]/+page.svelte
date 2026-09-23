@@ -18,6 +18,14 @@
   let shareUrl = $state<string | null>(null);
   let shareQrDataUrl = $state<string | null>(null);
 
+  // Bean Conqueror's share/QR format can't carry a half-step roast degree
+  // or fractional cents (both are whole-number-only in their wire format —
+  // see beanConquerorShare.ts) — surfaced here so the exact values this
+  // coffee should actually have are obvious and easy to correct by hand
+  // after importing, rather than silently trusting whatever number Bean
+  // Conqueror displays.
+  let shareRoastDegrees = $derived(data.roastLevels.find((r) => r.roast_level === data.coffee.roast_level)?.degrees_of_roast ?? null);
+
   async function shareToBeanConqueror() {
     // Imported here rather than at the top of the module on purpose:
     // protobufjs and qrcode together are ~160KB of JS that every visitor to
@@ -160,10 +168,20 @@
   Import into Bean Conqueror
 </button>
 {#if shareUrl && shareQrDataUrl}
-  <div class="chart-panel share-panel">
-    <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
-    <p class="text-muted share-panel-hint">Scan the QR code on the left or click the button on the right.</p>
-    <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
+  <div class="chart-panel">
+    <div class="share-panel">
+      <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
+      <p class="text-muted share-panel-hint">Scan the QR code or click the button.</p>
+      <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
+    </div>
+    <div class="share-panel-callout">
+      <strong>Double-check these after importing</strong> — Bean Conqueror's share format can't carry exact
+      half-step roast degrees or cents, so it may show something slightly off:
+      <ul>
+        <li>Roast level should be <strong>{shareRoastDegrees ?? '—'} beans</strong> ({data.coffee.roast_level ?? 'not set'})</li>
+        <li>Cost should be <strong>{data.coffee.cost != null ? `$${data.coffee.cost.toFixed(2)}` : '—'}</strong></li>
+      </ul>
+    </div>
   </div>
 {/if}
 
