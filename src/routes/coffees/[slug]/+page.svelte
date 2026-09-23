@@ -171,8 +171,10 @@
   <div class="chart-panel">
     <div class="share-panel">
       <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
-      <p class="text-muted share-panel-hint">Scan the QR code or click the button.</p>
-      <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
+      <div class="share-panel-text-and-button">
+        <p class="text-muted share-panel-hint">Scan the QR code or click the button.</p>
+        <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
+      </div>
     </div>
     <div class="share-panel-callout">
       <strong>Double-check these after importing</strong> — Bean Conqueror's share format can't carry exact

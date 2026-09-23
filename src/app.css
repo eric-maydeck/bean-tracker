@@ -1267,9 +1267,35 @@ div.compact-row {
   flex-wrap: wrap;
 }
 
+/* A nested row, not just two more flex children of .share-panel: centering
+   the hint and button against the 140px-tall QR image would vertically
+   center the hint's own 2-line box, putting its FIRST line above the
+   button's text rather than level with it. Isolating this pair into their
+   own row lets align-items apply only between them. */
+.share-panel-text-and-button {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* .button's own default margin (space-1 top/bottom, for when a button
+   wraps inline in running text) was the actual cause of the button
+   sitting 4px lower than the hint's first line, even under flex-start —
+   measured directly (191px vs 193px box tops), not assumed. The flex
+   gap above already provides spacing, so this margin is pure noise here. */
+.share-panel-text-and-button .button {
+  margin: 0;
+}
+
 .share-panel-hint {
   max-width: 220px;
   margin: 0;
+  /* Matches .button's own padding-top so the hint's first line and the
+     button's text — both flex-start-aligned above — land on the same
+     line, rather than the hint sitting flush with the row top while the
+     button's text sits inset by its own padding. */
+  padding-top: var(--space-2);
 }
 
 /* Deliberately visually distinct (warm-tinted, bordered) from the plain
