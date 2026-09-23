@@ -1,3 +1,10 @@
+## [1.27.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.0...v1.27.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* move possible-match roast date/status to its own line, drop parens
+
 # [1.27.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.26.4...v1.27.0) (2026-09-23)
 
 
