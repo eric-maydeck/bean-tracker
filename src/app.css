@@ -919,10 +919,8 @@ div.compact-row {
   /* Same reasoning as .chart-panel:has(.stat-row) below: a definite width
      via min(), not fit-content/auto-margins, so it doesn't fall into the
      flex-wrap shrink-to-fit ambiguity — capped to exactly 3 hero tiles
-     wide and centered instead of left-aligned with trailing empty space. */
+     wide, left-aligned like every other panel on the page. */
   width: min(calc(3 * 262px + 2 * var(--space-3)), 100%);
-  margin-left: auto;
-  margin-right: auto;
 }
 
 .stats-hero-tile {
@@ -1212,10 +1210,11 @@ div.compact-row {
      file, not overridden here) only reads at the same proportion desktop
      does if the tile is *also* the same size desktop uses; a bigger cap
      with the same font would repeat the original too-small-font problem,
-     just at a different tile size. .stats-hero gets centered so the
-     capped tile doesn't hug the left edge with dead space beside it. */
+     just at a different tile size. Left-aligned (not centered) to match
+     the rest of the page's left-aligned tile groups — the capped tile's
+     leftover row space just sits to its right. */
   .stats-hero {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .stats-hero-tile {
@@ -1311,21 +1310,34 @@ div.compact-row {
 
 /* A group of 4 tiles (the standard row) shouldn't stretch its panel to the
    full page width with empty space past the last tile — cap the panel at
-   exactly 4-tiles-wide and center it. Two gotchas ruled out simpler-looking
-   approaches: `width: fit-content` on a block containing a flex-wrap child
-   computes ambiguously (the browser can shrink-to-fit down to a single
-   item's width, since wrapping means any narrower width is technically
-   valid); and `max-width` plus auto margins has the same problem, because
-   auto margins on a grid/flex item switch its own sizing to that same
-   ambiguous shrink-to-fit algorithm instead of stretching to the track.
-   `width: min(<4 tiles>, 100%)` is a definite value either way — never a
-   shrink-to-fit computation — so it sidesteps both. Scoped to panels that
-   actually hold tiles (via :has), so panels holding a Chart.js canvas
-   (which does want the full available width) are unaffected. */
+   exactly 4-tiles-wide, left-aligned like every other panel on the page.
+   Two gotchas ruled out simpler-looking approaches: `width: fit-content`
+   on a block containing a flex-wrap child computes ambiguously (the
+   browser can shrink-to-fit down to a single item's width, since wrapping
+   means any narrower width is technically valid); and `max-width` alone
+   has the same problem, because a flex/grid item without an explicit
+   width switches its own sizing to that same ambiguous shrink-to-fit
+   algorithm instead of stretching to the track. `width: min(<4 tiles>,
+   100%)` is a definite value either way — never a shrink-to-fit
+   computation — so it sidesteps both. Scoped to panels that actually hold
+   tiles (via :has), so panels holding a Chart.js canvas (which does want
+   the full available width) are unaffected — except the Bean Conqueror
+   section, which holds both a stat-row (its Overview tab) and a lot of
+   other full-width content (the "Not yet tracked" table); the
+   .beanconqueror-panel override below opts it back out. */
 .chart-panel:has(.stat-row) {
   width: min(calc(4 * 188px + 3 * var(--space-3) + 2 * var(--space-4)), 100%);
-  margin-left: auto;
-  margin-right: auto;
+}
+
+/* Overrides the width cap above: this panel's stat-row is just one tab of
+   several (Overview/Favorites/Brewing/Economics) alongside the "Not yet
+   tracked" table, which needs the full container width — capped at 4
+   tiles wide, the table's Actions column spilled past the panel edge,
+   forcing a horizontal scroll. Same specificity as the rule above
+   (one class + one pseudo-class each), so this must stay declared after
+   it to win the cascade. */
+.chart-panel.beanconqueror-panel {
+  width: 100%;
 }
 
 .chart-panel-controls {

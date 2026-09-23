@@ -547,7 +547,7 @@
   {/if}
 </section>
 
-<section class="chart-panel">
+<section class="chart-panel beanconqueror-panel">
   <h2>Bean Conqueror</h2>
   <p class="text-muted">
     Last updated:
