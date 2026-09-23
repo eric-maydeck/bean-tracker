@@ -1,3 +1,11 @@
+# [1.29.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.2...v1.29.0) (2026-09-23)
+
+
+### Features
+
+* **stats:** filter Top Coffees by Category by status
+* **stats:** keep Top Coffees axis fixed across status toggles
+
 ## [1.28.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.1...v1.28.2) (2026-09-23)
 
 
