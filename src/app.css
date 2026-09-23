@@ -1144,26 +1144,26 @@ div.compact-row {
     font-size: 0.7rem;
   }
 
-  .stats-hero-tile .stat-value {
-    top: 2.5rem;
-    font-size: 2.75rem;
-  }
-
-  /* Same symmetric calculation again (hero value bottom 5.25rem, hero
-     caption top unchanged at 12rem, subtext block still 1.84rem — hero
-     subtext font doesn't shrink at this breakpoint). */
-  .stats-hero-tile .stat-unit,
-  .stats-hero-tile .stat-sublink {
-    top: 7.71rem;
-  }
-
   /* One hero tile per row instead of wrapping 2 across at this width — a
      100% flex-basis claims the whole row on its own, no change to
-     .stats-hero's own flex-wrap needed. Still square (aspect-ratio: 1 is
-     unchanged), just bigger. */
+     .stats-hero's own flex-wrap needed. Capped at 320px (not
+     max-width:none): without a cap, the tile keeps growing with the
+     viewport all the way to 640px (up to ~600px+ square), badly
+     outgrowing the desktop-calibrated value font below it — a 320px cap
+     keeps the tile's actual rendered size close to a narrow band
+     (~288-320px) across the whole mobile range, small enough that
+     reusing the desktop's own value/subtext top+font-size (declared
+     earlier in this file, not overridden here) already reads at a
+     sensible, non-tiny-looking proportion — no separate mobile-specific
+     font numbers needed. .stats-hero gets centered so the now-capped
+     tile doesn't hug the left edge with dead space beside it. */
+  .stats-hero {
+    justify-content: center;
+  }
+
   .stats-hero-tile {
     flex: 1 1 100%;
-    max-width: none;
+    max-width: 320px;
   }
 
   /* The 5 numeric tile groups (Weight, Bag Count, Time to Clear, Coffee
@@ -1188,8 +1188,14 @@ div.compact-row {
      per row instead of two, giving each donut's percentage labels more
      room. Scoped to .chart-panel-row-donuts so the unrelated By Method/By
      Grinder bar-chart pair (plain .chart-panel-row, no modifier) keeps its
-     existing auto-fit behavior untouched. */
-  .chart-panel-row-donuts {
+     existing auto-fit behavior untouched. Compound selector (not just
+     .chart-panel-row-donuts alone) is load-bearing: this rule sits before
+     the base .chart-panel-row rule below in the file, and a single-class
+     selector here would tie with it on specificity — the later base rule
+     would then win the cascade at any width where auto-fit's own math
+     still fits 2 columns (roughly 400-640px, i.e. most real phones),
+     silently never stacking to 1 column at all. */
+  .chart-panel-row.chart-panel-row-donuts {
     grid-template-columns: 1fr;
   }
 }
