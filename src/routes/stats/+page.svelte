@@ -503,7 +503,7 @@
   </div>
 </section>
 
-<div class="chart-panel-row chart-panel-row-donuts">
+<div class="chart-panel-row">
   <section class="chart-panel">
     <h2>Open vs. backlog</h2>
     {#if data.stats.totalBacklogGrams === 0}

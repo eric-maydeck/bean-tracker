@@ -1240,20 +1240,6 @@ div.compact-row {
     width: 100%;
   }
 
-  /* The Open-vs-backlog / Finished-vs-still-have donut pair stacks to one
-     per row instead of two, giving each donut's percentage labels more
-     room. Scoped to .chart-panel-row-donuts so the unrelated By Method/By
-     Grinder bar-chart pair (plain .chart-panel-row, no modifier) keeps its
-     existing auto-fit behavior untouched. Compound selector (not just
-     .chart-panel-row-donuts alone) is load-bearing: this rule sits before
-     the base .chart-panel-row rule below in the file, and a single-class
-     selector here would tie with it on specificity — the later base rule
-     would then win the cascade at any width where auto-fit's own math
-     still fits 2 columns (roughly 400-640px, i.e. most real phones),
-     silently never stacking to 1 column at all. */
-  .chart-panel-row.chart-panel-row-donuts {
-    grid-template-columns: 1fr;
-  }
 }
 
 .chart-panel {
@@ -1274,6 +1260,29 @@ div.compact-row {
   grid-template-columns: repeat(auto-fit, minmax(188px, 1fr));
   gap: var(--space-3);
   margin-bottom: var(--space-5);
+}
+
+/* Every .chart-panel-row pair (the Open-vs-backlog/Finished-vs-still-have
+   donuts, and the By Method/By Grinder bar charts) stacks to one per row
+   on mobile instead of two — auto-fit's own math still fits 2 columns at
+   roughly 400-640px (i.e. most real phones, not just the narrowest ones),
+   which read as cramped for both pairs on a real device even though it
+   never reproduced in viewport-emulated testing at typical test widths.
+   This used to be scoped to a .chart-panel-row-donuts modifier class,
+   deliberately leaving By Method/By Grinder on auto-fit — the same
+   cramped-on-a-real-phone report came in for that pair too, so the class
+   is gone and this now covers both. Declared here, directly after the
+   base rule, rather than inside the big mobile media query block above:
+   at equal specificity (one class each) the LATER rule in the file wins a
+   cascade tie regardless of which one sits inside a media query — putting
+   this first (as the compound-selector version briefly was) let the
+   unconditional base rule above win at every width, silently never
+   stacking anything. Confirmed via measurement, not assumed: a viewport
+   resize alone does re-trigger this media query. */
+@media (max-width: 640px) {
+  .chart-panel-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 .chart-panel-row .chart-panel {
