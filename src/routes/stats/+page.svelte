@@ -592,9 +592,27 @@
           <div class="compact-row-wrap">
             <div class="compact-row">
               <div class="compact-row-main">
-                <div class="compact-row-title">{bean.name}</div>
+                <div class="compact-row-title">
+                  {bean.name}
+                  {#if bean.decaffeinated}<span class="badge badge-neutral">Decaf</span>{/if}
+                </div>
                 <div class="compact-row-sub text-muted">{bean.roaster ?? 'Unknown roaster'}</div>
               </div>
+            </div>
+            <div class="compact-row-detail">
+              <div class="compact-detail-grid">
+                <div><span class="eyebrow">Origin</span><br />{bean.origin ?? '—'}</div>
+                <div><span class="eyebrow">Processing</span><br />{bean.processing ?? '—'}</div>
+                <div><span class="eyebrow">Roast date</span><br />{bean.roastDate ?? '—'}</div>
+              </div>
+              {#if bean.likelyMatch}
+                <p class="text-muted">
+                  Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
+                    >{bean.likelyMatch.coffeeName}</a
+                  >
+                  ({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})
+                </p>
+              {/if}
             </div>
             {#if data.isAdmin}
               {@render candidateActions(bean)}
@@ -613,6 +631,7 @@
               <th>Processing</th>
               <th>Roast date</th>
               <th>Decaf</th>
+              <th>Possible match</th>
               {#if data.isAdmin}<th>Actions</th>{/if}
             </tr>
           </thead>
@@ -625,6 +644,14 @@
                 <td>{bean.processing ?? '—'}</td>
                 <td>{bean.roastDate ?? '—'}</td>
                 <td>{bean.decaffeinated ? 'Yes' : 'No'}</td>
+                <td>
+                  {#if bean.likelyMatch}
+                    <a href={`/coffees/${bean.likelyMatch.slug}`}>{bean.likelyMatch.coffeeName}</a>
+                    <span class="text-muted">({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})</span>
+                  {:else}
+                    —
+                  {/if}
+                </td>
                 {#if data.isAdmin}
                   <td>{@render candidateActions(bean)}</td>
                 {/if}

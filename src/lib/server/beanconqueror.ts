@@ -457,9 +457,113 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
   }
 }
 
+export interface LikelyMatch {
+  slug: string;
+  coffeeName: string;
+  roastDate: string | null;
+  status: string;
+}
+
 export interface UnmatchedBean extends ParsedBean {
   origin: string | null;
   processing: string | null;
+  likelyMatch: LikelyMatch | null;
+}
+
+// Beyond this many days apart, two same-roaster same-ish-name entries are
+// treated as separate purchases, not a formatting-only duplicate of the
+// same bag — confirmed against real data: this user's genuine repurchases
+// of the same coffee are always weeks-to-months apart (one case: the same
+// coffee bought 3 separate times), while true duplicates caused by
+// inconsistent recording between Bean Conqueror and this site are same-day
+// or off by at most a couple of days.
+const LIKELY_MATCH_DATE_WINDOW_DAYS = 7;
+
+function normalizeForMatch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip diacritics: "Corazón" -> "Corazon"
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+// Small hand-rolled edit distance — no fuzzy-matching dependency justified
+// for comparing a handful of short coffee names per import.
+function levenshteinDistance(a: string, b: string): number {
+  const dp: number[][] = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// Exact-after-normalizing (accents/case/punctuation) or one name containing
+// the other (a country/varietal prefix or suffix one side omits) catch most
+// real duplicates outright; the similarity ratio on top only exists to
+// catch a single-character typo ("Boquette"/"Boquete") that's neither.
+// Deliberately does NOT try to bridge reordered/inserted words (e.g.
+// "Mejorada #4732" vs "Natural Mejorada") — false negatives here just leave
+// a candidate unflagged (same as today), while a looser rule risks flagging
+// two genuinely different processing lots ("... Gesha Washed" vs "...
+// Gesha Natural") as a likely match, which is the worse failure mode.
+function namesLikelyMatch(a: string, b: string): boolean {
+  const normA = normalizeForMatch(a);
+  const normB = normalizeForMatch(b);
+  if (!normA || !normB) return false;
+  if (normA === normB || normA.includes(normB) || normB.includes(normA)) return true;
+  const distance = levenshteinDistance(normA, normB);
+  const similarity = 1 - distance / Math.max(normA.length, normB.length);
+  return similarity >= 0.9;
+}
+
+interface LikelyMatchCandidate {
+  slug: string;
+  coffee_name: string;
+  roaster: string;
+  roast_date: string | null;
+  status: string;
+}
+
+function daysBetween(a: string, b: string): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.abs(new Date(a).getTime() - new Date(b).getTime()) / msPerDay;
+}
+
+// Ranks a same-roaster, same-ish-name coffee with a real roast date within
+// the window above the best real-date match found so far, but a missing
+// roast date on either side (some older Bean Conqueror beans have none)
+// still qualifies as a fallback — it's just outranked by any candidate we
+// can actually confirm is close in time.
+function findLikelyMatch(
+  bean: { name: string; roaster: string | null; roastDate: string | null },
+  coffees: LikelyMatchCandidate[]
+): LikelyMatchCandidate | null {
+  if (!bean.roaster) return null;
+  const normalizedRoaster = normalizeForMatch(bean.roaster);
+  let best: LikelyMatchCandidate | null = null;
+  let bestScore = Infinity;
+  for (const coffee of coffees) {
+    if (normalizeForMatch(coffee.roaster) !== normalizedRoaster) continue;
+    if (!namesLikelyMatch(bean.name, coffee.coffee_name)) continue;
+    let score: number;
+    if (bean.roastDate && coffee.roast_date) {
+      const diff = daysBetween(bean.roastDate, coffee.roast_date);
+      if (diff > LIKELY_MATCH_DATE_WINDOW_DAYS) continue;
+      score = diff;
+    } else {
+      score = LIKELY_MATCH_DATE_WINDOW_DAYS;
+    }
+    if (score < bestScore) {
+      bestScore = score;
+      best = coffee;
+    }
+  }
+  return best;
 }
 
 export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[] {
@@ -501,12 +605,17 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[
     bc_archived: number;
   }>;
 
+  const coffees = db
+    .prepare(`SELECT slug, roaster, coffee_name, roast_date, status FROM coffees`)
+    .all() as LikelyMatchCandidate[];
+
   return rows.map((r) => {
     const origin = db
       .prepare(
         `SELECT country, processing FROM beanconqueror_bean_origins WHERE bean_id = ? ORDER BY component_number ASC LIMIT 1`
       )
       .get(r.id) as { country: string | null; processing: string | null } | undefined;
+    const likelyMatch = findLikelyMatch({ name: r.name, roaster: r.roaster, roastDate: r.roast_date }, coffees);
     return {
       id: r.id,
       name: r.name,
@@ -528,7 +637,15 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[
       bcCreatedAt: r.bc_created_at,
       bcArchived: r.bc_archived === 1,
       origin: origin?.country ?? null,
-      processing: origin?.processing ?? null
+      processing: origin?.processing ?? null,
+      likelyMatch: likelyMatch
+        ? {
+            slug: likelyMatch.slug,
+            coffeeName: likelyMatch.coffee_name,
+            roastDate: likelyMatch.roast_date,
+            status: likelyMatch.status
+          }
+        : null
     };
   });
 }

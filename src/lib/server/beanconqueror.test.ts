@@ -341,6 +341,248 @@ describe('getUnmatchedBeanConquerorBeans', () => {
     dismissBeanConquerorBean(db, 'b1');
     expect(getUnmatchedBeanConquerorBeans(db)).toHaveLength(0);
   });
+
+  // Real examples pulled from this user's own production data (2026-09-23),
+  // used to calibrate the likely-match heuristic against actual failure
+  // modes rather than invented ones.
+  describe('likelyMatch', () => {
+    function importBean(
+      db: ReturnType<typeof createDb>,
+      overrides: Partial<Parameters<typeof importBeanConquerorData>[1]['beans'][0]> & { id: string; name: string }
+    ) {
+      importBeanConquerorData(db, {
+        beans: [
+          {
+            roaster: null,
+            roastDate: null,
+            roastType: null,
+            degreeOfRoast: null,
+            customDegreeOfRoast: null,
+            blend: null,
+            weightG: null,
+            cost: null,
+            aromatics: null,
+            cuppingPoints: null,
+            decaffeinated: false,
+            url: null,
+            eanArticleNumber: null,
+            notes: null,
+            rating: null,
+            bcCreatedAt: null,
+            bcArchived: false,
+            ...overrides
+          }
+        ],
+        beanOrigins: [],
+        methods: [],
+        grinders: [],
+        brews: []
+      });
+    }
+
+    it('flags an accent-only name difference on the same roast date', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'H&S',
+        coffee_name: 'Yulisa Carhuallocllo: Corazon de Chirinos',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-03-22',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, {
+        id: 'b1',
+        name: 'Yulisa Carhuallocllo: Corazón de Chirinos',
+        roaster: 'H&S',
+        roastDate: '2026-03-22'
+      });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Yulisa Carhuallocllo: Corazon de Chirinos' });
+    });
+
+    it('flags a country-prefix-only name difference within the date window', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'Scenery',
+        coffee_name: 'Ethiopia - Kebena Natural Decaf',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-06-11',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, { id: 'b1', name: 'Kebena Natural Decaf', roaster: 'Scenery', roastDate: '2026-06-11' });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Ethiopia - Kebena Natural Decaf' });
+    });
+
+    it('flags a single-character typo within the date window', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'Ordinary',
+        coffee_name: 'Burundi Gakenke Washing Station',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-07-11',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, {
+        id: 'b1',
+        name: 'Burundu Gakenke Washing Station',
+        roaster: 'Ordinary',
+        roastDate: '2026-07-11'
+      });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Burundi Gakenke Washing Station' });
+    });
+
+    it('flags a same-name match a couple of days off, not requiring an exact date', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'Aviary',
+        coffee_name: '023 - Shibru Dube',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-02-10',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, { id: 'b1', name: '023 - Shibru Dube', roaster: 'Aviary', roastDate: '2026-02-09' });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toMatchObject({ coffeeName: '023 - Shibru Dube' });
+    });
+
+    it('flags a matching name with no roast date on either side', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'H&S',
+        coffee_name: 'Rwanda Gitega 861',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-03-01',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, { id: 'b1', name: 'Rwanda Gitega 861', roaster: 'H&S', roastDate: null });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Rwanda Gitega 861' });
+    });
+
+    // The core safety case this whole feature is built around: this exact
+    // coffee was genuinely repurchased 3 separate times, each tracked as
+    // its own coffee entry — a repurchase months apart must never be
+    // flagged as a likely duplicate of an earlier one.
+    it('does NOT flag the same name+roaster when roast dates are months apart (a genuine repurchase)', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'The Picky Chemist',
+        coffee_name: 'El Dorado Double Ferment Washed Gesha',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-04-04',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, {
+        id: 'b1',
+        name: 'El Dorado Double Ferment Washed Gesha',
+        roaster: 'The Picky Chemist',
+        roastDate: '2026-06-13'
+      });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toBeNull();
+    });
+
+    // The other real failure mode this heuristic must avoid: two genuinely
+    // different processing lots of the same named coffee, bought weeks
+    // apart, must not be flagged just because only one word differs.
+    it('does NOT flag two different processing lots of the same coffee outside the date window', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'Shoebox',
+        coffee_name: 'Colombia Marlon Bolaños Gesha Natural',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-05-05',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, {
+        id: 'b1',
+        name: 'Colombia Marlon Bolaños Gesha Washed',
+        roaster: 'Shoebox',
+        roastDate: '2026-06-08'
+      });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toBeNull();
+    });
+
+    it('does NOT flag a different roaster even with an identical name and roast date', () => {
+      const db = createDb(':memory:');
+      createCoffee(db, {
+        roaster: 'Roaster A',
+        coffee_name: 'Same Name',
+        origin: null,
+        roast_level: null,
+        processing: null,
+        amount_g: null,
+        cost: null,
+        roast_date: '2026-06-01',
+        frozen_start_date: null,
+        frozen_end_date: null,
+        rest_days_low: null,
+        rest_days_high: null,
+        image_url: null
+      });
+      importBean(db, { id: 'b1', name: 'Same Name', roaster: 'Roaster B', roastDate: '2026-06-01' });
+      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      expect(bean.likelyMatch).toBeNull();
+    });
+  });
 });
 
 describe('dismissBeanConquerorBean', () => {
