@@ -174,4 +174,35 @@ describe('buildBeanConquerorStats', () => {
     // Groups that do clear the threshold are untouched.
     expect(stats.favoritesByRoaster.find((g) => g.label === 'Roaster A')?.brewCount).toBe(3);
   });
+
+  it('aggregates ratingsOverTime into one averaged point per week, not one per brew', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b1', name: 'Bean A', roaster: 'Roaster A', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 20, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [],
+      methods: [{ id: 'm1', preparationMethod: 'V60', name: 'V60', preparationStyle: null, preparationTools: null, notes: null, bcArchived: false, bcCreatedAt: null }],
+      grinders: [{ id: 'g1', name: 'Comandante', notes: null, bcArchived: false, bcCreatedAt: null }],
+      // 2026-06-08 is a Monday. Two brews land in that same calendar week
+      // (Mon 6/8 - Sun 6/14) with different ratings (8 and 6, averaging 7);
+      // a third brew lands in the following week (Mon 6/15) on its own.
+      // Real BeanConqueror histories run to hundreds of brews a year — the
+      // whole point of this aggregation is that a chart never plots one
+      // point per brew, so this asserts the grouping directly rather than
+      // just the count.
+      brews: [
+        ...brewsFor('b1', ['2026-06-08T08:00:00.000Z'], 8, null, null),
+        ...brewsFor('b1', ['2026-06-10T08:00:00.000Z'], 6, null, null),
+        ...brewsFor('b1', ['2026-06-15T08:00:00.000Z'], 4, null, null)
+      ]
+    });
+
+    const stats = buildBeanConquerorStats(db);
+
+    expect(stats.ratingsOverTime).toEqual([
+      { date: '2026-06-08', rating: 7 },
+      { date: '2026-06-15', rating: 4 }
+    ]);
+  });
 });

@@ -50,12 +50,19 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     .value;
   const averageRating = scalarOrNull(db, `SELECT AVG(rating) AS value FROM beanconqueror_brews`);
 
+  // One point per brew makes this chart unreadable at any real data volume
+  // (a home-scale BeanConqueror history easily runs to hundreds of brews a
+  // year) — averaged into Monday-starting weeks instead, so the line shows
+  // an actual trend rather than a dense per-brew scatter. `date(..., 'weekday
+  // 0', '-6 days')` is the standard SQLite recipe for "the Monday on/before
+  // this date": it rolls forward to the next Sunday, then back 6 days.
   const ratingsOverTime = db
     .prepare(
-      `SELECT substr(bc_created_at, 1, 10) AS date, rating
+      `SELECT date(bc_created_at, 'weekday 0', '-6 days') AS date, AVG(rating) AS rating
        FROM beanconqueror_brews
        WHERE rating IS NOT NULL
-       ORDER BY bc_created_at ASC`
+       GROUP BY date
+       ORDER BY date ASC`
     )
     .all() as { date: string; rating: number }[];
 
