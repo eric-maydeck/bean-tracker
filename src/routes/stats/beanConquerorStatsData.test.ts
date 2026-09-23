@@ -39,7 +39,7 @@ function brewsFor(
     tdsPercent,
     extractionYieldPercent,
     brewRatio: null,
-    beanAgeDays: null,
+    beanAgeDays: 30,
     bcArchived: false,
     water: null
   }));
@@ -82,8 +82,8 @@ describe('buildBeanConquerorStats', () => {
     expect(stats.favoritesByProcessing.find((g) => g.label === 'Natural')?.averageRating).toBe(6);
     expect(stats.byMethod.find((g) => g.label === 'V60')?.brewCount).toBe(6);
     expect(stats.byGrinder.find((g) => g.label === 'Comandante')?.brewCount).toBe(6);
-    expect(stats.averageExtractionYieldPercent).toBe(19);
-    expect(stats.averageTdsPercent).toBeCloseTo(1.2);
+    expect(stats.averageBrewTemperatureC).toBe(92);
+    expect(stats.averageBeanAgeAtBrewDays).toBe(30);
   });
 
   it('returns zeroed/null stats gracefully with no data', () => {
@@ -204,5 +204,69 @@ describe('buildBeanConquerorStats', () => {
       { date: '2026-06-08', rating: 7 },
       { date: '2026-06-15', rating: 4 }
     ]);
+  });
+
+  it('orders costPerGramByRoaster most-expensive-first, matching its "top" framing', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b1', name: 'Cheap Bean', roaster: 'Budget Roaster', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 10, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false },
+        { id: 'b2', name: 'Pricey Bean', roaster: 'Luxury Roaster', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 100, cost: 30, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    const stats = buildBeanConquerorStats(db);
+    // Budget Roaster: $10/200g = $0.05/g. Luxury Roaster: $30/100g = $0.30/g.
+    expect(stats.costPerGramByRoaster.map((g) => g.label)).toEqual(['Luxury Roaster', 'Budget Roaster']);
+  });
+
+  it('excludes a 0 brew_temperature/unset bean_age_days from their averages (Bean Conqueror\'s "not entered" sentinel)', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b1', name: 'Bean A', roaster: 'Roaster A', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 20, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: [
+        {
+          bcCreatedAt: '2026-06-10T08:00:00.000Z',
+          beanId: 'b1',
+          preparationId: null,
+          millId: null,
+          grindSetting: null,
+          groundCoffeeG: null,
+          brewTemperature: 0,
+          beanType: null,
+          grindSpeedRpm: null,
+          grindTime: null,
+          profile: null,
+          preparationTools: null,
+          temperatureTime: null,
+          brewTime: null,
+          bloomTime: null,
+          firstDripTime: null,
+          waterAmountG: null,
+          coffeeType: null,
+          coffeeConcentration: null,
+          rating: null,
+          notes: null,
+          beverageQuantity: null,
+          tdsPercent: null,
+          extractionYieldPercent: null,
+          brewRatio: null,
+          beanAgeDays: null,
+          bcArchived: false,
+          water: null
+        }
+      ]
+    });
+    const stats = buildBeanConquerorStats(db);
+    expect(stats.averageBrewTemperatureC).toBeNull();
+    expect(stats.averageBeanAgeAtBrewDays).toBeNull();
   });
 });

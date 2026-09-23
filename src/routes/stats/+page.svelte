@@ -6,6 +6,7 @@
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
+  import type { RatedGroup } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
 
@@ -117,8 +118,20 @@
   let bcVisibleFavoriteGroups = $derived(bcFavoriteGroups.slice(0, BEANCONQUEROR_BAR_LIMIT));
   let bcFavoriteChartHeight = $derived(Math.max(220, bcVisibleFavoriteGroups.length * 34 + 40));
 
-  let bcVisibleMethodGroups = $derived(data.beanConquerorStats.byMethod.slice(0, BEANCONQUEROR_BAR_LIMIT));
-  let bcVisibleGrinderGroups = $derived(data.beanConquerorStats.byGrinder.slice(0, BEANCONQUEROR_BAR_LIMIT));
+  // byMethod/byGrinder arrive sorted by averageRating (the server's default
+  // order) — switching the Rating/Count toggle only changed which value
+  // each bar showed, not which bars were on top, so the Count view looked
+  // unsorted. Re-sorting here by whichever metric is currently selected
+  // keeps the chart's bar order matching what it's actually displaying.
+  function sortByMetric(groups: RatedGroup[]): RatedGroup[] {
+    return [...groups].sort((a, b) =>
+      bcBrewingMetric === 'rating' ? b.averageRating - a.averageRating : b.brewCount - a.brewCount
+    );
+  }
+  let bcVisibleMethodGroups = $derived(sortByMetric(data.beanConquerorStats.byMethod).slice(0, BEANCONQUEROR_BAR_LIMIT));
+  let bcVisibleGrinderGroups = $derived(
+    sortByMetric(data.beanConquerorStats.byGrinder).slice(0, BEANCONQUEROR_BAR_LIMIT)
+  );
   let bcMethodChartHeight = $derived(Math.max(220, bcVisibleMethodGroups.length * 34 + 40));
   let bcGrinderChartHeight = $derived(Math.max(220, bcVisibleGrinderGroups.length * 34 + 40));
 
@@ -142,12 +155,12 @@
     return value === null ? '—' : value.toFixed(1);
   }
 
-  function formatPercent(value: number | null): string {
-    return value === null ? '—' : `${value.toFixed(1)}%`;
+  function formatCostPerGram(value: number | null): string {
+    return value === null ? '—' : `$${value.toFixed(3)}`;
   }
 
-  function formatCostPerGram(value: number | null): string {
-    return value === null ? '—' : `$${value.toFixed(3)}/g`;
+  function formatTemperature(value: number | null): string {
+    return value === null ? '—' : `${value.toFixed(1)}°C`;
   }
 
   // Section tiles are dense enough that every character counts toward how
@@ -736,15 +749,19 @@
     {:else if bcTab === 'brewing'}
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-value">{formatPercent(data.beanConquerorStats.averageExtractionYieldPercent)}</span>
+          <span class="stat-value">{formatTemperature(data.beanConquerorStats.averageBrewTemperatureC)}</span>
           <div class="stat-caption">
-            <span class="stat-label">Average extraction yield</span>
+            <span class="stat-label">Average brew temperature</span>
           </div>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{formatPercent(data.beanConquerorStats.averageTdsPercent)}</span>
+          <span class="stat-value"
+            >{data.beanConquerorStats.averageBeanAgeAtBrewDays === null
+              ? '—'
+              : formatDays(data.beanConquerorStats.averageBeanAgeAtBrewDays)}</span
+          >
           <div class="stat-caption">
-            <span class="stat-label">Average TDS</span>
+            <span class="stat-label">Average bean age at brew</span>
           </div>
         </div>
       </div>

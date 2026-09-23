@@ -1308,6 +1308,16 @@ div.compact-row {
   margin-top: var(--space-5);
 }
 
+/* Same root cause and fix as .stat-row + .chart-container above, for the
+   Brewing tab specifically: its stat-row is followed directly by the
+   Rating/Count .chart-panel-controls toggle with nothing in between, and
+   .chart-panel-controls only has its own margin-BOTTOM (space-4) — no
+   margin-top — so the zeroed stat-row left it crowded right underneath
+   the tiles. */
+.stat-row + .chart-panel-controls {
+  margin-top: var(--space-5);
+}
+
 /* A group of 4 tiles (the standard row) shouldn't stretch its panel to the
    full page width with empty space past the last tile — cap the panel at
    exactly 4-tiles-wide, left-aligned like every other panel on the page.

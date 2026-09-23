@@ -18,8 +18,8 @@ export interface BeanConquerorStats {
   favoritesByRoastLevel: RatedGroup[];
   byMethod: RatedGroup[];
   byGrinder: RatedGroup[];
-  averageExtractionYieldPercent: number | null;
-  averageTdsPercent: number | null;
+  averageBrewTemperatureC: number | null;
+  averageBeanAgeAtBrewDays: number | null;
   averageCostPerGram: number | null;
   costPerGramByRoaster: { label: string; averageCostPerGram: number }[];
 }
@@ -160,11 +160,23 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
      ORDER BY averageRating DESC`
   );
 
-  const averageExtractionYieldPercent = scalarOrNull(
+  // extraction_yield_percent/tds_percent were dropped here: Bean Conqueror
+  // stores 0 (not NULL) for a brew where these were never entered, and for
+  // this user's whole 1270-brew history every single one is exactly 0 —
+  // an always-0.0% tile carries no information. brew_temperature and
+  // bean_age_days use the same "0 means not entered" convention for a
+  // missing brew_temperature reading, so that one's still filtered; a
+  // brewed-on-roast-day bean_age_days of 0 is a real value, so that one
+  // only filters NULL.
+  const averageBrewTemperatureC = scalarOrNull(
     db,
-    `SELECT AVG(extraction_yield_percent) AS value FROM beanconqueror_brews`
+    `SELECT AVG(brew_temperature) AS value FROM beanconqueror_brews
+     WHERE brew_temperature IS NOT NULL AND brew_temperature != 0`
   );
-  const averageTdsPercent = scalarOrNull(db, `SELECT AVG(tds_percent) AS value FROM beanconqueror_brews`);
+  const averageBeanAgeAtBrewDays = scalarOrNull(
+    db,
+    `SELECT AVG(bean_age_days) AS value FROM beanconqueror_brews WHERE bean_age_days IS NOT NULL`
+  );
 
   const averageCostPerGram = scalarOrNull(
     db,
@@ -179,7 +191,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
        FROM beanconqueror_beans
        WHERE cost IS NOT NULL AND weight_g IS NOT NULL AND weight_g != 0 AND roaster IS NOT NULL
        GROUP BY roaster
-       ORDER BY averageCostPerGram ASC`
+       ORDER BY averageCostPerGram DESC`
     )
     .all() as { label: string; averageCostPerGram: number }[];
 
@@ -195,8 +207,8 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     favoritesByRoastLevel,
     byMethod,
     byGrinder,
-    averageExtractionYieldPercent,
-    averageTdsPercent,
+    averageBrewTemperatureC,
+    averageBeanAgeAtBrewDays,
     averageCostPerGram,
     costPerGramByRoaster
   };
