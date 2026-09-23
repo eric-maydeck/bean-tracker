@@ -1,3 +1,10 @@
+## [1.27.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.1...v1.27.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* revert possible-match line-break/parens change on mobile, keep desktop
+
 ## [1.27.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.27.0...v1.27.1) (2026-09-23)
 
 
