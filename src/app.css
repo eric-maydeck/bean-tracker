@@ -1294,6 +1294,21 @@ div.compact-row {
   margin-bottom: 0;
 }
 
+/* .chart-panel .stat-row above zeroes the row's own bottom margin so it
+   doesn't double up with a following .chart-panel-controls' margin-top —
+   but the Bean Conqueror Overview tab's stat-row is followed directly by
+   the ratings chart with nothing in between, and .chart-container has no
+   margin of its own, so that zeroing left literally 0px between the tiles
+   and the chart (reported live as the chart "colliding" with the tiles
+   above it). space-5 (not space-3) to match how every other chart is
+   separated from surrounding content in this file (.chart-panel and
+   .chart-panel-row both use space-5 for their own bottom margin) — space-3
+   read as still cramped next to a full chart canvas. Scoped to this exact
+   adjacency so every other stat-row is unaffected. */
+.stat-row + .chart-container {
+  margin-top: var(--space-5);
+}
+
 /* A group of 4 tiles (the standard row) shouldn't stretch its panel to the
    full page width with empty space past the last tile — cap the panel at
    exactly 4-tiles-wide and center it. Two gotchas ruled out simpler-looking

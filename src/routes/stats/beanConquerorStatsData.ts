@@ -10,6 +10,7 @@ export interface BeanConquerorStats {
   totalBrews: number;
   totalBeans: number;
   averageRating: number | null;
+  averageGramsBrewedPerDay: number | null;
   ratingsOverTime: { date: string; rating: number }[];
   favoritesByRoaster: RatedGroup[];
   favoritesByOrigin: RatedGroup[];
@@ -49,6 +50,21 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
   const totalBeans = (db.prepare(`SELECT COUNT(*) AS value FROM beanconqueror_beans`).get() as { value: number })
     .value;
   const averageRating = scalarOrNull(db, `SELECT AVG(rating) AS value FROM beanconqueror_brews`);
+
+  // Total grams ground across every brew, spread over the number of days
+  // between the first and last brew (inclusive) — a household consumption
+  // rate computed from actual brew history, distinct from the manually
+  // configured self/household rates used elsewhere on this page.
+  const gramsPerDayRow = db
+    .prepare(
+      `SELECT SUM(ground_coffee_g) AS totalGrams,
+              julianday(MAX(bc_created_at)) - julianday(MIN(bc_created_at)) + 1 AS daySpan
+       FROM beanconqueror_brews
+       WHERE ground_coffee_g IS NOT NULL`
+    )
+    .get() as { totalGrams: number | null; daySpan: number | null };
+  const averageGramsBrewedPerDay =
+    gramsPerDayRow.totalGrams && gramsPerDayRow.daySpan ? gramsPerDayRow.totalGrams / gramsPerDayRow.daySpan : null;
 
   // One point per brew makes this chart unreadable at any real data volume
   // (a home-scale BeanConqueror history easily runs to hundreds of brews a
@@ -171,6 +187,7 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     totalBrews,
     totalBeans,
     averageRating,
+    averageGramsBrewedPerDay,
     ratingsOverTime,
     favoritesByRoaster,
     favoritesByOrigin,

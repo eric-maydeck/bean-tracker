@@ -648,7 +648,7 @@
     </div>
 
     {#if bcTab === 'overview'}
-      <div class="stat-row">
+      <div class="stat-row stat-row-4up">
         <div class="stat-item">
           <span class="stat-value">{data.beanConquerorStats.totalBrews}</span>
           <div class="stat-caption">
@@ -665,6 +665,16 @@
           <span class="stat-value">{formatRating(data.beanConquerorStats.averageRating)}</span>
           <div class="stat-caption">
             <span class="stat-label">Average rating</span>
+          </div>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value"
+            >{data.beanConquerorStats.averageGramsBrewedPerDay === null
+              ? '—'
+              : formatGrams(data.beanConquerorStats.averageGramsBrewedPerDay)}</span
+          >
+          <div class="stat-caption">
+            <span class="stat-label">Grams brewed per day</span>
           </div>
         </div>
       </div>
