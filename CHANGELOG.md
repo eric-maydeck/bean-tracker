@@ -1,3 +1,10 @@
+## [1.25.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.25.1...v1.25.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* aggregate Bean Conqueror ratings-over-time chart by week
+
 ## [1.25.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.25.0...v1.25.1) (2026-09-23)
 
 
