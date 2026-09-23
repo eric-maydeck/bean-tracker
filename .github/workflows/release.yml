@@ -6,6 +6,18 @@ on:
     types: [completed]
     branches: [main]
 
+# Pushing two commits close together used to make this fail outright:
+# a Release run for the OLDER commit could still be starting after `main`
+# had already moved past it (a newer commit's CI had already completed),
+# and semantic-release aborts with "local branch is behind remote" rather
+# than publish from a non-HEAD commit. Cancelling the stale run instead of
+# letting it race the newer one — combined with always checking out `main`
+# below instead of the pinned commit that triggered the run — means
+# whichever run survives always builds off the real current tip.
+concurrency:
+  group: release-main
+  cancel-in-progress: true
+
 jobs:
   release:
     if: github.event.workflow_run.conclusion == 'success'
@@ -17,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
           fetch-depth: 0
 
       # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
