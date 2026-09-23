@@ -39,13 +39,18 @@
     labels,
     values,
     datasetLabel = '',
-    height = 320
+    height = 320,
+    valueAxisMax
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
     values: number[];
     datasetLabel?: string;
     height?: number;
+    // Bar charts only: pins the value axis's upper bound so it doesn't
+    // rescale as the data changes. A suggestedMax, not a hard max, so
+    // Chart.js still rounds it up to a clean tick.
+    valueAxisMax?: number;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -192,7 +197,7 @@
         scales:
           type === 'bar'
             ? {
-                x: { ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { suggestedMax: valueAxisMax, ticks: { color: textColor }, grid: { color: gridColor } },
                 y: {
                   ticks: {
                     color: textColor,
@@ -232,6 +237,7 @@
     void labels;
     void values;
     void datasetLabel;
+    void valueAxisMax;
     render();
 
     const observer = new MutationObserver(render);

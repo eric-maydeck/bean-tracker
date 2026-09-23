@@ -92,6 +92,14 @@
       : [...breakdownEntries].sort((a, b) => (metric === 'grams' ? b.grams - a.grams : b.count - a.count))
   );
   let visibleBreakdownEntries = $derived(sortedBreakdownEntries.slice(0, COMPOSITION_BAR_LIMIT));
+  // Every status selected is the largest any bar can get for this
+  // dimension/metric, so the axis stays put while toggling statuses.
+  let breakdownAxisMax = $derived(
+    Math.max(
+      0,
+      ...data.stats.breakdowns['backlog+open+archived'][dimension].map((e) => (metric === 'grams' ? e.grams : e.count))
+    )
+  );
   let breakdownLabels = $derived(visibleBreakdownEntries.map((e) => e.label));
   let breakdownValues = $derived(visibleBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
   // A fixed per-bar thickness (rather than a fixed chart height) keeps bars
@@ -577,6 +585,7 @@
       values={breakdownValues}
       datasetLabel={dimensionLabels[dimension]}
       height={compositionChartHeight}
+      valueAxisMax={breakdownAxisMax}
     />
   {/if}
 </section>
