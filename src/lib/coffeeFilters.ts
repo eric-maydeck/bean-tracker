@@ -291,3 +291,41 @@ export function chipTitle(f: Filter): string {
         : `${name} ${NUMBER_OP_WORDS[f.op]} ${num(f.column, f.a)}`;
   }
 }
+
+// Filters and search text share one key, remembered across tabs and
+// reloads for 12h of not using the Coffees page. Bump the version if the
+// stored shape changes: an old or unknown version is ignored, not migrated.
+export const FILTER_STORAGE_KEY = 'bean-tracker-coffee-filters';
+export const FILTER_STATE_VERSION = 1;
+export const FILTER_TTL_MS = 12 * 60 * 60 * 1000;
+
+export interface FilterState {
+  filters: Filter[];
+  query: string;
+}
+
+const KNOWN_COLUMNS = new Set<unknown>(COLUMNS.map((c) => c.key));
+
+export function loadFilterState(raw: string | null, now: number): FilterState {
+  const empty: FilterState = { filters: [], query: '' };
+  if (!raw) return empty;
+  let saved: { version?: unknown; filters?: unknown; query?: unknown; lastUsed?: unknown };
+  try {
+    saved = JSON.parse(raw);
+  } catch {
+    return empty;
+  }
+  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return empty;
+  if (saved.version !== FILTER_STATE_VERSION) return empty;
+  if (typeof saved.lastUsed !== 'number' || now - saved.lastUsed > FILTER_TTL_MS) return empty;
+  return {
+    filters: Array.isArray(saved.filters)
+      ? saved.filters.filter((f): f is Filter => !!f && typeof f === 'object' && KNOWN_COLUMNS.has(f.column))
+      : [],
+    query: typeof saved.query === 'string' ? saved.query : ''
+  };
+}
+
+export function serializeFilterState(state: FilterState, now: number): string {
+  return JSON.stringify({ version: FILTER_STATE_VERSION, filters: state.filters, query: state.query, lastUsed: now });
+}
