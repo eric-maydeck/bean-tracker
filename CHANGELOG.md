@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.29.0...v1.30.0) (2026-09-24)
+
+
+### Features
+
+* **stats:** uniform tile grid, container-scaled tiles, 8-tile At a Glance
+
 # [1.29.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.28.2...v1.29.0) (2026-09-23)
 
 
