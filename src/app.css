@@ -547,14 +547,6 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-4);
 }
 
-.filter-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
 .tab-group {
   display: flex;
   flex-wrap: wrap;
@@ -576,13 +568,6 @@ nav.site-nav a[aria-current='page'] {
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   border-color: var(--color-accent);
-}
-
-.filter-label {
-  display: flex;
-  align-items: center;
-  font-size: 0.85rem;
-  padding-right: var(--space-1);
 }
 
 .action-buttons {
