@@ -44,10 +44,13 @@
 
   function remove(key: ColumnKey) {
     filters = filters.filter((f) => f.column !== key);
-    // Only steal focus when this removal is actually closing that column's
-    // own open editor (its Clear button, or its chip's remove button while
-    // open) -- not when the chip removed isn't the one currently open.
-    if (open === key) close();
+    // Only steal focus when this removal is actually closing an open editor
+    // -- its Clear button, or its chip's remove button while open -- not
+    // when a bare chip's X is clicked with no editor open. `open === 'new'`
+    // covers Clear from the "+ Filter" flow: that editor's own `open` stays
+    // 'new' even after a column is picked inside it, so `key` (the picked
+    // column) never equals `open` there.
+    if (open === key || open === 'new') close();
     else open = null;
   }
 </script>
