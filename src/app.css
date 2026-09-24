@@ -1564,6 +1564,10 @@ div.compact-row {
     min-height: 44px;
   }
 
+  .filter-value {
+    min-height: 44px;
+  }
+
   .filter-backdrop {
     background: rgba(0, 0, 0, 0.5);
   }
