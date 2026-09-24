@@ -306,6 +306,44 @@ export interface FilterState {
 
 const KNOWN_COLUMNS = new Set<unknown>(COLUMNS.map((c) => c.key));
 
+// A saved entry only has a known `column`, never that its `mode` and fields
+// still fit that column's kind (e.g. old data, a hand-edited value, a future
+// version's shape). Loading a mismatched entry crashed applyFilters/chipLabel
+// (e.g. `{column:'origin',mode:'range'}` reading `.a`), so every shape is
+// checked here rather than trusted from a known column alone.
+function isStringOrNull(v: unknown): v is string | null {
+  return v === null || typeof v === 'string';
+}
+
+function isValidFilter(f: unknown): f is Filter {
+  if (!f || typeof f !== 'object' || Array.isArray(f)) return false;
+  const o = f as Record<string, unknown>;
+  if (!KNOWN_COLUMNS.has(o.column)) return false;
+  const kind = column(o.column as ColumnKey).kind;
+  switch (o.mode) {
+    case 'any':
+      return kind === 'text' && Array.isArray(o.values) && o.values.every(isStringOrNull);
+    case 'contains':
+      return kind === 'text' && typeof o.text === 'string';
+    case 'bool':
+      return kind === 'bool' && typeof o.value === 'boolean';
+    case 'range':
+      return (
+        (kind === 'number' || kind === 'date') &&
+        typeof o.op === 'string' &&
+        (OPS as readonly string[]).includes(o.op) &&
+        typeof o.a === 'string' &&
+        typeof o.b === 'string'
+      );
+    case 'includes':
+      return kind === 'window' && typeof o.a === 'string';
+    case 'overlaps':
+      return kind === 'window' && typeof o.a === 'string' && typeof o.b === 'string';
+    default:
+      return false;
+  }
+}
+
 export function loadFilterState(raw: string | null, now: number): FilterState {
   const empty: FilterState = { filters: [], query: '' };
   if (!raw) return empty;
@@ -319,9 +357,7 @@ export function loadFilterState(raw: string | null, now: number): FilterState {
   if (saved.version !== FILTER_STATE_VERSION) return empty;
   if (typeof saved.lastUsed !== 'number' || now - saved.lastUsed > FILTER_TTL_MS) return empty;
   return {
-    filters: Array.isArray(saved.filters)
-      ? saved.filters.filter((f): f is Filter => !!f && typeof f === 'object' && KNOWN_COLUMNS.has(f.column))
-      : [],
+    filters: Array.isArray(saved.filters) ? saved.filters.filter(isValidFilter) : [],
     query: typeof saved.query === 'string' ? saved.query : ''
   };
 }

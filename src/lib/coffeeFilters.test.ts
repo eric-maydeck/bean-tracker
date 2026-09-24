@@ -445,4 +445,22 @@ describe('filter state persistence', () => {
     ).toEqual(state);
     expect(loadFilterState(JSON.stringify({ version: 1, filters: 'nope', query: 7, lastUsed: T }), T)).toEqual(empty);
   });
+
+  it('drops a filter whose mode does not fit its column, or whose fields are missing, without throwing', () => {
+    const valid: Filter = { column: 'origin', mode: 'any', values: ['Kenya'] };
+    const badFilters = [
+      { column: 'origin', mode: 'any' }, // text column but missing `values`
+      { column: 'origin', mode: 'contains' }, // text column but missing `text`
+      { column: 'roast_date', mode: 'range', op: '>' }, // date column but missing `a`/`b`
+      valid
+    ];
+    const raw = JSON.stringify({ version: FILTER_STATE_VERSION, filters: badFilters, query: '', lastUsed: T });
+    const loaded = loadFilterState(raw, T);
+    expect(loaded.filters).toEqual([valid]);
+    // The three bad entries used to crash applyFilters/chipLabel; confirm the survivor doesn't.
+    for (const f of loaded.filters) {
+      expect(() => applyFilters([coffee({ origin: 'Kenya' })], [f])).not.toThrow();
+      expect(() => chipLabel(f)).not.toThrow();
+    }
+  });
 });
