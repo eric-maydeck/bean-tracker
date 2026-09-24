@@ -9,11 +9,16 @@
     valueCounts,
     isComplete,
     normalizeFilter,
+    type Column,
     type ColumnKey,
     type ColumnKind,
     type Filter,
     type Op
   } from '$lib/coffeeFilters';
+
+  // Editor-only label: appends the column's unit (e.g. "Weight (g)") so the
+  // number typed is unambiguous. Chips keep the plain short/full name.
+  const editorLabel = (c: Column) => (c.unit ? `${c.label} (${c.unit})` : c.label);
   import type { CoffeeWithComputed } from '$lib/server/urgency';
 
   let {
@@ -136,14 +141,19 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="filter-backdrop" role="presentation" onclick={onclose}></div>
-<div bind:this={editorEl} class="filter-editor" role="dialog" aria-label={key ? `Filter by ${column(key).label}` : 'Add a filter'}>
+<div
+  bind:this={editorEl}
+  class="filter-editor"
+  role="dialog"
+  aria-label={key ? `Filter by ${editorLabel(column(key))}` : 'Add a filter'}
+>
   {#if !key}
     {#each GROUPS as [title, kinds] (title)}
       <p class="eyebrow">{title}</p>
       <div class="tab-group">
         {#each COLUMNS.filter((c) => kinds.includes(c.kind)) as c (c.key)}
           <button type="button" aria-pressed={filters.some((f) => f.column === c.key)} onclick={() => pick(c.key)}>
-            {c.label}
+            {editorLabel(c)}
           </button>
         {/each}
       </div>
@@ -152,7 +162,7 @@
     {@const k = key}
     {@const kind = column(k).kind}
     {@const saved = existing(k)}
-    <p class="eyebrow">{column(k).label}</p>
+    <p class="eyebrow">{editorLabel(column(k))}</p>
 
     {#if kind === 'text'}
       <div class="tab-group">

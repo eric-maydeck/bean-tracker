@@ -25,6 +25,7 @@ export interface Column {
   label: string; // full name: editor heading and chip title
   short: string; // chip name
   kind: ColumnKind;
+  unit?: string; // shown in parens in the filter editor only, e.g. "Weight (g)"
 }
 
 export const COLUMNS: readonly Column[] = [
@@ -36,7 +37,7 @@ export const COLUMNS: readonly Column[] = [
   { key: 'decaf', label: 'Decaf', short: 'Decaf', kind: 'bool' },
   { key: 'frozen', label: 'Frozen', short: 'Frozen', kind: 'bool' },
   { key: 'cost_per_gram', label: 'Cost/g', short: 'Cost/g', kind: 'number' },
-  { key: 'amount_g', label: 'Weight', short: 'Weight', kind: 'number' },
+  { key: 'amount_g', label: 'Weight', short: 'Weight', kind: 'number', unit: 'g' },
   { key: 'roast_date', label: 'Roast date', short: 'Roasted', kind: 'date' },
   { key: 'frozen_start_date', label: 'Frozen date', short: 'Frozen on', kind: 'date' },
   { key: 'frozen_end_date', label: 'Unfrozen date', short: 'Thawed', kind: 'date' },
