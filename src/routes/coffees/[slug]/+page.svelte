@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -9,11 +10,21 @@
     stageStatusAction,
     hasPending,
     mergeStagedCoffee,
+    clonePrefill,
     type PendingChange
   } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
+  import type { CoffeeRow } from '$lib/types';
 
-  let { data } = $props();
+  let { data, form } = $props();
+
+  let clonePrefillData = $state<Partial<CoffeeRow> | null>(null);
+
+  async function cloneCreated() {
+    const slug = form && 'slug' in form ? form.slug : null;
+    clonePrefillData = null;
+    if (slug) await goto(`/coffees/${slug}`);
+  }
 
   let shareUrl = $state<string | null>(null);
   let shareQrDataUrl = $state<string | null>(null);
@@ -53,6 +64,23 @@
   let pending = $state(new SvelteMap<number, PendingChange>());
   let commitError = $state<string | null>(null);
   let saving = $state(false);
+
+  // SvelteKit reuses this component when navigating from one coffee to
+  // another (e.g. landing on a freshly saved clone), so per-coffee UI state
+  // has to reset when the coffee changes — otherwise the previous coffee's
+  // edit mode, staged edits and share QR carry over onto the new page. Keyed
+  // on id, not slug, so a staged slug rename (same coffee) keeps its state.
+  let shownCoffeeId = untrack(() => data.coffee.id);
+  $effect.pre(() => {
+    if (data.coffee.id === shownCoffeeId) return;
+    shownCoffeeId = data.coffee.id;
+    editMode = false;
+    pending.clear();
+    commitError = null;
+    shareUrl = null;
+    shareQrDataUrl = null;
+    clonePrefillData = null;
+  });
 
   function stageFields(fields: Record<string, string>) {
     stageFieldChange(pending, data.coffee.id, fields);
@@ -167,6 +195,11 @@
 <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
   Import into Bean Conqueror
 </button>
+{#if data.isAdmin}
+  <button class="button button-secondary" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
+    Clone
+  </button>
+{/if}
 {#if shareUrl && shareQrDataUrl}
   <div class="chart-panel">
     <div class="share-panel">
@@ -211,6 +244,7 @@
     origins={data.origins}
     processingMethods={data.processingMethods}
     onstage={stageFields}
+    onclone={(prefill) => (clonePrefillData = prefill)}
   />
 
   <button class="button button-danger" type="button" disabled={saving} onclick={stageDelete}>
@@ -336,4 +370,22 @@
       </section>
     </div>
   </article>
+{/if}
+
+{#if clonePrefillData}
+  <div class="modal-backdrop">
+    <div class="modal">
+      <h2>Clone {data.coffee.coffee_name}</h2>
+      <CoffeeForm
+        prefill={clonePrefillData}
+        roastLevels={data.roastLevels}
+        roasters={data.roasters}
+        origins={data.origins}
+        processingMethods={data.processingMethods}
+        formError={form?.error ?? null}
+        oncancel={() => (clonePrefillData = null)}
+        onsuccess={cloneCreated}
+      />
+    </div>
+  </div>
 {/if}

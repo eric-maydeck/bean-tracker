@@ -5,6 +5,7 @@ import {
   clearPending,
   hasPending,
   mergeStagedCoffee,
+  clonePrefill,
   type PendingChange
 } from './pendingChanges';
 import type { CoffeeRow } from './types';
@@ -160,5 +161,44 @@ describe('mergeStagedCoffee', () => {
     const checkedCoffee: CoffeeRow = { ...baseCoffee, decaf: 1 };
     const result = mergeStagedCoffee(checkedCoffee, { roaster: 'Scenery' });
     expect(result.decaf).toBe(0);
+  });
+});
+
+describe('clonePrefill', () => {
+  const source: CoffeeRow = {
+    ...baseCoffee,
+    id: 42,
+    image_url: 'https://example.com/label.png',
+    decaf: 1,
+    frozen_start_date: '2026-02-01',
+    frozen_end_date: '2026-03-01',
+    opened_date: '2026-03-02',
+    drank: 1,
+    status: 'archive',
+    moved_date: '2026-03-10'
+  };
+
+  it('copies exactly the bag-describing fields', () => {
+    expect(clonePrefill(source)).toEqual({
+      roaster: 'Sey',
+      coffee_name: 'Ethiopia Guji',
+      origin: 'Ethiopia',
+      roast_level: 'Light',
+      processing: 'Washed',
+      amount_g: 250,
+      cost: 20,
+      roast_date: '2026-01-01',
+      rest_days_low: 7,
+      rest_days_high: 14,
+      image_url: 'https://example.com/label.png',
+      decaf: 1
+    });
+  });
+
+  it('never carries over frozen dates, status, lifecycle dates, slug, or id', () => {
+    const prefill = clonePrefill(source);
+    for (const key of ['id', 'slug', 'status', 'frozen_start_date', 'frozen_end_date', 'opened_date', 'moved_date', 'drank', 'created_at', 'updated_at']) {
+      expect(prefill).not.toHaveProperty(key);
+    }
   });
 });

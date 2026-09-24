@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import RoastBeans from '$lib/components/RoastBeans.svelte';
   import { invalidateAll, beforeNavigate } from '$app/navigation';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import { originWithFlag } from '$lib/countryFlags';
   import {
@@ -11,6 +13,7 @@
     stageStatusAction,
     hasPending,
     mergeStagedCoffee,
+    clonePrefill,
     type PendingChange
   } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
@@ -32,6 +35,7 @@
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
   let expandedId = $state<number | 'new' | null>(null);
+  let addPrefill = $state<Partial<CoffeeRow> | null>(null);
 
   // Plain `Map` wrapped in `$state()` is NOT deeply reactive in Svelte 5 —
   // `$state()`'s proxy only wraps plain objects/arrays, so in-place
@@ -52,12 +56,23 @@
     expandedId = expandedId === id ? null : id;
   }
 
-  function toggleAdd() {
-    expandedId = expandedId === 'new' ? null : 'new';
+  function openAdd() {
+    addPrefill = null;
+    expandedId = 'new';
+  }
+
+  // Closes any open edit form and swaps in the Add form pre-filled from
+  // the clone source.
+  async function openClone(prefill: Partial<CoffeeRow>) {
+    addPrefill = prefill;
+    expandedId = 'new';
+    await tick();
+    document.getElementById('add-coffee')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function closeExpanded() {
     expandedId = null;
+    addPrefill = null;
   }
 
   function enterEditMode() {
@@ -382,77 +397,106 @@
   <title>Bean Tracker - Coffees</title>
 </svelte:head>
 
-{#snippet adminActions(coffee)}
+{#snippet cloneButton(coffee: CoffeeRow, icons = false)}
+  <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}
+    title={icons ? 'Clone' : undefined} aria-label={icons ? 'Clone' : undefined}>
+    {#if icons}<Icon name="clone" />{:else}Clone{/if}
+  </button>
+{/snippet}
+
+{#snippet editButton(coffee: CoffeeRow, icons = false)}
+  <button
+    class="button button-secondary" class:button-icon={icons}
+    type="button"
+    title={icons ? 'Edit' : undefined} aria-label={icons ? 'Edit' : undefined}
+    onclick={() => {
+      enterEditMode();
+      expandedId = coffee.id;
+    }}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
+  >
+{/snippet}
+
+{#snippet adminActions(coffee: CoffeeRow, icons = false)}
   {#if coffee.status === 'archive'}
-    <button class="button button-secondary" type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}>
-      {expandedId === coffee.id ? 'Cancel' : 'Edit'}
+    <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && expandedId === coffee.id} type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}
+      title={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined}>
+      {#if icons}<Icon name={expandedId === coffee.id ? 'cancel' : 'edit'} />{:else}{expandedId === coffee.id ? 'Cancel' : 'Edit'}{/if}
     </button>
+    {@render cloneButton(coffee, icons)}
     <button
-      class="button button-secondary"
+      class="button button-secondary" class:button-icon={icons}
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
       disabled={saving}
       onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
+      title={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
     >
-      Restore
+      {#if icons}<Icon name="restore" />{:else}Restore{/if}
     </button>
   {:else}
-    <button class="button button-secondary" type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}>
-      {expandedId === coffee.id ? 'Cancel' : 'Edit'}
+    <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && expandedId === coffee.id} type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}
+      title={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined}>
+      {#if icons}<Icon name={expandedId === coffee.id ? 'cancel' : 'edit'} />{:else}{expandedId === coffee.id ? 'Cancel' : 'Edit'}{/if}
     </button>
+    {@render cloneButton(coffee, icons)}
     {#if coffee.status === 'backlog'}
-      {#if coffee.frozen_start_date && !coffee.frozen_end_date}
-        <button
-          class="button button-secondary"
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
-        >
-          Thaw
-        </button>
-      {:else}
-        <button
-          class="button button-secondary"
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
-        >
-          Freeze
-        </button>
-      {/if}
       <button
-        class="button"
+        class="button" class:button-icon={icons}
         type="button"
         aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
         disabled={saving}
         onclick={() => stageStatusAction(pending, coffee.id, 'open')}
+        title={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
       >
-        Open
+        {#if icons}<Icon name="open" />{:else}Open{/if}
       </button>
+      {#if coffee.frozen_start_date && !coffee.frozen_end_date}
+        <button
+          class="button button-secondary" class:button-icon={icons}
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
+          disabled={saving}
+          onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
+          title={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
+        >
+          {#if icons}<Icon name="thaw" />{:else}Thaw{/if}
+        </button>
+      {:else}
+        <button
+          class="button button-secondary" class:button-icon={icons}
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
+          disabled={saving}
+          onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
+          title={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
+        >
+          {#if icons}<Icon name="freeze" />{:else}Freeze{/if}
+        </button>
+      {/if}
     {:else if coffee.status === 'open'}
       <button
-        class="button button-secondary"
+        class="button button-secondary" class:button-icon={icons}
         type="button"
         aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
         disabled={saving}
         onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
+        title={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
       >
-        Unopen
+        {#if icons}<Icon name="unopen" />{:else}Unopen{/if}
       </button>
     {/if}
     <button
-      class="button button-secondary"
+      class="button button-secondary" class:button-icon={icons}
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
       disabled={saving}
       onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
+      title={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
     >
-      Archive
+      {#if icons}<Icon name="archive" />{:else}Archive{/if}
     </button>
     <button
-      class="button button-danger"
+      class="button button-danger" class:button-icon={icons}
       type="button"
       aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
       disabled={saving}
@@ -463,8 +507,9 @@
           stageStatusAction(pending, coffee.id, 'delete');
         }
       }}
+      title={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
     >
-      Delete
+      {#if icons}<Icon name="delete" />{:else}Delete{/if}
     </button>
   {/if}
   {#if pending.has(coffee.id)}
@@ -485,6 +530,7 @@
     processingMethods={data.processingMethods}
     formError={commitErrors.get(coffee.id) ?? null}
     oncancel={closeExpanded}
+    onclone={openClone}
     onstage={(fields) => {
       stageFieldChange(pending, coffee.id, fields);
       closeExpanded();
@@ -556,68 +602,83 @@
   {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatVisibleWeight(visibleTotalGrams)}
 </p>
 
-{#if canEdit}
-  <div class="search-row">
-    <button class="button" type="button" onclick={toggleAdd}>
-      {expandedId === 'new' ? 'Cancel add' : '+ Add Coffee'}
-    </button>
-  </div>
+{#if data.isAdmin}
   {#if expandedId === 'new'}
-    <CoffeeForm
-      roastLevels={data.roastLevels}
-      roasters={data.roasters}
-      origins={data.origins}
-      processingMethods={data.processingMethods}
-      formError={form?.error ?? null}
-      oncancel={closeExpanded}
-      onsuccess={closeExpanded}
-    />
+    <!-- Keyed so a second clone while the form is open starts from a fresh form. -->
+    {#key addPrefill}
+      <div id="add-coffee">
+        <CoffeeForm
+          prefill={addPrefill}
+          roastLevels={data.roastLevels}
+          roasters={data.roasters}
+          origins={data.origins}
+          processingMethods={data.processingMethods}
+          formError={form?.error ?? null}
+          oncancel={closeExpanded}
+          onsuccess={closeExpanded}
+        />
+      </div>
+    {/key}
+  {:else}
+    <div class="search-row">
+      <button class="button" type="button" onclick={openAdd}>+ Add Coffee</button>
+    </div>
   {/if}
 {/if}
 
 {#if view === 'cards'}
   <section class="grid">
     {#each coffees as coffee (coffee.id)}
-      {#if canEdit}
+      {#if data.isAdmin}
         <div class="card">
-          {#if expandedId === coffee.id}
+          {#if canEdit && expandedId === coffee.id}
             {@render expandedForm(coffee)}
           {:else}
-            {#if coffee.image_url}
-              <img src={coffee.image_url} alt="" class="card-thumb" />
-            {/if}
-            <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
-            <p class="text-muted">{coffee.roaster}</p>
-            <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
-            <p class="roast-row">
-              <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
-              <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
-            </p>
-            {#if coffee.processing}
-              <p class="text-muted">{coffee.processing}</p>
-            {/if}
-            <p class="text-muted">
-              {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
-              {coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
-            </p>
-            {#if coffee.roast_date}
-              <p class="text-muted">
-                Roasted {coffee.roast_date}
-                {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+            <div class="card-body">
+              {#if coffee.image_url}
+                <img src={coffee.image_url} alt="" class="card-thumb" />
+              {/if}
+              <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
+              <p class="text-muted">{coffee.roaster}</p>
+              <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
+              <p class="roast-row">
+                <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
+                <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
               </p>
-            {/if}
-            {#if coffee.status === 'archive'}
-              <span class="badge badge-fresh">Archive</span>
-            {:else if coffee.status === 'open'}
-              <span class="badge badge-warm">Open</span>
-            {:else}
-              <span class="badge badge-neutral">Backlog</span>
-            {/if}
-            {#if coffee.decaf}
-              <span class="badge badge-neutral">Decaf</span>
-            {/if}
+              {#if coffee.processing}
+                <p class="text-muted">{coffee.processing}</p>
+              {/if}
+              <p class="text-muted">
+                {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
+                {coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
+              </p>
+              {#if coffee.roast_date}
+                <p class="text-muted">
+                  Roasted {coffee.roast_date}
+                  {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+                </p>
+              {/if}
+              {#if coffee.drink_after && coffee.drink_before}
+                <p class="text-muted">Rest window: {coffee.drink_after} – {coffee.drink_before}</p>
+              {/if}
+              {#if coffee.status === 'archive'}
+                <span class="badge badge-fresh">Archive</span>
+              {:else if coffee.status === 'open'}
+                <span class="badge badge-warm">Open</span>
+              {:else}
+                <span class="badge badge-neutral">Backlog</span>
+              {/if}
+              {#if coffee.decaf}
+                <span class="badge badge-neutral">Decaf</span>
+              {/if}
+            </div>
             <div class="action-buttons">
-              {@render adminActions(coffee)}
+              {#if canEdit}
+                {@render adminActions(coffee, true)}
+              {:else}
+                {@render editButton(coffee, true)}
+                {@render cloneButton(coffee, true)}
+              {/if}
             </div>
           {/if}
         </div>
@@ -682,12 +743,12 @@
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </div>
           </div>
-          <div class="action-buttons">
-            {@render adminActions(coffee)}
-          </div>
           {#if expandedId === coffee.id}
             {@render expandedForm(coffee)}
           {/if}
+          <div class="action-buttons">
+            {@render adminActions(coffee, true)}
+          </div>
         {:else}
           <button
             type="button"
@@ -737,6 +798,12 @@
               {/if}
             </div>
           {/if}
+          {#if data.isAdmin && expandedId === coffee.id}
+            <div class="action-buttons">
+              {@render editButton(coffee, true)}
+              {@render cloneButton(coffee, true)}
+            </div>
+          {/if}
         {/if}
       </div>
     {/each}
@@ -758,7 +825,7 @@
         <col style="width: 6%" />
         <col style="width: 9%" />
         <col style="width: 5%" />
-        {#if canEdit}
+        {#if data.isAdmin}
           <col style="width: 13%" />
         {/if}
       </colgroup>
@@ -868,7 +935,7 @@
               >
             </button>
           </th>
-          {#if canEdit}
+          {#if data.isAdmin}
             <th>Actions</th>
           {/if}
         </tr>
@@ -902,17 +969,22 @@
             <td style={urgencyColorStyle(coffee.urgency_rating)}>
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </td>
-            {#if canEdit}
+            {#if data.isAdmin}
               <td>
                 <div class="action-buttons">
-                  {@render adminActions(coffee)}
+                  {#if canEdit}
+                    {@render adminActions(coffee, true)}
+                  {:else}
+                    {@render editButton(coffee, true)}
+                    {@render cloneButton(coffee, true)}
+                  {/if}
                 </div>
               </td>
             {/if}
           </tr>
           {#if canEdit && expandedId === coffee.id}
             <tr>
-              <td colspan={canEdit ? 14 : 13}>
+              <td colspan={data.isAdmin ? 14 : 13}>
                 {@render expandedForm(coffee)}
               </td>
             </tr>

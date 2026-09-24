@@ -3,6 +3,7 @@
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
+  import { clonePrefill, mergeStagedCoffee } from '$lib/pendingChanges';
 
   let {
     coffee = null,
@@ -14,7 +15,8 @@
     formError = null,
     oncancel = null,
     onsuccess = null,
-    onstage = null
+    onstage = null,
+    onclone = null
   }: {
     coffee?: CoffeeRow | null;
     prefill?: Partial<CoffeeRow> | null;
@@ -26,7 +28,21 @@
     oncancel?: (() => void) | null;
     onsuccess?: (() => void) | null;
     onstage?: ((fields: Record<string, string>) => void) | null;
+    onclone?: ((prefill: Partial<CoffeeRow>) => void) | null;
   } = $props();
+
+  let formEl: HTMLFormElement;
+
+  // Clones what's currently typed (unsaved tweaks included), not the
+  // saved row — captured the same way staged mode captures a submit.
+  function cloneCurrent() {
+    if (!coffee || !onclone) return;
+    const fields: Record<string, string> = {};
+    for (const [key, value] of new FormData(formEl).entries()) {
+      if (typeof value === 'string') fields[key] = value;
+    }
+    onclone(clonePrefill(mergeStagedCoffee(coffee, fields)));
+  }
 
   // Staged mode's `action` attribute points at `?/save`, which no longer
   // exists as a server action now that staged editing intercepts the
@@ -43,6 +59,7 @@
 </script>
 
 <form
+  bind:this={formEl}
   method="POST"
   action={coffee ? '?/save' : '?/create'}
   use:enhance={({ formData, cancel }) => {
@@ -160,7 +177,7 @@
 
   <div class="form-field">
     <label for="rest_days_low">Recommended rest days (low)</label>
-    <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={coffee?.rest_days_low ?? ''} />
+    <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
   </div>
 
   <div class="form-field">
@@ -170,13 +187,13 @@
       name="rest_days_high"
       type="number"
       step="1"
-      value={coffee?.rest_days_high ?? ''}
+      value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
     />
   </div>
 
   <div class="form-field">
     <label for="image_url">Image URL (label or roaster logo)</label>
-    <input id="image_url" name="image_url" type="url" value={coffee?.image_url ?? ''} />
+    <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
   </div>
 
   <div class="form-field form-field-checkbox">
@@ -198,5 +215,8 @@
   <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
   {#if oncancel}
     <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
+  {/if}
+  {#if onclone && coffee}
+    <button class="button button-secondary" type="button" onclick={cloneCurrent}>Clone</button>
   {/if}
 </form>

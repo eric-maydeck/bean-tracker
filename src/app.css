@@ -356,6 +356,7 @@ input:focus-visible {
 
 .search-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
@@ -595,6 +596,67 @@ nav.site-nav a[aria-current='page'] {
   text-align: center;
 }
 
+/* In table rows, buttons size to their label and drop .button's own margin
+   (the flex gap already spaces them) — with the 4.5rem floor plus margin,
+   Edit + Clone overflow the Actions column by a few px and stack, doubling
+   every row's height. */
+.data-table .action-buttons .button {
+  min-width: 0;
+  margin: 0;
+}
+
+/* Icon-only action buttons (the list view's Actions column): tight padding
+   around a single Icon.svelte glyph; the full word is in title/aria-label. */
+.button.button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  line-height: 1;
+}
+
+/* A slightly tighter gap for icon rows, so a card's full edit-mode set
+   (6 icons) fits on one line instead of wrapping its last icon. */
+.action-buttons:has(> .button-icon) {
+  gap: 0.375rem;
+}
+
+.button-icon .icon {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+@media (max-width: 640px) {
+  /* Keep a full-size tap target, and keep the row's icons on one line — the
+     list table already scrolls horizontally at this width, so the Actions
+     column can grow instead of stacking icons and doubling row height. */
+  .action-buttons .button.button-icon {
+    min-width: 44px;
+  }
+
+  .data-table .action-buttons {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Cards with action buttons stretch to their grid row's height and pin the
+   buttons to the bottom (margin-top: auto), keeping at least space-3 above
+   them (padding-top). The card's text sits in one .card-body block so its
+   paragraphs keep normal block margin-collapsing instead of becoming flex
+   items (whose margins don't collapse). */
+.card:has(> .action-buttons) {
+  display: flex;
+  flex-direction: column;
+}
+
+.card > .action-buttons {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
 .site-footer {
   margin-top: var(--space-6);
   padding-top: var(--space-4);
@@ -803,6 +865,18 @@ div.compact-row {
 }
 
 .compact-row-detail {
+  padding: 0 var(--space-1) var(--space-3);
+}
+
+/* Logged-in rows end with their Edit/Clone (or edit-mode) buttons, below any
+   expanded details/form — the row itself drops most of its bottom padding so
+   the buttons sit close under it instead of floating mid-gap. */
+.compact-row-wrap:has(> .action-buttons) > .compact-row {
+  padding-bottom: var(--space-2);
+  min-height: 0;
+}
+
+.compact-row-wrap > .action-buttons {
   padding: 0 var(--space-1) var(--space-3);
 }
 

@@ -28,9 +28,9 @@ describe('handleCoffeeCreate', () => {
   it('creates a coffee row and returns success', async () => {
     const db = createDb(':memory:');
     const result = await handleCoffeeCreate(db, formData(validFields));
-    expect(result).toEqual({ success: true });
-    const rows = db.prepare(`SELECT * FROM coffees`).all();
+    const rows = db.prepare(`SELECT * FROM coffees`).all() as { slug: string }[];
     expect(rows).toHaveLength(1);
+    expect(result).toEqual({ success: true, slug: rows[0].slug });
   });
 
   it('fails validation when roaster is missing', async () => {
