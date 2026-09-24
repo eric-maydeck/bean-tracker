@@ -110,11 +110,26 @@
 
   let editorEl = $state<HTMLDivElement>();
 
+  // A chip near the right edge opens its editor left-anchored (`left: 0`
+  // in app.css) so it can run past the viewport at 641-900px. Nudge it
+  // left by however many px it overflows by, measured after layout rather
+  // than assumed, so it works regardless of which chip opened it. Below
+  // 640px the editor is a `position: fixed` bottom sheet already spanning
+  // the viewport, so there's nothing to correct.
+  function keepInViewport() {
+    const el = editorEl;
+    if (!el || getComputedStyle(el).position !== 'absolute') return;
+    const margin = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16; // matches --space-4: 1rem
+    const overflow = el.getBoundingClientRect().right - (window.innerWidth - margin);
+    if (overflow > 0) el.style.left = `-${overflow}px`;
+  }
+
   // The editor is mounted fresh each time it opens (see the `pick(start)`
-  // comment above), so moving focus to its first control on mount -- and
-  // nowhere else -- is enough; there's no later re-render to repeat it for.
+  // comment above), so doing this once on mount -- and nowhere else -- is
+  // enough; there's no later re-render to repeat it for.
   onMount(() => {
     editorEl?.querySelector<HTMLElement>('button, input, [href], select, textarea')?.focus();
+    keepInViewport();
   });
 </script>
 
