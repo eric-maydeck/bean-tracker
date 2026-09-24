@@ -1,5 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { applyFilters, normalizeFilter, isFrozen, type Filter, type Op } from './coffeeFilters';
+import {
+  applyFilters,
+  normalizeFilter,
+  isFrozen,
+  valueCounts,
+  isComplete,
+  upsertFilter,
+  chipLabel,
+  chipTitle,
+  type Filter,
+  type Op
+} from './coffeeFilters';
 import type { CoffeeWithComputed } from './server/urgency';
 
 let nextId = 1;
@@ -254,5 +265,119 @@ describe('normalizeFilter', () => {
       mode: 'contains',
       text: 'kenya'
     });
+  });
+});
+
+describe('valueCounts', () => {
+  it('counts values, sorts case-insensitively, puts (none) last', () => {
+    const list = [
+      coffee({ origin: 'kenya' }),
+      coffee({ origin: 'Ethiopia' }),
+      coffee({ origin: 'Ethiopia' }),
+      coffee({ origin: null }),
+      coffee({ origin: 'Brazil' })
+    ];
+    expect(valueCounts(list, 'origin')).toEqual([
+      { value: 'Brazil', count: 1 },
+      { value: 'Ethiopia', count: 2 },
+      { value: 'kenya', count: 1 },
+      { value: null, count: 1 }
+    ]);
+  });
+
+  it('omits (none) when nothing is missing', () => {
+    expect(valueCounts([coffee({ origin: 'Kenya' })], 'origin')).toEqual([{ value: 'Kenya', count: 1 }]);
+  });
+
+  it('valueCounts folds blank strings into (none)', () => {
+    expect(valueCounts([coffee({ origin: '' }), coffee({ origin: null })], 'origin')).toEqual([{ value: null, count: 2 }]);
+  });
+
+  it('valueCounts keeps selected values missing from the list', () => {
+    expect(valueCounts([coffee({ origin: 'Kenya' })], 'origin', ['Peru', null, 'Kenya'])).toEqual([
+      { value: 'Kenya', count: 1 },
+      { value: 'Peru', count: 0 },
+      { value: null, count: 0 }
+    ]);
+  });
+});
+
+describe('isComplete', () => {
+  it('requires a value for every kind', () => {
+    expect(isComplete({ column: 'origin', mode: 'any', values: [] })).toBe(false);
+    expect(isComplete({ column: 'origin', mode: 'any', values: [null] })).toBe(true);
+    expect(isComplete({ column: 'origin', mode: 'contains', text: '   ' })).toBe(false);
+    expect(isComplete({ column: 'origin', mode: 'contains', text: 'ke' })).toBe(true);
+    expect(isComplete({ column: 'decaf', mode: 'bool', value: false })).toBe(true);
+    expect(isComplete(range('amount_g', '>', ''))).toBe(false);
+    expect(isComplete(range('amount_g', '>', '0'))).toBe(true);
+    expect(isComplete(range('amount_g', 'between', '1', ''))).toBe(false);
+    expect(isComplete(range('amount_g', 'between', '1', '2'))).toBe(true);
+    expect(isComplete({ column: 'rest_window', mode: 'includes', a: '' })).toBe(false);
+    expect(isComplete({ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '' })).toBe(false);
+    expect(isComplete({ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-02' })).toBe(true);
+  });
+});
+
+describe('upsertFilter', () => {
+  it('replaces the same column in place, otherwise appends', () => {
+    const origin: Filter = { column: 'origin', mode: 'any', values: ['Kenya'] };
+    const decaf: Filter = { column: 'decaf', mode: 'bool', value: false };
+    const origin2: Filter = { column: 'origin', mode: 'contains', text: 'ken' };
+    expect(upsertFilter([origin], decaf)).toEqual([origin, decaf]);
+    expect(upsertFilter([origin, decaf], origin2)).toEqual([origin2, decaf]);
+  });
+});
+
+describe('chipLabel', () => {
+  it.each<[Filter, string]>([
+    [{ column: 'origin', mode: 'any', values: ['Ethiopia', 'Kenya'] }, 'Origin: Ethiopia, Kenya'],
+    [{ column: 'origin', mode: 'any', values: ['Ethiopia', 'Kenya', 'Peru', 'Brazil', null] }, 'Origin: Ethiopia, Kenya +3'],
+    [{ column: 'origin', mode: 'any', values: [null] }, 'Origin: (none)'],
+    [{ column: 'processing', mode: 'contains', text: 'washed' }, 'Process: *washed*'],
+    [{ column: 'processing', mode: 'any', values: ['Washed'] }, 'Process: Washed'],
+    [{ column: 'coffee_name', mode: 'contains', text: 'guji' }, 'Name: *guji*'],
+    [{ column: 'roast_level', mode: 'any', values: ['Light'] }, 'Roast: Light'],
+    [{ column: 'roaster', mode: 'any', values: ['Sey'] }, 'Roaster: Sey'],
+    [{ column: 'decaf', mode: 'bool', value: false }, 'Decaf: No'],
+    [{ column: 'frozen', mode: 'bool', value: true }, 'Frozen: Yes'],
+    [range('urgency', '>', '40'), 'Urgency: > 40'],
+    [range('cost_per_gram', '<=', '0.10'), 'Cost/g: ≤ $0.10'],
+    [range('amount_g', '=', '250'), 'Weight: 250g'],
+    [range('amount_g', '>=', '250'), 'Weight: ≥ 250g'],
+    [range('amount_g', '<', '250'), 'Weight: < 250g'],
+    [range('amount_g', 'between', '200', '300'), 'Weight: 200g–300g'],
+    [range('roast_date', '>=', '2026-09-01'), 'Roasted: ≥ 09/01/26'],
+    [range('roast_date', '=', '2026-09-01'), 'Roasted: 09/01/26'],
+    [range('roast_date', 'between', '2026-09-01', '2026-09-15'), 'Roasted: 09/01–09/15/26'],
+    [range('roast_date', 'between', '2025-12-20', '2026-01-05'), 'Roasted: 12/20/25–01/05/26'],
+    [range('frozen_start_date', '>', '2026-09-01'), 'Frozen on: > 09/01/26'],
+    [range('frozen_end_date', '<', '2026-09-01'), 'Thawed: < 09/01/26'],
+    [{ column: 'rest_window', mode: 'includes', a: '2026-10-01' }, 'Rest: 10/01/26'],
+    [{ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-10' }, 'Rest: 10/01–10/10/26']
+  ])('%j -> %s', (f, expected) => {
+    expect(chipLabel(f)).toBe(expected);
+  });
+});
+
+describe('chipTitle', () => {
+  it.each<[Filter, string]>([
+    [{ column: 'processing', mode: 'contains', text: 'washed' }, 'Processing contains "washed"'],
+    [{ column: 'origin', mode: 'any', values: ['Ethiopia', 'Kenya', 'Peru', null] }, 'Origin is any of Ethiopia, Kenya, Peru, (none)'],
+    [{ column: 'decaf', mode: 'bool', value: false }, 'Decaf is No'],
+    [range('cost_per_gram', '<=', '0.10'), 'Cost/g at most $0.10'],
+    [range('amount_g', '=', '250'), 'Weight equals 250g'],
+    [range('urgency', '>', '40'), 'Urgency greater than 40'],
+    [range('urgency', 'between', '20', '40'), 'Urgency between 20 and 40'],
+    [range('roast_date', '>=', '2026-09-01'), 'Roast date on or after Sep 1, 2026'],
+    [range('roast_date', 'between', '2026-09-01', '2026-09-15'), 'Roast date between Sep 1 – Sep 15, 2026'],
+    [{ column: 'rest_window', mode: 'includes', a: '2026-10-01' }, 'Rest window includes Oct 1, 2026'],
+    [{ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-10' }, 'Rest window overlaps Oct 1 – Oct 10, 2026'],
+    [
+      { column: 'rest_window', mode: 'overlaps', a: '2025-12-20', b: '2026-01-05' },
+      'Rest window overlaps Dec 20, 2025 – Jan 5, 2026'
+    ]
+  ])('%j -> %s', (f, expected) => {
+    expect(chipTitle(f)).toBe(expected);
   });
 });

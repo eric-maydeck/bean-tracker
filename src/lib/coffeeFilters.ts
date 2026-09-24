@@ -152,3 +152,142 @@ export function normalizeFilter(f: Filter): Filter {
   }
   return f;
 }
+
+export interface ValueCount {
+  value: string | null;
+  count: number;
+}
+
+// The "Is any of" list for the current status tab. `selected` values that
+// no coffee in the tab has stay listed at 0 so they can still be unchecked.
+export function valueCounts(
+  coffees: CoffeeWithComputed[],
+  key: ColumnKey,
+  selected: (string | null)[] = []
+): ValueCount[] {
+  const counts = new Map<string | null, number>();
+  for (const v of selected) counts.set(v, 0);
+  for (const c of coffees) {
+    const v = textValue(c, key);
+    counts.set(v, (counts.get(v) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([value, count]) => ({ value, count }))
+    .sort((x, y) =>
+      x.value === null ? 1 : y.value === null ? -1 : x.value.localeCompare(y.value, undefined, { sensitivity: 'base' })
+    );
+}
+
+export function isComplete(f: Filter): boolean {
+  switch (f.mode) {
+    case 'any':
+      return f.values.length > 0;
+    case 'contains':
+      return f.text.trim() !== '';
+    case 'bool':
+      return true;
+    case 'range':
+      return f.a !== '' && (f.op !== 'between' || f.b !== '');
+    case 'includes':
+      return f.a !== '';
+    case 'overlaps':
+      return f.a !== '' && f.b !== '';
+  }
+}
+
+// One filter per column: re-applying a column replaces it where it sits.
+export function upsertFilter(filters: Filter[], f: Filter): Filter[] {
+  return filters.some((x) => x.column === f.column)
+    ? filters.map((x) => (x.column === f.column ? f : x))
+    : [...filters, f];
+}
+
+// Dates are split from the stored YYYY-MM-DD string: no Date, no timezone shift.
+function mmddyy(d: string): string {
+  const [y, m, day] = d.split('-');
+  return `${m}/${day}/${y.slice(2)}`;
+}
+
+function shortRange(a: string, b: string): string {
+  return a.slice(0, 4) === b.slice(0, 4) ? `${mmddyy(a).slice(0, 5)}–${mmddyy(b)}` : `${mmddyy(a)}–${mmddyy(b)}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function longDate(d: string, withYear = true): string {
+  const [y, m, day] = d.split('-');
+  return `${MONTHS[Number(m) - 1]} ${Number(day)}${withYear ? `, ${y}` : ''}`;
+}
+
+function longRange(a: string, b: string): string {
+  return `${longDate(a, a.slice(0, 4) !== b.slice(0, 4))} – ${longDate(b)}`;
+}
+
+function num(key: ColumnKey, typed: string): string {
+  if (key === 'cost_per_gram') return `$${typed}`;
+  if (key === 'amount_g') return `${typed}g`;
+  return typed;
+}
+
+const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)');
+
+export function chipLabel(f: Filter): string {
+  return `${column(f.column).short}: ${chipValue(f)}`;
+}
+
+function chipValue(f: Filter): string {
+  switch (f.mode) {
+    case 'any': {
+      const names = valueNames(f.values);
+      return names.slice(0, 2).join(', ') + (names.length > 2 ? ` +${names.length - 2}` : '');
+    }
+    case 'contains':
+      return `*${f.text}*`;
+    case 'bool':
+      return f.value ? 'Yes' : 'No';
+    case 'includes':
+      return mmddyy(f.a);
+    case 'overlaps':
+      return shortRange(f.a, f.b);
+    case 'range': {
+      const isDate = column(f.column).kind === 'date';
+      if (f.op === 'between') return isDate ? shortRange(f.a, f.b) : `${num(f.column, f.a)}–${num(f.column, f.b)}`;
+      const symbol = f.op === '=' ? '' : `${OP_LABELS[f.op]} `; // `=` is implied
+      return symbol + (isDate ? mmddyy(f.a) : num(f.column, f.a));
+    }
+  }
+}
+
+const NUMBER_OP_WORDS: Record<Op, string> = {
+  '>': 'greater than',
+  '>=': 'at least',
+  '=': 'equals',
+  '<=': 'at most',
+  '<': 'less than',
+  between: 'between'
+};
+
+export function chipTitle(f: Filter): string {
+  const name = column(f.column).label;
+  switch (f.mode) {
+    case 'any':
+      return `${name} is any of ${valueNames(f.values).join(', ')}`;
+    case 'contains':
+      return `${name} contains "${f.text}"`;
+    case 'bool':
+      return `${name} is ${f.value ? 'Yes' : 'No'}`;
+    case 'includes':
+      return `${name} includes ${longDate(f.a)}`;
+    case 'overlaps':
+      return `${name} overlaps ${longRange(f.a, f.b)}`;
+    case 'range':
+      if (column(f.column).kind === 'date') {
+        return f.op === 'between'
+          ? `${name} between ${longRange(f.a, f.b)}`
+          : `${name} ${DATE_OP_LABELS[f.op]} ${longDate(f.a)}`;
+      }
+      return f.op === 'between'
+        ? `${name} between ${num(f.column, f.a)} and ${num(f.column, f.b)}`
+        : `${name} ${NUMBER_OP_WORDS[f.op]} ${num(f.column, f.a)}`;
+  }
+}
