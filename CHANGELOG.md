@@ -1,3 +1,15 @@
+# [1.31.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.30.0...v1.31.0) (2026-09-24)
+
+
+### Bug Fixes
+
+* **login:** drop Secure session cookie flag on the local dev server
+
+
+### Features
+
+* **coffees:** clone a coffee; add/edit/clone always available when logged in
+
 # [1.30.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.29.0...v1.30.0) (2026-09-24)
 
 
