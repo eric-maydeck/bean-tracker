@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     COLUMNS,
     column,
@@ -106,12 +107,21 @@
   function apply(f: Filter) {
     onapply(normalizeFilter($state.snapshot(f) as Filter));
   }
+
+  let editorEl = $state<HTMLDivElement>();
+
+  // The editor is mounted fresh each time it opens (see the `pick(start)`
+  // comment above), so moving focus to its first control on mount -- and
+  // nowhere else -- is enough; there's no later re-render to repeat it for.
+  onMount(() => {
+    editorEl?.querySelector<HTMLElement>('button, input, [href], select, textarea')?.focus();
+  });
 </script>
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="filter-backdrop" role="presentation" onclick={onclose}></div>
-<div class="filter-editor" role="dialog" aria-label={key ? `Filter by ${column(key).label}` : 'Add a filter'}>
+<div bind:this={editorEl} class="filter-editor" role="dialog" aria-label={key ? `Filter by ${column(key).label}` : 'Add a filter'}>
   {#if !key}
     {#each GROUPS as [title, kinds] (title)}
       <p class="eyebrow">{title}</p>

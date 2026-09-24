@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import FilterEditor from './FilterEditor.svelte';
   import { chipLabel, chipTitle, upsertFilter, type ColumnKey, type Filter } from '$lib/coffeeFilters';
   import type { CoffeeWithComputed } from '$lib/server/urgency';
@@ -13,28 +14,55 @@
 
   // 'new' = the "+ Filter" picker; a column key = that chip's editor.
   let open = $state<'new' | ColumnKey | null>(null);
+  let filterBtnEl = $state<HTMLButtonElement>();
+  // The element that opened the current editor, so closing it can return
+  // focus there. Not $state: it's only read at close time, in the same
+  // tick `open` is cleared, so it doesn't need to drive rendering.
+  let triggerEl: HTMLElement | null = null;
+
+  // Every way the editor closes (Esc, backdrop, Apply, Yes/No, Clear, the
+  // "+ Filter" toggle) routes through here so focus always returns to
+  // whatever opened it -- or to "+ Filter" if that chip is now gone (Clear).
+  async function close() {
+    open = null;
+    const opener = triggerEl;
+    triggerEl = null;
+    await tick(); // let Svelte remove a Clear'd chip before checking isConnected
+    const target = opener?.isConnected ? opener : filterBtnEl;
+    target?.focus();
+  }
+
+  function openEditor(key: 'new' | ColumnKey, trigger: HTMLElement) {
+    triggerEl = trigger;
+    open = key;
+  }
 
   function apply(f: Filter) {
     filters = upsertFilter(filters, f);
-    open = null;
+    close();
   }
 
   function remove(key: ColumnKey) {
     filters = filters.filter((f) => f.column !== key);
-    open = null;
+    // Only steal focus when this removal is actually closing that column's
+    // own open editor (its Clear button, or its chip's remove button while
+    // open) -- not when the chip removed isn't the one currently open.
+    if (open === key) close();
+    else open = null;
   }
 </script>
 
 <!-- Both roots sit inside the page's .search-row; .filter-chips wraps onto its own line. -->
 <div class="filter-anchor">
   <button
+    bind:this={filterBtnEl}
     class="button button-secondary"
     type="button"
     aria-expanded={open === 'new'}
-    onclick={() => (open = open === 'new' ? null : 'new')}>+ Filter</button
+    onclick={(e) => (open === 'new' ? close() : openEditor('new', e.currentTarget))}>+ Filter</button
   >
   {#if open === 'new'}
-    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={() => (open = null)} />
+    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} />
   {/if}
 </div>
 
@@ -49,7 +77,7 @@
             title={chipTitle(f)}
             aria-label={chipTitle(f)}
             aria-expanded={open === f.column}
-            onclick={() => (open = f.column)}>{chipLabel(f)}</button
+            onclick={(e) => openEditor(f.column, e.currentTarget)}>{chipLabel(f)}</button
           >
           <button
             type="button"
@@ -60,7 +88,7 @@
           >
         </span>
         {#if open === f.column}
-          <FilterEditor {coffees} {filters} start={f.column} onapply={apply} onclear={remove} onclose={() => (open = null)} />
+          <FilterEditor {coffees} {filters} start={f.column} onapply={apply} onclear={remove} onclose={close} />
         {/if}
       </span>
     {/each}
