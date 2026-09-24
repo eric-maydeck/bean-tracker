@@ -907,80 +907,14 @@ div.compact-row {
   height: 320px;
 }
 
-/* Flex + max-width (not a grid's 1fr columns), matching .stat-row/.stat-item
-   below — a grid track stretches to fill its share of the row regardless of
-   a minmax() floor, so the hero tiles never actually got smaller on a wide
-   screen. Flex with a max-width per tile gives a real, enforced ceiling. */
-.stats-hero {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-bottom: var(--space-5);
-  /* Same reasoning as .chart-panel:has(.stat-row) below: a definite width
-     via min(), not fit-content/auto-margins, so it doesn't fall into the
-     flex-wrap shrink-to-fit ambiguity — capped to exactly 3 hero tiles
-     wide, left-aligned like every other panel on the page. */
-  width: min(calc(3 * 262px + 2 * var(--space-3)), 100%);
-}
-
-.stats-hero-tile {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  aspect-ratio: 1;
-  /* Basis well below max-width for the same reason as .stat-item's —
-     avoids flex-wrap's basis-sum wrap check kicking in at in-between
-     container widths even though shrinking would still fit. */
-  flex: 1 1 150px;
-  max-width: 262px;
-  position: relative;
-}
-
-.stats-hero-tile .stat-value {
-  top: 3.5rem;
-  font-size: 4.6rem;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-
-/* Same symmetric-centering calculation as .stat-item's subtext offset
-   above, just against the hero tile's own value/caption geometry (value
-   bottom at 8.1rem, caption top at 12rem): the up-to-2-line subtext block
-   (still 0.8rem/1.15 line-height — subtext stays the same size across tile
-   sizes) is centered between them, and .stat-sublink shares the same top
-   for the same reason (a 1-line subtext aligns with a 2-line one's first
-   line). No hero tile currently renders a .stat-sublink, but this keeps
-   the rule correct if one ever does instead of leaving it unpositioned. */
-.stats-hero-tile .stat-unit,
-.stats-hero-tile .stat-sublink {
-  top: 9.13rem;
-}
-
-.stats-hero-tile .stat-unit {
-  color: var(--color-accent);
-}
-
-.stats-hero-tile .stat-caption {
-  top: 12rem;
-}
-
-.stats-hero-tile .stat-label {
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-}
-
-/* Each .stat-row is its own flex row, not one shared grid — that guarantees
-   related tiles (e.g. all the gram figures) always land on the same row
-   together, regardless of viewport width, instead of an auto-fill grid
-   wrapping wherever it happens to run out of space. Flex (rather than grid)
-   plus a max-width per tile keeps sparse rows (2-3 tiles) compact instead
-   of stretching to fill the full row width; the row itself stays
-   left-aligned (like the full rows) rather than floating as a centered
-   group, with each tile's own content centered instead. */
+/* Every tile group — the hero row included — is one uniform grid: 4
+   columns on desktop, 2 on phones (see the max-width: 640px block below).
+   A fixed column count (not auto-fill, not flex-wrap) keeps every tile on
+   the page the same size and every column edge aligned across groups,
+   including rows with fewer than 4 tiles. */
 .stat-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-3);
   margin-bottom: var(--space-3);
 }
@@ -989,16 +923,26 @@ div.compact-row {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  /* flex-basis is intentionally well below max-width: flex-wrap decides
-     whether a 4th tile fits using the *basis* sum, not the post-shrink
-     size, so a basis close to max-width can wrap a 4th tile to its own
-     line inside the narrower two-column .chart-panel-row layout even
-     though there's visibly enough room. A lower basis leaves margin;
-     flex-grow still lets tiles reach max-width whenever space allows. */
-  flex: 1 1 100px;
-  max-width: 188px;
   aspect-ratio: 1;
+  min-width: 0;
   position: relative;
+  /* Every offset/font inside a tile is in cqw (% of the tile's own content
+     width), converted from the original rem values at the old fixed 188px
+     tile (186px content width inside its 1px border) — so a tile of any
+     size renders at the same proportions, instead of fixed offsets pushing
+     the label past the bottom of a smaller tile. */
+  container-type: inline-size;
+}
+
+/* Hero ("At a Glance") tiles: same geometry as every other tile, set apart
+   by color only. */
+.stat-item-hero {
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+}
+
+.stat-item-hero .stat-value {
+  color: var(--color-accent);
 }
 
 /* The value is pinned at a fixed distance from the tile's TOP edge — not
@@ -1010,11 +954,8 @@ div.compact-row {
    fixed top offset — calibrated to where a 2-line label already sits, so
    every label starts at the same height whether it's 1 or 2 lines. */
 .stat-item .stat-value,
-.stats-hero-tile .stat-value,
 .stat-item .stat-unit,
-.stats-hero-tile .stat-unit,
-.stat-item .stat-sublink,
-.stats-hero-tile .stat-sublink {
+.stat-item .stat-sublink {
   position: absolute;
   left: var(--space-2);
   right: var(--space-2);
@@ -1026,16 +967,17 @@ div.compact-row {
    other subtext styling further down. Setting display/line-height on it
    here too would win on specificity and silently break the line-clamp. */
 .stat-item .stat-value,
-.stats-hero-tile .stat-value,
-.stat-item .stat-unit,
-.stats-hero-tile .stat-unit {
+.stat-item .stat-unit {
   display: block;
   line-height: 1;
 }
 
+/* nowrap: a value that wraps to a second line collides with the subtext
+   and label below it (e.g. "10.6 kg" on a phone-width tile). */
 .stat-item .stat-value {
-  top: 2.8rem;
-  font-size: 3rem;
+  white-space: nowrap;
+  top: 24.09cqw;
+  font-size: 25.81cqw;
   font-weight: 600;
 }
 
@@ -1053,7 +995,8 @@ div.compact-row {
    where a 2-line .stat-sublink's first line would start. */
 .stat-item .stat-unit,
 .stat-item .stat-sublink {
-  top: 6.28rem;
+  top: 54.02cqw;
+  font-size: max(0.7rem, 6.88cqw);
 }
 
 /* A fixed top offset, not bottom-anchored — every label starts at exactly
@@ -1068,7 +1011,7 @@ div.compact-row {
   position: absolute;
   left: var(--space-2);
   right: var(--space-2);
-  top: 8.6rem;
+  top: 73.98cqw;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1096,7 +1039,7 @@ div.compact-row {
 
 .stat-item .stat-label {
   color: var(--color-text-muted);
-  font-size: 0.78rem;
+  font-size: max(0.7rem, 6.71cqw);
 }
 
 /* Caps the label at 2 lines — a longer label spills to a second line
@@ -1148,98 +1091,10 @@ div.compact-row {
   width: 100%;
 }
 
-/* At phone widths, 3-4 tiles per row leaves each one only ~100-110px wide.
-   .stat-value has no wrap/ellipsis fallback (unlike .stat-label/.stat-unit)
-   since truncating the actual number would hide real data — an
-   unbreakable string like "66.6d" at the desktop font-size is wider than
-   that, and silently overflows past the tile (and the viewport) instead
-   of wrapping, since browsers don't break arbitrary characters. Shrinking
-   the font (and its paired fixed offsets) at this breakpoint keeps every
-   value within its own tile's width. */
 @media (max-width: 640px) {
-  /* Font bumped from 2rem to 2.4rem to match desktop's own value-to-tile
-     ratio: desktop is 48px/188px = 25.5%; the mobile 2-column grid tile
-     (~148px, see .stat-row-4up below) at the old 32px/2rem value was only
-     21.5% — visibly smaller relative to its tile than desktop, which is
-     exactly the "fonts look small, tiles look silly" report. 38.4px/2.4rem
-     over 148px = 25.9%, matching desktop within rounding. `top` stays at
-     2.15rem (unchanged) — only the font grew, so the value's top edge
-     doesn't move, just its bottom edge (new value bottom: 4.55rem). */
-  .stat-item .stat-value {
-    top: 2.15rem;
-    font-size: 2.4rem;
-  }
-
-  /* Recentered for the new 2.4rem value font (value bottom 4.55rem,
-     caption top unchanged at 8.6rem, subtext block height still 1.61rem
-     at this breakpoint's 0.7rem subtext font) — same symmetric-centering
-     calculation as everywhere else in this file, just re-solved for the
-     new value bottom. */
-  .stat-item .stat-unit,
-  .stat-item .stat-sublink {
-    top: 5.77rem;
-  }
-
-  .stat-item .stat-unit,
-  .stat-item .stat-sublink {
-    font-size: 0.7rem;
-  }
-
-  /* Safety floor for EVERY .stat-row, not just the 5 four-tile groups
-     below: the Bean Conqueror Overview row (3 tiles: total brews/beans/
-     rating) has no grid override, so its tiles fall back to flex-wrap's
-     own shrink behavior — which, with the base flex:1 1 100px basis, can
-     squeeze all 3 onto one line down to ~100px each on a narrow phone.
-     At that size the tile's own aspect-ratio-driven height (~100px) is
-     shorter than where .stat-caption's fixed top:8.6rem (137.6px) actually
-     sits, so the label renders BELOW the tile's own bottom edge entirely —
-     spilling onto whatever content follows (confirmed live: the Overview
-     labels rendering on top of the ratings-over-time chart below them).
-     A 140px floor forces flex-wrap to drop to 2-per-row instead once 3
-     tiles no longer fit at a safe size, keeping every tile tall enough for
-     its caption to actually land inside it. */
-  .stat-item {
-    min-width: 140px;
-  }
-
-  /* One hero tile per row instead of wrapping 2 across at this width — a
-     100% flex-basis claims the whole row on its own, no change to
-     .stats-hero's own flex-wrap needed. Capped at 262px — desktop's own
-     hero tile size — rather than something bigger: reusing desktop's
-     exact value/subtext font+position numbers (declared earlier in this
-     file, not overridden here) only reads at the same proportion desktop
-     does if the tile is *also* the same size desktop uses; a bigger cap
-     with the same font would repeat the original too-small-font problem,
-     just at a different tile size. Left-aligned (not centered) to match
-     the rest of the page's left-aligned tile groups — the capped tile's
-     leftover row space just sits to its right. */
-  .stats-hero {
-    justify-content: flex-start;
-  }
-
-  .stats-hero-tile {
-    flex: 1 1 100%;
-    max-width: 262px;
-  }
-
-  /* The 5 numeric tile groups (Weight, Bag Count, Time to Clear, Coffee
-     Age, Economics) switch from flex-wrap to a fixed 2-column grid, so
-     tiles stretch to fill half the row instead of staying capped at the
-     desktop's 188px — same square aspect ratio, same value/label font
-     rules above, just bigger tiles using the full width. Scoped to
-     .stat-row-4up specifically: the Bean Conqueror Overview/Favorites
-     .stat-rows share the base .stat-row class but have a different tile
-     count and are intentionally untouched here. */
-  .stat-row.stat-row-4up {
-    display: grid;
+  .stat-row {
     grid-template-columns: repeat(2, 1fr);
   }
-
-  .stat-row.stat-row-4up .stat-item {
-    max-width: none;
-    width: 100%;
-  }
-
 }
 
 .chart-panel {
@@ -1389,38 +1244,6 @@ div.compact-row {
   margin-top: var(--space-5);
 }
 
-/* A group of 4 tiles (the standard row) shouldn't stretch its panel to the
-   full page width with empty space past the last tile — cap the panel at
-   exactly 4-tiles-wide, left-aligned like every other panel on the page.
-   Two gotchas ruled out simpler-looking approaches: `width: fit-content`
-   on a block containing a flex-wrap child computes ambiguously (the
-   browser can shrink-to-fit down to a single item's width, since wrapping
-   means any narrower width is technically valid); and `max-width` alone
-   has the same problem, because a flex/grid item without an explicit
-   width switches its own sizing to that same ambiguous shrink-to-fit
-   algorithm instead of stretching to the track. `width: min(<4 tiles>,
-   100%)` is a definite value either way — never a shrink-to-fit
-   computation — so it sidesteps both. Scoped to panels that actually hold
-   tiles (via :has), so panels holding a Chart.js canvas (which does want
-   the full available width) are unaffected — except the Bean Conqueror
-   section, which holds both a stat-row (its Overview tab) and a lot of
-   other full-width content (the "Not yet tracked" table); the
-   .beanconqueror-panel override below opts it back out. */
-.chart-panel:has(.stat-row) {
-  width: min(calc(4 * 188px + 3 * var(--space-3) + 2 * var(--space-4)), 100%);
-}
-
-/* Overrides the width cap above: this panel's stat-row is just one tab of
-   several (Overview/Favorites/Brewing/Economics) alongside the "Not yet
-   tracked" table, which needs the full container width — capped at 4
-   tiles wide, the table's Actions column spilled past the panel edge,
-   forcing a horizontal scroll. Same specificity as the rule above
-   (one class + one pseudo-class each), so this must stay declared after
-   it to win the cascade. */
-.chart-panel.beanconqueror-panel {
-  width: 100%;
-}
-
 .chart-panel-controls {
   display: flex;
   flex-wrap: wrap;
@@ -1522,3 +1345,5 @@ div.compact-row {
   display: flex;
   gap: var(--space-2);
 }
+
+

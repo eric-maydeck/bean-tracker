@@ -216,10 +216,6 @@
     return null;
   }
 
-  function formatKg(g: number): string {
-    return `${(g / 1000).toFixed(1)} kg`;
-  }
-
   const currencyCompactFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -230,6 +226,8 @@
   // "$1860.41" -> "$1.9K": a hero-adjacent tile doesn't need exact cents,
   // and the shorter string leaves far more room for a larger value font
   // before it overflows the tile.
+  const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
   function formatCurrencyCompact(amount: number): string {
     return currencyCompactFormatter.format(amount);
   }
@@ -300,39 +298,83 @@
   </div>
 {/if}
 
-<section class="stats-hero">
-  <div class="stats-hero-tile">
-    <span class="stat-value">{data.stats.totalBacklogCount}</span>
-    <div class="stat-caption">
-      <span class="stat-label">bags on hand</span>
-    </div>
-  </div>
-  <div class="stats-hero-tile">
-    <span class="stat-value">{formatKg(data.stats.totalBacklogGrams)}</span>
-    <div class="stat-caption">
-      <span class="stat-label">total weight</span>
-    </div>
-  </div>
-  <div class="stats-hero-tile">
-    {#if data.stats.daysToClearHousehold === null || data.stats.clearByDateHousehold === null}
-      <span class="stat-value">🎉</span>
+<section class="chart-panel">
+  <h2>At a Glance</h2>
+  <div class="stat-row">
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value">{data.stats.totalBacklogCount}</span>
       <div class="stat-caption">
-        <span class="stat-label">Nothing left to drink through!</span>
+        <span class="stat-label">Bags on hand</span>
       </div>
-    {:else}
-      <span class="stat-value">{data.stats.daysToClearHousehold}d</span>
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value" title={formatGramsTooltip(data.stats.totalBacklogGrams)}
+        >{formatGrams(data.stats.totalBacklogGrams)}</span
+      >
       <div class="stat-caption">
-        <span class="stat-label"
-          >to clear as a household — empty by {formatClearBy(data.stats.clearByDateHousehold)}</span
-        >
+        <span class="stat-label">Total weight</span>
       </div>
-    {/if}
+    </div>
+    <div class="stat-item stat-item-hero">
+      {#if data.stats.daysToClearHousehold === null || data.stats.clearByDateHousehold === null}
+        <span class="stat-value">🎉</span>
+        <div class="stat-caption">
+          <span class="stat-label">Nothing left to drink through!</span>
+        </div>
+      {:else}
+        <span class="stat-value">{data.stats.daysToClearHousehold}d</span>
+        <span class="stat-unit">by {formatClearBy(data.stats.clearByDateHousehold)}</span>
+        <div class="stat-caption">
+          <span class="stat-label">To clear as a household</span>
+        </div>
+      {/if}
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value"
+        >{data.stats.averageBagCost === null ? '—' : currencyFormatter.format(data.stats.averageBagCost)}</span
+      >
+      <div class="stat-caption">
+        <span class="stat-label">Average bag cost</span>
+      </div>
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value">{data.stats.freshness.readyCount}</span>
+      <span class="stat-unit">of {data.stats.totalBacklogCount} bags</span>
+      <div class="stat-caption">
+        <span class="stat-label">Rested &amp; ready</span>
+      </div>
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value">{data.stats.freshness.drinkSoonCount}</span>
+      <span class="stat-unit">urgency 40+</span>
+      <div class="stat-caption">
+        <span class="stat-label">Drink soon</span>
+      </div>
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value">{data.stats.freshness.restingCount}</span>
+      {#if data.stats.freshness.nextReadyInDays !== null}
+        <span class="stat-unit">next ready in {data.stats.freshness.nextReadyInDays}d</span>
+      {/if}
+      <div class="stat-caption">
+        <span class="stat-label">Still resting</span>
+      </div>
+    </div>
+    <div class="stat-item stat-item-hero">
+      <span class="stat-value">{data.stats.freshness.frozenCount}</span>
+      {#if data.stats.freshness.frozenGrams > 0}
+        <span class="stat-unit">{formatGrams(data.stats.freshness.frozenGrams)}</span>
+      {/if}
+      <div class="stat-caption">
+        <span class="stat-label">In the freezer</span>
+      </div>
+    </div>
   </div>
 </section>
 
 <section class="chart-panel">
   <h2>Weight</h2>
-  <div class="stat-row stat-row-4up">
+  <div class="stat-row">
     <div class="stat-item">
       <span class="stat-value" title={formatGramsTooltip(data.stats.openedGrams)}
         >{formatGrams(data.stats.openedGrams)}</span
@@ -370,7 +412,7 @@
 
 <section class="chart-panel">
   <h2>Bag Count</h2>
-  <div class="stat-row stat-row-4up">
+  <div class="stat-row">
     <div class="stat-item">
       <span class="stat-value">{data.stats.openedCount}</span>
       <div class="stat-caption">
@@ -400,7 +442,7 @@
 
 <section class="chart-panel">
   <h2>Time to Clear</h2>
-    <div class="stat-row stat-row-4up">
+    <div class="stat-row">
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
@@ -442,7 +484,7 @@
 
 <section class="chart-panel">
   <h2>Coffee Age</h2>
-    <div class="stat-row stat-row-4up">
+    <div class="stat-row">
       <div class="stat-item">
         <span class="stat-value">
           {data.stats.oldestUnopenedBag ? `${data.stats.oldestUnopenedBag.daysOld}d` : '—'}
@@ -490,7 +532,7 @@
 
 <section class="chart-panel">
   <h2>Economics</h2>
-  <div class="stat-row stat-row-4up">
+  <div class="stat-row">
     <div class="stat-item">
       <span class="stat-value">{formatCurrencyCompact(data.stats.totalCost)}</span>
       <div class="stat-caption">
@@ -718,7 +760,7 @@
     </div>
 
     {#if bcTab === 'overview'}
-      <div class="stat-row stat-row-4up">
+      <div class="stat-row">
         <div class="stat-item">
           <span class="stat-value">{data.beanConquerorStats.totalBrews}</span>
           <div class="stat-caption">
@@ -838,8 +880,8 @@
         </div>
       </div>
     {:else if bcTab === 'economics'}
-      <div class="stats-hero">
-        <div class="stats-hero-tile">
+      <div class="stat-row">
+        <div class="stat-item">
           <span class="stat-value">{formatCostPerGram(data.beanConquerorStats.averageCostPerGram)}</span>
           <div class="stat-caption">
             <span class="stat-label">Average cost per gram</span>

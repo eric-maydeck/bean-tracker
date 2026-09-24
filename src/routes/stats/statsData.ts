@@ -1,6 +1,6 @@
 import type { CoffeeRow, RoastLevelRow } from '$lib/types';
 import type { StatsRates } from '$lib/server/db';
-import { parseDate, addDays, diffDays, formatDate } from '$lib/server/urgency';
+import { parseDate, addDays, diffDays, formatDate, withComputedFields } from '$lib/server/urgency';
 
 export interface BreakdownEntry {
   label: string;
@@ -40,11 +40,60 @@ export interface BacklogStats {
   averageAgeBacklogAndOpen: number | null;
   averageDaysToOpen: number | null;
   averageDaysToFinish: number | null;
+  // Backlog + open, over bags with a recorded cost.
+  averageBagCost: number | null;
+  freshness: Freshness;
 
   // Keyed by a '+'-joined status combo (see statusComboKey) — every
   // non-empty combination of the three statuses is precomputed so the page
   // can toggle any mix without re-querying.
   breakdowns: Record<string, Breakdowns>;
+}
+
+// Open + backlog bags by where they sit in their rest window. Frozen bags
+// (no thaw date yet) are only counted as frozen, and bags missing a roast
+// date or rest days are counted nowhere.
+export interface Freshness {
+  readyCount: number;
+  // Ready bags with an urgency rating of at least DRINK_SOON_URGENCY.
+  drinkSoonCount: number;
+  restingCount: number;
+  nextReadyInDays: number | null;
+  frozenCount: number;
+  frozenGrams: number;
+}
+
+const DRINK_SOON_URGENCY = 40;
+
+function buildFreshness(rows: CoffeeRow[], today: Date): Freshness {
+  const freshness: Freshness = {
+    readyCount: 0,
+    drinkSoonCount: 0,
+    restingCount: 0,
+    nextReadyInDays: null,
+    frozenCount: 0,
+    frozenGrams: 0
+  };
+  for (const row of rows) {
+    if (isValidDateString(row.frozen_start_date) && !row.frozen_end_date) {
+      freshness.frozenCount += 1;
+      freshness.frozenGrams += row.amount_g ?? 0;
+      continue;
+    }
+    if (!isValidDateString(row.roast_date) || row.rest_days_low == null || row.rest_days_high == null) continue;
+    const computed = withComputedFields(row, today);
+    const daysUntilReady = diffDays(parseDate(computed.drink_after!), today);
+    if (daysUntilReady <= 0) {
+      freshness.readyCount += 1;
+      if (typeof computed.urgency_rating === 'number' && computed.urgency_rating >= DRINK_SOON_URGENCY) {
+        freshness.drinkSoonCount += 1;
+      }
+    } else {
+      freshness.restingCount += 1;
+      freshness.nextReadyInDays = Math.min(freshness.nextReadyInDays ?? Infinity, daysUntilReady);
+    }
+  }
+  return freshness;
 }
 
 export interface Breakdowns {
@@ -158,6 +207,8 @@ export function buildBacklogStats(
   const daysHousehold = daysToClear(totalBacklogGrams, rates.householdGPerDay);
 
   const totalCost = sumCost(allRows);
+  const pricedCount = allRows.filter((r) => r.cost != null).length;
+  const averageBagCost = pricedCount > 0 ? totalCost / pricedCount : null;
   const totalSpentAllTime = sumCost(everyRow);
 
   const averageDaysToOpen = averageDaysBetween(
@@ -252,6 +303,8 @@ export function buildBacklogStats(
     averageAgeBacklogAndOpen,
     averageDaysToOpen,
     averageDaysToFinish,
+    averageBagCost,
+    freshness: buildFreshness(allRows, today),
     breakdowns
   };
 }
