@@ -75,10 +75,11 @@
             type="button"
             class="filter-chip-label"
             title={chipTitle(f)}
-            aria-label={chipTitle(f)}
+            aria-describedby="filter-chip-desc-{f.column}"
             aria-expanded={open === f.column}
             onclick={(e) => openEditor(f.column, e.currentTarget)}>{chipLabel(f)}</button
           >
+          <span id="filter-chip-desc-{f.column}" class="sr-only">{chipTitle(f)}</span>
           <button
             type="button"
             class="filter-chip-remove"
