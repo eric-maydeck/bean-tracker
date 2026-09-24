@@ -223,10 +223,19 @@ function longRange(a: string, b: string): string {
   return `${longDate(a, a.slice(0, 4) !== b.slice(0, 4))} – ${longDate(b)}`;
 }
 
+// Chips show formatted values, not the raw typed string (e.g. `.1` -> `$0.10`).
+const CURRENCY = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 3
+});
+
 function num(key: ColumnKey, typed: string): string {
-  if (key === 'cost_per_gram') return `$${typed}`;
-  if (key === 'amount_g') return `${typed}g`;
-  return typed;
+  const v = Number(typed);
+  if (key === 'cost_per_gram') return CURRENCY.format(v);
+  if (key === 'amount_g') return `${Math.round(v)}g`; // whole grams, matching the comparison precision
+  return `${Math.round(v)}`; // urgency: whole number
 }
 
 const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)');

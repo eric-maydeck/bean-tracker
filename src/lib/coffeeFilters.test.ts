@@ -359,7 +359,14 @@ describe('chipLabel', () => {
     [range('frozen_start_date', '>', '2026-09-01'), 'Frozen on: > 09/01/26'],
     [range('frozen_end_date', '<', '2026-09-01'), 'Thawed: < 09/01/26'],
     [{ column: 'rest_window', mode: 'includes', a: '2026-10-01' }, 'Rest: 10/01/26'],
-    [{ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-10' }, 'Rest: 10/01–10/10/26']
+    [{ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-10' }, 'Rest: 10/01–10/10/26'],
+    // Chip values are formatted, not shown as typed (real-phone feedback: `.1` typed for
+    // cost/g rendered as "> $.1" instead of "> $0.10").
+    [range('cost_per_gram', '>', '.1'), 'Cost/g: > $0.10'],
+    [range('cost_per_gram', '=', '0.085'), 'Cost/g: $0.085'],
+    [range('amount_g', '>', '250.4'), 'Weight: > 250g'],
+    [range('amount_g', 'between', '250.0', '300.4'), 'Weight: 250g–300g'],
+    [range('urgency', '=', '40.0'), 'Urgency: 40']
   ])('%j -> %s', (f, expected) => {
     expect(chipLabel(f)).toBe(expected);
   });
@@ -376,6 +383,11 @@ describe('chipTitle', () => {
     [range('urgency', 'between', '20', '40'), 'Urgency between 20 and 40'],
     [range('roast_date', '>=', '2026-09-01'), 'Roast date on or after Sep 1, 2026'],
     [range('roast_date', 'between', '2026-09-01', '2026-09-15'), 'Roast date between Sep 1 – Sep 15, 2026'],
+    [range('cost_per_gram', '>', '.1'), 'Cost/g greater than $0.10'],
+    [range('cost_per_gram', '=', '0.085'), 'Cost/g equals $0.085'],
+    [range('amount_g', '>', '250.4'), 'Weight greater than 250g'],
+    [range('amount_g', 'between', '250.0', '300.4'), 'Weight between 250g and 300g'],
+    [range('urgency', '=', '40.0'), 'Urgency equals 40'],
     [{ column: 'rest_window', mode: 'includes', a: '2026-10-01' }, 'Rest window includes Oct 1, 2026'],
     [{ column: 'rest_window', mode: 'overlaps', a: '2026-10-01', b: '2026-10-10' }, 'Rest window overlaps Oct 1 – Oct 10, 2026'],
     [
