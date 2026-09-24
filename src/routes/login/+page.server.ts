@@ -1,4 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { Actions } from './$types';
 import {
   SESSION_COOKIE_NAME,
@@ -30,14 +31,16 @@ export const actions: Actions = {
       // coffee.maydeck.net) as of the reverse proxy project — there is
       // no plain-HTTP path left for a Secure cookie to be silently dropped
       // on. See docs/superpowers/specs/2026-09-19-public-
-      // access-design.md, Decision 9.
-      secure: true,
+      // access-design.md, Decision 9. Exception: the local dev server, which
+      // is plain HTTP — browsers only accept a Secure cookie over HTTP on
+      // localhost, so logging in from a phone via the LAN IP silently failed.
+      secure: !dev,
       maxAge: durationMs / 1000
     });
     redirect(303, '/');
   },
   logout: async ({ cookies }) => {
-    cookies.delete(SESSION_COOKIE_NAME, { path: '/', secure: true });
+    cookies.delete(SESSION_COOKIE_NAME, { path: '/', secure: !dev });
     redirect(303, '/');
   }
 };
