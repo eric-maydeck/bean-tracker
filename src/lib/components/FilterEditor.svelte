@@ -135,6 +135,12 @@
   onMount(() => {
     editorEl?.querySelector<HTMLElement>('button, input, [href], select, textarea')?.focus();
     keepInViewport();
+    // Locks the page behind the ≤640px bottom sheet (see app.css); a no-op
+    // above 640px. The component is remounted per open/close (FilterBar
+    // toggles it via {#if}), so this cleanup runs on every close path and
+    // on destroy -- there's no case where the class could be left stuck.
+    document.documentElement.classList.add('filter-sheet-open');
+    return () => document.documentElement.classList.remove('filter-sheet-open');
   });
 </script>
 

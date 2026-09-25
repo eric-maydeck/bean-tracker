@@ -1556,6 +1556,13 @@ div.compact-row {
 }
 
 @media (max-width: 640px) {
+  /* Added by FilterEditor.svelte while it's open (a fixed bottom sheet at
+     this width), removed on unmount -- keeps the page behind it from
+     scrolling. No effect above 640px, where the editor is a popover. */
+  html.filter-sheet-open {
+    overflow: hidden;
+  }
+
   .filter-chip-label,
   .filter-chip-remove,
   .filter-clear-all {
