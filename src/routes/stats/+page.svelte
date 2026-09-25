@@ -912,6 +912,7 @@
           roasters={data.roasters}
           origins={data.origins}
           processingMethods={data.processingMethods}
+          restHistory={data.restHistory}
           formError={form?.error ?? null}
           oncancel={() => (createModalBean = null)}
           onsuccess={closeCreateModal}

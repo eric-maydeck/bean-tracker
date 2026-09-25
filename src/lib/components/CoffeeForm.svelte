@@ -4,7 +4,7 @@
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee } from '$lib/pendingChanges';
-  import { afterFailedFill } from '$lib/coffeeFormFill';
+  import { afterFailedFill, suggestRest, canReplaceRest, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
 
   let {
     coffee = null,
@@ -13,6 +13,7 @@
     roasters = [],
     origins = [],
     processingMethods = [],
+    restHistory = [],
     formError = null,
     oncancel = null,
     onsuccess = null,
@@ -25,6 +26,7 @@
     roasters?: string[];
     origins?: string[];
     processingMethods?: string[];
+    restHistory?: RestHistoryRow[];
     formError?: string | null;
     oncancel?: (() => void) | null;
     onsuccess?: (() => void) | null;
@@ -56,6 +58,9 @@
   let previewSrc = $state<string | null>(null);
   let previewFailed = $state(false);
 
+  let lastRest: RestSuggestion | null = null;
+  let restNote = $state<string | null>(null);
+
   function setField(name: string, value: string | number) {
     const el = formEl.elements.namedItem(name);
     if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
@@ -64,6 +69,20 @@
   function fieldValue(name: string): string {
     const el = formEl.elements.namedItem(name);
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el.value : '';
+  }
+
+  // Writes rest days only onto empty fields or the previous untouched
+  // suggestion; a null suggestion clears only that previous suggestion.
+  function offerRest(s: RestSuggestion | null) {
+    if (!canReplaceRest(fieldValue('rest_days_low'), fieldValue('rest_days_high'), lastRest)) return;
+    setField('rest_days_low', s?.low ?? '');
+    setField('rest_days_high', s?.high ?? '');
+    lastRest = s;
+    restNote = s?.note || null;
+  }
+
+  function roastLevelChanged() {
+    offerRest(suggestRest(fieldValue('roaster').trim() || null, fieldValue('roast_level') || null, restHistory));
   }
 
   function showPreview(src: string) {
@@ -101,7 +120,10 @@
         fillFailed(data.error ?? data.message ?? `Fill failed (HTTP ${res.status})`, url);
         return;
       }
-      for (const [key, value] of Object.entries(data.fields)) setField(key, value as string | number);
+      const { rest_days_low, rest_days_high, ...found } = data.fields;
+      for (const [key, value] of Object.entries(found)) setField(key, value as string | number);
+      // The fill's notes already carry the rest note, hence note ''.
+      if (rest_days_low != null && rest_days_high != null) offerRest({ low: rest_days_low, high: rest_days_high, note: '' });
       lastFilledUrl = url;
       if (data.fields.image_url) showPreview(data.fields.image_url);
       fillNotes = data.notes;
@@ -270,7 +292,7 @@
 
   <div class="form-field">
     <label for="roast_level">Roast level</label>
-    <select id="roast_level" name="roast_level">
+    <select id="roast_level" name="roast_level" onchange={roastLevelChanged}>
       <option value="">—</option>
       {#each roastLevels as level (level.roast_level)}
         <option value={level.roast_level} selected={(coffee?.roast_level ?? prefill?.roast_level) === level.roast_level}>
@@ -335,6 +357,9 @@
       step="1"
       value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
     />
+    {#if restNote}
+      <p class="text-muted fill-note">{restNote}</p>
+    {/if}
   </div>
 
   <div class="form-field">

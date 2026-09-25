@@ -90,7 +90,7 @@ describe('findProcessing', () => {
 });
 
 const row = (roaster: string, o: Partial<FillHistoryRow> = {}): FillHistoryRow => ({
-  roaster, product_url: null, roast_level: null, amount_g: null, ...o
+  id: 0, roaster, product_url: null, roast_level: null, amount_g: null, rest_days_low: null, rest_days_high: null, ...o
 });
 const LEVELS = ['Green', 'Hyperlight', 'Ultralight', 'Nordic Light', 'Nordic', 'Light', 'Light/Medium', 'Medium/Light', 'Medium', 'Medium/Dark', 'Dark'];
 
@@ -259,6 +259,15 @@ describe('buildFill', () => {
     const r = buildFill(p, ctx({ url: 'https://hscoffeeroasters.com/products/burundi-mikuba-8', history, processing: ['Washed'] }));
     expect(r.fields).toMatchObject({ roaster: 'H&S', origin: 'Burundi', processing: 'Washed', amount_g: 250, cost: 36 }); // cost from fixture
     expect(r.selected).toBe(1);
+  });
+
+  it("adds the rest window when a roast level resolves, from this roaster's history", () => {
+    const history = [180, 180, 70].map((low, i) =>
+      row('XLIII', { id: i + 1, roast_level: 'Hyperlight', rest_days_low: low, rest_days_high: 365 })
+    );
+    const r = buildFill(product({ title: 'Kinini', vendor: 'XLIII', tags: ['Hyperlight'] }), ctx({ history }));
+    expect(r.fields).toMatchObject({ roaster: 'XLIII', roast_level: 'Hyperlight', rest_days_low: 180, rest_days_high: 365 });
+    expect(r.notes).toContain('rest 180–365 from 2 of 3 XLIII Hyperlight coffees');
   });
 
   it('xliii fixture: VND converted, process + net weight from attribute rows', () => {

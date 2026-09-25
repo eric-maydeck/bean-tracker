@@ -2,7 +2,7 @@ import { fail } from '@sveltejs/kit';
 import ExcelJS from 'exceljs';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getStatsRates, setStatsRates, InvalidRatesError } from '$lib/server/db';
-import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getOpenCoffees } from '$lib/server/coffees';
+import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getFillHistory, getOpenCoffees } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { requireAdmin } from '$lib/server/auth';
 import {
@@ -21,7 +21,7 @@ import { buildBeanConquerorStats } from './beanConquerorStatsData';
 // every one buries the rest of the page.
 const UNMATCHED_BEAN_LIMIT = 20;
 
-export const load: PageServerLoad = () => {
+export const load: PageServerLoad = ({ locals }) => {
   const db = getDb();
   const today = new Date();
   const openRows = getOpenCoffees(db);
@@ -45,7 +45,8 @@ export const load: PageServerLoad = () => {
     roastLevels,
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
-    processingMethods: getDistinctFieldValues(db, 'processing')
+    processingMethods: getDistinctFieldValues(db, 'processing'),
+    restHistory: locals.isAdmin ? getFillHistory(db) : []
   };
 };
 

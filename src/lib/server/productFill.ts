@@ -2,6 +2,7 @@ import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
 import type { CoffeeRow } from '../types';
+import { suggestRest } from '../coffeeFormFill';
 
 export interface UsdRates {
   date: string;
@@ -187,7 +188,19 @@ export function formatMoney(amount: number, currency: string): string {
 }
 
 export type FillFields = Partial<
-  Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level' | 'amount_g' | 'cost' | 'image_url'>
+  Pick<
+    CoffeeRow,
+    | 'roaster'
+    | 'coffee_name'
+    | 'origin'
+    | 'processing'
+    | 'roast_level'
+    | 'amount_g'
+    | 'cost'
+    | 'image_url'
+    | 'rest_days_low'
+    | 'rest_days_high'
+  >
 >;
 export interface FillVariant {
   label: string;
@@ -230,6 +243,7 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
     : null;
   const chosen = selected != null ? variants[selected] : null;
   const roast = findRoastLevel(p, ctx.roastLevels, roaster, ctx.history);
+  const rest = suggestRest(roaster, roast?.level ?? null, ctx.history);
 
   const fields: FillFields = {};
   const put = <K extends keyof FillFields>(key: K, value: FillFields[K] | null | undefined) => {
@@ -240,6 +254,8 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   put('origin', findOrigin(p, ctx.origins));
   put('processing', findProcessing(p, ctx.processing));
   put('roast_level', roast?.level);
+  put('rest_days_low', rest?.low);
+  put('rest_days_high', rest?.high);
   put('image_url', p.image);
   if (chosen) {
     put('amount_g', chosen.grams);
@@ -253,6 +269,7 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   if (!fields.processing) notes.push('processing not found');
   if (roast?.note) notes.push(roast.note);
   else if (!roast) notes.push('roast level not found');
+  if (rest) notes.push(rest.note);
   if (!p.currency && variants.length) notes.push('currency not stated on the page, assumed USD');
   if (currency !== 'USD' && variants.length) {
     const original = chosen?.originalPrice ?? variants[0].originalPrice;

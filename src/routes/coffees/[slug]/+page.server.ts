@@ -1,13 +1,13 @@
 import { error, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
-import { getCoffeeBySlug, getDistinctFieldValues, getRedirectSlug } from '$lib/server/coffees';
+import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
 import { requireAdmin } from '$lib/server/auth';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
 
-export const load: PageServerLoad = ({ params, setHeaders }) => {
+export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
   const db = getDb();
   const coffee = getCoffeeBySlug(db, params.slug);
   if (!coffee) {
@@ -25,7 +25,8 @@ export const load: PageServerLoad = ({ params, setHeaders }) => {
     roastLevels: getRoastLevels(db),
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
-    processingMethods: getDistinctFieldValues(db, 'processing')
+    processingMethods: getDistinctFieldValues(db, 'processing'),
+    restHistory: locals.isAdmin ? getFillHistory(db) : []
   };
 };
 

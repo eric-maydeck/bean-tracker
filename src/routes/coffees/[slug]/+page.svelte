@@ -258,6 +258,7 @@
     roasters={data.roasters}
     origins={data.origins}
     processingMethods={data.processingMethods}
+    restHistory={data.restHistory}
     onstage={stageFields}
     onclone={(prefill) => (clonePrefillData = prefill)}
   />
@@ -402,6 +403,7 @@
         roasters={data.roasters}
         origins={data.origins}
         processingMethods={data.processingMethods}
+        restHistory={data.restHistory}
         formError={form?.error ?? null}
         oncancel={() => (clonePrefillData = null)}
         onsuccess={cloneCreated}

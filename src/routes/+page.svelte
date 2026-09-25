@@ -541,6 +541,7 @@
     roasters={data.roasters}
     origins={data.origins}
     processingMethods={data.processingMethods}
+    restHistory={[...data.backlog, ...data.open, ...data.archive]}
     formError={commitErrors.get(coffee.id) ?? null}
     oncancel={closeExpanded}
     onclone={openClone}
@@ -611,6 +612,7 @@
           roasters={data.roasters}
           origins={data.origins}
           processingMethods={data.processingMethods}
+          restHistory={[...data.backlog, ...data.open, ...data.archive]}
           formError={form?.error ?? null}
           oncancel={closeExpanded}
           onsuccess={closeExpanded}
