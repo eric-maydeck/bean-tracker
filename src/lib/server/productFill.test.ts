@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import type { ProductData } from './productParse';
+import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
-import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, type UsdRates } from './productFill';
+import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -187,5 +189,83 @@ describe('formatMoney', () => {
     expect(formatMoney(9.25, 'GBP')).toBe('£9.25');
     expect(formatMoney(11.73, 'USD')).toBe('$11.73');
     expect(formatMoney(5, 'XYZ1')).toBe('5 XYZ1');
+  });
+});
+
+const fx = (name: string) => readFileSync(new URL(`./fixtures/product-pages/${name}`, import.meta.url), 'utf8');
+const ctx = (o: Partial<FillContext> = {}): FillContext => ({
+  url: 'https://example.coffee/products/x', history: [], roastLevels: LEVELS, origins: [], processing: [], rates: RATES, ...o
+});
+
+describe('buildFill', () => {
+  it('only returns found, non-empty fields (never blanks what the user typed)', () => {
+    const r = buildFill(product({ title: 'Mystery Lot', currency: 'USD' }), ctx());
+    expect(r.fields).toEqual({ coffee_name: 'Mystery Lot' });
+    for (const v of Object.values(r.fields)) expect(v === null || v === '' || v === undefined).toBe(false);
+    expect(r.notes.join(' · ')).toMatch(/origin not found/);
+  });
+
+  it('non-USD with the rate API down: cost blank, amount still filled, note keeps the original price', () => {
+    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25 }] });
+    const r = buildFill(p, ctx({ rates: null }));
+    expect(r.fields.cost).toBeUndefined();
+    expect(r.fields.amount_g).toBe(250);
+    expect(r.notes.join(' · ')).toContain("£9.25 GBP — couldn't convert to USD");
+  });
+
+  it('non-USD with rates: converted cost and a note with original price and rate date', () => {
+    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25 }] });
+    const r = buildFill(p, ctx());
+    expect(r.fields.cost).toBe(11.73);
+    expect(r.notes.join(' · ')).toContain('£9.25 GBP → $11.73 USD (rate 2026-09-25)');
+  });
+
+  it('preselects the ?variant= from the pasted URL', () => {
+    const p = product({
+      title: 'Burundi', currency: 'USD',
+      variants: [{ id: 111, label: '125g', price: 21 }, { id: 222, label: '250g', price: 36 }, { id: 333, label: '1kg', price: 114 }]
+    });
+    const r = buildFill(p, ctx({ url: 'https://h.coffee/collections/c/products/burundi?variant=333' }));
+    expect(r.selected).toBe(2);
+    expect(r.fields).toMatchObject({ amount_g: 1000, cost: 114 });
+    expect(r.variants).toHaveLength(3);
+  });
+
+  it('several sizes, no history: nothing applied, chips offered, note asks to pick', () => {
+    const p = product({ title: 'Burundi', currency: 'USD', variants: [{ id: 1, label: '125g', price: 21 }, { id: 2, label: '250g', price: 36 }] });
+    const r = buildFill(p, ctx());
+    expect(r.selected).toBeNull();
+    expect(r.fields.amount_g).toBeUndefined();
+    expect(r.variants.map((v) => v.grams)).toEqual([125, 250]);
+    expect(r.notes.join(' · ')).toMatch(/pick a bag size/);
+  });
+
+  it('shoebox fixture', () => {
+    const p = parseShopifyProduct(JSON.parse(fx('shoebox.json')), JSON.parse(fx('shoebox.meta.json')));
+    const history = [...Array(5)].map(() => row('Shoebox', { roast_level: 'Ultralight', amount_g: 250 }));
+    const r = buildFill(p, ctx({ url: 'https://shoebox.coffee/products/ethiopia-shoondhisa-natural', history, origins: ['Ethiopia'], processing: ['Natural'] }));
+    expect(r.fields).toMatchObject({
+      roaster: 'Shoebox', coffee_name: 'Ethiopia Shoondhisa Natural', origin: 'Ethiopia', processing: 'Natural', roast_level: 'Ultralight'
+    });
+    expect(r.fields.image_url).toMatch(/^https:\/\/cdn\.shopify\.com\//);
+    // If the fixture's tags/title/description name a roast level, rule (1) wins and this note won't appear.
+    // In that case assert roast_level equals that level instead (confirm against shoebox.json).
+    expect(r.notes.join(' · ')).toContain('roast level from 5 Shoebox coffees');
+  });
+
+  it('hs fixture: tags give origin/process; history picks 250g among 125g/250g', () => {
+    const p = parseShopifyProduct(JSON.parse(fx('hs.json')), JSON.parse(fx('hs.meta.json')));
+    const history = [row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 125 })];
+    const r = buildFill(p, ctx({ url: 'https://hscoffeeroasters.com/products/burundi-mikuba-8', history, processing: ['Washed'] }));
+    expect(r.fields).toMatchObject({ roaster: 'H&S', origin: 'Burundi', processing: 'Washed', amount_g: 250, cost: 36 }); // cost from fixture
+    expect(r.selected).toBe(1);
+  });
+
+  it('xliii fixture: VND converted, process + net weight from attribute rows', () => {
+    const p = parseHtmlProduct(fx('xliii.html'))!;
+    const r = buildFill(p, ctx({ url: 'https://xliiicoffee.com/en/product/kinini-village-dufatanye-farmer-03732/', processing: ['Washed'] }));
+    expect(r.fields).toMatchObject({ processing: 'Washed', amount_g: 250, cost: 30.37 }); // 800000 / 26345
+    expect(r.fields.roaster).toBe('XLIII Coffee'); // no history → raw site name
+    expect(r.notes.join(' · ')).toMatch(/VND → \$30\.37 USD \(rate 2026-09-25\)/);
   });
 });

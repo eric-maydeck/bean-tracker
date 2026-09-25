@@ -1,6 +1,7 @@
 import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
+import type { CoffeeRow } from '../types';
 
 export interface UsdRates {
   date: string;
@@ -183,4 +184,83 @@ export function formatMoney(amount: number, currency: string): string {
   } catch {
     return `${amount} ${currency}`;
   }
+}
+
+export type FillFields = Partial<
+  Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level' | 'amount_g' | 'cost' | 'image_url'>
+>;
+export interface FillVariant {
+  label: string;
+  grams: number | null;
+  costUsd: number | null;
+  originalPrice: string | null;
+}
+export interface FillSuccess {
+  fields: FillFields;
+  variants: FillVariant[];
+  selected: number | null;
+  notes: string[];
+}
+export type FillResult = FillSuccess | { error: string };
+export interface FillContext {
+  url: string;
+  history: FillHistoryRow[];
+  roastLevels: string[];
+  origins: string[];
+  processing: string[];
+  rates: UsdRates | null;
+}
+
+export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
+  const currency = p.currency ?? 'USD';
+  const roaster = findRoaster(p, ctx.url, ctx.history);
+  const pageGrams =
+    parseGrams(p.title ?? '') ??
+    parseGrams(p.attributes['net weight'] ?? p.attributes['weight'] ?? p.attributes['size'] ?? '');
+  const variants: FillVariant[] = p.variants.map((v) => ({
+    label: v.label,
+    grams: parseGrams(v.label) ?? pageGrams,
+    costUsd: toUsd(v.price, currency, ctx.rates),
+    originalPrice: currency === 'USD' ? null : `${formatMoney(v.price, currency)} ${currency}`
+  }));
+  const variantId = Number(new URL(ctx.url).searchParams.get('variant'));
+  const preferred = variantId ? p.variants.findIndex((v) => v.id === variantId) : -1;
+  const selected = variants.length
+    ? pickVariant(variants.map((v) => v.grams), preferred >= 0 ? preferred : null, roaster, ctx.history)
+    : null;
+  const chosen = selected != null ? variants[selected] : null;
+  const roast = findRoastLevel(p, ctx.roastLevels, roaster, ctx.history);
+
+  const fields: FillFields = {};
+  const put = <K extends keyof FillFields>(key: K, value: FillFields[K] | null | undefined) => {
+    if (value != null && value !== '') fields[key] = value;
+  };
+  put('roaster', roaster);
+  put('coffee_name', p.title ? cleanName(p.title) : null);
+  put('origin', findOrigin(p, ctx.origins));
+  put('processing', findProcessing(p, ctx.processing));
+  put('roast_level', roast?.level);
+  put('image_url', p.image);
+  if (chosen) {
+    put('amount_g', chosen.grams);
+    put('cost', chosen.costUsd);
+  } else if (variants.length === 0) {
+    put('amount_g', pageGrams);
+  }
+
+  const notes = [`Filled ${Object.keys(fields).length} fields`];
+  if (!fields.origin) notes.push('origin not found');
+  if (!fields.processing) notes.push('processing not found');
+  if (roast?.note) notes.push(roast.note);
+  else if (!roast) notes.push('roast level not found');
+  if (!p.currency && variants.length) notes.push('currency not stated on the page, assumed USD');
+  if (currency !== 'USD' && variants.length) {
+    const original = chosen?.originalPrice ?? variants[0].originalPrice;
+    if (!ctx.rates?.rates[currency]) notes.push(`${original} — couldn't convert to USD, cost left blank`);
+    else if (chosen?.costUsd != null) notes.push(`${original} → ${formatMoney(chosen.costUsd, 'USD')} USD (rate ${ctx.rates.date})`);
+    else notes.push(`prices converted from ${currency} (rate ${ctx.rates.date})`);
+  }
+  if (variants.length > 1 && selected == null) notes.push('pick a bag size below');
+
+  return { fields, variants: variants.length > 1 ? variants : [], selected: variants.length > 1 ? selected : null, notes };
 }
