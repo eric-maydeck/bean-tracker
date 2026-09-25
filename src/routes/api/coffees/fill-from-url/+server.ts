@@ -28,8 +28,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     );
   } catch (err) {
     if (err instanceof FillError) return json({ error: err.message }, { status: 422 });
-    // Anything else (timeouts, DNS failures, zlib errors, ...) is not a
-    // FillError with a user-facing message — never let it escape unhandled.
+    const name = err instanceof Error ? err.name : '';
+    if (name === 'AbortError' || name === 'TimeoutError') {
+      return json({ error: 'The page took longer than 10 seconds to respond' }, { status: 504 });
+    }
     console.error('fill-from-url failed', err);
     return json({ error: `Couldn't load that page (${err instanceof Error ? err.message : 'unknown error'})` }, { status: 502 });
   }
