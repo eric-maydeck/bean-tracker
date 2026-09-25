@@ -33,6 +33,57 @@
 
   let formEl: HTMLFormElement;
 
+  type FillVariant = { label: string; grams: number | null; costUsd: number | null; originalPrice: string | null };
+
+  let filling = $state(false);
+  let fillError = $state<string | null>(null);
+  let fillNotes = $state<string[]>([]);
+  let fillVariants = $state<FillVariant[]>([]);
+  let selectedVariant = $state<number | null>(null);
+
+  function setField(name: string, value: string | number) {
+    const el = formEl.elements.namedItem(name);
+    if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
+  }
+
+  async function fillFromPage() {
+    const url = (formEl.elements.namedItem('product_url') as HTMLInputElement).value.trim();
+    fillError = null;
+    if (!url) {
+      fillError = 'Paste the product page URL first';
+      return;
+    }
+    filling = true;
+    try {
+      const res = await fetch('/api/coffees/fill-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error || !data.fields) {
+        // SvelteKit's own errors (e.g. 401) come back as { message }.
+        fillError = data.error ?? data.message ?? `Fill failed (HTTP ${res.status})`;
+        return;
+      }
+      for (const [key, value] of Object.entries(data.fields)) setField(key, value as string | number);
+      fillNotes = data.notes;
+      fillVariants = data.variants;
+      selectedVariant = data.selected;
+    } catch {
+      fillError = "Couldn't reach the server";
+    } finally {
+      filling = false;
+    }
+  }
+
+  function chooseVariant(i: number) {
+    const v = fillVariants[i];
+    selectedVariant = i;
+    if (v.grams != null) setField('amount_g', v.grams);
+    if (v.costUsd != null) setField('cost', v.costUsd);
+  }
+
   // Clones what's currently typed (unsaved tweaks included), not the
   // saved row — captured the same way staged mode captures a submit.
   function cloneCurrent() {
@@ -106,16 +157,49 @@
     {/each}
   </datalist>
 
+  {#snippet sizeChips()}
+    <div class="tab-group fill-sizes" role="group" aria-label="Bag size">
+      {#each fillVariants as v, i (i)}
+        <button type="button" aria-pressed={selectedVariant === i} onclick={() => chooseVariant(i)}>
+          {v.label || (v.grams != null ? `${v.grams}g` : `Option ${i + 1}`)} · {v.costUsd != null
+            ? `$${v.costUsd.toFixed(2)}`
+            : v.originalPrice}
+        </button>
+      {/each}
+    </div>
+  {/snippet}
+
   <div class="form-grid">
   <div class="form-field product-url-field">
     <label for="product_url">Product page URL</label>
-    <input
-      id="product_url"
-      name="product_url"
-      type="url"
-      placeholder="https://roaster.example/products/…"
-      value={(coffee?.product_url ?? prefill?.product_url) ?? ''}
-    />
+    <div class="inline-row">
+      <input
+        id="product_url"
+        name="product_url"
+        type="url"
+        placeholder="https://roaster.example/products/…"
+        value={(coffee?.product_url ?? prefill?.product_url) ?? ''}
+        onkeydown={(e) => {
+          // Enter here means "fill", not "submit the whole form".
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            fillFromPage();
+          }
+        }}
+      />
+      <button class="button button-secondary" type="button" disabled={filling} onclick={fillFromPage}>
+        {filling ? 'Filling…' : 'Fill from page'}
+      </button>
+    </div>
+    {#if fillError}
+      <p class="badge badge-urgent" role="alert">{fillError}</p>
+    {/if}
+    {#if fillNotes.length}
+      <p class="text-muted fill-note" aria-live="polite">{fillNotes.join(' · ')}</p>
+    {/if}
+    {#if fillVariants.length}
+      {@render sizeChips()}
+    {/if}
   </div>
 
   <div class="form-field">
@@ -204,7 +288,10 @@
 
   <div class="form-field">
     <label for="image_url">Image URL (label or roaster logo)</label>
-    <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
+    <div class="inline-row">
+      <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
+      <button class="button button-secondary" type="button" onclick={() => setField('image_url', '')}>Discard image</button>
+    </div>
   </div>
 
   <div class="form-field form-field-checkbox">
@@ -235,5 +322,21 @@
 <style>
   .product-url-field {
     grid-column: 1 / -1;
+  }
+  .inline-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+  .inline-row input {
+    flex: 1;
+    min-width: 0;
+  }
+  .fill-note {
+    margin: var(--space-1) 0 0;
+    font-size: 0.85rem;
+  }
+  .fill-sizes {
+    margin-top: var(--space-2);
   }
 </style>
