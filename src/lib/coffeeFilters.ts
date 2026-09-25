@@ -49,6 +49,53 @@ export function column(key: ColumnKey): Column {
   return COLUMNS.find((c) => c.key === key)!;
 }
 
+export type QuickFilterKey = 'decaf' | 'frozen';
+
+// A quick filter's three segments: "All" (null = no filter) plus the two
+// bool values, in display order. `chipTitle` only exists for the two real
+// values -- "All" never has a chip. The component and chip text both read
+// from here so the wording only lives in one place.
+export interface QuickFilterSegment {
+  value: boolean | null;
+  label: string;
+  chipTitle?: string;
+}
+
+export interface QuickFilter {
+  column: QuickFilterKey;
+  switchLabel: string; // the switch's visible/aria label, e.g. "Caffeinated"
+  segments: readonly [QuickFilterSegment, QuickFilterSegment, QuickFilterSegment];
+}
+
+export const QUICK_FILTERS: readonly QuickFilter[] = [
+  {
+    column: 'decaf',
+    switchLabel: 'Caffeinated',
+    segments: [
+      { value: null, label: 'All' },
+      { value: false, label: 'Caffeinated only', chipTitle: 'Showing caffeinated coffees only' },
+      { value: true, label: 'Decaf only', chipTitle: 'Showing decaf coffees only' }
+    ]
+  },
+  {
+    column: 'frozen',
+    switchLabel: 'Frozen',
+    segments: [
+      { value: null, label: 'All' },
+      { value: true, label: 'Frozen only', chipTitle: 'Showing frozen coffees only' },
+      { value: false, label: 'Not frozen', chipTitle: 'Showing coffees not in the freezer' }
+    ]
+  }
+];
+
+export function quickFilter(key: QuickFilterKey): QuickFilter {
+  return QUICK_FILTERS.find((q) => q.column === key)!;
+}
+
+function quickFilterSegment(key: QuickFilterKey, value: boolean): QuickFilterSegment {
+  return quickFilter(key).segments.find((s) => s.value === value)!;
+}
+
 export type Op = '>' | '>=' | '=' | '<=' | '<' | 'between';
 export const OPS: readonly Op[] = ['>', '>=', '=', '<=', '<', 'between'];
 export const OP_LABELS: Record<Op, string> = { '>': '>', '>=': '≥', '=': '=', '<=': '≤', '<': '<', between: 'between' };
@@ -242,10 +289,14 @@ function num(key: ColumnKey, typed: string): string {
 const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)');
 
 export function chipLabel(f: Filter): string {
+  if (f.mode === 'bool') {
+    const qf = quickFilter(f.column as QuickFilterKey);
+    return `${qf.switchLabel}: ${quickFilterSegment(f.column as QuickFilterKey, f.value).label}`;
+  }
   return `${column(f.column).short}: ${chipValue(f)}`;
 }
 
-function chipValue(f: Filter): string {
+function chipValue(f: Exclude<Filter, { mode: 'bool' }>): string {
   switch (f.mode) {
     case 'any': {
       const names = valueNames(f.values);
@@ -253,8 +304,6 @@ function chipValue(f: Filter): string {
     }
     case 'contains':
       return `*${f.text}*`;
-    case 'bool':
-      return f.value ? 'Yes' : 'No';
     case 'includes':
       return mmddyy(f.a);
     case 'overlaps':
@@ -278,14 +327,13 @@ const NUMBER_OP_WORDS: Record<Op, string> = {
 };
 
 export function chipTitle(f: Filter): string {
+  if (f.mode === 'bool') return quickFilterSegment(f.column as QuickFilterKey, f.value).chipTitle!;
   const name = column(f.column).label;
   switch (f.mode) {
     case 'any':
       return `${name} is any of ${valueNames(f.values).join(', ')}`;
     case 'contains':
       return `${name} contains "${f.text}"`;
-    case 'bool':
-      return `${name} is ${f.value ? 'Yes' : 'No'}`;
     case 'includes':
       return `${name} includes ${longDate(f.a)}`;
     case 'overlaps':

@@ -42,6 +42,12 @@
     close();
   }
 
+  // Decaf/Frozen quick filters (see FilterEditor): applies immediately
+  // without closing the menu, so both switches can be set in one visit.
+  function setQuickFilter(key: ColumnKey, value: boolean | null) {
+    filters = value === null ? filters.filter((f) => f.column !== key) : upsertFilter(filters, { column: key, mode: 'bool', value });
+  }
+
   function remove(key: ColumnKey) {
     filters = filters.filter((f) => f.column !== key);
     // Only steal focus when this removal is actually closing an open editor
@@ -65,7 +71,7 @@
     onclick={(e) => (open === 'new' ? close() : openEditor('new', e.currentTarget))}>+ Filter</button
   >
   {#if open === 'new'}
-    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} />
+    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} onquickset={setQuickFilter} />
   {/if}
 </div>
 
@@ -92,7 +98,15 @@
           >
         </span>
         {#if open === f.column}
-          <FilterEditor {coffees} {filters} start={f.column} onapply={apply} onclear={remove} onclose={close} />
+          <FilterEditor
+            {coffees}
+            {filters}
+            start={f.column}
+            onapply={apply}
+            onclear={remove}
+            onclose={close}
+            onquickset={setQuickFilter}
+          />
         {/if}
       </span>
     {/each}

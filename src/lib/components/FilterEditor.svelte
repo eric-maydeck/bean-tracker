@@ -9,6 +9,7 @@
     valueCounts,
     isComplete,
     normalizeFilter,
+    QUICK_FILTERS,
     type Column,
     type ColumnKey,
     type ColumnKind,
@@ -27,7 +28,8 @@
     start = null,
     onapply,
     onclear,
-    onclose
+    onclose,
+    onquickset
   }: {
     coffees: CoffeeWithComputed[]; // current status tab: source of the "Is any of" list
     filters: Filter[]; // active filters: picking a column that has one reopens it
@@ -35,11 +37,11 @@
     onapply: (f: Filter) => void;
     onclear: (key: ColumnKey) => void;
     onclose: () => void;
+    onquickset: (key: ColumnKey, value: boolean | null) => void; // Decaf/Frozen quick filters: applies without closing
   } = $props();
 
   const GROUPS: [string, ColumnKind[]][] = [
     ['Text', ['text']],
-    ['Yes / No', ['bool']],
     ['Numbers & dates', ['number', 'date', 'window']]
   ];
 
@@ -55,7 +57,12 @@
   const existing = (k: ColumnKey) => filters.find((f) => f.column === k) ?? null;
 
   // Loads the column's current filter (if any) so the editor opens pre-filled.
+  // Bool columns (Decaf/Frozen) have no step of their own -- they're the
+  // always-visible Quick filters switches on this screen -- so picking one
+  // is a no-op; `start` can still name one (chip click) and just leaves the
+  // picker screen showing, switches included.
   function pick(k: ColumnKey) {
+    if (column(k).kind === 'bool') return;
     const f = existing(k);
     key = k;
     mode = column(k).kind === 'window' ? 'includes' : 'any';
@@ -215,10 +222,25 @@
         {/each}
       </div>
     {/each}
+
+    <p class="eyebrow">Quick filters</p>
+    {#each QUICK_FILTERS as qf (qf.column)}
+      {@const current = existing(qf.column)}
+      <div class="quick-filter">
+        <p class="quick-filter-label">{qf.switchLabel}</p>
+        <div class="quick-filter-switch" role="radiogroup" aria-label={qf.switchLabel}>
+          {#each qf.segments as seg (String(seg.value))}
+            {@const checked = seg.value === null ? current === null : current?.mode === 'bool' && current.value === seg.value}
+            <button type="button" role="radio" aria-checked={checked} onclick={() => onquickset(qf.column, seg.value)}>
+              {seg.label}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/each}
   {:else}
     {@const k = key}
     {@const kind = column(k).kind}
-    {@const saved = existing(k)}
     <p class="eyebrow">{editorLabel(column(k))}</p>
 
     {#if kind === 'text'}
@@ -242,16 +264,6 @@
           {/each}
         </div>
       {/if}
-    {:else if kind === 'bool'}
-      <div class="tab-group">
-        {#each [true, false] as v (v)}
-          <button
-            type="button"
-            aria-pressed={saved?.mode === 'bool' && saved.value === v}
-            onclick={() => apply({ column: k, mode: 'bool', value: v })}>{v ? 'Yes' : 'No'}</button
-          >
-        {/each}
-      </div>
     {:else if kind === 'window'}
       <div class="tab-group">
         <button type="button" aria-pressed={mode === 'includes'} onclick={() => (mode = 'includes')}>includes</button>

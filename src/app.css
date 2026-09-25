@@ -1563,6 +1563,44 @@ div.compact-row {
   gap: var(--space-2);
 }
 
+.quick-filter + .quick-filter {
+  margin-top: var(--space-1);
+}
+
+.quick-filter-label {
+  margin: 0 0 var(--space-1);
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Each switch is a 3-equal-column grid spanning the menu width, so all six
+   segments across both switches are the same size. */
+.quick-filter-switch {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-1);
+}
+
+.quick-filter-switch button {
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  line-height: 1.2;
+  text-align: center;
+  white-space: normal; /* labels like "Caffeinated only" wrap to two centered lines */
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.quick-filter-switch button[aria-checked='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
+
 @media (max-width: 640px) {
   /* Added by FilterEditor.svelte while it's open (a fixed bottom sheet at
      this width), removed on unmount -- keeps the page behind it from
@@ -1578,6 +1616,10 @@ div.compact-row {
   }
 
   .filter-value {
+    min-height: 44px;
+  }
+
+  .quick-filter-switch button {
     min-height: 44px;
   }
 

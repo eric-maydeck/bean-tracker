@@ -8,6 +8,8 @@ import {
   upsertFilter,
   chipLabel,
   chipTitle,
+  QUICK_FILTERS,
+  quickFilter,
   loadFilterState,
   serializeFilterState,
   FILTER_TTL_MS,
@@ -334,6 +336,25 @@ describe('upsertFilter', () => {
   });
 });
 
+describe('QUICK_FILTERS', () => {
+  it('Caffeinated (decaf) and Frozen switches: "All" first, then both bool values, matching column labels', () => {
+    expect(quickFilter('decaf').switchLabel).toBe('Caffeinated');
+    expect(quickFilter('decaf').segments.map((s) => [s.value, s.label])).toEqual([
+      [null, 'All'],
+      [false, 'Caffeinated only'],
+      [true, 'Decaf only']
+    ]);
+    expect(quickFilter('frozen').switchLabel).toBe('Frozen');
+    expect(quickFilter('frozen').segments.map((s) => [s.value, s.label])).toEqual([
+      [null, 'All'],
+      [true, 'Frozen only'],
+      [false, 'Not frozen']
+    ]);
+    // "All" never has a chip.
+    for (const qf of QUICK_FILTERS) expect(qf.segments[0].chipTitle).toBeUndefined();
+  });
+});
+
 describe('chipLabel', () => {
   it.each<[Filter, string]>([
     [{ column: 'origin', mode: 'any', values: ['Ethiopia', 'Kenya'] }, 'Origin: Ethiopia, Kenya'],
@@ -344,8 +365,10 @@ describe('chipLabel', () => {
     [{ column: 'coffee_name', mode: 'contains', text: 'guji' }, 'Name: *guji*'],
     [{ column: 'roast_level', mode: 'any', values: ['Light'] }, 'Roast: Light'],
     [{ column: 'roaster', mode: 'any', values: ['Sey'] }, 'Roaster: Sey'],
-    [{ column: 'decaf', mode: 'bool', value: false }, 'Decaf: No'],
-    [{ column: 'frozen', mode: 'bool', value: true }, 'Frozen: Yes'],
+    [{ column: 'decaf', mode: 'bool', value: false }, 'Caffeinated: Caffeinated only'],
+    [{ column: 'decaf', mode: 'bool', value: true }, 'Caffeinated: Decaf only'],
+    [{ column: 'frozen', mode: 'bool', value: true }, 'Frozen: Frozen only'],
+    [{ column: 'frozen', mode: 'bool', value: false }, 'Frozen: Not frozen'],
     [range('urgency', '>', '40'), 'Urgency: > 40'],
     [range('cost_per_gram', '<=', '0.10'), 'Cost/g: ≤ $0.10'],
     [range('amount_g', '=', '250'), 'Weight: 250g'],
@@ -376,7 +399,10 @@ describe('chipTitle', () => {
   it.each<[Filter, string]>([
     [{ column: 'processing', mode: 'contains', text: 'washed' }, 'Processing contains "washed"'],
     [{ column: 'origin', mode: 'any', values: ['Ethiopia', 'Kenya', 'Peru', null] }, 'Origin is any of Ethiopia, Kenya, Peru, (none)'],
-    [{ column: 'decaf', mode: 'bool', value: false }, 'Decaf is No'],
+    [{ column: 'decaf', mode: 'bool', value: false }, 'Showing caffeinated coffees only'],
+    [{ column: 'decaf', mode: 'bool', value: true }, 'Showing decaf coffees only'],
+    [{ column: 'frozen', mode: 'bool', value: true }, 'Showing frozen coffees only'],
+    [{ column: 'frozen', mode: 'bool', value: false }, 'Showing coffees not in the freezer'],
     [range('cost_per_gram', '<=', '0.10'), 'Cost/g at most $0.10'],
     [range('amount_g', '=', '250'), 'Weight equals 250g'],
     [range('urgency', '>', '40'), 'Urgency greater than 40'],
