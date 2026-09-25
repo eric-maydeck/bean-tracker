@@ -377,6 +377,7 @@
           <button
             class="button button-secondary"
             type="button"
+            aria-label="Edit URL"
             onclick={() => {
               slugLocked = false;
               slugInput.focus();
@@ -386,6 +387,7 @@
           <button
             class="button button-secondary"
             type="button"
+            aria-label="Cancel URL edit"
             onclick={() => {
               setField('slug', initialSlug);
               slugLocked = true;

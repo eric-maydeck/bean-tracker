@@ -41,6 +41,12 @@ describe('createDb', () => {
     };
     expect(result.count).toBe(11);
   });
+
+  it('turns foreign_keys on, so slug_redirects cascades on delete regardless of node:sqlite defaults', () => {
+    const db = createDb(':memory:');
+    const result = db.prepare(`PRAGMA foreign_keys`).get() as { foreign_keys: number };
+    expect(result.foreign_keys).toBe(1);
+  });
 });
 
 describe('legacy data migration', () => {

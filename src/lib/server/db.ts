@@ -150,6 +150,9 @@ export function createDb(path: string): DatabaseSync {
     mkdirSync(dirname(path), { recursive: true });
   }
   const db = new DatabaseSync(path);
+  // node:sqlite's default for this pragma isn't guaranteed across versions;
+  // slug_redirects' ON DELETE CASCADE needs it explicitly on.
+  db.exec(`PRAGMA foreign_keys = ON`);
   applySchema(db);
   recordDeploy(db);
   return db;
