@@ -1,3 +1,19 @@
+# [1.33.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.32.1...v1.33.0) (2026-09-25)
+
+
+### Bug Fixes
+
+* **coffees:** more space between search and toolbar buttons on phones
+* **coffees:** put Refresh before Reset; full-width search on phones
+* **filters:** even column grid and wider desktop filter menu
+* **filters:** match quick-filter segment spacing to the column buttons
+* **filters:** same even column grid for the filter menu on phones
+
+
+### Features
+
+* **filters:** turn Decaf/Frozen into quick-filter switches
+
 ## [1.32.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.32.0...v1.32.1) (2026-09-25)
 
 
