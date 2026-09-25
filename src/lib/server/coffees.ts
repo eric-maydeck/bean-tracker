@@ -69,6 +69,13 @@ export function getCoffeeBySlug(db: DatabaseSync, slug: string): CoffeeRow | und
   return db.prepare(`SELECT * FROM coffees WHERE slug = ?`).get(slug) as CoffeeRow | undefined;
 }
 
+export function getRedirectSlug(db: DatabaseSync, oldSlug: string): string | undefined {
+  const row = db
+    .prepare(`SELECT c.slug FROM slug_redirects r JOIN coffees c ON c.id = r.coffee_id WHERE r.old_slug = ?`)
+    .get(oldSlug) as { slug: string } | undefined;
+  return row?.slug;
+}
+
 export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: number; slug: string } {
   const now = new Date().toISOString();
   const status = input.status ?? 'backlog';
@@ -121,6 +128,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
 }
 
 export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput, slug: string): void {
+  const oldSlug = (db.prepare(`SELECT slug FROM coffees WHERE id = ?`).get(id) as { slug: string } | undefined)?.slug;
   const now = new Date().toISOString();
   const decaf = input.decaf ? 1 : 0;
   db.prepare(
@@ -149,6 +157,11 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     now,
     id
   );
+  if (oldSlug && oldSlug !== slug) {
+    // Renaming back to one of this coffee's own old slugs reclaims it.
+    db.prepare(`DELETE FROM slug_redirects WHERE old_slug = ? AND coffee_id = ?`).run(slug, id);
+    db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES (?, ?)`).run(oldSlug, id);
+  }
 }
 
 export function openCoffee(db: DatabaseSync, id: number): void {

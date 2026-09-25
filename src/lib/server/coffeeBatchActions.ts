@@ -1,5 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { CoffeeRow } from '../types';
 import {
+  getCoffeeById,
   updateCoffee,
   openCoffee,
   unopenCoffee,
@@ -7,10 +9,11 @@ import {
   thawCoffee,
   archiveCoffee,
   restoreCoffee,
-  deleteCoffee
+  deleteCoffee,
+  type NewCoffeeInput
 } from './coffees';
 import { parseCoffeeForm, parseSlugField, CoffeeFormError } from './coffeeFormValidation';
-import { slugify, slugExists } from './slug';
+import { slugify, slugExists, generateBaseSlug, uniqueSlug, isAutoSlug } from './slug';
 
 export type CoffeeStatusAction = 'open' | 'unopen' | 'freeze' | 'thaw' | 'archive' | 'restore' | 'delete';
 
@@ -88,16 +91,36 @@ export function validateCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange
   return errors;
 }
 
+// The URL follows the coffee's identity: when a roaster / name / roast-year
+// edit changes the base slug, the user didn't type their own slug in this
+// save, AND the coffee's current slug is itself auto-generated (not a slug
+// the user set earlier), regenerate it (updateCoffee keeps the old one as a
+// redirect). A custom slug is never overwritten. Cosmetic edits that slugify
+// the same (case, punctuation) keep the slug.
+// ponytail: a regenerated slug and another batch entry's typed slug can
+// collide; the unique index then rolls the whole batch back with an error.
+function nextSlug(db: DatabaseSync, before: CoffeeRow, input: NewCoffeeInput, staged: string): string {
+  if (staged !== before.slug) return staged;
+  const base = (c: { roaster: string; coffee_name: string; roast_date: string | null }) =>
+    generateBaseSlug({ roaster: c.roaster, coffeeName: c.coffee_name, roastDate: c.roast_date, createdAt: before.created_at });
+  const oldBase = base(before);
+  const next = base(input);
+  if (next === oldBase) return staged;
+  if (!isAutoSlug(before.slug, oldBase)) return staged;
+  return uniqueSlug(db, next, before.id);
+}
+
 // Applies every pending change in one transaction: all or nothing. Assumes
 // the batch has already been validated (validateCoffeeBatch) — a thrown
 // error here (a genuinely nonexistent id, a real DB error) rolls back
-// everything in the batch, not just the failing entry.
-export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]): void {
+// everything in the batch, not just the failing entry. Returns the final
+// slug of each field-edited coffee (it may have been regenerated).
+export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]): Record<number, string> {
+  const slugs: Record<number, string> = {};
   db.exec('BEGIN');
   try {
     for (const change of changes) {
-      // Verify the coffee exists before attempting any updates
-      const before = db.prepare(`SELECT id FROM coffees WHERE id = ?`).get(change.id);
+      const before = getCoffeeById(db, change.id);
       if (!before) {
         throw new Error(`Coffee ${change.id} does not exist`);
       }
@@ -106,14 +129,16 @@ export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]
         const input = parseCoffeeForm(formData);
         const rawSlug = parseSlugField(formData);
         if (!rawSlug) throw new Error(`Missing slug for coffee ${change.id}`);
-        const slug = slugify(rawSlug);
+        const slug = nextSlug(db, before, input, slugify(rawSlug));
         updateCoffee(db, change.id, input, slug);
+        slugs[change.id] = slug;
       }
       if (change.statusAction) {
         applyStatusAction(db, change.id, change.statusAction);
       }
     }
     db.exec('COMMIT');
+    return slugs;
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;

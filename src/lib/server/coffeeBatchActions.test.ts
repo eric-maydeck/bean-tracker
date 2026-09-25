@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
-import { createCoffee, getCoffeeById, type NewCoffeeInput } from './coffees';
+import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } from './coffees';
 import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
@@ -167,5 +167,84 @@ describe('commitCoffeeBatch', () => {
     const { id, slug } = createCoffee(db, sampleInput());
     commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { product_url: 'https://h.coffee/products/z' }) }]);
     expect(getCoffeeById(db, id)?.product_url).toBe('https://h.coffee/products/z');
+  });
+});
+
+describe('commitCoffeeBatch: slug follows identity edits', () => {
+  it('regenerates the slug on a name change, returns it, and redirects the old one', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    expect(slug).toBe('2026-test-roasters-sample-blend');
+    const slugs = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { coffee_name: 'Kenya Kiambu' }) }]);
+    expect(slugs).toEqual({ [id]: '2026-test-roasters-kenya-kiambu' });
+    expect(getCoffeeById(db, id)?.slug).toBe('2026-test-roasters-kenya-kiambu');
+    expect(getRedirectSlug(db, slug)).toBe('2026-test-roasters-kenya-kiambu');
+  });
+
+  it('regenerates on a roaster or roast-year change, not on other or cosmetic-only edits', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { origin: 'Kenya', roast_date: '2026-06-01', roaster: 'TEST ROASTERS' }) }]);
+    expect(getCoffeeById(db, id)?.slug).toBe(slug);
+    expect(getRedirectSlug(db, slug)).toBeUndefined();
+    const byYear = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { roast_date: '2025-12-30' }) }]);
+    expect(byYear[id]).toBe('2025-test-roasters-sample-blend');
+    const byRoaster = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, byYear[id], { roast_date: '2025-12-30', roaster: 'Sey' }) }]);
+    expect(byRoaster[id]).toBe('2025-sey-sample-blend');
+  });
+
+  it('keeps a slug the user typed in the same save (and still redirects the old one)', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, 'my-kenya', { coffee_name: 'Kenya Kiambu' }) }]);
+    expect(getCoffeeById(db, id)?.slug).toBe('my-kenya');
+    expect(getRedirectSlug(db, slug)).toBe('my-kenya');
+  });
+
+  it('resolves a chain of renames to the current slug', () => {
+    const { id, slug: a } = createCoffee(db, sampleInput());
+    const b = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, a, { coffee_name: 'B' }) }])[id];
+    const c = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, b, { coffee_name: 'C' }) }])[id];
+    expect(getRedirectSlug(db, a)).toBe(c);
+    expect(getRedirectSlug(db, b)).toBe(c);
+  });
+
+  it("counts old slugs as taken: an identical new coffee gets -2, and staging another coffee's old slug is rejected", () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { coffee_name: 'Renamed' }) }]);
+    expect(createCoffee(db, sampleInput()).slug).toBe(`${slug}-2`);
+    const other = createCoffee(db, sampleInput({ coffee_name: 'Other' }));
+    expect(validateCoffeeBatch(db, [{ id: other.id, fields: fieldsFor(other.id, slug, { coffee_name: 'Other' }) }])).toEqual([
+      { id: other.id, error: 'That URL is already in use by another coffee' }
+    ]);
+  });
+
+  it('lets a coffee rename back to its own old slug, dropping that redirect', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    const renamed = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { coffee_name: 'Renamed' }) }])[id];
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, renamed) }]); // name back to 'Sample Blend'
+    expect(getCoffeeById(db, id)?.slug).toBe(slug);
+    expect(getRedirectSlug(db, slug)).toBeUndefined();
+    expect(getRedirectSlug(db, renamed)).toBe(slug);
+  });
+
+  it("drops a deleted coffee's redirects", () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { coffee_name: 'Renamed' }) }]);
+    commitCoffeeBatch(db, [{ id, statusAction: 'delete' }]);
+    expect((db.prepare('SELECT COUNT(*) AS n FROM slug_redirects').get() as { n: number }).n).toBe(0);
+    expect(getRedirectSlug(db, slug)).toBeUndefined();
+  });
+
+  // Controller ruling: auto-regeneration only ever replaces a slug that is
+  // itself auto-generated. A slug the user set earlier survives an identity
+  // edit that would otherwise change the base slug.
+  it('preserves a custom slug across an identity edit that would otherwise regenerate it', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, 'my-custom-slug') }]);
+    expect(getCoffeeById(db, id)?.slug).toBe('my-custom-slug');
+
+    const slugs = commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, 'my-custom-slug', { coffee_name: 'Kenya Kiambu' }) }]);
+
+    expect(slugs).toEqual({ [id]: 'my-custom-slug' });
+    expect(getCoffeeById(db, id)?.slug).toBe('my-custom-slug');
+    expect(getRedirectSlug(db, slug)).toBe('my-custom-slug');
   });
 });

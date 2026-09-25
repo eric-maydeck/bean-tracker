@@ -64,6 +64,7 @@
   let pending = $state(new SvelteMap<number, PendingChange>());
   let commitError = $state<string | null>(null);
   let saving = $state(false);
+  let savedSlug: string | undefined;
 
   // SvelteKit reuses this component when navigating from one coffee to
   // another (e.g. landing on a freshly saved clone), so per-coffee UI state
@@ -101,7 +102,6 @@
     commitError = null;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
     const wasDeleted = pending.get(data.coffee.id)?.statusAction === 'delete';
-    const stagedFields = pending.get(data.coffee.id)?.fields;
 
     try {
       const validateRes = await fetch('/api/coffees/validate-batch', {
@@ -126,7 +126,7 @@
       // non-2xx status, so parse it regardless of `.ok` — only fall back to
       // the generic error if parsing itself fails (network failure or a
       // genuinely non-JSON response).
-      let commitResult: { success: boolean; error?: string };
+      let commitResult: { success: boolean; error?: string; slugs?: Record<number, string> };
       try {
         commitResult = await commitRes.json();
       } catch {
@@ -137,6 +137,7 @@
         saving = false;
         return;
       }
+      savedSlug = commitResult.slugs?.[data.coffee.id];
     } catch {
       commitError = 'Something went wrong saving your changes. Please check your connection and try again.';
       saving = false;
@@ -155,8 +156,8 @@
       await goto('/');
       return;
     }
-    if (stagedFields?.slug && stagedFields.slug !== data.coffee.slug) {
-      await goto(`/coffees/${stagedFields.slug}`);
+    if (savedSlug && savedSlug !== data.coffee.slug) {
+      await goto(`/coffees/${savedSlug}`);
       return;
     }
     await invalidateAll();

@@ -28,6 +28,15 @@ CREATE TABLE IF NOT EXISTS coffees (
   updated_at TEXT NOT NULL
 );
 
+-- Old slugs keep working after a rename (written by updateCoffee). Keyed to
+-- coffee_id, not the target slug, so a chain of renames lands on the current
+-- one. Old slugs count as taken (slugExists). node:sqlite enforces foreign
+-- keys by default, so deleting a coffee cascades here.
+CREATE TABLE IF NOT EXISTS slug_redirects (
+  old_slug TEXT PRIMARY KEY,
+  coffee_id INTEGER NOT NULL REFERENCES coffees(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY,
   roaster_service TEXT NOT NULL,

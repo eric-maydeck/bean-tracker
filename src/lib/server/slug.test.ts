@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { slugify, generateBaseSlug, uniqueSlug, slugExists } from './slug';
+import { slugify, generateBaseSlug, uniqueSlug, slugExists, isAutoSlug } from './slug';
 
 describe('slugify', () => {
   it('lowercases and hyphenates spaces', () => {
@@ -73,5 +73,39 @@ describe('uniqueSlug / slugExists', () => {
     const id = Number(result.lastInsertRowid);
     expect(slugExists(db, 'taken-slug')).toBe(true);
     expect(slugExists(db, 'taken-slug', id)).toBe(false);
+  });
+
+  it("treats old (redirecting) slugs as taken, except for the coffee they belong to", () => {
+    const db = createDb(':memory:');
+    const id = Number(
+      db
+        .prepare(
+          `INSERT INTO coffees (roaster, coffee_name, slug, status, created_at, updated_at)
+           VALUES ('Lume', 'A', 'current', 'backlog', '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`
+        )
+        .run().lastInsertRowid
+    );
+    db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES ('old', ?)`).run(id);
+    expect(slugExists(db, 'old')).toBe(true);
+    expect(slugExists(db, 'old', id)).toBe(false);
+    expect(uniqueSlug(db, 'old')).toBe('old-2');
+  });
+});
+
+describe('isAutoSlug', () => {
+  it('is true for the exact base slug', () => {
+    expect(isAutoSlug('2026-lume-alo', '2026-lume-alo')).toBe(true);
+  });
+
+  it('is true for the base slug with a numeric collision suffix >= 2 ("auto-2")', () => {
+    expect(isAutoSlug('2026-lume-alo-2', '2026-lume-alo')).toBe(true);
+    expect(isAutoSlug('2026-lume-alo-13', '2026-lume-alo')).toBe(true);
+  });
+
+  it('is false for a slug the user typed themselves ("custom")', () => {
+    expect(isAutoSlug('my-favorite-kenya', '2026-lume-alo')).toBe(false);
+    // Looks close to the base but isn't the auto-suffix pattern.
+    expect(isAutoSlug('2026-lume-alo-decaf', '2026-lume-alo')).toBe(false);
+    expect(isAutoSlug('2026-lume-alo-1', '2026-lume-alo')).toBe(false);
   });
 });

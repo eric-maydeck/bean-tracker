@@ -12,8 +12,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   }
   const changes = body.changes as CoffeeBatchChange[];
   try {
-    commitCoffeeBatch(getDb(), changes);
-    return json({ success: true });
+    const slugs = commitCoffeeBatch(getDb(), changes);
+    return json({ success: true, slugs });
   } catch (err) {
     return json({ success: false, error: err instanceof Error ? err.message : 'Save failed' }, { status: 500 });
   }
