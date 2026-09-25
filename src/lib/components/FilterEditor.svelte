@@ -142,6 +142,27 @@
     document.documentElement.classList.add('filter-sheet-open');
     return () => document.documentElement.classList.remove('filter-sheet-open');
   });
+
+  function focusableEls(): HTMLElement[] {
+    return Array.from(
+      editorEl?.querySelectorAll<HTMLElement>('button:not(:disabled), input, [href], select, textarea') ?? []
+    );
+  }
+
+  // Tab / Shift+Tab cycle within the editor while it's open.
+  function trapFocus(e: KeyboardEvent) {
+    const items = focusableEls();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 </script>
 
 {#snippet rangeInputs(type: 'date' | 'number', step: string | undefined, singleLabel: string, showSecond: boolean)}
@@ -168,13 +189,19 @@
   {/if}
 {/snippet}
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key === 'Escape') onclose();
+    else if (e.key === 'Tab') trapFocus(e);
+  }}
+/>
 
 <div class="filter-backdrop" role="presentation" onclick={onclose}></div>
 <div
   bind:this={editorEl}
   class="filter-editor"
   role="dialog"
+  aria-modal="true"
   aria-label={key ? `Filter by ${editorLabel(column(key))}` : 'Add a filter'}
 >
   {#if !key}
