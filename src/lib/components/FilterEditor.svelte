@@ -144,6 +144,30 @@
   });
 </script>
 
+{#snippet rangeInputs(type: 'date' | 'number', step: string | undefined, singleLabel: string, showSecond: boolean)}
+  <input
+    class="search-input"
+    {type}
+    inputmode={type === 'number' ? 'decimal' : undefined}
+    step={type === 'number' ? step : undefined}
+    aria-label={showSecond ? 'From' : singleLabel}
+    value={a}
+    oninput={(e) => (a = e.currentTarget.value)}
+  />
+  {#if showSecond}
+    <span aria-hidden="true">–</span>
+    <input
+      class="search-input"
+      {type}
+      inputmode={type === 'number' ? 'decimal' : undefined}
+      step={type === 'number' ? step : undefined}
+      aria-label="To"
+      value={b}
+      oninput={(e) => (b = e.currentTarget.value)}
+    />
+  {/if}
+{/snippet}
+
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
 <div class="filter-backdrop" role="presentation" onclick={onclose}></div>
@@ -207,11 +231,7 @@
         <button type="button" aria-pressed={mode === 'overlaps'} onclick={() => (mode = 'overlaps')}>overlaps</button>
       </div>
       <div class="filter-inputs">
-        <input class="search-input" type="date" aria-label={mode === 'overlaps' ? 'From' : 'Date'} bind:value={a} />
-        {#if mode === 'overlaps'}
-          <span aria-hidden="true">–</span>
-          <input class="search-input" type="date" aria-label="To" bind:value={b} />
-        {/if}
+        {@render rangeInputs('date', undefined, 'Date', mode === 'overlaps')}
       </div>
     {:else}
       <div class="tab-group">
@@ -222,36 +242,12 @@
         {/each}
       </div>
       <div class="filter-inputs">
-        {#if kind === 'date'}
-          <input class="search-input" type="date" aria-label={op === 'between' ? 'From' : 'Date'} bind:value={a} />
-          {#if op === 'between'}
-            <span aria-hidden="true">–</span>
-            <input class="search-input" type="date" aria-label="To" bind:value={b} />
-          {/if}
-        {:else}
-          <!-- value/oninput instead of bind:value: keeps the typed string (chips show the value as typed) -->
-          <input
-            class="search-input"
-            type="number"
-            inputmode="decimal"
-            step={k === 'cost_per_gram' ? '0.001' : '1'}
-            aria-label={op === 'between' ? 'From' : 'Value'}
-            value={a}
-            oninput={(e) => (a = e.currentTarget.value)}
-          />
-          {#if op === 'between'}
-            <span aria-hidden="true">–</span>
-            <input
-              class="search-input"
-              type="number"
-              inputmode="decimal"
-              step={k === 'cost_per_gram' ? '0.001' : '1'}
-              aria-label="To"
-              value={b}
-              oninput={(e) => (b = e.currentTarget.value)}
-            />
-          {/if}
-        {/if}
+        {@render rangeInputs(
+          kind === 'date' ? 'date' : 'number',
+          k === 'cost_per_gram' ? '0.001' : '1',
+          kind === 'date' ? 'Date' : 'Value',
+          op === 'between'
+        )}
       </div>
     {/if}
 
