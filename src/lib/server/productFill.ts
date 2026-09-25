@@ -2,6 +2,11 @@ import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
 
+export interface UsdRates {
+  date: string;
+  rates: Record<string, number>;
+}
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const titleCase = (s: string) => (s.length <= 3 ? s.toUpperCase() : s.replace(/\b\w/g, (c) => c.toUpperCase()));
 
@@ -163,4 +168,19 @@ export function pickVariant(
     if (ranked[0].n > 0 && ranked[0].n !== ranked[1].n) return ranked[0].i;
   }
   return null;
+}
+
+export function toUsd(amount: number, currency: string, rates: UsdRates | null): number | null {
+  if (currency === 'USD') return Math.round((amount + Number.EPSILON) * 100) / 100;
+  const perUsd = rates?.rates[currency];
+  if (!perUsd) return null;
+  return Math.round(((amount / perUsd) + Number.EPSILON) * 100) / 100;
+}
+
+export function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${amount} ${currency}`;
+  }
 }

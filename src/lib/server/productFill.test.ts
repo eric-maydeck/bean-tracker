@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ProductData } from './productParse';
 import type { FillHistoryRow } from './coffees';
-import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant } from './productFill';
+import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, type UsdRates } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -161,5 +161,31 @@ describe('pickVariant', () => {
   it('selects none when nothing is in range or sizes are unknown', () => {
     expect(pickVariant([340, 2268], null, null, [])).toBeNull();
     expect(pickVariant([null, null], null, null, [])).toBeNull();
+  });
+});
+
+const RATES: UsdRates = { date: '2026-09-25', rates: { USD: 1, GBP: 0.7886, EUR: 0.92, VND: 26345 } };
+
+describe('toUsd', () => {
+  it('converts with a fixed table and rounds to cents', () => {
+    expect(toUsd(9.25, 'GBP', RATES)).toBe(11.73);
+    expect(toUsd(800000, 'VND', RATES)).toBe(30.37);
+    expect(toUsd(18, 'EUR', RATES)).toBe(19.57);
+  });
+  it('passes USD through (rounded) without needing rates', () => {
+    expect(toUsd(21, 'USD', null)).toBe(21);
+    expect(toUsd(21.005, 'USD', null)).toBe(21.01);
+  });
+  it('returns null when rates are unavailable or the currency is unknown', () => {
+    expect(toUsd(9.25, 'GBP', null)).toBeNull();
+    expect(toUsd(5, 'XYZ', RATES)).toBeNull();
+  });
+});
+
+describe('formatMoney', () => {
+  it('formats known currencies and survives unknown codes', () => {
+    expect(formatMoney(9.25, 'GBP')).toBe('£9.25');
+    expect(formatMoney(11.73, 'USD')).toBe('$11.73');
+    expect(formatMoney(5, 'XYZ1')).toBe('5 XYZ1');
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { isBlockedAddress, checkUrl, safeFetch, FillError, shopifyJsonUrl, sanitizeShopifyMeta } from './productFetch';
 
 describe('isBlockedAddress', () => {
@@ -70,5 +70,36 @@ describe('shopifyJsonUrl', () => {
     expect(shopifyJsonUrl(new URL('https://h.coffee/collections/all'))).toBeNull();
     expect(shopifyJsonUrl(new URL('https://h.coffee/products'))).toBeNull();
     expect(shopifyJsonUrl(new URL('https://h.coffee/'))).toBeNull();
+  });
+});
+
+describe('getUsdRates', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  const ok = { result: 'success', time_last_update_unix: 1790294400, rates: { USD: 1, GBP: 0.79 } };
+
+  it('fetches open.er-api.com once and serves from cache for 24h', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify(ok)));
+    vi.stubGlobal('fetch', fetchMock);
+    const { getUsdRates } = await import('./productFetch');
+    const first = await getUsdRates(0);
+    expect(first.rates.GBP).toBe(0.79);
+    expect(first.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://open.er-api.com/v6/latest/USD');
+    await getUsdRates(23 * 3600_000);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await getUsdRates(25 * 3600_000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws on failure and does not cache the failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ result: 'error' }))));
+    const { getUsdRates } = await import('./productFetch');
+    await expect(getUsdRates(0)).rejects.toThrow();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ok))));
+    await expect(getUsdRates(1)).resolves.toMatchObject({ rates: { GBP: 0.79 } });
   });
 });

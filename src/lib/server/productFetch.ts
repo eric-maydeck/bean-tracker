@@ -4,6 +4,7 @@ import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
 import { parseShopifyProduct, parseHtmlProduct, type ProductData } from './productParse';
+import type { UsdRates } from './productFill';
 
 // Every message is shown verbatim under the Fill button.
 export class FillError extends Error {}
@@ -206,4 +207,21 @@ export async function fetchProductData(rawUrl: string): Promise<ProductData> {
   const product = parseHtmlProduct(res.body);
   if (!product) throw new FillError('No product data found on that page. Is it a single product page?');
   return product;
+}
+
+const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
+const DAY_MS = 24 * 60 * 60 * 1000;
+let ratesCache: { at: number; value: UsdRates } | null = null;
+
+// Fixed host, so plain fetch — the address guard is for user-supplied URLs.
+export async function getUsdRates(now = Date.now()): Promise<UsdRates> {
+  if (ratesCache && now - ratesCache.at < DAY_MS) return ratesCache.value;
+  const res = await fetch(RATES_URL, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  const data = (await res.json()) as { result?: string; time_last_update_unix?: number; rates?: Record<string, number> };
+  if (data.result !== 'success' || !data.rates || !data.time_last_update_unix) {
+    throw new Error('Exchange-rate lookup failed');
+  }
+  const value = { date: new Date(data.time_last_update_unix * 1000).toISOString().slice(0, 10), rates: data.rates };
+  ratesCache = { at: now, value };
+  return value;
 }
