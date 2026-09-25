@@ -225,6 +225,8 @@ const COUNTRY_TO_ISO: Record<string, string> = {
   zimbabwe: 'ZW'
 };
 
+export const COUNTRY_NAMES = Object.keys(COUNTRY_TO_ISO);
+
 const REGIONAL_INDICATOR_BASE = 0x1f1e6;
 const UPPERCASE_A_CODE = 'A'.charCodeAt(0);
 
