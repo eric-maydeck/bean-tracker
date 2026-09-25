@@ -28,7 +28,10 @@ for (const [net, prefix] of [
 ] as const) {
   blocked.addSubnet(net, prefix, 'ipv4');
 }
-for (const [net, prefix] of [['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]] as const) {
+for (const [net, prefix] of [
+  ['::', 96], ['::1', 128], ['64:ff9b::', 96], ['2002::', 16], ['fec0::', 10],
+  ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]
+] as const) {
   blocked.addSubnet(net, prefix, 'ipv6');
 }
 
@@ -128,6 +131,7 @@ function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
           size += chunk.length;
           if (size > MAX_BYTES) {
             req.destroy();
+            stream.destroy();
             reject(new FillError('That page is larger than 2 MB'));
           } else {
             chunks.push(chunk);
