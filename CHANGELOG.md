@@ -1,3 +1,13 @@
+## [1.33.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.33.0...v1.33.1) (2026-09-25)
+
+
+### Bug Fixes
+
+* **auth:** decay the login rate-limiter's failure count over time
+* **beanconqueror:** validate blend component column headers on import
+* **stats:** apply the unmatched-beans limit and count in SQL, not client-side
+* **stats:** clarify the beanConqueror rated-group empty-state copy
+
 # [1.33.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.32.1...v1.33.0) (2026-09-25)
 
 
