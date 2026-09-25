@@ -1595,7 +1595,7 @@ div.compact-row {
 .quick-filter-switch {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-1);
+  gap: var(--space-2); /* same spacing as the column buttons above */
 }
 
 .quick-filter-switch button {
