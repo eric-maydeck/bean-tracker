@@ -57,6 +57,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'image_url', 'TEXT');
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');
+  ensureColumn(db, 'coffees', 'product_url', 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   dropColumnIfExists(db, 'subscriptions', 'purchased');

@@ -78,6 +78,21 @@ describe('parseCoffeeForm', () => {
     const result = parseCoffeeForm(formData({ roaster: 'Test', coffee_name: 'Sample' }));
     expect(result.decaf).toBe(false);
   });
+
+  it('accepts an http(s) product URL and treats blank as null', () => {
+    const base = { roaster: 'R', coffee_name: 'C' };
+    expect(parseCoffeeForm(formData({ ...base, product_url: ' https://shoebox.coffee/products/x ' })).product_url).toBe(
+      'https://shoebox.coffee/products/x'
+    );
+    expect(parseCoffeeForm(formData({ ...base, product_url: '' })).product_url).toBeNull();
+    expect(parseCoffeeForm(formData(base)).product_url).toBeNull();
+  });
+
+  it('rejects a non-http(s) or malformed product URL (it is rendered as a link)', () => {
+    const base = { roaster: 'R', coffee_name: 'C' };
+    expect(() => parseCoffeeForm(formData({ ...base, product_url: 'javascript:alert(1)' }))).toThrow(CoffeeFormError);
+    expect(() => parseCoffeeForm(formData({ ...base, product_url: 'not a url' }))).toThrow(CoffeeFormError);
+  });
 });
 
 describe('parseSlugField', () => {

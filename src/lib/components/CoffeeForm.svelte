@@ -107,6 +107,17 @@
   </datalist>
 
   <div class="form-grid">
+  <div class="form-field product-url-field">
+    <label for="product_url">Product page URL</label>
+    <input
+      id="product_url"
+      name="product_url"
+      type="url"
+      placeholder="https://roaster.example/products/…"
+      value={(coffee?.product_url ?? prefill?.product_url) ?? ''}
+    />
+  </div>
+
   <div class="form-field">
     <label for="roaster">Roaster</label>
     <input id="roaster" name="roaster" required value={(coffee?.roaster ?? prefill?.roaster) ?? ''} list="roaster-suggestions" autocomplete="off" />
@@ -220,3 +231,9 @@
     <button class="button button-secondary" type="button" onclick={cloneCurrent}>Clone</button>
   {/if}
 </form>
+
+<style>
+  .product-url-field {
+    grid-column: 1 / -1;
+  }
+</style>

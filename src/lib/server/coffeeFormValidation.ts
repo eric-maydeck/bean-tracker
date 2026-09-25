@@ -12,6 +12,7 @@ export interface ValidatedCoffeeInput {
   rest_days_low: number | null;
   rest_days_high: number | null;
   image_url: string | null;
+  product_url: string | null;
   decaf: boolean;
 }
 
@@ -47,6 +48,23 @@ function dateField(formData: FormData, key: string): string | null {
   return raw;
 }
 
+// Rendered as an <a href> on the detail page, so anything but http(s) —
+// javascript:, data: — is refused here rather than trusted at render time.
+function httpUrlField(formData: FormData, key: string): string | null {
+  const value = textField(formData, key);
+  if (value == null) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new CoffeeFormError('Product URL must be a valid web address');
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new CoffeeFormError('Product URL must start with http:// or https://');
+  }
+  return value;
+}
+
 export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
   const roaster = textField(formData, 'roaster');
   const coffeeName = textField(formData, 'coffee_name');
@@ -73,6 +91,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     rest_days_low: numberField(formData, 'rest_days_low'),
     rest_days_high: numberField(formData, 'rest_days_high'),
     image_url: textField(formData, 'image_url'),
+    product_url: httpUrlField(formData, 'product_url'),
     // Unchecked checkboxes aren't submitted at all — presence means checked.
     decaf: formData.get('decaf') != null
   };

@@ -25,6 +25,7 @@ const baseCoffee: CoffeeRow = {
   rest_days_low: 7,
   rest_days_high: 14,
   image_url: null,
+  product_url: null,
   slug: 'sey-ethiopia-guji',
   opened_date: null,
   drank: 0,
@@ -169,6 +170,7 @@ describe('clonePrefill', () => {
     ...baseCoffee,
     id: 42,
     image_url: 'https://example.com/label.png',
+    product_url: 'https://sey.coffee/products/guji',
     decaf: 1,
     frozen_start_date: '2026-02-01',
     frozen_end_date: '2026-03-01',
@@ -191,6 +193,7 @@ describe('clonePrefill', () => {
       rest_days_low: 7,
       rest_days_high: 14,
       image_url: 'https://example.com/label.png',
+      product_url: 'https://sey.coffee/products/guji',
       decaf: 1
     });
   });

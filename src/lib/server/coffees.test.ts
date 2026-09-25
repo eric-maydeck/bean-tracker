@@ -278,3 +278,14 @@ describe('regression: frozen dates written by coffees.ts stay parseable by urgen
     expect(computed!.urgency_rating === 'Done' || Number.isFinite(computed!.urgency_rating)).toBe(true);
   });
 });
+
+describe('product_url', () => {
+  it('is stored on create, defaults to null, and is overwritten on update', () => {
+    const { id, slug } = createCoffee(db, sampleInput({ product_url: 'https://a.coffee/products/x' }));
+    expect(getCoffeeById(db, id)?.product_url).toBe('https://a.coffee/products/x');
+    const { id: id2 } = createCoffee(db, sampleInput());
+    expect(getCoffeeById(db, id2)?.product_url).toBeNull();
+    updateCoffee(db, id, sampleInput({ product_url: 'https://b.coffee/products/y' }), slug);
+    expect(getCoffeeById(db, id)?.product_url).toBe('https://b.coffee/products/y');
+  });
+});

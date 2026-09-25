@@ -162,4 +162,10 @@ describe('commitCoffeeBatch', () => {
     // batch in one transaction.
     expect(getCoffeeById(db, good.id)?.status).toBe('backlog');
   });
+
+  it('saves product_url from a staged field edit', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { product_url: 'https://h.coffee/products/z' }) }]);
+    expect(getCoffeeById(db, id)?.product_url).toBe('https://h.coffee/products/z');
+  });
 });

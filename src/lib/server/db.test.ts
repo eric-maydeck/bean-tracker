@@ -152,6 +152,30 @@ describe('legacy data migration', () => {
       .get() as { decaf: number };
     expect(afterSecondApply.decaf).toBe(0);
   });
+
+  it('adds the product_url column to a pre-existing coffees table', () => {
+    const raw = new DatabaseSync(':memory:');
+    // processing is included (unlike the brief's original snippet) because
+    // applySchema's decaf backfill unconditionally references it — see the
+    // decaf backfill test above, which needs it for the same reason.
+    raw.exec(`
+      CREATE TABLE coffees (
+        id INTEGER PRIMARY KEY,
+        roaster TEXT NOT NULL,
+        coffee_name TEXT NOT NULL,
+        processing TEXT,
+        roast_date TEXT,
+        slug TEXT,
+        status TEXT NOT NULL DEFAULT 'backlog',
+        drank INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+    applySchema(raw);
+    const cols = raw.prepare(`PRAGMA table_info(coffees)`).all() as { name: string }[];
+    expect(cols.map((c) => c.name)).toContain('product_url');
+  });
 });
 
 describe('stats rate settings', () => {

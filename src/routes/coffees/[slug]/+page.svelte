@@ -290,7 +290,12 @@
               <span class="badge badge-neutral">Decaf</span>
             {/if}
           </h1>
-          <p class="text-muted">{data.coffee.roaster}</p>
+          <p class="text-muted">
+            {data.coffee.roaster}
+            {#if data.coffee.product_url}
+              · <a href={data.coffee.product_url} target="_blank" rel="noopener noreferrer">Product page ↗</a>
+            {/if}
+          </p>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ export interface CoffeeRow {
   rest_days_low: number | null;
   rest_days_high: number | null;
   image_url: string | null;
+  product_url: string | null;
   slug: string;
   opened_date: string | null;
   drank: number;
