@@ -18,6 +18,14 @@
   } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
   import type { CoffeeRow } from '$lib/types';
+  import FilterBar from '$lib/components/FilterBar.svelte';
+  import {
+    applyFilters,
+    loadFilterState,
+    serializeFilterState,
+    FILTER_STORAGE_KEY,
+    type Filter
+  } from '$lib/coffeeFilters';
 
   let { data, form } = $props();
 
@@ -28,8 +36,10 @@
   }
   let query = $state('');
   let filter = $state<'backlog' | 'open' | 'archive' | 'all'>('backlog');
-  let decafFilter = $state<'all' | 'yes' | 'no'>('all');
-  let frozenFilter = $state<'all' | 'yes' | 'no'>('all');
+  let filters = $state<Filter[]>([]);
+  // Saving waits until the saved state has been read, so the empty initial
+  // values can't overwrite it.
+  let filterStateLoaded = $state(false);
   let view = $state<'cards' | 'list' | 'compact'>('list');
 
   let editMode = $state(false);
@@ -195,14 +205,12 @@
       ) {
         filter = savedFilter;
       }
-      const savedDecafFilter = localStorage.getItem('bean-tracker-decaf-filter');
-      if (savedDecafFilter === 'all' || savedDecafFilter === 'yes' || savedDecafFilter === 'no') {
-        decafFilter = savedDecafFilter;
-      }
-      const savedFrozenFilter = localStorage.getItem('bean-tracker-frozen-filter');
-      if (savedFrozenFilter === 'all' || savedFrozenFilter === 'yes' || savedFrozenFilter === 'no') {
-        frozenFilter = savedFrozenFilter;
-      }
+      // Old Decaf/Frozen button-row keys, superseded by the "+ Filter" chips.
+      localStorage.removeItem('bean-tracker-decaf-filter');
+      localStorage.removeItem('bean-tracker-frozen-filter');
+      const saved = loadFilterState(localStorage.getItem(FILTER_STORAGE_KEY), Date.now());
+      filters = saved.filters;
+      query = saved.query;
       const savedSortKey = localStorage.getItem('bean-tracker-sort-key');
       if (savedSortKey && (SORT_KEYS as readonly string[]).includes(savedSortKey)) {
         sortKey = savedSortKey as SortKey;
@@ -213,6 +221,19 @@
       }
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
+    }
+    filterStateLoaded = true;
+  });
+
+  // Every save stamps lastUsed, so loading the page or changing filters or
+  // search restarts the 12h expiry (and overwrites an expired key).
+  $effect(() => {
+    if (!filterStateLoaded) return;
+    const raw = serializeFilterState({ filters, query }, Date.now());
+    try {
+      localStorage.setItem(FILTER_STORAGE_KEY, raw);
+    } catch {
+      // ignore — filtering still works for this visit, it just isn't remembered
     }
   });
 
@@ -234,29 +255,10 @@
     }
   }
 
-  function setDecafFilter(next: 'all' | 'yes' | 'no') {
-    decafFilter = next;
-    try {
-      localStorage.setItem('bean-tracker-decaf-filter', next);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
-  }
-
-  function setFrozenFilter(next: 'all' | 'yes' | 'no') {
-    frozenFilter = next;
-    try {
-      localStorage.setItem('bean-tracker-frozen-filter', next);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
-  }
-
   function resetView() {
     query = '';
+    filters = [];
     setFilter('backlog');
-    setDecafFilter('all');
-    setFrozenFilter('all');
     setSort(DEFAULT_SORT_KEY, DEFAULT_SORT_DIR);
   }
 
@@ -270,19 +272,15 @@
           : [...data.backlog, ...data.open, ...data.archive]
   );
 
-  function isFrozen(c: CoffeeRow): boolean {
-    return Boolean(c.frozen_start_date && !c.frozen_end_date);
-  }
-
   let coffees = $derived(
-    source
-      .filter((c) =>
+    applyFilters(
+      source.filter((c) =>
         `${c.roaster} ${c.coffee_name} ${c.origin ?? ''} ${c.roast_level ?? ''} ${c.decaf ? 'decaf' : 'caffeinated'}`
           .toLowerCase()
           .includes(query.toLowerCase())
-      )
-      .filter((c) => decafFilter === 'all' || (decafFilter === 'yes') === (c.decaf === 1))
-      .filter((c) => frozenFilter === 'all' || (frozenFilter === 'yes') === isFrozen(c))
+      ),
+      filters
+    )
   );
 
   type SortKey =
@@ -381,7 +379,7 @@
     });
   });
 
-  // Reflects whatever combination of filter tab/search/decaf/frozen is
+  // Reflects whatever combination of status tab/search/filters is
   // currently active — sorting doesn't change which rows are included, so
   // computing from `coffees` (pre-sort) rather than `sortedCoffees` would
   // give the same numbers, but deriving from the final displayed list
@@ -561,24 +559,9 @@
   </div>
 </div>
 
-<div class="filter-row">
-  <div class="tab-group">
-    <span class="text-muted filter-label">Decaf</span>
-    <button aria-pressed={decafFilter === 'all'} onclick={() => setDecafFilter('all')}>All</button>
-    <button aria-pressed={decafFilter === 'yes'} onclick={() => setDecafFilter('yes')}>Yes</button>
-    <button aria-pressed={decafFilter === 'no'} onclick={() => setDecafFilter('no')}>No</button>
-  </div>
-
-  <div class="tab-group">
-    <span class="text-muted filter-label">Frozen</span>
-    <button aria-pressed={frozenFilter === 'all'} onclick={() => setFrozenFilter('all')}>All</button>
-    <button aria-pressed={frozenFilter === 'yes'} onclick={() => setFrozenFilter('yes')}>Yes</button>
-    <button aria-pressed={frozenFilter === 'no'} onclick={() => setFrozenFilter('no')}>No</button>
-  </div>
-</div>
-
 <div class="search-row">
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={query} />
+  <FilterBar bind:filters coffees={source} />
   <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   {#if data.isAdmin}

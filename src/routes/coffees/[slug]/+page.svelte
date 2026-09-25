@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { goto, invalidateAll, beforeNavigate } from '$app/navigation';
+  import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
@@ -174,6 +174,20 @@
     }
   });
 
+  // Coming from the list, "Back to collection" is a real history back so
+  // SvelteKit restores the list's scroll position. Otherwise (direct link,
+  // reload, new tab) it stays a plain link to /.
+  let cameFromList = $state(false);
+  afterNavigate(({ from }) => {
+    cameFromList = from?.url.pathname === '/';
+  });
+
+  function backToCollection(e: MouseEvent) {
+    if (!cameFromList || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    history.back();
+  }
+
   $effect(() => {
     if (!browser) return;
     function handleBeforeUnload(e: BeforeUnloadEvent) {
@@ -190,7 +204,7 @@
   <title>Bean Tracker - {data.coffee.coffee_name}</title>
 </svelte:head>
 
-<a class="button button-secondary" href="/">&larr; Back to collection</a>
+<a class="button button-secondary" href="/" onclick={backToCollection}>&larr; Back to collection</a>
 
 <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
   Import into Bean Conqueror
