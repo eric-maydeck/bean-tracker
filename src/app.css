@@ -1565,19 +1565,16 @@ div.compact-row {
   gap: var(--space-2);
 }
 
-/* Desktop picker: column buttons in three equal columns, lining up with the
-   Quick filters' three segments below, instead of wrapping ragged. The
-   phone bottom sheet keeps the default wrapping .tab-group layout. */
-@media (min-width: 641px) {
-  .filter-columns {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-  }
+/* Picker column buttons in three equal columns, lining up with the Quick
+   filters' three segments below, instead of wrapping ragged. */
+.filter-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
 
-  .filter-columns button {
-    padding-left: var(--space-2);
-    padding-right: var(--space-2);
-  }
+.filter-columns button {
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
 .quick-filter + .quick-filter {
@@ -1616,6 +1613,23 @@ div.compact-row {
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   border-color: var(--color-accent);
+}
+
+/* Phones: slightly smaller labels with tighter side padding so the three
+   equal columns (column buttons and Quick filter segments alike) keep their
+   labels on one line down to ~360px wide; equal row heights if one wraps. */
+@media (max-width: 640px) {
+  .filter-columns,
+  .quick-filter-switch {
+    grid-auto-rows: 1fr;
+  }
+
+  .filter-columns button,
+  .quick-filter-switch button {
+    font-size: 0.8125rem;
+    padding-left: var(--space-1);
+    padding-right: var(--space-1);
+  }
 }
 
 @media (max-width: 640px) {
