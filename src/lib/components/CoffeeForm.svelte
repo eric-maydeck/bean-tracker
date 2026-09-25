@@ -4,6 +4,7 @@
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee } from '$lib/pendingChanges';
+  import { afterFailedFill } from '$lib/coffeeFormFill';
 
   let {
     coffee = null,
@@ -41,14 +42,40 @@
   let fillVariants = $state<FillVariant[]>([]);
   let selectedVariant = $state<number | null>(null);
 
+  // Plain let: only read on the next failure, never rendered.
+  let lastFilledUrl: string | null = null;
+  let unsavedUrl = $state<string | null>(null);
+  let previewSrc = $state<string | null>(null);
+  let previewFailed = $state(false);
+
   function setField(name: string, value: string | number) {
     const el = formEl.elements.namedItem(name);
     if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
   }
 
+  function fieldValue(name: string): string {
+    const el = formEl.elements.namedItem(name);
+    return el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el.value : '';
+  }
+
+  function showPreview(src: string) {
+    previewSrc = src.trim() || null;
+    previewFailed = false;
+  }
+
+  // "Original" is read at failure time, so it's the coffee's current value
+  // including staged edits (in Edit mode `coffee` is the staged merge).
+  function fillFailed(message: string, tried: string) {
+    fillError = message;
+    const { revertTo, offer } = afterFailedFill(tried, lastFilledUrl, (coffee?.product_url ?? prefill?.product_url) ?? '');
+    setField('product_url', revertTo);
+    unsavedUrl = offer;
+  }
+
   async function fillFromPage() {
-    const url = (formEl.elements.namedItem('product_url') as HTMLInputElement).value.trim();
+    const url = fieldValue('product_url').trim();
     fillError = null;
+    unsavedUrl = null;
     if (!url) {
       fillError = 'Paste the product page URL first';
       return;
@@ -63,15 +90,17 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.error || !data.fields) {
         // SvelteKit's own errors (e.g. 401) come back as { message }.
-        fillError = data.error ?? data.message ?? `Fill failed (HTTP ${res.status})`;
+        fillFailed(data.error ?? data.message ?? `Fill failed (HTTP ${res.status})`, url);
         return;
       }
       for (const [key, value] of Object.entries(data.fields)) setField(key, value as string | number);
+      lastFilledUrl = url;
+      if (data.fields.image_url) showPreview(data.fields.image_url);
       fillNotes = data.notes;
       fillVariants = data.variants;
       selectedVariant = data.selected;
     } catch {
-      fillError = "Couldn't reach the server";
+      fillFailed("Couldn't reach the server", url);
     } finally {
       filling = false;
     }
@@ -193,6 +222,20 @@
     </div>
     {#if fillError}
       <p class="badge badge-urgent" role="alert">{fillError}</p>
+      {#if unsavedUrl}
+        <p class="fill-note fill-offer">
+          Save <span class="fill-offer-url">{unsavedUrl}</span> as the product page anyway?
+          <button
+            class="button button-secondary"
+            type="button"
+            onclick={() => {
+              setField('product_url', unsavedUrl ?? '');
+              unsavedUrl = null;
+            }}>Yes</button
+          >
+          <button class="button button-secondary" type="button" onclick={() => (unsavedUrl = null)}>No</button>
+        </p>
+      {/if}
     {/if}
     {#if fillNotes.length}
       <p class="text-muted fill-note" aria-live="polite">{fillNotes.join(' · ')}</p>
@@ -290,8 +333,23 @@
     <label for="image_url">Image URL (label or roaster logo)</label>
     <div class="inline-row">
       <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
-      <button class="button button-secondary" type="button" onclick={() => setField('image_url', '')}>Discard image</button>
+      <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
+      <button
+        class="button button-secondary"
+        type="button"
+        onclick={() => {
+          setField('image_url', '');
+          previewSrc = null;
+        }}>Discard image</button
+      >
     </div>
+    {#if previewSrc}
+      {#if previewFailed}
+        <p class="text-muted fill-note">Couldn't load image</p>
+      {:else}
+        <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
+      {/if}
+    {/if}
   </div>
 
   <div class="form-field form-field-checkbox">
@@ -338,5 +396,21 @@
   }
   .fill-sizes {
     margin-top: var(--space-2);
+  }
+  .fill-offer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .fill-offer-url {
+    overflow-wrap: anywhere;
+  }
+  .image-preview {
+    display: block;
+    margin-top: var(--space-2);
+    max-width: 96px;
+    max-height: 96px;
+    object-fit: contain;
   }
 </style>
