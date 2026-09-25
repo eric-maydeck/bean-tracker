@@ -54,6 +54,13 @@ export function getDistinctFieldValues(db: DatabaseSync, column: DistinctValueCo
   return rows.map((r) => r.value);
 }
 
+export type FillHistoryRow = Pick<CoffeeRow, 'roaster' | 'product_url' | 'roast_level' | 'amount_g'>;
+
+// Everything the product-page fill learns from: every coffee, archived included.
+export function getFillHistory(db: DatabaseSync): FillHistoryRow[] {
+  return db.prepare(`SELECT roaster, product_url, roast_level, amount_g FROM coffees`).all() as FillHistoryRow[];
+}
+
 export function getCoffeeById(db: DatabaseSync, id: number): CoffeeRow | undefined {
   return db.prepare(`SELECT * FROM coffees WHERE id = ?`).get(id) as CoffeeRow | undefined;
 }

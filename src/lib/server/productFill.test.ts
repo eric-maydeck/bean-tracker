@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { ProductData } from './productParse';
-import { parseGrams, cleanName, findOrigin, findProcessing } from './productFill';
+import type { FillHistoryRow } from './coffees';
+import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -83,5 +84,82 @@ describe('findProcessing', () => {
 
   it('returns null when nothing matches', () => {
     expect(findProcessing(product({ title: 'Kenya Kiambu' }), [])).toBeNull();
+  });
+});
+
+const row = (roaster: string, o: Partial<FillHistoryRow> = {}): FillHistoryRow => ({
+  roaster, product_url: null, roast_level: null, amount_g: null, ...o
+});
+const LEVELS = ['Green', 'Hyperlight', 'Ultralight', 'Nordic Light', 'Nordic', 'Light', 'Light/Medium', 'Medium/Light', 'Medium', 'Medium/Dark', 'Dark'];
+
+describe('findRoaster', () => {
+  it('matches by the domain of an existing product_url, ignoring www (bare vs www)', () => {
+    const history = [row('Luminous', { product_url: 'https://www.luminous.coffee/products/a' })];
+    expect(findRoaster(product({ vendor: 'Something Else' }), 'https://luminous.coffee/products/b', history)).toBe('Luminous');
+  });
+
+  it('loosely matches vendor/site name to an existing roaster name', () => {
+    expect(findRoaster(product({ vendor: 'H+S Coffee Roasters' }), 'https://hscoffeeroasters.com/p', [row('H&S')])).toBe('H&S');
+    expect(findRoaster(product({ siteName: 'Big Sur Coffee' }), 'https://bigsurcafe.com/p', [row('Big Sur')])).toBe('Big Sur');
+  });
+
+  it('uses brand only to match an existing roaster; the raw fallback prefers site name over brand (Picky Chemist brand is the farm)', () => {
+    const p = product({ siteName: 'The Picky Chemist', brand: 'Gesha Village' });
+    expect(findRoaster(p, 'https://en.thepickychemist.com/x', [row('Gesha Village')])).toBe('Gesha Village');
+    expect(findRoaster(p, 'https://en.thepickychemist.com/x', [])).toBe('The Picky Chemist');
+  });
+
+  it('returns null with nothing to go on', () => {
+    expect(findRoaster(product(), 'https://x.com/p', [])).toBeNull();
+  });
+});
+
+describe('findRoastLevel', () => {
+  it('takes a whole-phrase level from tags / roast label / title, longest first', () => {
+    expect(findRoastLevel(product({ tags: ['Ultralight'] }), LEVELS, null, [])).toEqual({ level: 'Ultralight' });
+    expect(findRoastLevel(product({ title: 'Kenya Medium/Light' }), LEVELS, null, [])).toEqual({ level: 'Medium/Light' });
+    expect(findRoastLevel(product({ attributes: { roast: 'nordic light' } }), LEVELS, null, [])).toEqual({ level: 'Nordic Light' });
+  });
+
+  it('in the description only counts "<level> roast", so tasting notes do not match', () => {
+    const noisy = product({ description: 'Juicy, light body, green apple and dark chocolate' });
+    expect(findRoastLevel(noisy, LEVELS, null, [])).toBeNull();
+    expect(findRoastLevel(product({ description: 'A light roast for filter' }), LEVELS, null, [])).toEqual({ level: 'Light' });
+  });
+
+  it("falls back to the roaster's most common level, saying so", () => {
+    const history = [...Array(3)].map(() => row('Shoebox', { roast_level: 'Ultralight' })).concat(row('Shoebox', { roast_level: 'Light' }), row('Sey'));
+    expect(findRoastLevel(product(), LEVELS, 'Shoebox', history)).toEqual({
+      level: 'Ultralight',
+      note: 'roast level from 3 of 4 Shoebox coffees'
+    });
+    const all = [...Array(34)].map(() => row('Shoebox', { roast_level: 'Ultralight' }));
+    expect(findRoastLevel(product(), LEVELS, 'Shoebox', all)?.note).toBe('roast level from 34 Shoebox coffees');
+    expect(findRoastLevel(product(), LEVELS, 'Nobody', history)).toBeNull();
+  });
+
+  it("only trusts the page's level name if the user has used it for this roaster (or has no history)", () => {
+    const xliii = [...Array(6)].map(() => row('XLIII', { roast_level: 'Ultralight' }));
+    const page = product({ attributes: { 'roast profile': 'Extremely Light' } });
+    expect(findRoastLevel(page, LEVELS, 'XLIII', xliii)).toEqual({ level: 'Ultralight', note: 'roast level from 6 XLIII coffees' });
+    expect(findRoastLevel(page, LEVELS, 'Newcomer', xliii)).toEqual({ level: 'Light' });
+    const hs = [...Array(3)].map(() => row('H&S', { roast_level: 'Ultralight' })).concat(row('H&S', { roast_level: 'Hyperlight' }));
+    expect(findRoastLevel(product({ tags: ['Hyperlight'] }), LEVELS, 'H&S', hs)).toEqual({ level: 'Hyperlight' });
+  });
+});
+
+describe('pickVariant', () => {
+  const hs = [row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 125 })];
+  it('always applies a single variant', () => expect(pickVariant([1000], null, null, [])).toBe(0));
+  it('honours a preferred (?variant=) index', () => expect(pickVariant([125, 250, 1000], 2, null, [])).toBe(2));
+  it('applies the only variant in 50–250g', () => expect(pickVariant([125, 1000], null, null, [])).toBe(0));
+  it('picks the most-bought size among several in range', () => expect(pickVariant([125, 250, 1000], null, 'H&S', hs)).toBe(1));
+  it('selects none when several in range and no history, or a tie', () => {
+    expect(pickVariant([125, 250, 1000], null, 'H&S', [])).toBeNull();
+    expect(pickVariant([125, 250], null, 'H&S', [row('H&S', { amount_g: 125 }), row('H&S', { amount_g: 250 })])).toBeNull();
+  });
+  it('selects none when nothing is in range or sizes are unknown', () => {
+    expect(pickVariant([340, 2268], null, null, [])).toBeNull();
+    expect(pickVariant([null, null], null, null, [])).toBeNull();
   });
 });

@@ -1,5 +1,6 @@
 import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
+import type { FillHistoryRow } from './coffees';
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const titleCase = (s: string) => (s.length <= 3 ? s.toUpperCase() : s.replace(/\b\w/g, (c) => c.toUpperCase()));
@@ -75,6 +76,91 @@ export function findProcessing(p: ProductData, knownProcessing: string[]): strin
   for (const text of [p.tags.join(' , '), p.title ?? '', p.description]) {
     const hit = terms.find((t) => new RegExp(`\\b${escapeRe(t)}\\b`, 'i').test(text));
     if (hit) return canonical(hit, knownProcessing);
+  }
+  return null;
+}
+
+const hostOf = (u: string) => {
+  try {
+    return new URL(u).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+};
+
+export function normalizeRoaster(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\b(the|coffees?|roasters?|roastery|roasting|co|company)\b/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function findRoaster(p: ProductData, url: string, history: FillHistoryRow[]): string | null {
+  const host = hostOf(url);
+  const byDomain = host ? history.find((r) => r.product_url && hostOf(r.product_url) === host) : undefined;
+  if (byDomain) return byDomain.roaster;
+  const names = [...new Set(history.map((r) => r.roaster))];
+  for (const candidate of [p.vendor, p.siteName, p.brand]) {
+    const n = candidate ? normalizeRoaster(candidate) : '';
+    const hit = n ? names.find((r) => normalizeRoaster(r) === n) : undefined;
+    if (hit) return hit;
+  }
+  return p.vendor?.trim() || p.siteName?.trim() || p.brand?.trim() || null;
+}
+
+// Whole phrase, and "Light" must not match inside "Medium/Light".
+const phrase = (level: string) => new RegExp(`(?<![\\w/])${escapeRe(level)}(?![\\w/])`, 'i');
+
+export function findRoastLevel(
+  p: ProductData,
+  levels: string[],
+  roaster: string | null,
+  history: FillHistoryRow[]
+): { level: string; note?: string } | null {
+  const counts = new Map<string, number>();
+  let total = 0;
+  for (const r of history) {
+    if (!roaster || r.roaster !== roaster || !r.roast_level) continue;
+    counts.set(r.roast_level, (counts.get(r.roast_level) ?? 0) + 1);
+    total++;
+  }
+  // The page's own level name only wins when there's no history for this
+  // roaster, or the user has used that level for them before — roasters'
+  // words don't map onto the user's scale (XLIII "Extremely Light" is the
+  // user's Ultralight/Hyperlight, not Light).
+  const trusted = (l: string) => total === 0 || counts.has(l);
+
+  const byLength = [...levels].sort((a, b) => b.length - a.length);
+  const roastLabel = p.attributes['roast level'] ?? p.attributes['roast'] ?? p.attributes['roast profile'] ?? '';
+  for (const text of [p.tags.join(' , '), roastLabel, p.title ?? '']) {
+    const hit = byLength.find((l) => phrase(l).test(text));
+    if (hit && trusted(hit)) return { level: hit };
+  }
+  // Descriptions are tasting notes ("light body", "green apple"), so only
+  // an explicit "<level> roast" counts there.
+  const described = byLength.find((l) => new RegExp(`${phrase(l).source}\\s+roast`, 'i').test(p.description));
+  if (described && trusted(described)) return { level: described };
+
+  const [level, count] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [];
+  if (!level || !count) return null;
+  const of = count === total ? `${count}` : `${count} of ${total}`;
+  return { level, note: `roast level from ${of} ${roaster} coffees` };
+}
+
+export function pickVariant(
+  grams: (number | null)[],
+  preferred: number | null,
+  roaster: string | null,
+  history: FillHistoryRow[]
+): number | null {
+  if (preferred != null) return preferred;
+  if (grams.length === 1) return 0;
+  const inRange = grams.flatMap((g, i) => (g != null && g >= 50 && g <= 250 ? [{ g, i }] : []));
+  if (inRange.length === 1) return inRange[0].i;
+  if (inRange.length > 1 && roaster) {
+    const bought = (g: number) => history.filter((r) => r.roaster === roaster && r.amount_g === g).length;
+    const ranked = inRange.map(({ g, i }) => ({ i, n: bought(g) })).sort((a, b) => b.n - a.n);
+    if (ranked[0].n > 0 && ranked[0].n !== ranked[1].n) return ranked[0].i;
   }
   return null;
 }
