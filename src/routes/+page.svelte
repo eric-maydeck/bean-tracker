@@ -210,9 +210,6 @@
       ) {
         filter = savedFilter;
       }
-      // Old Decaf/Frozen button-row keys, superseded by the "+ Filter" chips.
-      localStorage.removeItem('bean-tracker-decaf-filter');
-      localStorage.removeItem('bean-tracker-frozen-filter');
       const saved = loadFilterState(localStorage.getItem(FILTER_STORAGE_KEY), Date.now());
       filters = saved.filters;
       query = saved.query;
