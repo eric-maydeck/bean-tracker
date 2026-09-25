@@ -367,6 +367,14 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
+/* Phones: the search box gets its own full-width line, with "+ Filter" and
+   the toolbar buttons wrapping onto the line below it. */
+@media (max-width: 640px) {
+  .search-row .search-input {
+    flex-basis: 100%;
+  }
+}
+
 .search-row .button {
   margin: 0;
   flex-shrink: 0;

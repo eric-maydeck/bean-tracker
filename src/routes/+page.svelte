@@ -577,8 +577,8 @@
 <div class="search-row">
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={query} />
   <FilterBar bind:filters coffees={source} />
-  <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
+  <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
   {#if data.isAdmin}
     {#if editMode}
       <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
