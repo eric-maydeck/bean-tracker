@@ -33,6 +33,14 @@
   } = $props();
 
   let formEl: HTMLFormElement;
+  let slugInput: HTMLInputElement;
+
+  // Locked by default so a rename never happens by accident — the slug is
+  // the coffee's URL, and every old slug it leaves behind becomes a
+  // permanent redirect. Captured once (not reactive to `coffee` changing
+  // later), matching "the value it had when the form rendered".
+  let slugLocked = $state(true);
+  const initialSlug = coffee?.slug ?? '';
 
   type FillVariant = { label: string; grams: number | null; costUsd: number | null; originalPrice: string | null };
 
@@ -363,7 +371,28 @@
     <input type="hidden" name="id" value={coffee.id} />
     <div class="form-field">
       <label for="slug">URL slug</label>
-      <input id="slug" name="slug" required value={coffee.slug} />
+      <div class="inline-row">
+        <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
+        {#if slugLocked}
+          <button
+            class="button button-secondary"
+            type="button"
+            onclick={() => {
+              slugLocked = false;
+              slugInput.focus();
+            }}>Edit</button
+          >
+        {:else}
+          <button
+            class="button button-secondary"
+            type="button"
+            onclick={() => {
+              setField('slug', initialSlug);
+              slugLocked = true;
+            }}>Cancel</button
+          >
+        {/if}
+      </div>
     </div>
   {/if}
   </div>
