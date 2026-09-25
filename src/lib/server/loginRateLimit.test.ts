@@ -51,6 +51,23 @@ describe('isLockedOut / recordFailedAttempt / recordSuccessfulAttempt', () => {
     vi.advanceTimersByTime(15 * 60 * 1000 + 1);
     expect(isLockedOut('1.2.3.4')).toBe(false);
   });
+
+  it('restarts the failure count once the failure window elapses without reaching lockout', () => {
+    for (let i = 0; i < 3; i++) recordFailedAttempt('1.2.3.4');
+    vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+    recordFailedAttempt('1.2.3.4'); // count restarts at 1, not 4
+    for (let i = 0; i < 3; i++) recordFailedAttempt('1.2.3.4'); // 4 total since restart
+    expect(isLockedOut('1.2.3.4')).toBe(false);
+    recordFailedAttempt('1.2.3.4'); // 5th since restart
+    expect(isLockedOut('1.2.3.4')).toBe(true);
+  });
+
+  it('does not immediately re-lock on one failure after an expired lockout, without a prior isLockedOut check', () => {
+    for (let i = 0; i < 5; i++) recordFailedAttempt('1.2.3.4');
+    vi.advanceTimersByTime(15 * 60 * 1000 + 1);
+    recordFailedAttempt('1.2.3.4');
+    expect(isLockedOut('1.2.3.4')).toBe(false);
+  });
 });
 
 describe('attemptLogin', () => {

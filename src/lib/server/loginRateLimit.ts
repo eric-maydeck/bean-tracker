@@ -15,10 +15,15 @@ export function resolveClientIp(request: Request, getClientAddress: () => string
 
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 15 * 60 * 1000;
+// A burst of failures only counts toward a lockout if they land within this
+// window of the first one; an isolated failure long after a prior burst
+// shouldn't carry that burst's count into a fresh one.
+const FAILURE_WINDOW_MS = 15 * 60 * 1000;
 
 interface AttemptRecord {
   failures: number;
   lockedUntil: number | null;
+  firstFailureAt: number;
 }
 
 const attempts = new Map<string, AttemptRecord>();
@@ -33,13 +38,30 @@ export function isLockedOut(ip: string): boolean {
   return true;
 }
 
-export function recordFailedAttempt(ip: string): void {
-  const record = attempts.get(ip) ?? { failures: 0, lockedUntil: null };
-  record.failures += 1;
-  if (record.failures >= MAX_ATTEMPTS) {
-    record.lockedUntil = Date.now() + LOCKOUT_MS;
+// ponytail: O(n) sweep over every tracked IP on each failed attempt. Fine
+// at this app's scale (a single admin login endpoint); switch to a
+// scheduled sweep or an LRU cap if this map's cardinality ever grows large.
+function pruneExpired(now: number): void {
+  for (const [ip, record] of attempts) {
+    const lockoutExpired = record.lockedUntil !== null && now >= record.lockedUntil;
+    const windowElapsed = record.lockedUntil === null && now - record.firstFailureAt > FAILURE_WINDOW_MS;
+    if (lockoutExpired || windowElapsed) attempts.delete(ip);
   }
-  attempts.set(ip, record);
+}
+
+export function recordFailedAttempt(ip: string): void {
+  const now = Date.now();
+  pruneExpired(now);
+  const record = attempts.get(ip);
+  if (record) {
+    record.failures += 1;
+    if (record.failures >= MAX_ATTEMPTS) {
+      record.lockedUntil = now + LOCKOUT_MS;
+    }
+    attempts.set(ip, record);
+  } else {
+    attempts.set(ip, { failures: 1, lockedUntil: null, firstFailureAt: now });
+  }
 }
 
 export function recordSuccessfulAttempt(ip: string): void {
