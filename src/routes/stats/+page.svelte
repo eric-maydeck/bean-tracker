@@ -804,7 +804,7 @@
         </div>
       </div>
       {#if bcFavoriteGroups.length === 0}
-        <p class="text-muted">No rated brews yet.</p>
+        <p class="text-muted">No groups with 3+ rated brews yet.</p>
       {:else}
         <p class="text-muted">Showing top {bcVisibleFavoriteGroups.length} of {bcFavoriteGroups.length}.</p>
         <Chart
@@ -848,7 +848,7 @@
         <div>
           <h3>By Method</h3>
           {#if bcVisibleMethodGroups.length === 0}
-            <p class="text-muted">No rated brews yet.</p>
+            <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
             <Chart
               type="bar"
@@ -862,7 +862,7 @@
         <div>
           <h3>By Grinder</h3>
           {#if bcVisibleGrinderGroups.length === 0}
-            <p class="text-muted">No rated brews yet.</p>
+            <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
             <Chart
               type="bar"
