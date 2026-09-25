@@ -196,6 +196,25 @@ describe('parseBeanConquerorWorkbook header validation', () => {
     expect(() => parseBeanConquerorWorkbook(wb2)).toThrow(/column 5 of the Grinders sheet to be 'Mill Id'/);
   });
 
+  it('throws a clear error when a blend component header is renamed', async () => {
+    const headers = [...BEANS_HEADERS];
+    headers[29] = '1. Certification'; // column 30, "1. Bean certification"
+    const row = [
+      ...beanRow,
+      'Brazil', null, null, null, null, null, null, null, null, null,
+      null, null, null, null, null, null, null, null, null, null
+    ];
+    const wb = await buildWorkbook({
+      Beans: { headers, rows: [row] },
+      Brews: { headers: [], rows: [] },
+      Methods: { headers: [], rows: [] },
+      Grinders: { headers: [], rows: [] }
+    });
+    expect(() => parseBeanConquerorWorkbook(wb)).toThrow(
+      /expected column 30 of the Beans sheet to be '1. Bean certification', found '1. Certification'/
+    );
+  });
+
   it('accepts headers that differ only in capitalization or surrounding whitespace', async () => {
     const headers = BEANS_HEADERS.map((h, i) => (i === 18 ? '  bean id  ' : h));
     const wb = await buildWorkbook({

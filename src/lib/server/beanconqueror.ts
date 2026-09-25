@@ -119,6 +119,30 @@ const BEANS_EXPECTED_HEADERS = [
   'Bean Id', 'Archived'
 ];
 
+// Header labels for one blend component group (columns 21-30, 31-40, ...).
+// Repeated as "N. <label>" for each component 1..maxComponents present in
+// the sheet — see parseBeans's maxComponents computation below.
+const BEAN_ORIGIN_GROUP_HEADERS = [
+  'Country', 'Region', 'Farm', 'Farmer', 'Elevation', 'Variety',
+  'Processing', 'Harvested', 'Percentage', 'Bean certification'
+];
+
+function maxBeanComponents(worksheet: ExcelJS.Worksheet): number {
+  return Math.max(0, Math.floor((worksheet.columnCount - BEAN_FIXED_COLUMN_COUNT) / BEAN_ORIGIN_GROUP_SIZE));
+}
+
+// The Beans sheet's expected headers, extended with one "N. *" group per
+// blend component actually present in this worksheet — so a renamed or
+// reordered blend column aborts the import the same way a fixed-column
+// mismatch does, instead of silently writing garbage into beanOrigins.
+function beansExpectedHeaders(worksheet: ExcelJS.Worksheet): string[] {
+  const expected = [...BEANS_EXPECTED_HEADERS];
+  for (let n = 1; n <= maxBeanComponents(worksheet); n++) {
+    for (const label of BEAN_ORIGIN_GROUP_HEADERS) expected.push(`${n}. ${label}`);
+  }
+  return expected;
+}
+
 const BREWS_EXPECTED_HEADERS = [
   'Grind Setting', 'Ground Coffee (gr)', 'Brew Temperature', 'Preparation method',
   'Bean Type', 'Grinder', 'Grind Speed (rpm)', 'Grind Time', 'Profile',
@@ -177,7 +201,7 @@ function parseBeans(worksheet: ExcelJS.Worksheet | undefined): { beans: ParsedBe
   const beanOrigins: ParsedBeanOrigin[] = [];
   if (!worksheet) return { beans, beanOrigins };
 
-  const maxComponents = Math.max(0, Math.floor((worksheet.columnCount - BEAN_FIXED_COLUMN_COUNT) / BEAN_ORIGIN_GROUP_SIZE));
+  const maxComponents = maxBeanComponents(worksheet);
 
   worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
     if (rowNumber === 1) return;
@@ -330,7 +354,8 @@ export function parseBeanConquerorWorkbook(workbook: ExcelJS.Workbook): ParsedBe
   // Validate every sheet's headers before parsing a single data row, so a
   // changed export format aborts the whole import rather than half-writing
   // shifted values.
-  validateHeaders(workbook.getWorksheet('Beans'), 'Beans', BEANS_EXPECTED_HEADERS);
+  const beansWorksheet = workbook.getWorksheet('Beans');
+  validateHeaders(beansWorksheet, 'Beans', beansWorksheet ? beansExpectedHeaders(beansWorksheet) : BEANS_EXPECTED_HEADERS);
   validateHeaders(workbook.getWorksheet('Brews'), 'Brews', BREWS_EXPECTED_HEADERS);
   validateHeaders(workbook.getWorksheet('Methods'), 'Methods', METHODS_EXPECTED_HEADERS);
   validateHeaders(workbook.getWorksheet('Grinders'), 'Grinders', GRINDERS_EXPECTED_HEADERS);
