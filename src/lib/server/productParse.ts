@@ -107,7 +107,7 @@ export function parseShopifyProduct(json: unknown, meta: { name?: string; curren
         label: !v.title || v.title === 'Default Title' ? '' : v.title,
         price: Number(v.price)
       }))
-      .filter((v) => Number.isFinite(v.price))
+      .filter((v) => v.price > 0)
   };
 }
 

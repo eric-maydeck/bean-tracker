@@ -166,10 +166,21 @@ export function shopifyJsonUrl(url: URL): string | null {
   return `${url.origin}${url.pathname.replace(/(\.json)?\/?$/, '')}.json`;
 }
 
+// A malformed meta.json (wrong type, or not even an object) must not pass a
+// non-string through to parseShopifyProduct, which would throw a non-FillError.
+export function sanitizeShopifyMeta(meta: unknown): { name?: string; currency?: string } | null {
+  if (!meta || typeof meta !== 'object') return null;
+  const m = meta as Record<string, unknown>;
+  return {
+    name: typeof m.name === 'string' ? m.name : undefined,
+    currency: typeof m.currency === 'string' ? m.currency : undefined
+  };
+}
+
 async function fetchShopifyMeta(finalUrl: string): Promise<{ name?: string; currency?: string } | null> {
   try {
     const res = await safeFetch(new URL('/meta.json', finalUrl).href);
-    return res.status === 200 ? JSON.parse(res.body) : null;
+    return res.status === 200 ? sanitizeShopifyMeta(JSON.parse(res.body)) : null;
   } catch {
     return null;
   }

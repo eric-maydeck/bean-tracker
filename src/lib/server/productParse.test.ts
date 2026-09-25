@@ -59,6 +59,23 @@ describe('parseHtmlProduct', () => {
   });
 });
 
+describe('parseShopifyProduct variant filtering', () => {
+  it('drops variants whose price is not greater than 0', () => {
+    const json = {
+      product: {
+        title: 'Test Coffee',
+        variants: [
+          { id: 1, title: 'A', price: '12.00' },
+          { id: 2, title: 'B', price: '0.00' },
+          { id: 3, title: 'C', price: '' }
+        ]
+      }
+    };
+    const p = parseShopifyProduct(json, null);
+    expect(p.variants).toEqual([{ id: 1, label: 'A', price: 12 }]);
+  });
+});
+
 describe('fixtures', () => {
   it('shoebox (Shopify, labeled lines in body_html, USD via meta.json)', () => {
     const p = shopify('shoebox', 'shoebox.meta.json');
@@ -123,6 +140,7 @@ describe('fixtures', () => {
     expect(p.title).toMatch(/Gesha Village/i); // from fixture — confirmed
     expect(p.currency).toBe('EUR'); // from fixture — confirmed
     expect(p.brand).toBeTruthy(); // non-empty (the farm)
+    expect(p.siteName).toBe('The Picky Chemist'); // from fixture — confirmed (og:site_name)
     expect(p.siteName).not.toBe(p.brand); // brand is the farm, not the roaster
     expect(p.image).toMatch(/^https:\/\//);
     expect(p.variants[0].price).toBeGreaterThan(0);

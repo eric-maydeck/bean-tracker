@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBlockedAddress, checkUrl, safeFetch, FillError, shopifyJsonUrl } from './productFetch';
+import { isBlockedAddress, checkUrl, safeFetch, FillError, shopifyJsonUrl, sanitizeShopifyMeta } from './productFetch';
 
 describe('isBlockedAddress', () => {
   it.each([
@@ -42,6 +42,15 @@ describe('checkUrl', () => {
 describe('safeFetch', () => {
   it('refuses a hostname that resolves to loopback (checked in the socket lookup, no network needed)', async () => {
     await expect(safeFetch('http://localhost:1/')).rejects.toBeInstanceOf(FillError);
+  });
+});
+
+describe('sanitizeShopifyMeta', () => {
+  it('keeps name/currency only when they are strings, and null for a non-object', () => {
+    expect(sanitizeShopifyMeta({ name: 'Shoebox', currency: 'USD' })).toEqual({ name: 'Shoebox', currency: 'USD' });
+    expect(sanitizeShopifyMeta({ name: 123, currency: null })).toEqual({ name: undefined, currency: undefined });
+    expect(sanitizeShopifyMeta('not an object')).toBeNull();
+    expect(sanitizeShopifyMeta(null)).toBeNull();
   });
 });
 
