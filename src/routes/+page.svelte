@@ -173,7 +173,12 @@
   beforeNavigate(({ cancel }) => {
     if (hasPending(pending) && !confirm('You have unsaved changes. Leave without saving?')) {
       cancel();
+      return;
     }
+    // Leaving the Coffees page counts as "using" it, so the 12h expiry
+    // clock restarts here too -- otherwise sitting on the list >12h, then
+    // opening a coffee and coming back, would find an already-expired key.
+    stampLastUsed();
   });
 
   $effect(() => {
@@ -225,16 +230,29 @@
     filterStateLoaded = true;
   });
 
-  // Every save stamps lastUsed, so loading the page or changing filters or
-  // search restarts the 12h expiry (and overwrites an expired key).
-  $effect(() => {
+  // Every save stamps lastUsed, so loading the page, changing filters or
+  // search, or leaving the page (see beforeNavigate/pagehide below) all
+  // restart the 12h expiry (and overwrite an expired key).
+  function stampLastUsed() {
     if (!filterStateLoaded) return;
-    const raw = serializeFilterState({ filters, query }, Date.now());
     try {
-      localStorage.setItem(FILTER_STORAGE_KEY, raw);
+      localStorage.setItem(FILTER_STORAGE_KEY, serializeFilterState({ filters, query }, Date.now()));
     } catch {
       // ignore — filtering still works for this visit, it just isn't remembered
     }
+  }
+
+  $effect(() => {
+    stampLastUsed();
+  });
+
+  // beforeNavigate only covers SvelteKit client-side navigation; pagehide
+  // also catches a full unload (reload, close tab, external link) so time
+  // spent on the page before that still counts toward the 12h expiry.
+  $effect(() => {
+    if (!browser) return;
+    window.addEventListener('pagehide', stampLastUsed);
+    return () => window.removeEventListener('pagehide', stampLastUsed);
   });
 
   function setView(next: 'cards' | 'list' | 'compact') {
