@@ -214,7 +214,7 @@
   {#if !key}
     {#each GROUPS as [title, kinds] (title)}
       <p class="eyebrow">{title}</p>
-      <div class="tab-group">
+      <div class="tab-group filter-columns">
         {#each COLUMNS.filter((c) => kinds.includes(c.kind)) as c (c.key)}
           <button type="button" aria-pressed={filters.some((f) => f.column === c.key)} onclick={() => pick(c.key)}>
             {editorLabel(c)}
