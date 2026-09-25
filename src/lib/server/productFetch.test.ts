@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isBlockedAddress, checkUrl, safeFetch, FillError } from './productFetch';
+import { isBlockedAddress, checkUrl, safeFetch, FillError, shopifyJsonUrl } from './productFetch';
 
 describe('isBlockedAddress', () => {
   it.each([
@@ -42,5 +42,24 @@ describe('checkUrl', () => {
 describe('safeFetch', () => {
   it('refuses a hostname that resolves to loopback (checked in the socket lookup, no network needed)', async () => {
     await expect(safeFetch('http://localhost:1/')).rejects.toBeInstanceOf(FillError);
+  });
+});
+
+describe('shopifyJsonUrl', () => {
+  it('builds <path>.json from the path only, dropping query/hash and trailing slash', () => {
+    expect(shopifyJsonUrl(new URL('https://h.coffee/products/burundi-mikuba-8?variant=41634028912698#x'))).toBe(
+      'https://h.coffee/products/burundi-mikuba-8.json'
+    );
+    expect(shopifyJsonUrl(new URL('https://h.coffee/collections/coffee/products/abc/'))).toBe(
+      'https://h.coffee/collections/coffee/products/abc.json'
+    );
+    expect(shopifyJsonUrl(new URL('https://h.coffee/en-us/products/abc.json'))).toBe('https://h.coffee/en-us/products/abc.json');
+  });
+
+  it('returns null for non-Shopify product paths and listing pages', () => {
+    expect(shopifyJsonUrl(new URL('https://xliiicoffee.com/en/product/kinini/'))).toBeNull();
+    expect(shopifyJsonUrl(new URL('https://h.coffee/collections/all'))).toBeNull();
+    expect(shopifyJsonUrl(new URL('https://h.coffee/products'))).toBeNull();
+    expect(shopifyJsonUrl(new URL('https://h.coffee/'))).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import { BlockList, isIP } from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
+import { parseShopifyProduct, parseHtmlProduct, type ProductData } from './productParse';
 
 // Every message is shown verbatim under the Fill button.
 export class FillError extends Error {}
@@ -158,4 +159,40 @@ export async function safeFetch(rawUrl: string, signal: AbortSignal = AbortSigna
     return { status: res.status, body: res.body, finalUrl: url.href };
   }
   throw new FillError('That page redirected too many times');
+}
+
+export function shopifyJsonUrl(url: URL): string | null {
+  if (!/\/products\/[^/]+\/?$/.test(url.pathname)) return null;
+  return `${url.origin}${url.pathname.replace(/(\.json)?\/?$/, '')}.json`;
+}
+
+async function fetchShopifyMeta(finalUrl: string): Promise<{ name?: string; currency?: string } | null> {
+  try {
+    const res = await safeFetch(new URL('/meta.json', finalUrl).href);
+    return res.status === 200 ? JSON.parse(res.body) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchProductData(rawUrl: string): Promise<ProductData> {
+  const url = checkUrl(rawUrl);
+  const jsonUrl = shopifyJsonUrl(url);
+  if (jsonUrl) {
+    try {
+      const res = await safeFetch(jsonUrl);
+      if (res.status === 200) {
+        return parseShopifyProduct(JSON.parse(res.body), await fetchShopifyMeta(res.finalUrl));
+      }
+    } catch (err) {
+      // A refused address stays refused; anything else (not JSON, not
+      // Shopify after all) falls through to reading the HTML page.
+      if (err instanceof FillError) throw err;
+    }
+  }
+  const res = await safeFetch(url.href);
+  if (res.status !== 200) throw new FillError(`The page answered with HTTP ${res.status}`);
+  const product = parseHtmlProduct(res.body);
+  if (!product) throw new FillError('No product data found on that page. Is it a single product page?');
+  return product;
 }
