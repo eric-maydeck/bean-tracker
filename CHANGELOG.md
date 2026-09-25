@@ -1,3 +1,27 @@
+# [1.32.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.31.0...v1.32.0) (2026-09-25)
+
+
+### Bug Fixes
+
+* **filters:** drop saved filters whose mode does not fit their column
+* **filters:** format chip values instead of showing the raw typed text
+* **filters:** give filter-value rows a 44px tap target on mobile
+* **filters:** keep chip filter editor within the viewport
+* **filters:** keep the chip's visible text as its accessible name
+* **filters:** label Weight column as "Weight (g)" in the filter editor
+* **filters:** manage focus on filter editor open/close
+* **filters:** return focus to "+ Filter" when Clear ends that flow
+
+
+### Features
+
+* **filters:** add coffee filter model and applyFilters
+* **filters:** add FilterBar and FilterEditor components
+* **filters:** add value counts, apply gating, and chip text
+* **filters:** back to collection restores list position via history
+* **filters:** persist filters and search with version and 12h expiry
+* **filters:** replace Decaf/Frozen rows with filter chips on Coffees page
+
 # [1.31.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.30.0...v1.31.0) (2026-09-24)
 
 
