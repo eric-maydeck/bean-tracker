@@ -591,24 +591,36 @@ function findLikelyMatch(
   return best;
 }
 
-export function getUnmatchedBeanConquerorBeans(db: DatabaseSync): UnmatchedBean[] {
+// Shared by getUnmatchedBeanConquerorBeans and countUnmatchedBeanConquerorBeans
+// so the two stay in sync on what counts as "unmatched".
+const UNMATCHED_BEAN_WHERE = `
+  WHERE b.dismissed_at IS NULL
+    AND NOT EXISTS (
+      SELECT 1 FROM coffees c
+      WHERE c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date
+    )
+`;
+
+export function countUnmatchedBeanConquerorBeans(db: DatabaseSync): number {
+  const row = db.prepare(`SELECT COUNT(*) c FROM beanconqueror_beans b ${UNMATCHED_BEAN_WHERE}`).get() as { c: number };
+  return row.c;
+}
+
+export function getUnmatchedBeanConquerorBeans(db: DatabaseSync, limit: number): UnmatchedBean[] {
   const rows = db
     .prepare(
       `SELECT b.* FROM beanconqueror_beans b
-       WHERE b.dismissed_at IS NULL
-         AND NOT EXISTS (
-           SELECT 1 FROM coffees c
-           WHERE c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date
-         )
+       ${UNMATCHED_BEAN_WHERE}
        -- Ordered by the bean's own Bean Conqueror creation timestamp, not
        -- by imported_at: every row from a single import shares one
        -- imported_at value (set once per importBeanConquerorData call), so
        -- ordering by it ties on every row and SQLite falls back to
        -- arbitrary rowid order. bc_created_at actually differs per bean,
        -- giving a genuine newest-bean-first list.
-       ORDER BY b.bc_created_at DESC`
+       ORDER BY b.bc_created_at DESC
+       LIMIT ?`
     )
-    .all() as Array<{
+    .all(limit) as Array<{
     id: string;
     name: string;
     roaster: string | null;

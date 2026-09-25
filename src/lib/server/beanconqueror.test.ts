@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import ExcelJS from 'exceljs';
-import { parseBeanConquerorWorkbook, importBeanConquerorData, getUnmatchedBeanConquerorBeans, dismissBeanConquerorBean } from './beanconqueror';
+import {
+  parseBeanConquerorWorkbook,
+  importBeanConquerorData,
+  getUnmatchedBeanConquerorBeans,
+  countUnmatchedBeanConquerorBeans,
+  dismissBeanConquerorBean
+} from './beanconqueror';
 import { createCoffee } from './coffees';
 import { createDb } from './db';
 
@@ -312,7 +318,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
       grinders: [],
       brews: []
     });
-    expect(getUnmatchedBeanConquerorBeans(db)).toHaveLength(0);
+    expect(getUnmatchedBeanConquerorBeans(db, 20)).toHaveLength(0);
   });
 
   it('includes a bean with no matching coffee, with its first origin component attached', () => {
@@ -324,7 +330,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
       grinders: [],
       brews: []
     });
-    const unmatched = getUnmatchedBeanConquerorBeans(db);
+    const unmatched = getUnmatchedBeanConquerorBeans(db, 20);
     expect(unmatched).toHaveLength(1);
     expect(unmatched[0]).toMatchObject({ id: 'b1', name: 'New Bean', origin: 'Ethiopia', processing: 'Washed' });
   });
@@ -345,7 +351,25 @@ describe('getUnmatchedBeanConquerorBeans', () => {
       grinders: [],
       brews: []
     });
-    expect(getUnmatchedBeanConquerorBeans(db).map((b) => b.name)).toEqual(['Newest', 'Middle', 'Oldest']);
+    expect(getUnmatchedBeanConquerorBeans(db, 20).map((b) => b.name)).toEqual(['Newest', 'Middle', 'Oldest']);
+  });
+
+  it('caps results at the given limit while countUnmatchedBeanConquerorBeans reports the true total', () => {
+    const db = createDb(':memory:');
+    const base = { roaster: null, roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false };
+    importBeanConquerorData(db, {
+      beans: [
+        { ...base, id: 'b1', name: 'Bean 1' },
+        { ...base, id: 'b2', name: 'Bean 2' },
+        { ...base, id: 'b3', name: 'Bean 3' }
+      ],
+      beanOrigins: [],
+      methods: [],
+      grinders: [],
+      brews: []
+    });
+    expect(getUnmatchedBeanConquerorBeans(db, 2)).toHaveLength(2);
+    expect(countUnmatchedBeanConquerorBeans(db)).toBe(3);
   });
 
   it('excludes a dismissed bean even though it has no matching coffee', () => {
@@ -358,7 +382,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
       brews: []
     });
     dismissBeanConquerorBean(db, 'b1');
-    expect(getUnmatchedBeanConquerorBeans(db)).toHaveLength(0);
+    expect(getUnmatchedBeanConquerorBeans(db, 20)).toHaveLength(0);
   });
 
   // Real examples pulled from this user's own production data (2026-09-23),
@@ -422,7 +446,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         roaster: 'H&S',
         roastDate: '2026-03-22'
       });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Yulisa Carhuallocllo: Corazon de Chirinos' });
     });
 
@@ -444,7 +468,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         image_url: null
       });
       importBean(db, { id: 'b1', name: 'Kebena Natural Decaf', roaster: 'Scenery', roastDate: '2026-06-11' });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Ethiopia - Kebena Natural Decaf' });
     });
 
@@ -471,7 +495,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         roaster: 'Ordinary',
         roastDate: '2026-07-11'
       });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Burundi Gakenke Washing Station' });
     });
 
@@ -493,7 +517,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         image_url: null
       });
       importBean(db, { id: 'b1', name: '023 - Shibru Dube', roaster: 'Aviary', roastDate: '2026-02-09' });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toMatchObject({ coffeeName: '023 - Shibru Dube' });
     });
 
@@ -515,7 +539,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         image_url: null
       });
       importBean(db, { id: 'b1', name: 'Rwanda Gitega 861', roaster: 'H&S', roastDate: null });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toMatchObject({ coffeeName: 'Rwanda Gitega 861' });
     });
 
@@ -546,7 +570,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         roaster: 'The Picky Chemist',
         roastDate: '2026-06-13'
       });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toBeNull();
     });
 
@@ -576,7 +600,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         roaster: 'Shoebox',
         roastDate: '2026-06-08'
       });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toBeNull();
     });
 
@@ -598,7 +622,7 @@ describe('getUnmatchedBeanConquerorBeans', () => {
         image_url: null
       });
       importBean(db, { id: 'b1', name: 'Same Name', roaster: 'Roaster B', roastDate: '2026-06-01' });
-      const [bean] = getUnmatchedBeanConquerorBeans(db);
+      const [bean] = getUnmatchedBeanConquerorBeans(db, 20);
       expect(bean.likelyMatch).toBeNull();
     });
   });

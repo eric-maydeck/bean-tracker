@@ -9,11 +9,17 @@ import {
   parseBeanConquerorWorkbook,
   importBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
+  countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
 } from '$lib/server/beanconqueror';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
 import { buildBacklogStats } from './statsData';
 import { buildBeanConquerorStats } from './beanConquerorStatsData';
+
+// Matches the "Showing top N of M" treatment the beanConqueror charts use:
+// a real export can have a couple hundred unmatched beans, and rendering
+// every one buries the rest of the page.
+const UNMATCHED_BEAN_LIMIT = 20;
 
 export const load: PageServerLoad = () => {
   const db = getDb();
@@ -32,7 +38,10 @@ export const load: PageServerLoad = () => {
     rates,
     beanConquerorLastImportedAt: lastImportedRow?.value ?? null,
     beanConquerorStats: buildBeanConquerorStats(db),
-    unmatchedBeans: getUnmatchedBeanConquerorBeans(db),
+    unmatchedBeans: {
+      beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT),
+      total: countUnmatchedBeanConquerorBeans(db)
+    },
     roastLevels,
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),

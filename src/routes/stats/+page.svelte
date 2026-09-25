@@ -162,13 +162,10 @@
   );
   let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
 
-  // Same "top N of M" treatment the charts above get, applied to the
-  // not-yet-tracked candidate list: a real export produces a couple hundred
-  // unmatched beans, and rendering every one of them buries the rest of the
-  // page. The list is already ordered newest-bean-first, so the cap keeps
-  // the most relevant candidates.
-  const UNMATCHED_BEAN_LIMIT = 20;
-  let visibleUnmatchedBeans = $derived(data.unmatchedBeans.slice(0, UNMATCHED_BEAN_LIMIT));
+  // The "top N of M" cap on the not-yet-tracked candidate list is now
+  // applied server-side (+page.server.ts) via a SQL LIMIT, with the total
+  // count from a separate COUNT(*) query — data.unmatchedBeans.beans is
+  // already the capped list.
 
   let bcRatingsDates = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.date));
   let bcRatingsValues = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.rating));
@@ -668,12 +665,12 @@
     </div>
   {/snippet}
 
-  {#if data.unmatchedBeans.length > 0}
-    <h3>Not yet tracked ({data.unmatchedBeans.length})</h3>
-    <p class="text-muted">Showing top {visibleUnmatchedBeans.length} of {data.unmatchedBeans.length}.</p>
+  {#if data.unmatchedBeans.total > 0}
+    <h3>Not yet tracked ({data.unmatchedBeans.total})</h3>
+    <p class="text-muted">Showing top {data.unmatchedBeans.beans.length} of {data.unmatchedBeans.total}.</p>
     {#if candidateView === 'compact'}
       <div class="compact-list">
-        {#each visibleUnmatchedBeans as bean (bean.id)}
+        {#each data.unmatchedBeans.beans as bean (bean.id)}
           <div class="compact-row-wrap">
             <div class="compact-row">
               <div class="compact-row-main">
@@ -721,7 +718,7 @@
             </tr>
           </thead>
           <tbody>
-            {#each visibleUnmatchedBeans as bean (bean.id)}
+            {#each data.unmatchedBeans.beans as bean (bean.id)}
               <tr>
                 <td>{bean.name}</td>
                 <td>{bean.roaster ?? 'Unknown roaster'}</td>
