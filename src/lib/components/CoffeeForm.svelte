@@ -501,9 +501,28 @@
   .form-grid {
     grid-template-columns: repeat(3, 1fr);
   }
+  /* Desktop only (this rule is zeroed out below at ≤640px): Decaf's row
+     (row 5) sits next to Min/Max rest and Frozen end date, whose cells are
+     a label line + gap + input box, so their input text sits well below
+     the row's top. Decaf has no label line of its own (align-self: start
+     above keeps its box sized to its own content, so it doesn't sink when
+     a neighbor grows), so without this it renders flush with the row top,
+     next to the *labels*, not the inputs. This pushes it down so its
+     center lines up with the inputs' center instead: half of (a label's
+     line height + an input's full box height), plus the label→input gap —
+     the same font-size/line-height/space tokens `.form-field label` and
+     `.form-field input` (app.css) use to build those heights, not a
+     measured pixel value, so it stays correct if those change. Verified
+     with getBoundingClientRect (see commit message). */
+  .form-field-checkbox {
+    margin-top: calc((1.35rem + 1lh + 2 * var(--space-2) + 2px) / 2 + var(--space-1));
+  }
   @media (max-width: 640px) {
     .form-grid {
       grid-template-columns: 1fr;
+    }
+    .form-field-checkbox {
+      margin-top: 0;
     }
   }
   .product-url-field {
