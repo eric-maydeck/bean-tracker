@@ -303,6 +303,15 @@ input:focus-visible {
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
+  /* As a grid item (e.g. in .form-grid), this stays anchored to the top of
+     its cell like every other field, instead of the grid's default
+     align-items: stretch making it fill the row's full height and then
+     `align-items: center` above (now the cross-axis of this row-direction
+     flex box) centering it in that stretched height — which visibly sank
+     the checkbox whenever a taller neighbor in the same row (e.g. the
+     rest-days note after a Fill) grew the row. Harmless where this class
+     isn't a grid/flex item (e.g. the login page). */
+  align-self: start;
 }
 
 .form-field-checkbox label {
