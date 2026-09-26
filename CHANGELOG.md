@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.36.0...v1.37.0) (2026-09-26)
+
+
+### Features
+
+* **coffees:** show date added and last updated on the coffee page
+
 # [1.36.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.35.0...v1.36.0) (2026-09-26)
 
 
