@@ -510,13 +510,18 @@
      the shared class elsewhere, e.g. the subscriptions page). Desktop's
      3-equal-column layout puts Image URL, Min/Max rest and Frozen end
      date side by side in one row (their inputs line up — see field-image
-     etc. below) with Decaf under Frozen end and URL slug (Edit mode) under
-     Min/Max rest; Image URL's cell spans into the row below so its own
-     (possibly tall, with buttons/thumbnail) content doesn't inflate that
-     shared row for the other two columns. Base rule first, breakpoint
-     override after it per the source-order cascade gotcha
-     (docs/HANDOFF.md) — mobile is a full single-column re-order, not a
-     column-count tweak, so it gets its own grid-template-areas. */
+     etc. below) with Decaf under Frozen end. URL slug (Edit mode) is its
+     own row under Image URL, in the same (left) column, rather than a
+     fixed row in the middle column — Image URL's own cell (input,
+     Preview/Discard buttons, and the thumbnail once one loads) is
+     variable height, and a fixed-row neighbor next to it would either
+     leave a gap or get overlapped by a tall thumbnail. Giving slug its
+     own grid row below Image URL's (spanned) rows means normal grid
+     auto-sizing always pushes it below however tall Image URL's cell
+     actually is — the middle column has nothing in that row. Base rule
+     first, breakpoint override after it per the source-order cascade
+     gotcha (docs/HANDOFF.md) — mobile is a full single-column re-order,
+     not a column-count tweak, so it gets its own grid-template-areas. */
   .form-grid {
     /* minmax(0, 1fr), not plain 1fr: an `fr` track's default minimum is
        `auto` (its content's natural size), so without the explicit 0 floor
@@ -529,7 +534,8 @@
       'roastlevel processing amount'
       'cost roastdate frozenstart'
       'image rest frozenend'
-      'image slug decaf';
+      'image . decaf'
+      'slug . .';
   }
   /* Grid items default to min-width: auto (their content's natural size),
      which fights the equal-column floor above — this lets each field
