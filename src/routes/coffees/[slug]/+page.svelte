@@ -281,6 +281,7 @@
     restHistory={data.restHistory}
     onstage={stageFields}
     onclone={(prefill) => (clonePrefillData = prefill)}
+    showSubmit={false}
   />
 
   <button class="button button-danger" type="button" disabled={saving} onclick={stageDelete}>

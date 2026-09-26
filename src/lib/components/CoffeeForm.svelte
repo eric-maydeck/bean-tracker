@@ -18,7 +18,8 @@
     oncancel = null,
     onsuccess = null,
     onstage = null,
-    onclone = null
+    onclone = null,
+    showSubmit = true
   }: {
     coffee?: CoffeeRow | null;
     prefill?: Partial<CoffeeRow> | null;
@@ -32,6 +33,10 @@
     onsuccess?: (() => void) | null;
     onstage?: ((fields: Record<string, string>) => void) | null;
     onclone?: ((prefill: Partial<CoffeeRow>) => void) | null;
+    // Detail page's "Save changes" now stages via applyPendingEdits()
+    // (requestSubmit() with no args, so no visible submit button is
+    // needed) — this hides the redundant per-field Update button there.
+    showSubmit?: boolean;
   } = $props();
 
   let formEl: HTMLFormElement;
@@ -472,7 +477,9 @@
   {/if}
   </div>
 
-  <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
+  {#if showSubmit}
+    <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
+  {/if}
   {#if oncancel}
     <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
   {/if}
