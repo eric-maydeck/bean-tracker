@@ -4,7 +4,7 @@
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee } from '$lib/pendingChanges';
-  import { afterFailedFill, suggestRest, canReplaceRest, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
+  import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
 
   let {
     coffee = null,
@@ -69,6 +69,21 @@
   function fieldValue(name: string): string {
     const el = formEl.elements.namedItem(name);
     return el instanceof HTMLInputElement || el instanceof HTMLSelectElement ? el.value : '';
+  }
+
+  // Shared by every caller that needs the form's fields as a plain object:
+  // the use:enhance handler below (staged submit), cloneCurrent, and
+  // applyPendingEdits' dirty check.
+  function fieldsFrom(formData: FormData): Record<string, string> {
+    const fields: Record<string, string> = {};
+    for (const [key, value] of formData.entries()) {
+      if (typeof value === 'string') fields[key] = value;
+    }
+    return fields;
+  }
+
+  function captureFields(): Record<string, string> {
+    return fieldsFrom(new FormData(formEl));
   }
 
   // Writes rest days only onto empty fields or the previous untouched
@@ -147,11 +162,7 @@
   // saved row — captured the same way staged mode captures a submit.
   function cloneCurrent() {
     if (!coffee || !onclone) return;
-    const fields: Record<string, string> = {};
-    for (const [key, value] of new FormData(formEl).entries()) {
-      if (typeof value === 'string') fields[key] = value;
-    }
-    onclone(clonePrefill(mergeStagedCoffee(coffee, fields)));
+    onclone(clonePrefill(mergeStagedCoffee(coffee, captureFields())));
   }
 
   // Staged mode's `action` attribute points at `?/save`, which no longer
@@ -163,23 +174,42 @@
   // deliberately skip this guard: `?/create` is a real action, so that
   // path still works with JS disabled entirely.
   let mounted = $state(false);
+  // What the form held right after it rendered (or after it was last
+  // staged) — applyPendingEdits' dirty check compares the live fields
+  // against this rather than re-deriving it from props, so it stays
+  // correct across `coffee` re-merging after a stage without needing its
+  // own prop-tracking effect.
+  let baselineFields: Record<string, string> | null = null;
   onMount(() => {
     mounted = true;
+    baselineFields = captureFields();
   });
 
   // Exposed so "Save changes" (list/detail pages) can apply THIS form's
   // pending edits first, exactly as clicking "Update" would — same
-  // use:enhance handler above (same stageFieldChange/onstage call), not a
-  // second copy of it. requestSubmit() runs the browser's own constraint
-  // validation first: an invalid form (e.g. a blanked-out required field)
-  // shows the same native validation UI a real Update click would and never
-  // fires the submit event, so onstage is never called — this returns
-  // false in that case so the caller can stop before saving.
+  // use:enhance handler above (same stageFieldChange/onstage call via
+  // fieldsFrom), not a second copy of it. Two guards before that happens:
+  // - Nothing to apply: the form is untouched since it rendered/was last
+  //   staged, so skip the submit entirely rather than staging a no-op
+  //   "update" with unchanged values on every save.
+  // - Invalid: requestSubmit() runs the browser's own constraint
+  //   validation first — a blanked-out required field shows the same
+  //   native validation UI a real Update click would and never fires the
+  //   submit event, so onstage is never called; this returns false so the
+  //   caller can stop before saving.
   export function applyPendingEdits(): boolean {
+    const current = captureFields();
+    if (baselineFields && !fieldsChanged(current, baselineFields)) return true;
     const ok = formEl.checkValidity();
-    if (ok) formEl.requestSubmit();
-    else formEl.reportValidity();
-    return ok;
+    if (!ok) {
+      formEl.reportValidity();
+      return false;
+    }
+    // requestSubmit() synchronously runs the use:enhance handler above,
+    // which updates baselineFields itself (same as a manual Update click
+    // does) — nothing left to do here but report success.
+    formEl.requestSubmit();
+    return true;
   }
 </script>
 
@@ -196,10 +226,8 @@
       // separate onsubmit handler) avoids any risk of both an onsubmit
       // handler AND enhance's own fetch both firing for the same click.
       cancel();
-      const fields: Record<string, string> = {};
-      for (const [key, value] of formData.entries()) {
-        if (typeof value === 'string') fields[key] = value;
-      }
+      const fields = fieldsFrom(formData);
+      baselineFields = fields;
       onstage(fields);
       return;
     }

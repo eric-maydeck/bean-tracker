@@ -71,3 +71,15 @@ export function canReplaceRest(low: string, high: string, last: { low: number; h
   if (low.trim() === '' && high.trim() === '') return true;
   return last != null && low.trim() === String(last.low) && high.trim() === String(last.high);
 }
+
+// True when any field differs from the baseline snapshot — including a
+// checkbox becoming present/absent (FormData omits an unchecked one
+// entirely). Used to skip applying "no edits happened" as a pointless
+// staged update.
+export function fieldsChanged(current: Record<string, string>, baseline: Record<string, string>): boolean {
+  const keys = new Set([...Object.keys(current), ...Object.keys(baseline)]);
+  for (const key of keys) {
+    if (current[key] !== baseline[key]) return true;
+  }
+  return false;
+}

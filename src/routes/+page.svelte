@@ -100,8 +100,16 @@
     // would, so "Save changes" doesn't silently ignore whatever is still
     // sitting in an open form. A validation failure there (native required-
     // field UI) aborts the save entirely, matching what clicking Update
-    // itself would do.
-    if (typeof expandedId === 'number' && expandedFormRef && !expandedFormRef.applyPendingEdits()) return;
+    // itself would do. Skipped when this row also has a delete staged (the
+    // compact view shows the delete action right next to an open form):
+    // stageStatusAction deliberately drops any staged field edit when
+    // staging 'delete' (pendingChanges.ts), and applying the open form here
+    // would silently re-attach fields onto that delete, letting a field
+    // validation error block the delete or running a pointless update
+    // right before it.
+    const openRowId = typeof expandedId === 'number' ? expandedId : null;
+    const openRowIsDeleting = openRowId != null && pending.get(openRowId)?.statusAction === 'delete';
+    if (openRowId != null && !openRowIsDeleting && expandedFormRef && !expandedFormRef.applyPendingEdits()) return;
 
     saving = true;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));

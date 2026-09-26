@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { afterFailedFill, suggestRest, canReplaceRest, REST_DEFAULTS, type RestHistoryRow } from './coffeeFormFill';
+import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, REST_DEFAULTS, type RestHistoryRow } from './coffeeFormFill';
 
 describe('afterFailedFill', () => {
   it('reverts to the last successfully filled URL and offers the tried one', () => {
@@ -70,5 +70,18 @@ describe('canReplaceRest', () => {
     expect(canReplaceRest('14', '60', null)).toBe(false);
     expect(canReplaceRest('42', '160', { low: 42, high: 150 })).toBe(false);
     expect(canReplaceRest('', '60', null)).toBe(false);
+  });
+});
+
+describe('fieldsChanged', () => {
+  it('is false for an identical snapshot', () => {
+    expect(fieldsChanged({ roaster: 'XLIII', coffee_name: 'X' }, { roaster: 'XLIII', coffee_name: 'X' })).toBe(false);
+  });
+  it('is true when a value differs', () => {
+    expect(fieldsChanged({ roaster: 'XLIII' }, { roaster: 'Shoebox' })).toBe(true);
+  });
+  it('is true when a field appears or disappears (e.g. a checkbox toggling)', () => {
+    expect(fieldsChanged({ roaster: 'XLIII', decaf: 'on' }, { roaster: 'XLIII' })).toBe(true);
+    expect(fieldsChanged({ roaster: 'XLIII' }, { roaster: 'XLIII', decaf: 'on' })).toBe(true);
   });
 });

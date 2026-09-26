@@ -106,8 +106,16 @@
     // own "Update" button would (same stageFields/onstage call) — otherwise
     // "Save changes" would silently ignore whatever is still sitting in the
     // form. A validation failure there (native required-field UI) aborts
-    // the save, matching what clicking Update itself would do.
-    if (canEdit && formRef && !formRef.applyPendingEdits()) return;
+    // the save, matching what clicking Update itself would do. Skipped when
+    // this coffee is staged for deletion: the form stays mounted alongside
+    // the "Delete this coffee" button on this page, and
+    // stageStatusAction deliberately drops any staged field edit when
+    // staging 'delete' (pendingChanges.ts) — applying the open form here
+    // would silently re-attach fields onto that delete, letting a field
+    // validation error block the delete or running a pointless update
+    // right before it.
+    const isDeleting = pending.get(data.coffee.id)?.statusAction === 'delete';
+    if (canEdit && !isDeleting && formRef && !formRef.applyPendingEdits()) return;
 
     saving = true;
     commitError = null;
