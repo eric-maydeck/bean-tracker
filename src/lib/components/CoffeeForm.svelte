@@ -391,6 +391,44 @@
     <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
   </div>
 
+  <div class="form-field form-field-checkbox">
+    <label for="decaf">
+      <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
+      Decaf
+    </label>
+  </div>
+
+  {#if coffee}
+    <input type="hidden" name="id" value={coffee.id} />
+    <div class="form-field">
+      <label for="slug">URL slug</label>
+      <div class="inline-row">
+        <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
+        {#if slugLocked}
+          <button
+            class="button button-secondary"
+            type="button"
+            aria-label="Edit URL"
+            onclick={() => {
+              slugLocked = false;
+              slugInput.focus();
+            }}>Edit</button
+          >
+        {:else}
+          <button
+            class="button button-secondary"
+            type="button"
+            aria-label="Cancel URL edit"
+            onclick={() => {
+              setField('slug', initialSlug);
+              slugLocked = true;
+            }}>Cancel</button
+          >
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   <div class="form-field">
     <div class="rest-days-row">
       <div class="rest-days-field">
@@ -437,44 +475,6 @@
       {/if}
     {/if}
   </div>
-
-  <div class="form-field form-field-checkbox">
-    <label for="decaf">
-      <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
-      Decaf
-    </label>
-  </div>
-
-  {#if coffee}
-    <input type="hidden" name="id" value={coffee.id} />
-    <div class="form-field">
-      <label for="slug">URL slug</label>
-      <div class="inline-row">
-        <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
-        {#if slugLocked}
-          <button
-            class="button button-secondary"
-            type="button"
-            aria-label="Edit URL"
-            onclick={() => {
-              slugLocked = false;
-              slugInput.focus();
-            }}>Edit</button
-          >
-        {:else}
-          <button
-            class="button button-secondary"
-            type="button"
-            aria-label="Cancel URL edit"
-            onclick={() => {
-              setField('slug', initialSlug);
-              slugLocked = true;
-            }}>Cancel</button
-          >
-        {/if}
-      </div>
-    </div>
-  {/if}
   </div>
 
   {#if showSubmit}
