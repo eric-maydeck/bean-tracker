@@ -302,18 +302,22 @@
     {#if fillError}
       <p class="badge badge-urgent" role="alert">{fillError}</p>
       {#if unsavedUrl}
-        <p class="fill-note fill-offer">
-          Save <code class="fill-offer-url">{unsavedUrl}</code> as the product page anyway?
-          <button
-            class="button button-secondary"
-            type="button"
-            onclick={() => {
-              setField('product_url', unsavedUrl ?? '');
-              unsavedUrl = null;
-            }}>Yes</button
-          >
-          <button class="button button-secondary" type="button" onclick={() => (unsavedUrl = null)}>No</button>
-        </p>
+        <div class="fill-offer">
+          <p class="fill-note">
+            Save <code class="fill-offer-url">{unsavedUrl}</code> as the product page anyway?
+          </p>
+          <div class="fill-offer-actions">
+            <button
+              class="button button-secondary"
+              type="button"
+              onclick={() => {
+                setField('product_url', unsavedUrl ?? '');
+                unsavedUrl = null;
+              }}>Yes</button
+            >
+            <button class="button button-secondary" type="button" onclick={() => (unsavedUrl = null)}>No</button>
+          </div>
+        </div>
       {/if}
     {/if}
     {#if fillNotes.length}
@@ -542,8 +546,8 @@
         'roastdate'
         'frozenstart'
         'frozenend'
-        'decaf'
         'rest'
+        'decaf'
         'image'
         'slug';
     }
@@ -630,11 +634,19 @@
   .fill-sizes {
     margin-top: var(--space-2);
   }
-  .fill-offer {
+  /* Yes/No always go on their own row below the text (all widths, not just
+     phone) rather than wrapping inline with it — the text (a full product
+     URL) is unbounded length, so sharing a flex row with the buttons meant
+     the buttons got squeezed or pushed off narrow screens. */
+  .fill-offer-actions {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
     gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .fill-offer-actions .button {
+    flex: 1;
+    margin: 0;
+    text-align: center;
   }
   .fill-offer-url {
     overflow-wrap: anywhere;
