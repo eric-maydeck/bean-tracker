@@ -150,6 +150,8 @@
       for (const [key, value] of Object.entries(found)) setField(key, value as string | number);
       if (rest_days_low != null && rest_days_high != null) {
         offerRest({ low: rest_days_low, high: rest_days_high, note: data.restNote ?? '' });
+      } else if (found.roast_level) {
+        offerRest(null);
       }
       lastFilledUrl = url;
       if (data.fields.image_url) showPreview(data.fields.image_url);
