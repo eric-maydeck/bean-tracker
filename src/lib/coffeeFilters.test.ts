@@ -38,6 +38,7 @@ function coffee(over: Partial<CoffeeWithComputed> = {}): CoffeeWithComputed {
     rest_days_low: 7,
     rest_days_high: 14,
     image_url: null,
+    product_url: null,
     slug: `coffee-${id}`,
     opened_date: null,
     drank: 0,

@@ -82,7 +82,7 @@ describe('getUsdRates', () => {
   const ok = { result: 'success', time_last_update_unix: 1790294400, rates: { USD: 1, GBP: 0.79 } };
 
   it('fetches open.er-api.com once and serves from cache for 24h', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(ok)));
+    const fetchMock = vi.fn(async (_url: string) => new Response(JSON.stringify(ok)));
     vi.stubGlobal('fetch', fetchMock);
     const { getUsdRates } = await import('./productFetch');
     const first = await getUsdRates(0);

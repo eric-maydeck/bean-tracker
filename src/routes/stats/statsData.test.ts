@@ -18,6 +18,7 @@ function sampleRow(overrides: Partial<CoffeeRow> = {}): CoffeeRow {
     rest_days_low: 10,
     rest_days_high: 20,
     image_url: null,
+    product_url: null,
     slug: 'test-roasters-sample-blend',
     opened_date: null,
     drank: 0,

@@ -464,7 +464,7 @@
         {#if previewFailed}
           <p class="text-muted fill-note">Couldn't load image</p>
         {:else}
-          <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
+          <img class="image-preview" src={previewSrc} alt="Preview" onerror={() => (previewFailed = true)} />
         {/if}
       {/if}
     </div>
