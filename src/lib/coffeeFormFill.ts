@@ -34,8 +34,9 @@ export const REST_DEFAULTS: Record<string, [number, number]> = {
 
 // 1) the most common complete (low, high) pair among this roaster's coffees
 // at this level; a tie goes to the newest coffee's pair (highest id: ids are
-// insertion order, while created_at is the migration time for every
-// sheet-imported row); 2) else the level's default; 3) else null.
+// insertion order; sheet-imported rows' created_at was backfilled from Bean
+// Conqueror/roast dates, so it's approximate); 2) else the level's default;
+// 3) else null.
 export function suggestRest(
   roaster: string | null,
   roastLevel: string | null,

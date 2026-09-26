@@ -546,7 +546,7 @@ function namesLikelyMatch(a: string, b: string): boolean {
   return similarity >= 0.9;
 }
 
-interface LikelyMatchCandidate {
+export interface LikelyMatchCandidate {
   slug: string;
   coffee_name: string;
   roaster: string;
@@ -564,7 +564,7 @@ function daysBetween(a: string, b: string): number {
 // roast date on either side (some older Bean Conqueror beans have none)
 // still qualifies as a fallback — it's just outranked by any candidate we
 // can actually confirm is close in time.
-function findLikelyMatch(
+export function findLikelyMatch(
   bean: { name: string; roaster: string | null; roastDate: string | null },
   coffees: LikelyMatchCandidate[]
 ): LikelyMatchCandidate | null {

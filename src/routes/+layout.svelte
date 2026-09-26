@@ -6,12 +6,8 @@
   import { invalidateAll } from '$app/navigation';
   import type { AlertRow } from '$lib/types';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
+  import { formatUpdated } from '$lib/formatDate';
   let { children, data } = $props();
-
-  function formatUpdated(iso: string | null): string {
-    if (!iso) return 'no data yet';
-    return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
-  }
 
   const links = [
     { href: '/', label: 'Coffees' },

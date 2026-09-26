@@ -5,6 +5,7 @@
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
+  import { formatDate, formatUpdated } from '$lib/formatDate';
   import {
     stageFieldChange,
     stageStatusAction,
@@ -321,6 +322,9 @@
             {#if data.coffee.product_url}
               · <a href={data.coffee.product_url} target="_blank" rel="noopener noreferrer">Product page ↗</a>
             {/if}
+          </p>
+          <p class="text-muted">
+            <small>Added {formatDate(data.coffee.created_at)} · Updated {formatUpdated(data.coffee.updated_at)}</small>
           </p>
         </div>
       </div>
