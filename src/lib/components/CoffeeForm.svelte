@@ -389,11 +389,11 @@
   <div class="form-field">
     <div class="rest-days-row">
       <div class="rest-days-field">
-        <label for="rest_days_low">Recommended rest days (low)</label>
+        <label for="rest_days_low">Min rest</label>
         <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
       </div>
       <div class="rest-days-field">
-        <label for="rest_days_high">Recommended rest days (high)</label>
+        <label for="rest_days_high">Max rest</label>
         <input
           id="rest_days_high"
           name="rest_days_high"
