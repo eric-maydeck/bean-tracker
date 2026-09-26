@@ -54,11 +54,15 @@ export function suggestRest(
   }
   const best = [...pairs.values()].sort((a, b) => b.n - a.n || b.newest - a.newest)[0];
   if (best) {
-    const of = best.n === same.length ? `${best.n}` : `${best.n} of ${same.length}`;
-    return { low: best.low, high: best.high, note: `rest ${best.low}–${best.high} from ${of} ${roaster} ${roastLevel} coffees` };
+    const basis = best.n === same.length ? `your ${best.n}` : `${best.n} of your ${same.length}`;
+    return {
+      low: best.low,
+      high: best.high,
+      note: `Typical rest for ${roaster} ${roastLevel} coffees: ${best.low} to ${best.high} days (based on ${basis}).`
+    };
   }
   const d = REST_DEFAULTS[roastLevel];
-  return d ? { low: d[0], high: d[1], note: `rest ${d[0]}–${d[1]} (${roastLevel} default)` } : null;
+  return d ? { low: d[0], high: d[1], note: `Typical rest for ${roastLevel} coffees: ${d[0]} to ${d[1]} days.` } : null;
 }
 
 // A suggestion may only land on empty rest fields, or on fields still

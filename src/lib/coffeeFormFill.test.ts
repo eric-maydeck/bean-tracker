@@ -34,13 +34,13 @@ describe('suggestRest', () => {
       r(7, 'XLIII', 'Ultralight', 30, 60), r(8, 'Sey', 'Hyperlight', 30, 60)
     ];
     expect(suggestRest('XLIII', 'Hyperlight', history)).toEqual({
-      low: 180, high: 365, note: 'rest 180–365 from 3 of 6 XLIII Hyperlight coffees'
+      low: 180, high: 365, note: 'Typical rest for XLIII Hyperlight coffees: 180 to 365 days (based on 3 of your 6).'
     });
   });
 
-  it('says "from N" when they all agree', () => {
+  it('says "based on your N" when they all agree', () => {
     const history = [r(1, 'Sey', 'Nordic', 21, 60), r(2, 'Sey', 'Nordic', 21, 60)];
-    expect(suggestRest('Sey', 'Nordic', history)?.note).toBe('rest 21–60 from 2 Sey Nordic coffees');
+    expect(suggestRest('Sey', 'Nordic', history)?.note).toBe('Typical rest for Sey Nordic coffees: 21 to 60 days (based on your 2).');
   });
 
   it('breaks a tie with the newest coffee (highest id)', () => {
@@ -52,8 +52,8 @@ describe('suggestRest', () => {
     expect(REST_DEFAULTS).toEqual({
       Hyperlight: [70, 365], Ultralight: [42, 150], 'Nordic Light': [28, 120], Nordic: [28, 90], Light: [14, 60]
     });
-    expect(suggestRest('Newcomer', 'Ultralight', [])).toEqual({ low: 42, high: 150, note: 'rest 42–150 (Ultralight default)' });
-    expect(suggestRest('XLIII', 'Ultralight', [r(1, 'XLIII', 'Ultralight', null, null)])?.note).toBe('rest 42–150 (Ultralight default)');
+    expect(suggestRest('Newcomer', 'Ultralight', [])).toEqual({ low: 42, high: 150, note: 'Typical rest for Ultralight coffees: 42 to 150 days.' });
+    expect(suggestRest('XLIII', 'Ultralight', [r(1, 'XLIII', 'Ultralight', null, null)])?.note).toBe('Typical rest for Ultralight coffees: 42 to 150 days.');
     expect(suggestRest(null, 'Hyperlight', [])).toMatchObject({ low: 70, high: 365 });
   });
 
