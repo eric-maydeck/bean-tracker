@@ -54,6 +54,12 @@ describe('stripSiteSuffix', () => {
     expect(stripSiteSuffix('Finca Rosenheim - XLIII Coffee', ['Shoebox'])).toBe('Finca Rosenheim - XLIII Coffee');
     expect(stripSiteSuffix('No dash here', ['XLIII'])).toBe('No dash here');
   });
+
+  it("doesn't treat two different names as matching just because both normalize away to ''", () => {
+    // "Coffee Co" and "The Coffee" both normalize to '' (normalizeRoaster
+    // strips "coffee"/"co"/"the") — that must not count as a match.
+    expect(stripSiteSuffix('Finca Rosenheim - The Coffee', ['Coffee Co'])).toBe('Finca Rosenheim - The Coffee');
+  });
 });
 
 describe('findOrigin', () => {
@@ -278,6 +284,24 @@ describe('buildFill', () => {
     const p = product({ title: 'Mexico Yellow Caturra', currency: 'USD', variants: [{ id: 1, label: 'JUST A BAG', price: 20, grams: 200 }] });
     const r = buildFill(p, ctx());
     expect(r.fields).toMatchObject({ amount_g: 200, cost: 20 });
+  });
+
+  it("prefers the page's own weight (title/pageGrams) over Shopify's grams (usually a shipping weight, not the bag size) — normlppl fixture", () => {
+    // normlppl.json: single "Default Title" variant, grams: 226 (shipping
+    // weight) — but the product title itself says "200g" (the actual bag
+    // size), which must win.
+    const p = parseShopifyProduct(JSON.parse(fx('normlppl.json')), null);
+    const r = buildFill(p, ctx());
+    expect(r.fields.amount_g).toBe(200);
+  });
+
+  it('aviary fixture: two variants share Shopify grams (a shipping weight) — not trusted over an in-range pick', () => {
+    // aviary.json: 200g and 1kg variants both report grams: 300 — the
+    // label text ("200g"/"1kg") still wins per-variant, so this is really
+    // asserting Shopify grams never overrides an explicit label.
+    const p = parseShopifyProduct(JSON.parse(fx('aviary.json')), null);
+    const r = buildFill(p, ctx());
+    expect(r.variants.map((v) => v.grams)).toEqual([200, 1000]);
   });
 
   it('shoebox fixture', () => {

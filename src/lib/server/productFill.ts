@@ -36,7 +36,10 @@ export function parseGrams(text: string): number | null {
 // "Colombia - 250g - Pink Bourbon") is left alone since its tail won't
 // match any candidate.
 export function stripSiteSuffix(title: string, candidates: (string | null | undefined)[]): string {
-  const names = new Set(candidates.filter((c): c is string => !!c?.trim()).map(normalizeRoaster));
+  // A candidate made up entirely of the words normalizeRoaster strips (e.g.
+  // "Coffee Co") normalizes to '' — without filtering that out, any tail
+  // that also normalizes to '' (e.g. "The Coffee") would falsely match it.
+  const names = new Set(candidates.filter((c): c is string => !!c?.trim()).map(normalizeRoaster).filter(Boolean));
   if (!names.size) return title;
   const m = /^(.+)\s[-–|]\s(.+)$/.exec(title);
   if (!m) return title;
@@ -254,10 +257,14 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
     parseGrams(p.attributes['net weight'] ?? p.attributes['weight'] ?? p.attributes['size'] ?? '');
   const variants: FillVariant[] = p.variants.map((v) => ({
     label: v.label,
-    // The label's own weight text wins when present; otherwise Shopify's
-    // numeric `grams` field (a per-variant value from the platform itself)
-    // beats the whole-product pageGrams guess.
-    grams: parseGrams(v.label) ?? v.grams ?? pageGrams,
+    // The label's own weight text wins when present, then the whole-
+    // product pageGrams guess (title/attributes) — both are the page's own
+    // stated bag size. Shopify's numeric `grams` is often the *shipping*
+    // weight (packaging included), not the bag size — e.g. a 200g bag
+    // shipping as `grams: 226`, or two different-sized variants both
+    // reporting the same `grams` — so it's only trusted as a last resort,
+    // when neither the label nor the page states a weight at all.
+    grams: parseGrams(v.label) ?? pageGrams ?? v.grams,
     costUsd: toUsd(v.price, currency, ctx.rates),
     originalPrice: currency === 'USD' ? null : `${formatMoney(v.price, currency)} ${currency}`
   }));
