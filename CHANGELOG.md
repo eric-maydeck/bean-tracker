@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.35.0...v1.36.0) (2026-09-26)
+
+
+### Features
+
+* **nav:** use Phosphor icons for navigation; rename "Log out" to "Sign out"
+
 # [1.35.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.34.1...v1.35.0) (2026-09-26)
 
 
