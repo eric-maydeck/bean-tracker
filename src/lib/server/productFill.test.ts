@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { ProductData } from './productParse';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
-import { parseGrams, cleanName, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, type UsdRates, type FillContext } from './productFill';
+import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -36,6 +36,23 @@ describe('cleanName', () => {
     ['Burundi Mikuba 8', 'Burundi Mikuba 8']
   ])('%s', (title, expected) => {
     expect(cleanName(title)).toBe(expected);
+  });
+});
+
+describe('stripSiteSuffix', () => {
+  it("drops a trailing site-name suffix that matches a candidate, loosely", () => {
+    expect(stripSiteSuffix('Finca Rosenheim Typica & Caturra - XLIII Coffee', ['XLIII'])).toBe('Finca Rosenheim Typica & Caturra');
+    expect(stripSiteSuffix('Kinini Village Dufatanye #03732 - XLIII Coffee', [null, null, 'XLIII Coffee'])).toBe('Kinini Village Dufatanye #03732');
+  });
+
+  it('takes the last separator, so a legitimate " - " inside the name is left alone', () => {
+    expect(stripSiteSuffix('Colombia - 250g - Pink Bourbon', ['XLIII'])).toBe('Colombia - 250g - Pink Bourbon');
+  });
+
+  it('leaves the title untouched with no candidates, or when the tail matches none of them', () => {
+    expect(stripSiteSuffix('Finca Rosenheim - XLIII Coffee', [])).toBe('Finca Rosenheim - XLIII Coffee');
+    expect(stripSiteSuffix('Finca Rosenheim - XLIII Coffee', ['Shoebox'])).toBe('Finca Rosenheim - XLIII Coffee');
+    expect(stripSiteSuffix('No dash here', ['XLIII'])).toBe('No dash here');
   });
 });
 
@@ -291,6 +308,12 @@ describe('buildFill', () => {
     const r = buildFill(product({ title: 'Kinini', vendor: 'XLIII', tags: ['Hyperlight'] }), ctx({ history }));
     expect(r.fields).toMatchObject({ roaster: 'XLIII', roast_level: 'Hyperlight', rest_days_low: 180, rest_days_high: 365 });
     expect(r.notes).toContain('Typical rest for XLIII Hyperlight coffees: 180 to 365 days (based on 2 of your 3).');
+  });
+
+  it('strips the roaster\'s own page-title suffix from coffee_name (XLIII)', () => {
+    const p = product({ title: 'Kinini Village Dufatanye #03732 - XLIII Coffee', siteName: 'XLIII Coffee', currency: 'USD' });
+    const r = buildFill(p, ctx());
+    expect(r.fields.coffee_name).toBe('Kinini Village Dufatanye #03732');
   });
 
   it('xliii fixture: VND converted, process + net weight from attribute rows', () => {

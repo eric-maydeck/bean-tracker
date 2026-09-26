@@ -28,6 +28,21 @@ export function parseGrams(text: string): number | null {
   return grams > 0 ? Math.round(grams) : null;
 }
 
+// Drops a trailing " - Site Name" / " | Site Name" / " – Site Name" suffix
+// from a page title, when that tail loosely names the site/vendor/resolved
+// roaster (same fuzzy comparison findRoaster uses) — the roaster's own
+// page-title branding, not part of the coffee's name. The last such
+// separator wins (greedy `.+`), and a genuine " - " inside the name (e.g.
+// "Colombia - 250g - Pink Bourbon") is left alone since its tail won't
+// match any candidate.
+export function stripSiteSuffix(title: string, candidates: (string | null | undefined)[]): string {
+  const names = new Set(candidates.filter((c): c is string => !!c?.trim()).map(normalizeRoaster));
+  if (!names.size) return title;
+  const m = /^(.+)\s[-–|]\s(.+)$/.exec(title);
+  if (!m) return title;
+  return names.has(normalizeRoaster(m[2])) ? m[1] : title;
+}
+
 const SEP = '[-–/|,]';
 
 export function cleanName(title: string): string {
@@ -260,7 +275,8 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
     if (value != null && value !== '') fields[key] = value;
   };
   put('roaster', roaster);
-  put('coffee_name', p.title ? cleanName(p.title) : null);
+  const bareTitle = p.title ? stripSiteSuffix(p.title, [roaster, p.vendor, p.siteName, p.brand]) : null;
+  put('coffee_name', bareTitle ? cleanName(bareTitle) : null);
   put('origin', findOrigin(p, ctx.origins));
   put('processing', findProcessing(p, ctx.processing));
   put('roast_level', roast?.level);
