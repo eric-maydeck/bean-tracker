@@ -1,3 +1,53 @@
+# [1.34.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.33.1...v1.34.0) (2026-09-26)
+
+
+### Bug Fixes
+
+* **db,form:** enforce foreign_keys pragma and disambiguate slug button labels
+* **detail:** equal-size action buttons, spacing, and drop duplicate Clone
+* **detail:** hide the redundant update button on the coffee page
+* **fill:** block NAT64 local-use and Teredo IPv6 ranges
+* **fill:** drop zero-price Shopify variants and guard malformed meta.json
+* **fill:** match roast levels regardless of hyphen/space/case
+* **fill:** prefer the page's own weight over shopify's grams (shipping weight)
+* **fill:** resolve relative and protocol-relative image URLs
+* **fill:** restore the timeout-specific 504 branch in fill-from-url
+* **fill:** reword rest-day suggestion note to the requested phrasing
+* **fill:** strip a trailing roaster/site-name suffix from coffee_name
+* **fill:** tighten IPv6 blocklist and destroy decompression stream on 2MB cap
+* **fill:** use shopify's own variant grams when the label has no weight
+* **form:** align the decaf checkbox with the neighbouring inputs
+* **form:** clear a stale rest suggestion when a fill sets roast level alone
+* **form:** don't let save-changes' apply-open-form step fight a staged delete
+* **form:** equal columns, image url beside the rest fields, decaf under frozen end
+* **form:** image row layout, code-style URL, locked slug, rest note, save changes
+* **form:** keep other columns fixed when the image preview grows
+* **form:** keep the decaf checkbox pinned to the top of its grid row
+* **form:** move decaf under frozen end date and the url slug under decaf
+* **form:** put the rest fields under roast date on phones
+* **form:** put the url slug under the image block on desktop
+* **form:** reorder mobile rest/decaf and stack fill-anyway yes/no below text
+* **form:** shorten rest-day labels so they fit on one line
+* **form:** show the rest suggestion directly below the rest fields
+* **form:** stack decaf, rest days, and frozen dates under their related fields
+* **types:** clear svelte-check errors introduced by product_url
+
+
+### Features
+
+* **coffees:** add product_url field, saved on every path and linked from the detail page
+* **coffees:** lock the slug field by default with an edit/cancel toggle
+* **coffees:** regenerate the slug on identity edits and redirect old slugs
+* **fill:** add a guarded server-side fetch for product pages
+* **fill:** add admin endpoint that fills coffee fields from a product URL
+* **fill:** convert non-USD prices with cached daily rates from open.er-api.com
+* **fill:** extract coffee name, origin, processing and bag size from product data
+* **fill:** fill from page button, status note, size chips and discard image in the coffee form
+* **fill:** image preview and revert the product URL after a failed fill
+* **fill:** match roaster, roast level and bag size against the user's history
+* **fill:** parse Shopify JSON and product HTML into one shape, with captured fixtures
+* **fill:** suggest rest days from history or roast-level defaults
+
 ## [1.33.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.33.0...v1.33.1) (2026-09-25)
 
 
