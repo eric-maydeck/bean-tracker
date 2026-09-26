@@ -397,16 +397,22 @@
     />
   </div>
 
-  <div class="form-field field-frozenend">
-    <label for="frozen_end_date">Frozen end date</label>
-    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
-  </div>
+  <!-- Grouped (not two separate grid cells) so Decaf's position only ever
+       depends on Frozen end's own height, never on what the OTHER two
+       columns (Min/Max rest, Image URL) are doing — see the .form-grid
+       comment below for why that matters. -->
+  <div class="form-field-group group-frozenend">
+    <div class="form-field field-frozenend">
+      <label for="frozen_end_date">Frozen end date</label>
+      <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
+    </div>
 
-  <div class="form-field form-field-checkbox field-decaf">
-    <label for="decaf">
-      <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
-      Decaf
-    </label>
+    <div class="form-field form-field-checkbox field-decaf">
+      <label for="decaf">
+        <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
+        Decaf
+      </label>
+    </div>
   </div>
 
   <div class="form-field field-rest">
@@ -431,61 +437,69 @@
     {/if}
   </div>
 
-  <div class="form-field field-image">
-    <label for="image_url">Image URL (label or roaster logo)</label>
-    <div class="inline-row">
-      <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
-      <div class="inline-row-actions">
-        <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
-        <button
-          class="button button-secondary"
-          type="button"
-          onclick={() => {
-            setField('image_url', '');
-            previewSrc = null;
-          }}>Discard image</button
-        >
+  <!-- Grouped (not two separate grid cells) so URL slug always renders
+       directly below Image URL's own content (input, buttons, and the
+       thumbnail once one loads) via ordinary flex-column flow, rather than
+       a fixed grid row next to fields in OTHER columns that a tall
+       thumbnail could grow past or leave a gap under — see the .form-grid
+       comment below. -->
+  <div class="form-field-group group-image">
+    <div class="form-field field-image">
+      <label for="image_url">Image URL (label or roaster logo)</label>
+      <div class="inline-row">
+        <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
+        <div class="inline-row-actions">
+          <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
+          <button
+            class="button button-secondary"
+            type="button"
+            onclick={() => {
+              setField('image_url', '');
+              previewSrc = null;
+            }}>Discard image</button
+          >
+        </div>
       </div>
-    </div>
-    {#if previewSrc}
-      {#if previewFailed}
-        <p class="text-muted fill-note">Couldn't load image</p>
-      {:else}
-        <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
+      {#if previewSrc}
+        {#if previewFailed}
+          <p class="text-muted fill-note">Couldn't load image</p>
+        {:else}
+          <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
+        {/if}
       {/if}
+    </div>
+
+    {#if coffee}
+      <input type="hidden" name="id" value={coffee.id} />
+      <div class="form-field field-slug">
+        <label for="slug">URL slug</label>
+        <div class="inline-row">
+          <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
+          {#if slugLocked}
+            <button
+              class="button button-secondary"
+              type="button"
+              aria-label="Edit URL"
+              onclick={() => {
+                slugLocked = false;
+                slugInput.focus();
+              }}>Edit</button
+            >
+          {:else}
+            <button
+              class="button button-secondary"
+              type="button"
+              aria-label="Cancel URL edit"
+              onclick={() => {
+                setField('slug', initialSlug);
+                slugLocked = true;
+              }}>Cancel</button
+            >
+          {/if}
+        </div>
+      </div>
     {/if}
   </div>
-
-  {#if coffee}
-    <input type="hidden" name="id" value={coffee.id} />
-    <div class="form-field field-slug">
-      <label for="slug">URL slug</label>
-      <div class="inline-row">
-        <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
-        {#if slugLocked}
-          <button
-            class="button button-secondary"
-            type="button"
-            aria-label="Edit URL"
-            onclick={() => {
-              slugLocked = false;
-              slugInput.focus();
-            }}>Edit</button
-          >
-        {:else}
-          <button
-            class="button button-secondary"
-            type="button"
-            aria-label="Cancel URL edit"
-            onclick={() => {
-              setField('slug', initialSlug);
-              slugLocked = true;
-            }}>Cancel</button
-          >
-        {/if}
-      </div>
-    </div>
-  {/if}
   </div>
 
   {#if showSubmit}
@@ -510,18 +524,26 @@
      the shared class elsewhere, e.g. the subscriptions page). Desktop's
      3-equal-column layout puts Image URL, Min/Max rest and Frozen end
      date side by side in one row (their inputs line up — see field-image
-     etc. below) with Decaf under Frozen end. URL slug (Edit mode) is its
-     own row under Image URL, in the same (left) column, rather than a
-     fixed row in the middle column — Image URL's own cell (input,
-     Preview/Discard buttons, and the thumbnail once one loads) is
-     variable height, and a fixed-row neighbor next to it would either
-     leave a gap or get overlapped by a tall thumbnail. Giving slug its
-     own grid row below Image URL's (spanned) rows means normal grid
-     auto-sizing always pushes it below however tall Image URL's cell
-     actually is — the middle column has nothing in that row. Base rule
-     first, breakpoint override after it per the source-order cascade
-     gotcha (docs/HANDOFF.md) — mobile is a full single-column re-order,
-     not a column-count tweak, so it gets its own grid-template-areas. */
+     etc. below), with Decaf grouped under Frozen end and URL slug grouped
+     under Image URL (form-field-group below) rather than each in its own
+     grid row/cell. A single grid row whose cells vary in height (a Fill's
+     rest-days note, a loaded/failed image thumbnail, a long save-anyway
+     prompt) only ever grows THAT row — every other row stays put, which
+     was the whole point of pinning fields to a grid instead of using
+     app.css's shared auto-fit .form-grid. But a row-SPANNING cell (what
+     Image URL used to be, to make room for Decaf/slug alongside it)
+     doesn't have that property: the grid spec distributes a spanning
+     item's extra height across ALL of its spanned tracks, which grew the
+     row above Decaf and pushed it down whenever the image thumbnail
+     loaded — a real regression, caught by measuring Decaf's own top
+     before/after Preview instead of eyeballing it. Grouping Decaf with
+     Frozen end (and slug with Image URL) into one flex-column cell each
+     removes the spanning entirely: every column is exactly one grid cell
+     again, so one column's content can never affect another's, or its own
+     row's start position. Base rule first, breakpoint override after it
+     per the source-order cascade gotcha (docs/HANDOFF.md) — mobile is a
+     full single-column re-order, not a column-count tweak, so it gets its
+     own grid-template-areas. */
   .form-grid {
     /* minmax(0, 1fr), not plain 1fr: an `fr` track's default minimum is
        `auto` (its content's natural size), so without the explicit 0 floor
@@ -533,15 +555,26 @@
       'roaster coffee origin'
       'roastlevel processing amount'
       'cost roastdate frozenstart'
-      'image rest frozenend'
-      'image . decaf'
-      'slug . .';
+      'image rest frozenend';
   }
   /* Grid items default to min-width: auto (their content's natural size),
      which fights the equal-column floor above — this lets each field
-     actually shrink to its cell instead of overflowing it. */
-  .form-field {
+     actually shrink to its cell instead of overflowing it. Applies to the
+     grouped cells' own wrapper too (form-field-group), not just plain
+     grid-item fields. */
+  .form-field,
+  .form-field-group {
     min-width: 0;
+  }
+  /* The Frozen end + Decaf and Image URL + slug groups: a plain vertical
+     stack, so the second field always sits directly below however tall
+     the first one currently is. Gap matches the grid's own row-gap
+     (app.css's shared .form-grid: `gap: var(--space-2) var(--space-5)`)
+     so a grouped pair reads the same as two separate grid rows did. */
+  .form-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
   @media (max-width: 640px) {
     .form-grid {
@@ -559,9 +592,7 @@
         'rest'
         'frozenstart'
         'frozenend'
-        'decaf'
-        'image'
-        'slug';
+        'image';
     }
   }
   /* Each field's cell name, independent of source order (see the comment
@@ -597,20 +628,17 @@
   .field-frozenstart {
     grid-area: frozenstart;
   }
-  .field-frozenend {
+  /* Frozen end + Decaf and Image URL + slug are each one grid cell (see
+     .form-field-group above) — the group wrapper gets the grid-area, not
+     the individual fields inside it. */
+  .group-frozenend {
     grid-area: frozenend;
-  }
-  .field-decaf {
-    grid-area: decaf;
   }
   .field-rest {
     grid-area: rest;
   }
-  .field-image {
+  .group-image {
     grid-area: image;
-  }
-  .field-slug {
-    grid-area: slug;
   }
   .inline-row {
     display: flex;
