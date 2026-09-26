@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.34.1...v1.35.0) (2026-09-26)
+
+
+### Features
+
+* **coffees:** compact row links to its page; back re-expands it
+
 ## [1.34.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.34.0...v1.34.1) (2026-09-26)
 
 
