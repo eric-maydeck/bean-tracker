@@ -18,6 +18,7 @@
   } from '$lib/pendingChanges';
   import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import type { CoffeeRow } from '$lib/types';
+  import type { Snapshot } from './$types';
   import FilterBar from '$lib/components/FilterBar.svelte';
   import {
     applyFilters,
@@ -53,6 +54,15 @@
   }
   let expandedId = $state<number | 'new' | null>(null);
   let addPrefill = $state<Partial<CoffeeRow> | null>(null);
+
+  // Back from a coffee page (a real history back) re-expands the compact
+  // row the user opened it from, so it's clear where they were.
+  export const snapshot: Snapshot<number | null> = {
+    capture: () => (view === 'compact' && !editMode && typeof expandedId === 'number' ? expandedId : null),
+    restore: (id) => {
+      if (id != null) expandedId = id;
+    }
+  };
 
   // Plain `Map` wrapped in `$state()` is NOT deeply reactive in Svelte 5 —
   // `$state()`'s proxy only wraps plain objects/arrays, so in-place
@@ -875,10 +885,13 @@
               {/if}
             </div>
           {/if}
-          {#if data.isAdmin && expandedId === coffee.id}
+          {#if expandedId === coffee.id}
             <div class="action-buttons">
-              {@render editButton(coffee, true)}
-              {@render cloneButton(coffee, true)}
+              <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}`} title="Open coffee page" aria-label="Open coffee page"><Icon name="page" /></a>
+              {#if data.isAdmin}
+                {@render editButton(coffee, true)}
+                {@render cloneButton(coffee, true)}
+              {/if}
             </div>
           {/if}
         {/if}

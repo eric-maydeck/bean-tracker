@@ -26,3 +26,10 @@
   </div>
   <button class="button" type="submit">Sign in</button>
 </form>
+
+<style>
+  /* A password doesn't need the full content width. */
+  form {
+    max-width: 20rem;
+  }
+</style>
