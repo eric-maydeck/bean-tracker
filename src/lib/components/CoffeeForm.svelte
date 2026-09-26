@@ -324,22 +324,22 @@
     {/if}
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-roaster">
     <label for="roaster">Roaster</label>
     <input id="roaster" name="roaster" required value={(coffee?.roaster ?? prefill?.roaster) ?? ''} list="roaster-suggestions" autocomplete="off" />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-coffee">
     <label for="coffee_name">Coffee</label>
     <input id="coffee_name" name="coffee_name" required value={(coffee?.coffee_name ?? prefill?.coffee_name) ?? ''} />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-origin">
     <label for="origin">Origin</label>
     <input id="origin" name="origin" value={(coffee?.origin ?? prefill?.origin) ?? ''} list="origin-suggestions" autocomplete="off" />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-roastlevel">
     <label for="roast_level">Roast level</label>
     <select id="roast_level" name="roast_level" onchange={roastLevelChanged}>
       <option value="">—</option>
@@ -351,7 +351,7 @@
     </select>
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-processing">
     <label for="processing">Processing</label>
     <input
       id="processing"
@@ -362,22 +362,22 @@
     />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-amount">
     <label for="amount_g">Amount (g)</label>
     <input id="amount_g" name="amount_g" type="number" step="1" value={(coffee?.amount_g ?? prefill?.amount_g) ?? ''} />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-cost">
     <label for="cost">Cost</label>
     <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-roastdate">
     <label for="roast_date">Roast date</label>
     <input id="roast_date" name="roast_date" type="date" value={(coffee?.roast_date ?? prefill?.roast_date) ?? ''} />
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-frozenstart">
     <label for="frozen_start_date">Frozen start date</label>
     <input
       id="frozen_start_date"
@@ -387,14 +387,19 @@
     />
   </div>
 
-  <div class="form-field form-field-checkbox">
+  <div class="form-field field-frozenend">
+    <label for="frozen_end_date">Frozen end date</label>
+    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
+  </div>
+
+  <div class="form-field form-field-checkbox field-decaf">
     <label for="decaf">
       <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
       Decaf
     </label>
   </div>
 
-  <div class="form-field">
+  <div class="form-field field-rest">
     <div class="rest-days-row">
       <div class="rest-days-field">
         <label for="rest_days_low">Min rest</label>
@@ -416,12 +421,7 @@
     {/if}
   </div>
 
-  <div class="form-field">
-    <label for="frozen_end_date">Frozen end date</label>
-    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
-  </div>
-
-  <div class="form-field">
+  <div class="form-field field-image">
     <label for="image_url">Image URL (label or roaster logo)</label>
     <div class="inline-row">
       <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
@@ -448,7 +448,7 @@
 
   {#if coffee}
     <input type="hidden" name="id" value={coffee.id} />
-    <div class="form-field">
+    <div class="form-field field-slug">
       <label for="slug">URL slug</label>
       <div class="inline-row">
         <input id="slug" name="slug" required readonly={slugLocked} bind:this={slugInput} value={coffee.slug} />
@@ -491,42 +491,110 @@
 
 <style>
   /* app.css's shared .form-grid uses auto-fit, whose column count can vary
-     with available width — fine for other forms, but this form's field
-     order relies on a fixed 3-column flow so specific pairs (Cost/Decaf,
-     Roast date/rest days, Frozen start/end) land in the same column, one
-     row apart. Scoped here (Svelte adds a component-specific class to this
-     .form-grid, so this doesn't affect the shared class elsewhere, e.g.
-     the subscriptions page). Base rule first, breakpoint override after it
-     per the source-order cascade gotcha (docs/HANDOFF.md). */
+     with available width — fine for other forms, but this form pins every
+     field to a named cell (grid-template-areas) so growth in one cell
+     (the rest-days note after a Fill, the image preview after a Preview)
+     never shifts a field in another column: only that cell's own row
+     grows, everything else stays put. Scoped here (Svelte adds a
+     component-specific class to this .form-grid, so this doesn't affect
+     the shared class elsewhere, e.g. the subscriptions page). Desktop's
+     3-equal-column layout puts Image URL, Min/Max rest and Frozen end
+     date side by side in one row (their inputs line up — see field-image
+     etc. below) with Decaf under Frozen end and URL slug (Edit mode) under
+     Min/Max rest; Image URL's cell spans into the row below so its own
+     (possibly tall, with buttons/thumbnail) content doesn't inflate that
+     shared row for the other two columns. Base rule first, breakpoint
+     override after it per the source-order cascade gotcha
+     (docs/HANDOFF.md) — mobile is a full single-column re-order, not a
+     column-count tweak, so it gets its own grid-template-areas. */
   .form-grid {
-    grid-template-columns: repeat(3, 1fr);
+    /* minmax(0, 1fr), not plain 1fr: an `fr` track's default minimum is
+       `auto` (its content's natural size), so without the explicit 0 floor
+       a wide item (e.g. the roast level select) makes its own column
+       wider than the other two instead of all three staying equal. */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-areas:
+      'producturl producturl producturl'
+      'roaster coffee origin'
+      'roastlevel processing amount'
+      'cost roastdate frozenstart'
+      'image rest frozenend'
+      'image slug decaf';
   }
-  /* Desktop only (this rule is zeroed out below at ≤640px): Decaf's row
-     (row 5) sits next to Min/Max rest and Frozen end date, whose cells are
-     a label line + gap + input box, so their input text sits well below
-     the row's top. Decaf has no label line of its own (align-self: start
-     above keeps its box sized to its own content, so it doesn't sink when
-     a neighbor grows), so without this it renders flush with the row top,
-     next to the *labels*, not the inputs. This pushes it down so its
-     center lines up with the inputs' center instead: half of (a label's
-     line height + an input's full box height), plus the label→input gap —
-     the same font-size/line-height/space tokens `.form-field label` and
-     `.form-field input` (app.css) use to build those heights, not a
-     measured pixel value, so it stays correct if those change. Verified
-     with getBoundingClientRect (see commit message). */
-  .form-field-checkbox {
-    margin-top: calc((1.35rem + 1lh + 2 * var(--space-2) + 2px) / 2 + var(--space-1));
+  /* Grid items default to min-width: auto (their content's natural size),
+     which fights the equal-column floor above — this lets each field
+     actually shrink to its cell instead of overflowing it. */
+  .form-field {
+    min-width: 0;
   }
   @media (max-width: 640px) {
     .form-grid {
       grid-template-columns: 1fr;
-    }
-    .form-field-checkbox {
-      margin-top: 0;
+      grid-template-areas:
+        'producturl'
+        'roaster'
+        'coffee'
+        'origin'
+        'roastlevel'
+        'processing'
+        'amount'
+        'cost'
+        'roastdate'
+        'frozenstart'
+        'frozenend'
+        'decaf'
+        'rest'
+        'image'
+        'slug';
     }
   }
+  /* Each field's cell name, independent of source order (see the comment
+     on .form-grid above) — the same name maps to a different desktop vs.
+     mobile position purely via the two grid-template-areas above. */
   .product-url-field {
-    grid-column: 1 / -1;
+    grid-area: producturl;
+  }
+  .field-roaster {
+    grid-area: roaster;
+  }
+  .field-coffee {
+    grid-area: coffee;
+  }
+  .field-origin {
+    grid-area: origin;
+  }
+  .field-roastlevel {
+    grid-area: roastlevel;
+  }
+  .field-processing {
+    grid-area: processing;
+  }
+  .field-amount {
+    grid-area: amount;
+  }
+  .field-cost {
+    grid-area: cost;
+  }
+  .field-roastdate {
+    grid-area: roastdate;
+  }
+  .field-frozenstart {
+    grid-area: frozenstart;
+  }
+  .field-frozenend {
+    grid-area: frozenend;
+  }
+  .field-decaf {
+    grid-area: decaf;
+  }
+  .field-rest {
+    grid-area: rest;
+  }
+  .field-image {
+    grid-area: image;
+  }
+  .field-slug {
+    grid-area: slug;
   }
   .inline-row {
     display: flex;
