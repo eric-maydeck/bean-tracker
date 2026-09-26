@@ -5,6 +5,7 @@
   import { enhance } from '$app/forms';
   import { invalidateAll } from '$app/navigation';
   import type { AlertRow } from '$lib/types';
+  import Icon, { type IconName } from '$lib/components/Icon.svelte';
   let { children, data } = $props();
 
   function formatUpdated(iso: string | null): string {
@@ -45,12 +46,15 @@
     await invalidateAll();
   }
 
-  const tabIcons: Record<string, string> = {
-    '/': '☕',
-    '/on-deck': '📋',
-    '/subscriptions': '🔁',
-    '/stats': '📊'
+  // Regular outline icons; the current tab shows the `-fill` variant.
+  const tabIcons: Record<string, 'coffee' | 'list-checks' | 'arrows-clockwise' | 'chart-bar'> = {
+    '/': 'coffee',
+    '/on-deck': 'list-checks',
+    '/subscriptions': 'arrows-clockwise',
+    '/stats': 'chart-bar'
   };
+  const tabIcon = (href: string, current: boolean): IconName =>
+    current ? `${tabIcons[href]}-fill` : tabIcons[href];
 
   $effect(() => {
     if (!browser) return;
@@ -95,7 +99,7 @@
     {/each}
     {#if data.isAdmin}
       <form method="POST" action="/login?/logout" use:enhance>
-        <button class="nav-link-button" type="submit">Log out</button>
+        <button class="nav-link-button" type="submit">Sign out</button>
       </form>
     {:else}
       <a href="/login" aria-current={page.url.pathname === '/login' ? 'page' : undefined}>Sign in</a>
@@ -106,7 +110,7 @@
     onclick={toggleTheme}
     aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
   >
-    {theme === 'light' ? '🌙' : '☀️'}
+    <Icon name={theme === 'light' ? 'moon' : 'sun'} />
   </button>
   {#if data.isAdmin}
     <button
@@ -115,7 +119,7 @@
       onclick={() => (showAlerts = true)}
       aria-label={`Alerts${unreadAlertCount > 0 ? ` (${unreadAlertCount} unread)` : ''}`}
     >
-      🔔{#if unreadAlertCount > 0}<span class="alert-badge">{unreadAlertCount}</span>{/if}
+      <Icon name="bell" />{#if unreadAlertCount > 0}<span class="alert-badge">{unreadAlertCount}</span>{/if}
     </button>
   {/if}
 </nav>
@@ -123,7 +127,7 @@
 <nav class="bottom-tabs">
   {#each links as link (link.href)}
     <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
-      <span class="bottom-tabs-icon" aria-hidden="true">{tabIcons[link.href]}</span>
+      <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={tabIcon(link.href, page.url.pathname === link.href)} /></span>
       {link.label}
     </a>
   {/each}
@@ -133,7 +137,7 @@
     aria-expanded={showMore}
     onclick={() => (showMore = !showMore)}
   >
-    <span class="bottom-tabs-icon" aria-hidden="true">⋯</span>
+    <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={showMore ? 'dots-three-fill' : 'dots-three'} /></span>
     More
   </button>
 </nav>
@@ -142,18 +146,18 @@
   <div class="bottom-tabs-more-panel">
     {#if data.isAdmin}
       <form method="POST" action="/login?/logout" use:enhance>
-        <button class="nav-link-button" type="submit">Log out</button>
+        <button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button>
       </form>
     {:else}
-      <a href="/login">Sign in</a>
+      <a class="nav-link-button" href="/login"><Icon name="sign-in" /> Sign in</a>
     {/if}
     {#if data.isAdmin}
       <button class="nav-link-button" type="button" onclick={() => (showAlerts = true)}>
-        🔔 Alerts{#if unreadAlertCount > 0} ({unreadAlertCount}){/if}
+        <Icon name="bell" /> Alerts{#if unreadAlertCount > 0} ({unreadAlertCount}){/if}
       </button>
     {/if}
     <button class="nav-link-button" type="button" onclick={toggleTheme}>
-      {theme === 'light' ? '🌙 Dark mode' : '☀️ Light mode'}
+      <Icon name={theme === 'light' ? 'moon' : 'sun'} /> {theme === 'light' ? 'Dark mode' : 'Light mode'}
     </button>
   </div>
 {/if}

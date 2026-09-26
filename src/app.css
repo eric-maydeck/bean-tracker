@@ -234,6 +234,7 @@ input:focus-visible {
   font: inherit;
   color: inherit;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .icon-button {
@@ -253,6 +254,17 @@ input:focus-visible {
 
 .icon-button:hover {
   border-color: var(--color-accent);
+}
+
+.icon-button .icon,
+.nav-link-button .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+}
+
+.nav-link-button {
+  gap: var(--space-2);
 }
 
 .badge {
@@ -1019,8 +1031,12 @@ div.compact-row {
   }
 
   .bottom-tabs-icon {
-    font-size: 1.25rem;
-    line-height: 1;
+    line-height: 0;
+  }
+
+  .bottom-tabs-icon .icon {
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .bottom-tabs-more-panel {
