@@ -1,3 +1,10 @@
+## [1.34.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.34.0...v1.34.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **coffees:** row Edit opens only that coffee, with its own save
+
 # [1.34.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.33.1...v1.34.0) (2026-09-26)
 
 
