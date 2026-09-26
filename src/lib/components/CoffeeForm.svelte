@@ -556,9 +556,9 @@
         'amount'
         'cost'
         'roastdate'
+        'rest'
         'frozenstart'
         'frozenend'
-        'rest'
         'decaf'
         'image'
         'slug';
