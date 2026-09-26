@@ -224,16 +224,22 @@
   <title>Bean Tracker - {data.coffee.coffee_name}</title>
 </svelte:head>
 
-<a class="button button-secondary" href="/" onclick={backToCollection}>&larr; Back to collection</a>
+<div class="detail-actions">
+  <a class="button button-secondary" href="/" onclick={backToCollection}>&larr; Back to collection</a>
 
-<button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
-  Import into Bean Conqueror
-</button>
-{#if data.isAdmin}
-  <button class="button button-secondary" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
-    Clone
+  <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
+    Import into Bean Conqueror
   </button>
-{/if}
+  {#if data.isAdmin}
+    <button class="button button-secondary" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
+      Clone
+    </button>
+  {/if}
+  {#if data.isAdmin && !editMode}
+    <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
+  {/if}
+</div>
+
 {#if shareUrl && shareQrDataUrl}
   <div class="chart-panel">
     <div class="share-panel">
@@ -254,20 +260,16 @@
   </div>
 {/if}
 
-{#if data.isAdmin}
-  <div class="search-row">
-    {#if editMode}
-      <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
-        {saving ? 'Saving…' : 'Save changes'}
-      </button>
-      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
-    {:else}
-      <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
-    {/if}
+{#if data.isAdmin && editMode}
+  <div class="search-row detail-edit-row">
+    <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+      {saving ? 'Saving…' : 'Save changes'}
+    </button>
+    <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
   </div>
-  {#if commitError}
-    <p class="badge badge-urgent">{commitError}</p>
-  {/if}
+{/if}
+{#if data.isAdmin && commitError}
+  <p class="badge badge-urgent">{commitError}</p>
 {/if}
 
 {#if canEdit}
@@ -282,6 +284,7 @@
     onstage={stageFields}
     onclone={(prefill) => (clonePrefillData = prefill)}
     showSubmit={false}
+    showClone={false}
   />
 
   <button class="button button-danger" type="button" disabled={saving} onclick={stageDelete}>

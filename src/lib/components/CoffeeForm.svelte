@@ -19,7 +19,8 @@
     onsuccess = null,
     onstage = null,
     onclone = null,
-    showSubmit = true
+    showSubmit = true,
+    showClone = true
   }: {
     coffee?: CoffeeRow | null;
     prefill?: Partial<CoffeeRow> | null;
@@ -37,6 +38,11 @@
     // (requestSubmit() with no args, so no visible submit button is
     // needed) — this hides the redundant per-field Update button there.
     showSubmit?: boolean;
+    // The detail page already has its own toolbar Clone button (which
+    // clones the committed/staged coffee); this form's own Clone (which
+    // clones whatever's currently typed, including unstaged edits) would be
+    // a second, redundant Clone control there — hidden by passing false.
+    showClone?: boolean;
   } = $props();
 
   let formEl: HTMLFormElement;
@@ -488,7 +494,7 @@
   {#if oncancel}
     <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
   {/if}
-  {#if onclone && coffee}
+  {#if onclone && coffee && showClone}
     <button class="button button-secondary" type="button" onclick={cloneCurrent}>Clone</button>
   {/if}
 </form>

@@ -684,6 +684,46 @@ nav.site-nav a[aria-current='page'] {
   font-size: 0.8rem;
 }
 
+/* Groups the coffee detail page's Back/Import/Clone/Edit buttons. Unstyled
+   at desktop on purpose — before this class existed these were plain
+   sibling elements relying on .button's own inline-block + margin, and this
+   wrapper keeps that exact look there. At phone width they become an
+   equal-width grid instead (see the override below) so Edit always sits
+   next to Clone rather than wrapping under it. */
+
+/* More breathing room above Save/Discard than .search-row's own margin
+   gives it, so it doesn't read as part of the Clone row above it — at every
+   width, not just phone. */
+.detail-edit-row {
+  margin-top: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  /* Same grid-template-columns + gap on both rows (not shared via one
+     selector, since .detail-edit-row also carries .search-row's own
+     display:flex elsewhere — see the gotcha above about override source
+     order) so Save changes/Discard changes come out the exact same
+     width/height as Back/Import/Clone/Edit above, rather than sizing to
+     their own shorter labels. */
+  .detail-actions,
+  .detail-edit-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+  .detail-actions {
+    margin-bottom: var(--space-4);
+  }
+  /* Grid blockifies these (native <a>/<button> inline-block), so they
+     already stretch to fill their column — just drop .button's own
+     inline-flow margin and center the (possibly wrapped) label. */
+  .detail-actions .button,
+  .detail-edit-row .button {
+    margin: 0;
+    text-align: center;
+  }
+}
+
 .detail {
   display: grid;
   grid-template-columns: minmax(200px, 280px) 1fr;
