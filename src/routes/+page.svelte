@@ -16,7 +16,7 @@
     clonePrefill,
     type PendingChange
   } from '$lib/pendingChanges';
-  import { SvelteMap } from 'svelte/reactivity';
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity';
   import type { CoffeeRow } from '$lib/types';
   import FilterBar from '$lib/components/FilterBar.svelte';
   import {
@@ -43,7 +43,14 @@
   let view = $state<'cards' | 'list' | 'compact'>('list');
 
   let editMode = $state(false);
-  let canEdit = $derived(editMode && data.isAdmin);
+  // A row's own Edit button opens only that row (editIds), which then gets
+  // its own Save/Discard scoped to that coffee; the page-level Edit button
+  // opens every row (editAll) with the toolbar's Save/Discard for all.
+  let editAll = $state(false);
+  const editIds = new SvelteSet<number>();
+  function canEdit(id: number) {
+    return editMode && data.isAdmin && (editAll || editIds.has(id));
+  }
   let expandedId = $state<number | 'new' | null>(null);
   let addPrefill = $state<Partial<CoffeeRow> | null>(null);
 
@@ -92,9 +99,10 @@
 
   function enterEditMode() {
     editMode = true;
+    editAll = true;
   }
 
-  async function saveChanges() {
+  async function saveChanges(onlyId?: number) {
     // An open per-row edit form's changes aren't in `pending` until its own
     // "Update" button stages them — apply them first, the same way Update
     // would, so "Save changes" doesn't silently ignore whatever is still
@@ -107,12 +115,19 @@
     // would silently re-attach fields onto that delete, letting a field
     // validation error block the delete or running a pointless update
     // right before it.
-    const openRowId = typeof expandedId === 'number' ? expandedId : null;
+    const openRowId = typeof expandedId === 'number' && (onlyId == null || expandedId === onlyId) ? expandedId : null;
     const openRowIsDeleting = openRowId != null && pending.get(openRowId)?.statusAction === 'delete';
     if (openRowId != null && !openRowIsDeleting && expandedFormRef && !expandedFormRef.applyPendingEdits()) return;
 
     saving = true;
-    const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+    const changes = Array.from(pending.entries())
+      .filter(([id]) => onlyId == null || id === onlyId)
+      .map(([id, change]) => ({ id, ...change }));
+    if (onlyId != null && changes.length === 0) {
+      saving = false;
+      discardRow(onlyId);
+      return;
+    }
 
     try {
       const validateRes = await fetch('/api/coffees/validate-batch', {
@@ -172,18 +187,45 @@
     // succeeded by this point, so a failure in invalidateAll() (or
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
+    if (onlyId != null) {
+      saving = false;
+      discardRow(onlyId);
+      await invalidateAll();
+      return;
+    }
     pending = new SvelteMap();
     commitErrors = new Map();
     editMode = false;
+    editAll = false;
+    editIds.clear();
     expandedId = null;
     saving = false;
     await invalidateAll();
+  }
+
+  // A row opened by its own Edit button (not the page-level Edit): it gets
+  // a Save button, and its Cancel discards that coffee's staged changes.
+  function soloEdit(id: number) {
+    return !editAll && editIds.has(id);
+  }
+  function showCancel(id: number) {
+    return expandedId === id || soloEdit(id);
+  }
+
+  function discardRow(id: number) {
+    pending.delete(id);
+    commitErrors = new Map();
+    editIds.delete(id);
+    if (expandedId === id) expandedId = null;
+    if (!editAll && editIds.size === 0) editMode = false;
   }
 
   function discardChanges() {
     pending = new SvelteMap();
     commitErrors = new Map();
     editMode = false;
+    editAll = false;
+    editIds.clear();
     expandedId = null;
   }
 
@@ -444,108 +486,119 @@
     type="button"
     title={icons ? 'Edit' : undefined} aria-label={icons ? 'Edit' : undefined}
     onclick={() => {
-      enterEditMode();
+      editMode = true;
+      editIds.add(coffee.id);
       expandedId = coffee.id;
     }}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
   >
 {/snippet}
 
 {#snippet adminActions(coffee: CoffeeRow, icons = false)}
-  {#if coffee.status === 'archive'}
-    <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && expandedId === coffee.id} type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}
-      title={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined}>
-      {#if icons}<Icon name={expandedId === coffee.id ? 'cancel' : 'edit'} />{:else}{expandedId === coffee.id ? 'Cancel' : 'Edit'}{/if}
-    </button>
-    {@render cloneButton(coffee, icons)}
-    <button
-      class="button button-secondary" class:button-icon={icons}
-      type="button"
-      aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
-      disabled={saving}
-      onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
-      title={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
-    >
-      {#if icons}<Icon name="restore" />{:else}Restore{/if}
-    </button>
-  {:else}
-    <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && expandedId === coffee.id} type="button" disabled={saving} onclick={() => toggleEdit(coffee.id)}
-      title={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (expandedId === coffee.id ? 'Cancel' : 'Edit') : undefined}>
-      {#if icons}<Icon name={expandedId === coffee.id ? 'cancel' : 'edit'} />{:else}{expandedId === coffee.id ? 'Cancel' : 'Edit'}{/if}
-    </button>
-    {@render cloneButton(coffee, icons)}
-    {#if coffee.status === 'backlog'}
-      <button
-        class="button" class:button-icon={icons}
-        type="button"
-        aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
-        disabled={saving}
-        onclick={() => stageStatusAction(pending, coffee.id, 'open')}
-        title={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
-      >
-        {#if icons}<Icon name="open" />{:else}Open{/if}
-      </button>
-      {#if coffee.frozen_start_date && !coffee.frozen_end_date}
-        <button
-          class="button button-secondary" class:button-icon={icons}
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
-          title={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
-        >
-          {#if icons}<Icon name="thaw" />{:else}Thaw{/if}
-        </button>
-      {:else}
-        <button
-          class="button button-secondary" class:button-icon={icons}
-          type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
-          disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
-          title={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
-        >
-          {#if icons}<Icon name="freeze" />{:else}Freeze{/if}
+  <!-- Two fixed rows (save/cancel/delete over the status actions) so the
+       Actions column never wraps to a third row and squeezes the table. -->
+  <div class="action-stack">
+    <div class="action-row">
+      {#if soloEdit(coffee.id)}
+        <button class="button button-success" class:button-icon={icons} type="button" disabled={saving} onclick={() => saveChanges(coffee.id)}
+          title={icons ? 'Save' : undefined} aria-label={icons ? 'Save' : undefined}>
+          {#if icons}<Icon name="save" />{:else}{saving ? 'Saving…' : 'Save'}{/if}
         </button>
       {/if}
-    {:else if coffee.status === 'open'}
-      <button
-        class="button button-secondary" class:button-icon={icons}
-        type="button"
-        aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
-        disabled={saving}
-        onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
-        title={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
-      >
-        {#if icons}<Icon name="unopen" />{:else}Unopen{/if}
+      <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && showCancel(coffee.id)} type="button" disabled={saving} onclick={() => (soloEdit(coffee.id) ? discardRow(coffee.id) : toggleEdit(coffee.id))}
+        title={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined}>
+        {#if icons}<Icon name={showCancel(coffee.id) ? 'cancel' : 'edit'} />{:else}{showCancel(coffee.id) ? 'Cancel' : 'Edit'}{/if}
       </button>
-    {/if}
-    <button
-      class="button button-secondary" class:button-icon={icons}
-      type="button"
-      aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
-      disabled={saving}
-      onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
-      title={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
-    >
-      {#if icons}<Icon name="archive" />{:else}Archive{/if}
-    </button>
-    <button
-      class="button button-danger" class:button-icon={icons}
-      type="button"
-      aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
-      disabled={saving}
-      onclick={() => {
-        if (pending.get(coffee.id)?.statusAction === 'delete') {
-          stageStatusAction(pending, coffee.id, 'delete');
-        } else if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
-          stageStatusAction(pending, coffee.id, 'delete');
-        }
-      }}
-      title={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
-    >
-      {#if icons}<Icon name="delete" />{:else}Delete{/if}
-    </button>
-  {/if}
+      {#if coffee.status !== 'archive'}
+        <button
+          class="button button-danger" class:button-icon={icons}
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'delete'}
+          disabled={saving}
+          onclick={() => {
+            if (pending.get(coffee.id)?.statusAction === 'delete') {
+              stageStatusAction(pending, coffee.id, 'delete');
+            } else if (confirm(`Delete ${coffee.coffee_name} by ${coffee.roaster}? This cannot be undone.`)) {
+              stageStatusAction(pending, coffee.id, 'delete');
+            }
+          }}
+          title={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
+        >
+          {#if icons}<Icon name="delete" />{:else}Delete{/if}
+        </button>
+      {/if}
+    </div>
+    <div class="action-row">
+      {#if coffee.status === 'archive'}
+        <button
+          class="button button-secondary" class:button-icon={icons}
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
+          disabled={saving}
+          onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
+          title={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
+        >
+          {#if icons}<Icon name="restore" />{:else}Restore{/if}
+        </button>
+      {:else}
+        {#if coffee.status === 'backlog'}
+          <button
+            class="button" class:button-icon={icons}
+            type="button"
+            aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
+            disabled={saving}
+            onclick={() => stageStatusAction(pending, coffee.id, 'open')}
+            title={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
+          >
+            {#if icons}<Icon name="open" />{:else}Open{/if}
+          </button>
+          {#if coffee.frozen_start_date && !coffee.frozen_end_date}
+            <button
+              class="button button-secondary" class:button-icon={icons}
+              type="button"
+              aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
+              disabled={saving}
+              onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
+              title={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
+            >
+              {#if icons}<Icon name="thaw" />{:else}Thaw{/if}
+            </button>
+          {:else}
+            <button
+              class="button button-secondary" class:button-icon={icons}
+              type="button"
+              aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
+              disabled={saving}
+              onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
+              title={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
+            >
+              {#if icons}<Icon name="freeze" />{:else}Freeze{/if}
+            </button>
+          {/if}
+        {:else if coffee.status === 'open'}
+          <button
+            class="button button-secondary" class:button-icon={icons}
+            type="button"
+            aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
+            disabled={saving}
+            onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
+            title={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
+          >
+            {#if icons}<Icon name="unopen" />{:else}Unopen{/if}
+          </button>
+        {/if}
+        <button
+          class="button button-secondary" class:button-icon={icons}
+          type="button"
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
+          disabled={saving}
+          onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
+          title={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
+        >
+          {#if icons}<Icon name="archive" />{:else}Archive{/if}
+        </button>
+      {/if}
+    </div>
+  </div>
   {#if pending.has(coffee.id)}
     <span class="badge badge-neutral">
       {pending.get(coffee.id)?.statusAction
@@ -565,8 +618,10 @@
     processingMethods={data.processingMethods}
     restHistory={[...data.backlog, ...data.open, ...data.archive]}
     formError={commitErrors.get(coffee.id) ?? null}
-    oncancel={closeExpanded}
+    showSubmit={editAll}
+    oncancel={view === 'list' ? undefined : () => (soloEdit(coffee.id) ? discardRow(coffee.id) : closeExpanded())}
     onclone={openClone}
+    showClone={view !== 'list'}
     onstage={(fields) => {
       stageFieldChange(pending, coffee.id, fields);
       closeExpanded();
@@ -603,8 +658,8 @@
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
   {#if data.isAdmin}
-    {#if editMode}
-      <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+    {#if editAll}
+      <button class="button button-success" type="button" disabled={saving} onclick={() => saveChanges()}>
         {saving ? 'Saving…' : 'Save changes'}
       </button>
       <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>
@@ -653,7 +708,7 @@
     {#each coffees as coffee (coffee.id)}
       {#if data.isAdmin}
         <div class="card">
-          {#if canEdit && expandedId === coffee.id}
+          {#if canEdit(coffee.id) && expandedId === coffee.id}
             {@render expandedForm(coffee)}
           {:else}
             <div class="card-body">
@@ -695,7 +750,7 @@
               {/if}
             </div>
             <div class="action-buttons">
-              {#if canEdit}
+              {#if canEdit(coffee.id)}
                 {@render adminActions(coffee, true)}
               {:else}
                 {@render editButton(coffee, true)}
@@ -750,7 +805,7 @@
   <div class="compact-list">
     {#each sortedCoffees as coffee (coffee.id)}
       <div class="compact-row-wrap">
-        {#if canEdit}
+        {#if canEdit(coffee.id)}
           <div class="compact-row">
             <div class="compact-row-main">
               <div class="compact-row-title">
@@ -835,20 +890,20 @@
     <table class="data-table compact">
       <colgroup>
         <col style="width: 7%" />
-        <col style="width: 13%" />
+        <col style="width: 11%" />
         <col style="width: 6%" />
         <col style="width: 6%" />
+        <col style="width: 4%" />
+        <col style="width: 11%" />
+        <col style="width: 5%" />
         <col style="width: 5%" />
         <col style="width: 7%" />
-        <col style="width: 5%" />
-        <col style="width: 5%" />
         <col style="width: 7%" />
-        <col style="width: 6%" />
-        <col style="width: 6%" />
-        <col style="width: 9%" />
+        <col style="width: 7%" />
+        <col style="width: 8%" />
         <col style="width: 5%" />
         {#if data.isAdmin}
-          <col style="width: 13%" />
+          <col style="width: 11%" />
         {/if}
       </colgroup>
       <thead>
@@ -994,7 +1049,7 @@
             {#if data.isAdmin}
               <td>
                 <div class="action-buttons">
-                  {#if canEdit}
+                  {#if canEdit(coffee.id)}
                     {@render adminActions(coffee, true)}
                   {:else}
                     {@render editButton(coffee, true)}
@@ -1004,7 +1059,7 @@
               </td>
             {/if}
           </tr>
-          {#if canEdit && expandedId === coffee.id}
+          {#if canEdit(coffee.id) && expandedId === coffee.id}
             <tr>
               <td colspan={data.isAdmin ? 14 : 13}>
                 {@render expandedForm(coffee)}
