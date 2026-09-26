@@ -51,7 +51,7 @@ describe('parseHtmlProduct', () => {
     expect(p.brand).toBe('Farm X');
     expect(p.image).toBe('https://x/ld.jpg');
     expect(p.currency).toBe('EUR');
-    expect(p.variants).toEqual([{ id: null, label: '', price: 12.5 }]);
+    expect(p.variants).toEqual([{ id: null, label: '', price: 12.5, grams: null }]);
     expect(p.attributes.country).toBe('Kenya');
     expect(p.attributes.process).toBe('Washed');
     expect(p.attributes['net weight']).toBe('250 gram');
@@ -72,7 +72,22 @@ describe('parseShopifyProduct variant filtering', () => {
       }
     };
     const p = parseShopifyProduct(json, null);
-    expect(p.variants).toEqual([{ id: 1, label: 'A', price: 12 }]);
+    expect(p.variants).toEqual([{ id: 1, label: 'A', price: 12, grams: null }]);
+  });
+
+  it("carries Shopify's own numeric grams per variant, ignoring a zero/missing value", () => {
+    const json = {
+      product: {
+        title: 'Test Coffee',
+        variants: [
+          { id: 1, title: 'TAKEOUT BOX', price: '12.00', grams: 200 },
+          { id: 2, title: 'JUST A BAG', price: '12.00', grams: 0 },
+          { id: 3, title: 'No grams field', price: '12.00' }
+        ]
+      }
+    };
+    const p = parseShopifyProduct(json, null);
+    expect(p.variants.map((v) => v.grams)).toEqual([200, null, null]);
   });
 });
 

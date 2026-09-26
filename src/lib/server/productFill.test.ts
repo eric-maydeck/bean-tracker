@@ -211,7 +211,7 @@ describe('buildFill', () => {
   });
 
   it('non-USD with the rate API down: cost blank, amount still filled, note keeps the original price', () => {
-    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25 }] });
+    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25, grams: null }] });
     const r = buildFill(p, ctx({ rates: null }));
     expect(r.fields.cost).toBeUndefined();
     expect(r.fields.amount_g).toBe(250);
@@ -219,7 +219,7 @@ describe('buildFill', () => {
   });
 
   it('non-USD with rates: converted cost and a note with original price and rate date', () => {
-    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25 }] });
+    const p = product({ title: 'Kenya 250g', currency: 'GBP', variants: [{ id: null, label: '', price: 9.25, grams: null }] });
     const r = buildFill(p, ctx());
     expect(r.fields.cost).toBe(11.73);
     expect(r.notes.join(' · ')).toContain('£9.25 GBP → $11.73 USD (rate 2026-09-25)');
@@ -228,7 +228,7 @@ describe('buildFill', () => {
   it('preselects the ?variant= from the pasted URL', () => {
     const p = product({
       title: 'Burundi', currency: 'USD',
-      variants: [{ id: 111, label: '125g', price: 21 }, { id: 222, label: '250g', price: 36 }, { id: 333, label: '1kg', price: 114 }]
+      variants: [{ id: 111, label: '125g', price: 21, grams: null }, { id: 222, label: '250g', price: 36, grams: null }, { id: 333, label: '1kg', price: 114, grams: null }]
     });
     const r = buildFill(p, ctx({ url: 'https://h.coffee/collections/c/products/burundi?variant=333' }));
     expect(r.selected).toBe(2);
@@ -237,12 +237,30 @@ describe('buildFill', () => {
   });
 
   it('several sizes, no history: nothing applied, chips offered, note asks to pick', () => {
-    const p = product({ title: 'Burundi', currency: 'USD', variants: [{ id: 1, label: '125g', price: 21 }, { id: 2, label: '250g', price: 36 }] });
+    const p = product({ title: 'Burundi', currency: 'USD', variants: [{ id: 1, label: '125g', price: 21, grams: null }, { id: 2, label: '250g', price: 36, grams: null }] });
     const r = buildFill(p, ctx());
     expect(r.selected).toBeNull();
     expect(r.fields.amount_g).toBeUndefined();
     expect(r.variants.map((v) => v.grams)).toEqual([125, 250]);
     expect(r.notes.join(' · ')).toMatch(/pick a bag size/);
+  });
+
+  it("falls back to Shopify's own numeric grams when a variant label has no weight text (Luminous)", () => {
+    const p = product({
+      title: 'Mexico Yellow Caturra', currency: 'USD',
+      variants: [
+        { id: 1, label: 'TAKEOUT BOX - ALL THE EXTRAS', price: 24, grams: 200 },
+        { id: 2, label: 'JUST A BAG', price: 20, grams: 200 }
+      ]
+    });
+    const r = buildFill(p, ctx());
+    expect(r.variants.map((v) => v.grams)).toEqual([200, 200]);
+  });
+
+  it('a single such variant is still auto-selected, filling amount_g from the Shopify grams field', () => {
+    const p = product({ title: 'Mexico Yellow Caturra', currency: 'USD', variants: [{ id: 1, label: 'JUST A BAG', price: 20, grams: 200 }] });
+    const r = buildFill(p, ctx());
+    expect(r.fields).toMatchObject({ amount_g: 200, cost: 20 });
   });
 
   it('shoebox fixture', () => {

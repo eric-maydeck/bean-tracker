@@ -2,6 +2,10 @@ export interface ProductVariant {
   id: number | null;
   label: string;
   price: number;
+  // Shopify's own per-variant weight, when the platform reports one — used
+  // as a fallback when the label itself has no weight text (e.g. a variant
+  // named "Takeout box" rather than "200g").
+  grams: number | null;
 }
 
 export interface ProductData {
@@ -81,7 +85,7 @@ interface ShopifyJson {
     body_html?: string | null;
     image?: { src?: string } | null;
     images?: { src?: string }[];
-    variants?: { id?: number; title?: string; price?: string }[];
+    variants?: { id?: number; title?: string; price?: string; grams?: number }[];
   };
 }
 
@@ -105,7 +109,8 @@ export function parseShopifyProduct(json: unknown, meta: { name?: string; curren
       .map((v) => ({
         id: typeof v.id === 'number' ? v.id : null,
         label: !v.title || v.title === 'Default Title' ? '' : v.title,
-        price: Number(v.price)
+        price: Number(v.price),
+        grams: typeof v.grams === 'number' && v.grams > 0 ? v.grams : null
       }))
       .filter((v) => v.price > 0)
   };
@@ -188,6 +193,6 @@ export function parseHtmlProduct(html: string): ProductData | null {
     attributes: { ...labeledLines(description), ...pairRows(html) },
     image: ldImage(ld?.image) ?? meta['og:image'] ?? null,
     currency: currency ? currency.toUpperCase() : null,
-    variants: rawPrice != null && Number.isFinite(price) && price > 0 ? [{ id: null, label: '', price }] : []
+    variants: rawPrice != null && Number.isFinite(price) && price > 0 ? [{ id: null, label: '', price, grams: null }] : []
   };
 }

@@ -239,7 +239,10 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
     parseGrams(p.attributes['net weight'] ?? p.attributes['weight'] ?? p.attributes['size'] ?? '');
   const variants: FillVariant[] = p.variants.map((v) => ({
     label: v.label,
-    grams: parseGrams(v.label) ?? pageGrams,
+    // The label's own weight text wins when present; otherwise Shopify's
+    // numeric `grams` field (a per-variant value from the platform itself)
+    // beats the whole-product pageGrams guess.
+    grams: parseGrams(v.label) ?? v.grams ?? pageGrams,
     costUsd: toUsd(v.price, currency, ctx.rates),
     originalPrice: currency === 'USD' ? null : `${formatMoney(v.price, currency)} ${currency}`
   }));
