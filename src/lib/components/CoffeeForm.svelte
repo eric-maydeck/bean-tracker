@@ -142,8 +142,9 @@
       }
       const { rest_days_low, rest_days_high, ...found } = data.fields;
       for (const [key, value] of Object.entries(found)) setField(key, value as string | number);
-      // The fill's notes already carry the rest note, hence note ''.
-      if (rest_days_low != null && rest_days_high != null) offerRest({ low: rest_days_low, high: rest_days_high, note: '' });
+      if (rest_days_low != null && rest_days_high != null) {
+        offerRest({ low: rest_days_low, high: rest_days_high, note: data.restNote ?? '' });
+      }
       lastFilledUrl = url;
       if (data.fields.image_url) showPreview(data.fields.image_url);
       fillNotes = data.notes;

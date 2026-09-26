@@ -238,6 +238,10 @@ export interface FillSuccess {
   variants: FillVariant[];
   selected: number | null;
   notes: string[];
+  // Surfaced separately (not folded into `notes`) so the form can show it
+  // once, directly below the rest-days fields, instead of duplicating it in
+  // the top status note.
+  restNote: string | null;
 }
 export type FillResult = FillSuccess | { error: string };
 export interface FillContext {
@@ -302,7 +306,6 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   if (!fields.processing) notes.push('processing not found');
   if (roast?.note) notes.push(roast.note);
   else if (!roast) notes.push('roast level not found');
-  if (rest) notes.push(rest.note);
   if (!p.currency && variants.length) notes.push('currency not stated on the page, assumed USD');
   if (currency !== 'USD' && variants.length) {
     const original = chosen?.originalPrice ?? variants[0].originalPrice;
@@ -312,5 +315,11 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   }
   if (variants.length > 1 && selected == null) notes.push('pick a bag size below');
 
-  return { fields, variants: variants.length > 1 ? variants : [], selected: variants.length > 1 ? selected : null, notes };
+  return {
+    fields,
+    variants: variants.length > 1 ? variants : [],
+    selected: variants.length > 1 ? selected : null,
+    notes,
+    restNote: rest?.note ?? null
+  };
 }

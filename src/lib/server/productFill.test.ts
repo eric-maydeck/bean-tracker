@@ -331,7 +331,9 @@ describe('buildFill', () => {
     );
     const r = buildFill(product({ title: 'Kinini', vendor: 'XLIII', tags: ['Hyperlight'] }), ctx({ history }));
     expect(r.fields).toMatchObject({ roaster: 'XLIII', roast_level: 'Hyperlight', rest_days_low: 180, rest_days_high: 365 });
-    expect(r.notes).toContain('Typical rest for XLIII Hyperlight coffees: 180 to 365 days (based on 2 of your 3).');
+    // Surfaced separately from `notes` so the form shows it once, below the rest-days fields.
+    expect(r.restNote).toBe('Typical rest for XLIII Hyperlight coffees: 180 to 365 days (based on 2 of your 3).');
+    expect(r.notes.join(' · ')).not.toContain('Typical rest');
   });
 
   it('strips the roaster\'s own page-title suffix from coffee_name (XLIII)', () => {
