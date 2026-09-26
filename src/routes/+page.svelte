@@ -58,6 +58,11 @@
   let commitErrors = $state(new Map<number, string>());
   let saving = $state(false);
 
+  // The currently-expanded row's CoffeeForm instance, if any — plain (not
+  // $state): only ever read synchronously from within saveChanges, never
+  // rendered.
+  let expandedFormRef: { applyPendingEdits: () => boolean } | null = null;
+
   async function refresh() {
     await invalidateAll();
   }
@@ -90,6 +95,14 @@
   }
 
   async function saveChanges() {
+    // An open per-row edit form's changes aren't in `pending` until its own
+    // "Update" button stages them — apply them first, the same way Update
+    // would, so "Save changes" doesn't silently ignore whatever is still
+    // sitting in an open form. A validation failure there (native required-
+    // field UI) aborts the save entirely, matching what clicking Update
+    // itself would do.
+    if (typeof expandedId === 'number' && expandedFormRef && !expandedFormRef.applyPendingEdits()) return;
+
     saving = true;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
 
@@ -536,6 +549,7 @@
 
 {#snippet expandedForm(coffee)}
   <CoffeeForm
+    bind:this={expandedFormRef}
     coffee={formCoffeeFor(coffee)}
     roastLevels={data.roastLevels}
     roasters={data.roasters}

@@ -66,6 +66,10 @@
   let saving = $state(false);
   let savedSlug: string | undefined;
 
+  // The edit form's instance, when rendered (canEdit) — plain (not
+  // $state): only ever read synchronously from within saveChanges.
+  let formRef: { applyPendingEdits: () => boolean } | null = null;
+
   // SvelteKit reuses this component when navigating from one coffee to
   // another (e.g. landing on a freshly saved clone), so per-coffee UI state
   // has to reset when the coffee changes — otherwise the previous coffee's
@@ -98,6 +102,13 @@
   let formCoffee = $derived.by(() => mergeStagedCoffee(data.coffee, pending.get(data.coffee.id)?.fields));
 
   async function saveChanges() {
+    // Apply the open edit form's pending changes first, the same way its
+    // own "Update" button would (same stageFields/onstage call) — otherwise
+    // "Save changes" would silently ignore whatever is still sitting in the
+    // form. A validation failure there (native required-field UI) aborts
+    // the save, matching what clicking Update itself would do.
+    if (canEdit && formRef && !formRef.applyPendingEdits()) return;
+
     saving = true;
     commitError = null;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
@@ -253,6 +264,7 @@
 
 {#if canEdit}
   <CoffeeForm
+    bind:this={formRef}
     coffee={formCoffee}
     roastLevels={data.roastLevels}
     roasters={data.roasters}

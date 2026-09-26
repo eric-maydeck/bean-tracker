@@ -166,6 +166,21 @@
   onMount(() => {
     mounted = true;
   });
+
+  // Exposed so "Save changes" (list/detail pages) can apply THIS form's
+  // pending edits first, exactly as clicking "Update" would — same
+  // use:enhance handler above (same stageFieldChange/onstage call), not a
+  // second copy of it. requestSubmit() runs the browser's own constraint
+  // validation first: an invalid form (e.g. a blanked-out required field)
+  // shows the same native validation UI a real Update click would and never
+  // fires the submit event, so onstage is never called — this returns
+  // false in that case so the caller can stop before saving.
+  export function applyPendingEdits(): boolean {
+    const ok = formEl.checkValidity();
+    if (ok) formEl.requestSubmit();
+    else formEl.reportValidity();
+    return ok;
+  }
 </script>
 
 <form
@@ -254,7 +269,7 @@
       <p class="badge badge-urgent" role="alert">{fillError}</p>
       {#if unsavedUrl}
         <p class="fill-note fill-offer">
-          Save <span class="fill-offer-url">{unsavedUrl}</span> as the product page anyway?
+          Save <code class="fill-offer-url">{unsavedUrl}</code> as the product page anyway?
           <button
             class="button button-secondary"
             type="button"
@@ -344,19 +359,22 @@
   </div>
 
   <div class="form-field">
-    <label for="rest_days_low">Recommended rest days (low)</label>
-    <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
-  </div>
-
-  <div class="form-field">
-    <label for="rest_days_high">Recommended rest days (high)</label>
-    <input
-      id="rest_days_high"
-      name="rest_days_high"
-      type="number"
-      step="1"
-      value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
-    />
+    <div class="rest-days-row">
+      <div class="rest-days-field">
+        <label for="rest_days_low">Recommended rest days (low)</label>
+        <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
+      </div>
+      <div class="rest-days-field">
+        <label for="rest_days_high">Recommended rest days (high)</label>
+        <input
+          id="rest_days_high"
+          name="rest_days_high"
+          type="number"
+          step="1"
+          value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
+        />
+      </div>
+    </div>
     {#if restNote}
       <p class="text-muted fill-note">{restNote}</p>
     {/if}
@@ -366,15 +384,17 @@
     <label for="image_url">Image URL (label or roaster logo)</label>
     <div class="inline-row">
       <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
-      <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
-      <button
-        class="button button-secondary"
-        type="button"
-        onclick={() => {
-          setField('image_url', '');
-          previewSrc = null;
-        }}>Discard image</button
-      >
+      <div class="inline-row-actions">
+        <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
+        <button
+          class="button button-secondary"
+          type="button"
+          onclick={() => {
+            setField('image_url', '');
+            previewSrc = null;
+          }}>Discard image</button
+        >
+      </div>
     </div>
     {#if previewSrc}
       {#if previewFailed}
@@ -439,12 +459,30 @@
   }
   .inline-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
     align-items: stretch;
   }
   .inline-row input {
     flex: 1;
-    min-width: 0;
+    /* A real floor (not 0) so a narrow row wraps its buttons onto their own
+       line below instead of squeezing the input down toward nothing. */
+    min-width: 10rem;
+  }
+  /* Button(s) never wrap their own label text, and never shrink below it —
+     at phone width the row wraps the whole button/group below the input
+     (see .inline-row-actions) rather than letting either side get squeezed. */
+  .inline-row .button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  /* Groups multiple trailing buttons (e.g. Preview + Discard image) into one
+     flex item, so they wrap to the next line together as a unit instead of
+     splitting across two lines. */
+  .inline-row-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: var(--space-2);
   }
   .fill-note {
     margin: var(--space-1) 0 0;
@@ -468,5 +506,30 @@
     max-width: 96px;
     max-height: 96px;
     object-fit: contain;
+  }
+  /* Low/high sit side by side within this one .form-grid cell (a fixed
+     grid-column span here, to make the note below sit under both fields,
+     misplaced the note under whichever two columns grid auto-placement
+     happened to pack next to it — not reliably under low/high). The note
+     below is rendered once for the pair, so it reads as spanning both
+     instead of sitting only under (high) as it used to. */
+  .rest-days-row {
+    display: flex;
+    gap: var(--space-2);
+  }
+  .rest-days-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    flex: 1;
+    min-width: 0;
+  }
+  /* Locked (readonly) slug reads as disabled: same muted/gray treatment as
+     the app's other muted text, and a "not-allowed" cursor. Unlocked (via
+     Edit) it looks like every other input. */
+  #slug:read-only {
+    background: var(--color-border);
+    color: var(--color-text-muted);
+    cursor: not-allowed;
   }
 </style>
