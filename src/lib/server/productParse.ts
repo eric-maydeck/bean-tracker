@@ -172,6 +172,18 @@ function firstOffer(v: unknown): Ld | null {
   return (o.offers ? firstOffer(o.offers) : null) ?? o;
 }
 
+// A page's og:image (or a Shopify image src) can be a relative or
+// protocol-relative path — resolve it against the final fetched URL so it
+// works from anywhere, not just the page it was scraped from.
+export function resolveImageUrl(image: string | null, finalUrl: string): string | null {
+  if (!image) return null;
+  try {
+    return new URL(image, finalUrl).href;
+  } catch {
+    return null;
+  }
+}
+
 export function parseHtmlProduct(html: string): ProductData | null {
   const meta = metaTags(html);
   const ld = findLdProduct(html);

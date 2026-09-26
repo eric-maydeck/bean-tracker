@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { decodeEntities, htmlToText, parseShopifyProduct, parseHtmlProduct } from './productParse';
+import { decodeEntities, htmlToText, parseShopifyProduct, parseHtmlProduct, resolveImageUrl } from './productParse';
 
 // Captured 2026-09-25 by Task 3 Step 1 of docs/superpowers/plans/2026-09-25-product-page-fill.md.
 // All eight listed URLs returned 200; no substitutions were needed.
@@ -159,5 +159,26 @@ describe('fixtures', () => {
     expect(p.siteName).not.toBe(p.brand); // brand is the farm, not the roaster
     expect(p.image).toMatch(/^https:\/\//);
     expect(p.variants[0].price).toBeGreaterThan(0);
+  });
+});
+
+describe('resolveImageUrl', () => {
+  const finalUrl = 'https://roaster.example/products/kenya';
+
+  it('resolves a relative path against the final page URL', () => {
+    expect(resolveImageUrl('/cdn/images/kenya.jpg', finalUrl)).toBe('https://roaster.example/cdn/images/kenya.jpg');
+  });
+
+  it('resolves a protocol-relative URL', () => {
+    expect(resolveImageUrl('//cdn.roaster.example/kenya.jpg', finalUrl)).toBe('https://cdn.roaster.example/kenya.jpg');
+  });
+
+  it('leaves an already-absolute URL untouched', () => {
+    expect(resolveImageUrl('https://cdn.roaster.example/kenya.jpg', finalUrl)).toBe('https://cdn.roaster.example/kenya.jpg');
+  });
+
+  it('returns null for null input or an unresolvable URL', () => {
+    expect(resolveImageUrl(null, finalUrl)).toBeNull();
+    expect(resolveImageUrl('not a url either', 'not a base url')).toBeNull();
   });
 });

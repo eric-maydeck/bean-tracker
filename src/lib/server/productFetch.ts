@@ -3,7 +3,7 @@ import { BlockList, isIP } from 'node:net';
 import http from 'node:http';
 import https from 'node:https';
 import zlib from 'node:zlib';
-import { parseShopifyProduct, parseHtmlProduct, type ProductData } from './productParse';
+import { parseShopifyProduct, parseHtmlProduct, resolveImageUrl, type ProductData } from './productParse';
 import type { UsdRates } from './productFill';
 
 // Every message is shown verbatim under the Fill button.
@@ -194,7 +194,8 @@ export async function fetchProductData(rawUrl: string): Promise<ProductData> {
     try {
       const res = await safeFetch(jsonUrl);
       if (res.status === 200) {
-        return parseShopifyProduct(JSON.parse(res.body), await fetchShopifyMeta(res.finalUrl));
+        const product = parseShopifyProduct(JSON.parse(res.body), await fetchShopifyMeta(res.finalUrl));
+        return { ...product, image: resolveImageUrl(product.image, res.finalUrl) };
       }
     } catch (err) {
       // A refused address stays refused; anything else (not JSON, not
@@ -206,7 +207,7 @@ export async function fetchProductData(rawUrl: string): Promise<ProductData> {
   if (res.status !== 200) throw new FillError(`The page answered with HTTP ${res.status}`);
   const product = parseHtmlProduct(res.body);
   if (!product) throw new FillError('No product data found on that page. Is it a single product page?');
-  return product;
+  return { ...product, image: resolveImageUrl(product.image, res.finalUrl) };
 }
 
 const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
