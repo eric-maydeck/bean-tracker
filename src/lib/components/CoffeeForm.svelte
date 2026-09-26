@@ -387,16 +387,63 @@
     />
   </div>
 
-  <div class="form-field">
-    <label for="frozen_end_date">Frozen end date</label>
-    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
-  </div>
-
   <div class="form-field form-field-checkbox">
     <label for="decaf">
       <input id="decaf" name="decaf" type="checkbox" checked={(coffee?.decaf ?? prefill?.decaf) === 1} />
       Decaf
     </label>
+  </div>
+
+  <div class="form-field">
+    <div class="rest-days-row">
+      <div class="rest-days-field">
+        <label for="rest_days_low">Min rest</label>
+        <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
+      </div>
+      <div class="rest-days-field">
+        <label for="rest_days_high">Max rest</label>
+        <input
+          id="rest_days_high"
+          name="rest_days_high"
+          type="number"
+          step="1"
+          value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
+        />
+      </div>
+    </div>
+    {#if restNote}
+      <p class="text-muted fill-note">{restNote}</p>
+    {/if}
+  </div>
+
+  <div class="form-field">
+    <label for="frozen_end_date">Frozen end date</label>
+    <input id="frozen_end_date" name="frozen_end_date" type="date" value={coffee?.frozen_end_date ?? ''} />
+  </div>
+
+  <div class="form-field">
+    <label for="image_url">Image URL (label or roaster logo)</label>
+    <div class="inline-row">
+      <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
+      <div class="inline-row-actions">
+        <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
+        <button
+          class="button button-secondary"
+          type="button"
+          onclick={() => {
+            setField('image_url', '');
+            previewSrc = null;
+          }}>Discard image</button
+        >
+      </div>
+    </div>
+    {#if previewSrc}
+      {#if previewFailed}
+        <p class="text-muted fill-note">Couldn't load image</p>
+      {:else}
+        <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
+      {/if}
+    {/if}
   </div>
 
   {#if coffee}
@@ -429,53 +476,6 @@
       </div>
     </div>
   {/if}
-
-  <div class="form-field">
-    <div class="rest-days-row">
-      <div class="rest-days-field">
-        <label for="rest_days_low">Min rest</label>
-        <input id="rest_days_low" name="rest_days_low" type="number" step="1" value={(coffee?.rest_days_low ?? prefill?.rest_days_low) ?? ''} />
-      </div>
-      <div class="rest-days-field">
-        <label for="rest_days_high">Max rest</label>
-        <input
-          id="rest_days_high"
-          name="rest_days_high"
-          type="number"
-          step="1"
-          value={(coffee?.rest_days_high ?? prefill?.rest_days_high) ?? ''}
-        />
-      </div>
-    </div>
-    {#if restNote}
-      <p class="text-muted fill-note">{restNote}</p>
-    {/if}
-  </div>
-
-  <div class="form-field">
-    <label for="image_url">Image URL (label or roaster logo)</label>
-    <div class="inline-row">
-      <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
-      <div class="inline-row-actions">
-        <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
-        <button
-          class="button button-secondary"
-          type="button"
-          onclick={() => {
-            setField('image_url', '');
-            previewSrc = null;
-          }}>Discard image</button
-        >
-      </div>
-    </div>
-    {#if previewSrc}
-      {#if previewFailed}
-        <p class="text-muted fill-note">Couldn't load image</p>
-      {:else}
-        <img class="image-preview" src={previewSrc} alt="Preview of the image URL" onerror={() => (previewFailed = true)} />
-      {/if}
-    {/if}
-  </div>
   </div>
 
   {#if showSubmit}
@@ -490,6 +490,22 @@
 </form>
 
 <style>
+  /* app.css's shared .form-grid uses auto-fit, whose column count can vary
+     with available width — fine for other forms, but this form's field
+     order relies on a fixed 3-column flow so specific pairs (Cost/Decaf,
+     Roast date/rest days, Frozen start/end) land in the same column, one
+     row apart. Scoped here (Svelte adds a component-specific class to this
+     .form-grid, so this doesn't affect the shared class elsewhere, e.g.
+     the subscriptions page). Base rule first, breakpoint override after it
+     per the source-order cascade gotcha (docs/HANDOFF.md). */
+  .form-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 640px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
   .product-url-field {
     grid-column: 1 / -1;
   }
