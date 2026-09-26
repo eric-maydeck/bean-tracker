@@ -115,8 +115,15 @@ export function findRoaster(p: ProductData, url: string, history: FillHistoryRow
   return p.vendor?.trim() || p.siteName?.trim() || p.brand?.trim() || null;
 }
 
+// Drop the level name's own spaces/hyphens and allow an optional hyphen or
+// space between any two of its remaining characters instead, so "Ultralight"
+// also matches a page's "Ultra-Light"/"Ultra Light" and "Nordic Light" also
+// matches "Nordic-Light" (and vice versa).
+const flexPattern = (level: string) =>
+  [...level].filter((c) => !/[\s-]/.test(c)).map(escapeRe).join('[\\s-]*');
+
 // Whole phrase, and "Light" must not match inside "Medium/Light".
-const phrase = (level: string) => new RegExp(`(?<![\\w/])${escapeRe(level)}(?![\\w/])`, 'i');
+const phrase = (level: string) => new RegExp(`(?<![\\w/])${flexPattern(level)}(?![\\w/])`, 'i');
 
 export function findRoastLevel(
   p: ProductData,

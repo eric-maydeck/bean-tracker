@@ -123,6 +123,11 @@ describe('findRoastLevel', () => {
     expect(findRoastLevel(product({ attributes: { roast: 'nordic light' } }), LEVELS, null, [])).toEqual({ level: 'Nordic Light' });
   });
 
+  it('ignores hyphens/spacing/case between letters, so a hyphenated page label still matches', () => {
+    expect(findRoastLevel(product({ attributes: { 'roast level': 'Ultra-Light' } }), LEVELS, null, [])).toEqual({ level: 'Ultralight' });
+    expect(findRoastLevel(product({ title: 'Kenya Nordic-Light' }), LEVELS, null, [])).toEqual({ level: 'Nordic Light' });
+  });
+
   it('in the description only counts "<level> roast", so tasting notes do not match', () => {
     const noisy = product({ description: 'Juicy, light body, green apple and dark chocolate' });
     expect(findRoastLevel(noisy, LEVELS, null, [])).toBeNull();
@@ -267,7 +272,7 @@ describe('buildFill', () => {
     );
     const r = buildFill(product({ title: 'Kinini', vendor: 'XLIII', tags: ['Hyperlight'] }), ctx({ history }));
     expect(r.fields).toMatchObject({ roaster: 'XLIII', roast_level: 'Hyperlight', rest_days_low: 180, rest_days_high: 365 });
-    expect(r.notes).toContain('rest 180–365 from 2 of 3 XLIII Hyperlight coffees');
+    expect(r.notes).toContain('Typical rest for XLIII Hyperlight coffees: 180 to 365 days (based on 2 of your 3).');
   });
 
   it('xliii fixture: VND converted, process + net weight from attribute rows', () => {
