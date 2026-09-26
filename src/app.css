@@ -303,14 +303,10 @@ input:focus-visible {
   flex-direction: row;
   align-items: center;
   gap: var(--space-2);
-  /* As a grid item (e.g. in .form-grid), this stays anchored to the top of
-     its cell like every other field, instead of the grid's default
-     align-items: stretch making it fill the row's full height and then
-     `align-items: center` above (now the cross-axis of this row-direction
-     flex box) centering it in that stretched height — which visibly sank
-     the checkbox whenever a taller neighbor in the same row (e.g. the
-     rest-days note after a Fill) grew the row. Harmless where this class
-     isn't a grid/flex item (e.g. the login page). */
+  /* In CoffeeForm this field shares a flex column with Frozen end date
+     (.group-frozenend) — align-self: start keeps it anchored to that
+     column's own edge instead of stretching to fill it. Harmless where
+     this class isn't a grid/flex item (e.g. the login page). */
   align-self: start;
 }
 
@@ -684,13 +680,6 @@ nav.site-nav a[aria-current='page'] {
   font-size: 0.8rem;
 }
 
-/* Groups the coffee detail page's Back/Import/Clone/Edit buttons. Unstyled
-   at desktop on purpose — before this class existed these were plain
-   sibling elements relying on .button's own inline-block + margin, and this
-   wrapper keeps that exact look there. At phone width they become an
-   equal-width grid instead (see the override below) so Edit always sits
-   next to Clone rather than wrapping under it. */
-
 /* More breathing room above Save/Discard than .search-row's own margin
    gives it, so it doesn't read as part of the Clone row above it — at every
    width, not just phone. */
@@ -698,13 +687,18 @@ nav.site-nav a[aria-current='page'] {
   margin-top: var(--space-4);
 }
 
+/* Groups the coffee detail page's Back/Import/Clone/Edit buttons. Unstyled
+   at desktop on purpose (relies on .button's own inline-block + margin, the
+   same look as plain sibling buttons); the phone-width override just below
+   turns it into an equal-width grid so Edit always sits next to Clone
+   rather than wrapping under it. */
 @media (max-width: 640px) {
   /* Same grid-template-columns + gap on both rows (not shared via one
      selector, since .detail-edit-row also carries .search-row's own
-     display:flex elsewhere — see the gotcha above about override source
-     order) so Save changes/Discard changes come out the exact same
-     width/height as Back/Import/Clone/Edit above, rather than sizing to
-     their own shorter labels. */
+     display:flex elsewhere) so Save changes/Discard changes come out the
+     exact same width/height as Back/Import/Clone/Edit above, rather than
+     sizing to their own shorter labels. CSS cascade ties break on source
+     order, not specificity — docs/HANDOFF.md. */
   .detail-actions,
   .detail-edit-row {
     display: grid;

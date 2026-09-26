@@ -516,36 +516,19 @@
 </form>
 
 <style>
-  /* app.css's shared .form-grid uses auto-fit, whose column count can vary
-     with available width — fine for other forms, but this form pins every
-     field to a named cell (grid-template-areas) so growth in one cell
-     (the rest-days note after a Fill, the image preview after a Preview)
-     never shifts a field in another column: only that cell's own row
-     grows, everything else stays put. Scoped here (Svelte adds a
-     component-specific class to this .form-grid, so this doesn't affect
-     the shared class elsewhere, e.g. the subscriptions page). Desktop's
-     3-equal-column layout puts Image URL, Min/Max rest and Frozen end
-     date side by side in one row (their inputs line up — see field-image
-     etc. below), with Decaf grouped under Frozen end and URL slug grouped
-     under Image URL (form-field-group below) rather than each in its own
-     grid row/cell. A single grid row whose cells vary in height (a Fill's
-     rest-days note, a loaded/failed image thumbnail, a long save-anyway
-     prompt) only ever grows THAT row — every other row stays put, which
-     was the whole point of pinning fields to a grid instead of using
-     app.css's shared auto-fit .form-grid. But a row-SPANNING cell (what
-     Image URL used to be, to make room for Decaf/slug alongside it)
-     doesn't have that property: the grid spec distributes a spanning
-     item's extra height across ALL of its spanned tracks, which grew the
-     row above Decaf and pushed it down whenever the image thumbnail
-     loaded — a real regression, caught by measuring Decaf's own top
-     before/after Preview instead of eyeballing it. Grouping Decaf with
-     Frozen end (and slug with Image URL) into one flex-column cell each
-     removes the spanning entirely: every column is exactly one grid cell
-     again, so one column's content can never affect another's, or its own
-     row's start position. Base rule first, breakpoint override after it
-     per the source-order cascade gotcha (docs/HANDOFF.md) — mobile is a
-     full single-column re-order, not a column-count tweak, so it gets its
-     own grid-template-areas. */
+  /* Every field pins to a named cell (grid-template-areas) instead of
+     app.css's shared auto-fit .form-grid, so a tall cell (a Fill's
+     rest-days note, an image preview, a save-anyway prompt) only grows
+     ITS OWN row — everything else stays put. Scoped here (Svelte's
+     component-specific class keeps this off the shared .form-grid
+     elsewhere, e.g. subscriptions). Frozen end + Decaf and Image URL +
+     slug are each grouped into one flex-column cell (group-frozenend,
+     group-image below) rather than spanning grid rows: a row-SPANNING
+     cell distributes its extra height across every track it spans, which
+     would push unrelated fields in other columns down. Base rule first,
+     breakpoint override after (source-order cascade, docs/HANDOFF.md);
+     mobile is a full single-column re-order via its own
+     grid-template-areas, not a column-count tweak. */
   .form-grid {
     /* minmax(0, 1fr), not plain 1fr: an `fr` track's default minimum is
        `auto` (its content's natural size), so without the explicit 0 floor
