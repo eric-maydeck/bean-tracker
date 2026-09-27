@@ -180,4 +180,14 @@ CREATE TABLE IF NOT EXISTS beanconqueror_brews (
 -- SQLite's plain UNIQUE(...) treats NULL <> NULL, letting duplicates through otherwise.
 CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_brews_identity
 ON beanconqueror_brews (bc_created_at, COALESCE(bean_id, ''));
+
+-- Public short links for sharing long, filter-heavy views (see shortLinks.ts
+-- for the TTL/row-cap policy that keeps this table bounded).
+CREATE TABLE IF NOT EXISTS short_links (
+  code TEXT PRIMARY KEY,
+  url TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL,
+  last_used_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_short_links_last_used ON short_links(last_used_at);
 `;
