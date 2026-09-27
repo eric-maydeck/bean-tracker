@@ -373,7 +373,7 @@ function isStringOrNull(v: unknown): v is string | null {
   return v === null || typeof v === 'string';
 }
 
-function isValidFilter(f: unknown): f is Filter {
+export function isValidFilter(f: unknown): f is Filter {
   if (!f || typeof f !== 'object' || Array.isArray(f)) return false;
   const o = f as Record<string, unknown>;
   if (!KNOWN_COLUMNS.has(o.column)) return false;
