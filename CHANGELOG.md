@@ -1,3 +1,20 @@
+# [1.38.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.37.0...v1.38.0) (2026-09-28)
+
+
+### Bug Fixes
+
+* **share:** gate stats URL sync on load, normalise stored short-link paths
+
+
+### Features
+
+* **coffees:** move the list to /coffees; / redirects
+* **coffees:** url codec and 12h persistence for coffee view state
+* **coffees:** view state in the URL, 12h memory, Share button
+* **share:** public short links with TTL and row cap
+* **url-state:** remembered-choice and whitelisted param helpers
+* **url-state:** shareable stats, on-deck and subscriptions views
+
 # [1.37.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.36.0...v1.37.0) (2026-09-26)
 
 
