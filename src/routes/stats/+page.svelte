@@ -7,7 +7,7 @@
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
-  import { pickOne, pickMany } from '$lib/pageUrlState';
+  import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
   import type { RatedGroup } from './beanConquerorStatsData';
@@ -15,12 +15,6 @@
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
-
-  // The address bar's query. On the client this is `location`, not
-  // `page.url`: replaceState (see urlState.ts) doesn't update `page.url`.
-  function currentParams(): URLSearchParams {
-    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
-  }
 
   let createModalBean = $state<UnmatchedBean | null>(null);
 
@@ -75,8 +69,8 @@
   // no localStorage, unlike Coffees/Subscriptions/On Deck: a bare /stats
   // always shows the defaults below. An explicit choice still always
   // writes its param, even when it equals the default.
-  let explicitDimension = $state<Dimension | undefined>(pickOne(currentParams(), 'dimension', DIMENSIONS));
-  let explicitMetric = $state<Metric | undefined>(pickOne(currentParams(), 'metric', METRICS));
+  let explicitDimension = $state<Dimension | undefined>(pickOne(currentParams(page.url), 'dimension', DIMENSIONS));
+  let explicitMetric = $state<Metric | undefined>(pickOne(currentParams(page.url), 'metric', METRICS));
   let dimension = $derived(explicitDimension ?? 'roaster');
   let metric = $derived(explicitMetric ?? 'grams');
   let editingRates = $state(false);
@@ -93,7 +87,7 @@
   const STATUSES = Object.keys(statusLabels) as Status[];
   // pickMany already returns undefined for an empty/all-unknown selection,
   // which is exactly the "never empty" default below.
-  let explicitStatus = $state<Status[] | undefined>(pickMany(currentParams(), 'status', STATUSES));
+  let explicitStatus = $state<Status[] | undefined>(pickMany(currentParams(page.url), 'status', STATUSES));
   let selectedStatuses = $derived(explicitStatus ?? (['backlog', 'open'] as Status[]));
   function toggleStatus(status: Status) {
     if (!selectedStatuses.includes(status)) explicitStatus = [...selectedStatuses, status];
@@ -144,10 +138,10 @@
   };
   const BC_FAV_DIMENSIONS = Object.keys(bcFavoriteDimensionLabels) as BcFavoriteDimension[];
 
-  let explicitBc = $state<BcTab | undefined>(pickOne(currentParams(), 'bc', BC_TABS));
-  let explicitBcFav = $state<BcFavoriteDimension | undefined>(pickOne(currentParams(), 'bc_fav', BC_FAV_DIMENSIONS));
+  let explicitBc = $state<BcTab | undefined>(pickOne(currentParams(page.url), 'bc', BC_TABS));
+  let explicitBcFav = $state<BcFavoriteDimension | undefined>(pickOne(currentParams(page.url), 'bc_fav', BC_FAV_DIMENSIONS));
   let explicitBcMetric = $state<(typeof BC_METRICS)[number] | undefined>(
-    pickOne(currentParams(), 'bc_metric', BC_METRICS)
+    pickOne(currentParams(page.url), 'bc_metric', BC_METRICS)
   );
   let bcTab = $derived(explicitBc ?? 'overview');
   let bcFavoriteDimension = $derived(explicitBcFav ?? 'roaster');
@@ -157,7 +151,7 @@
   // already here) re-reads the URL; the $state initialisers above already
   // cover the first load (including SSR).
   afterNavigate(() => {
-    const p = currentParams();
+    const p = currentParams(page.url);
     explicitDimension = pickOne(p, 'dimension', DIMENSIONS);
     explicitMetric = pickOne(p, 'metric', METRICS);
     explicitStatus = pickMany(p, 'status', STATUSES);
@@ -301,7 +295,7 @@
 </svelte:head>
 
 <div class="toolbar">
-  <h1 style="margin: 0">Stats</h1>
+  <h1>Stats</h1>
   <ShareButton />
 </div>
 

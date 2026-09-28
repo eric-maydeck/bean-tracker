@@ -4,7 +4,7 @@
   import { page } from '$app/state';
   import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { defaultViewForWidth } from '$lib/defaultView';
-  import { pickOne } from '$lib/pageUrlState';
+  import { currentParams, pickOne } from '$lib/pageUrlState';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { writeUrlParams } from '$lib/urlState';
   import ShareButton from '$lib/components/ShareButton.svelte';
@@ -23,14 +23,10 @@
   const VIEW_STORAGE_KEY = 'bean-tracker-subscriptions-view-v2';
   const LEGACY_VIEW_STORAGE_KEY = 'bean-tracker-subscriptions-view';
 
-  function currentParams(): URLSearchParams {
-    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
-  }
-
   // Untouched = undefined -> effective width-based default. Writing/
   // remembering waits for `loaded` so a bare URL can't stomp the
   // remembered choice before afterNavigate has restored it.
-  let explicitView = $state<View | undefined>(pickOne(currentParams(), 'view', VIEWS));
+  let explicitView = $state<View | undefined>(pickOne(currentParams(page.url), 'view', VIEWS));
   let loaded = $state(false);
   let widthView = $state<View>('list');
   let view = $derived(explicitView ?? widthView);
@@ -49,7 +45,7 @@
 
   afterNavigate(() => {
     widthView = defaultViewForWidth(window.innerWidth);
-    const fromUrl = pickOne(currentParams(), 'view', VIEWS);
+    const fromUrl = pickOne(currentParams(page.url), 'view', VIEWS);
     try {
       explicitView = fromUrl ?? loadChoice(localStorage.getItem(VIEW_STORAGE_KEY), VIEWS, Date.now());
       localStorage.removeItem(LEGACY_VIEW_STORAGE_KEY);
@@ -199,7 +195,7 @@
 </svelte:head>
 
 <div class="toolbar">
-  <h1 style="margin: 0">Subscriptions</h1>
+  <h1>Subscriptions</h1>
   <ShareButton />
 </div>
 

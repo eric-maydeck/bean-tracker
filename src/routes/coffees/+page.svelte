@@ -22,6 +22,7 @@
   import type { Snapshot } from './$types';
   import FilterBar from '$lib/components/FilterBar.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
+  import { currentParams } from '$lib/pageUrlState';
   import { applyFilters, COLUMNS, type ColumnKey } from '$lib/coffeeFilters';
   import {
     fromParams,
@@ -58,20 +59,16 @@
     return known;
   }
 
-  // The address bar's query. On the client this is `location`, not
-  // `page.url`: replaceState doesn't update `page.url`, and a history back
-  // to this page reports the URL it was first loaded with, not the one we
-  // rewrote since -- reading that would put stale state back in the URL.
-  function currentParams(): URLSearchParams {
-    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
-  }
-
   // The view state the user explicitly chose (see coffeeViewState.ts):
   // mirrored into the URL and remembered for 12h. Read from the URL here so
   // SSR and the first paint already show the linked view. Untouched fields
   // fall back to the defaults below. Edit state (editMode, pending, the Add
-  // form, expandedId...) is deliberately kept out of it.
-  let explicit = $state<CoffeeViewState>(fromParams(currentParams(), knownValues()));
+  // form, expandedId...) is deliberately kept out of it. currentParams()
+  // (pageUrlState.ts) reads `location` on the client, not `page.url`: a
+  // history back to this page reports the URL it was first loaded with,
+  // not the one we rewrote since -- reading that would put stale state
+  // back in the URL.
+  let explicit = $state<CoffeeViewState>(fromParams(currentParams(page.url), knownValues()));
   // Writing the URL/storage waits until the remembered state has been read,
   // so a bare URL can't overwrite it with the empty initial state.
   let viewStateLoaded = $state(false);
@@ -309,7 +306,7 @@
   // remembered state, which the effect below then writes into the URL.
   afterNavigate(() => {
     widthView = defaultViewForWidth(window.innerWidth);
-    const fromUrl = fromParams(currentParams(), knownValues());
+    const fromUrl = fromParams(currentParams(page.url), knownValues());
     try {
       explicit = isUntouched(fromUrl) ? loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now()) : fromUrl;
       for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);

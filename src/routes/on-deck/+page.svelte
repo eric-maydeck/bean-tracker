@@ -1,9 +1,8 @@
 <script lang="ts">
   import { invalidateAll, afterNavigate } from '$app/navigation';
-  import { browser } from '$app/environment';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
-  import { pickOne } from '$lib/pageUrlState';
+  import { currentParams, pickOne } from '$lib/pageUrlState';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { writeUrlParams } from '$lib/urlState';
   import ShareButton from '$lib/components/ShareButton.svelte';
@@ -17,20 +16,16 @@
   const SHOW_VALUES = ['all', 'caffeinated', 'decaf'] as const satisfies readonly Show[];
   const STORAGE_KEY = 'bean-tracker-on-deck-show';
 
-  function currentParams(): URLSearchParams {
-    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
-  }
-
   // Untouched = undefined -> effective 'all'. Writing/remembering waits for
   // `loaded` so a bare URL can't stomp the remembered choice with 'all'
   // before afterNavigate has had a chance to restore it.
-  let explicit = $state<Show | undefined>(pickOne(currentParams(), 'show', SHOW_VALUES));
+  let explicit = $state<Show | undefined>(pickOne(currentParams(page.url), 'show', SHOW_VALUES));
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
 
   afterNavigate(() => {
-    const fromUrl = pickOne(currentParams(), 'show', SHOW_VALUES);
+    const fromUrl = pickOne(currentParams(page.url), 'show', SHOW_VALUES);
     try {
       explicit = fromUrl ?? loadChoice(localStorage.getItem(STORAGE_KEY), SHOW_VALUES, Date.now());
     } catch {
@@ -66,7 +61,7 @@
 </svelte:head>
 
 <div class="toolbar">
-  <h1 style="margin: 0">On Deck</h1>
+  <h1>On Deck</h1>
   <ShareButton />
 </div>
 

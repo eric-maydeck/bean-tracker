@@ -589,6 +589,12 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-4);
 }
 
+/* h1's own bottom margin would double up with .toolbar's when a page
+   title shares this row with an action (e.g. Share). */
+.toolbar h1 {
+  margin: 0;
+}
+
 .tab-group {
   display: flex;
   flex-wrap: wrap;
