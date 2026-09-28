@@ -1,8 +1,13 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
-  import { invalidateAll, beforeNavigate } from '$app/navigation';
+  import { page } from '$app/state';
+  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { defaultViewForWidth } from '$lib/defaultView';
+  import { pickOne } from '$lib/pageUrlState';
+  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
+  import { writeUrlParams } from '$lib/urlState';
+  import ShareButton from '$lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
   let { data, form } = $props();
@@ -10,7 +15,25 @@
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
 
-  let view = $state<'compact' | 'list'>('list');
+  type View = 'compact' | 'list';
+  const VIEWS = ['compact', 'list'] as const satisfies readonly View[];
+  // Bumped storage key (-v2): the old key stored a bare 'compact'/'list'
+  // string with no expiry -- loadChoice expects the {value, lastUsed} JSON
+  // shape, and a stale unbounded preference shouldn't silently carry over.
+  const VIEW_STORAGE_KEY = 'bean-tracker-subscriptions-view-v2';
+  const LEGACY_VIEW_STORAGE_KEY = 'bean-tracker-subscriptions-view';
+
+  function currentParams(): URLSearchParams {
+    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
+  }
+
+  // Untouched = undefined -> effective width-based default. Writing/
+  // remembering waits for `loaded` so a bare URL can't stomp the
+  // remembered choice before afterNavigate has restored it.
+  let explicitView = $state<View | undefined>(pickOne(currentParams(), 'view', VIEWS));
+  let loaded = $state(false);
+  let widthView = $state<View>('list');
+  let view = $derived(explicitView ?? widthView);
   let expandedId = $state<number | null>(null);
 
   // Plain `$state(new Map())` does NOT give reactive Map operations in
@@ -24,28 +47,34 @@
   let commitErrors = $state(new Map<number, string>());
   let saving = $state(false);
 
-  $effect(() => {
-    if (!browser) return;
+  afterNavigate(() => {
+    widthView = defaultViewForWidth(window.innerWidth);
+    const fromUrl = pickOne(currentParams(), 'view', VIEWS);
     try {
-      const savedView = localStorage.getItem('bean-tracker-subscriptions-view');
-      if (savedView === 'compact' || savedView === 'list') {
-        view = savedView;
-      } else {
-        view = defaultViewForWidth(window.innerWidth);
-      }
+      explicitView = fromUrl ?? loadChoice(localStorage.getItem(VIEW_STORAGE_KEY), VIEWS, Date.now());
+      localStorage.removeItem(LEGACY_VIEW_STORAGE_KEY);
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
+      explicitView = fromUrl;
     }
+    loaded = true;
   });
 
-  function setView(next: 'compact' | 'list') {
-    view = next;
-    try {
-      localStorage.setItem('bean-tracker-subscriptions-view', next);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
+  function setView(next: View) {
+    explicitView = next;
   }
+
+  $effect(() => {
+    if (!loaded) return;
+    const params = new URLSearchParams();
+    if (explicitView) params.set('view', explicitView);
+    writeUrlParams(params);
+    try {
+      if (explicitView) localStorage.setItem(VIEW_STORAGE_KEY, serializeChoice(explicitView, Date.now()));
+    } catch {
+      // ignore — the choice still works for this visit, it just isn't remembered
+    }
+  });
 
   function toggleExpanded(id: number) {
     expandedId = expandedId === id ? null : id;
@@ -169,7 +198,10 @@
   <title>Bean Tracker - Subscriptions</title>
 </svelte:head>
 
-<h1>Subscriptions</h1>
+<div class="toolbar">
+  <h1 style="margin: 0">Subscriptions</h1>
+  <ShareButton />
+</div>
 
 {#if data.isAdmin}
   <div class="search-row">

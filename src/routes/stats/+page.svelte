@@ -1,16 +1,26 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
-  import { invalidateAll } from '$app/navigation';
+  import { invalidateAll, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
+  import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import ShareButton from '$lib/components/ShareButton.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
+  import { pickOne, pickMany } from '$lib/pageUrlState';
+  import { writeUrlParams } from '$lib/urlState';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
   import type { RatedGroup } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
+
+  // The address bar's query. On the client this is `location`, not
+  // `page.url`: replaceState (see urlState.ts) doesn't update `page.url`.
+  function currentParams(): URLSearchParams {
+    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
+  }
 
   let createModalBean = $state<UnmatchedBean | null>(null);
 
@@ -58,9 +68,17 @@
     roastLevel: 'Roast Level',
     caffeine: 'Caffeinated vs. Decaf'
   };
+  const DIMENSIONS = Object.keys(dimensionLabels) as Dimension[];
+  const METRICS = ['grams', 'count'] as const satisfies readonly Metric[];
 
-  let dimension = $state<Dimension>('roaster');
-  let metric = $state<Metric>('grams');
+  // URL-only view state (dimension/metric/status/bc/bc_fav/bc_metric) --
+  // no localStorage, unlike Coffees/Subscriptions/On Deck: a bare /stats
+  // always shows the defaults below. An explicit choice still always
+  // writes its param, even when it equals the default.
+  let explicitDimension = $state<Dimension | undefined>(pickOne(currentParams(), 'dimension', DIMENSIONS));
+  let explicitMetric = $state<Metric | undefined>(pickOne(currentParams(), 'metric', METRICS));
+  let dimension = $derived(explicitDimension ?? 'roaster');
+  let metric = $derived(explicitMetric ?? 'grams');
   let editingRates = $state(false);
 
   // Caps how many bars the composition chart draws — without this, a
@@ -72,11 +90,15 @@
   // archived) keeps the key in the server's canonical combo order.
   const statusLabels = { backlog: 'Backlog', open: 'Open', archived: 'Completed' } as const;
   type Status = keyof typeof statusLabels;
-  let selectedStatuses = $state<Status[]>(['backlog', 'open']);
+  const STATUSES = Object.keys(statusLabels) as Status[];
+  // pickMany already returns undefined for an empty/all-unknown selection,
+  // which is exactly the "never empty" default below.
+  let explicitStatus = $state<Status[] | undefined>(pickMany(currentParams(), 'status', STATUSES));
+  let selectedStatuses = $derived(explicitStatus ?? (['backlog', 'open'] as Status[]));
   function toggleStatus(status: Status) {
-    if (!selectedStatuses.includes(status)) selectedStatuses = [...selectedStatuses, status];
+    if (!selectedStatuses.includes(status)) explicitStatus = [...selectedStatuses, status];
     // Refuse to deselect the last one — an empty selection has no chart.
-    else if (selectedStatuses.length > 1) selectedStatuses = selectedStatuses.filter((s) => s !== status);
+    else if (selectedStatuses.length > 1) explicitStatus = selectedStatuses.filter((s) => s !== status);
   }
   let statusKey = $derived(
     (Object.keys(statusLabels) as Status[]).filter((s) => selectedStatuses.includes(s)).join('+')
@@ -111,6 +133,8 @@
 
   type BcTab = 'overview' | 'favorites' | 'brewing' | 'economics';
   type BcFavoriteDimension = 'roaster' | 'origin' | 'processing' | 'roastLevel';
+  const BC_TABS = ['overview', 'favorites', 'brewing', 'economics'] as const satisfies readonly BcTab[];
+  const BC_METRICS = ['rating', 'count'] as const;
 
   const bcFavoriteDimensionLabels: Record<BcFavoriteDimension, string> = {
     roaster: 'Roaster',
@@ -118,10 +142,40 @@
     processing: 'Processing',
     roastLevel: 'Roast Level'
   };
+  const BC_FAV_DIMENSIONS = Object.keys(bcFavoriteDimensionLabels) as BcFavoriteDimension[];
 
-  let bcTab = $state<BcTab>('overview');
-  let bcFavoriteDimension = $state<BcFavoriteDimension>('roaster');
-  let bcBrewingMetric = $state<'rating' | 'count'>('rating');
+  let explicitBc = $state<BcTab | undefined>(pickOne(currentParams(), 'bc', BC_TABS));
+  let explicitBcFav = $state<BcFavoriteDimension | undefined>(pickOne(currentParams(), 'bc_fav', BC_FAV_DIMENSIONS));
+  let explicitBcMetric = $state<(typeof BC_METRICS)[number] | undefined>(
+    pickOne(currentParams(), 'bc_metric', BC_METRICS)
+  );
+  let bcTab = $derived(explicitBc ?? 'overview');
+  let bcFavoriteDimension = $derived(explicitBcFav ?? 'roaster');
+  let bcBrewingMetric = $derived(explicitBcMetric ?? 'rating');
+
+  // Same-route navigation (e.g. opening a different /stats link while
+  // already here) re-reads the URL; the $state initialisers above already
+  // cover the first load (including SSR).
+  afterNavigate(() => {
+    const p = currentParams();
+    explicitDimension = pickOne(p, 'dimension', DIMENSIONS);
+    explicitMetric = pickOne(p, 'metric', METRICS);
+    explicitStatus = pickMany(p, 'status', STATUSES);
+    explicitBc = pickOne(p, 'bc', BC_TABS);
+    explicitBcFav = pickOne(p, 'bc_fav', BC_FAV_DIMENSIONS);
+    explicitBcMetric = pickOne(p, 'bc_metric', BC_METRICS);
+  });
+
+  $effect(() => {
+    const params = new URLSearchParams();
+    if (explicitDimension) params.set('dimension', explicitDimension);
+    if (explicitMetric) params.set('metric', explicitMetric);
+    if (explicitStatus) for (const s of explicitStatus) params.append('status', s);
+    if (explicitBc) params.set('bc', explicitBc);
+    if (explicitBcFav) params.set('bc_fav', explicitBcFav);
+    if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
+    writeUrlParams(params);
+  });
 
   // Same reasoning as COMPOSITION_BAR_LIMIT above, applied to the Bean
   // Conqueror breakdowns — capping how many bars a chart draws keeps bar
@@ -246,7 +300,10 @@
   <title>Bean Tracker - Stats</title>
 </svelte:head>
 
-<h1>Stats</h1>
+<div class="toolbar">
+  <h1 style="margin: 0">Stats</h1>
+  <ShareButton />
+</div>
 
 {#if data.isAdmin}
   <div class="rate-edit">
@@ -599,12 +656,12 @@
   <div class="chart-panel-controls">
     <div class="tab-group">
       {#each Object.entries(dimensionLabels) as [key, label] (key)}
-        <button aria-pressed={dimension === key} onclick={() => (dimension = key as Dimension)}>{label}</button>
+        <button aria-pressed={dimension === key} onclick={() => (explicitDimension = key as Dimension)}>{label}</button>
       {/each}
     </div>
     <div class="tab-group">
-      <button aria-pressed={metric === 'grams'} onclick={() => (metric = 'grams')}>Grams</button>
-      <button aria-pressed={metric === 'count'} onclick={() => (metric = 'count')}>Count</button>
+      <button aria-pressed={metric === 'grams'} onclick={() => (explicitMetric = 'grams')}>Grams</button>
+      <button aria-pressed={metric === 'count'} onclick={() => (explicitMetric = 'count')}>Count</button>
     </div>
     <div class="tab-group">
       {#each Object.entries(statusLabels) as [key, label] (key)}
@@ -749,10 +806,10 @@
     <h3>Stats &amp; breakdowns</h3>
     <div class="chart-panel-controls">
       <div class="tab-group">
-        <button aria-pressed={bcTab === 'overview'} onclick={() => (bcTab = 'overview')}>Overview</button>
-        <button aria-pressed={bcTab === 'favorites'} onclick={() => (bcTab = 'favorites')}>Favorites</button>
-        <button aria-pressed={bcTab === 'brewing'} onclick={() => (bcTab = 'brewing')}>Brewing</button>
-        <button aria-pressed={bcTab === 'economics'} onclick={() => (bcTab = 'economics')}>Economics</button>
+        <button aria-pressed={bcTab === 'overview'} onclick={() => (explicitBc = 'overview')}>Overview</button>
+        <button aria-pressed={bcTab === 'favorites'} onclick={() => (explicitBc = 'favorites')}>Favorites</button>
+        <button aria-pressed={bcTab === 'brewing'} onclick={() => (explicitBc = 'brewing')}>Brewing</button>
+        <button aria-pressed={bcTab === 'economics'} onclick={() => (explicitBc = 'economics')}>Economics</button>
       </div>
     </div>
 
@@ -798,7 +855,7 @@
           {#each Object.entries(bcFavoriteDimensionLabels) as [key, label] (key)}
             <button
               aria-pressed={bcFavoriteDimension === key}
-              onclick={() => (bcFavoriteDimension = key as BcFavoriteDimension)}>{label}</button
+              onclick={() => (explicitBcFav = key as BcFavoriteDimension)}>{label}</button
             >
           {/each}
         </div>
@@ -836,10 +893,10 @@
       </div>
       <div class="chart-panel-controls">
         <div class="tab-group">
-          <button aria-pressed={bcBrewingMetric === 'rating'} onclick={() => (bcBrewingMetric = 'rating')}
+          <button aria-pressed={bcBrewingMetric === 'rating'} onclick={() => (explicitBcMetric = 'rating')}
             >Rating</button
           >
-          <button aria-pressed={bcBrewingMetric === 'count'} onclick={() => (bcBrewingMetric = 'count')}
+          <button aria-pressed={bcBrewingMetric === 'count'} onclick={() => (explicitBcMetric = 'count')}
             >Count</button
           >
         </div>

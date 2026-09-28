@@ -1,11 +1,60 @@
 <script lang="ts">
-  import { invalidateAll } from '$app/navigation';
+  import { invalidateAll, afterNavigate } from '$app/navigation';
+  import { browser } from '$app/environment';
+  import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
+  import { pickOne } from '$lib/pageUrlState';
+  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
+  import { writeUrlParams } from '$lib/urlState';
+  import ShareButton from '$lib/components/ShareButton.svelte';
 
   let { data } = $props();
 
-  let filter = $state<'all' | 'caffeinated' | 'decaf'>('all');
+  type Show = 'all' | 'caffeinated' | 'decaf';
+  // 'all' is allowed here (unlike a plain default) because clicking "All"
+  // after another choice is itself an explicit choice -- it must write
+  // `show=all`, not just leave the param off.
+  const SHOW_VALUES = ['all', 'caffeinated', 'decaf'] as const satisfies readonly Show[];
+  const STORAGE_KEY = 'bean-tracker-on-deck-show';
+
+  function currentParams(): URLSearchParams {
+    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
+  }
+
+  // Untouched = undefined -> effective 'all'. Writing/remembering waits for
+  // `loaded` so a bare URL can't stomp the remembered choice with 'all'
+  // before afterNavigate has had a chance to restore it.
+  let explicit = $state<Show | undefined>(pickOne(currentParams(), 'show', SHOW_VALUES));
+  let loaded = $state(false);
+  let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
+
+  afterNavigate(() => {
+    const fromUrl = pickOne(currentParams(), 'show', SHOW_VALUES);
+    try {
+      explicit = fromUrl ?? loadChoice(localStorage.getItem(STORAGE_KEY), SHOW_VALUES, Date.now());
+    } catch {
+      // ignore — localStorage may be unavailable (private browsing, etc.)
+      explicit = fromUrl;
+    }
+    loaded = true;
+  });
+
+  function setFilter(next: Show) {
+    explicit = next;
+  }
+
+  $effect(() => {
+    if (!loaded) return;
+    const params = new URLSearchParams();
+    if (explicit) params.set('show', explicit);
+    writeUrlParams(params);
+    try {
+      if (explicit) localStorage.setItem(STORAGE_KEY, serializeChoice(explicit, Date.now()));
+    } catch {
+      // ignore — the choice still works for this visit, it just isn't remembered
+    }
+  });
 
   async function refresh() {
     await invalidateAll();
@@ -16,15 +65,18 @@
   <title>Bean Tracker - On Deck</title>
 </svelte:head>
 
-<h1>On Deck</h1>
+<div class="toolbar">
+  <h1 style="margin: 0">On Deck</h1>
+  <ShareButton />
+</div>
 
 <div class="search-row">
   <div class="tab-group">
-    <button aria-pressed={filter === 'all'} onclick={() => (filter = 'all')}>All</button>
-    <button aria-pressed={filter === 'caffeinated'} onclick={() => (filter = 'caffeinated')}>
+    <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
+    <button aria-pressed={filter === 'caffeinated'} onclick={() => setFilter('caffeinated')}>
       Caffeinated
     </button>
-    <button aria-pressed={filter === 'decaf'} onclick={() => (filter = 'decaf')}>Decaf</button>
+    <button aria-pressed={filter === 'decaf'} onclick={() => setFilter('decaf')}>Decaf</button>
   </div>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>

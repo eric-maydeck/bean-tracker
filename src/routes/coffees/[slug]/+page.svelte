@@ -15,6 +15,7 @@
     type PendingChange
   } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
+  import ShareButton from '$lib/components/ShareButton.svelte';
   import type { CoffeeRow } from '$lib/types';
 
   let { data, form } = $props();
@@ -227,6 +228,7 @@
 
 <div class="detail-actions">
   <a class="button button-secondary" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
+  <ShareButton />
 
   <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror

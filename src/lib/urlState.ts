@@ -8,5 +8,11 @@ import { page } from '$app/state';
 export function writeUrlParams(params: URLSearchParams): void {
   const qs = params.toString();
   const next = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
-  if (next !== `${location.pathname}${location.search}${location.hash}`) replaceState(next, page.state);
+  if (next === `${location.pathname}${location.search}${location.hash}`) return;
+  try {
+    replaceState(next, page.state);
+  } catch {
+    // Best-effort mirror -- browsers throw SecurityError when history calls
+    // are flooded (e.g. fast typing triggering this on every keystroke).
+  }
 }
