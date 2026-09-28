@@ -37,10 +37,10 @@ export const actions: Actions = {
       secure: !dev,
       maxAge: durationMs / 1000
     });
-    redirect(303, '/');
+    redirect(303, '/coffees');
   },
   logout: async ({ cookies }) => {
     cookies.delete(SESSION_COOKIE_NAME, { path: '/', secure: !dev });
-    redirect(303, '/');
+    redirect(303, '/coffees');
   }
 };

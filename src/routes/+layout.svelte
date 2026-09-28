@@ -10,7 +10,7 @@
   let { children, data } = $props();
 
   const links = [
-    { href: '/', label: 'Coffees' },
+    { href: '/coffees', label: 'Coffees' },
     { href: '/on-deck', label: 'On Deck' },
     { href: '/subscriptions', label: 'Subscriptions' },
     { href: '/stats', label: 'Stats' }
@@ -44,7 +44,7 @@
 
   // Regular outline icons; the current tab shows the `-fill` variant.
   const tabIcons: Record<string, 'coffee' | 'list-checks' | 'arrows-clockwise' | 'chart-bar'> = {
-    '/': 'coffee',
+    '/coffees': 'coffee',
     '/on-deck': 'list-checks',
     '/subscriptions': 'arrows-clockwise',
     '/stats': 'chart-bar'

@@ -173,7 +173,7 @@
     saving = false;
 
     if (wasDeleted) {
-      await goto('/');
+      await goto('/coffees');
       return;
     }
     if (savedSlug && savedSlug !== data.coffee.slug) {
@@ -197,10 +197,10 @@
 
   // Coming from the list, "Back to collection" is a real history back so
   // SvelteKit restores the list's scroll position. Otherwise (direct link,
-  // reload, new tab) it stays a plain link to /.
+  // reload, new tab) it stays a plain link to /coffees.
   let cameFromList = $state(false);
   afterNavigate(({ from }) => {
-    cameFromList = from?.url.pathname === '/';
+    cameFromList = from?.url.pathname === '/coffees';
   });
 
   function backToCollection(e: MouseEvent) {
@@ -226,7 +226,7 @@
 </svelte:head>
 
 <div class="detail-actions">
-  <a class="button button-secondary" href="/" onclick={backToCollection}>&larr; Back to collection</a>
+  <a class="button button-secondary" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
 
   <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
