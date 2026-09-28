@@ -10,12 +10,7 @@ import {
   chipTitle,
   QUICK_FILTERS,
   quickFilter,
-  loadFilterState,
-  serializeFilterState,
-  FILTER_TTL_MS,
-  FILTER_STATE_VERSION,
   type Filter,
-  type FilterState,
   type Op
 } from './coffeeFilters';
 import type { CoffeeWithComputed } from './server/urgency';
@@ -423,83 +418,5 @@ describe('chipTitle', () => {
     ]
   ])('%j -> %s', (f, expected) => {
     expect(chipTitle(f)).toBe(expected);
-  });
-});
-
-describe('filter state persistence', () => {
-  const T = 1_790_000_000_000;
-  const state: FilterState = {
-    filters: [
-      { column: 'origin', mode: 'any', values: ['Kenya', null] },
-      { column: 'amount_g', mode: 'range', op: 'between', a: '200', b: '300' }
-    ],
-    query: 'sey'
-  };
-  const empty: FilterState = { filters: [], query: '' };
-
-  it('round-trips filters and search text', () => {
-    expect(loadFilterState(serializeFilterState(state, T), T + 1000)).toEqual(state);
-  });
-
-  it('stores version and lastUsed', () => {
-    expect(JSON.parse(serializeFilterState(state, T))).toEqual({ version: FILTER_STATE_VERSION, ...state, lastUsed: T });
-  });
-
-  it('expires after 12 hours of not using the page', () => {
-    const raw = serializeFilterState(state, T);
-    expect(loadFilterState(raw, T + FILTER_TTL_MS - 1)).toEqual(state);
-    expect(loadFilterState(raw, T + FILTER_TTL_MS)).toEqual(state);
-    expect(loadFilterState(raw, T + FILTER_TTL_MS + 1)).toEqual(empty);
-  });
-
-  it('nothing stored, or corrupt JSON, starts empty', () => {
-    expect(loadFilterState(null, T)).toEqual(empty);
-    expect(loadFilterState('{not json', T)).toEqual(empty);
-  });
-
-  it('missing or different version starts empty', () => {
-    const { version: _v, ...noVersion } = JSON.parse(serializeFilterState(state, T));
-    expect(loadFilterState(JSON.stringify(noVersion), T)).toEqual(empty);
-    expect(loadFilterState(JSON.stringify({ ...noVersion, version: 2 }), T)).toEqual(empty);
-    expect(loadFilterState(JSON.stringify({ ...noVersion, version: '1' }), T)).toEqual(empty);
-  });
-
-  it('drops a filter on an unknown column and keeps the rest', () => {
-    const raw = JSON.stringify({
-      version: FILTER_STATE_VERSION,
-      filters: [{ column: 'altitude', mode: 'range', op: '>', a: '1000', b: '' }, ...state.filters],
-      query: 'sey',
-      lastUsed: T
-    });
-    expect(loadFilterState(raw, T)).toEqual(state);
-  });
-
-  it('wrong-shape JSON loads safely', () => {
-    expect(loadFilterState('null', T)).toEqual(empty);
-    expect(loadFilterState('[]', T)).toEqual(empty);
-    expect(loadFilterState('42', T)).toEqual(empty);
-    expect(loadFilterState(JSON.stringify({ version: 1, filters: [], query: '', lastUsed: String(T) }), T)).toEqual(empty);
-    expect(
-      loadFilterState(JSON.stringify({ version: 1, filters: [null, 'x', ...state.filters], query: 'sey', lastUsed: T }), T)
-    ).toEqual(state);
-    expect(loadFilterState(JSON.stringify({ version: 1, filters: 'nope', query: 7, lastUsed: T }), T)).toEqual(empty);
-  });
-
-  it('drops a filter whose mode does not fit its column, or whose fields are missing, without throwing', () => {
-    const valid: Filter = { column: 'origin', mode: 'any', values: ['Kenya'] };
-    const badFilters = [
-      { column: 'origin', mode: 'any' }, // text column but missing `values`
-      { column: 'origin', mode: 'contains' }, // text column but missing `text`
-      { column: 'roast_date', mode: 'range', op: '>' }, // date column but missing `a`/`b`
-      valid
-    ];
-    const raw = JSON.stringify({ version: FILTER_STATE_VERSION, filters: badFilters, query: '', lastUsed: T });
-    const loaded = loadFilterState(raw, T);
-    expect(loaded.filters).toEqual([valid]);
-    // The three bad entries used to crash applyFilters/chipLabel; confirm the survivor doesn't.
-    for (const f of loaded.filters) {
-      expect(() => applyFilters([coffee({ origin: 'Kenya' })], [f])).not.toThrow();
-      expect(() => chipLabel(f)).not.toThrow();
-    }
   });
 });

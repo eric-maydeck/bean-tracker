@@ -350,21 +350,9 @@ export function chipTitle(f: Filter): string {
   }
 }
 
-// Filters and search text share one key, remembered across tabs and
-// reloads for 12h of not using the Coffees page. Bump the version if the
-// stored shape changes: an old or unknown version is ignored, not migrated.
-export const FILTER_STORAGE_KEY = 'bean-tracker-coffee-filters';
-export const FILTER_STATE_VERSION = 1;
-export const FILTER_TTL_MS = 12 * 60 * 60 * 1000;
-
-export interface FilterState {
-  filters: Filter[];
-  query: string;
-}
-
 const KNOWN_COLUMNS = new Set<unknown>(COLUMNS.map((c) => c.key));
 
-// A saved entry only has a known `column`, never that its `mode` and fields
+// A saved or linked entry only has a known `column`, never that its `mode` and fields
 // still fit that column's kind (e.g. old data, a hand-edited value, a future
 // version's shape). Loading a mismatched entry crashed applyFilters/chipLabel
 // (e.g. `{column:'origin',mode:'range'}` reading `.a`), so every shape is
@@ -400,26 +388,4 @@ export function isValidFilter(f: unknown): f is Filter {
     default:
       return false;
   }
-}
-
-export function loadFilterState(raw: string | null, now: number): FilterState {
-  const empty: FilterState = { filters: [], query: '' };
-  if (!raw) return empty;
-  let saved: { version?: unknown; filters?: unknown; query?: unknown; lastUsed?: unknown };
-  try {
-    saved = JSON.parse(raw);
-  } catch {
-    return empty;
-  }
-  if (!saved || typeof saved !== 'object' || Array.isArray(saved)) return empty;
-  if (saved.version !== FILTER_STATE_VERSION) return empty;
-  if (typeof saved.lastUsed !== 'number' || now - saved.lastUsed > FILTER_TTL_MS) return empty;
-  return {
-    filters: Array.isArray(saved.filters) ? saved.filters.filter(isValidFilter) : [],
-    query: typeof saved.query === 'string' ? saved.query : ''
-  };
-}
-
-export function serializeFilterState(state: FilterState, now: number): string {
-  return JSON.stringify({ version: FILTER_STATE_VERSION, filters: state.filters, query: state.query, lastUsed: now });
 }

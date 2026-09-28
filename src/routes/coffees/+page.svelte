@@ -3,7 +3,8 @@
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import RoastBeans from '$lib/components/RoastBeans.svelte';
-  import { invalidateAll, beforeNavigate } from '$app/navigation';
+  import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
+  import { page } from '$app/state';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
@@ -20,13 +21,23 @@
   import type { CoffeeRow } from '$lib/types';
   import type { Snapshot } from './$types';
   import FilterBar from '$lib/components/FilterBar.svelte';
+  import ShareButton from '$lib/components/ShareButton.svelte';
+  import { applyFilters, COLUMNS, type ColumnKey } from '$lib/coffeeFilters';
   import {
-    applyFilters,
-    loadFilterState,
-    serializeFilterState,
-    FILTER_STORAGE_KEY,
-    type Filter
-  } from '$lib/coffeeFilters';
+    fromParams,
+    toParams,
+    isUntouched,
+    loadViewState,
+    serializeViewState,
+    VIEW_STORAGE_KEY,
+    LEGACY_STORAGE_KEYS,
+    type CoffeeViewState,
+    type CoffeeView,
+    type StatusTab,
+    type SortKey,
+    type SortDir
+  } from '$lib/coffeeViewState';
+  import { writeUrlParams } from '$lib/urlState';
 
   let { data, form } = $props();
 
@@ -35,13 +46,41 @@
     if (!roastLevel) return 0;
     return roastDegrees.get(roastLevel) ?? 0;
   }
-  let query = $state('');
-  let filter = $state<'backlog' | 'open' | 'archive' | 'all'>('backlog');
-  let filters = $state<Filter[]>([]);
-  // Saving waits until the saved state has been read, so the empty initial
-  // values can't overwrite it.
-  let filterStateLoaded = $state(false);
-  let view = $state<'cards' | 'list' | 'compact'>('list');
+  // Every text column's values across all tabs, so a hand-typed
+  // `processing=washed` maps onto `Washed` (and the address bar follows).
+  function knownValues(): Partial<Record<ColumnKey, string[]>> {
+    const all = [...data.backlog, ...data.open, ...data.archive];
+    const known: Partial<Record<ColumnKey, string[]>> = {};
+    for (const c of COLUMNS) {
+      if (c.kind !== 'text') continue;
+      known[c.key] = [...new Set(all.map((row) => row[c.key as keyof CoffeeRow]).filter((v): v is string => typeof v === 'string'))];
+    }
+    return known;
+  }
+
+  // The address bar's query. On the client this is `location`, not
+  // `page.url`: replaceState doesn't update `page.url`, and a history back
+  // to this page reports the URL it was first loaded with, not the one we
+  // rewrote since -- reading that would put stale state back in the URL.
+  function currentParams(): URLSearchParams {
+    return browser ? new URLSearchParams(location.search) : page.url.searchParams;
+  }
+
+  // The view state the user explicitly chose (see coffeeViewState.ts):
+  // mirrored into the URL and remembered for 12h. Read from the URL here so
+  // SSR and the first paint already show the linked view. Untouched fields
+  // fall back to the defaults below. Edit state (editMode, pending, the Add
+  // form, expandedId...) is deliberately kept out of it.
+  let explicit = $state<CoffeeViewState>(fromParams(currentParams(), knownValues()));
+  // Writing the URL/storage waits until the remembered state has been read,
+  // so a bare URL can't overwrite it with the empty initial state.
+  let viewStateLoaded = $state(false);
+  // Untouched layout = width-based default, measured on the client (SSR
+  // renders List, as before).
+  let widthView = $state<CoffeeView>('list');
+  let filter = $derived<StatusTab>(explicit.status ?? 'backlog');
+  let query = $derived(explicit.query ?? '');
+  let view = $derived<CoffeeView>(explicit.view ?? widthView);
 
   let editMode = $state(false);
   // A row's own Edit button opens only that row (editIds), which then gets
@@ -265,54 +304,38 @@
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   });
 
-  $effect(() => {
-    if (!browser) return;
+  // On arrival (first load, or a client navigation to /coffees while
+  // already here): the URL's params win; a bare URL restores the
+  // remembered state, which the effect below then writes into the URL.
+  afterNavigate(() => {
+    widthView = defaultViewForWidth(window.innerWidth);
+    const fromUrl = fromParams(currentParams(), knownValues());
     try {
-      const savedView = localStorage.getItem('bean-tracker-view');
-      if (savedView === 'cards' || savedView === 'list' || savedView === 'compact') {
-        view = savedView;
-      } else {
-        view = defaultViewForWidth(window.innerWidth);
-      }
-      const savedFilter = localStorage.getItem('bean-tracker-filter');
-      if (
-        savedFilter === 'backlog' ||
-        savedFilter === 'open' ||
-        savedFilter === 'archive' ||
-        savedFilter === 'all'
-      ) {
-        filter = savedFilter;
-      }
-      const saved = loadFilterState(localStorage.getItem(FILTER_STORAGE_KEY), Date.now());
-      filters = saved.filters;
-      query = saved.query;
-      const savedSortKey = localStorage.getItem('bean-tracker-sort-key');
-      if (savedSortKey && (SORT_KEYS as readonly string[]).includes(savedSortKey)) {
-        sortKey = savedSortKey as SortKey;
-      }
-      const savedSortDir = localStorage.getItem('bean-tracker-sort-dir');
-      if (savedSortDir === 'asc' || savedSortDir === 'desc') {
-        sortDir = savedSortDir;
-      }
+      explicit = isUntouched(fromUrl) ? loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now()) : fromUrl;
+      for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
+      explicit = fromUrl;
     }
-    filterStateLoaded = true;
+    viewStateLoaded = true;
   });
 
-  // Every save stamps lastUsed, so loading the page, changing filters or
-  // search, or leaving the page (see beforeNavigate/pagehide below) all
-  // restart the 12h expiry (and overwrite an expired key).
+  // Every save stamps lastUsed, so loading the page, changing the view, or
+  // leaving the page (see beforeNavigate/pagehide) all restart the 12h
+  // expiry (and overwrite an expired key).
   function stampLastUsed() {
-    if (!filterStateLoaded) return;
+    if (!viewStateLoaded) return;
     try {
-      localStorage.setItem(FILTER_STORAGE_KEY, serializeFilterState({ filters, query }, Date.now()));
+      if (isUntouched(explicit)) localStorage.removeItem(VIEW_STORAGE_KEY);
+      else localStorage.setItem(VIEW_STORAGE_KEY, serializeViewState(explicit, Date.now()));
     } catch {
-      // ignore — filtering still works for this visit, it just isn't remembered
+      // ignore — the view still works for this visit, it just isn't remembered
     }
   }
 
   $effect(() => {
+    if (!viewStateLoaded) return;
+    writeUrlParams(toParams(explicit));
     stampLastUsed();
   });
 
@@ -325,29 +348,18 @@
     return () => window.removeEventListener('pagehide', stampLastUsed);
   });
 
-  function setView(next: 'cards' | 'list' | 'compact') {
-    view = next;
-    try {
-      localStorage.setItem('bean-tracker-view', next);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
+  // Each setter records an explicit choice, even one equal to the default.
+  function setView(next: CoffeeView) {
+    explicit.view = next;
   }
 
-  function setFilter(next: 'backlog' | 'open' | 'archive' | 'all') {
-    filter = next;
-    try {
-      localStorage.setItem('bean-tracker-filter', next);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
+  function setFilter(next: StatusTab) {
+    explicit.status = next;
   }
 
+  // Back to untouched: bare URL, defaults (including the width-based layout).
   function resetView() {
-    query = '';
-    filters = [];
-    setFilter('backlog');
-    setSort(DEFAULT_SORT_KEY, DEFAULT_SORT_DIR);
+    explicit = { filters: [] };
   }
 
   let source = $derived(
@@ -367,53 +379,15 @@
           .toLowerCase()
           .includes(query.toLowerCase())
       ),
-      filters
+      explicit.filters
     )
   );
 
-  type SortKey =
-    | 'roaster'
-    | 'coffee_name'
-    | 'origin'
-    | 'roast_level'
-    | 'decaf'
-    | 'processing'
-    | 'cost_per_gram'
-    | 'amount_g'
-    | 'roast_date'
-    | 'frozen_start_date'
-    | 'frozen_end_date'
-    | 'rest_window'
-    | 'urgency';
-  const SORT_KEYS = [
-    'roaster',
-    'coffee_name',
-    'origin',
-    'roast_level',
-    'decaf',
-    'processing',
-    'cost_per_gram',
-    'amount_g',
-    'roast_date',
-    'frozen_start_date',
-    'frozen_end_date',
-    'rest_window',
-    'urgency'
-  ] as const satisfies readonly SortKey[];
-  const DEFAULT_SORT_KEY: SortKey = 'urgency';
-  const DEFAULT_SORT_DIR: 'asc' | 'desc' = 'desc';
-  let sortKey = $state<SortKey>(DEFAULT_SORT_KEY);
-  let sortDir = $state<'asc' | 'desc'>(DEFAULT_SORT_DIR);
+  let sortKey = $derived<SortKey>(explicit.sort?.key ?? 'urgency');
+  let sortDir = $derived<SortDir>(explicit.sort?.dir ?? 'desc');
 
-  function setSort(key: SortKey, dir: 'asc' | 'desc') {
-    sortKey = key;
-    sortDir = dir;
-    try {
-      localStorage.setItem('bean-tracker-sort-key', key);
-      localStorage.setItem('bean-tracker-sort-dir', dir);
-    } catch {
-      // ignore — per-viewer convenience only
-    }
+  function setSort(key: SortKey, dir: SortDir) {
+    explicit.sort = { key, dir };
   }
 
   function toggleSort(key: SortKey) {
@@ -663,10 +637,11 @@
 </div>
 
 <div class="search-row">
-  <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={query} />
-  <FilterBar bind:filters coffees={source} />
+  <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
+  <FilterBar bind:filters={explicit.filters} coffees={source} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
+  <ShareButton />
   {#if data.isAdmin}
     {#if editAll}
       <button class="button button-success" type="button" disabled={saving} onclick={() => saveChanges()}>
