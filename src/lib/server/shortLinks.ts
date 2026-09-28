@@ -13,15 +13,27 @@ const SHAREABLE_PATH = /^\/(coffees(\/[a-z0-9-]+)?|stats|on-deck|subscriptions)$
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function isShareablePath(url: unknown): url is string {
-  if (typeof url !== 'string' || url.length > SHORT_LINK_MAX_LENGTH || !url.startsWith('/') || url.startsWith('//')) return false;
+// Validates and normalises a shareable link in one pass. The raw input
+// string is never what gets stored: it can carry characters (e.g. a
+// stripped "\n", or non-ASCII in the query) that the parsed URL's
+// pathname/search don't, and storing the raw string let those through into
+// `redirect()`'s Location header, which only accepts ASCII. Returns the
+// canonical `pathname + search` to store, or null if the input isn't a
+// shareable path on this site.
+export function canonicalSharePath(url: unknown): string | null {
+  if (typeof url !== 'string' || url.length > SHORT_LINK_MAX_LENGTH || !url.startsWith('/') || url.startsWith('//')) return null;
   let parsed: URL;
   try {
     parsed = new URL(url, 'http://local.invalid');
   } catch {
-    return false;
+    return null;
   }
-  return parsed.origin === 'http://local.invalid' && SHAREABLE_PATH.test(parsed.pathname);
+  if (parsed.origin !== 'http://local.invalid' || !SHAREABLE_PATH.test(parsed.pathname)) return null;
+  return parsed.pathname + parsed.search;
+}
+
+export function isShareablePath(url: unknown): url is string {
+  return canonicalSharePath(url) !== null;
 }
 
 // ponytail: modulo bias over 256 is irrelevant for link codes.

@@ -149,7 +149,11 @@
 
   // Same-route navigation (e.g. opening a different /stats link while
   // already here) re-reads the URL; the $state initialisers above already
-  // cover the first load (including SSR).
+  // cover the first load (including SSR). `loaded` gates the effect below
+  // so it doesn't write/replaceState during hydration, before SvelteKit's
+  // router has started (matches On Deck/Subscriptions/Coffees).
+  let loaded = $state(false);
+
   afterNavigate(() => {
     const p = currentParams(page.url);
     explicitDimension = pickOne(p, 'dimension', DIMENSIONS);
@@ -158,6 +162,7 @@
     explicitBc = pickOne(p, 'bc', BC_TABS);
     explicitBcFav = pickOne(p, 'bc_fav', BC_FAV_DIMENSIONS);
     explicitBcMetric = pickOne(p, 'bc_metric', BC_METRICS);
+    loaded = true;
   });
 
   $effect(() => {
@@ -168,6 +173,9 @@
     if (explicitBc) params.set('bc', explicitBc);
     if (explicitBcFav) params.set('bc_fav', explicitBcFav);
     if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
+    // Gate check comes after reading every param above so the effect still
+    // tracks all of them as dependencies even while gated.
+    if (!loaded) return;
     writeUrlParams(params);
   });
 

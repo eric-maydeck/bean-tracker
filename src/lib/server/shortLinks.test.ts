@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
-import { isShareablePath, createShortLink, resolveShortLink, SHORT_LINK_MAX_ROWS } from './shortLinks';
+import {
+  isShareablePath,
+  canonicalSharePath,
+  createShortLink,
+  resolveShortLink,
+  SHORT_LINK_MAX_ROWS
+} from './shortLinks';
 
 let db: DatabaseSync;
 beforeEach(() => {
@@ -40,6 +46,15 @@ describe('isShareablePath', () => {
   });
 });
 
+describe('canonicalSharePath', () => {
+  it('strips embedded newlines that would break a redirect Location header', () => {
+    expect(canonicalSharePath('/\ncoffees')).toBe('/coffees');
+  });
+  it('percent-encodes non-ASCII query characters', () => {
+    expect(canonicalSharePath('/coffees?q=café')).toBe('/coffees?q=caf%C3%A9');
+  });
+});
+
 describe('create / resolve', () => {
   it('creates a 6-char base62 code and resolves it', () => {
     const code = createShortLink(db, '/coffees?q=lume', t0);
@@ -48,6 +63,25 @@ describe('create / resolve', () => {
   });
   it('dedupes identical urls', () => {
     expect(createShortLink(db, '/stats', t0)).toBe(createShortLink(db, '/stats', t0));
+  });
+  it('normalises a stored newline path so it round-trips to a valid redirect target', () => {
+    const canonical = canonicalSharePath('/\ncoffees')!;
+    const code = createShortLink(db, canonical, t0);
+    const resolved = resolveShortLink(db, code, t0)!;
+    expect(resolved).toBe('/coffees');
+    expect(() => new Response(null, { status: 303, headers: { Location: resolved } })).not.toThrow();
+  });
+  it('normalises a non-ASCII query to a percent-encoded path that a redirect Location header accepts', () => {
+    const canonical = canonicalSharePath('/coffees?q=café')!;
+    const code = createShortLink(db, canonical, t0);
+    const resolved = resolveShortLink(db, code, t0)!;
+    expect(resolved).toBe('/coffees?q=caf%C3%A9');
+    expect(() => new Response(null, { status: 303, headers: { Location: resolved } })).not.toThrow();
+  });
+  it('dedupes inputs that differ only by normalisation to one code', () => {
+    const a = createShortLink(db, canonicalSharePath('/\ncoffees')!, t0);
+    const b = createShortLink(db, canonicalSharePath('/coffees')!, t0);
+    expect(a).toBe(b);
   });
   it('unknown codes resolve to null', () => {
     expect(resolveShortLink(db, 'nope00', t0)).toBeNull();
