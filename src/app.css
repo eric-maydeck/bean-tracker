@@ -962,6 +962,42 @@ div.compact-row {
   padding: 0 var(--space-1) var(--space-3);
 }
 
+/* Compact edit mode: all action icons on one row (list view keeps its two
+   fixed rows), tap targets about the size of the form's Cancel/Clone, a
+   clear gap below those, and the Pending badge on its own line underneath
+   rather than stretched beside the icons. */
+.compact-row-wrap > .action-buttons:has(> .action-stack) {
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: var(--space-4);
+}
+
+.compact-row-wrap .action-stack {
+  flex-direction: row;
+  align-self: stretch;
+}
+
+.compact-row-wrap .action-row {
+  display: contents;
+}
+
+/* Icons share the row's width (capped near Cancel's width), so a 4-icon
+   archived row doesn't stretch absurdly and a 6-icon row still fits. */
+.compact-row-wrap .action-stack .button.button-icon {
+  flex: 1 1 0;
+  max-width: 4.75rem;
+}
+
+.compact-row-wrap > .action-buttons .button.button-icon {
+  min-width: 48px;
+  min-height: 44px;
+}
+
+.compact-row-wrap > .action-buttons .button-icon .icon {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
 /* Compact view's stacked detail form has ample width — undo the Table view's
    narrow .inline-input cap (kept for dense table columns) inside this block. */
 .compact-row-detail .inline-input {
