@@ -1,3 +1,11 @@
+# [1.39.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.38.0...v1.39.0) (2026-09-28)
+
+
+### Bug Fixes
+
+* **coffees:** one row of larger compact edit icons, pending badge below
+
+
 # [1.38.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.37.0...v1.38.0) (2026-09-28)
 
 
