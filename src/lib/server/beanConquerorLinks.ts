@@ -2,6 +2,7 @@
 // (unique index beanconqueror_beans_coffee). db.ts imports this file, so value
 // imports here must use explicit .ts extensions (node scripts load db.ts).
 import type { DatabaseSync } from 'node:sqlite';
+import type { LinkableCoffee } from '../linkPicker';
 
 // The old "tracked" test. Now it only drives the backfill, auto-link and suggestions.
 const EXACT_MATCH = `c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date`;
@@ -43,4 +44,52 @@ export function autoLinkBeanConquerorBeans(db: DatabaseSync, newBeanIds: readonl
     }
   }
   return linked;
+}
+
+// Message is shown to the user as-is.
+export class BeanLinkError extends Error {}
+
+export function linkBeanConquerorBean(db: DatabaseSync, beanId: string, coffeeId: number): void {
+  const bean = db.prepare(`SELECT coffee_id FROM beanconqueror_beans WHERE id = ?`).get(beanId) as
+    | { coffee_id: number | null }
+    | undefined;
+  if (!bean) throw new BeanLinkError('That Bean Conqueror bean no longer exists');
+  if (bean.coffee_id === coffeeId) return;
+  if (bean.coffee_id !== null) throw new BeanLinkError('That bean is already linked to another coffee');
+  const coffee = db.prepare(`SELECT coffee_name FROM coffees WHERE id = ?`).get(coffeeId) as
+    | { coffee_name: string }
+    | undefined;
+  if (!coffee) throw new BeanLinkError('That coffee no longer exists');
+  if (db.prepare(`SELECT 1 FROM beanconqueror_beans WHERE coffee_id = ?`).get(coffeeId)) {
+    throw new BeanLinkError(`${coffee.coffee_name} is already linked to a Bean Conqueror bean`);
+  }
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(coffeeId, beanId);
+}
+
+// Unlink means "back to Not yet tracked", so a dismissal is cleared too.
+export function unlinkBeanConquerorBean(db: DatabaseSync, coffeeId: number): boolean {
+  const { changes } = db
+    .prepare(`UPDATE beanconqueror_beans SET coffee_id = NULL, dismissed_at = NULL WHERE coffee_id = ?`)
+    .run(coffeeId);
+  return Number(changes) > 0;
+}
+
+export function getLinkedBean(db: DatabaseSync, coffeeId: number): { id: string; name: string; brewCount: number } | null {
+  const row = db
+    .prepare(
+      `SELECT b.id, b.name, (SELECT COUNT(*) FROM beanconqueror_brews r WHERE r.bean_id = b.id) AS brew_count
+       FROM beanconqueror_beans b WHERE b.coffee_id = ?`
+    )
+    .get(coffeeId) as { id: string; name: string; brew_count: number } | undefined;
+  return row ? { id: row.id, name: row.name, brewCount: row.brew_count } : null;
+}
+
+export function getLinkableCoffees(db: DatabaseSync): LinkableCoffee[] {
+  return db
+    .prepare(
+      `SELECT c.id, c.slug, c.roaster, c.coffee_name, c.roast_date, c.status, c.created_at FROM coffees c
+       WHERE NOT ${COFFEE_HAS_BEAN}
+       ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE NOCASE, c.roast_date, c.created_at`
+    )
+    .all() as unknown as LinkableCoffee[];
 }

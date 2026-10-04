@@ -12,7 +12,8 @@ import {
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
 } from '$lib/server/beanconqueror';
-import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
+import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
+import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
 import { buildBacklogStats } from './statsData';
 import { buildBeanConquerorStats } from './beanConquerorStatsData';
 
@@ -42,6 +43,7 @@ export const load: PageServerLoad = ({ locals }) => {
       beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT),
       total: countUnmatchedBeanConquerorBeans(db)
     },
+    linkableCoffees: locals.isAdmin ? getLinkableCoffees(db) : [],
     roastLevels,
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
@@ -95,7 +97,27 @@ export const actions: Actions = {
   },
   create: async ({ request, locals }) => {
     requireAdmin(locals);
-    return handleCoffeeCreate(getDb(), await request.formData());
+    // The Create modal from "Not yet tracked" sends beanconqueror_id: link it too.
+    return handleCoffeeCreateAndLink(getDb(), await request.formData());
+  },
+  linkBeanConqueror: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const formData = await request.formData();
+    const beanId = formData.get('beanId');
+    const coffeeId = Number(formData.get('coffeeId'));
+    if (typeof beanId !== 'string' || !beanId) {
+      return fail(400, { error: 'Missing bean id' });
+    }
+    if (!Number.isInteger(coffeeId) || coffeeId <= 0) {
+      return fail(400, { error: 'Choose a coffee to link' });
+    }
+    try {
+      linkBeanConquerorBean(getDb(), beanId, coffeeId);
+    } catch (err) {
+      if (err instanceof BeanLinkError) return fail(400, { error: err.message });
+      throw err;
+    }
+    return { success: true as const };
   },
   dismissBeanConqueror: async ({ request, locals }) => {
     requireAdmin(locals);

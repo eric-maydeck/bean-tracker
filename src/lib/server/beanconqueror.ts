@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type ExcelJS from 'exceljs';
-import { autoLinkBeanConquerorBeans } from './beanConquerorLinks';
+import { autoLinkBeanConquerorBeans, getLinkableCoffees } from './beanConquerorLinks';
 import { cellText, cellNumber, cellBoolean, excelSerialToISODate, excelSerialToISOTimestamp } from './excelHelpers';
 
 export interface ParsedBean {
@@ -496,6 +496,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
 }
 
 export interface LikelyMatch {
+  id: number;
   slug: string;
   coffeeName: string;
   roastDate: string | null;
@@ -577,13 +578,13 @@ function daysBetween(a: string, b: string): number {
 // roast date on either side (some older Bean Conqueror beans have none)
 // still qualifies as a fallback — it's just outranked by any candidate we
 // can actually confirm is close in time.
-export function findLikelyMatch(
+export function findLikelyMatch<T extends LikelyMatchCandidate>(
   bean: { name: string; roaster: string | null; roastDate: string | null },
-  coffees: LikelyMatchCandidate[]
-): LikelyMatchCandidate | null {
+  coffees: T[]
+): T | null {
   if (!bean.roaster) return null;
   const normalizedRoaster = normalizeForMatch(bean.roaster);
-  let best: LikelyMatchCandidate | null = null;
+  let best: T | null = null;
   let bestScore = Infinity;
   for (const coffee of coffees) {
     if (normalizeForMatch(coffee.roaster) !== normalizedRoaster) continue;
@@ -650,9 +651,8 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync, limit: number):
     bc_archived: number;
   }>;
 
-  const coffees = db
-    .prepare(`SELECT slug, roaster, coffee_name, roast_date, status FROM coffees`)
-    .all() as unknown as LikelyMatchCandidate[];
+  // Only coffees without a bean can be linked, so only they can be suggested.
+  const coffees = getLinkableCoffees(db);
 
   return rows.map((r) => {
     const origin = db
@@ -685,6 +685,7 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync, limit: number):
       processing: origin?.processing ?? null,
       likelyMatch: likelyMatch
         ? {
+            id: likelyMatch.id,
             slug: likelyMatch.slug,
             coffeeName: likelyMatch.coffee_name,
             roastDate: likelyMatch.roast_date,

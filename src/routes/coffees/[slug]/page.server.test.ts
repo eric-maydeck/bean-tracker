@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isRedirect } from '@sveltejs/kit';
+import { isRedirect, isActionFailure } from '@sveltejs/kit';
 
 // getDb() is a lazily-created singleton keyed off DB_PATH — set before the
 // first import touches it so this file gets its own in-memory database
@@ -8,7 +8,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee, updateCoffee, getRedirectSlug, type NewCoffeeInput } from '$lib/server/coffees';
-import { load } from './+page.server';
+import { load, actions } from './+page.server';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -61,5 +61,22 @@ describe('load (coffee detail page)', () => {
       expect(err.location).toBe('/coffees/redirect-load-new-slug');
       expect(headers['cache-control']).toBe('no-store');
     }
+  });
+});
+
+describe('coffee page Bean Conqueror link', () => {
+  it('load includes the linked bean; Unlink is admin-only and returns the bean to the list', async () => {
+    const db = getDb();
+    const { id, slug } = createCoffee(db, sampleInput({ coffee_name: 'Linked Page Test' }));
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('pb1', 'BC Name', '2026-10-01', ?)`).run(id);
+    const event = (isAdmin: boolean) => ({ params: { slug }, setHeaders: () => {}, locals: { isAdmin } }) as never;
+
+    const data = (await load(event(false))) as { beanConqueror: unknown };
+    expect(data.beanConqueror).toEqual({ id: 'pb1', name: 'BC Name', brewCount: 0 });
+
+    await expect(actions.unlinkBeanConqueror(event(false))).rejects.toMatchObject({ status: 401 });
+    expect(await actions.unlinkBeanConqueror(event(true))).toEqual({ success: true });
+    const again = await actions.unlinkBeanConqueror(event(true));
+    expect(isActionFailure(again) && again.status).toBe(400);
   });
 });

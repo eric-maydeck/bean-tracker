@@ -4,6 +4,7 @@ import { createDb, applySchema } from './db';
 import { schema } from './schema';
 import { createCoffee, type NewCoffeeInput } from './coffees';
 import { importBeanConquerorData, getUnmatchedBeanConquerorBeans, countUnmatchedBeanConquerorBeans } from './beanconqueror';
+import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkedBean, getLinkableCoffees, BeanLinkError } from './beanConquerorLinks';
 
 type Db = ReturnType<typeof createDb>;
 
@@ -175,5 +176,94 @@ describe('tracked means linked', () => {
     importBeans(db, [bean('b1')]); // exact text match exists, but ambiguous → unlinked
     expect(getUnmatchedBeanConquerorBeans(db, 20).map((b) => b.id)).toEqual(['b1']);
     expect(countUnmatchedBeanConquerorBeans(db)).toBe(1);
+  });
+});
+
+describe('linkBeanConquerorBean / unlinkBeanConquerorBean', () => {
+  function twins() {
+    const db = createDb(':memory:');
+    const c1 = addCoffee(db);
+    const c2 = addCoffee(db);
+    importBeans(db, [bean('b1'), bean('b2')]); // ambiguous → both unlinked
+    return { db, c1, c2 };
+  }
+
+  it('links, and the bean leaves the list', () => {
+    const { db, c1 } = twins();
+    linkBeanConquerorBean(db, 'b1', c1);
+    expect(linkOf(db, 'b1')).toBe(c1);
+    expect(getUnmatchedBeanConquerorBeans(db, 20).map((b) => b.id)).toEqual(['b2']);
+  });
+
+  it('relinking to the same coffee is a no-op', () => {
+    const { db, c1 } = twins();
+    linkBeanConquerorBean(db, 'b1', c1);
+    expect(() => linkBeanConquerorBean(db, 'b1', c1)).not.toThrow();
+  });
+
+  it('rejects a coffee that already has a bean, cleanly (no raw UNIQUE error)', () => {
+    const { db, c1 } = twins();
+    linkBeanConquerorBean(db, 'b1', c1);
+    expect(() => linkBeanConquerorBean(db, 'b2', c1)).toThrow(BeanLinkError);
+    expect(() => linkBeanConquerorBean(db, 'b2', c1)).toThrow(/already linked to a Bean Conqueror bean/);
+  });
+
+  it('rejects a bean that is already linked elsewhere', () => {
+    const { db, c1, c2 } = twins();
+    linkBeanConquerorBean(db, 'b1', c1);
+    expect(() => linkBeanConquerorBean(db, 'b1', c2)).toThrow(/already linked to another coffee/);
+  });
+
+  it('rejects unknown beans and coffees', () => {
+    const { db, c1 } = twins();
+    expect(() => linkBeanConquerorBean(db, 'nope', c1)).toThrow(/no longer exists/);
+    expect(() => linkBeanConquerorBean(db, 'b1', 999)).toThrow(/no longer exists/);
+  });
+
+  it('unlink returns the bean to the list, even if it had been dismissed', () => {
+    const { db, c1 } = twins();
+    linkBeanConquerorBean(db, 'b1', c1);
+    db.exec(`UPDATE beanconqueror_beans SET dismissed_at = '2026-09-05' WHERE id = 'b1'`);
+    expect(unlinkBeanConquerorBean(db, c1)).toBe(true);
+    expect(getUnmatchedBeanConquerorBeans(db, 20).map((b) => b.id).sort()).toEqual(['b1', 'b2']);
+    expect(unlinkBeanConquerorBean(db, c1)).toBe(false);
+  });
+});
+
+describe('getLinkedBean / getLinkableCoffees', () => {
+  it('reports the linked bean and its brew count', () => {
+    const db = createDb(':memory:');
+    const c = addCoffee(db);
+    importBeanConquerorData(db, {
+      beans: [bean('b1')], beanOrigins: [], methods: [], grinders: [],
+      brews: [1, 2].map((d) => ({
+        bcCreatedAt: `2026-09-0${d}T08:00:00.000Z`, beanId: 'b1', preparationId: null, millId: null, grindSetting: null,
+        groundCoffeeG: 15, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null,
+        preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null,
+        waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: null, notes: null, beverageQuantity: null,
+        tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null
+      }))
+    });
+    expect(getLinkedBean(db, c)).toEqual({ id: 'b1', name: 'Kiambu', brewCount: 2 });
+    expect(getLinkedBean(db, 999)).toBeNull();
+  });
+
+  it('lists only coffees without a bean', () => {
+    const db = createDb(':memory:');
+    const linked = addCoffee(db);
+    const free = addCoffee(db, { coffee_name: 'Free' });
+    importBeans(db, [bean('b1')]);
+    expect(linkOf(db, 'b1')).toBe(linked);
+    expect(getLinkableCoffees(db).map((c) => c.id)).toEqual([free]);
+  });
+
+  it("the likely match is only ever a linkable coffee, and carries its id", () => {
+    const db = createDb(':memory:');
+    const taken = addCoffee(db, { coffee_name: 'Kiambu AA' });
+    const free = addCoffee(db, { coffee_name: 'Kiambu AA', roast_date: '2026-09-03' });
+    importBeans(db, [bean('b1', { name: 'Kiambu AA' }), bean('b2', { name: 'Kiambu', roastDate: '2026-09-02' })]);
+    expect(linkOf(db, 'b1')).toBe(taken);
+    const [b2] = getUnmatchedBeanConquerorBeans(db, 20);
+    expect(b2.likelyMatch).toMatchObject({ id: free });
   });
 });
