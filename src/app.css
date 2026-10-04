@@ -719,8 +719,7 @@ nav.site-nav a[aria-current='page'] {
 /* Groups the coffee detail page's Back/Import/Clone/Edit buttons. Unstyled
    at desktop on purpose (relies on .button's own inline-block + margin, the
    same look as plain sibling buttons); the phone-width override just below
-   turns it into an equal-width grid so Edit always sits next to Clone
-   rather than wrapping under it. */
+   makes it a flex-wrap row so the buttons share the width and wrap whole. */
 @media (max-width: 640px) {
   /* Same grid-template-columns + gap on both rows (not shared via one
      selector, since .detail-edit-row also carries .search-row's own
@@ -745,9 +744,8 @@ nav.site-nav a[aria-current='page'] {
     flex: 1 1 auto;
     white-space: nowrap;
   }
-  /* Grid blockifies these (native <a>/<button> inline-block), so they
-     already stretch to fill their column — just drop .button's own
-     inline-flow margin and center the (possibly wrapped) label. */
+  /* Drop .button's own inline-flow margin (the flex/grid gap spaces them)
+     and center the label. */
   .detail-actions .button,
   .detail-edit-row .button {
     margin: 0;
@@ -1766,13 +1764,6 @@ div.compact-row {
   transition: background-color 0.15s ease;
 }
 
-@media (max-width: 640px) {
-  .quick-filter-switch button {
-    padding-inline: 0.25rem;
-    font-size: 0.8rem;
-  }
-}
-
 .quick-filter-switch button[aria-checked='true'] {
   background: var(--color-accent);
   color: var(--color-accent-contrast);
@@ -1781,7 +1772,8 @@ div.compact-row {
 
 /* Phones: slightly smaller labels with tighter side padding so the three
    equal columns (column buttons and Quick filter segments alike) keep their
-   labels on one line down to ~360px wide; equal row heights if one wraps. */
+   labels on one line down to ~360px wide; grid-auto-rows keeps any extra
+   rows the same height. */
 @media (max-width: 640px) {
   .filter-columns,
   .quick-filter-switch {
