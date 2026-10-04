@@ -1,3 +1,10 @@
+## [1.39.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.1...v1.39.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* **import:** reject workbooks that aren't bean conqueror exports
+
 ## [1.39.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.0...v1.39.1) (2026-10-04)
 
 
