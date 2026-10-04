@@ -1,12 +1,13 @@
 // Builds the throwaway DB the UI layout checks run against. Never real data:
 // it refuses any path outside .ui-test/. Usage: node scripts/ui-seed.ts .ui-test/ui.db
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { resolve, sep } from 'node:path';
 import { createDb } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 
 const path = process.argv[2] ?? '';
-if (!path.startsWith('.ui-test/')) {
+if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
   console.error('ui-seed: path must be under .ui-test/ (got "' + path + '")');
   process.exit(1);
 }
