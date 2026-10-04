@@ -1626,6 +1626,13 @@ div.compact-row {
   color: var(--color-text-muted);
 }
 
+@media (max-width: 480px) {
+  .filter-chip-remove {
+    min-width: 44px;
+    padding-inline: 0.35rem;
+  }
+}
+
 .filter-chip-remove:hover {
   color: var(--color-text);
 }
