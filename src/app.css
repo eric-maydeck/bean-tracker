@@ -1754,9 +1754,16 @@ div.compact-row {
   font: inherit;
   line-height: 1.2;
   text-align: center;
-  white-space: normal; /* labels like "Caffeinated only" wrap to two centered lines */
+  white-space: nowrap;
   cursor: pointer;
   transition: background-color 0.15s ease;
+}
+
+@media (max-width: 640px) {
+  .quick-filter-switch button {
+    padding-inline: 0.25rem;
+    font-size: 0.8rem;
+  }
 }
 
 .quick-filter-switch button[aria-checked='true'] {
