@@ -42,7 +42,7 @@ export const actions: Actions = {
     const db = getDb();
     const coffee = getCoffeeBySlug(db, params.slug);
     if (!coffee || !unlinkBeanConquerorBean(db, coffee.id)) {
-      return fail(400, { error: 'This coffee has no Bean Conqueror bean to unlink' });
+      return fail(400, { unlinkError: 'This coffee has no Bean Conqueror bean to unlink' });
     }
     return { success: true as const };
   }

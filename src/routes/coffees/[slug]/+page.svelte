@@ -340,8 +340,8 @@
                 </form>
               {/if}
             </div>
-            {#if form && 'error' in form && form.error}
-              <p class="badge badge-urgent">{form.error}</p>
+            {#if form && 'unlinkError' in form}
+              <p class="badge badge-urgent">{form.unlinkError}</p>
             {/if}
           {/if}
         </div>
