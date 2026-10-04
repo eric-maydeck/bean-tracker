@@ -1,3 +1,10 @@
+## [1.39.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.0...v1.39.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* **share:** open bean conqueror in a new tab, send roast type filter
+
 # [1.39.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.38.0...v1.39.0) (2026-09-28)
 
 
