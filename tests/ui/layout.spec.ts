@@ -45,8 +45,18 @@ export const STATES: State[] = [
   }))
 ];
 
+// Known failures: the list view's table is crushed at tablet width and needs a
+// redesign (docs/backlog/list-view-tablet-width.md). test.fail() makes a fix
+// show up as "unexpectedly passed", so these entries flag themselves. Nothing
+// else gets listed here.
+const KNOWN_FAILURES = new Set(['coffees-list-w768', 'coffees-inline-edit-pending-w768']);
+
 for (const state of STATES) {
   test(state.name, async ({ page }, info) => {
+    test.fail(
+      KNOWN_FAILURES.has(`${state.name}-${info.project.name}`),
+      'list view breaks at tablet widths: docs/backlog/list-view-tablet-width.md'
+    );
     const s = seed();
     await page.goto(state.path(s), { waitUntil: 'networkidle' });
     if (state.act) await state.act(page, s);

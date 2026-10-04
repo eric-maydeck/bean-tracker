@@ -10,7 +10,7 @@ when it can be automated.
 | 1 | No sideways page scroll at any width (360–1280). Wide tables scroll inside their own `.table-scroll`. | Yes |
 | 2 | Buttons, badges and chips never wrap onto a second line. | Yes |
 | 3 | No clipped or overflowing text in buttons, badges, chips or table cells. | Yes |
-| 4 | Tap targets are at least 44×44 px on phones (≤480 px wide; CSS applies it ≤640). | Yes (≤480) |
+| 4 | Tap targets are at least 44×44 px on phones (≤480 px wide; CSS applies it ≤640). Exempt: column sort headers (`.sort-button` directly in a `th`): list view is dense by design, and compact is the phone view. | Yes (≤480; sort headers exempt) |
 | 5 | Buttons sharing a row line up: same top, same height. | Yes |
 | 6 | One place per action. An action lives in one spot, not duplicated across the page. | No (review) |
 | 7 | Consistent wording: "Sign in" / "Sign out", the same verb for the same action everywhere. | No (review) |

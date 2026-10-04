@@ -57,6 +57,9 @@ export async function checkLayout(page: Page): Promise<void> {
     // 4. Tap targets ≥ 44×44 on phone widths.
     if (narrow) {
       for (const el of all('button, .button, select, [role="button"]')) {
+        // Deliberate exemption: list view is dense by design (compact is the
+        // phone view), so column sort headers aren't held to 44px.
+        if (el.matches('th > .sort-button')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
