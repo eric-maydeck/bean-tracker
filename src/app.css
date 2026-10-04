@@ -728,14 +728,22 @@ nav.site-nav a[aria-current='page'] {
      exact same width/height as Back/Import/Clone/Edit above, rather than
      sizing to their own shorter labels. CSS cascade ties break on source
      order, not specificity — docs/HANDOFF.md. */
-  .detail-actions,
   .detail-edit-row {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
   }
+  /* Flex-wrap, not the 2-col grid: labels stay on one line and the row
+     wraps instead when they don't fit side by side. */
   .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
     margin-bottom: var(--space-4);
+  }
+  .detail-actions .button {
+    flex: 1 1 auto;
+    white-space: nowrap;
   }
   /* Grid blockifies these (native <a>/<button> inline-block), so they
      already stretch to fill their column — just drop .button's own
