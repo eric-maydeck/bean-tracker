@@ -69,6 +69,7 @@ describe('buildShareUrl', () => {
       cost: number;
       decaffeinated: boolean;
       roast_range: number;
+      bean_roasting_type: number;
     };
     expect(decoded.name).toBe('Trip Coffee');
     expect(decoded.roaster).toBe('Round Trip Roasters');
@@ -78,6 +79,8 @@ describe('buildShareUrl', () => {
     // 'Light' is 2.5 on this app's scale; floored (not rounded) to 2 since
     // the uint64 wire format can't carry the half-step.
     expect(decoded.roast_range).toBe(2);
+    // Roast type is always Filter (BeanRoastingType.FILTER = 1).
+    expect(decoded.bean_roasting_type).toBe(1);
   });
 
   // Regression test for the wire-type bug this schema once had: our .proto

@@ -249,7 +249,7 @@
       <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
       <div class="share-panel-text-and-button">
         <p class="text-muted share-panel-hint">Scan the QR code or click the button.</p>
-        <a class="button button-secondary" href={shareUrl}>Open in Bean Conqueror</a>
+        <a class="button button-secondary" href={shareUrl} target="_blank" rel="noopener noreferrer">Open in Bean Conqueror</a>
       </div>
     </div>
     <div class="share-panel-callout">
