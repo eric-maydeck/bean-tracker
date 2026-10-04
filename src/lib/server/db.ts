@@ -64,14 +64,22 @@ export function applySchema(db: DatabaseSync): void {
   // Bean Conqueror bean → coffee link (one-to-one). SQLite allows many NULLs
   // in a unique index. Backfill only the moment the column is added, so a
   // later Unlink survives restarts.
-  const bcLinkJustAdded = ensureColumn(
-    db,
-    'beanconqueror_beans',
-    'coffee_id',
-    'INTEGER REFERENCES coffees(id) ON DELETE SET NULL'
-  );
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_beans_coffee ON beanconqueror_beans(coffee_id)`);
-  if (bcLinkJustAdded) backfillBeanConquerorLinks(db);
+  // Atomic: a crash between the ADD COLUMN and the backfill must not skip it forever.
+  db.exec('BEGIN');
+  try {
+    const bcLinkJustAdded = ensureColumn(
+      db,
+      'beanconqueror_beans',
+      'coffee_id',
+      'INTEGER REFERENCES coffees(id) ON DELETE SET NULL'
+    );
+    if (bcLinkJustAdded) backfillBeanConquerorLinks(db);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_beans_coffee ON beanconqueror_beans(coffee_id)`);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {
