@@ -58,7 +58,17 @@ export const STATES: State[] = [
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
     path: () => `/stats?bc=${tab}`
-  }))
+  })),
+  { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
+  { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },
+  {
+    name: 'coffees-filter-editor',
+    path: () => '/coffees?status=all&view=compact',
+    act: async (page) => {
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await expect(page.getByRole('radiogroup', { name: 'In Bean Conqueror' })).toBeVisible();
+    }
+  }
 ];
 
 // Known failures: the list view's table is crushed at tablet width and needs a

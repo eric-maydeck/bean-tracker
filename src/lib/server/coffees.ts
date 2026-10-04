@@ -22,22 +22,25 @@ export interface NewCoffeeInput {
   decaf?: boolean;
 }
 
-const ORDER_BY_NAME = `ORDER BY roaster COLLATE NOCASE, coffee_name COLLATE NOCASE`;
+const ORDER_BY_NAME = `ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE NOCASE`;
+
+const LIST_SELECT = `SELECT c.*, EXISTS (SELECT 1 FROM beanconqueror_beans b WHERE b.coffee_id = c.id) AS in_bean_conqueror
+  FROM coffees c`;
 
 export function getBacklogCoffees(db: DatabaseSync): CoffeeRow[] {
-  return db.prepare(`SELECT * FROM coffees WHERE status = 'backlog' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
+  return db.prepare(`${LIST_SELECT} WHERE c.status = 'backlog' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
 }
 
 export function getOpenCoffees(db: DatabaseSync): CoffeeRow[] {
-  return db.prepare(`SELECT * FROM coffees WHERE status = 'open' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
+  return db.prepare(`${LIST_SELECT} WHERE c.status = 'open' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
 }
 
 export function getArchivedCoffees(db: DatabaseSync): CoffeeRow[] {
-  return db.prepare(`SELECT * FROM coffees WHERE status = 'archive' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
+  return db.prepare(`${LIST_SELECT} WHERE c.status = 'archive' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
 }
 
 export function getNonArchivedCoffees(db: DatabaseSync): CoffeeRow[] {
-  return db.prepare(`SELECT * FROM coffees WHERE status != 'archive' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
+  return db.prepare(`${LIST_SELECT} WHERE c.status != 'archive' ${ORDER_BY_NAME}`).all() as CoffeeRow[];
 }
 
 const DISTINCT_VALUE_COLUMNS = ['roaster', 'origin', 'processing'] as const;

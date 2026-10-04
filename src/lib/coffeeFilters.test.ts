@@ -40,6 +40,7 @@ function coffee(over: Partial<CoffeeWithComputed> = {}): CoffeeWithComputed {
     status: 'backlog',
     moved_date: null,
     decaf: 0,
+    in_bean_conqueror: 0,
     created_at: '2026-09-01',
     updated_at: '2026-09-01',
     cost_per_gram: 0.08,
@@ -418,5 +419,21 @@ describe('chipTitle', () => {
     ]
   ])('%j -> %s', (f, expected) => {
     expect(chipTitle(f)).toBe(expected);
+  });
+});
+
+describe('In Bean Conqueror quick filter', () => {
+  it('Yes/No reads in_bean_conqueror', () => {
+    const linked = coffee({ in_bean_conqueror: 1 });
+    const unlinked = coffee({ in_bean_conqueror: 0 });
+    expect(applyFilters([linked, unlinked], [{ column: 'bc', mode: 'bool', value: true }])).toEqual([linked]);
+    expect(applyFilters([linked, unlinked], [{ column: 'bc', mode: 'bool', value: false }])).toEqual([unlinked]);
+  });
+  it('is the third quick filter: All / Yes / No', () => {
+    expect(QUICK_FILTERS.map((q) => q.column)).toEqual(['decaf', 'frozen', 'bc']);
+    expect(quickFilter('bc').switchLabel).toBe('In Bean Conqueror');
+    expect(quickFilter('bc').segments.map((s) => [s.value, s.label])).toEqual([[null, 'All'], [true, 'Yes'], [false, 'No']]);
+    expect(chipLabel({ column: 'bc', mode: 'bool', value: true })).toBe('In Bean Conqueror: Yes');
+    expect(chipTitle({ column: 'bc', mode: 'bool', value: false })).toBe('Showing coffees not in Bean Conqueror');
   });
 });

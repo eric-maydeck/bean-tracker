@@ -86,3 +86,21 @@ describe('persistence', () => {
     expect(loadViewState(raw, now)).toEqual({ filters: [{ column: 'origin', mode: 'any', values: ['>1'] }] });
   });
 });
+
+describe('bc (In Bean Conqueror)', () => {
+  it('writes yes/no and omits the default', () => {
+    expect(toParams({ filters: [{ column: 'bc', mode: 'bool', value: true }] }).toString()).toBe('bc=yes');
+    expect(toParams({ filters: [{ column: 'bc', mode: 'bool', value: false }] }).toString()).toBe('bc=no');
+    expect(toParams({ filters: [] }).has('bc')).toBe(false);
+  });
+  it('reads yes/no case-insensitively and ignores bad values', () => {
+    expect(fromParams(new URLSearchParams('bc=YES')).filters).toEqual([{ column: 'bc', mode: 'bool', value: true }]);
+    expect(fromParams(new URLSearchParams('bc=No')).filters).toEqual([{ column: 'bc', mode: 'bool', value: false }]);
+    expect(fromParams(new URLSearchParams('bc=maybe')).filters).toEqual([]);
+    expect(fromParams(new URLSearchParams('bc=')).filters).toEqual([]);
+  });
+  it('round-trips through remembered state', () => {
+    const s: CoffeeViewState = { filters: [{ column: 'bc', mode: 'bool', value: false }] };
+    expect(loadViewState(serializeViewState(s, 1000), 2000)).toEqual(s);
+  });
+});

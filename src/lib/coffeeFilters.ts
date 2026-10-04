@@ -10,6 +10,7 @@ export type ColumnKey =
   | 'roast_level'
   | 'decaf'
   | 'frozen'
+  | 'bc'
   | 'cost_per_gram'
   | 'amount_g'
   | 'roast_date'
@@ -36,6 +37,7 @@ export const COLUMNS: readonly Column[] = [
   { key: 'roast_level', label: 'Roast level', short: 'Roast', kind: 'text' },
   { key: 'decaf', label: 'Decaf', short: 'Decaf', kind: 'bool' },
   { key: 'frozen', label: 'Frozen', short: 'Frozen', kind: 'bool' },
+  { key: 'bc', label: 'In Bean Conqueror', short: 'In BC', kind: 'bool' },
   { key: 'cost_per_gram', label: 'Cost/g', short: 'Cost/g', kind: 'number' },
   { key: 'amount_g', label: 'Weight', short: 'Weight', kind: 'number', unit: 'g' },
   { key: 'roast_date', label: 'Roast date', short: 'Roasted', kind: 'date' },
@@ -49,7 +51,7 @@ export function column(key: ColumnKey): Column {
   return COLUMNS.find((c) => c.key === key)!;
 }
 
-export type QuickFilterKey = 'decaf' | 'frozen';
+export type QuickFilterKey = 'decaf' | 'frozen' | 'bc';
 
 // A quick filter's three segments: "All" (null = no filter) plus the two
 // bool values, in display order. `chipTitle` only exists for the two real
@@ -84,6 +86,15 @@ export const QUICK_FILTERS: readonly QuickFilter[] = [
       { value: null, label: 'All' },
       { value: true, label: 'Frozen only', chipTitle: 'Showing frozen coffees only' },
       { value: false, label: 'Not frozen', chipTitle: 'Showing coffees not in the freezer' }
+    ]
+  },
+  {
+    column: 'bc',
+    switchLabel: 'In Bean Conqueror',
+    segments: [
+      { value: null, label: 'All' },
+      { value: true, label: 'Yes', chipTitle: 'Showing coffees in Bean Conqueror' },
+      { value: false, label: 'No', chipTitle: 'Showing coffees not in Bean Conqueror' }
     ]
   }
 ];
@@ -159,6 +170,12 @@ function compare<T extends number | string>(v: T, op: Op, a: T, b: T): boolean {
   }
 }
 
+function boolValue(c: CoffeeWithComputed, key: ColumnKey): boolean {
+  if (key === 'decaf') return c.decaf === 1;
+  if (key === 'bc') return c.in_bean_conqueror === 1;
+  return isFrozen(c);
+}
+
 function matches(c: CoffeeWithComputed, f: Filter): boolean {
   switch (f.mode) {
     case 'any':
@@ -168,7 +185,7 @@ function matches(c: CoffeeWithComputed, f: Filter): boolean {
       return v !== null && v.toLowerCase().includes(f.text.toLowerCase());
     }
     case 'bool':
-      return (f.column === 'decaf' ? c.decaf === 1 : isFrozen(c)) === f.value;
+      return boolValue(c, f.column) === f.value;
     case 'range': {
       if (column(f.column).kind === 'date') {
         const v = c[f.column as DateKey];

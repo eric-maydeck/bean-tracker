@@ -44,7 +44,8 @@ function encodeFilter(f: Filter): string[] {
     case 'contains':
       return [`~${f.text}`];
     case 'bool':
-      return [String(f.value)];
+      // bc reads as a yes/no question in a URL; decaf/frozen keep true/false.
+      return [f.column === 'bc' ? (f.value ? 'yes' : 'no') : String(f.value)];
     case 'range':
       return [f.op === 'between' ? `between:${f.a}..${f.b}` : `${f.op}${f.a}`];
     case 'includes':
@@ -87,8 +88,8 @@ function decodeFilter(key: ColumnKey, raw: string[], known: string[] | undefined
       return { column: key, mode: 'any', values };
     }
     case 'bool': {
-      const b = oneOf(['true', 'false'] as const, first);
-      return b ? { column: key, mode: 'bool', value: b === 'true' } : null;
+      const b = oneOf(['true', 'false', 'yes', 'no'] as const, first);
+      return b ? { column: key, mode: 'bool', value: b === 'true' || b === 'yes' } : null;
     }
     case 'number':
     case 'date': {

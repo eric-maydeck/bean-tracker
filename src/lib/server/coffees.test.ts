@@ -289,3 +289,13 @@ describe('product_url', () => {
     expect(getCoffeeById(db, id)?.product_url).toBe('https://b.coffee/products/y');
   });
 });
+
+describe('in_bean_conqueror on list rows', () => {
+  it('is 1 only for coffees with a linked bean', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, sampleInput({ coffee_name: 'A' }));
+    createCoffee(db, sampleInput({ coffee_name: 'B' }));
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'A', 'x', ?)`).run(a.id);
+    expect(getBacklogCoffees(db).map((c) => [c.coffee_name, c.in_bean_conqueror])).toEqual([['A', 1], ['B', 0]]);
+  });
+});
