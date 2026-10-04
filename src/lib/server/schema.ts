@@ -102,7 +102,8 @@ CREATE TABLE IF NOT EXISTS beanconqueror_beans (
   bc_created_at TEXT,
   bc_archived INTEGER NOT NULL DEFAULT 0,
   imported_at TEXT NOT NULL,
-  dismissed_at TEXT
+  dismissed_at TEXT,
+  coffee_id INTEGER REFERENCES coffees(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS beanconqueror_bean_origins (

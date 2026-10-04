@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
+import { backfillBeanConquerorLinks } from './beanConquerorLinks.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 
 // Returns true the moment the column is actually added, false if it already
@@ -60,6 +61,17 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'product_url', 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
+  // Bean Conqueror bean → coffee link (one-to-one). SQLite allows many NULLs
+  // in a unique index. Backfill only the moment the column is added, so a
+  // later Unlink survives restarts.
+  const bcLinkJustAdded = ensureColumn(
+    db,
+    'beanconqueror_beans',
+    'coffee_id',
+    'INTEGER REFERENCES coffees(id) ON DELETE SET NULL'
+  );
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_beans_coffee ON beanconqueror_beans(coffee_id)`);
+  if (bcLinkJustAdded) backfillBeanConquerorLinks(db);
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {

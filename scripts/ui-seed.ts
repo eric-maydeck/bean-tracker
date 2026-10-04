@@ -70,6 +70,10 @@ bean.run('bean-twin-2', 'Kenya Kiambu Karindundu AA', 'Sey', daysAgo(20), 250, 2
 bean.run('bean-likely', 'Rwanda Gitega Natural Anaerobic', 'Flower Child', daysAgo(9), 250, 21, 0, isoDaysAgo(8), now);
 bean.run('bean-long', `${LONG_NAME} (second bag)`, LONG_ROASTER, daysAgo(3), 250, 40, 0, isoDaysAgo(2), now);
 bean.run('bean-decaf', 'Mountain Water Decaf Peru Cajamarca Organic Fair Trade', null, null, 340, 19, 1, isoDaysAgo(1), now);
+// createDb made this DB with the column already present, so no backfill ran
+// and the import's auto-link doesn't apply here: link the one bean explicitly.
+// The twins stay unlinked (they show up in Stats → Not yet tracked).
+db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-linked'`).run(linked.id);
 db.prepare(
   `INSERT INTO beanconqueror_bean_origins (bean_id, component_number, country, processing) VALUES (?, 1, ?, ?)`
 ).run('bean-long', 'Colombia', 'Double Anaerobic Thermal Shock Natural');

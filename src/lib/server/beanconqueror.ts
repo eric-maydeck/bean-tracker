@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type ExcelJS from 'exceljs';
+import { autoLinkBeanConquerorBeans } from './beanConquerorLinks';
 import { cellText, cellNumber, cellBoolean, excelSerialToISODate, excelSerialToISOTimestamp } from './excelHelpers';
 
 export interface ParsedBean {
@@ -379,6 +380,10 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
   const now = new Date().toISOString();
   db.exec('BEGIN');
   try {
+    // Auto-link only considers beans that are new in this import.
+    const existingBeanIds = new Set(
+      (db.prepare(`SELECT id FROM beanconqueror_beans`).all() as { id: string }[]).map((r) => r.id)
+    );
     for (const b of parsed.beans) {
       db.prepare(
         `INSERT INTO beanconqueror_beans (
@@ -474,6 +479,9 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
         br.extractionYieldPercent, br.brewRatio, br.beanAgeDays, br.bcArchived ? 1 : 0, br.water, now
       );
     }
+
+    // The bean upsert above never writes coffee_id, so existing links survive.
+    autoLinkBeanConquerorBeans(db, parsed.beans.map((b) => b.id).filter((id) => !existingBeanIds.has(id)));
 
     db.prepare(
       `INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
@@ -596,15 +604,10 @@ export function findLikelyMatch(
   return best;
 }
 
-// Shared by getUnmatchedBeanConquerorBeans and countUnmatchedBeanConquerorBeans
-// so the two stay in sync on what counts as "unmatched".
-const UNMATCHED_BEAN_WHERE = `
-  WHERE b.dismissed_at IS NULL
-    AND NOT EXISTS (
-      SELECT 1 FROM coffees c
-      WHERE c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date
-    )
-`;
+// Shared by getUnmatchedBeanConquerorBeans and countUnmatchedBeanConquerorBeans.
+// Tracked means linked (beanconqueror_beans.coffee_id); the exact text match
+// only feeds the backfill and auto-link (beanConquerorLinks.ts).
+const UNMATCHED_BEAN_WHERE = `WHERE b.dismissed_at IS NULL AND b.coffee_id IS NULL`;
 
 export function countUnmatchedBeanConquerorBeans(db: DatabaseSync): number {
   const row = db.prepare(`SELECT COUNT(*) c FROM beanconqueror_beans b ${UNMATCHED_BEAN_WHERE}`).get() as { c: number };
@@ -649,7 +652,7 @@ export function getUnmatchedBeanConquerorBeans(db: DatabaseSync, limit: number):
 
   const coffees = db
     .prepare(`SELECT slug, roaster, coffee_name, roast_date, status FROM coffees`)
-    .all() as LikelyMatchCandidate[];
+    .all() as unknown as LikelyMatchCandidate[];
 
   return rows.map((r) => {
     const origin = db
