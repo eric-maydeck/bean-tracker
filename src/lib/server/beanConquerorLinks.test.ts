@@ -102,6 +102,24 @@ describe('backfill (runs only when the column is added)', () => {
     applySchema(raw);
     expect(rawLink(raw, 'b-solo')).toBeNull();
   });
+
+  it('is atomic: a failing backfill leaves no column, so it retries next boot', () => {
+    const raw = oldDb();
+    coffeeRow(raw, 'a', 'Solo', '2026-09-01');
+    beanRow(raw, 'b-solo', 'Solo', '2026-09-01');
+    raw.exec(`CREATE TRIGGER boom BEFORE UPDATE ON beanconqueror_beans
+      BEGIN SELECT RAISE(ABORT, 'boom'); END`);
+    expect(() => applySchema(raw)).toThrow('boom');
+    const hasColumn = () =>
+      (raw.prepare(`PRAGMA table_info(beanconqueror_beans)`).all() as { name: string }[]).some(
+        (c) => c.name === 'coffee_id'
+      );
+    expect(hasColumn()).toBe(false);
+    raw.exec('DROP TRIGGER boom');
+    applySchema(raw);
+    expect(hasColumn()).toBe(true);
+    expect(rawLink(raw, 'b-solo')).not.toBeNull();
+  });
 });
 
 describe('import auto-link', () => {
@@ -140,6 +158,14 @@ describe('import auto-link', () => {
     const db = createDb(':memory:');
     addCoffee(db);
     importBeans(db, [bean('b2'), bean('b1')]);
+    expect([linkOf(db, 'b1'), linkOf(db, 'b2')]).toEqual([null, null]);
+  });
+
+  it('an existing unlinked twin blocks auto-linking a new bean with the same key', () => {
+    const db = createDb(':memory:');
+    importBeans(db, [bean('b1')]); // twin A, no coffee yet
+    addCoffee(db);
+    importBeans(db, [bean('b2')]); // new bean B, one unlinked coffee
     expect([linkOf(db, 'b1'), linkOf(db, 'b2')]).toEqual([null, null]);
   });
 

@@ -23,16 +23,23 @@ export function backfillBeanConquerorLinks(db: DatabaseSync): void {
 // After each import, for the beans that are new in it only (existing beans are
 // never auto-linked, so a manual Unlink sticks). The same "unambiguous both
 // ways" rule as the backfill: exactly one unlinked coffee matches the bean,
-// and that coffee is matched by exactly one of this import's candidates.
+// and that coffee is matched by exactly one of this import's candidates. A new
+// bean is also skipped when an existing unlinked, non-dismissed bean has the
+// same key (a duplicate bag: which one the coffee is, is for the user to say).
 // (Not shared with the backfill's SQL: that one counts every bean, this one
 // only the new, unlinked ones.)
 export function autoLinkBeanConquerorBeans(db: DatabaseSync, newBeanIds: readonly string[]): number {
   const matchesOf = db.prepare(
     `SELECT c.id FROM beanconqueror_beans b JOIN coffees c ON ${EXACT_MATCH}
-     WHERE b.id = ? AND b.coffee_id IS NULL AND b.dismissed_at IS NULL AND NOT ${COFFEE_HAS_BEAN}`
+     WHERE b.id = ? AND b.coffee_id IS NULL AND b.dismissed_at IS NULL AND NOT ${COFFEE_HAS_BEAN}
+       AND NOT EXISTS (SELECT 1 FROM beanconqueror_beans x
+         WHERE x.roaster = b.roaster AND x.name = b.name AND x.roast_date = b.roast_date
+           AND x.coffee_id IS NULL AND x.dismissed_at IS NULL
+           AND x.id NOT IN (SELECT value FROM json_each(?)))`
   );
+  const newIds = JSON.stringify(newBeanIds);
   const byBean = new Map<string, number[]>();
-  for (const id of newBeanIds) byBean.set(id, (matchesOf.all(id) as { id: number }[]).map((r) => r.id));
+  for (const id of newBeanIds) byBean.set(id, (matchesOf.all(id, newIds) as { id: number }[]).map((r) => r.id));
   const beansPerCoffee = new Map<number, number>();
   for (const ids of byBean.values()) for (const c of ids) beansPerCoffee.set(c, (beansPerCoffee.get(c) ?? 0) + 1);
   const link = db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`);
