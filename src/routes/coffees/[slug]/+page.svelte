@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -328,6 +329,21 @@
           <p class="text-muted">
             <small>Added {formatDate(data.coffee.created_at)} · Updated {formatUpdated(data.coffee.updated_at)}</small>
           </p>
+          {#if data.beanConqueror}
+            <div class="bc-link-line text-muted">
+              <span>
+                {`Bean Conqueror: ${data.beanConqueror.name} · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
+              </span>
+              {#if data.isAdmin}
+                <form method="POST" action="?/unlinkBeanConqueror" use:enhance>
+                  <button class="button button-secondary" type="submit">Unlink</button>
+                </form>
+              {/if}
+            </div>
+            {#if form && 'error' in form && form.error}
+              <p class="badge badge-urgent">{form.error}</p>
+            {/if}
+          {/if}
         </div>
       </div>
 
@@ -441,3 +457,12 @@
     </div>
   </div>
 {/if}
+
+<style>
+  .bc-link-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+</style>

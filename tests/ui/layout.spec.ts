@@ -39,6 +39,22 @@ export const STATES: State[] = [
   { name: 'on-deck', path: () => '/on-deck' },
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
+  {
+    name: 'stats-link-picker',
+    path: () => '/stats',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Link', exact: true }).first().click();
+      await expect(page.getByRole('combobox', { name: /^Coffee to link/ })).toBeVisible();
+    }
+  },
+  {
+    name: 'coffee-linked',
+    path: (s) => `/coffees/${s.slugs.linked}`,
+    act: async (page) => {
+      await expect(page.getByText(/Bean Conqueror: .* · 8 brews/)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Unlink', exact: true })).toBeVisible();
+    }
+  },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
     path: () => `/stats?bc=${tab}`

@@ -1295,12 +1295,30 @@ div.compact-row {
   /* minmax(max-content, 1fr): equal tracks when there is room, but never
      narrower than the button's own label (it was clipped in a narrow
      table cell). */
-  grid-template-columns: repeat(2, minmax(max-content, 1fr));
+  grid-template-columns: repeat(3, minmax(max-content, 1fr));
 }
 
 .candidate-actions .button {
   width: 100%;
   white-space: nowrap;
+}
+
+/* Link picker: the select spans the row, Link/Cancel share the row under it.
+   width:100% + min-width:0 keeps a long option label from widening the table. */
+.link-picker {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.link-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  font-size: 16px; /* no iOS/Android focus zoom */
+}
+
+.candidate-actions.link-picker-actions {
+  grid-template-columns: 1fr 1fr;
 }
 
 @media (max-width: 640px) {

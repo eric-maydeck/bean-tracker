@@ -4,6 +4,7 @@
   import { browser } from '$app/environment';
   import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
+  import { linkPickerGroups } from '$lib/linkPicker';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
@@ -17,6 +18,9 @@
   let { data, form }: { data: PageData; form: ActionData } = $props();
 
   let createModalBean = $state<UnmatchedBean | null>(null);
+  // Which "Not yet tracked" row has its Link picker open. Inline action
+  // state, like the Create modal, so it's never in the URL.
+  let linkingBeanId = $state<string | null>(null);
 
   // Same width-based default the Coffees/Subscriptions pages use (List on
   // desktop, Compact on mobile) — deliberately no manual toggle or
@@ -707,21 +711,63 @@
   {/if}
 
   {#snippet candidateActions(bean: UnmatchedBean)}
-    <div class="action-buttons candidate-actions">
-      <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>Create</button>
+    {#if linkingBeanId === bean.id}
+      {@const groups = linkPickerGroups(
+        { roaster: bean.roaster, likelyMatchId: bean.likelyMatch?.id ?? null },
+        data.linkableCoffees
+      )}
       <form
+        class="link-picker"
         method="POST"
-        action="?/dismissBeanConqueror"
+        action="?/linkBeanConqueror"
         use:enhance={() => {
-          return async ({ update }) => {
+          return async ({ result, update }) => {
             await update();
+            if (result.type === 'success') linkingBeanId = null;
           };
         }}
       >
-        <input type="hidden" name="id" value={bean.id} />
-        <button class="button button-danger" type="submit">Dismiss</button>
+        <input type="hidden" name="beanId" value={bean.id} />
+        <select name="coffeeId" required aria-label={`Coffee to link ${bean.name} to`}>
+          {#if groups.likely}
+            <option value={groups.likely.id} selected>{groups.likely.label}</option>
+          {:else}
+            <option value="" disabled selected>Choose a coffee…</option>
+          {/if}
+          {#if groups.sameRoaster.length}
+            <optgroup label="Same roaster">
+              {#each groups.sameRoaster as o (o.id)}<option value={o.id}>{o.label}</option>{/each}
+            </optgroup>
+          {/if}
+          {#if groups.other.length}
+            <optgroup label="Other coffees">
+              {#each groups.other as o (o.id)}<option value={o.id}>{o.label}</option>{/each}
+            </optgroup>
+          {/if}
+        </select>
+        <div class="action-buttons candidate-actions link-picker-actions">
+          <button class="button" type="submit">Link</button>
+          <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = null)}>Cancel</button>
+        </div>
       </form>
-    </div>
+    {:else}
+      <div class="action-buttons candidate-actions">
+        <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>Create</button>
+        <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = bean.id)}>Link</button>
+        <form
+          method="POST"
+          action="?/dismissBeanConqueror"
+          use:enhance={() => {
+            return async ({ update }) => {
+              await update();
+            };
+          }}
+        >
+          <input type="hidden" name="id" value={bean.id} />
+          <button class="button button-danger" type="submit">Dismiss</button>
+        </form>
+      </div>
+    {/if}
   {/snippet}
 
   {#if data.unmatchedBeans.total > 0}
@@ -973,6 +1019,7 @@
           processingMethods={data.processingMethods}
           restHistory={data.restHistory}
           formError={form?.error ?? null}
+          beanConquerorId={createModalBean.id}
           oncancel={() => (createModalBean = null)}
           onsuccess={closeCreateModal}
         />

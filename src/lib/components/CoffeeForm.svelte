@@ -15,6 +15,7 @@
     processingMethods = [],
     restHistory = [],
     formError = null,
+    beanConquerorId = null,
     oncancel = null,
     onsuccess = null,
     onstage = null,
@@ -30,6 +31,8 @@
     processingMethods?: string[];
     restHistory?: RestHistoryRow[];
     formError?: string | null;
+    // Stats "Not yet tracked" → Create: the bean to link once the coffee exists.
+    beanConquerorId?: string | null;
     oncancel?: (() => void) | null;
     onsuccess?: (() => void) | null;
     onstage?: ((fields: Record<string, string>) => void) | null;
@@ -255,6 +258,9 @@
 >
   {#if formError}
     <p class="badge badge-urgent">{formError}</p>
+  {/if}
+  {#if beanConquerorId}
+    <input type="hidden" name="beanconqueror_id" value={beanConquerorId} />
   {/if}
 
   <datalist id="roaster-suggestions">
