@@ -847,6 +847,10 @@ nav.site-nav a[aria-current='page'] {
     min-height: 44px;
   }
 
+  .form-field select {
+    min-height: 44px;
+  }
+
   .button,
   .tab-group button {
     display: inline-flex;
