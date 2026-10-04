@@ -142,6 +142,11 @@ describe('parseBeanConquerorWorkbook header validation', () => {
     200, 18, null, null, false, null, null, null, 7, createdAt, 'bean-1', false
   ];
 
+  it('rejects a workbook that is not a Bean Conqueror export (no Beans sheet)', async () => {
+    const wb = await buildWorkbook({ Sheet1: { headers: ['Name', 'Amount'], rows: [['x', 1]] } });
+    expect(() => parseBeanConquerorWorkbook(wb)).toThrow(/doesn't look like a Bean Conqueror export/);
+  });
+
   it('throws a clear error when a fixed Beans column is renamed', async () => {
     const headers = [...BEANS_HEADERS];
     headers[18] = 'Bean UUID'; // column 19, where the parser reads the bean id

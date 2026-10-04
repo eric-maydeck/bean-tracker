@@ -355,7 +355,12 @@ export function parseBeanConquerorWorkbook(workbook: ExcelJS.Workbook): ParsedBe
   // changed export format aborts the whole import rather than half-writing
   // shifted values.
   const beansWorksheet = workbook.getWorksheet('Beans');
-  validateHeaders(beansWorksheet, 'Beans', beansWorksheet ? beansExpectedHeaders(beansWorksheet) : BEANS_EXPECTED_HEADERS);
+  // Every real export has a Beans sheet; without one this is some other
+  // workbook, which would otherwise "import" nothing and report success.
+  if (!beansWorksheet) {
+    throw new Error("That file doesn't look like a Bean Conqueror export (no Beans sheet)");
+  }
+  validateHeaders(beansWorksheet, 'Beans', beansExpectedHeaders(beansWorksheet));
   validateHeaders(workbook.getWorksheet('Brews'), 'Brews', BREWS_EXPECTED_HEADERS);
   validateHeaders(workbook.getWorksheet('Methods'), 'Methods', METHODS_EXPECTED_HEADERS);
   validateHeaders(workbook.getWorksheet('Grinders'), 'Grinders', GRINDERS_EXPECTED_HEADERS);
