@@ -88,6 +88,8 @@
   function syncImageFields() {
     roasterValue = fieldValue('roaster');
     imageValue = fieldValue('image_url');
+    // No image, no mark: retyping one must not silently re-arm it.
+    if (!imageValue.trim()) setRoasterDefault = false;
   }
 
   let lastRest: RestSuggestion | null = null;

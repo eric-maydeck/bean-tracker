@@ -220,6 +220,22 @@ export const STATES: State[] = [
       await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
       await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
     }
+  },
+  {
+    // Clearing the image by typing drops the mark; retyping must not revive it.
+    name: 'coffee-edit-roaster-default-cleared-by-typing',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.locator('#image_url').fill('https://img.example/moonwake-bag.png');
+      await page.getByRole('button', { name: 'Set as roaster default' }).click();
+      await page.locator('#image_url').fill('');
+      await page.locator('#image_url').fill('https://img.example/other.png');
+      const btn = page.getByRole('button', { name: 'Set as roaster default' });
+      await expect(btn).toBeEnabled();
+      await expect(btn).not.toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
+    }
   }
 ];
 
