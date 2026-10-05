@@ -1,3 +1,32 @@
+# [1.40.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.2...v1.40.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **coffee:** show unlink error only for a failed unlink
+* **db:** add link column, index and backfill in one transaction
+* **import:** don't auto-link a new bean when an unlinked twin exists
+* **link-picker:** keep alphabetical order outside top match
+* **link-picker:** list all twin bags under top match
+* **link-picker:** unique disambiguated labels across all options
+* **ui-seed:** compare resolved paths so .. can't escape .ui-test
+* **ui:** keep coffee page action labels on one line, wrap the row instead
+* **ui:** keep create button at its natural width in the untracked beans table
+* **ui:** keep quick filter switch labels on one line on phones
+* **ui:** make filter chip remove button a 44px tap target on phones
+* **ui:** raise form selects to a 44px tap target on phones
+
+
+### Features
+
+* **beanconqueror:** link picker on stats and unlink on the coffee page
+* **beanconqueror:** link, unlink and create-and-link actions
+* **beanconqueror:** store bean-to-coffee links and auto-link on import
+* **coffees:** in bean conqueror quick filter
+* **link-picker:** show roaster first in option labels
+* **stats:** general and bean conqueror tabs
+* **ui:** top match group in link picker, BQ chip label, ui rules 14-15
+
 ## [1.39.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.1...v1.39.2) (2026-10-04)
 
 
