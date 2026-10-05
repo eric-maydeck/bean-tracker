@@ -837,7 +837,7 @@
                 </div>
                 <div>
                   <span class="eyebrow">Roasted</span>
-                  {coffee.roast_date ?? '—'}{#if coffee.days_since_roast != null} ({coffee.days_since_roast}d ago){/if}
+                  {coffee.roast_date ?? '—'}{coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
                 </div>
                 <div>
                   <span class="eyebrow">Rest window</span>

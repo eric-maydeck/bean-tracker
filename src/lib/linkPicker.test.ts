@@ -15,7 +15,7 @@ describe('linkPickerGroups', () => {
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [same, other, likely]);
     expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster', 'Other coffees']);
     expect(g[0].options).toEqual([{ id: likely.id, label: 'Sey · Likely · 2026-09-01 · backlog', roaster: 'Sey',
-      name: 'Likely', meta: '2026-09-01 · Backlog', search: 'sey · likely · 2026-09-01 · backlog' }]);
+      name: 'Likely', meta: 'Roasted 2026-09-01 · Backlog', search: 'sey · likely · 2026-09-01 · backlog' }]);
     expect(g[1].options.map((o) => o.label)).toEqual(['sey · Same · 2026-09-01 · backlog']);
     expect(g[2].options.map((o) => o.label)).toEqual(['Onyx · Other · no date · open']);
   });
@@ -42,9 +42,9 @@ describe('linkPickerGroups', () => {
     const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t1.id }, [t1, t2]);
     expect(g.map((x) => x.label)).toEqual(['Top match']);
-    expect(g[0].options.map((o) => [o.id, o.label, o.meta])).toEqual([
-      [t1.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01', '2026-09-01 · Backlog · Added 2026-08-01'],
-      [t2.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15', '2026-09-01 · Backlog · Added 2026-09-15']
+    expect(g[0].options.map((o) => [o.id, o.label, o.meta, o.twin])).toEqual([
+      [t1.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01', 'Roasted 2026-09-01 · Backlog', 'Added 2026-08-01'],
+      [t2.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15', 'Roasted 2026-09-01 · Backlog', 'Added 2026-09-15']
     ]);
   });
 
@@ -56,7 +56,7 @@ describe('linkPickerGroups', () => {
     expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/Bag 1$/);
     expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/Bag 2$/);
     const bOpt = g[0].options.find((o) => o.id === b.id)!;
-    expect([bOpt.meta, bOpt.bag]).toEqual(['2026-09-01 · Backlog · Added 2026-09-02', 'Bag 2']);
+    expect([bOpt.meta, bOpt.twin]).toEqual(['Roasted 2026-09-01 · Backlog', 'Added 2026-09-02 · Bag 2']);
     expect(bOpt.search).toContain('bag 2');
   });
 
@@ -76,13 +76,13 @@ describe('linkPickerGroups', () => {
     const a = c({ roaster: '' });
     const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
     expect(g[0].options[0].label).toBe('Kiambu · 2026-09-01 · backlog');
-    expect(g[0].options[0]).toMatchObject({ roaster: '', name: 'Kiambu', meta: '2026-09-01 · Backlog' });
+    expect(g[0].options[0]).toMatchObject({ roaster: '', name: 'Kiambu', meta: 'Roasted 2026-09-01 · Backlog' });
   });
 
-  it('a missing roast date reads "No date" in the meta line', () => {
+  it('a missing roast date reads "No roast date" in the meta line', () => {
     const a = c({ roast_date: null, status: 'open' });
     const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
-    expect(g[0].options[0].meta).toBe('No date · Open');
+    expect(g[0].options[0].meta).toBe('No roast date · Open');
   });
 
   it('non-top groups keep the input order (not id order)', () => {

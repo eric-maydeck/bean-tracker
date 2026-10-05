@@ -15,8 +15,8 @@ export interface LinkOption {
   label: string; // the whole line: roaster · name · meta
   roaster: string;
   name: string;
-  meta: string; // roast date · status (· added … for twins)
-  bag?: string; // "Bag N" for same-day twins, shown on its own line
+  meta: string; // roast date · status
+  twin?: string; // "Added … (· Bag N)" for twin bags, shown on its own line
   search: string; // lowercase label, for filterLinkGroups
 }
 
@@ -61,8 +61,8 @@ export function linkPickerGroups(
       label,
       roaster: c.roaster?.trim() ?? '',
       name: c.coffee_name,
-      meta: `${c.roast_date ?? 'No date'} · ${cap(c.status)}${added && ` · Added ${c.created_at.slice(0, 10)}`}`,
-      ...(bag && { bag }),
+      meta: `${c.roast_date ? `Roasted ${c.roast_date}` : 'No roast date'} · ${cap(c.status)}`,
+      ...(added && { twin: `Added ${c.created_at.slice(0, 10)}${bag ? ` · ${bag}` : ''}` }),
       search: label.toLowerCase()
     };
   };

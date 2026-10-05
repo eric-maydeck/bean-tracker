@@ -45,10 +45,10 @@ async function expectBagOnOwnLine(page: Page) {
     const boxes = [document.querySelector('.lp-btn')!, ...document.querySelectorAll('[role="group"] [role="option"]')]
       .filter((el) => el.closest('[role="group"]')?.textContent?.startsWith('Top match') ?? true);
     return boxes.flatMap((box) => {
-      const [meta, bag] = box.querySelectorAll('.lp-m');
-      if (!bag || !/^Bag \d+$/.test(bag.textContent!)) return ['no bag line'];
+      const [meta, twin] = box.querySelectorAll('.lp-m');
+      if (!twin || !/^Added \d{4}-\d\d-\d\d · Bag \d+$/.test(twin.textContent!)) return ['no twin line'];
       if (lines(meta) !== 1) return [`meta wraps: ${meta.textContent}`];
-      if (bag.getBoundingClientRect().top < meta.getBoundingClientRect().bottom - 1) return ['bag not below meta'];
+      if (twin.getBoundingClientRect().top < meta.getBoundingClientRect().bottom - 1) return ['twin line not below meta'];
       return [];
     });
   });
