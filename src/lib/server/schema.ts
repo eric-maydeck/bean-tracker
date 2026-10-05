@@ -37,6 +37,14 @@ CREATE TABLE IF NOT EXISTS slug_redirects (
   coffee_id INTEGER NOT NULL REFERENCES coffees(id) ON DELETE CASCADE
 );
 
+-- Roaster → default image, set by hand from the coffee form ("Set as roaster
+-- default"). A live fallback for coffees with no image of their own (joined in
+-- coffees.ts LIST_SELECT), never copied into coffees. NOCASE: "norml" = "Norml".
+CREATE TABLE IF NOT EXISTS roaster_images (
+  roaster TEXT PRIMARY KEY COLLATE NOCASE,
+  image_url TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY,
   roaster_service TEXT NOT NULL,
