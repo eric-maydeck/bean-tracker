@@ -41,7 +41,7 @@ export const STATES: State[] = [
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {
     name: 'stats-link-picker',
-    path: () => '/stats',
+    path: () => '/stats?tab=bq',
     act: async (page) => {
       await page.getByRole('button', { name: 'Link', exact: true }).first().click();
       await expect(page.getByRole('combobox', { name: /^Coffee to link/ })).toBeVisible();
@@ -55,9 +55,10 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Unlink', exact: true })).toBeVisible();
     }
   },
+  { name: 'stats-general', path: () => '/stats' },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
-    path: () => `/stats?bc=${tab}`
+    path: () => `/stats?tab=bq&bc=${tab}`
   })),
   { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
   { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },

@@ -10,6 +10,7 @@
   import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
+  import { parseStatsTab } from './statsTab';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
   import type { RatedGroup } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
@@ -142,6 +143,8 @@
   };
   const BC_FAV_DIMENSIONS = Object.keys(bcFavoriteDimensionLabels) as BcFavoriteDimension[];
 
+  let explicitTab = $state(parseStatsTab(currentParams(page.url)));
+  let tab = $derived(explicitTab ?? 'general');
   let explicitBc = $state<BcTab | undefined>(pickOne(currentParams(page.url), 'bc', BC_TABS));
   let explicitBcFav = $state<BcFavoriteDimension | undefined>(pickOne(currentParams(page.url), 'bc_fav', BC_FAV_DIMENSIONS));
   let explicitBcMetric = $state<(typeof BC_METRICS)[number] | undefined>(
@@ -163,6 +166,7 @@
     explicitDimension = pickOne(p, 'dimension', DIMENSIONS);
     explicitMetric = pickOne(p, 'metric', METRICS);
     explicitStatus = pickMany(p, 'status', STATUSES);
+    explicitTab = parseStatsTab(p);
     explicitBc = pickOne(p, 'bc', BC_TABS);
     explicitBcFav = pickOne(p, 'bc_fav', BC_FAV_DIMENSIONS);
     explicitBcMetric = pickOne(p, 'bc_metric', BC_METRICS);
@@ -174,6 +178,7 @@
     if (explicitDimension) params.set('dimension', explicitDimension);
     if (explicitMetric) params.set('metric', explicitMetric);
     if (explicitStatus) for (const s of explicitStatus) params.append('status', s);
+    if (explicitTab) params.set('tab', explicitTab);
     if (explicitBc) params.set('bc', explicitBc);
     if (explicitBcFav) params.set('bc_fav', explicitBcFav);
     if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
@@ -311,6 +316,14 @@
   <ShareButton />
 </div>
 
+<div class="chart-panel-controls">
+  <div class="tab-group">
+    <button aria-pressed={tab === 'general'} onclick={() => (explicitTab = 'general')}>General</button>
+    <button aria-pressed={tab === 'bq'} onclick={() => (explicitTab = 'bq')}>Bean Conqueror</button>
+  </div>
+</div>
+
+{#if tab === 'general'}
 {#if data.isAdmin}
   <div class="rate-edit">
     {#if editingRates}
@@ -692,6 +705,7 @@
   {/if}
 </section>
 
+{:else}
 <section class="chart-panel beanconqueror-panel">
   <h2>Bean Conqueror</h2>
   <p class="text-muted">
@@ -701,7 +715,7 @@
       : 'never'}
   </p>
   {#if data.isAdmin}
-    <form method="POST" action="?/importBeanConqueror" enctype="multipart/form-data" use:enhance>
+    <form method="POST" action="?/importBeanConqueror&tab=bq" enctype="multipart/form-data" use:enhance>
       <input type="file" name="file" accept=".xlsx" required />
       <button class="button" type="submit">Import</button>
     </form>
@@ -719,7 +733,7 @@
       <form
         class="link-picker"
         method="POST"
-        action="?/linkBeanConqueror"
+        action="?/linkBeanConqueror&tab=bq"
         use:enhance={() => {
           return async ({ result, update }) => {
             await update();
@@ -751,7 +765,7 @@
         <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = bean.id)}>Link</button>
         <form
           method="POST"
-          action="?/dismissBeanConqueror"
+          action="?/dismissBeanConqueror&tab=bq"
           use:enhance={() => {
             return async ({ update }) => {
               await update();
@@ -1022,3 +1036,4 @@
     </div>
   {/if}
 </section>
+{/if}
