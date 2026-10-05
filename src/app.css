@@ -1306,18 +1306,12 @@ div.compact-row {
   white-space: nowrap;
 }
 
-/* Link picker: the select spans the row, Link/Cancel share the row under it.
-   width:100% + min-width:0 keeps a long option label from widening the table. */
+/* Link picker: LinkPicker spans the row, Link/Cancel share the row under it.
+   minmax(0, 1fr) keeps a long coffee name from widening the table. */
 .link-picker {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
-}
-
-.link-picker select {
-  width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  font-size: 16px; /* no iOS/Android focus zoom */
 }
 
 .candidate-actions.link-picker-actions {

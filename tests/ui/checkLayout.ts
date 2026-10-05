@@ -38,6 +38,8 @@ export async function checkLayout(page: Page): Promise<void> {
     // a single text node whose line boxes don't overlap vertically wrapped.
     const chips = all('button, .button, .badge, .filter-chip');
     for (const el of chips) {
+      // A picker button is a form control, not an action: its meta line may wrap.
+      if (el.matches('[aria-haspopup="listbox"]')) continue;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         if (!n.textContent?.trim()) continue;
@@ -106,6 +108,13 @@ export async function checkLayout(page: Page): Promise<void> {
         range.setEnd(n, m.index + m[0].length);
         if (wrapped(range)) out.push(`wraps onto 2+ lines: "${m[0]}" in ${describe(n.parentElement)}`);
       }
+    }
+
+    // 7. (ui-rules 14) Every option in a custom picker sits under a visible
+    // group header: role="group" labelled by a shown element.
+    for (const el of all('[role="option"]')) {
+      const header = document.getElementById(el.closest('[role="group"]')?.getAttribute('aria-labelledby') ?? '');
+      if (!header || !shown(header)) out.push(`option without a group header: ${describe(el)}`);
     }
     return out;
   });

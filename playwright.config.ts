@@ -27,9 +27,16 @@ export default defineConfig({
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     ...WIDTHS.map((width) => ({
       name: `w${width}`,
-      testMatch: /\.spec\.ts/,
+      testMatch: /layout\.spec\.ts/,
       dependencies: ['setup'],
       use: { viewport: { width, height: 800 }, storageState: '.ui-test/admin.json' }
-    }))
+    })),
+    // Adds coffees to the shared DB, so it waits for every layout check.
+    {
+      name: 'perf',
+      testMatch: /perf\.spec\.ts/,
+      dependencies: WIDTHS.map((width) => `w${width}`),
+      use: { viewport: { width: 360, height: 800 }, storageState: '.ui-test/admin.json' }
+    }
   ]
 });

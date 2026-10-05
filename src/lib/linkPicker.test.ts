@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { linkPickerGroups, type LinkableCoffee } from './linkPicker';
+import { filterLinkGroups, linkPickerGroups, type LinkableCoffee } from './linkPicker';
 
 let id = 0;
 const c = (over: Partial<LinkableCoffee>): LinkableCoffee => ({
@@ -14,7 +14,8 @@ describe('linkPickerGroups', () => {
     const other = c({ roaster: 'Onyx', coffee_name: 'Other', roast_date: null, status: 'open' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [same, other, likely]);
     expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster', 'Other coffees']);
-    expect(g[0].options).toEqual([{ id: likely.id, label: 'Sey · Likely · 2026-09-01 · backlog' }]);
+    expect(g[0].options).toEqual([{ id: likely.id, label: 'Sey · Likely · 2026-09-01 · backlog', roaster: 'Sey',
+      name: 'Likely', meta: '2026-09-01 · backlog', search: 'sey · likely · 2026-09-01 · backlog' }]);
     expect(g[1].options.map((o) => o.label)).toEqual(['sey · Same · 2026-09-01 · backlog']);
     expect(g[2].options.map((o) => o.label)).toEqual(['Onyx · Other · no date · open']);
   });
@@ -41,9 +42,9 @@ describe('linkPickerGroups', () => {
     const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t1.id }, [t1, t2]);
     expect(g.map((x) => x.label)).toEqual(['Top match']);
-    expect(g[0].options).toEqual([
-      { id: t1.id, label: 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01' },
-      { id: t2.id, label: 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15' }
+    expect(g[0].options.map((o) => [o.id, o.label, o.meta])).toEqual([
+      [t1.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01', '2026-09-01 · backlog · added 2026-08-01'],
+      [t2.id, 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15', '2026-09-01 · backlog · added 2026-09-15']
     ]);
   });
 
@@ -54,6 +55,7 @@ describe('linkPickerGroups', () => {
     expect(new Set(labels).size).toBe(2);
     expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/bag 1$/);
     expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/bag 2$/);
+    expect(g[0].options.find((o) => o.id === b.id)!.meta).toMatch(/^2026-09-01 · backlog · added 2026-09-02 · bag 2$/);
   });
 
   it('twins of the top match all go under Top match, the top match stays first/preselected', () => {
@@ -72,6 +74,13 @@ describe('linkPickerGroups', () => {
     const a = c({ roaster: '' });
     const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
     expect(g[0].options[0].label).toBe('Kiambu · 2026-09-01 · backlog');
+    expect(g[0].options[0]).toMatchObject({ roaster: '', name: 'Kiambu', meta: '2026-09-01 · backlog' });
+  });
+
+  it('a missing roast date reads "no date" in the meta line', () => {
+    const a = c({ roast_date: null, status: 'open' });
+    const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
+    expect(g[0].options[0].meta).toBe('no date · open');
   });
 
   it('non-top groups keep the input order (not id order)', () => {
@@ -81,5 +90,27 @@ describe('linkPickerGroups', () => {
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [likely, s1, o1, s2, o2]);
     expect(g[1].options.map((o) => o.id)).toEqual([s1.id, s2.id]);
     expect(g[2].options.map((o) => o.id)).toEqual([o1.id, o2.id]);
+  });
+});
+
+describe('filterLinkGroups', () => {
+  const likely = c({ roaster: 'Big Sur', coffee_name: 'Pink Bourbon' });
+  const same = c({ roaster: 'Big Sur', coffee_name: 'Kamoko', status: 'archive' });
+  const other = c({ roaster: 'Onyx', coffee_name: 'Geometry', roast_date: '2026-07-04' });
+  const groups = linkPickerGroups({ roaster: 'Big Sur', likelyMatchId: likely.id }, [likely, same, other]);
+  const ids = (q: string) => filterLinkGroups(groups, q).map((g) => [g.label, g.options.map((o) => o.id)]);
+
+  it('blank query keeps everything', () => {
+    expect(filterLinkGroups(groups, '  ')).toBe(groups);
+  });
+  it('matches roaster, name and meta case-insensitively, dropping empty groups', () => {
+    expect(ids('BIG sur')).toEqual([['Top match', [likely.id]], ['Same roaster', [same.id]]]);
+    expect(ids('geometry')).toEqual([['Other coffees', [other.id]]]);
+    expect(ids('archive')).toEqual([['Same roaster', [same.id]]]);
+    expect(ids('2026-07')).toEqual([['Other coffees', [other.id]]]);
+    expect(ids('nothing like this')).toEqual([]);
+  });
+  it('keeps the Top match flag on a filtered Top match group', () => {
+    expect(filterLinkGroups(groups, 'pink')[0].top).toBe(true);
   });
 });

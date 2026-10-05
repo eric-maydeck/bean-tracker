@@ -5,6 +5,7 @@
   import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
   import { linkPickerGroups } from '$lib/linkPicker';
+  import LinkPicker from '$lib/components/LinkPicker.svelte';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
@@ -22,6 +23,7 @@
   // Which "Not yet tracked" row has its Link picker open. Inline action
   // state, like the Create modal, so it's never in the URL.
   let linkingBeanId = $state<string | null>(null);
+  let linkCoffeeId = $state<number | null>(null);
 
   // Same width-based default the Coffees/Subscriptions pages use (List on
   // desktop, Compact on mobile) — deliberately no manual toggle or
@@ -742,27 +744,19 @@
         }}
       >
         <input type="hidden" name="beanId" value={bean.id} />
-        <select name="coffeeId" required aria-label={`Coffee to link ${bean.name} to`}>
-          {#if !groups[0]?.top}
-            <option value="" disabled selected>Choose a coffee…</option>
-          {/if}
-          {#each groups as g (g.label)}
-            <optgroup label={g.label}>
-              {#each g.options as o (o.id)}
-                <option value={o.id} selected={g.top && o.id === g.options[0].id}>{o.label}</option>
-              {/each}
-            </optgroup>
-          {/each}
-        </select>
+        <LinkPicker {groups} label={`Coffee to link ${bean.name} to`} bind:value={linkCoffeeId} />
         <div class="action-buttons candidate-actions link-picker-actions">
-          <button class="button" type="submit">Link</button>
+          <button class="button" type="submit" disabled={linkCoffeeId == null}>Link</button>
           <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = null)}>Cancel</button>
         </div>
       </form>
     {:else}
       <div class="action-buttons candidate-actions">
         <button class="button button-secondary" type="button" onclick={() => openCreateModal(bean)}>Create</button>
-        <button class="button button-secondary" type="button" onclick={() => (linkingBeanId = bean.id)}>Link</button>
+        <button class="button button-secondary" type="button" onclick={() => {
+          linkingBeanId = bean.id;
+          linkCoffeeId = null;
+        }}>Link</button>
         <form
           method="POST"
           action="?/dismissBeanConqueror&tab=bq"

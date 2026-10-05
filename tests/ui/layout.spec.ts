@@ -21,6 +21,18 @@ interface State {
   act?: (page: Page, s: Seed) => Promise<void>;
 }
 
+// Stats → Not yet tracked → Link on the bean row containing `text`.
+async function showPicker(page: Page, text: string) {
+  const row = page.locator('.compact-row-wrap, tbody tr').filter({ hasText: text }).first();
+  await row.getByRole('button', { name: 'Link', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Coffee to link/ })).toBeVisible();
+}
+async function openPicker(page: Page, text: string) {
+  await showPicker(page, text);
+  await page.getByRole('button', { name: /^Coffee to link/ }).click();
+  await expect(page.getByRole('listbox')).toBeFocused(); // never the search box (phone keyboard)
+}
+
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
@@ -68,12 +80,49 @@ export const STATES: State[] = [
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {
+    // Closed, after a keyboard pick (nothing is submitted): ↓ + Enter takes the
+    // second twin; Esc closes without changing it. Focus returns to the button.
     name: 'stats-link-picker',
     path: () => '/stats?tab=bq',
     act: async (page) => {
-      await page.getByRole('button', { name: 'Link', exact: true }).first().click();
-      await expect(page.getByRole('combobox', { name: /^Coffee to link/ })).toBeVisible();
+      await openPicker(page, 'Kenya Kiambu');
+      const button = page.getByRole('button', { name: /^Coffee to link/ });
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      await expect(button).toBeFocused();
+      await expect(button).toHaveAccessibleName(/bag 2$/);
+      await button.click();
+      await page.keyboard.press('End');
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('listbox')).toHaveCount(0);
+      await expect(button).toBeFocused();
+      await expect(button).toHaveAccessibleName(/bag 2$/);
     }
+  },
+  {
+    name: 'stats-link-picker-open',
+    path: () => '/stats?tab=bq',
+    act: async (page) => {
+      await openPicker(page, 'Kenya Kiambu');
+      const top = page.getByRole('group', { name: 'Top match' }).getByRole('option');
+      await expect(top).toHaveCount(2); // the seeded twins
+      await expect(top.first()).toHaveAttribute('aria-selected', 'true');
+    }
+  },
+  {
+    name: 'stats-link-picker-search',
+    path: () => '/stats?tab=bq',
+    act: async (page) => {
+      await openPicker(page, 'Kenya Kiambu');
+      await page.getByRole('searchbox', { name: 'Search coffees' }).fill('ethiopia');
+      await expect(page.getByRole('group', { name: 'Top match' })).toHaveCount(0);
+      await expect(page.getByRole('option').first()).toBeVisible();
+    }
+  },
+  {
+    name: 'stats-link-picker-long',
+    path: () => '/stats?tab=bq',
+    act: (page, s) => openPicker(page, s.names.long.slice(0, 20))
   },
   {
     name: 'coffee-linked',

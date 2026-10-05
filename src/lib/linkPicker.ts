@@ -12,7 +12,11 @@ export interface LinkableCoffee {
 
 export interface LinkOption {
   id: number;
-  label: string;
+  label: string; // the whole line: roaster · name · meta
+  roaster: string;
+  name: string;
+  meta: string; // roast date · status (· added … · bag N for twins)
+  search: string; // lowercase label, for filterLinkGroups
 }
 
 export interface LinkPickerGroup {
@@ -46,13 +50,21 @@ export function linkPickerGroups(
     perLabel.set(withDate(c), n);
     bagNo.set(c.id, n);
   }
-  const option = (c: LinkableCoffee): LinkOption => ({
-    id: c.id,
-    label:
-      base.get(baseLabel(c))! === 1 ? baseLabel(c)
-      : dated.get(withDate(c))! === 1 ? withDate(c)
-      : `${withDate(c)} · bag ${bagNo.get(c.id)}`
-  });
+  const option = (c: LinkableCoffee): LinkOption => {
+    const twin =
+      base.get(baseLabel(c))! === 1 ? ''
+      : dated.get(withDate(c))! === 1 ? ` · added ${c.created_at.slice(0, 10)}`
+      : ` · added ${c.created_at.slice(0, 10)} · bag ${bagNo.get(c.id)}`;
+    const label = baseLabel(c) + twin;
+    return {
+      id: c.id,
+      label,
+      roaster: c.roaster?.trim() ?? '',
+      name: c.coffee_name,
+      meta: `${c.roast_date ?? 'no date'} · ${c.status}${twin}`,
+      search: label.toLowerCase()
+    };
+  };
   const roaster = bean.roaster ? norm(bean.roaster) : null;
   const top: LinkOption[] = [];
   const sameRoaster: LinkOption[] = [];
@@ -77,4 +89,14 @@ export function linkPickerGroups(
     { label: 'Same roaster', options: sameRoaster },
     { label: 'Other coffees', options: other }
   ].filter((g) => g.options.length);
+}
+
+// Case-insensitive substring filter over each option's precomputed search
+// string; groups left empty are dropped.
+export function filterLinkGroups(groups: LinkPickerGroup[], query: string): LinkPickerGroup[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return groups;
+  return groups
+    .map((g) => ({ ...g, options: g.options.filter((o) => o.search.includes(q)) }))
+    .filter((g) => g.options.length);
 }
