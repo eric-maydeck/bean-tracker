@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.43.0...v1.44.0) (2026-10-05)
+
+
+### Features
+
+* **bc:** second one-time pairs batch with guarded coffee fixes
+
 # [1.43.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.42.0...v1.43.0) (2026-10-05)
 
 
