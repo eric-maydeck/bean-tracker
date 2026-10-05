@@ -100,3 +100,42 @@ export function getLinkableCoffees(db: DatabaseSync): LinkableCoffee[] {
     )
     .all() as unknown as LinkableCoffee[];
 }
+
+export type BeanCoffeePair = { bean_id: string; coffee_id: number };
+export const PAIRS_MARKER = 'beanconqueror_pairs_2026_10_applied';
+
+// The 2026-10 reconciliation's agreed pairs (beanConquerorPairs.ts), applied
+// once at boot. The marker stops a re-run from re-linking anything unlinked
+// later. No marker is set while there's nothing to apply (an empty list, or a
+// DB with no beans yet), so shipping the list later still works. A pair whose
+// bean or coffee is gone or linked elsewhere is skipped and logged.
+export function applyBeanConquerorPairs(
+  db: DatabaseSync,
+  pairs: readonly BeanCoffeePair[]
+): { applied: number; skipped: string[] } | null {
+  if (pairs.length === 0) return null;
+  if (!db.prepare(`SELECT 1 FROM beanconqueror_beans LIMIT 1`).get()) return null;
+  if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(PAIRS_MARKER)) return null;
+  const skipped: string[] = [];
+  let applied = 0;
+  db.exec('BEGIN');
+  try {
+    for (const p of pairs) {
+      try {
+        linkBeanConquerorBean(db, p.bean_id, p.coffee_id);
+        applied++;
+      } catch (err) {
+        if (!(err instanceof BeanLinkError)) throw err;
+        skipped.push(`${p.bean_id} → ${p.coffee_id}: ${err.message}`);
+      }
+    }
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(PAIRS_MARKER, new Date().toISOString());
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  console.log(`beanconqueror pairs: applied ${applied}, skipped ${skipped.length}`);
+  for (const s of skipped) console.log(`  skipped ${s}`);
+  return { applied, skipped };
+}

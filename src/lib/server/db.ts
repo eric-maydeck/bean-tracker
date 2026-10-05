@@ -2,7 +2,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
-import { backfillBeanConquerorLinks } from './beanConquerorLinks.ts';
+import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
+import { BEAN_CONQUEROR_PAIRS } from './beanConquerorPairs.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 
 // Returns true the moment the column is actually added, false if it already
@@ -80,6 +81,7 @@ export function applySchema(db: DatabaseSync): void {
     db.exec('ROLLBACK');
     throw e;
   }
+  applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {

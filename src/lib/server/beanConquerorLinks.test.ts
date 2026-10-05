@@ -4,7 +4,7 @@ import { createDb, applySchema } from './db';
 import { schema } from './schema';
 import { createCoffee, type NewCoffeeInput } from './coffees';
 import { importBeanConquerorData, getUnmatchedBeanConquerorBeans, countUnmatchedBeanConquerorBeans } from './beanconqueror';
-import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkedBean, getLinkableCoffees, BeanLinkError } from './beanConquerorLinks';
+import { linkBeanConquerorBean, unlinkBeanConquerorBean, getLinkedBean, getLinkableCoffees, BeanLinkError, applyBeanConquerorPairs, PAIRS_MARKER } from './beanConquerorLinks';
 
 type Db = ReturnType<typeof createDb>;
 
@@ -291,5 +291,49 @@ describe('getLinkedBean / getLinkableCoffees', () => {
     expect(linkOf(db, 'b1')).toBe(taken);
     const [b2] = getUnmatchedBeanConquerorBeans(db, 20);
     expect(b2.likelyMatch).toMatchObject({ id: free });
+  });
+});
+
+describe('applyBeanConquerorPairs (one-time reconciliation)', () => {
+  function setup() {
+    const db = createDb(':memory:');
+    const c1 = addCoffee(db);
+    const c2 = addCoffee(db);
+    const c3 = addCoffee(db, { coffee_name: 'Taken' });
+    importBeans(db, [bean('b1'), bean('b2'), bean('b3', { name: 'Taken' })]); // b3 auto-links to c3
+    return { db, c1, c2, c3 };
+  }
+  const marker = (db: ReturnType<typeof createDb>) => db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(PAIRS_MARKER);
+
+  it('applies pairs, skips conflicts and unknown ids, and sets the marker', () => {
+    const { db, c1, c2, c3 } = setup();
+    const r = applyBeanConquerorPairs(db, [
+      { bean_id: 'b1', coffee_id: c1 },
+      { bean_id: 'b2', coffee_id: c3 },   // c3 already has b3
+      { bean_id: 'gone', coffee_id: c2 }, // bean doesn't exist
+      { bean_id: 'b3', coffee_id: c3 }    // already exactly this: fine
+    ]);
+    expect(r?.applied).toBe(2);
+    expect(r?.skipped).toHaveLength(2);
+    expect(linkOf(db, 'b1')).toBe(c1);
+    expect(linkOf(db, 'b2')).toBeNull();
+    expect(marker(db)).toBeTruthy();
+  });
+
+  it('runs once: a later unlink is not undone by the next boot', () => {
+    const { db, c1 } = setup();
+    applyBeanConquerorPairs(db, [{ bean_id: 'b1', coffee_id: c1 }]);
+    unlinkBeanConquerorBean(db, c1);
+    expect(applyBeanConquerorPairs(db, [{ bean_id: 'b1', coffee_id: c1 }])).toBeNull();
+    expect(linkOf(db, 'b1')).toBeNull();
+  });
+
+  it('an empty list or a DB without beans does nothing and sets no marker', () => {
+    const { db } = setup();
+    expect(applyBeanConquerorPairs(db, [])).toBeNull();
+    expect(marker(db)).toBeUndefined();
+    const fresh = createDb(':memory:');
+    expect(applyBeanConquerorPairs(fresh, [{ bean_id: 'b1', coffee_id: 1 }])).toBeNull();
+    expect(marker(fresh)).toBeUndefined();
   });
 });
