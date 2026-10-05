@@ -1,3 +1,15 @@
+# [1.42.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.41.0...v1.42.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **coffees:** keep the list's rest window column at its old width
+
+
+### Features
+
+* **coffees:** show grams left for open coffees with a linked bean
+
 # [1.41.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.40.0...v1.41.0) (2026-10-05)
 
 
