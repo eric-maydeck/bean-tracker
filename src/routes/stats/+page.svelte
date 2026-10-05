@@ -777,7 +777,7 @@
     <h3>Not yet tracked ({data.unmatchedBeans.total})</h3>
     <p class="text-muted">Showing top {data.unmatchedBeans.beans.length} of {data.unmatchedBeans.total}.</p>
     {#if candidateView === 'compact'}
-      <div class="compact-list">
+      <div class="compact-list bean-cards">
         {#each data.unmatchedBeans.beans as bean (bean.id)}
           <div class="compact-row-wrap">
             <div class="compact-row">

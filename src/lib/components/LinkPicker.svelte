@@ -123,6 +123,7 @@
         {#if selected.roaster}<span class="lp-r">{selected.roaster}</span>{/if}
         <span class="lp-n">{selected.name}</span>
         <span class="lp-m">{selected.meta}</span>
+        {#if selected.bag}<span class="lp-m">{selected.bag}</span>{/if}
       </span>
     {:else}
       <span class="lp-text">Choose a coffee…</span>
@@ -170,6 +171,7 @@
                 {#if o.roaster}<span class="lp-r">{o.roaster}</span>{/if}
                 <span class="lp-n">{o.name}</span>
                 <span class="lp-m">{o.meta}</span>
+                {#if o.bag}<span class="lp-m">{o.bag}</span>{/if}
               </div>
             {/each}
           </div>
@@ -207,7 +209,6 @@
     display: grid;
     min-width: 0;
   }
-  /* The meta line may wrap: for twins its end ("bag N") is what tells them apart. */
   .lp-btn .lp-r,
   .lp-btn .lp-n {
     overflow: hidden;

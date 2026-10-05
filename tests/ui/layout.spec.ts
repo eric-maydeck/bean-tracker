@@ -33,6 +33,28 @@ async function openPicker(page: Page, text: string) {
   await expect(page.getByRole('listbox')).toBeFocused(); // never the search box (phone keyboard)
 }
 
+// Twins: the meta line stays on one line and "Bag N" is its own line below it,
+// in the closed button and in every Top match option.
+async function expectBagOnOwnLine(page: Page) {
+  const bad = await page.evaluate(() => {
+    const lines = (el: Element) => {
+      const r = document.createRange();
+      r.selectNodeContents(el);
+      return new Set([...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top))).size;
+    };
+    const boxes = [document.querySelector('.lp-btn')!, ...document.querySelectorAll('[role="group"] [role="option"]')]
+      .filter((el) => el.closest('[role="group"]')?.textContent?.startsWith('Top match') ?? true);
+    return boxes.flatMap((box) => {
+      const [meta, bag] = box.querySelectorAll('.lp-m');
+      if (!bag || !/^Bag \d+$/.test(bag.textContent!)) return ['no bag line'];
+      if (lines(meta) !== 1) return [`meta wraps: ${meta.textContent}`];
+      if (bag.getBoundingClientRect().top < meta.getBoundingClientRect().bottom - 1) return ['bag not below meta'];
+      return [];
+    });
+  });
+  expect(bad).toEqual([]);
+}
+
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
@@ -90,13 +112,13 @@ export const STATES: State[] = [
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('Enter');
       await expect(button).toBeFocused();
-      await expect(button).toHaveAccessibleName(/bag 2$/);
+      await expect(button).toHaveAccessibleName(/Bag 2$/);
       await button.click();
       await page.keyboard.press('End');
       await page.keyboard.press('Escape');
       await expect(page.getByRole('listbox')).toHaveCount(0);
       await expect(button).toBeFocused();
-      await expect(button).toHaveAccessibleName(/bag 2$/);
+      await expect(button).toHaveAccessibleName(/Bag 2$/);
     }
   },
   {
@@ -107,6 +129,7 @@ export const STATES: State[] = [
       const top = page.getByRole('group', { name: 'Top match' }).getByRole('option');
       await expect(top).toHaveCount(2); // the seeded twins
       await expect(top.first()).toHaveAttribute('aria-selected', 'true');
+      if (page.viewportSize()!.width === 360) await expectBagOnOwnLine(page);
     }
   },
   {

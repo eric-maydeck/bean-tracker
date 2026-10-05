@@ -15,7 +15,8 @@ export interface LinkOption {
   label: string; // the whole line: roaster · name · meta
   roaster: string;
   name: string;
-  meta: string; // roast date · status (· added … · bag N for twins)
+  meta: string; // roast date · status (· added … for twins)
+  bag?: string; // "Bag N" for same-day twins, shown on its own line
   search: string; // lowercase label, for filterLinkGroups
 }
 
@@ -34,7 +35,7 @@ export function linkPickerGroups(
   coffees: LinkableCoffee[]
 ): LinkPickerGroup[] {
   // Twin bags share name, roast date and status: add the added date, then
-  // "bag N" (ascending id) if still identical. Computed across ALL coffees.
+  // "Bag N" (ascending id) if still identical. Computed across ALL coffees.
   const withDate = (c: LinkableCoffee) => `${baseLabel(c)} · added ${c.created_at.slice(0, 10)}`;
   const count = (f: (c: LinkableCoffee) => string) => {
     const m = new Map<string, number>();
@@ -51,17 +52,16 @@ export function linkPickerGroups(
     bagNo.set(c.id, n);
   }
   const option = (c: LinkableCoffee): LinkOption => {
-    const twin =
-      base.get(baseLabel(c))! === 1 ? ''
-      : dated.get(withDate(c))! === 1 ? ` · added ${c.created_at.slice(0, 10)}`
-      : ` · added ${c.created_at.slice(0, 10)} · bag ${bagNo.get(c.id)}`;
-    const label = baseLabel(c) + twin;
+    const added = base.get(baseLabel(c))! === 1 ? '' : ` · added ${c.created_at.slice(0, 10)}`;
+    const bag = added && dated.get(withDate(c))! > 1 ? `Bag ${bagNo.get(c.id)}` : undefined;
+    const label = baseLabel(c) + added + (bag ? ` · ${bag}` : '');
     return {
       id: c.id,
       label,
       roaster: c.roaster?.trim() ?? '',
       name: c.coffee_name,
-      meta: `${c.roast_date ?? 'no date'} · ${c.status}${twin}`,
+      meta: `${c.roast_date ?? 'no date'} · ${c.status}${added}`,
+      ...(bag && { bag }),
       search: label.toLowerCase()
     };
   };

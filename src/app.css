@@ -953,6 +953,14 @@ div.compact-row {
   text-overflow: ellipsis;
 }
 
+/* Stats → Not yet tracked: bean names and roasters wrap instead of truncating. */
+.bean-cards .compact-row-title,
+.bean-cards .compact-row-sub {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+
 /* Named generically — used for urgency on Coffees, price on Subscriptions;
    both are just "the trailing value" for a compact row. */
 .compact-row-trailing {

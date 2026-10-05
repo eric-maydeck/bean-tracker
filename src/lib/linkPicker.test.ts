@@ -48,14 +48,16 @@ describe('linkPickerGroups', () => {
     ]);
   });
 
-  it('same-day twins get unique labels (bag N by ascending id)', () => {
+  it('same-day twins get unique labels (Bag N by ascending id)', () => {
     const a = c({}), b = c({});
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: null }, [b, a]);
     const labels = g.flatMap((x) => x.options.map((o) => o.label));
     expect(new Set(labels).size).toBe(2);
-    expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/bag 1$/);
-    expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/bag 2$/);
-    expect(g[0].options.find((o) => o.id === b.id)!.meta).toMatch(/^2026-09-01 · backlog · added 2026-09-02 · bag 2$/);
+    expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/Bag 1$/);
+    expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/Bag 2$/);
+    const bOpt = g[0].options.find((o) => o.id === b.id)!;
+    expect([bOpt.meta, bOpt.bag]).toEqual(['2026-09-01 · backlog · added 2026-09-02', 'Bag 2']);
+    expect(bOpt.search).toContain('bag 2');
   });
 
   it('twins of the top match all go under Top match, the top match stays first/preselected', () => {
