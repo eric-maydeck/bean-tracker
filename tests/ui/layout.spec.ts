@@ -3,9 +3,14 @@ import { readFileSync } from 'node:fs';
 import { checkLayout } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string };
-  names: { long: string; everyAction: string };
+  slugs: { long: string; linked: string; frozen: string; decaf: string } & Record<GramsKey, string>;
+  names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
+// Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
+// asserts each stays on one line).
+const GRAMS = { big: '2kg (2kg left)', under: '999g (999g left)', part: '1.5kg (1.2kg left)' };
+type GramsKey = keyof typeof GRAMS;
+const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
 // Read lazily: .ui-test/seed.json only exists once the web server has started.
 let cached: Seed | undefined;
 const seed = (): Seed => (cached ??= JSON.parse(readFileSync('.ui-test/seed.json', 'utf8')));
@@ -36,7 +41,30 @@ export const STATES: State[] = [
   { name: 'coffee-long', path: (s) => `/coffees/${s.slugs.long}` },
   { name: 'coffee-frozen', path: (s) => `/coffees/${s.slugs.frozen}` },
   { name: 'coffee-decaf', path: (s) => `/coffees/${s.slugs.decaf}` },
-  { name: 'on-deck', path: () => '/on-deck' },
+  {
+    name: 'on-deck',
+    path: () => '/on-deck',
+    act: async (page) => {
+      for (const text of Object.values(GRAMS)) await expect(page.getByText(text, { exact: true })).toBeVisible();
+    }
+  },
+  ...GRAMS_KEYS.flatMap((k) => [
+    {
+      name: `coffees-compact-grams-${k}`,
+      path: () => '/coffees?status=open&view=compact',
+      act: async (page: Page, s: Seed) => {
+        await page.getByRole('button', { name: new RegExp(s.names[k]) }).click();
+        await expect(page.getByText(GRAMS[k]).first()).toBeVisible();
+      }
+    },
+    {
+      name: `coffee-grams-${k}`,
+      path: (s: Seed) => `/coffees/${s.slugs[k]}`,
+      act: async (page: Page) => {
+        await expect(page.getByText(GRAMS[k], { exact: true })).toBeVisible();
+      }
+    }
+  ]),
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {

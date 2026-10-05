@@ -465,6 +465,11 @@ input:focus-visible {
   margin: var(--space-1) 0;
 }
 
+/* Bag text like "1.5kg (1.2kg left)" must never wrap (ui-rules #16). */
+.nowrap {
+  white-space: nowrap;
+}
+
 /* Visually hidden but still reachable by screen readers (e.g. aria-describedby targets). */
 .sr-only {
   position: absolute;

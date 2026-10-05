@@ -39,6 +39,7 @@
     type SortDir
   } from '$lib/coffeeViewState';
   import { writeUrlParams } from '$lib/urlState';
+  import { formatBag, formatGrams } from '$lib/grams';
 
   let { data, form } = $props();
 
@@ -444,10 +445,6 @@
   // give the same numbers, but deriving from the final displayed list
   // keeps this tied to "what's actually on screen" as that list evolves.
   let visibleTotalGrams = $derived(sortedCoffees.reduce((sum, c) => sum + (c.amount_g ?? 0), 0));
-
-  function formatVisibleWeight(totalGrams: number): string {
-    return totalGrams > 1000 ? `${(totalGrams / 1000).toFixed(1)} kg` : `${Math.round(totalGrams)}g`;
-  }
 </script>
 
 <svelte:head>
@@ -657,7 +654,7 @@
 </div>
 
 <p class="text-muted">
-  {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatVisibleWeight(visibleTotalGrams)}
+  {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
 </p>
 
 {#if data.isAdmin}
@@ -709,7 +706,7 @@
               {/if}
               <p class="text-muted">
                 {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
-                {coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
+                {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
               </p>
               {#if coffee.roast_date}
                 <p class="text-muted">
@@ -758,7 +755,7 @@
           {/if}
           <p class="text-muted">
             {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
-            {coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
+            {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
           </p>
           {#if coffee.roast_date}
             <p class="text-muted">
@@ -835,7 +832,8 @@
                 <div><span class="eyebrow">Processing</span><br />{coffee.processing ?? '—'}</div>
                 <div>
                   <span class="eyebrow">Cost/g · amount</span><br />
-                  {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : '—'}{coffee.amount_g != null ? ` · ${coffee.amount_g}g` : ''}
+                  {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : '—'}{#if coffee.amount_g != null}
+                    · <span class="nowrap">{formatBag(coffee.amount_g, coffee.grams_left)}</span>{/if}
                 </div>
                 <div>
                   <span class="eyebrow">Roasted</span><br />
@@ -879,13 +877,13 @@
         <col style="width: 6%" />
         <col style="width: 6%" />
         <col style="width: 4%" />
-        <col style="width: 11%" />
-        <col style="width: 5%" />
-        <col style="width: 5%" />
-        <col style="width: 7%" />
-        <col style="width: 7%" />
-        <col style="width: 7%" />
         <col style="width: 8%" />
+        <col style="width: 5%" />
+        <col style="width: 9%" />
+        <col style="width: 7%" />
+        <col style="width: 7%" />
+        <col style="width: 7%" />
+        <col style="width: 7%" />
         <col style="width: 5%" />
         {#if data.isAdmin}
           <col style="width: 11%" />
@@ -1014,7 +1012,7 @@
             <td>{coffee.decaf ? 'Yes' : 'No'}</td>
             <td>{coffee.processing ?? '—'}</td>
             <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
-            <td>{coffee.amount_g != null ? `${coffee.amount_g}g` : '—'}</td>
+            <td class="nowrap">{coffee.amount_g != null ? formatBag(coffee.amount_g, coffee.grams_left) : '—'}</td>
             <td>
               {coffee.roast_date ?? '—'}
               {#if coffee.days_since_roast != null}<br />({coffee.days_since_roast}d ago){/if}

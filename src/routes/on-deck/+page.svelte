@@ -5,6 +5,7 @@
   import { currentParams, pickOne } from '$lib/pageUrlState';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { writeUrlParams } from '$lib/urlState';
+  import { formatBag } from '$lib/grams';
   import ShareButton from '$lib/components/ShareButton.svelte';
 
   let { data } = $props();
@@ -89,6 +90,9 @@
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
+          {#if coffee.amount_g != null && coffee.grams_left != null}
+            <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
+          {/if}
           <p class="text-muted">
             Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
               >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span

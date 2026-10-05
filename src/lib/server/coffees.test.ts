@@ -299,3 +299,27 @@ describe('in_bean_conqueror on list rows', () => {
     expect(getBacklogCoffees(db).map((c) => [c.coffee_name, c.in_bean_conqueror])).toEqual([['A', 1], ['B', 0]]);
   });
 });
+
+describe('grams_left', () => {
+  function setup(over: Partial<NewCoffeeInput> = {}, brews: number[] = [], link = true) {
+    const { id, slug } = createCoffee(db, sampleInput({ amount_g: 250, status: 'open', ...over }));
+    if (link) {
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'x', 'x', ?)`).run(id);
+    }
+    const brew = db.prepare(
+      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, imported_at) VALUES (?, 'b', ?, 'x')`
+    );
+    brews.forEach((g, i) => brew.run(`t${i}`, g));
+    return getCoffeeBySlug(db, slug)?.grams_left;
+  }
+
+  it('is bag size minus brewed grams, rounded, on the coffee and list rows', () => {
+    expect(setup({}, [18.2, 18.4])).toBe(213);
+    expect(getOpenCoffees(db)[0].grams_left).toBe(213);
+  });
+  it('is the full bag when the linked bean has no brews', () => expect(setup()).toBe(250));
+  it('floors at 0 when more was logged than the bag held', () => expect(setup({}, [200, 100])).toBe(0));
+  it('is null when no bean is linked', () => expect(setup({}, [], false)).toBeNull());
+  it('is null when the coffee is not open', () => expect(setup({ status: 'backlog' })).toBeNull());
+  it('is null when the bag size is unknown', () => expect(setup({ amount_g: null })).toBeNull());
+});

@@ -22,6 +22,8 @@ export interface CoffeeRow {
   decaf: number;
   // List queries only (coffees.ts): 1 when a Bean Conqueror bean is linked.
   in_bean_conqueror?: number;
+  // List queries + getCoffeeBySlug: bag minus linked bean's brews (open only), else null.
+  grams_left?: number | null;
   created_at: string;
   updated_at: string;
 }

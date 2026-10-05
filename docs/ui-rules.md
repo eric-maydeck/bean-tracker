@@ -22,6 +22,7 @@ when it can be automated.
 | 13 | Real-phone check (Firefox/Android) over the LAN dev server before pushing UI changes; `test:ui` passes first. | No (process) |
 | 14 | Every group of options in a picker/select has a header, including a top/suggested group (user feedback 2026-10-04). | No (review) |
 | 15 | Chips and badges use short forms where a well-known one exists (e.g. BQ for Bean Conqueror); the full name stays in editors/forms (user feedback 2026-10-04). | No (review) |
+| 16 | Bag text ("1.5kg (1.2kg left)") never wraps onto a second line, in any view (user requirement 2026-10-04). | Yes |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

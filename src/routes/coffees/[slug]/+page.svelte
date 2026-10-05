@@ -18,6 +18,7 @@
   import { SvelteMap } from 'svelte/reactivity';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import type { CoffeeRow } from '$lib/types';
+  import { formatBag } from '$lib/grams';
 
   let { data, form } = $props();
 
@@ -362,7 +363,7 @@
         </div>
         <div class="stat">
           <span class="stat-label">Amount</span>
-          <span class="stat-value">{data.coffee.amount_g != null ? `${data.coffee.amount_g}g` : '—'}</span>
+          <span class="stat-value">{data.coffee.amount_g != null ? formatBag(data.coffee.amount_g, data.coffee.grams_left) : '—'}</span>
         </div>
         <div class="stat">
           <span class="stat-label">Cost</span>

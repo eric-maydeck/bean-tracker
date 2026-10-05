@@ -26,6 +26,13 @@ export async function checkLayout(page: Page): Promise<void> {
     const sw = document.documentElement.scrollWidth;
     if (sw > window.innerWidth) out.push(`page scrolls sideways: scrollWidth ${sw} > ${window.innerWidth}`);
 
+    // Text whose line boxes don't overlap vertically wrapped.
+    const wrapped = (range: Range) => {
+      const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+      if (rects.length < 2) return false;
+      return Math.max(...rects.map((r) => r.top)) >= Math.min(...rects.map((r) => r.bottom)) - 1;
+    };
+
     // 2. Buttons, badges and chips stay on one line. Checked per text node (not
     // the whole element's boxes), so an icon stacked over a label isn't a wrap:
     // a single text node whose line boxes don't overlap vertically wrapped.
@@ -36,11 +43,7 @@ export async function checkLayout(page: Page): Promise<void> {
         if (!n.textContent?.trim()) continue;
         const range = document.createRange();
         range.selectNodeContents(n);
-        const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
-        if (rects.length < 2) continue;
-        const maxTop = Math.max(...rects.map((r) => r.top));
-        const minBottom = Math.min(...rects.map((r) => r.bottom));
-        if (maxTop >= minBottom - 1) {
+        if (wrapped(range)) {
           out.push(`wraps onto 2+ lines: ${describe(el)}`);
           break;
         }
@@ -90,6 +93,18 @@ export async function checkLayout(page: Page): Promise<void> {
               `${describe(els[i])} vs ${describe(els[j])}`);
           }
         }
+      }
+    }
+
+    // 6. Bag text ("1.5kg (1.2kg left)") stays on one line, wherever it sits.
+    const texts = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = texts.nextNode(); n; n = texts.nextNode()) {
+      if (!n.parentElement || !shown(n.parentElement)) continue;
+      for (const m of (n.textContent ?? '').matchAll(/\S+ \(\S+ left\)/g)) {
+        const range = document.createRange();
+        range.setStart(n, m.index);
+        range.setEnd(n, m.index + m[0].length);
+        if (wrapped(range)) out.push(`wraps onto 2+ lines: "${m[0]}" in ${describe(n.parentElement)}`);
       }
     }
     return out;

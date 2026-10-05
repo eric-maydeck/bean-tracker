@@ -54,6 +54,17 @@ coffee({ roaster: 'Hydrangea', coffee_name: 'Colombia Pink Bourbon', status: 'ar
 const linked = coffee({ roaster: 'The Picky Chemist', coffee_name: 'El Dorado Double Ferment Gesha', status: 'open',
   roast_date: daysAgo(15) });
 coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Gitega Natural', roast_date: daysAgo(9) });
+// Open + linked, so "grams left" shows: "2kg (2kg left)", "999g (999g left)", "1.5kg (1.2kg left)".
+const GRAMS_NAMES = {
+  big: 'Ethiopia Guji Hambela Natural Bulk Bag',
+  under: 'Colombia Inmaculada Sudan Rume Washed',
+  part: 'Costa Rica Las Lajas Black Honey Catuai'
+};
+const grams = {
+  big: coffee({ roaster: 'Black & White Coffee Roasters', coffee_name: GRAMS_NAMES.big, status: 'open', amount_g: 2000 }),
+  under: coffee({ roaster: 'Prodigal Coffee', coffee_name: GRAMS_NAMES.under, status: 'open', amount_g: 999 }),
+  part: coffee({ roaster: 'Passenger Coffee', coffee_name: GRAMS_NAMES.part, status: 'open', amount_g: 1500 })
+};
 
 createSubscription(db, { roaster_service: 'A Very Long Subscription Service Name That Keeps Going', subscription_name:
   'Explorer Series: Two Rotating Single Origins Every Other Week', price: 44.5, bag_count: 2, amount_per_bag_g: 250, renewal_day: 15 });
@@ -75,6 +86,10 @@ bean.run('bean-decaf', 'Mountain Water Decaf Peru Cajamarca Organic Fair Trade',
 // and the import's auto-link doesn't apply here: link the one bean explicitly.
 // The twins stay unlinked (they show up in Stats → Not yet tracked).
 db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-linked'`).run(linked.id);
+for (const [key, c] of Object.entries(grams)) {
+  bean.run(`bean-${key}`, GRAMS_NAMES[key as keyof typeof grams], null, daysAgo(10), null, null, 0, isoDaysAgo(9), now);
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-${key}`);
+}
 db.prepare(
   `INSERT INTO beanconqueror_bean_origins (bean_id, component_number, country, processing) VALUES (?, 1, ?, ?)`
 ).run('bean-long', 'Colombia', 'Double Anaerobic Thermal Shock Natural');
@@ -87,12 +102,14 @@ const brew = db.prepare(
 for (let i = 0; i < 8; i++) brew.run(isoDaysAgo(i + 1), 'bean-linked', 6 + (i % 4), 14 - i, now);
 for (let i = 0; i < 3; i++) brew.run(isoDaysAgo(i + 2), 'bean-twin-1', 7, 18 + i, now);
 for (let i = 0; i < 2; i++) brew.run(isoDaysAgo(i + 1), 'bean-likely', 8, 7 + i, now);
+for (let i = 0; i < 20; i++) brew.run(isoDaysAgo(i + 1), 'bean-part', 8, 9, now); // 20 × 15g = 300g
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
-  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, decaf: decaf.slug },
-  names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe' }
+  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, decaf: decaf.slug, big: grams.big.slug,
+    under: grams.under.slug, part: grams.part.slug },
+  names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));
 db.close();
 console.log(`ui-seed: wrote ${path}`);
