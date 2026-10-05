@@ -1,3 +1,6 @@
+# [1.45.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.44.0...v1.45.0) (2026-10-05)
+
+
 # [1.44.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.43.0...v1.44.0) (2026-10-05)
 
 
