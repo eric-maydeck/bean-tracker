@@ -3,7 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
-import { BEAN_CONQUEROR_PAIRS } from './beanConquerorPairs.ts';
+import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 
 // Returns true the moment the column is actually added, false if it already
@@ -82,6 +82,7 @@ export function applySchema(db: DatabaseSync): void {
     throw e;
   }
   applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
+  applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {

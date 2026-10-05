@@ -3,6 +3,8 @@
 // imports here must use explicit .ts extensions (node scripts load db.ts).
 import type { DatabaseSync } from 'node:sqlite';
 import type { LinkableCoffee } from '../linkPicker';
+// @ts-expect-error TS5097: node (db.ts at boot) needs the .ts extension, see above.
+import { applyCoffeeFix, type CoffeeFix } from './coffees.ts';
 
 // The old "tracked" test. Now it only drives the backfill, auto-link and suggestions.
 const EXACT_MATCH = `c.roaster = b.roaster AND c.coffee_name = b.name AND c.roast_date = b.roast_date`;
@@ -109,15 +111,20 @@ export const PAIRS_MARKER = 'beanconqueror_pairs_2026_10_applied';
 // later. No marker is set while there's nothing to apply (an empty list, or a
 // DB with no beans yet), so shipping the list later still works. A pair whose
 // bean or coffee is gone or linked elsewhere is skipped and logged.
+// Later batches pass their own marker and may carry coffee fixes.
 export function applyBeanConquerorPairs(
   db: DatabaseSync,
-  pairs: readonly BeanCoffeePair[]
-): { applied: number; skipped: string[] } | null {
+  pairs: readonly BeanCoffeePair[],
+  fixes: readonly CoffeeFix[] = [],
+  marker = PAIRS_MARKER
+): { applied: number; skipped: string[]; fixed: number; fixSkipped: string[] } | null {
   if (pairs.length === 0) return null;
   if (!db.prepare(`SELECT 1 FROM beanconqueror_beans LIMIT 1`).get()) return null;
-  if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(PAIRS_MARKER)) return null;
+  if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(marker)) return null;
   const skipped: string[] = [];
+  const fixSkipped: string[] = [];
   let applied = 0;
+  let fixed = 0;
   db.exec('BEGIN');
   try {
     for (const p of pairs) {
@@ -129,13 +136,20 @@ export function applyBeanConquerorPairs(
         skipped.push(`${p.bean_id} → ${p.coffee_id}: ${err.message}`);
       }
     }
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(PAIRS_MARKER, new Date().toISOString());
+    for (const f of fixes) {
+      const why = applyCoffeeFix(db, f);
+      if (why) fixSkipped.push(`coffee ${f.coffee_id} ${f.field} → '${f.to}': ${why}`);
+      else fixed++;
+    }
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(marker, new Date().toISOString());
     db.exec('COMMIT');
   } catch (err) {
     db.exec('ROLLBACK');
     throw err;
   }
-  console.log(`beanconqueror pairs: applied ${applied}, skipped ${skipped.length}`);
+  console.log(`beanconqueror pairs (${marker}): applied ${applied}, skipped ${skipped.length}`);
   for (const s of skipped) console.log(`  skipped ${s}`);
-  return { applied, skipped };
+  if (fixes.length) console.log(`beanconqueror coffee fixes: applied ${fixed}, skipped ${fixSkipped.length}`);
+  for (const s of fixSkipped) console.log(`  skipped ${s}`);
+  return { applied, skipped, fixed, fixSkipped };
 }

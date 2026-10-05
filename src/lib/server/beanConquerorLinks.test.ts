@@ -336,4 +336,57 @@ describe('applyBeanConquerorPairs (one-time reconciliation)', () => {
     expect(applyBeanConquerorPairs(fresh, [{ bean_id: 'b1', coffee_id: 1 }])).toBeNull();
     expect(marker(fresh)).toBeUndefined();
   });
+
+  describe('second batch (own marker, plus guarded coffee fixes)', () => {
+    const M2 = 'beanconqueror_pairs_2026_10b_applied';
+    const coffee = (db: Db, id: number) =>
+      db.prepare(`SELECT coffee_name, roast_date, slug, updated_at FROM coffees WHERE id = ?`).get(id) as {
+        coffee_name: string; roast_date: string; slug: string; updated_at: string;
+      };
+
+    it('links, applies matching fixes, skips a mismatched one, and sets its own marker after the first', () => {
+      const { db, c1, c2 } = setup();
+      applyBeanConquerorPairs(db, [{ bean_id: 'b1', coffee_id: c1 }]); // first batch's marker set
+      db.prepare(`UPDATE beanconqueror_beans SET dismissed_at = '2026-10-01' WHERE id = 'b2'`).run();
+      db.prepare(`UPDATE coffees SET updated_at = '2000-01-01' WHERE id = ?`).run(c2);
+      const before = coffee(db, c2);
+      const r = applyBeanConquerorPairs(
+        db,
+        [{ bean_id: 'b2', coffee_id: c2 }],
+        [
+          { coffee_id: c2, field: 'coffee_name', from: 'Kiambu', to: 'Kiambu AA' },
+          { coffee_id: c2, field: 'roast_date', from: '2026-09-01', to: '2026-09-02' },
+          { coffee_id: c1, field: 'roast_date', from: '1999-01-01', to: '2026-09-03' } // stale: skipped
+        ],
+        M2
+      );
+      expect(r).toMatchObject({ applied: 1, skipped: [], fixed: 2 });
+      expect(r?.fixSkipped).toHaveLength(1);
+      expect(linkOf(db, 'b2')).toBe(c2);
+      const after = coffee(db, c2);
+      expect(after).toMatchObject({ coffee_name: 'Kiambu AA', roast_date: '2026-09-02', slug: '2026-sey-kiambu-aa' });
+      expect(after.updated_at).not.toBe('2000-01-01');
+      expect(db.prepare(`SELECT coffee_id FROM slug_redirects WHERE old_slug = ?`).get(before.slug)).toEqual({ coffee_id: c2 });
+      expect(coffee(db, c1).roast_date).toBe('2026-09-01');
+      expect(marker(db)).toBeTruthy();
+      expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M2)).toBeTruthy();
+      // runs once
+      expect(applyBeanConquerorPairs(db, [{ bean_id: 'b1', coffee_id: c1 }], [], M2)).toBeNull();
+    });
+
+    it('keeps a custom slug on rename', () => {
+      const { db, c2 } = setup();
+      db.prepare(`UPDATE coffees SET slug = 'my-kiambu' WHERE id = ?`).run(c2);
+      applyBeanConquerorPairs(db, [{ bean_id: 'b2', coffee_id: c2 }], [{ coffee_id: c2, field: 'coffee_name', from: 'Kiambu', to: 'Kiambu AA' }], M2);
+      expect(coffee(db, c2).slug).toBe('my-kiambu');
+    });
+
+    it('a DB without beans does nothing and sets no marker', () => {
+      const fresh = createDb(':memory:');
+      const c = addCoffee(fresh);
+      expect(applyBeanConquerorPairs(fresh, [{ bean_id: 'b1', coffee_id: c }], [{ coffee_id: c, field: 'coffee_name', from: 'Kiambu', to: 'X' }], M2)).toBeNull();
+      expect(fresh.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M2)).toBeUndefined();
+      expect(coffee(fresh, c).coffee_name).toBe('Kiambu');
+    });
+  });
 });

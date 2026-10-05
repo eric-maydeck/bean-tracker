@@ -1,6 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { CoffeeRow } from '../types';
-import { generateBaseSlug, uniqueSlug } from './slug.ts';
+import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
 
 export interface NewCoffeeInput {
   roaster: string;
@@ -177,6 +177,24 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     db.prepare(`DELETE FROM slug_redirects WHERE old_slug = ? AND coffee_id = ?`).run(slug, id);
     db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES (?, ?)`).run(oldSlug, id);
   }
+}
+
+// A one-field correction, applied only while the field still holds `from`.
+export type CoffeeFix = { coffee_id: number; field: 'roast_date' | 'coffee_name'; from: string; to: string };
+
+// Same as a UI edit (coffeeBatchActions' nextSlug + updateCoffee): an
+// auto-generated slug follows a base-slug change, the old one redirects; a
+// custom slug is kept. Returns why it was skipped, or null when applied.
+export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
+  const c = getCoffeeById(db, f.coffee_id);
+  if (!c) return 'coffee not found';
+  if (c[f.field] !== f.from) return `${f.field} is '${c[f.field]}', expected '${f.from}'`;
+  const next = { ...c, [f.field]: f.to, decaf: c.decaf === 1 };
+  const base = (x: { roaster: string; coffee_name: string; roast_date: string | null }) =>
+    generateBaseSlug({ roaster: x.roaster, coffeeName: x.coffee_name, roastDate: x.roast_date, createdAt: c.created_at });
+  const regen = base(next) !== base(c) && isAutoSlug(c.slug, base(c));
+  updateCoffee(db, c.id, next, regen ? uniqueSlug(db, base(next), c.id) : c.slug);
+  return null;
 }
 
 export function openCoffee(db: DatabaseSync, id: number): void {
