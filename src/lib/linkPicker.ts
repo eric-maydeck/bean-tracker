@@ -21,7 +21,8 @@ export interface LinkPickerGroup {
   options: LinkOption[];
 }
 
-const baseLabel = (c: LinkableCoffee) => `${c.coffee_name} · ${c.roast_date ?? 'no date'} · ${c.status}`;
+const baseLabel = (c: LinkableCoffee) =>
+  [c.roaster?.trim(), c.coffee_name, c.roast_date ?? 'no date', c.status].filter(Boolean).join(' · ');
 const norm = (s: string) => s.trim().toLowerCase();
 
 export function linkPickerGroups(

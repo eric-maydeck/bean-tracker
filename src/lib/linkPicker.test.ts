@@ -14,9 +14,9 @@ describe('linkPickerGroups', () => {
     const other = c({ roaster: 'Onyx', coffee_name: 'Other', roast_date: null, status: 'open' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [same, other, likely]);
     expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster', 'Other coffees']);
-    expect(g[0].options).toEqual([{ id: likely.id, label: 'Likely · 2026-09-01 · backlog' }]);
-    expect(g[1].options.map((o) => o.label)).toEqual(['Same · 2026-09-01 · backlog']);
-    expect(g[2].options.map((o) => o.label)).toEqual(['Other · no date · open']);
+    expect(g[0].options).toEqual([{ id: likely.id, label: 'Sey · Likely · 2026-09-01 · backlog' }]);
+    expect(g[1].options.map((o) => o.label)).toEqual(['sey · Same · 2026-09-01 · backlog']);
+    expect(g[2].options.map((o) => o.label)).toEqual(['Onyx · Other · no date · open']);
   });
 
   it('no likely match and no roaster: only "Other coffees", no "Top match"', () => {
@@ -31,8 +31,8 @@ describe('linkPickerGroups', () => {
     const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: null }, [t1, t2]);
     expect(g[0].options.map((o) => o.label)).toEqual([
-      'Kiambu · 2026-09-01 · backlog · added 2026-08-01',
-      'Kiambu · 2026-09-01 · backlog · added 2026-09-15'
+      'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01',
+      'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15'
     ]);
   });
 
@@ -42,8 +42,8 @@ describe('linkPickerGroups', () => {
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t1.id }, [t1, t2]);
     expect(g.map((x) => x.label)).toEqual(['Top match']);
     expect(g[0].options).toEqual([
-      { id: t1.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-08-01' },
-      { id: t2.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-09-15' }
+      { id: t1.id, label: 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-08-01' },
+      { id: t2.id, label: 'Sey · Kiambu · 2026-09-01 · backlog · added 2026-09-15' }
     ]);
   });
 
@@ -66,6 +66,12 @@ describe('linkPickerGroups', () => {
     expect(g[1].options.map((o) => o.id)).toEqual([nodate1.id, nodate2.id]);
     const labels = g.flatMap((x) => x.options.map((o) => o.label));
     expect(new Set(labels).size).toBe(5);
+  });
+
+  it('omits an empty roaster segment instead of a leading separator', () => {
+    const a = c({ roaster: '' });
+    const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
+    expect(g[0].options[0].label).toBe('Kiambu · 2026-09-01 · backlog');
   });
 
   it('non-top groups keep the input order (not id order)', () => {
