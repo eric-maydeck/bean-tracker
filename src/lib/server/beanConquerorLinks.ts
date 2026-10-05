@@ -3,7 +3,6 @@
 // imports here must use explicit .ts extensions (node scripts load db.ts).
 import type { DatabaseSync } from 'node:sqlite';
 import type { LinkableCoffee } from '../linkPicker';
-// @ts-expect-error TS5097: node (db.ts at boot) needs the .ts extension, see above.
 import { applyCoffeeFix, type CoffeeFix } from './coffees.ts';
 
 // The old "tracked" test. Now it only drives the backfill, auto-link and suggestions.
