@@ -2,6 +2,7 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
+import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
 import { requireAdmin } from '$lib/server/auth';
@@ -27,6 +28,7 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
     processingMethods: getDistinctFieldValues(db, 'processing'),
+    roasterImages: getRoasterImages(db),
     beanConqueror: getLinkedBean(db, coffee.id),
     restHistory: locals.isAdmin ? getFillHistory(db) : []
   };

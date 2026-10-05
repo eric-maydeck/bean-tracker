@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { coffeeImage } from './coffeeImage';
+import { coffeeImage, roasterDefaultFor } from './coffeeImage';
 
 describe('coffeeImage', () => {
   const base = { roaster: 'Norml', image_url: null, roaster_image_url: null };
@@ -21,5 +21,23 @@ describe('coffeeImage', () => {
   it('is null with neither (also when the row has no roaster_image_url field)', () => {
     expect(coffeeImage(base, '')).toBeNull();
     expect(coffeeImage({ roaster: 'Norml', image_url: null }, '')).toBeNull();
+  });
+});
+
+describe('roasterDefaultFor', () => {
+  const images = { Norml: 'https://img.example/norml.png' };
+
+  it('finds the default ignoring case and surrounding spaces', () => {
+    expect(roasterDefaultFor(images, ' NORML ')).toBe('https://img.example/norml.png');
+  });
+
+  it('is null for an unknown or empty roaster', () => {
+    expect(roasterDefaultFor(images, 'Sey')).toBeNull();
+    expect(roasterDefaultFor(images, '')).toBeNull();
+  });
+
+  it('folds ASCII case only, like the SQLite NOCASE join', () => {
+    expect(roasterDefaultFor({ Café: 'x' }, 'CAFÉ')).toBeNull();
+    expect(roasterDefaultFor({ Café: 'x' }, 'café')).toBe('x');
   });
 });

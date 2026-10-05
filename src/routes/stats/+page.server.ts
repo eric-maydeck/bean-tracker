@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getStatsRates, setStatsRates, InvalidRatesError } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getFillHistory, getOpenCoffees } from '$lib/server/coffees';
+import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { requireAdmin } from '$lib/server/auth';
 import {
@@ -48,6 +49,7 @@ export const load: PageServerLoad = ({ locals }) => {
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
     processingMethods: getDistinctFieldValues(db, 'processing'),
+    roasterImages: getRoasterImages(db),
     restHistory: locals.isAdmin ? getFillHistory(db) : []
   };
 };

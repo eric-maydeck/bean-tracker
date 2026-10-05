@@ -285,6 +285,7 @@
     coffee={formCoffee}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
+    roasterImages={data.roasterImages}
     origins={data.origins}
     processingMethods={data.processingMethods}
     restHistory={data.restHistory}
@@ -450,6 +451,7 @@
         prefill={clonePrefillData}
         roastLevels={data.roastLevels}
         roasters={data.roasters}
+        roasterImages={data.roasterImages}
         origins={data.origins}
         processingMethods={data.processingMethods}
         restHistory={data.restHistory}

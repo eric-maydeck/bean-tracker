@@ -90,3 +90,9 @@ export function clonePrefill(coffee: CoffeeRow): Partial<CoffeeRow> {
   const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, decaf } = coffee;
   return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, decaf };
 }
+
+// "Set as roaster default" is staged like any field (CoffeeForm's hidden
+// set_roaster_default input), so a staged merge carries it; this reads it back.
+export function stagedRoasterDefault(coffee: CoffeeRow | null): boolean {
+  return coffee != null && 'set_roaster_default' in coffee && coffee.set_roaster_default === '1';
+}

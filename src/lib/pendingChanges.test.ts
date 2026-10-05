@@ -6,6 +6,7 @@ import {
   hasPending,
   mergeStagedCoffee,
   clonePrefill,
+  stagedRoasterDefault,
   type PendingChange
 } from './pendingChanges';
 import type { CoffeeRow } from './types';
@@ -203,5 +204,28 @@ describe('clonePrefill', () => {
     for (const key of ['id', 'slug', 'status', 'frozen_start_date', 'frozen_end_date', 'opened_date', 'moved_date', 'drank', 'created_at', 'updated_at']) {
       expect(prefill).not.toHaveProperty(key);
     }
+  });
+});
+
+describe('set_roaster_default through staging', () => {
+  const marked = { roaster: 'Sey', coffee_name: 'Guji', image_url: 'https://img.example/logo.png', set_roaster_default: '1' };
+
+  it('survives staging: the staged merge carries the mark back into the form', () => {
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, baseCoffee.id, marked);
+    expect(stagedRoasterDefault(mergeStagedCoffee(baseCoffee, pending.get(baseCoffee.id)?.fields))).toBe(true);
+  });
+
+  it('Discard clears it: no pending entry, no mark', () => {
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, baseCoffee.id, marked);
+    clearPending(pending, baseCoffee.id);
+    expect(stagedRoasterDefault(mergeStagedCoffee(baseCoffee, pending.get(baseCoffee.id)?.fields))).toBe(false);
+  });
+
+  it('is false for an unstaged coffee or no coffee, and never cloned', () => {
+    expect(stagedRoasterDefault(baseCoffee)).toBe(false);
+    expect(stagedRoasterDefault(null)).toBe(false);
+    expect(clonePrefill(mergeStagedCoffee(baseCoffee, marked))).not.toHaveProperty('set_roaster_default');
   });
 });

@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } from './coffees';
 import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
+import { stageFieldChange, type PendingChange } from '../pendingChanges';
 import { setRoasterImage, getRoasterImage } from './roasterImages';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
@@ -288,5 +289,18 @@ describe('commitCoffeeBatch: set_roaster_default', () => {
     commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { image_url: LOGO }) }]);
     expect(getRoasterImage(db, 'Test Roasters')).toBeNull();
     expect(getCoffeeById(db, id)?.image_url).toBe(LOGO);
+  });
+});
+
+describe('commitCoffeeBatch: a staged set_roaster_default', () => {
+  it('writes the default when the staged change is committed', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    const pending = new Map<number, PendingChange>();
+    stageFieldChange(pending, id, fieldsFor(id, slug, { image_url: 'https://img.example/logo.png', set_roaster_default: '1' }));
+    const changes = [...pending].map(([cid, p]) => ({ id: cid, ...p })) as CoffeeBatchChange[];
+    expect(validateCoffeeBatch(db, changes)).toEqual([]);
+    commitCoffeeBatch(db, changes);
+    expect(getRoasterImage(db, 'Test Roasters')).toBe('https://img.example/logo.png');
+    expect(getCoffeeById(db, id)?.image_url).toBeNull();
   });
 });

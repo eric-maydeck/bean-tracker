@@ -1,6 +1,7 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getBacklogCoffees, getOpenCoffees, getArchivedCoffees, getDistinctFieldValues } from '$lib/server/coffees';
+import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
 import { requireAdmin } from '$lib/server/auth';
@@ -20,7 +21,8 @@ export const load: PageServerLoad = () => {
     roastLevels,
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
-    processingMethods: getDistinctFieldValues(db, 'processing')
+    processingMethods: getDistinctFieldValues(db, 'processing'),
+    roasterImages: getRoasterImages(db)
   };
 };
 

@@ -8,3 +8,14 @@ export function coffeeImage(
   if (c.roaster_image_url) return { src: c.roaster_image_url, alt: `${c.roaster} logo` };
   return null;
 }
+
+// ASCII-only case folding, like SQLite's NOCASE on roaster_images.roaster.
+const roasterKey = (roaster: string) => roaster.trim().replace(/[A-Z]/g, (ch) => ch.toLowerCase());
+
+// The coffee form's "Roaster default" preview: the default for the typed roaster.
+export function roasterDefaultFor(images: Record<string, string>, roaster: string): string | null {
+  const key = roasterKey(roaster);
+  if (!key) return null;
+  for (const [name, url] of Object.entries(images)) if (roasterKey(name) === key) return url;
+  return null;
+}

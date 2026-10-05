@@ -181,6 +181,45 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: '+ Filter' }).click();
       await expect(page.getByRole('radiogroup', { name: 'In Bean Conqueror' })).toBeVisible();
     }
+  },
+  {
+    // Moonwake has a seeded default and no own image: the form previews it.
+    name: 'coffee-edit-roaster-default-preview',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Set as roaster default' })).toBeDisabled();
+    }
+  },
+  {
+    // The image row with all three buttons, then marked: the button is the cue.
+    // Nothing is saved (shared DB); Discard changes closes the form unsaved.
+    name: 'coffee-edit-set-roaster-default',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.locator('#image_url').fill('https://img.example/moonwake-bag.png');
+      await expect(page.getByText('Roaster default', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Set as roaster default' }).click();
+      const marked = page.getByRole('button', { name: 'Will be set as default' });
+      await expect(marked).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('input[name="set_roaster_default"]')).toHaveValue('1');
+    }
+  },
+  {
+    // Discard is the undo: reopening the form after Discard changes shows no mark.
+    name: 'coffee-edit-roaster-default-discarded',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.locator('#image_url').fill('https://img.example/moonwake-bag.png');
+      await page.getByRole('button', { name: 'Set as roaster default' }).click();
+      await page.getByRole('button', { name: 'Discard changes' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
+      await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
+    }
   }
 ];
 

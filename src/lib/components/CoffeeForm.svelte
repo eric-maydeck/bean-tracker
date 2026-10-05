@@ -3,7 +3,8 @@
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
-  import { clonePrefill, mergeStagedCoffee } from '$lib/pendingChanges';
+  import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault } from '$lib/pendingChanges';
+  import { roasterDefaultFor } from '$lib/coffeeImage';
   import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
 
   let {
@@ -11,6 +12,7 @@
     prefill = null,
     roastLevels,
     roasters = [],
+    roasterImages = {},
     origins = [],
     processingMethods = [],
     restHistory = [],
@@ -27,6 +29,8 @@
     prefill?: Partial<CoffeeRow> | null;
     roastLevels: RoastLevelRow[];
     roasters?: string[];
+    // Roaster → default image (getRoasterImages): the "Roaster default" preview.
+    roasterImages?: Record<string, string>;
     origins?: string[];
     processingMethods?: string[];
     restHistory?: RestHistoryRow[];
@@ -71,6 +75,20 @@
   let unsavedUrl = $state<string | null>(null);
   let previewSrc = $state<string | null>(null);
   let previewFailed = $state(false);
+  // Live copies of the two fields the roaster-default button and preview read.
+  let roasterValue = $state((coffee?.roaster ?? prefill?.roaster) ?? '');
+  let imageValue = $state((coffee?.image_url ?? prefill?.image_url) ?? '');
+  // "Set as roaster default" is a form field like any other (hidden input
+  // below): staged, dirty-checked, saved and discarded with the rest. Read back
+  // from a staged merge so a re-rendered form keeps the mark.
+  let setRoasterDefault = $state(stagedRoasterDefault(coffee));
+  const canSetDefault = $derived(roasterValue.trim() !== '' && imageValue.trim() !== '');
+  const defaultPreview = $derived(imageValue.trim() ? null : roasterDefaultFor(roasterImages, roasterValue));
+
+  function syncImageFields() {
+    roasterValue = fieldValue('roaster');
+    imageValue = fieldValue('image_url');
+  }
 
   let lastRest: RestSuggestion | null = null;
   let restNote = $state<string | null>(null);
@@ -78,6 +96,7 @@
   function setField(name: string, value: string | number) {
     const el = formEl.elements.namedItem(name);
     if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
+    if (name === 'roaster' || name === 'image_url') syncImageFields();
   }
 
   function fieldValue(name: string): string {
@@ -344,7 +363,7 @@
 
   <div class="form-field field-roaster">
     <label for="roaster">Roaster</label>
-    <input id="roaster" name="roaster" required value={(coffee?.roaster ?? prefill?.roaster) ?? ''} list="roaster-suggestions" autocomplete="off" />
+    <input id="roaster" name="roaster" required oninput={syncImageFields} value={(coffee?.roaster ?? prefill?.roaster) ?? ''} list="roaster-suggestions" autocomplete="off" />
   </div>
 
   <div class="form-field field-coffee">
@@ -455,7 +474,13 @@
     <div class="form-field field-image">
       <label for="image_url">Image URL (label or roaster logo)</label>
       <div class="inline-row">
-        <input id="image_url" name="image_url" type="url" value={(coffee?.image_url ?? prefill?.image_url) ?? ''} />
+        <input
+          id="image_url"
+          name="image_url"
+          type="url"
+          value={(coffee?.image_url ?? prefill?.image_url) ?? ''}
+          oninput={syncImageFields}
+        />
         <div class="inline-row-actions">
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
           <button
@@ -464,11 +489,30 @@
             onclick={() => {
               setField('image_url', '');
               previewSrc = null;
+              setRoasterDefault = false;
             }}>Discard image</button
+          >
+          <!-- The staged-changes UI only says "Pending: edited", so the button is the
+               cue. No undo control: Discard/Cancel drops the mark with the rest. -->
+          <button
+            class="button button-secondary"
+            type="button"
+            aria-pressed={setRoasterDefault && canSetDefault}
+            disabled={!canSetDefault || setRoasterDefault}
+            onclick={() => (setRoasterDefault = true)}
+            >{setRoasterDefault && canSetDefault ? 'Will be set as default' : 'Set as roaster default'}</button
           >
         </div>
       </div>
-      {#if previewSrc}
+      {#if setRoasterDefault && canSetDefault}
+        <input type="hidden" name="set_roaster_default" value="1" />
+      {/if}
+      {#if defaultPreview}
+        <figure class="default-preview">
+          <img class="image-preview" src={defaultPreview} alt={`${roasterValue.trim()} logo`} />
+          <figcaption class="text-muted fill-note">Roaster default</figcaption>
+        </figure>
+      {:else if previewSrc}
         {#if previewFailed}
           <p class="text-muted fill-note">Couldn't load image</p>
         {:else}
@@ -650,12 +694,13 @@
     flex-shrink: 0;
     white-space: nowrap;
   }
-  /* Groups multiple trailing buttons (e.g. Preview + Discard image) into one
-     flex item, so they wrap to the next line together as a unit instead of
-     splitting across two lines. */
+  /* Groups the trailing buttons (Preview, Discard image, Set as roaster
+     default) into one flex item, so they wrap below the input together; at
+     phone width the group then wraps inside itself rather than overflowing. */
   .inline-row-actions {
     display: flex;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    min-width: 0;
     gap: var(--space-2);
   }
   .fill-note {
@@ -688,6 +733,9 @@
     max-width: 96px;
     max-height: 96px;
     object-fit: contain;
+  }
+  .default-preview {
+    margin: 0;
   }
   /* Low/high sit side by side within this one .form-grid cell (a fixed
      grid-column span here, to make the note below sit under both fields,

@@ -84,4 +84,8 @@ describe('fieldsChanged', () => {
     expect(fieldsChanged({ roaster: 'XLIII', decaf: 'on' }, { roaster: 'XLIII' })).toBe(true);
     expect(fieldsChanged({ roaster: 'XLIII' }, { roaster: 'XLIII', decaf: 'on' })).toBe(true);
   });
+  it('is true when "Set as roaster default" is marked (its hidden field appears)', () => {
+    const baseline = { roaster: 'Norml', image_url: 'https://img.example/logo.png' };
+    expect(fieldsChanged({ ...baseline, set_roaster_default: '1' }, baseline)).toBe(true);
+  });
 });

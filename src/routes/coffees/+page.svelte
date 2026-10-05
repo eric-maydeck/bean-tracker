@@ -593,6 +593,7 @@
     coffee={formCoffeeFor(coffee)}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
+    roasterImages={data.roasterImages}
     origins={data.origins}
     processingMethods={data.processingMethods}
     restHistory={[...data.backlog, ...data.open, ...data.archive]}
@@ -667,6 +668,7 @@
           prefill={addPrefill}
           roastLevels={data.roastLevels}
           roasters={data.roasters}
+          roasterImages={data.roasterImages}
           origins={data.origins}
           processingMethods={data.processingMethods}
           restHistory={[...data.backlog, ...data.open, ...data.archive]}
