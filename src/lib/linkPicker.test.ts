@@ -35,4 +35,22 @@ describe('linkPickerGroups', () => {
       'Kiambu · 2026-09-01 · backlog · added 2026-09-15'
     ]);
   });
+
+  it('twin of the top match still appears, once, with disambiguated labels', () => {
+    const t1 = c({ created_at: '2026-08-01T09:00:00.000Z' });
+    const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
+    const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t1.id }, [t1, t2]);
+    expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster']);
+    expect(g[0].options).toEqual([{ id: t1.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-08-01' }]);
+    expect(g[1].options).toEqual([{ id: t2.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-09-15' }]);
+  });
+
+  it('same-day twins get unique labels (bag N by ascending id)', () => {
+    const a = c({}), b = c({});
+    const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: null }, [b, a]);
+    const labels = g.flatMap((x) => x.options.map((o) => o.label));
+    expect(new Set(labels).size).toBe(2);
+    expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/bag 1$/);
+    expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/bag 2$/);
+  });
 });
