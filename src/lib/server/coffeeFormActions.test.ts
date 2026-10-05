@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import type { DatabaseSync } from 'node:sqlite';
+import { getRoasterImage } from './roasterImages';
 import { isActionFailure } from '@sveltejs/kit';
 import { createDb } from './db';
 import { handleCoffeeCreate, handleCoffeeCreateAndLink } from './coffeeFormActions';
@@ -79,5 +81,55 @@ describe('handleCoffeeCreateAndLink', () => {
     const db = dbWithBean();
     handleCoffeeCreateAndLink(db, formData(validFields));
     expect(link(db)).toBeNull();
+  });
+});
+
+describe('handleCoffeeCreate: set_roaster_default', () => {
+  const LOGO = 'https://img.example/norml.png';
+  const defaults = (db: DatabaseSync) => db.prepare(`SELECT roaster, image_url FROM roaster_images`).all();
+  const coffeeImage = (db: DatabaseSync) => db.prepare(`SELECT image_url FROM coffees`).get();
+
+  it("saves the default and stores the coffee's image as NULL", () => {
+    const db = createDb(':memory:');
+    const result = handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Norml', image_url: LOGO, set_roaster_default: '1' }));
+    expect(result).toMatchObject({ success: true });
+    expect(getRoasterImage(db, 'Norml')).toBe(LOGO);
+    expect(coffeeImage(db)).toEqual({ image_url: null });
+  });
+
+  it('leaves roaster_images alone without the flag', () => {
+    const db = createDb(':memory:');
+    handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Norml', image_url: LOGO }));
+    expect(defaults(db)).toEqual([]);
+    expect(coffeeImage(db)).toEqual({ image_url: LOGO });
+  });
+
+  it('ignores the flag when the image is empty', () => {
+    const db = createDb(':memory:');
+    handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Norml', image_url: '', set_roaster_default: '1' }));
+    expect(defaults(db)).toEqual([]);
+  });
+
+  it('rolls the default back when the coffee insert fails', () => {
+    const db = createDb(':memory:');
+    db.exec(`CREATE TRIGGER no_insert BEFORE INSERT ON coffees BEGIN SELECT RAISE(ABORT, 'boom'); END`);
+    expect(() =>
+      handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Norml', image_url: LOGO, set_roaster_default: '1' }))
+    ).toThrow('boom');
+    expect(defaults(db)).toEqual([]);
+  });
+
+  it("works inside handleCoffeeCreateAndLink's transaction", () => {
+    const db = createDb(':memory:');
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at) VALUES ('b1', 'x', 'x')`).run();
+    const result = handleCoffeeCreateAndLink(
+      db,
+      formData({ ...validFields, roaster: 'Norml', image_url: LOGO, set_roaster_default: '1', beanconqueror_id: 'b1' })
+    );
+    expect(result).toMatchObject({ success: true });
+    expect(getRoasterImage(db, 'Norml')).toBe(LOGO);
+    expect(db.prepare(`SELECT coffee_id FROM beanconqueror_beans WHERE id = 'b1'`).get()).toEqual({
+      coffee_id: (result as { id: number }).id
+    });
   });
 });

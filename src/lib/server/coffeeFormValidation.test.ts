@@ -113,3 +113,23 @@ describe('parseSlugField', () => {
     expect(parseSlugField(formData({}))).toBeNull();
   });
 });
+
+describe('parseCoffeeForm: set_roaster_default', () => {
+  const base = { roaster: 'Norml', coffee_name: 'Sample', image_url: 'https://img.example/logo.png' };
+
+  it('is true when the flag is 1 and roaster and image are set', () => {
+    expect(parseCoffeeForm(formData({ ...base, set_roaster_default: '1' })).set_roaster_default).toBe(true);
+  });
+
+  it('is false when the flag is absent', () => {
+    expect(parseCoffeeForm(formData(base)).set_roaster_default).toBe(false);
+  });
+
+  it('is ignored when the image is empty or whitespace', () => {
+    expect(parseCoffeeForm(formData({ ...base, image_url: '  ', set_roaster_default: '1' })).set_roaster_default).toBe(false);
+  });
+
+  it('does not excuse an empty roaster', () => {
+    expect(() => parseCoffeeForm(formData({ ...base, roaster: ' ', set_roaster_default: '1' }))).toThrow('Roaster is required');
+  });
+});

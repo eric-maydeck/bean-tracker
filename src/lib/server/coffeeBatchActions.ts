@@ -13,6 +13,7 @@ import {
   type NewCoffeeInput
 } from './coffees';
 import { parseCoffeeForm, parseSlugField, CoffeeFormError } from './coffeeFormValidation';
+import { setRoasterImage } from './roasterImages';
 import { slugify, slugExists, generateBaseSlug, uniqueSlug, isAutoSlug } from './slug';
 
 export type CoffeeStatusAction = 'open' | 'unopen' | 'freeze' | 'thaw' | 'archive' | 'restore' | 'delete';
@@ -127,6 +128,9 @@ export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]
       if (change.fields) {
         const formData = toFormData(change.fields);
         const input = parseCoffeeForm(formData);
+        // Before updateCoffee, so its dedupe sees the new default (input.roaster is the
+        // roaster typed in this save). Inside the batch's BEGIN: rolls back with it.
+        if (input.set_roaster_default) setRoasterImage(db, input.roaster, input.image_url!);
         const rawSlug = parseSlugField(formData);
         if (!rawSlug) throw new Error(`Missing slug for coffee ${change.id}`);
         const slug = nextSlug(db, before, input, slugify(rawSlug));

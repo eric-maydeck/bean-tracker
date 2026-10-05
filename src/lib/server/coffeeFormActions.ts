@@ -1,16 +1,29 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { fail } from '@sveltejs/kit';
 import { createCoffee } from './coffees';
+import { setRoasterImage } from './roasterImages';
 import { parseCoffeeForm, CoffeeFormError } from './coffeeFormValidation';
 import { linkBeanConquerorBean, BeanLinkError } from './beanConquerorLinks';
 
 // Sync on purpose: handleCoffeeCreateAndLink runs it inside a transaction,
-// and an await there would let another request interleave.
+// and an await there would let another request interleave. A SAVEPOINT (not
+// BEGIN) so it nests inside that transaction: the roaster default and the
+// coffee land together or not at all.
 export function handleCoffeeCreate(db: DatabaseSync, formData: FormData) {
   try {
     const input = parseCoffeeForm(formData);
-    const { id, slug } = createCoffee(db, input);
-    return { success: true as const, id, slug };
+    db.exec('SAVEPOINT coffee_create');
+    try {
+      // Before createCoffee, so its dedupe sees the new default and the coffee inherits it.
+      if (input.set_roaster_default) setRoasterImage(db, input.roaster, input.image_url!);
+      const { id, slug } = createCoffee(db, input);
+      db.exec('RELEASE coffee_create');
+      return { success: true as const, id, slug };
+    } catch (err) {
+      db.exec('ROLLBACK TO coffee_create');
+      db.exec('RELEASE coffee_create');
+      throw err;
+    }
   } catch (err) {
     if (err instanceof CoffeeFormError) {
       return fail(400, { error: err.message });

@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } from './coffees';
 import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
-import { setRoasterImage } from './roasterImages';
+import { setRoasterImage, getRoasterImage } from './roasterImages';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -256,5 +256,37 @@ describe('commitCoffeeBatch: roaster default image', () => {
     const { id, slug } = createCoffee(db, sampleInput());
     commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { image_url: 'https://img.example/logo.png' }) }]);
     expect(getCoffeeById(db, id)?.image_url).toBeNull();
+  });
+});
+
+describe('commitCoffeeBatch: set_roaster_default', () => {
+  const LOGO = 'https://img.example/norml.png';
+
+  it('sets the default for the roaster typed in the same save, and the coffee inherits it', () => {
+    const { id, slug } = createCoffee(db, sampleInput({ roaster: 'Sey' }));
+    commitCoffeeBatch(db, [
+      { id, fields: fieldsFor(id, slug, { roaster: 'Norml', image_url: LOGO, set_roaster_default: '1' }) }
+    ]);
+    expect(getRoasterImage(db, 'Norml')).toBe(LOGO);
+    expect(getRoasterImage(db, 'Sey')).toBeNull();
+    expect(getCoffeeById(db, id)?.image_url).toBeNull();
+  });
+
+  it('rolls the default back with the rest of a failed batch', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    expect(() =>
+      commitCoffeeBatch(db, [
+        { id, fields: fieldsFor(id, slug, { image_url: LOGO, set_roaster_default: '1' }) },
+        { id: 999999, statusAction: 'archive' }
+      ])
+    ).toThrow();
+    expect(getRoasterImage(db, 'Test Roasters')).toBeNull();
+  });
+
+  it('leaves roaster_images alone without the flag', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { image_url: LOGO }) }]);
+    expect(getRoasterImage(db, 'Test Roasters')).toBeNull();
+    expect(getCoffeeById(db, id)?.image_url).toBe(LOGO);
   });
 });

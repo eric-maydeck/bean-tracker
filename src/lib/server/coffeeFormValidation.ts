@@ -14,6 +14,8 @@ export interface ValidatedCoffeeInput {
   image_url: string | null;
   product_url: string | null;
   decaf: boolean;
+  // "Set as roaster default" (CoffeeForm): write image_url as the roaster's default on save.
+  set_roaster_default: boolean;
 }
 
 export class CoffeeFormError extends Error {}
@@ -77,6 +79,8 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
   const cost = numberField(formData, 'cost');
   if (cost != null && cost < 0) throw new CoffeeFormError('Cost must not be negative');
 
+  const imageUrl = textField(formData, 'image_url');
+
   return {
     roaster,
     coffee_name: coffeeName,
@@ -90,9 +94,11 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     frozen_end_date: dateField(formData, 'frozen_end_date'),
     rest_days_low: numberField(formData, 'rest_days_low'),
     rest_days_high: numberField(formData, 'rest_days_high'),
-    image_url: textField(formData, 'image_url'),
+    image_url: imageUrl,
     product_url: httpUrlField(formData, 'product_url'),
     // Unchecked checkboxes aren't submitted at all — presence means checked.
-    decaf: formData.get('decaf') != null
+    decaf: formData.get('decaf') != null,
+    // Meaningless without an image; the roaster is already required above.
+    set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null
   };
 }
