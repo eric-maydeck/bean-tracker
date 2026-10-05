@@ -17,6 +17,7 @@ export interface LinkOption {
 
 export interface LinkPickerGroup {
   label: string;
+  top?: true; // the Top match group; its first option is preselected
   options: LinkOption[];
 }
 
@@ -55,14 +56,21 @@ export function linkPickerGroups(
   const top: LinkOption[] = [];
   const sameRoaster: LinkOption[] = [];
   const other: LinkOption[] = [];
-  for (const c of coffees) {
-    if (c.id === bean.likelyMatchId) top.push(option(c));
+  const likely = coffees.find((c) => c.id === bean.likelyMatchId);
+  const isTwin = (c: LinkableCoffee) =>
+    !!likely?.roast_date && c.roaster === likely.roaster && c.coffee_name === likely.coffee_name &&
+    c.roast_date === likely.roast_date;
+  // Top match first, then its twins by ascending id.
+  if (likely) top.push(option(likely));
+  for (const c of [...coffees].sort((x, y) => x.id - y.id)) {
+    if (c === likely) continue;
+    if (isTwin(c)) top.push(option(c));
     else if (roaster && norm(c.roaster) === roaster) sameRoaster.push(option(c));
     else other.push(option(c));
   }
   // Every group has a header; empty groups are dropped.
   return [
-    { label: 'Top match', options: top },
+    { label: 'Top match', top: true as const, options: top },
     { label: 'Same roaster', options: sameRoaster },
     { label: 'Other coffees', options: other }
   ].filter((g) => g.options.length);

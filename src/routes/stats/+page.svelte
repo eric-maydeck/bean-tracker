@@ -743,13 +743,13 @@
       >
         <input type="hidden" name="beanId" value={bean.id} />
         <select name="coffeeId" required aria-label={`Coffee to link ${bean.name} to`}>
-          {#if groups[0]?.label !== 'Top match'}
+          {#if !groups[0]?.top}
             <option value="" disabled selected>Choose a coffee…</option>
           {/if}
           {#each groups as g (g.label)}
             <optgroup label={g.label}>
               {#each g.options as o (o.id)}
-                <option value={o.id} selected={g.label === 'Top match'}>{o.label}</option>
+                <option value={o.id} selected={g.top && o.id === g.options[0].id}>{o.label}</option>
               {/each}
             </optgroup>
           {/each}

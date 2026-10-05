@@ -36,13 +36,15 @@ describe('linkPickerGroups', () => {
     ]);
   });
 
-  it('twin of the top match still appears, once, with disambiguated labels', () => {
+  it('twin of the top match appears under Top match, once, with disambiguated labels', () => {
     const t1 = c({ created_at: '2026-08-01T09:00:00.000Z' });
     const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t1.id }, [t1, t2]);
-    expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster']);
-    expect(g[0].options).toEqual([{ id: t1.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-08-01' }]);
-    expect(g[1].options).toEqual([{ id: t2.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-09-15' }]);
+    expect(g.map((x) => x.label)).toEqual(['Top match']);
+    expect(g[0].options).toEqual([
+      { id: t1.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-08-01' },
+      { id: t2.id, label: 'Kiambu · 2026-09-01 · backlog · added 2026-09-15' }
+    ]);
   });
 
   it('same-day twins get unique labels (bag N by ascending id)', () => {
@@ -52,5 +54,17 @@ describe('linkPickerGroups', () => {
     expect(new Set(labels).size).toBe(2);
     expect(g[0].options.find((o) => o.id === a.id)!.label).toMatch(/bag 1$/);
     expect(g[0].options.find((o) => o.id === b.id)!.label).toMatch(/bag 2$/);
+  });
+
+  it('twins of the top match all go under Top match, the top match stays first/preselected', () => {
+    const t1 = c({}), t2 = c({}), t3 = c({});
+    const nodate1 = c({ roast_date: null }), nodate2 = c({ roast_date: null });
+    const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: t2.id }, [t3, nodate1, t1, t2, nodate2]);
+    expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster']);
+    expect(g[0].top).toBe(true);
+    expect(g[0].options.map((o) => o.id)).toEqual([t2.id, t1.id, t3.id]);
+    expect(g[1].options.map((o) => o.id)).toEqual([nodate1.id, nodate2.id]);
+    const labels = g.flatMap((x) => x.options.map((o) => o.label));
+    expect(new Set(labels).size).toBe(5);
   });
 });
