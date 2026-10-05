@@ -21,6 +21,7 @@ import {
   type NewCoffeeInput
 } from './coffees';
 import { withComputedFields } from './urgency';
+import { setRoasterImage } from './roasterImages';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -297,6 +298,26 @@ describe('in_bean_conqueror on list rows', () => {
     createCoffee(db, sampleInput({ coffee_name: 'B' }));
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'A', 'x', ?)`).run(a.id);
     expect(getBacklogCoffees(db).map((c) => [c.coffee_name, c.in_bean_conqueror])).toEqual([['A', 1], ['B', 0]]);
+  });
+});
+
+describe('roaster_image_url on list rows', () => {
+  it("is the roaster's default, matched case-insensitively, on list and slug queries", () => {
+    const { slug } = createCoffee(db, sampleInput({ roaster: 'norml', coffee_name: 'A' }));
+    createCoffee(db, sampleInput({ roaster: 'Other', coffee_name: 'B' }));
+    setRoasterImage(db, 'Norml', 'https://img.example/norml.png');
+    expect(getBacklogCoffees(db).map((c) => [c.roaster, c.roaster_image_url])).toEqual([
+      ['norml', 'https://img.example/norml.png'],
+      ['Other', null]
+    ]);
+    expect(getCoffeeBySlug(db, slug)?.roaster_image_url).toBe('https://img.example/norml.png');
+  });
+
+  it('follows a changed default (live, not copied)', () => {
+    createCoffee(db, sampleInput({ roaster: 'Norml', status: 'open' }));
+    setRoasterImage(db, 'Norml', 'https://img.example/a.png');
+    setRoasterImage(db, 'Norml', 'https://img.example/b.png');
+    expect(getOpenCoffees(db)[0].roaster_image_url).toBe('https://img.example/b.png');
   });
 });
 

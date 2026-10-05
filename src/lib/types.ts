@@ -24,6 +24,8 @@ export interface CoffeeRow {
   in_bean_conqueror?: number;
   // List queries + getCoffeeBySlug: bag minus linked bean's brews (open only), else null.
   grams_left?: number | null;
+  // List queries + getCoffeeBySlug: the roaster's default image (roaster_images), else null.
+  roaster_image_url?: string | null;
   created_at: string;
   updated_at: string;
 }
