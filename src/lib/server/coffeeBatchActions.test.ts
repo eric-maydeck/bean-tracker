@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } from './coffees';
 import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
+import { setRoasterImage } from './roasterImages';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -246,5 +247,14 @@ describe('commitCoffeeBatch: slug follows identity edits', () => {
     expect(slugs).toEqual({ [id]: 'my-custom-slug' });
     expect(getCoffeeById(db, id)?.slug).toBe('my-custom-slug');
     expect(getRedirectSlug(db, slug)).toBe('my-custom-slug');
+  });
+});
+
+describe('commitCoffeeBatch: roaster default image', () => {
+  it("stores NULL for an image equal to the roaster's default", () => {
+    setRoasterImage(db, 'Test Roasters', 'https://img.example/logo.png');
+    const { id, slug } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { image_url: 'https://img.example/logo.png' }) }]);
+    expect(getCoffeeById(db, id)?.image_url).toBeNull();
   });
 });

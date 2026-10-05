@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { CoffeeRow } from '../types';
 import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
+import { getRoasterImage } from './roasterImages.ts';
 
 export interface NewCoffeeInput {
   roaster: string;
@@ -94,6 +95,13 @@ export function getRedirectSlug(db: DatabaseSync, oldSlug: string): string | und
   return row?.slug;
 }
 
+// Save-time dedupe: an image identical to the roaster's default is stored as
+// NULL, so the coffee keeps inheriting it (and follows later default changes).
+function ownImageUrl(db: DatabaseSync, roaster: string, imageUrl: string | null): string | null {
+  const url = imageUrl?.trim() || null;
+  return url != null && url === getRoasterImage(db, roaster) ? null : url;
+}
+
 export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: number; slug: string } {
   const now = new Date().toISOString();
   const status = input.status ?? 'backlog';
@@ -131,7 +139,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       input.frozen_end_date,
       input.rest_days_low,
       input.rest_days_high,
-      input.image_url,
+      ownImageUrl(db, input.roaster, input.image_url),
       input.product_url ?? null,
       slug,
       drank,
@@ -168,7 +176,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     input.frozen_end_date,
     input.rest_days_low,
     input.rest_days_high,
-    input.image_url,
+    ownImageUrl(db, input.roaster, input.image_url),
     input.product_url ?? null,
     slug,
     decaf,

@@ -344,3 +344,34 @@ describe('grams_left', () => {
   it('is null when the coffee is not open', () => expect(setup({ status: 'backlog' })).toBeNull());
   it('is null when the bag size is unknown', () => expect(setup({ amount_g: null })).toBeNull());
 });
+
+describe('save-time image dedupe', () => {
+  const LOGO = 'https://img.example/norml.png';
+  const image = (id: number) => getCoffeeById(db, id)?.image_url;
+  beforeEach(() => setRoasterImage(db, 'Norml', LOGO));
+
+  it("insert stores NULL when the image equals the roaster's default (trimmed, roaster case ignored)", () => {
+    const { id } = createCoffee(db, sampleInput({ roaster: 'norml', image_url: `  ${LOGO} ` }));
+    expect(image(id)).toBeNull();
+  });
+
+  it('insert keeps an image that differs, including only by URL case', () => {
+    const a = createCoffee(db, sampleInput({ roaster: 'Norml', image_url: 'https://img.example/bag.png' }));
+    const b = createCoffee(db, sampleInput({ roaster: 'Norml', image_url: LOGO.toUpperCase() }));
+    expect(image(a.id)).toBe('https://img.example/bag.png');
+    expect(image(b.id)).toBe(LOGO.toUpperCase());
+  });
+
+  it('update stores NULL for the default and keeps a different image', () => {
+    const { id, slug } = createCoffee(db, sampleInput({ roaster: 'Norml' }));
+    updateCoffee(db, id, sampleInput({ roaster: 'Norml', image_url: LOGO }), slug);
+    expect(image(id)).toBeNull();
+    updateCoffee(db, id, sampleInput({ roaster: 'Norml', image_url: 'https://img.example/bag.png' }), slug);
+    expect(image(id)).toBe('https://img.example/bag.png');
+  });
+
+  it('stores the image unchanged when the roaster has no default', () => {
+    const { id } = createCoffee(db, sampleInput({ roaster: 'Sey', image_url: LOGO }));
+    expect(image(id)).toBe(LOGO);
+  });
+});
