@@ -791,9 +791,9 @@
             </div>
             <div class="compact-row-detail">
               <div class="compact-detail-grid">
-                <div><span class="eyebrow">Origin</span><br />{bean.origin ?? '—'}</div>
-                <div><span class="eyebrow">Processing</span><br />{bean.processing ?? '—'}</div>
-                <div><span class="eyebrow">Roast date</span><br />{bean.roastDate ?? '—'}</div>
+                <div><span class="eyebrow">Origin</span>{bean.origin ?? '—'}</div>
+                <div><span class="eyebrow">Processing</span>{bean.processing ?? '—'}</div>
+                <div><span class="eyebrow">Roast date</span>{bean.roastDate ?? '—'}</div>
               </div>
               {#if bean.likelyMatch}
                 <p class="text-muted">

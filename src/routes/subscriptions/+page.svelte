@@ -413,8 +413,8 @@
           {#if expandedId === sub.id}
             <div class="compact-row-detail">
               <div class="compact-detail-grid">
-                <div><span class="eyebrow">Total grams</span><br />{sub.total_grams ?? '—'}</div>
-                <div><span class="eyebrow">Next renewal</span><br />{sub.next_renewal_date ?? '—'}</div>
+                <div><span class="eyebrow">Total grams</span>{sub.total_grams ?? '—'}</div>
+                <div><span class="eyebrow">Next renewal</span>{sub.next_renewal_date ?? '—'}</div>
               </div>
             </div>
           {/if}
