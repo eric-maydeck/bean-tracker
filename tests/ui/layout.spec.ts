@@ -82,6 +82,18 @@ export const STATES: State[] = [
       for (const text of Object.values(GRAMS)) await expect(page.getByText(text, { exact: true })).toBeVisible();
     }
   },
+  {
+    // An expanded compact row shows the whole name, wrapped, not an ellipsis.
+    name: 'coffees-compact-long-expanded',
+    path: () => '/coffees?status=open&view=compact',
+    act: async (page: Page, s: Seed) => {
+      const row = page.getByRole('button', { name: new RegExp(s.names.long.slice(0, 20)) });
+      await row.click();
+      const title = row.locator('.compact-row-title');
+      await expect(title).toContainText(s.names.long);
+      expect(await title.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+  },
   ...GRAMS_KEYS.flatMap((k) => [
     {
       name: `coffees-compact-grams-${k}`,

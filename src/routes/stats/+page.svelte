@@ -4,7 +4,7 @@
   import { browser } from '$app/environment';
   import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
-  import { linkPickerGroups } from '$lib/linkPicker';
+  import { linkPickerGroups, cap } from '$lib/linkPicker';
   import LinkPicker from '$lib/components/LinkPicker.svelte';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
@@ -800,7 +800,7 @@
                   Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
                     >{bean.likelyMatch.coffeeName}</a
                   >
-                  ({bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status})
+                  ({bean.likelyMatch.roastDate ? `Roasted ${bean.likelyMatch.roastDate}` : 'No roast date'} · {cap(bean.likelyMatch.status)})
                 </p>
               {/if}
             </div>

@@ -39,7 +39,8 @@ export async function checkLayout(page: Page): Promise<void> {
     const chips = all('button, .button, .badge, .filter-chip');
     for (const el of chips) {
       // A picker button is a form control, not an action: its meta line may wrap.
-      if (el.matches('[aria-haspopup="listbox"]')) continue;
+      // An expanded compact row shows its full name, wrapped, on purpose.
+      if (el.matches('[aria-haspopup="listbox"], .compact-row[aria-expanded="true"]')) continue;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         if (!n.textContent?.trim()) continue;

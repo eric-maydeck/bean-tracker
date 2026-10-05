@@ -953,9 +953,14 @@ div.compact-row {
   text-overflow: ellipsis;
 }
 
-/* Stats → Not yet tracked: bean names and roasters wrap instead of truncating. */
+/* Stats → Not yet tracked, and an expanded/edited Coffees compact row: names
+   and roasters wrap instead of truncating. */
 .bean-cards .compact-row-title,
-.bean-cards .compact-row-sub {
+.bean-cards .compact-row-sub,
+.compact-row[aria-expanded='true'] .compact-row-title,
+.compact-row[aria-expanded='true'] .compact-row-sub,
+div.compact-row .compact-row-title,
+div.compact-row .compact-row-sub {
   white-space: normal;
   overflow: visible;
   overflow-wrap: anywhere;

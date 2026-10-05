@@ -28,7 +28,7 @@ export interface LinkPickerGroup {
 
 const baseLabel = (c: LinkableCoffee) =>
   [c.roaster?.trim(), c.coffee_name, c.roast_date ?? 'no date', c.status].filter(Boolean).join(' · ');
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const norm = (s: string) => s.trim().toLowerCase();
 
 export function linkPickerGroups(
