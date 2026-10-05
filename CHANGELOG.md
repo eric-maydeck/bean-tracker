@@ -1,3 +1,19 @@
+# [1.43.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.42.0...v1.43.0) (2026-10-05)
+
+
+### Bug Fixes
+
+* **stats:** bag n on its own line in the link picker, wrap bean card names
+* **stats:** roasted prefix in the link picker, added date on the twin line
+* **stats:** title-case status and added in the link picker meta line
+* **ui:** drop the extra line break under eyebrow labels
+* **ui:** wrap long names in expanded compact rows, title-case the likely-match line
+
+
+### Features
+
+* **stats:** custom link picker with search and grouped two-line options
+
 # [1.42.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.41.0...v1.42.0) (2026-10-05)
 
 
