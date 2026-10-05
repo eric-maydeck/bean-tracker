@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.40.0...v1.41.0) (2026-10-05)
+
+
+### Features
+
+* **beanconqueror:** apply the reconciled bean-to-coffee pairs once at boot
+
 # [1.40.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.39.2...v1.40.0) (2026-10-05)
 
 
