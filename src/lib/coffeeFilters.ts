@@ -66,6 +66,7 @@ export interface QuickFilterSegment {
 export interface QuickFilter {
   column: QuickFilterKey;
   switchLabel: string; // the switch's visible/aria label, e.g. "Caffeinated"
+  chipLabel?: string; // short form for the active-filter chip when switchLabel is long
   segments: readonly [QuickFilterSegment, QuickFilterSegment, QuickFilterSegment];
 }
 
@@ -91,6 +92,7 @@ export const QUICK_FILTERS: readonly QuickFilter[] = [
   {
     column: 'bc',
     switchLabel: 'In Bean Conqueror',
+    chipLabel: 'BQ', // Bean Conqueror's own abbreviation
     segments: [
       { value: null, label: 'All' },
       { value: true, label: 'Yes', chipTitle: 'Showing coffees in Bean Conqueror' },
@@ -308,7 +310,7 @@ const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)
 export function chipLabel(f: Filter): string {
   if (f.mode === 'bool') {
     const qf = quickFilter(f.column as QuickFilterKey);
-    return `${qf.switchLabel}: ${quickFilterSegment(f.column as QuickFilterKey, f.value).label}`;
+    return `${qf.chipLabel ?? qf.switchLabel}: ${quickFilterSegment(f.column as QuickFilterKey, f.value).label}`;
   }
   return `${column(f.column).short}: ${chipValue(f)}`;
 }

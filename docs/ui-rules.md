@@ -20,6 +20,8 @@ when it can be automated.
 | 11 | A viewport-conditional CSS override goes right after its base rule (equal specificity → source order wins). | No (review) |
 | 12 | Every page/view state is in the URL (defaults omitted, case-insensitive, bad values ignored); inline edit state never is. | No (unit tests per parser) |
 | 13 | Real-phone check (Firefox/Android) over the LAN dev server before pushing UI changes; `test:ui` passes first. | No (process) |
+| 14 | Every group of options in a picker/select has a header, including a top/suggested group (user feedback 2026-10-04). | No (review) |
+| 15 | Chips and badges use short forms where a well-known one exists (e.g. BQ for Bean Conqueror); the full name stays in editors/forms (user feedback 2026-10-04). | No (review) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

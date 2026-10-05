@@ -8,29 +8,29 @@ const c = (over: Partial<LinkableCoffee>): LinkableCoffee => ({
 });
 
 describe('linkPickerGroups', () => {
-  it('likely match first, then same roaster (case-insensitive), then the rest', () => {
+  it('top match first, then same roaster (case-insensitive), then the rest, each with a header', () => {
     const likely = c({ coffee_name: 'Likely' });
     const same = c({ roaster: ' sey ', coffee_name: 'Same' });
     const other = c({ roaster: 'Onyx', coffee_name: 'Other', roast_date: null, status: 'open' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [same, other, likely]);
-    expect(g.likely).toEqual({ id: likely.id, label: 'Likely · 2026-09-01 · backlog' });
-    expect(g.sameRoaster.map((o) => o.label)).toEqual(['Same · 2026-09-01 · backlog']);
-    expect(g.other.map((o) => o.label)).toEqual(['Other · no date · open']);
+    expect(g.map((x) => x.label)).toEqual(['Top match', 'Same roaster', 'Other coffees']);
+    expect(g[0].options).toEqual([{ id: likely.id, label: 'Likely · 2026-09-01 · backlog' }]);
+    expect(g[1].options.map((o) => o.label)).toEqual(['Same · 2026-09-01 · backlog']);
+    expect(g[2].options.map((o) => o.label)).toEqual(['Other · no date · open']);
   });
 
-  it('no likely match and no roaster: everything is "other"', () => {
+  it('no likely match and no roaster: only "Other coffees", no "Top match"', () => {
     const a = c({});
     const g = linkPickerGroups({ roaster: null, likelyMatchId: null }, [a]);
-    expect(g.likely).toBeNull();
-    expect(g.sameRoaster).toEqual([]);
-    expect(g.other.map((o) => o.id)).toEqual([a.id]);
+    expect(g.map((x) => x.label)).toEqual(['Other coffees']);
+    expect(g[0].options.map((o) => o.id)).toEqual([a.id]);
   });
 
   it('tells twins apart by the date they were added', () => {
     const t1 = c({ created_at: '2026-08-01T09:00:00.000Z' });
     const t2 = c({ created_at: '2026-09-15T09:00:00.000Z' });
     const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: null }, [t1, t2]);
-    expect(g.sameRoaster.map((o) => o.label)).toEqual([
+    expect(g[0].options.map((o) => o.label)).toEqual([
       'Kiambu · 2026-09-01 · backlog · added 2026-08-01',
       'Kiambu · 2026-09-01 · backlog · added 2026-09-15'
     ]);

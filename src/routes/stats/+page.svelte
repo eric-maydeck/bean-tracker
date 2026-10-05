@@ -729,21 +729,16 @@
       >
         <input type="hidden" name="beanId" value={bean.id} />
         <select name="coffeeId" required aria-label={`Coffee to link ${bean.name} to`}>
-          {#if groups.likely}
-            <option value={groups.likely.id} selected>{groups.likely.label}</option>
-          {:else}
+          {#if groups[0]?.label !== 'Top match'}
             <option value="" disabled selected>Choose a coffee…</option>
           {/if}
-          {#if groups.sameRoaster.length}
-            <optgroup label="Same roaster">
-              {#each groups.sameRoaster as o (o.id)}<option value={o.id}>{o.label}</option>{/each}
+          {#each groups as g (g.label)}
+            <optgroup label={g.label}>
+              {#each g.options as o (o.id)}
+                <option value={o.id} selected={g.label === 'Top match'}>{o.label}</option>
+              {/each}
             </optgroup>
-          {/if}
-          {#if groups.other.length}
-            <optgroup label="Other coffees">
-              {#each groups.other as o (o.id)}<option value={o.id}>{o.label}</option>{/each}
-            </optgroup>
-          {/if}
+          {/each}
         </select>
         <div class="action-buttons candidate-actions link-picker-actions">
           <button class="button" type="submit">Link</button>

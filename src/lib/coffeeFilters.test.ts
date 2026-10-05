@@ -433,7 +433,8 @@ describe('In Bean Conqueror quick filter', () => {
     expect(QUICK_FILTERS.map((q) => q.column)).toEqual(['decaf', 'frozen', 'bc']);
     expect(quickFilter('bc').switchLabel).toBe('In Bean Conqueror');
     expect(quickFilter('bc').segments.map((s) => [s.value, s.label])).toEqual([[null, 'All'], [true, 'Yes'], [false, 'No']]);
-    expect(chipLabel({ column: 'bc', mode: 'bool', value: true })).toBe('In Bean Conqueror: Yes');
+    expect(chipLabel({ column: 'bc', mode: 'bool', value: true })).toBe('BQ: Yes');
+    expect(chipLabel({ column: 'bc', mode: 'bool', value: false })).toBe('BQ: No');
     expect(chipTitle({ column: 'bc', mode: 'bool', value: false })).toBe('Showing coffees not in Bean Conqueror');
   });
 });
