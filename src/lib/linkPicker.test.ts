@@ -67,4 +67,13 @@ describe('linkPickerGroups', () => {
     const labels = g.flatMap((x) => x.options.map((o) => o.label));
     expect(new Set(labels).size).toBe(5);
   });
+
+  it('non-top groups keep the input order (not id order)', () => {
+    const likely = c({ coffee_name: 'Likely' });
+    const s2 = c({ coffee_name: 'B' }), s1 = c({ coffee_name: 'A' });
+    const o2 = c({ roaster: 'Zed' }), o1 = c({ roaster: 'Abe' });
+    const g = linkPickerGroups({ roaster: 'Sey', likelyMatchId: likely.id }, [likely, s1, o1, s2, o2]);
+    expect(g[1].options.map((o) => o.id)).toEqual([s1.id, s2.id]);
+    expect(g[2].options.map((o) => o.id)).toEqual([o1.id, o2.id]);
+  });
 });

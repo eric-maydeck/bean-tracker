@@ -62,9 +62,11 @@ export function linkPickerGroups(
     c.roast_date === likely.roast_date;
   // Top match first, then its twins by ascending id.
   if (likely) top.push(option(likely));
-  for (const c of [...coffees].sort((x, y) => x.id - y.id)) {
-    if (c === likely) continue;
-    if (isTwin(c)) top.push(option(c));
+  top.push(
+    ...coffees.filter((c) => c !== likely && isTwin(c)).sort((x, y) => x.id - y.id).map(option)
+  );
+  for (const c of coffees) {
+    if (c === likely || isTwin(c)) continue;
     else if (roaster && norm(c.roaster) === roaster) sameRoaster.push(option(c));
     else other.push(option(c));
   }
