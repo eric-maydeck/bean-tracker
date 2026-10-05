@@ -5,6 +5,7 @@ import { resolve, sep } from 'node:path';
 import { createDb } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
+import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
 
 const path = process.argv[2] ?? '';
 if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
@@ -50,6 +51,10 @@ coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: 
 coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
 const frozen = coffee({ roaster: 'Moonwake', coffee_name: 'Ethiopia Bensa Bombe', roast_date: daysAgo(40),
   frozen_start_date: daysAgo(30) });
+// Moonwake has no image of its own: its cards show only the roaster default.
+// A data: URI so the check never needs the network.
+setRoasterImage(db, 'Moonwake', 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="#6b4f3a"/></svg>'));
 coffee({ roaster: 'Hydrangea', coffee_name: 'Colombia Pink Bourbon', status: 'archive', roast_date: daysAgo(90) });
 const linked = coffee({ roaster: 'The Picky Chemist', coffee_name: 'El Dorado Double Ferment Gesha', status: 'open',
   roast_date: daysAgo(15) });

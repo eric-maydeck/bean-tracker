@@ -204,3 +204,16 @@ for (const state of STATES) {
     await checkLayout(page);
   });
 }
+
+// Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
+test.describe('signed out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+  test('coffees-cards-public-roaster-default', async ({ page }, info) => {
+    await page.goto('/coffees?status=all&view=cards', { waitUntil: 'networkidle' });
+    const img = page.getByRole('img', { name: 'Moonwake logo', exact: true });
+    await expect(img).toBeVisible();
+    expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png`, fullPage: true });
+    await checkLayout(page);
+  });
+});

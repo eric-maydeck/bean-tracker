@@ -2,6 +2,7 @@
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
+  import { coffeeImage } from '$lib/coffeeImage';
   import { currentParams, pickOne } from '$lib/pageUrlState';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { writeUrlParams } from '$lib/urlState';
@@ -84,9 +85,10 @@
   {:else}
     <section class="grid">
       {#each current.open as coffee (coffee.id)}
+        {@const img = coffeeImage(coffee, '')}
         <a class="card" href={`/coffees/${coffee.slug}`}>
-          {#if coffee.image_url}
-            <img src={coffee.image_url} alt="" class="card-thumb" />
+          {#if img}
+            <img src={img.src} alt={img.alt} class="card-thumb" />
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
@@ -123,9 +125,10 @@
   {:else}
     <section class="grid">
       {#each current.nextUp as coffee (coffee.id)}
+        {@const img = coffeeImage(coffee, '')}
         <a class="card" href={`/coffees/${coffee.slug}`}>
-          {#if coffee.image_url}
-            <img src={coffee.image_url} alt="" class="card-thumb" />
+          {#if img}
+            <img src={img.src} alt={img.alt} class="card-thumb" />
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>

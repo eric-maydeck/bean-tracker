@@ -4,6 +4,7 @@
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
+  import { coffeeImage } from '$lib/coffeeImage';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
   import { formatDate, formatUpdated } from '$lib/formatDate';
@@ -57,6 +58,7 @@
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);
+  let detailImage = $derived(coffeeImage(data.coffee, `${data.coffee.coffee_name} label`));
 
   // Plain `$state(new Map())` does NOT give reactive Map operations in
   // Svelte 5 — $state only deep-proxies plain objects/arrays, not built-in
@@ -298,8 +300,8 @@
 {:else}
   <article class="detail">
     <div class="detail-media">
-      {#if data.coffee.image_url}
-        <img src={data.coffee.image_url} alt={`${data.coffee.coffee_name} label`} />
+      {#if detailImage}
+        <img src={detailImage.src} alt={detailImage.alt} />
       {:else}
         <div class="detail-media-placeholder" aria-hidden="true">☕</div>
       {/if}

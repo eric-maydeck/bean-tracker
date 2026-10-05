@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
+  import { coffeeImage } from '$lib/coffeeImage';
   import RoastBeans from '$lib/components/RoastBeans.svelte';
   import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
@@ -690,9 +691,10 @@
           {#if canEdit(coffee.id) && expandedId === coffee.id}
             {@render expandedForm(coffee)}
           {:else}
+            {@const img = coffeeImage(coffee, '')}
             <div class="card-body">
-              {#if coffee.image_url}
-                <img src={coffee.image_url} alt="" class="card-thumb" />
+              {#if img}
+                <img src={img.src} alt={img.alt} class="card-thumb" />
               {/if}
               <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
               <p class="text-muted">{coffee.roaster}</p>
@@ -739,9 +741,10 @@
           {/if}
         </div>
       {:else}
+        {@const img = coffeeImage(coffee, '')}
         <a class="card" href={`/coffees/${coffee.slug}`}>
-          {#if coffee.image_url}
-            <img src={coffee.image_url} alt="" class="card-thumb" />
+          {#if img}
+            <img src={img.src} alt={img.alt} class="card-thumb" />
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
