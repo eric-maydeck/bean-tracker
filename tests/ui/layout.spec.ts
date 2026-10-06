@@ -55,6 +55,35 @@ async function expectBagOnOwnLine(page: Page) {
   expect(bad).toEqual([]);
 }
 
+type View = 'cards' | 'list' | 'compact';
+// A row's own Edit on /coffees (solo edit: Save + Cancel scoped to that coffee).
+async function openSoloEdit(page: Page, view: View, name: string) {
+  if (view === 'list') {
+    await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'Edit', exact: true }).click();
+    return;
+  }
+  const item = page.locator(view === 'cards' ? '.card' : '.compact-row-wrap').filter({ hasText: name });
+  if (view === 'compact') await item.locator('.compact-row').click();
+  await item.getByRole('button', { name: 'Edit', exact: true }).click();
+}
+
+// ui-rules 19. After "Set as roaster default", Save and Cancel are below the
+// form's image row and within a screen of it: reachable by scrolling down from where the
+// user just tapped, not missing (Cards bug) or above, off-screen (List bug).
+async function expectActionsUnderForm(page: Page) {
+  await page.locator('#image_url').fill('https://img.example/pink-bourbon.png');
+  await page.getByRole('button', { name: 'Set as roaster default' }).click();
+  const marked = page.getByRole('button', { name: 'Will be set as default' });
+  for (const name of ['Save', 'Cancel']) {
+    const b = page.getByRole('button', { name, exact: true });
+    await b.scrollIntoViewIfNeeded();
+    await expect(b).toBeInViewport();
+    const [m, r] = [(await marked.boundingBox())!, (await b.boundingBox())!];
+    expect(r.y).toBeGreaterThan(m.y);
+    expect(r.y - m.y).toBeLessThan(page.viewportSize()!.height);
+  }
+}
+
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
@@ -68,7 +97,8 @@ export const STATES: State[] = [
     act: async (page, s) => {
       const row = page.getByRole('row', { name: new RegExp(s.names.everyAction) });
       await row.getByRole('button', { name: 'Edit', exact: true }).click();
-      await row.getByRole('button', { name: 'Archive', exact: true }).click();
+      // The open row's actions sit under its form (one Archive on the page).
+      await page.getByRole('button', { name: 'Archive', exact: true }).click();
       await expect(page.getByText(/^Pending: /).first()).toBeVisible();
     }
   },
@@ -236,7 +266,15 @@ export const STATES: State[] = [
       await expect(btn).not.toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
     }
-  }
+  },
+  ...(['cards', 'list', 'compact'] as const).map((view) => ({
+    name: `coffees-${view}-inline-edit-actions`,
+    path: () => `/coffees?status=all&view=${view}`,
+    act: async (page: Page) => {
+      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
+      await expectActionsUnderForm(page);
+    }
+  })),
 ];
 
 // Known failures: the list view's table is crushed at tablet width and needs a
@@ -244,7 +282,7 @@ export const STATES: State[] = [
 // show up as "unexpectedly passed", so these entries flag themselves. Nothing
 // else gets listed here.
 const KNOWN_FAILURES = new Set([
-  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-bc-yes-${w}`])
+  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-bc-yes-${w}`])
 ]);
 
 for (const state of STATES) {

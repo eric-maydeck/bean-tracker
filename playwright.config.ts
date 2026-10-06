@@ -43,6 +43,13 @@ export default defineConfig({
       testMatch: /perf\.spec\.ts/,
       dependencies: VIEWPORTS.map((v) => v.name),
       use: { viewport: { width: 360, height: 800 }, storageState: '.ui-test/admin.json' }
+    },
+    // Saves through the UI (tests/ui/save.spec.ts), so it runs after everything else.
+    {
+      name: 'save',
+      testMatch: /save\.spec\.ts/,
+      dependencies: ['perf'],
+      use: { viewport: { width: 412, height: 915 }, deviceScaleFactor: 3.5, storageState: '.ui-test/admin.json' }
     }
   ]
 });

@@ -24,6 +24,7 @@ when it can be automated.
 | 15 | Chips and badges use short forms where a well-known one exists (e.g. BQ for Bean Conqueror); the full name stays in editors/forms (user feedback 2026-10-04). | No (review) |
 | 16 | Bag text ("1.5kg (1.2kg left)") never wraps onto a second line, in any view (user requirement 2026-10-04). | Yes |
 | 17 | A row of buttons on a phone never leaves one button orphaned on its own line at a different width: the buttons share the row evenly (grow to fill each line, no doubled gaps). Mark the row `data-button-row` (user feedback 2026-10-05). | Yes for `[data-button-row]` at ≤640 px (checkLayout rule 8) |
+| 19 | An inline edit form always shows its Save and Cancel/Discard under the form, reachable in the viewport from where the user is editing; never only above it or missing (user feedback 2026-10-05). | Per state: `expectActionsUnderForm` (`layout.spec.ts`, `coffees-*-inline-edit-actions`) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

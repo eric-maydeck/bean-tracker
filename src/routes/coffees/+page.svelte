@@ -599,7 +599,6 @@
     restHistory={[...data.backlog, ...data.open, ...data.archive]}
     formError={commitErrors.get(coffee.id) ?? null}
     showSubmit={editAll}
-    oncancel={view === 'list' ? undefined : () => (soloEdit(coffee.id) ? discardRow(coffee.id) : closeExpanded())}
     onclone={openClone}
     showClone={view !== 'list'}
     onstage={(fields) => {
@@ -692,6 +691,11 @@
         <div class="card">
           {#if canEdit(coffee.id) && expandedId === coffee.id}
             {@render expandedForm(coffee)}
+            <!-- Save/Cancel under the open form, like Compact: the card's own
+                 action row is replaced by the form. -->
+            <div class="action-buttons">
+              {@render adminActions(coffee, true)}
+            </div>
           {:else}
             {@const img = coffeeImage(coffee, '')}
             <div class="card-body">
@@ -1038,7 +1042,10 @@
               <td>
                 <div class="action-buttons">
                   {#if canEdit(coffee.id)}
-                    {@render adminActions(coffee, true)}
+                    <!-- While this row's form is open its actions sit under the form (below). -->
+                    {#if expandedId !== coffee.id}
+                      {@render adminActions(coffee, true)}
+                    {/if}
                   {:else}
                     {@render editButton(coffee, true)}
                     {@render cloneButton(coffee, true)}
@@ -1051,6 +1058,10 @@
             <tr>
               <td colspan={data.isAdmin ? 14 : 13}>
                 {@render expandedForm(coffee)}
+                <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
+                <div class="action-buttons">
+                  {@render adminActions(coffee, true)}
+                </div>
               </td>
             </tr>
           {/if}
