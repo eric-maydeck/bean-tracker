@@ -87,6 +87,14 @@ export function applySchema(db: DatabaseSync): void {
   applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
+  // computeFill's solid-border rule changed, so cached fills may be wrong; drop
+  // them once and the background run refills every displayed URL at boot.
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('image_fills_recompute_2026_10_06')) {
+    db.exec('BEGIN');
+    db.exec(`DELETE FROM image_fills`);
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('image_fills_recompute_2026_10_06', new Date().toISOString());
+    db.exec('COMMIT');
+  }
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   // Bean Conqueror's default rating is 0, which it shows as "no rating";
   // imports now store it as NULL. Idempotent, so it just runs every boot.

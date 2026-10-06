@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createDb, applySchema, getStatsRates, setStatsRates, InvalidRatesError } from './db';
 
@@ -236,5 +239,28 @@ describe('stats rate settings', () => {
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`
     ).run('stats_rate_self_g_per_day', 'not-a-number');
     expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
+  });
+});
+
+describe('image fill recompute', () => {
+  it('clears cached fills once, then leaves new ones alone', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'fills-'));
+    try {
+      const file = join(dir, 'test.db');
+      const first = createDb(file);
+      first.prepare(`INSERT INTO image_fills (url, fill) VALUES ('https://a/x.png', '#000000')`).run();
+      // Simulate a DB from before the marker existed.
+      first.prepare(`DELETE FROM app_meta WHERE key = 'image_fills_recompute_2026_10_06'`).run();
+      first.close();
+      const second = createDb(file);
+      expect(second.prepare(`SELECT COUNT(*) AS n FROM image_fills`).get()).toEqual({ n: 0 });
+      second.prepare(`INSERT INTO image_fills (url, fill) VALUES ('https://a/y.png', '#ffffff')`).run();
+      second.close();
+      const third = createDb(file);
+      expect(third.prepare(`SELECT COUNT(*) AS n FROM image_fills`).get()).toEqual({ n: 1 });
+      third.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
