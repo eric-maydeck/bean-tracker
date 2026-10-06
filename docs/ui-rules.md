@@ -7,7 +7,7 @@ when it can be automated.
 
 | # | Rule | Enforced by `checkLayout`? |
 |---|------|---|
-| 1 | No sideways page scroll at any width (360–1280). Wide tables scroll inside their own `.table-scroll`. | Yes |
+| 1 | No sideways page scroll at any width (360–1280, and the user's phone in portrait 412×915 and landscape 915×412). Wide tables scroll inside their own `.table-scroll`. | Yes |
 | 2 | Buttons, badges and chips never wrap onto a second line. | Yes |
 | 3 | No clipped or overflowing text in buttons, badges, chips or table cells. | Yes |
 | 4 | Tap targets are at least 44×44 px on phones (≤480 px wide; CSS applies it ≤640). Exempt: column sort headers (`.sort-button` directly in a `th`): list view is dense by design, and compact is the phone view. | Yes (≤480; sort headers exempt) |
@@ -19,10 +19,11 @@ when it can be automated.
 | 10 | Stats tiles are sized in `cqw` (container units), never fixed `rem`/`px` offsets. | Partly (rule 3 catches spill) |
 | 11 | A viewport-conditional CSS override goes right after its base rule (equal specificity → source order wins). | No (review) |
 | 12 | Every page/view state is in the URL (defaults omitted, case-insensitive, bad values ignored); inline edit state never is. | No (unit tests per parser) |
-| 13 | Real-phone check (Firefox/Android) over the LAN dev server before pushing UI changes; `test:ui` passes first. | No (process) |
+| 13 | Real-phone check (Firefox/Android, portrait and landscape) over the LAN dev server before pushing UI changes; `test:ui` passes first. | No (process) |
 | 14 | Every group of options in a picker/select has a header, including a top/suggested group (user feedback 2026-10-04). | Yes for `role="option"` pickers (checkLayout rule 7); native selects: review |
 | 15 | Chips and badges use short forms where a well-known one exists (e.g. BQ for Bean Conqueror); the full name stays in editors/forms (user feedback 2026-10-04). | No (review) |
 | 16 | Bag text ("1.5kg (1.2kg left)") never wraps onto a second line, in any view (user requirement 2026-10-04). | Yes |
+| 17 | A row of buttons on a phone never leaves one button orphaned on its own line at a different width: the buttons share the row evenly (grow to fill each line, no doubled gaps). Mark the row `data-button-row` (user feedback 2026-10-05). | Yes for `[data-button-row]` at ≤640 px (checkLayout rule 8) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

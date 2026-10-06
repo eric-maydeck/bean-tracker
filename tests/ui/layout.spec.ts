@@ -243,7 +243,9 @@ export const STATES: State[] = [
 // redesign (docs/backlog/list-view-tablet-width.md). test.fail() makes a fix
 // show up as "unexpectedly passed", so these entries flag themselves. Nothing
 // else gets listed here.
-const KNOWN_FAILURES = new Set(['coffees-list-w768', 'coffees-inline-edit-pending-w768', 'coffees-bc-yes-w768']);
+const KNOWN_FAILURES = new Set([
+  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-bc-yes-${w}`])
+]);
 
 for (const state of STATES) {
   test(state.name, async ({ page }, info) => {

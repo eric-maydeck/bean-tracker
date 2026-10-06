@@ -4,9 +4,15 @@ import { execFileSync } from 'node:child_process';
 // Throwaway admin password "test" (same convention as the LAN test server).
 const ADMIN_PASSWORD_HASH = execFileSync('node', ['scripts/hash-password.ts', 'test']).toString().trim();
 const PORT = 5198;
-// The widths the user's phones and desktop actually hit; 480 is where a
-// real grid-collapse bug once hid (HANDOFF gotcha).
-const WIDTHS = [360, 390, 480, 768, 1280];
+// Every layout check runs at each of these: the widths the user's phones and
+// desktop hit (480 is where a real grid-collapse bug once hid, HANDOFF
+// gotcha), plus the user's own phone in both orientations, a standing
+// requirement for all UI testing (test phone, ~412×915 CSS px at DPR 3.5).
+export const VIEWPORTS = [
+  ...[360, 390, 480, 768, 1280].map((width) => ({ name: `w${width}`, viewport: { width, height: 800 } })),
+  { name: 'phone-portrait', viewport: { width: 412, height: 915 }, deviceScaleFactor: 3.5 },
+  { name: 'phone-landscape', viewport: { width: 915, height: 412 }, deviceScaleFactor: 3.5 }
+];
 
 export default defineConfig({
   testDir: 'tests/ui',
@@ -25,17 +31,17 @@ export default defineConfig({
   },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    ...WIDTHS.map((width) => ({
-      name: `w${width}`,
+    ...VIEWPORTS.map(({ name, ...use }) => ({
+      name,
       testMatch: /layout\.spec\.ts/,
       dependencies: ['setup'],
-      use: { viewport: { width, height: 800 }, storageState: '.ui-test/admin.json' }
+      use: { ...use, storageState: '.ui-test/admin.json' }
     })),
     // Adds coffees to the shared DB, so it waits for every layout check.
     {
       name: 'perf',
       testMatch: /perf\.spec\.ts/,
-      dependencies: WIDTHS.map((width) => `w${width}`),
+      dependencies: VIEWPORTS.map((v) => v.name),
       use: { viewport: { width: 360, height: 800 }, storageState: '.ui-test/admin.json' }
     }
   ]

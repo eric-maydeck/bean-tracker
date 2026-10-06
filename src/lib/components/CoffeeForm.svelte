@@ -483,7 +483,7 @@
           value={(coffee?.image_url ?? prefill?.image_url) ?? ''}
           oninput={syncImageFields}
         />
-        <div class="inline-row-actions">
+        <div class="inline-row-actions" data-button-row>
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
           <button
             class="button button-secondary"
@@ -630,6 +630,18 @@
         'frozenstart'
         'frozenend'
         'image';
+    }
+    /* Phone: the image row's buttons take the full row and grow to share each
+       line, margin 0 (app.css .button's right margin doubled the flex gap),
+       instead of a ragged 2 + 1 at content widths. Same as .fill-offer-actions
+       (ui-rules 17). */
+    .inline-row-actions {
+      flex: 1 1 100%;
+    }
+    .inline-row-actions .button {
+      flex: 1 1 auto;
+      margin: 0;
+      text-align: center;
     }
   }
   /* Each field's cell name, independent of source order (see the comment

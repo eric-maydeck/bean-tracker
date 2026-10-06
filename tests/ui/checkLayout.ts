@@ -117,6 +117,27 @@ export async function checkLayout(page: Page): Promise<void> {
       const header = document.getElementById(el.closest('[role="group"]')?.getAttribute('aria-labelledby') ?? '');
       if (!header || !shown(header)) out.push(`option without a group header: ${describe(el)}`);
     }
+    // 8. (ui-rules 17) Phone widths: a row of buttons marked data-button-row
+    // never leaves one button on its own line at its content width; every
+    // line spans the row (the buttons grow to share it).
+    if (window.innerWidth <= 640) {
+      for (const row of all('[data-button-row]')) {
+        const box = row.getBoundingClientRect();
+        const lines = new Map<number, DOMRect[]>();
+        for (const b of row.querySelectorAll('button, .button')) {
+          const r = b.getBoundingClientRect();
+          lines.set(Math.round(r.top), [...(lines.get(Math.round(r.top)) ?? []), r]);
+        }
+        for (const rs of lines.values()) {
+          const left = Math.min(...rs.map((r) => r.left));
+          const right = Math.max(...rs.map((r) => r.right));
+          if (Math.abs(left - box.left) > 1 || Math.abs(right - box.right) > 1) {
+            out.push(`button line ${left.toFixed(0)}–${right.toFixed(0)} doesn't span its row ` +
+              `${box.left.toFixed(0)}–${box.right.toFixed(0)}: ${describe(row)}`);
+          }
+        }
+      }
+    }
     return out;
   });
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
