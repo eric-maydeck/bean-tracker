@@ -20,8 +20,10 @@ test('cards: inline edit, Set as roaster default, Save writes the default', asyn
   await page.getByRole('button', { name: 'Set as roaster default' }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Hydrangea logo', exact: true })).toBeVisible();
-  const db = new DatabaseSync('.ui-test/ui.db');
-  expect(db.prepare(`SELECT image_url FROM roaster_images WHERE roaster = 'Hydrangea'`).get()).toEqual({ image_url: LOGO });
-  expect(db.prepare(`SELECT image_url FROM coffees WHERE coffee_name = ?`).get(NAME)).toEqual({ image_url: null });
-  db.close();
+  const read = (sql: string, ...args: string[]) => () => {
+    const db = new DatabaseSync('.ui-test/ui.db');
+    try { return db.prepare(sql).get(...args); } finally { db.close(); }
+  };
+  await expect.poll(read(`SELECT image_url FROM roaster_images WHERE roaster = 'Hydrangea'`)).toEqual({ image_url: LOGO });
+  await expect.poll(read(`SELECT image_url FROM coffees WHERE coffee_name = ?`, NAME)).toEqual({ image_url: null });
 });
