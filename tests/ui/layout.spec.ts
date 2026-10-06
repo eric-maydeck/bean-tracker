@@ -161,6 +161,14 @@ export const STATES: State[] = [
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
   {
+    name: 'coffees-refreshed',
+    path: () => '/coffees?status=all&view=compact',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+      await expect(page.getByRole('status')).toHaveText('Updated');
+    }
+  },
+  {
     name: 'coffees-cards',
     path: () => '/coffees?status=all&view=cards',
     act: async (page) => {

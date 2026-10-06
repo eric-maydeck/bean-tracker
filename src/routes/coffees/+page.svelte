@@ -119,8 +119,19 @@
   // rendered.
   let expandedFormRef: { applyPendingEdits: () => boolean } | null = null;
 
+  // A floating notice over the page, held a second after the reload lands.
+  let refreshState = $state<'idle' | 'busy' | 'done'>('idle');
+  let refreshTimer: ReturnType<typeof setTimeout> | undefined;
   async function refresh() {
-    await invalidateAll();
+    clearTimeout(refreshTimer);
+    refreshState = 'busy';
+    try {
+      await invalidateAll();
+      refreshState = 'done';
+      refreshTimer = setTimeout(() => (refreshState = 'idle'), 1000);
+    } catch {
+      refreshState = 'idle';
+    }
   }
 
   function toggleEdit(id: number) {
@@ -632,6 +643,12 @@
   </div>
 </div>
 
+{#if refreshState !== 'idle'}
+  <div class="refresh-toast" role="status">
+    {#if refreshState === 'busy'}<span class="refresh-spinner" aria-hidden="true"></span>Refreshing…{:else}Updated{/if}
+  </div>
+{/if}
+
 <div class="search-row">
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
   <FilterBar bind:filters={explicit.filters} coffees={source} />
@@ -1077,3 +1094,49 @@
     </table>
   </div>
 {/if}
+
+<style>
+  .refresh-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    z-index: 90;
+    transform: translate(-50%, -50%);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius);
+    background: var(--color-text);
+    color: var(--color-surface);
+    box-shadow: var(--shadow-hover);
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+    animation: refresh-toast-in 150ms ease-out;
+  }
+  .refresh-spinner {
+    width: 0.9em;
+    height: 0.9em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: refresh-spin 700ms linear infinite;
+  }
+  @keyframes refresh-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+  @keyframes refresh-toast-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .refresh-toast,
+    .refresh-spinner {
+      animation: none;
+    }
+  }
+</style>
