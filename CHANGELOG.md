@@ -1,3 +1,15 @@
+# [1.47.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.46.2...v1.47.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* **beanconqueror:** treat a 0 rating as unrated
+
+
+### Features
+
+* **stats:** brews and grams per day with period averages
+
 ## [1.46.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.46.1...v1.46.2) (2026-10-06)
 
 
