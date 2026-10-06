@@ -9,6 +9,8 @@
   --color-urgent: #c0392b;
   --color-warm: #d68910;
   --color-fresh: #4a7c59;
+  --color-frozen: #2e6f9e;
+  --color-decaf: #7b4fa0;
   --color-urgency-low: #16a34a;
   --color-urgency-mid: #f59e0b;
   --color-urgency-high: #dc2626;
@@ -46,6 +48,10 @@
     --color-urgent: #e57368;
     --color-warm: #e8b04b;
     --color-fresh: #7fb890;
+  --color-frozen: #7fb3d9;
+  --color-decaf: #b994d6;
+    --color-frozen: #7fb3d9;
+    --color-decaf: #b994d6;
     --color-urgency-low: #4ade80;
     --color-urgency-mid: #fbbf24;
     --color-urgency-high: #f87171;
@@ -290,6 +296,16 @@ input:focus-visible {
 .badge-fresh {
   background: color-mix(in srgb, var(--color-fresh) 20%, transparent);
   color: var(--color-fresh);
+}
+
+.badge-decaf {
+  background: color-mix(in srgb, var(--color-decaf) 20%, transparent);
+  color: var(--color-decaf);
+}
+
+.badge-frozen {
+  background: color-mix(in srgb, var(--color-frozen) 20%, transparent);
+  color: var(--color-frozen);
 }
 
 .badge-neutral {

@@ -826,7 +826,7 @@
               <div class="compact-row-main">
                 <div class="compact-row-title">
                   {bean.name}
-                  {#if bean.decaffeinated}<span class="badge badge-neutral">Decaf</span>{/if}
+                  {#if bean.decaffeinated}<span class="badge badge-decaf">Decaf</span>{/if}
                 </div>
                 <div class="compact-row-sub text-muted">{bean.roaster ?? 'Unknown roaster'}</div>
               </div>

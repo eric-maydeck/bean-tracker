@@ -5,6 +5,7 @@
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import { coffeeImage } from '$lib/coffeeImage';
+  import { isFrozen } from '$lib/coffeeFilters';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
   import { formatDate, formatUpdated } from '$lib/formatDate';
@@ -321,7 +322,10 @@
               <span class="badge badge-neutral">Backlog</span>
             {/if}
             {#if data.coffee.decaf}
-              <span class="badge badge-neutral">Decaf</span>
+              <span class="badge badge-decaf">Decaf</span>
+            {/if}
+            {#if isFrozen(data.coffee)}
+              <span class="badge badge-frozen">Frozen</span>
             {/if}
           </h1>
           <p class="text-muted">

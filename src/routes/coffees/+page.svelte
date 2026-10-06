@@ -24,7 +24,7 @@
   import FilterBar from '$lib/components/FilterBar.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { currentParams } from '$lib/pageUrlState';
-  import { applyFilters, COLUMNS, type ColumnKey } from '$lib/coffeeFilters';
+  import { applyFilters, COLUMNS, isFrozen, type ColumnKey } from '$lib/coffeeFilters';
   import {
     fromParams,
     toParams,
@@ -734,7 +734,10 @@
                 <span class="badge badge-neutral">Backlog</span>
               {/if}
               {#if coffee.decaf}
-                <span class="badge badge-neutral">Decaf</span>
+                <span class="badge badge-decaf">Decaf</span>
+              {/if}
+              {#if isFrozen(coffee)}
+                <span class="badge badge-frozen">Frozen</span>
               {/if}
             </div>
             <div class="action-buttons">
@@ -784,7 +787,10 @@
             <span class="badge badge-neutral">Backlog</span>
           {/if}
           {#if coffee.decaf}
-            <span class="badge badge-neutral">Decaf</span>
+            <span class="badge badge-decaf">Decaf</span>
+          {/if}
+          {#if isFrozen(coffee)}
+            <span class="badge badge-frozen">Frozen</span>
           {/if}
         </a>
       {/if}
@@ -799,7 +805,7 @@
             <div class="compact-row-main">
               <div class="compact-row-title">
                 <a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a>
-                {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
+                {#if coffee.decaf}<span class="badge badge-decaf">Decaf</span>{/if}{#if isFrozen(coffee)}<span class="badge badge-frozen">Frozen</span>{/if}
               </div>
               <div class="compact-row-sub text-muted">
                 {coffee.roaster} · {coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}
@@ -825,7 +831,7 @@
             <span class="compact-row-main">
               <span class="compact-row-title">
                 {coffee.coffee_name}
-                {#if coffee.decaf}<span class="badge badge-neutral">Decaf</span>{/if}
+                {#if coffee.decaf}<span class="badge badge-decaf">Decaf</span>{/if}{#if isFrozen(coffee)}<span class="badge badge-frozen">Frozen</span>{/if}
               </span>
               <span class="compact-row-sub text-muted">
                 {coffee.roaster} · {coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}
