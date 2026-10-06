@@ -11,9 +11,10 @@
   import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
-  import { parseStatsTab } from './statsTab';
+  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
+  import { parseStatsTab, parseBcAverage } from './statsTab';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
-  import type { RatedGroup } from './beanConquerorStatsData';
+  import type { RatedGroup, PeriodWindow } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
 
@@ -155,6 +156,17 @@
   let bcTab = $derived(explicitBc ?? 'overview');
   let bcFavoriteDimension = $derived(explicitBcFav ?? 'roaster');
   let bcBrewingMetric = $derived(explicitBcMetric ?? 'rating');
+  // Per day vs. per brew day for the Brews/Grams window tiles. Unlike the
+  // params above, the URL only ever carries the non-default `avg=brew-day`.
+  // A clicked choice is also remembered per browser until changed (no TTL);
+  // an `avg` param wins over it without overwriting it.
+  // Clicking "Per day" stores 'day' explicitly so it overrides a stored
+  // 'brew-day'.
+  const BC_AVERAGES = ['day', 'brew-day'] as const;
+  const BC_AVERAGE_STORAGE_KEY = 'bean-tracker-stats-bc-average';
+  let explicitBcAverage = $state<(typeof BC_AVERAGES)[number] | undefined>(parseBcAverage(currentParams(page.url)));
+  let bcAverage = $derived(explicitBcAverage ?? 'day');
+  const bcWindowLabels: Record<PeriodWindow, string> = { all: 'All time', year: 'Year', month: 'Month', week: 'Week' };
 
   // Same-route navigation (e.g. opening a different /stats link while
   // already here) re-reads the URL; the $state initialisers above already
@@ -172,6 +184,13 @@
     explicitBc = pickOne(p, 'bc', BC_TABS);
     explicitBcFav = pickOne(p, 'bc_fav', BC_FAV_DIMENSIONS);
     explicitBcMetric = pickOne(p, 'bc_metric', BC_METRICS);
+    try {
+      explicitBcAverage =
+        parseBcAverage(p) ?? loadChoice(localStorage.getItem(BC_AVERAGE_STORAGE_KEY), BC_AVERAGES, Date.now(), Infinity);
+    } catch {
+      // ignore — localStorage may be unavailable (private browsing, etc.)
+      explicitBcAverage = parseBcAverage(p);
+    }
     loaded = true;
   });
 
@@ -184,11 +203,23 @@
     if (explicitBc) params.set('bc', explicitBc);
     if (explicitBcFav) params.set('bc_fav', explicitBcFav);
     if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
+    if (explicitBcAverage === 'brew-day') params.set('avg', explicitBcAverage);
     // Gate check comes after reading every param above so the effect still
     // tracks all of them as dependencies even while gated.
     if (!loaded) return;
     writeUrlParams(params);
   });
+
+  // Only a click is remembered; opening a link with `avg` leaves the
+  // stored choice alone.
+  function chooseBcAverage(choice: (typeof BC_AVERAGES)[number]) {
+    explicitBcAverage = choice;
+    try {
+      localStorage.setItem(BC_AVERAGE_STORAGE_KEY, serializeChoice(choice, Date.now()));
+    } catch {
+      // ignore — the choice still works for this visit, it just isn't remembered
+    }
+  }
 
   // Same reasoning as COMPOSITION_BAR_LIMIT above, applied to the Bean
   // Conqueror breakdowns — capping how many bars a chart draws keeps bar
@@ -236,6 +267,7 @@
 
   let bcRatingsDates = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.date));
   let bcRatingsValues = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.rating));
+  let bcBrewsPerDay = $derived(data.beanConquerorStats.brewsPerDay);
 
   function formatRating(value: number | null): string {
     return value === null ? '—' : value.toFixed(1);
@@ -312,6 +344,16 @@
 <svelte:head>
   <title>Bean Tracker - Stats</title>
 </svelte:head>
+
+<!-- One toggle state, shown in both the Brews and Grams panel headers. -->
+{#snippet bcAverageToggle()}
+  <div class="tab-group tab-group-compact">
+    <button aria-pressed={bcAverage === 'day'} onclick={() => chooseBcAverage('day')}>Per day</button>
+    <button aria-pressed={bcAverage === 'brew-day'} onclick={() => chooseBcAverage('brew-day')}
+      >Per brew day</button
+    >
+  </div>
+{/snippet}
 
 <div class="toolbar">
   <h1>Stats</h1>
@@ -886,20 +928,93 @@
         </div>
         <div class="stat-item">
           <span class="stat-value"
-            >{data.beanConquerorStats.averageGramsBrewedPerDay === null
+            >{data.beanConquerorStats.totalGramsBrewed === null
               ? '—'
-              : formatGrams(data.beanConquerorStats.averageGramsBrewedPerDay)}</span
+              : formatGrams(data.beanConquerorStats.totalGramsBrewed)}</span
           >
           <div class="stat-caption">
-            <span class="stat-label">Grams brewed per day</span>
+            <span class="stat-label">Total brewed</span>
           </div>
         </div>
       </div>
-      {#if bcRatingsDates.length === 0}
-        <p class="text-muted">No rated brews yet.</p>
-      {:else}
-        <Chart type="line" labels={bcRatingsDates} values={bcRatingsValues} datasetLabel="Rating" />
-      {/if}
+      <section class="chart-panel">
+        <div class="chart-panel-header">
+          <h2>Brews per day</h2>
+          {@render bcAverageToggle()}
+        </div>
+        <div class="stat-row stat-row-compact">
+          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+            {@const value = bcAverage === 'brew-day' ? w.brewsPerBrewDay : w.brewsPerDay}
+            <div class="stat-item">
+              <span class="stat-value">{value === null ? '—' : value.toFixed(1)}</span>
+              <div class="stat-caption">
+                <span class="stat-label">{bcWindowLabels[w.window]}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+        {#if bcBrewsPerDay.length === 0}
+          <p class="text-muted">No dated brews yet.</p>
+        {:else}
+          <Chart
+            type="line"
+            labels={bcBrewsPerDay.map((d) => d.date)}
+            values={bcBrewsPerDay.map((d) => d.brews)}
+            datasetLabel="Brews"
+            trendValues={bcBrewsPerDay.map((d) => d.rollingAverage)}
+            trendLabel="7-day average"
+          />
+        {/if}
+      </section>
+      <section class="chart-panel">
+        <div class="chart-panel-header">
+          <h2>Grams per day</h2>
+          {@render bcAverageToggle()}
+        </div>
+        <div class="stat-row stat-row-compact">
+          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+            {@const value = bcAverage === 'brew-day' ? w.gramsPerBrewDay : w.gramsPerDay}
+            <div class="stat-item">
+              <span class="stat-value">{value === null ? '—' : formatGrams(value)}</span>
+              <div class="stat-caption">
+                <span class="stat-label">{bcWindowLabels[w.window]}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+        {#if bcBrewsPerDay.length === 0}
+          <p class="text-muted">No dated brews yet.</p>
+        {:else}
+          <Chart
+            type="line"
+            labels={bcBrewsPerDay.map((d) => d.date)}
+            values={bcBrewsPerDay.map((d) => d.grams)}
+            datasetLabel="Grams"
+            trendValues={bcBrewsPerDay.map((d) => d.gramsRollingAverage)}
+            trendLabel="7-day average"
+            unit="g"
+          />
+        {/if}
+      </section>
+      <section class="chart-panel">
+        <h2>Average rating over time</h2>
+        <div class="stat-row stat-row-compact">
+          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+            {@const value = w.rating}
+            <div class="stat-item">
+              <span class="stat-value">{formatRating(value)}</span>
+              <div class="stat-caption">
+                <span class="stat-label">{bcWindowLabels[w.window]}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
+        {#if bcRatingsDates.length === 0}
+          <p class="text-muted">No rated brews yet.</p>
+        {:else}
+          <Chart type="line" labels={bcRatingsDates} values={bcRatingsValues} datasetLabel="Rating" />
+        {/if}
+      </section>
     {:else if bcTab === 'favorites'}
       <div class="chart-panel-controls">
         <div class="tab-group">

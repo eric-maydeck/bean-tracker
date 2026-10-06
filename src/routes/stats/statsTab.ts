@@ -9,3 +9,9 @@ const BC_VALUES = ['overview', 'favorites', 'brewing', 'economics'] as const;
 export function parseStatsTab(p: URLSearchParams): StatsTab | undefined {
   return pickOne(p, 'tab', STATS_TABS) ?? (pickOne(p, 'bc', BC_VALUES) ? 'bq' : undefined);
 }
+
+// Bean Conqueror per-day tiles: "Per day" is the default, so only the
+// non-default `avg=brew-day` ever appears in the URL.
+export function parseBcAverage(p: URLSearchParams): 'brew-day' | undefined {
+  return pickOne(p, 'avg', ['brew-day'] as const);
+}

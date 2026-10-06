@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseStatsTab } from './statsTab';
+import { parseStatsTab, parseBcAverage } from './statsTab';
 
 const p = (q: string) => new URLSearchParams(q);
 
@@ -11,4 +11,11 @@ describe('parseStatsTab', () => {
   it('bc= alone implies bq', () => expect(parseStatsTab(p('bc=brewing'))).toBe('bq'));
   it('an explicit tab wins over bc=', () => expect(parseStatsTab(p('tab=general&bc=brewing'))).toBe('general'));
   it('a bad bc= implies nothing', () => expect(parseStatsTab(p('bc=nope'))).toBeUndefined());
+});
+
+describe('parseBcAverage', () => {
+  it('omits the default', () => expect(parseBcAverage(p(''))).toBeUndefined());
+  it('reads avg=brew-day', () => expect(parseBcAverage(p('avg=brew-day'))).toBe('brew-day'));
+  it('value is case-insensitive', () => expect(parseBcAverage(p('avg=Brew-Day'))).toBe('brew-day'));
+  it('ignores a bad value', () => expect(parseBcAverage(p('avg=nope'))).toBeUndefined());
 });

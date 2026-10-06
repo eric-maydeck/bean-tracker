@@ -6,12 +6,28 @@ export interface RatedGroup {
   brewCount: number;
 }
 
+// Trailing windows ending today, for the per-day/per-brew-day/rating tiles.
+// null days = all time (first brew day through today).
+export const PERIOD_WINDOWS = { all: null, year: 365, month: 30, week: 7 } as const;
+export type PeriodWindow = keyof typeof PERIOD_WINDOWS;
+
+export interface PeriodAverages {
+  window: PeriodWindow;
+  brewsPerDay: number | null;
+  brewsPerBrewDay: number | null;
+  gramsPerDay: number | null;
+  gramsPerBrewDay: number | null;
+  rating: number | null;
+}
+
 export interface BeanConquerorStats {
   totalBrews: number;
   totalBeans: number;
   averageRating: number | null;
-  averageGramsBrewedPerDay: number | null;
+  totalGramsBrewed: number | null;
   ratingsOverTime: { date: string; rating: number }[];
+  periodAverages: PeriodAverages[];
+  brewsPerDay: { date: string; brews: number; rollingAverage: number; grams: number; gramsRollingAverage: number }[];
   favoritesByRoaster: RatedGroup[];
   favoritesByOrigin: RatedGroup[];
   favoritesByProcessing: RatedGroup[];
@@ -39,32 +55,27 @@ function ratedGroups(db: DatabaseSync, sql: string): RatedGroup[] {
   return db.prepare(sql).all() as RatedGroup[];
 }
 
+function addDays(isoDate: string, days: number): string {
+  return new Date(Date.parse(isoDate) + days * 86_400_000).toISOString().slice(0, 10);
+}
+
 function scalarOrNull(db: DatabaseSync, sql: string): number | null {
   const row = db.prepare(sql).get() as { value: number | null };
   return row.value ?? null;
 }
 
-export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
+export function buildBeanConquerorStats(
+  db: DatabaseSync,
+  today: string = new Date().toISOString().slice(0, 10)
+): BeanConquerorStats {
   const totalBrews = (db.prepare(`SELECT COUNT(*) AS value FROM beanconqueror_brews`).get() as { value: number })
     .value;
   const totalBeans = (db.prepare(`SELECT COUNT(*) AS value FROM beanconqueror_beans`).get() as { value: number })
     .value;
   const averageRating = scalarOrNull(db, `SELECT AVG(rating) AS value FROM beanconqueror_brews`);
+  // SUM skips NULL doses, and is NULL itself when no brew has one.
+  const totalGramsBrewed = scalarOrNull(db, `SELECT SUM(ground_coffee_g) AS value FROM beanconqueror_brews`);
 
-  // Total grams ground across every brew, spread over the number of days
-  // between the first and last brew (inclusive) — a household consumption
-  // rate computed from actual brew history, distinct from the manually
-  // configured self/household rates used elsewhere on this page.
-  const gramsPerDayRow = db
-    .prepare(
-      `SELECT SUM(ground_coffee_g) AS totalGrams,
-              julianday(MAX(bc_created_at)) - julianday(MIN(bc_created_at)) + 1 AS daySpan
-       FROM beanconqueror_brews
-       WHERE ground_coffee_g IS NOT NULL`
-    )
-    .get() as { totalGrams: number | null; daySpan: number | null };
-  const averageGramsBrewedPerDay =
-    gramsPerDayRow.totalGrams && gramsPerDayRow.daySpan ? gramsPerDayRow.totalGrams / gramsPerDayRow.daySpan : null;
 
   // One point per brew makes this chart unreadable at any real data volume
   // (a home-scale BeanConqueror history easily runs to hundreds of brews a
@@ -81,6 +92,68 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
        ORDER BY date ASC`
     )
     .all() as { date: string; rating: number }[];
+
+  // One row per calendar day from the first brew to the last, with no-brew
+  // days filled in as 0 by the recursive `days` CTE — a gap has to read as
+  // "no coffee that day", not be skipped over by the line. rollingAverage is
+  // a trailing 7-day mean; the first 6 days average over however many days
+  // exist so far (a partial window), so the line starts at day 1 rather than
+  // leaving a hole. grams/gramsRollingAverage are the same series over
+  // ground_coffee_g (a brew with no recorded dose counts as 0g but still
+  // counts as a brew). On an empty table MIN() is NULL, so the CTE yields just
+  // that one NULL row, filtered out below.
+  const brewsPerDay = db
+    .prepare(
+      `WITH RECURSIVE days(date) AS (
+         SELECT date(MIN(bc_created_at)) FROM beanconqueror_brews
+         UNION ALL
+         SELECT date(date, '+1 day') FROM days
+         WHERE date < (SELECT date(MAX(bc_created_at)) FROM beanconqueror_brews)
+       ),
+       counts AS (
+         SELECT date(bc_created_at) AS date, COUNT(*) AS brews, TOTAL(ground_coffee_g) AS grams
+         FROM beanconqueror_brews GROUP BY 1
+       )
+       SELECT days.date, COALESCE(counts.brews, 0) AS brews,
+              AVG(COALESCE(counts.brews, 0)) OVER week AS rollingAverage,
+              COALESCE(counts.grams, 0) AS grams,
+              AVG(COALESCE(counts.grams, 0)) OVER week AS gramsRollingAverage
+       FROM days LEFT JOIN counts ON counts.date = days.date
+       WHERE days.date IS NOT NULL
+       WINDOW week AS (ORDER BY days.date ROWS 6 PRECEDING)
+       ORDER BY days.date ASC`
+    )
+    .all() as BeanConquerorStats['brewsPerDay'];
+  // Each window's start is clamped to the first brew day, so a new user's
+  // "last year" isn't diluted by days before they used the app. "Per day"
+  // divides by every calendar day in the window (no-brew days count as 0);
+  // "per brew day" only by days with at least one brew, so it's null for a
+  // window with no brews. AVG(rating) already skips unrated brews.
+  const firstBrewDay = brewsPerDay[0]?.date;
+  const windowTotals = db.prepare(
+    `SELECT COUNT(*) AS brews, TOTAL(ground_coffee_g) AS grams,
+            COUNT(DISTINCT date(bc_created_at)) AS brewDays, AVG(rating) AS rating
+     FROM beanconqueror_brews WHERE date(bc_created_at) BETWEEN ? AND ?`
+  );
+  const periodAverages = (Object.entries(PERIOD_WINDOWS) as [PeriodWindow, number | null][]).map(
+    ([window, length]): PeriodAverages => {
+      const windowStart = length === null ? firstBrewDay : addDays(today, 1 - length);
+      const start = firstBrewDay && windowStart && windowStart > firstBrewDay ? windowStart : firstBrewDay;
+      const days = start ? Math.round((Date.parse(today) - Date.parse(start)) / 86_400_000) + 1 : 0;
+      if (!start || days < 1) {
+        return { window, brewsPerDay: null, brewsPerBrewDay: null, gramsPerDay: null, gramsPerBrewDay: null, rating: null };
+      }
+      const t = windowTotals.get(start, today) as { brews: number; grams: number; brewDays: number; rating: number | null };
+      return {
+        window,
+        brewsPerDay: t.brews / days,
+        brewsPerBrewDay: t.brewDays ? t.brews / t.brewDays : null,
+        gramsPerDay: t.grams / days,
+        gramsPerBrewDay: t.brewDays ? t.grams / t.brewDays : null,
+        rating: t.rating
+      };
+    }
+  );
 
   const favoritesByRoaster = ratedGroups(
     db,
@@ -199,8 +272,10 @@ export function buildBeanConquerorStats(db: DatabaseSync): BeanConquerorStats {
     totalBrews,
     totalBeans,
     averageRating,
-    averageGramsBrewedPerDay,
+    totalGramsBrewed,
     ratingsOverTime,
+    periodAverages,
+    brewsPerDay,
     favoritesByRoaster,
     favoritesByOrigin,
     favoritesByProcessing,

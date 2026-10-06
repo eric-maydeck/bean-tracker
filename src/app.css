@@ -1364,6 +1364,31 @@ td > .action-buttons.under-form {
   }
 }
 
+/* Compact tiles (Bean Conqueror window averages): four short tiles on one
+   row at every width, so a plain stacked layout instead of the square,
+   cqw-positioned tile above. */
+.stat-row.stat-row-compact {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat-row-compact .stat-item {
+  aspect-ratio: auto;
+  padding: var(--space-2) var(--space-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.stat-row-compact .stat-item .stat-value,
+.stat-row-compact .stat-caption {
+  position: static;
+}
+
+.stat-row-compact .stat-item .stat-value {
+  font-size: 1.25rem;
+}
+
 .chart-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1517,6 +1542,22 @@ td > .action-buttons.under-form {
   gap: var(--space-3);
   margin-bottom: var(--space-4);
   justify-content: space-between;
+}
+
+/* A panel title with its own control beside it (right-aligned); the
+   control wraps under the title when the row is too narrow. */
+.chart-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tab-group-compact button {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
 }
 
 .rate-edit-form {

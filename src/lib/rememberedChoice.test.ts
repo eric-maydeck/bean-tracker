@@ -9,6 +9,10 @@ describe('remembered choice', () => {
   it('expires after 12h', () => {
     expect(loadChoice(serializeChoice('list', now), ['compact', 'list'] as const, now + CHOICE_TTL_MS + 1)).toBeUndefined();
   });
+  it('never expires with ttlMs = Infinity', () => {
+    const yearLater = now + 365 * 24 * 60 * 60 * 1000;
+    expect(loadChoice(serializeChoice('list', now), ['compact', 'list'] as const, yearLater, Infinity)).toBe('list');
+  });
   it('rejects values outside the allowed list and garbage', () => {
     expect(loadChoice(serializeChoice('grid', now), ['compact', 'list'] as const, now)).toBeUndefined();
     expect(loadChoice('list', ['compact', 'list'] as const, now)).toBeUndefined(); // legacy bare value

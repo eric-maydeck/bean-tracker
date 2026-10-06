@@ -77,6 +77,7 @@ describe('buildBeanConquerorStats', () => {
     expect(stats.totalBrews).toBe(6);
     expect(stats.totalBeans).toBe(2);
     expect(stats.averageRating).toBe(7);
+    expect(stats.totalGramsBrewed).toBe(120);
     expect(stats.favoritesByRoaster.find((g) => g.label === 'Roaster A')?.averageRating).toBe(8);
     expect(stats.favoritesByOrigin.find((g) => g.label === 'Ethiopia')?.averageRating).toBe(8);
     expect(stats.favoritesByProcessing.find((g) => g.label === 'Natural')?.averageRating).toBe(6);
@@ -92,7 +93,18 @@ describe('buildBeanConquerorStats', () => {
     expect(stats.totalBrews).toBe(0);
     expect(stats.totalBeans).toBe(0);
     expect(stats.averageRating).toBeNull();
+    expect(stats.totalGramsBrewed).toBeNull();
     expect(stats.favoritesByRoaster).toEqual([]);
+    expect(stats.brewsPerDay).toEqual([]);
+    for (const w of stats.periodAverages) {
+      expect([w.brewsPerDay, w.brewsPerBrewDay, w.gramsPerDay, w.gramsPerBrewDay, w.rating]).toEqual([
+        null,
+        null,
+        null,
+        null,
+        null
+      ]);
+    }
   });
 
   it('excludes groups whose only brews are unrated, rather than surfacing a null averageRating', () => {
@@ -204,6 +216,111 @@ describe('buildBeanConquerorStats', () => {
       { date: '2026-06-08', rating: 7 },
       { date: '2026-06-15', rating: 4 }
     ]);
+  });
+
+  it('counts brewsPerDay (brews and grams) for every day from first to last brew, gap days as 0, with trailing 7-day averages', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b1', name: 'Bean A', roaster: 'Roaster A', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 20, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [],
+      methods: [{ id: 'm1', preparationMethod: 'V60', name: 'V60', preparationStyle: null, preparationTools: null, notes: null, bcArchived: false, bcCreatedAt: null }],
+      grinders: [{ id: 'g1', name: 'Comandante', notes: null, bcArchived: false, bcCreatedAt: null }],
+      // 6/1: 2 brews, 6/2-6/3: none, 6/4: 1, 6/5-6/8: none, 6/9: 4 — one of
+      // which has no recorded dose (20g each otherwise, per brewsFor).
+      brews: [
+        ...brewsFor(
+          'b1',
+          [
+            '2026-06-01T08:00:00.000Z',
+            '2026-06-01T15:00:00.000Z',
+            '2026-06-04T08:00:00.000Z',
+            '2026-06-09T07:00:00.000Z',
+            '2026-06-09T09:00:00.000Z',
+            '2026-06-09T11:00:00.000Z'
+          ],
+          null,
+          null,
+          null
+        ),
+        { ...brewsFor('b1', ['2026-06-09T13:00:00.000Z'], null, null, null)[0], groundCoffeeG: null }
+      ]
+    });
+
+    const days = buildBeanConquerorStats(db).brewsPerDay;
+
+    expect(days.map((d) => [d.date, d.brews])).toEqual([
+      ['2026-06-01', 2],
+      ['2026-06-02', 0],
+      ['2026-06-03', 0],
+      ['2026-06-04', 1],
+      ['2026-06-05', 0],
+      ['2026-06-06', 0],
+      ['2026-06-07', 0],
+      ['2026-06-08', 0],
+      ['2026-06-09', 4]
+    ]);
+    // Partial window at the start: day 1 = 2/1, day 4 = (2+0+0+1)/4.
+    expect(days[0].rollingAverage).toBe(2);
+    expect(days[3].rollingAverage).toBeCloseTo(0.75);
+    // Full window: 6/2-6/8 = 1/7; 6/3-6/9 = (0+1+0+0+0+0+4)/7.
+    expect(days[7].rollingAverage).toBeCloseTo(1 / 7);
+    expect(days[8].rollingAverage).toBeCloseTo(5 / 7);
+    // Grams: the NULL-dose brew still counts as a brew but adds 0g.
+    expect(days.map((d) => d.grams)).toEqual([40, 0, 0, 20, 0, 0, 0, 0, 60]);
+    expect(days[0].gramsRollingAverage).toBe(40);
+    expect(days[3].gramsRollingAverage).toBeCloseTo(15);
+    expect(days[8].gramsRollingAverage).toBeCloseTo(80 / 7);
+  });
+
+  it('averages brews/grams/rating over trailing windows ending today, clamped to the first brew day', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, {
+      beans: [
+        { id: 'b1', name: 'Bean A', roaster: 'Roaster A', roastDate: '2026-04-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: 200, cost: 20, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false }
+      ],
+      beanOrigins: [],
+      methods: [{ id: 'm1', preparationMethod: 'V60', name: 'V60', preparationStyle: null, preparationTools: null, notes: null, bcArchived: false, bcCreatedAt: null }],
+      grinders: [{ id: 'g1', name: 'Comandante', notes: null, bcArchived: false, bcCreatedAt: null }],
+      // First brew 5/1 (rated 8); 6/1: two brews (rated 6, unrated); 6/3:
+      // one unrated brew with no dose. 20g per brew otherwise.
+      brews: [
+        ...brewsFor('b1', ['2026-05-01T08:00:00.000Z'], 8, null, null),
+        ...brewsFor('b1', ['2026-06-01T08:00:00.000Z'], 6, null, null),
+        ...brewsFor('b1', ['2026-06-01T15:00:00.000Z'], null, null, null),
+        { ...brewsFor('b1', ['2026-06-03T08:00:00.000Z'], null, null, null)[0], groundCoffeeG: null }
+      ]
+    });
+
+    const byWindow = Object.fromEntries(
+      buildBeanConquerorStats(db, '2026-06-20').periodAverages.map((w) => [w.window, w])
+    );
+
+    // All time: 5/1-6/20 = 51 calendar days, 3 of them brew days.
+    expect(byWindow.all.brewsPerDay).toBeCloseTo(4 / 51);
+    expect(byWindow.all.brewsPerBrewDay).toBeCloseTo(4 / 3);
+    expect(byWindow.all.gramsPerDay).toBeCloseTo(60 / 51);
+    expect(byWindow.all.gramsPerBrewDay).toBe(20);
+    expect(byWindow.all.rating).toBe(7);
+    // Last year starts before the first brew, so it's clamped to all time.
+    expect(byWindow.year).toEqual({ ...byWindow.all, window: 'year' });
+    // Last month (5/22-6/20, 30 days) skips the 5/1 brew; the rating
+    // ignores the unrated brews.
+    expect(byWindow.month.brewsPerDay).toBeCloseTo(3 / 30);
+    expect(byWindow.month.brewsPerBrewDay).toBe(1.5);
+    expect(byWindow.month.gramsPerDay).toBeCloseTo(40 / 30);
+    expect(byWindow.month.gramsPerBrewDay).toBe(20);
+    expect(byWindow.month.rating).toBe(6);
+    // Last week (6/14-6/20) has no brews: 0 per day, nothing per brew day.
+    expect(byWindow.week).toEqual({
+      window: 'week',
+      brewsPerDay: 0,
+      brewsPerBrewDay: null,
+      gramsPerDay: 0,
+      gramsPerBrewDay: null,
+      rating: null
+    });
   });
 
   it('orders costPerGramByRoaster most-expensive-first, matching its "top" framing', () => {

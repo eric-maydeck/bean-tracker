@@ -40,7 +40,10 @@
     values,
     datasetLabel = '',
     height = 320,
-    valueAxisMax
+    valueAxisMax,
+    trendValues,
+    trendLabel = '',
+    unit = ''
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -51,6 +54,14 @@
     // rescale as the data changes. A suggestedMax, not a hard max, so
     // Chart.js still rounds it up to a clean tick.
     valueAxisMax?: number;
+    // Line charts only: a smoothed series of the same measure drawn bold on
+    // top, with `values` demoted to a faint raw line underneath (e.g. daily
+    // counts under their rolling average). Same hue, so it reads as one
+    // measure at two levels of noise rather than two competing series.
+    trendValues?: number[];
+    trendLabel?: string;
+    // Trend charts only: suffix for y-axis ticks and tooltip values (e.g. 'g').
+    unit?: string;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -143,7 +154,21 @@
       data: {
         labels,
         datasets: [
-          type === 'line'
+          type === 'line' && trendValues
+            ? {
+                // Thin full-width bars rather than a second line: a daily
+                // count zigzags between 0 and N, which as a line is a dense
+                // comb; as bars it reads as a soft volume backdrop.
+                type: 'bar' as const,
+                label: datasetLabel,
+                data: values,
+                // 7-digit hex + alpha byte: the raw series stays visible as
+                // texture without competing with the trend line.
+                backgroundColor: `${lineColor}4d`,
+                barPercentage: 1,
+                categoryPercentage: 1
+              }
+            : type === 'line'
             ? {
                 label: datasetLabel,
                 data: values,
@@ -161,7 +186,22 @@
                 backgroundColor: bgColors,
                 borderWidth: type === 'doughnut' ? 2 : 0,
                 borderColor: surfaceColor
-              }
+              },
+          ...(type === 'line' && trendValues
+            ? [
+                {
+                  label: trendLabel,
+                  data: trendValues,
+                  borderColor: lineColor,
+                  backgroundColor: lineColor,
+                  borderWidth: 2.5,
+                  pointRadius: 0,
+                  pointHoverRadius: 4,
+                  tension: 0.25,
+                  fill: false
+                }
+              ]
+            : [])
         ]
       },
       options: {
@@ -169,12 +209,24 @@
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 400 },
+        // Line charts read by date: hovering anywhere over a day shows every
+        // series' value for it, not just a point under the cursor.
+        interaction: type === 'line' ? { mode: 'index', intersect: false } : undefined,
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' ? { padding: { right: 48 } } : undefined,
         plugins: {
-          legend: { display: type === 'doughnut', labels: { color: textColor } },
-          tooltip: { enabled: true },
+          legend: { display: type === 'doughnut' || !!trendValues, labels: { color: textColor } },
+          // Trend charts: raw values are whole counts/grams, the average gets
+          // one decimal — never a 15-digit float in the tooltip.
+          tooltip: trendValues
+            ? {
+                callbacks: {
+                  label: (ctx) =>
+                    `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(ctx.datasetIndex === 0 ? 0 : 1)}${unit}`
+                }
+              }
+            : { enabled: true },
           datalabels:
             type === 'doughnut'
               ? {
@@ -221,8 +273,20 @@
               }
             : type === 'line'
               ? {
-                  x: { ticks: { color: textColor }, grid: { color: gridColor } },
-                  y: { ticks: { color: textColor }, grid: { color: gridColor } }
+                  x: {
+                    // Flat labels, auto-skipped: a daily series has hundreds
+                    // of points, and rotated labels crowd a phone-width axis.
+                    ticks: { color: textColor, maxRotation: 0, autoSkipPadding: 16 },
+                    grid: { color: gridColor }
+                  },
+                  y: {
+                    beginAtZero: !!trendValues,
+                    ticks: {
+                      color: textColor,
+                      ...(unit && { callback: (value: string | number) => `${value}${unit}` })
+                    },
+                    grid: { color: gridColor }
+                  }
                 }
               : undefined
       }
@@ -238,6 +302,9 @@
     void values;
     void datasetLabel;
     void valueAxisMax;
+    void trendValues;
+    void trendLabel;
+    void unit;
     render();
 
     const observer = new MutationObserver(render);
