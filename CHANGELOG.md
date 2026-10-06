@@ -1,3 +1,10 @@
+# [1.50.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.49.1...v1.50.0) (2026-10-06)
+
+
+### Features
+
+* **coffees:** frozen badge and plum decaf badge
+
 ## [1.49.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.49.0...v1.49.1) (2026-10-06)
 
 
