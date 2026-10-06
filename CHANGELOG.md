@@ -1,3 +1,11 @@
+## [1.49.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.49.0...v1.49.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* **images:** don't read a cropped wordmark as a solid background
+* **images:** recompute cached backdrop fills once
+
 # [1.49.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.48.0...v1.49.0) (2026-10-06)
 
 
