@@ -1046,7 +1046,10 @@ td > .action-buttons.under-form {
   position: sticky;
   left: 0;
   box-sizing: border-box;
-  max-width: calc(100vw - 2 * var(--space-4));
+  /* Visible table width (viewport minus page gutters) minus the td's own
+     0.4rem side padding: sticky can't move it into that padding, so without
+     this the row overhangs the scroller at either scroll end. */
+  max-width: calc(100vw - 2 * var(--space-4) - 2 * 0.4rem);
   padding-bottom: var(--space-3);
 }
 

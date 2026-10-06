@@ -122,6 +122,26 @@ async function expectActionRow(page: Page) {
   expect(Math.abs(m.above - ACTION_GAP.above), `gap above ${m.above}`).toBeLessThanOrEqual(2);
   expect(m.below, `gap below ${m.below}`).toBeGreaterThanOrEqual(ACTION_GAP.belowMin);
   expect(m.below, `gap below ${m.below}`).toBeLessThanOrEqual(ACTION_GAP.belowMax);
+  // List: the row is also inside the sideways-scrolling table's visible box,
+  // with the table scrolled fully left (as opened) and fully right (where the
+  // Edit button is), not clipped by .table-scroll at either end.
+  const clipped = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+    const scroller = save.closest('.table-scroll');
+    if (!scroller) return [];
+    const out: string[] = [];
+    for (const end of [0, scroller.scrollWidth]) {
+      scroller.scrollLeft = end;
+      const box = scroller.getBoundingClientRect();
+      for (const b of save.closest('.action-buttons')!.querySelectorAll('button')) {
+        const r = b.getBoundingClientRect();
+        if (r.left < box.left - 0.5 || r.right > box.right + 0.5) {
+          out.push(`${b.getAttribute('aria-label') ?? b.textContent?.trim()} ${r.left.toFixed(1)}–${r.right.toFixed(1)} outside ${box.left}–${box.right} at scrollLeft ${scroller.scrollLeft}`);
+        }
+      }
+    }
+    return out;
+  });
+  expect(clipped, 'action buttons clipped by the table scroller').toEqual([]);
 }
 
 // Contained, never cropped, on its fill (spec "Image fill and fit").
