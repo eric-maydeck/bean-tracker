@@ -1,5 +1,6 @@
 // Backdrop fill behind contained coffee images (spec 2026-10-05 "Image fill
 // and fit"). Server-only (sharp). Not imported by db.ts, so no .ts extensions.
+import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { LIGHT_BACKDROP, DARK_BACKDROP, NEUTRAL_BACKDROP } from '../imageBackdrop';
 
@@ -38,4 +39,15 @@ export async function computeFill(bytes: Buffer): Promise<string> {
   }
   if (n === 0) return NEUTRAL_BACKDROP;
   return sum / n < 128 ? LIGHT_BACKDROP : DARK_BACKDROP;
+}
+
+export function getImageFill(db: DatabaseSync, url: string): string | null {
+  const row = db.prepare(`SELECT fill FROM image_fills WHERE url = ?`).get(url) as { fill: string } | undefined;
+  return row?.fill ?? null;
+}
+
+export function setImageFill(db: DatabaseSync, url: string, fill: string): void {
+  db.prepare(
+    `INSERT INTO image_fills (url, fill) VALUES (?, ?) ON CONFLICT(url) DO UPDATE SET fill = excluded.fill`
+  ).run(url, fill);
 }

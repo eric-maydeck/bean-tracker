@@ -29,13 +29,16 @@ const ORDER_BY_NAME = `ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE 
 // yields no row (NULL) when no bean is linked; MAX(0, NULL) stays NULL.
 // roaster_image_url: the roaster's default image (roaster_images). ri.roaster on
 // the left so the comparison uses its NOCASE collation.
-const LIST_SELECT = `SELECT c.*, ri.image_url AS roaster_image_url,
+// image_fill: the backdrop of whichever image the row displays (its own, else
+// the roaster default), from image_fills; NULL until computed.
+const LIST_SELECT = `SELECT c.*, ri.image_url AS roaster_image_url, f.fill AS image_fill,
   EXISTS (SELECT 1 FROM beanconqueror_beans b WHERE b.coffee_id = c.id) AS in_bean_conqueror,
   CASE WHEN c.status = 'open' THEN MAX(0, ROUND((
     SELECT c.amount_g - TOTAL(br.ground_coffee_g) FROM beanconqueror_beans b
     LEFT JOIN beanconqueror_brews br ON br.bean_id = b.id WHERE b.coffee_id = c.id GROUP BY b.id
   ))) END AS grams_left
-  FROM coffees c LEFT JOIN roaster_images ri ON ri.roaster = c.roaster`;
+  FROM coffees c LEFT JOIN roaster_images ri ON ri.roaster = c.roaster
+  LEFT JOIN image_fills f ON f.url = COALESCE(NULLIF(c.image_url, ''), ri.image_url)`;
 
 export function getBacklogCoffees(db: DatabaseSync): CoffeeRow[] {
   return db.prepare(`${LIST_SELECT} WHERE c.status = 'backlog' ${ORDER_BY_NAME}`).all() as CoffeeRow[];

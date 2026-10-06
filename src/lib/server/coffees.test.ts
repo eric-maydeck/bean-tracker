@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
+import { setImageFill } from './imageFills';
 import {
   createCoffee,
   updateCoffee,
@@ -373,5 +374,29 @@ describe('save-time image dedupe', () => {
   it('stores the image unchanged when the roaster has no default', () => {
     const { id } = createCoffee(db, sampleInput({ roaster: 'Sey', image_url: LOGO }));
     expect(image(id)).toBe(LOGO);
+  });
+});
+
+describe('image_fill on list rows', () => {
+  it("is the displayed image's fill: its own, else the roaster default's", () => {
+    const own = createCoffee(db, sampleInput({ roaster: 'Sey', coffee_name: 'A', image_url: 'https://img.example/bag.png' }));
+    createCoffee(db, sampleInput({ roaster: 'Norml', coffee_name: 'B' }));
+    createCoffee(db, sampleInput({ roaster: 'Other', coffee_name: 'C' }));
+    setRoasterImage(db, 'Norml', 'https://img.example/logo.png');
+    setRoasterImage(db, 'Sey', 'https://img.example/sey.png');
+    setImageFill(db, 'https://img.example/bag.png', '#111111');
+    setImageFill(db, 'https://img.example/logo.png', '#222222');
+    setImageFill(db, 'https://img.example/sey.png', '#333333');
+    expect(getBacklogCoffees(db).map((c) => [c.roaster, c.image_fill])).toEqual([
+      ['Norml', '#222222'],
+      ['Other', null],
+      ['Sey', '#111111']
+    ]);
+    expect(getCoffeeBySlug(db, own.slug)?.image_fill).toBe('#111111');
+  });
+
+  it('is null while the displayed image has no fill yet', () => {
+    createCoffee(db, sampleInput({ image_url: 'https://img.example/new.png', status: 'open' }));
+    expect(getOpenCoffees(db)[0].image_fill).toBeNull();
   });
 });

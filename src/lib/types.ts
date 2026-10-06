@@ -26,6 +26,8 @@ export interface CoffeeRow {
   grams_left?: number | null;
   // List queries + getCoffeeBySlug: the roaster's default image (roaster_images), else null.
   roaster_image_url?: string | null;
+  // List queries + getCoffeeBySlug: the displayed image's backdrop (image_fills), else null.
+  image_fill?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -19,6 +19,7 @@ describe('createDb', () => {
       'beanconqueror_grinders',
       'beanconqueror_methods',
       'coffees',
+      'image_fills',
       'roast_levels',
       'roaster_images',
       'short_links',

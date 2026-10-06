@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS roaster_images (
   image_url TEXT NOT NULL
 );
 
+-- Backdrop color behind each displayed image (object-fit: contain), keyed by
+-- the exact URL so a logo shared by many coffees is computed once. Written by
+-- server/imageFills.ts; joined in coffees.ts LIST_SELECT as image_fill.
+CREATE TABLE IF NOT EXISTS image_fills (
+  url TEXT PRIMARY KEY,
+  fill TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY,
   roaster_service TEXT NOT NULL,

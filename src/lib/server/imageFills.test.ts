@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
-import { computeFill } from './imageFills';
+import { createDb } from './db';
+import { computeFill, getImageFill, setImageFill } from './imageFills';
 import { LIGHT_BACKDROP, DARK_BACKDROP, NEUTRAL_BACKDROP } from '../imageBackdrop';
 
 const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
@@ -55,5 +57,24 @@ describe('computeFill', () => {
 
   it('rejects bytes that are not an image', async () => {
     await expect(computeFill(Buffer.from('<html>not an image</html>'))).rejects.toThrow();
+  });
+});
+
+describe('image_fills cache', () => {
+  let db: DatabaseSync;
+  beforeEach(() => {
+    db = createDb(':memory:');
+  });
+
+  it('is null until set, and an upsert replaces it', () => {
+    expect(getImageFill(db, 'https://img.example/a.png')).toBeNull();
+    setImageFill(db, 'https://img.example/a.png', '#111111');
+    setImageFill(db, 'https://img.example/a.png', '#222222');
+    expect(getImageFill(db, 'https://img.example/a.png')).toBe('#222222');
+  });
+
+  it('keys by the exact URL', () => {
+    setImageFill(db, 'https://img.example/a.png', '#111111');
+    expect(getImageFill(db, 'https://img.example/A.png')).toBeNull();
   });
 });
