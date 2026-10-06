@@ -30,6 +30,7 @@
     toParams,
     isUntouched,
     loadViewState,
+    resetView,
     serializeViewState,
     VIEW_STORAGE_KEY,
     LEGACY_STORAGE_KEYS,
@@ -356,9 +357,9 @@
     explicit.status = next;
   }
 
-  // Back to untouched: bare URL, defaults (including the width-based layout).
-  function resetView() {
-    explicit = { filters: [] };
+  // Back to defaults (including the width-based layout), keeping the status tab.
+  function reset() {
+    explicit = resetView(explicit);
   }
 
   let source = $derived(
@@ -635,7 +636,7 @@
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
   <FilterBar bind:filters={explicit.filters} coffees={source} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
-  <button class="button button-secondary" type="button" onclick={resetView}>Reset</button>
+  <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
   <ShareButton />
   {#if data.isAdmin}
     {#if editAll}

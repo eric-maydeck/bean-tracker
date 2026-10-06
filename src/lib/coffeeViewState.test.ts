@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toParams, fromParams, isUntouched, loadViewState, serializeViewState, VIEW_TTL_MS, type CoffeeViewState } from './coffeeViewState';
+import { toParams, fromParams, isUntouched, resetView, loadViewState, serializeViewState, VIEW_TTL_MS, type CoffeeViewState } from './coffeeViewState';
 import type { Filter } from './coffeeFilters';
 
 const roundTrip = (s: CoffeeViewState, known?: Parameters<typeof fromParams>[1]) =>
@@ -102,5 +102,17 @@ describe('bc (In Bean Conqueror)', () => {
   it('round-trips through remembered state', () => {
     const s: CoffeeViewState = { filters: [{ column: 'bc', mode: 'bool', value: false }] };
     expect(loadViewState(serializeViewState(s, 1000), 2000)).toEqual(s);
+  });
+});
+
+describe('resetView', () => {
+  it('keeps the status tab and clears the rest', () => {
+    const s = fromParams(new URLSearchParams('status=archive&q=gesha&view=list&sort=roast_date.asc&decaf=true'));
+    expect(toParams(resetView(s)).toString()).toBe('status=archive');
+  });
+  it('leaves the default status out of the URL', () => {
+    const s = fromParams(new URLSearchParams('q=gesha&view=list'));
+    expect(toParams(resetView(s)).toString()).toBe('');
+    expect(isUntouched(resetView(s))).toBe(true);
   });
 });

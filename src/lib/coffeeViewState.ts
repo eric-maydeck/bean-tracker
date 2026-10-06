@@ -138,6 +138,11 @@ export function fromParams(p: URLSearchParams, known: Partial<Record<ColumnKey, 
   return s;
 }
 
+// Reset clears everything but the status tab (Open/Archive/All stay put).
+export function resetView(s: CoffeeViewState): CoffeeViewState {
+  return s.status ? { filters: [], status: s.status } : { filters: [] };
+}
+
 export function isUntouched(s: CoffeeViewState): boolean {
   return !s.status && !s.query && !s.sort && !s.view && s.filters.length === 0;
 }
