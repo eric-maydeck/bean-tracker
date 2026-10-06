@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.50.0...v1.51.0) (2026-10-06)
+
+
+### Features
+
+* **coffees:** show a centered notice while Refresh reloads
+
 # [1.50.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.49.1...v1.50.0) (2026-10-06)
 
 
