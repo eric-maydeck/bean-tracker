@@ -1034,6 +1034,22 @@ div.compact-row .compact-row-sub {
   height: 1.35rem;
 }
 
+/* List view: the open row's <td> is as wide as the whole (sideways-scrolling)
+   table, so pin the action row to the visible width, and give it Compact's
+   gap below (the td's own padding alone leaves ~5px). ui-rules 21, 22. */
+/* 44px floor (not 48) so six icons fit a 360px card (ui-rules 1, 21). */
+.under-form .button.button-icon {
+  min-width: 44px;
+}
+
+td > .action-buttons.under-form {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  max-width: calc(100vw - 2 * var(--space-4));
+  padding-bottom: var(--space-3);
+}
+
 /* Compact view's stacked detail form has ample width — undo the Table view's
    narrow .inline-input cap (kept for dense table columns) inside this block. */
 .compact-row-detail .inline-input {

@@ -92,6 +92,36 @@ async function expectActionsUnderForm(page: Page) {
   if (row.total <= row.room) expect(row.tops, `action row split across lines (buttons ${row.total}px of ${row.room}px)`).toHaveLength(1);
 }
 
+// ui-rules 21 and 22. The full action row (Everyaction coffee: save, cancel,
+// delete, box, freeze, archive) is inside the viewport, and its gaps above
+// (from the form) and below (to the item's edge) match Compact's, in every view.
+const ACTION_GAP = { above: 16, belowMin: 12, belowMax: 18 }; // Compact/Cards, px (Compact 13, Cards 17)
+async function expectActionRow(page: Page) {
+  const m = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+    const wrap = save.closest('.action-buttons')!;
+    const bs = [...wrap.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
+    const item = wrap.closest('.card, .compact-row-wrap, tr')!.getBoundingClientRect();
+    const top = Math.min(...bs.map((b) => b.top));
+    const bottom = Math.max(...bs.map((b) => b.bottom));
+    return {
+      n: bs.length,
+      right: Math.max(...bs.map((b) => b.right)),
+      left: Math.min(...bs.map((b) => b.left)),
+      above: top - wrap.previousElementSibling!.getBoundingClientRect().bottom,
+      below: item.bottom - bottom,
+      minW: Math.min(...bs.map((b) => b.width)),
+      minH: Math.min(...bs.map((b) => b.height))
+    };
+  });
+  const vw = page.viewportSize()!.width;
+  expect(m.n).toBe(6);
+  expect(m.right, 'an action button spills past the right edge').toBeLessThanOrEqual(vw);
+  expect(m.left).toBeGreaterThanOrEqual(0);
+  expect(Math.abs(m.above - ACTION_GAP.above), `gap above ${m.above}`).toBeLessThanOrEqual(2);
+  expect(m.below, `gap below ${m.below}`).toBeGreaterThanOrEqual(ACTION_GAP.belowMin);
+  expect(m.below, `gap below ${m.below}`).toBeLessThanOrEqual(ACTION_GAP.belowMax);
+}
+
 // Contained, never cropped, on its fill (spec "Image fill and fit").
 const WIDE_FILL = 'rgb(242, 193, 78)'; // seeded #f2c14e
 const NEUTRAL = 'rgb(230, 221, 210)'; // NEUTRAL_BACKDROP #e6ddd2
@@ -309,6 +339,15 @@ export const STATES: State[] = [
       await expectActionsUnderForm(page);
     }
   })),
+  ...(['cards', 'list', 'compact'] as const).map((view) => ({
+    name: `coffees-${view}-inline-edit-action-row`,
+    path: () => `/coffees?status=backlog&view=${view}`,
+    act: async (page: Page, s: Seed) => {
+      await openSoloEdit(page, view, s.names.everyAction);
+      await page.getByRole('button', { name: 'Save', exact: true }).scrollIntoViewIfNeeded();
+      await expectActionRow(page);
+    }
+  })),
 ];
 
 // Known failures: the list view's table is crushed at tablet width and needs a
@@ -316,7 +355,7 @@ export const STATES: State[] = [
 // show up as "unexpectedly passed", so these entries flag themselves. Nothing
 // else gets listed here.
 const KNOWN_FAILURES = new Set([
-  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-bc-yes-${w}`])
+  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-list-inline-edit-action-row-${w}`, `coffees-bc-yes-${w}`])
 ]);
 
 for (const state of STATES) {
