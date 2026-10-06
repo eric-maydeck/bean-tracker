@@ -117,6 +117,8 @@ async function expectActionRow(page: Page) {
   expect(m.n).toBe(6);
   expect(m.right, 'an action button spills past the right edge').toBeLessThanOrEqual(vw);
   expect(m.left).toBeGreaterThanOrEqual(0);
+  expect(m.minW, `narrowest action button ${m.minW}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
+  expect(m.minH, `shortest action button ${m.minH}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
   expect(Math.abs(m.above - ACTION_GAP.above), `gap above ${m.above}`).toBeLessThanOrEqual(2);
   expect(m.below, `gap below ${m.below}`).toBeGreaterThanOrEqual(ACTION_GAP.belowMin);
   expect(m.below, `gap below ${m.below}`).toBeLessThanOrEqual(ACTION_GAP.belowMax);
