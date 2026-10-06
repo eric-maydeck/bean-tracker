@@ -26,6 +26,7 @@ when it can be automated.
 | 17 | A row of buttons on a phone never leaves one button orphaned on its own line at a different width: the buttons share the row evenly (grow to fill each line, no doubled gaps). Mark the row `data-button-row` (user feedback 2026-10-05). | Yes for `[data-button-row]` at ≤640 px (checkLayout rule 8) |
 | 18 | Images are never cropped: show the whole image (`object-fit: contain`) on a fill color computed from it (`coffeeImage().fill`, neutral `#e6ddd2` until computed) (user feedback 2026-10-05). | Yes (checkLayout rule 9: any image whose box shape differs from its own) |
 | 19 | An inline edit form always shows its Save and Cancel/Discard under the form, reachable in the viewport from where the user is editing; never only above it or missing (user feedback 2026-10-05). | Per state: `expectActionsUnderForm` (`layout.spec.ts`, `coffees-*-inline-edit-actions`) |
+| 20 | An inline edit's action row (Save/Cancel/Delete/status icons) under the form stays on one line at phone width whenever its buttons fit, and looks the same in Cards, List and Compact (user feedback 2026-10-05). | Per state: `expectActionsUnderForm` |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

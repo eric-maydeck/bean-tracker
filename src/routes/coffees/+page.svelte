@@ -693,7 +693,7 @@
             {@render expandedForm(coffee)}
             <!-- Save/Cancel under the open form, like Compact: the card's own
                  action row is replaced by the form. -->
-            <div class="action-buttons">
+            <div class="action-buttons under-form">
               {@render adminActions(coffee, true)}
             </div>
           {:else}
@@ -1059,7 +1059,7 @@
               <td colspan={data.isAdmin ? 14 : 13}>
                 {@render expandedForm(coffee)}
                 <!-- Under the form, like Compact: on a phone the row above is off-screen. -->
-                <div class="action-buttons">
+                <div class="action-buttons under-form">
                   {@render adminActions(coffee, true)}
                 </div>
               </td>

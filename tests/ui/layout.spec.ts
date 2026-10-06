@@ -82,6 +82,14 @@ async function expectActionsUnderForm(page: Page) {
     expect(r.y).toBeGreaterThan(m.y);
     expect(r.y - m.y).toBeLessThan(page.viewportSize()!.height);
   }
+  // ui-rules 20: the action row is one line (every button at the same top)
+  // whenever its buttons fit the container; same in every view.
+  const row = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {
+    const stack = save.closest('.action-stack')!;
+    const bs = [...stack.querySelectorAll('button')].map((b) => b.getBoundingClientRect());
+    return { tops: [...new Set(bs.map((b) => Math.round(b.top)))], total: bs.reduce((a, b) => a + b.width, 0), room: stack.closest('.action-buttons')!.getBoundingClientRect().width };
+  });
+  if (row.total <= row.room) expect(row.tops, `action row split across lines (buttons ${row.total}px of ${row.room}px)`).toHaveLength(1);
 }
 
 // Contained, never cropped, on its fill (spec "Image fill and fit").
