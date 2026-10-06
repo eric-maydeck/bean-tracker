@@ -1,3 +1,10 @@
+## [1.46.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.46.1...v1.46.2) (2026-10-06)
+
+
+### Bug Fixes
+
+* **coffees:** keep the current status tab on Reset
+
 ## [1.46.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.46.0...v1.46.1) (2026-10-06)
 
 
