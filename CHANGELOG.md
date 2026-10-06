@@ -1,3 +1,19 @@
+# [1.49.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.48.0...v1.49.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* **roasters:** correct dongze logo url
+
+
+### Features
+
+* **images:** background run stores local copies
+* **images:** serve local copies from /img
+* **images:** show local copies when available
+* **images:** store content-addressed local copies
+* **roasters:** seed macs roasters and dongze logos
+
 # [1.48.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.47.0...v1.48.0) (2026-10-06)
 
 
