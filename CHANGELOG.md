@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.47.0...v1.48.0) (2026-10-06)
+
+
+### Features
+
+* **roasters:** seed default images for existing roasters
+
 # [1.47.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.46.2...v1.47.0) (2026-10-06)
 
 
