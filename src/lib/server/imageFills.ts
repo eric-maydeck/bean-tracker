@@ -3,6 +3,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { LIGHT_BACKDROP, DARK_BACKDROP, NEUTRAL_BACKDROP } from '../imageBackdrop';
+import { FillError, safeFetchBytes } from './productFetch';
 
 const SAMPLE = 64;
 const OPAQUE = 128; // alpha at or above this counts as opaque
@@ -50,4 +51,74 @@ export function setImageFill(db: DatabaseSync, url: string, fill: string): void 
   db.prepare(
     `INSERT INTO image_fills (url, fill) VALUES (?, ?) ON CONFLICT(url) DO UPDATE SET fill = excluded.fill`
   ).run(url, fill);
+}
+
+export type FetchBytes = (url: string) => Promise<{ status: number; body: Buffer }>;
+
+// The cached fill, else fetch (SSRF-guarded), compute and cache it. Failures a
+// URL can cause are FillErrors with a message fit to show under the preview.
+export async function fetchImageFill(db: DatabaseSync, url: string, fetchBytes: FetchBytes = safeFetchBytes): Promise<string> {
+  const cached = getImageFill(db, url);
+  if (cached) return cached;
+  const res = await fetchBytes(url);
+  if (res.status !== 200) throw new FillError(`The image answered with HTTP ${res.status}`);
+  let fill: string;
+  try {
+    fill = await computeFill(res.body);
+  } catch {
+    throw new FillError("Couldn't read that as an image");
+  }
+  setImageFill(db, url, fill);
+  return fill;
+}
+
+// Displayed http(s) image URLs with no fill yet: coffees' own images and
+// roaster defaults. data: URIs are never fetched (they show the neutral backdrop).
+export function missingFillUrls(db: DatabaseSync): string[] {
+  const rows = db
+    .prepare(
+      `SELECT u.url FROM (
+         SELECT image_url AS url FROM coffees WHERE image_url != ''
+         UNION SELECT image_url FROM roaster_images
+       ) u LEFT JOIN image_fills f ON f.url = u.url
+       WHERE f.url IS NULL AND (u.url LIKE 'http://%' OR u.url LIKE 'https://%')`
+    )
+    .all() as { url: string }[];
+  return rows.map((r) => r.url);
+}
+
+// ponytail: in-memory skip list, so a failing URL is retried on the next boot
+// only; persist failures with a timestamp if retrying needs to be smarter.
+const failed = new Set<string>();
+let running: Promise<void> | null = null;
+let again = false;
+
+// Fills missing URLs one at a time. Callers never await it (a save or boot
+// must not wait on the network); a call during a run makes that run go round
+// once more, so a URL saved mid-run isn't missed. Never rejects. Returns the
+// run, for tests.
+export function queueFillMissing(db: DatabaseSync, fetchBytes: FetchBytes = safeFetchBytes): Promise<void> {
+  if (running) {
+    again = true;
+    return running;
+  }
+  running = (async () => {
+    do {
+      again = false;
+      for (const url of missingFillUrls(db)) {
+        if (failed.has(url)) continue;
+        try {
+          await fetchImageFill(db, url, fetchBytes);
+        } catch (err) {
+          failed.add(url);
+          console.error(`image fill failed for ${url}:`, err instanceof Error ? err.message : err);
+        }
+      }
+    } while (again);
+  })()
+    .catch((err) => console.error('image fill run failed:', err))
+    .finally(() => {
+      running = null;
+    });
+  return running;
 }

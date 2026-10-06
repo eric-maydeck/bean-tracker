@@ -15,6 +15,12 @@ export interface FetchedPage {
   finalUrl: string;
 }
 
+export interface FetchedBytes {
+  status: number;
+  body: Buffer;
+  finalUrl: string;
+}
+
 const MAX_REDIRECTS = 5;
 const MAX_BYTES = 2 * 1024 * 1024;
 const TIMEOUT_MS = 10_000;
@@ -94,10 +100,28 @@ function safeLookup(
 interface RawResponse {
   status: number;
   location: string | undefined;
-  body: string;
+  body: Buffer;
 }
 
-function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
+// What a fetch asks for and how much it reads: a product page, or an image
+// (its backdrop fill, imageFills.ts).
+interface FetchKind {
+  accept: string;
+  maxBytes: number;
+  tooBig: string;
+}
+const PAGE: FetchKind = {
+  accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+  maxBytes: MAX_BYTES,
+  tooBig: 'That page is larger than 2 MB'
+};
+const IMAGE: FetchKind = {
+  accept: 'image/avif,image/webp,image/png,image/svg+xml,image/*;q=0.8',
+  maxBytes: 8 * 1024 * 1024,
+  tooBig: 'That image is larger than 8 MB'
+};
+
+function requestOnce(url: URL, signal: AbortSignal, kind: FetchKind): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     const mod = url.protocol === 'https:' ? https : http;
     const req = mod.get(
@@ -107,7 +131,7 @@ function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
         signal,
         headers: {
           'user-agent': USER_AGENT,
-          accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+          accept: kind.accept,
           'accept-language': 'en-US,en;q=0.9',
           'accept-encoding': 'gzip, deflate, br'
         }
@@ -116,7 +140,7 @@ function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
         const status = res.statusCode ?? 0;
         if (status >= 300 && status < 400) {
           res.resume();
-          resolve({ status, location: res.headers.location, body: '' });
+          resolve({ status, location: res.headers.location, body: Buffer.alloc(0) });
           return;
         }
         const enc = res.headers['content-encoding'];
@@ -131,15 +155,15 @@ function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
         // Capped after decompression, so a compressed bomb can't slip past.
         stream.on('data', (chunk: Buffer) => {
           size += chunk.length;
-          if (size > MAX_BYTES) {
+          if (size > kind.maxBytes) {
             req.destroy();
             stream.destroy();
-            reject(new FillError('That page is larger than 2 MB'));
+            reject(new FillError(kind.tooBig));
           } else {
             chunks.push(chunk);
           }
         });
-        stream.on('end', () => resolve({ status, location: undefined, body: Buffer.concat(chunks).toString('utf8') }));
+        stream.on('end', () => resolve({ status, location: undefined, body: Buffer.concat(chunks) }));
         stream.on('error', reject);
         res.on('error', reject);
       }
@@ -148,11 +172,11 @@ function requestOnce(url: URL, signal: AbortSignal): Promise<RawResponse> {
   });
 }
 
-// One timeout covers the whole redirect chain.
-export async function safeFetch(rawUrl: string, signal: AbortSignal = AbortSignal.timeout(TIMEOUT_MS)): Promise<FetchedPage> {
+// One timeout covers the whole redirect chain; every hop is address-checked.
+async function fetchFollowing(rawUrl: string, signal: AbortSignal, kind: FetchKind): Promise<FetchedBytes> {
   let url = checkUrl(rawUrl);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const res = await requestOnce(url, signal);
+    const res = await requestOnce(url, signal, kind);
     if (res.status >= 300 && res.status < 400 && res.location) {
       url = checkUrl(new URL(res.location, url).href);
       continue;
@@ -160,6 +184,16 @@ export async function safeFetch(rawUrl: string, signal: AbortSignal = AbortSigna
     return { status: res.status, body: res.body, finalUrl: url.href };
   }
   throw new FillError('That page redirected too many times');
+}
+
+export async function safeFetch(rawUrl: string, signal: AbortSignal = AbortSignal.timeout(TIMEOUT_MS)): Promise<FetchedPage> {
+  const res = await fetchFollowing(rawUrl, signal, PAGE);
+  return { ...res, body: res.body.toString('utf8') };
+}
+
+// An image's bytes, with safeFetch's guards and an 8 MB cap.
+export function safeFetchBytes(rawUrl: string, signal: AbortSignal = AbortSignal.timeout(TIMEOUT_MS)): Promise<FetchedBytes> {
+  return fetchFollowing(rawUrl, signal, IMAGE);
 }
 
 export function shopifyJsonUrl(url: URL): string | null {

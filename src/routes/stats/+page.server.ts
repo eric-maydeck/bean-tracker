@@ -14,6 +14,7 @@ import {
   dismissBeanConquerorBean
 } from '$lib/server/beanconqueror';
 import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
+import { queueFillMissing } from '$lib/server/imageFills';
 import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
 import { buildBacklogStats } from './statsData';
 import { buildBeanConquerorStats } from './beanConquerorStatsData';
@@ -100,7 +101,10 @@ export const actions: Actions = {
   create: async ({ request, locals }) => {
     requireAdmin(locals);
     // The Create modal from "Not yet tracked" sends beanconqueror_id: link it too.
-    return handleCoffeeCreateAndLink(getDb(), await request.formData());
+    const db = getDb();
+    const result = handleCoffeeCreateAndLink(db, await request.formData());
+    void queueFillMissing(db); // a new image → its backdrop fill, in the background
+    return result;
   },
   linkBeanConqueror: async ({ request, locals }) => {
     requireAdmin(locals);

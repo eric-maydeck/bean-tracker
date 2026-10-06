@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { isBlockedAddress, checkUrl, safeFetch, FillError, shopifyJsonUrl, sanitizeShopifyMeta } from './productFetch';
+import http from 'node:http';
+import { Readable } from 'node:stream';
+import { isBlockedAddress, checkUrl, safeFetch, safeFetchBytes, FillError, shopifyJsonUrl, sanitizeShopifyMeta } from './productFetch';
 
 describe('isBlockedAddress', () => {
   it.each([
@@ -43,6 +45,39 @@ describe('checkUrl', () => {
 describe('safeFetch', () => {
   it('refuses a hostname that resolves to loopback (checked in the socket lookup, no network needed)', async () => {
     await expect(safeFetch('http://localhost:1/')).rejects.toBeInstanceOf(FillError);
+  });
+
+  it('safeFetchBytes refuses a local address like safeFetch', async () => {
+    await expect(safeFetchBytes('http://localhost:1/logo.png')).rejects.toBeInstanceOf(FillError);
+    await expect(safeFetchBytes('http://127.0.0.1/logo.png')).rejects.toBeInstanceOf(FillError);
+  });
+
+  // http.get stubbed with a 200 of `size` bytes (in 1 MB chunks): pins the cap
+  // without the network. The address guard is covered by the tests above.
+  const serveBytes = (size: number) =>
+    vi.spyOn(http, 'get').mockImplementation(((_url: unknown, _opts: unknown, cb: (res: http.IncomingMessage) => void) => {
+      const chunks: Buffer[] = [];
+      for (let left = size; left > 0; left -= 1024 * 1024) chunks.push(Buffer.alloc(Math.min(left, 1024 * 1024)));
+      const res = Object.assign(Readable.from(chunks), { statusCode: 200, headers: {} });
+      const req = Object.assign(new Readable({ read() {} }), { destroy: () => req });
+      queueMicrotask(() => cb(res as unknown as http.IncomingMessage));
+      return req;
+    }) as unknown as typeof http.get);
+
+  it('safeFetchBytes reads an image of exactly 8 MB', async () => {
+    const get = serveBytes(8 * 1024 * 1024);
+    const res = await safeFetchBytes('http://img.example/big.png');
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBe(8 * 1024 * 1024);
+    get.mockRestore();
+  });
+
+  it('safeFetchBytes refuses an image over 8 MB', async () => {
+    const get = serveBytes(8 * 1024 * 1024 + 1);
+    // Settled to a small value: an 8 MB resolved body would swamp the failure report.
+    const err = await safeFetchBytes('http://img.example/huge.png').then(() => 'resolved', (e: unknown) => e);
+    expect(err).toEqual(new FillError('That image is larger than 8 MB'));
+    get.mockRestore();
   });
 });
 

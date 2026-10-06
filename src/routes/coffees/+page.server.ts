@@ -6,6 +6,7 @@ import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
 import { requireAdmin } from '$lib/server/auth';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
+import { queueFillMissing } from '$lib/server/imageFills';
 
 export const load: PageServerLoad = () => {
   const db = getDb();
@@ -29,6 +30,9 @@ export const load: PageServerLoad = () => {
 export const actions: Actions = {
   create: async ({ request, locals }) => {
     requireAdmin(locals);
-    return handleCoffeeCreate(getDb(), await request.formData());
+    const db = getDb();
+    const result = handleCoffeeCreate(db, await request.formData());
+    void queueFillMissing(db); // a new image → its backdrop fill, in the background
+    return result;
   }
 };
