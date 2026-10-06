@@ -400,3 +400,36 @@ describe('image_fill on list rows', () => {
     expect(getOpenCoffees(db)[0].image_fill).toBeNull();
   });
 });
+
+describe('image_copy', () => {
+  const S = (over: Partial<NewCoffeeInput>) => createCoffee(db, sampleInput({ roaster: 'Norml', image_url: null, ...over })).slug;
+  const copy = (url: string, kind: 'coffees' | 'roasters', file: string) =>
+    db.prepare(`INSERT INTO image_copies (url, kind, file) VALUES (?, ?, ?)`).run(url, kind, file);
+
+  it('own image with a copy -> /img/coffees/<file>', () => {
+    const slug = S({ image_url: 'https://x/bag.png' });
+    copy('https://x/bag.png', 'coffees', 'a.webp');
+    expect(getCoffeeBySlug(db, slug)?.image_copy).toBe('/img/coffees/a.webp');
+  });
+
+  it('roaster default with a copy -> /img/roasters/<file>', () => {
+    const slug = S({});
+    setRoasterImage(db, 'Norml', 'https://x/logo.png');
+    copy('https://x/logo.png', 'roasters', 'b.webp');
+    expect(getCoffeeBySlug(db, slug)?.image_copy).toBe('/img/roasters/b.webp');
+  });
+
+  it("own image without a copy never borrows the roaster's copy", () => {
+    const slug = S({ image_url: 'https://x/bag.png' });
+    setRoasterImage(db, 'Norml', 'https://x/logo.png');
+    copy('https://x/logo.png', 'roasters', 'b.webp');
+    expect(getCoffeeBySlug(db, slug)?.image_copy).toBeNull();
+  });
+
+  it('a coffees-kind copy of the logo URL is not used for the roaster fallback', () => {
+    const slug = S({});
+    setRoasterImage(db, 'Norml', 'https://x/logo.png');
+    copy('https://x/logo.png', 'coffees', 'c.webp');
+    expect(getCoffeeBySlug(db, slug)?.image_copy).toBeNull();
+  });
+});

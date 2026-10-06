@@ -1,16 +1,17 @@
 import { backdrop } from './imageBackdrop';
 
 // Client-safe. A coffee's image: its own, else its roaster's default (a live
-// fallback, spec 2026-10-05-roaster-default-image-design.md), with the
+// fallback, spec 2026-10-05-roaster-default-image-design.md), as our local copy
+// when there is one (spec 2026-10-06), else the original URL, with the
 // backdrop shown behind it (object-fit: contain). image_fill is already the
 // displayed image's fill (LIST_SELECT's join).
 export function coffeeImage(
-  c: { image_url: string | null; roaster: string; roaster_image_url?: string | null; image_fill?: string | null },
+  c: { image_url: string | null; roaster: string; roaster_image_url?: string | null; image_fill?: string | null; image_copy?: string | null },
   ownAlt: string
 ): { src: string; alt: string; fill: string } | null {
   const fill = backdrop(c.image_fill);
-  if (c.image_url) return { src: c.image_url, alt: ownAlt, fill };
-  if (c.roaster_image_url) return { src: c.roaster_image_url, alt: `${c.roaster} logo`, fill };
+  if (c.image_url) return { src: c.image_copy ?? c.image_url, alt: ownAlt, fill };
+  if (c.roaster_image_url) return { src: c.image_copy ?? c.roaster_image_url, alt: `${c.roaster} logo`, fill };
   return null;
 }
 

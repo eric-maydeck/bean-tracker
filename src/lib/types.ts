@@ -28,6 +28,8 @@ export interface CoffeeRow {
   roaster_image_url?: string | null;
   // List queries + getCoffeeBySlug: the displayed image's backdrop (image_fills), else null.
   image_fill?: string | null;
+  // List queries + getCoffeeBySlug: the displayed image's local copy (/img/…), else null.
+  image_copy?: string | null;
   created_at: string;
   updated_at: string;
 }

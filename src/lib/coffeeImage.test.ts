@@ -15,6 +15,17 @@ describe('coffeeImage', () => {
       .toEqual({ src: 'https://img.example/logo.png', alt: 'Norml logo', fill: NEUTRAL_BACKDROP });
   });
 
+  it('shows our local copy when the row has one', () => {
+    expect(coffeeImage({ ...base, image_url: 'https://img.example/bag.png', image_copy: '/img/coffees/abc.webp' }, '')?.src)
+      .toBe('/img/coffees/abc.webp');
+    expect(coffeeImage({ ...base, roaster_image_url: 'https://img.example/logo.png', image_copy: '/img/roasters/def.webp' }, '')?.src)
+      .toBe('/img/roasters/def.webp');
+  });
+
+  it('falls back to the original URL with no copy', () => {
+    expect(coffeeImage({ ...base, image_url: 'https://img.example/bag.png', image_copy: null }, '')?.src).toBe('https://img.example/bag.png');
+  });
+
   it('treats an empty own image as none', () => {
     expect(coffeeImage({ ...base, image_url: '', roaster_image_url: 'https://img.example/logo.png' }, '')?.alt).toBe('Norml logo');
   });

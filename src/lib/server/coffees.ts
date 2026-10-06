@@ -31,7 +31,13 @@ const ORDER_BY_NAME = `ORDER BY c.roaster COLLATE NOCASE, c.coffee_name COLLATE 
 // the left so the comparison uses its NOCASE collation.
 // image_fill: the backdrop of whichever image the row displays (its own, else
 // the roaster default), from image_fills; NULL until computed.
+// image_copy: that same image's local copy (image_copies), else NULL; a coffee's
+// own image never borrows the roaster's copy.
 const LIST_SELECT = `SELECT c.*, ri.image_url AS roaster_image_url, f.fill AS image_fill,
+  CASE WHEN NULLIF(c.image_url, '') IS NOT NULL
+    THEN (SELECT '/img/coffees/' || ic.file FROM image_copies ic WHERE ic.url = c.image_url AND ic.kind = 'coffees')
+    ELSE (SELECT '/img/roasters/' || ic.file FROM image_copies ic WHERE ic.url = ri.image_url AND ic.kind = 'roasters')
+  END AS image_copy,
   EXISTS (SELECT 1 FROM beanconqueror_beans b WHERE b.coffee_id = c.id) AS in_bean_conqueror,
   CASE WHEN c.status = 'open' THEN MAX(0, ROUND((
     SELECT c.amount_g - TOTAL(br.ground_coffee_g) FROM beanconqueror_beans b
