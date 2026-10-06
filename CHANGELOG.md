@@ -1,3 +1,29 @@
+# [1.46.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.45.0...v1.46.0) (2026-10-06)
+
+
+### Bug Fixes
+
+* **coffee-form:** phone button rows share each line; phone portrait+landscape in test:ui
+* **coffees:** inline-edit action row stays on one line in Cards and List like Compact
+* **coffees:** keep List inline-edit action row in the viewport, match Compact spacing
+* **coffees:** keep List inline-edit actions inside the table scroller
+* **coffees:** save and cancel under the inline edit form in cards and list views
+* **roaster-image:** clearing the image by typing drops the roaster-default mark
+
+
+### Features
+
+* **image-fill:** contained images on their fill at every render site and in form previews
+* **image-fill:** image_fills cache, image_fill on list rows, coffeeImage returns the fill
+* **image-fill:** image-fill endpoint and background fill worker at boot and after saves
+* **image-fill:** sharp, warm-palette backdrops and the border fill algorithm
+* **roaster-image:** roaster_image_url on list and coffee page rows
+* **roaster-image:** roaster_images table and roasterImages.ts
+* **roaster-image:** save set_roaster_default with the coffee, before the dedupe
+* **roaster-image:** set as roaster default button and roaster default preview
+* **roaster-image:** show the roaster default when a coffee has no image
+* **roaster-image:** store null when a coffee image equals its roaster default
+
 # [1.45.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.44.0...v1.45.0) (2026-10-05)
 
 
