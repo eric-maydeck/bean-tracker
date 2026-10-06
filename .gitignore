@@ -7,3 +7,6 @@ data/*.db
 .playwright-mcp/
 .ui-test/
 
+
+# Local image copies (server/imageCopies.ts)
+data/images/

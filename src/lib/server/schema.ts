@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS image_fills (
   fill TEXT NOT NULL
 );
 
+-- Our own copy of each displayed image (spec 2026-10-06-local-image-copies-design.md):
+-- original URL + kind → content-addressed file under images/<kind>/. Written by
+-- server/imageCopies.ts; joined in coffees.ts LIST_SELECT as image_copy.
+CREATE TABLE IF NOT EXISTS image_copies (
+  url TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('coffees', 'roasters')),
+  file TEXT NOT NULL,
+  PRIMARY KEY (url, kind)
+);
+
 CREATE TABLE IF NOT EXISTS subscriptions (
   id INTEGER PRIMARY KEY,
   roaster_service TEXT NOT NULL,
