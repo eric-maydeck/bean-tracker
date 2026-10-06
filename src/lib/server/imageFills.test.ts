@@ -38,6 +38,31 @@ describe('computeFill', () => {
     expect(await computeFill(framed)).toBe('#ffffff');
   });
 
+  it('tightly cropped wordmark touching the edges: not a solid background', async () => {
+    // Black bars spanning the full height, ~55% of the width: about half the stretched border is opaque.
+    const bars = Array.from({ length: 19 }, (_, i) => ({
+      input: { create: { width: 11, height: 36, channels: 4 as const, background: '#000000' } },
+      left: i * 20,
+      top: 0
+    }));
+    const wordmark = await sharp({ create: { width: 380, height: 36, channels: 4, background: CLEAR } })
+      .composite(bars)
+      .png()
+      .toBuffer();
+    expect(await computeFill(wordmark)).toBe(LIGHT_BACKDROP);
+  });
+
+  it('opaque tile with transparent rounded corners: still its border color', async () => {
+    const corner = { create: { width: 6, height: 6, channels: 4 as const, background: CLEAR } };
+    const tile = await sharp({ create: { width: 64, height: 64, channels: 4, background: '#3b88c3' } })
+      .composite(
+        [[0, 0], [58, 0], [0, 58], [58, 58]].map(([left, top]) => ({ input: corner, left, top, blend: 'dest-out' as const }))
+      )
+      .png()
+      .toBuffer();
+    expect(await computeFill(tile)).toBe('#3b88c3');
+  });
+
   it('transparent image with a dark glyph: the light backdrop', async () => {
     expect(await computeFill(await glyph('#1a1a1a'))).toBe(LIGHT_BACKDROP);
   });

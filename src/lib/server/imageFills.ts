@@ -13,8 +13,11 @@ const OPAQUE = 128; // alpha at or above this counts as opaque
 const hex2 = (n: number) => n.toString(16).padStart(2, '0');
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[xs.length >> 1];
 
-// Border mostly opaque → the median border color. Mostly transparent → a
-// backdrop contrasting with the foreground's mean luminance.
+// Border (nearly) all opaque → the median border color. Otherwise → a backdrop
+// contrasting with the foreground's mean luminance. "Nearly" is three quarters:
+// a solid background covers almost the whole edge (rounded corners lose a
+// little), while a tightly cropped wordmark touching the edges leaves big gaps
+// (~half the border) and must not be mistaken for a background.
 export async function computeFill(bytes: Buffer): Promise<string> {
   // fit 'fill' stretches, so the sampled border is the image's own border.
   // sharp reads only the first frame of an animated image by default.
@@ -31,7 +34,7 @@ export async function computeFill(bytes: Buffer): Promise<string> {
     }
   }
   const solidBorder = border.filter(opaque);
-  if (solidBorder.length * 2 >= border.length) {
+  if (solidBorder.length * 4 >= border.length * 3) {
     return '#' + [0, 1, 2].map((ch) => hex2(median(solidBorder.map((i) => data[i * 4 + ch])))).join('');
   }
   let sum = 0;
