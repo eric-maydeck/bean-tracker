@@ -43,3 +43,12 @@ export const ROASTER_IMAGE_DEFAULTS: readonly RoasterImageDefault[] = [
   { roaster: 'XLIII', image_url: 'https://xliiicoffee.com/wp-content/uploads/2023/05/202305261059-logo.png' },
   { roaster: 'Yelei Lab', image_url: 'https://assets.super.so/96640f2c-1f98-4b3a-8885-aded48c86a26/uploads/logo/a155f64b-0134-4476-aa41-cf50b60a1dcd.png' }
 ];
+
+// Logos the user found 2026-10-06 for the two roasters the first review left
+// blank. Signed Instagram links that expire 2026-10-10; the local-copy
+// background run stores our copy at the first boot after deploy.
+export const ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER = 'roaster_image_defaults_2026_10b_applied';
+export const ROASTER_IMAGE_DEFAULTS_2026_10B: readonly RoasterImageDefault[] = [
+  { roaster: 'Macs Roasters', image_url: '' },
+  { roaster: 'Dongze', image_url: '' }
+];

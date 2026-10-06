@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { setRoasterImage, getRoasterImage, getRoasterImages, applyRoasterImageDefaults } from './roasterImages';
 import { createCoffee, type NewCoffeeInput } from './coffees';
+import { ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER, ROASTER_IMAGE_DEFAULTS_MARKER } from './roasterImageDefaults';
 
 let db: DatabaseSync;
 beforeEach(() => {
@@ -91,5 +92,13 @@ describe('applyRoasterImageDefaults', () => {
     expect(applyRoasterImageDefaults(db, DEFAULTS, M)).toBeNull();
     expect(getRoasterImages(db)).toEqual({});
     expect(coffee(s).roaster).toBe('still');
+  });
+
+  it('the 2026-10b batch seeds Macs Roasters and Dongze', () => {
+    addCoffee(db);
+    applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
+    expect(getRoasterImage(db, 'Macs Roasters')).toMatch(/^https:\/\/scontent-xxx1-1\.cdninstagram\.com\//);
+    expect(getRoasterImage(db, 'Dongze')).toMatch(/^https:\/\/scontent-xxx1-1\.cdninstagram\.com\//);
+    expect(ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER).not.toBe(ROASTER_IMAGE_DEFAULTS_MARKER);
   });
 });

@@ -6,7 +6,7 @@ import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConqu
 import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 import { applyRoasterImageDefaults } from './roasterImages.ts';
-import { ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER } from './roasterImageDefaults.ts';
+import { ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER } from './roasterImageDefaults.ts';
 
 // Returns true the moment the column is actually added, false if it already
 // existed — callers use this to run a backfill exactly once, rather than on
@@ -86,6 +86,7 @@ export function applySchema(db: DatabaseSync): void {
   applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
   applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER);
+  applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   // Bean Conqueror's default rating is 0, which it shows as "no rating";
   // imports now store it as NULL. Idempotent, so it just runs every boot.
