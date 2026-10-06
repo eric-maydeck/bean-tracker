@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { createDb } from './db';
@@ -84,9 +87,12 @@ describe('image_fills cache', () => {
 
 describe('fetching fills', () => {
   let db: DatabaseSync;
+  let root: string;
   beforeEach(() => {
     db = createDb(':memory:');
+    root = mkdtempSync(join(tmpdir(), 'bt-images-'));
   });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
   const input = (over: Partial<NewCoffeeInput>): NewCoffeeInput => ({
     roaster: 'Sey', coffee_name: 'A', origin: null, roast_level: null, processing: null, amount_g: null, cost: null,
     roast_date: null, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null,
@@ -132,11 +138,11 @@ describe('fetching fills', () => {
       url.endsWith('q-bad.png') ? { status: 404, body: Buffer.alloc(0) } : { status: 200, body: good }
     );
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await queueFillMissing(db, fetchBytes);
+    await queueFillMissing(db, fetchBytes, root);
     expect(getImageFill(db, 'https://img.example/q-good.png')).toBe('#abcdef');
     expect(getImageFill(db, 'https://img.example/q-bad.png')).toBeNull();
     expect(log).toHaveBeenCalledTimes(1);
-    await queueFillMissing(db, fetchBytes);
+    await queueFillMissing(db, fetchBytes, root);
     expect(fetchBytes).toHaveBeenCalledTimes(2);
     log.mockRestore();
   });
@@ -150,12 +156,61 @@ describe('fetching fills', () => {
       await gate;
       return { status: 200, body };
     });
-    const run = queueFillMissing(db, fetchBytes);
+    const run = queueFillMissing(db, fetchBytes, root);
     createCoffee(db, input({ coffee_name: 'B', image_url: 'https://img.example/r-second.png' }));
-    expect(queueFillMissing(db, fetchBytes)).toBe(run);
+    expect(queueFillMissing(db, fetchBytes, root)).toBe(run);
     release();
     await run;
     expect(getImageFill(db, 'https://img.example/r-first.png')).toBe('#010203');
     expect(getImageFill(db, 'https://img.example/r-second.png')).toBe('#010203');
+  });
+
+  it('stores a copy per kind with one download per URL', async () => {
+    // a coffee whose own image is also its roaster's default
+    createCoffee(db, input({ coffee_name: 'L', image_url: 'https://x/logo.png' }));
+    setRoasterImage(db, 'Sey', 'https://x/logo.png');
+    const body = await solid(40, 40, '#6b4f3a');
+    const fetch = vi.fn(async () => ({ status: 200, body }));
+    await queueFillMissing(db, fetch, root);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(getImageFill(db, 'https://x/logo.png')).toBe('#6b4f3a');
+    expect(readdirSync(join(root, 'coffees'))).toHaveLength(1);
+    expect(readdirSync(join(root, 'roasters'))).toHaveLength(1);
+  });
+
+  it('a URL with a fill but no copy is fetched for its copy only', async () => {
+    createCoffee(db, input({ coffee_name: 'F', image_url: 'https://x/bag.png' }));
+    setImageFill(db, 'https://x/bag.png', '#123456');
+    const fetch = vi.fn(async () => ({ status: 200, body: await solid(10, 10, '#ffffff') }));
+    await queueFillMissing(db, fetch, root);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(getImageFill(db, 'https://x/bag.png')).toBe('#123456'); // not recomputed
+    expect(readdirSync(join(root, 'coffees'))).toHaveLength(1);
+  });
+
+  it('a URL with both a fill and a copy is not fetched', async () => {
+    createCoffee(db, input({ coffee_name: 'G', image_url: 'https://x/bag2.png' }));
+    const fetch = vi.fn(async () => ({ status: 200, body: await solid(10, 10, '#ffffff') }));
+    await queueFillMissing(db, fetch, root);
+    await queueFillMissing(db, fetch, root);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('one failing URL does not stop the others', async () => {
+    createCoffee(db, input({ coffee_name: 'A', image_url: 'https://x/dead.png' }));
+    createCoffee(db, input({ coffee_name: 'B', image_url: 'https://x/ok.png' }));
+    const okBody = await solid(10, 10, '#ffffff');
+    const fetch = vi.fn(async (url: string) => (url.includes('dead') ? { status: 404, body: Buffer.alloc(0) } : { status: 200, body: okBody }));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await queueFillMissing(db, fetch, root);
+    log.mockRestore();
+    expect(readdirSync(join(root, 'coffees'))).toHaveLength(1);
+    expect(db.prepare(`SELECT url FROM image_copies`).all()).toEqual([{ url: 'https://x/ok.png' }]);
+  });
+
+  it('fetchImageFill (Preview) stores no copy', async () => {
+    const fetch = vi.fn(async () => ({ status: 200, body: await solid(10, 10, '#ffffff') }));
+    await fetchImageFill(db, 'https://x/preview.png', fetch);
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM image_copies`).get()).toEqual({ n: 0 });
   });
 });

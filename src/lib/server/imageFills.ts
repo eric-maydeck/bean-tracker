@@ -1,9 +1,12 @@
 // Backdrop fill behind contained coffee images (spec 2026-10-05 "Image fill
-// and fit"). Server-only (sharp). Not imported by db.ts, so no .ts extensions.
+// and fit"). The background run also stores local copies of the same images
+// (spec 2026-10-06), from the same single download; Preview's fetchImageFill
+// never does. Server-only (sharp). Not imported by db.ts, so no .ts extensions.
 import type { DatabaseSync } from 'node:sqlite';
 import sharp from 'sharp';
 import { LIGHT_BACKDROP, DARK_BACKDROP, NEUTRAL_BACKDROP } from '../imageBackdrop';
 import { FillError, safeFetchBytes } from './productFetch';
+import { imagesRoot, storeImageCopy, missingCopies, type CopyKind } from './imageCopies';
 
 const SAMPLE = 64;
 const OPAQUE = 128; // alpha at or above this counts as opaque
@@ -93,11 +96,45 @@ const failed = new Set<string>();
 let running: Promise<void> | null = null;
 let again = false;
 
-// Fills missing URLs one at a time. Callers never await it (a save or boot
-// must not wait on the network); a call during a run makes that run go round
-// once more, so a URL saved mid-run isn't missed. Never rejects. Returns the
-// run, for tests.
-export function queueFillMissing(db: DatabaseSync, fetchBytes: FetchBytes = safeFetchBytes): Promise<void> {
+// Everything a URL still needs from one download: its fill and/or its copies.
+function pendingWork(db: DatabaseSync, root: string): Map<string, { fill: boolean; kinds: CopyKind[] }> {
+  const work = new Map<string, { fill: boolean; kinds: CopyKind[] }>();
+  const entry = (url: string) => work.get(url) ?? work.set(url, { fill: false, kinds: [] }).get(url)!;
+  for (const url of missingFillUrls(db)) entry(url).fill = true;
+  for (const { url, kind } of missingCopies(db, root)) entry(url).kinds.push(kind);
+  return work;
+}
+
+async function processUrl(
+  db: DatabaseSync,
+  root: string,
+  url: string,
+  need: { fill: boolean; kinds: CopyKind[] },
+  fetchBytes: FetchBytes
+): Promise<void> {
+  const res = await fetchBytes(url);
+  if (res.status !== 200) throw new FillError(`The image answered with HTTP ${res.status}`);
+  if (need.fill) {
+    let fill: string;
+    try {
+      fill = await computeFill(res.body);
+    } catch {
+      throw new FillError("Couldn't read that as an image");
+    }
+    setImageFill(db, url, fill);
+  }
+  for (const kind of need.kinds) await storeImageCopy(db, root, url, kind, res.body);
+}
+
+// Fills and copies missing URLs one at a time, one download per URL. Callers
+// never await it (a save or boot must not wait on the network); a call during
+// a run makes that run go round once more, so a URL saved mid-run isn't
+// missed. Never rejects. Returns the run, for tests.
+export function queueFillMissing(
+  db: DatabaseSync,
+  fetchBytes: FetchBytes = safeFetchBytes,
+  root: string = imagesRoot()
+): Promise<void> {
   if (running) {
     again = true;
     return running;
@@ -105,13 +142,13 @@ export function queueFillMissing(db: DatabaseSync, fetchBytes: FetchBytes = safe
   running = (async () => {
     do {
       again = false;
-      for (const url of missingFillUrls(db)) {
+      for (const [url, need] of pendingWork(db, root)) {
         if (failed.has(url)) continue;
         try {
-          await fetchImageFill(db, url, fetchBytes);
+          await processUrl(db, root, url, need, fetchBytes);
         } catch (err) {
           failed.add(url);
-          console.error(`image fill failed for ${url}:`, err instanceof Error ? err.message : err);
+          console.error(`image fill/copy failed for ${url}:`, err instanceof Error ? err.message : err);
         }
       }
     } while (again);
