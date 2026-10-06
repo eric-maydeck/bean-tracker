@@ -88,7 +88,7 @@
         {@const img = coffeeImage(coffee, '')}
         <a class="card" href={`/coffees/${coffee.slug}`}>
           {#if img}
-            <img src={img.src} alt={img.alt} class="card-thumb" />
+            <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>
@@ -128,7 +128,7 @@
         {@const img = coffeeImage(coffee, '')}
         <a class="card" href={`/coffees/${coffee.slug}`}>
           {#if img}
-            <img src={img.src} alt={img.alt} class="card-thumb" />
+            <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
           {/if}
           <h2>{coffee.coffee_name}</h2>
           <p class="text-muted">{coffee.roaster}</p>

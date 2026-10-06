@@ -138,6 +138,20 @@ export async function checkLayout(page: Page): Promise<void> {
         }
       }
     }
+    // 9. (ui-rules 18) Images are never cropped or stretched: an image whose
+    // box shape differs from its own is contained, on a fill color.
+    for (const img of all('img') as HTMLImageElement[]) {
+      if (!img.complete || !img.naturalWidth || !img.naturalHeight) continue;
+      const r = img.getBoundingClientRect();
+      const box = r.width / r.height;
+      if (Math.abs(box - img.naturalWidth / img.naturalHeight) <= 0.01 * box) continue;
+      const style = getComputedStyle(img);
+      if (style.objectFit !== 'contain' && style.objectFit !== 'scale-down') {
+        out.push(`image cropped or stretched (object-fit: ${style.objectFit}): ${describe(img)}`);
+      } else if (style.backgroundColor === 'rgba(0, 0, 0, 0)') {
+        out.push(`contained image has no fill color behind it: ${describe(img)}`);
+      }
+    }
     return out;
   });
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);

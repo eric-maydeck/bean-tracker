@@ -302,7 +302,7 @@
   <article class="detail">
     <div class="detail-media">
       {#if detailImage}
-        <img src={detailImage.src} alt={detailImage.alt} />
+        <img src={detailImage.src} alt={detailImage.alt} style:background-color={detailImage.fill} />
       {:else}
         <div class="detail-media-placeholder" aria-hidden="true">☕</div>
       {/if}

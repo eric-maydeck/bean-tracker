@@ -58,7 +58,12 @@ setRoasterImage(db, 'Moonwake', 'data:image/svg+xml,' + encodeURIComponent(
 coffee({ roaster: 'Hydrangea', coffee_name: 'Colombia Pink Bourbon', status: 'archive', roast_date: daysAgo(90) });
 const linked = coffee({ roaster: 'The Picky Chemist', coffee_name: 'El Dorado Double Ferment Gesha', status: 'open',
   roast_date: daysAgo(15) });
-coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Gitega Natural', roast_date: daysAgo(9) });
+// 4:1, so the UI checks can see it isn't cropped (object-fit: contain). The
+// worker never fetches data: URIs, so its fill is seeded below.
+const WIDE = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40"><rect width="160" height="40" fill="#f2c14e"/></svg>');
+const wide = coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Gitega Natural', roast_date: daysAgo(9), image_url: WIDE });
+db.prepare(`INSERT INTO image_fills (url, fill) VALUES (?, ?)`).run(WIDE, '#f2c14e');
 // Open + linked, so "grams left" shows: "2kg (2kg left)", "999g (999g left)", "1.5kg (1.2kg left)".
 const GRAMS_NAMES = {
   big: 'Ethiopia Guji Hambela Natural Bulk Bag',
@@ -112,7 +117,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
-  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, decaf: decaf.slug, big: grams.big.slug,
+  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));

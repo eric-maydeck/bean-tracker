@@ -1,9 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { checkLayout } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
@@ -84,13 +84,32 @@ async function expectActionsUnderForm(page: Page) {
   }
 }
 
+// Contained, never cropped, on its fill (spec "Image fill and fit").
+const WIDE_FILL = 'rgb(242, 193, 78)'; // seeded #f2c14e
+const NEUTRAL = 'rgb(230, 221, 210)'; // NEUTRAL_BACKDROP #e6ddd2
+async function expectContained(img: Locator, background?: string) {
+  const s = await img.evaluate((el) => ({ fit: getComputedStyle(el).objectFit, bg: getComputedStyle(el).backgroundColor }));
+  expect(s.fit).toBe('contain');
+  if (background) expect(s.bg).toBe(background);
+  else expect(s.bg).not.toBe('rgba(0, 0, 0, 0)');
+}
+
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
 export const STATES: State[] = [
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
-  { name: 'coffees-cards', path: () => '/coffees?status=all&view=cards' },
+  {
+    name: 'coffees-cards',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const wide = page.locator('.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img.card-thumb');
+      expect(await wide.evaluate((el) => (el as HTMLImageElement).naturalWidth / (el as HTMLImageElement).naturalHeight)).toBe(4);
+      await expectContained(wide, WIDE_FILL);
+      await expectContained(page.getByRole('img', { name: 'Moonwake logo', exact: true }), NEUTRAL);
+    }
+  },
   {
     name: 'coffees-inline-edit-pending',
     path: () => '/coffees?status=backlog&view=list',
@@ -106,10 +125,16 @@ export const STATES: State[] = [
   { name: 'coffee-frozen', path: (s) => `/coffees/${s.slugs.frozen}` },
   { name: 'coffee-decaf', path: (s) => `/coffees/${s.slugs.decaf}` },
   {
+    name: 'coffee-image-fill',
+    path: (s) => `/coffees/${s.slugs.wide}`,
+    act: (page) => expectContained(page.locator('.detail-media img'), WIDE_FILL)
+  },
+  {
     name: 'on-deck',
     path: () => '/on-deck',
     act: async (page) => {
       for (const text of Object.values(GRAMS)) await expect(page.getByText(text, { exact: true })).toBeVisible();
+      for (const img of await page.locator('img.card-thumb').all()) await expectContained(img);
     }
   },
   {
@@ -220,6 +245,7 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByText('Roaster default', { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Set as roaster default' })).toBeDisabled();
+      await expectContained(page.locator('.default-preview img'), NEUTRAL);
     }
   },
   {
@@ -308,6 +334,7 @@ test.describe('signed out', () => {
     const img = page.getByRole('img', { name: 'Moonwake logo', exact: true });
     await expect(img).toBeVisible();
     expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await expectContained(page.locator('a.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img'), WIDE_FILL);
     await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png`, fullPage: true });
     await checkLayout(page);
   });

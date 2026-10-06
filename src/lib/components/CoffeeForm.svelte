@@ -5,6 +5,7 @@
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault } from '$lib/pendingChanges';
   import { roasterDefaultFor } from '$lib/coffeeImage';
+  import { backdrop } from '$lib/imageBackdrop';
   import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
 
   let {
@@ -75,6 +76,22 @@
   let unsavedUrl = $state<string | null>(null);
   let previewSrc = $state<string | null>(null);
   let previewFailed = $state(false);
+  // Backdrop per previewed URL (POST /api/coffees/image-fill). Keyed by URL, so
+  // a reply that lands after the URL changed is stored under its own URL and
+  // never shown behind another image. Non-http URLs (data:) aren't sent.
+  let fills = $state<Record<string, string>>({});
+  const requested = new Set<string>();
+  async function loadFill(url: string) {
+    if (!/^https?:\/\//i.test(url) || requested.has(url)) return;
+    requested.add(url);
+    const res = await fetch('/api/coffees/image-fill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    }).catch(() => null);
+    const data = res?.ok ? await res.json().catch(() => null) : null;
+    if (typeof data?.fill === 'string') fills[url] = data.fill;
+  }
   // Live copies of the two fields the roaster-default button and preview read.
   let roasterValue = $state((coffee?.roaster ?? prefill?.roaster) ?? '');
   let imageValue = $state((coffee?.image_url ?? prefill?.image_url) ?? '');
@@ -138,7 +155,12 @@
   function showPreview(src: string) {
     previewSrc = src.trim() || null;
     previewFailed = false;
+    if (previewSrc) loadFill(previewSrc);
   }
+
+  $effect(() => {
+    if (defaultPreview) loadFill(defaultPreview);
+  });
 
   // "Original" is read at failure time, so it's the coffee's current value
   // including staged edits (in Edit mode `coffee` is the staged merge).
@@ -511,14 +533,25 @@
       {/if}
       {#if defaultPreview}
         <figure class="default-preview">
-          <img class="image-preview" src={defaultPreview} alt={`${roasterValue.trim()} logo`} />
+          <img
+            class="image-preview"
+            src={defaultPreview}
+            alt={`${roasterValue.trim()} logo`}
+            style:background-color={backdrop(fills[defaultPreview])}
+          />
           <figcaption class="text-muted fill-note">Roaster default</figcaption>
         </figure>
       {:else if previewSrc}
         {#if previewFailed}
           <p class="text-muted fill-note">Couldn't load image</p>
         {:else}
-          <img class="image-preview" src={previewSrc} alt="Preview" onerror={() => (previewFailed = true)} />
+          <img
+            class="image-preview"
+            src={previewSrc}
+            alt="Preview"
+            style:background-color={backdrop(fills[previewSrc])}
+            onerror={() => (previewFailed = true)}
+          />
         {/if}
       {/if}
     </div>
@@ -744,9 +777,10 @@
   .image-preview {
     display: block;
     margin-top: var(--space-2);
-    max-width: 96px;
-    max-height: 96px;
+    width: 96px;
+    height: 96px;
     object-fit: contain;
+    border-radius: var(--radius);
   }
   .default-preview {
     margin: 0;
