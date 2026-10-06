@@ -296,6 +296,15 @@ describe('importBeanConquerorData', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].rating).toBe(9);
   });
+
+  it('stores a 0 rating as unrated (Bean Conqueror\'s default, shown as no rating there)', () => {
+    const db = createDb(':memory:');
+    const bean = { id: 'b1', name: 'Bean', roaster: null, roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: 0, bcCreatedAt: null, bcArchived: false };
+    const brew = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: 'b1', preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 0, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
+    importBeanConquerorData(db, { beans: [bean], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
+    expect(db.prepare('SELECT rating FROM beanconqueror_beans').get()).toEqual({ rating: null });
+    expect(db.prepare('SELECT rating FROM beanconqueror_brews').get()).toEqual({ rating: null });
+  });
 });
 
 describe('getUnmatchedBeanConquerorBeans', () => {

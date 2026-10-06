@@ -84,6 +84,10 @@ export function applySchema(db: DatabaseSync): void {
   applyBeanConquerorPairs(db, BEAN_CONQUEROR_PAIRS); // own transaction, so after the COMMIT above
   applyBeanConquerorPairs(db, PAIRS_2026_10B, FIXES_2026_10B, PAIRS_2026_10B_MARKER);
   dropColumnIfExists(db, 'subscriptions', 'purchased');
+  // Bean Conqueror's default rating is 0, which it shows as "no rating";
+  // imports now store it as NULL. Idempotent, so it just runs every boot.
+  db.exec(`UPDATE beanconqueror_brews SET rating = NULL WHERE rating = 0;
+           UPDATE beanconqueror_beans SET rating = NULL WHERE rating = 0;`);
   const decafJustAdded = ensureColumn(db, 'coffees', 'decaf', 'INTEGER NOT NULL DEFAULT 0');
   if (decafJustAdded) {
     // One-time backfill for pre-existing rows: several coffees already had

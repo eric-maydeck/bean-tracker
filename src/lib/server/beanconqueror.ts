@@ -403,7 +403,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
       ).run(
         b.id, b.name, b.roaster, b.roastDate, b.roastType, b.degreeOfRoast, b.customDegreeOfRoast,
         b.blend, b.weightG, b.cost, b.aromatics, b.cuppingPoints, b.decaffeinated ? 1 : 0, b.url,
-        b.eanArticleNumber, b.notes, b.rating, b.bcCreatedAt, b.bcArchived ? 1 : 0, now
+        b.eanArticleNumber, b.notes, b.rating || null, b.bcCreatedAt, b.bcArchived ? 1 : 0, now
       );
     }
 
@@ -475,7 +475,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
         br.bcCreatedAt, br.beanId, br.preparationId, br.millId, br.grindSetting, br.groundCoffeeG,
         br.brewTemperature, br.beanType, br.grindSpeedRpm, br.grindTime, br.profile, br.preparationTools,
         br.temperatureTime, br.brewTime, br.bloomTime, br.firstDripTime, br.waterAmountG, br.coffeeType,
-        br.coffeeConcentration, br.rating, br.notes, br.beverageQuantity, br.tdsPercent,
+        br.coffeeConcentration, br.rating || null, br.notes, br.beverageQuantity, br.tdsPercent,
         br.extractionYieldPercent, br.brewRatio, br.beanAgeDays, br.bcArchived ? 1 : 0, br.water, now
       );
     }
