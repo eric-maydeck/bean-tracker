@@ -76,6 +76,13 @@
     showMore = false;
   });
 
+  // Sign in comes back to this page. Read from location at click time, since
+  // page.url goes stale after replaceState (HANDOFF gotcha).
+  function signInHere(event: MouseEvent & { currentTarget: HTMLAnchorElement }) {
+    if (location.pathname === '/login') return;
+    event.currentTarget.href = `/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`;
+  }
+
   function toggleTheme() {
     theme = theme === 'light' ? 'dark' : 'light';
     try {
@@ -98,7 +105,7 @@
         <button class="nav-link-button" type="submit">Sign out</button>
       </form>
     {:else}
-      <a href="/login" aria-current={page.url.pathname === '/login' ? 'page' : undefined}>Sign in</a>
+      <a href="/login" onclick={signInHere} aria-current={page.url.pathname === '/login' ? 'page' : undefined}>Sign in</a>
     {/if}
   </div>
   <button
@@ -145,7 +152,7 @@
         <button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button>
       </form>
     {:else}
-      <a class="nav-link-button" href="/login"><Icon name="sign-in" /> Sign in</a>
+      <a class="nav-link-button" href="/login" onclick={signInHere}><Icon name="sign-in" /> Sign in</a>
     {/if}
     {#if data.isAdmin}
       <button class="nav-link-button" type="button" onclick={() => (showAlerts = true)}>

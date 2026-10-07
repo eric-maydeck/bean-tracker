@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { page } from '$app/state';
   let { form } = $props();
 </script>
 
@@ -14,6 +15,7 @@
 {/if}
 
 <form method="POST" action="?/login" use:enhance>
+  <input type="hidden" name="redirectTo" value={page.url.searchParams.get('redirectTo') ?? ''} />
   <div class="form-field">
     <label for="password">Password</label>
     <input id="password" name="password" type="password" required autofocus />

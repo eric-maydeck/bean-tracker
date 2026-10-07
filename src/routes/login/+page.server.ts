@@ -5,7 +5,8 @@ import {
   SESSION_COOKIE_NAME,
   SESSION_DURATION_MS,
   REMEMBERED_SESSION_DURATION_MS,
-  createSessionCookieValue
+  createSessionCookieValue,
+  safeRedirectTarget
 } from '$lib/server/auth';
 import { attemptLogin, resolveClientIp } from '$lib/server/loginRateLimit';
 
@@ -37,7 +38,7 @@ export const actions: Actions = {
       secure: !dev,
       maxAge: durationMs / 1000
     });
-    redirect(303, '/coffees');
+    redirect(303, safeRedirectTarget(String(formData.get('redirectTo') ?? '')));
   },
   logout: async ({ cookies }) => {
     cookies.delete(SESSION_COOKIE_NAME, { path: '/', secure: !dev });

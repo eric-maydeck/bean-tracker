@@ -72,3 +72,19 @@ export function requireAdmin(locals: App.Locals): void {
     error(401, 'Unauthorized');
   }
 }
+
+// Where to go after signing in: a same-site path only (never an open redirect),
+// resolved the way a browser would so `//host` and `/\host` count as off-site.
+export function safeRedirectTarget(target: string | null | undefined): string {
+  if (target?.startsWith('/')) {
+    try {
+      const url = new URL(target, 'http://self');
+      if (url.origin === 'http://self' && url.pathname !== '/login') {
+        return url.pathname + url.search + url.hash;
+      }
+    } catch {
+      // unparseable: fall through
+    }
+  }
+  return '/coffees';
+}

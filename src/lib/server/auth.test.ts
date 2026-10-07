@@ -9,7 +9,8 @@ import {
   signSessionExpiry,
   createSessionCookieValue,
   verifySessionCookieValue,
-  requireAdmin
+  requireAdmin,
+  safeRedirectTarget
 } from './auth';
 
 describe('hashPassword / verifyPassword', () => {
@@ -112,5 +113,26 @@ describe('requireAdmin', () => {
     } catch (err) {
       expect((err as { status: number }).status).toBe(401);
     }
+  });
+});
+
+describe('safeRedirectTarget', () => {
+  it('keeps a same-site path with its query and hash', () => {
+    expect(safeRedirectTarget('/coffees/ethiopia-guji?tab=bc#notes')).toBe('/coffees/ethiopia-guji?tab=bc#notes');
+    expect(safeRedirectTarget('/stats')).toBe('/stats');
+  });
+
+  it('falls back to /coffees for anything off-site, empty or malformed', () => {
+    for (const bad of [
+      null, '', 'coffees', '//evil.com', '///evil.com', 'https://evil.com', '/\\evil.com',
+      '\\evil.com', 'javascript:alert(1)', ' /stats', '/%0a/evil.com'.replace('%0a', '\n')
+    ]) {
+      expect(safeRedirectTarget(bad), String(bad)).toBe('/coffees');
+    }
+  });
+
+  it('never sends you back to /login', () => {
+    expect(safeRedirectTarget('/login')).toBe('/coffees');
+    expect(safeRedirectTarget('/login?redirectTo=/stats')).toBe('/coffees');
   });
 });
