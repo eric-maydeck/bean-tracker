@@ -594,12 +594,15 @@
        comment below. -->
   <div class="form-field-group group-image">
     <div class="form-field field-image">
-      <label for="image_url">Image URL (label or roaster logo)</label>
+      <!-- A one-line label so the input lines up with its row's (a 2-line label
+           pushed it down); the hint moves into the placeholder. -->
+      <label for="image_url">Image URL</label>
       <div class="inline-row">
         <input
           id="image_url"
           name="image_url"
           type="url"
+          placeholder="Bag label or roaster logo"
           value={(coffee?.image_url ?? prefill?.image_url) ?? ''}
           oninput={syncImageFields}
         />

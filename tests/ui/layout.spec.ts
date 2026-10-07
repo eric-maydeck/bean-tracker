@@ -55,6 +55,26 @@ async function expectBagOnOwnLine(page: Page) {
   expect(bad).toEqual([]);
 }
 
+// User feedback 2026-10-06: fields that share a row of the coffee form line up.
+// Each .form-grid cell's first input/select (a cell's top = its grid row) must
+// have the same top as the others in that row (a longer label pushed one down).
+async function expectFieldRowsAligned(page: Page) {
+  const rows = await page.locator('form .form-grid').evaluate((grid) => {
+    const byRow = new Map<number, [string, number][]>();
+    for (const cell of grid.children) {
+      const input = [...cell.querySelectorAll('input:not([type="checkbox"]):not([type="hidden"]), select')].find((i) => (i as HTMLElement).offsetParent);
+      if (!input) continue;
+      const key = Math.round(cell.getBoundingClientRect().top);
+      byRow.set(key, [...(byRow.get(key) ?? []), [input.id || (input as HTMLInputElement).name, input.getBoundingClientRect().top]]);
+    }
+    return [...byRow.values()].filter((r) => r.length > 1);
+  });
+  for (const r of rows) {
+    const tops = r.map(([, t]) => t);
+    expect(Math.max(...tops) - Math.min(...tops), `inputs in one row not aligned: ${JSON.stringify(r)}`).toBeLessThanOrEqual(1);
+  }
+}
+
 type View = 'cards' | 'list' | 'compact';
 // A row's own Edit on /coffees (solo edit: Save + Cancel scoped to that coffee).
 async function openSoloEdit(page: Page, view: View, name: string) {
@@ -745,6 +765,22 @@ export const STATES: State[] = [
       expect(cols).toBeLessThanOrEqual(3);
       const want: Record<string, number> = { w1280: 3, 'phone-landscape': 3, w768: 2, w480: 1, 'phone-portrait': 1 };
       if (want[test.info().project.name]) expect(cols).toBe(want[test.info().project.name]);
+    }
+  },
+  {
+    name: 'coffees-cards-inline-edit-aligned',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page: Page) => {
+      await openSoloEdit(page, 'cards', 'Colombia Pink Bourbon');
+      await expectFieldRowsAligned(page);
+    }
+  },
+  {
+    name: 'coffee-edit-aligned',
+    path: (s: Seed) => `/coffees/${s.slugs.frozen}`,
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expectFieldRowsAligned(page);
     }
   },
   {
