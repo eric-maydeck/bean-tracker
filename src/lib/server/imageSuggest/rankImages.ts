@@ -72,6 +72,5 @@ export function rankImages(
   scored.sort((a, b) => b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.own - a.own || b.score - a.score || a.p - b.p || a.i - b.i);
   const seen = new Set<string>();
   const out = scored.filter(({ c }) => !seen.has(c.image) && seen.add(c.image));
-  if (out.length && out[0].days !== Infinity) out[0].c.closest = true;
   return out.map(({ c }) => c);
 }

@@ -65,7 +65,7 @@ export async function suggest(
     const pages: CandidatePage[] = [];
     try {
       for (const found of await p.search(q, signal)) {
-        if (pages.length < MAX_PAGES && !seenPages.has(found.url)) pages.push(found);
+        if (pages.length < MAX_PAGES && !seenPages.has(found.url) && !pages.some((x) => x.url === found.url)) pages.push(found);
       }
     } catch (err) {
       failed++;
@@ -88,8 +88,15 @@ export async function suggest(
     }
   }
   if (failed === ran) return { status: 'failed', site: q.site, candidates: [], notes };
-  // Each provider group flags its own closest; keep only the first.
-  const first = candidates.findIndex((c) => c.closest);
-  candidates.forEach((c, i) => (c.closest = i === first));
+  // closest: the one candidate dated nearest the roast date (ties: earlier in the list).
+  const roastMs = q.roastDate ? Date.parse(q.roastDate) : NaN;
+  let best = -1;
+  let bestDays = Infinity;
+  candidates.forEach((c, i) => {
+    const days = c.published && !Number.isNaN(roastMs) ? Math.abs(Date.parse(c.published) - roastMs) : Infinity;
+    c.closest = false;
+    if (days < bestDays) [best, bestDays] = [i, days];
+  });
+  if (best >= 0) candidates[best].closest = true;
   return { status: candidates.length ? 'ok' : 'empty', site: q.site, candidates, notes };
 }

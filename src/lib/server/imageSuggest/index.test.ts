@@ -71,15 +71,27 @@ describe('suggest fill rule', () => {
     await run([fake('a', [1, 2, 3, 4, 5, 6, 7].map(page))], fetchPage);
     expect(vi.mocked(fetchPage)).toHaveBeenCalledTimes(5);
   });
-  it('only one candidate is closest', async () => {
-    const fetchPage: FetchPage = async (url) => ({
-      status: 200,
-      body: `<meta property="article:published_time" content="2026-08-20"><img src="${url}/x.png" srcset="x 1x">`,
-      finalUrl: url
-    });
-    const r = await run([fake('a', [page(1)]), fake('b', [page(2)])], fetchPage);
-    expect(r.candidates.filter((c) => c.closest)).toHaveLength(1);
-    expect(r.candidates[0].closest).toBe(true);
+  const dated = (m: Record<string, string | null>): FetchPage => async (url) => ({
+    status: 200,
+    body: `${m[url.split('/').pop()!] ? `<meta property="article:published_time" content="${m[url.split('/').pop()!]}">` : ''}<img src="${url}/x.png" srcset="x 1x">`,
+    finalUrl: url
+  });
+  const closest = (r: Awaited<ReturnType<typeof run>>) => r.candidates.map((c) => c.closest);
+  it('closest is the final-list candidate dated nearest the roast date, not the top-ranked', async () => {
+    const r = await run([fake('a', [{ ...page(1), title: 'Kiambu' }, page(2)])], dated({ 1: '2020-01-01', 2: '2026-08-30' }));
+    expect(closest(r)).toEqual([false, true]);
+  });
+  it('closest skips an undated first candidate', async () => {
+    expect(closest(await run([fake('a', [{ ...page(1), title: 'Kiambu' }, page(2)])], dated({ 1: null, 2: '2026-08-30' })))).toEqual([false, true]);
+  });
+  it('no roast date: nothing is closest', async () => {
+    const r = await suggest({ ...Q, roastDate: null }, { providers: [fake('a', [page(1)])], fetchPage: dated({ 1: '2026-08-30' }) });
+    expect(closest(r)).toEqual([false]);
+  });
+  it('a page repeated within one provider is fetched once', async () => {
+    const fetchPage = pages();
+    await run([fake('a', [page(1), page(1), page(2)])], fetchPage);
+    expect(vi.mocked(fetchPage)).toHaveBeenCalledTimes(2);
   });
 });
 
