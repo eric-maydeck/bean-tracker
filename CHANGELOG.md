@@ -1,3 +1,36 @@
+# [1.52.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.51.0...v1.52.0) (2026-10-07)
+
+
+### Bug Fixes
+
+* **coffee-form:** image url input lines up with its row
+* **coffees:** a pending card keeps its action icons when another card opens
+* **coffees:** inline edit action row wraps inside a narrow card
+* **image-suggest:** a pick never replaces a site staged by change
+* **image-suggest:** closest computed on the final list, restore per-provider page dedupe
+* **image-suggest:** closing the dialog mid-search returns focus to suggest
+* **image-suggest:** longer excerpt from the tasting notes, no smushed words
+* **share:** share button lines up with inline-block neighbors
+* **share:** top-align instead of a label baseline
+
+
+### Features
+
+* **image-suggest:** admin-only image-suggest endpoint
+* **image-suggest:** large image cards in the suggest dialog
+* **image-suggest:** later providers only fill, name match ranks first
+* **image-suggest:** provider comparison script
+* **image-suggest:** rank a page's images by bag-art hints
+* **image-suggest:** read every image from a product page
+* **image-suggest:** release date, excerpt and closest-to-roast ranking
+* **image-suggest:** roaster_websites table with boot backfill
+* **image-suggest:** run providers in order and rank the pages' images
+* **image-suggest:** save a staged roaster_website with the coffee
+* **image-suggest:** shopify store search provider
+* **image-suggest:** show suggestions in a dialog with dates and notes
+* **image-suggest:** suggest button and pick list in the coffee form
+* **image-suggest:** tavily provider with a 31-day call budget
+
 # [1.51.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.50.0...v1.51.0) (2026-10-06)
 
 
