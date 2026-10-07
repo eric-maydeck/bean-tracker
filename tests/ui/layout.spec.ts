@@ -107,6 +107,8 @@ async function expectActionRow(page: Page) {
       n: bs.length,
       right: Math.max(...bs.map((b) => b.right)),
       left: Math.min(...bs.map((b) => b.left)),
+      itemLeft: item.left,
+      itemRight: item.right,
       above: top - wrap.previousElementSibling!.getBoundingClientRect().bottom,
       below: item.bottom - bottom,
       minW: Math.min(...bs.map((b) => b.width)),
@@ -117,6 +119,10 @@ async function expectActionRow(page: Page) {
   expect(m.n).toBe(6);
   expect(m.right, 'an action button spills past the right edge').toBeLessThanOrEqual(vw);
   expect(m.left).toBeGreaterThanOrEqual(0);
+  // ...and inside its own card/row: a desktop card is narrower than the viewport,
+  // so an overflowing row spills into the next card while still in the viewport.
+  expect(m.right, 'an action button spills past its card/row').toBeLessThanOrEqual(m.itemRight + 0.5);
+  expect(m.left, 'an action button spills past its card/row').toBeGreaterThanOrEqual(m.itemLeft - 0.5);
   expect(m.minW, `narrowest action button ${m.minW}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
   expect(m.minH, `shortest action button ${m.minH}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
   expect(Math.abs(m.above - ACTION_GAP.above), `gap above ${m.above}`).toBeLessThanOrEqual(2);
