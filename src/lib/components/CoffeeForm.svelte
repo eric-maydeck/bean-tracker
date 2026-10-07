@@ -148,7 +148,8 @@
   }
 
   function pick(c: Candidate) {
-    const p = pickCandidate(c, fieldValue('product_url'), suggestResult?.storedSite ?? null, fieldValue('roaster'));
+    // A site staged by "change" counts as stored: only "change" replaces a site.
+    const p = pickCandidate(c, fieldValue('product_url'), suggestResult?.storedSite ?? (roasterWebsite || null), fieldValue('roaster'));
     setField('image_url', p.image_url);
     if (p.product_url) setField('product_url', p.product_url);
     // A pick never clears a site already staged (e.g. by "change").

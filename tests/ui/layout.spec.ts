@@ -479,7 +479,7 @@ export const STATES: State[] = [
   {
     // Enter in the site box reruns Suggest with that site; the form is not
     // submitted. A working search on the typed site stages it (as the
-    // endpoint normalized it), and a pick from another host keeps it.
+    // endpoint normalized it), and a later pick never replaces it.
     name: 'coffee-edit-suggest-change-site',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
@@ -498,7 +498,9 @@ export const STATES: State[] = [
       await expect(page.locator('#image_url')).toBeVisible();
       await expect(page.locator('.suggest-pick')).toHaveCount(6);
       await expect(page.locator('input[name="roaster_website"]')).toHaveValue('https://moonwake.coffee');
-      await page.locator('.suggest-pick').nth(2).click();
+      // A pick on a host that matches the roaster name (moonwake.example) must
+      // not replace the site "change" staged.
+      await page.locator('.suggest-pick').nth(0).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveValue('https://moonwake.coffee');
     }
   },
