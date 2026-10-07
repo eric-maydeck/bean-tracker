@@ -1022,6 +1022,12 @@ div.compact-row .compact-row-sub {
   padding: 0 var(--space-1) var(--space-3);
 }
 
+/* An open edit form isn't inset like the row's text, so its buttons start at
+   the edge: line the action icons up with them, not with the title. */
+.compact-row-wrap:has(> form) > .action-buttons {
+  padding-left: 0;
+}
+
 /* Compact edit mode: all action icons on one row (list view keeps its two
    fixed rows), tap targets about the size of the form's Cancel/Clone, a
    clear gap below those, and the Pending badge on its own line underneath

@@ -102,6 +102,14 @@ async function expectActionsUnderForm(page: Page) {
     expect(r.y).toBeGreaterThan(m.y);
     expect(r.y - m.y).toBeLessThan(page.viewportSize()!.height);
   }
+  // ui-rules 23: the action icons start at the form's left edge, like its own buttons
+  // (user report 2026-10-06: compact's sat 4px in).
+  // (Measured at sideways-scroll start: List's action row is sticky.)
+  const formEl = page.locator('form').filter({ has: marked });
+  await formEl.evaluate((f) => { for (let e: Element | null = f; e; e = e.parentElement) e.scrollLeft = 0; });
+  const save = (await page.getByRole('button', { name: 'Save', exact: true }).boundingBox())!;
+  const form = (await formEl.boundingBox())!;
+  expect(Math.abs(save.x - form.x)).toBeLessThan(1);
   // ui-rules 20: the action row is one line (every button at the same top)
   // whenever its buttons fit the container; same in every view.
   const row = await page.getByRole('button', { name: 'Save', exact: true }).evaluate((save) => {

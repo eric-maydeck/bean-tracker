@@ -29,6 +29,7 @@ when it can be automated.
 | 20 | An inline edit's action row (Save/Cancel/Delete/status icons) under the form stays on one line at phone width whenever its buttons fit, and looks the same in Cards, List and Compact (user feedback 2026-10-05). | Per state: `expectActionsUnderForm` |
 | 21 | An inline edit's action buttons are all within the viewport at phone width, and inside their own card or row at every width (they wrap rather than spill into the next card), in every view (List's wide table must not push them off-screen) (user feedback 2026-10-05). | Per state: `expectActionRow` (`coffees-*-inline-edit-action-row`) |
 | 22 | The spacing above and below an inline edit's action row is the same in every view (about 16 px above, 12-18 px below) (user feedback 2026-10-05). | Per state: `expectActionRow` |
+| 23 | An inline edit's action row starts at the form's left edge, lined up with the form's own buttons (Clone, Edit), in every view (user feedback 2026-10-06). | Per state: `expectActionsUnderForm` |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.
