@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
@@ -161,11 +161,13 @@
     runSuggest();
   }
 
-  function suggestClosed() {
+  async function suggestClosed() {
     searchId++;
     suggesting = false;
     suggestResult = null;
     siteEditing = false;
+    // Suggest is still disabled until Svelte flushes `suggesting = false`.
+    await tick();
     suggestButton.focus();
   }
 

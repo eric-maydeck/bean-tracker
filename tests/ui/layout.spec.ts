@@ -593,6 +593,31 @@ export const STATES: State[] = [
     }
   },
   {
+    // Esc while still "Searching…" (Suggest disabled): focus still returns to
+    // Suggest, and the reply that lands later stages nothing.
+    name: 'coffee-edit-suggest-closed-searching',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      let release = () => {};
+      const replied = new Promise<void>((r) => (release = r));
+      await openSuggest(page, async (route) => {
+        await replied;
+        await route.fulfill({ json: SUGGEST_UNSTORED });
+      });
+      await expect(dlg(page).getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible();
+      const before = await page.locator('#image_url').inputValue();
+      await page.keyboard.press('Escape');
+      await expect(dlg(page)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeFocused();
+      release();
+      await page.waitForTimeout(300);
+      await expect(dlg(page)).toHaveCount(0);
+      await expect(page.locator('#image_url')).toHaveValue(before);
+      await expect(page.locator('#product_url')).toHaveValue('');
+      await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
+    }
+  },
+  {
     name: 'coffee-edit-suggest-disabled',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
