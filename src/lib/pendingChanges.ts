@@ -96,3 +96,9 @@ export function clonePrefill(coffee: CoffeeRow): Partial<CoffeeRow> {
 export function stagedRoasterDefault(coffee: CoffeeRow | null): boolean {
   return coffee != null && 'set_roaster_default' in coffee && coffee.set_roaster_default === '1';
 }
+
+// An image Suggest pick stages the roaster's website as a hidden field
+// (CoffeeForm), so a staged merge carries it; this reads it back.
+export function stagedRoasterWebsite(coffee: CoffeeRow | null): string {
+  return coffee != null && 'roaster_website' in coffee && typeof coffee.roaster_website === 'string' ? coffee.roaster_website : '';
+}

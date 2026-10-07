@@ -133,3 +133,15 @@ describe('parseCoffeeForm: set_roaster_default', () => {
     expect(() => parseCoffeeForm(formData({ ...base, roaster: ' ', set_roaster_default: '1' }))).toThrow('Roaster is required');
   });
 });
+
+describe('parseCoffeeForm: roaster_website', () => {
+  const base = { roaster: 'Lume', coffee_name: 'Kiambu' };
+  it('is the origin of the staged value', () => {
+    expect(parseCoffeeForm(formData({ ...base, roaster_website: 'https://lume.coffee/x' })).roaster_website).toBe('https://lume.coffee');
+  });
+  it('is null when absent, empty or not a web address', () => {
+    expect(parseCoffeeForm(formData(base)).roaster_website).toBeNull();
+    expect(parseCoffeeForm(formData({ ...base, roaster_website: ' ' })).roaster_website).toBeNull();
+    expect(parseCoffeeForm(formData({ ...base, roaster_website: 'javascript:alert(1)' })).roaster_website).toBeNull();
+  });
+});

@@ -5,6 +5,7 @@ import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } fro
 import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
 import { stageFieldChange, type PendingChange } from '../pendingChanges';
 import { setRoasterImage, getRoasterImage } from './roasterImages';
+import { getRoasterWebsite } from './roasterWebsites';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -302,5 +303,25 @@ describe('commitCoffeeBatch: a staged set_roaster_default', () => {
     commitCoffeeBatch(db, changes);
     expect(getRoasterImage(db, 'Test Roasters')).toBe('https://img.example/logo.png');
     expect(getCoffeeById(db, id)?.image_url).toBeNull();
+  });
+});
+
+describe('commitCoffeeBatch: roaster_website', () => {
+  it('writes the website for the roaster typed in the same save', () => {
+    const { id, slug } = createCoffee(db, sampleInput({ roaster: 'Sey' }));
+    commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { roaster: 'Lume', roaster_website: 'https://lume.coffee' }) }]);
+    expect(getRoasterWebsite(db, 'Lume')).toBe('https://lume.coffee');
+    expect(getRoasterWebsite(db, 'Sey')).toBeNull();
+  });
+
+  it('rolls the website back with the rest of a failed batch', () => {
+    const { id, slug } = createCoffee(db, sampleInput());
+    expect(() =>
+      commitCoffeeBatch(db, [
+        { id, fields: fieldsFor(id, slug, { roaster_website: 'https://test.example' }) },
+        { id: 999999, statusAction: 'archive' }
+      ])
+    ).toThrow();
+    expect(getRoasterWebsite(db, 'Test Roasters')).toBeNull();
   });
 });

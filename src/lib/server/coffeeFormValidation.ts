@@ -1,3 +1,4 @@
+import { toOrigin } from './roasterWebsites';
 export interface ValidatedCoffeeInput {
   roaster: string;
   coffee_name: string;
@@ -16,6 +17,8 @@ export interface ValidatedCoffeeInput {
   decaf: boolean;
   // "Set as roaster default" (CoffeeForm): write image_url as the roaster's default on save.
   set_roaster_default: boolean;
+  // Image Suggest pick: the roaster's website, written on save (hidden field).
+  roaster_website: string | null;
 }
 
 export class CoffeeFormError extends Error {}
@@ -99,6 +102,8 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     // Unchecked checkboxes aren't submitted at all — presence means checked.
     decaf: formData.get('decaf') != null,
     // Meaningless without an image; the roaster is already required above.
-    set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null
+    set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null,
+    // Machine-set hidden field: an unusable value is dropped, not an error.
+    roaster_website: toOrigin(textField(formData, 'roaster_website'))
   };
 }

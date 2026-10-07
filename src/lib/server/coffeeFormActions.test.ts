@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { getRoasterImage } from './roasterImages';
+import { getRoasterWebsite } from './roasterWebsites';
 import { isActionFailure } from '@sveltejs/kit';
 import { createDb } from './db';
 import { handleCoffeeCreate, handleCoffeeCreateAndLink } from './coffeeFormActions';
@@ -131,5 +132,21 @@ describe('handleCoffeeCreate: set_roaster_default', () => {
     expect(db.prepare(`SELECT coffee_id FROM beanconqueror_beans WHERE id = 'b1'`).get()).toEqual({
       coffee_id: (result as { id: number }).id
     });
+  });
+});
+
+describe('handleCoffeeCreate: roaster_website', () => {
+  it('writes the roaster website with the new coffee', () => {
+    const db = createDb(':memory:');
+    const result = handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Lume', roaster_website: 'https://lume.coffee' }));
+    expect(result).toMatchObject({ success: true });
+    expect(getRoasterWebsite(db, 'lume')).toBe('https://lume.coffee');
+  });
+
+  it('rolls the website back when the coffee insert fails', () => {
+    const db = createDb(':memory:');
+    db.exec(`CREATE TRIGGER no_insert BEFORE INSERT ON coffees BEGIN SELECT RAISE(ABORT, 'boom'); END`);
+    expect(() => handleCoffeeCreate(db, formData({ ...validFields, roaster: 'Lume', roaster_website: 'https://lume.coffee' }))).toThrow('boom');
+    expect(getRoasterWebsite(db, 'Lume')).toBeNull();
   });
 });

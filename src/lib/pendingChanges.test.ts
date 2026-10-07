@@ -7,6 +7,7 @@ import {
   mergeStagedCoffee,
   clonePrefill,
   stagedRoasterDefault,
+  stagedRoasterWebsite,
   type PendingChange
 } from './pendingChanges';
 import type { CoffeeRow } from './types';
@@ -227,5 +228,15 @@ describe('set_roaster_default through staging', () => {
     expect(stagedRoasterDefault(baseCoffee)).toBe(false);
     expect(stagedRoasterDefault(null)).toBe(false);
     expect(clonePrefill(mergeStagedCoffee(baseCoffee, marked))).not.toHaveProperty('set_roaster_default');
+  });
+});
+
+describe('stagedRoasterWebsite', () => {
+  it('reads a staged roaster_website back from a merge', () => {
+    expect(stagedRoasterWebsite(mergeStagedCoffee(baseCoffee, { roaster_website: 'https://lume.coffee' }))).toBe('https://lume.coffee');
+  });
+  it('is empty with nothing staged', () => {
+    expect(stagedRoasterWebsite(baseCoffee)).toBe('');
+    expect(stagedRoasterWebsite(null)).toBe('');
   });
 });

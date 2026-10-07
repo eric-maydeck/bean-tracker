@@ -2,6 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { fail } from '@sveltejs/kit';
 import { createCoffee } from './coffees';
 import { setRoasterImage } from './roasterImages';
+import { setRoasterWebsite } from './roasterWebsites';
 import { parseCoffeeForm, CoffeeFormError } from './coffeeFormValidation';
 import { linkBeanConquerorBean, BeanLinkError } from './beanConquerorLinks';
 
@@ -16,6 +17,7 @@ export function handleCoffeeCreate(db: DatabaseSync, formData: FormData) {
     try {
       // Before createCoffee, so its dedupe sees the new default and the coffee inherits it.
       if (input.set_roaster_default) setRoasterImage(db, input.roaster, input.image_url!);
+      if (input.roaster_website) setRoasterWebsite(db, input.roaster, input.roaster_website);
       const { id, slug } = createCoffee(db, input);
       db.exec('RELEASE coffee_create');
       return { success: true as const, id, slug };
