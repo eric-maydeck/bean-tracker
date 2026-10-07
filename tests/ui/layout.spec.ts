@@ -571,6 +571,28 @@ export const STATES: State[] = [
     }
   },
   {
+    // The user's repro: Suggest from a card's own inline edit on /coffees opens
+    // the same dialog; a pick stages image_url in that card's form (unsaved).
+    name: 'coffees-cards-inline-edit-suggest',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      // Nothing saves: no POST except the stubbed suggest and the image-fill probe.
+      const posts: string[] = [];
+      page.on('request', (r) => r.method() === 'POST' && !/image-(suggest|fill)/.test(r.url()) && posts.push(r.url()));
+      await page.route('**/api/coffees/image-suggest', reply(SUGGEST_UNSTORED));
+      await openSoloEdit(page, 'cards', 'Ethiopia Bensa Bombe');
+      await page.getByRole('button', { name: 'Suggest', exact: true }).click();
+      await expect(dlg(page).locator('.suggest-pick')).toHaveCount(6);
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      await expectDialogInViewport(page);
+      await dlg(page).locator('.suggest-pick').nth(0).click();
+      await expect(dlg(page)).toHaveCount(0);
+      await expect(page.locator('form #image_url')).toHaveValue(SUGGEST_OK.candidates[0].image);
+      await expect(page.getByRole('img', { name: 'Preview', exact: true })).toBeVisible();
+      expect(posts).toEqual([]);
+    }
+  },
+  {
     name: 'coffee-edit-suggest-disabled',
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
