@@ -1066,6 +1066,24 @@ div.compact-row .compact-row-sub {
   min-width: 44px;
 }
 
+/* A card too narrow for six 44px icons on one line (6 x 44 + 5 gaps = 304px)
+   shows them as two equal rows of three (save/cancel/delete over status
+   actions), not 5 + 1 with a stretched last icon. */
+.card > .action-buttons.under-form {
+  container-type: inline-size;
+}
+
+@container (width < 304px) {
+  .action-stack:has(> .action-row:first-child > :nth-child(3)):has(> .action-row:last-child > :nth-child(3)) {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+  }
+
+  .action-stack .button.button-icon {
+    max-width: none;
+  }
+}
+
 td > .action-buttons.under-form {
   position: sticky;
   left: 0;

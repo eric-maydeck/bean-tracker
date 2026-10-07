@@ -109,6 +109,8 @@ async function expectActionRow(page: Page) {
       left: Math.min(...bs.map((b) => b.left)),
       itemLeft: item.left,
       itemRight: item.right,
+      perLine: [...Map.groupBy(bs, (b) => Math.round(b.top)).values()].map((l) => l.length),
+      widths: bs.map((b) => b.width),
       above: top - wrap.previousElementSibling!.getBoundingClientRect().bottom,
       below: item.bottom - bottom,
       minW: Math.min(...bs.map((b) => b.width)),
@@ -123,6 +125,12 @@ async function expectActionRow(page: Page) {
   // so an overflowing row spills into the next card while still in the viewport.
   expect(m.right, 'an action button spills past its card/row').toBeLessThanOrEqual(m.itemRight + 0.5);
   expect(m.left, 'an action button spills past its card/row').toBeGreaterThanOrEqual(m.itemLeft - 0.5);
+  // A row too wide for a narrow card wraps as two equal rows of three, not 5 + 1
+  // with a stretched last icon (user decision 2026-10-06).
+  if (m.perLine.length > 1) {
+    expect(m.perLine, 'wrapped action row is not 3 + 3').toEqual([3, 3]);
+    expect(Math.max(...m.widths) - Math.min(...m.widths), `unequal icon widths ${m.widths}`).toBeLessThanOrEqual(1);
+  }
   expect(m.minW, `narrowest action button ${m.minW}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
   expect(m.minH, `shortest action button ${m.minH}px, under the 44px tap target`).toBeGreaterThanOrEqual(44);
   expect(Math.abs(m.above - ACTION_GAP.above), `gap above ${m.above}`).toBeLessThanOrEqual(2);
