@@ -156,7 +156,14 @@
     }
   }
 
+  // The coffee being matched, as typed at the moment Suggest is pressed.
+  let matching = $state('');
   function openSuggest() {
+    const date = fieldValue('roast_date');
+    matching = [fieldValue('roaster'), fieldValue('coffee_name'), fieldValue('processing'), date && `Roasted ${formatDate(date)}`]
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .join(' · ');
     suggestDialog.showModal();
     runSuggest();
   }
@@ -638,6 +645,7 @@
             <h2 id="suggest-title">Suggested images</h2>
             <button type="button" class="suggest-close" aria-label="Close" onclick={() => suggestDialog.close()}>✕</button>
           </header>
+          <p class="text-muted suggest-matching">{matching}</p>
           <div class="suggest-body">
             {#if suggesting}
               <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
@@ -670,7 +678,7 @@
                       <span class="suggest-image">
                         <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
                         {#if c === closest}
-                          <span class="badge badge-fresh">Closest to roast date</span>
+                          <span class="badge">Closest to roast date</span>
                         {/if}
                       </span>
                       <span class="suggest-text">
@@ -1005,6 +1013,13 @@
     margin: 0;
     font-size: 1.1rem;
   }
+  .suggest-matching {
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.85rem;
+    overflow-wrap: break-word;
+  }
   .suggest-close {
     min-width: 44px;
     min-height: 44px;
@@ -1102,16 +1117,16 @@
       align-self: center;
     }
   }
-  /* Over the image's top-left corner, translucent so little art is hidden;
-     the surface-tinted fill keeps the badge text readable in both themes. */
+  /* Over the image's top-left corner: opaque sunflower with dark text, so it
+     reads over any image in both themes (contrast checked in test:ui). */
   .suggest-image .badge {
     position: absolute;
     top: var(--space-1);
     left: var(--space-1);
     padding: 0.1rem 0.4rem;
     font-size: 0.7rem;
-    background: color-mix(in srgb, var(--color-surface) 80%, transparent);
-    backdrop-filter: blur(4px);
+    background: var(--color-sunflower);
+    color: var(--color-sunflower-text);
   }
   .suggest-text {
     display: flex;

@@ -180,9 +180,10 @@ const SUGGEST_UNSTORED = { ...SUGGEST_OK, storedSite: null };
 const reply = (body: object, status = 200) => (route: Route) => route.fulfill({ status, json: body });
 // Opens Edit on the Moonwake coffee and presses Suggest: the results dialog
 // opens. A null reply leaves the request hanging (the "Searching…" state).
-async function openSuggest(page: Page, handler: ((route: Route) => Promise<void>) | null) {
+async function openSuggest(page: Page, handler: ((route: Route) => Promise<void>) | null, processing?: string) {
   await page.route('**/api/coffees/image-suggest', (route) => (handler ? handler(route) : undefined));
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  if (processing !== undefined) await page.locator('#processing').fill(processing);
   await page.getByRole('button', { name: 'Suggest', exact: true }).click();
   await expect(page.locator('dialog[open]')).toBeVisible();
   // Opening never focuses a text input (the phone keyboard would pop).
@@ -438,6 +439,22 @@ export const STATES: State[] = [
       await expect(d.getByRole('button', { name: 'Retry' })).toHaveCount(0);
       // Only the closest candidate carries the badge; dates show where known.
       await expect(d.locator('.badge')).toHaveCount(1);
+      // The coffee being matched sits above the body, all parts present.
+      const roastDate = await page.locator('#roast_date').inputValue();
+      await expect(d.locator('.suggest-matching')).toHaveText(`Moonwake · Ethiopia Bensa Bombe · Washed · Roasted ${roastDate}`);
+      // Sunflower badge: AA contrast (>= 4.5) in light and in dark.
+      const contrast = () => d.locator('.badge').evaluate((el) => {
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const lum = (c: number[]) => { const [r, g, b] = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+        const st = getComputedStyle(el);
+        if (/rgba/.test(st.backgroundColor)) return 0; // not opaque
+        const [a, b] = [lum(rgb(st.backgroundColor)), lum(rgb(st.color))].sort((x, y) => y - x);
+        return (a + 0.05) / (b + 0.05);
+      });
+      expect(await contrast()).toBeGreaterThanOrEqual(4.5);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      expect(await contrast()).toBeGreaterThanOrEqual(4.5);
+      await page.evaluate(() => delete document.documentElement.dataset.theme);
       await expect(d.locator('.suggest-pick').nth(0).getByText('Closest to roast date', { exact: true })).toBeVisible();
       await expect(d.locator('.suggest-pick').nth(0)).toContainText('moonwake.example · 2026-09-20');
       await expect(d.locator('.suggest-pick').nth(2)).not.toContainText('·');
@@ -479,6 +496,18 @@ export const STATES: State[] = [
       if (test.info().project.name !== 'phone-landscape') expect(Math.abs(box.w - box.content)).toBeLessThanOrEqual(1);
       await expect(d.locator('.suggest-excerpt')).toHaveCount(3);
       await expectDialogInViewport(page);
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-summary',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply(SUGGEST_OK), '');
+      const roastDate = await page.locator('#roast_date').inputValue();
+      const m = dlg(page).locator('.suggest-matching');
+      await expect(m).toHaveText(`Moonwake · Ethiopia Bensa Bombe · Roasted ${roastDate}`);
+      // Processing cleared: no dangling separator. Fixed above the scrolling body, not inside it.
+      expect(await m.evaluate((el) => !!el.closest('.suggest-body'))).toBe(false);
     }
   },
   {
