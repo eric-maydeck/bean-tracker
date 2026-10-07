@@ -514,6 +514,10 @@ export const STATES: State[] = [
       await expect(m).toHaveText(`Moonwake · Ethiopia Bensa Bombe · Roasted ${roastDate}`);
       // Processing cleared: no dangling separator. Fixed above the scrolling body, not inside it.
       expect(await m.evaluate((el) => !!el.closest('.suggest-body'))).toBe(false);
+      // Easy to spot (user feedback 2026-10-06): bold and at least body size.
+      const font = await m.evaluate((el) => { const st = getComputedStyle(el); return { w: Number(st.fontWeight), px: parseFloat(st.fontSize) }; });
+      expect(font.w).toBeGreaterThanOrEqual(600);
+      expect(font.px).toBeGreaterThanOrEqual(16);
     }
   },
   {

@@ -1017,7 +1017,8 @@
     margin: 0;
     padding: var(--space-2) var(--space-4);
     border-bottom: 1px solid var(--color-border);
-    font-size: 0.85rem;
+    font-size: 1rem;
+    font-weight: 600;
     overflow-wrap: break-word;
   }
   .suggest-close {
