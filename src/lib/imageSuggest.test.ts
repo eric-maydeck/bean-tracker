@@ -6,7 +6,7 @@ describe('hostOf', () => {
   it('returns empty for a non-URL', () => expect(hostOf('nope')).toBe(''));
 });
 
-const c: Candidate = { image: 'https://cdn.example/bag.png', pageUrl: 'https://www.lume.coffee/products/kiambu', pageTitle: 'Kiambu', provider: 'shopify' };
+const c: Candidate = { image: 'https://cdn.example/bag.png', pageUrl: 'https://www.lume.coffee/products/kiambu', pageTitle: 'Kiambu', provider: 'shopify', published: null, excerpt: null, closest: false };
 
 describe('pickCandidate', () => {
   it('fills an empty product URL and stages the page origin when no site is stored', () => {

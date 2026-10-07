@@ -1,5 +1,13 @@
 // Client-safe. Image Suggest's reply shapes (spec 2026-10-06-image-suggest-design.md).
-export interface Candidate { image: string; pageUrl: string; pageTitle: string; provider: string }
+export interface Candidate {
+  image: string;
+  pageUrl: string;
+  pageTitle: string;
+  provider: string;
+  published: string | null; // page release date, YYYY-MM-DD
+  excerpt: string | null; // plain-text description, <=160 chars
+  closest: boolean; // the page released nearest the roast date (at most one)
+}
 export type SuggestStatus = 'ok' | 'empty' | 'failed' | 'unconfigured';
 export interface SuggestResult { status: SuggestStatus; site: string | null; candidates: Candidate[]; notes: string[] }
 // The endpoint's reply: the result plus the roaster's stored website.

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { shopifyImages, htmlImages } from './pageImages';
+import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, excerptOf } from './pageImages';
 
 const fixture = (name: string) => readFileSync(new URL(`../fixtures/product-pages/${name}`, import.meta.url), 'utf8');
 
@@ -59,5 +59,48 @@ describe('htmlImages', () => {
 
   it('skips data: and other non-http images', () => {
     expect(htmlImages(`<meta property="og:image" content="data:image/png;base64,AAAA">`, 'https://r.example/')).toEqual([]);
+  });
+});
+
+describe('excerptOf', () => {
+  it('plain text, entities decoded, cut on a word boundary with an ellipsis', () => {
+    expect(excerptOf('<p>Fruity &amp; <b>bright</b></p>')).toBe('Fruity & bright');
+    const long = excerptOf(`<p>${'word '.repeat(60)}</p>`)!;
+    expect(long.length).toBeLessThanOrEqual(160);
+    expect(long.endsWith('word…')).toBe(true);
+  });
+  it('null for empty', () => {
+    expect(excerptOf('  <p> </p>')).toBeNull();
+    expect(excerptOf(null)).toBeNull();
+  });
+});
+
+describe('shopifyDetails', () => {
+  it('captured page: published_at date and a description excerpt', () => {
+    const d = shopifyDetails(JSON.parse(fixture('ordinary-faf.json')));
+    expect(d.published).toBe('2026-08-24');
+    expect(d.excerpt!.length).toBeLessThanOrEqual(160);
+    expect(d.excerpt!.startsWith('Origin: Serra dos Ciganos, Brazil')).toBe(true);
+  });
+  it('falls back to created_at; junk is null', () => {
+    expect(shopifyDetails({ product: { created_at: '2025-03-01T10:00:00Z' } })).toEqual({ published: '2025-03-01', excerpt: null });
+    expect(shopifyDetails({ product: { published_at: 'soon' } }).published).toBeNull();
+    expect(shopifyDetails(null)).toEqual({ published: null, excerpt: null });
+  });
+});
+
+describe('htmlDetails', () => {
+  it('XLIII (captured): JSON-LD datePublished (on the WebPage node), meta description', () => {
+    expect(htmlDetails(fixture('xliii.html'))).toEqual({
+      published: '2026-05-25',
+      excerpt: 'Kinini Village by Dufatanye Farmer Group #03732 celebrates Rwandan excellence through sustainable collective farming.'
+    });
+  });
+  it('article:published_time and og:description when there is no JSON-LD', () => {
+    const html = `<meta property="article:published_time" content="2026-02-03T00:00:00Z"><meta property="og:description" content="Nice &amp; juicy">`;
+    expect(htmlDetails(html)).toEqual({ published: '2026-02-03', excerpt: 'Nice & juicy' });
+  });
+  it('nothing → nulls', () => {
+    expect(htmlDetails('<p>hi</p>')).toEqual({ published: null, excerpt: null });
   });
 });

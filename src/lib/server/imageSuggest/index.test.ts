@@ -92,6 +92,16 @@ describe('suggest', () => {
     expect(r.candidates[0].image).toContain('Same_white_pouch_design');
   });
 
+  it('a candidate carries its page’s published date and excerpt', async () => {
+    const fetchPage: FetchPage = async (url) => ({
+      status: 200,
+      body: `<meta property="article:published_time" content="2026-08-20"><meta name="description" content="Jammy"><img src="${url}/x.png" srcset="x 1x">`,
+      finalUrl: url
+    });
+    const r = await run([fake('a', [page(1)])], fetchPage);
+    expect(r.candidates[0]).toMatchObject({ published: '2026-08-20', excerpt: 'Jammy', closest: true });
+  });
+
   it('empty: providers ran but nothing usable', async () => {
     expect(await run([fake('a', [])])).toEqual({ status: 'empty', site: null, candidates: [], notes: [] });
   });

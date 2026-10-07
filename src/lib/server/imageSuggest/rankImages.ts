@@ -1,7 +1,7 @@
 // Orders a page's images by how likely each is the bag art
 // (docs/image-suggest-criteria.md). Pure; uses only what the page states.
 import { hostOf } from '$lib/imageSuggest';
-import type { PageImage } from './pageImages';
+import type { PageDetails, PageImage } from './pageImages';
 import type { Candidate, CandidatePage } from './types';
 
 const BAG = /mock|bag|label|pouch/;
@@ -31,22 +31,37 @@ export function scoreImage(img: PageImage, roastYear: string | null): number {
 }
 
 export function rankImages(
-  pages: { page: CandidatePage; images: PageImage[] }[],
+  pages: { page: CandidatePage; images: PageImage[]; details?: PageDetails }[],
   roastDate: string | null,
   site: string | null
 ): Candidate[] {
   const roastYear = roastDate?.slice(0, 4) ?? null;
   const siteHost = site ? hostOf(site) : null;
-  const scored = pages.flatMap(({ page, images }, p) =>
-    images.map((img, i) => ({
-      c: { image: img.url, pageUrl: page.url, pageTitle: page.title, provider: page.provider },
+  const roastMs = roastDate ? Date.parse(roastDate) : NaN;
+  const scored = pages.flatMap(({ page, images, details }, p) => {
+    const published = details?.published ?? null;
+    const days = published && !Number.isNaN(roastMs) ? Math.abs(Date.parse(published) - roastMs) : Infinity;
+    return images.map((img, i) => ({
+      c: {
+        image: img.url,
+        pageUrl: page.url,
+        pageTitle: page.title,
+        provider: page.provider,
+        published,
+        excerpt: details?.excerpt ?? null,
+        closest: false
+      },
+      days,
       own: siteHost !== null && hostOf(page.url) === siteHost ? 1 : 0,
       score: scoreImage(img, roastYear),
       p,
       i
-    }))
-  );
-  scored.sort((a, b) => b.own - a.own || b.score - a.score || a.p - b.p || a.i - b.i);
+    }));
+  });
+  // Page release nearest the roast date first (undated / no roast date last), then own site, score, position.
+  scored.sort((a, b) => (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.own - a.own || b.score - a.score || a.p - b.p || a.i - b.i);
   const seen = new Set<string>();
-  return scored.filter(({ c }) => !seen.has(c.image) && seen.add(c.image)).map(({ c }) => c);
+  const out = scored.filter(({ c }) => !seen.has(c.image) && seen.add(c.image));
+  if (out.length && out[0].days !== Infinity) out[0].c.closest = true;
+  return out.map(({ c }) => c);
 }

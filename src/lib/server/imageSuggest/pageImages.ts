@@ -1,6 +1,6 @@
 // Every image a fetched product page offers (spec "Server", pageImages.ts).
 // Pure: index.ts fetches, this reads. Ranking is rankImages.ts.
-import { resolveImageUrl, decodeEntities, metaTags, findLdProduct } from '../productParse';
+import { resolveImageUrl, decodeEntities, metaTags, findLdProduct, htmlToText } from '../productParse';
 
 export interface PageImage {
   url: string;
@@ -55,4 +55,63 @@ export function htmlImages(html: string, finalUrl: string): PageImage[] {
     add(out, attr(tag, 'src'), finalUrl, attr(tag, 'alt') ?? '', width, height);
   }
   return out;
+}
+
+export interface PageDetails {
+  published: string | null;
+  excerpt: string | null;
+}
+
+const MAX_EXCERPT = 160;
+
+// Plain text of an HTML snippet, <=160 chars, cut on a word boundary with "…".
+export function excerptOf(html: unknown): string | null {
+  if (typeof html !== 'string') return null;
+  const text = htmlToText(html).replace(/\s+/g, ' ').trim();
+  if (text.length <= MAX_EXCERPT) return text || null;
+  return text.slice(0, MAX_EXCERPT - 1).replace(/\s+\S*$/, '') + '…';
+}
+
+// The first 10 chars of an ISO-ish timestamp, when they form a real date.
+function isoDate(v: unknown): string | null {
+  const d = typeof v === 'string' ? v.trim().slice(0, 10) : '';
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(Date.parse(d)) ? d : null;
+}
+
+export function shopifyDetails(json: unknown): PageDetails {
+  const p = (json as { product?: { published_at?: unknown; created_at?: unknown; body_html?: unknown } } | null)?.product;
+  return { published: isoDate(p?.published_at) ?? isoDate(p?.created_at), excerpt: excerptOf(p?.body_html) };
+}
+
+// First datePublished/releaseDate on any JSON-LD node (often the WebPage, not the Product).
+function ldDate(html: string): string | null {
+  for (const [, body] of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
+    let data: unknown;
+    try {
+      data = JSON.parse(body.trim());
+    } catch {
+      continue;
+    }
+    const stack: unknown[] = [data];
+    while (stack.length) {
+      const n = stack.shift();
+      if (Array.isArray(n)) stack.push(...n);
+      else if (n && typeof n === 'object') {
+        const o = n as Record<string, unknown>;
+        const d = isoDate(o.datePublished) ?? isoDate(o.releaseDate);
+        if (d) return d;
+        stack.push(...Object.values(o).filter((v) => v && typeof v === 'object'));
+      }
+    }
+  }
+  return null;
+}
+
+export function htmlDetails(html: string): PageDetails {
+  const meta = metaTags(html);
+  const ldDesc = findLdProduct(html)?.description;
+  return {
+    published: ldDate(html) ?? isoDate(meta['article:published_time']),
+    excerpt: excerptOf(ldDesc) ?? excerptOf(meta['og:description']) ?? excerptOf(meta['description'])
+  };
 }

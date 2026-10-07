@@ -1,7 +1,7 @@
 // Image Suggest: providers → candidate pages → images → ranked pick list
 // (spec 2026-10-06-image-suggest-design.md "Server").
 import { safeFetch, shopifyJsonUrl } from '../productFetch';
-import { shopifyImages, htmlImages, type PageImage } from './pageImages';
+import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, type PageDetails, type PageImage } from './pageImages';
 import { rankImages } from './rankImages';
 import { shopify } from './providers/shopify';
 import { tavily } from './providers/tavily';
@@ -21,18 +21,24 @@ export function providers(list = process.env.IMAGE_SUGGEST_PROVIDERS || DEFAULT_
 }
 
 // A Shopify product page via its .json (every image, with sizes), else its HTML.
-async function imagesOf(url: string, signal: AbortSignal, fetchPage: FetchPage): Promise<PageImage[]> {
+type PageRead = { images: PageImage[]; details: PageDetails };
+async function imagesOf(url: string, signal: AbortSignal, fetchPage: FetchPage): Promise<PageRead> {
   const jsonUrl = shopifyJsonUrl(new URL(url));
   if (jsonUrl) {
     try {
       const res = await fetchPage(jsonUrl, signal);
-      if (res.status === 200) return shopifyImages(JSON.parse(res.body), res.finalUrl);
+      if (res.status === 200) {
+        const json = JSON.parse(res.body);
+        return { images: shopifyImages(json, res.finalUrl), details: shopifyDetails(json) };
+      }
     } catch {
       // not Shopify after all: read the HTML
     }
   }
   const res = await fetchPage(url, signal);
-  return res.status === 200 ? htmlImages(res.body, res.finalUrl) : [];
+  return res.status === 200
+    ? { images: htmlImages(res.body, res.finalUrl), details: htmlDetails(res.body) }
+    : { images: [], details: { published: null, excerpt: null } };
 }
 
 export async function suggest(
@@ -70,7 +76,9 @@ export async function suggest(
   const withImages = await Promise.all(
     pages.map(async (page) => ({
       page,
-      images: await imagesOf(page.url, AbortSignal.any([signal, AbortSignal.timeout(PAGE_MS)]), fetchPage).catch(() => [])
+      ...(await imagesOf(page.url, AbortSignal.any([signal, AbortSignal.timeout(PAGE_MS)]), fetchPage).catch(
+        (): PageRead => ({ images: [], details: { published: null, excerpt: null } })
+      ))
     }))
   );
   const candidates = rankImages(withImages, q.roastDate, q.site).slice(0, MAX_CANDIDATES);

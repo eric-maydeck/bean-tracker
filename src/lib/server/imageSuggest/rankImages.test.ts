@@ -70,3 +70,28 @@ describe('rankImages', () => {
     expect(ranked[0].pageUrl).toBe('https://a.example/1');
   });
 });
+
+describe('rankImages by release date', () => {
+  const dated = (url: string, published: string | null, image: string) => ({
+    page: page(url),
+    images: [img(`https://c.example/${image}`)],
+    details: { published, excerpt: published ? `about ${image}` : null }
+  });
+  const pages = [dated('https://a.example/old', '2025-03-01', 'old.png'), dated('https://a.example/new', '2026-08-20', 'new.png')];
+
+  it('page released nearest the roast date first and flagged closest; carries published/excerpt', () => {
+    const r = rankImages(pages, '2026-09-01', null);
+    expect(r.map((c) => [c.image.split('/').pop(), c.closest])).toEqual([['new.png', true], ['old.png', false]]);
+    expect(r[0]).toMatchObject({ published: '2026-08-20', excerpt: 'about new.png' });
+  });
+  it('no roast date: old order, nothing closest', () => {
+    const r = rankImages(pages, null, null);
+    expect(r.map((c) => c.image.split('/').pop())).toEqual(['old.png', 'new.png']);
+    expect(r.some((c) => c.closest)).toBe(false);
+  });
+  it('an undated page sorts after dated ones and is never closest', () => {
+    const r = rankImages([dated('https://a.example/u', null, 'u.png'), ...pages], '2026-09-01', null);
+    expect(r.map((c) => c.image.split('/').pop())).toEqual(['new.png', 'old.png', 'u.png']);
+    expect(rankImages([dated('https://a.example/u', null, 'u.png')], '2026-09-01', null)[0].closest).toBe(false);
+  });
+});
