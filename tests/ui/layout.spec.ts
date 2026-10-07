@@ -736,30 +736,6 @@ export const STATES: State[] = [
     }
   })),
   {
-    // User, 2026-10-06: on a grid of 3+ columns the open card spans two columns
-    // so its form isn't cramped; 1-2 column grids (phones) are unchanged.
-    name: 'coffees-cards-inline-edit-wide',
-    path: () => '/coffees?status=all&view=cards',
-    act: async (page: Page) => {
-      await openSoloEdit(page, 'cards', 'Colombia Pink Bourbon');
-      const m = await page.locator('.card:has(form)').evaluate((card) => {
-        const grid = card.parentElement!;
-        const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').map(parseFloat);
-        return {
-          cols,
-          gap: parseFloat(getComputedStyle(grid).columnGap),
-          width: card.getBoundingClientRect().width,
-          inputs: [...card.querySelectorAll('input[type="text"], input[type="url"], input:not([type])')].map((i) => [i.id || i.getAttribute('name'), i.getBoundingClientRect().width] as const)
-        };
-      });
-      const want = m.cols.length >= 3 ? 2 * m.cols[0] + m.gap : m.cols[0];
-      expect(Math.abs(m.width - want), `open card ${m.width}px, want ${want}px (${m.cols.length} columns)`).toBeLessThanOrEqual(1);
-      // ponytail: only where the card widens; a 2-column grid (w768) keeps its
-      // narrower fields by the user's choice.
-      if (m.cols.length >= 3) expect(m.inputs.filter(([, w]) => w < 120), 'text inputs under 120px').toEqual([]);
-    }
-  },
-  {
     // User bug 2026-10-06: card A left pending (edited, not saved) while card B's
     // Edit opens. A closes but keeps its action set; its icons must keep the
     // same sizes and layout, not shrink to a small grid.

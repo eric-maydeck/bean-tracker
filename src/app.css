@@ -203,19 +203,6 @@ input:focus-visible {
   gap: var(--space-4);
 }
 
-/* An open inline edit card spans two columns once the grid has three or more
-   (3 x 260px + 2 gaps), so its three-column form isn't cramped. A closed
-   (even pending) card and 1-2 column grids are unchanged. */
-.grid {
-  container-type: inline-size;
-}
-
-@container (width >= 812px) {
-  .grid > .card:has(> form) {
-    grid-column: span 2;
-  }
-}
-
 .button {
   display: inline-block;
   padding: var(--space-2) var(--space-4);
