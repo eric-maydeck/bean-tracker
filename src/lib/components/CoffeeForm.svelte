@@ -670,7 +670,7 @@
                       <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
                       <span class="suggest-text">
                         {#if c === closest}
-                          <span class="badge badge-fresh">closest to roast date</span>
+                          <span class="badge badge-fresh">Closest to roast date</span>
                         {/if}
                         <span class="suggest-title">{c.pageTitle}</span>
                         <span class="text-muted suggest-meta">{hostOf(c.pageUrl)}{c.published ? ` · ${formatDate(c.published)}` : ''}</span>
@@ -964,7 +964,7 @@
      padding), so a click on the dialog element itself is a backdrop click.
      Header and footer stay put; the body scrolls. */
   .suggest-dialog {
-    width: min(40rem, 100% - 2rem);
+    width: min(52rem, 100% - 2rem);
     max-height: 85dvh;
     padding: 0;
     border: 1px solid var(--color-border);
@@ -1048,17 +1048,24 @@
     text-decoration: underline;
     cursor: pointer;
   }
+  /* Candidate cards: one per row on phones, two in the wider dialog. */
   .suggest-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
     margin-top: var(--space-2);
   }
-  /* One candidate per row; the whole row is the pick button. */
+  @media (min-width: 641px) {
+    .suggest-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  /* The whole card is the pick button: a large image on top, so the bag
+     label is legible (user, 2026-10-06), then the text. */
   .suggest-pick {
     display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
+    flex-direction: column;
+    gap: var(--space-2);
     min-width: 0;
     padding: var(--space-2);
     border: 1px solid var(--color-border);
@@ -1071,10 +1078,22 @@
   }
   .suggest-pick img {
     flex: none;
-    width: 5rem;
-    height: 5rem;
+    width: 100%;
+    height: 14rem;
     object-fit: contain;
     border-radius: var(--radius);
+  }
+  @media (min-width: 641px) {
+    .suggest-pick img {
+      height: 16rem;
+    }
+  }
+  /* Phone landscape (333px tall): the body shows ~150px, so a whole image
+     fits on screen while scrolling. */
+  @media (max-height: 500px) {
+    .suggest-pick img {
+      height: 8rem;
+    }
   }
   .suggest-text {
     display: flex;
@@ -1095,6 +1114,10 @@
   }
   .suggest-title {
     font-weight: 600;
+  }
+  .suggest-excerpt {
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
   }
   .suggest-footer {
     padding: var(--space-2) var(--space-4);

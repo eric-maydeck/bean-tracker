@@ -160,7 +160,10 @@ const svg = (w: number, h: number, fill: string) =>
   'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${fill}"/></svg>`);
 const SITE = 'https://moonwake.example';
 const BEANHOARD = 'https://www.beanhoard.example/coffees/moonwake-ethiopia-bensa-bombe-anaerobic-natural-lot-7';
-const EXCERPT = 'Peach, jasmine and bergamot up front, then a long honeyed finish with a little cacao; washed station lot from the 2026 harvest, roasted light for filter brewing.';
+const EXCERPT =
+  'Tasting notes: peach, jasmine and bergamot up front, then a long honeyed finish with a little cacao; washed station ' +
+  'lot from the 2026 harvest, roasted light for filter brewing. Grown by smallholders around Bensa at 2,100 m, cherries ' +
+  'sorted twice, fermented 72 hours in sealed tanks, dried on raised beds for three weeks before…';
 const SUGGEST_OK = {
   status: 'ok', site: SITE, storedSite: SITE, notes: ['tavily unavailable (rate limited)'],
   candidates: [
@@ -435,14 +438,20 @@ export const STATES: State[] = [
       await expect(d.getByRole('button', { name: 'Retry' })).toHaveCount(0);
       // Only the closest candidate carries the badge; dates show where known.
       await expect(d.locator('.badge')).toHaveCount(1);
-      await expect(d.locator('.suggest-pick').nth(0).getByText('closest to roast date')).toBeVisible();
+      await expect(d.locator('.suggest-pick').nth(0).getByText('Closest to roast date', { exact: true })).toBeVisible();
       await expect(d.locator('.suggest-pick').nth(0)).toContainText('moonwake.example · 2026-09-20');
       await expect(d.locator('.suggest-pick').nth(2)).not.toContainText('·');
-      // The long excerpt is clamped to two lines.
+      // The long excerpt is clamped to four lines.
       const ex = d.locator('.suggest-pick').nth(0).locator('.suggest-excerpt');
       const clamp = await ex.evaluate((el) => ({ h: el.clientHeight, full: el.scrollHeight, line: parseFloat(getComputedStyle(el).lineHeight) }));
       expect(clamp.full).toBeGreaterThan(clamp.h);
-      expect(clamp.h).toBeLessThanOrEqual(2 * clamp.line + 1);
+      expect(clamp.h).toBeGreaterThan(3 * clamp.line);
+      expect(clamp.h).toBeLessThanOrEqual(4 * clamp.line + 1);
+      // The bag art is big enough to read the label (user, 2026-10-06).
+      if (['phone-portrait', 'w1280'].includes(test.info().project.name)) {
+        const img = await d.locator('.suggest-pick img').nth(0).boundingBox();
+        expect(img!.height).toBeGreaterThanOrEqual(200);
+      }
       await expect(d.locator('.suggest-excerpt')).toHaveCount(3);
       await expectDialogInViewport(page);
     }
