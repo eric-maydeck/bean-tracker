@@ -735,6 +735,33 @@ export const STATES: State[] = [
       await expectActionRow(page);
     }
   })),
+  {
+    // User bug 2026-10-06: card A left pending (edited, not saved) while card B's
+    // Edit opens. A closes but keeps its action set; its icons must keep the
+    // same sizes and layout, not shrink to a small grid.
+    name: 'coffees-cards-inline-edit-switch',
+    path: () => '/coffees?status=backlog&view=cards',
+    act: async (page: Page, s: Seed) => {
+      const posts: string[] = [];
+      page.on('request', (r) => r.method() === 'POST' && posts.push(r.url()));
+      const a = page.locator('.card').filter({ hasText: s.names.everyAction });
+      await a.evaluate((el) => (el.dataset.probe = 'a')); // the card element survives the form swap
+      await openSoloEdit(page, 'cards', s.names.everyAction);
+      await page.locator('form #processing').fill('Honey');
+      const icons = () => page.locator('[data-probe="a"]').evaluate((card) => {
+        const bs = [...card.querySelectorAll('.action-stack button')].map((b) => b.getBoundingClientRect());
+        const left = card.getBoundingClientRect().left;
+        return bs.map((b) => [b.width, b.height, b.left - left, b.top - bs[0].top].map(Math.round));
+      });
+      const before = await icons();
+      expect(before).toHaveLength(6);
+      await page.locator('.card').filter({ hasNotText: s.names.everyAction }).first().getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('[data-probe="a"] form')).toHaveCount(0);
+      const after = await icons();
+      for (const [i, b] of before.entries()) after[i].forEach((v, j) => expect(Math.abs(v - b[j]), `icon ${i} ${['width', 'height', 'left', 'top'][j]} ${b[j]} -> ${v}`).toBeLessThanOrEqual(1));
+      expect(posts).toEqual([]);
+    }
+  },
 ];
 
 // Known failures: the list view's table is crushed at tablet width and needs a

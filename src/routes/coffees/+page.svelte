@@ -757,7 +757,9 @@
                 <span class="badge badge-frozen">Frozen</span>
               {/if}
             </div>
-            <div class="action-buttons">
+            <!-- A pending card closed by another card's Edit keeps the open form's
+                 action set, so it keeps that row's look too (.under-form). -->
+            <div class="action-buttons" class:under-form={canEdit(coffee.id)}>
               {#if canEdit(coffee.id)}
                 {@render adminActions(coffee, true)}
               {:else}
