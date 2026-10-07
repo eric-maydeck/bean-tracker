@@ -205,6 +205,12 @@ input:focus-visible {
   gap: var(--space-4);
 }
 
+/* Coffees cards: at most three per row, so an inline edit has room (user,
+   2026-10-06); still one or two columns on narrow screens. */
+.grid.grid-max-3 {
+  grid-template-columns: repeat(auto-fill, minmax(max(260px, calc((100% - 2 * var(--space-4)) / 3)), 1fr));
+}
+
 .button {
   display: inline-block;
   padding: var(--space-2) var(--space-4);

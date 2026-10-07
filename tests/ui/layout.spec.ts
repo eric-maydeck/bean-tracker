@@ -736,6 +736,18 @@ export const STATES: State[] = [
     }
   })),
   {
+    // User choice 2026-10-06: the cards grid tops out at three per row on
+    // desktop (a cramped 4th column made inline edit unusable); phones unchanged.
+    name: 'coffees-cards-three-per-row',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page: Page) => {
+      const cols = await page.locator('section.grid').evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(' ').length);
+      expect(cols).toBeLessThanOrEqual(3);
+      const want: Record<string, number> = { w1280: 3, 'phone-landscape': 3, w768: 2, w480: 1, 'phone-portrait': 1 };
+      if (want[test.info().project.name]) expect(cols).toBe(want[test.info().project.name]);
+    }
+  },
+  {
     // User bug 2026-10-06: card A left pending (edited, not saved) while card B's
     // Edit opens. A closes but keeps its action set; its icons must keep the
     // same sizes and layout, not shrink to a small grid.

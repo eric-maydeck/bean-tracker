@@ -703,7 +703,7 @@
 {/if}
 
 {#if view === 'cards'}
-  <section class="grid">
+  <section class="grid grid-max-3">
     {#each coffees as coffee (coffee.id)}
       {#if data.isAdmin}
         <div class="card">
