@@ -26,7 +26,7 @@ const GENERIC = new Set(['the', 'coffee', 'coffees', 'roasters', 'roaster', 'roa
 // Does the host look like this roaster's own site? True when a 3+ letter,
 // non-generic word of the name appears in the host (punctuation ignored).
 // ponytail: substring heuristic, a stored site or "change" covers misses.
-function hostMatchesRoaster(url: string, roaster: string): boolean {
+export function hostMatchesRoaster(url: string, roaster: string): boolean {
   const host = hostOf(url).replace(/[^a-z0-9]/g, '');
   return roaster
     .toLowerCase()

@@ -19,6 +19,8 @@ import {
   restoreCoffee,
   deleteCoffee,
   getDistinctFieldValues,
+  applyCoffeeFixes,
+  type CoffeeFixBatch,
   type NewCoffeeInput
 } from './coffees';
 import { withComputedFields } from './urgency';
@@ -431,5 +433,110 @@ describe('image_copy', () => {
     setRoasterImage(db, 'Norml', 'https://x/logo.png');
     copy('https://x/logo.png', 'coffees', 'c.webp');
     expect(getCoffeeBySlug(db, slug)?.image_copy).toBeNull();
+  });
+});
+
+describe('applyCoffeeFixes (product page backfill)', () => {
+  const M = 'product_page_backfill_test';
+  const page = 'https://www.sey.coffee/products/kiambu';
+  const bag = 'https://cdn.shopify.com/s/files/kiambu.jpg';
+  const batch = (over: Partial<CoffeeFixBatch> = {}): CoffeeFixBatch => ({
+    marker: M, fixes: [], websites: [], tavilyCalls: [], ...over
+  });
+  const marker = () => db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M);
+  const usage = () =>
+    (db.prepare(`SELECT at FROM search_usage WHERE provider = 'tavily' ORDER BY at`).all() as { at: string }[]).map((r) => r.at);
+  const sites = () => db.prepare(`SELECT roaster, url FROM roaster_websites ORDER BY roaster`).all();
+  const add = () => createCoffee(db, sampleInput({ roaster: 'Sey', coffee_name: 'Kiambu' }));
+
+  it('fills an empty product_url and image_url, keeps the slug, and sets the marker', () => {
+    const { id, slug } = add();
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: id, field: 'product_url', from: null, to: page },
+      { coffee_id: id, field: 'image_url', from: null, to: bag }
+    ] }));
+    expect(r).toEqual({ fixed: 2, skipped: [], websites: 0, usage: 0 });
+    expect(getCoffeeById(db, id)).toMatchObject({ product_url: page, image_url: bag, slug });
+    expect(marker()).toBeTruthy();
+  });
+
+  it('runs once: a second call with the same marker returns null and adds nothing', () => {
+    const { id } = add();
+    const b = batch({
+      fixes: [{ coffee_id: id, field: 'product_url', from: null, to: page }],
+      tavilyCalls: ['2026-10-07T10:00:00.000Z']
+    });
+    applyCoffeeFixes(db, b);
+    db.prepare(`UPDATE coffees SET product_url = NULL WHERE id = ?`).run(id);
+    expect(applyCoffeeFixes(db, b)).toBeNull();
+    expect(getCoffeeById(db, id)?.product_url).toBeNull();
+    expect(usage()).toHaveLength(1);
+  });
+
+  it('skips (not fatal) a fix whose field is no longer empty or whose coffee is gone; applies the rest', () => {
+    const { id } = add();
+    db.prepare(`UPDATE coffees SET product_url = 'https://mine.example/k' WHERE id = ?`).run(id);
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: id, field: 'product_url', from: null, to: page },
+      { coffee_id: id, field: 'image_url', from: null, to: bag },
+      { coffee_id: 9999, field: 'product_url', from: null, to: page }
+    ] }));
+    expect(r?.fixed).toBe(1);
+    expect(r?.skipped).toHaveLength(2);
+    expect(r?.skipped[1]).toContain('coffee not found');
+    expect(getCoffeeById(db, id)).toMatchObject({ product_url: 'https://mine.example/k', image_url: bag });
+    expect(marker()).toBeTruthy();
+  });
+
+  it("matches '' and NULL exactly: from must be the stored empty value", () => {
+    const a = add();
+    const b = add();
+    db.prepare(`UPDATE coffees SET product_url = '' WHERE id IN (?, ?)`).run(a.id, b.id);
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: a.id, field: 'product_url', from: '', to: page },
+      { coffee_id: b.id, field: 'product_url', from: null, to: page }
+    ] }));
+    expect(r?.fixed).toBe(1);
+    expect(getCoffeeById(db, a.id)?.product_url).toBe(page);
+    expect(getCoffeeById(db, b.id)?.product_url).toBe('');
+  });
+
+  it("stores NULL for an image equal to the roaster's default", () => {
+    setRoasterImage(db, 'Sey', bag);
+    const { id } = add();
+    const r = applyCoffeeFixes(db, batch({ fixes: [{ coffee_id: id, field: 'image_url', from: null, to: bag }] }));
+    expect(r?.fixed).toBe(1);
+    expect(getCoffeeById(db, id)?.image_url).toBeNull();
+  });
+
+  it("stores a website's origin only when none is stored and the host looks like the roaster's", () => {
+    add();
+    const r = applyCoffeeFixes(db, batch({ websites: [
+      { roaster: 'Sey', url: page },
+      { roaster: 'Lume', url: 'https://reseller.example/products/lume-x' },
+      { roaster: 'sey', url: 'https://sey.coffee/other' }
+    ] }));
+    expect(r?.websites).toBe(1);
+    expect(sites()).toEqual([{ roaster: 'Sey', url: 'https://www.sey.coffee' }]);
+  });
+
+  it('never replaces a stored website (roaster case ignored)', () => {
+    add();
+    db.prepare(`INSERT INTO roaster_websites (roaster, url) VALUES ('sey', 'https://old.sey.coffee')`).run();
+    expect(applyCoffeeFixes(db, batch({ websites: [{ roaster: 'Sey', url: page }] }))?.websites).toBe(0);
+    expect(sites()).toEqual([{ roaster: 'sey', url: 'https://old.sey.coffee' }]);
+  });
+
+  it('adds one tavily search_usage row per recorded call', () => {
+    add();
+    const calls = ['2026-10-07T10:00:00.000Z', '2026-10-07T10:00:05.000Z'];
+    expect(applyCoffeeFixes(db, batch({ tavilyCalls: calls }))?.usage).toBe(2);
+    expect(usage()).toEqual(calls);
+  });
+
+  it('does nothing and sets no marker on a DB with no coffees', () => {
+    expect(applyCoffeeFixes(db, batch({ tavilyCalls: ['2026-10-07T10:00:00.000Z'] }))).toBeNull();
+    expect(marker()).toBeUndefined();
+    expect(usage()).toEqual([]);
   });
 });
