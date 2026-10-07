@@ -455,7 +455,7 @@ export const STATES: State[] = [
       await expect(d.locator('.badge')).toHaveCount(1);
       // The coffee being matched sits above the body, all parts present.
       const roastDate = await page.locator('#roast_date').inputValue();
-      await expect(d.locator('.suggest-matching')).toHaveText(`Moonwake · Ethiopia Bensa Bombe · Washed · Roasted ${roastDate}`);
+      await expect(d.locator('.suggest-matching > *')).toHaveText(['Moonwake · Ethiopia Bensa Bombe', `Washed · Roasted ${roastDate}`]);
       // Sunflower badge: AA contrast (>= 4.5) in light and in dark.
       const contrast = () => d.locator('.badge').evaluate((el) => {
         const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
@@ -519,13 +519,23 @@ export const STATES: State[] = [
       await openSuggest(page, reply(SUGGEST_OK), '');
       const roastDate = await page.locator('#roast_date').inputValue();
       const m = dlg(page).locator('.suggest-matching');
-      await expect(m).toHaveText(`Moonwake · Ethiopia Bensa Bombe · Roasted ${roastDate}`);
-      // Processing cleared: no dangling separator. Fixed above the scrolling body, not inside it.
+      // Two lines at every width (user, 2026-10-06): roaster · coffee, then
+      // processing · roast date. Processing cleared: no dangling separator.
+      await expect(m.locator('> *')).toHaveText(['Moonwake · Ethiopia Bensa Bombe', `Roasted ${roastDate}`]);
+      const tops = await m.locator('> *').evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+      expect(tops[1]).toBeGreaterThan(tops[0]);
+      // Fixed above the scrolling body, not inside it.
       expect(await m.evaluate((el) => !!el.closest('.suggest-body'))).toBe(false);
-      // Easy to spot (user feedback 2026-10-06): bold and at least body size.
-      const font = await m.evaluate((el) => { const st = getComputedStyle(el); return { w: Number(st.fontWeight), px: parseFloat(st.fontSize) }; });
+      // Easy to spot (user feedback 2026-10-06): line 1 bold, at least body size.
+      const font = await m.locator('> *').first().evaluate((el) => { const st = getComputedStyle(el); return { w: Number(st.fontWeight), px: parseFloat(st.fontSize) }; });
       expect(font.w).toBeGreaterThanOrEqual(600);
       expect(font.px).toBeGreaterThanOrEqual(16);
+      // No processing and no roast date: line 2 is left out.
+      await page.keyboard.press('Escape');
+      await expect(dlg(page)).toHaveCount(0);
+      await page.locator('#roast_date').fill('');
+      await page.getByRole('button', { name: 'Suggest', exact: true }).click();
+      await expect(m.locator('> *')).toHaveText(['Moonwake · Ethiopia Bensa Bombe']);
     }
   },
   {

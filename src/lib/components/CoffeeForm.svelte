@@ -157,13 +157,16 @@
   }
 
   // The coffee being matched, as typed at the moment Suggest is pressed.
-  let matching = $state('');
+  // Two lines: roaster · coffee name, then processing · roast date; empty parts
+  // (and an empty line) are left out.
+  let matching = $state<string[]>([]);
   function openSuggest() {
     const date = fieldValue('roast_date');
-    matching = [fieldValue('roaster'), fieldValue('coffee_name'), fieldValue('processing'), date && `Roasted ${formatDate(date)}`]
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .join(' · ');
+    const line = (parts: string[]) => parts.map((x) => x.trim()).filter(Boolean).join(' · ');
+    matching = [
+      line([fieldValue('roaster'), fieldValue('coffee_name')]),
+      line([fieldValue('processing'), date && `Roasted ${formatDate(date)}`])
+    ].filter(Boolean);
     suggestDialog.showModal();
     runSuggest();
   }
@@ -645,7 +648,9 @@
             <h2 id="suggest-title">Suggested images</h2>
             <button type="button" class="suggest-close" aria-label="Close" onclick={() => suggestDialog.close()}>✕</button>
           </header>
-          <p class="text-muted suggest-matching">{matching}</p>
+          <div class="text-muted suggest-matching">
+            {#each matching as text, i (i)}<p>{text}</p>{/each}
+          </div>
           <div class="suggest-body">
             {#if suggesting}
               <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
@@ -1018,8 +1023,13 @@
     padding: var(--space-2) var(--space-4);
     border-bottom: 1px solid var(--color-border);
     font-size: 1rem;
-    font-weight: 600;
     overflow-wrap: break-word;
+  }
+  .suggest-matching p {
+    margin: 0;
+  }
+  .suggest-matching p:first-child {
+    font-weight: 600;
   }
   .suggest-close {
     min-width: 44px;
