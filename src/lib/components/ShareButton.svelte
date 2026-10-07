@@ -50,14 +50,14 @@
 <style>
   .share-button {
     display: inline-flex;
-    /* Baseline from the label, not the icon: at desktop the sibling buttons
-       are inline-block on a shared baseline, and an icon-first inline-flex
-       button otherwise sits a few px higher than them. */
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-2);
+    /* In inline flow (desktop rows of inline-block buttons) an inline-flex
+       button's baseline comes from its icon, which sat it ~4px above its
+       same-height neighbors; top-align it instead. No effect in flex rows. */
+    vertical-align: top;
   }
   .share-button :global(.icon) {
-    align-self: center;
     width: 1.05rem;
     height: 1.05rem;
   }
