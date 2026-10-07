@@ -1,3 +1,13 @@
+# [1.54.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.53.0...v1.54.0) (2026-10-07)
+
+
+### Features
+
+* **coffees:** apply guarded product page and image fixes as one batch
+* **db:** apply product page backfill batches at boot
+* **scripts:** find product pages and images for coffees without one, resumable
+* **scripts:** review page and batch export for the product page backfill
+
 # [1.53.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.52.1...v1.53.0) (2026-10-07)
 
 
