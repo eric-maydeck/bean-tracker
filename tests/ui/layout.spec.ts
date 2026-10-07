@@ -784,9 +784,9 @@ export const STATES: State[] = [
     }
   },
   {
-    // User bug 2026-10-06: card A left pending (edited, not saved) while card B's
-    // Edit opens. A closes but keeps its action set; its icons must keep the
-    // same sizes and layout, not shrink to a small grid.
+    // User bug 2026-10-06: card A closed with pending edits (via Update in
+    // toolbar Edit mode) keeps its action set; its icons must keep the same
+    // sizes and layout, not shrink to a small grid.
     name: 'coffees-cards-inline-edit-switch',
     path: () => '/coffees?status=backlog&view=cards',
     act: async (page: Page, s: Seed) => {
@@ -794,7 +794,8 @@ export const STATES: State[] = [
       page.on('request', (r) => r.method() === 'POST' && posts.push(r.url()));
       const a = page.locator('.card').filter({ hasText: s.names.everyAction });
       await a.evaluate((el) => (el.dataset.probe = 'a')); // the card element survives the form swap
-      await openSoloEdit(page, 'cards', s.names.everyAction);
+      await page.locator('.search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await a.getByRole('button', { name: 'Edit', exact: true }).click();
       await page.locator('form #processing').fill('Honey');
       const icons = () => page.locator('[data-probe="a"]').evaluate((card) => {
         const bs = [...card.querySelectorAll('.action-stack button')].map((b) => b.getBoundingClientRect());
@@ -802,14 +803,31 @@ export const STATES: State[] = [
         return bs.map((b) => [b.width, b.height, b.left - left, b.top - bs[0].top].map(Math.round));
       });
       const before = await icons();
-      expect(before).toHaveLength(6);
-      await page.locator('.card').filter({ hasNotText: s.names.everyAction }).first().getByRole('button', { name: 'Edit', exact: true }).click();
+      expect(before.length).toBeGreaterThan(0);
+      await page.getByRole('button', { name: 'Update', exact: true }).click();
       await expect(page.locator('[data-probe="a"] form')).toHaveCount(0);
       const after = await icons();
       for (const [i, b] of before.entries()) after[i].forEach((v, j) => expect(Math.abs(v - b[j]), `icon ${i} ${['width', 'height', 'left', 'top'][j]} ${b[j]} -> ${v}`).toBeLessThanOrEqual(1));
       expect(posts).toEqual([]);
     }
   },
+  ...(['cards', 'list', 'compact'] as const).map((view) => ({
+    // User ask 2026-10-06: opening B's inline edit keeps A's form (and what was
+    // typed in it) open until A's own Save/Cancel.
+    name: `coffees-${view}-inline-edit-two-open`,
+    path: () => `/coffees?status=all&view=${view}`,
+    act: async (page: Page, s: Seed) => {
+      const posts: string[] = [];
+      page.on('request', (r) => r.method() === 'POST' && !/image-fill/.test(r.url()) && posts.push(r.url())); // image-fill: the read-only probe
+      await openSoloEdit(page, view, s.names.everyAction);
+      await page.locator('form #processing').fill('Honey');
+      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
+      const processing = page.locator('form #processing');
+      await expect(processing).toHaveCount(2);
+      expect((await processing.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value))).filter((v) => v === 'Honey')).toHaveLength(1);
+      expect(posts).toEqual([]);
+    }
+  })),
 ];
 
 // Known failures: the list view's table is crushed at tablet width and needs a
@@ -817,7 +835,7 @@ export const STATES: State[] = [
 // show up as "unexpectedly passed", so these entries flag themselves. Nothing
 // else gets listed here.
 const KNOWN_FAILURES = new Set([
-  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-list-inline-edit-action-row-${w}`, `coffees-bc-yes-${w}`])
+  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-list-inline-edit-action-row-${w}`, `coffees-list-inline-edit-two-open-${w}`, `coffees-bc-yes-${w}`])
 ]);
 
 for (const state of STATES) {

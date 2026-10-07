@@ -91,6 +91,10 @@
   function canEdit(id: number) {
     return editMode && data.isAdmin && (editAll || editIds.has(id));
   }
+  // Rows whose inline edit form is open; several can be open at once, each
+  // closing only via its own Save/Cancel/Update (or the toolbar's).
+  const openForms = new SvelteSet<number>();
+  // The Add form ('new') or the compact view's (non-edit) detail row.
   let expandedId = $state<number | 'new' | null>(null);
   let addPrefill = $state<Partial<CoffeeRow> | null>(null);
 
@@ -114,10 +118,10 @@
   let commitErrors = $state(new Map<number, string>());
   let saving = $state(false);
 
-  // The currently-expanded row's CoffeeForm instance, if any — plain (not
-  // $state): only ever read synchronously from within saveChanges, never
-  // rendered.
-  let expandedFormRef: { applyPendingEdits: () => boolean } | null = null;
+  // Each open row form's CoffeeForm instance by coffee id (null once
+  // closed) — plain (not $state): only ever read synchronously from within
+  // saveChanges, never rendered.
+  const formRefs: Record<number, { applyPendingEdits: () => boolean } | null> = {};
 
   // A floating notice over the page, held a second after the reload lands.
   let refreshState = $state<'idle' | 'busy' | 'done'>('idle');
@@ -135,7 +139,7 @@
   }
 
   function toggleEdit(id: number) {
-    expandedId = expandedId === id ? null : id;
+    if (!openForms.delete(id)) openForms.add(id);
   }
 
   function openAdd() {
@@ -143,8 +147,8 @@
     expandedId = 'new';
   }
 
-  // Closes any open edit form and swaps in the Add form pre-filled from
-  // the clone source.
+  // Swaps in the Add form pre-filled from the clone source; open edit
+  // forms stay open.
   async function openClone(prefill: Partial<CoffeeRow>) {
     addPrefill = prefill;
     expandedId = 'new';
@@ -164,20 +168,23 @@
 
   async function saveChanges(onlyId?: number) {
     // An open per-row edit form's changes aren't in `pending` until its own
-    // "Update" button stages them — apply them first, the same way Update
-    // would, so "Save changes" doesn't silently ignore whatever is still
-    // sitting in an open form. A validation failure there (native required-
-    // field UI) aborts the save entirely, matching what clicking Update
-    // itself would do. Skipped when this row also has a delete staged (the
+    // "Update" button stages them — apply every open form in scope first,
+    // the same way Update would, so "Save changes" doesn't silently ignore
+    // whatever is still sitting in an open form. A validation failure in
+    // any of them (native required-field UI) aborts the save entirely,
+    // matching what clicking Update itself would do. Skipped for a row that
+    // also has a delete staged (the
     // compact view shows the delete action right next to an open form):
     // stageStatusAction deliberately drops any staged field edit when
     // staging 'delete' (pendingChanges.ts), and applying the open form here
     // would silently re-attach fields onto that delete, letting a field
     // validation error block the delete or running a pointless update
     // right before it.
-    const openRowId = typeof expandedId === 'number' && (onlyId == null || expandedId === onlyId) ? expandedId : null;
-    const openRowIsDeleting = openRowId != null && pending.get(openRowId)?.statusAction === 'delete';
-    if (openRowId != null && !openRowIsDeleting && expandedFormRef && !expandedFormRef.applyPendingEdits()) return;
+    // Copied: a successful apply stages via onstage, which closes that form.
+    for (const id of [...openForms]) {
+      if ((onlyId != null && id !== onlyId) || pending.get(id)?.statusAction === 'delete') continue;
+      if (formRefs[id] && !formRefs[id].applyPendingEdits()) return;
+    }
 
     saving = true;
     const changes = Array.from(pending.entries())
@@ -201,9 +208,9 @@
         const newErrors = new Map<number, string>();
         for (const e of errors) newErrors.set(e.id, e.error);
         commitErrors = newErrors;
-        // Re-open the first failing row so its inline error is immediately
+        // Re-open every failing row so its inline error is immediately
         // visible, rather than leaving the user to guess which row failed.
-        expandedId = errors[0].id;
+        for (const e of errors) openForms.add(e.id);
         saving = false;
         return;
       }
@@ -258,7 +265,7 @@
     editMode = false;
     editAll = false;
     editIds.clear();
-    expandedId = null;
+    openForms.clear();
     saving = false;
     await invalidateAll();
   }
@@ -269,14 +276,14 @@
     return !editAll && editIds.has(id);
   }
   function showCancel(id: number) {
-    return expandedId === id || soloEdit(id);
+    return openForms.has(id) || soloEdit(id);
   }
 
   function discardRow(id: number) {
     pending.delete(id);
     commitErrors = new Map();
     editIds.delete(id);
-    if (expandedId === id) expandedId = null;
+    openForms.delete(id);
     if (!editAll && editIds.size === 0) editMode = false;
   }
 
@@ -286,7 +293,7 @@
     editMode = false;
     editAll = false;
     editIds.clear();
-    expandedId = null;
+    openForms.clear();
   }
 
   function formCoffeeFor(coffee: CoffeeRow): CoffeeRow {
@@ -479,7 +486,7 @@
     onclick={() => {
       editMode = true;
       editIds.add(coffee.id);
-      expandedId = coffee.id;
+      openForms.add(coffee.id);
     }}>{#if icons}<Icon name="edit" />{:else}Edit{/if}</button
   >
 {/snippet}
@@ -601,7 +608,7 @@
 
 {#snippet expandedForm(coffee)}
   <CoffeeForm
-    bind:this={expandedFormRef}
+    bind:this={formRefs[coffee.id]}
     coffee={formCoffeeFor(coffee)}
     roastLevels={data.roastLevels}
     roasters={data.roasters}
@@ -615,7 +622,7 @@
     showClone={view !== 'list'}
     onstage={(fields) => {
       stageFieldChange(pending, coffee.id, fields);
-      closeExpanded();
+      openForms.delete(coffee.id);
     }}
   />
 {/snippet}
@@ -707,7 +714,7 @@
     {#each coffees as coffee (coffee.id)}
       {#if data.isAdmin}
         <div class="card">
-          {#if canEdit(coffee.id) && expandedId === coffee.id}
+          {#if canEdit(coffee.id) && openForms.has(coffee.id)}
             {@render expandedForm(coffee)}
             <!-- Save/Cancel under the open form, like Compact: the card's own
                  action row is replaced by the form. -->
@@ -834,7 +841,7 @@
               {coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}
             </div>
           </div>
-          {#if expandedId === coffee.id}
+          {#if openForms.has(coffee.id)}
             {@render expandedForm(coffee)}
           {/if}
           <div class="action-buttons">
@@ -845,7 +852,7 @@
             type="button"
             class="compact-row"
             aria-expanded={expandedId === coffee.id}
-            onclick={() => toggleEdit(coffee.id)}
+            onclick={() => (expandedId = expandedId === coffee.id ? null : coffee.id)}
           >
             <span class="compact-row-main">
               <span class="compact-row-title">
@@ -1069,7 +1076,7 @@
                 <div class="action-buttons">
                   {#if canEdit(coffee.id)}
                     <!-- While this row's form is open its actions sit under the form (below). -->
-                    {#if expandedId !== coffee.id}
+                    {#if !openForms.has(coffee.id)}
                       {@render adminActions(coffee, true)}
                     {/if}
                   {:else}
@@ -1080,7 +1087,7 @@
               </td>
             {/if}
           </tr>
-          {#if canEdit(coffee.id) && expandedId === coffee.id}
+          {#if canEdit(coffee.id) && openForms.has(coffee.id)}
             <tr>
               <td colspan={data.isAdmin ? 14 : 13}>
                 {@render expandedForm(coffee)}
