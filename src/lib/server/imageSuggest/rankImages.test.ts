@@ -95,3 +95,30 @@ describe('rankImages by release date', () => {
     expect(rankImages([dated('https://a.example/u', null, 'u.png')], '2026-09-01', null)[0].closest).toBe(false);
   });
 });
+
+describe('rankImages by coffee name', () => {
+  const titled = (url: string, title: string, published: string, image: string) => ({
+    page: { url, title, provider: 'tavily' },
+    images: [img(`https://c.example/${image}`)],
+    details: { published, excerpt: null }
+  });
+  const rank = (name: string, title: string) =>
+    rankImages(
+      [titled('https://a.example/collab', 'Bean’s Beans x Airworks Alo Gute Village', '2026-08-30', 'collab.png'), titled('https://a.example/x', title, '2025-11-01', 'match.png')],
+      '2026-09-01', null, name
+    ).map((c) => c.image.split('/').pop());
+
+  it('name match beats release date', () => {
+    expect(rank('Fugi Ikizere', 'Fugi Ikizere')).toEqual(['match.png', 'collab.png']);
+  });
+  it('equal name match: date decides', () => {
+    expect(rank('Zzz', 'Fugi Ikizere')).toEqual(['collab.png', 'match.png']);
+  });
+  it('accents are ignored', () => {
+    expect(rank('Bolaños', 'Bolanos Washed')).toEqual(['match.png', 'collab.png']);
+  });
+  it('a logo ranks below a plain image on the same page', () => {
+    const r = names([{ page: page('https://a.example/1'), images: [img('https://c.example/logo.png'), img('https://c.example/plain.png')] }]);
+    expect(r).toEqual(['plain.png', 'logo.png']);
+  });
+});

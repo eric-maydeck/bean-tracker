@@ -35,6 +35,54 @@ describe('providers', () => {
   });
 });
 
+describe('suggest fill rule', () => {
+  const run = (list: Provider[], fetchPage = pages()) => suggest(Q, { providers: list, fetchPage });
+  it('a later provider is never called once 6 candidates exist', async () => {
+    const b = fake('b', [page(9)]);
+    const r = await run([fake('a', [page(1)]), b], pages(6));
+    expect(r.candidates).toHaveLength(6);
+    expect(b.search).not.toHaveBeenCalled();
+  });
+  it('a later provider fills the remaining slots; earlier candidates stay first', async () => {
+    const fetchPage: FetchPage = async (url) => ({
+      status: 200,
+      body: Array.from({ length: url.endsWith('/1') ? 2 : 9 }, (_, i) => `<img src="${url}/i${i}.png" srcset="x 1x">`).join(''),
+      finalUrl: url
+    });
+    const r = await run([fake('a', [page(1)]), fake('b', [page(2)])], fetchPage);
+    expect(r.candidates).toHaveLength(6);
+    expect(r.candidates.slice(0, 2).map((c) => c.pageUrl)).toEqual(['https://shop.example/p/1', 'https://shop.example/p/1']);
+    expect(r.candidates.slice(2).every((c) => c.pageUrl.endsWith('/2'))).toBe(true);
+  });
+  it('an empty first provider: the second fills', async () => {
+    const r = await run([fake('a', []), fake('b', [page(2)])], pages(3));
+    expect(r.candidates).toHaveLength(3);
+    expect(r.status).toBe('ok');
+  });
+  it('first throws, second ok: ok with the first’s note', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await run([fake('a', new Error('boom')), fake('b', [page(2)])]);
+    expect(r.status).toBe('ok');
+    expect(r.notes).toEqual(['a unavailable (boom)']);
+    log.mockRestore();
+  });
+  it('at most 5 pages per provider', async () => {
+    const fetchPage = pages();
+    await run([fake('a', [1, 2, 3, 4, 5, 6, 7].map(page))], fetchPage);
+    expect(vi.mocked(fetchPage)).toHaveBeenCalledTimes(5);
+  });
+  it('only one candidate is closest', async () => {
+    const fetchPage: FetchPage = async (url) => ({
+      status: 200,
+      body: `<meta property="article:published_time" content="2026-08-20"><img src="${url}/x.png" srcset="x 1x">`,
+      finalUrl: url
+    });
+    const r = await run([fake('a', [page(1)]), fake('b', [page(2)])], fetchPage);
+    expect(r.candidates.filter((c) => c.closest)).toHaveLength(1);
+    expect(r.candidates[0].closest).toBe(true);
+  });
+});
+
 describe('suggest', () => {
   const run = (list: Provider[], fetchPage = pages(), signal?: AbortSignal) => suggest(Q, { providers: list, fetchPage, signal });
 
@@ -63,12 +111,10 @@ describe('suggest', () => {
     log.mockRestore();
   });
 
-  it('fetches at most 5 pages, deduped by URL, and stops asking providers once it has 5', async () => {
+  it('dedupes pages by URL across providers', async () => {
     const fetchPage = pages();
-    const later = fake('c', [page(9)]);
-    await run([fake('a', [page(1), page(2), page(3)]), fake('b', [page(3), page(4), page(5), page(6), page(7)]), later], fetchPage);
-    expect(vi.mocked(fetchPage).mock.calls.map(([u]) => u)).toEqual([1, 2, 3, 4, 5].map((n) => `https://shop.example/p/${n}`));
-    expect(later.search).not.toHaveBeenCalled();
+    await run([fake('a', [page(1), page(2)]), fake('b', [page(2), page(3)])], fetchPage);
+    expect(vi.mocked(fetchPage).mock.calls.map(([u]) => u)).toEqual([1, 2, 3].map((n) => `https://shop.example/p/${n}`));
   });
 
   it('returns at most 6 candidates', async () => {

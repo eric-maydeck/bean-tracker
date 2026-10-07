@@ -5,7 +5,7 @@ import type { PageDetails, PageImage } from './pageImages';
 import type { Candidate, CandidatePage } from './types';
 
 const BAG = /mock|bag|label|pouch/;
-const LIFESTYLE = /beans|cup|brew|farm/;
+const LIFESTYLE = /beans|cup|brew|farm|logo|brand/;
 
 function fileName(url: string): string {
   try {
@@ -30,14 +30,23 @@ export function scoreImage(img: PageImage, roastYear: string | null): number {
   return score;
 }
 
+const words = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+
 export function rankImages(
   pages: { page: CandidatePage; images: PageImage[]; details?: PageDetails }[],
   roastDate: string | null,
-  site: string | null
+  site: string | null,
+  name = ''
 ): Candidate[] {
+  const nameWords = [...new Set(words(name))];
   const roastYear = roastDate?.slice(0, 4) ?? null;
   const siteHost = site ? hostOf(site) : null;
   const roastMs = roastDate ? Date.parse(roastDate) : NaN;
+  const titleMatch = (title: string) => {
+    const t = new Set(words(title));
+    return nameWords.filter((w) => t.has(w)).length;
+  };
   const scored = pages.flatMap(({ page, images, details }, p) => {
     const published = details?.published ?? null;
     const days = published && !Number.isNaN(roastMs) ? Math.abs(Date.parse(published) - roastMs) : Infinity;
@@ -52,14 +61,15 @@ export function rankImages(
         closest: false
       },
       days,
+      match: titleMatch(page.title),
       own: siteHost !== null && hostOf(page.url) === siteHost ? 1 : 0,
       score: scoreImage(img, roastYear),
       p,
       i
     }));
   });
-  // Page release nearest the roast date first (undated / no roast date last), then own site, score, position.
-  scored.sort((a, b) => (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.own - a.own || b.score - a.score || a.p - b.p || a.i - b.i);
+  // Coffee-name match first, then page release nearest the roast date (undated / no roast date last), own site, score, position.
+  scored.sort((a, b) => b.match - a.match || (a.days === b.days ? 0 : a.days < b.days ? -1 : 1) || b.own - a.own || b.score - a.score || a.p - b.p || a.i - b.i);
   const seen = new Set<string>();
   const out = scored.filter(({ c }) => !seen.has(c.image) && seen.add(c.image));
   if (out.length && out[0].days !== Infinity) out[0].c.closest = true;

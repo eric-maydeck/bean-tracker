@@ -5,7 +5,7 @@ import { shopifyImages, htmlImages, shopifyDetails, htmlDetails, type PageDetail
 import { rankImages } from './rankImages';
 import { shopify } from './providers/shopify';
 import { tavily } from './providers/tavily';
-import type { CandidatePage, FetchPage, Provider, SuggestQuery, SuggestResult } from './types';
+import type { Candidate, CandidatePage, FetchPage, Provider, SuggestQuery, SuggestResult } from './types';
 
 export const DEFAULT_PROVIDERS = 'shopify,tavily';
 export const UNCONFIGURED_NOTE = 'No roaster site to search and no web search key (TAVILY_API_KEY)';
@@ -55,32 +55,41 @@ export async function suggest(
   });
   if (!runnable.length) return { status: 'unconfigured', site: q.site, candidates: [], notes: notes.length ? notes : [UNCONFIGURED_NOTE] };
 
-  const pages: CandidatePage[] = [];
+  const candidates: Candidate[] = [];
+  const seenPages = new Set<string>();
   let ran = 0;
   let failed = 0;
   for (const p of runnable) {
-    if (pages.length >= MAX_PAGES) break;
+    if (candidates.length >= MAX_CANDIDATES) break;
     ran++;
+    const pages: CandidatePage[] = [];
     try {
       for (const found of await p.search(q, signal)) {
-        if (pages.length < MAX_PAGES && !pages.some((x) => x.url === found.url)) pages.push(found);
+        if (pages.length < MAX_PAGES && !seenPages.has(found.url)) pages.push(found);
       }
     } catch (err) {
       failed++;
       console.error(`image suggest: ${p.name} failed`, err);
       notes.push(`${p.name} unavailable (${err instanceof Error ? err.message : String(err)})`);
+      continue;
+    }
+    pages.forEach((x) => seenPages.add(x.url));
+    const withImages = await Promise.all(
+      pages.map(async (page) => ({
+        page,
+        ...(await imagesOf(page.url, AbortSignal.any([signal, AbortSignal.timeout(PAGE_MS)]), fetchPage).catch(
+          (): PageRead => ({ images: [], details: { published: null, excerpt: null } })
+        ))
+      }))
+    );
+    // Ranked within this provider only: a later provider never displaces an earlier one's picks.
+    for (const c of rankImages(withImages, q.roastDate, q.site, q.name)) {
+      if (candidates.length < MAX_CANDIDATES && !candidates.some((x) => x.image === c.image)) candidates.push(c);
     }
   }
   if (failed === ran) return { status: 'failed', site: q.site, candidates: [], notes };
-
-  const withImages = await Promise.all(
-    pages.map(async (page) => ({
-      page,
-      ...(await imagesOf(page.url, AbortSignal.any([signal, AbortSignal.timeout(PAGE_MS)]), fetchPage).catch(
-        (): PageRead => ({ images: [], details: { published: null, excerpt: null } })
-      ))
-    }))
-  );
-  const candidates = rankImages(withImages, q.roastDate, q.site).slice(0, MAX_CANDIDATES);
+  // Each provider group flags its own closest; keep only the first.
+  const first = candidates.findIndex((c) => c.closest);
+  candidates.forEach((c, i) => (c.closest = i === first));
   return { status: candidates.length ? 'ok' : 'empty', site: q.site, candidates, notes };
 }
