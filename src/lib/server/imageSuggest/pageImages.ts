@@ -62,12 +62,25 @@ export interface PageDetails {
   excerpt: string | null;
 }
 
-const MAX_EXCERPT = 160;
+const MAX_EXCERPT = 300;
+const NOTES_CUE = /\b(tasting|notes|flavou?r|in the cup|cup profile)/i;
 
-// Plain text of an HTML snippet, <=160 chars, cut on a word boundary with "…".
+// Plain text of an HTML snippet, starting at the segment with the first
+// tasting-notes cue, <=300 chars, cut on a word boundary with "…".
 export function excerptOf(html: unknown): string | null {
   if (typeof html !== 'string') return null;
-  const text = htmlToText(html).replace(/\s+/g, ' ').trim();
+  // htmlToText puts block ends on their own lines. Shopify meta descriptions arrive
+  // with them stripped ("PanamaRegion: Volcan"), so a capital label glued to a word
+  // starts a new line too.
+  // ponytail: heuristic, also splits a camelCase word right before a colon.
+  let text = htmlToText(html).replace(/([a-z\d.])(?=[A-Z][a-z]+(?: [a-z]+){0,3}:)/g, '$1\n');
+  const cue = text.search(NOTES_CUE);
+  if (cue > 0) {
+    const cuts = [...text.slice(0, cue).matchAll(/\n|[.!?]\s/g)];
+    const last = cuts.at(-1);
+    if (last) text = text.slice(last.index + last[0].length);
+  }
+  text = text.replace(/\s+/g, ' ').trim();
   if (text.length <= MAX_EXCERPT) return text || null;
   return text.slice(0, MAX_EXCERPT - 1).replace(/\s+\S*$/, '') + '…';
 }

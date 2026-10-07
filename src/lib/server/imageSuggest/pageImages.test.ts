@@ -65,9 +65,33 @@ describe('htmlImages', () => {
 describe('excerptOf', () => {
   it('plain text, entities decoded, cut on a word boundary with an ellipsis', () => {
     expect(excerptOf('<p>Fruity &amp; <b>bright</b></p>')).toBe('Fruity & bright');
-    const long = excerptOf(`<p>${'word '.repeat(60)}</p>`)!;
-    expect(long.length).toBeLessThanOrEqual(160);
+    const long = excerptOf(`<p>${'word '.repeat(80)}</p>`)!;
+    expect(long.length).toBeLessThanOrEqual(300);
+    expect(long.length).toBeGreaterThan(250);
     expect(long.endsWith('word…')).toBe(true);
+  });
+  it('block boundaries become spaces, never smushed words', () => {
+    expect(excerptOf('<p>Notes</p><p>Plum</p>')).toBe('Notes Plum');
+    expect(excerptOf('Cacao<br>Plum\r\nFig')).toBe('Cacao Plum Fig');
+  });
+  it('splits labels a Shopify meta description ran together', () => {
+    // Live bigsurcafe.com og:description (2026-10-06): the theme strips tags without spaces.
+    expect(excerptOf('Country: PanamaRegion: VolcanLot: S.SelectedProcess: Natural Harvest: March 2026')).toBe(
+      'Country: Panama Region: Volcan Lot: S.Selected Process: Natural Harvest: March 2026'
+    );
+  });
+  it('starts at the segment with the first tasting-notes cue', () => {
+    const intro = 'A long story about the farm and the family who grow it. '.repeat(3);
+    expect(excerptOf(`<p>${intro}Tasting notes: plum, cacao.</p>`)).toBe('Tasting notes: plum, cacao.');
+    expect(excerptOf('<p>Origin: Peru</p><p>Our flavour picks: fig</p>')).toBe('Our flavour picks: fig');
+    expect(excerptOf('<p>It denotes care. Fig</p>')).toBe('It denotes care. Fig');
+  });
+  it('Big Sur (captured body_html and live meta) start at the flavor notes', () => {
+    const notes = 'Flavor notes: Dark floral, Pineapple, Muscat grape, Dekopon';
+    expect(shopifyDetails(JSON.parse(fixture('bigsur.json'))).excerpt).toBe(notes);
+    const meta = 'Country: PanamaRegion: VolcanFarm: CordilleraAltitude: 1,800–1,900 mVariety: Green Tip GeishaLot: ' +
+      'S.SelectedProcess: Natural Harvest: March 2026Flavor notes: Dark floral, Pineapple, Muscat grape, Dekopon';
+    expect(excerptOf(meta)).toBe(notes);
   });
   it('null for empty', () => {
     expect(excerptOf('  <p> </p>')).toBeNull();
@@ -79,8 +103,7 @@ describe('shopifyDetails', () => {
   it('captured page: published_at date and a description excerpt', () => {
     const d = shopifyDetails(JSON.parse(fixture('ordinary-faf.json')));
     expect(d.published).toBe('2026-08-24');
-    expect(d.excerpt!.length).toBeLessThanOrEqual(160);
-    expect(d.excerpt!.startsWith('Origin: Serra dos Ciganos, Brazil')).toBe(true);
+    expect(d.excerpt).toBe('Taste Notes: Raspberry, Nougat, Cherry MASL: 1.200 – 1.350');
   });
   it('falls back to created_at; junk is null', () => {
     expect(shopifyDetails({ product: { created_at: '2025-03-01T10:00:00Z' } })).toEqual({ published: '2025-03-01', excerpt: null });
