@@ -1,0 +1,30 @@
+{
+  "query": "\"Ethiopia Gesha Village Lot 26/136 Oma Honey\" The Picky Chemist coffee",
+  "follow_up_questions": null,
+  "answer": null,
+  "images": [],
+  "results": [
+    {
+      "title": "Ethiopia Gesha Village Lot 26/136 Oma Honey | The Picky Chemist",
+      "url": "https://en.thepickychemist.com/product-page/ethiopia-gesha-village-lot-26-136-oma-honey",
+      "content": "Gesha Village Oma, honey process. Tasting notes: jasmine, peach, bergamot.",
+      "score": 0.91,
+      "raw_content": null
+    },
+    {
+      "title": "The Picky Chemist Gesha Village Oma Honey - Bean Hoard",
+      "url": "https://www.beanhoard.com/coffees/the-picky-chemist-gesha-village-oma-honey",
+      "content": "Review and photos of the Picky Chemist's Gesha Village Oma Honey.",
+      "score": 0.72,
+      "raw_content": null
+    },
+    {
+      "title": "not a web page",
+      "url": "ftp://example.com/file",
+      "content": "",
+      "score": 0.1,
+      "raw_content": null
+    }
+  ],
+  "response_time": 1.21
+}

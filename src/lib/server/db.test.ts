@@ -27,6 +27,7 @@ describe('createDb', () => {
       'roast_levels',
       'roaster_images',
       'roaster_websites',
+      'search_usage',
       'short_links',
       'slug_redirects',
       'subscriptions'

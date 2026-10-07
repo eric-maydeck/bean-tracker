@@ -53,6 +53,14 @@ CREATE TABLE IF NOT EXISTS roaster_websites (
   url TEXT NOT NULL
 );
 
+-- One row per paid search call (Tavily), written before the call, so the
+-- provider stays under the free plan's monthly credits. Rows older than 31
+-- days are pruned on each write (imageSuggest/providers/tavily.ts).
+CREATE TABLE IF NOT EXISTS search_usage (
+  provider TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+
 -- Backdrop color behind each displayed image (object-fit: contain), keyed by
 -- the exact URL so a logo shared by many coffees is computed once. Written by
 -- server/imageFills.ts; joined in coffees.ts LIST_SELECT as image_fill.
