@@ -1,3 +1,15 @@
+# [1.53.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.52.1...v1.53.0) (2026-10-07)
+
+
+### Bug Fixes
+
+* **coffees:** line up compact inline-edit icons with the form's buttons
+
+
+### Features
+
+* **coffees:** keep several inline edit forms open at once
+
 ## [1.52.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.52.0...v1.52.1) (2026-10-07)
 
 
