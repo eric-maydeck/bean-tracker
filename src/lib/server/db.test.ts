@@ -26,6 +26,7 @@ describe('createDb', () => {
       'image_fills',
       'roast_levels',
       'roaster_images',
+      'roaster_websites',
       'short_links',
       'slug_redirects',
       'subscriptions'

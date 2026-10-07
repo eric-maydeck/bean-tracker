@@ -45,6 +45,14 @@ CREATE TABLE IF NOT EXISTS roaster_images (
   image_url TEXT NOT NULL
 );
 
+-- Roaster → website origin (https://host), searched by image Suggest.
+-- Filled at boot from known product URLs (backfillRoasterWebsites, never
+-- overwriting) and by Suggest picks saved from the coffee form.
+CREATE TABLE IF NOT EXISTS roaster_websites (
+  roaster TEXT PRIMARY KEY COLLATE NOCASE,
+  url TEXT NOT NULL
+);
+
 -- Backdrop color behind each displayed image (object-fit: contain), keyed by
 -- the exact URL so a logo shared by many coffees is computed once. Written by
 -- server/imageFills.ts; joined in coffees.ts LIST_SELECT as image_fill.

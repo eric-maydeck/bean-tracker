@@ -2,11 +2,15 @@ import type { Handle, ServerInit } from '@sveltejs/kit';
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import { queueFillMissing } from '$lib/server/imageFills';
+import { backfillRoasterWebsites } from '$lib/server/roasterWebsites';
 
 // Backdrop fills for images that have none yet (saved before fills existed,
 // or failed on the last run). Not awaited: boot never waits on the network.
 export const init: ServerInit = () => {
-  void queueFillMissing(getDb());
+  const db = getDb();
+  // Sync and local: roaster sites from known product URLs (image Suggest).
+  backfillRoasterWebsites(db);
+  void queueFillMissing(db);
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
