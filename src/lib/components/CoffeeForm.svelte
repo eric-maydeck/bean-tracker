@@ -667,11 +667,13 @@
                 <div class="suggest-list">
                   {#each r.candidates as c (c.image)}
                     <button type="button" class="suggest-pick" onclick={() => pick(c)}>
-                      <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
-                      <span class="suggest-text">
+                      <span class="suggest-image">
+                        <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
                         {#if c === closest}
                           <span class="badge badge-fresh">Closest to roast date</span>
                         {/if}
+                      </span>
+                      <span class="suggest-text">
                         <span class="suggest-title">{c.pageTitle}</span>
                         <span class="text-muted suggest-meta">{hostOf(c.pageUrl)}{c.published ? ` · ${formatDate(c.published)}` : ''}</span>
                         {#if c.excerpt}
@@ -1076,24 +1078,40 @@
     text-align: left;
     cursor: pointer;
   }
-  .suggest-pick img {
+  /* A square, full card width: the shape the saved image gets as a
+     thumbnail (user, 2026-10-06; taller cards are fine). */
+  .suggest-image {
+    position: relative;
     flex: none;
+    display: block;
     width: 100%;
-    height: 14rem;
+    aspect-ratio: 1 / 1;
+  }
+  .suggest-image img {
+    display: block;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
     border-radius: var(--radius);
   }
-  @media (min-width: 641px) {
-    .suggest-pick img {
-      height: 16rem;
+  /* Phone landscape (333px tall): the body shows ~150px, so a full-width
+     square can't fit; cap it so a whole image fits on screen. */
+  @media (max-height: 500px) {
+    .suggest-image {
+      width: 9rem;
+      align-self: center;
     }
   }
-  /* Phone landscape (333px tall): the body shows ~150px, so a whole image
-     fits on screen while scrolling. */
-  @media (max-height: 500px) {
-    .suggest-pick img {
-      height: 8rem;
-    }
+  /* Over the image's top-left corner, translucent so little art is hidden;
+     the surface-tinted fill keeps the badge text readable in both themes. */
+  .suggest-image .badge {
+    position: absolute;
+    top: var(--space-1);
+    left: var(--space-1);
+    padding: 0.1rem 0.4rem;
+    font-size: 0.7rem;
+    background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+    backdrop-filter: blur(4px);
   }
   .suggest-text {
     display: flex;

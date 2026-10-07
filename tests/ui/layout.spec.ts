@@ -452,6 +452,31 @@ export const STATES: State[] = [
         const img = await d.locator('.suggest-pick img').nth(0).boundingBox();
         expect(img!.height).toBeGreaterThanOrEqual(200);
       }
+      // Square image boxes, the saved thumbnail's shape, spanning the card
+      // (capped and centered only on the 333px-tall landscape phone); the
+      // image fills the box (contained, checked above). The badge sits over
+      // the image's top-left corner.
+      const box = await d.locator('.suggest-pick').nth(0).evaluate((el) => {
+        const r = (e: Element) => e.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const card = r(el);
+        const content = card.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+        const b = r(el.querySelector('.suggest-image')!);
+        const img = r(el.querySelector('img')!);
+        const badge = r(el.querySelector('.badge')!);
+        return {
+          w: b.width, h: b.height, content, centered: Math.abs(b.left - card.left - (card.right - b.right)),
+          fills: Math.abs(img.width - b.width) <= 1 && Math.abs(img.height - b.height) <= 1,
+          badgeInside: badge.left >= b.left && badge.top >= b.top && badge.right <= b.right && badge.bottom <= b.bottom,
+          badgeTopLeft: badge.left - b.left < 16 && badge.top - b.top < 16
+        };
+      });
+      expect(Math.abs(box.w - box.h)).toBeLessThanOrEqual(1);
+      expect(box.fills).toBe(true);
+      expect(box.badgeInside).toBe(true);
+      expect(box.badgeTopLeft).toBe(true);
+      expect(box.centered).toBeLessThanOrEqual(1);
+      if (test.info().project.name !== 'phone-landscape') expect(Math.abs(box.w - box.content)).toBeLessThanOrEqual(1);
       await expect(d.locator('.suggest-excerpt')).toHaveCount(3);
       await expectDialogInViewport(page);
     }
