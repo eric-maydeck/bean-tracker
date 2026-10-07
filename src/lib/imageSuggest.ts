@@ -5,7 +5,7 @@ export interface Candidate {
   pageTitle: string;
   provider: string;
   published: string | null; // page release date, YYYY-MM-DD
-  excerpt: string | null; // plain-text description, <=160 chars
+  excerpt: string | null; // plain-text description, <=300 chars
   closest: boolean; // the page released nearest the roast date (at most one)
 }
 export type SuggestStatus = 'ok' | 'empty' | 'failed' | 'unconfigured';

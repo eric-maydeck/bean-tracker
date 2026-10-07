@@ -1,4 +1,5 @@
 import { toOrigin } from './roasterWebsites';
+
 export interface ValidatedCoffeeInput {
   roaster: string;
   coffee_name: string;
