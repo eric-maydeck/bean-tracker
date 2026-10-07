@@ -53,6 +53,14 @@ Requires two additional environment variables beyond `DB_PATH`:
 | `ADMIN_PASSWORD_HASH` | `<saltHex>:<hashHex>`, produced by `node scripts/hash-password.ts <password>` |
 | `SESSION_SECRET` | A long random string, generated once — e.g. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
 
+Optional, for the coffee form's image Suggest:
+
+| Variable | Purpose |
+|---|---|
+| `TAVILY_API_KEY` | Tavily web search; without it Suggest searches only the roaster's Shopify store |
+| `TAVILY_MONTHLY_LIMIT` | Tavily calls allowed per rolling 31 days (default 1400) |
+| `IMAGE_SUGGEST_PROVIDERS` | Provider order (default `shopify,tavily`) |
+
 Both are secrets — never commit real values. For local dev, export them in
 your shell before running the server. For a deployment, set them in its
 environment.
@@ -67,6 +75,7 @@ environment.
 | `npm run test` | Full test suite (unit + route/script tests) |
 | `npm run migrate -- --file "<path>" --dry-run` | Parse an xlsx export and print row counts without writing |
 | `npm run migrate -- --file "<path>" [--db <path>] [--clear]` | Import coffees/subscriptions from an xlsx export into the SQLite database |
+| `npx vite-node --config scripts/vite-node.config.mjs scripts/suggest-compare.ts <db copy> [n] [out]` | Image Suggest results per provider, side by side (on a DB copy) |
 
 ### Data migration
 
