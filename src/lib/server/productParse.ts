@@ -116,7 +116,7 @@ export function parseShopifyProduct(json: unknown, meta: { name?: string; curren
   };
 }
 
-function metaTags(html: string): Record<string, string> {
+export function metaTags(html: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
     const key = /\b(?:property|name)\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1]?.toLowerCase();
@@ -128,7 +128,7 @@ function metaTags(html: string): Record<string, string> {
 
 type Ld = Record<string, unknown>;
 
-function findLdProduct(html: string): Ld | null {
+export function findLdProduct(html: string): Ld | null {
   for (const [, body] of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     let data: unknown;
     try {
