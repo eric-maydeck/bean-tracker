@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Locator } from '@playwright/test';
+import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { checkLayout } from './checkLayout';
 
@@ -152,6 +152,34 @@ async function expectContained(img: Locator, background?: string) {
   expect(s.fit).toBe('contain');
   if (background) expect(s.bg).toBe(background);
   else expect(s.bg).not.toBe('rgba(0, 0, 0, 0)');
+}
+
+// Image Suggest: the endpoint is stubbed (no network, nothing saved). Moonwake
+// (frozen seed coffee) has a roaster and a name and no product URL.
+const svg = (w: number, h: number, fill: string) =>
+  'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${fill}"/></svg>`);
+const SITE = 'https://moonwake.example';
+const BEANHOARD = 'https://www.beanhoard.example/coffees/moonwake-ethiopia-bensa-bombe-anaerobic-natural-lot-7';
+const SUGGEST_OK = {
+  status: 'ok', site: SITE, storedSite: SITE, notes: ['tavily unavailable (rate limited)'],
+  candidates: [
+    { image: svg(64, 64, '#6b4f3a'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify' },
+    { image: svg(160, 40, '#f2c14e'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify' },
+    { image: svg(40, 160, '#4a7c59'), pageUrl: BEANHOARD, pageTitle: 'Moonwake Coffee Roasters — Ethiopia Bensa Bombe Anaerobic Natural Lot 7 (2026 harvest)', provider: 'tavily' },
+    { image: svg(64, 64, '#2e6f9e'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify' },
+    { image: svg(64, 48, '#c0392b'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify' },
+    { image: svg(48, 64, '#7b4fa0'), pageUrl: `${SITE}/collections/archive/products/bensa-2025`, pageTitle: 'Bensa Bombe 2025', provider: 'shopify' }
+  ]
+};
+// No stored site: a pick on the roaster's own host stages it (pickCandidate).
+const SUGGEST_UNSTORED = { ...SUGGEST_OK, storedSite: null };
+const reply = (body: object, status = 200) => (route: Route) => route.fulfill({ status, json: body });
+// Opens Edit on the Moonwake coffee and presses Suggest. A null reply leaves
+// the request hanging (the "Searching…" state).
+async function openSuggest(page: Page, handler: ((route: Route) => Promise<void>) | null) {
+  await page.route('**/api/coffees/image-suggest', (route) => (handler ? handler(route) : undefined));
+  await page.getByRole('button', { name: 'Edit', exact: true }).click();
+  await page.getByRole('button', { name: 'Suggest', exact: true }).click();
 }
 
 // Every page and state the layout rules apply to. Every UI change adds its
@@ -359,6 +387,129 @@ export const STATES: State[] = [
       await expect(btn).toBeEnabled();
       await expect(btn).not.toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('input[name="set_roaster_default"]')).toHaveCount(0);
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-searching',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, null);
+      await expect(page.getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeDisabled();
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-list',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply(SUGGEST_OK));
+      await expect(page.locator('.suggest-pick')).toHaveCount(6);
+      await expect(page.getByText('Searching moonwake.example ·')).toBeVisible();
+      await expect(page.getByText('tavily unavailable (rate limited)')).toBeVisible();
+      for (const img of await page.locator('.suggest-pick img').all()) await expectContained(img, NEUTRAL);
+      await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-empty',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply({ status: 'empty', site: SITE, storedSite: SITE, candidates: [], notes: [] }));
+      await expect(page.getByText('No images found on moonwake.example')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'None of these' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-failed',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply({ status: 'failed', site: null, storedSite: null, candidates: [], notes: ['shopify unavailable (HTTP 503)', 'tavily unavailable (bad API key)'] }));
+      await expect(page.getByText('Search failed', { exact: true })).toBeVisible();
+      await expect(page.getByText('tavily unavailable (bad API key)')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-request-failed',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply({ message: 'Internal Error' }, 500));
+      await expect(page.getByText('Search failed', { exact: true })).toBeVisible();
+      await expect(page.getByText('Internal Error')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-unconfigured',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply({ status: 'unconfigured', site: null, storedSite: null, candidates: [], notes: ['No roaster site to search and no web search key (TAVILY_API_KEY)'] }));
+      await expect(page.getByText("Image search isn't set up")).toBeVisible();
+      await expect(page.getByRole('button', { name: 'set roaster site' })).toBeVisible();
+    }
+  },
+  {
+    // A pick on the roaster's own site with none stored: image + empty product
+    // URL filled + the site staged; the list closes.
+    name: 'coffee-edit-suggest-picked',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply(SUGGEST_UNSTORED));
+      await page.locator('.suggest-pick').nth(0).click();
+      await expect(page.locator('#image_url')).toHaveValue(SUGGEST_OK.candidates[0].image);
+      await expect(page.locator('#product_url')).toHaveValue(SUGGEST_OK.candidates[0].pageUrl);
+      await expect(page.locator('input[name="roaster_website"]')).toHaveValue(SITE);
+      await expect(page.locator('.suggest-pick')).toHaveCount(0);
+    }
+  },
+  {
+    // Discard is the undo for a staged website too.
+    name: 'coffee-edit-suggest-picked-discarded',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply(SUGGEST_UNSTORED));
+      await page.locator('.suggest-pick').nth(0).click();
+      await expect(page.locator('input[name="roaster_website"]')).toHaveCount(1);
+      await page.getByRole('button', { name: 'Discard changes' }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
+    }
+  },
+  {
+    // Enter in the site box reruns Suggest with that site; the form is not
+    // submitted. A working search on the typed site stages it (as the
+    // endpoint normalized it), and a pick from another host keeps it.
+    name: 'coffee-edit-suggest-change-site',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      const sites: unknown[] = [];
+      await openSuggest(page, async (route) => {
+        const site = route.request().postDataJSON().site;
+        sites.push(site);
+        await route.fulfill({ json: site ? { ...SUGGEST_UNSTORED, site: 'https://moonwake.coffee' } : SUGGEST_UNSTORED });
+      });
+      await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
+      await page.getByRole('button', { name: 'change', exact: true }).click();
+      const box = page.getByRole('textbox', { name: 'Roaster website' });
+      await box.fill('moonwake.coffee');
+      await box.press('Enter');
+      await expect.poll(() => sites).toEqual([undefined, 'moonwake.coffee']);
+      await expect(page.locator('#image_url')).toBeVisible();
+      await expect(page.locator('.suggest-pick')).toHaveCount(6);
+      await expect(page.locator('input[name="roaster_website"]')).toHaveValue('https://moonwake.coffee');
+      await page.locator('.suggest-pick').nth(2).click();
+      await expect(page.locator('input[name="roaster_website"]')).toHaveValue('https://moonwake.coffee');
+    }
+  },
+  {
+    name: 'coffee-edit-suggest-disabled',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeEnabled();
+      await page.locator('#coffee_name').fill('');
+      await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeDisabled();
     }
   },
   ...(['cards', 'list', 'compact'] as const).map((view) => ({

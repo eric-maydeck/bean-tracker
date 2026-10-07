@@ -3,7 +3,8 @@
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
-  import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault } from '$lib/pendingChanges';
+  import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault, stagedRoasterWebsite } from '$lib/pendingChanges';
+  import { hostOf, pickCandidate, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
   import { roasterDefaultFor } from '$lib/coffeeImage';
   import { backdrop } from '$lib/imageBackdrop';
   import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
@@ -95,6 +96,7 @@
   // Live copies of the two fields the roaster-default button and preview read.
   let roasterValue = $state((coffee?.roaster ?? prefill?.roaster) ?? '');
   let imageValue = $state((coffee?.image_url ?? prefill?.image_url) ?? '');
+  let nameValue = $state((coffee?.coffee_name ?? prefill?.coffee_name) ?? '');
   // "Set as roaster default" is a form field like any other (hidden input
   // below): staged, dirty-checked, saved and discarded with the rest. Read back
   // from a staged merge so a re-rendered form keeps the mark.
@@ -102,9 +104,70 @@
   const canSetDefault = $derived(roasterValue.trim() !== '' && imageValue.trim() !== '');
   const defaultPreview = $derived(imageValue.trim() ? null : roasterDefaultFor(roasterImages, roasterValue));
 
+  // Image Suggest (spec 2026-10-06-image-suggest-design.md). Inline-edit state:
+  // never in the URL. roasterWebsite is a staged form field (hidden input).
+  let suggesting = $state(false);
+  let suggestResult = $state<SuggestResponse | null>(null);
+  let siteEditing = $state(false);
+  let siteInput = $state('');
+  let lastSite: string | undefined;
+  let roasterWebsite = $state(stagedRoasterWebsite(coffee));
+  const canSuggest = $derived(roasterValue.trim() !== '' && nameValue.trim() !== '');
+  const failedResult = (note: string): SuggestResponse => ({ status: 'failed', site: null, storedSite: null, candidates: [], notes: [note] });
+
+  // site: a site typed via "change" (or its Retry); undefined = the usual search.
+  async function runSuggest(site?: string) {
+    lastSite = site;
+    siteEditing = false;
+    suggesting = true;
+    try {
+      const res = await fetch('/api/coffees/image-suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roaster: fieldValue('roaster'),
+          name: fieldValue('coffee_name'),
+          origin: fieldValue('origin'),
+          roastDate: fieldValue('roast_date'),
+          site: site ?? (roasterWebsite || undefined)
+        })
+      });
+      const data = await res.json().catch(() => null);
+      // SvelteKit's own errors (e.g. 500) come back as { message }.
+      const r: SuggestResponse = res.ok && data?.status ? data : failedResult(data?.error ?? data?.message ?? `Search failed (HTTP ${res.status})`);
+      suggestResult = r;
+      // Only "change" replaces a stored site: stage the typed site (as the
+      // endpoint normalized it) once a search on it worked.
+      if (site && r.site && (r.status === 'ok' || r.status === 'empty')) roasterWebsite = r.site;
+      for (const c of r.candidates) loadFill(c.image);
+    } catch {
+      suggestResult = failedResult("Couldn't reach the server");
+    } finally {
+      suggesting = false;
+    }
+  }
+
+  function pick(c: Candidate) {
+    const p = pickCandidate(c, fieldValue('product_url'), suggestResult?.storedSite ?? null, fieldValue('roaster'));
+    setField('image_url', p.image_url);
+    if (p.product_url) setField('product_url', p.product_url);
+    // A pick never clears a site already staged (e.g. by "change").
+    roasterWebsite = p.roaster_website ?? roasterWebsite;
+    showPreview(p.image_url);
+    suggestResult = null;
+  }
+
+  function changeSite(e: KeyboardEvent) {
+    // Enter here must rerun Suggest, never submit (stage) the coffee form.
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (siteInput.trim()) runSuggest(siteInput.trim());
+  }
+
   function syncImageFields() {
     roasterValue = fieldValue('roaster');
     imageValue = fieldValue('image_url');
+    nameValue = fieldValue('coffee_name');
     // No image, no mark: retyping one must not silently re-arm it.
     if (!imageValue.trim()) setRoasterDefault = false;
   }
@@ -115,7 +178,7 @@
   function setField(name: string, value: string | number) {
     const el = formEl.elements.namedItem(name);
     if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
-    if (name === 'roaster' || name === 'image_url') syncImageFields();
+    if (name === 'roaster' || name === 'image_url' || name === 'coffee_name') syncImageFields();
   }
 
   function fieldValue(name: string): string {
@@ -392,7 +455,7 @@
 
   <div class="form-field field-coffee">
     <label for="coffee_name">Coffee</label>
-    <input id="coffee_name" name="coffee_name" required value={(coffee?.coffee_name ?? prefill?.coffee_name) ?? ''} />
+    <input id="coffee_name" name="coffee_name" required oninput={syncImageFields} value={(coffee?.coffee_name ?? prefill?.coffee_name) ?? ''} />
   </div>
 
   <div class="form-field field-origin">
@@ -507,6 +570,7 @@
         />
         <div class="inline-row-actions" data-button-row>
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
+          <button class="button button-secondary" type="button" disabled={!canSuggest || suggesting} onclick={() => runSuggest()}>Suggest</button>
           <button
             class="button button-secondary"
             type="button"
@@ -530,6 +594,61 @@
       </div>
       {#if setRoasterDefault && canSetDefault}
         <input type="hidden" name="set_roaster_default" value="1" />
+      {/if}
+      {#if roasterWebsite}
+        <input type="hidden" name="roaster_website" value={roasterWebsite} />
+      {/if}
+      {#if suggesting}
+        <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
+      {:else if suggestResult}
+        {@const r = suggestResult}
+        <div class="suggest-panel">
+          <p class="text-muted fill-note">
+            {r.site ? `Searching ${hostOf(r.site)}` : 'Searching the web'} ·
+            <button
+              type="button"
+              class="suggest-change"
+              onclick={() => {
+                siteEditing = true;
+                siteInput = r.site ?? '';
+              }}>{r.site ? 'change' : 'set roaster site'}</button
+            >
+          </p>
+          {#if siteEditing}
+            <!-- No name: never submitted. type="text" (not url), so a bare host
+                 neither fails the form's constraint validation nor blocks Save. -->
+            <div class="inline-row">
+              <input type="text" inputmode="url" aria-label="Roaster website" placeholder="roaster.com" bind:value={siteInput} onkeydown={changeSite} />
+              <button class="button button-secondary" type="button" disabled={!siteInput.trim()} onclick={() => runSuggest(siteInput.trim())}>Search</button>
+            </div>
+          {/if}
+          {#if r.status === 'ok'}
+            <div class="suggest-list">
+              {#each r.candidates as c (c.image)}
+                <button type="button" class="suggest-pick" onclick={() => pick(c)}>
+                  <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
+                  <span class="suggest-line">{c.pageTitle}</span>
+                  <span class="suggest-line text-muted">{hostOf(c.pageUrl)}</span>
+                </button>
+              {/each}
+            </div>
+          {:else if r.status === 'empty'}
+            <p class="fill-note">{r.site ? `No images found on ${hostOf(r.site)}` : 'No images found'}</p>
+          {:else if r.status === 'failed'}
+            <p class="fill-note">Search failed</p>
+          {:else}
+            <p class="fill-note">Image search isn't set up</p>
+          {/if}
+          {#each r.notes as note, i (i)}
+            <p class="text-muted fill-note">{note}</p>
+          {/each}
+          <div class="suggest-actions" data-button-row>
+            {#if r.status === 'failed'}
+              <button class="button button-secondary" type="button" onclick={() => runSuggest(lastSite)}>Retry</button>
+            {/if}
+            <button class="button button-secondary" type="button" onclick={() => (suggestResult = null)}>None of these</button>
+          </div>
+        </div>
       {/if}
       {#if defaultPreview}
         <figure class="default-preview">
@@ -784,6 +903,76 @@
   }
   .default-preview {
     margin: 0;
+  }
+  /* Image Suggest's pick list (layout settled in Task 10's previews). Titles
+     stay on one line (ellipsis): checkLayout fails wrapped button text. */
+  .suggest-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .suggest-panel {
+    margin-top: var(--space-2);
+  }
+  .suggest-change {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-accent);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .suggest-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .suggest-pick {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .suggest-pick img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    border-radius: var(--radius);
+  }
+  .suggest-line {
+    overflow: hidden;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .suggest-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  @media (max-width: 640px) {
+    .suggest-actions .button {
+      flex: 1 1 auto;
+      margin: 0;
+      text-align: center;
+    }
+  }
+  @media (max-width: 480px) {
+    .suggest-change {
+      min-width: 44px;
+      min-height: 44px;
+    }
   }
   /* Low/high sit side by side within this one .form-grid cell (a fixed
      grid-column span here, to make the note below sit under both fields,

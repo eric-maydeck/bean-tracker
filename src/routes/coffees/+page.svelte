@@ -645,7 +645,7 @@
 
 {#if refreshState !== 'idle'}
   <div class="refresh-toast" role="status">
-    {#if refreshState === 'busy'}<span class="refresh-spinner" aria-hidden="true"></span>Refreshing…{:else}Updated{/if}
+    {#if refreshState === 'busy'}<span class="spinner" aria-hidden="true"></span>Refreshing…{:else}Updated{/if}
   </div>
 {/if}
 
@@ -1115,27 +1115,13 @@
     white-space: nowrap;
     animation: refresh-toast-in 150ms ease-out;
   }
-  .refresh-spinner {
-    width: 0.9em;
-    height: 0.9em;
-    border: 2px solid currentColor;
-    border-right-color: transparent;
-    border-radius: 50%;
-    animation: refresh-spin 700ms linear infinite;
-  }
-  @keyframes refresh-spin {
-    to {
-      rotate: 360deg;
-    }
-  }
   @keyframes refresh-toast-in {
     from {
       opacity: 0;
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .refresh-toast,
-    .refresh-spinner {
+    .refresh-toast {
       animation: none;
     }
   }
