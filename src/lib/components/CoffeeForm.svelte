@@ -835,6 +835,42 @@
     flex-direction: column;
     gap: var(--space-2);
   }
+  /* Inline in a Coffees card, the grid follows the card's width, not the
+     viewport's, so fields stay >= ~150px: two columns under 500px (3 x 150 +
+     2 gaps), one under 330px. Before the phone rule below, which still wins
+     on phones (same specificity, later in source). */
+  @container card (width < 500px) {
+    .form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-areas:
+        'producturl producturl'
+        'roaster coffee'
+        'origin roastlevel'
+        'processing amount'
+        'cost roastdate'
+        'frozenstart frozenend'
+        'image rest';
+    }
+  }
+  @container card (width < 330px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        'producturl'
+        'roaster'
+        'coffee'
+        'origin'
+        'roastlevel'
+        'processing'
+        'amount'
+        'cost'
+        'roastdate'
+        'rest'
+        'frozenstart'
+        'frozenend'
+        'image';
+    }
+  }
   @media (max-width: 640px) {
     .form-grid {
       grid-template-columns: 1fr;

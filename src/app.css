@@ -190,6 +190,8 @@ input:focus-visible {
   color: inherit;
   text-decoration: none;
   transition: box-shadow 0.15s ease, transform 0.15s ease;
+  /* CoffeeForm's field grid follows the card's width when it opens inline. */
+  container: card / inline-size;
 }
 
 .card:hover {
