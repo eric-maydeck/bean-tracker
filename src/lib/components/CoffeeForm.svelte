@@ -7,6 +7,7 @@
   import { hostOf, pickCandidate, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
   import { roasterDefaultFor } from '$lib/coffeeImage';
   import { backdrop } from '$lib/imageBackdrop';
+  import { formatDate } from '$lib/formatDate';
   import { afterFailedFill, suggestRest, canReplaceRest, fieldsChanged, type RestHistoryRow, type RestSuggestion } from '$lib/coffeeFormFill';
 
   let {
@@ -111,12 +112,19 @@
   let siteEditing = $state(false);
   let siteInput = $state('');
   let lastSite: string | undefined;
+  // Results live in a modal <dialog>; closing it (✕, Esc, backdrop, None of
+  // these, a pick) drops the result, and a reply that lands after a close or
+  // a newer search is ignored (searchId).
+  let suggestDialog: HTMLDialogElement;
+  let suggestButton: HTMLButtonElement;
+  let searchId = 0;
   let roasterWebsite = $state(stagedRoasterWebsite(coffee));
   const canSuggest = $derived(roasterValue.trim() !== '' && nameValue.trim() !== '');
   const failedResult = (note: string): SuggestResponse => ({ status: 'failed', site: null, storedSite: null, candidates: [], notes: [note] });
 
   // site: a site typed via "change" (or its Retry); undefined = the usual search.
   async function runSuggest(site?: string) {
+    const id = ++searchId;
     lastSite = site;
     siteEditing = false;
     suggesting = true;
@@ -133,6 +141,7 @@
         })
       });
       const data = await res.json().catch(() => null);
+      if (id !== searchId) return;
       // SvelteKit's own errors (e.g. 500) come back as { message }.
       const r: SuggestResponse = res.ok && data?.status ? data : failedResult(data?.error ?? data?.message ?? `Search failed (HTTP ${res.status})`);
       suggestResult = r;
@@ -141,10 +150,23 @@
       if (site && r.site && (r.status === 'ok' || r.status === 'empty')) roasterWebsite = r.site;
       for (const c of r.candidates) loadFill(c.image);
     } catch {
-      suggestResult = failedResult("Couldn't reach the server");
+      if (id === searchId) suggestResult = failedResult("Couldn't reach the server");
     } finally {
-      suggesting = false;
+      if (id === searchId) suggesting = false;
     }
+  }
+
+  function openSuggest() {
+    suggestDialog.showModal();
+    runSuggest();
+  }
+
+  function suggestClosed() {
+    searchId++;
+    suggesting = false;
+    suggestResult = null;
+    siteEditing = false;
+    suggestButton.focus();
   }
 
   function pick(c: Candidate) {
@@ -155,7 +177,7 @@
     // A pick never clears a site already staged (e.g. by "change").
     roasterWebsite = p.roaster_website ?? roasterWebsite;
     showPreview(p.image_url);
-    suggestResult = null;
+    suggestDialog.close();
   }
 
   function changeSite(e: KeyboardEvent) {
@@ -571,7 +593,7 @@
         />
         <div class="inline-row-actions" data-button-row>
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
-          <button class="button button-secondary" type="button" disabled={!canSuggest || suggesting} onclick={() => runSuggest()}>Suggest</button>
+          <button class="button button-secondary" type="button" bind:this={suggestButton} disabled={!canSuggest || suggesting} onclick={openSuggest}>Suggest</button>
           <button
             class="button button-secondary"
             type="button"
@@ -599,58 +621,88 @@
       {#if roasterWebsite}
         <input type="hidden" name="roaster_website" value={roasterWebsite} />
       {/if}
-      {#if suggesting}
-        <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
-      {:else if suggestResult}
-        {@const r = suggestResult}
-        <div class="suggest-panel">
-          <p class="text-muted fill-note">
-            {r.site ? `Searching ${hostOf(r.site)}` : 'Searching the web'} ·
-            <button
-              type="button"
-              class="suggest-change"
-              onclick={() => {
-                siteEditing = true;
-                siteInput = r.site ?? '';
-              }}>{r.site ? 'change' : 'set roaster site'}</button
-            >
-          </p>
-          {#if siteEditing}
-            <!-- No name: never submitted. type="text" (not url), so a bare host
-                 neither fails the form's constraint validation nor blocks Save. -->
-            <div class="inline-row">
-              <input type="text" inputmode="url" aria-label="Roaster website" placeholder="roaster.com" bind:value={siteInput} onkeydown={changeSite} />
-              <button class="button button-secondary" type="button" disabled={!siteInput.trim()} onclick={() => runSuggest(siteInput.trim())}>Search</button>
-            </div>
-          {/if}
-          {#if r.status === 'ok'}
-            <div class="suggest-list">
-              {#each r.candidates as c (c.image)}
-                <button type="button" class="suggest-pick" onclick={() => pick(c)}>
-                  <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
-                  <span class="suggest-line">{c.pageTitle}</span>
-                  <span class="suggest-line text-muted">{hostOf(c.pageUrl)}</span>
-                </button>
+      <!-- Suggest results (spec "UI"). Every button is type="button" and the
+           site box has no name, so nothing in here submits or stages the form.
+           A click on the dialog itself (not its sheet) is a backdrop click. -->
+      <dialog
+        class="suggest-dialog"
+        aria-labelledby="suggest-title"
+        bind:this={suggestDialog}
+        onclose={suggestClosed}
+        onclick={(e) => e.target === suggestDialog && suggestDialog.close()}
+      >
+        <div class="suggest-sheet">
+          <header class="suggest-header">
+            <h2 id="suggest-title">Suggested images</h2>
+            <button type="button" class="suggest-close" aria-label="Close" onclick={() => suggestDialog.close()}>✕</button>
+          </header>
+          <div class="suggest-body">
+            {#if suggesting}
+              <p class="text-muted fill-note suggest-status" role="status"><span class="spinner" aria-hidden="true"></span>Searching…</p>
+            {:else if suggestResult}
+              {@const r = suggestResult}
+              {@const closest = r.candidates.find((x) => x.closest)}
+              <p class="text-muted fill-note">
+                {r.site ? `Searching ${hostOf(r.site)}` : 'Searching the web'} ·
+                <button
+                  type="button"
+                  class="suggest-change"
+                  onclick={() => {
+                    siteEditing = true;
+                    siteInput = r.site ?? '';
+                  }}>{r.site ? 'change' : 'set roaster site'}</button
+                >
+              </p>
+              {#if siteEditing}
+                <!-- No name: never submitted. type="text" (not url), so a bare host
+                     neither fails the form's constraint validation nor blocks Save. -->
+                <div class="inline-row">
+                  <input type="text" inputmode="url" aria-label="Roaster website" placeholder="roaster.com" bind:value={siteInput} onkeydown={changeSite} />
+                  <button class="button button-secondary" type="button" disabled={!siteInput.trim()} onclick={() => runSuggest(siteInput.trim())}>Search</button>
+                </div>
+              {/if}
+              {#if r.status === 'ok'}
+                <div class="suggest-list">
+                  {#each r.candidates as c (c.image)}
+                    <button type="button" class="suggest-pick" onclick={() => pick(c)}>
+                      <img src={c.image} alt="" style:background-color={backdrop(fills[c.image])} />
+                      <span class="suggest-text">
+                        {#if c === closest}
+                          <span class="badge badge-fresh">closest to roast date</span>
+                        {/if}
+                        <span class="suggest-title">{c.pageTitle}</span>
+                        <span class="text-muted suggest-meta">{hostOf(c.pageUrl)}{c.published ? ` · ${formatDate(c.published)}` : ''}</span>
+                        {#if c.excerpt}
+                          <span class="text-muted suggest-excerpt">{c.excerpt}</span>
+                        {/if}
+                      </span>
+                    </button>
+                  {/each}
+                </div>
+              {:else if r.status === 'empty'}
+                <p class="fill-note">{r.site ? `No images found on ${hostOf(r.site)}` : 'No images found'}</p>
+              {:else if r.status === 'failed'}
+                <p class="fill-note">Search failed</p>
+              {:else}
+                <p class="fill-note">Image search isn't set up</p>
+              {/if}
+              {#each r.notes as note, i (i)}
+                <p class="text-muted fill-note">{note}</p>
               {/each}
-            </div>
-          {:else if r.status === 'empty'}
-            <p class="fill-note">{r.site ? `No images found on ${hostOf(r.site)}` : 'No images found'}</p>
-          {:else if r.status === 'failed'}
-            <p class="fill-note">Search failed</p>
-          {:else}
-            <p class="fill-note">Image search isn't set up</p>
-          {/if}
-          {#each r.notes as note, i (i)}
-            <p class="text-muted fill-note">{note}</p>
-          {/each}
-          <div class="suggest-actions" data-button-row>
-            {#if r.status === 'failed'}
-              <button class="button button-secondary" type="button" onclick={() => runSuggest(lastSite)}>Retry</button>
             {/if}
-            <button class="button button-secondary" type="button" onclick={() => (suggestResult = null)}>None of these</button>
           </div>
+          {#if suggestResult && !suggesting}
+            <footer class="suggest-footer">
+              <div class="suggest-actions" data-button-row>
+                {#if suggestResult.status === 'failed'}
+                  <button class="button button-secondary" type="button" onclick={() => runSuggest(lastSite)}>Retry</button>
+                {/if}
+                <button class="button button-secondary" type="button" onclick={() => suggestDialog.close()}>None of these</button>
+              </div>
+            </footer>
+          {/if}
         </div>
-      {/if}
+      </dialog>
       {#if defaultPreview}
         <figure class="default-preview">
           <img
@@ -905,15 +957,85 @@
   .default-preview {
     margin: 0;
   }
-  /* Image Suggest's pick list (layout settled in Task 10's previews). Titles
-     stay on one line (ellipsis): checkLayout fails wrapped button text. */
+  /* Image Suggest's results dialog: a centered box on wide screens, a
+     full-screen sheet on phones. The sheet fills the dialog (no dialog
+     padding), so a click on the dialog element itself is a backdrop click.
+     Header and footer stay put; the body scrolls. */
+  .suggest-dialog {
+    width: min(40rem, 100% - 2rem);
+    max-height: 85dvh;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: inherit;
+  }
+  .suggest-dialog[open] {
+    display: flex;
+  }
+  /* Phone landscape (333px tall): 85dvh leaves room for barely one row. */
+  @media (max-height: 500px) {
+    .suggest-dialog {
+      max-height: calc(100dvh - 1rem);
+    }
+  }
+  .suggest-dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  .suggest-sheet {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+  .suggest-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .suggest-header h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .suggest-close {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 1.2rem;
+    cursor: pointer;
+  }
+  .suggest-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-2) var(--space-4) var(--space-4);
+  }
+  @media (max-width: 640px) {
+    .suggest-dialog {
+      width: 100dvw;
+      max-width: none;
+      height: 100dvh;
+      max-height: none;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+    }
+    .suggest-sheet {
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+  }
   .suggest-status {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-  }
-  .suggest-panel {
-    margin-top: var(--space-2);
   }
   .suggest-change {
     padding: 0;
@@ -925,17 +1047,18 @@
     cursor: pointer;
   }
   .suggest-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+    display: flex;
+    flex-direction: column;
     gap: var(--space-2);
     margin-top: var(--space-2);
   }
+  /* One candidate per row; the whole row is the pick button. */
   .suggest-pick {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+    align-items: flex-start;
+    gap: var(--space-3);
     min-width: 0;
-    padding: var(--space-1);
+    padding: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     background: var(--color-surface);
@@ -945,27 +1068,48 @@
     cursor: pointer;
   }
   .suggest-pick img {
-    width: 100%;
-    aspect-ratio: 1;
+    flex: none;
+    width: 5rem;
+    height: 5rem;
     object-fit: contain;
     border-radius: var(--radius);
   }
-  .suggest-line {
-    overflow: hidden;
+  .suggest-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+    min-width: 0;
     font-size: 0.85rem;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+  }
+  .suggest-title,
+  .suggest-excerpt {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .suggest-title {
+    font-weight: 600;
+  }
+  .suggest-footer {
+    padding: var(--space-2) var(--space-4);
+    border-top: 1px solid var(--color-border);
   }
   .suggest-actions {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--space-2);
-    margin-top: var(--space-2);
+  }
+  .suggest-actions .button {
+    margin: 0;
   }
   @media (max-width: 640px) {
     .suggest-actions .button {
       flex: 1 1 auto;
-      margin: 0;
       text-align: center;
     }
   }

@@ -160,26 +160,48 @@ const svg = (w: number, h: number, fill: string) =>
   'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="${fill}"/></svg>`);
 const SITE = 'https://moonwake.example';
 const BEANHOARD = 'https://www.beanhoard.example/coffees/moonwake-ethiopia-bensa-bombe-anaerobic-natural-lot-7';
+const EXCERPT = 'Peach, jasmine and bergamot up front, then a long honeyed finish with a little cacao; washed station lot from the 2026 harvest, roasted light for filter brewing.';
 const SUGGEST_OK = {
   status: 'ok', site: SITE, storedSite: SITE, notes: ['tavily unavailable (rate limited)'],
   candidates: [
-    { image: svg(64, 64, '#6b4f3a'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify' },
-    { image: svg(160, 40, '#f2c14e'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify' },
-    { image: svg(40, 160, '#4a7c59'), pageUrl: BEANHOARD, pageTitle: 'Moonwake Coffee Roasters — Ethiopia Bensa Bombe Anaerobic Natural Lot 7 (2026 harvest)', provider: 'tavily' },
-    { image: svg(64, 64, '#2e6f9e'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify' },
-    { image: svg(64, 48, '#c0392b'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify' },
-    { image: svg(48, 64, '#7b4fa0'), pageUrl: `${SITE}/collections/archive/products/bensa-2025`, pageTitle: 'Bensa Bombe 2025', provider: 'shopify' }
+    { image: svg(64, 64, '#6b4f3a'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify', published: '2026-09-20', excerpt: EXCERPT, closest: true },
+    { image: svg(160, 40, '#f2c14e'), pageUrl: `${SITE}/products/bensa-bombe`, pageTitle: 'Ethiopia Bensa Bombe', provider: 'shopify', published: '2026-09-20', excerpt: EXCERPT, closest: false },
+    { image: svg(40, 160, '#4a7c59'), pageUrl: BEANHOARD, pageTitle: 'Moonwake Coffee Roasters — Ethiopia Bensa Bombe Anaerobic Natural Lot 7 (2026 harvest)', provider: 'tavily', published: null, excerpt: 'Anaerobic natural lot.', closest: false },
+    { image: svg(64, 64, '#2e6f9e'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify', published: '2025-11-02', excerpt: null, closest: false },
+    { image: svg(64, 48, '#c0392b'), pageUrl: `${SITE}/products/bensa-bombe-espresso`, pageTitle: 'Bensa Bombe Espresso', provider: 'shopify', published: '2025-11-02', excerpt: null, closest: false },
+    { image: svg(48, 64, '#7b4fa0'), pageUrl: `${SITE}/collections/archive/products/bensa-2025`, pageTitle: 'Bensa Bombe 2025', provider: 'shopify', published: null, excerpt: null, closest: false }
   ]
 };
 // No stored site: a pick on the roaster's own host stages it (pickCandidate).
 const SUGGEST_UNSTORED = { ...SUGGEST_OK, storedSite: null };
 const reply = (body: object, status = 200) => (route: Route) => route.fulfill({ status, json: body });
-// Opens Edit on the Moonwake coffee and presses Suggest. A null reply leaves
-// the request hanging (the "Searching…" state).
+// Opens Edit on the Moonwake coffee and presses Suggest: the results dialog
+// opens. A null reply leaves the request hanging (the "Searching…" state).
 async function openSuggest(page: Page, handler: ((route: Route) => Promise<void>) | null) {
   await page.route('**/api/coffees/image-suggest', (route) => (handler ? handler(route) : undefined));
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
   await page.getByRole('button', { name: 'Suggest', exact: true }).click();
+  await expect(page.locator('dialog[open]')).toBeVisible();
+  // Opening never focuses a text input (the phone keyboard would pop).
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+}
+const dlg = (page: Page) => page.locator('dialog[open]');
+// The dialog sits inside the viewport, scrolls only vertically, and its
+// header and footer buttons are fully on screen (checkLayout covers the page).
+async function expectDialogInViewport(page: Page) {
+  const problems = await dlg(page).evaluate((d) => {
+    const out: string[] = [];
+    const inside = (r: DOMRect) => r.left >= -0.5 && r.top >= -0.5 && r.right <= window.innerWidth + 0.5 && r.bottom <= window.innerHeight + 0.5;
+    if (!inside(d.getBoundingClientRect())) out.push('dialog leaves the viewport');
+    for (const el of [d, ...d.querySelectorAll('*')]) {
+      if (el.scrollWidth > el.clientWidth + 1 && getComputedStyle(el).overflowX !== 'visible') out.push(`scrolls sideways: ${el.className}`);
+    }
+    for (const b of d.querySelectorAll('header button, footer button')) {
+      if (!inside(b.getBoundingClientRect())) out.push(`button off screen: ${b.textContent || b.getAttribute('aria-label')}`);
+    }
+    return out;
+  });
+  expect(problems).toEqual([]);
 }
 
 // Every page and state the layout rules apply to. Every UI change adds its
@@ -394,7 +416,8 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, null);
-      await expect(page.getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible();
+      await expect(dlg(page).getByRole('status').filter({ hasText: 'Searching…' })).toBeVisible();
+      await expectDialogInViewport(page);
       await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeDisabled();
     }
   },
@@ -403,11 +426,25 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, reply(SUGGEST_OK));
-      await expect(page.locator('.suggest-pick')).toHaveCount(6);
-      await expect(page.getByText('Searching moonwake.example ·')).toBeVisible();
-      await expect(page.getByText('tavily unavailable (rate limited)')).toBeVisible();
-      for (const img of await page.locator('.suggest-pick img').all()) await expectContained(img, NEUTRAL);
-      await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
+      const d = dlg(page);
+      await expect(d.getByRole('heading', { name: 'Suggested images' })).toBeVisible();
+      await expect(d.locator('.suggest-pick')).toHaveCount(6);
+      await expect(d.getByText('Searching moonwake.example ·')).toBeVisible();
+      await expect(d.getByText('tavily unavailable (rate limited)')).toBeVisible();
+      for (const img of await d.locator('.suggest-pick img').all()) await expectContained(img, NEUTRAL);
+      await expect(d.getByRole('button', { name: 'Retry' })).toHaveCount(0);
+      // Only the closest candidate carries the badge; dates show where known.
+      await expect(d.locator('.badge')).toHaveCount(1);
+      await expect(d.locator('.suggest-pick').nth(0).getByText('closest to roast date')).toBeVisible();
+      await expect(d.locator('.suggest-pick').nth(0)).toContainText('moonwake.example · 2026-09-20');
+      await expect(d.locator('.suggest-pick').nth(2)).not.toContainText('·');
+      // The long excerpt is clamped to two lines.
+      const ex = d.locator('.suggest-pick').nth(0).locator('.suggest-excerpt');
+      const clamp = await ex.evaluate((el) => ({ h: el.clientHeight, full: el.scrollHeight, line: parseFloat(getComputedStyle(el).lineHeight) }));
+      expect(clamp.full).toBeGreaterThan(clamp.h);
+      expect(clamp.h).toBeLessThanOrEqual(2 * clamp.line + 1);
+      await expect(d.locator('.suggest-excerpt')).toHaveCount(3);
+      await expectDialogInViewport(page);
     }
   },
   {
@@ -415,8 +452,8 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, reply({ status: 'empty', site: SITE, storedSite: SITE, candidates: [], notes: [] }));
-      await expect(page.getByText('No images found on moonwake.example')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'None of these' })).toBeVisible();
+      await expect(dlg(page).getByText('No images found on moonwake.example')).toBeVisible();
+      await expect(dlg(page).getByRole('button', { name: 'None of these' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Retry' })).toHaveCount(0);
     }
   },
@@ -425,7 +462,8 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, reply({ status: 'failed', site: null, storedSite: null, candidates: [], notes: ['shopify unavailable (HTTP 503)', 'tavily unavailable (bad API key)'] }));
-      await expect(page.getByText('Search failed', { exact: true })).toBeVisible();
+      await expect(dlg(page).getByText('Search failed', { exact: true })).toBeVisible();
+      await expectDialogInViewport(page);
       await expect(page.getByText('tavily unavailable (bad API key)')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
     }
@@ -435,7 +473,7 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, reply({ message: 'Internal Error' }, 500));
-      await expect(page.getByText('Search failed', { exact: true })).toBeVisible();
+      await expect(dlg(page).getByText('Search failed', { exact: true })).toBeVisible();
       await expect(page.getByText('Internal Error')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
     }
@@ -445,8 +483,12 @@ export const STATES: State[] = [
     path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
       await openSuggest(page, reply({ status: 'unconfigured', site: null, storedSite: null, candidates: [], notes: ['No roaster site to search and no web search key (TAVILY_API_KEY)'] }));
-      await expect(page.getByText("Image search isn't set up")).toBeVisible();
-      await expect(page.getByRole('button', { name: 'set roaster site' })).toBeVisible();
+      const d = dlg(page);
+      await expect(d.getByText("Image search isn't set up")).toBeVisible();
+      await expect(d.getByText('No roaster site to search and no web search key (TAVILY_API_KEY)')).toBeVisible();
+      await d.getByRole('button', { name: 'set roaster site' }).click();
+      await expect(d.getByRole('textbox', { name: 'Roaster website' })).toBeVisible();
+      await expectDialogInViewport(page);
     }
   },
   {
@@ -460,7 +502,8 @@ export const STATES: State[] = [
       await expect(page.locator('#image_url')).toHaveValue(SUGGEST_OK.candidates[0].image);
       await expect(page.locator('#product_url')).toHaveValue(SUGGEST_OK.candidates[0].pageUrl);
       await expect(page.locator('input[name="roaster_website"]')).toHaveValue(SITE);
-      await expect(page.locator('.suggest-pick')).toHaveCount(0);
+      await expect(dlg(page)).toHaveCount(0);
+      await expect(page.getByRole('img', { name: 'Preview', exact: true })).toBeVisible();
     }
   },
   {
@@ -502,6 +545,29 @@ export const STATES: State[] = [
       // not replace the site "change" staged.
       await page.locator('.suggest-pick').nth(0).click();
       await expect(page.locator('input[name="roaster_website"]')).toHaveValue('https://moonwake.coffee');
+    }
+  },
+  {
+    // Esc (and on wide screens a backdrop click) closes the dialog and stages
+    // nothing; focus goes back to Suggest.
+    name: 'coffee-edit-suggest-closed',
+    path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await openSuggest(page, reply(SUGGEST_UNSTORED));
+      await expect(dlg(page).locator('.suggest-pick')).toHaveCount(6);
+      const before = await page.locator('#image_url').inputValue();
+      await page.keyboard.press('Escape');
+      await expect(dlg(page)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Suggest', exact: true })).toBeFocused();
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        await page.getByRole('button', { name: 'Suggest', exact: true }).click();
+        await expect(dlg(page).locator('.suggest-pick')).toHaveCount(6);
+        await page.mouse.click(4, 4);
+        await expect(dlg(page)).toHaveCount(0);
+      }
+      await expect(page.locator('#image_url')).toHaveValue(before);
+      await expect(page.locator('input[name="roaster_website"]')).toHaveCount(0);
+      await expect(page.locator('#product_url')).toHaveValue('');
     }
   },
   {
