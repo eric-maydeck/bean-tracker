@@ -75,11 +75,13 @@ export async function checkLayout(page: Page): Promise<void> {
     }
 
     // 5. Buttons sharing a row (same nearest flex/grid container, overlapping
-    // vertically) have the same top and height.
+    // vertically) have the same top and height. Buttons with no flex/grid
+    // ancestor sit in plain inline flow (baseline-aligned): one group, so an
+    // inline-flex button riding a few px off its inline-block neighbors shows.
     const container = (el: Element) => {
       let p = el.parentElement;
       while (p && !/flex|grid/.test(getComputedStyle(p).display)) p = p.parentElement;
-      return p;
+      return p ?? document.body;
     };
     const groups = new Map<Element, HTMLElement[]>();
     for (const el of all('button, .button')) {
