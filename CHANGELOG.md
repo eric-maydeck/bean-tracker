@@ -1,3 +1,10 @@
+## [1.52.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.52.0...v1.52.1) (2026-10-07)
+
+
+### Bug Fixes
+
+* **auth:** sign in returns you to the page you were on
+
 # [1.52.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.51.0...v1.52.0) (2026-10-07)
 
 
