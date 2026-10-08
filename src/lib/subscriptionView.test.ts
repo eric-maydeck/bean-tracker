@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectivePaused, deleteButtonLabel, totalGramsTitle, pauseButtonLabel, pendingLabel, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, urlWarning } from './subscriptionView';
+import { effectivePaused, deleteButtonLabel, totalGramsTitle, pauseButtonLabel, pendingLabel, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, urlWarning, fillValues, variantValues, variantChipLabel } from './subscriptionView';
 import type { PendingChange } from './pendingChanges';
 
 describe('parseSubscriptionUrl', () => {
@@ -122,5 +122,38 @@ describe('effectivePaused', () => {
     expect(effectivePaused(0, { fields: { paused: '1' } })).toBe(true);
     expect(effectivePaused(1, { fields: { paused: '0', price: '3' } })).toBe(false);
     expect(effectivePaused(1, { fields: { price: '3' } })).toBe(true);
+  });
+});
+
+describe('fillValues', () => {
+  const found = { roaster_service: 'Airworks Coffee', price: 48, renewal_day: 1 };
+  const current = (v: Record<string, string>) => (name: string) => v[name] ?? '';
+
+  it('Add form: fills only empty fields', () => {
+    expect(fillValues(current({ roaster_service: 'Airworks', price: ' ' }), found, true)).toEqual({ price: '48', renewal_day: '1' });
+  });
+
+  it('edit: overwrites every found field, like the coffee form', () => {
+    expect(fillValues(current({ roaster_service: 'Airworks', price: '66' }), found, false)).toEqual({
+      roaster_service: 'Airworks Coffee',
+      price: '48',
+      renewal_day: '1'
+    });
+  });
+
+  it('skips unchanged values', () => {
+    expect(fillValues(current({ price: '48' }), { price: 48 }, false)).toEqual({});
+  });
+});
+
+describe('variantValues / variantChipLabel', () => {
+  const v = { label: '3 x 200g Bag', price: 56, originalPrice: '£42.00 GBP', bags: 3, gramsPerBag: 200 };
+  it('sets price, bags and g/bag, skipping unknowns', () => {
+    expect(variantValues(v)).toEqual({ price: 56, bag_count: 3, amount_per_bag_g: 200 });
+    expect(variantValues({ ...v, price: null, gramsPerBag: null })).toEqual({ bag_count: 3 });
+  });
+  it('labels a chip with its USD price, else the original', () => {
+    expect(variantChipLabel(v, 0)).toBe('3 x 200g Bag · $56.00');
+    expect(variantChipLabel({ ...v, label: '', price: null }, 1)).toBe('Option 2 · £42.00 GBP');
   });
 });

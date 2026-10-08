@@ -5,6 +5,7 @@
 import type { ProductData } from './productParse';
 import { cleanName, findRoaster, formatMoney, parseGrams, stripSiteSuffix, toUsd, type UsdRates } from './productFill';
 import type { FillHistoryRow } from './coffees';
+import type { SubscriptionFillVariant } from '../subscriptionView';
 
 const WEIGHT = String.raw`(\d+(?:[.,]\d+)?\s*(?:kg|kilos?|grams?|gr|g|ounces?|oz|lbs?))(?![a-wyz])`;
 const NOT_TOTAL = String.raw`(?!\s*\)?\s*total)`;
@@ -62,13 +63,6 @@ export interface SubscriptionFillFields {
   bag_count?: number;
   amount_per_bag_g?: number;
   renewal_day?: number;
-}
-export interface SubscriptionFillVariant {
-  label: string;
-  price: number | null; // USD per shipment
-  originalPrice: string | null; // e.g. "£42.00 GBP" when not USD
-  bags: number | null;
-  gramsPerBag: number | null;
 }
 export interface SubscriptionFill {
   fields: SubscriptionFillFields;

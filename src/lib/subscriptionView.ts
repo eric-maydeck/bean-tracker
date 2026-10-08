@@ -89,3 +89,41 @@ export function totalGramsTitle(bags: string, gramsPerBag: string): string {
   const g = parseFloat(gramsPerBag);
   return Number.isFinite(b) && Number.isFinite(g) ? `Total: ${b * g} g` : 'Total: —';
 }
+
+// One option of a subscription page (POST /api/subscriptions/fill-from-url).
+export interface SubscriptionFillVariant {
+  label: string;
+  price: number | null; // USD per shipment
+  originalPrice: string | null; // e.g. "£42.00 GBP" when not USD
+  bags: number | null;
+  gramsPerBag: number | null;
+}
+
+// Which inputs a fill writes: the Add form fills only empty fields; editing a
+// subscription overwrites what the page states, like the coffee form's Fill.
+export function fillValues(
+  current: (name: string) => string,
+  found: Record<string, string | number>,
+  onlyEmpty: boolean
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [name, value] of Object.entries(found)) {
+    const now = current(name).trim();
+    if (now === String(value) || (onlyEmpty && now !== '')) continue;
+    out[name] = String(value);
+  }
+  return out;
+}
+
+// Picking an option sets its price, bag count and g/bag.
+export function variantValues(v: SubscriptionFillVariant): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (v.price != null) out.price = v.price;
+  if (v.bags != null) out.bag_count = v.bags;
+  if (v.gramsPerBag != null) out.amount_per_bag_g = v.gramsPerBag;
+  return out;
+}
+
+export function variantChipLabel(v: SubscriptionFillVariant, i: number): string {
+  return `${v.label || `Option ${i + 1}`} · ${v.price != null ? `$${v.price.toFixed(2)}` : v.originalPrice}`;
+}

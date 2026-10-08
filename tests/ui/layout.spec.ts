@@ -55,11 +55,44 @@ async function expectClearlyBelow(upper: Locator, lower: Locator) {
 }
 
 // The add form's Subscription page input spans its field grid.
-async function expectAddUrlFullWidth(page: Page) {
-  const grid = (await page.locator('form[action="?/create"] .form-grid').boundingBox())!;
-  const url = (await page.locator('#subscription_url').boundingBox())!;
-  expect(Math.abs(url.x - grid.x)).toBeLessThanOrEqual(1);
-  expect(Math.abs(url.x + url.width - (grid.x + grid.width))).toBeLessThanOrEqual(1);
+// A URL row (input + Fill from page) spans its field grid: the input starts at
+// the grid's left edge, the button ends at its right, and on one line they
+// share top and height.
+async function expectUrlRowSpans(grid: Locator) {
+  const geo = await grid.evaluate((el) => {
+    const r = (q: Element) => q.getBoundingClientRect();
+    const g = r(el);
+    const input = r(el.querySelector('input[name="subscription_url"]')!);
+    const button = r(el.querySelector('.url-field .inline-row .button')!);
+    return { g: [g.left, g.right], input: [input.left, input.top, input.height], button: [button.right, button.top, button.height] };
+  });
+  expect(Math.abs(geo.input[0] - geo.g[0])).toBeLessThanOrEqual(1);
+  expect(Math.abs(geo.button[0] - geo.g[1])).toBeLessThanOrEqual(1);
+  if (Math.abs(geo.input[1] - geo.button[1]) < geo.input[2]) {
+    expect(Math.abs(geo.input[1] - geo.button[1])).toBeLessThanOrEqual(1);
+    expect(Math.abs(geo.input[2] - geo.button[2])).toBeLessThanOrEqual(1);
+  }
+}
+const expectAddUrlFullWidth = (page: Page) => expectUrlRowSpans(page.locator('form[action="?/create"] .form-grid'));
+
+// A stubbed Fill from page (the UI test server never hits the internet): H&S's
+// four options, the longest chip labels of the six live subscriptions.
+const SUB_FILL = {
+  fields: { roaster_service: 'H&S Coffee Roasters', subscription_name: "Roaster's Choice Subscription", renewal_day: 10 },
+  variants: [
+    { label: '1 bag, 125g (4.4oz)', price: 16, originalPrice: null, bags: 1, gramsPerBag: 125 },
+    { label: '2 bags, 125g (4.4oz) each', price: 32, originalPrice: null, bags: 2, gramsPerBag: 125 },
+    { label: '1 bag, 250g (8.8oz)', price: 28, originalPrice: null, bags: 1, gramsPerBag: 250 },
+    { label: '2 bags, 250g (8.8oz) each', price: 56, originalPrice: null, bags: 2, gramsPerBag: 250 }
+  ],
+  selected: null,
+  notes: ['Filled 3 fields', 'pick an option below']
+};
+// Fails the state if anything but the stubbed fill is POSTed (shared DB).
+function stubSubFill(page: Page, body: object, status = 200) {
+  const posts: string[] = [];
+  page.on('request', (r) => r.method() === 'POST' && !r.url().includes('/api/subscriptions/fill-from-url') && posts.push(r.url()));
+  return page.route('**/api/subscriptions/fill-from-url', (route) => route.fulfill({ status, json: body })).then(() => posts);
 }
 
 async function showPicker(page: Page, text: string) {
@@ -475,14 +508,14 @@ export const STATES: State[] = [
         };
       });
       expect(Math.abs(geo.url[0] - geo.left)).toBeLessThanOrEqual(1);
-      expect(Math.abs(geo.url[1] - geo.right)).toBeLessThanOrEqual(1);
+      await expectUrlRowSpans(detail.locator('.form-grid'));
       expect(Math.abs(geo.p[0] - geo.left)).toBeLessThanOrEqual(1);
       expect(Math.abs(geo.d[1] - geo.right)).toBeLessThanOrEqual(1);
       expect(geo.p[2]).toBe(geo.d[2]);
       if ((page.viewportSize()?.width ?? 0) > 640) {
         expect(Math.abs(geo.p[3] - geo.inputH)).toBeLessThanOrEqual(1);
         // Each button is one column wide: as wide as the first input.
-        const first = await detail.locator('.form-grid .inline-input').first().boundingBox();
+        const first = await detail.locator('.form-grid .form-field:not(.url-field) .inline-input').first().boundingBox();
         expect(Math.abs(geo.p[1] - geo.p[0] - first!.width)).toBeLessThanOrEqual(1);
         expect(Math.abs(geo.d[1] - geo.d[0] - first!.width)).toBeLessThanOrEqual(1);
       } else {
@@ -498,6 +531,95 @@ export const STATES: State[] = [
       await expect(page.getByText(/doesn't look like A Very Long/)).toBeVisible();
       await expectClearlyBelow(page.getByLabel('Subscription page').first(), page.getByText(/doesn't look like A Very Long/));
       await expectAddUrlFullWidth(page);
+    }
+  },
+  {
+    // Add form: Fill from page (stubbed) fills only empty fields, offers the
+    // options; picking one sets price, bags and g/bag. Nothing is added.
+    name: 'subscriptions-add-fill',
+    path: () => '/subscriptions?view=compact',
+    act: async (page: Page) => {
+      const posts = await stubSubFill(page, SUB_FILL);
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const form = page.locator('form[action="?/create"]');
+      await form.locator('#subscription_name').fill('My name');
+      await form.locator('#subscription_url').fill('https://hscoffeeroasters.com/products/roasters-choice-subscription');
+      await form.getByRole('button', { name: 'Fill from page' }).click();
+      await expect(form.getByText('Filled 3 fields · pick an option below')).toBeVisible();
+      await expect(form.locator('#roaster_service')).toHaveValue('H&S Coffee Roasters');
+      await expect(form.locator('#subscription_name')).toHaveValue('My name'); // typed: kept
+      await expect(form.locator('#renewal_day')).toHaveValue('10');
+      await form.getByRole('button', { name: '2 bags, 250g (8.8oz) each · $56.00' }).click();
+      await expect(form.getByRole('button', { name: '2 bags, 250g (8.8oz) each · $56.00' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(form.locator('#price')).toHaveValue('56');
+      await expect(form.locator('#bag_count')).toHaveValue('2');
+      await expect(form.locator('#amount_per_bag_g')).toHaveValue('250');
+      await expectAddUrlFullWidth(page);
+      expect(posts).toEqual([]);
+    }
+  },
+  {
+    // A failed fill: the error, the URL back to empty, and the offer to keep
+    // the tried URL anyway (Yes/No share a row).
+    name: 'subscriptions-add-fill-error',
+    path: () => '/subscriptions?view=compact',
+    act: async (page: Page) => {
+      const posts = await stubSubFill(page, { error: 'No product data found on that page. Is it a single product page?' }, 422);
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const form = page.locator('form[action="?/create"]');
+      await form.locator('#subscription_url').fill('https://www.averylongsubscriptionservice.example.com/pages/subscriptions/explorer');
+      await form.getByRole('button', { name: 'Fill from page' }).click();
+      await expect(form.getByRole('alert')).toHaveText(/No product data found/);
+      await expect(form.locator('#subscription_url')).toHaveValue('');
+      await expect(form.getByText(/as the subscription page anyway\?/)).toBeVisible();
+      await expectAddUrlFullWidth(page);
+      expect(posts).toEqual([]);
+    }
+  },
+  {
+    // Edit mode: a row's Fill stages through the same path as typing
+    // (overwrites what the page states, like the coffee form); the options
+    // sit in a full-width row under it; the table still fits at 1280.
+    name: 'subscriptions-list-edit-fill',
+    path: () => '/subscriptions?view=list',
+    act: async (page: Page) => {
+      const posts = await stubSubFill(page, SUB_FILL);
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const row = page.locator('tbody tr').nth(0);
+      await row.getByRole('button', { name: 'Fill from page' }).click();
+      const fillRow = page.locator('tr.fill-row');
+      await expect(fillRow.getByText('Filled 3 fields · pick an option below')).toBeVisible();
+      await expect(row.locator('input[name="roaster_service"]')).toHaveValue('H&S Coffee Roasters');
+      await expect(row).toHaveAttribute('title', 'Pending: edited');
+      await fillRow.getByRole('button', { name: '1 bag, 125g (4.4oz) · $16.00' }).click();
+      await expect(row.locator('input[name="price"]')).toHaveValue('16');
+      await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveValue('125');
+      const size = page.viewportSize();
+      if (size && size.width >= 1280) {
+        const overflow = await page.evaluate(() => {
+          const t = document.querySelector('.table-scroll')!;
+          return t.scrollWidth - t.clientWidth;
+        });
+        expect(overflow).toBe(0);
+      }
+      expect(posts).toEqual([]);
+    }
+  },
+  {
+    // The compact editor's URL row with a fill's options under it.
+    name: 'subscriptions-compact-edit-fill',
+    path: () => '/subscriptions?view=compact',
+    act: async (page: Page) => {
+      const posts = await stubSubFill(page, SUB_FILL);
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+      const detail = page.locator('.compact-row-detail').first();
+      await detail.getByRole('button', { name: 'Fill from page' }).click();
+      await expect(detail.getByText('Filled 3 fields · pick an option below')).toBeVisible();
+      await detail.getByRole('button', { name: '2 bags, 125g (4.4oz) each · $32.00' }).click();
+      await expect(detail.locator('input[name="bag_count"]')).toHaveValue('2');
+      await expectUrlRowSpans(detail.locator('.form-grid'));
+      expect(posts).toEqual([]);
     }
   },
   {

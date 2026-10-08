@@ -10,7 +10,8 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
-  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsTitle, urlWarning } from '$lib/subscriptionView';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsTitle, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '$lib/subscriptionView';
+  import { afterFailedFill } from '$lib/coffeeFormFill';
   import type { SubscriptionRow } from '$lib/types';
   let { data, form } = $props();
 
@@ -101,6 +102,103 @@
 
   let addUrl = $state('');
   let addRoaster = $state('');
+  let addFormEl = $state<HTMLFormElement>();
+
+  // Fill from page, per form: 'add' or a subscription's id. Transient form
+  // state, so (like inline edits) never in the URL.
+  type FillKey = 'add' | number;
+  interface FillState {
+    filling: boolean;
+    error: string | null;
+    offer: string | null;
+    notes: string[];
+    variants: SubscriptionFillVariant[];
+    selected: number | null;
+    lastFilled: string | null;
+  }
+  const NO_FILL: FillState = { filling: false, error: null, offer: null, notes: [], variants: [], selected: null, lastFilled: null };
+  let fills = $state(new SvelteMap<FillKey, FillState>());
+  const fillOf = (key: FillKey) => fills.get(key) ?? NO_FILL;
+  const patchFill = (key: FillKey, patch: Partial<FillState>) => fills.set(key, { ...fillOf(key), ...patch });
+  const hasFillOutput = (key: FillKey) => !!(fillOf(key).error || fillOf(key).notes.length || fillOf(key).variants.length);
+
+  // The Add form, or the hidden form an edit row's inputs belong to (form=…).
+  function formFor(key: FillKey): HTMLFormElement | null {
+    return key === 'add' ? (addFormEl ?? null) : (document.getElementById(`sub-form-${key}`) as HTMLFormElement | null);
+  }
+
+  function inputValue(form: HTMLFormElement, name: string): string {
+    const el = form.elements.namedItem(name);
+    return el instanceof HTMLInputElement ? el.value : '';
+  }
+
+  // Sets each input and fires the input event typing fires, so the Add
+  // form's bindings update and an edit row stages exactly as if typed.
+  function writeFields(form: HTMLFormElement, values: Record<string, string | number>) {
+    for (const [name, value] of Object.entries(values)) {
+      const el = form.elements.namedItem(name);
+      if (!(el instanceof HTMLInputElement) || el.value === String(value)) continue;
+      el.value = String(value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+
+  // savedUrl: what a failed fill reverts the field to (the coffee form's rule).
+  async function fillFromPage(key: FillKey, savedUrl: string) {
+    const form = formFor(key);
+    if (!form) return;
+    const url = inputValue(form, 'subscription_url').trim();
+    patchFill(key, { error: null, offer: null });
+    if (!url) {
+      patchFill(key, { error: 'Paste the subscription page URL first' });
+      return;
+    }
+    const failed = (message: string) => {
+      const { revertTo, offer } = afterFailedFill(url, fillOf(key).lastFilled, savedUrl);
+      writeFields(form, { subscription_url: revertTo });
+      patchFill(key, { error: message, offer });
+    };
+    patchFill(key, { filling: true });
+    try {
+      const res = await fetch('/api/subscriptions/fill-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error || !data.fields) {
+        // SvelteKit's own errors (e.g. 401) come back as { message }.
+        failed(data.error ?? data.message ?? `Fill failed (HTTP ${res.status})`);
+        return;
+      }
+      writeFields(form, fillValues((name) => inputValue(form, name), data.fields, key === 'add'));
+      patchFill(key, { lastFilled: url, notes: data.notes, variants: data.variants, selected: data.selected });
+    } catch {
+      failed("Couldn't reach the server");
+    } finally {
+      patchFill(key, { filling: false });
+    }
+  }
+
+  function chooseVariant(key: FillKey, i: number) {
+    const form = formFor(key);
+    if (!form) return;
+    writeFields(form, variantValues(fillOf(key).variants[i]));
+    patchFill(key, { selected: i });
+  }
+
+  function keepTriedUrl(key: FillKey) {
+    const form = formFor(key);
+    if (form) writeFields(form, { subscription_url: fillOf(key).offer ?? '' });
+    patchFill(key, { offer: null });
+  }
+
+  // Enter in a URL field means "fill", not "submit".
+  function fillOnEnter(e: KeyboardEvent, key: FillKey, savedUrl: string) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    fillFromPage(key, savedUrl);
+  }
   function warningFor(sub: SubscriptionRow) {
     return urlWarning(val(sub, 'subscription_url'), val(sub, 'roaster_service'));
   }
@@ -167,6 +265,7 @@
     // message.
     pending = new SvelteMap();
     commitErrors = new Map();
+    fills.clear();
     editMode = false;
     expandedId = null;
     saving = false;
@@ -176,6 +275,7 @@
   function discardChanges() {
     pending = new SvelteMap();
     commitErrors = new Map();
+    fills.clear();
     editMode = false;
     expandedId = null;
   }
@@ -203,6 +303,46 @@
 <svelte:head>
   <title>Bean Tracker - Subscriptions</title>
 </svelte:head>
+
+<!-- Solid "Fill from page" in a form; in the edit table (one per row) a tonal
+     "Fill", so the rows don't stack primaries and the table still fits. -->
+{#snippet fillButton(key: FillKey, savedUrl: string, disabled = false, inTable = false)}
+  <button
+    class={inTable ? 'button button-secondary' : 'button'}
+    type="button"
+    aria-label={inTable ? 'Fill from page' : undefined}
+    disabled={disabled || fillOf(key).filling}
+    onclick={() => fillFromPage(key, savedUrl)}
+  >
+    {fillOf(key).filling ? 'Filling…' : inTable ? 'Fill' : 'Fill from page'}
+  </button>
+{/snippet}
+
+{#snippet fillOutput(key: FillKey)}
+  {@const f = fillOf(key)}
+  {#if f.error}
+    <p class="fill-error" role="alert">{f.error}</p>
+    {#if f.offer}
+      <div class="fill-offer">
+        <p class="fill-note">Save <code class="fill-offer-url">{f.offer}</code> as the subscription page anyway?</p>
+        <div class="fill-offer-actions">
+          <button class="button button-secondary" type="button" onclick={() => keepTriedUrl(key)}>Yes</button>
+          <button class="button button-ghost" type="button" onclick={() => patchFill(key, { offer: null })}>No</button>
+        </div>
+      </div>
+    {/if}
+  {/if}
+  {#if f.notes.length}
+    <p class="text-muted fill-note" aria-live="polite">{f.notes.join(' · ')}</p>
+  {/if}
+  {#if f.variants.length}
+    <div class="tab-group fill-sizes" role="group" aria-label="Subscription option">
+      {#each f.variants as v, i (i)}
+        <button type="button" aria-pressed={f.selected === i} onclick={() => chooseVariant(key, i)}>{variantChipLabel(v, i)}</button>
+      {/each}
+    </div>
+  {/if}
+{/snippet}
 
 <div class="toolbar">
   <h1>Subscriptions</h1>
@@ -342,17 +482,22 @@
                 oninput={() => stageRow(sub.id)}
               />
             </td>
-            <td>
-              <input
-                class="inline-input url-input"
-                form={`sub-form-${sub.id}`}
-                name="subscription_url"
-                type="url"
-                placeholder="https://…"
-                value={val(sub, 'subscription_url')}
-                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-              />
+            <td class="url-cell">
+              <div class="inline-row">
+                <input
+                  class="inline-input url-input"
+                  form={`sub-form-${sub.id}`}
+                  name="subscription_url"
+                  type="url"
+                  aria-label="Subscription page"
+                  placeholder="https://…"
+                  value={val(sub, 'subscription_url')}
+                  disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                  oninput={() => stageRow(sub.id)}
+                  onkeydown={(e) => fillOnEnter(e, sub.id, sub.subscription_url ?? '')}
+                />
+                {@render fillButton(sub.id, sub.subscription_url ?? '', effectivePaused(sub.paused, pending.get(sub.id)), true)}
+              </div>
               {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
             </td>
             <td class="actions-cell">
@@ -390,6 +535,11 @@
             </td>
           {/if}
         </tr>
+        {#if canEdit && hasFillOutput(sub.id)}
+          <tr class="fill-row">
+            <td colspan="8">{@render fillOutput(sub.id)}</td>
+          </tr>
+        {/if}
       {/each}
     </tbody>
     <tfoot>
@@ -443,6 +593,26 @@
           {#if expandedId === sub.id}
             <div class="compact-row-detail">
               <div class="form-grid">
+                <div class="form-field url-field">
+                  <label for={`compact-url-${sub.id}`}>Subscription page</label>
+                  <div class="inline-row">
+                    <input
+                      id={`compact-url-${sub.id}`}
+                      class="inline-input url-input"
+                      form={`sub-form-${sub.id}`}
+                      name="subscription_url"
+                      type="url"
+                      placeholder="https://roaster.example/products/…"
+                      value={val(sub, 'subscription_url')}
+                      disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                      oninput={() => stageRow(sub.id)}
+                      onkeydown={(e) => fillOnEnter(e, sub.id, sub.subscription_url ?? '')}
+                    />
+                    {@render fillButton(sub.id, sub.subscription_url ?? '', effectivePaused(sub.paused, pending.get(sub.id)))}
+                  </div>
+                  {@render fillOutput(sub.id)}
+                  {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
+                </div>
                 <div class="form-field">
                   <label for={`compact-roaster-${sub.id}`}>Roaster/Service</label>
                   <input
@@ -475,21 +645,6 @@
                 <div class="form-field">
                   <label for={`compact-day-${sub.id}`}>Renewal day</label>
                   <input id={`compact-day-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="renewal_day" type="number" step="1" min="1" max="31" value={val(sub, 'renewal_day')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
-                </div>
-                <div class="form-field url-field">
-                  <label for={`compact-url-${sub.id}`}>Subscription page</label>
-                  <input
-                    id={`compact-url-${sub.id}`}
-                    class="inline-input url-input"
-                    form={`sub-form-${sub.id}`}
-                    name="subscription_url"
-                    type="url"
-                    placeholder="https://…"
-                    value={val(sub, 'subscription_url')}
-                    disabled={effectivePaused(sub.paused, pending.get(sub.id))}
-                oninput={() => stageRow(sub.id)}
-                  />
-                  {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
                 </div>
               </div>
               <form
@@ -570,8 +725,37 @@
 
 {#if canEdit}
   <h2 class="section-heading">Add subscription</h2>
-  <form method="POST" action="?/create" use:enhance>
+  <form
+    method="POST"
+    action="?/create"
+    bind:this={addFormEl}
+    use:enhance={() =>
+      async ({ result, update }) => {
+        await update();
+        if (result.type === 'success') {
+          addUrl = '';
+          addRoaster = '';
+          fills.delete('add');
+        }
+      }}
+  >
     <div class="form-grid">
+      <div class="form-field url-field">
+        <label for="subscription_url">Subscription page</label>
+        <div class="inline-row">
+          <input
+            id="subscription_url"
+            name="subscription_url"
+            type="url"
+            placeholder="https://roaster.example/products/…"
+            bind:value={addUrl}
+            onkeydown={(e) => fillOnEnter(e, 'add', '')}
+          />
+          {@render fillButton('add', '')}
+        </div>
+        {@render fillOutput('add')}
+        {#if urlWarning(addUrl, addRoaster)}<p class="url-warning">{urlWarning(addUrl, addRoaster)}</p>{/if}
+      </div>
       <div class="form-field">
         <label for="roaster_service">Roaster/Service</label>
         <input id="roaster_service" name="roaster_service" required bind:value={addRoaster} />
@@ -595,11 +779,6 @@
       <div class="form-field">
         <label for="renewal_day">Renewal day of month</label>
         <input id="renewal_day" name="renewal_day" type="number" step="1" min="1" max="31" />
-      </div>
-      <div class="form-field url-field">
-        <label for="subscription_url">Subscription page</label>
-        <input id="subscription_url" name="subscription_url" type="url" placeholder="https://…" bind:value={addUrl} />
-        {#if urlWarning(addUrl, addRoaster)}<p class="url-warning">{urlWarning(addUrl, addRoaster)}</p>{/if}
       </div>
     </div>
     <button class="button" type="submit">Add</button>
@@ -724,6 +903,72 @@
   .compact-row-detail .sub-actions .button {
     box-sizing: border-box;
     height: 2.5rem;
+  }
+
+  /* URL + Fill from page: the coffee form's product URL row (CoffeeForm.svelte). */
+  .inline-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+  .inline-row input {
+    flex: 1;
+    /* A real floor, so a narrow row wraps the button below the input. */
+    min-width: 10rem;
+  }
+  .inline-row .button {
+    flex-shrink: 0;
+    margin: 0;
+    white-space: nowrap;
+  }
+  /* The edit table keeps URL and button on one line (the table scrolls). */
+  .url-cell .inline-row {
+    flex-wrap: nowrap;
+  }
+  .data-table .url-cell .button {
+    box-sizing: border-box;
+    height: 2.25rem;
+    padding-block: 0;
+    padding-inline: 0.75rem;
+  }
+  .data-table .url-cell .url-input {
+    min-width: 8rem;
+  }
+  /* The compact editor's URL input stretches to the button's height (44px
+     on phones), so the two line up. */
+  .compact-row-detail .url-field .inline-input {
+    height: auto;
+    min-height: 2.5rem;
+  }
+  /* A sentence, so it wraps (a badge never does). */
+  .fill-error {
+    margin: var(--space-2) 0 0;
+    color: var(--color-urgent);
+    font-size: 0.85rem;
+  }
+  .fill-row td {
+    padding-top: 0;
+  }
+  .fill-note {
+    margin: var(--space-1) 0 0;
+    font-size: 0.85rem;
+  }
+  .fill-sizes {
+    margin-top: var(--space-2);
+  }
+  .fill-offer-actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .fill-offer-actions .button {
+    flex: 1;
+    margin: 0;
+    text-align: center;
+  }
+  .fill-offer-url {
+    overflow-wrap: anywhere;
   }
 
   .url-warning {
