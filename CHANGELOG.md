@@ -1,3 +1,11 @@
+## [1.58.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.58.0...v1.58.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **coffee-page:** even button spacing; Back left, Share right on desktop
+* **images:** show the Shoebox roaster default on its labels' green, closes [#9ae197](https://github.com/eric-maydeck/bean-tracker/issues/9ae197)
+
 # [1.58.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.57.1...v1.58.0) (2026-10-08)
 
 
