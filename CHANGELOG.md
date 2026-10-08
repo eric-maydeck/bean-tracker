@@ -1,3 +1,11 @@
+# [1.59.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.58.1...v1.59.0) (2026-10-08)
+
+
+### Features
+
+* **ui:** button tiers with tonal fills and invert-on-hover
+* **ui:** top nav links grow an underline on hover
+
 ## [1.58.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.58.0...v1.58.1) (2026-10-08)
 
 
