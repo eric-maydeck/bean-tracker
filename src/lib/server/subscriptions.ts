@@ -107,3 +107,48 @@ export function withNextRenewalDate<T extends { renewal_day: number | null }>(
 ): T & { next_renewal_date: string | null } {
   return { ...sub, next_renewal_date: computeNextRenewalDate(sub.renewal_day, today) };
 }
+
+export interface SubscriptionUrlFix {
+  id: number;
+  roaster_service: string;
+  url: string;
+}
+
+// The live subscriptions' pages (user, 2026-10-08), for Fill from page.
+export const SUBSCRIPTION_URLS_2026_10_08: SubscriptionUrlFix[] = [
+  { id: 1, roaster_service: 'Airworks', url: 'https://airworkscoffee.com/products/ultralight-sub' },
+  { id: 2, roaster_service: 'H&S Coffee Roasters', url: 'https://hscoffeeroasters.com/products/roasters-choice-subscription' },
+  { id: 3, roaster_service: 'Shoebox Coffee Roaster', url: 'https://shoebox.coffee/products/shoebox-monthly-subscription' },
+  { id: 4, roaster_service: 'norml', url: 'https://normlppl.coffee/products/norml-subscription' },
+  { id: 5, roaster_service: 'Scenery', url: 'https://scenery.coffee/products/light-sub' },
+  { id: 6, roaster_service: 'Ceto', url: 'https://ceto.coffee/products/lil-bit-of-everything-subscription-x1-20gx4-copy' }
+];
+
+// One-time boot batch (db.ts): sets a URL only on the row with that id AND
+// roaster_service (test/seed DBs reuse low ids) whose URL is still empty;
+// anything else is skipped. Then the marker stops a re-run. No marker while
+// the table is empty, like applyCoffeeFixes.
+export function applySubscriptionUrls(
+  db: DatabaseSync,
+  fixes: SubscriptionUrlFix[],
+  marker: string
+): { applied: number; skipped: number } | null {
+  if (!db.prepare(`SELECT 1 FROM subscriptions LIMIT 1`).get()) return null;
+  if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(marker)) return null;
+  const set = db.prepare(
+    `UPDATE subscriptions SET subscription_url = ?
+     WHERE id = ? AND roaster_service = ? AND (subscription_url IS NULL OR subscription_url = '')`
+  );
+  let applied = 0;
+  db.exec('BEGIN');
+  try {
+    for (const f of fixes) applied += Number(set.run(f.url, f.id, f.roaster_service).changes);
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(marker, new Date().toISOString());
+    db.exec('COMMIT');
+  } catch (err) {
+    db.exec('ROLLBACK');
+    throw err;
+  }
+  console.log(`subscription urls (${marker}): applied ${applied}, skipped ${fixes.length - applied}`);
+  return { applied, skipped: fixes.length - applied };
+}

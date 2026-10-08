@@ -10,6 +10,8 @@ import {
   withTotalGrams,
   computeNextRenewalDate,
   withNextRenewalDate,
+  applySubscriptionUrls,
+  SUBSCRIPTION_URLS_2026_10_08,
   type NewSubscriptionInput
 } from './subscriptions';
 
@@ -131,5 +133,39 @@ describe('withNextRenewalDate', () => {
     const result = withNextRenewalDate(sub, new Date('2026-03-01T00:00:00.000Z'));
     expect(result.next_renewal_date).toBe('2026-03-10');
     expect(result.roaster_service).toBe('Airworks');
+  });
+});
+
+describe('applySubscriptionUrls', () => {
+  const fixes = [
+    { id: 1, roaster_service: 'Airworks', url: 'https://a.example/products/sub' },
+    { id: 2, roaster_service: 'H&S Coffee Roasters', url: 'https://hs.example/products/sub' },
+    { id: 3, roaster_service: 'Shoebox Coffee Roaster', url: 'https://sb.example/products/sub' }
+  ];
+
+  it('sets empty URLs on matching rows only, once', () => {
+    createSubscription(db, sampleInput()); // 1 Airworks, no URL
+    createSubscription(db, sampleInput({ roaster_service: 'Someone Else' })); // 2: roaster mismatch
+    createSubscription(db, sampleInput({ roaster_service: 'Shoebox Coffee Roaster', subscription_url: 'https://kept.example' }));
+    expect(applySubscriptionUrls(db, fixes, 'm1')).toEqual({ applied: 1, skipped: 2 });
+    expect(getSubscriptionById(db, 1)?.subscription_url).toBe('https://a.example/products/sub');
+    expect(getSubscriptionById(db, 2)?.subscription_url).toBeNull();
+    expect(getSubscriptionById(db, 3)?.subscription_url).toBe('https://kept.example');
+
+    updateSubscription(db, 1, sampleInput({ subscription_url: '' }));
+    expect(applySubscriptionUrls(db, fixes, 'm1')).toBeNull();
+    expect(getSubscriptionById(db, 1)?.subscription_url).toBe('');
+  });
+
+  it('treats an empty-string URL as missing, and leaves no marker on an empty table', () => {
+    expect(applySubscriptionUrls(db, fixes, 'm2')).toBeNull();
+    createSubscription(db, sampleInput({ subscription_url: '' }));
+    expect(applySubscriptionUrls(db, fixes, 'm2')).toEqual({ applied: 1, skipped: 2 });
+  });
+
+  it('lists the six live subscriptions', () => {
+    expect(SUBSCRIPTION_URLS_2026_10_08.map((f) => [f.id, f.roaster_service])).toEqual([
+      [1, 'Airworks'], [2, 'H&S Coffee Roasters'], [3, 'Shoebox Coffee Roaster'], [4, 'norml'], [5, 'Scenery'], [6, 'Ceto']
+    ]);
   });
 });
