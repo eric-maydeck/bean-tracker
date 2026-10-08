@@ -85,7 +85,7 @@ interface ShopifyJson {
     body_html?: string | null;
     image?: { src?: string } | null;
     images?: { src?: string }[];
-    variants?: { id?: number; title?: string; price?: string; grams?: number }[];
+    variants?: { id?: number; title?: string; price?: string; grams?: number; price_currency?: string }[];
   };
 }
 
@@ -95,6 +95,10 @@ export function parseShopifyProduct(json: unknown, meta: { name?: string; curren
   const bodyHtml = p.body_html ?? '';
   const description = htmlToText(bodyHtml);
   const tags = Array.isArray(p.tags) ? p.tags : String(p.tags ?? '').split(',');
+  // Shopify Markets prices a request in the visitor's currency (Scenery,
+  // a GBP shop, answers en-US in USD) and marks it per variant; that beats
+  // the shop's base currency from meta.json.
+  const variantCurrency = p.variants?.find((v) => typeof v.price_currency === 'string')?.price_currency;
   return {
     title: p.title.trim(),
     vendor: p.vendor?.trim() || null,
@@ -104,7 +108,7 @@ export function parseShopifyProduct(json: unknown, meta: { name?: string; curren
     description,
     attributes: { ...labeledLines(description), ...pairRows(bodyHtml) },
     image: p.image?.src ?? p.images?.[0]?.src ?? null,
-    currency: meta?.currency?.toUpperCase() ?? null,
+    currency: (variantCurrency ?? meta?.currency)?.toUpperCase() ?? null,
     variants: (p.variants ?? [])
       .map((v) => ({
         id: typeof v.id === 'number' ? v.id : null,

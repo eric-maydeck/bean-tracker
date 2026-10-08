@@ -89,6 +89,15 @@ describe('parseShopifyProduct variant filtering', () => {
     const p = parseShopifyProduct(json, null);
     expect(p.variants.map((v) => v.grams)).toEqual([200, null, null]);
   });
+
+  // Shopify Markets: Scenery (meta.json GBP) answers an en-US request with
+  // USD prices, marked per variant. The variant's currency wins.
+  it("takes the variants' own price_currency over the shop's meta currency", () => {
+    const json = { product: { title: 'Light Sub', variants: [{ id: 1, title: '3 x 200g Bag', price: '57.00', price_currency: 'USD' }] } };
+    expect(parseShopifyProduct(json, { currency: 'GBP' }).currency).toBe('USD');
+    const plain = { product: { title: 'Light Sub', variants: [{ id: 1, title: '3 x 200g Bag', price: '42.00' }] } };
+    expect(parseShopifyProduct(plain, { currency: 'GBP' }).currency).toBe('GBP');
+  });
 });
 
 describe('fixtures', () => {

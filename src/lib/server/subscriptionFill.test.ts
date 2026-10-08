@@ -139,7 +139,7 @@ describe('buildSubscriptionFill (real pages)', () => {
   });
 
   it('leaves the price blank when the currency cannot be converted', () => {
-    const f = buildSubscriptionFill(page('norml', 'EUR'), ctx('https://normlppl.coffee/products/norml-subscription'));
+    const f = buildSubscriptionFill({ ...page('norml'), currency: 'EUR' }, ctx('https://normlppl.coffee/products/norml-subscription'));
     expect(f.fields.price).toBeUndefined();
     expect(f.notes.some((n) => n.includes("couldn't convert to USD"))).toBe(true);
   });
