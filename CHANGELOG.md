@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.57.1...v1.58.0) (2026-10-08)
+
+
+### Features
+
+* **subscriptions:** pause/resume and a subscription page link
+
 ## [1.57.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.57.0...v1.57.1) (2026-10-08)
 
 
