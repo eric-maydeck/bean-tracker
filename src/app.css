@@ -658,13 +658,34 @@ nav.site-nav .nav-links {
   flex: 1;
 }
 
-nav.site-nav a {
+/* Underline drawn as a background so it can grow from the centre on hover;
+   the current page shows it in full. */
+nav.site-nav a,
+nav.site-nav .nav-link-button {
   text-decoration: none;
+  padding-bottom: 0.2rem;
+  background: linear-gradient(currentColor, currentColor) center bottom / 0 2px no-repeat;
+  transition: background-size 0.2s ease;
 }
 
+@media (hover: hover) {
+  nav.site-nav a:hover,
+  nav.site-nav .nav-link-button:hover {
+    background-size: 100% 2px;
+  }
+}
+
+nav.site-nav a:focus-visible,
+nav.site-nav .nav-link-button:focus-visible,
 nav.site-nav a[aria-current='page'] {
-  text-decoration: underline;
-  text-underline-offset: 0.25rem;
+  background-size: 100% 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  nav.site-nav a,
+  nav.site-nav .nav-link-button {
+    transition: none;
+  }
 }
 
 .toolbar {
