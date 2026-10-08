@@ -11,600 +11,700 @@ export const PRODUCT_PAGE_BACKFILLS: CoffeeFixBatch[] = [
   "fixes": [
     {
       "coffee_id": 60,
+      "roaster": "Aviary",
       "field": "product_url",
       "from": null,
       "to": "https://aviary.coffee/products/028-jhon-didier-trujillo"
     },
     {
       "coffee_id": 60,
+      "roaster": "Aviary",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0849/8305/4640/files/028_tile.png?v=1778533034"
     },
     {
       "coffee_id": 61,
+      "roaster": "Aviary",
       "field": "product_url",
       "from": null,
       "to": "https://aviary.coffee/products/029-alina-milagros"
     },
     {
       "coffee_id": 61,
+      "roaster": "Aviary",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0849/8305/4640/files/029_tile.png?v=1784044081"
     },
     {
       "coffee_id": 65,
+      "roaster": "Aviary",
       "field": "product_url",
       "from": null,
       "to": "https://aviary.coffee/products/xx6-san-jeronimo-miramar"
     },
     {
       "coffee_id": 65,
+      "roaster": "Aviary",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0849/8305/4640/files/xx6_tile.png?v=1785887761"
     },
     {
       "coffee_id": 58,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/gute-village"
     },
     {
       "coffee_id": 58,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/AloRedHoneyTransparent_1.png?v=1786429677"
     },
     {
       "coffee_id": 66,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/fugi-ikizere"
     },
     {
       "coffee_id": 66,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/Fugitransparent.png?v=1788564747"
     },
     {
       "coffee_id": 59,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/gaia-estate-airworks-exclusive"
     },
     {
       "coffee_id": 59,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/GaiaGeshaTransparent_1.png?v=1786430106"
     },
     {
       "coffee_id": 74,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/gesha-village-oma-natural-26-147"
     },
     {
       "coffee_id": 74,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/omaTransparent.png?v=1788569761"
     },
     {
       "coffee_id": 75,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/heza"
     },
     {
       "coffee_id": 75,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/Hezahoneytransparent.png?v=1788567750"
     },
     {
       "coffee_id": 76,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/yulissa-chambi"
     },
     {
       "coffee_id": 76,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/Yulissatransparent.png?v=1788565587"
     },
     {
       "coffee_id": 77,
+      "roaster": "Bean's Beans",
       "field": "product_url",
       "from": null,
       "to": "https://beansbeans.coffee/products/yunguilla-juan-pena"
     },
     {
       "coffee_id": 77,
+      "roaster": "Bean's Beans",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0813/5655/4484/files/YunguillaMejotransparent.png?v=1788565937"
     },
     {
       "coffee_id": 36,
+      "roaster": "Ceto",
       "field": "product_url",
       "from": null,
       "to": "https://ceto.coffee/products/habtamu-fikadu-washed"
     },
     {
       "coffee_id": 36,
+      "roaster": "Ceto",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0929/6694/5082/files/Chelbesa.png?v=1785278628"
     },
     {
       "coffee_id": 37,
+      "roaster": "Ceto",
       "field": "product_url",
       "from": null,
       "to": "https://ceto.coffee/products/habtamu-fikadu-washed"
     },
     {
       "coffee_id": 37,
+      "roaster": "Ceto",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0929/6694/5082/files/Chelbesa.png?v=1785278628"
     },
     {
       "coffee_id": 1,
+      "roaster": "Ceto",
       "field": "product_url",
       "from": null,
       "to": "https://ceto.coffee/products/marlon-bolanos-washed-pb-decaf"
     },
     {
       "coffee_id": 20,
+      "roaster": "H&S",
       "field": "product_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/products/colombia-la-fortuna-bourbon-aji"
     },
     {
       "coffee_id": 20,
+      "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0424/7433/files/666-COL-La-Fortuna-WBA-A.png?v=1785694019"
     },
     {
       "coffee_id": 72,
+      "roaster": "Intelligentsia",
       "field": "product_url",
       "from": null,
       "to": "https://www.intelligentsia.com/products/ethiopia-gesha-village-oma-natural"
     },
     {
       "coffee_id": 72,
+      "roaster": "Intelligentsia",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0084/8802/6172/files/EthiopiaGeshaVillageOmaNatural_1.png?v=1789142053"
     },
     {
       "coffee_id": 62,
+      "roaster": "Sey",
       "field": "product_url",
       "from": null,
       "to": "https://www.seycoffee.com/products/2026-alejandrina-maytan-kukipata-peru"
     },
     {
       "coffee_id": 62,
+      "roaster": "Sey",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0002/6352/0281/files/2026AlejandrinaMaytan_Kukipata-Peru.png?v=1788402464"
     },
     {
       "coffee_id": 78,
+      "roaster": "Sey",
       "field": "product_url",
       "from": null,
       "to": "https://www.seycoffee.com/products/2026-demeka-becha-ethiopia"
     },
     {
       "coffee_id": 78,
+      "roaster": "Sey",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0002/6352/0281/files/2026DemekaBecha-Ethiopia.png?v=1787786573"
     },
     {
       "coffee_id": 69,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-ashenafi-getaneh-black-honey"
     },
     {
       "coffee_id": 69,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Ashenafi-shopify.png?v=1789315852"
     },
     {
       "coffee_id": 51,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-bookissa-natural"
     },
     {
       "coffee_id": 51,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Bookissa-shopify.png?v=1786216160"
     },
     {
       "coffee_id": 52,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-getachew-zeleke-washed2026"
     },
     {
       "coffee_id": 52,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Getachew_2026_-shopify.png?v=1786215988"
     },
     {
       "coffee_id": 53,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-getachew-zeleke-washed2026"
     },
     {
       "coffee_id": 53,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Getachew_2026_-shopify.png?v=1786215988"
     },
     {
       "coffee_id": 54,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-habtamu-fikadu-aga-washed"
     },
     {
       "coffee_id": 54,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Habtamu-shopify.png?v=1786215679"
     },
     {
       "coffee_id": 70,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/kenya-kamwangi-aa-washed"
     },
     {
       "coffee_id": 70,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/KamwangiAA-shopify.png?v=1788107841"
     },
     {
       "coffee_id": 48,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-mr-tadese-teko-washed2026"
     },
     {
       "coffee_id": 48,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Mr.Tadese_2026_-shopify.png?v=1785684555"
     },
     {
       "coffee_id": 71,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/ethiopia-mulish-washed"
     },
     {
       "coffee_id": 71,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/Mulish-shopify.png?v=1789919305"
     },
     {
       "coffee_id": 26,
+      "roaster": "Shoebox",
       "field": "product_url",
       "from": null,
       "to": "https://shoebox.coffee/products/panama-eyla-gesha-honey"
     },
     {
       "coffee_id": 26,
+      "roaster": "Shoebox",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0917/5220/2532/files/EylaHoney-shopify_74c00abf-b9ca-4782-b926-cc152829d30f.png?v=1782056636"
     },
     {
       "coffee_id": 232,
+      "roaster": "Still",
       "field": "product_url",
       "from": null,
       "to": "https://stillcoffeeroasters.com/products/samii-chelbesa"
     },
     {
       "coffee_id": 232,
+      "roaster": "Still",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0933/3142/3573/files/samii.jpg?v=1785098241"
     },
     {
       "coffee_id": 43,
+      "roaster": "Sweet Bloom",
       "field": "product_url",
       "from": null,
       "to": "https://sweetbloomcoffee.com/products/danche"
     },
     {
       "coffee_id": 43,
+      "roaster": "Sweet Bloom",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0673/6999/2257/files/sweet-bloom-danche-26.png?v=1785878553"
     },
     {
       "coffee_id": 44,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/kenya-inoi-kianderi-aa-043-250g"
     },
     {
       "coffee_id": 44,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_da0d4805ca10426b8563ef4689b24bd8~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 46,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/kenya-ruera-estate-pb-031-250g"
     },
     {
       "coffee_id": 46,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_4351ed6d97524c8ca05123c9cbf26074~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 68,
+      "roaster": "Aviary",
       "field": "product_url",
       "from": null,
       "to": "https://aviary.coffee/products/030-san-jeronimo-miramar"
     },
     {
       "coffee_id": 68,
+      "roaster": "Aviary",
       "field": "image_url",
       "from": null,
       "to": "https://aviary.coffee/cdn/shop/files/030tile.png?v=1785887650"
     },
     {
       "coffee_id": 49,
+      "roaster": "H&S",
       "field": "product_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/products/ecuador-abel-salinas"
     },
     {
       "coffee_id": 49,
+      "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/cdn/shop/files/677-ECU-Abel-A_731bef6c-c1eb-4460-90f8-0648259c0467.png?v=1779717451"
     },
     {
       "coffee_id": 18,
+      "roaster": "H&S",
       "field": "product_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/products/colombia-la-fortuna-pink-bourbon"
     },
     {
       "coffee_id": 18,
+      "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/cdn/shop/files/665-COL-La-Fortuna-WPB-A.png?v=1785693362"
     },
     {
       "coffee_id": 64,
+      "roaster": "H&S",
       "field": "product_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/products/burundi-mikuba-8"
     },
     {
       "coffee_id": 64,
+      "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/cdn/shop/files/718-BUR-Mikuba-A.png?v=1788706055"
     },
     {
       "coffee_id": 67,
+      "roaster": "H&S",
       "field": "product_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/products/colombia-yessica-parra"
     },
     {
       "coffee_id": 67,
+      "roaster": "H&S",
       "field": "image_url",
       "from": null,
       "to": "https://hscoffeeroasters.com/cdn/shop/files/656-COL-Yessica-A.png?v=1788705248"
     },
     {
       "coffee_id": 22,
+      "roaster": "Lume",
       "field": "product_url",
       "from": null,
       "to": "https://lumeroasters.coffee/products/luz-helena-salazar-100g"
     },
     {
       "coffee_id": 22,
+      "roaster": "Lume",
       "field": "image_url",
       "from": null,
       "to": "https://lumeroasters.coffee/cdn/shop/files/baglabel_productpage_3.png?v=1783620614"
     },
     {
       "coffee_id": 79,
+      "roaster": "Sey",
       "field": "product_url",
       "from": null,
       "to": "https://www.seycoffee.com/products/2026-sike-bokasso-ethiopia"
     },
     {
       "coffee_id": 79,
+      "roaster": "Sey",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0002/6352/0281/files/2026SikeBokasso-Ethiopia.png?v=1787784425"
     },
     {
       "coffee_id": 40,
+      "roaster": "Still",
       "field": "product_url",
       "from": null,
       "to": "https://stillcoffeeroasters.com/products/samii-chelbesa"
     },
     {
       "coffee_id": 40,
+      "roaster": "Still",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0933/3142/3573/files/samii.jpg?v=1785098241"
     },
     {
       "coffee_id": 30,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/colombia-finca-el-turpial-washed-geisha-125g"
     },
     {
       "coffee_id": 30,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_1e51446cd76a4a9996d10b55203c6ab8~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 29,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/ethiopia-gesha-village-lot-25-048-oma"
     },
     {
       "coffee_id": 29,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_eeaa68192b4b41e2abcd2629261200e8~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 47,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/copie-de-panama-hacienda-la-esmeralda-lino-5-wb-washed-geisha"
     },
     {
       "coffee_id": 47,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_69f35f8b9e9445158c0c99d91f687fbb~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 19,
+      "roaster": "Big Sur",
       "field": "product_url",
       "from": null,
       "to": "https://bigsurcafe.com/products/25-26-new-season-ethiopia-washed-faysel-abdosh-single-farm-premium-150g"
     },
     {
       "coffee_id": 19,
+      "roaster": "Big Sur",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0680/8079/5738/files/1_36-1.png?v=1774340528"
     },
     {
       "coffee_id": 34,
+      "roaster": "norml coffee ppl",
       "field": "product_url",
       "from": null,
       "to": "https://normlppl.coffee/products/gilber-huayallas-sl9-50g-1-76oz-roasted-09-30-2026"
     },
     {
       "coffee_id": 34,
+      "roaster": "norml coffee ppl",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0741/5880/1034/files/sl09shopify_a8214381-1472-4b65-9a37-f7447ab5e806.png?v=1790805405"
     },
     {
       "coffee_id": 2,
+      "roaster": "Scenery",
       "field": "product_url",
       "from": null,
       "to": "https://beanhoard.com/roaster/scenery-coffee/ethiopia-kebena-natural-decaf"
     },
     {
       "coffee_id": 2,
+      "roaster": "Scenery",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0779/1961/7334/files/ethiopia_kebena_decaf_shopify.png?v=1777983100"
     },
     {
       "coffee_id": 63,
+      "roaster": "Sey",
       "field": "product_url",
       "from": null,
       "to": "https://www.seycoffee.com/products/2026-mate-matiwos-keramo-ethiopia"
     },
     {
       "coffee_id": 63,
+      "roaster": "Sey",
       "field": "image_url",
       "from": null,
       "to": "https://cdn.shopify.com/s/files/1/0002/6352/0281/files/2026MateMatiwos_Keramo-Ethiopia.png?v=1788392669"
     },
     {
       "coffee_id": 27,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/ethiopia-gesha-village-lot-25-046"
     },
     {
       "coffee_id": 27,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_7f90e237d9f841b482a3975b5c9a36b5~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 28,
+      "roaster": "The Picky Chemist",
       "field": "product_url",
       "from": null,
       "to": "https://en.thepickychemist.com/product-page/ethiopia-gesha-village-lot-25-047"
     },
     {
       "coffee_id": 28,
+      "roaster": "The Picky Chemist",
       "field": "image_url",
       "from": null,
       "to": "https://static.wixstatic.com/media/d61d15_73e0177125cb4f8dba45cd4cc5ef703a~mv2.jpg/v1/fit/w_500,h_500,q_90/file.jpg"
     },
     {
       "coffee_id": 56,
+      "roaster": "XLIII",
       "field": "product_url",
       "from": null,
       "to": "https://x.com/xliiicoffee/status/2058805264200188159?lang=bg"
     },
     {
       "coffee_id": 56,
+      "roaster": "XLIII",
       "field": "image_url",
       "from": null,
       "to": "https://pbs.twimg.com/media/HJIR24MbkAAN0w7?format=webp&name=large"
     },
     {
       "coffee_id": 15,
+      "roaster": "GWO",
       "field": "product_url",
       "from": null,
       "to": "https://gwo.coffee/products/gikirima"
     },
     {
       "coffee_id": 15,
+      "roaster": "GWO",
       "field": "image_url",
       "from": null,
       "to": "https://gwo.coffee/cdn/shop/files/24.png?v=1780224281"
     },
     {
       "coffee_id": 4,
+      "roaster": "Hydrangea",
       "field": "product_url",
       "from": null,
       "to": "https://hydrangea.coffee/products/el-paraiso-decaf"
     },
     {
       "coffee_id": 57,
+      "roaster": "XLIII",
       "field": "product_url",
       "from": null,
       "to": "https://xliiicoffee.com/en/product/nueva-alianza-sidra-4736/"
     },
     {
       "coffee_id": 57,
+      "roaster": "XLIII",
       "field": "image_url",
       "from": null,
       "to": "https://xliiicoffee.com/wp-content/uploads/2026/03/202603201017-Nueva-Alianza-Sidra-4736.webp"

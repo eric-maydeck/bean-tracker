@@ -488,6 +488,17 @@ describe('applyCoffeeFixes (product page backfill)', () => {
     expect(marker()).toBeTruthy();
   });
 
+  it("skips a fix whose roaster differs: another DB's coffee with the same id isn't it", () => {
+    const { id } = add();
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: id, roaster: 'Ceto', field: 'product_url', from: null, to: page },
+      { coffee_id: id, roaster: 'Sey', field: 'image_url', from: null, to: bag }
+    ] }));
+    expect(r?.fixed).toBe(1);
+    expect(r?.skipped[0]).toContain("roaster is 'Sey'");
+    expect(getCoffeeById(db, id)).toMatchObject({ product_url: null, image_url: bag });
+  });
+
   it("matches '' and NULL exactly: from must be the stored empty value", () => {
     const a = add();
     const b = add();

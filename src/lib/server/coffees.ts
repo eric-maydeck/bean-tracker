@@ -201,9 +201,12 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
 }
 
 // A one-field correction, applied only while the field still holds `from`
-// (exactly: null and '' differ, so `from` is copied from the DB, never typed).
+// (exactly: null and '' differ, so `from` is copied from the DB, never typed)
+// and, when given, the coffee's roaster is `roaster` (so a batch can't land on
+// another DB's coffee with the same id: test and seed DBs).
 export type CoffeeFix = {
   coffee_id: number;
+  roaster?: string;
   field: 'roast_date' | 'coffee_name' | 'product_url' | 'image_url';
   from: string | null;
   to: string;
@@ -215,6 +218,7 @@ export type CoffeeFix = {
 export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
   const c = getCoffeeById(db, f.coffee_id);
   if (!c) return 'coffee not found';
+  if (f.roaster !== undefined && c.roaster !== f.roaster) return `roaster is '${c.roaster}', expected '${f.roaster}'`;
   if (c[f.field] !== f.from) return `${f.field} is '${c[f.field]}', expected '${f.from}'`;
   const next = { ...c, [f.field]: f.to, decaf: c.decaf === 1 };
   const base = (x: { roaster: string; coffee_name: string; roast_date: string | null }) =>
