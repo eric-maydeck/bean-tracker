@@ -24,14 +24,15 @@ export function hostOf(url: string): string {
 const GENERIC = new Set(['the', 'coffee', 'coffees', 'roasters', 'roaster', 'roastery', 'roasting', 'company']);
 
 // Does the host look like this roaster's own site? True when a 3+ letter,
-// non-generic word of the name appears in the host (punctuation ignored).
+// non-generic word of the name appears in the host, or the whole name does
+// (punctuation ignored: "H&S Coffee Roasters" -> hscoffeeroasters.com).
 // ponytail: substring heuristic, a stored site or "change" covers misses.
 export function hostMatchesRoaster(url: string, roaster: string): boolean {
   const host = hostOf(url).replace(/[^a-z0-9]/g, '');
-  return roaster
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .some((w) => w.length >= 3 && !GENERIC.has(w) && host.includes(w));
+  const name = roaster.toLowerCase();
+  const whole = name.replace(/[^a-z0-9]/g, '');
+  if (whole.length >= 3 && host.includes(whole)) return true;
+  return name.split(/[^a-z0-9]+/).some((w) => w.length >= 3 && !GENERIC.has(w) && host.includes(w));
 }
 
 // A pick: the image; the page as product URL only if there is none yet; the

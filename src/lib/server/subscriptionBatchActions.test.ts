@@ -32,6 +32,18 @@ describe('validateSubscriptionBatch', () => {
   });
 });
 
+describe('validateSubscriptionBatch: subscription URL and partial fields', () => {
+  it('rejects a non-http(s) subscription URL', () => {
+    const errors = validateSubscriptionBatch([{ id: 1, fields: { roaster_service: 'Sey', subscription_url: 'javascript:x' } }]);
+    expect(errors).toEqual([{ id: 1, error: 'Subscription page must be an http(s) URL' }]);
+  });
+  it('accepts an empty or valid URL, and a pause-only change', () => {
+    expect(validateSubscriptionBatch([{ id: 1, fields: { roaster_service: 'Sey', subscription_url: '' } }])).toEqual([]);
+    expect(validateSubscriptionBatch([{ id: 1, fields: { roaster_service: 'Sey', subscription_url: 'https://sey.coffee' } }])).toEqual([]);
+    expect(validateSubscriptionBatch([{ id: 1, fields: { paused: '1' } }])).toEqual([]);
+  });
+});
+
 describe('commitSubscriptionBatch', () => {
   it('applies a field edit', () => {
     const id = createSubscription(db, {
@@ -77,5 +89,28 @@ describe('commitSubscriptionBatch', () => {
       ])
     ).toThrow();
     expect(getSubscriptionById(db, good)?.roaster_service).toBe('Good');
+  });
+
+  it('round-trips subscription_url and paused; a pause-only change keeps other fields', () => {
+    const id = createSubscription(db, {
+      roaster_service: 'Ceto', subscription_name: 'Monthly', price: 20, bag_count: 1, amount_per_bag_g: 250, renewal_day: 5
+    });
+    commitSubscriptionBatch(db, [{ id, fields: { roaster_service: 'Ceto', subscription_url: ' https://ceto.coffee/sub ' } }]);
+    expect(getSubscriptionById(db, id)).toMatchObject({ subscription_url: 'https://ceto.coffee/sub', paused: 0 });
+    commitSubscriptionBatch(db, [{ id, fields: { paused: '1' } }]);
+    expect(getSubscriptionById(db, id)).toMatchObject({
+      roaster_service: 'Ceto', subscription_name: 'Monthly', price: 20, renewal_day: 5,
+      subscription_url: 'https://ceto.coffee/sub', paused: 1
+    });
+    commitSubscriptionBatch(db, [{ id, fields: { roaster_service: 'Ceto', subscription_url: '', paused: '0' } }]);
+    expect(getSubscriptionById(db, id)).toMatchObject({ subscription_url: null, paused: 0 });
+  });
+
+  it('refuses a bad URL at commit too', () => {
+    const id = createSubscription(db, {
+      roaster_service: 'Ceto', subscription_name: null, price: null, bag_count: null, amount_per_bag_g: null, renewal_day: null
+    });
+    expect(() => commitSubscriptionBatch(db, [{ id, fields: { subscription_url: 'ftp://x' } }])).toThrow(/http/);
+    expect(getSubscriptionById(db, id)?.subscription_url).toBeNull();
   });
 });

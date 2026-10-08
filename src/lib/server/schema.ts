@@ -87,7 +87,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   bag_count REAL,
   amount_per_bag_g REAL,
   renewal_day INTEGER,
-  updated_at TEXT
+  updated_at TEXT,
+  subscription_url TEXT,
+  paused INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS app_meta (

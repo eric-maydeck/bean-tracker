@@ -10,6 +10,8 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsTitle, urlWarning } from '$lib/subscriptionView';
+  import type { SubscriptionRow } from '$lib/types';
   let { data, form } = $props();
 
   let editMode = $state(false);
@@ -76,13 +78,31 @@
     expandedId = expandedId === id ? null : id;
   }
 
-  function stageFieldsFor(sub: { id: number }, formEl: HTMLFormElement) {
-    const formData = new FormData(formEl);
+  // Edits stage as you type: every input of a row stages the row's whole
+  // field set (its inputs are tied to the row's form by form=…).
+  function stageRow(id: number) {
+    const formEl = document.getElementById(`sub-form-${id}`) as HTMLFormElement | null;
+    if (!formEl) return;
     const fields: Record<string, string> = {};
-    for (const [key, value] of formData.entries()) {
-      if (typeof value === 'string') fields[key] = value;
+    for (const [key, value] of new FormData(formEl).entries()) {
+      if (typeof value === 'string' && key !== 'id') fields[key] = value;
     }
-    stageFieldChange(pending, sub.id, fields);
+    // A staged Pause/Resume isn't a form input; keep it.
+    const paused = pending.get(id)?.fields?.paused;
+    if (paused != null) fields.paused = paused;
+    stageFieldChange(pending, id, fields);
+  }
+
+  // An input's value: the staged one if any (so a re-opened editor or a view
+  // switch shows what's pending), else the saved one.
+  function val(sub: SubscriptionRow, key: keyof SubscriptionRow): string {
+    return pending.get(sub.id)?.fields?.[key] ?? String(sub[key] ?? '');
+  }
+
+  let addUrl = $state('');
+  let addRoaster = $state('');
+  function warningFor(sub: SubscriptionRow) {
+    return urlWarning(val(sub, 'subscription_url'), val(sub, 'roaster_service'));
   }
 
   function stageDelete(sub: { id: number; roaster_service: string }) {
@@ -177,17 +197,7 @@
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   });
 
-  let totalPrice = $derived.by(() => {
-    const withPrice = data.subscriptions.filter((s) => s.price != null);
-    if (withPrice.length === 0) return null;
-    return withPrice.reduce((sum, s) => sum + (s.price ?? 0), 0);
-  });
-
-  let totalGrams = $derived.by(() => {
-    const withGrams = data.subscriptions.filter((s) => s.total_grams != null);
-    if (withGrams.length === 0) return null;
-    return withGrams.reduce((sum, s) => sum + (s.total_grams ?? 0), 0);
-  });
+  let totals = $derived(subscriptionTotals(data.subscriptions));
 </script>
 
 <svelte:head>
@@ -226,55 +236,100 @@
 
 {#if view === 'list'}
 <div class="table-scroll">
-  <table class="data-table">
+  <table class="data-table" class:editing={canEdit}>
     <thead>
       <tr>
         <th>Roaster/Service</th>
         <th>Name</th>
         <th>Price</th>
-        <th>Total grams</th>
-        <th>Next renewal</th>
         {#if canEdit}
-          <th>Bags × g/bag</th>
+          <th>Bags</th>
+          <th>g/bag</th>
           <th>Renewal day</th>
+          <th>Subscription page</th>
           <th>Actions</th>
+        {:else}
+          <th>Total grams</th>
+          <th>Next renewal</th>
         {/if}
       </tr>
     </thead>
     <tbody>
       {#each data.subscriptions as sub (sub.id)}
-        <tr>
+        <tr
+          class:paused={sub.paused && !canEdit}
+          class:pending={canEdit && !!pendingLabel(pending.get(sub.id))}
+          title={canEdit ? (pendingLabel(pending.get(sub.id)) ?? undefined) : undefined}
+        >
           <td>
             {#if canEdit}
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="roaster_service" required value={sub.roaster_service} />
+              <input
+                class="inline-input"
+                form={`sub-form-${sub.id}`}
+                name="roaster_service"
+                required
+                value={val(sub, 'roaster_service')}
+                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+              />
+            {:else if sub.subscription_url}
+              <a href={siteOrigin(sub.subscription_url)} target="_blank" rel="noopener noreferrer">{sub.roaster_service}</a>
             {:else}
               {sub.roaster_service}
             {/if}
+            {#if sub.paused && !canEdit}<span class="badge badge-neutral">Paused</span>{/if}
           </td>
           <td>
             {#if canEdit}
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={sub.subscription_name ?? ''} />
+              <input class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={val(sub, 'subscription_name')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
+            {:else if sub.subscription_url}
+              <a href={sub.subscription_url} target="_blank" rel="noopener noreferrer">{sub.subscription_name ?? 'Subscription page'}</a>
             {:else}
               {sub.subscription_name ?? '—'}
             {/if}
           </td>
           <td>
             {#if canEdit}
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={sub.price ?? ''} />
+              <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
             {:else}
               {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
             {/if}
           </td>
-          <td>{sub.total_grams ?? '—'}</td>
-          <td>{sub.next_renewal_date ?? '—'}</td>
-          {#if canEdit}
+          {#if !canEdit}
+            <td>{sub.total_grams ?? '—'}</td>
+            <td>{sub.paused ? '—' : (sub.next_renewal_date ?? '—')}</td>
+          {:else}
             <td>
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" placeholder="# bags" value={sub.bag_count ?? ''} />
-              <input class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" placeholder="g/bag" value={sub.amount_per_bag_g ?? ''} />
+              <input
+                class="inline-input num-input"
+                form={`sub-form-${sub.id}`}
+                name="bag_count"
+                type="number"
+                step="1"
+                aria-label="Bags"
+                title={totalGramsTitle(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}
+                value={val(sub, 'bag_count')}
+                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+              />
             </td>
             <td>
               <input
-                class="inline-input"
+                class="inline-input num-input"
+                form={`sub-form-${sub.id}`}
+                name="amount_per_bag_g"
+                type="number"
+                step="1"
+                aria-label="g/bag"
+                title={totalGramsTitle(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}
+                value={val(sub, 'amount_per_bag_g')}
+                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+              />
+            </td>
+            <td>
+              <input
+                class="inline-input num-input"
                 form={`sub-form-${sub.id}`}
                 name="renewal_day"
                 type="number"
@@ -282,27 +337,53 @@
                 min="1"
                 max="31"
                 placeholder="day"
-                value={sub.renewal_day ?? ''}
+                value={val(sub, 'renewal_day')}
+                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
               />
             </td>
             <td>
+              <input
+                class="inline-input url-input"
+                form={`sub-form-${sub.id}`}
+                name="subscription_url"
+                type="url"
+                placeholder="https://…"
+                value={val(sub, 'subscription_url')}
+                disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+              />
+              {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
+            </td>
+            <td class="actions-cell">
               <form
                 id={`sub-form-${sub.id}`}
                 method="POST"
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  stageFieldsFor(sub, e.currentTarget as HTMLFormElement);
-                }}
+                onsubmit={(e) => e.preventDefault()}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
-                {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
-              </button>
-              {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}
-                <span class="badge badge-neutral">Pending: edited</span>
-              {/if}
+              <div class="sub-actions" data-button-row>
+                <button
+                  class="button button-secondary pause-button"
+                  type="button"
+                  disabled={saving}
+                  onclick={() => togglePauseStage(pending, sub.id, sub.paused)}
+                >
+                  {pauseButtonLabel(sub.paused, pending.get(sub.id))}
+                </button>
+                <button
+                  class="button {pending.get(sub.id)?.statusAction === 'delete' ? 'button-success' : 'button-danger'}"
+                  type="button"
+                  aria-pressed={pending.get(sub.id)?.statusAction === 'delete'}
+                  disabled={saving}
+                  onclick={() => stageDelete(sub)}
+                >
+                  {deleteButtonLabel(pending.get(sub.id))}
+                </button>
+              </div>
+              <!-- Pending shows as the row's left accent + tooltip; this is for screen readers. -->
+              {#if pendingLabel(pending.get(sub.id))}<span class="sr-only">{pendingLabel(pending.get(sub.id))}</span>{/if}
               {#if commitErrors.get(sub.id)}
                 <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
               {/if}
@@ -314,12 +395,14 @@
     <tfoot>
       <tr>
         <td colspan="2"><strong>Totals</strong></td>
-        <td><strong>{totalPrice != null ? `$${totalPrice.toFixed(2)}` : '—'}</strong></td>
-        <td><strong>{totalGrams ?? '—'}</strong></td>
-        <td></td>
+        <td><strong>{totals.price != null ? `$${totals.price.toFixed(2)}` : '—'}</strong></td>
         {#if canEdit}
+          <td colspan="2"><strong>{totals.grams != null ? `${totals.grams} g` : '—'}</strong></td>
           <td></td>
           <td></td>
+          <td></td>
+        {:else}
+          <td><strong>{totals.grams ?? '—'}</strong></td>
           <td></td>
         {/if}
       </tr>
@@ -333,8 +416,20 @@
         {#if canEdit}
           <div class="compact-row">
             <div class="compact-row-main">
-              <div class="compact-row-title">{sub.roaster_service}</div>
-              <div class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</div>
+              <div class="compact-row-title">
+                {#if sub.subscription_url}
+                  <a href={siteOrigin(sub.subscription_url)} target="_blank" rel="noopener noreferrer">{sub.roaster_service}</a>
+                {:else}
+                  {sub.roaster_service}
+                {/if}
+              </div>
+              <div class="compact-row-sub text-muted">
+                {#if sub.subscription_url}
+                  <a href={sub.subscription_url} target="_blank" rel="noopener noreferrer">{sub.subscription_name ?? 'Subscription page'}</a>
+                {:else}
+                  {sub.subscription_name ?? '—'}
+                {/if}
+              </div>
             </div>
             <button
               type="button"
@@ -350,46 +445,83 @@
               <div class="form-grid">
                 <div class="form-field">
                   <label for={`compact-roaster-${sub.id}`}>Roaster/Service</label>
-                  <input id={`compact-roaster-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="roaster_service" required value={sub.roaster_service} />
+                  <input
+                    id={`compact-roaster-${sub.id}`}
+                    class="inline-input"
+                    form={`sub-form-${sub.id}`}
+                    name="roaster_service"
+                    required
+                    value={val(sub, 'roaster_service')}
+                    disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+                  />
                 </div>
                 <div class="form-field">
                   <label for={`compact-name-${sub.id}`}>Subscription name</label>
-                  <input id={`compact-name-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={sub.subscription_name ?? ''} />
+                  <input id={`compact-name-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="subscription_name" value={val(sub, 'subscription_name')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
                 </div>
                 <div class="form-field">
                   <label for={`compact-price-${sub.id}`}>Price</label>
-                  <input id={`compact-price-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={sub.price ?? ''} />
+                  <input id={`compact-price-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
                 </div>
                 <div class="form-field">
                   <label for={`compact-bags-${sub.id}`}># bags</label>
-                  <input id={`compact-bags-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" value={sub.bag_count ?? ''} />
+                  <input id={`compact-bags-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="bag_count" type="number" step="1" value={val(sub, 'bag_count')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
                 </div>
                 <div class="form-field">
                   <label for={`compact-grams-${sub.id}`}>g/bag</label>
-                  <input id={`compact-grams-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" value={sub.amount_per_bag_g ?? ''} />
+                  <input id={`compact-grams-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="amount_per_bag_g" type="number" step="1" value={val(sub, 'amount_per_bag_g')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
                 </div>
                 <div class="form-field">
                   <label for={`compact-day-${sub.id}`}>Renewal day</label>
-                  <input id={`compact-day-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="renewal_day" type="number" step="1" min="1" max="31" value={sub.renewal_day ?? ''} />
+                  <input id={`compact-day-${sub.id}`} class="inline-input" form={`sub-form-${sub.id}`} name="renewal_day" type="number" step="1" min="1" max="31" value={val(sub, 'renewal_day')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
+                </div>
+                <div class="form-field url-field">
+                  <label for={`compact-url-${sub.id}`}>Subscription page</label>
+                  <input
+                    id={`compact-url-${sub.id}`}
+                    class="inline-input url-input"
+                    form={`sub-form-${sub.id}`}
+                    name="subscription_url"
+                    type="url"
+                    placeholder="https://…"
+                    value={val(sub, 'subscription_url')}
+                    disabled={effectivePaused(sub.paused, pending.get(sub.id))}
+                oninput={() => stageRow(sub.id)}
+                  />
+                  {#if warningFor(sub)}<p class="url-warning">{warningFor(sub)}</p>{/if}
                 </div>
               </div>
               <form
                 id={`sub-form-${sub.id}`}
                 method="POST"
-                onsubmit={(e) => {
-                  e.preventDefault();
-                  stageFieldsFor(sub, e.currentTarget as HTMLFormElement);
-                }}
+                onsubmit={(e) => e.preventDefault()}
               >
                 <input type="hidden" name="id" value={sub.id} />
-                <button class="button" type="submit" disabled={saving}>Update</button>
               </form>
-              <button class="button button-danger" type="button" disabled={saving} onclick={() => stageDelete(sub)}>
-                {pending.get(sub.id)?.statusAction === 'delete' ? 'Pending: delete' : 'Delete'}
-              </button>
-              {#if pending.has(sub.id) && pending.get(sub.id)?.statusAction !== 'delete'}
-                <span class="badge badge-neutral">Pending: edited</span>
-              {/if}
+              <div class="sub-actions" data-button-row>
+                <button
+                  class="button button-secondary pause-button"
+                  type="button"
+                  disabled={saving}
+                  onclick={() => togglePauseStage(pending, sub.id, sub.paused)}
+                >
+                  {pauseButtonLabel(sub.paused, pending.get(sub.id))}
+                </button>
+                <button
+                  class="button {pending.get(sub.id)?.statusAction === 'delete' ? 'button-success' : 'button-danger'}"
+                  type="button"
+                  aria-pressed={pending.get(sub.id)?.statusAction === 'delete'}
+                  disabled={saving}
+                  onclick={() => stageDelete(sub)}
+                >
+                  {deleteButtonLabel(pending.get(sub.id))}
+                </button>
+              </div>
+              <!-- Always rendered (hidden when empty) so it never moves the buttons. -->
+              <span class="badge badge-neutral pending-slot" class:empty={!pendingLabel(pending.get(sub.id))}>
+                {pendingLabel(pending.get(sub.id)) ?? 'Pending'}
+              </span>
               {#if commitErrors.get(sub.id)}
                 <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
               {/if}
@@ -399,11 +531,12 @@
           <button
             type="button"
             class="compact-row"
+            class:paused={sub.paused}
             aria-expanded={expandedId === sub.id}
             onclick={() => toggleExpanded(sub.id)}
           >
             <span class="compact-row-main">
-              <span class="compact-row-title">{sub.roaster_service}</span>
+              <span class="compact-row-title">{sub.roaster_service}{#if sub.paused}<span class="badge badge-neutral">Paused</span>{/if}</span>
               <span class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</span>
             </span>
             <span class="compact-row-trailing">
@@ -414,7 +547,15 @@
             <div class="compact-row-detail">
               <div class="compact-detail-grid">
                 <div><span class="eyebrow">Total grams</span>{sub.total_grams ?? '—'}</div>
-                <div><span class="eyebrow">Next renewal</span>{sub.next_renewal_date ?? '—'}</div>
+                <div><span class="eyebrow">Next renewal</span>{sub.paused ? '—' : (sub.next_renewal_date ?? '—')}</div>
+                {#if sub.subscription_url}
+                  <!-- The row above is a button, so its names can't be links; they link here. -->
+                  <div class="sub-links">
+                    <span class="eyebrow">Subscription page</span>
+                    <a class="tap-link" href={sub.subscription_url} target="_blank" rel="noopener noreferrer">{sub.subscription_name ?? 'Subscription page'}</a>
+                    (<a class="tap-link" href={siteOrigin(sub.subscription_url)} target="_blank" rel="noopener noreferrer">{sub.roaster_service}</a>)
+                  </div>
+                {/if}
               </div>
             </div>
           {/if}
@@ -423,7 +564,7 @@
     {/each}
   </div>
   <div class="compact-row-detail" style="border-top: 1px solid var(--color-border); padding-top: var(--space-3); margin-top: var(--space-2);">
-    <strong>Totals:</strong> {totalPrice != null ? `$${totalPrice.toFixed(2)}` : '—'} · {totalGrams ?? '—'}g
+    <strong>Totals:</strong> {totals.price != null ? `$${totals.price.toFixed(2)}` : '—'} · {totals.grams ?? '—'}g
   </div>
 {/if}
 
@@ -433,7 +574,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label for="roaster_service">Roaster/Service</label>
-        <input id="roaster_service" name="roaster_service" required />
+        <input id="roaster_service" name="roaster_service" required bind:value={addRoaster} />
       </div>
       <div class="form-field">
         <label for="subscription_name">Subscription name</label>
@@ -455,7 +596,149 @@
         <label for="renewal_day">Renewal day of month</label>
         <input id="renewal_day" name="renewal_day" type="number" step="1" min="1" max="31" />
       </div>
+      <div class="form-field url-field">
+        <label for="subscription_url">Subscription page</label>
+        <input id="subscription_url" name="subscription_url" type="url" placeholder="https://…" bind:value={addUrl} />
+        {#if urlWarning(addUrl, addRoaster)}<p class="url-warning">{urlWarning(addUrl, addRoaster)}</p>{/if}
+      </div>
     </div>
     <button class="button" type="submit">Add</button>
   </form>
 {/if}
+
+<style>
+  /* Paused: content dimmed, action buttons stay fully usable. */
+  tr.paused > td:not(.actions-cell),
+  .compact-row.paused .compact-row-main {
+    opacity: 0.55;
+  }
+  /* The compact row's Edit/Done toggle: a full 44px tap target (ui-rules 4). */
+  .compact-row .nav-link-button {
+    min-width: 44px;
+  }
+
+  /* Pause/Resume and Delete/Restore: equal size, wide enough for the
+     longest label, so swapping labels never resizes them. */
+  .sub-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+  .sub-actions .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 0;
+    min-width: 6.5rem;
+    margin: 0;
+    padding-block: 0;
+    white-space: nowrap;
+  }
+  /* The pending badge's slot is always there (hidden when empty) and sits
+     below the buttons, so it never moves them. */
+  .pending-slot {
+    margin-top: var(--space-2);
+  }
+  .pending-slot.empty {
+    visibility: hidden;
+  }
+
+  /* Edit-mode table: rows are input height plus cell padding, everything
+     vertically centered, buttons exactly input height. Only a shown URL
+     warning adds height. */
+  .data-table.editing td {
+    vertical-align: middle;
+  }
+  /* A paused row's inputs in edit mode: visibly off. */
+  .inline-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  /* A row with staged changes: a left accent (plus the row's title tooltip
+     and screen-reader text), so it adds no height and moves nothing. */
+  tr.pending > td:first-child {
+    box-shadow: inset 4px 0 0 var(--color-accent);
+  }
+  .data-table .inline-input,
+  .data-table .sub-actions .button {
+    box-sizing: border-box;
+    height: 2.25rem;
+  }
+  /* Wide enough for both buttons and the longest pending badge, so staging
+     never reflows the column. */
+  .actions-cell {
+    width: 15rem;
+    min-width: 15rem;
+  }
+  /* Inputs fill their cells down to a usable minimum, so the table fits a
+     desktop window; .table-scroll only catches phones. */
+  .data-table .inline-input {
+    width: 100%;
+    max-width: none;
+    min-width: 4rem;
+  }
+  .data-table input[name='roaster_service'] {
+    min-width: 7rem;
+  }
+  .data-table input[name='subscription_name'] {
+    min-width: 13rem;
+  }
+  /* Small numbers: just wide enough for their value plus the spinner. */
+  .data-table .num-input {
+    width: calc(5ch + 2rem);
+    min-width: 0;
+  }
+  .data-table .url-input {
+    min-width: 9rem;
+  }
+  /* Phones: fixed widths and the table scrolls (a 100% input in a squeezed
+     cell overflows it in Firefox). */
+  @media (max-width: 640px) {
+    .data-table .inline-input {
+      width: 8rem;
+    }
+    .data-table .num-input {
+      width: calc(5ch + 2rem);
+    }
+    .data-table .url-input {
+      width: 16rem;
+    }
+  }
+
+  /* Compact editor: the URL spans the field grid; the buttons sit on the
+     same grid (.form-grid's tracks): Pause in the first column, Delete in
+     the last, input height. Where the fields go single-column (phones), the
+     min() makes two equal columns so the buttons share the row. */
+  .url-field {
+    grid-column: 1 / -1;
+  }
+  .compact-row-detail .sub-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, calc(50% - var(--space-5) / 2)), 1fr));
+    column-gap: var(--space-5);
+    max-width: 720px;
+  }
+  .compact-row-detail .sub-actions .button:last-child {
+    grid-column: -2 / -1;
+  }
+  .compact-row-detail .inline-input,
+  .compact-row-detail .sub-actions .button {
+    box-sizing: border-box;
+    height: 2.5rem;
+  }
+
+  .url-warning {
+    margin: var(--space-2) 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+  /* Compact detail: the links line spans the grid, and each link is a
+     44px tap target. */
+  .sub-links {
+    grid-column: 1 / -1;
+  }
+  .tap-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+</style>

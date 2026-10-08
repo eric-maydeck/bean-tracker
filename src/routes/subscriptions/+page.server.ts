@@ -2,6 +2,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { getSubscriptions, createSubscription, withTotalGrams, withNextRenewalDate } from '$lib/server/subscriptions';
 import { requireAdmin } from '$lib/server/auth';
+import { parseSubscriptionUrl } from '$lib/subscriptionView';
 
 function readSubscriptionFields(formData: FormData) {
   return {
@@ -29,7 +30,13 @@ export const actions: Actions = {
     if (!roasterService) {
       return { error: 'Roaster/service is required' };
     }
-    createSubscription(getDb(), { roaster_service: roasterService, ...readSubscriptionFields(formData) });
+    const url = parseSubscriptionUrl(formData.get('subscription_url') as string | null);
+    if ('error' in url) return { error: url.error };
+    createSubscription(getDb(), {
+      roaster_service: roasterService,
+      ...readSubscriptionFields(formData),
+      subscription_url: url.url
+    });
     return { success: true };
   }
 };

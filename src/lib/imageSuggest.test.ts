@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hostOf, pickCandidate, type Candidate } from './imageSuggest';
+import { hostOf, hostMatchesRoaster, pickCandidate, type Candidate } from './imageSuggest';
 
 describe('hostOf', () => {
   it('strips www and returns the hostname', () => expect(hostOf('https://www.lume.coffee/x')).toBe('lume.coffee'));
@@ -33,5 +33,25 @@ describe('pickCandidate', () => {
     expect(pickCandidate(generic, '', null, 'Lume Coffee Roasters').roaster_website).toBeNull();
     // names with no usable word (H&S) never stage a site
     expect(pickCandidate({ ...c, pageUrl: 'https://hscoffee.com/x' }, '', null, 'H&S').roaster_website).toBeNull();
+  });
+});
+
+describe('hostMatchesRoaster', () => {
+  it('matches the whole name squashed into the host', () => {
+    expect(hostMatchesRoaster('https://hscoffeeroasters.com/products/sub', 'H&S Coffee Roasters')).toBe(true);
+  });
+  it('matches real subscription sites', () => {
+    for (const [roaster, url] of [
+      ['Airworks', 'https://airworks.coffee/x'],
+      ['H&S Coffee Roasters', 'https://hscoffeeroasters.com/x'],
+      ['Shoebox Coffee Roaster', 'https://shoebox.coffee/x'],
+      ['norml', 'https://normlppl.coffee/x'],
+      ['Scenery', 'https://scenery.coffee/x'],
+      ['Ceto', 'https://ceto.coffee/x']
+    ]) expect(hostMatchesRoaster(url, roaster), roaster).toBe(true);
+  });
+  it('rejects an unrelated host', () => {
+    expect(hostMatchesRoaster('https://evil.example.com', 'Ceto')).toBe(false);
+    expect(hostMatchesRoaster('https://hscoffee.com/x', 'H&S')).toBe(false);
   });
 });

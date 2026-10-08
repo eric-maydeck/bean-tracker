@@ -77,7 +77,10 @@ const grams = {
 };
 
 createSubscription(db, { roaster_service: 'A Very Long Subscription Service Name That Keeps Going', subscription_name:
-  'Explorer Series: Two Rotating Single Origins Every Other Week', price: 44.5, bag_count: 2, amount_per_bag_g: 250, renewal_day: 15 });
+  'Explorer Series: Two Rotating Single Origins Every Other Week', price: 44.5, bag_count: 2, amount_per_bag_g: 250, renewal_day: 15,
+  subscription_url: 'https://www.averylongsubscriptionservice.example.com/pages/subscriptions/explorer-series-two-rotating-single-origins' });
+createSubscription(db, { roaster_service: 'Ceto', subscription_name: 'Paused Monthly', price: 22, bag_count: 1, amount_per_bag_g: 250,
+  renewal_day: 9, subscription_url: 'https://ceto.coffee/products/subscription', paused: 1 });
 createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250,
   renewal_day: 1 });
 

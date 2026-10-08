@@ -8,6 +8,8 @@ export interface NewSubscriptionInput {
   bag_count: number | null;
   amount_per_bag_g: number | null;
   renewal_day: number | null;
+  subscription_url?: string | null;
+  paused?: number;
 }
 
 export function getSubscriptions(db: DatabaseSync): SubscriptionRow[] {
@@ -25,8 +27,8 @@ export function createSubscription(db: DatabaseSync, input: NewSubscriptionInput
   const result = db
     .prepare(
       `INSERT INTO subscriptions
-        (roaster_service, subscription_name, price, bag_count, amount_per_bag_g, renewal_day, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+        (roaster_service, subscription_name, price, bag_count, amount_per_bag_g, renewal_day, subscription_url, paused, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       input.roaster_service,
@@ -35,6 +37,8 @@ export function createSubscription(db: DatabaseSync, input: NewSubscriptionInput
       input.bag_count,
       input.amount_per_bag_g,
       input.renewal_day,
+      input.subscription_url ?? null,
+      input.paused ?? 0,
       now
     );
   return Number(result.lastInsertRowid);
@@ -44,7 +48,7 @@ export function updateSubscription(db: DatabaseSync, id: number, input: NewSubsc
   const now = new Date().toISOString();
   db.prepare(
     `UPDATE subscriptions SET roaster_service = ?, subscription_name = ?, price = ?, bag_count = ?,
-      amount_per_bag_g = ?, renewal_day = ?, updated_at = ?
+      amount_per_bag_g = ?, renewal_day = ?, subscription_url = ?, paused = ?, updated_at = ?
      WHERE id = ?`
   ).run(
     input.roaster_service,
@@ -53,6 +57,8 @@ export function updateSubscription(db: DatabaseSync, id: number, input: NewSubsc
     input.bag_count,
     input.amount_per_bag_g,
     input.renewal_day,
+    input.subscription_url ?? null,
+    input.paused ?? 0,
     now,
     id
   );

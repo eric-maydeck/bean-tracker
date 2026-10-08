@@ -22,6 +22,46 @@ interface State {
 }
 
 // Stats → Not yet tracked → Link on the bean row containing `text`.
+// A row's action buttons' boxes relative to the row, so scrolling the table
+// doesn't count as moving them.
+function buttonBoxes(scope: Locator) {
+  return scope.evaluate((el) => {
+    const o = el.getBoundingClientRect();
+    return [...el.querySelectorAll('.sub-actions .button')].map((b) => {
+      const r = b.getBoundingClientRect();
+      return [r.left - o.left, r.top - o.top, r.width, r.height].map(Math.round);
+    });
+  });
+}
+
+// Desktop edit table: every input and button in a row shares one vertical
+// center (±1px).
+async function expectRowLevel(row: Locator) {
+  const centers = await row.evaluate((tr) =>
+    [...tr.querySelectorAll('.inline-input, .sub-actions .button')].map((el) => {
+      const r = el.getBoundingClientRect();
+      return (r.top + r.bottom) / 2;
+    })
+  );
+  for (const c of centers) expect(Math.abs(c - centers[0]), 'vertical center').toBeLessThanOrEqual(1);
+}
+
+// A badge/warning sits clearly below its neighbor: no overlap, >= 4px gap.
+async function expectClearlyBelow(upper: Locator, lower: Locator) {
+  const [u, l] = [(await upper.boundingBox())!, (await lower.boundingBox())!];
+  const intersects = u.x < l.x + l.width && l.x < u.x + u.width && u.y < l.y + l.height && l.y < u.y + u.height;
+  expect(intersects, 'overlaps its neighbor').toBe(false);
+  expect(l.y - (u.y + u.height), 'gap below neighbor').toBeGreaterThanOrEqual(4);
+}
+
+// The add form's Subscription page input spans its field grid.
+async function expectAddUrlFullWidth(page: Page) {
+  const grid = (await page.locator('form[action="?/create"] .form-grid').boundingBox())!;
+  const url = (await page.locator('#subscription_url').boundingBox())!;
+  expect(Math.abs(url.x - grid.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(url.x + url.width - (grid.x + grid.width))).toBeLessThanOrEqual(1);
+}
+
 async function showPicker(page: Page, text: string) {
   const row = page.locator('.compact-row-wrap, tbody tr').filter({ hasText: text }).first();
   await row.getByRole('button', { name: 'Link', exact: true }).click();
@@ -332,6 +372,147 @@ export const STATES: State[] = [
   ]),
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
+  {
+    // Edit mode (nothing saved): Pause/Resume · Delete, staged edits and a
+    // staged pause, and the URL warning for a host that isn't the roaster's.
+    name: 'subscriptions-list-edit',
+    path: () => '/subscriptions?view=list',
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Update' })).toHaveCount(0);
+      const rows = page.locator('tbody tr');
+      const [row, ceto, sey] = [rows.nth(0), rows.nth(1), rows.nth(2)];
+      const [pause, del] = [row.locator('.sub-actions .button').nth(0), row.locator('.sub-actions .button').nth(1)];
+      const boxes = () => buttonBoxes(row);
+      const height = async (r: Locator) => Math.round((await r.boundingBox())!.height);
+      const before = await boxes();
+      const rowHeight = await height(row);
+      // Pause and Delete are the same size.
+      expect(before[0].slice(2)).toEqual(before[1].slice(2));
+      const desktop = (page.viewportSize()?.width ?? 0) > 640;
+      // A paused row: no badge in edit mode, inputs disabled, Resume and
+      // Delete usable, same height as an active row.
+      await expect(ceto.getByText('Paused', { exact: true })).toHaveCount(0);
+      for (const input of await ceto.locator('.inline-input').all()) await expect(input).toBeDisabled();
+      await expect(ceto.getByRole('button', { name: 'Resume' })).toBeEnabled();
+      await expect(ceto.getByRole('button', { name: 'Delete' })).toBeEnabled();
+      expect(await height(ceto)).toBe(rowHeight);
+      if (desktop) {
+        await expectRowLevel(row);
+        await expectRowLevel(ceto);
+      }
+      await expectAddUrlFullWidth(page);
+      // Edits stage as you type; the tooltip totals update live.
+      await row.locator('input[name="price"]').fill('45');
+      await expect(row).toHaveAttribute('title', 'Pending: edited');
+      await expect(row.locator('input[name="bag_count"]')).toHaveAttribute('title', 'Total: 500 g');
+      await row.locator('input[name="bag_count"]').fill('3');
+      await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveAttribute('title', 'Total: 750 g');
+      // Pausing disables the inputs (keeping the staged values); the label
+      // flips to what a click would do now; nothing moves or grows.
+      await pause.click();
+      await expect(pause).toHaveText('Resume');
+      await expect(row).toHaveAttribute('title', 'Pending: pause, edited');
+      await expect(row.locator('.sr-only')).toHaveText('Pending: pause, edited');
+      await expect(row.locator('input[name="price"]')).toBeDisabled();
+      expect(await boxes()).toEqual(before);
+      expect(await height(row)).toBe(rowHeight);
+      if (desktop) await expectRowLevel(row);
+      await pause.click();
+      await expect(row.locator('input[name="price"]')).toBeEnabled();
+      await expect(row.locator('input[name="price"]')).toHaveValue('45');
+      // A staged delete reads Restore (an undo, green); a click un-stages it.
+      page.once('dialog', (d) => d.accept());
+      await del.click();
+      const restore = row.getByRole('button', { name: 'Restore' });
+      await expect(restore).toHaveClass(/button-success/);
+      expect(await boxes()).toEqual(before);
+      expect(await height(row)).toBe(rowHeight);
+      await restore.click();
+      await expect(del).toHaveText('Delete');
+      await expect(page.getByRole('columnheader', { name: 'Total grams' })).toHaveCount(0);
+      await sey.locator('input[name="subscription_url"]').fill('https://evil.example.com');
+      await expect(page.getByText("⚠ doesn't look like Sey's site")).toBeVisible();
+      await expectClearlyBelow(sey.locator('input[name="subscription_url"]'), page.getByText("⚠ doesn't look like Sey's site"));
+      await expect(sey).toHaveAttribute('title', 'Pending: edited');
+      // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08).
+      const size = page.viewportSize();
+      if (size && size.width >= 1280) {
+        for (const width of [1280, 1440]) {
+          await page.setViewportSize({ width, height: size.height });
+          const overflow = await page.evaluate(() => {
+            const t = document.querySelector('.table-scroll')!;
+            return [t.scrollWidth - t.clientWidth, document.documentElement.scrollWidth - window.innerWidth];
+          });
+          expect(overflow, `edit table overflow at ${width}`).toEqual([0, 0]);
+        }
+        await page.setViewportSize(size);
+      }
+    }
+  },
+  {
+    name: 'subscriptions-compact-edit',
+    path: () => '/subscriptions?view=compact',
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await page.getByRole('button', { name: 'Edit', exact: true }).first().click();
+      const detail = page.locator('.compact-row-detail').first();
+      const pause = detail.locator('.sub-actions .button').nth(0);
+      await expect(pause).toHaveText('Pause');
+      const boxes = () => buttonBoxes(detail);
+      const before = await boxes();
+      expect(before[0].slice(2)).toEqual(before[1].slice(2));
+      // The URL input spans the field grid; Pause/Delete sit on its first and
+      // last columns at input height (desktop), or share the row (phone).
+      const geo = await detail.evaluate((el) => {
+        const rect = (q: Element) => q.getBoundingClientRect();
+        const inputs = [...el.querySelectorAll('.form-grid .inline-input')].map(rect);
+        const [p, d] = [...el.querySelectorAll('.sub-actions .button')].map(rect);
+        const url = rect(el.querySelector('input[name="subscription_url"]')!);
+        return {
+          left: Math.min(...inputs.map((r) => r.left)), right: Math.max(...inputs.map((r) => r.right)),
+          url: [url.left, url.right], inputH: inputs[0].height, p: [p.left, p.right, p.top, p.height], d: [d.left, d.right, d.top, d.height]
+        };
+      });
+      expect(Math.abs(geo.url[0] - geo.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(geo.url[1] - geo.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(geo.p[0] - geo.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(geo.d[1] - geo.right)).toBeLessThanOrEqual(1);
+      expect(geo.p[2]).toBe(geo.d[2]);
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        expect(Math.abs(geo.p[3] - geo.inputH)).toBeLessThanOrEqual(1);
+        // Each button is one column wide: as wide as the first input.
+        const first = await detail.locator('.form-grid .inline-input').first().boundingBox();
+        expect(Math.abs(geo.p[1] - geo.p[0] - first!.width)).toBeLessThanOrEqual(1);
+        expect(Math.abs(geo.d[1] - geo.d[0] - first!.width)).toBeLessThanOrEqual(1);
+      } else {
+        expect(geo.p[3]).toBeGreaterThanOrEqual(44);
+      }
+      await pause.click();
+      await expect(page.getByText('Pending: pause')).toBeVisible();
+      expect(await boxes()).toEqual(before);
+      for (const input of await detail.locator('.form-grid .inline-input').all()) await expect(input).toBeDisabled();
+      await expectClearlyBelow(pause, detail.getByText('Pending: pause'));
+      await pause.click();
+      await page.getByLabel('Subscription page').first().fill('https://evil.example.com');
+      await expect(page.getByText(/doesn't look like A Very Long/)).toBeVisible();
+      await expectClearlyBelow(page.getByLabel('Subscription page').first(), page.getByText(/doesn't look like A Very Long/));
+      await expectAddUrlFullWidth(page);
+    }
+  },
+  {
+    name: 'subscriptions-compact-paused-expanded',
+    path: () => '/subscriptions?view=compact',
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: /Ceto/ }).click();
+      const link = page.getByRole('link', { name: 'Paused Monthly' });
+      await expect(link).toBeVisible();
+      await expect(link.locator('..')).toContainText('Paused Monthly (Ceto)');
+      for (const l of [link, page.getByRole('link', { name: 'Ceto', exact: true })]) {
+        expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+      }
+    }
+  },
   {
     // Closed, after a keyboard pick (nothing is submitted): ↓ + Enter takes the
     // second twin; Esc closes without changing it. Focus returns to the button.

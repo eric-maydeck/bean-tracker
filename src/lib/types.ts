@@ -43,6 +43,8 @@ export interface SubscriptionRow {
   amount_per_bag_g: number | null;
   renewal_day: number | null;
   updated_at: string | null;
+  subscription_url: string | null;
+  paused: number; // 0 | 1
 }
 
 export interface RoastLevelRow {

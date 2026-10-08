@@ -67,6 +67,8 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'product_url', 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
+  ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');
+  ensureColumn(db, 'subscriptions', 'paused', 'INTEGER NOT NULL DEFAULT 0');
   // Bean Conqueror bean → coffee link (one-to-one). SQLite allows many NULLs
   // in a unique index. Backfill only the moment the column is added, so a
   // later Unlink survives restarts.

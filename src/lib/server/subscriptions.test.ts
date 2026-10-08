@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { DatabaseSync } from 'node:sqlite';
-import { createDb } from './db';
+import { DatabaseSync } from 'node:sqlite';
+import { createDb, applySchema } from './db';
 import {
   createSubscription,
   getSubscriptions,
@@ -48,6 +48,22 @@ describe('subscriptions CRUD', () => {
     expect(getSubscriptions(db)[0].renewal_day).toBe(15);
     updateSubscription(db, id, sampleInput({ renewal_day: 3 }));
     expect(getSubscriptions(db)[0].renewal_day).toBe(3);
+  });
+
+  it('defaults to not paused and no URL, and stores both', () => {
+    const id = createSubscription(db, sampleInput());
+    expect(getSubscriptionById(db, id)).toMatchObject({ paused: 0, subscription_url: null });
+    updateSubscription(db, id, sampleInput({ paused: 1, subscription_url: 'https://airworks.coffee/sub' }));
+    expect(getSubscriptionById(db, id)).toMatchObject({ paused: 1, subscription_url: 'https://airworks.coffee/sub' });
+  });
+
+  it('adds the new columns to an old subscriptions table', () => {
+    const old = new DatabaseSync(':memory:');
+    old.exec(`CREATE TABLE subscriptions (id INTEGER PRIMARY KEY, roaster_service TEXT NOT NULL, subscription_name TEXT,
+      price REAL, bag_count REAL, amount_per_bag_g REAL)`);
+    old.exec(`INSERT INTO subscriptions (roaster_service) VALUES ('Old')`);
+    applySchema(old);
+    expect(old.prepare('SELECT paused, subscription_url FROM subscriptions').get()).toEqual({ paused: 0, subscription_url: null });
   });
 
   it('deletes a subscription', () => {
