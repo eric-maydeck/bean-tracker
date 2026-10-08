@@ -120,7 +120,7 @@ export function normalizeRoaster(name: string): string {
     .replace(/[^a-z0-9]/g, '');
 }
 
-export function findRoaster(p: ProductData, url: string, history: FillHistoryRow[]): string | null {
+export function findRoaster(p: ProductData, url: string, history: Pick<FillHistoryRow, 'roaster' | 'product_url'>[]): string | null {
   const host = hostOf(url);
   const byDomain = host ? history.find((r) => r.product_url && hostOf(r.product_url) === host) : undefined;
   if (byDomain) return byDomain.roaster;
