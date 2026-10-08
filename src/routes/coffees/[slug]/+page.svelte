@@ -232,20 +232,19 @@
 </svelte:head>
 
 <div class="detail-actions">
-  <a class="button button-secondary" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
-  <ShareButton />
-
-  <button class="button button-secondary" type="button" onclick={shareToBeanConqueror}>
+  <a class="button button-secondary detail-back" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
+  <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
   </button>
   {#if data.isAdmin}
-    <button class="button button-secondary" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
+    <button class="button button-secondary detail-clone" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
       Clone
     </button>
   {/if}
   {#if data.isAdmin && !editMode}
-    <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
+    <button class="button button-secondary detail-edit" type="button" onclick={() => (editMode = true)}>Edit</button>
   {/if}
+  <ShareButton />
 </div>
 
 {#if shareUrl && shareQrDataUrl}

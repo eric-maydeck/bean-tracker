@@ -893,15 +893,13 @@
         'image';
     }
     /* Phone: the image row's buttons take the full row and grow to share each
-       line, margin 0 (app.css .button's right margin doubled the flex gap),
-       instead of a ragged 2 + 1 at content widths. Same as .fill-offer-actions
-       (ui-rules 17). */
+       line instead of a ragged 2 + 1 at content widths. Same as
+       .fill-offer-actions (ui-rules 17). */
     .inline-row-actions {
       flex: 1 1 100%;
     }
     .inline-row-actions .button {
       flex: 1 1 auto;
-      margin: 0;
       text-align: center;
     }
   }
@@ -977,6 +975,10 @@
     flex-wrap: wrap;
     min-width: 0;
     gap: var(--space-2);
+  }
+  /* The gap spaces them; app.css .button's margin would double it. */
+  .inline-row-actions .button {
+    margin: 0;
   }
   .fill-note {
     margin: var(--space-1) 0 0;

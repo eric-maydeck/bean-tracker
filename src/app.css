@@ -746,17 +746,38 @@ nav.site-nav a[aria-current='page'] {
   font-size: 0.8rem;
 }
 
-/* More breathing room above Save/Discard than .search-row's own margin
-   gives it, so it doesn't read as part of the Clone row above it — at every
-   width, not just phone. */
-.detail-edit-row {
-  margin-top: var(--space-4);
+/* Coffee detail page: Back/Import/Clone/Edit/Share as a flex-wrap row
+   spaced by gap (button margins zeroed), and its stacked blocks (this row,
+   the BQ share panel, Save/Discard, the form, Delete) all var(--space-4)
+   apart. Desktop puts Back on the left and pushes the rest right, Share
+   last (its DOM position, so tab order matches). */
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
-/* Groups the coffee detail page's Back/Import/Clone/Edit buttons. Unstyled
-   at desktop on purpose (relies on .button's own inline-block + margin, the
-   same look as plain sibling buttons); the phone-width override just below
-   makes it a flex-wrap row so the buttons share the width and wrap whole. */
+.detail-actions .button {
+  margin: 0;
+}
+
+@media (min-width: 641px) {
+  .detail-actions > :first-child {
+    margin-right: auto;
+  }
+}
+
+.detail-actions ~ .chart-panel {
+  margin-bottom: var(--space-4);
+}
+
+/* Save/Discard: .search-row already gives gap, zero button margins and
+   margin-bottom; Delete sits under the form, one block gap below it. */
+.detail-edit-row ~ .button-danger {
+  margin: var(--space-4) 0 0;
+}
+
 @media (max-width: 640px) {
   /* Same grid-template-columns + gap on both rows (not shared via one
      selector, since .detail-edit-row also carries .search-row's own
@@ -769,24 +790,67 @@ nav.site-nav a[aria-current='page'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
   }
-  /* Flex-wrap, not the 2-col grid: labels stay on one line and the row
-     wraps instead when they don't fit side by side. */
-  .detail-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-  }
+  /* Labels stay on one line and the row wraps instead when they don't fit
+     side by side. */
   .detail-actions .button {
     flex: 1 1 auto;
     white-space: nowrap;
   }
-  /* Drop .button's own inline-flow margin (the flex/grid gap spaces them)
-     and center the label. */
   .detail-actions .button,
   .detail-edit-row .button {
-    margin: 0;
     text-align: center;
+  }
+  /* Phone keeps Share second (Back, Share, Import, Clone, Edit); it's last
+     in the DOM for the desktop order. */
+  .detail-actions > :first-child {
+    order: -2;
+  }
+  .detail-actions > .share-button {
+    order: -1;
+  }
+}
+
+/* Phones wide enough for Import + Clone + Edit on one line: a grid, so Back
+   and Import share a column (Back as wide as Import) and Share takes the
+   rest of the top row: Back | Share / Import | Clone | Edit. Signed out
+   (no Clone/Edit), Import spans the second row. 420px leaves Clone/Edit a
+   few px of slack over their labels. */
+@media (min-width: 420px) and (max-width: 640px) {
+  .detail-actions {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+  .detail-actions:has(.detail-edit) {
+    grid-template-columns: max-content repeat(2, minmax(0, 1fr));
+  }
+  .detail-back {
+    grid-area: 1 / 1;
+  }
+  .detail-actions > .share-button {
+    grid-row: 1;
+    grid-column: 2 / -1;
+  }
+  .detail-import {
+    grid-area: 2 / 1;
+  }
+  .detail-actions:not(:has(.detail-clone)) .detail-import {
+    grid-column: 1 / -1;
+  }
+  /* Signed out (no Clone/Edit): Back and Share split row 1 evenly. */
+  .detail-actions:not(:has(.detail-clone)) {
+    grid-template-columns: repeat(2, minmax(max-content, 1fr));
+  }
+}
+
+/* Narrower phones stay flex-wrap; Import gets its own line so the rest pair
+   up (Back | Share / Import / Clone | Edit) instead of leaving Edit alone. */
+@media (max-width: 419px) {
+  .detail-actions .detail-import {
+    flex-basis: 100%;
+  }
+  /* Signed out: Back and Share equal while their labels fit. */
+  .detail-actions:not(:has(.detail-clone)) > :is(.detail-back, .share-button) {
+    flex: 1 1 0;
   }
 }
 
