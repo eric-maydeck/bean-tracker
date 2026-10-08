@@ -1,3 +1,10 @@
+# [1.60.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.59.0...v1.60.0) (2026-10-08)
+
+
+### Features
+
+* **coffees:** card image links to the coffee page when signed in
+
 # [1.59.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.58.1...v1.59.0) (2026-10-08)
 
 
