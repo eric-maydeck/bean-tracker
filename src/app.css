@@ -6,6 +6,7 @@
   --color-border: #e6ddd2;
   --color-accent: #8a5a3b;
   --color-accent-contrast: #ffffff;
+  --button-shade: #000000;
   --color-urgent: #c0392b;
   --color-warm: #d68910;
   --color-fresh: #4a7c59;
@@ -47,6 +48,7 @@
     --color-border: #3a2f26;
     --color-accent: #d99a6c;
     --color-accent-contrast: #1c1712;
+    --button-shade: #ffffff;
     --color-urgent: #e57368;
     --color-warm: #e8b04b;
     --color-fresh: #7fb890;
@@ -80,6 +82,7 @@
   --color-border: #3a2f26;
   --color-accent: #d99a6c;
   --color-accent-contrast: #1c1712;
+  --button-shade: #ffffff;
   --color-urgent: #e57368;
   --color-warm: #e8b04b;
   --color-fresh: #7fb890;
@@ -211,40 +214,82 @@ input:focus-visible {
   grid-template-columns: repeat(auto-fill, minmax(max(260px, calc((100% - 2 * var(--space-4)) / 3)), 1fr));
 }
 
+/* Three button tiers (docs/ui-rules.md): .button is the solid primary, one
+   per area; .button-secondary/-danger/-success are tonal (a tint of their
+   hue, text a darker shade of it in light theme, lighter in dark); add
+   .button-ghost for text-only (navigation, cancel, discard) and
+   .button-solid for a solid primary in a variant's hue (green Save).
+   --button-color is the hue. Hover/focus inverts: solid turns light,
+   tonal/ghost fill with their hue. The 1px border is always there
+   (transparent when unused), so no state changes the box size. */
 .button {
+  --button-color: var(--color-accent);
+  --button-hover-bg: var(--color-surface);
+  --button-hover-fg: var(--button-color);
   display: inline-block;
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius);
-  background: var(--color-accent);
+  background: var(--button-color);
   color: var(--color-accent-contrast);
-  border: none;
+  border: 1px solid var(--button-color);
   font: inherit;
   cursor: pointer;
   text-decoration: none;
   margin: var(--space-1) var(--space-2) var(--space-1) 0;
-  transition: opacity 0.15s ease;
-}
-
-.button:hover {
-  opacity: 0.85;
-}
-
-.button-secondary {
-  background: transparent;
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent);
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .button-danger {
-  background: transparent;
-  color: var(--color-urgency-high);
-  border: 1px solid var(--color-urgency-high);
+  --button-color: var(--color-urgency-high);
 }
 
+/* --color-fresh, not --color-urgency-low: that green fails 4.5:1 as text or
+   fill in the light theme. */
 .button-success {
+  --button-color: var(--color-fresh);
+}
+
+.button-secondary,
+.button-danger,
+.button-success,
+.button-ghost {
+  --button-hover-bg: var(--button-color);
+  --button-hover-fg: var(--color-bg);
+  background: color-mix(in srgb, var(--button-color) 16%, var(--color-surface));
+  color: color-mix(in srgb, var(--button-color) 70%, var(--button-shade));
+  border-color: transparent;
+}
+
+.button.button-ghost {
   background: transparent;
-  color: var(--color-urgency-low);
-  border: 1px solid var(--color-urgency-low);
+  color: var(--button-color);
+}
+
+.button.button-solid {
+  --button-hover-bg: var(--color-surface);
+  --button-hover-fg: var(--button-color);
+  background: var(--button-color);
+  color: var(--color-accent-contrast);
+  border-color: var(--button-color);
+}
+
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    background: var(--button-hover-bg);
+    color: var(--button-hover-fg);
+    border-color: var(--button-color);
+  }
+}
+
+.button:focus-visible:not(:disabled) {
+  background: var(--button-hover-bg);
+  color: var(--button-hover-fg);
+  border-color: var(--button-color);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .nav-link-button {
@@ -272,8 +317,13 @@ input:focus-visible {
   line-height: 1;
 }
 
-.icon-button:hover {
-  border-color: var(--color-accent);
+/* Toggles and icon buttons: a gentle hover (accent tint + border), kept
+   distinct from the action buttons' invert. */
+@media (hover: hover) {
+  .icon-button:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    border-color: var(--color-accent);
+  }
 }
 
 .icon-button .icon,
@@ -646,13 +696,20 @@ nav.site-nav a[aria-current='page'] {
   color: var(--color-text);
   font: inherit;
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .tab-group button[aria-pressed='true'] {
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   border-color: var(--color-accent);
+}
+
+@media (hover: hover) {
+  .tab-group button:not([aria-pressed='true']):hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    border-color: var(--color-accent);
+  }
 }
 
 .action-buttons {
@@ -1968,6 +2025,13 @@ td > .action-buttons.under-form {
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   border-color: var(--color-accent);
+}
+
+@media (hover: hover) {
+  .quick-filter-switch button:not([aria-checked='true']):hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    border-color: var(--color-accent);
+  }
 }
 
 /* Phones: slightly smaller labels with tighter side padding so the three

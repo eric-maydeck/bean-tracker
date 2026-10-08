@@ -42,7 +42,7 @@
   }
 </script>
 
-<button type="button" class="button button-secondary share-button" onclick={share} aria-live="polite">
+<button type="button" class="button button-ghost share-button" onclick={share} aria-live="polite">
   <Icon name="share-network" />
   {copied ? 'Link copied' : 'Share'}
 </button>

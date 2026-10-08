@@ -450,7 +450,7 @@
           }
         }}
       />
-      <button class="button button-secondary" type="button" disabled={filling} onclick={fillFromPage}>
+      <button class="button" type="button" disabled={filling} onclick={fillFromPage}>
         {filling ? 'Filling…' : 'Fill from page'}
       </button>
     </div>
@@ -470,7 +470,7 @@
                 unsavedUrl = null;
               }}>Yes</button
             >
-            <button class="button button-secondary" type="button" onclick={() => (unsavedUrl = null)}>No</button>
+            <button class="button button-ghost" type="button" onclick={() => (unsavedUrl = null)}>No</button>
           </div>
         </div>
       {/if}
@@ -610,7 +610,7 @@
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
           <button class="button button-secondary" type="button" bind:this={suggestButton} disabled={!canSuggest || suggesting} onclick={openSuggest}>Suggest</button>
           <button
-            class="button button-secondary"
+            class="button button-ghost"
             type="button"
             onclick={() => {
               setField('image_url', '');
@@ -621,7 +621,7 @@
           <!-- The staged-changes UI only says "Pending: edited", so the button is the
                cue. No undo control: Discard/Cancel drops the mark with the rest. -->
           <button
-            class="button button-secondary"
+            class="button button-ghost"
             type="button"
             aria-pressed={setRoasterDefault && canSetDefault}
             disabled={!canSetDefault || setRoasterDefault}
@@ -785,7 +785,7 @@
     <button class="button" type="submit" disabled={onstage ? !mounted : false}>{onstage ? 'Update' : 'Save'}</button>
   {/if}
   {#if oncancel}
-    <button class="button button-secondary" type="button" onclick={oncancel}>Cancel</button>
+    <button class="button button-ghost" type="button" onclick={oncancel}>Cancel</button>
   {/if}
   {#if onclone && coffee && showClone}
     <button class="button button-secondary" type="button" onclick={cloneCurrent}>Clone</button>

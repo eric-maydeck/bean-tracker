@@ -232,7 +232,7 @@
 </svelte:head>
 
 <div class="detail-actions">
-  <a class="button button-secondary detail-back" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
+  <a class="button button-ghost detail-back" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
   <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
   </button>
@@ -269,10 +269,10 @@
 
 {#if data.isAdmin && editMode}
   <div class="search-row detail-edit-row">
-    <button class="button button-success" type="button" disabled={saving} onclick={saveChanges}>
+    <button class="button button-success button-solid" type="button" disabled={saving} onclick={saveChanges}>
       {saving ? 'Saving…' : 'Save changes'}
     </button>
-    <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
+    <button class="button button-danger button-ghost" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
   </div>
 {/if}
 {#if data.isAdmin && commitError}
@@ -343,7 +343,7 @@
               </span>
               {#if data.isAdmin}
                 <form method="POST" action="?/unlinkBeanConqueror" use:enhance>
-                  <button class="button button-secondary" type="submit">Unlink</button>
+                  <button class="button button-ghost" type="submit">Unlink</button>
                 </form>
               {/if}
             </div>

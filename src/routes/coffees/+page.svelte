@@ -497,7 +497,7 @@
   <div class="action-stack">
     <div class="action-row">
       {#if soloEdit(coffee.id)}
-        <button class="button button-success" class:button-icon={icons} type="button" disabled={saving} onclick={() => saveChanges(coffee.id)}
+        <button class="button button-success button-solid" class:button-icon={icons} type="button" disabled={saving} onclick={() => saveChanges(coffee.id)}
           title={icons ? 'Save' : undefined} aria-label={icons ? 'Save' : undefined}>
           {#if icons}<Icon name="save" />{:else}{saving ? 'Saving…' : 'Save'}{/if}
         </button>
@@ -664,10 +664,10 @@
   <ShareButton />
   {#if data.isAdmin}
     {#if editAll}
-      <button class="button button-success" type="button" disabled={saving} onclick={() => saveChanges()}>
+      <button class="button button-success button-solid" type="button" disabled={saving} onclick={() => saveChanges()}>
         {saving ? 'Saving…' : 'Save changes'}
       </button>
-      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>
+      <button class="button button-danger button-ghost" type="button" disabled={saving} onclick={discardChanges}>
         Discard changes
       </button>
     {:else}
