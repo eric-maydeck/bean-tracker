@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.56.0...v1.57.0) (2026-10-08)
+
+
+### Features
+
+* **coffees:** images for archived backfill leftovers, batch 2026_10_archive_b
+
 # [1.56.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.55.0...v1.56.0) (2026-10-08)
 
 
