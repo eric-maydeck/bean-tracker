@@ -2904,4 +2904,172 @@ export const PRODUCT_PAGE_BACKFILLS: CoffeeFixBatch[] = [
     "2026-10-08T02:05:46.297Z"
   ]
 },
+{
+  "marker": "product_page_backfill_2026_10_archive_b",
+  "fixes": [
+    {
+      "coffee_id": 5,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": "https://hscoffeeroasters.com/cdn/shop/files/2022-hs-logo-200x200-darkbg_320x.png?v=1656512539",
+      "to": "https://cdn.shopify.com/s/files/1/0424/7433/files/695-Col-Efren-Rodriguez-A.png?v=1783263741"
+    },
+    {
+      "coffee_id": 86,
+      "roaster": "DAK",
+      "field": "image_url",
+      "from": null,
+      "to": "https://st.kofio.co/img_product/boeV9yxzHn2OwWv/13161/t5XK2C9cv67n13rlzYF4_102573.png"
+    },
+    {
+      "coffee_id": 90,
+      "roaster": "Flower Child",
+      "field": "image_url",
+      "from": null,
+      "to": "https://flowerchildcoffee.com/cdn/shop/files/Ernedis_December_Harvest_2025.jpg?v=1767737986&width=2200"
+    },
+    {
+      "coffee_id": 106,
+      "roaster": "Frequent",
+      "field": "image_url",
+      "from": null,
+      "to": "https://frequentcoffee.com/cdn/shop/files/pink-bourbon-decaf-coffee.jpg?v=1773632034&width=1346"
+    },
+    {
+      "coffee_id": 107,
+      "roaster": "Frequent",
+      "field": "image_url",
+      "from": null,
+      "to": "https://frequentcoffee.com/cdn/shop/files/pink-bourbon-decaf-coffee.jpg?v=1773632034&width=1346"
+    },
+    {
+      "coffee_id": 111,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://i.redd.it/rogdrtj3sksg1.jpg"
+    },
+    {
+      "coffee_id": 112,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://beanbodega.coffee/cdn/shop/files/664-PER-Roger-x-Eli-A.png?v=1775569293&width=3840"
+    },
+    {
+      "coffee_id": 114,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://gtlipifdfyugiwpxvuse.supabase.co/storage/v1/object/public/assets/products/c43fd815-d1e7-43f2-9f61-054e3172c2c8/744eb87b200677498e082f63db342d0e.png"
+    },
+    {
+      "coffee_id": 122,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://sigmacoffee.co.uk/cdn/shop/files/672-PER-Yulisa-A-cropped_grande.jpg?v=1780478889"
+    },
+    {
+      "coffee_id": 138,
+      "roaster": "Big Sur",
+      "field": "image_url",
+      "from": null,
+      "to": "https://beanbodega.coffee/cdn/shop/files/1_31-1_215d48da-d1ea-43c3-80e8-25b345e08a60.png"
+    },
+    {
+      "coffee_id": 140,
+      "roaster": "Big Sur",
+      "field": "image_url",
+      "from": null,
+      "to": "https://kultivarcoffee.com/cdn/shop/files/Peru_Finca_Miraflores_Cold_Water_Fermentation_Washed_Geisha_140_-_1.webp?v=1779961775&width=1500"
+    },
+    {
+      "coffee_id": 144,
+      "roaster": "Ceto",
+      "field": "image_url",
+      "from": null,
+      "to": "https://i.ytimg.com/vi/BlPbF18yd6Y/maxresdefault.jpg"
+    },
+    {
+      "coffee_id": 145,
+      "roaster": "Ceto",
+      "field": "image_url",
+      "from": null,
+      "to": "https://i.ytimg.com/vi/BlPbF18yd6Y/maxresdefault.jpg"
+    },
+    {
+      "coffee_id": 151,
+      "roaster": "Shoebox",
+      "field": "image_url",
+      "from": null,
+      "to": "https://i.ytimg.com/vi/1SZZ_AxM5nc/sddefault.jpg"
+    },
+    {
+      "coffee_id": 152,
+      "roaster": "Shoebox",
+      "field": "image_url",
+      "from": null,
+      "to": "https://i.ytimg.com/vi/1SZZ_AxM5nc/sddefault.jpg"
+    },
+    {
+      "coffee_id": 165,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://beanbodega.coffee/cdn/shop/files/664-PER-Roger-x-Eli-A.png?v=1775569293&width=3840"
+    },
+    {
+      "coffee_id": 173,
+      "roaster": "GWO",
+      "field": "image_url",
+      "from": null,
+      "to": ""
+    },
+    {
+      "coffee_id": 174,
+      "roaster": "GWO",
+      "field": "image_url",
+      "from": null,
+      "to": ""
+    },
+    {
+      "coffee_id": 175,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://gtlipifdfyugiwpxvuse.supabase.co/storage/v1/object/public/assets/products/ed49fb81-816a-41ed-8fd6-027bf381e537/22e61180b546ab2f82cb658cc31ee3ec.png"
+    },
+    {
+      "coffee_id": 187,
+      "roaster": "Still",
+      "field": "image_url",
+      "from": null,
+      "to": ""
+    },
+    {
+      "coffee_id": 198,
+      "roaster": "Big Sur",
+      "field": "image_url",
+      "from": null,
+      "to": "https://beanbodega.coffee/cdn/shop/files/1_31-1_215d48da-d1ea-43c3-80e8-25b345e08a60.png"
+    },
+    {
+      "coffee_id": 211,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": "https://hscoffeeroasters.com/cdn/shop/files/2022-hs-logo-200x200-darkbg_320x.png?v=1656512539",
+      "to": "https://cdn.shopify.com/s/files/1/0424/7433/files/695-Col-Efren-Rodriguez-A.png?v=1783263741"
+    },
+    {
+      "coffee_id": 219,
+      "roaster": "H&S",
+      "field": "image_url",
+      "from": null,
+      "to": "https://sigmacoffee.co.uk/cdn/shop/files/672-PER-Yulisa-A-cropped_grande.jpg?v=1780478889"
+    }
+  ],
+  "websites": [],
+  "tavilyCalls": []
+},
 ];
