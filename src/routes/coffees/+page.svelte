@@ -725,7 +725,11 @@
             {@const img = coffeeImage(coffee, '')}
             <div class="card-body">
               {#if img}
-                <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
+                <!-- Same target as the title link; out of the Tab order so each
+                     card stays one stop. -->
+                <a class="card-thumb-link" href={`/coffees/${coffee.slug}`} tabindex="-1">
+                  <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
+                </a>
               {/if}
               <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
               <p class="text-muted">{coffee.roaster}</p>
