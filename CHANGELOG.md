@@ -1,3 +1,10 @@
+## [1.57.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.57.0...v1.57.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **coffees:** correct three archived coffees' name, origin and process
+
 # [1.57.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.56.0...v1.57.0) (2026-10-08)
 
 
