@@ -4,6 +4,7 @@ import { dirname } from 'node:path';
 import { schema } from './schema.ts';
 import { applyCoffeeFixes } from './coffees.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
+import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
 import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
@@ -90,6 +91,7 @@ export function applySchema(db: DatabaseSync): void {
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER);
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
   for (const b of PRODUCT_PAGE_BACKFILLS) applyCoffeeFixes(db, b); // own transaction each, after roaster defaults
+  for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
   // computeFill's solid-border rule changed, so cached fills may be wrong; drop
   // them once and the background run refills every displayed URL at boot.
   if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('image_fills_recompute_2026_10_06')) {
