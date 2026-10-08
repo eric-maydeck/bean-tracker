@@ -1,3 +1,10 @@
+# [1.56.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.55.0...v1.56.0) (2026-10-08)
+
+
+### Features
+
+* **coffees:** backfill product pages and images, batch 2026_10_archive_a
+
 # [1.55.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.54.0...v1.55.0) (2026-10-08)
 
 
