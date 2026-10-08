@@ -102,6 +102,17 @@ export function applySchema(db: DatabaseSync): void {
     db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('image_fills_recompute_2026_10_06', new Date().toISOString());
     db.exec('COMMIT');
   }
+  // The Shoebox roaster default (a transparent logo) on its labels' green
+  // rather than the computed tan (user request). A later full recompute (like
+  // the one above) would drop it; re-add it then.
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('shoebox_logo_fill_2026_10_08')) {
+    db.exec('BEGIN');
+    db.prepare(
+      `INSERT INTO image_fills (url, fill) VALUES (?, ?) ON CONFLICT(url) DO UPDATE SET fill = excluded.fill`
+    ).run('https://shoebox.coffee/cdn/shop/files/Main.png?v=1737911185', '#9ae197');
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('shoebox_logo_fill_2026_10_08', new Date().toISOString());
+    db.exec('COMMIT');
+  }
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   // Bean Conqueror's default rating is 0, which it shows as "no rating";
   // imports now store it as NULL. Idempotent, so it just runs every boot.
