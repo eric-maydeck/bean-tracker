@@ -1,3 +1,15 @@
+# [1.55.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.54.0...v1.55.0) (2026-10-08)
+
+
+### Bug Fixes
+
+* **coffees:** guard backfill fixes by roaster too
+
+
+### Features
+
+* **coffees:** backfill product pages and images, batch 2026_10_a
+
 # [1.54.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.53.0...v1.54.0) (2026-10-07)
 
 
