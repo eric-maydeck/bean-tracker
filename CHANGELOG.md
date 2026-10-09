@@ -1,3 +1,17 @@
+# [1.61.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.60.0...v1.61.0) (2026-10-09)
+
+
+### Bug Fixes
+
+* **fill:** use the variants' own price currency over the shop's base currency
+
+
+### Features
+
+* **subscriptions:** boot migration sets the six live subscriptions' page urls
+* **subscriptions:** fill from page on the add form and in edit mode
+* **subscriptions:** parse subscription pages into subscription fields
+
 # [1.60.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.59.0...v1.60.0) (2026-10-08)
 
 
