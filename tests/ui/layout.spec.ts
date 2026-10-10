@@ -690,6 +690,16 @@ export const STATES: State[] = [
     }
   },
   { name: 'stats-general', path: () => '/stats' },
+  {
+    // Over the 20 MB body limit: stopped in the browser, with the reason.
+    name: 'stats-import-too-big',
+    path: () => '/stats?tab=bq',
+    act: async (page) => {
+      const input = page.locator('input[name="file"]');
+      await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(21 * 1024 * 1024) });
+      expect(await input.evaluate((el: HTMLInputElement) => el.validationMessage)).toContain('Over 20 MB');
+    }
+  },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
     path: () => `/stats?tab=bq&bc=${tab}`

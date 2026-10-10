@@ -1,5 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getStatsRates, setStatsRates, InvalidRatesError } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getFillHistory, getOpenCoffees } from '$lib/server/coffees';
@@ -9,10 +10,13 @@ import { requireAdmin } from '$lib/server/auth';
 import {
   parseBeanConquerorWorkbook,
   importBeanConquerorData,
+  BeanConquerorImportError,
+  type ParsedBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
 } from '$lib/server/beanconqueror';
+import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
 import { queueFillMissing } from '$lib/server/imageFills';
 import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
@@ -55,6 +59,18 @@ export const load: PageServerLoad = ({ locals }) => {
   };
 };
 
+// An .xlsx is a zip too; its workbook part tells them apart.
+// ponytail: .xlsx fallback only until the .zip import has run on prod (plan Task 9 removes it).
+async function parseUpload(buffer: ArrayBuffer): Promise<ParsedBeanConquerorData> {
+  const zip = await JSZip.loadAsync(buffer).catch(() => null);
+  if (zip?.file('xl/workbook.xml')) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    return parseBeanConquerorWorkbook(workbook);
+  }
+  return parseBeanConquerorJson(await readBeanConquerorZip(buffer));
+}
+
 export const actions: Actions = {
   updateRates: async ({ request, locals }) => {
     requireAdmin(locals);
@@ -78,25 +94,27 @@ export const actions: Actions = {
     if (!(file instanceof File)) {
       return fail(400, { error: 'No file uploaded' });
     }
-    const buffer = await file.arrayBuffer();
-    const workbook = new ExcelJS.Workbook();
-    try {
-      await workbook.xlsx.load(buffer);
-    } catch {
-      return fail(400, { error: 'Could not read that file as an Excel workbook' });
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return fail(400, { error: 'That file is over 20 MB. Upload Beanconqueror.zip (the regular export).' });
     }
-    // Separate try/catch from the load above: parsing throws a specific,
-    // admin-readable message when the export's column layout no longer
-    // matches what the positional parsers expect, and that has to surface
-    // as a clean 400 rather than an unhandled 500.
+    // Parse errors carry an admin-readable message (bad zip, changed format), so
+    // they surface as a clean 400 rather than a 500.
     let parsed;
     try {
-      parsed = parseBeanConquerorWorkbook(workbook);
+      parsed = await parseUpload(await file.arrayBuffer());
     } catch (err) {
       return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
     }
-    importBeanConquerorData(getDb(), parsed);
-    return { success: true as const };
+    try {
+      importBeanConquerorData(getDb(), parsed);
+    } catch (err) {
+      if (err instanceof BeanConquerorImportError) return fail(400, { error: err.message });
+      throw err;
+    }
+    return {
+      success: true as const,
+      imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }
+    };
   },
   create: async ({ request, locals }) => {
     requireAdmin(locals);
