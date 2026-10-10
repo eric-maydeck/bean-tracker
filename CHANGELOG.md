@@ -1,3 +1,10 @@
+## [1.62.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.62.0...v1.62.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* null bean conqueror brew links to missing beans, methods, mills
+
 # [1.62.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.61.1...v1.62.0) (2026-10-10)
 
 
