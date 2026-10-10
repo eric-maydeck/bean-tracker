@@ -17,7 +17,8 @@ export const load: PageServerLoad = ({ url }) => {
   const period = periodBounds(s.range, today);
   // The parser already dropped a compare deeper than this range allows.
   const prev = s.compare ? previousPeriod(s.range, period, s.compare) : null;
-  const tiles = overviewTiles(brews, bags, period, s.ratings, today);
+  const dataStart = brews[0]?.localDate ?? null;
+  const tiles = overviewTiles(brews, bags, period, s.ratings, today, dataStart);
   return {
     explicit,
     years,
@@ -27,6 +28,6 @@ export const load: PageServerLoad = ({ url }) => {
     period,
     previousPeriod: prev,
     tiles,
-    deltas: prev ? compareTiles(tiles, overviewTiles(brews, bags, prev, s.ratings)) : null
+    deltas: prev ? compareTiles(tiles, overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart)) : null
   };
 };

@@ -52,14 +52,14 @@
     { key: 'costPerBrew', label: 'Cost per brew', fmt: usd.format },
     { key: 'brewsPerDay', label: 'Brews per day', fmt: (n) => n.toFixed(1) },
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
-    { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => `${+n.toFixed(1)}`, suffix: 'days' },
+    { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
     { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
   ];
-  const valueText = (t: Tile, v: number | null) =>
-    v === null ? '—' : t.key === 'avgRestDays' ? String(Math.round(v)) : t.fmt(v);
+  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : t.fmt(v));
 
   function deltaText(d: { abs: number; pct: number }, t: Tile): string {
-    if (d.abs === 0) return 'No change';
+    // A change that formats as zero (float noise, or under the tile's precision) is none.
+    if (t.fmt(Math.abs(d.abs)) === t.fmt(0)) return 'No change';
     const abs = t.fmt(Math.abs(d.abs)) + (t.suffix ? ` ${t.suffix}` : '');
     return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)`;
   }
@@ -131,7 +131,7 @@
           >
           {#if d}<span class="stat-unit insights-delta">{deltaText(d, t)}</span>{/if}
           <div class="stat-caption">
-            <span class="stat-label">{t.key === 'rated' ? `Rated · ${s.ratings}` : t.label}</span>
+            <span class="stat-label">{t.key === 'rated' ? `Rated · ${s.ratings === 'all' ? 'All' : 'Settled'}` : t.label}</span>
           </div>
         </div>
       {/each}

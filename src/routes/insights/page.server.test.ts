@@ -5,7 +5,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { localToday, periodBounds, previousPeriod } from '$lib/server/insights/time';
+import { localToday, periodBounds, previousPeriod, addDays } from '$lib/server/insights/time';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -85,6 +85,11 @@ describe('/insights load', () => {
     const d = run('?range=ytd');
     expect(d.compareOptions.map((o: { n: number }) => o.n)).toEqual([2]);
     expect(run('?range=ytd&compare=1').explicit.compare).toBeUndefined();
+  });
+
+  it('brews per day in 12m counts from the first brew, not the window start', () => {
+    seed([[addDays(today, -9), 10], [today, 10]]);
+    expect(run().tiles.brewsPerDay).toBe(2 / 10);
   });
 
   it('an out-of-range compare is ignored', () => {

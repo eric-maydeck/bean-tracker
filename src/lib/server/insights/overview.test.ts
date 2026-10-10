@@ -52,6 +52,19 @@ describe('overviewTiles', () => {
   it('brews per day over all time counts from the first brew', () =>
     expect(overviewTiles(brews, [], { start: null, end: '2026-10-09' }, 'all').brewsPerDay).toBe(4 / 40));
 
+  it('brews per day counts from the first brew ever when tracking starts mid-period', () => {
+    // SEPT starts 09-01; tracking started 09-21 → 10 days.
+    expect(overviewTiles([brew({ localDate: '2026-09-25' })], [], SEPT, 'all', SEPT.end, '2026-09-21').brewsPerDay).toBe(1 / 10);
+    // A window fully inside tracking keeps its full length.
+    expect(overviewTiles([brew({ localDate: '2026-09-25' })], [], SEPT, 'all', SEPT.end, '2026-01-01').brewsPerDay).toBe(1 / 30);
+  });
+
+  it('a previous period that partly overlaps tracking divides by the tracked days', () => {
+    const aug = { start: '2026-08-01', end: '2026-08-31' };
+    const t = overviewTiles([brew({ localDate: '2026-08-30' }), brew({ localDate: '2026-08-31' })], [], aug, 'all', aug.end, '2026-08-22');
+    expect(t.brewsPerDay).toBe(2 / 10);
+  });
+
   it('brews per day stops at today in a period that runs past it', () =>
     expect(overviewTiles(brews, [], SEPT, 'all', '2026-09-10').brewsPerDay).toBe(2 / 10));
 

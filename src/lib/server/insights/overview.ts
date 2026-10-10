@@ -37,14 +37,18 @@ const present = (xs: (number | null)[]) => xs.filter((x): x is number => x !== n
 
 // Spend = bags bought (roast date) in the period; subscription deliveries are
 // already logged as bags. Bags finished = archived bags whose last brew is in it.
-// Brews per day divides by the period's days up to `today` (a calendar year
-// still running isn't diluted by its future); all time starts at the first brew.
+// Brews per day divides by the period's days from the first brew ever
+// (`dataStart`) up to `today`, so neither the time before tracking nor a
+// calendar year's future dilutes it.
 export function overviewTiles(
-  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings, today = p.end
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings, today = p.end,
+  dataStart: string | null = null
 ): OverviewTiles {
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
   const rated = inP.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
-  const first = p.start ?? inP.reduce((m, b) => (b.localDate < m ? b.localDate : m), p.end);
+  // Days before tracking began (`dataStart`, the first brew ever) don't count.
+  const start = p.start ?? dataStart ?? inP.reduce((m, b) => (b.localDate < m ? b.localDate : m), p.end);
+  const first = dataStart && dataStart > start ? dataStart : start;
   const last = today < p.end ? today : p.end;
   return {
     brews: inP.length,
