@@ -10,10 +10,6 @@ export function cellNumber(value: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function cellBoolean(value: unknown): boolean {
-  return value === true;
-}
-
 // Some real-world exports (observed in Bean Conqueror's xlsx export) store
 // date/timestamp cells as formatted text — "MM/DD/YYYY" or
 // "MM/DD/YYYY HH:mm:ss" — rather than native Excel date serials, so
@@ -45,22 +41,6 @@ export function excelSerialToISODate(value: unknown): string | null {
     const parsed = parseSlashFormattedDate(value);
     if (!parsed) return null;
     return `${String(parsed.year).padStart(4, '0')}-${String(parsed.month).padStart(2, '0')}-${String(parsed.day).padStart(2, '0')}`;
-  }
-  return null;
-}
-
-export function excelSerialToISOTimestamp(value: unknown): string | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return value.toISOString();
-  }
-  if (typeof value === 'string') {
-    const parsed = parseSlashFormattedDate(value);
-    if (!parsed) return null;
-    const date = new Date(
-      Date.UTC(parsed.year, parsed.month - 1, parsed.day, parsed.hour, parsed.minute, parsed.second)
-    );
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
   }
   return null;
 }

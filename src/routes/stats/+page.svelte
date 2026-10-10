@@ -767,7 +767,7 @@
         <input
           type="file"
           name="file"
-          accept=".zip,.xlsx"
+          accept=".zip"
           required
           onchange={(e) => {
             const input = e.currentTarget;

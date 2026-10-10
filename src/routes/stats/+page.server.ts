@@ -1,6 +1,4 @@
 import { fail } from '@sveltejs/kit';
-import ExcelJS from 'exceljs';
-import JSZip from 'jszip';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getStatsRates, setStatsRates, InvalidRatesError } from '$lib/server/db';
 import { getArchivedCoffees, getBacklogCoffees, getDistinctFieldValues, getFillHistory, getOpenCoffees } from '$lib/server/coffees';
@@ -8,10 +6,7 @@ import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  parseBeanConquerorWorkbook,
   importBeanConquerorData,
-  BeanConquerorImportError,
-  type ParsedBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
@@ -59,18 +54,6 @@ export const load: PageServerLoad = ({ locals }) => {
   };
 };
 
-// An .xlsx is a zip too; its workbook part tells them apart.
-// ponytail: .xlsx fallback only until the .zip import has run on prod (plan Task 9 removes it).
-async function parseUpload(buffer: ArrayBuffer): Promise<ParsedBeanConquerorData> {
-  const zip = await JSZip.loadAsync(buffer).catch(() => null);
-  if (zip?.file('xl/workbook.xml')) {
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
-    return parseBeanConquerorWorkbook(workbook);
-  }
-  return parseBeanConquerorJson(await readBeanConquerorZip(buffer));
-}
-
 export const actions: Actions = {
   updateRates: async ({ request, locals }) => {
     requireAdmin(locals);
@@ -101,16 +84,11 @@ export const actions: Actions = {
     // they surface as a clean 400 rather than a 500.
     let parsed;
     try {
-      parsed = await parseUpload(await file.arrayBuffer());
+      parsed = parseBeanConquerorJson(await readBeanConquerorZip(await file.arrayBuffer()));
     } catch (err) {
       return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
     }
-    try {
-      importBeanConquerorData(getDb(), parsed);
-    } catch (err) {
-      if (err instanceof BeanConquerorImportError) return fail(400, { error: err.message });
-      throw err;
-    }
+    importBeanConquerorData(getDb(), parsed);
     return {
       success: true as const,
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }

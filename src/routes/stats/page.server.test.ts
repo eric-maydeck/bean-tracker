@@ -66,13 +66,13 @@ function failure(result: unknown) {
 }
 
 describe('?/importBeanConqueror', () => {
-  it('still accepts an .xlsx export before the .zip import has run', async () => {
+  it('rejects an .xlsx export with a clear message', async () => {
     const wb = new ExcelJS.Workbook();
     wb.addWorksheet('Beans').addRow(['Name']);
     const xlsx = new Uint8Array(await wb.xlsx.writeBuffer());
-    expect(await actions.importBeanConqueror(upload(xlsx, 'export.xlsx'))).toEqual({
-      success: true, imported: { beans: 0, brews: 0, waters: 0 }
-    });
+    const f = failure(await actions.importBeanConqueror(upload(xlsx, 'export.xlsx')));
+    expect(f?.status).toBe(400);
+    expect((f?.data as unknown as { error: string }).error).toMatch(/isn't a Bean Conqueror export/);
   });
 
   it('imports the .zip export and reports what it read', async () => {

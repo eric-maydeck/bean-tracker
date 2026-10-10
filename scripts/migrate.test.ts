@@ -5,7 +5,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { cellText, cellNumber, excelSerialToISODate, cellBoolean, excelSerialToISOTimestamp } from '../src/lib/server/excelHelpers.ts';
+import { cellText, cellNumber, excelSerialToISODate } from '../src/lib/server/excelHelpers.ts';
 
 describe('cell parsing helpers', () => {
   it('cellText trims and nulls out blanks', () => {
@@ -29,27 +29,6 @@ describe('cell parsing helpers', () => {
     expect(excelSerialToISODate('02/09/2026')).toBe('2026-02-09');
     expect(excelSerialToISODate('not a date')).toBeNull();
     expect(excelSerialToISODate('')).toBeNull();
-  });
-
-  it('cellBoolean returns true only for the boolean true value', () => {
-    expect(cellBoolean(true)).toBe(true);
-    expect(cellBoolean('true')).toBe(false);
-    expect(cellBoolean(1)).toBe(false);
-    expect(cellBoolean(false)).toBe(false);
-    expect(cellBoolean(null)).toBe(false);
-  });
-
-  it('excelSerialToISOTimestamp converts a Date cell value to ISO timestamp', () => {
-    expect(excelSerialToISOTimestamp(new Date(Date.UTC(2026, 0, 1, 12, 30, 45, 123)))).toBe(
-      '2026-01-01T12:30:45.123Z'
-    );
-    expect(excelSerialToISOTimestamp('2026-01-01')).toBeNull();
-    expect(excelSerialToISOTimestamp(null)).toBeNull();
-  });
-
-  it('excelSerialToISOTimestamp converts a slash-formatted timestamp string (as seen in Bean Conqueror exports)', () => {
-    expect(excelSerialToISOTimestamp('09/21/2026 15:57:39')).toBe('2026-09-21T15:57:39.000Z');
-    expect(excelSerialToISOTimestamp('not a timestamp')).toBeNull();
   });
 });
 
