@@ -125,9 +125,9 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
   const beanById = new Map(beans.map((b) => [b.id, b]));
   const waterName = new Map(waters.map((w) => [w.id, w.name]));
   const brews: ParsedBrew[] = [...list(main.BREWS), ...extraBrews].flatMap((br) => {
-    const bcUuid = uuid(br) ?? undefined; // blank → none (the import looks up by truthiness)
+    const bcUuid = uuid(br);
     const bcCreatedAt = created(br);
-    if (!bcCreatedAt) return [];
+    if (!bcUuid || !bcCreatedAt) return [];
     const beanId = text(br.bean);
     const bean = beanId ? beanById.get(beanId) : undefined;
     const dose = num(br.grind_weight);
