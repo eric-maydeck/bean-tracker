@@ -1,3 +1,19 @@
+# [1.62.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.61.1...v1.62.0) (2026-10-10)
+
+
+### Bug Fixes
+
+* skip bean conqueror brews with a blank uuid
+
+
+### Features
+
+* derive water gh and kh from minerals
+* import the bean conqueror zip export from stats
+* parse the bean conqueror json export
+* read the bean conqueror export zip, including the full export
+* store bean conqueror waters and identify brews by uuid
+
 ## [1.61.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.61.0...v1.61.1) (2026-10-10)
 
 
