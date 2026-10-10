@@ -1,3 +1,10 @@
+## [1.61.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.61.0...v1.61.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **beanconqueror:** share sets blend from the coffee name
+
 # [1.61.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.60.0...v1.61.0) (2026-10-09)
 
 
