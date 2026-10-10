@@ -704,6 +704,9 @@ export const STATES: State[] = [
     name: `stats-${tab}`,
     path: () => `/stats?tab=bq&bc=${tab}`
   })),
+  { name: 'insights-default', path: () => '/insights' },
+  { name: 'insights-1w-compare', path: () => '/insights?range=1w&compare=1' },
+  { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
   { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },
   {
