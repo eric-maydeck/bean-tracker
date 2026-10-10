@@ -17,6 +17,8 @@ export const RATINGS = ['settled', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 export const AVGS = ['adjusted', 'raw'] as const;
 export type Avg = (typeof AVGS)[number];
+// compare=YYYY-MM-DD..YYYY-MM-DD: a custom window (checked by comparePeriod in time.ts).
+export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
 export interface InsightsUrlState {
   range?: string; // a RANGES value or a calendar year ("2026")

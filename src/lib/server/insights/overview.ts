@@ -1,6 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
-import { inPeriod, daysBetween, type Period } from './time';
+import { inPeriod, trackedDays, type Period } from './time';
 import { countsForRating } from './ratings';
 
 export interface OverviewTiles {
@@ -37,8 +37,8 @@ const present = (xs: (number | null)[]) => xs.filter((x): x is number => x !== n
 
 // Spend = bags bought (roast date) in the period; subscription deliveries are
 // already logged as bags. Bags finished = archived bags whose last brew is in it.
-// Brews per day divides by the period's days from the first brew ever
-// (`dataStart`) up to `today`, so neither the time before tracking nor a
+// Brews per day divides by the period's tracked days (trackedDays: from the first
+// brew ever, `dataStart`, up to `today`), so neither the time before tracking nor a
 // calendar year's future dilutes it.
 export function overviewTiles(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings, today = p.end,
@@ -46,10 +46,7 @@ export function overviewTiles(
 ): OverviewTiles {
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
   const rated = inP.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
-  // Days before tracking began (`dataStart`, the first brew ever) don't count.
-  const start = p.start ?? dataStart ?? inP.reduce((m, b) => (b.localDate < m ? b.localDate : m), p.end);
-  const first = dataStart && dataStart > start ? dataStart : start;
-  const last = today < p.end ? today : p.end;
+  const days = trackedDays(p, dataStart, today);
   return {
     brews: inP.length,
     grams: inP.reduce((s, b) => s + (b.dose ?? 0), 0),
@@ -58,7 +55,7 @@ export function overviewTiles(
     rated: rated.length,
     bagsFinished: bags.filter((g) => g.status === 'archive' && g.lastBrew !== null && inPeriod(g.lastBrew, p)).length,
     costPerBrew: mean(present(inP.map((b) => b.costPerBrew))),
-    brewsPerDay: inP.length ? inP.length / (daysBetween(first, last) + 1) : null,
+    brewsPerDay: inP.length && days ? inP.length / days : null,
     avgDose: mean(inP.flatMap((b) => (b.dose ? [b.dose] : []))),
     // Negative rest = a brew logged before its bag's roast date: missing, like dose 0.
     avgRestDays: mean(inP.flatMap((b) => (b.restDays !== null && b.restDays >= 0 ? [b.restDays] : []))),

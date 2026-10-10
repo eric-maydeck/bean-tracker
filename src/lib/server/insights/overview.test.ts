@@ -50,7 +50,8 @@ describe('overviewTiles', () => {
     expect(overviewTiles([brew({ restDays: -7 }), brew({ restDays: 9 })], [], SEPT, 'all').avgRestDays).toBe(9));
 
   it('brews per day over all time counts from the first brew', () =>
-    expect(overviewTiles(brews, [], { start: null, end: '2026-10-09' }, 'all').brewsPerDay).toBe(4 / 40));
+    expect(overviewTiles(brews, [], { start: null, end: '2026-10-09' }, 'all', '2026-10-09', '2026-08-31').brewsPerDay)
+      .toBe(4 / 40));
 
   it('brews per day counts from the first brew ever when tracking starts mid-period', () => {
     // SEPT starts 09-01; tracking started 09-21 → 10 days.

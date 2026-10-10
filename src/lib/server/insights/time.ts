@@ -1,4 +1,5 @@
 import { BC_TIME_ZONE } from '../beanConquerorJson';
+import { CUSTOM_RANGE } from '$lib/insightsUrl';
 
 // Insights count days in the user's zone (Mountain Time). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
@@ -58,6 +59,43 @@ export function previousPeriod(range: string, p: Period, n = 1): Period | null {
 }
 
 export const inPeriod = (date: string, p: Period): boolean => (p.start === null || date >= p.start) && date <= p.end;
+
+// Days of `p` that tracking covers: from max(start, first brew) to min(end, today),
+// inclusive. Brews per day and pace scaling both divide by it. 0 = nothing tracked.
+export function trackedDays(p: Period, dataStart: string | null, today: string): number {
+  const first = p.start === null || (dataStart !== null && dataStart > p.start) ? dataStart : p.start;
+  const last = today < p.end ? today : p.end;
+  return first === null ? 0 : Math.max(0, daysBetween(first, last) + 1);
+}
+
+const isDate = (d: string) => addDays(d, 0) === d; // Date rolls 2026-02-30 over to 03-02
+
+// The window a `compare` value resolves to for period `p`, or null (off or not usable):
+// n = n same-length periods back; '1m'…'3y' = that rolling length and 'before' = from the
+// first brew, both ending the day before `p` and starting on or after the first brew;
+// 'YYYY-MM-DD..YYYY-MM-DD' = custom, start ≤ end ≤ today.
+export function comparePeriod(
+  range: string, p: Period, compare: number | string, dataStart: string | null, today: string
+): Period | null {
+  if (typeof compare === 'number') return compare > 0 ? previousPeriod(range, p, compare) : null;
+  const custom = CUSTOM_RANGE.exec(compare);
+  if (custom) {
+    const [, start, end] = custom;
+    return isDate(start) && isDate(end) && start <= end && end <= today ? { start, end } : null;
+  }
+  if (p.start === null || dataStart === null) return null;
+  const end = addDays(p.start, -1);
+  const start =
+    compare === 'before' ? dataStart
+    : compare === '1m' || Object.hasOwn(MONTHS, compare) ? periodBounds(compare, end).start
+    : null;
+  return start !== null && start >= dataStart && start <= end ? { start, end } : null;
+}
+
+// Whether a longer or custom `compare` is usable for `range` today: the Compare menu's
+// and URL parser's check (insightsUrl.ts is client-safe, so it takes this as a predicate).
+export const compareFits = (dataStart: string | null, today: string) => (range: string, compare: string): boolean =>
+  comparePeriod(range, periodBounds(range, today), compare, dataStart, today) !== null;
 
 export function yearsSince(firstDate: string | null, today: string): number[] {
   const last = Number(today.slice(0, 4));

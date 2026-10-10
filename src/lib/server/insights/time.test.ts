@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { bcLocalTime, localToday, addMonths, daysBetween, periodBounds, previousPeriod, inPeriod, yearsSince } from './time';
+import {
+  bcLocalTime, localToday, addMonths, daysBetween, periodBounds, previousPeriod, inPeriod, yearsSince,
+  trackedDays, comparePeriod, compareFits
+} from './time';
 
 describe('bcLocalTime (stored Bean Conqueror times are already local)', () => {
   it('reads the wall time as-is, no shift', () => expect(bcLocalTime('2026-03-08T01:30:00.000Z')).toBe('2026-03-08T01:30'));
@@ -83,4 +86,80 @@ describe('inPeriod', () => {
 describe('yearsSince', () => {
   it('first brew year through this year', () => expect(yearsSince('2025-11-03', T)).toEqual([2025, 2026]));
   it('just this year with no brews', () => expect(yearsSince(null, T)).toEqual([2026]));
+});
+
+describe('trackedDays (from max(start, first brew) to min(end, today))', () => {
+  const p = { start: '2026-09-01', end: '2026-09-30' };
+  it('a fully tracked past window is its length', () => expect(trackedDays(p, '2026-01-01', T)).toBe(30));
+  it('starts at the first brew', () => expect(trackedDays(p, '2026-09-21', T)).toBe(10));
+  it('stops at today', () => expect(trackedDays(p, '2026-01-01', '2026-09-10')).toBe(10));
+  it('all time counts from the first brew', () => expect(trackedDays({ start: null, end: T }, '2026-10-01', T)).toBe(9));
+  it('0 before tracking began or without brews', () => {
+    expect(trackedDays(p, '2026-10-01', T)).toBe(0);
+    expect(trackedDays({ start: null, end: T }, null, T)).toBe(0);
+  });
+});
+
+describe('comparePeriod', () => {
+  const T2 = '2026-10-10'; // the spec's example: Last week = Oct 4–10
+  const wk = periodBounds('1w', T2);
+  const DS = '2020-01-01';
+  it('a number is n same-length periods back; 0 is off', () => {
+    expect(comparePeriod('1w', wk, 2, DS, T2)).toEqual(previousPeriod('1w', wk, 2));
+    expect(comparePeriod('1w', wk, 0, DS, T2)).toBeNull();
+    expect(comparePeriod('all', periodBounds('all', T2), 1, DS, T2)).toBeNull();
+  });
+  it.each([
+    ['1m', '2026-09-04'],
+    ['3m', '2026-07-04'],
+    ['6m', '2026-04-04'],
+    ['12m', '2025-10-04'],
+    ['3y', '2023-10-04'],
+    ['before', DS]
+  ])('%s ends the day before the period', (c, start) =>
+    expect(comparePeriod('1w', wk, c, DS, T2)).toEqual({ start, end: '2026-10-03' }));
+  it('clamps at month ends: 3 months before a week starting Jun 1', () =>
+    expect(comparePeriod('1w', periodBounds('1w', '2026-06-07'), '3m', DS, '2026-06-07'))
+      .toEqual({ start: '2026-03-01', end: '2026-05-31' }));
+  it('YTD and calendar years: All before', () => {
+    expect(comparePeriod('ytd', periodBounds('ytd', T2), 'before', '2024-03-01', T2))
+      .toEqual({ start: '2024-03-01', end: '2025-12-31' });
+    expect(comparePeriod('2025', periodBounds('2025', T2), 'before', '2024-03-01', T2))
+      .toEqual({ start: '2024-03-01', end: '2024-12-31' });
+  });
+  it('a longer window that starts before the first brew is not usable', () => {
+    expect(comparePeriod('1w', wk, '3m', '2026-07-05', T2)).toBeNull();
+    expect(comparePeriod('1w', wk, '3m', '2026-07-04', T2)).toEqual({ start: '2026-07-04', end: '2026-10-03' });
+  });
+  it('All before needs a tracked day before the period', () => {
+    expect(comparePeriod('1w', wk, 'before', '2026-10-03', T2)).toEqual({ start: '2026-10-03', end: '2026-10-03' });
+    expect(comparePeriod('1w', wk, 'before', '2026-10-04', T2)).toBeNull();
+    expect(comparePeriod('1w', wk, 'before', null, T2)).toBeNull();
+    expect(comparePeriod('all', periodBounds('all', T2), 'before', DS, T2)).toBeNull();
+  });
+  it('custom: start ≤ end ≤ today, on any range, with or without brews', () => {
+    expect(comparePeriod('all', periodBounds('all', T2), '2026-09-01..2026-09-15', null, T2))
+      .toEqual({ start: '2026-09-01', end: '2026-09-15' });
+    expect(comparePeriod('1w', wk, '2026-10-10..2026-10-10', DS, T2)).toEqual({ start: '2026-10-10', end: '2026-10-10' });
+    expect(comparePeriod('1w', wk, '2019-01-01..2019-01-31', DS, T2)).toEqual({ start: '2019-01-01', end: '2019-01-31' });
+  });
+  it.each([
+    '2026-09-15..2026-09-01', // mis-ordered
+    '2026-10-01..2026-10-11', // ends after today
+    '2026-02-30..2026-03-01', // not a date
+    '2026-9-1..2026-9-15',
+    'soon',
+    '1w', // not a longer length
+    'toString'
+  ])('rejects %s', (bad) => expect(comparePeriod('1w', wk, bad, DS, T2)).toBeNull());
+});
+
+describe('compareFits', () => {
+  const fits = compareFits('2026-07-04', '2026-10-10');
+  it('checks the window for the range as of today', () => {
+    expect(fits('1w', '3m')).toBe(true);
+    expect(fits('1w', '6m')).toBe(false);
+    expect(fits('1w', '2026-09-01..2026-09-02')).toBe(true);
+    expect(fits('1w', '2026-09-01..2026-12-01')).toBe(false);
+  });
 });
