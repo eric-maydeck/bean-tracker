@@ -92,10 +92,10 @@ describe('overviewTiles', () => {
 });
 
 describe('tileDelta', () => {
-  it('absolute and percent change', () => {
-    expect(tileDelta(12, 10)).toEqual({ abs: 2, pct: 20 });
-    expect(tileDelta(8, 10)).toEqual({ abs: -2, pct: -20 });
-    expect(tileDelta(0, 10)).toEqual({ abs: -10, pct: -100 });
+  it('absolute and percent change, against base', () => {
+    expect(tileDelta(12, 10)).toEqual({ abs: 2, pct: 20, base: 10 });
+    expect(tileDelta(8, 10)).toEqual({ abs: -2, pct: -20, base: 10 });
+    expect(tileDelta(0, 10)).toEqual({ abs: -10, pct: -100, base: 10 });
   });
   it('no change without previous data', () => {
     expect(tileDelta(5, 0)).toBeNull();
@@ -103,17 +103,36 @@ describe('tileDelta', () => {
     expect(tileDelta(null, 5)).toBeNull();
     expect(tileDelta(9, -7)).toBeNull();
   });
-  it('compareTiles covers every tile', () => {
-    const t = {
-      brews: 2, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1,
-      brewsPerDay: 0.5, avgDose: 15, avgRestDays: null, avgBrewTime: 180
-    };
-    const d = compareTiles(t, { ...t, brews: 1, avgDose: 12, avgBrewTime: null });
+});
+
+describe('compareTiles', () => {
+  const t = {
+    brews: 2, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1,
+    brewsPerDay: 0.5, avgDose: 15, avgRestDays: null, avgBrewTime: 180
+  };
+  it('equal day counts compare as they are', () => {
+    const { deltas: d, scaled } = compareTiles(t, { ...t, brews: 1, avgDose: 12, avgBrewTime: null }, 30, 30);
+    expect(scaled).toBe(false);
     expect(Object.keys(d).sort()).toEqual(Object.keys(t).sort());
-    expect(d.brews).toEqual({ abs: 1, pct: 100 });
+    expect(d.brews).toEqual({ abs: 1, pct: 100, base: 1 });
     expect(d.spend).toBeNull();
-    expect(d.avgDose).toEqual({ abs: 3, pct: 25 });
+    expect(d.avgDose).toEqual({ abs: 3, pct: 25, base: 12 });
     expect(d.avgBrewTime).toBeNull();
     expect(d.avgRestDays).toBeNull();
+  });
+  it('a longer baseline paces totals to the period\'s days; averages stay', () => {
+    // 90 brews / 1350 g over 90 days → 7 / 105 at the period's 7 days.
+    const { deltas: d, scaled } = compareTiles({ ...t, brews: 14, grams: 210 }, { ...t, brews: 90, grams: 1350, avgDose: 12 }, 7, 90);
+    expect(scaled).toBe(true);
+    expect(d.brews).toEqual({ abs: 7, pct: 100, base: 7 });
+    expect(d.grams).toEqual({ abs: 105, pct: 100, base: 105 });
+    expect(d.avgDose).toEqual({ abs: 3, pct: 25, base: 12 });
+  });
+  it('a paced base of 0 shows no change', () =>
+    expect(compareTiles(t, { ...t, bagsFinished: 0 }, 7, 90).deltas.bagsFinished).toBeNull());
+  it('a baseline with no tracked days has no total to pace (no ∞)', () => {
+    const { deltas: d } = compareTiles(t, t, 7, 0);
+    expect(d.brews).toBeNull();
+    expect(d.avgDose).toEqual({ abs: 0, pct: 0, base: 15 });
   });
 });

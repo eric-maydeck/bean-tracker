@@ -63,15 +63,24 @@ export function overviewTiles(
   };
 }
 
-export type Delta = { abs: number; pct: number } | null;
+export type Delta = { abs: number; pct: number; base: number } | null;
 
 // No change without a previous value to compare to (a % from 0 or below is meaningless).
+// `base` is the value the change is measured against.
 export function tileDelta(cur: number | null, prev: number | null): Delta {
   if (cur === null || prev === null || prev <= 0) return null;
-  return { abs: cur - prev, pct: ((cur - prev) / prev) * 100 };
+  return { abs: cur - prev, pct: ((cur - prev) / prev) * 100, base: prev };
 }
 
-export function compareTiles(cur: OverviewTiles, prev: OverviewTiles): Record<keyof OverviewTiles, Delta> {
+// Windows of different tracked lengths (trackedDays): a total's baseline becomes its
+// pace over the period's days, total × curDays / prevDays; averages compare as they are.
+export function compareTiles(
+  cur: OverviewTiles, prev: OverviewTiles, curDays: number, prevDays: number
+): { deltas: Record<keyof OverviewTiles, Delta>; scaled: boolean } {
+  const scaled = curDays !== prevDays;
+  const base = (k: keyof OverviewTiles) =>
+    !scaled || TILE_KIND[k] === 'average' ? prev[k] : prevDays ? ((prev[k] ?? 0) * curDays) / prevDays : null;
   const keys = Object.keys(cur) as (keyof OverviewTiles)[];
-  return Object.fromEntries(keys.map((k) => [k, tileDelta(cur[k], prev[k])])) as Record<keyof OverviewTiles, Delta>;
+  const deltas = Object.fromEntries(keys.map((k) => [k, tileDelta(cur[k], base(k))]));
+  return { deltas: deltas as Record<keyof OverviewTiles, Delta>, scaled };
 }
