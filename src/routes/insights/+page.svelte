@@ -3,7 +3,7 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
-    RANGES, RANGE_LABELS, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
+    RANGES, RANGE_LABELS, customRange, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
   } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
@@ -19,9 +19,38 @@
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
-  // Task 4 adds the Custom range… draft here.
+  // Custom range draft: the From/To being edited, not yet applied. Never in the URL
+  // (like inline edit). null = no draft; the form then shows the applied range, if any.
+  let draft = $state<{ from: string; to: string } | null>(null);
+  let shown = $derived.by(() => {
+    if (draft) return draft;
+    if (!isCustom(s.compare)) return null;
+    const [from, to] = s.compare.split('..');
+    return { from, to };
+  });
+
+  // Custom range… opens a draft on the prefill; anything else drops the draft and applies.
   function pickCompare(v: string) {
+    if (v === 'custom') {
+      draft = { from: data.customDefault.start ?? data.today, to: data.customDefault.end };
+      return;
+    }
+    draft = null;
     choose({ compare: /^\d+$/.test(v) ? Number(v) : v });
+  }
+
+  function editDraft(e: Event) {
+    const f = new FormData(e.currentTarget as HTMLFormElement);
+    draft = { from: String(f.get('from')), to: String(f.get('to')) };
+  }
+
+  // Apply (click, or Enter in a date input): the only way a drafted range reaches the URL.
+  function applyCustom(e: SubmitEvent) {
+    e.preventDefault();
+    const c = shown && customRange(shown.from, shown.to, data.today);
+    if (!c) return;
+    draft = null;
+    choose({ compare: c });
   }
 
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
@@ -75,11 +104,17 @@
   }
   const valueText = (t: Tile, v: number | null) => (v === null ? '—' : t.fmt(v));
 
-  function deltaText(d: { abs: number; pct: number }, t: Tile): string {
+  // Paced totals are fractional: a count under 10 keeps one decimal, so a small
+  // change doesn't read "0". Money and grams keep their own formats.
+  const paced = (t: Tile) => (data.scaled && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt);
+
+  function deltaText(d: { abs: number; pct: number; base: number }, t: Tile): string {
+    const fmt = paced(t);
     // A change that formats as zero (float noise, or under the tile's precision) is none.
-    if (t.fmt(Math.abs(d.abs)) === t.fmt(0)) return 'No change';
-    const abs = t.fmt(Math.abs(d.abs)) + (t.suffix ? ` ${t.suffix}` : '');
-    return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)`;
+    if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
+    const abs = fmt(Math.abs(d.abs)) + (t.suffix ? ` ${t.suffix}` : '');
+    const pace = data.scaled && data.tileKinds[t.key] === 'total' ? ` · vs ${fmt(d.base)} at that pace` : '';
+    return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)${pace}`;
   }
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
@@ -114,8 +149,7 @@
   <label class="form-field">
     <span>Compare</span>
     <select
-      value={String(s.compare)}
-      disabled={!data.compareMenus[s.range].length}
+      value={shown ? 'custom' : String(s.compare)}
       onchange={(e) => pickCompare(e.currentTarget.value)}
     >
       <option value="0">Off</option>
@@ -124,9 +158,23 @@
           {#each g.options as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
         </optgroup>
       {/each}
+      <optgroup label="Custom"><option value="custom">Custom range…</option></optgroup>
     </select>
   </label>
 </div>
+{#if shown}
+  <form class="custom-range" oninput={editDraft} onsubmit={applyCustom}>
+    <label class="form-field">
+      <span>From</span>
+      <input type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
+    </label>
+    <label class="form-field">
+      <span>To</span>
+      <input type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
+    </label>
+    <button class="button" disabled={!customRange(shown.from, shown.to, data.today)}>Apply</button>
+  </form>
+{/if}
 
 <p class="insights-period">{periodText}</p>
 
@@ -190,7 +238,8 @@
   .insights-controls .form-field {
     margin-bottom: 0;
   }
-  .insights-controls select {
+  .insights-controls select,
+  .custom-range input {
     min-height: 2.25rem;
     padding: 0 0.6rem;
     font: inherit;
@@ -200,11 +249,29 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
+  /* Custom range: From / To / Apply under the selects. */
+  .custom-range {
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    align-items: end;
+    gap: var(--space-3);
+    margin: 0 0 var(--space-3);
+  }
+  .custom-range .form-field {
+    margin-bottom: 0;
+  }
   @media (max-width: 640px) {
     .insights-controls {
       grid-template-columns: 1fr 1fr;
     }
-    .insights-controls select {
+    .custom-range {
+      grid-template-columns: 1fr 1fr;
+    }
+    .custom-range button {
+      grid-column: 1 / -1;
+    }
+    .insights-controls select,
+    .custom-range input {
       min-height: 44px;
       font-size: 16px;
     }
@@ -342,6 +409,13 @@
   /* .stat-unit upper-cases; "120G" misreads as a unit. */
   .insights-delta {
     text-transform: none;
+  }
+  /* "▲ 9.0 (113%) · vs 8.0 at that pace" wraps to two lines in the subtext slot
+     (value bottom to caption top fits two) instead of truncating. */
+  .stat-item .insights-delta {
+    white-space: normal;
+    line-height: 1.15;
+    text-wrap: balance;
   }
   .insights-period {
     color: var(--color-text-muted);

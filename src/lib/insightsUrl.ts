@@ -22,6 +22,10 @@ export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
 export const isCustom = (c: unknown): c is string => typeof c === 'string' && CUSTOM_RANGE.test(c);
 
+// The compare value for drafted From/To dates, or null while Apply must stay disabled.
+export const customRange = (from: string, to: string, today: string): string | null =>
+  from && to && from <= to && to <= today ? `${from}..${to}` : null;
+
 // Whether a longer or custom compare gives a usable window for a range (first-brew
 // cutoff, a tracked day before the period, end ≤ today). Built server-side by
 // time.ts compareFits; this client-safe module can't import it.

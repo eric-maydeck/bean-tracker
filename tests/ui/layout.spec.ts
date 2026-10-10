@@ -323,6 +323,9 @@ async function expectDialogInViewport(page: Page) {
   expect(problems).toEqual([]);
 }
 
+// UTC calendar days back: never after the insights "today" (local is behind UTC).
+const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
@@ -723,6 +726,51 @@ export const STATES: State[] = [
         await expect(g.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
       }
       await expect(page.locator('.mode-tip-button')).toHaveText(['All', 'All']);
+    }
+  },
+  {
+    // A longer window: groups in the Compare menu, totals paced to the period.
+    name: 'insights-compare-longer',
+    path: () => '/insights?range=1w&compare=before',
+    act: async (page) => {
+      const compare = page.getByLabel('Compare');
+      await expect(compare).toHaveValue('before');
+      expect(await compare.locator('optgroup').evaluateAll((gs) => gs.map((g) => g.getAttribute('label'))))
+        .toEqual(['Same length', 'Longer', 'Custom']);
+      const pace = page.locator('.insights-delta', { hasText: 'at that pace' });
+      await expect(pace.first()).toBeVisible();
+      for (const t of await pace.allTextContents()) expect(t).toMatch(/ · vs \S+ at that pace$/);
+      // A paced count keeps one decimal under 10, whole numbers from 10.
+      const brews = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Brews$/ }) });
+      await expect(brews.locator('.insights-delta')).toHaveText(/ · vs (\d\.\d|\d{2,}[\d,]*) at that pace$/);
+    }
+  },
+  {
+    // Custom range…: a draft (URL untouched, nothing focused) until Apply; a wrong
+    // order disables Apply. Navigation only, nothing saved. Task 6 adapts the
+    // act if the chosen placement is the dialog.
+    name: 'insights-compare-custom',
+    path: () => '/insights?range=1w',
+    act: async (page) => {
+      const before = page.url();
+      await page.getByLabel('Compare').selectOption('custom');
+      await expect(page.getByLabel('Compare')).toHaveValue('custom');
+      await expect(page.getByLabel('From', { exact: true })).toBeVisible();
+      await expect(page.getByLabel('To', { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      expect(page.url()).toBe(before); // drafting never touches the URL
+      const apply = page.getByRole('button', { name: 'Apply', exact: true });
+      await page.getByLabel('From', { exact: true }).fill(daysAgo(2));
+      await page.getByLabel('To', { exact: true }).fill(daysAgo(20));
+      await expect(apply).toBeDisabled();
+      expect(page.url()).toBe(before);
+      await page.getByLabel('From', { exact: true }).fill(daysAgo(20));
+      await page.getByLabel('To', { exact: true }).fill(daysAgo(8));
+      await expect(apply).toBeEnabled();
+      expect(page.url()).toBe(before);
+      await apply.click();
+      await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(8)}`));
+      await expect(page.locator('.insights-period')).toContainText(' · vs ');
     }
   },
   {

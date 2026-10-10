@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare
+  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -198,4 +198,18 @@ describe('keepCompare (Period changed)', () => {
     expect(keepCompare(0, [])).toBe(0);
     expect(keepCompare(undefined, [])).toBeUndefined();
   });
+});
+
+describe('customRange (Apply is enabled only for a usable range)', () => {
+  const T = '2026-10-10';
+  it('both dates, in order, ending by today', () => {
+    expect(customRange('2026-09-01', '2026-09-15', T)).toBe('2026-09-01..2026-09-15');
+    expect(customRange('2026-10-10', '2026-10-10', T)).toBe('2026-10-10..2026-10-10');
+  });
+  it.each([
+    ['', '2026-09-15'],
+    ['2026-09-01', ''],
+    ['2026-09-15', '2026-09-01'], // wrong order
+    ['2026-09-01', '2026-10-11'] // after today
+  ])('null for %s..%s', (a, b) => expect(customRange(a, b, T)).toBeNull());
 });
