@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { COFFEE_CORRECTIONS } from './coffeeCorrections';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill';
+import { createDb } from './db';
+import { getRoastLevels } from './roastLevels';
 
 describe('COFFEE_CORRECTIONS data', () => {
   it('every batch has its own coffee_corrections_ marker, distinct from the backfills', () => {
@@ -19,5 +21,12 @@ describe('COFFEE_CORRECTIONS data', () => {
         expect(f.to).not.toBe(f.from);
       }
     }
+  });
+
+  it('every roast_level fix lands on a roast_levels label', () => {
+    const levels = new Set(getRoastLevels(createDb(':memory:')).map((l) => l.roast_level));
+    const fixes = COFFEE_CORRECTIONS.flatMap((b) => b.fixes).filter((f) => f.field === 'roast_level');
+    expect(fixes.map((f) => f.to).sort()).toEqual(['Light/Medium', 'Medium/Light']);
+    for (const f of fixes) expect(levels.has(f.to)).toBe(true);
   });
 });

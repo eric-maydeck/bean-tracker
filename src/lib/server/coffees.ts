@@ -207,7 +207,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
 export type CoffeeFix = {
   coffee_id: number;
   roaster?: string;
-  field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url';
+  field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url' | 'roast_level';
   from: string | null;
   to: string;
 };

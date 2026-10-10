@@ -18,5 +18,16 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     ],
     websites: [],
     tavilyCalls: []
+  },
+  {
+    // Insights (2026-10-09): two imported labels that match no roast_levels row,
+    // so roast-level ordering broke. Only these two prod coffees had them.
+    marker: 'coffee_corrections_2026_10_b',
+    fixes: [
+      { coffee_id: 87, roaster: 'Sweet Bloom', field: 'roast_level', from: 'Med/Light', to: 'Medium/Light' },
+      { coffee_id: 88, roaster: 'Sweet Bloom', field: 'roast_level', from: 'Light/Med', to: 'Light/Medium' }
+    ],
+    websites: [],
+    tavilyCalls: []
   }
 ];

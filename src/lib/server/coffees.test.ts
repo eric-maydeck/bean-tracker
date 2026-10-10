@@ -460,6 +460,18 @@ describe('applyCoffeeFixes (product page backfill)', () => {
     expect(marker()).toBeTruthy();
   });
 
+  it('fixes a roast_level to the roast_levels spelling, guarded by from', () => {
+    const { id, slug } = add();
+    db.prepare(`UPDATE coffees SET roast_level = 'Med/Light' WHERE id = ?`).run(id);
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: id, roaster: 'Sey', field: 'roast_level', from: 'Med/Light', to: 'Medium/Light' },
+      { coffee_id: id, roaster: 'Sey', field: 'roast_level', from: 'Light/Med', to: 'Light/Medium' }
+    ] }));
+    expect(r?.fixed).toBe(1);
+    expect(r?.skipped[0]).toContain("roast_level is 'Medium/Light'");
+    expect(getCoffeeById(db, id)).toMatchObject({ roast_level: 'Medium/Light', slug });
+  });
+
   it('runs once: a second call with the same marker returns null and adds nothing', () => {
     const { id } = add();
     const b = batch({
