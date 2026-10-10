@@ -1,3 +1,26 @@
+# [1.63.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.62.1...v1.63.0) (2026-10-10)
+
+
+### Bug Fixes
+
+* insights brews per day from first brew and delta polish
+* insights skip negative rest and years without brews
+* normalize the two stray roast level labels
+
+
+### Features
+
+* group processing labels for insights
+* insights brew fact derivations
+* insights compare depth, metric kinds and averages
+* insights mountain time and period bounds
+* insights overview design
+* insights overview tiles and deltas
+* insights page with overview tiles
+* insights rating switches and adjusted means
+* insights url state parser
+* load per-brew and per-bag insights facts
+
 ## [1.62.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.62.0...v1.62.1) (2026-10-10)
 
 
