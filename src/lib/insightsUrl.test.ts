@@ -57,6 +57,21 @@ describe('parseInsightsUrl', () => {
   });
 });
 
+describe('compare skips years without brews', () => {
+  const Y = [2023, 2024, 2025, 2026];
+  const BREW_YEARS = [2023, 2025, 2026]; // no brews in 2024
+  it('lists only years with brews; n is still years back', () => {
+    expect(compareOptions('ytd', Y, BREW_YEARS)).toEqual([{ n: 1, label: '2025 YTD' }, { n: 3, label: '2023 YTD' }]);
+    expect(compareOptions('2026', Y, BREW_YEARS)).toEqual([{ n: 1, label: '2025' }, { n: 3, label: '2023' }]);
+  });
+  it('the parser drops a gap year', () => {
+    const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), Y, BREW_YEARS).compare;
+    expect(p('range=ytd&compare=2')).toBeUndefined();
+    expect(p('range=ytd&compare=3')).toBe(3);
+    expect(p('range=2026&compare=2')).toBeUndefined();
+  });
+});
+
 describe('compareOptions', () => {
   const Y = [2024, 2025, 2026];
   const labels = (r: string) => compareOptions(r, Y).map((o) => `${o.n}:${o.label}`);

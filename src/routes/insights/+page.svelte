@@ -13,11 +13,12 @@
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
     const next = { ...data.explicit, ...change };
-    // A compare deeper than the new range allows would be dropped by the
-    // parser; keep the deepest one it does allow instead.
+    // A compare the new range doesn't offer would be dropped by the parser;
+    // keep the nearest shallower one it does offer instead.
     if (change.range && next.compare) {
-      const max = compareOptions(change.range, data.years).length;
-      if (next.compare > max) next.compare = max || undefined;
+      const c = next.compare;
+      const ns = compareOptions(change.range, data.years, data.brewYears).map((o) => o.n);
+      if (!ns.includes(c)) next.compare = Math.max(0, ...ns.filter((n) => n < c)) || undefined;
     }
     const qs = insightsParams(next).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });

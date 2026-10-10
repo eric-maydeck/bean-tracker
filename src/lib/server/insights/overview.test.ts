@@ -46,6 +46,9 @@ describe('overviewTiles', () => {
     expect(t).toMatchObject({ avgDose: 18, avgRestDays: 15, avgBrewTime: 190, brewsPerDay: 3 / 30 });
   });
 
+  it('avg rest skips negative rest (a brew before its bag\'s roast date)', () =>
+    expect(overviewTiles([brew({ restDays: -7 }), brew({ restDays: 9 })], [], SEPT, 'all').avgRestDays).toBe(9));
+
   it('brews per day over all time counts from the first brew', () =>
     expect(overviewTiles(brews, [], { start: null, end: '2026-10-09' }, 'all').brewsPerDay).toBe(4 / 40));
 
@@ -84,6 +87,7 @@ describe('tileDelta', () => {
     expect(tileDelta(5, 0)).toBeNull();
     expect(tileDelta(5, null)).toBeNull();
     expect(tileDelta(null, 5)).toBeNull();
+    expect(tileDelta(9, -7)).toBeNull();
   });
   it('compareTiles covers every tile', () => {
     const t = {

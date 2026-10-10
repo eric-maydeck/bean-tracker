@@ -56,16 +56,17 @@ export function overviewTiles(
     costPerBrew: mean(present(inP.map((b) => b.costPerBrew))),
     brewsPerDay: inP.length ? inP.length / (daysBetween(first, last) + 1) : null,
     avgDose: mean(inP.flatMap((b) => (b.dose ? [b.dose] : []))),
-    avgRestDays: mean(present(inP.map((b) => b.restDays))),
+    // Negative rest = a brew logged before its bag's roast date: missing, like dose 0.
+    avgRestDays: mean(inP.flatMap((b) => (b.restDays !== null && b.restDays >= 0 ? [b.restDays] : []))),
     avgBrewTime: mean(present(inP.map((b) => b.brewTimeSeconds)))
   };
 }
 
 export type Delta = { abs: number; pct: number } | null;
 
-// No change without a previous value to compare to (a % from 0 is undefined).
+// No change without a previous value to compare to (a % from 0 or below is meaningless).
 export function tileDelta(cur: number | null, prev: number | null): Delta {
-  if (cur === null || prev === null || prev === 0) return null;
+  if (cur === null || prev === null || prev <= 0) return null;
   return { abs: cur - prev, pct: ((cur - prev) / prev) * 100 };
 }
 

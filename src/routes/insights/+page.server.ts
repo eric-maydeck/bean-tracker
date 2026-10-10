@@ -11,7 +11,8 @@ export const load: PageServerLoad = ({ url }) => {
   const { brews, bags } = loadFacts(getDb());
   const today = localToday();
   const years = yearsSince(brews[0]?.localDate ?? null, today);
-  const explicit = parseInsightsUrl(url.searchParams, years);
+  const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears);
   const s = withDefaults(explicit);
   const period = periodBounds(s.range, today);
   // The parser already dropped a compare deeper than this range allows.
@@ -20,7 +21,8 @@ export const load: PageServerLoad = ({ url }) => {
   return {
     explicit,
     years,
-    compareOptions: compareOptions(s.range, years),
+    brewYears,
+    compareOptions: compareOptions(s.range, years, brewYears),
     tileKinds: TILE_KIND,
     period,
     previousPeriod: prev,

@@ -79,6 +79,14 @@ describe('/insights load', () => {
     expect(d.deltas.grams).toEqual({ abs: -25, pct: -62.5 });
   });
 
+  it('ytd compare offers only earlier years that have brews', () => {
+    const y = Number(today.slice(0, 4));
+    seed([[today, 15], [`${y - 2}-01-01`, 10]]); // nothing in y - 1
+    const d = run('?range=ytd');
+    expect(d.compareOptions.map((o: { n: number }) => o.n)).toEqual([2]);
+    expect(run('?range=ytd&compare=1').explicit.compare).toBeUndefined();
+  });
+
   it('an out-of-range compare is ignored', () => {
     const d = run('?range=12m&compare=3');
     expect(d.explicit.compare).toBeUndefined();

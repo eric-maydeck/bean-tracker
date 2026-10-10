@@ -33,8 +33,8 @@ export const DEFAULTS: Required<InsightsUrlState> = {
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
-// have fixed depths; YTD and calendar years reach back to the first brew year
-// (`years` is contiguous from it); all time has nothing before it.
+// have fixed depths; YTD and calendar years offer each earlier year that has
+// brews (`brewYears`), n = years back; all time has nothing before it.
 const ROLLING_COMPARE: Record<string, string[]> = {
   '1w': ['Previous week', ...[2, 3, 4].map((n) => `${n} weeks ago`)],
   '1m': ['Previous month', ...[2, 3, 4, 5, 6].map((n) => `${n} months ago`)],
@@ -43,26 +43,31 @@ const ROLLING_COMPARE: Record<string, string[]> = {
   '12m': ['Previous 12 months', '2 years ago'],
   '3y': ['Previous 3 years']
 };
-export function compareOptions(range: string, years: readonly number[]): { n: number; label: string }[] {
+export function compareOptions(
+  range: string, years: readonly number[], brewYears: readonly number[] = years
+): { n: number; label: string }[] {
   if (range in ROLLING_COMPARE) return ROLLING_COMPARE[range].map((label, i) => ({ n: i + 1, label }));
   if (range === 'all') return [];
   const ytd = range === 'ytd';
   const year = ytd ? years[years.length - 1] : Number(range);
-  return years
+  return [...brewYears]
     .filter((y) => y < year)
     .reverse()
-    .map((y, i) => ({ n: i + 1, label: ytd ? `${y} YTD` : String(y) }));
+    .map((y) => ({ n: year - y, label: ytd ? `${y} YTD` : String(y) }));
 }
 
-// `years`: the calendar years on offer (first brew year → this year).
-export function parseInsightsUrl(p: URLSearchParams, years: readonly number[]): InsightsUrlState {
+// `years`: the calendar years on offer (first brew year → this year);
+// `brewYears`: the ones that have brews (defaults to all of them).
+export function parseInsightsUrl(
+  p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years
+): InsightsUrlState {
   const range = pickOne(p, 'range', [...RANGES, ...years.map(String)]);
   const c = p.get('compare');
   const n = c !== null && /^\d+$/.test(c) ? Number(c) : NaN;
-  const max = compareOptions(range ?? DEFAULTS.range, years).length;
+  const ok = n === 0 || compareOptions(range ?? DEFAULTS.range, years, brewYears).some((o) => o.n === n);
   return {
     range,
-    compare: n <= max ? n : undefined, // NaN fails too
+    compare: ok ? n : undefined,
     ratings: pickOne(p, 'ratings', RATINGS),
     avg: pickOne(p, 'avg', AVGS)
   };
