@@ -1,0 +1,64 @@
+import type { Ratings, Avg } from '$lib/insightsUrl';
+
+// Ratings before this date were ~3× as scattered (calibration period), so
+// "Settled" (the default) leaves them out of every rating-based stat.
+export const RATINGS_SETTLED_FROM = '2026-06-01';
+// Shrinkage strength for adjusted means, in bags.
+export const ADJUSTED_K = 5;
+export const FEW_BAGS = 3;
+
+export type Rated = { coffeeId: number | null; rating: number | null; localDate: string };
+
+export const countsForRating = (b: Rated, ratings: Ratings): boolean =>
+  b.rating !== null && (ratings === 'all' || b.localDate >= RATINGS_SETTLED_FROM);
+
+export interface RatedGroup {
+  label: string;
+  mean: number; // mean of the group's bag means
+  adjusted: number;
+  bags: number;
+  brews: number;
+  fewBags: boolean;
+}
+
+// Bag-weighted: each bag's mean rating is one point, so 40 brews of one bag
+// don't outvote five bags. adjusted = (bags × groupMean + K × overallMean) / (bags + K).
+// ponytail: brews with no linked coffee are skipped (every prod bean is linked).
+export function ratedGroups<T extends Rated>(
+  brews: readonly T[],
+  key: (b: T) => string | null,
+  ratings: Ratings,
+  avg: Avg
+): RatedGroup[] {
+  const perBag = new Map<string, { label: string; sum: number; n: number }>();
+  for (const b of brews) {
+    const label = key(b);
+    if (label === null || b.coffeeId === null || !countsForRating(b, ratings)) continue;
+    const k = `${label}\u0000${b.coffeeId}`;
+    const p = perBag.get(k) ?? { label, sum: 0, n: 0 };
+    p.sum += b.rating!;
+    p.n += 1;
+    perBag.set(k, p);
+  }
+  const points = [...perBag.values()];
+  if (!points.length) return [];
+  const overall = points.reduce((s, p) => s + p.sum / p.n, 0) / points.length;
+  const groups = new Map<string, { sum: number; bags: number; brews: number }>();
+  for (const p of points) {
+    const g = groups.get(p.label) ?? { sum: 0, bags: 0, brews: 0 };
+    g.sum += p.sum / p.n;
+    g.bags += 1;
+    g.brews += p.n;
+    groups.set(p.label, g);
+  }
+  return [...groups]
+    .map(([label, g]) => ({
+      label,
+      mean: g.sum / g.bags,
+      adjusted: (g.sum + ADJUSTED_K * overall) / (g.bags + ADJUSTED_K),
+      bags: g.bags,
+      brews: g.brews,
+      fewBags: g.bags < FEW_BAGS
+    }))
+    .sort((a, b) => (avg === 'adjusted' ? b.adjusted - a.adjusted : b.mean - a.mean));
+}
