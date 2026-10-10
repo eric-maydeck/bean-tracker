@@ -124,13 +124,16 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
   });
 
   const beanById = new Map(beans.map((b) => [b.id, b]));
+  const methodIds = new Set(methods.map((m) => m.id));
+  const millIds = new Set(grinders.map((g) => g.id));
+  const known = (ids: Set<string>, v: unknown) => { const id = text(v); return id && ids.has(id) ? id : null; };
   const waterName = new Map(waters.map((w) => [w.id, w.name]));
   const brews: ParsedBrew[] = [...list(main.BREWS), ...extraBrews].flatMap((br) => {
     const bcUuid = uuid(br);
     const bcCreatedAt = created(br);
     if (!bcUuid || !bcCreatedAt) return [];
-    const beanId = text(br.bean);
-    const bean = beanId ? beanById.get(beanId) : undefined;
+    const bean = beanById.get(text(br.bean) ?? '');
+    const beanId = bean ? bean.id : null; // unparsed parents would break the FK
     const dose = num(br.grind_weight);
     const waterAmount = num(br.brew_quantity);
     const beverage = num(br.brew_beverage_quantity);
@@ -140,7 +143,7 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
     const knownWater = waterId && waterName.has(waterId) ? waterId : null;
     const toolIds = Array.isArray(br.method_of_preparation_tools) ? br.method_of_preparation_tools : [];
     return [{
-      bcUuid, bcCreatedAt, beanId, preparationId: text(br.method_of_preparation), millId: text(br.mill),
+      bcUuid, bcCreatedAt, beanId, preparationId: known(methodIds, br.method_of_preparation), millId: known(millIds, br.mill),
       grindSetting: text(br.grind_size), groundCoffeeG: dose, brewTemperature: num(br.brew_temperature),
       beanType: bean?.name ?? null, grindSpeedRpm: num(br.mill_speed), grindTime: text(br.mill_timer),
       profile: text(br.pressure_profile),
