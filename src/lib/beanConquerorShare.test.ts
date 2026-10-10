@@ -42,6 +42,11 @@ const roastLevels: RoastLevelRow[] = [
   { roast_level: 'Dark', degrees_of_roast: 5.0 }
 ];
 
+// The share URL carries raw base64, as Bean Conqueror's own share links do;
+// URLSearchParams reads its '+' as a space, so put them back like Bean
+// Conqueror's intent handler does (userBeanJSON.replace(/ /g, '+')).
+const shareBytes = (base64: string) => Buffer.from(base64.replace(/ /g, '+'), 'base64');
+
 describe('buildShareUrl', () => {
   it('produces a beanconqueror.com URL with chunked shareUserBean params', async () => {
     const url = await buildShareUrl(sampleCoffee(), roastLevels);
@@ -61,7 +66,7 @@ describe('buildShareUrl', () => {
       if (part == null) break;
       base64 += part;
     }
-    const bytes = Buffer.from(base64, 'base64');
+    const bytes = shareBytes(base64);
     const decoded = BeanProto.decode(bytes) as unknown as {
       name: string;
       roaster: string;
@@ -135,7 +140,7 @@ describe('buildShareUrl', () => {
       base64 += part;
     }
 
-    const decoded = ShippedBeanProto.decode(Buffer.from(base64, 'base64')) as unknown as {
+    const decoded = ShippedBeanProto.decode(shareBytes(base64)) as unknown as {
       name: string;
       roaster: string;
       weight: number;
@@ -151,6 +156,20 @@ describe('buildShareUrl', () => {
     expect(decoded.roast_range).toBe(5);
   });
 
+  it('sets beanMix to Blend when the name says blend (any case), else Single Origin', async () => {
+    const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
+    const BeanProto = root.lookupType('beanconqueror.BeanProto');
+    const mixOf = async (coffee_name: string) => {
+      const query = new URL(await buildShareUrl(sampleCoffee({ coffee_name }), roastLevels)).searchParams;
+      let base64 = '';
+      for (let i = 0; query.get(`shareUserBean${i}`) != null; i++) base64 += query.get(`shareUserBean${i}`);
+      return (BeanProto.decode(shareBytes(base64)) as unknown as { beanMix: number }).beanMix;
+    };
+    expect(await mixOf('Holiday BLEND No. 2')).toBe(2);
+    expect(await mixOf('Espresso blend')).toBe(2);
+    expect(await mixOf('Ethiopia Guji')).toBe(1);
+  });
+
   it('maps roast_level to roast_range via the matching roast_levels.degrees_of_roast entry', async () => {
     const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
     const BeanProto = root.lookupType('beanconqueror.BeanProto');
@@ -162,7 +181,7 @@ describe('buildShareUrl', () => {
       if (part == null) break;
       base64 += part;
     }
-    const decoded = BeanProto.decode(Buffer.from(base64, 'base64')) as unknown as { roast_range: number };
+    const decoded = BeanProto.decode(shareBytes(base64)) as unknown as { roast_range: number };
     expect(decoded.roast_range).toBe(5);
   });
 
@@ -182,7 +201,7 @@ describe('buildShareUrl', () => {
       if (part == null) break;
       base64 += part;
     }
-    const decoded = BeanProto.decode(Buffer.from(base64, 'base64')) as unknown as { roast_range: number };
+    const decoded = BeanProto.decode(shareBytes(base64)) as unknown as { roast_range: number };
     expect(decoded.roast_range).toBe(2);
   });
 });

@@ -92,6 +92,8 @@ export async function buildShareUrl(coffee: CoffeeRow, roastLevels: RoastLevelRo
     weight: coffee.amount_g != null ? Math.round(coffee.amount_g) : undefined,
     cost: coffee.cost != null ? Math.round(coffee.cost) : undefined,
     decaffeinated: coffee.decaf === 1,
+    // BeanMix: BLEND (2) when the name says so, else SINGLE_ORIGIN (1).
+    beanMix: /blend/i.test(coffee.coffee_name) ? 2 : 1,
     roast_range: degreeOfRoastFor(coffee.roast_level, roastLevels),
     // Always Filter (BeanRoastingType.FILTER): every coffee here is brewed as filter.
     bean_roasting_type: 1,
