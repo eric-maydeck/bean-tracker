@@ -20,24 +20,49 @@ export type Avg = (typeof AVGS)[number];
 
 export interface InsightsUrlState {
   range?: string; // a RANGES value or a calendar year ("2026")
-  compare?: boolean;
+  compare?: number; // periods back; 0 = off
   ratings?: Ratings;
   avg?: Avg;
 }
 
 export const DEFAULTS: Required<InsightsUrlState> = {
   range: '12m',
-  compare: false,
+  compare: 0,
   ratings: 'settled',
   avg: 'adjusted'
 };
 
+// Same-length windows to compare a range with, n periods back. Rolling ranges
+// have fixed depths; YTD and calendar years reach back to the first brew year
+// (`years` is contiguous from it); all time has nothing before it.
+const ROLLING_COMPARE: Record<string, string[]> = {
+  '1w': ['Previous week', ...[2, 3, 4].map((n) => `${n} weeks ago`)],
+  '1m': ['Previous month', ...[2, 3, 4, 5, 6].map((n) => `${n} months ago`)],
+  '3m': ['Previous 3 months', ...[2, 3, 4].map((n) => `${n * 3}–${n * 3 + 3} months ago`)],
+  '6m': ['Previous 6 months', '12–18 months ago'],
+  '12m': ['Previous 12 months', '2 years ago'],
+  '3y': ['Previous 3 years']
+};
+export function compareOptions(range: string, years: readonly number[]): { n: number; label: string }[] {
+  if (range in ROLLING_COMPARE) return ROLLING_COMPARE[range].map((label, i) => ({ n: i + 1, label }));
+  if (range === 'all') return [];
+  const ytd = range === 'ytd';
+  const year = ytd ? years[years.length - 1] : Number(range);
+  return years
+    .filter((y) => y < year)
+    .reverse()
+    .map((y, i) => ({ n: i + 1, label: ytd ? `${y} YTD` : String(y) }));
+}
+
 // `years`: the calendar years on offer (first brew year → this year).
 export function parseInsightsUrl(p: URLSearchParams, years: readonly number[]): InsightsUrlState {
-  const compare = pickOne(p, 'compare', ['1', '0'] as const);
+  const range = pickOne(p, 'range', [...RANGES, ...years.map(String)]);
+  const c = p.get('compare');
+  const n = c !== null && /^\d+$/.test(c) ? Number(c) : NaN;
+  const max = compareOptions(range ?? DEFAULTS.range, years).length;
   return {
-    range: pickOne(p, 'range', [...RANGES, ...years.map(String)]),
-    compare: compare === undefined ? undefined : compare === '1',
+    range,
+    compare: n <= max ? n : undefined, // NaN fails too
     ratings: pickOne(p, 'ratings', RATINGS),
     avg: pickOne(p, 'avg', AVGS)
   };
@@ -46,7 +71,7 @@ export function parseInsightsUrl(p: URLSearchParams, years: readonly number[]): 
 export function insightsParams(s: InsightsUrlState): URLSearchParams {
   const p = new URLSearchParams();
   if (s.range) p.set('range', s.range);
-  if (s.compare !== undefined) p.set('compare', s.compare ? '1' : '0');
+  if (s.compare !== undefined) p.set('compare', String(s.compare));
   if (s.ratings) p.set('ratings', s.ratings);
   if (s.avg) p.set('avg', s.avg);
   return p;

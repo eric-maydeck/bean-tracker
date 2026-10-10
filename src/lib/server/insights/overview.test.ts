@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { overviewTiles, tileDelta, compareTiles } from './overview';
+import { overviewTiles, tileDelta, compareTiles, TILE_KIND } from './overview';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -30,8 +30,27 @@ describe('overviewTiles', () => {
 
   it('aggregates each tile over the period', () =>
     expect(overviewTiles(brews, bags, SEPT, 'all')).toEqual({
-      brews: 2, grams: 31, spend: 25, avgRating: 8, rated: 1, bagsFinished: 1, costPerBrew: 1.5
+      brews: 2, grams: 31, spend: 25, avgRating: 8, rated: 1, bagsFinished: 1, costPerBrew: 1.5,
+      brewsPerDay: 2 / 30, avgDose: 15.5, avgRestDays: null, avgBrewTime: null
     }));
+
+  it('averages skip missing values (dose 0 is missing)', () => {
+    const t = overviewTiles(
+      [
+        brew({ dose: 18, restDays: 10, brewTimeSeconds: 180 }),
+        brew({ dose: 0, restDays: 20, brewTimeSeconds: null }),
+        brew({ dose: null, restDays: null, brewTimeSeconds: 200 })
+      ],
+      [], SEPT, 'all'
+    );
+    expect(t).toMatchObject({ avgDose: 18, avgRestDays: 15, avgBrewTime: 190, brewsPerDay: 3 / 30 });
+  });
+
+  it('brews per day over all time counts from the first brew', () =>
+    expect(overviewTiles(brews, [], { start: null, end: '2026-10-09' }, 'all').brewsPerDay).toBe(4 / 40));
+
+  it('brews per day stops at today in a period that runs past it', () =>
+    expect(overviewTiles(brews, [], SEPT, 'all', '2026-09-10').brewsPerDay).toBe(2 / 10));
 
   it('all time has no start', () => expect(overviewTiles(brews, bags, { start: null, end: '2026-10-09' }, 'all').brews).toBe(4));
 
@@ -44,8 +63,15 @@ describe('overviewTiles', () => {
 
   it('an empty period is zeros and nulls', () =>
     expect(overviewTiles([], [], SEPT, 'settled')).toEqual({
-      brews: 0, grams: 0, spend: 0, avgRating: null, rated: 0, bagsFinished: 0, costPerBrew: null
+      brews: 0, grams: 0, spend: 0, avgRating: null, rated: 0, bagsFinished: 0, costPerBrew: null,
+      brewsPerDay: null, avgDose: null, avgRestDays: null, avgBrewTime: null
     }));
+
+  it('every tile has a kind', () => {
+    expect(Object.keys(TILE_KIND).sort()).toEqual(Object.keys(overviewTiles([], [], SEPT, 'all')).sort());
+    expect(Object.entries(TILE_KIND).filter(([, k]) => k === 'total').map(([t]) => t).sort())
+      .toEqual(['bagsFinished', 'brews', 'grams', 'rated', 'spend']);
+  });
 });
 
 describe('tileDelta', () => {
@@ -60,10 +86,16 @@ describe('tileDelta', () => {
     expect(tileDelta(null, 5)).toBeNull();
   });
   it('compareTiles covers every tile', () => {
-    const t = { brews: 2, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1 };
-    const d = compareTiles(t, { ...t, brews: 1 });
+    const t = {
+      brews: 2, grams: 30, spend: 0, avgRating: null, rated: 1, bagsFinished: 1, costPerBrew: 1,
+      brewsPerDay: 0.5, avgDose: 15, avgRestDays: null, avgBrewTime: 180
+    };
+    const d = compareTiles(t, { ...t, brews: 1, avgDose: 12, avgBrewTime: null });
     expect(Object.keys(d).sort()).toEqual(Object.keys(t).sort());
     expect(d.brews).toEqual({ abs: 1, pct: 100 });
     expect(d.spend).toBeNull();
+    expect(d.avgDose).toEqual({ abs: 3, pct: 25 });
+    expect(d.avgBrewTime).toBeNull();
+    expect(d.avgRestDays).toBeNull();
   });
 });

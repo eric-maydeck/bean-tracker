@@ -70,7 +70,7 @@
     </select>
   </label>
   <div class="tab-group tab-group-compact">
-    <button aria-pressed={s.compare} onclick={() => choose({ compare: !s.compare })}>Compare</button>
+    <button aria-pressed={s.compare > 0} onclick={() => choose({ compare: s.compare ? 0 : 1 })}>Compare</button>
   </div>
   <div class="tab-group tab-group-compact" role="group" aria-label="Ratings">
     <button aria-pressed={s.ratings === 'settled'} onclick={() => choose({ ratings: 'settled' })}>Settled ratings</button>

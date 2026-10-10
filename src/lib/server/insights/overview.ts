@@ -1,6 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
-import { inPeriod, type Period } from './time';
+import { inPeriod, daysBetween, type Period } from './time';
 import { countsForRating } from './ratings';
 
 export interface OverviewTiles {
@@ -11,15 +11,41 @@ export interface OverviewTiles {
   rated: number;
   bagsFinished: number;
   costPerBrew: number | null;
+  brewsPerDay: number | null;
+  avgDose: number | null; // g
+  avgRestDays: number | null;
+  avgBrewTime: number | null; // seconds
 }
 
+// A total sums over the period; an average doesn't grow with its length.
+export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
+  brews: 'total',
+  grams: 'total',
+  spend: 'total',
+  bagsFinished: 'total',
+  rated: 'total',
+  avgRating: 'average',
+  costPerBrew: 'average',
+  brewsPerDay: 'average',
+  avgDose: 'average',
+  avgRestDays: 'average',
+  avgBrewTime: 'average'
+};
+
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+const present = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null);
 
 // Spend = bags bought (roast date) in the period; subscription deliveries are
 // already logged as bags. Bags finished = archived bags whose last brew is in it.
-export function overviewTiles(brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings): OverviewTiles {
+// Brews per day divides by the period's days up to `today` (a calendar year
+// still running isn't diluted by its future); all time starts at the first brew.
+export function overviewTiles(
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings, today = p.end
+): OverviewTiles {
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
   const rated = inP.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
+  const first = p.start ?? inP.reduce((m, b) => (b.localDate < m ? b.localDate : m), p.end);
+  const last = today < p.end ? today : p.end;
   return {
     brews: inP.length,
     grams: inP.reduce((s, b) => s + (b.dose ?? 0), 0),
@@ -27,7 +53,11 @@ export function overviewTiles(brews: readonly BrewFact[], bags: readonly BagFact
     avgRating: mean(rated),
     rated: rated.length,
     bagsFinished: bags.filter((g) => g.status === 'archive' && g.lastBrew !== null && inPeriod(g.lastBrew, p)).length,
-    costPerBrew: mean(inP.flatMap((b) => (b.costPerBrew === null ? [] : [b.costPerBrew])))
+    costPerBrew: mean(present(inP.map((b) => b.costPerBrew))),
+    brewsPerDay: inP.length ? inP.length / (daysBetween(first, last) + 1) : null,
+    avgDose: mean(inP.flatMap((b) => (b.dose ? [b.dose] : []))),
+    avgRestDays: mean(present(inP.map((b) => b.restDays))),
+    avgBrewTime: mean(present(inP.map((b) => b.brewTimeSeconds)))
   };
 }
 

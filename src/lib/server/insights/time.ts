@@ -45,13 +45,16 @@ export function periodBounds(range: string, today: string): Period {
   return { start: `${range}-01-01`, end: `${range}-12-31` };
 }
 
-// The same-length window just before `p`; the year before for a calendar
-// year; the same span of last year for YTD; none for all time.
-export function previousPeriod(range: string, p: Period): Period | null {
+// The same-length window `n` periods before `p`; n years back for a calendar
+// year; the same span n years back for YTD; none for all time. Rolling windows
+// step back one at a time so they stay back to back across month-end clamping.
+export function previousPeriod(range: string, p: Period, n = 1): Period | null {
   if (p.start === null) return null;
-  if (range === 'ytd') return { start: `${Number(p.start.slice(0, 4)) - 1}-01-01`, end: addMonths(p.end, -12) };
-  if (/^\d{4}$/.test(range)) return periodBounds(String(Number(range) - 1), p.end);
-  return periodBounds(range, addDays(p.start, -1));
+  if (range === 'ytd') return { start: `${Number(p.start.slice(0, 4)) - n}-01-01`, end: addMonths(p.end, -12 * n) };
+  if (/^\d{4}$/.test(range)) return periodBounds(String(Number(range) - n), p.end);
+  let q = p;
+  for (let i = 0; i < n; i++) q = periodBounds(range, addDays(q.start!, -1));
+  return q;
 }
 
 export const inPeriod = (date: string, p: Period): boolean => (p.start === null || date >= p.start) && date <= p.end;

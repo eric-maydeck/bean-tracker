@@ -46,6 +46,29 @@ describe('periodBounds and previousPeriod', () => {
     expect(previousPeriod('ytd', periodBounds('ytd', '2028-02-29'))).toEqual({ start: '2027-01-01', end: '2027-02-28' }));
 });
 
+describe('previousPeriod n periods back', () => {
+  it.each([
+    ['1w', 2, '2026-09-19', '2026-09-25'],
+    ['1w', 4, '2026-09-05', '2026-09-11'],
+    ['1m', 2, '2026-07-12', '2026-08-10'],
+    ['3m', 2, '2026-01-10', '2026-04-09'],
+    ['12m', 2, '2023-10-10', '2024-10-09'],
+    ['ytd', 2, '2024-01-01', '2024-10-09'],
+    ['2025', 2, '2023-01-01', '2023-12-31']
+  ])('%s n=%i', (range, n, start, end) =>
+    expect(previousPeriod(range, periodBounds(range, T), n)).toEqual({ start, end }));
+  it('n=1 is the default', () =>
+    expect(previousPeriod('3m', periodBounds('3m', T), 1)).toEqual(previousPeriod('3m', periodBounds('3m', T))));
+  it('month windows stay back to back across month-end clamping', () => {
+    const p = periodBounds('3m', '2026-05-31'); // 2026-03-01..05-31
+    expect(previousPeriod('3m', p, 1)).toEqual({ start: '2025-11-29', end: '2026-02-28' });
+    expect(previousPeriod('3m', p, 2)).toEqual({ start: '2025-08-29', end: '2025-11-28' });
+  });
+  it('ytd on a leap day, two years back, ends Feb 28', () =>
+    expect(previousPeriod('ytd', periodBounds('ytd', '2028-02-29'), 2)).toEqual({ start: '2026-01-01', end: '2026-02-28' }));
+  it('all has none at any depth', () => expect(previousPeriod('all', periodBounds('all', T), 2)).toBeNull());
+});
+
 describe('inPeriod', () => {
   const p = { start: '2026-09-01', end: '2026-09-30' };
   it('is inclusive at both ends', () => {
