@@ -5,10 +5,13 @@ import {
   importBeanConquerorData,
   getUnmatchedBeanConquerorBeans,
   countUnmatchedBeanConquerorBeans,
-  dismissBeanConquerorBean
+  dismissBeanConquerorBean,
+  BeanConquerorImportError
 } from './beanconqueror';
 import { createCoffee } from './coffees';
 import { createDb } from './db';
+
+const BASE_BREW = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
 
 async function buildWorkbook(sheets: Record<string, { headers: string[]; rows: unknown[][] }>): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
@@ -289,7 +292,7 @@ describe('importBeanConquerorData', () => {
 
   it('diffs brews by the synthetic (bc_created_at, bean_id) identity, updating in place on a repeat', () => {
     const db = createDb(':memory:');
-    const brew = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
+    const brew = BASE_BREW;
     importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
     importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [{ ...brew, rating: 9 }] });
     const rows = db.prepare('SELECT rating FROM beanconqueror_brews').all() as { rating: number }[];
@@ -300,7 +303,7 @@ describe('importBeanConquerorData', () => {
   it('stores a 0 rating as unrated (Bean Conqueror\'s default, shown as no rating there)', () => {
     const db = createDb(':memory:');
     const bean = { id: 'b1', name: 'Bean', roaster: null, roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: 0, bcCreatedAt: null, bcArchived: false };
-    const brew = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: 'b1', preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 0, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
+    const brew = { ...BASE_BREW, beanId: 'b1', rating: 0 };
     importBeanConquerorData(db, { beans: [bean], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
     expect(db.prepare('SELECT rating FROM beanconqueror_beans').get()).toEqual({ rating: null });
     expect(db.prepare('SELECT rating FROM beanconqueror_brews').get()).toEqual({ rating: null });
@@ -656,5 +659,63 @@ describe('dismissBeanConquerorBean', () => {
     const row = db.prepare('SELECT name, dismissed_at FROM beanconqueror_beans WHERE id = ?').get('b1') as { name: string; dismissed_at: string };
     expect(row.name).toBe('Bean');
     expect(row.dismissed_at).toBeTruthy();
+  });
+});
+
+const NOTHING = { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [] };
+type BrewRow = { id: number; bc_uuid: string | null; rating: number | null; water_id: string | null; water: string | null; best_brew: number; favourite: number; vessel_name: string | null; has_flow_profile: number; first_drip_time: string | null; bc_created_at: string };
+const brewRows = (db: ReturnType<typeof createDb>) =>
+  db.prepare(`SELECT id, bc_uuid, rating, water_id, water, best_brew, favourite, vessel_name, has_flow_profile, first_drip_time, bc_created_at FROM beanconqueror_brews ORDER BY id`).all() as BrewRow[];
+
+describe('importBeanConquerorData: brew identity by bc_uuid', () => {
+  it('a UUID brew claims the legacy (xlsx) row with the same key and backfills bc_uuid', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...NOTHING, brews: [BASE_BREW] });
+    const [legacy] = brewRows(db);
+    importBeanConquerorData(db, { ...NOTHING, brews: [{ ...BASE_BREW, bcUuid: 'u1', rating: 8 }] });
+    expect(brewRows(db)).toMatchObject([{ id: legacy.id, bc_uuid: 'u1', rating: 8 }]);
+  });
+
+  it('keeps two brews with the same second and bean as two rows (one claims, one inserts)', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...NOTHING, brews: [BASE_BREW] }); // the xlsx merged them into one
+    importBeanConquerorData(db, {
+      ...NOTHING,
+      brews: [{ ...BASE_BREW, bcUuid: 'u1' }, { ...BASE_BREW, bcUuid: 'u2', rating: 9 }]
+    });
+    expect(brewRows(db).map((r) => [r.bc_uuid, r.rating])).toEqual([['u1', 7], ['u2', 9]]);
+  });
+
+  it('identifies a brew by bc_uuid on re-import, even if its timestamp changed', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...NOTHING, brews: [{ ...BASE_BREW, bcUuid: 'u1' }] });
+    importBeanConquerorData(db, { ...NOTHING, brews: [{ ...BASE_BREW, bcUuid: 'u1', bcCreatedAt: '2026-06-01T12:05:00.000Z' }] });
+    expect(brewRows(db)).toMatchObject([{ bc_uuid: 'u1', bc_created_at: '2026-06-01T12:05:00.000Z' }]);
+  });
+
+  it('refuses a UUID-less (xlsx) import once brews carry UUIDs, changing nothing', () => {
+    const db = createDb(':memory:');
+    importBeanConquerorData(db, { ...NOTHING, brews: [{ ...BASE_BREW, bcUuid: 'u1' }] });
+    expect(() => importBeanConquerorData(db, { ...NOTHING, brews: [{ ...BASE_BREW, rating: 2 }] })).toThrow(
+      BeanConquerorImportError
+    );
+    expect(brewRows(db)).toMatchObject([{ bc_uuid: 'u1', rating: 7 }]);
+  });
+});
+
+describe('importBeanConquerorData: waters and new brew fields', () => {
+  const water = { id: 'w1', name: 'Lotus - Mg/K 60/10', calcium: 0, magnesium: 14.6, sodium: 0, potassium: 7.8, chloride: 42.5, sulfate: 0, tds: 0, storedGh: 60, storedGhType: 'PPM', storedKh: 10, storedKhType: 'PPM', type: 'CUSTOM_WATER', note: 'Mg 6, K 2', bcArchived: false };
+
+  it('upserts waters and stores water_id, best_brew, favourite, vessel, flow profile, first drip', () => {
+    const db = createDb(':memory:');
+    const brew = { ...BASE_BREW, bcUuid: 'u1', water: 'Lotus - Mg/K 60/10', waterId: 'w1', bestBrew: true, favourite: true, vesselName: 'Carafe', hasFlowProfile: true, firstDripTime: '12' };
+    importBeanConquerorData(db, { ...NOTHING, waters: [water], brews: [brew] });
+    importBeanConquerorData(db, { ...NOTHING, waters: [{ ...water, name: 'Renamed' }], brews: [{ ...brew, water: 'Renamed' }] });
+    expect(db.prepare(`SELECT id, name, magnesium, stored_gh, stored_gh_type, stored_kh, bc_archived FROM beanconqueror_waters`).all()).toEqual([
+      { id: 'w1', name: 'Renamed', magnesium: 14.6, stored_gh: 60, stored_gh_type: 'PPM', stored_kh: 10, bc_archived: 0 }
+    ]);
+    expect(brewRows(db)).toMatchObject([
+      { bc_uuid: 'u1', water_id: 'w1', water: 'Renamed', best_brew: 1, favourite: 1, vessel_name: 'Carafe', has_flow_profile: 1, first_drip_time: '12' }
+    ]);
   });
 });

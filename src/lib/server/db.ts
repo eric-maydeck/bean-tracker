@@ -70,6 +70,20 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');
   ensureColumn(db, 'subscriptions', 'paused', 'INTEGER NOT NULL DEFAULT 0');
+  // Bean Conqueror JSON import (spec 2026-10-09): brews get their UUID and new fields.
+  ensureColumn(db, 'beanconqueror_brews', 'water_id', 'TEXT REFERENCES beanconqueror_waters(id)');
+  ensureColumn(db, 'beanconqueror_brews', 'best_brew', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(db, 'beanconqueror_brews', 'favourite', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(db, 'beanconqueror_brews', 'vessel_name', 'TEXT');
+  ensureColumn(db, 'beanconqueror_brews', 'has_flow_profile', 'INTEGER NOT NULL DEFAULT 0');
+  ensureColumn(db, 'beanconqueror_brews', 'bc_uuid', 'TEXT');
+  // Brews are identified by bc_uuid. The old (bc_created_at, bean) key only
+  // identifies legacy xlsx rows (no UUID yet): two real brews share one
+  // (same second, same bean), so it can't be unique once both are imported.
+  db.exec(`DROP INDEX IF EXISTS beanconqueror_brews_identity;
+    CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_brews_uuid ON beanconqueror_brews(bc_uuid);
+    CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_brews_legacy_identity
+      ON beanconqueror_brews (bc_created_at, COALESCE(bean_id, '')) WHERE bc_uuid IS NULL;`);
   // Bean Conqueror bean → coffee link (one-to-one). SQLite allows many NULLs
   // in a unique index. Backfill only the moment the column is added, so a
   // later Unlink survives restarts.

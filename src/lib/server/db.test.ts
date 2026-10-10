@@ -21,6 +21,7 @@ describe('createDb', () => {
       'beanconqueror_brews',
       'beanconqueror_grinders',
       'beanconqueror_methods',
+      'beanconqueror_waters',
       'coffees',
       'image_copies',
       'image_fills',
@@ -264,5 +265,42 @@ describe('image fill recompute', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('Bean Conqueror JSON import schema', () => {
+  it('upgrades a pre-JSON-import database: waters table, new brew columns, UUID indexes', () => {
+    const db = new DatabaseSync(':memory:');
+    db.exec(`PRAGMA foreign_keys = ON`);
+    // The brews table and identity index exactly as prod had them before this change.
+    db.exec(`
+      CREATE TABLE beanconqueror_brews (
+        id INTEGER PRIMARY KEY, bc_created_at TEXT NOT NULL, bean_id TEXT, preparation_id TEXT,
+        mill_id TEXT, grind_setting TEXT, ground_coffee_g REAL, brew_temperature REAL, bean_type TEXT,
+        grind_speed_rpm REAL, grind_time TEXT, profile TEXT, preparation_tools TEXT,
+        temperature_time TEXT, brew_time TEXT, bloom_time TEXT, first_drip_time TEXT,
+        water_amount_g REAL, coffee_type TEXT, coffee_concentration TEXT, rating REAL, notes TEXT,
+        beverage_quantity REAL, tds_percent REAL, extraction_yield_percent REAL, brew_ratio TEXT,
+        bean_age_days INTEGER, bc_archived INTEGER NOT NULL DEFAULT 0, water TEXT,
+        imported_at TEXT NOT NULL
+      );
+      CREATE UNIQUE INDEX beanconqueror_brews_identity
+        ON beanconqueror_brews (bc_created_at, COALESCE(bean_id, ''));
+    `);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, imported_at) VALUES ('2026-06-01T12:00:00.000Z', 'x')`).run();
+    applySchema(db);
+    const cols = (db.prepare(`PRAGMA table_info(beanconqueror_brews)`).all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toEqual(
+      expect.arrayContaining(['bc_uuid', 'water_id', 'best_brew', 'favourite', 'vessel_name', 'has_flow_profile'])
+    );
+    const indexes = (
+      db
+        .prepare(`SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'beanconqueror_brews'
+                  AND name NOT LIKE 'sqlite_%' ORDER BY name`)
+        .all() as { name: string }[]
+    ).map((r) => r.name);
+    expect(indexes).toEqual(['beanconqueror_brews_legacy_identity', 'beanconqueror_brews_uuid']);
+    expect(db.prepare(`SELECT best_brew, has_flow_profile FROM beanconqueror_brews`).get()).toEqual({ best_brew: 0, has_flow_profile: 0 });
+    applySchema(db); // idempotent on the next boot
   });
 });

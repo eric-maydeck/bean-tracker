@@ -188,6 +188,30 @@ CREATE TABLE IF NOT EXISTS beanconqueror_grinders (
   imported_at TEXT NOT NULL
 );
 
+-- Bean Conqueror water profiles (JSON import). Minerals in mg/L as Bean
+-- Conqueror stores them. stored_gh/stored_kh are its own general_hardness /
+-- total_alkalinity (+ unit) and only a cross-check: src/lib/water.ts derives
+-- GH/KH from the minerals and that wins.
+CREATE TABLE IF NOT EXISTS beanconqueror_waters (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  calcium REAL,
+  magnesium REAL,
+  sodium REAL,
+  potassium REAL,
+  chloride REAL,
+  sulfate REAL,
+  tds REAL,
+  stored_gh REAL,
+  stored_gh_type TEXT,
+  stored_kh REAL,
+  stored_kh_type TEXT,
+  type TEXT,
+  note TEXT,
+  bc_archived INTEGER NOT NULL DEFAULT 0,
+  imported_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS beanconqueror_brews (
   id INTEGER PRIMARY KEY,
   bc_created_at TEXT NOT NULL,
@@ -218,13 +242,14 @@ CREATE TABLE IF NOT EXISTS beanconqueror_brews (
   bean_age_days INTEGER,
   bc_archived INTEGER NOT NULL DEFAULT 0,
   water TEXT,
+  water_id TEXT REFERENCES beanconqueror_waters(id),
+  best_brew INTEGER NOT NULL DEFAULT 0,
+  favourite INTEGER NOT NULL DEFAULT 0,
+  vessel_name TEXT,
+  has_flow_profile INTEGER NOT NULL DEFAULT 0,
+  bc_uuid TEXT,
   imported_at TEXT NOT NULL
 );
-
--- COALESCE(bean_id, '') so NULL-bean_id brews still dedupe by bc_created_at:
--- SQLite's plain UNIQUE(...) treats NULL <> NULL, letting duplicates through otherwise.
-CREATE UNIQUE INDEX IF NOT EXISTS beanconqueror_brews_identity
-ON beanconqueror_brews (bc_created_at, COALESCE(bean_id, ''));
 
 -- Public short links for sharing long, filter-heavy views (see shortLinks.ts
 -- for the TTL/row-cap policy that keeps this table bounded).

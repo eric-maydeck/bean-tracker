@@ -88,9 +88,35 @@ export interface ParsedBrew {
   beanAgeDays: number | null;
   bcArchived: boolean;
   water: string | null;
+  bcUuid?: string;
+  waterId?: string | null;
+  bestBrew?: boolean;
+  favourite?: boolean;
+  vesselName?: string | null;
+  hasFlowProfile?: boolean;
+}
+
+export interface ParsedWater {
+  id: string;
+  name: string;
+  calcium: number | null;
+  magnesium: number | null;
+  sodium: number | null;
+  potassium: number | null;
+  chloride: number | null;
+  sulfate: number | null;
+  tds: number | null;
+  storedGh: number | null;
+  storedGhType: string | null;
+  storedKh: number | null;
+  storedKhType: string | null;
+  type: string | null;
+  note: string | null;
+  bcArchived: boolean;
 }
 
 export interface ParsedBeanConquerorData {
+  waters?: ParsedWater[];
   beans: ParsedBean[];
   beanOrigins: ParsedBeanOrigin[];
   methods: ParsedMethod[];
@@ -376,8 +402,43 @@ export function parseBeanConquerorWorkbook(workbook: ExcelJS.Workbook): ParsedBe
   };
 }
 
+// Thrown for an import that must not run; the /stats action shows the message.
+export class BeanConquerorImportError extends Error {}
+
+// Every column the brew upsert writes, in value order (see brewValues).
+const BREW_COLUMNS = [
+  'bc_created_at', 'bean_id', 'preparation_id', 'mill_id', 'grind_setting', 'ground_coffee_g',
+  'brew_temperature', 'bean_type', 'grind_speed_rpm', 'grind_time', 'profile', 'preparation_tools',
+  'temperature_time', 'brew_time', 'bloom_time', 'first_drip_time', 'water_amount_g', 'coffee_type',
+  'coffee_concentration', 'rating', 'notes', 'beverage_quantity', 'tds_percent',
+  'extraction_yield_percent', 'brew_ratio', 'bean_age_days', 'bc_archived', 'water',
+  'water_id', 'best_brew', 'favourite', 'vessel_name', 'has_flow_profile', 'bc_uuid', 'imported_at'
+];
+
+function brewValues(br: ParsedBrew, now: string) {
+  return [
+    br.bcCreatedAt, br.beanId, br.preparationId, br.millId, br.grindSetting, br.groundCoffeeG,
+    br.brewTemperature, br.beanType, br.grindSpeedRpm, br.grindTime, br.profile, br.preparationTools,
+    br.temperatureTime, br.brewTime, br.bloomTime, br.firstDripTime, br.waterAmountG, br.coffeeType,
+    br.coffeeConcentration, br.rating || null, br.notes, br.beverageQuantity, br.tdsPercent,
+    br.extractionYieldPercent, br.brewRatio, br.beanAgeDays, br.bcArchived ? 1 : 0, br.water,
+    br.waterId ?? null, br.bestBrew ? 1 : 0, br.favourite ? 1 : 0, br.vesselName ?? null,
+    br.hasFlowProfile ? 1 : 0, br.bcUuid ?? null, now
+  ];
+}
+
 export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConquerorData): void {
   const now = new Date().toISOString();
+  // A UUID-less (xlsx) brew can only find legacy rows; once brews carry UUIDs
+  // it would insert duplicates of them.
+  if (
+    parsed.brews.some((b) => !b.bcUuid) &&
+    db.prepare(`SELECT 1 FROM beanconqueror_brews WHERE bc_uuid IS NOT NULL LIMIT 1`).get()
+  ) {
+    throw new BeanConquerorImportError(
+      'This database already has the Bean Conqueror .zip import. Import the .zip export, not the .xlsx.'
+    );
+  }
   db.exec('BEGIN');
   try {
     // Auto-link only considers beans that are new in this import.
@@ -448,36 +509,44 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
       ).run(g.id, g.name, g.notes, g.bcArchived ? 1 : 0, g.bcCreatedAt, now);
     }
 
-    for (const br of parsed.brews) {
+    for (const w of parsed.waters ?? []) {
       db.prepare(
-        `INSERT INTO beanconqueror_brews (
-           bc_created_at, bean_id, preparation_id, mill_id, grind_setting, ground_coffee_g,
-           brew_temperature, bean_type, grind_speed_rpm, grind_time, profile, preparation_tools,
-           temperature_time, brew_time, bloom_time, first_drip_time, water_amount_g, coffee_type,
-           coffee_concentration, rating, notes, beverage_quantity, tds_percent,
-           extraction_yield_percent, brew_ratio, bean_age_days, bc_archived, water, imported_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(bc_created_at, COALESCE(bean_id, '')) DO UPDATE SET
-           preparation_id = excluded.preparation_id, mill_id = excluded.mill_id,
-           grind_setting = excluded.grind_setting, ground_coffee_g = excluded.ground_coffee_g,
-           brew_temperature = excluded.brew_temperature, bean_type = excluded.bean_type,
-           grind_speed_rpm = excluded.grind_speed_rpm, grind_time = excluded.grind_time,
-           profile = excluded.profile, preparation_tools = excluded.preparation_tools,
-           temperature_time = excluded.temperature_time, brew_time = excluded.brew_time,
-           bloom_time = excluded.bloom_time, first_drip_time = excluded.first_drip_time,
-           water_amount_g = excluded.water_amount_g, coffee_type = excluded.coffee_type,
-           coffee_concentration = excluded.coffee_concentration, rating = excluded.rating,
-           notes = excluded.notes, beverage_quantity = excluded.beverage_quantity,
-           tds_percent = excluded.tds_percent, extraction_yield_percent = excluded.extraction_yield_percent,
-           brew_ratio = excluded.brew_ratio, bean_age_days = excluded.bean_age_days,
-           bc_archived = excluded.bc_archived, water = excluded.water, imported_at = excluded.imported_at`
+        `INSERT INTO beanconqueror_waters (
+           id, name, calcium, magnesium, sodium, potassium, chloride, sulfate, tds,
+           stored_gh, stored_gh_type, stored_kh, stored_kh_type, type, note, bc_archived, imported_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           name = excluded.name, calcium = excluded.calcium, magnesium = excluded.magnesium,
+           sodium = excluded.sodium, potassium = excluded.potassium, chloride = excluded.chloride,
+           sulfate = excluded.sulfate, tds = excluded.tds, stored_gh = excluded.stored_gh,
+           stored_gh_type = excluded.stored_gh_type, stored_kh = excluded.stored_kh,
+           stored_kh_type = excluded.stored_kh_type, type = excluded.type, note = excluded.note,
+           bc_archived = excluded.bc_archived, imported_at = excluded.imported_at`
       ).run(
-        br.bcCreatedAt, br.beanId, br.preparationId, br.millId, br.grindSetting, br.groundCoffeeG,
-        br.brewTemperature, br.beanType, br.grindSpeedRpm, br.grindTime, br.profile, br.preparationTools,
-        br.temperatureTime, br.brewTime, br.bloomTime, br.firstDripTime, br.waterAmountG, br.coffeeType,
-        br.coffeeConcentration, br.rating || null, br.notes, br.beverageQuantity, br.tdsPercent,
-        br.extractionYieldPercent, br.brewRatio, br.beanAgeDays, br.bcArchived ? 1 : 0, br.water, now
+        w.id, w.name, w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate, w.tds,
+        w.storedGh, w.storedGhType, w.storedKh, w.storedKhType, w.type, w.note, w.bcArchived ? 1 : 0, now
       );
+    }
+
+    const findByUuid = db.prepare(`SELECT id FROM beanconqueror_brews WHERE bc_uuid = ?`);
+    const findLegacy = db.prepare(
+      `SELECT id FROM beanconqueror_brews
+       WHERE bc_uuid IS NULL AND bc_created_at = ? AND COALESCE(bean_id, '') = COALESCE(?, '')`
+    );
+    const insertBrew = db.prepare(
+      `INSERT INTO beanconqueror_brews (${BREW_COLUMNS.join(', ')}) VALUES (${BREW_COLUMNS.map(() => '?').join(', ')})`
+    );
+    const updateBrew = db.prepare(
+      `UPDATE beanconqueror_brews SET ${BREW_COLUMNS.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`
+    );
+    for (const br of parsed.brews) {
+      // By UUID; else claim the legacy row once (it gets this UUID, so a
+      // second brew with the same key finds nothing and is inserted).
+      const row = ((br.bcUuid ? findByUuid.get(br.bcUuid) : undefined) ?? findLegacy.get(br.bcCreatedAt, br.beanId)) as
+        | { id: number }
+        | undefined;
+      if (row) updateBrew.run(...brewValues(br, now), row.id);
+      else insertBrew.run(...brewValues(br, now));
     }
 
     // The bean upsert above never writes coffee_id, so existing links survive.
