@@ -20,9 +20,20 @@ export type Avg = (typeof AVGS)[number];
 // compare=YYYY-MM-DD..YYYY-MM-DD: a custom window (checked by comparePeriod in time.ts).
 export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
+export const isCustom = (c: unknown): c is string => typeof c === 'string' && CUSTOM_RANGE.test(c);
+
+// Whether a longer or custom compare gives a usable window for a range (first-brew
+// cutoff, a tracked day before the period, end ≤ today). Built server-side by
+// time.ts compareFits; this client-safe module can't import it.
+export type Fits = (range: string, compare: string) => boolean;
+export interface CompareGroup {
+  label: string;
+  options: { value: string; label: string }[];
+}
+
 export interface InsightsUrlState {
   range?: string; // a RANGES value or a calendar year ("2026")
-  compare?: number; // periods back; 0 = off
+  compare?: number | string; // n periods back (0 = off), a longer window ('3m', 'before') or a custom 'YYYY-MM-DD..YYYY-MM-DD'
   ratings?: Ratings;
   avg?: Avg;
 }
@@ -45,7 +56,18 @@ const ROLLING_COMPARE: Record<string, string[]> = {
   '12m': ['Previous 12 months', '2 years ago'],
   '3y': ['Previous 3 years']
 };
-export function compareOptions(
+// Longer windows end the day before the period (time.ts comparePeriod). Rolling ranges
+// get the rolling lengths above their own; YTD and years get All before only.
+const LONGER: Record<string, string> = {
+  '1m': 'Previous month',
+  '3m': 'Previous 3 months',
+  '6m': 'Previous 6 months',
+  '12m': 'Previous 12 months',
+  '3y': 'Previous 3 years',
+  before: 'All before'
+};
+
+function sameLength(
   range: string, years: readonly number[], brewYears: readonly number[] = years
 ): { n: number; label: string }[] {
   if (range in ROLLING_COMPARE) return ROLLING_COMPARE[range].map((label, i) => ({ n: i + 1, label }));
@@ -58,18 +80,50 @@ export function compareOptions(
     .map((y) => ({ n: year - y, label: ytd ? `${y} YTD` : String(y) }));
 }
 
+// The Compare menu for a range, by group. Off and Custom range… are the page's own.
+export function compareOptions(
+  range: string, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false
+): CompareGroup[] {
+  const rolling = Object.keys(ROLLING_COMPARE);
+  const i = rolling.indexOf(range);
+  const longer = Object.keys(LONGER).filter(
+    (c) => range !== 'all' && (c === 'before' || (i >= 0 && rolling.indexOf(c) > i)) && fits(range, c)
+  );
+  return [
+    {
+      label: i >= 0 ? 'Same length' : 'Earlier years',
+      options: sameLength(range, years, brewYears).map((o) => ({ value: String(o.n), label: o.label }))
+    },
+    { label: 'Longer', options: longer.map((c) => ({ value: c, label: LONGER[c] })) }
+  ].filter((g) => g.options.length);
+}
+
+// Period changed: a custom range stays; a same-length depth the new range lacks falls
+// back to the nearest shallower one; a longer window it doesn't offer turns compare off.
+export function keepCompare(c: number | string | undefined, offered: readonly string[]): number | string | undefined {
+  if (!c || isCustom(c)) return c;
+  if (typeof c === 'string') return offered.includes(c) ? c : undefined;
+  return Math.max(0, ...offered.map(Number).filter((n) => n <= c)) || undefined;
+}
+
 // `years`: the calendar years on offer (first brew year → this year);
-// `brewYears`: the ones that have brews (defaults to all of them).
+// `brewYears`: the ones that have brews (defaults to all of them);
+// `fits`: time.ts compareFits (without it, longer and custom values are ignored).
 export function parseInsightsUrl(
-  p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years
+  p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false
 ): InsightsUrlState {
   const range = pickOne(p, 'range', [...RANGES, ...years.map(String)]);
-  const c = p.get('compare');
-  const n = c !== null && /^\d+$/.test(c) ? Number(c) : NaN;
-  const ok = n === 0 || compareOptions(range ?? DEFAULTS.range, years, brewYears).some((o) => o.n === n);
+  const r = range ?? DEFAULTS.range;
+  const c = p.get('compare')?.toLowerCase();
+  const offered = compareOptions(r, years, brewYears, fits).flatMap((g) => g.options.map((o) => o.value));
+  const n = c !== undefined && /^\d+$/.test(c) ? Number(c) : NaN;
+  const compare =
+    n === 0 || offered.includes(String(n)) ? n
+    : c && (offered.includes(c) || (isCustom(c) && fits(r, c))) ? c
+    : undefined;
   return {
     range,
-    compare: ok ? n : undefined,
+    compare,
     ratings: pickOne(p, 'ratings', RATINGS),
     avg: pickOne(p, 'avg', AVGS)
   };

@@ -5,7 +5,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { localToday, periodBounds, previousPeriod, addDays, trackedDays, type Period } from '$lib/server/insights/time';
+import { localToday, periodBounds, previousPeriod, addDays, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,7 +38,10 @@ describe('/insights load', () => {
     expect(d.years).toEqual([Number(today.slice(0, 4))]);
     expect(d.deltas).toBeNull();
     expect(d.scaled).toBe(false);
-    expect(d.compareOptions).toHaveLength(2); // 12m: previous, 2 years ago
+    expect(d.compareMenus['12m']).toEqual([
+      { label: 'Same length', options: [{ value: '1', label: 'Previous 12 months' }, { value: '2', label: '2 years ago' }] }
+    ]);
+    expect(d.customDefault).toEqual({ start: today, end: today });
     expect(d.tileKinds.brews).toBe('total');
   });
 
@@ -48,7 +51,7 @@ describe('/insights load', () => {
     expect(d.explicit).toMatchObject({ range: 'all', ratings: 'all' });
     expect(d.tiles).toMatchObject({ brews: 1, grams: 15, spend: 25, avgRating: 8, rated: 1, avgDose: 15, brewsPerDay: 1 });
     expect(d.period.start).toBeNull();
-    expect(d.compareOptions).toEqual([]);
+    expect(d.compareMenus.all).toEqual([]);
   });
 
   it('all time has nothing to compare to', () => {
@@ -97,7 +100,7 @@ describe('/insights load', () => {
     const y = Number(today.slice(0, 4));
     seed([[today, 15], [`${y - 2}-01-01`, 10]]); // nothing in y - 1
     const d = run('?range=ytd');
-    expect(d.compareOptions.map((o: { n: number }) => o.n)).toEqual([2]);
+    expect(d.compareMenus.ytd[0].options.map((o: { value: string }) => o.value)).toEqual(['2']);
     expect(run('?range=ytd&compare=1').explicit.compare).toBeUndefined();
   });
 
@@ -110,5 +113,85 @@ describe('/insights load', () => {
     const d = run('?range=12m&compare=3');
     expect(d.explicit.compare).toBeUndefined();
     expect(d.deltas).toBeNull();
+  });
+
+  const p1w = periodBounds('1w', today);
+
+  it('a longer compare paces totals against the previous 3 months', () => {
+    const w3m = comparePeriod('1w', p1w, '3m', '2000-01-01', today)!;
+    // dataStart = the day before the 3-month window, so the window is fully tracked.
+    seed([[addDays(w3m.start!, -1), 10], [w3m.start!, 10], [w3m.end, 10], [today, 15]]);
+    const d = run('?range=1w&compare=3m');
+    expect(d.explicit.compare).toBe('3m');
+    expect(d.previousPeriod).toEqual(w3m);
+    expect(d.scaled).toBe(true);
+    const k = 7 / trackedDays(w3m, '2000-01-01', today);
+    expect(d.deltas.brews.base).toBeCloseTo(2 * k);
+    expect(d.deltas.brews.abs).toBeCloseTo(1 - 2 * k);
+    expect(d.deltas.avgDose).toEqual({ abs: 5, pct: 50, base: 10 });
+  });
+
+  it('drops a longer window that starts before the first brew', () => {
+    seed([[today, 15]]);
+    const d = run('?range=1w&compare=3m');
+    expect(d.explicit.compare).toBeUndefined();
+    expect(d.previousPeriod).toBeNull();
+    expect(d.compareMenus['1w'].map((g: { label: string }) => g.label)).toEqual(['Same length']);
+  });
+
+  it('All before runs from the first brew to the day before the period', () => {
+    const first = addDays(today, -40);
+    seed([[first, 10], [today, 15]]);
+    const d = run('?range=1w&compare=before');
+    expect(d.previousPeriod).toEqual({ start: first, end: addDays(p1w.start!, -1) });
+    expect(d.compareMenus['1w'][1]).toMatchObject({ label: 'Longer', options: [{ value: '1m' }, { value: 'before' }] });
+  });
+
+  it('a custom range compares against exactly those dates', () => {
+    const a = addDays(today, -30);
+    const b = addDays(today, -21); // 10 days
+    seed([[addDays(today, -40), 10], [a, 10], [b, 10], [today, 15]]);
+    const d = run(`?range=1w&compare=${a}..${b}`);
+    expect(d.explicit.compare).toBe(`${a}..${b}`);
+    expect(d.previousPeriod).toEqual({ start: a, end: b });
+    expect(d.deltas.brews.base).toBeCloseTo(1.4); // 2 brews / 10 days × 7
+    expect(d.deltas.brews.abs).toBeCloseTo(-0.4);
+  });
+
+  it('a custom range works on all time and ignores a future end', () => {
+    seed([[addDays(today, -5), 10], [today, 15]]);
+    expect(run(`?range=all&compare=${addDays(today, -5)}..${addDays(today, -1)}`).previousPeriod)
+      .toEqual({ start: addDays(today, -5), end: addDays(today, -1) });
+    expect(run(`?compare=${today}..${addDays(today, 1)}`).explicit.compare).toBeUndefined();
+  });
+
+  it('a custom range overlapping the period compares normally', () => {
+    seed([[addDays(today, -40), 10], [addDays(today, -2), 10], [today, 15]]);
+    const d = run(`?range=1w&compare=${addDays(today, -3)}..${today}`);
+    expect(d.previousPeriod).toEqual({ start: addDays(today, -3), end: today });
+    expect(d.deltas.brews.base).toBeCloseTo((2 * 7) / 4);
+  });
+
+  it('a custom range before the first brew shows no change on totals', () => {
+    seed([[today, 15]]);
+    const d = run('?range=1w&compare=2020-01-01..2020-01-31');
+    expect(d.previousPeriod).toEqual({ start: '2020-01-01', end: '2020-01-31' });
+    expect(d.deltas.brews).toBeNull();
+    expect(d.deltas.grams).toBeNull();
+  });
+
+  it('custom on an empty database', () => {
+    getDb().exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
+    const d = run(`?compare=${today}..${today}`);
+    expect(d.previousPeriod).toEqual({ start: today, end: today });
+    expect(d.deltas.brews).toBeNull();
+    expect(d.customDefault).toEqual({ start: today, end: today });
+  });
+
+  it('Custom range… prefills the same-length previous window when it is tracked, else All before', () => {
+    seed([[addDays(today, -40), 10], [today, 15]]);
+    expect(run('?range=1w').customDefault).toEqual(previousPeriod('1w', p1w));
+    seed([[addDays(today, -9), 10], [today, 15]]); // previous week starts before the first brew
+    expect(run('?range=1w').customDefault).toEqual({ start: addDays(today, -9), end: addDays(p1w.start!, -1) });
   });
 });

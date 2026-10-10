@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions } from './insightsUrl';
+import {
+  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare
+} from './insightsUrl';
+import { compareFits } from '$lib/server/insights/time';
 
 const YEARS = [2026];
 const parse = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS);
@@ -60,9 +63,13 @@ describe('parseInsightsUrl', () => {
 describe('compare skips years without brews', () => {
   const Y = [2023, 2024, 2025, 2026];
   const BREW_YEARS = [2023, 2025, 2026]; // no brews in 2024
-  it('lists only years with brews; n is still years back', () => {
-    expect(compareOptions('ytd', Y, BREW_YEARS)).toEqual([{ n: 1, label: '2025 YTD' }, { n: 3, label: '2023 YTD' }]);
-    expect(compareOptions('2026', Y, BREW_YEARS)).toEqual([{ n: 1, label: '2025' }, { n: 3, label: '2023' }]);
+  it('lists only years with brews; value is still years back', () => {
+    expect(compareOptions('ytd', Y, BREW_YEARS)).toEqual([
+      { label: 'Earlier years', options: [{ value: '1', label: '2025 YTD' }, { value: '3', label: '2023 YTD' }] }
+    ]);
+    expect(compareOptions('2026', Y, BREW_YEARS)).toEqual([
+      { label: 'Earlier years', options: [{ value: '1', label: '2025' }, { value: '3', label: '2023' }] }
+    ]);
   });
   it('the parser drops a gap year', () => {
     const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), Y, BREW_YEARS).compare;
@@ -74,7 +81,7 @@ describe('compare skips years without brews', () => {
 
 describe('compareOptions', () => {
   const Y = [2024, 2025, 2026];
-  const labels = (r: string) => compareOptions(r, Y).map((o) => `${o.n}:${o.label}`);
+  const labels = (r: string) => compareOptions(r, Y).flatMap((g) => g.options).map((o) => `${o.value}:${o.label}`);
   it('weeks', () => expect(labels('1w')).toEqual(['1:Previous week', '2:2 weeks ago', '3:3 weeks ago', '4:4 weeks ago']));
   it('months', () => expect(labels('1m')).toHaveLength(6));
   it('3 months', () =>
@@ -110,4 +117,85 @@ describe('withDefaults', () => {
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({ range: '12m', compare: 0, ratings: 'settled', avg: 'adjusted' }));
+});
+
+describe('longer and custom compare', () => {
+  const T = '2026-10-10';
+  const Y = [2024, 2025, 2026];
+  const fits = compareFits('2024-03-01', T); // tracking began 2024-03-01
+  const menu = (r: string) => compareOptions(r, Y, Y, fits).map((g) => `${g.label}: ${g.options.map((o) => o.value).join(' ')}`);
+  const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), Y, Y, fits).compare;
+
+  it('rolling ranges offer each longer, fully tracked length, then All before', () => {
+    expect(menu('1w')).toEqual(['Same length: 1 2 3 4', 'Longer: 1m 3m 6m 12m before']); // 3y starts 2023-10
+    expect(menu('3m')).toEqual(['Same length: 1 2 3 4', 'Longer: 6m 12m before']);
+    expect(menu('12m')).toEqual(['Same length: 1 2', 'Longer: before']);
+    expect(menu('3y')).toEqual(['Same length: 1']); // nothing tracked before 2023-10-11
+  });
+  it('labels', () =>
+    expect(compareOptions('1w', Y, Y, fits)[1].options.map((o) => o.label)).toEqual([
+      'Previous month', 'Previous 3 months', 'Previous 6 months', 'Previous 12 months', 'All before'
+    ]));
+  it('YTD and calendar years: All before only; all time: nothing', () => {
+    expect(menu('ytd')).toEqual(['Earlier years: 1 2', 'Longer: before']);
+    expect(menu('2024')).toEqual([]); // no earlier brew year, nothing tracked before 2024-01-01
+    expect(menu('all')).toEqual([]);
+  });
+  it('without a fits check no longer window is offered', () =>
+    expect(compareOptions('1w', Y).map((g) => g.label)).toEqual(['Same length']));
+
+  it('reads an offered longer window, case-insensitively', () => {
+    expect(p('range=1w&compare=3M')).toBe('3m');
+    expect(p('range=1w&compare=Before')).toBe('before');
+    expect(p('compare=before')).toBe('before'); // default range 12m
+  });
+  it('ignores a longer window the range does not offer', () => {
+    expect(p('range=1w&compare=3y')).toBeUndefined(); // starts before the first brew
+    expect(p('range=3m&compare=1m')).toBeUndefined(); // shorter
+    expect(p('range=3m&compare=3m')).toBeUndefined(); // same length is compare=1
+    expect(p('range=1w&compare=1w')).toBeUndefined();
+    expect(p('range=all&compare=before')).toBeUndefined();
+    expect(p('compare=6m')).toBeUndefined(); // 12m: only 3y is longer
+  });
+  it('old compare=N links keep their meaning', () => {
+    expect(p('range=12m&compare=1')).toBe(1);
+    expect(p('range=1w&compare=4')).toBe(4);
+    expect(p('compare=0')).toBe(0);
+  });
+  it('reads a custom range on any range, including all time', () => {
+    expect(p('range=1w&compare=2026-09-01..2026-09-15')).toBe('2026-09-01..2026-09-15');
+    expect(p('range=all&compare=2024-03-01..2026-10-10')).toBe('2024-03-01..2026-10-10');
+    expect(p('range=1w&compare=2019-01-01..2019-01-31')).toBe('2019-01-01..2019-01-31'); // before tracking: valid
+  });
+  it.each([
+    '2026-09-15..2026-09-01', // mis-ordered
+    '2026-09-01..2026-10-11', // future
+    '2026-02-30..2026-03-01',
+    '2026-9-1..2026-9-15',
+    '2026-09-01',
+    '2026-09-01...2026-09-15'
+  ])('ignores the custom range %s', (c) => expect(p(`range=1w&compare=${c}`)).toBeUndefined());
+  it('writes longer and custom values', () => {
+    expect(insightsParams({ range: '1w', compare: 'before' }).toString()).toBe('range=1w&compare=before');
+    expect(insightsParams({ compare: '2026-09-01..2026-09-15' }).toString()).toBe('compare=2026-09-01..2026-09-15');
+  });
+  it('isCustom', () => {
+    expect(isCustom('2026-09-01..2026-09-15')).toBe(true);
+    expect(isCustom('3m')).toBe(false);
+    expect(isCustom(2)).toBe(false);
+    expect(isCustom(undefined)).toBe(false);
+  });
+});
+
+describe('keepCompare (Period changed)', () => {
+  it('keeps an offered same-length depth', () => expect(keepCompare(2, ['1', '2', '3m'])).toBe(2));
+  it('falls back to the nearest shallower depth', () => expect(keepCompare(4, ['1', '2', 'before'])).toBe(2));
+  it('turns off with no shallower depth', () => expect(keepCompare(2, ['before'])).toBeUndefined());
+  it('keeps an offered longer window', () => expect(keepCompare('3m', ['1', '3m'])).toBe('3m'));
+  it('turns off a longer window the new range lacks', () => expect(keepCompare('1m', ['1', '2', '6m'])).toBeUndefined());
+  it('keeps a custom range', () => expect(keepCompare('2026-09-01..2026-09-15', [])).toBe('2026-09-01..2026-09-15'));
+  it('leaves off and unset alone', () => {
+    expect(keepCompare(0, [])).toBe(0);
+    expect(keepCompare(undefined, [])).toBeUndefined();
+  });
 });

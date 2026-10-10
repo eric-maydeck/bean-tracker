@@ -3,7 +3,7 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
-    RANGES, RANGE_LABELS, compareOptions, insightsParams, withDefaults, type InsightsUrlState
+    RANGES, RANGE_LABELS, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
   } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
@@ -13,15 +13,15 @@
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
     const next = { ...data.explicit, ...change };
-    // A compare the new range doesn't offer would be dropped by the parser;
-    // keep the nearest shallower one it does offer instead.
-    if (change.range && next.compare) {
-      const c = next.compare;
-      const ns = compareOptions(change.range, data.years, data.brewYears).map((o) => o.n);
-      if (!ns.includes(c)) next.compare = Math.max(0, ...ns.filter((n) => n < c)) || undefined;
-    }
+    // A compare the new range doesn't offer would be dropped by the parser.
+    if (change.range) next.compare = keepCompare(next.compare, data.compareMenus[change.range].flatMap((g) => g.options.map((o) => o.value)));
     const qs = insightsParams(next).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
+  // Task 4 adds the Custom range… draft here.
+  function pickCompare(v: string) {
+    choose({ compare: /^\d+$/.test(v) ? Number(v) : v });
   }
 
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
@@ -84,7 +84,6 @@
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
   );
-  let earlier = $derived(/^\d{4}$|^ytd$/.test(s.range) ? 'Earlier years' : 'Earlier periods');
 </script>
 
 <svelte:head>
@@ -116,15 +115,15 @@
     <span>Compare</span>
     <select
       value={String(s.compare)}
-      disabled={!data.compareOptions.length}
-      onchange={(e) => choose({ compare: Number(e.currentTarget.value) })}
+      disabled={!data.compareMenus[s.range].length}
+      onchange={(e) => pickCompare(e.currentTarget.value)}
     >
       <option value="0">Off</option>
-      {#if data.compareOptions.length}
-        <optgroup label={earlier}>
-          {#each data.compareOptions as o (o.n)}<option value={String(o.n)}>{o.label}</option>{/each}
+      {#each data.compareMenus[s.range] as g (g.label)}
+        <optgroup label={g.label}>
+          {#each g.options as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
         </optgroup>
-      {/if}
+      {/each}
     </select>
   </label>
 </div>
