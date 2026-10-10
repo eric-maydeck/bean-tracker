@@ -1,3 +1,10 @@
+# [1.64.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.63.0...v1.64.0) (2026-10-10)
+
+
+### Features
+
+* settled/all switch on every rating tile, with tooltips
+
 # [1.63.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.62.1...v1.63.0) (2026-10-10)
 
 
