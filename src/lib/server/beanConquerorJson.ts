@@ -1,6 +1,7 @@
 // src/lib/server/beanConquerorJson.ts
 // Bean Conqueror's regular export (Beanconqueror.zip, JSON) → ParsedBeanConquerorData.
 // Spec: docs/superpowers/specs/2026-10-09-beanconqueror-json-import-design.md.
+import JSZip from 'jszip';
 import type {
   ParsedBean, ParsedBeanConquerorData, ParsedBeanOrigin, ParsedBrew, ParsedGrinder, ParsedMethod, ParsedWater
 } from './beanconqueror';
@@ -161,4 +162,59 @@ export function parseBeanConquerorJson(files: BeanConquerorJsonFiles): ParsedBea
   });
 
   return { beans, beanOrigins, methods, grinders, brews, waters };
+}
+
+// = the server's BODY_SIZE_LIMIT (deploy/docker-compose.yml); the regular export is ~140 KB.
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+// The 2026-10-09 export holds 2.5 MB of JSON.
+export const MAX_JSON_BYTES = 50 * 1024 * 1024;
+
+export class BeanConquerorZipError extends Error {}
+
+const MAIN_FILE = /(^|\/)Beanconqueror\.json$/;
+const BREWS_FILE = /(^|\/)Beanconqueror_Brews_\d+\.json$/;
+const INNER_ZIP = /(^|\/)Beanconqueror\.zip$/; // the full export wraps the regular one
+
+async function openZip(data: Uint8Array | ArrayBuffer): Promise<JSZip> {
+  try {
+    return await JSZip.loadAsync(data);
+  } catch {
+    throw new BeanConquerorZipError('Could not read that file as a .zip');
+  }
+}
+
+// ponytail: the zip's own header size, so a crafted zip could understate it; the
+// action is admin-only. Count bytes while inflating if that ever changes.
+const declaredSize = (f: JSZip.JSZipObject) =>
+  (f as unknown as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0;
+
+export async function readBeanConquerorZip(
+  data: Uint8Array | ArrayBuffer,
+  { maxJsonBytes = MAX_JSON_BYTES }: { maxJsonBytes?: number } = {}
+): Promise<BeanConquerorJsonFiles> {
+  let zip = await openZip(data);
+  const inner = zip.file(INNER_ZIP)[0];
+  if (inner) {
+    if (declaredSize(inner) > MAX_UPLOAD_BYTES) {
+      throw new BeanConquerorZipError('That export is too large to import');
+    }
+    zip = await openZip(await inner.async('uint8array'));
+  }
+  const mainFile = zip.file(MAIN_FILE)[0];
+  if (!mainFile) {
+    throw new BeanConquerorZipError("That .zip isn't a Bean Conqueror export (no Beanconqueror.json)");
+  }
+  const brewFiles = zip.file(BREWS_FILE);
+  if ([mainFile, ...brewFiles].reduce((n, f) => n + declaredSize(f), 0) > maxJsonBytes) {
+    throw new BeanConquerorZipError('That export is too large to import');
+  }
+  const read = async (f: JSZip.JSZipObject): Promise<unknown> => {
+    const json = await f.async('string');
+    try {
+      return JSON.parse(json);
+    } catch {
+      throw new BeanConquerorZipError(`${f.name.split('/').pop()} is not valid JSON`);
+    }
+  };
+  return { main: await read(mainFile), brewFiles: await Promise.all(brewFiles.map(read)) };
 }

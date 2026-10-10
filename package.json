@@ -40,6 +40,7 @@
     "chart.js": "^4.5.1",
     "chartjs-plugin-datalabels": "^2.2.0",
     "exceljs": "^4.4.0",
+    "jszip": "3.10.2",
     "protobufjs": "^8.8.0",
     "qrcode": "^1.5.4",
     "sharp": "^0.35.5"
