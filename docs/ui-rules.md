@@ -31,6 +31,7 @@ when it can be automated.
 | 22 | The spacing above and below an inline edit's action row is the same in every view (about 16 px above, 12-18 px below) (user feedback 2026-10-05). | Per state: `expectActionRow` |
 | 23 | An inline edit's action row starts at the form's left edge, lined up with the form's own buttons (Clone, Edit), in every view (user feedback 2026-10-06). | Per state: `expectActionsUnderForm` |
 | 24 | Buttons come in three tiers: solid primary (`.button`, one per area; `.button-solid` for a solid one in a variant's hue, e.g. green Save), tonal secondary (`.button-secondary`/`-danger`/`-success`: tint fill, same-hue text), and ghost (`.button-ghost`, text only) for navigation, cancel and discard. Hover and keyboard focus invert the fill (hover only where the device can hover); disabled buttons dim and don't react; no state changes the button's size. Text is at least 4.5:1 against its fill in both themes, at rest and on hover. View toggles keep their own look with a gentle accent-tint hover (user decision 2026-10-08). | No (review) |
+| 25 | Every tab or panel carries a purposeful, substantial amount of content; sibling views stay balanced (no 15 tiles in one and 2 in the other) (user decision 2026-10-10). | No (review) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.
