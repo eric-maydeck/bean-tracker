@@ -45,7 +45,7 @@
     { key: 'grams', label: 'Grams', fmt: formatGrams },
     { key: 'spend', label: 'Spend', fmt: usdCompact.format },
     { key: 'bagsFinished', label: 'Bags finished', fmt: count },
-    { key: 'rated', label: 'Rated', fmt: count }
+    { key: 'rated', label: 'Rated', fmt: count, ratingSwitch: true }
   ];
   const AVERAGES: Tile[] = [
     { key: 'avgRating', label: 'Avg rating', fmt: (n) => n.toFixed(1), ratingSwitch: true },
@@ -55,6 +55,24 @@
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
     { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
   ];
+  // One explanation per ratings mode, shared by the switches (hover title,
+  // aria-describedby) and the caption's tap-to-open popover.
+  let RATINGS_HELP = $derived({
+    settled: `Rated brews since ${day(data.settledFrom)}, once the scale settled.`,
+    all: 'Every rated brew, including earlier ones.'
+  });
+  // A popover sits in the top layer; put it under its caption button (above
+  // when there's no room below). Its CSS clamps it inside the viewport.
+  // ponytail: fixed position, so it stays put if the page scrolls while open.
+  function placeTip(e: ToggleEvent) {
+    if (e.newState !== 'open') return;
+    const tip = e.currentTarget as HTMLElement;
+    const r = document.querySelector(`[popovertarget="${tip.id}"]`)!.getBoundingClientRect();
+    const below = r.bottom + 96 < innerHeight;
+    tip.style.setProperty('--x', `${r.left + r.width / 2}px`);
+    tip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);
+    tip.toggleAttribute('data-above', !below);
+  }
   const valueText = (t: Tile, v: number | null) => (v === null ? '—' : t.fmt(v));
 
   function deltaText(d: { abs: number; pct: number }, t: Tile): string {
@@ -122,8 +140,14 @@
         <div class="stat-item">
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
-              <button aria-pressed={s.ratings === 'settled'} onclick={() => choose({ ratings: 'settled' })}><span>Settled</span></button>
-              <button aria-pressed={s.ratings === 'all'} onclick={() => choose({ ratings: 'all' })}><span>All</span></button>
+              {#each ['settled', 'all'] as const as m (m)}
+                <button
+                  aria-pressed={s.ratings === m}
+                  title={RATINGS_HELP[m]}
+                  aria-describedby="ratings-help-{m}"
+                  onclick={() => choose({ ratings: m })}><span>{m === 'all' ? 'All' : 'Settled'}</span></button
+                >
+              {/each}
             </div>
           {/if}
           <span class="stat-value"
@@ -131,8 +155,19 @@
           >
           {#if d}<span class="stat-unit insights-delta">{deltaText(d, t)}</span>{/if}
           <div class="stat-caption">
-            <span class="stat-label">{t.key === 'rated' ? `Rated · ${s.ratings === 'all' ? 'All' : 'Settled'}` : t.label}</span>
+            {#if t.ratingSwitch}
+              <span class="stat-label mode-caption"
+                >{t.label} · <button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+                  >{s.ratings === 'all' ? 'All' : 'Settled'}</button
+                ></span
+              >
+            {:else}
+              <span class="stat-label">{t.label}</span>
+            {/if}
           </div>
+          {#if t.ratingSwitch}
+            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}>{RATINGS_HELP[s.ratings]}</div>
+          {/if}
         </div>
       {/each}
     </div>
@@ -140,6 +175,8 @@
 {/snippet}
 
 {@render panel('Totals', TOTALS)}
+<span id="ratings-help-settled" hidden>{RATINGS_HELP.settled}</span>
+<span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 {@render panel('Averages', AVERAGES)}
 
 <style>
@@ -242,6 +279,61 @@
   .rating-switch button:focus-visible span {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
+  }
+
+  /* The mode word in a rating tile's caption opens its explanation: the way
+     to it on touch, where the switch's hover title never shows. Dotted
+     underline marks it as more info. Padding grows the tap target to 44px;
+     the matching negative margin keeps the caption's layout unchanged. */
+  .mode-caption {
+    display: block;
+    overflow: visible;
+    white-space: nowrap;
+  }
+  .stat-caption:has(.mode-caption) {
+    overflow: visible;
+  }
+  .mode-tip-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-decoration: underline dotted;
+    text-underline-offset: 0.2em;
+    cursor: help;
+  }
+  .mode-tip-button:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  @media (max-width: 640px) {
+    .mode-tip-button {
+      min-width: 44px;
+      padding: 16px 15px;
+      margin: -16px -15px;
+    }
+  }
+  .mode-tip {
+    --w: min(15rem, 100vw - 2rem);
+    position: fixed;
+    inset: auto;
+    top: var(--y);
+    left: clamp(1rem, var(--x) - var(--w) / 2, 100vw - 1rem - var(--w));
+    width: var(--w);
+    margin: 0.25rem 0 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  }
+  /* Set from placeTip, so Svelte can't see it. */
+  .mode-tip:global([data-above]) {
+    translate: 0 calc(-100% - 0.5rem);
   }
 
   .stat-value small {

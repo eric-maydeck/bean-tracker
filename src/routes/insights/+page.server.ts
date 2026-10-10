@@ -2,6 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import { localToday, periodBounds, previousPeriod, yearsSince } from '$lib/server/insights/time';
+import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, TILE_KIND } from '$lib/server/insights/overview';
 import { parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
 
@@ -25,6 +26,7 @@ export const load: PageServerLoad = ({ url }) => {
     brewYears,
     compareOptions: compareOptions(s.range, years, brewYears),
     tileKinds: TILE_KIND,
+    settledFrom: RATINGS_SETTLED_FROM,
     period,
     previousPeriod: prev,
     tiles,

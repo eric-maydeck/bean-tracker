@@ -709,6 +709,38 @@ export const STATES: State[] = [
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
+  {
+    // Every rating tile carries the Settled/All switch; one URL param keeps
+    // them in sync. Navigation only, nothing saved.
+    name: 'insights-ratings-switch-sync',
+    path: () => '/insights',
+    act: async (page) => {
+      const switches = page.getByRole('group', { name: 'Ratings' });
+      await expect(switches).toHaveCount(2);
+      await switches.first().getByRole('button', { name: 'All', exact: true }).click();
+      await expect(page).toHaveURL(/ratings=all/);
+      for (const g of await switches.all()) {
+        await expect(g.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      }
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All', 'All']);
+    }
+  },
+  {
+    // Tapping the caption's mode word opens its explanation (the touch path).
+    name: 'insights-ratings-tip',
+    path: () => '/insights',
+    act: async (page) => {
+      await page.locator('.mode-tip-button').first().click();
+      const tip = page.locator('#tip-rated');
+      await expect(tip).toBeVisible();
+      await expect(tip).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
+      await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/once the scale settled/);
+      const r = (await tip.boundingBox())!;
+      const vw = page.viewportSize()!.width;
+      expect(r.x).toBeGreaterThanOrEqual(0);
+      expect(r.x + r.width).toBeLessThanOrEqual(vw);
+    }
+  },
   { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
   { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },
   {
