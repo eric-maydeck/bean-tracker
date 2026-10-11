@@ -776,7 +776,21 @@ export const STATES: State[] = [
   { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
-  { name: 'insights-default', path: () => '/insights' },
+  {
+    name: 'insights-default',
+    path: () => '/insights',
+    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible()
+  },
+  {
+    name: 'insights-habits',
+    path: () => '/insights?tab=habits&compare=1',
+    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Habits' })).toBeVisible()
+  },
+  {
+    name: 'insights-consumption-tab',
+    path: () => '/insights?tab=consumption&unit=bags',
+    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Consumption' })).toBeVisible()
+  },
   { name: 'insights-1w-compare', path: () => '/insights?range=1w&compare=1' },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },

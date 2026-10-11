@@ -3,7 +3,7 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import type { PageData } from './$types';
@@ -25,6 +25,8 @@
     const next = { ...data.explicit, ...change };
     // A compare the new range doesn't offer would be dropped by the parser.
     if (change.range) next.compare = keepCompare(next.compare, data.compareMenus[change.range].flatMap((g) => g.options.map((o) => o.value)));
+    // A by the new range doesn't offer is dropped, like the compare.
+    if (change.range && next.by && !data.byMenus[change.range].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
@@ -65,6 +67,9 @@
     rangeDialog?.close();
   }
 
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption' };
+  // Switching view clears the other views' params (bare URL on the default).
+  const tabChange = (tab: Tab): InsightsUrlState => ({ tab, rank: undefined, open: undefined, measure: undefined, unit: undefined, by: undefined });
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
   const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -77,7 +82,7 @@
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
-  type Key = keyof PageData['tiles'] | 'perDay' | 'perWeek' | 'perMonth' | 'daysToClear';
+  type Key = string; // tile keys span four data shapes
   type D = { abs: number; pct: number; base: number } | null;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
@@ -85,7 +90,7 @@
   // `sub`: a line under the value where there's no delta (Time to clear's date).
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
-    up?: 'good' | 'bad'; split?: true; sub?: () => string | null;
+    up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
   };
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -113,6 +118,57 @@
       sub: () => (data.consumption.clearBy ? `by ${shortDay(data.consumption.clearBy)}` : null)
     }
   ];
+  const RIGHT_NOW: Tile[] = [
+    { key: 'openedG', label: 'Opened (left)', fmt: formatGrams },
+    { key: 'unopenedG', label: 'Unopened', fmt: formatGrams },
+    { key: 'onHandG', label: 'On hand', fmt: formatGrams },
+    { key: 'finishedG', label: 'Finished', fmt: formatGrams, split: true },
+    { key: 'opened', label: 'Bags opened', fmt: count },
+    { key: 'unopened', label: 'Bags unopened', fmt: count },
+    { key: 'onHand', label: 'Bags on hand', fmt: count },
+    { key: 'finished', label: 'Bags finished', fmt: count, split: true, up: 'good' }
+  ];
+  const hour = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  let HABITS = $derived<Tile[]>(
+    data.habits
+      ? [
+          { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good', keepSub: true, sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days` },
+          { key: 'currentStreak', label: data.habits.streakAtEnd ? 'Streak at period end' : 'Current streak', fmt: count, suffix: 'days' },
+          {
+            key: 'longestStreak', label: 'Longest streak', fmt: count, suffix: 'days', up: 'good', keepSub: true,
+            sub: () => (data.habits!.longestFrom ? `${shortDay(data.habits!.longestFrom)} – ${shortDay(data.habits!.longestTo!)}` : null)
+          },
+          { key: 'brewsPerBrewDay', label: 'Per brew day', fmt: (n) => n.toFixed(1), split: true },
+          { key: 'peakHour', label: 'Peak hour', fmt: hour, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour(data.habits!.prevPeak.hour)}` : null) },
+          {
+            key: 'busiestWeekday', label: 'Busiest weekday', fmt: (n) => WEEKDAYS[n],
+            sub: () => (data.habits!.prevPeak?.weekday != null ? `was ${WEEKDAYS[data.habits!.prevPeak.weekday]}` : null)
+          }
+        ]
+      : []
+  );
+  const signedGrams = (n: number) => (n < 0 ? '−' : '') + formatGrams(Math.abs(n));
+  let FLOW = $derived<Tile[]>(
+    data.consumptionTab
+      ? (() => {
+          const g = s.unit === 'grams';
+          const f = g ? formatGrams : count;
+          return [
+            { key: 'brewed', label: g ? 'Brewed' : 'Bags finished', fmt: f, split: true },
+            { key: 'bought', label: g ? 'Bought' : 'Bags bought', fmt: f, split: true },
+            { key: 'net', label: 'Net change', fmt: g ? signedGrams : count, split: true },
+            { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
+            { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: f },
+            {
+              key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
+              sub: () => (data.consumptionTab!.clearBy ? `by ${shortDay(data.consumptionTab!.clearBy)}` : null)
+            }
+          ];
+        })()
+      : []
+  );
   // One explanation per ratings mode, shared by the switches (hover title,
   // aria-describedby) and the caption's tap-to-open popover.
   let RATINGS_HELP = $derived({
@@ -138,7 +194,7 @@
   // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
   // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
   const paced = (t: Tile) =>
-    (data.scaled || perPersonOn) && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
+    (data.scaled || perPersonOn) && t.split && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
   const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
 
   function deltaText(d: { abs: number; pct: number; base: number }, t: Tile): string {
@@ -173,15 +229,12 @@
 </div>
 
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
-  <div class="form-field view-field">
+  <label class="form-field">
     <span>View</span>
-    <div class="tab-group view-switch" role="group" aria-label="View">
-      <button aria-pressed={s.tab === 'overview'} onclick={() => choose({ tab: 'overview', rank: undefined, open: undefined })}
-        >Overview</button
-      >
-      <button aria-pressed={s.tab === 'leaderboards'} onclick={() => choose({ tab: 'leaderboards' })}>Leaderboards</button>
-    </div>
-  </div>
+    <select aria-label="View" value={s.tab} onchange={(e) => choose(tabChange(e.currentTarget.value as Tab))}>
+      {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
+    </select>
+  </label>
   <label class="form-field">
     <span>Period</span>
     <select aria-label="Period" value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
@@ -260,12 +313,13 @@
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
-{#snippet panel(title: string, tiles: Tile[], values: Partial<Record<Key, number | null>>, deltas: Partial<Record<Key, D>> | null)}
+{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null)}
   <section class="chart-panel">
     <h2>{title}</h2>
     <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}">
       {#each tiles as t (t.key)}
-        {@const d = deltas?.[t.key]}
+        {@const v = (values as Record<string, number | null>)[t.key] ?? null}
+        {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
         <div class="stat-item">
           {#if t.ratingSwitch}
@@ -281,12 +335,13 @@
             </div>
           {/if}
           <span class="stat-value"
-            >{valueText(t, values[t.key] ?? null)}{#if t.suffix && (values[t.key] ?? null) !== null}<small>{` ${t.suffix}`}</small>{/if}</span
+            >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
             <span class="stat-unit insights-delta {trend(d, t)}">{deltaText(d, t)}</span>
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
-          {:else if t.sub?.()}
+          {/if}
+          {#if t.sub?.() && (!d || t.keepSub)}
             <span class="stat-unit">{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
@@ -323,10 +378,15 @@
     {placeTip}
     {choose}
   />
+{:else if s.tab === 'habits' && data.habits}
+  {@render panel('Habits', HABITS, data.habits.tiles, data.habits.deltas)}
+{:else if s.tab === 'consumption' && data.consumptionTab}
+  {@render panel('Consumption', FLOW, data.consumptionTab.tiles, data.consumptionTab.deltas)}
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
+  {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}
 {/if}
 
 <style>
@@ -352,8 +412,7 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
-  .people-switch button,
-  .view-switch button {
+  .people-switch button {
     min-height: 2.25rem;
     margin: 0;
     font-size: 0.85rem;
@@ -402,8 +461,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
     }
-    .people-switch button,
-    .view-switch button {
+    .people-switch button {
       flex: 1;
       min-height: 44px;
     }
@@ -416,7 +474,6 @@
     }
     /* Its own full-width row under the selects, not half a row. */
     .insights-controls > button,
-    .view-field,
     .people-field {
       grid-column: 1 / -1;
     }
@@ -677,6 +734,15 @@
   @media (min-width: 1000px) {
     .fit.n6 {
       --c: 6;
+    }
+  }
+  /* Right now: two rows of four; two columns below 520px (4 columns leave two-line captions spilling at ~100px tiles). */
+  .fit.n8 {
+    --c: 4;
+  }
+  @container (max-width: 520px) {
+    .fit.n8 .stat-item {
+      --c: 2;
     }
   }
 </style>

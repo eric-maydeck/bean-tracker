@@ -2,12 +2,14 @@ import type { PageServerLoad } from './$types';
 import { getDb, getHouseholdSize } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
-  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, yearsSince, type Period
+  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, TILE_KIND } from '$lib/server/insights/overview';
+import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, rightNow, paceDelta, TILE_KIND } from '$lib/server/insights/overview';
 import { leaderboards } from '$lib/server/insights/leaderboards';
-import { RANGES, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
+import { habits } from '$lib/server/insights/habits';
+import { consumptionTab } from '$lib/server/insights/consumption';
+import { RANGES, BYS, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -20,7 +22,8 @@ export const load: PageServerLoad = ({ url }) => {
   const years = yearsSince(dataStart, today);
   const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
   const fits = compareFits(dataStart, today);
-  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize);
+  const fitsBy = byFits(dataStart, today);
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy);
   const s = withDefaults(explicit);
   const size = s.people === 'person' ? householdSize : 1;
   const period = periodBounds(s.range, today);
@@ -35,6 +38,9 @@ export const load: PageServerLoad = ({ url }) => {
   const cmp = prev && compareTiles(
     tiles, perPerson(overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
   );
+  const now = rightNow(bags, brews, period, size);
+  const nowPrev = prev && rightNow(bags, brews, prev, size);
+  const ctx = { period, prev, size, dataStart, today, pace };
   // Measured from household grams (consumption divides by `size` itself).
   const onHand = gramsOnHand(bags, brews);
   const use = consumption(brews, period, dataStart, today, onHand, size);
@@ -60,8 +66,19 @@ export const load: PageServerLoad = ({ url }) => {
     customDefault,
     period,
     previousPeriod: prev,
+    byMenus: Object.fromEntries([...RANGES, ...years.map(String)].map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     // Leaderboards only on its tab; the overview tiles are cheap and always computed.
     boards: s.tab === 'leaderboards' ? leaderboards(brews, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
+    habits: s.tab === 'habits' ? habits(brews, { ...ctx, measure: s.measure, ratings: s.ratings }) : null,
+    consumptionTab:
+      s.tab === 'consumption'
+        ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, by: s.by, sameLength: typeof s.compare === 'number' })
+        : null,
+    rightNow: now,
+    rightNowDeltas: nowPrev && {
+      finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),
+      finishedG: paceDelta(now.finishedG, nowPrev.finishedG, days(period), days(prev!), pace)
+    },
     tiles,
     deltas: cmp ? cmp.deltas : null,
     scaled: cmp ? cmp.scaled : false,

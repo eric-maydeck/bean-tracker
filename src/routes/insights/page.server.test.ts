@@ -309,3 +309,24 @@ describe('/insights load', () => {
     expect(run('?tab=leaderboards').boards.roasters[0].move).toBeUndefined();
   });
 });
+
+describe('/insights habits and consumption', () => {
+  it('computes each tab only when open', () => {
+    seed([[today, 15]]);
+    expect(run().habits).toBeNull();
+    expect(run().consumptionTab).toBeNull();
+    expect(run('?tab=habits').habits.tiles.brewDays).toBe(1);
+    expect(run('?tab=consumption').consumptionTab.tiles.brewed).toBe(15);
+  });
+  it('right now on every tab; on hand is remaining grams', () => {
+    seed([[today, 15], [addDays(today, -1), 20]]);
+    expect(run('?tab=habits').rightNow).toMatchObject({ onHandG: 250 - 35, onHand: 1 });
+  });
+  it('offers by per range and drops one that does not fit', () => {
+    seed([[today, 15]]);
+    const d = run('?tab=consumption&range=1w&by=month');
+    expect(d.explicit.by).toBeUndefined();
+    expect(d.byMenus['1w']).toEqual(['day']);
+    expect(d.consumptionTab.by).toBe('day');
+  });
+});
