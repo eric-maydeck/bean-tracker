@@ -799,6 +799,14 @@ export const STATES: State[] = [
       await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
       await page.locator('.heatmap .heat-cell').first().focus();
       await expect(page.locator('.cell-tip')).toBeVisible();
+      // Roving tabindex: one tab stop per grid; arrow keys move focus (and the tip).
+      await expect(page.locator('.heatmap [tabindex="0"]')).toHaveCount(1);
+      await expect(page.locator('.brew-calendar [tabindex="0"]')).toHaveCount(1);
+      await page.keyboard.press('ArrowDown');
+      await expect(page.locator('.heatmap .heat-cell:focus')).toHaveCount(1);
+      await expect(page.locator('.heatmap .heat-cell').first()).not.toBeFocused();
+      await expect(page.locator('.heatmap [tabindex="0"]')).toHaveCount(1);
+      await expect(page.locator('.cell-tip')).toBeVisible();
     }
   },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

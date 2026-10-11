@@ -1,12 +1,14 @@
 <script lang="ts" module>
-  // One sequential ramp (the WorldMap's): low → high by tone over the non-null values;
-  // null is the no-data colour. Shared with BrewCalendar.
+  // One sequential ramp (the WorldMap's), shared with BrewCalendar: 0 is --map-low, the
+  // rest run 20–100% toward --map-high by tone over the non-zero values; null (no data)
+  // is unfilled (the .none outline), so it never reads as a value.
   export function shader(values: (number | null)[]) {
-    const vs = values.filter((v): v is number => v !== null);
+    const vs = values.filter((v): v is number => !!v);
     const min = Math.min(...vs);
     const max = Math.max(...vs);
     return (v: number | null) => {
-      if (v === null) return 'var(--map-empty)';
+      if (v === null) return 'transparent';
+      if (v === 0) return 'var(--map-low)';
       const tone = max > min ? (v - min) / (max - min) : 1;
       return `color-mix(in oklab, var(--map-high) ${Math.round(20 + 80 * tone)}%, var(--map-low))`;
     };
@@ -19,6 +21,34 @@
     const x = Math.min(Math.max(b.left + b.width / 2 - w.left, 80), w.width - 80);
     return { text, x, y: b.top - w.top };
   }
+
+  // Roving tabindex: the focused cell is the grid's one tab stop.
+  export function takeFocus(e: FocusEvent) {
+    const el = e.currentTarget as HTMLElement;
+    for (const o of el.closest('[role="group"]')!.querySelectorAll<HTMLElement>('[tabindex="0"]')) o.tabIndex = -1;
+    el.tabIndex = 0;
+  }
+  // Arrow keys move focus to the nearest cell on screen in that direction, so the same code
+  // works for a transposed heatmap and a wrapped calendar.
+  const DIR: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  export function rove(e: KeyboardEvent, sel: string) {
+    const d = DIR[e.key];
+    const from = (e.target as Element).closest(sel);
+    if (!d || !from) return;
+    e.preventDefault();
+    const a = from.getBoundingClientRect();
+    let best: HTMLElement | undefined;
+    let score = Infinity;
+    for (const el of (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(sel)) {
+      const b = el.getBoundingClientRect();
+      const dx = b.left - a.left;
+      const dy = b.top - a.top;
+      const along = dx * d[0] + dy * d[1];
+      const s = along + 4 * Math.abs(dx * d[1] + dy * d[0]);
+      if (along > 1 && s < score) [best, score] = [el, s];
+    }
+    best?.focus();
+  }
 </script>
 
 <script lang="ts">
@@ -28,7 +58,8 @@
     cells,
     text,
     label,
-    cellHeight = '1.6rem'
+    cellHeight = '1.6rem',
+    ariaLabel
   }: {
     rows: string[];
     cols: string[];
@@ -36,6 +67,7 @@
     text: (v: number | null) => string;
     label: (r: number, c: number) => string;
     cellHeight?: string;
+    ariaLabel: string;
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
@@ -48,9 +80,11 @@
   };
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 <div
   class="heatmap"
+  role="group"
+  aria-label={ariaLabel}
   bind:this={wrap}
   style:--nr={rows.length}
   style:--nc={cols.length}
@@ -58,7 +92,7 @@
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
   onclick={show}
-  onkeydown={(e) => e.key === 'Escape' && (tip = null)}
+  onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
 >
   <div class="grid">
     {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
@@ -69,12 +103,13 @@
         <div
           class="heat-cell"
           role="button"
-          tabindex="0"
+          tabindex={i + j ? -1 : 0}
           aria-label="{label(i, j)} · {text(v)}"
           style:--r={i + 2}
           style:--c={j + 2}
+          class:none={v === null}
           style:background={shade(v)}
-          onfocus={show}
+          onfocus={(e) => (takeFocus(e), show(e))}
           onblur={() => (tip = null)}
         ></div>
       {/each}
@@ -126,22 +161,5 @@
   .heat-cell:focus-visible {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
-  }
-  .cell-tip {
-    position: absolute;
-    translate: -50% calc(-100% - 0.4rem);
-    padding: 0.4rem 0.6rem;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    pointer-events: none;
-    z-index: 1;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
-  }
-  .cell-tip.below {
-    translate: -50% calc(var(--cell-h) + 0.4rem);
   }
 </style>

@@ -45,7 +45,9 @@
     trendLabel = '',
     unit = '',
     vertical = false,
-    series = []
+    series = [],
+    yMin,
+    format
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -69,6 +71,10 @@
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
     // line overlay; otherwise a paired series in the next palette colour.
     series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean }[];
+    // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.
+    yMin?: number;
+    // Vertical bars: the tooltip's value text.
+    format?: (v: number) => string;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -170,7 +176,7 @@
                 type: 'bar' as const,
                 label: datasetLabel,
                 data: values,
-                // 7-digit hex + alpha byte: the raw series stays visible as
+                // ponytail: assumes --chart-color-1 is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineColor}4d`,
                 barPercentage: 1,
@@ -234,7 +240,9 @@
           legend: { display: type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
-          tooltip: trendValues
+          tooltip: vbar && format
+            ? { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y ?? 0)}` } }
+            : trendValues
             ? {
                 callbacks: {
                   label: (ctx) =>
@@ -265,7 +273,8 @@
           ? {
               x: { ticks: { color: textColor, maxRotation: 0, autoSkipPadding: 8 }, grid: { display: false } },
               y: {
-                beginAtZero: true,
+                beginAtZero: yMin === undefined,
+                min: yMin,
                 ticks: { color: textColor, ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
                 grid: { color: gridColor }
               }
@@ -330,6 +339,8 @@
     void unit;
     void vertical;
     void series;
+    void yMin;
+    void format;
     render();
 
     const observer = new MutationObserver(render);
