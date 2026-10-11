@@ -800,12 +800,12 @@
      the comparison's "vs Oct 4:" / "8 brews · 144g" is the small muted line below it (breaks after the colon). */
   .stat-item .insights-pace.compare {
     top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
-    /* One line when it fits, else "vs Oct 4:" over the tail. The box spans the 2-line height and centres
-       the text, so the caption below never leaves a gap whichever it is. */
+    /* One line when it fits, else "vs Oct 4:" over the tail. The box spans the 2-line height with the text
+       at its top, hugging the sub; the caption sits below the box either way. */
     height: calc(2.2 * max(0.6rem, 5.4cqw) + 1cqw + var(--grow-compare, 0px));
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
