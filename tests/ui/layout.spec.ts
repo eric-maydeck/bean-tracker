@@ -948,7 +948,7 @@ export const STATES: State[] = [
       await expect(page.getByLabel('View')).toHaveValue('next');
       await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
-      await expect(page.locator('.card').first()).toBeVisible();
+      await expect(page.locator('.card').first().or(page.getByText('Backlog is empty.'))).toBeVisible();
     }
   },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },

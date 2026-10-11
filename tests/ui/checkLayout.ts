@@ -97,7 +97,8 @@ export async function checkLayout(page: Page): Promise<void> {
         for (let j = i + 1; j < els.length; j++) {
           const a = els[i].getBoundingClientRect();
           const b = els[j].getBoundingClientRect();
-          const sameRow = a.top < b.bottom && b.top < a.bottom;
+          // >1px overlap: stacked lines of a wrapped caption touch at a sub-pixel edge, not a row.
+          const sameRow = a.top < b.bottom - 1 && b.top < a.bottom - 1;
           if (sameRow && (Math.abs(a.top - b.top) > 1 || Math.abs(a.height - b.height) > 1)) {
             out.push(`row misaligned (top ${a.top.toFixed(0)}/${b.top.toFixed(0)}, height ${a.height.toFixed(0)}/${b.height.toFixed(0)}): ` +
               `${describe(els[i])} vs ${describe(els[j])}`);

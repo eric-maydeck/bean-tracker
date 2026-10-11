@@ -91,77 +91,77 @@
 </div>
 
 {#if view === 'open'}
-<section>
-  <h2>Currently open</h2>
-  {#if current.open.length === 0}
-    <p class="text-muted">Nothing open right now.</p>
-  {:else}
-    <section class="grid">
-      {#each current.open as coffee (coffee.id)}
-        {@const img = coffeeImage(coffee, '')}
-        <a class="card" href={`/coffees/${coffee.slug}`}>
-          {#if img}
-            <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-          {/if}
-          <h2>{coffee.coffee_name}</h2>
-          <p class="text-muted">{coffee.roaster}</p>
-          {#if coffee.amount_g != null && coffee.grams_left != null}
-            <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
-          {/if}
-          <p class="text-muted">
-            Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
-              >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
-            >
-          </p>
-          {#if coffee.processing}
-            <p class="text-muted">{coffee.processing}</p>
-          {/if}
-          {#if coffee.roast_date}
+  <section>
+    <h2>Currently open</h2>
+    {#if current.open.length === 0}
+      <p class="text-muted">Nothing open right now.</p>
+    {:else}
+      <section class="grid">
+        {#each current.open as coffee (coffee.id)}
+          {@const img = coffeeImage(coffee, '')}
+          <a class="card" href={`/coffees/${coffee.slug}`}>
+            {#if img}
+              <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
+            {/if}
+            <h2>{coffee.coffee_name}</h2>
+            <p class="text-muted">{coffee.roaster}</p>
+            {#if coffee.amount_g != null && coffee.grams_left != null}
+              <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
+            {/if}
             <p class="text-muted">
-              Roasted {coffee.roast_date}
-              {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+              Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
+                >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
+              >
             </p>
-          {/if}
-          {#if coffee.drink_before}
-            <p class="text-muted">Drink before {coffee.drink_before}</p>
-          {/if}
-        </a>
-      {/each}
-    </section>
-  {/if}
-</section>
+            {#if coffee.processing}
+              <p class="text-muted">{coffee.processing}</p>
+            {/if}
+            {#if coffee.roast_date}
+              <p class="text-muted">
+                Roasted {coffee.roast_date}
+                {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+              </p>
+            {/if}
+            {#if coffee.drink_before}
+              <p class="text-muted">Drink before {coffee.drink_before}</p>
+            {/if}
+          </a>
+        {/each}
+      </section>
+    {/if}
+  </section>
 {:else}
-<section class="detail-section">
-  <h2>Next up</h2>
-  {#if current.nextUp.length === 0}
-    <p class="text-muted">Backlog is empty.</p>
-  {:else}
-    <section class="grid">
-      {#each current.nextUp as coffee (coffee.id)}
-        {@const img = coffeeImage(coffee, '')}
-        <a class="card" href={`/coffees/${coffee.slug}`}>
-          {#if img}
-            <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
-          {/if}
-          <h2>{coffee.coffee_name}</h2>
-          <p class="text-muted">{coffee.roaster}</p>
-          <p class="text-muted">
-            Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
-              >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
-            >
-          </p>
-          {#if coffee.processing}
-            <p class="text-muted">{coffee.processing}</p>
-          {/if}
-          {#if coffee.roast_date}
+  <section class="detail-section">
+    <h2>Next up</h2>
+    {#if current.nextUp.length === 0}
+      <p class="text-muted">Backlog is empty.</p>
+    {:else}
+      <section class="grid">
+        {#each current.nextUp as coffee (coffee.id)}
+          {@const img = coffeeImage(coffee, '')}
+          <a class="card" href={`/coffees/${coffee.slug}`}>
+            {#if img}
+              <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
+            {/if}
+            <h2>{coffee.coffee_name}</h2>
+            <p class="text-muted">{coffee.roaster}</p>
             <p class="text-muted">
-              Roasted {coffee.roast_date}
-              {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+              Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}
+                >{coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(coffee.urgency_rating))}</span
+              >
             </p>
-          {/if}
-        </a>
-      {/each}
-    </section>
-  {/if}
-</section>
+            {#if coffee.processing}
+              <p class="text-muted">{coffee.processing}</p>
+            {/if}
+            {#if coffee.roast_date}
+              <p class="text-muted">
+                Roasted {coffee.roast_date}
+                {coffee.days_since_roast != null ? ` (${coffee.days_since_roast}d ago)` : ''}
+              </p>
+            {/if}
+          </a>
+        {/each}
+      </section>
+    {/if}
+  </section>
 {/if}

@@ -334,13 +334,13 @@
 </div>
 
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>View</span>
     <select class="ctl-select" aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
       {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
     </select>
   </label>
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
@@ -359,7 +359,7 @@
   {#if isCustom(s.range)}
     <button class="button button-ghost" onclick={() => openDates('range')}>Dates…</button>
   {/if}
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>Compare</span>
     <select
       class="ctl-select"
@@ -403,11 +403,11 @@
       <form class="custom-range" oninput={editDraft} onsubmit={applyCustom}>
         <label class="form-field">
           <span>From</span>
-          <input type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
+          <input class="ctl-select" type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
         </label>
         <label class="form-field">
           <span>To</span>
-          <input type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
+          <input class="ctl-select" type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
         </label>
         <footer>
           <button type="button" class="button button-ghost" onclick={() => rangeDialog?.close()}>Cancel</button>
@@ -521,16 +521,6 @@
   .insights-controls .form-field {
     margin-bottom: 0;
   }
-  .custom-range input {
-    min-height: 2.25rem;
-    padding: 0 0.6rem;
-    font: inherit;
-    font-size: 0.85rem;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
-    color: var(--color-text);
-  }
   .people-switch button {
     min-height: 2.25rem;
     margin: 0;
@@ -595,10 +585,6 @@
     .insights-controls > button,
     .people-field {
       grid-column: 1 / -1;
-    }
-    .custom-range input {
-      min-height: 44px;
-      font-size: 16px;
     }
   }
   /* "Previous 12 months" doesn't fit half of a 360px row. */
