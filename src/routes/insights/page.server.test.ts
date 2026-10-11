@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
@@ -95,18 +95,21 @@ describe('/insights load', () => {
   });
 
   it('a fully tracked same-length compare keeps raw totals even when the calendar lengths differ', () => {
-    const len = (w: Period) => daysBetween(w.start!, w.end) + 1;
-    const r = (['3m', '6m'] as const).find((x) => {
-      const c = periodBounds(x, today);
-      return len(c) !== len(previousPeriod(x, c, 1)!);
-    })!;
-    expect(r).toBeDefined(); // else the test would pass vacuously
-    const c = periodBounds(r, today);
-    const pv = previousPeriod(r, c, 1)!;
-    seed([[today, 15], [pv.start!, 10], [pv.end, 10]]);
-    const d = run(`?range=${r}&compare=1`);
-    expect(d.scaled).toBe(false);
-    expect(d.deltas.brews.base).toBe(2);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
+      const now = localToday();
+      const c = periodBounds('3m', now);
+      const pv = previousPeriod('3m', c, 1)!;
+      // 92 days (Jul 11-Oct 10) vs 91 (Apr 11-Jul 10): pinned so this can't pass vacuously.
+      expect(daysBetween(c.start!, c.end)).not.toBe(daysBetween(pv.start!, pv.end));
+      seed([[now, 15], [pv.start!, 10], [pv.end, 10]]);
+      const d = run('?range=3m&compare=1');
+      expect(d.scaled).toBe(false);
+      expect(d.deltas.brews.base).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a calendar year still in progress is paced', () => {
