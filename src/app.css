@@ -1394,6 +1394,7 @@ td > .action-buttons.under-form {
      size renders at the same proportions, instead of fixed offsets pushing
      the label past the bottom of a smaller tile. */
   container-type: inline-size;
+  transition: background-color 150ms ease, border-color 150ms ease;
 }
 
 /* Hero ("At a Glance") tiles: same geometry as every other tile, set apart
@@ -1405,6 +1406,20 @@ td > .action-buttons.under-form {
 
 .stat-item-hero .stat-value {
   color: var(--color-accent);
+}
+
+/* Hover tint on every stat tile (insights and stats); mouse only, so phones keep no sticky
+   hover. Reduced motion is switched off globally above. */
+@media (hover: hover) {
+  .stat-item:hover {
+    background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+  }
+
+  .stat-item-hero:hover {
+    background: color-mix(in srgb, var(--color-accent) 18%, var(--color-surface));
+    border-color: color-mix(in srgb, var(--color-accent) 60%, var(--color-border));
+  }
 }
 
 /* The value is pinned at a fixed distance from the tile's TOP edge — not
