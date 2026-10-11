@@ -330,6 +330,10 @@
     .insights-controls > button {
       min-height: 44px;
     }
+    /* Its own full-width row under the selects, not half a row. */
+    .insights-controls > button {
+      grid-column: 1 / -1;
+    }
     .insights-controls select,
     .custom-range input {
       min-height: 44px;

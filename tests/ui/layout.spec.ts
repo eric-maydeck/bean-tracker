@@ -800,6 +800,19 @@ export const STATES: State[] = [
       await to.press('Enter');
       await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(9)}`));
       await expect(page.locator('dialog[open]')).toHaveCount(0);
+      await page.waitForTimeout(300); // let the focused Dates… button's colour transition settle for the screenshot
+    }
+  },
+  {
+    // The Custom range dialog open, for the screenshots: inside the viewport (landscape is 333px
+    // tall), Apply and Cancel on screen.
+    name: 'insights-compare-custom-open',
+    path: () => '/insights?range=1w',
+    act: async (page) => {
+      await page.getByLabel('Compare').selectOption('custom');
+      await expect(page.locator('dialog[open]')).toBeVisible();
+      await expectDialogInViewport(page);
+      await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeInViewport();
     }
   },
   {
