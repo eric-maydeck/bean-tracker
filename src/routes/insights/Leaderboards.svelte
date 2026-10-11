@@ -99,7 +99,7 @@
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row">
+            <li class="board-row" style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
@@ -273,18 +273,33 @@
       flex: 1 1 100%;
     }
   }
-  /* Origins: map beside its list on wide screens, above it on phones (Task 7 fills the map). */
-  @media (min-width: 800px) {
+  /* Origins: map beside its list on wide screens (list column fixed, map takes the rest and
+     sits at the top), above it below 1100px at its natural height. */
+  @media (min-width: 1100px) {
     .board[data-board='origins'] .board-body {
       display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
       gap: var(--space-3);
       align-items: stretch;
     }
+    /* The map is cropped (slice) to the list's height, so it fills the column edge to edge;
+       the cropped strips are empty Pacific. */
     .board-map {
-      display: grid;
-      place-items: center;
-      min-height: calc(var(--rows) * var(--row-h));
+      height: calc(var(--rows) * var(--row-h));
     }
+  }
+  /* Value bar behind each row (share of the top row), inset inside the row so it never crosses
+     the row borders; z-index -1 inside the row's own stacking context keeps text on top. */
+  .board-row:not(.placeholder) {
+    isolation: isolate;
+  }
+  .board-row:not(.placeholder)::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: 3px auto 3px 0;
+    width: calc(var(--share) * 100%);
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--map-high) 13%, transparent);
   }
 </style>

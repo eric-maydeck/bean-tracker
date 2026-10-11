@@ -58,6 +58,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <svg
     viewBox={WORLD_VIEWBOX}
+    preserveAspectRatio="xMidYMid slice"
     role="group"
     aria-label="Coffees by origin country"
     onpointermove={(e) => e.pointerType === 'mouse' && at(e)}
@@ -99,11 +100,12 @@
   .world-map {
     position: relative;
     width: 100%;
+    height: 100%;
   }
   svg {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
   }
   path {
     fill: var(--map-empty);
