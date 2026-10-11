@@ -1,3 +1,52 @@
+# [1.69.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.68.0...v1.69.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* **insights:** backlog counts bags with no roast date as on hand
+* **insights:** busiest weekday sub drops the weekday
+* **insights:** calendar scale, legend labels tested, tooltip units
+* **insights:** final review fixes, shared css and weekday names, avg per week tile, a11y labels
+* **insights:** habits calendar, no-data cells, rating axis, keyboard grids
+* **insights:** keep the view, period and compare labels on their original line height
+* **insights:** kept sub line stacks under the delta
+* **insights:** monotone on-hand line, whole-number count ticks, aligned chart pair
+* **insights:** no data means nothing tracked for bounded periods
+* **insights:** one group label style, named groups, hover tip flag, filter match label
+* **insights:** one group-field label style, shared ctl-select on date inputs, tidy on-deck
+* **insights:** pace the weekday compare sums like the hour ones
+* **insights:** paced deltas, screen-reader delta text, shorter weekday sub, tested reset
+* **insights:** partial buckets show their days, compare average line shows dates
+* **insights:** ratio delta wraps at full size, says points, singular day
+
+
+### Features
+
+* **coffees:** show and view toggle groups get labels
+* **insights:** 12-hour clock for hours on insights
+* **insights:** brew calendar shows the latest 24 months
+* **insights:** busiest weekday tile shows its average
+* **insights:** compare bars name the dates they cover
+* **insights:** consumption average or total toggle
+* **insights:** consumption engine
+* **insights:** consumption tab
+* **insights:** custom range for the period dropdown
+* **insights:** delta lines show direction and the previous value
+* **insights:** every toggle group gets a small label
+* **insights:** explanation tips also open on mouse hover
+* **insights:** habits and consumption tabs, right now panel
+* **insights:** habits and consumption url params
+* **insights:** habits engine
+* **insights:** habits show avg per day or total
+* **insights:** habits tab
+* **insights:** legends named for the period and compare labels
+* **insights:** ratio tiles show the previous count with their percent
+* **insights:** remaining grams on hand, right-now snapshot, back-filled flag
+* **insights:** reset button clears every choice
+* **insights:** score info shows a hover tip, stale hover flag fixed
+* **insights:** tab choices stay when switching tabs
+* **on-deck:** currently open and next up split into two views
+
 # [1.68.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.67.0...v1.68.0) (2026-10-11)
 
 
