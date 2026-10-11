@@ -1,4 +1,4 @@
-import type { By, Unit } from '$lib/insightsUrl';
+import type { Agg, By, Unit } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
 import { addDays, addMonths, autoBy, daysBetween, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { consumption, gramsOnHand, isFinished, loggedGrams, paceDelta, remaining, type Delta } from './overview';
@@ -16,7 +16,7 @@ export interface ConsumptionTab {
   compareAverage: number | null; // longer/custom compare: its per-bucket average (dashed line)
 }
 export interface ConsumptionCtx {
-  period: Period; prev: Period | null; sameLength: boolean; unit: Unit; by: By | undefined; size: number;
+  period: Period; prev: Period | null; sameLength: boolean; unit: Unit; agg: Agg; by: By | undefined; size: number;
   dataStart: string | null; today: string; pace: boolean;
 }
 
@@ -72,6 +72,8 @@ function flows(brews: readonly BrewFact[], bags: readonly BagFact[], bs: readonl
   if (c.unit === 'grams') for (const b of brews) { const i = at(b.localDate); if (i >= 0) brewed[i] += (b.dose ?? 0) / c.size; }
   else for (const g of bags) { const i = isFinished(g) ? at(g.lastBrew) : -1; if (i >= 0) brewed[i] += 1 / c.size; }
   for (const g of bags) { const i = at(g.purchaseDate); if (i >= 0) bought[i] += (c.unit === 'grams' ? (g.amountG ?? 0) : 1) / c.size; }
+  // Average: each bucket's per-day rate (its own days, so a clipped bucket isn't understated).
+  if (c.agg === 'average') bs.forEach((b, i) => { const n = daysBetween(b.start, b.end) + 1; brewed[i] /= n; bought[i] /= n; });
   return { brewed, bought };
 }
 
@@ -97,9 +99,13 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   const { brewed, bought } = flows(brews, bags, bs, c);
   const onHandG = gramsOnHand(bags, brews);
   const use = consumption(brews, c.period, c.dataStart, c.today, onHandG, c.size);
-  const cur = totals(brews, bags, c.period, c);
+  // Average: the totals become per-day rates over the tracked span (0 when nothing is tracked).
+  const rate = (v: { brewed: number; bought: number }, n: number) =>
+    c.agg === 'average' ? { brewed: n ? v.brewed / n : 0, bought: n ? v.bought / n : 0 } : v;
+  const raw = totals(brews, bags, c.period, c);
+  const cur = rate(raw, span);
   const tiles: ConsumptionTiles = {
-    ...cur, net: cur.bought - cur.brewed, avg: avgOf(cur.brewed, span, by),
+    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, by),
     onHand: c.unit === 'grams' ? onHandG : bags.filter((g) => g.status !== 'archive').length,
     daysToClear: use.daysToClear
   };
@@ -110,17 +116,20 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     const pt = trackedBounds(c.prev, c.dataStart, c.today);
     const pspan = spanOf(pt);
     const pb = buckets(pt, by);
-    const p = totals(brews, bags, c.prev, c);
+    const praw = totals(brews, bags, c.prev, c);
+    const p = rate(praw, pspan);
+    // Per-day rates already compare like for like: no pace scaling.
+    const pace = c.pace && c.agg === 'total';
     // ponytail: tileDelta gives no change from a base <= 0, so a shrinking pile (net < 0) has no Net delta.
     deltas = {
-      brewed: paceDelta(tiles.brewed, p.brewed, span, pspan, c.pace),
-      bought: paceDelta(tiles.bought, p.bought, span, pspan, c.pace),
-      net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, c.pace),
-      avg: paceDelta(tiles.avg, avgOf(p.brewed, pspan, by), span, pspan, false)
+      brewed: paceDelta(tiles.brewed, p.brewed, span, pspan, pace),
+      bought: paceDelta(tiles.bought, p.bought, span, pspan, pace),
+      net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, pace),
+      avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
     };
     const pf = flows(brews, bags, pb, c);
     if (c.sameLength) compareBrewed = pf.brewed;
-    else compareAverage = pb.length ? sum(pf.brewed) / pb.length : null;
+    else compareAverage = !pb.length ? null : c.agg === 'average' ? p.brewed : sum(pf.brewed) / pb.length;
   }
   return {
     by, tiles, clearBy: use.clearBy, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,

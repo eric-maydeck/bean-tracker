@@ -202,13 +202,15 @@
     data.consumptionTab
       ? (() => {
           const g = s.unit === 'grams';
-          const f = g ? formatGrams : count;
+          const avg = s.agg === 'average';
+          // Per-day rates of bags are small fractions: two decimals.
+          const f = g ? formatGrams : avg ? (n: number) => n.toFixed(2) : count;
           return [
-            { key: 'brewed', label: g ? 'Brewed' : 'Bags finished', fmt: f, split: true },
-            { key: 'bought', label: g ? 'Bought' : 'Bags bought', fmt: f, split: true },
-            { key: 'net', label: 'Net change', fmt: g ? signedGrams : count, split: true },
+            { key: 'brewed', label: g ? 'Brewed' + (avg ? ' /day' : '') : avg ? 'Finished /day' : 'Bags finished', fmt: f, split: true },
+            { key: 'bought', label: g ? 'Bought' + (avg ? ' /day' : '') : avg ? 'Bought /day' : 'Bags bought', fmt: f, split: true },
+            { key: 'net', label: avg ? 'Net /day' : 'Net change', fmt: g ? signedGrams : f, split: true },
             { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
-            { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: f },
+            { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
             {
               key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
               sub: () => (data.consumptionTab!.clearBy ? `by ${shortDay(data.consumptionTab!.clearBy)}` : null)
@@ -437,7 +439,7 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} unit={s.unit} offered={data.byMenus[s.range]} {choose}>
+  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}

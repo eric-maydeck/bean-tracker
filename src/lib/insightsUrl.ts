@@ -33,6 +33,9 @@ export const MEASURES = ['brews', 'grams', 'rating'] as const;
 export type Measure = (typeof MEASURES)[number];
 export const UNITS = ['grams', 'bags'] as const;
 export type Unit = (typeof UNITS)[number];
+// Consumption: per-day average within each bucket, or the bucket's total (URL carries only `total`).
+export const AGGS = ['average', 'total'] as const;
+export type Agg = (typeof AGGS)[number];
 export const BYS = ['day', 'week', 'month'] as const;
 export type By = (typeof BYS)[number];
 // Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).
@@ -99,11 +102,12 @@ export interface InsightsUrlState {
   measure?: Measure;
   unit?: Unit;
   by?: By;
+  agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by'>> & { open?: Board; by?: By };
+export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg'>> & { open?: Board; by?: By; agg: Agg };
 
-export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by'>> = {
+export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg'>> & { agg: Agg } = {
   range: '12m',
   compare: 0,
   ratings: 'current',
@@ -112,7 +116,8 @@ export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by'>> = {
   tab: 'overview',
   rank: 'rating',
   measure: 'brews',
-  unit: 'grams'
+  unit: 'grams',
+  agg: 'average'
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
@@ -209,7 +214,8 @@ export function parseInsightsUrl(
     open: pickOne(p, 'open', BOARDS),
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
-    by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS))
+    by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)),
+    agg: pickOne(p, 'agg', AGGS) === 'total' ? 'total' : undefined
   };
 }
 
@@ -226,6 +232,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.measure) p.set('measure', s.measure);
   if (s.unit) p.set('unit', s.unit);
   if (s.by) p.set('by', s.by);
+  if (s.agg === 'total') p.set('agg', 'total');
   return p;
 }
 
@@ -241,7 +248,8 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     open: s.open,
     measure: s.measure ?? DEFAULTS.measure,
     unit: s.unit ?? DEFAULTS.unit,
-    by: s.by
+    by: s.by,
+    agg: s.agg ?? DEFAULTS.agg
   };
 }
 

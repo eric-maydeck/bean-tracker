@@ -128,13 +128,14 @@ describe('withDefaults', () => {
       tab: 'overview',
       rank: 'rating',
       measure: 'brews',
-      unit: 'grams'
+      unit: 'grams',
+      agg: 'average'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
       range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating',
-      measure: 'brews', unit: 'grams'
+      measure: 'brews', unit: 'grams', agg: 'average'
     }));
 });
 
@@ -318,6 +319,15 @@ describe('habits and consumption params', () => {
   it('round-trips', () => {
     expect(insightsParams(parse('tab=habits&measure=rating')).toString()).toBe('tab=habits&measure=rating');
     expect(insightsParams(parse('tab=consumption&unit=bags&by=month')).toString()).toBe('tab=consumption&unit=bags&by=month');
+  });
+  it('agg: only total is explicit; average is the default and never in the URL', () => {
+    expect(parse('tab=consumption&agg=Total').agg).toBe('total');
+    expect(parse('tab=habits&agg=total').agg).toBe('total'); // sticky across tabs
+    expect(parse('agg=average').agg).toBeUndefined();
+    expect(parse('agg=sum').agg).toBeUndefined();
+    expect(insightsParams(parse('tab=consumption&agg=total')).toString()).toBe('tab=consumption&agg=total');
+    expect(withDefaults({}).agg).toBe('average');
+    expect(withDefaults({ agg: 'total' }).agg).toBe('total');
   });
   it('defaults: brews, grams, by auto', () => {
     expect(withDefaults({})).toMatchObject({ measure: 'brews', unit: 'grams' });

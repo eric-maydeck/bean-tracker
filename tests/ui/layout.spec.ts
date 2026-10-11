@@ -851,7 +851,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-consumption-bags-week',
-    path: () => '/insights?tab=consumption&unit=bags&by=week&compare=1',
+    path: () => '/insights?tab=consumption&unit=bags&by=week&compare=1&agg=total',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Week' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.stat-label', { hasText: 'Bags finished' })).toBeVisible();

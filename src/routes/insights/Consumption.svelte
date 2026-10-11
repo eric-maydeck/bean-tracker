@@ -2,13 +2,13 @@
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
-  import { BYS, UNITS, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
+  import { AGGS, BYS, UNITS, type Agg, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, periodLabel, compareLabel, unit, offered, choose, tiles
+    t, periodLabel, compareLabel, unit, agg, offered, choose, tiles
   }: {
-    t: ConsumptionTab; periodLabel: string; compareLabel: string; unit: Unit; offered: By[];
+    t: ConsumptionTab; periodLabel: string; compareLabel: string; unit: Unit; agg: Agg; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -20,7 +20,8 @@
   const kOf = (...vs: (number | null)[][]) => (g && Math.max(0, ...vs.flat().map((v) => v ?? 0)) >= 10000 ? 1000 : 1);
   const div = (vs: (number | null)[], k: number) => vs.map((v) => (v === null ? null : v / k));
   const axis = (k: number) => (g ? (k === 1 ? 'g' : 'kg') : '');
-  const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : Number.isInteger(v) ? String(v) : v.toFixed(1));
+  const avg = $derived(agg === 'average');
+  const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : Number.isInteger(v) ? String(v) : v.toFixed(avg ? 2 : 1));
   // compareBrewed lines up with brewed by index only (a clipped previous window can be shorter):
   // pad/slice it to brewed's buckets. A compare window with no data adds no series.
   const compare = $derived(t.compareBrewed ? t.brewed.map((_, i) => t.compareBrewed![i] ?? null) : null);
@@ -34,6 +35,8 @@
         ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true }]
         : []
   );
+  // Average: every bar is a per-day rate, whatever the bucket.
+  const unitNote = $derived(avg ? `per day${t.by === 'day' ? '' : `, averaged by ${t.by}`}` : `per ${t.by}`);
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
 </script>
 
@@ -51,6 +54,9 @@
       >
     {/each}
   </div>
+  <div class="tab-group" role="group" aria-label="Aggregate">
+    {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{CAP(a)}</button>{/each}
+  </div>
 </div>
 
 {@render tiles()}
@@ -61,9 +67,9 @@
     {#if empty}
       <p class="empty">No data in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g}
+      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g && !avg}
         format={fmt(k1)} unit={axis(k1)} height={260} />
-      <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} per {t.by}{note}</p>
+      <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} {unitNote}{note}</p>
     {/if}
   </section>
   <section class="chart-panel">
@@ -72,8 +78,8 @@
       <p class="empty">No data in this period</p>
     {:else}
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
-        series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g} format={fmt(k2)} unit={axis(k2)} height={260} />
-      <p class="chart-note">{g ? 'Grams' : 'Bags'} per {t.by}{note}</p>
+        series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
+      <p class="chart-note">{g ? 'Grams' : 'Bags'} {unitNote}{note}</p>
     {/if}
   </section>
 </div>

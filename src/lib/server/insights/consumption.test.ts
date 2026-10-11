@@ -15,7 +15,7 @@ const bag = (o: Partial<BagFact>): BagFact => ({
 const SEPT = { start: '2026-09-01', end: '2026-09-30' };
 const ctx = (o: Partial<ConsumptionCtx> = {}): ConsumptionCtx => ({
   period: SEPT, prev: null, sameLength: true, unit: 'grams', by: undefined, size: 1, dataStart: '2026-01-01', today: '2026-10-11',
-  pace: false, ...o
+  pace: false, agg: 'total', ...o
 });
 
 describe('buckets', () => {
@@ -77,6 +77,22 @@ describe('consumptionTab', () => {
 
   it('bags unit: finished by last brew, bought, on hand', () =>
     expect(consumptionTab(brews, bags, ctx({ unit: 'bags', by: 'week' })).tiles).toMatchObject({ brewed: 1, bought: 1, net: 0, onHand: 1 }));
+
+  it('average: per-day within each bucket and per-day tiles; by day equals the total', () => {
+    const a = consumptionTab(brews, bags, ctx({ by: 'week', agg: 'average' }));
+    expect(a.brewed[1]).toBeCloseTo(15 / 7); // Sep 7-13
+    expect(a.brewed[3]).toBeCloseTo(20 / 7); // Sep 21-27
+    expect(a.bought[0]).toBeCloseTo(250 / 6); // Sep 1-6: a clipped bucket divides by its own days
+    expect(a.tiles).toMatchObject({ brewed: 50 / 30, bought: 250 / 30 });
+    expect(a.tiles.net).toBeCloseTo(200 / 30);
+    expect(consumptionTab(brews, bags, ctx({ agg: 'average' })).brewed).toEqual(consumptionTab(brews, bags, ctx()).brewed);
+  });
+  it('average: the compare series and deltas are per-day too', () => {
+    const older = [...brews, brew('2026-08-10', 30, 1)];
+    const a = consumptionTab(older, bags, ctx({ agg: 'average', by: 'week', prev: { start: '2026-08-01', end: '2026-08-31' } }));
+    expect(a.compareBrewed!.reduce((s, v) => s + v, 0)).toBeCloseTo(30 / 7);
+    expect(a.deltas!.brewed).toMatchObject({ abs: expect.closeTo(50 / 30 - 30 / 31, 5) });
+  });
 
   it('avg follows by', () => expect(consumptionTab(brews, bags, ctx({ by: 'week' })).tiles.avg).toBeCloseTo((50 / 30) * 7));
 

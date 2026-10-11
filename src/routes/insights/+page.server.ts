@@ -76,7 +76,7 @@ export const load: PageServerLoad = ({ url }) => {
     habits: s.tab === 'habits' ? habits(brews, { ...ctx, measure: s.measure, ratings: s.ratings }) : null,
     consumptionTab:
       s.tab === 'consumption'
-        ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, by: s.by, sameLength: typeof s.compare === 'number' })
+        ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
         : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
