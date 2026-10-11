@@ -883,7 +883,7 @@ export const STATES: State[] = [
     }
   },
   {
-    // Busiest-weekday sub ("5.9 per Wed") on a long range, no compare: never an ellipsis (prod-like widths).
+    // Busiest-weekday sub ("5.9 brews avg") on a long range, no compare: never an ellipsis (prod-like widths).
     name: 'insights-habits-busiest',
     path: () => '/insights?tab=habits&range=all',
     act: (page) => expectNoEllipsis(page)

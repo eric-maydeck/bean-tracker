@@ -186,11 +186,10 @@
             sub: () => {
               const h = data.habits!;
               if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
-              const wd = WEEKDAYS[h.tiles.busiestWeekday];
               const a = h.busiestAvg;
-              return s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
+              return s.measure === 'grams' ? `${formatGrams(a)} avg`
                 : s.measure === 'rating' ? `${a.toFixed(1)} avg rating`
-                : `${Number.isInteger(a) ? a : a.toFixed(1)} per ${wd}`;
+                : `${Number.isInteger(a) ? a : a.toFixed(1)} brews avg`;
             }
           }
         ]
