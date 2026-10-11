@@ -107,12 +107,13 @@
       {#each RANKS as r (r)}<option value={r} title={RANK_HELP[r]}>{RANK_LABEL[r]}</option>{/each}
     </select>
   </div>
+  <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>How each score is worked out. Click for the full explanation.</div>
   <div class="mode-tip" id="tip-rank" popover onbeforetoggle={placeTip}>
     {#each RANKS as r (r)}<p><b>{RANK_LABEL[r]}.</b> {RANK_HELP[r]}</p>{/each}
   </div>
   {#if rank === 'rating'}
     <div class="form-field">
-      <span><button class="mode-tip-button" aria-haspopup="dialog" onclick={() => help?.showModal()}><span class="tip-text">Score</span><Icon name="question" /></button></span>
+      <span><button class="mode-tip-button" aria-haspopup="dialog" data-tip="tip-score" onclick={() => help?.showModal()}><span class="tip-text">Score</span><Icon name="question" /></button></span>
       <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
         <optgroup label="Average">
           {#each ['raw', 'min3', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}

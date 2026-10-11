@@ -41,7 +41,8 @@
   // click/Enter). The hover opens it, so a mouse click must not toggle it shut again.
   const tipOf = (e: Event) => {
     const b = (e.target as Element | null)?.closest?.('.mode-tip-button');
-    return b && matchMedia('(hover: hover)').matches ? document.getElementById(b.getAttribute('popovertarget') ?? '') : null;
+    // A popover trigger names its tip with popovertarget; a dialog trigger (Score) with data-tip.
+    return b && matchMedia('(hover: hover)').matches ? document.getElementById(b.getAttribute('popovertarget') ?? b.getAttribute('data-tip') ?? '') : null;
   };
   // The tip a hover opened: a click on its button must leave it open, not toggle it shut.
   let hoverTip: HTMLElement | null = null;
@@ -61,7 +62,11 @@
   }
   function tipClick(e: MouseEvent) {
     const tip = tipOf(e);
-    if (tip && tip === hoverTip) e.preventDefault();
+    if (!tip) return;
+    // A dialog trigger opens its dialog: the hover tip steps aside. A popover trigger keeps the tip
+    // the hover opened (unless Escape or a click elsewhere already closed it: then the click reopens it).
+    if ((e.target as Element).closest('[data-tip]')) tip.hidePopover();
+    else if (tip === hoverTip && tip.matches(':popover-open')) e.preventDefault();
   }
 
   // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
@@ -265,7 +270,7 @@
   function placeTip(e: ToggleEvent) {
     if (e.newState !== 'open') return;
     const tip = e.currentTarget as HTMLElement;
-    const r = document.querySelector(`[popovertarget="${tip.id}"]`)!.getBoundingClientRect();
+    const r = document.querySelector(`[popovertarget="${tip.id}"], [data-tip="${tip.id}"]`)!.getBoundingClientRect();
     const below = r.bottom + 96 < innerHeight;
     tip.style.setProperty('--x', `${r.left + r.width / 2}px`);
     tip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);

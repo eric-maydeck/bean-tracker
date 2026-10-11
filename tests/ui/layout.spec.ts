@@ -1266,6 +1266,36 @@ export const STATES: State[] = [
     }
   },
   {
+    // Score's ⓘ opens a dialog: hover shows a short tip instead, a click swaps it for the dialog. And a tip
+    // closed by Escape after a hover reopens on the next click (no stale hover flag).
+    name: 'insights-tip-hover-dialog',
+    path: () => '/insights?tab=leaderboards',
+    act: async (page) => {
+      if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) return;
+      const score = page.getByRole('button', { name: 'Score' });
+      const tip = page.locator('#tip-score');
+      await score.hover();
+      await expect(tip).toBeVisible();
+      await expect(tip).toHaveText('How each score is worked out. Click for the full explanation.');
+      await page.mouse.move(2, 2);
+      await expect(tip).toBeHidden();
+      await score.hover();
+      await score.click();
+      await expect(tip).toBeHidden();
+      await expect(page.locator('dialog.how-dialog')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await page.mouse.move(2, 2);
+      const rank = page.locator('.mode-tip-button', { hasText: 'Rank by' });
+      const rankTip = page.locator('#tip-rank');
+      await rank.hover();
+      await expect(rankTip).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(rankTip).toBeHidden();
+      await rank.click();
+      await expect(rankTip).toBeVisible();
+    }
+  },
+  {
     // Tapping the caption's mode word opens its explanation (the touch path).
     name: 'insights-ratings-tip',
     path: () => '/insights',
