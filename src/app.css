@@ -771,8 +771,14 @@ nav.site-nav a[aria-current='page'] {
   border-color: var(--color-accent);
 }
 
+/* Not actionable but still focusable, so its title (the reason) is reachable. */
+.tab-group button[aria-disabled='true'] {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
 @media (hover: hover) {
-  .tab-group button:not([aria-pressed='true']):hover {
+  .tab-group button:not([aria-pressed='true'], [aria-disabled='true']):hover {
     background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
     border-color: var(--color-accent);
   }
@@ -2249,4 +2255,38 @@ td > .action-buttons.under-form {
 .heat-cell.none,
 .cal-cell.none {
   border: 1px dashed color-mix(in oklab, var(--color-text-muted) 45%, transparent);
+}
+
+/* Habits and Consumption tabs: toolbar, chart grid, empty placeholder, chart note. */
+.insights-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.insights-charts {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  margin-bottom: var(--space-5);
+}
+@media (min-width: 900px) {
+  .insights-charts {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.insights-charts .chart-panel {
+  margin: 0;
+}
+.chart-panel .empty {
+  height: 260px;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.chart-note {
+  margin: var(--space-2) 0 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }

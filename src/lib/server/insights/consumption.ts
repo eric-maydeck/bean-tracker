@@ -123,8 +123,10 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     c.agg === 'average' ? { brewed: n ? v.brewed / n : 0, bought: n ? v.bought / n : 0 } : v;
   const raw = totals(brews, bags, c.period, c);
   const cur = rate(raw, span);
+  // Under Avg per day with by=day the Avg tile would repeat Brewed/day: it reads per week instead.
+  const avgBy: By = c.agg === 'average' && by === 'day' ? 'week' : by;
   const tiles: ConsumptionTiles = {
-    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, by),
+    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, avgBy),
     onHand: c.unit === 'grams' ? onHandG : bags.filter((g) => g.status !== 'archive').length,
     daysToClear: use.daysToClear
   };
@@ -145,7 +147,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
       brewed: paceDelta(tiles.brewed, p.brewed, span, pspan, pace),
       bought: paceDelta(tiles.bought, p.bought, span, pspan, pace),
       net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, pace),
-      avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
+      avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, avgBy), span, pspan, false)
     };
     const pf = flows(brews, bags, pb, c);
     if (c.sameLength) {

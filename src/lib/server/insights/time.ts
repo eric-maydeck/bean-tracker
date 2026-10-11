@@ -81,7 +81,7 @@ export function trackedBounds(p: Period, dataStart: string | null, today: string
   return start > end ? null : { start, end };
 }
 
-export const weekday = (d: string): number => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // 0 = Monday
+export { weekday } from '$lib/insightsUrl';
 
 // Consumption buckets (spec): auto day up to a month, week up to six months, else month; a
 // choice is offered only when it gives a readable chart (day <= 1 year, week >= 2, month >= 2).

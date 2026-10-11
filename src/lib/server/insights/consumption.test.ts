@@ -108,6 +108,11 @@ describe('consumptionTab', () => {
     expect(a.deltas!.brewed).toMatchObject({ abs: expect.closeTo(50 / 30 - 30 / 31, 5) });
   });
 
+  it('avg per day by day reads per week instead', () => {
+    expect(consumptionTab(brews, bags, ctx({ by: 'day', agg: 'average' })).tiles.avg).toBeCloseTo((50 / 30) * 7);
+    expect(consumptionTab(brews, bags, ctx({ by: 'day' })).tiles.avg).toBeCloseTo(50 / 30);
+  });
+
   it('avg follows by', () => expect(consumptionTab(brews, bags, ctx({ by: 'week' })).tiles.avg).toBeCloseTo((50 / 30) * 7));
 
   it('per person: brewed, bought, net, avg ÷ size; not on hand or backlog', () => {

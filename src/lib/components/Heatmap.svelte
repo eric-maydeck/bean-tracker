@@ -58,7 +58,6 @@
     cells,
     text,
     label,
-    cellHeight = '1.6rem',
     ariaLabel
   }: {
     rows: string[];
@@ -66,7 +65,6 @@
     cells: (number | null)[][];
     text: (v: number | null) => string;
     label: (r: number, c: number) => string;
-    cellHeight?: string;
     ariaLabel: string;
   } = $props();
 
@@ -86,7 +84,7 @@
   aria-label={ariaLabel}
   bind:this={wrap}
   style:--nr={rows.length}
-  style:--cell-h={cellHeight}
+  style:--cell-h="1.6rem"
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
   onclick={show}

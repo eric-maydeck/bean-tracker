@@ -260,6 +260,8 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
 
 // A window's dates for a legend: "Mar 1 – Apr 9"; the year joins the end when it isn't this
 // year, and both ends when the window spans years.
+export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const weekday = (d: string): number => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // 0 = Monday
 export const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function windowLabel(p: { start: string | null; end: string }, today: string): string {
   if (!p.start) return 'All time';

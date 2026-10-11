@@ -1,22 +1,17 @@
 <script lang="ts">
   import { latestMonths, MAX_MONTHS } from '$lib/calendarMonths';
-  import { MON } from '$lib/insightsUrl';
+  import { MON, WEEKDAYS, weekday } from '$lib/insightsUrl';
   import { rove, shader, takeFocus, tipAt } from './Heatmap.svelte';
 
   let {
     days,
-    text,
-    cellHeight = '1.1rem'
+    text
   }: {
     days: { date: string; value: number | null }[];
     text: (v: number | null) => string;
-    // Long ranges: mini month blocks in rows of equal count (a short last row's blocks stretch).
-    cellHeight?: string;
   } = $props();
 
-  const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const weekday = (d: string) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7;
-  const dayLabel = (d: string) => `${WD[weekday(d)]} ${+d.slice(8)} ${MON[+d.slice(5, 7) - 1]}`;
+  const dayLabel = (d: string) => `${WEEKDAYS[weekday(d)]}, ${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}`;
 
   let short = $derived(days.length <= 31);
   let w = $state(0);
@@ -63,7 +58,7 @@
   class="brew-calendar"
   role="group"
   aria-label="Brew calendar"
-  style:--cell-h={short ? '2.5rem' : cellHeight}
+  style:--cell-h={short ? '2.5rem' : '1.1rem'}
   bind:this={wrap}
   bind:clientWidth={w}
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
@@ -73,7 +68,7 @@
 >
   {#if short}
     <div class="month">
-      {#each WD as d (d)}<span class="wd">{d}</span>{/each}
+      {#each WEEKDAYS as d (d)}<span class="wd">{d}</span>{/each}
       {#if days.length && weekday(days[0].date)}<span style:grid-column="span {weekday(days[0].date)}"></span>{/if}
       {#each days as d, i (d.date)}{@render cell(d, i === 0)}{/each}
     </div>
@@ -84,7 +79,7 @@
           <div class="mini">
             <h3>{b.title}</h3>
             <div class="month">
-              {#each WD as d (d)}<span class="wd">{d[0]}</span>{/each}
+              {#each WEEKDAYS as d (d)}<span class="wd">{d[0]}</span>{/each}
               {#if weekday(b.days[0].date)}<span style:grid-column="span {weekday(b.days[0].date)}"></span>{/if}
               {#each b.days as d (d.date)}{@render cell(d, d === latest.days[0])}{/each}
             </div>

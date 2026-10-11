@@ -40,7 +40,7 @@
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
 </script>
 
-<div class="consumption-bar">
+<div class="insights-bar">
   <div class="form-field group-field">
     <span>Unit</span>
     <div class="tab-group" role="group" aria-label="Unit">
@@ -53,9 +53,9 @@
       {#each BYS as b (b)}
         <button
           aria-pressed={t.by === b}
-          disabled={!offered.includes(b)}
+          aria-disabled={!offered.includes(b)}
           title={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
-          onclick={() => choose({ by: b })}>{CAP(b)}</button
+          onclick={() => offered.includes(b) && choose({ by: b })}>{CAP(b)}</button
         >
       {/each}
     </div>
@@ -70,7 +70,7 @@
 
 {@render tiles()}
 
-<div class="consumption-charts">
+<div class="insights-charts">
   <section class="chart-panel">
     <h2>Brewed over time</h2>
     {#if empty}
@@ -101,38 +101,3 @@
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
   {/if}
 </section>
-
-<style>
-  .consumption-bar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-bottom: var(--space-3);
-  }
-  .consumption-charts {
-    display: grid;
-    gap: var(--space-3);
-    grid-template-columns: minmax(0, 1fr);
-    margin-bottom: var(--space-5);
-  }
-  @media (min-width: 900px) {
-    .consumption-charts {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-  }
-  .consumption-charts .chart-panel {
-    margin: 0;
-  }
-  .empty {
-    height: 260px;
-    display: grid;
-    place-items: center;
-    margin: 0;
-    color: var(--color-text-muted);
-  }
-  .chart-note {
-    margin: var(--space-2) 0 0;
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
-  }
-</style>

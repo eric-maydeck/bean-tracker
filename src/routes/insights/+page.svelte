@@ -5,11 +5,12 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
   import Consumption from './Consumption.svelte';
+  import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -152,7 +153,7 @@
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
   type Key = string; // tile keys span four data shapes
-  type D = { abs: number; pct: number; base: number; paced?: true } | null;
+  type D = Delta;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
   // `up`: whether a rise is good or bad, for the delta's colour; unset = by direction (up green).
@@ -199,8 +200,6 @@
     { key: 'onHand', label: 'Bags on hand', fmt: count },
     { key: 'finished', label: 'Bags finished', fmt: count, split: true, up: 'good' }
   ];
-  const hour = (h: number) => hour12(h);
-  const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   let HABITS = $derived<Tile[]>(
     data.habits
@@ -215,7 +214,7 @@
             sub: () => (data.habits!.longestFrom ? `${shortDay(data.habits!.longestFrom)} – ${shortDay(data.habits!.longestTo!)}` : null)
           },
           { key: 'brewsPerBrewDay', label: 'Per brew day', fmt: (n) => n.toFixed(1), split: true },
-          { key: 'peakHour', label: 'Peak hour', fmt: hour, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour(data.habits!.prevPeak.hour)}` : null) },
+          { key: 'peakHour', label: 'Peak hour', fmt: hour12, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour12(data.habits!.prevPeak.hour)}` : null) },
           {
             key: 'busiestWeekday', label: 'Busiest weekday', fmt: (n) => WEEKDAYS[n],
             // Comparing puts "was Thu" on the delta line; this stays the same short form.
@@ -233,7 +232,7 @@
         ]
       : []
   );
-  const signedGrams = (n: number) => (n < 0 ? '−' : '') + formatGrams(Math.abs(n));
+  const signed = (f: (n: number) => string) => (n: number) => (n < 0 ? '−' : '') + f(Math.abs(n));
   let FLOW = $derived<Tile[]>(
     data.consumptionTab
       ? (() => {
@@ -244,8 +243,8 @@
           return [
             { key: 'brewed', label: g ? 'Brewed' + (avg ? '/day' : '') : avg ? 'Finished/day' : 'Bags finished', fmt: f, split: true },
             { key: 'bought', label: g ? 'Bought' + (avg ? '/day' : '') : avg ? 'Bought/day' : 'Bags bought', fmt: f, split: true },
-            { key: 'net', label: avg ? 'Net/day' : 'Net change', fmt: g ? signedGrams : f, split: true },
-            { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
+            { key: 'net', label: avg ? 'Net/day' : 'Net change', fmt: signed(f), split: true },
+            { key: 'avg', label: `Avg per ${avg && data.consumptionTab!.by === 'day' ? 'week' : data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
             { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
             {
               key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
@@ -299,7 +298,7 @@
   function deltaTitle(d: NonNullable<D>, t: Tile): string {
     const fmt = paced(t);
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
-    const unit = t.suffix ? ` ${t.suffix}` : '';
+    const unit = t.suffix ? ` ${fmt(d.base) === '1' ? t.suffix.replace(/s$/, '') : t.suffix}` : '';
     const dir = `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}%`;
     // A ratio tile's visible line is the change in points: "Down 3 points from 100% (31 days)".
     if (t.from?.() && !d.paced) {
@@ -357,7 +356,7 @@
     </select>
   </label>
   {#if isCustom(s.range)}
-    <button class="button button-ghost" onclick={() => openDates('range')}>Dates…</button>
+    <button class="button button-ghost" aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
   {/if}
   <label class="form-field group-field">
     <span>Compare</span>
@@ -377,7 +376,7 @@
     </select>
   </label>
   {#if isCustom(s.compare)}
-    <button class="button button-ghost" onclick={() => openDates('compare')}>Dates…</button>
+    <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {#if data.householdSize > 1}
     <div class="form-field group-field people-field">

@@ -847,7 +847,7 @@ export const STATES: State[] = [
     name: 'insights-habits',
     path: () => '/insights?tab=habits',
     act: async (page) => {
-      await expect(page.locator('.habits-charts canvas')).toHaveCount(2);
+      await expect(page.locator('.insights-charts canvas')).toHaveCount(2);
       await expect(page.locator('.heatmap .heat-cell')).toHaveCount(7 * 24);
       await page.locator('.brew-calendar .cal-cell').last().click();
       await expect(page.locator('.cell-tip')).toBeVisible();
@@ -1023,7 +1023,7 @@ export const STATES: State[] = [
     name: 'insights-consumption-compare-tooltip',
     path: () => '/insights?tab=consumption&range=1w&compare=1&by=day',
     act: async (page) => {
-      const c = page.locator('.consumption-charts canvas').first();
+      const c = page.locator('.insights-charts canvas').first();
       await c.scrollIntoViewIfNeeded();
       const b = (await c.boundingBox())!;
       await page.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.5);
@@ -1047,7 +1047,7 @@ export const STATES: State[] = [
   {
     name: 'insights-consumption-tab',
     path: () => '/insights?tab=consumption',
-    act: async (page) => expect(page.locator('.consumption-charts canvas')).toHaveCount(2)
+    act: async (page) => expect(page.locator('.insights-charts canvas')).toHaveCount(2)
   },
   {
     name: 'insights-consumption-bags-week',
