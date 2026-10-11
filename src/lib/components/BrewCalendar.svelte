@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { latestMonths } from '$lib/calendarMonths';
   import { rove, shader, takeFocus, tipAt } from './Heatmap.svelte';
 
   let {
@@ -19,10 +20,11 @@
 
   let short = $derived(days.length <= 31);
   let w = $state(0);
+  let latest = $derived(latestMonths(days));
   let monthRows = $derived.by(() => {
     if (short) return [];
     const m = new Map<string, typeof days>();
-    for (const d of days) {
+    for (const d of latest.days) {
       const k = d.date.slice(0, 7);
       if (!m.has(k)) m.set(k, []);
       m.get(k)!.push(d);
@@ -85,13 +87,14 @@
             <div class="month">
               {#each WD as d (d)}<span class="wd">{d[0]}</span>{/each}
               {#if weekday(b.days[0].date)}<span style:grid-column="span {weekday(b.days[0].date)}"></span>{/if}
-              {#each b.days as d (d.date)}{@render cell(d, d === days[0])}{/each}
+              {#each b.days as d (d.date)}{@render cell(d, d === latest.days[0])}{/each}
             </div>
           </div>
         {/each}
       </div>
     {/each}
   {/if}
+  {#if !short && latest.cut}<p class="note">Latest 24 months — pick a custom range for earlier.</p>{/if}
   {#if tip}
     <div class="cell-tip" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
   {/if}
@@ -120,6 +123,11 @@
     margin: 0 0 0.25rem;
     font-size: 0.8rem;
     font-weight: 600;
+  }
+  .note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
   }
   .wd {
     font-size: 0.7rem;
