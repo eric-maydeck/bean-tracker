@@ -21,6 +21,10 @@ export default defineConfig({
   reporter: [['list']],
   // Vite's first-visit dependency optimizing can reload a page mid-test once.
   retries: 1,
+  // Default is half the cores (9 Firefoxes on an 18-core MacBook): ~6 cores busy for 2.5 min,
+  // enough to lag typing and heat the laptop. 25% (4 here): ~2.7 cores, ~4 min.
+  // Override per run with --workers=N.
+  workers: '25%',
   use: { baseURL: `http://localhost:${PORT}`, browserName: 'firefox', headless: true },
   webServer: {
     // Fresh seed every run; never reuse a server (it could be on a real DB).

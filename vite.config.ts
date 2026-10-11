@@ -4,6 +4,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [sveltekit()],
   test: {
-    include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.{test,spec}.{js,ts}']
+    include: ['src/**/*.{test,spec}.{js,ts}', 'scripts/**/*.{test,spec}.{js,ts}'],
+    // Default is cores - 1 threads; half is as fast for this suite and leaves the machine usable.
+    maxWorkers: '50%'
   }
 });

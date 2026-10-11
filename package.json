@@ -10,8 +10,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run",
-    "test:ui": "playwright test",
+    "test": "nice -n 10 vitest run",
+    "test:ui": "nice -n 10 playwright test",
     "migrate": "node scripts/migrate.ts",
     "prepare": "husky"
   },
