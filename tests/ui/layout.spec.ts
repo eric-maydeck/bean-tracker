@@ -44,9 +44,10 @@ async function expectDeltasFit(page: Page) {
       const shown = el.querySelector('[aria-hidden]')?.textContent?.trim() ?? el.textContent?.trim() ?? '';
       const said = el.querySelector('.sr-only')?.textContent ?? '';
       const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
+      const maxLines = el.classList.contains('ratio') ? 2 : 1;
       const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
-      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+% (from|vs) /.test(said);
-      return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= 1 ? [] : [`${shown} | ${said}`];
+      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+( points?)?%? (from|vs) /.test(said);
+      return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= maxLines ? [] : [`${shown} | ${said}`];
     })
   );
   expect(bad).toEqual([]);
@@ -871,14 +872,14 @@ export const STATES: State[] = [
     }
   },
   {
-    // The previous week is inside the seed, so tiles get deltas; Active days and Longest streak
-    // keep their sub line too. Delta, sub and caption stack without overlapping, inside the tile.
+    // The previous week is inside the seed, so tiles get deltas; Longest streak
+    // keeps its sub line too. Delta, sub and caption stack without overlapping, inside the tile.
     name: 'insights-habits-compare-sub',
     path: () => '/insights?tab=habits&range=1w&compare=1',
     act: async (page) => {
       await expect(page.locator('.stat-item .insights-delta').first()).toBeVisible();
-      const tiles = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^(Active days|Longest streak)$/ }) });
-      await expect(tiles).toHaveCount(2);
+      const tiles = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Longest streak$/ }) });
+      await expect(tiles).toHaveCount(1);
       const overlaps = await tiles.evaluateAll((ts) =>
         ts.flatMap((tile) => {
           const boxes = [...tile.querySelectorAll('.stat-value, .insights-delta, .insights-pace, .stat-unit, .stat-caption')]
@@ -946,12 +947,19 @@ export const STATES: State[] = [
     }
   },
   {
-    // Active days compares as a ratio of a count: "▼ 3% from 31 days (100%)", one line, nothing clipped.
+    // Active days compares as a ratio of a count: "▼ 3% from 31 days (100%)", up to two lines, clear of the caption, nothing clipped.
     name: 'insights-habits-active-from',
     path: () => '/insights?tab=habits&range=1w&compare=1',
     act: async (page) => {
       const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Active days$/ }) });
       await expect(tile.locator('.insights-delta [aria-hidden]')).toHaveText(/^[▲▼] \d+% from \d+ days \(\d+%\)$|^No change$/);
+      await expect(tile.locator('.insights-delta .sr-only')).toHaveText(/^(Up|Down) \d+ points? from \d+% \(\d+ days?\) \(/);
+      const gap = await tile.evaluate((t) => {
+        const d = t.querySelector('.insights-delta')!.getBoundingClientRect();
+        const c = t.querySelector('.stat-caption')!.getBoundingClientRect();
+        return c.top - d.bottom;
+      });
+      expect(gap).toBeGreaterThanOrEqual(-0.5);
       await expectDeltasFit(page);
     }
   },

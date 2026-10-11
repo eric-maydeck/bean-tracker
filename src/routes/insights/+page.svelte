@@ -191,8 +191,9 @@
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
-          { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good', keepSub: true,
-            from: () => (data.habits!.prevActive ? `${data.habits!.prevActive.brewDays} days` : null),
+          { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good',
+            // Under a compare the delta's second line (the pace slot) says the previous count; the "N of M days" sub waits for no compare.
+            from: () => (data.habits!.prevActive ? `${data.habits!.prevActive.brewDays} day${data.habits!.prevActive.brewDays === 1 ? '' : 's'}` : null),
             sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days` },
           { key: 'currentStreak', label: data.habits.streakAtEnd ? 'Streak at period end' : 'Current streak', fmt: count, suffix: 'days' },
           {
@@ -286,6 +287,11 @@
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
     const unit = t.suffix ? ` ${t.suffix}` : '';
     const dir = `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}%`;
+    // A ratio tile's visible line is the change in points: "Down 3 points from 100% (31 days)".
+    if (t.from?.() && !d.paced) {
+      const pts = Math.round(Math.abs(d.abs) * 100);
+      return `${d.abs > 0 ? 'Up' : 'Down'} ${pts} point${pts === 1 ? '' : 's'} from ${paced(t)(d.base)} (${t.from()}) (${compareLabel})`;
+    }
     return d.paced ? `${dir} vs ${fmt(d.base)}${unit} at that pace` : `${dir} from ${t.from?.() ? was(d, t) : fmt(d.base) + unit} (${compareLabel})`;
   }
   const paceText = (d: NonNullable<D>, t: Tile) => (d.paced ? `vs ${paced(t)(d.base)} at that pace` : '');
@@ -752,9 +758,13 @@
   .stat-item .insights-delta {
     text-transform: none;
   }
-  /* "▼ 14% from 7 days (100%)" is ~14.5em wide: size it to the tile (a container: cqw is its width) (never past the usual 0.8rem). */
+  /* "▼ 14% from 7 days (100%)" is longer than a phone tile is wide: it wraps to a second line
+     (the pace slot below it, free because ratio tiles are never paced), at the usual size. */
   .stat-item .insights-delta.ratio {
-    font-size: min(0.8rem, calc((100cqw - 2 * var(--space-2)) / 14.5));
+    white-space: normal;
+    line-height: 1.1;
+    overflow: visible;
+    text-overflow: clip;
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);
