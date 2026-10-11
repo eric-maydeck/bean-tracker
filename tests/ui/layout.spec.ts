@@ -779,7 +779,14 @@ export const STATES: State[] = [
   {
     name: 'insights-default',
     path: () => '/insights',
-    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible()
+    act: async (page) => {
+      await expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible();
+      // Totals tiles are the /stats "At a glance" hero tiles; Averages are not.
+      const color = (title: string) =>
+        page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
+          .locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
+      expect(await color('Totals')).not.toBe(await color('Averages'));
+    }
   },
   {
     name: 'insights-habits',
