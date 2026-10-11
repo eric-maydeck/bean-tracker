@@ -210,6 +210,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Tap target >= 44px: pad the link and cancel the padding with a negative margin, so the
+     row keeps its fixed height and the one-line ellipsis. */
+  .who a {
+    display: block;
+    padding-block: 0.8rem;
+    margin-block: -0.8rem;
+  }
   .who small {
     color: var(--color-text-muted);
     font-size: 0.75rem;
