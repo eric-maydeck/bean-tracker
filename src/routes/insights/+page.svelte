@@ -208,7 +208,7 @@
 {#snippet panel(title: string, tiles: Tile[])}
   <section class="chart-panel">
     <h2>{title}</h2>
-    <div class="stat-row fit n{tiles.length}">
+    <div class="stat-row fit n{tiles.length} {data.deltas ? 'comparing' : ''}">
       {#each tiles as t (t.key)}
         {@const d = data.deltas?.[t.key]}
         <div class="stat-item">
@@ -489,8 +489,6 @@
   /* .stat-unit upper-cases; "120G" misreads as a unit. */
   .stat-item .insights-delta {
     text-transform: none;
-    /* Small floor so the delta + pace lines still clear the caption on 3-column phone tiles. */
-    font-size: max(0.6rem, 6.88cqw);
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);
@@ -504,14 +502,25 @@
     position: absolute;
     left: var(--space-2);
     right: var(--space-2);
-    top: calc(54.02cqw + max(0.6rem, 6.88cqw));
+    top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
     overflow: hidden;
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: max(0.5rem, 5.4cqw);
+    font-size: max(0.6rem, 5.4cqw);
     line-height: 1;
     color: var(--color-text-muted);
+  }
+  /* Compare on, phone tiles: the delta + pace lines don't fit above the caption at
+     these sizes, so every tile grows the same 0.75rem taller (rows stay even) and the
+     caption moves down by as much. */
+  @media (max-width: 640px) {
+    .comparing .stat-item {
+      height: calc(var(--h) + 0.75rem);
+    }
+    .comparing .stat-caption {
+      top: calc(73.98cqw + 0.75rem);
+    }
   }
   .insights-period {
     color: var(--color-text-muted);
