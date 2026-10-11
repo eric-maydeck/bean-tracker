@@ -1,3 +1,10 @@
+# [1.68.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.67.0...v1.68.0) (2026-10-11)
+
+
+### Features
+
+* **insights:** spend and grams in the $/g leaderboard rows
+
 # [1.67.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.66.0...v1.67.0) (2026-10-11)
 
 
