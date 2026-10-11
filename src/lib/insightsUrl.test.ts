@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, BOARDS, BAG_BOARDS
+  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -126,12 +126,15 @@ describe('withDefaults', () => {
       avg: 'best-k2',
       people: 'household',
       tab: 'overview',
-      rank: 'rating'
+      rank: 'rating',
+      measure: 'brews',
+      unit: 'grams'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating'
+      range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating',
+      measure: 'brews', unit: 'grams'
     }));
 });
 
@@ -289,4 +292,41 @@ describe('leaderboards params', () => {
     expect(withDefaults({})).toMatchObject({ tab: 'overview', rank: 'rating', open: undefined }));
   it('spend and $/g apply to bag boards only', () =>
     expect(BOARDS.filter((b) => !BAG_BOARDS.includes(b))).toEqual(['water', 'dripper', 'filter', 'grinder']));
+});
+
+describe('habits and consumption params', () => {
+  it('reads measure on the habits tab only', () => {
+    expect(parse('tab=Habits&measure=GRAMS')).toMatchObject({ tab: 'habits', measure: 'grams' });
+    expect(parse('tab=consumption&measure=grams').measure).toBeUndefined();
+    expect(parse('measure=grams').measure).toBeUndefined();
+  });
+  it('reads unit and by on the consumption tab only', () => {
+    expect(parse('tab=consumption&unit=Bags&by=WEEK')).toMatchObject({ tab: 'consumption', unit: 'bags', by: 'week' });
+    const h = parse('tab=habits&unit=bags&by=week');
+    expect(h.unit).toBeUndefined();
+    expect(h.by).toBeUndefined();
+  });
+  it('keeps explicit defaults', () =>
+    expect(parse('tab=habits&measure=brews').measure).toBe('brews'));
+  it('ignores bad values', () => {
+    const s = parse('tab=consumption&unit=kg&by=year');
+    expect(s.unit).toBeUndefined();
+    expect(s.by).toBeUndefined();
+    expect(parse('tab=habits&measure=cups').measure).toBeUndefined();
+  });
+  it("drops a by that doesn't fit the range", () => {
+    const fits = (range: string, by: string) => !(range === 'all' && by === 'day');
+    const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS, YEARS, undefined, 1, fits);
+    expect(p('tab=consumption&range=all&by=day').by).toBeUndefined();
+    expect(p('tab=consumption&range=all&by=week').by).toBe('week');
+  });
+  it('round-trips', () => {
+    expect(insightsParams(parse('tab=habits&measure=rating')).toString()).toBe('tab=habits&measure=rating');
+    expect(insightsParams(parse('tab=consumption&unit=bags&by=month')).toString()).toBe('tab=consumption&unit=bags&by=month');
+  });
+  it('defaults: brews, grams, by auto', () => {
+    expect(withDefaults({})).toMatchObject({ measure: 'brews', unit: 'grams' });
+    expect(withDefaults({}).by).toBeUndefined();
+    expect(BYS).toEqual(['day', 'week', 'month']);
+  });
 });

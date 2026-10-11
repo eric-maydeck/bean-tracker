@@ -1,5 +1,5 @@
 import { BC_TIME_ZONE } from '../beanConquerorJson';
-import { CUSTOM_RANGE } from '$lib/insightsUrl';
+import { CUSTOM_RANGE, type By, type ByFits } from '$lib/insightsUrl';
 
 // Insights count days in the user's zone (Mountain Time). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
@@ -63,10 +63,28 @@ export const inPeriod = (date: string, p: Period): boolean => (p.start === null 
 // Days of `p` that tracking covers: from max(start, first brew) to min(end, today),
 // inclusive. Brews per day and pace scaling both divide by it. 0 = nothing tracked.
 export function trackedDays(p: Period, dataStart: string | null, today: string): number {
-  const first = p.start === null || (dataStart !== null && dataStart > p.start) ? dataStart : p.start;
-  const last = today < p.end ? today : p.end;
-  return first === null ? 0 : Math.max(0, daysBetween(first, last) + 1);
+  const t = trackedBounds(p, dataStart, today);
+  return t ? daysBetween(t.start, t.end) + 1 : 0;
 }
+
+// The tracked part of `p`: max(start, first brew) → min(end, today); null when none of it is.
+export function trackedBounds(p: Period, dataStart: string | null, today: string): { start: string; end: string } | null {
+  const start = p.start === null || (dataStart !== null && dataStart > p.start) ? dataStart : p.start;
+  const end = today < p.end ? today : p.end;
+  return start === null || start > end ? null : { start, end };
+}
+
+export const weekday = (d: string): number => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // 0 = Monday
+
+// Consumption buckets (spec): auto day up to a month, week up to six months, else month; a
+// choice is offered only when it gives a readable chart (day <= 1 year, week >= 2, month >= 2).
+export const autoBy = (span: number): By => (span <= 31 ? 'day' : span <= 186 ? 'week' : 'month');
+export const BY_FITS: Record<By, (span: number) => boolean> = { day: (s) => s <= 366, week: (s) => s >= 14, month: (s) => s >= 60 };
+export function trackedSpan(range: string, dataStart: string | null, today: string): number {
+  return trackedDays(periodBounds(range, today), dataStart, today);
+}
+export const byFits = (dataStart: string | null, today: string): ByFits => (range, by) =>
+  BY_FITS[by](trackedSpan(range, dataStart, today));
 
 const isDate = (d: string) => addDays(d, 0) === d; // Date rolls 2026-02-30 over to 03-02
 

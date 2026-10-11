@@ -25,8 +25,18 @@ export type Avg = (typeof AVGS)[number];
 export const DEFAULT_AVG: Avg = 'best-k2';
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
-export const TABS = ['overview', 'leaderboards'] as const;
+export const TABS = ['overview', 'leaderboards', 'habits', 'consumption'] as const;
 export type Tab = (typeof TABS)[number];
+// Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
+// (absent = auto from the tracked span, time.ts autoBy).
+export const MEASURES = ['brews', 'grams', 'rating'] as const;
+export type Measure = (typeof MEASURES)[number];
+export const UNITS = ['grams', 'bags'] as const;
+export type Unit = (typeof UNITS)[number];
+export const BYS = ['day', 'week', 'month'] as const;
+export type By = (typeof BYS)[number];
+// Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).
+export type ByFits = (range: string, by: By) => boolean;
 // Leaderboards: one Rank by for every board; `open` = the one board showing all its rows.
 export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg'] as const;
 export type Rank = (typeof RANKS)[number];
@@ -76,18 +86,23 @@ export interface InsightsUrlState {
   tab?: Tab;
   rank?: Rank;
   open?: Board;
+  measure?: Measure;
+  unit?: Unit;
+  by?: By;
 }
 
-export type InsightsView = Required<Omit<InsightsUrlState, 'open'>> & { open?: Board };
+export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by'>> & { open?: Board; by?: By };
 
-export const DEFAULTS: Required<Omit<InsightsUrlState, 'open'>> = {
+export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by'>> = {
   range: '12m',
   compare: 0,
   ratings: 'current',
   avg: DEFAULT_AVG,
   people: 'household',
   tab: 'overview',
-  rank: 'rating'
+  rank: 'rating',
+  measure: 'brews',
+  unit: 'grams'
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
@@ -157,7 +172,7 @@ export function keepCompare(c: number | string | undefined, offered: readonly st
 // `householdSize`: getHouseholdSize (1 drops `people`).
 export function parseInsightsUrl(
   p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false,
-  householdSize = 1
+  householdSize = 1, byFits: ByFits = () => true
 ): InsightsUrlState {
   const range = parseRange(p, years);
   const r = range ?? DEFAULTS.range;
@@ -179,7 +194,11 @@ export function parseInsightsUrl(
     tab,
     // rank and open belong to the leaderboards tab; elsewhere they're dropped.
     rank: tab === 'leaderboards' ? pickOne(p, 'rank', RANKS) : undefined,
-    open: tab === 'leaderboards' ? pickOne(p, 'open', BOARDS) : undefined
+    open: tab === 'leaderboards' ? pickOne(p, 'open', BOARDS) : undefined,
+    // measure belongs to habits; unit and by to consumption (by only when it fits the range).
+    measure: tab === 'habits' ? pickOne(p, 'measure', MEASURES) : undefined,
+    unit: tab === 'consumption' ? pickOne(p, 'unit', UNITS) : undefined,
+    by: tab === 'consumption' ? ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)) : undefined
   };
 }
 
@@ -193,6 +212,9 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.tab) p.set('tab', s.tab);
   if (s.rank) p.set('rank', s.rank);
   if (s.open) p.set('open', s.open);
+  if (s.measure) p.set('measure', s.measure);
+  if (s.unit) p.set('unit', s.unit);
+  if (s.by) p.set('by', s.by);
   return p;
 }
 
@@ -205,6 +227,9 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     people: s.people ?? DEFAULTS.people,
     tab: s.tab ?? DEFAULTS.tab,
     rank: s.rank ?? DEFAULTS.rank,
-    open: s.open
+    open: s.open,
+    measure: s.measure ?? DEFAULTS.measure,
+    unit: s.unit ?? DEFAULTS.unit,
+    by: s.by
   };
 }

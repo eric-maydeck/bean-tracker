@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   bcLocalTime, localToday, addMonths, daysBetween, periodBounds, previousPeriod, inPeriod, yearsSince,
-  trackedDays, comparePeriod, compareFits
+  trackedDays, comparePeriod, compareFits, trackedBounds, weekday, autoBy, BY_FITS, byFits
 } from './time';
 
 describe('bcLocalTime (stored Bean Conqueror times are already local)', () => {
@@ -161,5 +161,33 @@ describe('compareFits', () => {
     expect(fits('1w', '6m')).toBe(false);
     expect(fits('1w', '2026-09-01..2026-09-02')).toBe(true);
     expect(fits('1w', '2026-09-01..2026-12-01')).toBe(false);
+  });
+});
+
+describe('consumption granularity', () => {
+  it('weekday: Monday is 0', () => {
+    expect(weekday('2026-10-12')).toBe(0); // a Monday
+    expect(weekday('2026-10-11')).toBe(6); // a Sunday
+  });
+  it('autoBy at its boundaries', () => {
+    expect([31, 32, 186, 187].map(autoBy)).toEqual(['day', 'week', 'week', 'month']);
+  });
+  it('BY_FITS at its boundaries', () => {
+    expect([366, 367].map(BY_FITS.day)).toEqual([true, false]);
+    expect([13, 14].map(BY_FITS.week)).toEqual([false, true]);
+    expect([59, 60].map(BY_FITS.month)).toEqual([false, true]);
+  });
+  it('trackedBounds clips to the first brew and today', () => {
+    expect(trackedBounds({ start: '2026-01-01', end: '2026-12-31' }, '2026-02-09', '2026-10-11'))
+      .toEqual({ start: '2026-02-09', end: '2026-10-11' });
+    expect(trackedBounds({ start: null, end: '2026-10-11' }, null, '2026-10-11')).toBeNull();
+    expect(trackedBounds({ start: '2025-01-01', end: '2025-12-31' }, '2026-02-09', '2026-10-11')).toBeNull();
+  });
+  it('byFits uses the tracked span', () => {
+    const f = byFits('2026-02-09', '2026-10-11'); // all = 245 tracked days
+    expect(f('all', 'day')).toBe(true);
+    expect(f('1w', 'week')).toBe(false);
+    expect(f('1m', 'month')).toBe(false);
+    expect(byFits('2024-01-01', '2026-10-11')('all', 'day')).toBe(false);
   });
 });
