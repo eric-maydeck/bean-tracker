@@ -5,7 +5,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { localToday, periodBounds, previousPeriod, addDays, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
+import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
 import { load } from './+page.server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,17 +65,15 @@ describe('/insights load', () => {
   const prev1 = previousPeriod('12m', p12, 1)!;
   const prev2 = previousPeriod('12m', p12, 2)!;
 
-  // Totals pace by tracked days; equal windows give k = 1 (a leap day in one makes it differ).
-  const pace = (n: number, prev: Period, ds: string) => (n * trackedDays(p12, ds, today)) / trackedDays(prev, ds, today);
 
   it('compare=1 fills deltas against the previous 12 months', () => {
     // One 15 g brew now; two 10 g brews in the previous 12 months.
     seed([[today, 15], [prev1.end, 10], [prev1.start!, 10], [prev2.end, 20]]);
     const d = run('?range=12m&compare=1');
     expect(d.previousPeriod).toEqual(prev1);
-    expect(d.deltas.brews.base).toBeCloseTo(pace(2, prev1, prev2.end));
-    expect(d.deltas.brews.abs).toBeCloseTo(1 - pace(2, prev1, prev2.end));
-    expect(d.deltas.grams.abs).toBeCloseTo(15 - pace(20, prev1, prev2.end));
+    expect(d.deltas.brews.base).toBe(2);
+    expect(d.deltas.brews.abs).toBe(1 - 2);
+    expect(d.deltas.grams.abs).toBe(15 - 20);
   });
 
   it('compare=2 reaches two periods back', () => {
@@ -83,8 +81,8 @@ describe('/insights load', () => {
     const d = run('?range=12m&compare=2');
     expect(d.explicit.compare).toBe(2);
     expect(d.previousPeriod).toEqual(prev2);
-    expect(d.deltas.brews.abs).toBeCloseTo(1 - pace(2, prev2, prev2.start!));
-    expect(d.deltas.grams.abs).toBeCloseTo(15 - pace(40, prev2, prev2.start!));
+    expect(d.deltas.brews.abs).toBe(1 - 2);
+    expect(d.deltas.grams.abs).toBe(15 - 40);
   });
 
   it('a same-length window partly before tracking is paced', () => {
@@ -94,6 +92,29 @@ describe('/insights load', () => {
     // 1 brew in 1 tracked day → that pace over the period's days.
     expect(d.deltas.brews.base).toBe(trackedDays(p12, prev1.end, today));
     expect(d.deltas.avgDose).toEqual({ abs: 5, pct: 50, base: 10 });
+  });
+
+  it('a fully tracked same-length compare keeps raw totals even when the calendar lengths differ', () => {
+    const len = (w: Period) => daysBetween(w.start!, w.end) + 1;
+    const r = (['3m', '6m'] as const).find((x) => {
+      const c = periodBounds(x, today);
+      return len(c) !== len(previousPeriod(x, c, 1)!);
+    })!;
+    expect(r).toBeDefined(); // else the test would pass vacuously
+    const c = periodBounds(r, today);
+    const pv = previousPeriod(r, c, 1)!;
+    seed([[today, 15], [pv.start!, 10], [pv.end, 10]]);
+    const d = run(`?range=${r}&compare=1`);
+    expect(d.scaled).toBe(false);
+    expect(d.deltas.brews.base).toBe(2);
+  });
+
+  it('a calendar year still in progress is paced', () => {
+    const y = Number(today.slice(0, 4));
+    seed([[today, 15], [`${y - 1}-01-01`, 10], [`${y - 1}-12-31`, 10]]);
+    const d = run(`?range=${y}&compare=1`);
+    expect(d.explicit.compare).toBe(1);
+    expect(d.scaled).toBe(true);
   });
 
   it('ytd compare offers only earlier years that have brews', () => {

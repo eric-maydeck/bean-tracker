@@ -74,10 +74,11 @@ export function tileDelta(cur: number | null, prev: number | null): Delta {
 
 // Windows of different tracked lengths (trackedDays): a total's baseline becomes its
 // pace over the period's days, total × curDays / prevDays; averages compare as they are.
+// `pace` false compares totals raw regardless (same-length windows that are fully tracked).
 export function compareTiles(
-  cur: OverviewTiles, prev: OverviewTiles, curDays: number, prevDays: number
+  cur: OverviewTiles, prev: OverviewTiles, curDays: number, prevDays: number, pace = true
 ): { deltas: Record<keyof OverviewTiles, Delta>; scaled: boolean } {
-  const scaled = curDays !== prevDays;
+  const scaled = pace && curDays !== prevDays;
   const base = (k: keyof OverviewTiles) =>
     !scaled || TILE_KIND[k] === 'average' ? prev[k] : prevDays ? ((prev[k] ?? 0) * curDays) / prevDays : null;
   const keys = Object.keys(cur) as (keyof OverviewTiles)[];

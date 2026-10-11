@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
-  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, yearsSince, type Period
+  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, TILE_KIND } from '$lib/server/insights/overview';
@@ -24,7 +24,11 @@ export const load: PageServerLoad = ({ url }) => {
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   const tiles = overviewTiles(brews, bags, period, s.ratings, today, dataStart);
   const days = (w: Period) => trackedDays(w, dataStart, today);
-  const cmp = prev && compareTiles(tiles, overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), days(period), days(prev));
+  // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
+  // windows differ by a day or two, which isn't worth a "vs … at that pace" on every total.
+  const untracked = (w: Period) => days(w) < daysBetween(w.start!, w.end) + 1;
+  const pace = typeof s.compare !== 'number' || (!!prev && (untracked(period) || untracked(prev)));
+  const cmp = prev && compareTiles(tiles, overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), days(period), days(prev), pace);
   // Custom range… opens on the same-length window before the period when it's tracked,
   // else everything before it, else first brew → today (all time, or nothing earlier).
   const customDefault =
