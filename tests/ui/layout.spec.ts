@@ -66,6 +66,15 @@ async function expectChipsFit(page: Page, scope = 'main') {
   );
   expect(bad).toEqual([]);
 }
+// Every toggle group names itself with a small label (the in-tile Current/All switch is named by its caption).
+async function expectGroupsLabelled(page: Page) {
+  const unnamed = await page.locator('.tab-group:not(.rating-switch):not(.filter-columns)').evaluateAll((gs) =>
+    gs.filter((g) => !g.closest('dialog,.filter-editor') && !g.parentElement?.matches('.form-field') ||
+      !g.parentElement!.querySelector(':scope > span')?.textContent?.trim()).map((g) => g.textContent?.trim().slice(0, 30))
+  );
+  expect(unnamed).toEqual([]);
+  await expectChipsFit(page, 'body');
+}
 async function expectNoEllipsis(page: Page) {
   const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
     els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
@@ -901,6 +910,18 @@ export const STATES: State[] = [
       expect(m.own).toBeGreaterThanOrEqual(m.max - 1);
     }
   },
+  { name: 'labels-overview', path: () => '/insights', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-leaderboards', path: () => '/insights?tab=leaderboards', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-habits', path: () => '/insights?tab=habits', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-habits-rating', path: () => '/insights?tab=habits&measure=rating', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-consumption', path: () => '/insights?tab=consumption', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-stats-general', path: () => '/stats', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-stats-bq', path: () => '/stats?tab=bq', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-stats-bq-favorites', path: () => '/stats?tab=bq&bc=favorites', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-stats-bq-brewing', path: () => '/stats?tab=bq&bc=brewing', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-stats-bq-economics', path: () => '/stats?tab=bq&bc=economics', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-subscriptions', path: () => '/subscriptions', act: (page) => expectGroupsLabelled(page) },
   {
     // Habits Show toggle: Total sums (URL carries agg=total), Avg per day is the default, rating hides the group.
     name: 'insights-habits-agg-total',

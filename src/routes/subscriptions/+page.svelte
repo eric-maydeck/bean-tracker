@@ -336,10 +336,13 @@
     <p class="text-muted fill-note" aria-live="polite">{f.notes.join(' · ')}</p>
   {/if}
   {#if f.variants.length}
-    <div class="tab-group fill-sizes" role="group" aria-label="Subscription option">
-      {#each f.variants as v, i (i)}
-        <button type="button" aria-pressed={f.selected === i} onclick={() => chooseVariant(key, i)}>{variantChipLabel(v, i)}</button>
-      {/each}
+    <div class="form-field group-field">
+      <span>Option</span>
+      <div class="tab-group fill-sizes" role="group" aria-label="Subscription option">
+        {#each f.variants as v, i (i)}
+          <button type="button" aria-pressed={f.selected === i} onclick={() => chooseVariant(key, i)}>{variantChipLabel(v, i)}</button>
+        {/each}
+      </div>
     </div>
   {/if}
 {/snippet}
@@ -369,9 +372,12 @@
   <p class="badge badge-urgent">{form.error}</p>
 {/if}
 
-<div class="tab-group">
-  <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
-  <button aria-pressed={view === 'list'} onclick={() => setView('list')}>Table</button>
+<div class="form-field group-field">
+  <span>View</span>
+  <div class="tab-group">
+    <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
+    <button aria-pressed={view === 'list'} onclick={() => setView('list')}>Table</button>
+  </div>
 </div>
 
 {#if view === 'list'}

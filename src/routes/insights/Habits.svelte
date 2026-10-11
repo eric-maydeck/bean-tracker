@@ -44,24 +44,32 @@
 </script>
 
 <div class="habits-bar">
-  <div class="tab-group" role="group" aria-label="Measure">
-    {#each MEASURES as m (m)}<button aria-pressed={measure === m} onclick={() => choose({ measure: m })}>{LABEL[m]}</button>{/each}
+  <div class="form-field">
+    <span>Measure</span>
+    <div class="tab-group" role="group" aria-label="Measure">
+      {#each MEASURES as m (m)}<button aria-pressed={measure === m} onclick={() => choose({ measure: m })}>{LABEL[m]}</button>{/each}
+    </div>
   </div>
   {#if measure !== 'rating'}
-    <div class="tab-group" role="group" aria-label="Show">
-      {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+    <div class="form-field">
+      <span>Show</span>
+      <div class="tab-group" role="group" aria-label="Show">
+        {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+      </div>
     </div>
-  {/if}
-  {#if measure === 'rating'}
-    <div class="tab-group" role="group" aria-label="Ratings">
-      {#each ['current', 'all'] as const as m (m)}
-        <button
-          aria-pressed={ratings === m}
-          title={ratingsHelp[m]}
-          aria-describedby="ratings-help-{m}"
-          onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button
-        >
-      {/each}
+  {:else}
+    <div class="form-field">
+      <span>Ratings</span>
+      <div class="tab-group" role="group" aria-label="Ratings">
+        {#each ['current', 'all'] as const as m (m)}
+          <button
+            aria-pressed={ratings === m}
+            title={ratingsHelp[m]}
+            aria-describedby="ratings-help-{m}"
+            onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button
+          >
+        {/each}
+      </div>
     </div>
   {/if}
 </div>
@@ -114,6 +122,13 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
+  }
+  .habits-bar .form-field {
+    margin-bottom: 0;
+  }
+  .habits-bar .form-field > span {
+    display: block;
+    line-height: 1.2;
   }
   .habits-charts {
     display: grid;

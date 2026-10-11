@@ -41,21 +41,30 @@
 </script>
 
 <div class="consumption-bar">
-  <div class="tab-group" role="group" aria-label="Unit">
-    {#each UNITS as u (u)}<button aria-pressed={unit === u} onclick={() => choose({ unit: u })}>{CAP(u)}</button>{/each}
+  <div class="form-field">
+    <span>Unit</span>
+    <div class="tab-group" role="group" aria-label="Unit">
+      {#each UNITS as u (u)}<button aria-pressed={unit === u} onclick={() => choose({ unit: u })}>{CAP(u)}</button>{/each}
+    </div>
   </div>
-  <div class="tab-group" role="group" aria-label="By">
-    {#each BYS as b (b)}
-      <button
-        aria-pressed={t.by === b}
-        disabled={!offered.includes(b)}
-        title={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
-        onclick={() => choose({ by: b })}>{CAP(b)}</button
-      >
-    {/each}
+  <div class="form-field">
+    <span>Group by</span>
+    <div class="tab-group" role="group" aria-label="Group by">
+      {#each BYS as b (b)}
+        <button
+          aria-pressed={t.by === b}
+          disabled={!offered.includes(b)}
+          title={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
+          onclick={() => choose({ by: b })}>{CAP(b)}</button
+        >
+      {/each}
+    </div>
   </div>
-  <div class="tab-group" role="group" aria-label="Aggregate">
-    {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+  <div class="form-field">
+    <span>Show</span>
+    <div class="tab-group" role="group" aria-label="Show">
+      {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+    </div>
   </div>
 </div>
 
@@ -99,6 +108,13 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
+  }
+  .consumption-bar .form-field {
+    margin-bottom: 0;
+  }
+  .consumption-bar .form-field > span {
+    display: block;
+    line-height: 1.2;
   }
   .consumption-charts {
     display: grid;

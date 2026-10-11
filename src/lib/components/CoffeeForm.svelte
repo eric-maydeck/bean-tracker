@@ -421,14 +421,17 @@
   </datalist>
 
   {#snippet sizeChips()}
-    <div class="tab-group fill-sizes" role="group" aria-label="Bag size">
-      {#each fillVariants as v, i (i)}
-        <button type="button" aria-pressed={selectedVariant === i} onclick={() => chooseVariant(i)}>
-          {v.label || (v.grams != null ? `${v.grams}g` : `Option ${i + 1}`)} · {v.costUsd != null
-            ? `$${v.costUsd.toFixed(2)}`
-            : v.originalPrice}
-        </button>
-      {/each}
+    <div class="form-field group-field">
+      <span>Bag size</span>
+      <div class="tab-group fill-sizes" role="group" aria-label="Bag size">
+        {#each fillVariants as v, i (i)}
+          <button type="button" aria-pressed={selectedVariant === i} onclick={() => chooseVariant(i)}>
+            {v.label || (v.grams != null ? `${v.grams}g` : `Option ${i + 1}`)} · {v.costUsd != null
+              ? `$${v.costUsd.toFixed(2)}`
+              : v.originalPrice}
+          </button>
+        {/each}
+      </div>
     </div>
   {/snippet}
 

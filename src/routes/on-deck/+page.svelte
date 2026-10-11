@@ -68,12 +68,15 @@
 </div>
 
 <div class="search-row">
-  <div class="tab-group">
-    <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
-    <button aria-pressed={filter === 'caffeinated'} onclick={() => setFilter('caffeinated')}>
-      Caffeinated
-    </button>
-    <button aria-pressed={filter === 'decaf'} onclick={() => setFilter('decaf')}>Decaf</button>
+  <div class="form-field group-field">
+    <span>Show</span>
+    <div class="tab-group">
+      <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
+      <button aria-pressed={filter === 'caffeinated'} onclick={() => setFilter('caffeinated')}>
+        Caffeinated
+      </button>
+      <button aria-pressed={filter === 'decaf'} onclick={() => setFilter('decaf')}>Decaf</button>
+    </div>
   </div>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>

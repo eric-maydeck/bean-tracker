@@ -404,6 +404,14 @@ input:focus-visible {
   margin-bottom: var(--space-4);
 }
 
+.toolbar .form-field,
+.search-row .form-field,
+.chart-panel-controls .form-field,
+.chart-panel-header .form-field,
+.group-field {
+  margin-bottom: 0; /* a labelled toggle group in a control row sits flush with its neighbours */
+}
+
 .form-field-checkbox {
   flex-direction: row;
   align-items: center;
