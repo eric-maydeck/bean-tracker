@@ -273,7 +273,7 @@
 
 <div class="toolbar">
   <h1>Insights</h1>
-  <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
+  <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
   <ShareButton />
 </div>
 
@@ -687,6 +687,10 @@
     translate: 0 calc(-100% - 0.5rem);
   }
 
+  /* Reset sits beside Share, not mid-row (the toolbar spaces its children apart). */
+  .reset {
+    margin-left: auto;
+  }
   .stat-value small {
     font-size: 0.4em;
     font-weight: 600;
