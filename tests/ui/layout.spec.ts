@@ -15,6 +15,25 @@ const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
 let cached: Seed | undefined;
 const seed = (): Seed => (cached ??= JSON.parse(readFileSync('.ui-test/seed.json', 'utf8')));
 
+// Insights stat grids: every row of tiles runs edge to edge (no empty cell, no ragged last row).
+async function expectStatRowsFull(page: Page) {
+  const gaps = await page.locator('.stat-row').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const o = row.getBoundingClientRect();
+      const byTop = new Map<number, DOMRect[]>();
+      for (const t of row.children) {
+        const r = t.getBoundingClientRect();
+        byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]);
+      }
+      return [...byTop.values()].flatMap((rs) => {
+        const [l, r] = [Math.min(...rs.map((x) => x.left)) - o.left, o.right - Math.max(...rs.map((x) => x.right))];
+        return Math.abs(l) > 1 || Math.abs(r) > 1 ? [`${rs.length} tiles leave ${Math.round(l)}px left, ${Math.round(r)}px right`] : [];
+      });
+    })
+  );
+  expect(gaps).toEqual([]);
+}
+
 interface State {
   name: string;
   path: (s: Seed) => string;
@@ -713,7 +732,7 @@ export const STATES: State[] = [
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
   {
-    // Every rating tile carries the Settled/All switch; one URL param keeps
+    // Every rating tile carries the Current/All switch; one URL param keeps
     // them in sync. Navigation only, nothing saved.
     name: 'insights-ratings-switch-sync',
     path: () => '/insights',
@@ -1295,6 +1314,7 @@ for (const state of STATES) {
     const s = seed();
     await page.goto(state.path(s), { waitUntil: 'networkidle' });
     if (state.act) await state.act(page, s);
+    if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
     // Screenshot first, so a failing state still leaves a picture to look at.
     await page.screenshot({ path: `.ui-test/screenshots/${state.name}-${info.project.name}.png`, fullPage: true });
     await checkLayout(page);

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { page } from '$app/state';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
@@ -18,7 +19,8 @@
     const next = { ...data.explicit, ...change };
     // A compare the new range doesn't offer would be dropped by the parser.
     if (change.range) next.compare = keepCompare(next.compare, data.compareMenus[change.range].flatMap((g) => g.options.map((o) => o.value)));
-    const qs = insightsParams(next).toString();
+    const params = insightsParams(next);
+    const qs = params.toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
@@ -93,7 +95,7 @@
   // One explanation per ratings mode, shared by the switches (hover title,
   // aria-describedby) and the caption's tap-to-open popover.
   let RATINGS_HELP = $derived({
-    settled: `Rated brews since ${day(data.settledFrom)}, once the scale settled.`,
+    current: `Rated brews since ${day(data.settledFrom)}, once the scale settled.`,
     all: 'Every rated brew, including earlier ones.'
   });
   // A popover sits in the top layer; put it under its caption button (above
@@ -206,18 +208,18 @@
 {#snippet panel(title: string, tiles: Tile[])}
   <section class="chart-panel">
     <h2>{title}</h2>
-    <div class="stat-row">
+    <div class="stat-row fit n{tiles.length}">
       {#each tiles as t (t.key)}
         {@const d = data.deltas?.[t.key]}
         <div class="stat-item">
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
-              {#each ['settled', 'all'] as const as m (m)}
+              {#each ['current', 'all'] as const as m (m)}
                 <button
                   aria-pressed={s.ratings === m}
                   title={RATINGS_HELP[m]}
                   aria-describedby="ratings-help-{m}"
-                  onclick={() => choose({ ratings: m })}><span>{m === 'all' ? 'All' : 'Settled'}</span></button
+                  onclick={() => choose({ ratings: m })}><span>{m === 'all' ? 'All' : 'Current'}</span></button
                 >
               {/each}
             </div>
@@ -233,7 +235,7 @@
             {#if t.ratingSwitch}
               <span class="stat-label mode-caption"
                 >{t.label} · <button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  >{s.ratings === 'all' ? 'All' : 'Settled'}</button
+                  >{s.ratings === 'all' ? 'All' : 'Current'}</button
                 ></span
               >
             {:else}
@@ -250,7 +252,7 @@
 {/snippet}
 
 {@render panel('Totals', TOTALS)}
-<span id="ratings-help-settled" hidden>{RATINGS_HELP.settled}</span>
+<span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 {@render panel('Averages', AVERAGES)}
 
@@ -347,13 +349,16 @@
     }
   }
 
-  /* Settled/All on the Avg rating tile, in the free band above the value.
+  /* Current/All on the Avg rating tile, in the free band above the value.
      The pill is cqw-sized like the rest of the tile; the button around it is
      the tap target (44px on phones via app.css) and stays transparent, so on
      a small tile it reaches over the value's top edge without hiding it. */
   .rating-switch {
     position: absolute;
-    top: 3cqw;
+    /* Centred between the tile's top edge and the top of the value's digits
+       (box top 24.09cqw + ~0.18em of blank line box above the glyphs ≈ 28.7cqw):
+       half of what's left after the pill (1.2 line × font + 3cqw padding + 2px border). */
+    top: calc((28.7cqw - 1.2 * max(0.7rem, 6.2cqw) - 3cqw - 2px) / 2);
     left: 0;
     right: 0;
     justify-content: center;
@@ -372,6 +377,14 @@
   @media (max-width: 640px) {
     .rating-switch button {
       min-width: 44px;
+    }
+    /* A 44px button is wider than its half of the pill: push each half
+       against the seam so the pill stays joined. */
+    .rating-switch button:first-child {
+      justify-content: flex-end;
+    }
+    .rating-switch button:last-child {
+      justify-content: flex-start;
     }
   }
   .rating-switch span {
@@ -429,6 +442,9 @@
     background: none;
     font: inherit;
     color: inherit;
+    /* Match the label's uppercase; buttons don't inherit either by default. */
+    text-transform: inherit;
+    letter-spacing: inherit;
     text-decoration: underline dotted;
     text-underline-offset: 0.2em;
     cursor: help;
@@ -471,8 +487,10 @@
     font-weight: 600;
   }
   /* .stat-unit upper-cases; "120G" misreads as a unit. */
-  .insights-delta {
+  .stat-item .insights-delta {
     text-transform: none;
+    /* Small floor so the delta + pace lines still clear the caption on 3-column phone tiles. */
+    font-size: max(0.6rem, 6.88cqw);
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);
@@ -486,17 +504,56 @@
     position: absolute;
     left: var(--space-2);
     right: var(--space-2);
-    top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
+    top: calc(54.02cqw + max(0.6rem, 6.88cqw));
     overflow: hidden;
     text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: max(0.6rem, 5.4cqw);
+    font-size: max(0.5rem, 5.4cqw);
     line-height: 1;
     color: var(--color-text-muted);
   }
   .insights-period {
     color: var(--color-text-muted);
     margin: 0 0 var(--space-3);
+  }
+
+  /* Stat rows with no empty cells. Tiles stay square (height --h = one regular tile); a
+     tile wider than that (--q per row < --c) keeps its content one-tile wide, centred,
+     via padding, so cqw scaling is unchanged. Columns divide the count: 3 on phones
+     (Totals 5, Averages 3-6 wider); the short last row stretches. */
+  .fit {
+    --gap: var(--space-3);
+    --c: 3;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap);
+    container-type: inline-size;
+  }
+  .fit .stat-item {
+    --q: var(--c);
+    --w: calc((100cqw - (var(--q) - 1) * var(--gap)) / var(--q));
+    --h: calc((100cqw - (var(--c) - 1) * var(--gap)) / var(--c));
+    flex: 0 0 var(--w);
+    box-sizing: border-box;
+    aspect-ratio: auto;
+    height: var(--h);
+    padding-inline: calc((var(--w) - var(--h)) / 2);
+  }
+  .fit.n5 .stat-item:nth-last-child(-n + 2) {
+    --q: 2;
+  }
+  @media (min-width: 641px) {
+    .fit.n5 {
+      --c: 5;
+    }
+    .fit.n5 .stat-item:nth-last-child(-n + 2) {
+      --q: var(--c);
+    }
+  }
+  @media (min-width: 1000px) {
+    .fit.n6 {
+      --c: 6;
+    }
   }
 </style>

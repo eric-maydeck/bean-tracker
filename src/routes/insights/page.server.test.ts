@@ -65,7 +65,6 @@ describe('/insights load', () => {
   const prev1 = previousPeriod('12m', p12, 1)!;
   const prev2 = previousPeriod('12m', p12, 2)!;
 
-
   it('compare=1 fills deltas against the previous 12 months', () => {
     // One 15 g brew now; two 10 g brews in the previous 12 months.
     seed([[today, 15], [prev1.end, 10], [prev1.start!, 10], [prev2.end, 20]]);
@@ -113,11 +112,18 @@ describe('/insights load', () => {
   });
 
   it('a calendar year still in progress is paced', () => {
-    const y = Number(today.slice(0, 4));
-    seed([[today, 15], [`${y - 1}-01-01`, 10], [`${y - 1}-12-31`, 10]]);
-    const d = run(`?range=${y}&compare=1`);
-    expect(d.explicit.compare).toBe(1);
-    expect(d.scaled).toBe(true);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
+      const now = localToday();
+      const y = Number(now.slice(0, 4));
+      seed([[now, 15], [`${y - 1}-01-01`, 10], [`${y - 1}-12-31`, 10]]);
+      const d = run(`?range=${y}&compare=1`);
+      expect(d.explicit.compare).toBe(1);
+      expect(d.scaled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('ytd compare offers only earlier years that have brews', () => {

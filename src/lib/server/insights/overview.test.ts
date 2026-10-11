@@ -74,12 +74,12 @@ describe('overviewTiles', () => {
   it('Settled hides calibration-period ratings, volume and spend ignore it', () => {
     const may = { start: '2026-05-01', end: '2026-05-31' };
     const early = [brew({ localDate: '2026-05-20', dose: 15, rating: 2 })];
-    expect(overviewTiles(early, [], may, 'settled')).toMatchObject({ brews: 1, grams: 15, avgRating: null, rated: 0 });
+    expect(overviewTiles(early, [], may, 'current')).toMatchObject({ brews: 1, grams: 15, avgRating: null, rated: 0 });
     expect(overviewTiles(early, [], may, 'all')).toMatchObject({ avgRating: 2, rated: 1 });
   });
 
   it('an empty period is zeros and nulls', () =>
-    expect(overviewTiles([], [], SEPT, 'settled')).toEqual({
+    expect(overviewTiles([], [], SEPT, 'current')).toEqual({
       brews: 0, grams: 0, spend: 0, avgRating: null, rated: 0, bagsFinished: 0, costPerBrew: null,
       brewsPerDay: null, avgDose: null, avgRestDays: null, avgBrewTime: null
     }));

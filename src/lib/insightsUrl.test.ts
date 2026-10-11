@@ -25,6 +25,7 @@ describe('parseInsightsUrl', () => {
   it('reads an offered calendar year', () => expect(parse('range=2026').range).toBe('2026'));
   it('ignores a year outside the offered ones', () =>
     expect(parse('range=2019').range).toBeUndefined());
+  it('reads the old ratings=settled as current', () => expect(parse('ratings=Settled').ratings).toBe('current'));
   it('ignores bad values', () =>
     expect(parse('range=5y&compare=yes&ratings=none&avg=median')).toEqual({
       range: undefined,
@@ -111,12 +112,12 @@ describe('withDefaults', () => {
     expect(withDefaults({})).toEqual({
       range: '12m',
       compare: 0,
-      ratings: 'settled',
+      ratings: 'current',
       avg: 'adjusted'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
-    expect(DEFAULTS).toEqual({ range: '12m', compare: 0, ratings: 'settled', avg: 'adjusted' }));
+    expect(DEFAULTS).toEqual({ range: '12m', compare: 0, ratings: 'current', avg: 'adjusted' }));
 });
 
 describe('longer and custom compare', () => {

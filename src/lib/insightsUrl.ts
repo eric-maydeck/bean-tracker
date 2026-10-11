@@ -13,7 +13,7 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
   ytd: 'Year to date',
   all: 'All time'
 };
-export const RATINGS = ['settled', 'all'] as const;
+export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 export const AVGS = ['adjusted', 'raw'] as const;
 export type Avg = (typeof AVGS)[number];
@@ -45,7 +45,7 @@ export interface InsightsUrlState {
 export const DEFAULTS: Required<InsightsUrlState> = {
   range: '12m',
   compare: 0,
-  ratings: 'settled',
+  ratings: 'current',
   avg: 'adjusted'
 };
 
@@ -128,7 +128,8 @@ export function parseInsightsUrl(
   return {
     range,
     compare,
-    ratings: pickOne(p, 'ratings', RATINGS),
+    // `settled` was the old name for `current`; old links keep working.
+    ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
     avg: pickOne(p, 'avg', AVGS)
   };
 }

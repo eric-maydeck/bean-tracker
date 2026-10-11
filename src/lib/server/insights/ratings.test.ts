@@ -6,8 +6,8 @@ const b = (g: string, coffeeId: number, rating: number | null, localDate = '2026
 
 describe('countsForRating', () => {
   it('Settled drops brews before 2026-06-01; All keeps them', () => {
-    expect(countsForRating(b('x', 1, 3, '2026-05-31'), 'settled')).toBe(false);
-    expect(countsForRating(b('x', 1, 3, '2026-06-01'), 'settled')).toBe(true);
+    expect(countsForRating(b('x', 1, 3, '2026-05-31'), 'current')).toBe(false);
+    expect(countsForRating(b('x', 1, 3, '2026-06-01'), 'current')).toBe(true);
     expect(countsForRating(b('x', 1, 3, '2026-05-31'), 'all')).toBe(true);
   });
   it('unrated brews never count', () => expect(countsForRating(b('x', 1, null), 'all')).toBe(false));
@@ -42,7 +42,7 @@ describe('ratedGroups', () => {
 
   it('Settled leaves early ratings out', () => {
     const early = [b('A', 1, 2, '2026-05-01'), b('A', 2, 9)];
-    expect(ratedGroups(early, key, 'settled', 'raw')[0]).toMatchObject({ mean: 9, bags: 1 });
+    expect(ratedGroups(early, key, 'current', 'raw')[0]).toMatchObject({ mean: 9, bags: 1 });
     expect(ratedGroups(early, key, 'all', 'raw')[0]).toMatchObject({ mean: 5.5, bags: 2 });
   });
 
