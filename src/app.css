@@ -939,44 +939,24 @@ nav.site-nav a[aria-current='page'] {
   }
 }
 
-/* Phones wide enough for Import + Clone + Edit on one line: a grid, so Back
-   and Import share a column (Back as wide as Import) and Share takes the
-   rest of the top row: Back | Share / Import | Clone | Edit. Signed out
-   (no Clone/Edit), Import spans the second row. 420px leaves Clone/Edit a
-   few px of slack over their labels. */
+/* Phones: Back | Share / Import on its own line / + Add Coffee | Clone | Edit,
+   flex-wrap so each line's buttons share it. Signed out (no Clone/Edit), a
+   grid from 420px so Back and Share split row 1 evenly and Import spans row 2. */
+@media (max-width: 640px) {
+  .detail-actions .detail-import {
+    flex-basis: 100%;
+  }
+}
 @media (min-width: 420px) and (max-width: 640px) {
-  .detail-actions {
+  .detail-actions:not(:has(.detail-clone)) {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
-  }
-  .detail-actions:has(.detail-edit) {
-    grid-template-columns: max-content repeat(2, minmax(0, 1fr));
-  }
-  .detail-back {
-    grid-area: 1 / 1;
-  }
-  .detail-actions > .share-button {
-    grid-row: 1;
-    grid-column: 2 / -1;
-  }
-  .detail-import {
-    grid-area: 2 / 1;
+    grid-template-columns: repeat(2, minmax(max-content, 1fr));
   }
   .detail-actions:not(:has(.detail-clone)) .detail-import {
     grid-column: 1 / -1;
   }
-  /* Signed out (no Clone/Edit): Back and Share split row 1 evenly. */
-  .detail-actions:not(:has(.detail-clone)) {
-    grid-template-columns: repeat(2, minmax(max-content, 1fr));
-  }
 }
-
-/* Narrower phones stay flex-wrap; Import gets its own line so the rest pair
-   up (Back | Share / Import / Clone | Edit) instead of leaving Edit alone. */
 @media (max-width: 419px) {
-  .detail-actions .detail-import {
-    flex-basis: 100%;
-  }
   /* Signed out: Back and Share equal while their labels fit. */
   .detail-actions:not(:has(.detail-clone)) > :is(.detail-back, .share-button) {
     flex: 1 1 0;

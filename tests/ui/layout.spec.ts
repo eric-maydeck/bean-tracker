@@ -404,6 +404,21 @@ async function expectDialogInViewport(page: Page) {
   expect(problems).toEqual([]);
 }
 
+// Answers the Add form's ?/create with a made-up success, so the "Coffee added!"
+// popup shows without saving (the workers share one DB); hovering keeps it up.
+async function fakeAdd(page: Page, slug: string) {
+  await page.route(/\?\/create$/, (route) =>
+    route.fulfill({ json: { type: 'success', status: 200, data: JSON.stringify([{ success: 1, id: 2, slug: 3 }, true, 0, slug]) } }));
+  await page.locator('#roaster').fill('Popup Roaster');
+  await page.locator('#coffee_name').fill('Popup Coffee');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  const toast = page.locator('.added-toast');
+  await expect(toast).toContainText('Coffee added!');
+  await toast.hover();
+  await expect(toast).toHaveCSS('opacity', '1'); // fade-in done, for the screenshot
+  await expect(toast.getByRole('link', { name: 'Open' })).toHaveAttribute('href', `/coffees/${slug}`);
+}
+
 // UTC calendar days back: never after the insights "today" (local is behind UTC).
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
@@ -440,6 +455,34 @@ export const STATES: State[] = [
       // The open row's actions sit under its form (one Archive on the page).
       await page.getByRole('button', { name: 'Archive', exact: true }).click();
       await expect(page.getByText(/^Pending: /).first()).toBeVisible();
+    }
+  },
+  {
+    name: 'coffees-added-toast',
+    path: () => '/coffees?status=all&view=compact',
+    act: async (page, s) => {
+      await page.getByRole('button', { name: '+ Add Coffee' }).click();
+      await fakeAdd(page, s.slugs.long);
+      await expect(page.locator('#add-coffee')).toHaveCount(0);
+    }
+  },
+  {
+    name: 'coffee-add-modal',
+    path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: '+ Add Coffee' }).click();
+      await expect(page.getByRole('heading', { name: 'Add Coffee' })).toBeVisible();
+      await expect(page.locator('.modal #coffee_name')).toHaveValue('');
+    }
+  },
+  {
+    name: 'coffee-added-toast',
+    path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page, s) => {
+      await page.getByRole('button', { name: '+ Add Coffee' }).click();
+      await fakeAdd(page, s.slugs.frozen);
+      await expect(page.locator('.modal')).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`/coffees/${s.slugs.long}$`));
     }
   },
   { name: 'coffee-long', path: (s) => `/coffees/${s.slugs.long}` },

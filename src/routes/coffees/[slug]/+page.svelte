@@ -19,17 +19,27 @@
   } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
   import ShareButton from '$lib/components/ShareButton.svelte';
+  import AddedToast from '$lib/components/AddedToast.svelte';
   import type { CoffeeRow } from '$lib/types';
   import { formatBag } from '$lib/grams';
 
   let { data, form } = $props();
 
   let clonePrefillData = $state<Partial<CoffeeRow> | null>(null);
+  // The same modal with an empty form is "+ Add Coffee": stays on this page.
+  let adding = $state(false);
+  let addedSlug = $state<string | null>(null);
+
+  function openModal(prefill: Partial<CoffeeRow>, add = false) {
+    adding = add;
+    clonePrefillData = prefill;
+  }
 
   async function cloneCreated() {
     const slug = form && 'slug' in form ? form.slug : null;
     clonePrefillData = null;
-    if (slug) await goto(`/coffees/${slug}`);
+    if (adding) addedSlug = slug ?? null;
+    else if (slug) await goto(`/coffees/${slug}`);
   }
 
   let shareUrl = $state<string | null>(null);
@@ -237,7 +247,8 @@
     Import into Bean Conqueror
   </button>
   {#if data.isAdmin}
-    <button class="button button-secondary detail-clone" type="button" onclick={() => (clonePrefillData = clonePrefill(formCoffee))}>
+    <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
+    <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
       Clone
     </button>
   {/if}
@@ -290,7 +301,7 @@
     processingMethods={data.processingMethods}
     restHistory={data.restHistory}
     onstage={stageFields}
-    onclone={(prefill) => (clonePrefillData = prefill)}
+    onclone={(prefill) => openModal(prefill)}
     showSubmit={false}
     showClone={false}
   />
@@ -449,7 +460,7 @@
 {#if clonePrefillData}
   <div class="modal-backdrop">
     <div class="modal">
-      <h2>Clone {data.coffee.coffee_name}</h2>
+      <h2>{adding ? 'Add Coffee' : `Clone ${data.coffee.coffee_name}`}</h2>
       <CoffeeForm
         prefill={clonePrefillData}
         roastLevels={data.roastLevels}
@@ -465,6 +476,8 @@
     </div>
   </div>
 {/if}
+
+<AddedToast bind:slug={addedSlug} />
 
 <style>
   .bc-link-line {

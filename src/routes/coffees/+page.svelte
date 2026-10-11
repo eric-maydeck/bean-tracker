@@ -7,6 +7,7 @@
   import { invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
+  import AddedToast from '$lib/components/AddedToast.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import { originWithFlag } from '$lib/countryFlags';
@@ -159,6 +160,12 @@
   function closeExpanded() {
     expandedId = null;
     addPrefill = null;
+  }
+
+  let addedSlug = $state<string | null>(null);
+  function added() {
+    addedSlug = (form && 'slug' in form ? form.slug : null) ?? null;
+    closeExpanded();
   }
 
   function enterEditMode() {
@@ -662,6 +669,8 @@
   </div>
 {/if}
 
+<AddedToast bind:slug={addedSlug} />
+
 <div class="search-row">
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
   <FilterBar bind:filters={explicit.filters} coffees={source} />
@@ -704,7 +713,7 @@
           restHistory={[...data.backlog, ...data.open, ...data.archive]}
           formError={form?.error ?? null}
           oncancel={closeExpanded}
-          onsuccess={closeExpanded}
+          onsuccess={added}
         />
       </div>
     {/key}

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 import { DatabaseSync } from 'node:sqlite';
 import { VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull } from './checkLayout';
@@ -94,4 +94,95 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
       await checkLayout(page);
     }
   }
+});
+
+// "Coffee added!" popup: real adds (deleted afterwards), the page clock paused
+// once it shows, so its 3s / 1s / 400ms timings step exactly.
+test.describe('coffee added popup', () => {
+  test.afterAll(() => {
+    const db = new DatabaseSync('.ui-test/ui.db');
+    db.prepare(`DELETE FROM coffees WHERE roaster = 'Popup Test Roaster'`).run();
+    db.close();
+  });
+
+  let n = 0;
+  async function add(page: Page) {
+    await page.locator('#roaster').fill('Popup Test Roaster');
+    await page.locator('#coffee_name').fill(`Popup Test ${++n}`);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    const toast = page.locator('.added-toast');
+    await expect(toast).toBeVisible();
+    await page.clock.pauseAt(await page.evaluate(() => Date.now()));
+    return toast;
+  }
+  async function addOnList(page: Page) {
+    await page.clock.install();
+    await page.goto('/coffees', { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: '+ Add Coffee' }).click();
+    return add(page);
+  }
+  const fading = (toast: Locator) => expect(toast).toHaveClass(/fading/);
+  const notFading = (toast: Locator) => expect(toast).not.toHaveClass(/fading/);
+
+  test('fades after 3s; hovering pauses and leaving resumes the rest', async ({ page }) => {
+    let toast = await addOnList(page);
+    await page.clock.runFor(2900);
+    await notFading(toast);
+    await page.clock.runFor(200);
+    await fading(toast);
+    await page.clock.runFor(400);
+    await expect(toast).toHaveCount(0);
+
+    await page.getByRole('button', { name: '+ Add Coffee' }).click();
+    toast = await add(page);
+    await page.clock.runFor(1500);
+    await toast.hover();
+    await page.clock.runFor(5000);
+    await notFading(toast);
+    await page.mouse.move(0, 0);
+    await page.clock.runFor(1300);
+    await notFading(toast);
+    await page.clock.runFor(300);
+    await fading(toast);
+    await page.clock.runFor(400);
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('leaving late keeps at least 1s; hovering mid-fade snaps back', async ({ page }) => {
+    const toast = await addOnList(page);
+    await page.clock.runFor(2500);
+    await toast.hover();
+    await page.mouse.move(0, 0);
+    await page.clock.runFor(900);
+    await notFading(toast);
+    await page.clock.runFor(200);
+    await fading(toast);
+    await toast.hover();
+    await notFading(toast);
+    await expect(toast).toHaveCSS('opacity', '1');
+    await page.mouse.move(0, 0);
+    await page.clock.runFor(900);
+    await notFading(toast);
+    await page.clock.runFor(200);
+    await fading(toast);
+    await page.clock.runFor(400);
+    await expect(toast).toHaveCount(0);
+  });
+
+  test('+ Add Coffee on a coffee page stays there; Open goes to the new coffee', async ({ page }) => {
+    const { slug: here } = read(`SELECT slug FROM coffees WHERE coffee_name = ?`, A)() as { slug: string };
+    await page.clock.install();
+    await page.goto(`/coffees/${here}`, { waitUntil: 'networkidle' });
+    await page.getByRole('button', { name: '+ Add Coffee' }).click();
+    await expect(page.getByRole('heading', { name: 'Add Coffee' })).toBeVisible();
+    const toast = await add(page);
+    await expect(page.locator('.modal')).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`/coffees/${here}$`));
+    const { slug } = read(`SELECT slug FROM coffees WHERE coffee_name = ?`, `Popup Test ${n}`)() as { slug: string };
+    await page.clock.resume(); // navigation waits on timers
+    await toast.getByRole('link', { name: 'Open' }).click();
+    await expect(page).toHaveURL(new RegExp(`/coffees/${slug}$`));
+    await expect(page.getByRole('heading', { name: `Popup Test ${n}` })).toBeVisible();
+    await expect(toast).toHaveCount(0);
+  });
 });
