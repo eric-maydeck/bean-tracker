@@ -1051,22 +1051,45 @@ export const STATES: State[] = [
       });
       expect(ord.gap).toBeGreaterThanOrEqual(-0.5);
       expect(ord.subPx).toBeGreaterThanOrEqual(ord.cmpPx);
-      // Value, delta, sub and caption stack without overlapping, inside the tile, which is no taller than its row mates.
-      const m = await tile.evaluate((t) => {
-        const o = t.getBoundingClientRect();
-        const boxes = [...t.querySelectorAll('.stat-value, .stat-unit, .insights-pace, .stat-caption')]
-          .map((e) => [e.className, e.getBoundingClientRect()] as const);
-        const out: string[] = [];
-        if (boxes.length !== 4) out.push(`${boxes.length} lines`);
-        boxes.forEach(([n, b], i) => {
-          if (b.left < o.left - 0.5 || b.right > o.right + 0.5 || b.bottom > o.bottom + 0.5) out.push(`${n} outside tile`);
-          for (const [k, c] of boxes.slice(i + 1)) if (b.top < c.bottom - 0.5 && c.top < b.bottom - 0.5) out.push(`${n} overlaps ${k}`);
+      // Value, sub, compare line and caption stack without overlapping, inside the tile (>= 4px from its sides),
+      // which is no taller than its row mates: for the seed's text, the widest one-line text, and a long tail (breaks after the colon on phones).
+      const check = async (inject: [string, string] | null, lines: 1 | 2 | null) => {
+        if (inject)
+          await tile.evaluate((t, [h, b]) => {
+            const [head, tail] = t.querySelectorAll('.compare .part');
+            head.textContent = h;
+            tail.textContent = b;
+          }, inject);
+        const m = await tile.evaluate((t) => {
+          const o = t.getBoundingClientRect();
+          const boxes = [...t.querySelectorAll('.stat-value, .stat-unit, .insights-pace, .stat-caption')]
+            .map((e) => [e.className, e.getBoundingClientRect()] as const);
+          const out: string[] = [];
+          if (boxes.length !== 4) out.push(`${boxes.length} lines`);
+          boxes.forEach(([n, b], i) => {
+            if (b.left < o.left - 0.5 || b.right > o.right + 0.5 || b.bottom > o.bottom + 0.5) out.push(`${n} outside tile`);
+            for (const [k, c] of boxes.slice(i + 1)) if (b.top < c.bottom - 0.5 && c.top < b.bottom - 0.5) out.push(`${n} overlaps ${k}`);
+          });
+          const [head, tail] = [...t.querySelectorAll('.compare .part')].map((e) => e.getBoundingClientRect());
+          const r = document.createRange();
+          r.selectNodeContents(t.querySelector('.compare [aria-hidden]')!);
+          const tx = r.getBoundingClientRect();
+          const mates = [...t.parentElement!.children].map((e) => e.getBoundingClientRect().height);
+          return {
+            out, tall: o.height - Math.min(...mates), clear: Math.min(tx.left - o.left, o.right - tx.right),
+            twoLines: tail.top > head.top + 2, scroll: t.querySelector('.compare')!.scrollWidth > t.querySelector('.compare')!.clientWidth
+          };
         });
-        const mates = [...t.parentElement!.children].map((e) => e.getBoundingClientRect().height);
-        return { out, tall: o.height - Math.min(...mates) };
-      });
-      expect(m.out).toEqual([]);
-      expect(m.tall).toBeLessThanOrEqual(0.5);
+        const what = JSON.stringify(inject);
+        expect(m.out, what).toEqual([]);
+        expect(m.tall, what).toBeLessThanOrEqual(0.5);
+        expect(m.clear, what).toBeGreaterThanOrEqual(4);
+        expect(m.scroll, what).toBe(false);
+        if (lines) expect(m.twoLines, what).toBe(lines === 2);
+      };
+      await check(null, null);
+      await check(['vs Oct 10:', '20 brews · 200g'], 1);
+      await check(['vs Oct 10:', '2,000 brews · 123,456g'], page.viewportSize()!.width <= 480 ? 2 : null);
     }
   },
   {

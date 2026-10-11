@@ -798,15 +798,21 @@
   }
   /* Busiest day, comparing: this period's "N brews · Xg" (the normal sub size) sits under the value;
      the comparison's "vs Oct 4:" / "8 brews · 144g" is the small muted line below it (breaks after the colon). */
-  .insights-pace.compare {
+  .stat-item .insights-pace.compare {
     top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
+    /* One line when it fits, else "vs Oct 4:" over the tail. The box spans the 2-line height and centres
+       the text, so the caption below never leaves a gap whichever it is. */
+    height: calc(2.2 * max(0.6rem, 5.4cqw) + 1cqw + var(--grow-compare, 0px));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
     white-space: normal;
     overflow: visible;
     text-overflow: clip;
     line-height: 1.1;
   }
   .compare .part {
-    display: block;
+    display: inline-block;
   }
   .stat-item.stack .stat-caption {
     top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 2cqw + 2.2 * max(0.6rem, 5.4cqw) + var(--grow-compare, 0px));
