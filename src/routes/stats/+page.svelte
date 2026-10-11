@@ -11,6 +11,7 @@
   import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
+  import { parseRange, parsePeople, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { parseStatsTab, parseBcAverage } from './statsTab';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
@@ -81,7 +82,15 @@
   let explicitMetric = $state<Metric | undefined>(pickOne(currentParams(page.url), 'metric', METRICS));
   let dimension = $derived(explicitDimension ?? 'roaster');
   let metric = $derived(explicitMetric ?? 'grams');
-  let editingRates = $state(false);
+  let editingHousehold = $state(false);
+  // Time to Clear's own Period (temporary panel) and the people mode (every tab).
+  let explicitRange = $state(parseRange(currentParams(page.url), data.years));
+  let explicitPeople = $state(parsePeople(currentParams(page.url), data.householdSize));
+  let range = $derived(explicitRange ?? '12m');
+  let people = $derived(explicitPeople ?? 'household');
+  let use = $derived(data.consumption[range][people]);
+  const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
+  const pp = (label: string) => (people === 'person' ? `${label} · per person` : label);
 
   // Caps how many bars the composition chart draws — without this, a
   // dimension like Roaster with 20+ distinct values crams so many bars into
@@ -181,6 +190,8 @@
     explicitMetric = pickOne(p, 'metric', METRICS);
     explicitStatus = pickMany(p, 'status', STATUSES);
     explicitTab = parseStatsTab(p);
+    explicitRange = parseRange(p, data.years);
+    explicitPeople = parsePeople(p, data.householdSize);
     explicitBc = pickOne(p, 'bc', BC_TABS);
     explicitBcFav = pickOne(p, 'bc_fav', BC_FAV_DIMENSIONS);
     explicitBcMetric = pickOne(p, 'bc_metric', BC_METRICS);
@@ -200,6 +211,8 @@
     if (explicitMetric) params.set('metric', explicitMetric);
     if (explicitStatus) for (const s of explicitStatus) params.append('status', s);
     if (explicitTab) params.set('tab', explicitTab);
+    if (explicitRange) params.set('range', explicitRange);
+    if (explicitPeople) params.set('people', explicitPeople);
     if (explicitBc) params.set('bc', explicitBc);
     if (explicitBcFav) params.set('bc_fav', explicitBcFav);
     if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
@@ -369,47 +382,32 @@
 
 {#if tab === 'general'}
 {#if data.isAdmin}
-  <div class="rate-edit">
-    {#if editingRates}
+  <div class="household-edit">
+    {#if editingHousehold}
       <form
         method="POST"
-        action="?/updateRates"
-        class="rate-edit-form"
+        action="?/updateHouseholdSize"
+        class="household-edit-form"
         use:enhance={() => {
           return async ({ update, result }) => {
             await update();
-            if (result.type === 'success') {
-              editingRates = false;
-            }
+            if (result.type === 'success') editingHousehold = false;
           };
         }}
       >
         <label>
-          Your rate (g/day)
-          <input type="number" name="selfGPerDay" min="1" step="1" value={data.rates.selfGPerDay} required />
-        </label>
-        <label>
-          Household rate (g/day)
-          <input
-            type="number"
-            name="householdGPerDay"
-            min="1"
-            step="1"
-            value={data.rates.householdGPerDay}
-            required
-          />
+          Household size
+          <input type="number" name="householdSize" min="1" max="20" step="1" value={data.householdSize} required />
         </label>
         <button class="button" type="submit">Save</button>
-        <button class="button button-secondary" type="button" onclick={() => (editingRates = false)}>
-          Cancel
-        </button>
+        <button class="button button-ghost" type="button" onclick={() => (editingHousehold = false)}>Cancel</button>
       </form>
       {#if form?.error}
         <p class="badge badge-urgent">{form.error}</p>
       {/if}
     {:else}
-      <button class="button button-secondary" type="button" onclick={() => (editingRates = true)}>
-        ✏️ Edit consumption rates
+      <button class="button button-secondary" type="button" onclick={() => (editingHousehold = true)}>
+        Edit household size
       </button>
     {/if}
   </div>
@@ -433,16 +431,16 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      {#if data.stats.daysToClearHousehold === null || data.stats.clearByDateHousehold === null}
+      {#if data.stats.totalBacklogGrams === 0}
         <span class="stat-value">🎉</span>
         <div class="stat-caption">
           <span class="stat-label">Nothing left to drink through!</span>
         </div>
       {:else}
-        <span class="stat-value">{data.stats.daysToClearHousehold}d</span>
-        <span class="stat-unit">by {formatClearBy(data.stats.clearByDateHousehold)}</span>
+        <span class="stat-value">{use.daysToClear === null ? '—' : `${use.daysToClear}d`}</span>
+        {#if use.clearBy}<span class="stat-unit">by {formatClearBy(use.clearBy)}</span>{/if}
         <div class="stat-caption">
-          <span class="stat-label">To clear as a household</span>
+          <span class="stat-label">{people === 'person' ? 'To clear per person' : 'To clear as a household'}</span>
         </div>
       {/if}
     </div>
@@ -557,46 +555,37 @@
   </div>
 </section>
 
+<!-- Temporary (stats-per-person spec): measured rates with their own Period, until Ocean of
+     statistics fills /insights out. /insights' Consumption panel is the lasting home. -->
 <section class="chart-panel">
-  <h2>Time to Clear</h2>
-    <div class="stat-row">
-      <div class="stat-item">
-        <span class="stat-value">
-          {data.stats.daysToClearSelf === null ? '—' : `${data.stats.daysToClearSelf}d`}
-        </span>
-        {#if data.stats.clearByDateSelf}
-          <span class="stat-unit">by {formatClearBy(data.stats.clearByDateSelf)}</span>
-        {/if}
-        <div class="stat-caption">
-          <span class="stat-label">To clear solo</span>
-        </div>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">
-          {data.stats.daysToClearHousehold === null ? '—' : `${data.stats.daysToClearHousehold}d`}
-        </span>
-        {#if data.stats.clearByDateHousehold}
-          <span class="stat-unit">by {formatClearBy(data.stats.clearByDateHousehold)}</span>
-        {/if}
-        <div class="stat-caption">
-          <span class="stat-label">To clear as a household</span>
-        </div>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">{data.rates.selfGPerDay}g</span>
-        <span class="stat-unit">per day</span>
-        <div class="stat-caption">
-          <span class="stat-label">Your rate</span>
-        </div>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value">{data.rates.householdGPerDay}g</span>
-        <span class="stat-unit">per day</span>
-        <div class="stat-caption">
-          <span class="stat-label">Household rate</span>
-        </div>
-      </div>
+  <div class="chart-panel-header">
+    <h2>Time to Clear</h2>
+    <select class="period-select" aria-label="Period" value={range} onchange={(e) => (explicitRange = e.currentTarget.value)}>
+      <optgroup label="Rolling">
+        {#each ROLLING as r (r)}<option value={r}>{RANGE_LABELS[r]}</option>{/each}
+      </optgroup>
+      <optgroup label="Calendar">
+        <option value="ytd">{RANGE_LABELS.ytd}</option>
+        {#each [...data.years].reverse() as y (y)}<option value={String(y)}>{y}</option>{/each}
+      </optgroup>
+      <optgroup label="Everything">
+        <option value="all">{RANGE_LABELS.all}</option>
+      </optgroup>
+    </select>
+  </div>
+  <div class="stat-row">
+    <div class="stat-item">
+      <span class="stat-value">{use.daysToClear === null ? '—' : `${use.daysToClear}d`}</span>
+      {#if use.clearBy}<span class="stat-unit">by {formatClearBy(use.clearBy)}</span>{/if}
+      <div class="stat-caption"><span class="stat-label">{pp('Time to clear')}</span></div>
     </div>
+    {#each [['Per day', use.perDay], ['Per week', use.perWeek], ['Per month', use.perMonth]] as const as [label, g] (label)}
+      <div class="stat-item">
+        <span class="stat-value">{g === null ? '—' : formatGrams(g)}</span>
+        <div class="stat-caption"><span class="stat-label">{pp(label)}</span></div>
+      </div>
+    {/each}
+  </div>
 </section>
 
 <section class="chart-panel">
@@ -1169,3 +1158,23 @@
   {/if}
 </section>
 {/if}
+
+
+<style>
+  .period-select {
+    min-height: 2.25rem;
+    padding: 0 0.6rem;
+    font: inherit;
+    font-size: 0.85rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+  @media (max-width: 640px) {
+    .period-select {
+      min-height: 44px;
+      font-size: 16px;
+    }
+  }
+</style>

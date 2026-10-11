@@ -179,51 +179,6 @@ export function getLastDeployed(db: DatabaseSync): string | null {
   return row?.value ?? null;
 }
 
-export interface StatsRates {
-  selfGPerDay: number;
-  householdGPerDay: number;
-}
-
-export class InvalidRatesError extends Error {}
-
-const DEFAULT_SELF_RATE_G_PER_DAY = 72;
-const DEFAULT_HOUSEHOLD_RATE_G_PER_DAY = 144;
-const SELF_RATE_KEY = 'stats_rate_self_g_per_day';
-const HOUSEHOLD_RATE_KEY = 'stats_rate_household_g_per_day';
-
-export function getStatsRates(db: DatabaseSync): StatsRates {
-  const rows = db
-    .prepare(`SELECT key, value FROM app_meta WHERE key IN (?, ?)`)
-    .all(SELF_RATE_KEY, HOUSEHOLD_RATE_KEY) as { key: string; value: string }[];
-  const map = new Map(rows.map((r) => [r.key, r.value]));
-  const self = map.get(SELF_RATE_KEY);
-  const household = map.get(HOUSEHOLD_RATE_KEY);
-  const selfRate = self != null ? Number(self) : NaN;
-  const householdRate = household != null ? Number(household) : NaN;
-  return {
-    selfGPerDay: Number.isFinite(selfRate) && selfRate > 0 ? selfRate : DEFAULT_SELF_RATE_G_PER_DAY,
-    householdGPerDay:
-      Number.isFinite(householdRate) && householdRate > 0 ? householdRate : DEFAULT_HOUSEHOLD_RATE_G_PER_DAY
-  };
-}
-
-export function setStatsRates(db: DatabaseSync, rates: StatsRates): void {
-  if (!Number.isFinite(rates.selfGPerDay) || rates.selfGPerDay <= 0) {
-    throw new InvalidRatesError('selfGPerDay must be a positive number');
-  }
-  if (!Number.isFinite(rates.householdGPerDay) || rates.householdGPerDay <= 0) {
-    throw new InvalidRatesError('householdGPerDay must be a positive number');
-  }
-  db.prepare(
-    `INSERT INTO app_meta (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-  ).run(SELF_RATE_KEY, String(rates.selfGPerDay));
-  db.prepare(
-    `INSERT INTO app_meta (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-  ).run(HOUSEHOLD_RATE_KEY, String(rates.householdGPerDay));
-}
-
 export class InvalidHouseholdSizeError extends Error {}
 
 const HOUSEHOLD_SIZE_KEY = 'household_size';

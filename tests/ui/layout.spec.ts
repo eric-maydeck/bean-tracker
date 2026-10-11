@@ -722,6 +722,31 @@ export const STATES: State[] = [
   },
   { name: 'stats-general', path: () => '/stats' },
   {
+    // Temporary Time to Clear panel: its own Period select writes `range`; people from the URL.
+    name: 'stats-time-to-clear-range',
+    path: () => '/stats?people=person',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Time to Clear' }) });
+      await panel.getByLabel('Period').selectOption('1m');
+      await expect(page).toHaveURL(/range=1m/);
+      await expect(page).toHaveURL(/people=person/);
+      await expect(panel.locator('.stat-label')).toHaveText([
+        'Time to clear · per person', 'Per day · per person', 'Per week · per person', 'Per month · per person'
+      ]);
+      await expect(page.getByText('To clear per person')).toBeVisible();
+    }
+  },
+  {
+    // Household size: Edit opens the form with nothing focused (no autofocus). Nothing saved.
+    name: 'stats-household-size-edit',
+    path: () => '/stats',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit household size' }).click();
+      await expect(page.getByLabel('Household size')).toHaveValue('2');
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'stats-import-too-big',
     path: () => '/stats?tab=bq',

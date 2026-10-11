@@ -1758,7 +1758,7 @@ td > .action-buttons.under-form {
   font-size: 0.85rem;
 }
 
-.rate-edit-form {
+.household-edit-form {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -1766,7 +1766,7 @@ td > .action-buttons.under-form {
   margin-top: var(--space-3);
 }
 
-.rate-edit-form label {
+.household-edit-form label {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -1774,7 +1774,7 @@ td > .action-buttons.under-form {
   color: var(--color-text-muted);
 }
 
-.rate-edit {
+.household-edit {
   margin-bottom: var(--space-6);
 }
 

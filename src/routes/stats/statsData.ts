@@ -1,6 +1,5 @@
 import type { CoffeeRow, RoastLevelRow } from '$lib/types';
-import type { StatsRates } from '$lib/server/db';
-import { parseDate, addDays, diffDays, formatDate, withComputedFields } from '$lib/server/urgency';
+import { parseDate, diffDays, withComputedFields } from '$lib/server/urgency';
 
 export interface BreakdownEntry {
   label: string;
@@ -25,11 +24,6 @@ export interface BacklogStats {
   unopenedBacklogCount: number;
   totalBacklogCount: number;
   finishedCount: number;
-
-  daysToClearSelf: number | null;
-  clearByDateSelf: string | null;
-  daysToClearHousehold: number | null;
-  clearByDateHousehold: string | null;
 
   totalCost: number;
   totalSpentAllTime: number;
@@ -118,16 +112,6 @@ function sumGrams(rows: CoffeeRow[]): number {
   return rows.reduce((total, r) => total + (r.amount_g ?? 0), 0);
 }
 
-function daysToClear(totalGrams: number, ratePerDay: number): number | null {
-  if (totalGrams <= 0) return null;
-  return Math.ceil(totalGrams / ratePerDay);
-}
-
-function clearByDate(days: number | null, today: Date): string | null {
-  if (days === null) return null;
-  return formatDate(addDays(today, days));
-}
-
 function buildBreakdown(rows: CoffeeRow[], keyFn: (row: CoffeeRow) => string): BreakdownEntry[] {
   const groups = new Map<string, { grams: number; count: number }>();
   for (const row of rows) {
@@ -187,7 +171,6 @@ export function buildBacklogStats(
   openRows: CoffeeRow[],
   backlogRows: CoffeeRow[],
   archivedRows: CoffeeRow[],
-  rates: StatsRates,
   roastLevels: RoastLevelRow[],
   today: Date
 ): BacklogStats {
@@ -203,8 +186,6 @@ export function buildBacklogStats(
   const totalBacklogCount = openedCount + unopenedBacklogCount;
   const finishedCount = archivedRows.length;
 
-  const daysSelf = daysToClear(totalBacklogGrams, rates.selfGPerDay);
-  const daysHousehold = daysToClear(totalBacklogGrams, rates.householdGPerDay);
 
   const totalCost = sumCost(allRows);
   const pricedCount = allRows.filter((r) => r.cost != null).length;
@@ -290,10 +271,6 @@ export function buildBacklogStats(
     unopenedBacklogCount,
     totalBacklogCount,
     finishedCount,
-    daysToClearSelf: daysSelf,
-    clearByDateSelf: clearByDate(daysSelf, today),
-    daysToClearHousehold: daysHousehold,
-    clearByDateHousehold: clearByDate(daysHousehold, today),
     totalCost,
     totalSpentAllTime,
     distinctRoasterCount,
