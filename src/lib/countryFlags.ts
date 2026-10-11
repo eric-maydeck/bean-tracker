@@ -237,7 +237,10 @@ function flagEmojiFromIsoCode(code: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
+export const isoCode = (origin: string): string | null =>
+  COUNTRY_TO_ISO[origin.trim().toLowerCase()] ?? null;
+
 export function originWithFlag(origin: string): string {
-  const isoCode = COUNTRY_TO_ISO[origin.trim().toLowerCase()];
-  return isoCode ? `${flagEmojiFromIsoCode(isoCode)} ${origin}` : origin;
+  const code = isoCode(origin);
+  return code ? `${flagEmojiFromIsoCode(code)} ${origin}` : origin;
 }
