@@ -343,8 +343,9 @@
             <span class="stat-unit insights-delta {trend(d, t)}">{deltaText(d, t)}</span>
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
           {/if}
+          <!-- Under a delta, a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class="stat-unit">{t.sub?.()}</span>
+            <span class={d ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}

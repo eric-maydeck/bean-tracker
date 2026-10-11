@@ -809,6 +809,33 @@ export const STATES: State[] = [
       await expect(page.locator('.cell-tip')).toBeVisible();
     }
   },
+  {
+    // The previous week is inside the seed, so tiles get deltas; Active days and Longest streak
+    // keep their sub line too. Delta, sub and caption stack without overlapping, inside the tile.
+    name: 'insights-habits-compare-sub',
+    path: () => '/insights?tab=habits&range=1w&compare=1',
+    act: async (page) => {
+      await expect(page.locator('.stat-item .insights-delta').first()).toBeVisible();
+      const tiles = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^(Active days|Longest streak)$/ }) });
+      await expect(tiles).toHaveCount(2);
+      const overlaps = await tiles.evaluateAll((ts) =>
+        ts.flatMap((tile) => {
+          const boxes = [...tile.querySelectorAll('.stat-value, .insights-delta, .insights-pace, .stat-unit, .stat-caption')]
+            .map((e) => [e.className, e.getBoundingClientRect()] as const);
+          const o = tile.getBoundingClientRect();
+          const out: string[] = [];
+          if (boxes.length < 4) out.push(`only ${boxes.length} lines`);
+          boxes.forEach(([n, b], i) => {
+            if (b.left < o.left - 0.5 || b.right > o.right + 0.5 || b.bottom > o.bottom + 0.5) out.push(`${n} outside tile`);
+            for (const [m, c] of boxes.slice(i + 1))
+              if (b.top < c.bottom - 0.5 && c.top < b.bottom - 0.5) out.push(`${n} overlaps ${m}`);
+          });
+          return out;
+        })
+      );
+      expect(overlaps).toEqual([]);
+    }
+  },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-consumption-tab',
