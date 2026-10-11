@@ -187,6 +187,7 @@
     grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
     align-items: center;
     gap: var(--space-2);
+    position: relative;
     height: var(--row-h);
     border-top: 1px solid var(--color-border);
   }
@@ -210,12 +211,19 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Tap target >= 44px: pad the link and cancel the padding with a negative margin, so the
-     row keeps its fixed height and the one-line ellipsis. */
-  .who a {
-    display: block;
-    padding-block: 0.8rem;
-    margin-block: -0.8rem;
+  /* Stretched link: the whole 48px row is the tap target. The link stays static so its
+     overflow:hidden doesn't clip the overlay; the row is the containing block. */
+  .who a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  .who a:focus-visible {
+    outline: none;
+  }
+  .who a:focus-visible::after {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
   }
   .who small {
     color: var(--color-text-muted);
