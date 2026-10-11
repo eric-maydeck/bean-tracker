@@ -1,3 +1,17 @@
+# [1.70.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.69.0...v1.70.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* **insights:** busiest day compare line is one line, wraps after the colon only if it must
+* **insights:** busiest day compare reads this day first, comparison small and muted below
+
+
+### Features
+
+* **insights:** busiest day compare shows the comparison day's brews and grams
+* **insights:** busiest day tile under avg per day, replaces the avg per week hack
+
 # [1.69.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.68.0...v1.69.0) (2026-10-11)
 
 
