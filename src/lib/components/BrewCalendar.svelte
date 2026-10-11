@@ -57,8 +57,9 @@
       m.get(k)!.push(d);
     }
     const all = [...m].map(([k, ds]) => ({ title: `${MON[+k.slice(5) - 1]} ${k.slice(0, 4)}`, days: ds }));
-    const fit = w ? Math.max(1, Math.floor(w / 152)) : 4;
-    const per = Math.ceil(all.length / Math.ceil(all.length / fit));
+    // Prefer a month count per row that divides the months (full rows), else balance the rows.
+    const fit = w ? Math.max(1, Math.floor(w / 128)) : 4;
+    const per = [fit, fit - 1].find((p) => p > 0 && all.length % p === 0) ?? Math.ceil(all.length / Math.ceil(all.length / fit));
     return Array.from({ length: Math.ceil(all.length / per) }, (_, i) => all.slice(i * per, (i + 1) * per));
   });
   let tone = $derived(shader(days.map((d) => d.value)));
