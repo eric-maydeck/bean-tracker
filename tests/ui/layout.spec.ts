@@ -1208,6 +1208,34 @@ export const STATES: State[] = [
     }
   },
   {
+    // Mouse hover opens a click-for-explanation tip and leaving closes it; a click then keeps it open.
+    // Touch viewports (no hover) only get the tap path, covered by insights-ratings-tip.
+    name: 'insights-tip-hover',
+    path: () => '/insights',
+    act: async (page) => {
+      const btn = page.locator('.mode-tip-button').first();
+      const tip = page.locator('#tip-rated');
+      if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) {
+        await btn.click();
+        await expect(tip).toBeVisible();
+        return;
+      }
+      await btn.hover();
+      await expect(tip).toBeVisible();
+      await page.mouse.move(2, 2);
+      await expect(tip).toBeHidden();
+      await btn.hover();
+      await btn.click();
+      await expect(tip).toBeVisible();
+      await btn.focus();
+      await page.mouse.move(2, 2);
+      await expect(tip).toBeHidden();
+      await btn.focus();
+      await page.keyboard.press('Enter'); // keyboard keeps the toggle
+      await expect(tip).toBeVisible();
+    }
+  },
+  {
     // Tapping the caption's mode word opens its explanation (the touch path).
     name: 'insights-ratings-tip',
     path: () => '/insights',

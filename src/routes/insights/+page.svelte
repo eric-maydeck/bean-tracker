@@ -37,6 +37,26 @@
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
+  // Click-for-explanation triggers also open on mouse hover (mouse only: touch and keyboard keep
+  // click/Enter). The hover opens it, so a mouse click must not toggle it shut again.
+  const tipOf = (e: Event) => {
+    const b = (e.target as Element | null)?.closest?.('.mode-tip-button');
+    return b && matchMedia('(hover: hover)').matches ? document.getElementById(b.getAttribute('popovertarget') ?? '') : null;
+  };
+  const mouse = (e: Event) => (e as PointerEvent).pointerType === 'mouse';
+  function tipOver(e: PointerEvent) {
+    const tip = mouse(e) && tipOf(e);
+    if (tip && !tip.matches(':popover-open')) tip.showPopover();
+  }
+  function tipOut(e: PointerEvent) {
+    const tip = mouse(e) && tipOf(e);
+    const to = e.relatedTarget as Element | null;
+    if (tip && !(to && (e.target as Element).closest('.mode-tip-button')!.contains(to))) tip.hidePopover();
+  }
+  function tipClick(e: MouseEvent) {
+    if (mouse(e) && tipOf(e)) e.preventDefault();
+  }
+
   // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
   function reset() {
     draft = null;
@@ -280,6 +300,8 @@
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
   );
 </script>
+
+<svelte:document onpointerover={tipOver} onpointerout={tipOut} onclickcapture={tipClick} />
 
 <svelte:head>
   <title>Bean Tracker - Insights</title>
