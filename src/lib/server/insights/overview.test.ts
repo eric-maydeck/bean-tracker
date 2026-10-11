@@ -71,7 +71,7 @@ describe('overviewTiles', () => {
 
   it('all time has no start', () => expect(overviewTiles(brews, bags, { start: null, end: '2026-10-09' }, 'all').brews).toBe(4));
 
-  it('Settled hides calibration-period ratings, volume and spend ignore it', () => {
+  it('Current hides calibration-period ratings, volume and spend ignore it', () => {
     const may = { start: '2026-05-01', end: '2026-05-31' };
     const early = [brew({ localDate: '2026-05-20', dose: 15, rating: 2 })];
     expect(overviewTiles(early, [], may, 'current')).toMatchObject({ brews: 1, grams: 15, avgRating: null, rated: 0 });

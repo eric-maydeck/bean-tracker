@@ -32,6 +32,15 @@ async function expectStatRowsFull(page: Page) {
     })
   );
   expect(gaps).toEqual([]);
+  // Every caption stays inside its tile (checkLayout misses absolutely positioned overflow).
+  const spills = await page.locator('.stat-row .stat-item').evaluateAll((tiles) =>
+    tiles.flatMap((t) => {
+      const c = t.querySelector('.stat-caption')!.getBoundingClientRect();
+      const b = t.getBoundingClientRect().bottom;
+      return c.bottom > b - 1 ? [`${t.textContent?.trim().slice(0, 30)}: caption ${Math.round(c.bottom - b)}px past the bottom`] : [];
+    })
+  );
+  expect(spills).toEqual([]);
 }
 
 interface State {

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  import { page } from '$app/state';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
@@ -19,8 +18,7 @@
     const next = { ...data.explicit, ...change };
     // A compare the new range doesn't offer would be dropped by the parser.
     if (change.range) next.compare = keepCompare(next.compare, data.compareMenus[change.range].flatMap((g) => g.options.map((o) => o.value)));
-    const params = insightsParams(next);
-    const qs = params.toString();
+    const qs = insightsParams(next).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
@@ -515,8 +513,8 @@
      these sizes, so every tile grows the same 0.75rem taller (rows stay even) and the
      caption moves down by as much. */
   @media (max-width: 640px) {
-    .comparing .stat-item {
-      height: calc(var(--h) + 0.75rem);
+    .fit.comparing {
+      --grow-compare: 0.75rem;
     }
     .comparing .stat-caption {
       top: calc(73.98cqw + 0.75rem);
@@ -546,11 +544,24 @@
     flex: 0 0 var(--w);
     box-sizing: border-box;
     aspect-ratio: auto;
-    height: var(--h);
+    height: calc(var(--h) + var(--grow-compare, 0px));
     padding-inline: calc((var(--w) - var(--h)) / 2);
   }
   .fit.n5 .stat-item:nth-last-child(-n + 2) {
     --q: 2;
+  }
+  /* Rows this narrow (360-390px phones): 3 columns leave ~88px tiles, too small for the
+     Current/All switch and two-line labels. 2 columns; Totals' 5th tile takes the last row. */
+  @container (max-width: 380px) {
+    .fit .stat-item {
+      --c: 2;
+    }
+    .fit.n5 .stat-item:nth-last-child(2) {
+      --q: 2;
+    }
+    .fit.n5 .stat-item:last-child {
+      --q: 1;
+    }
   }
   @media (min-width: 641px) {
     .fit.n5 {
