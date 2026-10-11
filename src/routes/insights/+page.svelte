@@ -6,6 +6,7 @@
     PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
+  import Habits from './Habits.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -379,7 +380,9 @@
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  {@render panel('Habits', HABITS, data.habits.tiles, data.habits.deltas)}
+  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} comparing={!!data.previousPeriod} ratingsHelp={RATINGS_HELP} {choose}>
+    {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
+  </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
   {@render panel('Consumption', FLOW, data.consumptionTab.tiles, data.consumptionTab.deltas)}
 {:else}

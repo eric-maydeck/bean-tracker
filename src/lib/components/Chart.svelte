@@ -10,7 +10,7 @@
   const valueLabelsPlugin: Plugin = {
     id: 'valueLabels',
     afterDatasetsDraw(chart) {
-      if (chart.config.type !== 'bar') return;
+      if (chart.config.type !== 'bar' || chart.options.indexAxis !== 'y') return;
       const { ctx } = chart;
       const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
       chart.data.datasets.forEach((dataset, datasetIndex) => {
@@ -43,11 +43,13 @@
     valueAxisMax,
     trendValues,
     trendLabel = '',
-    unit = ''
+    unit = '',
+    vertical = false,
+    series = []
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
-    values: number[];
+    values: (number | null)[];
     datasetLabel?: string;
     height?: number;
     // Bar charts only: pins the value axis's upper bound so it doesn't
@@ -62,6 +64,11 @@
     trendLabel?: string;
     // Trend charts only: suffix for y-axis ticks and tooltip values (e.g. 'g').
     unit?: string;
+    // Bar charts only: upright bars in one hue (a distribution, not ranked categories).
+    vertical?: boolean;
+    // Extra series after `values`: faded = the compare window in the same hue; dashed = a
+    // line overlay; otherwise a paired series in the next palette colour.
+    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean }[];
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -147,6 +154,7 @@
     // scale that doesn't start at 0.
     const lineColor = themeColor('--chart-color-1');
     const bgColors = paletteColors(labels.length);
+    const vbar = type === 'bar' && vertical;
 
     chart?.destroy();
     chart = new ChartJS(canvasEl, {
@@ -180,6 +188,8 @@
                 tension: 0.25,
                 fill: false
               }
+            : vbar
+            ? { label: datasetLabel, data: values, backgroundColor: lineColor, borderWidth: 0 }
             : {
                 label: datasetLabel,
                 data: values,
@@ -201,11 +211,16 @@
                   fill: false
                 }
               ]
-            : [])
+            : []),
+          ...series.map((x, i) =>
+            x.dashed
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineColor, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(`--chart-color-${i + 2}`), borderWidth: 0 }
+          )
         ]
       },
       options: {
-        indexAxis: type === 'bar' ? 'y' : undefined,
+        indexAxis: type === 'bar' && !vertical ? 'y' : undefined,
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 400 },
@@ -214,9 +229,9 @@
         interaction: type === 'line' ? { mode: 'index', intersect: false } : undefined,
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
-        layout: type === 'bar' ? { padding: { right: 48 } } : undefined,
+        layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
         plugins: {
-          legend: { display: type === 'doughnut' || !!trendValues, labels: { color: textColor } },
+          legend: { display: type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
           tooltip: trendValues
@@ -246,8 +261,16 @@
                 }
               : { display: false }
         },
-        scales:
-          type === 'bar'
+        scales: vbar
+          ? {
+              x: { ticks: { color: textColor, maxRotation: 0, autoSkipPadding: 8 }, grid: { display: false } },
+              y: {
+                beginAtZero: true,
+                ticks: { color: textColor, ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
+                grid: { color: gridColor }
+              }
+            }
+          : type === 'bar'
             ? {
                 x: { suggestedMax: valueAxisMax, ticks: { color: textColor }, grid: { color: gridColor } },
                 y: {
@@ -305,6 +328,8 @@
     void trendValues;
     void trendLabel;
     void unit;
+    void vertical;
+    void series;
     render();
 
     const observer = new MutationObserver(render);

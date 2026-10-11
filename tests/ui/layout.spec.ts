@@ -783,9 +783,25 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-habits',
-    path: () => '/insights?tab=habits&compare=1',
-    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Habits' })).toBeVisible()
+    path: () => '/insights?tab=habits',
+    act: async (page) => {
+      await expect(page.locator('.habits-charts canvas')).toHaveCount(2);
+      await expect(page.locator('.heatmap .heat-cell')).toHaveCount(7 * 24);
+      await page.locator('.brew-calendar .cal-cell').last().click();
+      await expect(page.locator('.cell-tip')).toBeVisible();
+    }
   },
+  { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
+  {
+    name: 'insights-habits-rating-compare',
+    path: () => '/insights?tab=habits&measure=rating&compare=1',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
+      await page.locator('.heatmap .heat-cell').first().focus();
+      await expect(page.locator('.cell-tip')).toBeVisible();
+    }
+  },
+  { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-consumption-tab',
     path: () => '/insights?tab=consumption&unit=bags',

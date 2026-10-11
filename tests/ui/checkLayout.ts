@@ -69,6 +69,8 @@ export async function checkLayout(page: Page): Promise<void> {
         if (el.matches('th > .sort-button')) continue;
         // Countries can't be 44px; the Origins list beside the map carries the same data with 44px rows.
         if (el.matches('.world-map svg path')) continue;
+        // Heatmap and calendar cells can't be 44px; the hour and weekday charts carry the same data.
+        if (el.matches('.heat-cell, .cal-cell')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
