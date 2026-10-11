@@ -1,4 +1,4 @@
-import type { Measure, Ratings } from '$lib/insightsUrl';
+import type { Agg, Measure, Ratings } from '$lib/insightsUrl';
 import type { BrewFact } from './facts';
 import { addDays, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating } from './ratings';
@@ -36,6 +36,7 @@ export interface HabitsCtx {
   prev: Period | null;
   measure: Measure;
   ratings: Ratings;
+  agg: Agg; // Avg per day (hour, heatmap) or Total; rating is a mean either way
   size: number;
   dataStart: string | null;
   today: string;
@@ -101,21 +102,32 @@ function windowStats(brews: readonly BrewFact[], p: Period, c: HabitsCtx) {
   const timed = inP.filter((b) => !b.backfilled);
   const hours = group(timed, 24, hourOf);
   const days = group(inP, 7, (b) => weekday(b.localDate));
-  const byHour = hours.map((g) => value(g, c));
-  // Brews and grams per occurrence of the weekday ("avg per Monday"); rating is a plain mean.
-  const byWeekday = days.map((g, i) => {
+  // Avg per day: brews and grams per tracked day (hours) / per occurrence of the weekday (weekdays,
+  // heatmap). Rating is a plain mean, so the choice doesn't touch it.
+  const perDay = c.agg === 'average' && c.measure !== 'rating';
+  const byHour = hours.map((g) => {
+    const v = value(g, c);
+    return perDay && v !== null ? v / (tracked.length || 1) : v;
+  });
+  // The tiles always read the per-occurrence weekday values (the Show choice only changes the chart).
+  const weekdayAvg = days.map((g, i) => {
     if (!occurrences[i]) return null;
     const v = value(g, c);
     return v === null || c.measure === 'rating' ? v : v / occurrences[i];
   });
+  const byWeekday = perDay || c.measure === 'rating' ? weekdayAvg : days.map((g, i) => (occurrences[i] ? value(g, c) : null));
   const brewDays = [...new Set(inP.map((b) => b.localDate))].sort();
   return {
-    inP, timed, tracked, byHour, byWeekday, brewDays,
+    inP, timed, tracked, byHour, byWeekday, weekdayAvg, occurrences, perDay, brewDays,
     activeDays: tracked.length ? brewDays.length / tracked.length : null,
     brewsPerBrewDay: brewDays.length ? inP.length / brewDays.length / c.size : null,
-    peakHour: peak(byHour, hours, c), busiestWeekday: peak(byWeekday, days, c)
+    peakHour: peak(byHour, hours, c), busiestWeekday: peak(weekdayAvg, days, c)
   };
 }
+
+// A heatmap cell per occurrence of its weekday under Avg per day.
+const cell = (v: number | null, w: { perDay: boolean; occurrences: number[] }, d: number) =>
+  v !== null && w.perDay && w.occurrences[d] ? v / w.occurrences[d] : v;
 
 export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
   const w = windowStats(brews, c.period, c);
@@ -149,20 +161,20 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
     prevPeak = { hour: v.peakHour, weekday: v.busiestWeekday };
     prevActive = { brewDays: v.brewDays.length, trackedDays: v.tracked.length };
     // Hour totals pace to this window's tracked days when the lengths differ (the compareTiles rule).
-    const k = c.pace && v.tracked.length && v.tracked.length !== w.tracked.length ? w.tracked.length / v.tracked.length : 1;
+    const k = !v.perDay && c.pace && v.tracked.length && v.tracked.length !== w.tracked.length ? w.tracked.length / v.tracked.length : 1;
     compareHour = v.byHour.map((x) => (x === null || c.measure === 'rating' ? x : x * k));
     compareWeekday = v.byWeekday;
   }
   return {
     tiles, deltas, prevPeak, prevActive,
-    busiestAvg: w.busiestWeekday === null ? null : w.byWeekday[w.busiestWeekday],
+    busiestAvg: w.busiestWeekday === null ? null : w.weekdayAvg[w.busiestWeekday],
     streakAtEnd: c.period.end < c.today,
     longestFrom: long.from, longestTo: long.to,
     byHour: w.byHour, byWeekday: w.byWeekday, compareHour, compareWeekday,
     // ponytail: filters w.timed once per cell (168 passes); group by weekday * 24 + hour if it ever shows
     heatmap: Array.from({ length: 7 }, (_, d) =>
       Array.from({ length: 24 }, (_, h) =>
-        value(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c, c.measure === 'rating' ? CELL_MIN_RATED : 1))
+        cell(value(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c, c.measure === 'rating' ? CELL_MIN_RATED : 1), w, d))
     ),
     calendar: w.tracked.map((date) => ({ date, value: value(byDay.get(date) ?? [], c) })),
     backfilledLeftOut: w.inP.length - w.timed.length

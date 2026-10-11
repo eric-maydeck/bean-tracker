@@ -5,13 +5,13 @@
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
-  import { MEASURES, type InsightsUrlState, type Measure, type Ratings } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, MEASURES, type Agg, type InsightsUrlState, type Measure, type Ratings } from '$lib/insightsUrl';
   import type { Habits } from '$lib/server/insights/habits';
 
   let {
-    h, measure, ratings, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
+    h, measure, ratings, agg, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
   }: {
-    h: Habits; measure: Measure; ratings: Ratings; comparing: boolean; periodLabel: string; compareLabel: string;
+    h: Habits; measure: Measure; ratings: Ratings; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -19,10 +19,18 @@
   const HOURS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
   const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   // Chart tooltips: averages to one decimal, grams with their unit.
-  const num = (v: number) =>
-    measure === 'grams' ? formatGrams(v) : measure === 'rating' || !Number.isInteger(v) ? v.toFixed(1) : String(v);
-  const text = (v: number | null) =>
-    v === null ? 'no data' : measure === 'grams' ? num(v) : `${num(v)} ${measure === 'rating' ? 'avg rating' : v === 1 ? 'brew' : 'brews'}`;
+  // Avg per day values are small fractions (0.31 brews): two decimals, with " avg" after the unit.
+  const avg = $derived(agg === 'average' && measure !== 'rating');
+  const textOf = (avg: boolean) => (v: number | null) => {
+    const num = (n: number) =>
+      measure === 'grams' ? formatGrams(n) : measure === 'rating' || !Number.isInteger(n) ? n.toFixed(avg ? 2 : 1) : String(n);
+    return v === null ? 'no data'
+      : measure === 'grams' ? num(v) + (avg ? ' avg' : '')
+      : `${num(v)} ${measure === 'rating' ? 'avg rating' : v === 1 && !avg ? 'brew' : 'brews'}${avg ? ' avg' : ''}`;
+  };
+  const text = $derived(textOf(avg));
+  const dayText = $derived(textOf(false)); // the calendar is per day in either mode
+  const what = $derived(measure === 'grams' ? 'Grams' : 'Brews');
   let empty = $derived(h.tiles.brewDays === 0);
   // A compare window with no data adds no series (and no legend entry).
   const compare = (values: (number | null)[] | null) =>
@@ -39,6 +47,11 @@
   <div class="tab-group" role="group" aria-label="Measure">
     {#each MEASURES as m (m)}<button aria-pressed={measure === m} onclick={() => choose({ measure: m })}>{LABEL[m]}</button>{/each}
   </div>
+  {#if measure !== 'rating'}
+    <div class="tab-group" role="group" aria-label="Show">
+      {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+    </div>
+  {/if}
   {#if measure === 'rating'}
     <div class="tab-group" role="group" aria-label="Ratings">
       {#each ['current', 'all'] as const as m (m)}
@@ -62,9 +75,9 @@
       <p class="empty">No brews in this period</p>
     {:else}
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} datasetLabel={periodLabel}
-        series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''} height={260} />
+        series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
     {/if}
-    <p class="chart-note">Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
+    <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
   </section>
   <section class="chart-panel">
     <h2>By day of week</h2>
@@ -72,10 +85,10 @@
       <p class="empty">No brews in this period</p>
     {:else}
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} datasetLabel={periodLabel}
-        series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''}
+        series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
     {/if}
-    <p class="chart-note">{measure === 'rating' ? 'Mean rating' : 'Average per weekday'}</p>
+    <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
   </section>
 </div>
 <section class="chart-panel">
@@ -91,7 +104,7 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <BrewCalendar days={h.calendar} {text} />
+    <BrewCalendar days={h.calendar} text={dayText} />
   {/if}
 </section>
 

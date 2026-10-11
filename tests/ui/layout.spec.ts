@@ -897,6 +897,28 @@ export const STATES: State[] = [
     }
   },
   {
+    // Habits Show toggle: Total sums (URL carries agg=total), Avg per day is the default, rating hides the group.
+    name: 'insights-habits-agg-total',
+    path: () => '/insights?tab=habits&agg=total&compare=1',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Total' })).toHaveAttribute('aria-pressed', 'true');
+      await expectChipsFit(page);
+      await expectDeltasFit(page);
+      await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Avg per day' }).click();
+      await expect(page).not.toHaveURL(/agg=/);
+      await page.getByRole('group', { name: 'Measure' }).getByRole('button', { name: 'Rating' }).click();
+      await expect(page.getByRole('group', { name: 'Show' })).toHaveCount(0);
+    }
+  },
+  {
+    name: 'insights-habits-agg-avg-grams',
+    path: () => '/insights?tab=habits&measure=grams&compare=1',
+    act: async (page) => {
+      await page.locator('.heatmap .heat-cell').nth(10).hover();
+      await expectChipsFit(page);
+    }
+  },
+  {
     // Active days compares as a ratio of a count: "▼ 3% from 31 days (100%)", one line, nothing clipped.
     name: 'insights-habits-active-from',
     path: () => '/insights?tab=habits&range=1w&compare=1',

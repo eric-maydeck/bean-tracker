@@ -452,7 +452,7 @@
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
+  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}

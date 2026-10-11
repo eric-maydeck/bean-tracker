@@ -10,7 +10,7 @@ const brew = (localTime: string, o: Partial<BrewFact> = {}): BrewFact => ({
 // Mon 2026-09-07 … Sun 2026-09-20: two full weeks.
 const P = { start: '2026-09-07', end: '2026-09-20' };
 const ctx = (o: Partial<HabitsCtx> = {}): HabitsCtx => ({
-  period: P, prev: null, measure: 'brews', ratings: 'all', size: 1, dataStart: '2026-01-01', today: '2026-10-11', pace: false, ...o
+  period: P, prev: null, measure: 'brews', ratings: 'all', size: 1, agg: 'total', dataStart: '2026-01-01', today: '2026-10-11', pace: false, ...o
 });
 
 describe('streaks', () => {
@@ -55,11 +55,43 @@ describe('habits', () => {
   });
 
   it('weekday: total ÷ occurrences in the tracked days', () => {
-    const h = habits(brews, ctx());
+    const h = habits(brews, ctx({ agg: 'average' }));
     expect(h.byWeekday[0]).toBe(1.5); // 3 Monday brews over 2 Mondays
     expect(h.byWeekday[1]).toBe(0.5); // the back-filled brew still counts by date
     expect(h.byWeekday[2]).toBe(0);
     expect(h.busiestAvg).toBe(1.5); // the busiest weekday's average (Mon)
+  });
+
+  it('total: hour, weekday and heatmap sum; the tiles and busiest average stay per occurrence', () => {
+    const h = habits(brews, ctx());
+    expect(h.byWeekday[0]).toBe(3); // three Monday brews
+    expect(h.heatmap[0][8]).toBe(3);
+    expect(h.byHour[8]).toBe(3);
+    expect(h.tiles.busiestWeekday).toBe(0);
+    expect(h.busiestAvg).toBe(1.5);
+  });
+
+  it('average: hour per tracked day, heatmap cell per occurrence of its weekday', () => {
+    const h = habits(brews, ctx({ agg: 'average' }));
+    expect(h.byHour[8]).toBe(3 / 14);
+    expect(h.heatmap[0][8]).toBe(1.5); // 3 Monday 8am brews over 2 Mondays
+    expect(h.heatmap[1][14]).toBe(0);
+    expect(h.calendar[0].value).toBe(2); // the calendar is per day already
+    expect(h.tiles).toMatchObject({ peakHour: 8, busiestWeekday: 0, brewDays: 3 });
+  });
+
+  it('average with a compare: the previous hours are per its own tracked days, not paced', () => {
+    const prev = { start: '2026-08-31', end: '2026-09-06' };
+    const older = [brew('2026-08-31T10:15'), brew('2026-09-01T10:20'), ...brews];
+    const h = habits(older, ctx({ prev, pace: true, agg: 'average' }));
+    expect(h.compareHour![10]).toBe(2 / 7);
+    expect(h.compareWeekday![0]).toBe(1);
+  });
+
+  it('rating ignores the Show choice', () => {
+    const r = ctx({ measure: 'rating' });
+    expect(habits(brews, { ...r, agg: 'average' }).byHour[8]).toBe(7);
+    expect(habits(brews, r).byWeekday[0]).toBe(habits(brews, { ...r, agg: 'average' }).byWeekday[0]);
   });
 
   it('grams measure sums doses', () => expect(habits(brews, ctx({ measure: 'grams' })).byHour[8]).toBe(50));
