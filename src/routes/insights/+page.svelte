@@ -388,7 +388,7 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
-        <div class="stat-item" class:stat-item-hero={hero}>
+        <div class="stat-item" class:stat-item-accent={hero}>
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
               {#each ['current', 'all'] as const as m (m)}

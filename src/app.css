@@ -1404,7 +1404,9 @@ td > .action-buttons.under-form {
   border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
 }
 
-.stat-item-hero .stat-value {
+/* Insights' Totals: the hero value colour on an ordinary tile. */
+.stat-item-hero .stat-value,
+.stat-item-accent .stat-value {
   color: var(--color-accent);
 }
 

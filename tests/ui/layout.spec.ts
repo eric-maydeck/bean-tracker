@@ -821,11 +821,16 @@ export const STATES: State[] = [
       // Every click-for-explanation trigger ends with its circled ?.
       expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
       expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);
-      // Totals tiles are the /stats "At a glance" hero tiles; Averages are not.
+      // Totals values take the /stats "At a glance" hero colour; Averages do not.
       const color = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
       expect(await color('Totals')).not.toBe(await color('Averages'));
+      // ...but only the value colour: background and border match the other tiles.
+      const box = (title: string) =>
+        page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
+          .locator('.stat-item').first().evaluate((e) => getComputedStyle(e).backgroundColor + getComputedStyle(e).borderColor);
+      expect(await box('Totals')).toBe(await box('Averages'));
     }
   },
   {
