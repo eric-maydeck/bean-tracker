@@ -5,7 +5,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -40,7 +40,7 @@
   // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
   function reset() {
     draft = null;
-    const qs = insightsParams(s.tab === 'overview' ? {} : { tab: s.tab }).toString();
+    const qs = insightsParams(resetInsights(data.explicit)).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
@@ -118,7 +118,7 @@
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
   type Key = string; // tile keys span four data shapes
-  type D = { abs: number; pct: number; base: number } | null;
+  type D = { abs: number; pct: number; base: number; paced?: true } | null;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
   // `up`: whether a rise is good or bad, for the delta's colour; unset = by direction (up green).
@@ -126,6 +126,7 @@
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
     up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
+    was?: () => string | null; // a neutral line in the delta slot ("was Thu")
   };
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -179,21 +180,17 @@
           { key: 'peakHour', label: 'Peak hour', fmt: hour, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour(data.habits!.prevPeak.hour)}` : null) },
           {
             key: 'busiestWeekday', label: 'Busiest weekday', fmt: (n) => WEEKDAYS[n],
+            // Comparing puts "was Thu" on the delta line; this stays the same short form.
+            was: () => (data.habits!.prevPeak?.weekday != null ? `was ${WEEKDAYS[data.habits!.prevPeak.weekday]}` : null),
+            keepSub: true,
             sub: () => {
               const h = data.habits!;
               if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
               const wd = WEEKDAYS[h.tiles.busiestWeekday];
               const a = h.busiestAvg;
-              const was = h.prevPeak?.weekday;
-              const n = Number.isInteger(a) ? a : a.toFixed(1);
-              // Comparing adds " · was Thu": the average shortens so both fit a phone tile.
-              const avg =
-                was != null
-                  ? s.measure === 'grams' ? `${formatGrams(a)}/${wd}` : s.measure === 'rating' ? `avg ${a.toFixed(1)}` : `${n}/${wd}`
-                  : s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
-                  : s.measure === 'rating' ? `avg ${a.toFixed(1)} rating`
-                  : `${n} ${a === 1 ? 'brew' : 'brews'} per ${wd}`;
-              return was != null ? `${avg} · was ${WEEKDAYS[was]}` : avg;
+              return s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
+                : s.measure === 'rating' ? `${a.toFixed(1)} avg rating`
+                : `${Number.isInteger(a) ? a : a.toFixed(1)} per ${wd}`;
             }
           }
         ]
@@ -208,9 +205,9 @@
           // Per-day rates of bags are small fractions: two decimals.
           const f = g ? formatGrams : avg ? (n: number) => n.toFixed(2) : count;
           return [
-            { key: 'brewed', label: g ? 'Brewed' + (avg ? ' /day' : '') : avg ? 'Finished /day' : 'Bags finished', fmt: f, split: true },
-            { key: 'bought', label: g ? 'Bought' + (avg ? ' /day' : '') : avg ? 'Bought /day' : 'Bags bought', fmt: f, split: true },
-            { key: 'net', label: avg ? 'Net /day' : 'Net change', fmt: g ? signedGrams : f, split: true },
+            { key: 'brewed', label: g ? 'Brewed' + (avg ? '/day' : '') : avg ? 'Finished/day' : 'Bags finished', fmt: f, split: true },
+            { key: 'bought', label: g ? 'Bought' + (avg ? '/day' : '') : avg ? 'Bought/day' : 'Bags bought', fmt: f, split: true },
+            { key: 'net', label: avg ? 'Net/day' : 'Net change', fmt: g ? signedGrams : f, split: true },
             { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
             { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
             {
@@ -249,22 +246,25 @@
     (data.scaled || perPersonOn) && t.split && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
   const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
 
-  function deltaText(d: { abs: number; pct: number; base: number }, t: Tile): string {
+  // Unscaled: "▼ 19g from 112g". A pace-scaled base isn't the other window's own value, so those
+  // keep the change and its %, with "vs X at that pace" on the pace line.
+  function deltaText(d: NonNullable<D>, t: Tile): string {
     const fmt = paced(t);
     // A change that formats as zero (float noise, or under the tile's precision) is none.
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
+    const arrow = d.abs > 0 ? '▲' : '▼';
     // The tile's unit suffix ("days") stays out of the line: it's on the value above and in the title.
-    return `${d.abs > 0 ? '▲' : '▼'} ${fmt(Math.abs(d.abs))} from ${fmt(d.base)}`;
+    return d.paced ? `${arrow} ${fmt(Math.abs(d.abs))} (${Math.abs(d.pct).toFixed(0)}%)` : `${arrow} ${fmt(Math.abs(d.abs))} from ${fmt(d.base)}`;
   }
-  // The percentage lives in the title and the screen-reader label, not the tile line.
-  const deltaTitle = (d: { abs: number; pct: number; base: number }, t: Tile) => {
+  // Full sentence for the title and screen readers (the % lives here for unscaled tiles).
+  function deltaTitle(d: NonNullable<D>, t: Tile): string {
     const fmt = paced(t);
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
-    return `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}% from ${fmt(d.base)}${t.suffix ? ` ${t.suffix}` : ''} (${compareLabel})`;
-  };
-  // Totals compared across windows of different tracked lengths: what the other window would be at this pace.
-  const paceText = (d: { base: number }, t: Tile) =>
-    data.scaled && (data.tileKinds as Record<string, string>)[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
+    const unit = t.suffix ? ` ${t.suffix}` : '';
+    const dir = `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}%`;
+    return d.paced ? `${dir} vs ${fmt(d.base)}${unit} at that pace` : `${dir} from ${fmt(d.base)}${unit} (${compareLabel})`;
+  }
+  const paceText = (d: NonNullable<D>, t: Tile) => (d.paced ? `vs ${paced(t)(d.base)} at that pace` : '');
   // Green when the change is the good way for this tile, red when bad; tiles with no good
   // direction go by direction (up green, down red); no change stays grey.
   function trend(d: { abs: number }, t: Tile): string {
@@ -376,7 +376,7 @@
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
-{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null)}
+{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, hero = false)}
   <section class="chart-panel">
     <h2>{title}</h2>
     <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}">
@@ -384,7 +384,7 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
-        <div class="stat-item" class:stat-item-hero={title === 'Totals'}>
+        <div class="stat-item" class:stat-item-hero={hero}>
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
               {#each ['current', 'all'] as const as m (m)}
@@ -401,12 +401,17 @@
             >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
-            <span class="stat-unit insights-delta {trend(d, t)}" title={deltaTitle(d, t)} aria-label={deltaTitle(d, t)}>{deltaText(d, t)}</span>
+            <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and hover. -->
+            <span class="stat-unit insights-delta {trend(d, t)}" title={deltaTitle(d, t)}
+              ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
+            >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
+          {:else if t.was?.()}
+            <span class="stat-unit insights-delta">{t.was()}</span>
           {/if}
-          <!-- Under a delta, a kept sub takes the pace line's slot (no keepSub tile is paced). -->
+          <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
+            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
@@ -451,7 +456,7 @@
     {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}
-  {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
+  {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
   {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}

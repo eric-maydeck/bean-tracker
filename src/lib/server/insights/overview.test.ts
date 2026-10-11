@@ -125,8 +125,8 @@ describe('compareTiles', () => {
     // 90 brews / 1350 g over 90 days → 7 / 105 at the period's 7 days.
     const { deltas: d, scaled } = compareTiles({ ...t, brews: 14, grams: 210 }, { ...t, brews: 90, grams: 1350, avgDose: 12 }, 7, 90);
     expect(scaled).toBe(true);
-    expect(d.brews).toEqual({ abs: 7, pct: 100, base: 7 });
-    expect(d.grams).toEqual({ abs: 105, pct: 100, base: 105 });
+    expect(d.brews).toEqual({ abs: 7, pct: 100, base: 7, paced: true });
+    expect(d.grams).toEqual({ abs: 105, pct: 100, base: 105, paced: true });
     expect(d.avgDose).toEqual({ abs: 3, pct: 25, base: 12 });
   });
   it('a paced base of 0 shows no change', () =>

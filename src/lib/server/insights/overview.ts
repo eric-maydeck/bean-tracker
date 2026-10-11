@@ -75,7 +75,8 @@ export function overviewTiles(
   };
 }
 
-export type Delta = { abs: number; pct: number; base: number } | null;
+// `paced`: base is the other window's pace over this window's days, not its own value.
+export type Delta = { abs: number; pct: number; base: number; paced?: true } | null;
 
 // No change without a previous value to compare to (a % from 0 or below is meaningless).
 // `base` is the value the change is measured against.
@@ -94,7 +95,10 @@ export function compareTiles(
   const base = (k: keyof OverviewTiles) =>
     !scaled || TILE_KIND[k] === 'average' ? prev[k] : prevDays ? ((prev[k] ?? 0) * curDays) / prevDays : null;
   const keys = Object.keys(cur) as (keyof OverviewTiles)[];
-  const deltas = Object.fromEntries(keys.map((k) => [k, tileDelta(cur[k], base(k))]));
+  const deltas = Object.fromEntries(keys.map((k) => {
+    const d = tileDelta(cur[k], base(k));
+    return [k, d && scaled && TILE_KIND[k] !== 'average' ? { ...d, paced: true } : d];
+  }));
   return { deltas: deltas as Record<keyof OverviewTiles, Delta>, scaled };
 }
 
@@ -150,7 +154,8 @@ export function rightNow(bags: readonly BagFact[], brews: readonly BrewFact[], p
 // window's days (the compareTiles rule); averages and same-length windows compare raw.
 export function paceDelta(cur: number | null, prev: number | null, curDays: number, prevDays: number, pace: boolean): Delta {
   if (!pace || curDays === prevDays) return tileDelta(cur, prev);
-  return prevDays && prev !== null ? tileDelta(cur, (prev * curDays) / prevDays) : null;
+  const d = prevDays && prev !== null ? tileDelta(cur, (prev * curDays) / prevDays) : null;
+  return d && { ...d, paced: true };
 }
 
 // Measured rate: grams brewed in `p` over its tracked days (the brews-per-day rule), ÷ size

@@ -236,6 +236,10 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   return p;
 }
 
+// Reset: every choice back to default (bare URL), keeping only a non-default tab.
+export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
+  s.tab && s.tab !== DEFAULTS.tab ? { tab: s.tab } : {};
+
 export function withDefaults(s: InsightsUrlState): InsightsView {
   return {
     range: s.range ?? DEFAULTS.range,

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
+  parseInsightsUrl, insightsParams, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
@@ -389,5 +389,15 @@ describe('legend labels', () => {
     expect(compareLabel('2026-03-01..2026-04-09', menu, P, today)).toBe('Mar 1 – Apr 9');
     expect(compareLabel(1, menu, null, today)).toBe('');
     expect(compareLabel(9, menu, P, today)).toBe('Mar 1 – Apr 9');
+  });
+});
+
+describe('sticky tab choices and reset', () => {
+  it('an off-tab choice survives parse and serialize', () =>
+    expect(insightsParams(parse('tab=overview&measure=grams&unit=bags&rank=ppg')).toString()).toBe('tab=overview&rank=ppg&measure=grams&unit=bags'));
+  it('reset clears everything but a non-default tab', () => {
+    expect(resetInsights(parse('range=1w&compare=1&tab=habits&measure=grams'))).toEqual({ tab: 'habits' });
+    expect(resetInsights(parse('range=1w&tab=overview&unit=bags'))).toEqual({});
+    expect(resetInsights({})).toEqual({});
   });
 });

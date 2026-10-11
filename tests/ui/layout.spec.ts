@@ -36,6 +36,29 @@ function buttonBoxes(scope: Locator) {
 
 // A sticky filter bar: pinned at the top after scrolling, one short row in phone landscape,
 // and a panel scrolled into view starts below it (scroll-padding-top), not under it.
+// Every delta / pace / sub line on the page: right shape, sentence for screen readers, one line, no ellipsis.
+async function expectDeltasFit(page: Page) {
+  const bad = await page.locator('.stat-item .insights-delta').evaluateAll((els) =>
+    els.flatMap((e) => {
+      const el = e as HTMLElement;
+      const shown = el.querySelector('[aria-hidden]')?.textContent?.trim() ?? el.textContent?.trim() ?? '';
+      const said = el.querySelector('.sr-only')?.textContent ?? '';
+      const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
+      const shape = /^[▲▼] \S+ (from \S+|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
+      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+% (from|vs) /.test(said);
+      return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= 1 ? [] : [`${shown} | ${said}`];
+    })
+  );
+  expect(bad).toEqual([]);
+  await expectNoEllipsis(page);
+}
+async function expectNoEllipsis(page: Page) {
+  const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
+    els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
+  );
+  expect(clipped).toEqual([]);
+}
+
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
@@ -844,11 +867,7 @@ export const STATES: State[] = [
         })
       );
       expect(overlaps).toEqual([]);
-      // No sub line is cut off with an ellipsis ("4/Fri · was Sat" must fit a 360px tile).
-      const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
-        els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
-      );
-      expect(clipped).toEqual([]);
+      await expectDeltasFit(page);
       // Busiest weekday's "N/Fri · was Sat" stays on one line and its tile is no taller than its row mates.
       const busy = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest weekday$/ }) });
       const sub = busy.locator('.stat-unit, .insights-pace').first();
@@ -862,6 +881,41 @@ export const STATES: State[] = [
       expect(m.lines).toBeLessThan(1.6);
       expect(m.own).toBeGreaterThanOrEqual(m.max - 1);
     }
+  },
+  {
+    // Busiest-weekday sub ("5.9 per Wed") on a long range, no compare: never an ellipsis (prod-like widths).
+    name: 'insights-habits-busiest',
+    path: () => '/insights?tab=habits&range=all',
+    act: (page) => expectNoEllipsis(page)
+  },
+  {
+    name: 'insights-habits-busiest-rating',
+    path: () => '/insights?tab=habits&range=all&measure=rating',
+    act: (page) => expectNoEllipsis(page)
+  },
+  {
+    name: 'insights-habits-busiest-grams',
+    path: () => '/insights?tab=habits&range=all&measure=grams&compare=before',
+    act: (page) => expectDeltasFit(page)
+  },
+  {
+    // Average mode with a compare on: the narrowest strings (per-day labels, bag fractions), grams and bags.
+    name: 'insights-consumption-agg-grams',
+    path: () => '/insights?tab=consumption&range=1w&compare=1',
+    act: (page) => expectDeltasFit(page)
+  },
+  {
+    name: 'insights-consumption-agg-bags',
+    path: () => '/insights?tab=consumption&range=1w&compare=1&unit=bags',
+    act: async (page) => {
+      await expect(page.locator('.stat-label', { hasText: 'Finished/day' })).toBeVisible();
+      await expectDeltasFit(page);
+    }
+  },
+  {
+    name: 'insights-consumption-agg-bags-longer',
+    path: () => '/insights?tab=consumption&range=1w&compare=before&unit=bags&by=week',
+    act: (page) => expectDeltasFit(page)
   },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
@@ -889,23 +943,11 @@ export const STATES: State[] = [
   { name: 'insights-consumption-1w', path: () => '/insights?tab=consumption&range=1w',
     act: async (page) => expect(page.getByRole('button', { name: 'Month' })).toBeDisabled() },
   {
-    // Delta lines: arrow + change + "from" + the previous value; the % is in the title / aria-label.
-    // Never clipped or wrapped (single line, no overflow).
+    // Delta lines: arrow + change + "from" + the previous value (pace-scaled: change + %); the sentence
+    // is visually hidden text. Never clipped or wrapped.
     name: 'insights-1w-compare',
     path: () => '/insights?range=1w&compare=1',
-    act: async (page) => {
-      const bad = await page.locator('.stat-item .insights-delta').evaluateAll((els) =>
-        els.flatMap((e) => {
-          const el = e as HTMLElement;
-          const text = el.textContent?.trim() ?? '';
-          const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
-          const ok = text === 'No change' || /^[▲▼] .+ from .+$/.test(text);
-          const titled = text === 'No change' || (/^(Up|Down) \d+% from /.test(el.title) && el.title === el.getAttribute('aria-label'));
-          return ok && titled && el.scrollWidth <= el.clientWidth + 1 && lines <= 1 ? [] : [`${text} | ${el.title}`];
-        })
-      );
-      expect(bad).toEqual([]);
-    }
+    act: (page) => expectDeltasFit(page)
   },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
