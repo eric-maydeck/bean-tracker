@@ -10,6 +10,9 @@
   let { data }: { data: PageData } = $props();
   let s = $derived(withDefaults(data.explicit));
 
+  // The Custom range dialog; its draft is `draft` below.
+  let rangeDialog: HTMLDialogElement | undefined = $state();
+
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
     const next = { ...data.explicit, ...change };
@@ -33,6 +36,7 @@
   function pickCompare(v: string) {
     if (v === 'custom') {
       draft = { from: data.customDefault.start ?? data.today, to: data.customDefault.end };
+      rangeDialog?.showModal();
       return;
     }
     draft = null;
@@ -51,6 +55,7 @@
     if (!c) return;
     draft = null;
     choose({ compare: c });
+    rangeDialog?.close();
   }
 
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
@@ -68,18 +73,19 @@
   type Key = keyof PageData['tiles'];
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
-  type Tile = { key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean };
+  // `up`: whether a rise is good or bad, for the delta's colour; unset = neutral (grey).
+  type Tile = { key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean; up?: 'good' | 'bad' };
   const TOTALS: Tile[] = [
-    { key: 'brews', label: 'Brews', fmt: count },
+    { key: 'brews', label: 'Brews', fmt: count, up: 'good' },
     { key: 'grams', label: 'Grams', fmt: formatGrams },
-    { key: 'spend', label: 'Spend', fmt: usdCompact.format },
-    { key: 'bagsFinished', label: 'Bags finished', fmt: count },
-    { key: 'rated', label: 'Rated', fmt: count, ratingSwitch: true }
+    { key: 'spend', label: 'Spend', fmt: usdCompact.format, up: 'bad' },
+    { key: 'bagsFinished', label: 'Bags finished', fmt: count, up: 'good' },
+    { key: 'rated', label: 'Rated', fmt: count, ratingSwitch: true, up: 'good' }
   ];
   const AVERAGES: Tile[] = [
-    { key: 'avgRating', label: 'Avg rating', fmt: (n) => n.toFixed(1), ratingSwitch: true },
-    { key: 'costPerBrew', label: 'Cost per brew', fmt: usd.format },
-    { key: 'brewsPerDay', label: 'Brews per day', fmt: (n) => n.toFixed(1) },
+    { key: 'avgRating', label: 'Avg rating', fmt: (n) => n.toFixed(1), ratingSwitch: true, up: 'good' },
+    { key: 'costPerBrew', label: 'Cost per brew', fmt: usd.format, up: 'bad' },
+    { key: 'brewsPerDay', label: 'Brews per day', fmt: (n) => n.toFixed(1), up: 'good' },
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
     { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
@@ -113,8 +119,16 @@
     // A change that formats as zero (float noise, or under the tile's precision) is none.
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
     const abs = fmt(Math.abs(d.abs)) + (t.suffix ? ` ${t.suffix}` : '');
-    const pace = data.scaled && data.tileKinds[t.key] === 'total' ? ` · vs ${fmt(d.base)} at that pace` : '';
-    return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)${pace}`;
+    return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)`;
+  }
+  // Totals compared across windows of different tracked lengths: what the other window would be at this pace.
+  const paceText = (d: { base: number }, t: Tile) =>
+    data.scaled && data.tileKinds[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
+  // Green when the change is the good way for this tile, red when bad; grey for neutral tiles and no change.
+  function trend(d: { abs: number }, t: Tile): string {
+    const fmt = paced(t);
+    if (!t.up || fmt(Math.abs(d.abs)) === fmt(0)) return '';
+    return (d.abs > 0) === (t.up === 'good') ? 'trend-good' : 'trend-bad';
   }
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
@@ -130,7 +144,7 @@
   <ShareButton />
 </div>
 
-<div class="insights-controls">
+<div class="insights-controls" class:three={isCustom(s.compare)}>
   <label class="form-field">
     <span>Period</span>
     <select value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
@@ -161,20 +175,31 @@
       <optgroup label="Custom"><option value="custom">Custom range…</option></optgroup>
     </select>
   </label>
+  {#if isCustom(s.compare)}
+    <button class="button button-ghost" onclick={() => rangeDialog?.showModal()}>Dates…</button>
+  {/if}
 </div>
-{#if shown}
-  <form class="custom-range" oninput={editDraft} onsubmit={applyCustom}>
-    <label class="form-field">
-      <span>From</span>
-      <input type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
-    </label>
-    <label class="form-field">
-      <span>To</span>
-      <input type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
-    </label>
-    <button class="button" disabled={!customRange(shown.from, shown.to, data.today)}>Apply</button>
-  </form>
-{/if}
+  <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
+  <!-- svelte-ignore a11y_autofocus -->
+  <dialog bind:this={rangeDialog} autofocus class="range-dialog" aria-labelledby="range-title" onclose={() => (draft = null)}>
+    <h2 id="range-title">Custom range</h2>
+    {#if shown}
+      <form class="custom-range" oninput={editDraft} onsubmit={applyCustom}>
+        <label class="form-field">
+          <span>From</span>
+          <input type="date" name="from" value={shown.from} min={data.dataStart} max={data.today} />
+        </label>
+        <label class="form-field">
+          <span>To</span>
+          <input type="date" name="to" value={shown.to} min={data.dataStart} max={data.today} />
+        </label>
+        <footer>
+          <button type="button" class="button button-ghost" onclick={() => rangeDialog?.close()}>Cancel</button>
+          <button class="button" disabled={!customRange(shown.from, shown.to, data.today)}>Apply</button>
+        </footer>
+      </form>
+    {/if}
+  </dialog>
 
 <p class="insights-period">{periodText}</p>
 
@@ -200,7 +225,10 @@
           <span class="stat-value"
             >{valueText(t, data.tiles[t.key])}{#if t.suffix && data.tiles[t.key] !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
-          {#if d}<span class="stat-unit insights-delta">{deltaText(d, t)}</span>{/if}
+          {#if d}
+            <span class="stat-unit insights-delta {trend(d, t)}">{deltaText(d, t)}</span>
+            {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
+          {/if}
           <div class="stat-caption">
             {#if t.ratingSwitch}
               <span class="stat-label mode-caption"
@@ -249,26 +277,58 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
-  /* Custom range: From / To / Apply under the selects. */
+  .insights-controls:where(.three) {
+    grid-template-columns: repeat(3, max-content);
+  }
+  /* Custom range form, inside the dialog. */
   .custom-range {
     display: grid;
-    grid-template-columns: repeat(3, max-content);
+    grid-template-columns: 1fr 1fr;
     align-items: end;
     gap: var(--space-3);
-    margin: 0 0 var(--space-3);
+    margin: 0;
   }
   .custom-range .form-field {
     margin-bottom: 0;
+  }
+  .custom-range button,
+  .insights-controls > button {
+    box-sizing: border-box;
+    min-height: 2.25rem;
+    margin: 0; /* .button's own margins would lift it off the inputs' baseline */
+  }
+  .range-dialog {
+    width: min(22rem, 100% - 2rem);
+    max-height: calc(100dvh - 1rem);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: inherit;
+  }
+  .range-dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  .range-dialog h2 {
+    margin: 0 0 var(--space-3);
+    font-size: 1.1rem;
+  }
+  .range-dialog footer {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
   }
   @media (max-width: 640px) {
     .insights-controls {
       grid-template-columns: 1fr 1fr;
     }
-    .custom-range {
-      grid-template-columns: 1fr 1fr;
+    .range-dialog footer button {
+      flex: 1;
     }
-    .custom-range button {
-      grid-column: 1 / -1;
+    .custom-range button,
+    .insights-controls > button {
+      min-height: 44px;
     }
     .insights-controls select,
     .custom-range input {
@@ -410,12 +470,26 @@
   .insights-delta {
     text-transform: none;
   }
-  /* "▲ 9.0 (113%) · vs 8.0 at that pace" wraps to two lines in the subtext slot
-     (value bottom to caption top fits two) instead of truncating. */
-  .stat-item .insights-delta {
-    white-space: normal;
-    line-height: 1.15;
-    text-wrap: balance;
+  .insights-delta.trend-good {
+    color: var(--color-fresh);
+  }
+  .insights-delta.trend-bad {
+    color: var(--color-urgent);
+  }
+  /* "vs 8.0 at that pace": its own small line right under the delta, above the
+     caption (tile geometry in cqw like the rest, see app.css .stat-unit). */
+  .stat-item .insights-pace {
+    position: absolute;
+    left: var(--space-2);
+    right: var(--space-2);
+    top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: max(0.6rem, 5.4cqw);
+    line-height: 1;
+    color: var(--color-text-muted);
   }
   .insights-period {
     color: var(--color-text-muted);

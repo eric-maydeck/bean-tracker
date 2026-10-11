@@ -737,40 +737,69 @@ export const STATES: State[] = [
       await expect(compare).toHaveValue('before');
       expect(await compare.locator('optgroup').evaluateAll((gs) => gs.map((g) => g.getAttribute('label'))))
         .toEqual(['Same length', 'Longer', 'Custom']);
-      const pace = page.locator('.insights-delta', { hasText: 'at that pace' });
+      const pace = page.locator('.insights-pace');
       await expect(pace.first()).toBeVisible();
-      for (const t of await pace.allTextContents()) expect(t).toMatch(/ · vs \S+ at that pace$/);
+      for (const tx of await pace.allTextContents()) expect(tx).toMatch(/^vs \S+ at that pace$/);
+      // The pace line sits on its own line: under its delta, above the caption, inside the tile.
+      const overlaps = await page.locator('.stat-item:has(.insights-pace)').evaluateAll((tiles) =>
+        tiles.flatMap((tile) => {
+          const b = (s: string) => tile.querySelector(s)!.getBoundingClientRect();
+          const [p, d, c, o] = [b('.insights-pace'), b('.insights-delta'), b('.stat-caption'), tile.getBoundingClientRect()];
+          const out: string[] = [];
+          if (p.top < d.bottom - 0.5) out.push('pace overlaps delta');
+          if (p.bottom > c.top + 0.5) out.push('pace overlaps caption');
+          if (p.left < o.left || p.right > o.right) out.push('pace outside tile');
+          return out;
+        })
+      );
+      expect(overlaps).toEqual([]);
       // A paced count keeps one decimal under 10, whole numbers from 10.
       const brews = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Brews$/ }) });
-      await expect(brews.locator('.insights-delta')).toHaveText(/ · vs (\d\.\d|\d{2,}[\d,]*) at that pace$/);
+      await expect(brews.locator('.insights-pace')).toHaveText(/^vs (\d\.\d|\d{2,}[\d,]*) at that pace$/);
+      // Trend colour by polarity: Spend rising is bad (red), Brews rising is good (green).
+      const delta = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) }).locator('.insights-delta');
+      await expect(delta(/^Grams$/)).not.toHaveClass(/trend-/); // neutral tile stays grey
+      const dir = async (label: RegExp) => ((await delta(label).textContent()) ?? '').trim()[0];
+      const spend = await dir(/^Spend$/);
+      if (spend !== 'N') await expect(delta(/^Spend$/)).toHaveClass(spend === '▲' ? /trend-bad/ : /trend-good/);
+      const brewsDir = await dir(/^Brews$/);
+      if (brewsDir !== 'N') await expect(delta(/^Brews$/)).toHaveClass(brewsDir === '▲' ? /trend-good/ : /trend-bad/);
     }
   },
   {
-    // Custom range…: a draft (URL untouched, nothing focused) until Apply; a wrong
-    // order disables Apply. Navigation only, nothing saved. Task 6 adapts the
-    // act if the chosen placement is the dialog.
+    // Custom range…: a dialog with a draft (URL untouched, no input focused) until
+    // Apply; a wrong order disables Apply, Cancel applies nothing. Navigation only.
     name: 'insights-compare-custom',
     path: () => '/insights?range=1w',
     act: async (page) => {
       const before = page.url();
       await page.getByLabel('Compare').selectOption('custom');
-      await expect(page.getByLabel('Compare')).toHaveValue('custom');
-      await expect(page.getByLabel('From', { exact: true })).toBeVisible();
-      await expect(page.getByLabel('To', { exact: true })).toBeVisible();
+      await expect(page.locator('dialog[open]')).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      await expectDialogInViewport(page);
       expect(page.url()).toBe(before); // drafting never touches the URL
       const apply = page.getByRole('button', { name: 'Apply', exact: true });
-      await page.getByLabel('From', { exact: true }).fill(daysAgo(2));
-      await page.getByLabel('To', { exact: true }).fill(daysAgo(20));
+      const from = page.getByLabel('From', { exact: true });
+      const to = page.getByLabel('To', { exact: true });
+      await from.fill(daysAgo(2));
+      await to.fill(daysAgo(20));
       await expect(apply).toBeDisabled();
-      expect(page.url()).toBe(before);
-      await page.getByLabel('From', { exact: true }).fill(daysAgo(20));
-      await page.getByLabel('To', { exact: true }).fill(daysAgo(8));
-      await expect(apply).toBeEnabled();
-      expect(page.url()).toBe(before);
+      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(page.locator('dialog[open]')).toHaveCount(0);
+      expect(page.url()).toBe(before); // Cancel applies nothing
+      await page.getByLabel('Compare').selectOption('custom');
+      await from.fill(daysAgo(20));
+      await to.fill(daysAgo(8));
       await apply.click();
+      await expect(page.locator('dialog[open]')).toHaveCount(0);
       await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(8)}`));
       await expect(page.locator('.insights-period')).toContainText(' · vs ');
+      // Enter in a date input applies too (once the dates are valid).
+      await page.getByRole('button', { name: 'Dates…' }).click();
+      await to.fill(daysAgo(9));
+      await to.press('Enter');
+      await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(9)}`));
+      await expect(page.locator('dialog[open]')).toHaveCount(0);
     }
   },
   {

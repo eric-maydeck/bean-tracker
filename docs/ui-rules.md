@@ -35,6 +35,7 @@ when it can be automated.
 | 26 | A tile affected by a mode switch (e.g. Settled/All ratings) carries that switch itself; every copy drives the same URL param, so all copies stay in sync (user feedback 2026-10-10). | No (review; `insights-ratings-switch-sync` state checks the insights copies) |
 | 27 | Mode switches and mode labels get a concise tooltip that works on hover, touch and keyboard: a `title` + `aria-describedby` on the switch options, and the label's mode word as a small button opening a native `popover` (user feedback 2026-10-10). | No (review; `insights-ratings-tip` state checks the insights one) |
 | 28 | Panels don't leave visible empty space (e.g. a lone tile in a 4-column row); flag it in reviews and fill it as tiles and charts arrive (user feedback 2026-10-10). | No (review) |
+| 29 | A change/trend figure is coloured by whether the change is good or bad for that metric (green good, red bad; `--color-fresh` / `--color-urgent`), never by direction alone; metrics with no good direction stay neutral grey. A secondary line under a figure (e.g. the pace) is its own smaller grey line, never inlined into the figure's line (user feedback 2026-10-10). | Partly (`insights-compare-longer`: pace line clear of delta and caption; colour class per tile) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.
