@@ -26,6 +26,10 @@ describe('parseInsightsUrl', () => {
   it('reads an offered calendar year', () => expect(parse('range=2026').range).toBe('2026'));
   it('ignores a year outside the offered ones', () =>
     expect(parse('range=2019').range).toBeUndefined());
+  it('reads every avg mode, old avg=adjusted links included', () => {
+    for (const a of ['raw', 'k2', 'adjusted']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
+    expect(insightsParams({ avg: 'raw' }).toString()).toBe('avg=raw'); // explicit default kept
+  });
   it('reads the old ratings=settled as current', () => expect(parse('ratings=Settled').ratings).toBe('current'));
   it('ignores bad values', () =>
     expect(parse('range=5y&compare=yes&ratings=none&avg=median')).toEqual({
@@ -114,7 +118,7 @@ describe('withDefaults', () => {
       range: '12m',
       compare: 0,
       ratings: 'current',
-      avg: 'adjusted',
+      avg: 'raw',
       people: 'household',
       tab: 'overview',
       rank: 'rating'
@@ -122,7 +126,7 @@ describe('withDefaults', () => {
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'adjusted', people: 'household', tab: 'overview', rank: 'rating'
+      range: '12m', compare: 0, ratings: 'current', avg: 'raw', people: 'household', tab: 'overview', rank: 'rating'
     }));
 });
 

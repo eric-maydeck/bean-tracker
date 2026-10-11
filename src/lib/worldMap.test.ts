@@ -3,8 +3,8 @@ import { WORLD, WORLD_VIEWBOX } from './worldMap';
 import { isoCode, COUNTRY_NAMES } from './countryFlags';
 
 // Every origin goes through countryFlags' table, so every country in it must land on a shape:
-// adding a country there without one fails here. TOO_SMALL: countries absent from Natural Earth
-// 110m: microstates and small island nations too small to draw. None grows coffee commercially.
+// adding a country there without one fails here. TOO_SMALL: too small for Natural Earth 110m;
+// listed, not mapped (several do grow coffee).
 const TOO_SMALL = new Set<string>([
   'andorra',
   'antigua and barbuda',

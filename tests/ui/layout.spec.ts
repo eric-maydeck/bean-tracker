@@ -53,6 +53,7 @@ async function expectEqualBoardHeights(page: Page) {
   const bands = await page.locator('.board-band').evaluateAll((bands) =>
     bands.map((band) => [...band.querySelectorAll(':scope > .board:not(.open)')].map((b) => b.getBoundingClientRect().height))
   );
+  expect(bands).toHaveLength(3); // so the loop below can't pass vacuously
   for (const hs of bands) if (hs.length > 1) expect(Math.max(...hs) - Math.min(...hs)).toBeLessThanOrEqual(1);
 }
 
@@ -936,6 +937,17 @@ export const STATES: State[] = [
     path: () => '/insights?tab=leaderboards',
     act: async (page) => {
       await expect(page.locator('.board')).toHaveCount(9);
+      await expectEqualBoardHeights(page);
+    }
+  },
+  {
+    name: 'insights-leaderboards-avg',
+    path: () => '/insights?tab=leaderboards&avg=k2&compare=1',
+    act: async (page) => {
+      const sw = page.getByRole('group', { name: 'Average' });
+      await expect(sw.getByRole('button', { name: 'Adjusted (light)' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(sw.getByRole('button', { name: 'Raw' })).toHaveAccessibleDescription(/Plain average of each bag/);
+      await expect(page.locator('.board .move').first()).toHaveAttribute('aria-label', /^(up \d+ places?|down \d+ places?|unchanged|new)$/);
       await expectEqualBoardHeights(page);
     }
   },

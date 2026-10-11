@@ -37,7 +37,7 @@ describe('ratedGroups', () => {
 
   it('adjusted ranks the ten-bag group over the one lucky bag; raw does not', () => {
     expect(ratedGroups(brews, key, 'all', 'adjusted').map((g) => g.label)).toEqual(['B', 'A', 'C']);
-    expect(ratedGroups(brews, key, 'all', 'raw').map((g) => g.label)).toEqual(['A', 'B', 'C']);
+    expect(ratedGroups(brews, key, 'all', 'raw').map((g) => g.label)).toEqual(['B', 'C', 'A']); // A has 1 bag: last
   });
 
   it('Current leaves early ratings out', () => {
@@ -50,5 +50,17 @@ describe('ratedGroups', () => {
     const odd = [b('A', 1, null), { ...b('A', 1, 7), coffeeId: null }];
     expect(ratedGroups(odd, key, 'all', 'raw')).toEqual([]);
     expect(ratedGroups([b('A', 1, 7)], () => null, 'all', 'raw')).toEqual([]);
+  });
+  it('raw ranks 3+ bag groups first even when a small group has the higher mean', () => {
+    const small = [b('S', 1, 10), b('T', 2, 10), ...[3, 4, 5].map((i) => b('L', i, 6)), ...[6, 7, 8].map((i) => b('M', i, 5))];
+    expect(ratedGroups(small, key, 'all', 'raw').map((g) => g.label)).toEqual(['L', 'M', 'S', 'T']);
+    expect(ratedGroups(small, key, 'all', 'k2').map((g) => g.label)[0]).not.toBe('L'); // shrinking only, no minimum
+  });
+  it('k2 shrinks less than adjusted (K = 2 vs 5)', () => {
+    const o = 144 / 21;
+    const get = (avg: 'raw' | 'k2' | 'adjusted') => ratedGroups(brews, key, 'all', avg).find((g) => g.label === 'A')!.adjusted;
+    expect(get('k2')).toBeCloseTo((9 + 2 * o) / 3, 6);
+    expect(get('raw')).toBe(9);
+    expect(get('k2')).toBeGreaterThan(get('adjusted'));
   });
 });

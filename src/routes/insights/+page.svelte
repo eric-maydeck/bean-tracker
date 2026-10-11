@@ -315,6 +315,7 @@
     boards={data.boards}
     rank={s.rank}
     ratings={s.ratings}
+    avg={s.avg}
     open={s.open}
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}

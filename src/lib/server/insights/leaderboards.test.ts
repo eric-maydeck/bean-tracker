@@ -60,6 +60,19 @@ describe('leaderboard', () => {
     expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'rating', 'all', 'raw')[0]).toEqual({
       key: '1', label: 'Kiambu', sub: 'Sey', href: '/coffees/sey-kiambu', value: 8.5, bags: 1, brews: 2
     }));
+  it('raw: 3+ bag groups before smaller ones; coffees board has no minimum', () => {
+    const brews = [
+      brew({ coffeeId: 1, roaster: 'Few', rating: 10 }),
+      ...[2, 3, 4].map((i) => brew({ coffeeId: i, roaster: 'Many', rating: 6 }))
+    ];
+    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'raw').map((r) => r.label)).toEqual(['Many', 'Few']);
+    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'k2').map((r) => r.label)).toEqual(['Few', 'Many']);
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'raw').map((r) => r.value)).toEqual([10, 6, 6, 6]);
+  });
+  it('roast level link includes alias labels', () => {
+    const [r] = leaderboard([brew({ roastLevel: 'Light/Medium' })], [], SEPT, 'roast', 'brews', 'all', 'raw');
+    expect(r.href).toBe('/coffees?status=all&roast_level=Light%2FMedium&roast_level=Light%2FMed');
+  });
   it('attribute boards link to the filtered coffee list, archived included', () => {
     const [r] = leaderboard(BREWS, BAGS, SEPT, 'roasters', 'brews', 'all', 'raw');
     expect(r.href).toBe('/coffees?status=all&roaster=Sey');

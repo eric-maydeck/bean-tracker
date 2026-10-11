@@ -1,7 +1,7 @@
 import { BOARDS, type Avg, type Board, type Rank, type Ratings } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
-import { MIXED_FILTER, type BrewFact, type BagFact } from './facts';
+import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { ratedGroups } from './ratings';
 
@@ -63,7 +63,8 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
     return labels.length ? { ...r, href: listHref('processing', labels) } : r;
   }
   const column = FILTER_COLUMN[board];
-  return column ? { ...r, href: listHref(column, [r.key]) } : r;
+  // Bags stored under an alias label (Light/Med) normalise to this row, so link them too.
+  return column ? { ...r, href: listHref(column, board === 'roast' ? roastLevelLabels(r.key) : [r.key]) } : r;
 }
 
 export function leaderboard(
@@ -90,7 +91,7 @@ export function leaderboard(
     const key = BREW_KEY[board];
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
-        key: r.label, label: r.label, value: avg === 'adjusted' ? r.adjusted : r.mean, bags: r.bags, brews: r.brews, fewBags: r.fewBags
+        key: r.label, label: r.label, value: r.adjusted, bags: r.bags, brews: r.brews, fewBags: r.fewBags
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -106,7 +107,9 @@ export function leaderboard(
       rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'brews' ? x.brews : x.grams, bags: x.bags.size, brews: x.brews }));
     }
   }
-  return rows.map((r) => decorate(r, board, bags)).sort(byRank);
+  // Raw ranks few-bag groups after the rest (the coffees board drops the marker: one bag each).
+  const few = rank === 'rating' && avg === 'raw' ? (r: BoardRow) => Number(!!r.fewBags) : () => 0;
+  return rows.map((r) => decorate(r, board, bags)).sort((a, b) => few(a) - few(b) || byRank(a, b));
 }
 
 // move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.

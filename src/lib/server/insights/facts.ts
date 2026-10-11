@@ -21,6 +21,10 @@ export function parseMethod(name: string | null, tools: string | null): { drippe
 // future stray label still sorts on the roast_levels scale.
 const ROAST_LEVEL_ALIASES: Record<string, string> = { 'Light/Med': 'Light/Medium', 'Med/Light': 'Medium/Light' };
 export const normalizeRoastLevel = (level: string | null): string | null => (level ? (ROAST_LEVEL_ALIASES[level] ?? level) : null);
+// Every stored label that normalises to `level`: the level itself plus its aliases.
+export const roastLevelLabels = (level: string): string[] => [
+  level, ...Object.keys(ROAST_LEVEL_ALIASES).filter((a) => ROAST_LEVEL_ALIASES[a] === level)
+];
 
 // Days off roast at the brew, minus freezer days before it (an open freeze
 // runs to the brew).
