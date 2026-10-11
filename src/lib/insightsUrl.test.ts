@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange
+  parsePeople, parseRange, BOARDS, BAG_BOARDS
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -115,11 +115,15 @@ describe('withDefaults', () => {
       compare: 0,
       ratings: 'current',
       avg: 'adjusted',
-      people: 'household'
+      people: 'household',
+      tab: 'overview',
+      rank: 'rating'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
-    expect(DEFAULTS).toEqual({ range: '12m', compare: 0, ratings: 'current', avg: 'adjusted', people: 'household' }));
+    expect(DEFAULTS).toEqual({
+      range: '12m', compare: 0, ratings: 'current', avg: 'adjusted', people: 'household', tab: 'overview', rank: 'rating'
+    }));
 });
 
 describe('longer and custom compare', () => {
@@ -249,4 +253,31 @@ describe('shared readers (/insights and /stats)', () => {
     expect(parseRange(q('range=5y'), [2026])).toBeUndefined();
     expect(parseRange(q(''), [2026])).toBeUndefined();
   });
+});
+
+describe('leaderboards params', () => {
+  it('reads tab, rank and open, case-insensitively', () =>
+    expect(parse('tab=Leaderboards&rank=GRAMS&open=Roasters')).toMatchObject({
+      tab: 'leaderboards', rank: 'grams', open: 'roasters'
+    }));
+  it('keeps an explicit default tab', () => expect(parse('tab=overview').tab).toBe('overview'));
+  it('drops rank and open off the leaderboards tab', () => {
+    const s = parse('tab=overview&rank=grams&open=roasters');
+    expect(s.rank).toBeUndefined();
+    expect(s.open).toBeUndefined();
+    expect(parse('rank=grams').rank).toBeUndefined();
+  });
+  it('ignores bad values', () => {
+    const s = parse('tab=leaderboards&rank=median&open=cats');
+    expect(s).toMatchObject({ tab: 'leaderboards' });
+    expect(s.rank).toBeUndefined();
+    expect(s.open).toBeUndefined();
+    expect(parse('tab=charts').tab).toBeUndefined();
+  });
+  it('round-trips', () =>
+    expect(insightsParams(parse('tab=leaderboards&rank=ppg&open=water')).toString()).toBe('tab=leaderboards&rank=ppg&open=water'));
+  it('defaults: overview, rating, nothing open', () =>
+    expect(withDefaults({})).toMatchObject({ tab: 'overview', rank: 'rating', open: undefined }));
+  it('spend and $/g apply to bag boards only', () =>
+    expect(BOARDS.filter((b) => !BAG_BOARDS.includes(b))).toEqual(['water', 'dripper', 'filter', 'grinder']));
 });

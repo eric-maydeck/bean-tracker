@@ -19,6 +19,15 @@ export const AVGS = ['adjusted', 'raw'] as const;
 export type Avg = (typeof AVGS)[number];
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
+export const TABS = ['overview', 'leaderboards'] as const;
+export type Tab = (typeof TABS)[number];
+// Leaderboards: one Rank by for every board; `open` = the one board showing all its rows.
+export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg'] as const;
+export type Rank = (typeof RANKS)[number];
+export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
+export type Board = (typeof BOARDS)[number];
+// Spend and $/g are per bag: only boards of bag attributes rank by them.
+export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'process', 'roast'];
 // Shared by /insights and /stats: the People switch's help text.
 export const peopleHelp = (size: number): Record<People, string> => ({
   household: "Everyone's brews together.",
@@ -58,14 +67,21 @@ export interface InsightsUrlState {
   ratings?: Ratings;
   avg?: Avg;
   people?: People;
+  tab?: Tab;
+  rank?: Rank;
+  open?: Board;
 }
 
-export const DEFAULTS: Required<InsightsUrlState> = {
+export type InsightsView = Required<Omit<InsightsUrlState, 'open'>> & { open?: Board };
+
+export const DEFAULTS: Required<Omit<InsightsUrlState, 'open'>> = {
   range: '12m',
   compare: 0,
   ratings: 'current',
   avg: 'adjusted',
-  people: 'household'
+  people: 'household',
+  tab: 'overview',
+  rank: 'rating'
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
@@ -139,6 +155,7 @@ export function parseInsightsUrl(
 ): InsightsUrlState {
   const range = parseRange(p, years);
   const r = range ?? DEFAULTS.range;
+  const tab = pickOne(p, 'tab', TABS);
   const c = p.get('compare')?.toLowerCase();
   const offered = compareOptions(r, years, brewYears, fits).flatMap((g) => g.options.map((o) => o.value));
   const n = c !== undefined && /^\d+$/.test(c) ? Number(c) : NaN;
@@ -152,7 +169,11 @@ export function parseInsightsUrl(
     // `settled` was the old name for `current`; old links keep working.
     ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
     avg: pickOne(p, 'avg', AVGS),
-    people: parsePeople(p, householdSize)
+    people: parsePeople(p, householdSize),
+    tab,
+    // rank and open belong to the leaderboards tab; elsewhere they're dropped.
+    rank: tab === 'leaderboards' ? pickOne(p, 'rank', RANKS) : undefined,
+    open: tab === 'leaderboards' ? pickOne(p, 'open', BOARDS) : undefined
   };
 }
 
@@ -163,15 +184,21 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.ratings) p.set('ratings', s.ratings);
   if (s.avg) p.set('avg', s.avg);
   if (s.people) p.set('people', s.people);
+  if (s.tab) p.set('tab', s.tab);
+  if (s.rank) p.set('rank', s.rank);
+  if (s.open) p.set('open', s.open);
   return p;
 }
 
-export function withDefaults(s: InsightsUrlState): Required<InsightsUrlState> {
+export function withDefaults(s: InsightsUrlState): InsightsView {
   return {
     range: s.range ?? DEFAULTS.range,
     compare: s.compare ?? DEFAULTS.compare,
     ratings: s.ratings ?? DEFAULTS.ratings,
     avg: s.avg ?? DEFAULTS.avg,
-    people: s.people ?? DEFAULTS.people
+    people: s.people ?? DEFAULTS.people,
+    tab: s.tab ?? DEFAULTS.tab,
+    rank: s.rank ?? DEFAULTS.rank,
+    open: s.open
   };
 }
