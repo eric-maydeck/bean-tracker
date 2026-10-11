@@ -25,6 +25,10 @@
   --chart-color-6: #6b8e23;
   --chart-color-7: #b23b3b;
   --chart-color-8: #6a5acd;
+  /* Origin map (sequential ramp, dataviz palette rules): low → high share, no-data dark grey. */
+  --map-low: #ead9c6;
+  --map-high: #8a5a3b;
+  --map-empty: #6b6b6b;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -69,6 +73,9 @@
     --chart-color-6: #a3c15c;
     --chart-color-7: #e07a7a;
     --chart-color-8: #a79ce0;
+  --map-low: #4a3a2e;
+  --map-high: #e8b48a;
+  --map-empty: #3a3a3a;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
@@ -99,6 +106,9 @@
   --chart-color-6: #a3c15c;
   --chart-color-7: #e07a7a;
   --chart-color-8: #a79ce0;
+  --map-low: #4a3a2e;
+  --map-high: #e8b48a;
+  --map-empty: #3a3a3a;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
 }

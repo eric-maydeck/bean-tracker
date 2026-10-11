@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatGrams } from '$lib/grams';
+  import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_BOARDS, RANKS, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
@@ -89,7 +90,7 @@
   <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
     <h2>{TITLE[b]}</h2>
     <div class="board-body">
-      {#if b === 'origins'}<div class="board-map"></div>{/if}
+      {#if b === 'origins'}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
       {#if bagOnly(b)}
         <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
