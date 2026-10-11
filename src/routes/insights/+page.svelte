@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
+  import { hour12 } from '$lib/hours';
   import {
     PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
@@ -151,7 +152,7 @@
     { key: 'onHand', label: 'Bags on hand', fmt: count },
     { key: 'finished', label: 'Bags finished', fmt: count, split: true, up: 'good' }
   ];
-  const hour = (h: number) => `${String(h).padStart(2, '0')}:00`;
+  const hour = (h: number) => hour12(h);
   const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const pct = (n: number) => `${Math.round(n * 100)}%`;
   let HABITS = $derived<Tile[]>(

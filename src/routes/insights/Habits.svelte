@@ -4,6 +4,7 @@
   import Heatmap from '$lib/components/Heatmap.svelte';
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
   import { formatGrams } from '$lib/grams';
+  import { hour12 } from '$lib/hours';
   import { MEASURES, type InsightsUrlState, type Measure, type Ratings } from '$lib/insightsUrl';
   import type { Habits } from '$lib/server/insights/habits';
 
@@ -15,7 +16,7 @@
   } = $props();
 
   const LABEL: Record<Measure, string> = { brews: 'Brews', grams: 'Grams', rating: 'Rating' };
-  const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+  const HOURS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
   const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   // Chart tooltips: averages to one decimal, grams with their unit.
   const num = (v: number) =>
@@ -60,7 +61,7 @@
     {#if empty}
       <p class="empty">No brews in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={HOURS.map((x) => `${x}:00`)} values={h.byHour} datasetLabel={LABEL[measure]}
+      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} datasetLabel={LABEL[measure]}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={num} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''} height={260} />
     {/if}
     <p class="chart-note">Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
@@ -82,7 +83,7 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${HOURS[c]}:00`} ariaLabel="Hour by weekday" />
+    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday" />
   {/if}
 </section>
 <section class="chart-panel">

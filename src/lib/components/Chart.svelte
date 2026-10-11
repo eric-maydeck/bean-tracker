@@ -48,6 +48,7 @@
     series = [],
     yMin,
     format,
+    titles,
     dots = true,
     monotone = false,
     integer = false,
@@ -79,6 +80,8 @@
     yMin?: number;
     // Vertical bars and plain lines: the tooltip's value text.
     format?: (v: number) => string;
+    // Vertical bars: tooltip titles, when the axis labels are abbreviated.
+    titles?: string[];
     // Plain lines: point markers (off for dense series, where they merge into a blob).
     dots?: boolean;
     // Plain lines: monotone interpolation, so a step (a delivery) never overshoots past real values.
@@ -254,7 +257,7 @@
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
           tooltip: format && !trendValues
-            ? { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y ?? 0)}` } }
+            ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y ?? 0)}` } }
             : trendValues
             ? {
                 callbacks: {
