@@ -203,13 +203,13 @@ export function parseInsightsUrl(
     avg: pickOne(p, 'avg', AVGS),
     people: parsePeople(p, householdSize),
     tab,
-    // rank and open belong to the leaderboards tab; elsewhere they're dropped.
-    rank: tab === 'leaderboards' ? pickOne(p, 'rank', RANKS) : undefined,
-    open: tab === 'leaderboards' ? pickOne(p, 'open', BOARDS) : undefined,
-    // measure belongs to habits; unit and by to consumption (by only when it fits the range).
-    measure: tab === 'habits' ? pickOne(p, 'measure', MEASURES) : undefined,
-    unit: tab === 'consumption' ? pickOne(p, 'unit', UNITS) : undefined,
-    by: tab === 'consumption' ? ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)) : undefined
+    // Tab-specific choices are kept on every tab so they survive a tab switch (each is only
+    // used on its own tab); a by the range doesn't offer is dropped.
+    rank: pickOne(p, 'rank', RANKS),
+    open: pickOne(p, 'open', BOARDS),
+    measure: pickOne(p, 'measure', MEASURES),
+    unit: pickOne(p, 'unit', UNITS),
+    by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS))
   };
 }
 

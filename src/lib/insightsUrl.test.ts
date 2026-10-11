@@ -273,11 +273,9 @@ describe('leaderboards params', () => {
       tab: 'leaderboards', rank: 'grams', open: 'roasters'
     }));
   it('keeps an explicit default tab', () => expect(parse('tab=overview').tab).toBe('overview'));
-  it('drops rank and open off the leaderboards tab', () => {
-    const s = parse('tab=overview&rank=grams&open=roasters');
-    expect(s.rank).toBeUndefined();
-    expect(s.open).toBeUndefined();
-    expect(parse('rank=grams').rank).toBeUndefined();
+  it('keeps rank and open on other tabs, so a choice survives a tab switch', () => {
+    expect(parse('tab=overview&rank=grams&open=roasters')).toMatchObject({ rank: 'grams', open: 'roasters' });
+    expect(parse('rank=grams').rank).toBe('grams');
   });
   it('ignores bad values', () => {
     const s = parse('tab=leaderboards&rank=median&open=cats');
@@ -295,16 +293,12 @@ describe('leaderboards params', () => {
 });
 
 describe('habits and consumption params', () => {
-  it('reads measure on the habits tab only', () => {
+  it('reads measure, unit and by on any tab (sticky across tab switches)', () => {
     expect(parse('tab=Habits&measure=GRAMS')).toMatchObject({ tab: 'habits', measure: 'grams' });
-    expect(parse('tab=consumption&measure=grams').measure).toBeUndefined();
-    expect(parse('measure=grams').measure).toBeUndefined();
-  });
-  it('reads unit and by on the consumption tab only', () => {
+    expect(parse('tab=consumption&measure=grams').measure).toBe('grams');
+    expect(parse('measure=grams').measure).toBe('grams');
     expect(parse('tab=consumption&unit=Bags&by=WEEK')).toMatchObject({ tab: 'consumption', unit: 'bags', by: 'week' });
-    const h = parse('tab=habits&unit=bags&by=week');
-    expect(h.unit).toBeUndefined();
-    expect(h.by).toBeUndefined();
+    expect(parse('tab=habits&unit=bags&by=week')).toMatchObject({ unit: 'bags', by: 'week' });
   });
   it('keeps explicit defaults', () =>
     expect(parse('tab=habits&measure=brews').measure).toBe('brews'));
@@ -319,6 +313,7 @@ describe('habits and consumption params', () => {
     const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS, YEARS, undefined, 1, fits);
     expect(p('tab=consumption&range=all&by=day').by).toBeUndefined();
     expect(p('tab=consumption&range=all&by=week').by).toBe('week');
+    expect(p('tab=habits&range=all&by=day').by).toBeUndefined();
   });
   it('round-trips', () => {
     expect(insightsParams(parse('tab=habits&measure=rating')).toString()).toBe('tab=habits&measure=rating');

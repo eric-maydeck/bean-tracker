@@ -92,8 +92,6 @@
   }
 
   const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption' };
-  // Switching view clears the other views' params (bare URL on the default).
-  const tabChange = (tab: Tab): InsightsUrlState => ({ tab, rank: undefined, open: undefined, measure: undefined, unit: undefined, by: undefined });
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
   const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -274,7 +272,7 @@
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
   <label class="form-field">
     <span>View</span>
-    <select aria-label="View" value={s.tab} onchange={(e) => choose(tabChange(e.currentTarget.value as Tab))}>
+    <select aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
       {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
     </select>
   </label>
