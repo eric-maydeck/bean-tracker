@@ -403,11 +403,7 @@
     <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
     <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
   {/if}
-</div>
-
-{#if tab === 'general'}
-{#if data.isAdmin}
-  <div class="household-edit">
+  {#if data.isAdmin}
     {#if editingHousehold}
       <form
         method="POST"
@@ -426,17 +422,19 @@
         </label>
         <button class="button" type="submit">Save</button>
         <button class="button button-ghost" type="button" onclick={() => (editingHousehold = false)}>Cancel</button>
+        {#if form?.error}
+          <span class="badge badge-urgent">{form.error}</span>
+        {/if}
       </form>
-      {#if form?.error}
-        <p class="badge badge-urgent">{form.error}</p>
-      {/if}
     {:else}
       <button class="button button-secondary" type="button" onclick={() => (editingHousehold = true)}>
         Edit household size
       </button>
     {/if}
-  </div>
-{/if}
+  {/if}
+</div>
+
+{#if tab === 'general'}
 
 <section class="chart-panel">
   <h2>At a Glance</h2>

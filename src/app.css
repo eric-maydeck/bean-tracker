@@ -1786,21 +1786,20 @@ td > .action-buttons.under-form {
 .household-edit-form {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  align-items: flex-end;
-  margin-top: var(--space-3);
+  gap: var(--space-2);
+  align-items: center;
 }
 
 .household-edit-form label {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-2);
   font-size: 0.9rem;
   color: var(--color-text-muted);
 }
 
-.household-edit {
-  margin-bottom: var(--space-6);
+.household-edit-form input {
+  width: 4.5rem;
 }
 
 .modal-backdrop {
