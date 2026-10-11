@@ -330,10 +330,8 @@
 <style>
   /* Labelled controls, left-packed, one column each on wider screens. */
   .insights-controls {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: max-content;
-    justify-content: start;
+    display: flex;
+    flex-wrap: wrap; /* View + Period + Compare + Dates… + People outgrow 768px */
     align-items: end;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
@@ -399,7 +397,7 @@
   }
   @media (max-width: 640px) {
     .insights-controls {
-      grid-auto-flow: row;
+      display: grid;
       grid-template-columns: 1fr 1fr;
     }
     .people-switch button,

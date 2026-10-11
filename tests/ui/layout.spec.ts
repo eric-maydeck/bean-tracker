@@ -48,6 +48,14 @@ async function expectStickyBar(page: Page, bar: Locator) {
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
 }
 
+// Leaderboard cards in one band are the same height (an expanded one is exempt).
+async function expectEqualBoardHeights(page: Page) {
+  const bands = await page.locator('.board-band').evaluateAll((bands) =>
+    bands.map((band) => [...band.querySelectorAll(':scope > .board:not(.open)')].map((b) => b.getBoundingClientRect().height))
+  );
+  for (const hs of bands) if (hs.length > 1) expect(Math.max(...hs) - Math.min(...hs)).toBeLessThanOrEqual(1);
+}
+
 // Desktop edit table: every input and button in a row shares one vertical
 // center (±1px).
 async function expectRowLevel(row: Locator) {
@@ -921,6 +929,58 @@ export const STATES: State[] = [
       const vw = page.viewportSize()!.width;
       expect(r.x).toBeGreaterThanOrEqual(0);
       expect(r.x + r.width).toBeLessThanOrEqual(vw);
+    }
+  },
+  {
+    name: 'insights-leaderboards',
+    path: () => '/insights?tab=leaderboards',
+    act: async (page) => {
+      await expect(page.locator('.board')).toHaveCount(9);
+      await expectEqualBoardHeights(page);
+    }
+  },
+  { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  {
+    name: 'insights-leaderboards-spend-compare',
+    path: () => '/insights?tab=leaderboards&rank=spend&compare=1',
+    act: async (page) => {
+      await expect(page.locator('.board-note.bag-only')).toHaveCount(4);
+      await expect(page.locator('.board .move').first()).toBeVisible();
+      await expectEqualBoardHeights(page);
+    }
+  },
+  {
+    name: 'insights-leaderboards-open',
+    path: () => '/insights?tab=leaderboards&rank=spend&open=coffees',
+    act: async (page) => {
+      const coffees = page.locator('.board[data-board="coffees"]');
+      await expect(coffees).toHaveClass(/open/);
+      await expect(coffees.locator('.board-row.placeholder')).toHaveCount(0);
+      await expect(coffees.locator('.board-foot button')).toHaveText('Show top 10');
+      await expectEqualBoardHeights(page);
+    }
+  },
+  {
+    // Ethiopia (every seeded coffee but a few) is tapped at a point known to be inside its outline.
+    name: 'insights-leaderboards-map-tip',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      await page.locator('.world-map').scrollIntoViewIfNeeded();
+      const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+        const path = p as unknown as SVGPathElement;
+        const svg = path.ownerSVGElement!;
+        const pt = svg.createSVGPoint();
+        pt.x = 582; pt.y = 200; // interior of Ethiopia in the 957x420 viewBox
+        if (!path.isPointInFill(pt)) throw new Error('(582,200) is not inside Ethiopia');
+        const c = pt.matrixTransform(svg.getScreenCTM()!);
+        return [c.x, c.y];
+      });
+      await page.mouse.click(x, y);
+      const tip = page.locator('.map-tip');
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText(/\d+ coffees? · \d+%/);
+      await page.locator('.world-map svg').click({ position: { x: 4, y: 4 } }); // outside the globe: the sea
+      await expect(tip).toHaveCount(0);
     }
   },
   { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
