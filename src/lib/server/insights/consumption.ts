@@ -39,15 +39,15 @@ export function buckets(t: { start: string; end: string } | null, by: By): Bucke
 
 // On hand at each end date: bought by then and not finished (last brew) by then. Grams count what's
 // left (overview's `remaining` over doses logged by then). Archived bags with no brews have no
-// finish date, so they're left out.
+// finish date, so they're left out. A bag with no roast date counts as on hand from the start.
 // ponytail: re-sums the logged doses per end, O(ends × brews); fine at prod size, sweep once if not.
 export function backlogSeries(brews: readonly BrewFact[], bags: readonly BagFact[], ends: readonly string[], unit: Unit): number[] {
-  const live = bags.filter((g) => g.purchaseDate !== null && (g.status !== 'archive' || g.lastBrew !== null));
+  const live = bags.filter((g) => g.status !== 'archive' || g.lastBrew !== null);
   return ends.map((d) => {
     const logged = loggedGrams(brews.filter((b) => b.localDate <= d));
     let sum = 0;
     for (const g of live) {
-      if (g.purchaseDate! > d || (isFinished(g) && g.lastBrew! <= d)) continue;
+      if ((g.purchaseDate !== null && g.purchaseDate > d) || (isFinished(g) && g.lastBrew! <= d)) continue;
       sum += unit === 'bags' ? 1 : remaining(g, logged);
     }
     return sum;

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { gramsOnHand } from './overview';
 import { buckets, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
 import type { BrewFact, BagFact } from './facts';
 
@@ -99,4 +100,16 @@ describe('consumptionTab', () => {
     expect(t.tiles.bought).toBe(250);
     expect(t.bought.reduce((a, b) => a + b, 0)).toBe(0);
   });
+});
+
+describe('backlog last point matches on hand', () => {
+  const bags = [
+    bag({ id: 1, status: 'open', purchaseDate: null, amountG: 200 }),
+    bag({ id: 2, status: 'backlog', purchaseDate: '2026-09-01', amountG: 100 }),
+    bag({ id: 3, status: 'archive', purchaseDate: '2026-08-01', amountG: 50, lastBrew: '2026-09-03' })
+  ];
+  const brews = [brew('2026-09-02', 40, 1), brew('2026-09-03', 50, 3)];
+  it('grams', () =>
+    expect(backlogSeries(brews, bags, ['2026-10-11'], 'grams')).toEqual([gramsOnHand(bags, brews)]));
+  it('bags', () => expect(backlogSeries(brews, bags, ['2026-10-11'], 'bags')).toEqual([2]));
 });
