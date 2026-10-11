@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS
+  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -356,4 +356,14 @@ describe('custom Period (range=YYYY-MM-DD..YYYY-MM-DD)', () => {
     expect(p('range=2026-03-01..2026-05-31&compare=2').compare).toBeUndefined();
     expect(p('range=2026-03-01..2026-05-31&compare=3m').compare).toBeUndefined();
   });
+});
+
+describe('windowLabel', () => {
+  const today = '2026-10-11';
+  it('this year: no year', () => expect(windowLabel({ start: '2026-03-01', end: '2026-04-09' }, today)).toBe('Mar 1 – Apr 9'));
+  it('another year: year on the end', () =>
+    expect(windowLabel({ start: '2025-03-01', end: '2025-04-09' }, today)).toBe('Mar 1 – Apr 9, 2025'));
+  it('spanning years: year on both', () =>
+    expect(windowLabel({ start: '2025-12-20', end: '2026-01-09' }, today)).toBe('Dec 20, 2025 – Jan 9, 2026'));
+  it('one day', () => expect(windowLabel({ start: '2026-03-01', end: '2026-03-01' }, today)).toBe('Mar 1'));
 });

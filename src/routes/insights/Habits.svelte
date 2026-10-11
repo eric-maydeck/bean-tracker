@@ -9,9 +9,9 @@
   import type { Habits } from '$lib/server/insights/habits';
 
   let {
-    h, measure, ratings, comparing, ratingsHelp, choose, tiles
+    h, measure, ratings, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
   }: {
-    h: Habits; measure: Measure; ratings: Ratings; comparing: boolean;
+    h: Habits; measure: Measure; ratings: Ratings; comparing: boolean; periodLabel: string; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -26,7 +26,7 @@
   let empty = $derived(h.tiles.brewDays === 0);
   // A compare window with no data adds no series (and no legend entry).
   const compare = (values: (number | null)[] | null) =>
-    comparing && values?.some((v) => v) ? [{ label: 'Compare', values, faded: true }] : [];
+    comparing && values?.some((v) => v) ? [{ label: compareLabel, values, faded: true }] : [];
   // Ratings sit high on a 1–10 scale: fit the axis floor a point below the lowest bar.
   const yMin = (...vs: ((number | null)[] | null)[]) => {
     if (measure !== 'rating') return undefined;
@@ -61,7 +61,7 @@
     {#if empty}
       <p class="empty">No brews in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} datasetLabel={LABEL[measure]}
+      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={num} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''} height={260} />
     {/if}
     <p class="chart-note">Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
@@ -71,7 +71,7 @@
     {#if empty}
       <p class="empty">No brews in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} datasetLabel={LABEL[measure]}
+      <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={num} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
     {/if}

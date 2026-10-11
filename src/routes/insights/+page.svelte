@@ -4,7 +4,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, windowLabel, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -104,6 +104,15 @@
   };
   const day = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  // Chart legends name the series for the Period / Compare dropdown labels.
+  let periodLabel = $derived(
+    isCustom(s.range) ? windowLabel(data.period, data.today) : (RANGE_LABELS as Record<string, string>)[s.range] ?? s.range
+  );
+  let compareLabel = $derived(
+    !data.previousPeriod ? '' :
+    isCustom(s.compare) ? windowLabel(data.previousPeriod, data.today)
+    : (data.compareMenus[s.range].flatMap((g) => g.options).find((o) => o.value === String(s.compare))?.label ?? windowLabel(data.previousPeriod, data.today))
+  );
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
   type Key = string; // tile keys span four data shapes
@@ -418,11 +427,11 @@
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} comparing={!!data.previousPeriod} ratingsHelp={RATINGS_HELP} {choose}>
+  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption t={data.consumptionTab} unit={s.unit} offered={data.byMenus[s.range]} {choose}>
+  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} unit={s.unit} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}

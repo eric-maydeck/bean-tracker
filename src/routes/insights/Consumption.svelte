@@ -6,9 +6,9 @@
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, unit, offered, choose, tiles
+    t, periodLabel, compareLabel, unit, offered, choose, tiles
   }: {
-    t: ConsumptionTab; unit: Unit; offered: By[];
+    t: ConsumptionTab; periodLabel: string; compareLabel: string; unit: Unit; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -29,9 +29,9 @@
   const k3 = $derived(kOf(t.backlog));
   const series1 = $derived(
     compare?.some((v) => v)
-      ? [{ label: 'Compare', values: div(compare, k1), faded: true }]
+      ? [{ label: compareLabel, values: div(compare, k1), faded: true }]
       : !t.compareBrewed && t.compareAverage
-        ? [{ label: 'Compare average', values: t.brewed.map(() => t.compareAverage! / k1), dashed: true }]
+        ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true }]
         : []
   );
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
@@ -61,7 +61,7 @@
     {#if empty}
       <p class="empty">No data in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={brewedLabel} series={series1} legend integer={!g}
+      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g}
         format={fmt(k1)} unit={axis(k1)} height={260} />
       <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} per {t.by}{note}</p>
     {/if}
