@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
 process.env.DB_PATH = ':memory:';
 
-import { getDb } from '$lib/server/db';
+import { getDb, setHouseholdSize } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 import { localToday, periodBounds, previousPeriod, addDays, daysBetween, trackedDays, comparePeriod, type Period } from '$lib/server/insights/time';
 import { load } from './+page.server';
@@ -82,6 +82,33 @@ describe('/insights load', () => {
     expect(d.previousPeriod).toEqual(prev2);
     expect(d.deltas.brews.abs).toBe(1 - 2);
     expect(d.deltas.grams.abs).toBe(15 - 40);
+  });
+
+  it('people=person divides totals and brews per day by the household size, deltas too', () => {
+    seed([[today, 15], [prev1.end, 10], [prev1.start!, 10], [prev2.end, 20]]);
+    const h = run('?range=12m&compare=1');
+    const p = run('?range=12m&compare=1&people=person');
+    expect(p.explicit.people).toBe('person');
+    expect(p.householdSize).toBe(2);
+    expect(p.tiles).toMatchObject({
+      brews: h.tiles.brews / 2, grams: h.tiles.grams / 2, spend: h.tiles.spend / 2, rated: h.tiles.rated / 2,
+      brewsPerDay: h.tiles.brewsPerDay / 2, avgDose: h.tiles.avgDose, avgRating: h.tiles.avgRating
+    });
+    expect(p.deltas.brews).toEqual({ abs: h.deltas.brews.abs / 2, pct: h.deltas.brews.pct, base: h.deltas.brews.base / 2 });
+    expect(p.deltas.avgDose).toEqual(h.deltas.avgDose);
+  });
+
+  it('a household of one ignores people=person', () => {
+    setHouseholdSize(getDb(), 1);
+    try {
+      seed([[today, 15]]);
+      const d = run('?people=person');
+      expect(d.householdSize).toBe(1);
+      expect(d.explicit.people).toBeUndefined();
+      expect(d.tiles.brews).toBe(1);
+    } finally {
+      setHouseholdSize(getDb(), 2);
+    }
   });
 
   it('a same-length window partly before tracking is paced', () => {

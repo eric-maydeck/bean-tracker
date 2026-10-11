@@ -1,34 +1,39 @@
 import type { PageServerLoad } from './$types';
-import { getDb } from '$lib/server/db';
+import { getDb, getHouseholdSize } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, TILE_KIND } from '$lib/server/insights/overview';
+import { overviewTiles, compareTiles, perPerson, TILE_KIND } from '$lib/server/insights/overview';
 import { RANGES, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
 
-// Public, like /stats; not in the nav until /insights replaces /stats.
+// Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
 export const load: PageServerLoad = ({ url }) => {
-  const { brews, bags } = loadFacts(getDb());
+  const db = getDb();
+  const { brews, bags } = loadFacts(db);
+  const householdSize = getHouseholdSize(db);
   const today = localToday();
   const dataStart = brews[0]?.localDate ?? null;
   const years = yearsSince(dataStart, today);
   const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
   const fits = compareFits(dataStart, today);
-  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits);
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize);
   const s = withDefaults(explicit);
+  const size = s.people === 'person' ? householdSize : 1;
   const period = periodBounds(s.range, today);
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
-  const tiles = overviewTiles(brews, bags, period, s.ratings, today, dataStart);
+  const tiles = perPerson(overviewTiles(brews, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
   // windows differ by a day or two, which isn't worth a "vs … at that pace" on every total.
   const untracked = (w: Period) => days(w) < daysBetween(w.start!, w.end) + 1;
   const pace = typeof s.compare !== 'number' || (!!prev && (untracked(period) || untracked(prev)));
-  const cmp = prev && compareTiles(tiles, overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), days(period), days(prev), pace);
+  const cmp = prev && compareTiles(
+    tiles, perPerson(overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
+  );
   // Custom range… opens on the same-length window before the period when it's tracked,
   // else everything before it, else first brew → today (all time, or nothing earlier).
   const customDefault =
@@ -37,6 +42,7 @@ export const load: PageServerLoad = ({ url }) => {
     ) ?? { start: dataStart ?? today, end: today };
   return {
     explicit,
+    householdSize,
     years,
     // Every range's menu, so a Period change can keep or drop the compare (keepCompare).
     compareMenus: Object.fromEntries(

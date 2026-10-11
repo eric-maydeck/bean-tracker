@@ -32,6 +32,18 @@ export const TILE_KIND: Record<keyof OverviewTiles, 'total' | 'average'> = {
   avgBrewTime: 'average'
 };
 
+// Per person: totals and brews per day ÷ household size, an even split (Bean Conqueror
+// doesn't record who brewed). Averages don't change. Applied before compareTiles, so
+// deltas, % and "vs N at that pace" read per person too.
+export function perPerson(t: OverviewTiles, size: number): OverviewTiles {
+  if (size === 1) return t;
+  const out: Record<string, number | null> = { ...t };
+  for (const k of Object.keys(t) as (keyof OverviewTiles)[]) {
+    if ((TILE_KIND[k] === 'total' || k === 'brewsPerDay') && t[k] !== null) out[k] = t[k]! / size;
+  }
+  return out as unknown as OverviewTiles;
+}
+
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 const present = (xs: (number | null)[]) => xs.filter((x): x is number => x !== null);
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { overviewTiles, tileDelta, compareTiles, TILE_KIND } from './overview';
+import { overviewTiles, tileDelta, compareTiles, perPerson, TILE_KIND, type OverviewTiles } from './overview';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -134,5 +134,25 @@ describe('compareTiles', () => {
     const { deltas: d } = compareTiles(t, t, 7, 0);
     expect(d.brews).toBeNull();
     expect(d.avgDose).toEqual({ abs: 0, pct: 0, base: 15 });
+  });
+});
+
+describe('perPerson', () => {
+  const T: OverviewTiles = {
+    brews: 13, grams: 195, spend: 30, avgRating: 8, rated: 4, bagsFinished: 1, costPerBrew: 1.5,
+    brewsPerDay: 1.3, avgDose: 15, avgRestDays: 10, avgBrewTime: 180
+  };
+  it('divides totals and brews per day; averages stay', () =>
+    expect(perPerson(T, 2)).toEqual({
+      ...T, brews: 6.5, grams: 97.5, spend: 15, rated: 2, bagsFinished: 0.5, brewsPerDay: 0.65
+    }));
+  it('a household of one is the household', () => expect(perPerson(T, 1)).toBe(T));
+  it('a missing brews per day stays missing', () =>
+    expect(perPerson({ ...T, brewsPerDay: null }, 2).brewsPerDay).toBeNull());
+  it('deltas on divided tiles: halved change, same %', () => {
+    const prev = { ...T, brews: 10 };
+    const h = compareTiles(T, prev, 7, 7).deltas.brews!;
+    const p = compareTiles(perPerson(T, 2), perPerson(prev, 2), 7, 7).deltas.brews!;
+    expect(p).toEqual({ abs: h.abs / 2, pct: h.pct, base: h.base / 2 });
   });
 });

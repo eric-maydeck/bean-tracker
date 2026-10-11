@@ -844,6 +844,24 @@ export const STATES: State[] = [
     }
   },
   {
+    // Per person: one switch drives `people`; total tiles get the suffix, averages don't;
+    // a count under 10 keeps one decimal. Navigation only.
+    name: 'insights-people-person',
+    path: () => '/insights?range=1w&compare=1',
+    act: async (page) => {
+      const people = page.getByRole('group', { name: 'People' });
+      await people.getByRole('button', { name: 'Per person', exact: true }).click();
+      await expect(page).toHaveURL(/people=person/);
+      await expect(people.getByRole('button', { name: 'Per person', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      const tile = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) });
+      await expect(tile(/^Brews · per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
+      await expect(tile(/^Rated · (Current|All) · per person$/)).toHaveCount(1);
+      await expect(tile(/^Avg dose$/)).toHaveCount(1);
+      await tile(/^Grams · per person$/).getByRole('button', { name: 'per person' }).click();
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('even split');
+    }
+  },
+  {
     // Tapping the caption's mode word opens its explanation (the touch path).
     name: 'insights-ratings-tip',
     path: () => '/insights',

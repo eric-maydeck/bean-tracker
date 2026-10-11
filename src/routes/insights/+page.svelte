@@ -3,7 +3,7 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import {
-    RANGES, RANGE_LABELS, customRange, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
   } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
@@ -74,18 +74,18 @@
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
   // `up`: whether a rise is good or bad, for the delta's colour; unset = neutral (grey).
-  type Tile = { key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean; up?: 'good' | 'bad' };
+  type Tile = { key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean; split?: true; up?: 'good' | 'bad' };
   const TOTALS: Tile[] = [
-    { key: 'brews', label: 'Brews', fmt: count, up: 'good' },
-    { key: 'grams', label: 'Grams', fmt: formatGrams },
-    { key: 'spend', label: 'Spend', fmt: usdCompact.format, up: 'bad' },
-    { key: 'bagsFinished', label: 'Bags finished', fmt: count, up: 'good' },
-    { key: 'rated', label: 'Rated', fmt: count, ratingSwitch: true, up: 'good' }
+    { key: 'brews', split: true, label: 'Brews', fmt: count, up: 'good' },
+    { key: 'grams', split: true, label: 'Grams', fmt: formatGrams },
+    { key: 'spend', split: true, label: 'Spend', fmt: usdCompact.format, up: 'bad' },
+    { key: 'bagsFinished', split: true, label: 'Bags finished', fmt: count, up: 'good' },
+    { key: 'rated', split: true, label: 'Rated', fmt: count, ratingSwitch: true, up: 'good' }
   ];
   const AVERAGES: Tile[] = [
     { key: 'avgRating', label: 'Avg rating', fmt: (n) => n.toFixed(1), ratingSwitch: true, up: 'good' },
     { key: 'costPerBrew', label: 'Cost per brew', fmt: usd.format, up: 'bad' },
-    { key: 'brewsPerDay', label: 'Brews per day', fmt: (n) => n.toFixed(1), up: 'good' },
+    { key: 'brewsPerDay', split: true, label: 'Brews per day', fmt: (n) => n.toFixed(1), up: 'good' },
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
     { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
@@ -96,6 +96,9 @@
     current: `Rated brews since ${day(data.settledFrom)}, once the scale settled.`,
     all: 'Every rated brew, including earlier ones.'
   });
+  // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
+  let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
+  let perPersonOn = $derived(s.people === 'person');
   // A popover sits in the top layer; put it under its caption button (above
   // when there's no room below). Its CSS clamps it inside the viewport.
   // ponytail: fixed position, so it stays put if the page scrolls while open.
@@ -108,11 +111,12 @@
     tip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);
     tip.toggleAttribute('data-above', !below);
   }
-  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : t.fmt(v));
 
-  // Paced totals are fractional: a count under 10 keeps one decimal, so a small
-  // change doesn't read "0". Money and grams keep their own formats.
-  const paced = (t: Tile) => (data.scaled && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt);
+  // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
+  // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
+  const paced = (t: Tile) =>
+    (data.scaled || perPersonOn) && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
+  const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
 
   function deltaText(d: { abs: number; pct: number; base: number }, t: Tile): string {
     const fmt = paced(t);
@@ -144,7 +148,7 @@
   <ShareButton />
 </div>
 
-<div class="insights-controls" class:three={isCustom(s.compare)}>
+<div class="insights-controls">
   <label class="form-field">
     <span>Period</span>
     <select value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
@@ -178,6 +182,21 @@
   {#if isCustom(s.compare)}
     <button class="button button-ghost" onclick={() => rangeDialog?.showModal()}>Dates…</button>
   {/if}
+  {#if data.householdSize > 1}
+    <div class="form-field people-field">
+      <span>People</span>
+      <div class="tab-group people-switch" role="group" aria-label="People">
+        {#each PEOPLE as m (m)}
+          <button
+            aria-pressed={s.people === m}
+            title={PEOPLE_HELP[m]}
+            aria-describedby="people-help-{m}"
+            onclick={() => choose({ people: m })}>{m === 'person' ? 'Per person' : 'Household'}</button
+          >
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
@@ -209,6 +228,7 @@
     <div class="stat-row fit n{tiles.length} {data.deltas ? 'comparing' : ''}">
       {#each tiles as t (t.key)}
         {@const d = data.deltas?.[t.key]}
+        {@const pp = t.split && perPersonOn}
         <div class="stat-item">
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
@@ -230,18 +250,19 @@
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
           {/if}
           <div class="stat-caption">
-            {#if t.ratingSwitch}
-              <span class="stat-label mode-caption"
-                >{t.label} · <button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
+              >{t.label}{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   >{s.ratings === 'all' ? 'All' : 'Current'}</button
-                ></span
-              >
-            {:else}
-              <span class="stat-label">{t.label}</span>
-            {/if}
+                >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
+                  >per person</button
+                >{/if}</span
+            >
           </div>
           {#if t.ratingSwitch}
             <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}>{RATINGS_HELP[s.ratings]}</div>
+          {/if}
+          {#if pp}
+            <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}>{PEOPLE_HELP.person}</div>
           {/if}
         </div>
       {/each}
@@ -252,13 +273,17 @@
 {@render panel('Totals', TOTALS)}
 <span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
+<span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
+<span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 {@render panel('Averages', AVERAGES)}
 
 <style>
-  /* Two labelled selects, left-packed. */
+  /* Labelled controls, left-packed, one column each on wider screens. */
   .insights-controls {
     display: grid;
-    grid-template-columns: repeat(2, max-content);
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    justify-content: start;
     align-items: end;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
@@ -277,8 +302,10 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
-  .insights-controls:where(.three) {
-    grid-template-columns: repeat(3, max-content);
+  .people-switch button {
+    min-height: 2.25rem;
+    margin: 0;
+    font-size: 0.85rem;
   }
   /* Custom range form, inside the dialog. */
   .custom-range {
@@ -321,7 +348,12 @@
   }
   @media (max-width: 640px) {
     .insights-controls {
+      grid-auto-flow: row;
       grid-template-columns: 1fr 1fr;
+    }
+    .people-switch button {
+      flex: 1;
+      min-height: 44px;
     }
     .range-dialog footer button {
       flex: 1;
@@ -331,7 +363,8 @@
       min-height: 44px;
     }
     /* Its own full-width row under the selects, not half a row. */
-    .insights-controls > button {
+    .insights-controls > button,
+    .people-field {
       grid-column: 1 / -1;
     }
     .insights-controls select,
@@ -431,8 +464,14 @@
     overflow: visible;
     white-space: nowrap;
   }
-  .stat-caption:has(.mode-caption) {
+  /* Every caption with a tip button lets the button's 44px tap area overflow. */
+  .stat-caption:has(.mode-tip-button) {
     overflow: visible;
+  }
+  /* A rating tile's caption gets a third part per person; let it wrap to a second line. */
+  .stat-label.wrap {
+    white-space: normal;
+    line-height: 1.1; /* two lines end flush with the tile; keep them inside */
   }
   .mode-tip-button {
     padding: 0;

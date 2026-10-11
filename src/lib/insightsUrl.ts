@@ -19,6 +19,11 @@ export const AVGS = ['adjusted', 'raw'] as const;
 export type Avg = (typeof AVGS)[number];
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
+// Shared by /insights and /stats: the People switch's help text.
+export const peopleHelp = (size: number): Record<People, string> => ({
+  household: "Everyone's brews together.",
+  person: `Totals and rates ÷ ${size}: an even split (Bean Conqueror doesn't record who brewed).`
+});
 
 // people=person splits totals evenly by household size; a household of one has nothing to
 // split, so the param is dropped (a link from a 2-person household still opens cleanly).
