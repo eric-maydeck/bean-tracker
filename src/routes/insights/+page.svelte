@@ -478,17 +478,18 @@
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
-          {:else if t.stack?.()}
-            {@const st = t.stack()!}
-            <span class="stat-unit insights-delta ratio" title={st.said}
-              ><span aria-hidden="true"><span class="part">{st.head}</span>{' '}<span class="part">{st.tail}</span></span><span class="sr-only">{st.said}</span></span
-            >
           {:else if t.was?.()}
             <span class="stat-unit insights-delta">{t.was()}</span>
           {/if}
+          {#if !d && t.stack?.()}
+            {@const st = t.stack()!}
+            <span class="insights-pace compare" title={st.said}
+              ><span aria-hidden="true"><span class="part">{st.head}</span>{' '}<span class="part">{st.tail}</span></span><span class="sr-only">{st.said}</span></span
+            >
+          {/if}
           <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() || t.stack?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
+            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
@@ -795,16 +796,20 @@
     overflow: visible;
     text-overflow: clip;
   }
-  /* Stacked compare line: "vs Oct 4:" breaks from "3 brews · 48g" (each part stays whole). */
-  .insights-delta .part {
+  /* Busiest day, comparing: this period's "N brews · Xg" (the normal sub size) sits under the value;
+     the comparison's "vs Oct 4:" / "8 brews · 144g" is the small muted line below it (breaks after the colon). */
+  .insights-pace.compare {
+    top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 1cqw);
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.1;
+  }
+  .compare .part {
     display: block;
   }
-  /* Two-line delta pushes the sub down a line and the caption below it. */
-  .stat-item.stack .insights-pace {
-    top: calc(54.02cqw + 2.2 * max(0.7rem, 6.88cqw) + 1cqw);
-  }
   .stat-item.stack .stat-caption {
-    top: calc(54.02cqw + 2.2 * max(0.7rem, 6.88cqw) + 2cqw + max(0.6rem, 5.4cqw) + var(--grow-compare, 0px));
+    top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 2cqw + 2.2 * max(0.6rem, 5.4cqw) + var(--grow-compare, 0px));
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);

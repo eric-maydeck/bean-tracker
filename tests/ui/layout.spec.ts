@@ -45,8 +45,8 @@ async function expectDeltasFit(page: Page) {
       const said = el.querySelector('.sr-only')?.textContent ?? '';
       const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
       const maxLines = el.classList.contains('ratio') ? 2 : 1;
-      const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown) || /^vs [A-Z][a-z]{2} \d{1,2}(, \d{4})?: \d+ brews? · \d+(\.\d+)?g$/.test(shown);
-      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^Busiest day in the comparison period: /.test(said) || /^(Up|Down) \d+( points?)?%? (from|vs) /.test(said);
+      const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
+      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+( points?)?%? (from|vs) /.test(said);
       return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= maxLines ? [] : [`${shown} | ${said}`];
     })
   );
@@ -81,7 +81,7 @@ async function expectBusiestDay(page: Page) {
   const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest day$/ }) });
   await expect(tile).toHaveCount(1);
   await expect(tile.locator('.stat-value')).toHaveText(/^[A-Z][a-z]{2} \d{1,2}(, \d{4})?$/);
-  const sub = tile.locator('.stat-unit, .insights-pace').last();
+  const sub = tile.locator('.stat-unit');
   await expect(sub).toHaveText(/^\d+ brews? · \d+(\.\d+)?g$/);
   const lines = await sub.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || '1'));
   expect(lines).toBeLessThan(1.6);
@@ -1040,14 +1040,21 @@ export const STATES: State[] = [
     act: async (page) => {
       await expectBusiestDay(page);
       const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest day$/ }) });
-      const delta = tile.locator('.insights-delta');
+      const delta = tile.locator('.insights-pace');
       await expect(delta.locator('[aria-hidden]')).toHaveText(/^vs [A-Z][a-z]{2} \d{1,2}(, \d{4})?: \d+ brews? · \d+(\.\d+)?g$/);
       await expect(delta.locator('.sr-only')).toHaveText(/^Busiest day in the comparison period: [A-Z][a-z]{2} \d{1,2}(, \d{4})?, \d+ brews?, \d+(\.\d+)?g$/);
       await expectDeltasFit(page);
+      // This period's day (the sub) is above the comparison line and at least as big.
+      const ord = await tile.evaluate((t) => {
+        const sub = t.querySelector('.stat-unit')!, cmp = t.querySelector('.insights-pace')!;
+        return { gap: cmp.getBoundingClientRect().top - sub.getBoundingClientRect().bottom, subPx: parseFloat(getComputedStyle(sub).fontSize), cmpPx: parseFloat(getComputedStyle(cmp).fontSize) };
+      });
+      expect(ord.gap).toBeGreaterThanOrEqual(-0.5);
+      expect(ord.subPx).toBeGreaterThanOrEqual(ord.cmpPx);
       // Value, delta, sub and caption stack without overlapping, inside the tile, which is no taller than its row mates.
       const m = await tile.evaluate((t) => {
         const o = t.getBoundingClientRect();
-        const boxes = [...t.querySelectorAll('.stat-value, .insights-delta, .insights-pace, .stat-caption')]
+        const boxes = [...t.querySelectorAll('.stat-value, .stat-unit, .insights-pace, .stat-caption')]
           .map((e) => [e.className, e.getBoundingClientRect()] as const);
         const out: string[] = [];
         if (boxes.length !== 4) out.push(`${boxes.length} lines`);
