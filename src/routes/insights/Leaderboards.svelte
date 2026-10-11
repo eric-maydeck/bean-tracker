@@ -1,7 +1,7 @@
 <script lang="ts">
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { AVGS, BAG_BOARDS, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
+  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
@@ -53,7 +53,8 @@
   };
   const AVG_LABEL: Record<Avg, string> = {
     raw: 'Raw average', min3: 'Raw average (3+ bags)', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)',
-    best: 'Best brew', 'best-k2': 'Best adjusted (light)', 'best-k5': 'Best adjusted (strong)'
+    best: 'Best brew', 'best-k2': 'Best adjusted (light)', 'best-k5': 'Best adjusted (strong)',
+    'dial-k2': 'Dialed in (light)', 'dial-k5': 'Dialed in (strong)'
   };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Plain average of each bag's rating, all groups ranked together.",
@@ -62,8 +63,29 @@
     adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).',
     best: 'The highest single brew rating in the group.',
     'best-k2': 'Best single brew, pulled toward your overall average until the group has hit that score about 2 times.',
-    'best-k5': 'Best single brew, pulled toward your overall average until the group has hit that score about 5 times.'
+    'best-k5': 'Best single brew, pulled toward your overall average until the group has hit that score about 5 times.',
+    'dial-k2': "Each bag's best half of brews, averaged across bags; pulled toward your average until a group has about 2 bags.",
+    'dial-k5': "Each bag's best half of brews, averaged across bags; pulled toward your average until a group has about 5 bags."
   };
+  // How scores work dialog: examples assume an overall average of 7.0 and use the real formulas.
+  const HOW: { group: string; items: { id: Avg; text: string; eg: string }[] }[] = [
+    { group: 'Average', items: [
+      { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews).", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
+      { id: 'min3', text: 'The same average, but groups with fewer than 3 bags rank after the rest.', eg: 'A one-bag roaster at 9.5 ranks below a 3-bag roaster at 8.' },
+      { id: 'k2', text: 'The average pulled toward your overall average, as if every group had 2 extra bags at that average.', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
+      { id: 'adjusted', text: 'The same, with 5 extra bags: small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
+    ] },
+    { group: 'Peak', items: [
+      { id: 'best', text: 'The highest single brew rating in the group.', eg: 'Brews of 8, 9 and 10 → 10.' },
+      { id: 'best-k2', text: 'The best brew, pulled toward your overall average as if you had 2 extra brews at that average. A score hit repeatedly counts for more than a single lucky one.', eg: 'One 10 → 8.0. Four 9.5s → 8.7.' },
+      { id: 'best-k5', text: 'The same, with 5 extra brews.', eg: 'One 10 → 7.5. Four 9.5s → 8.1.' }
+    ] },
+    { group: 'Dialed in', items: [
+      { id: 'dial-k2', text: "Each bag counts as the average of its best half of brews (so early misses while dialing in don't count against it). A group's score averages its bags, pulled toward your average as if it had 2 extra bags.", eg: 'A bag rated 6, 6, 7, 9, 9.5, 9.5 counts as 9.3. One such bag → 7.8. Four such bags → 8.6.' },
+      { id: 'dial-k5', text: 'The same, with 5 extra bags.', eg: 'One such bag → 7.4. Four such bags → 8.0.' }
+    ] }
+  ];
+  let help = $state<HTMLDialogElement>();
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
 </script>
@@ -87,7 +109,7 @@
   </div>
   {#if rank === 'rating'}
     <div class="form-field">
-      <span><button class="mode-tip-button" popovertarget="tip-score" aria-describedby="tip-score">Score</button></span>
+      <span><button class="mode-tip-button" aria-haspopup="dialog" onclick={() => help?.showModal()}>Score</button></span>
       <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
         <optgroup label="Average">
           {#each ['raw', 'min3', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
@@ -95,10 +117,10 @@
         <optgroup label="Peak">
           {#each ['best', 'best-k2', 'best-k5'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
         </optgroup>
+        <optgroup label="Dialed in">
+          {#each ['dial-k2', 'dial-k5'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
+        </optgroup>
       </select>
-    </div>
-    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>
-      {#each AVGS as a (a)}<p><b>{AVG_LABEL[a]}.</b> {AVG_HELP[a]}</p>{/each}
     </div>
     <div class="form-field">
       <span>Ratings</span>
@@ -115,6 +137,31 @@
     </div>
   {/if}
 </div>
+
+<dialog
+  bind:this={help}
+  class="how-dialog"
+  aria-labelledby="how-title"
+  onclick={(e) => e.target === help && help.close()}
+>
+  <header>
+    <h2 id="how-title">How scores work</h2>
+    <button class="button button-ghost close" aria-label="Close" onclick={() => help?.close()}>×</button>
+  </header>
+  <div class="how-body">
+    {#each HOW as g (g.group)}
+      <h3>{g.group}</h3>
+      {#each g.items as it (it.id)}
+        <p>
+          <b>{AVG_LABEL[it.id]}{it.id === DEFAULT_AVG ? ' (default)' : ''}.</b>
+          {it.text} <span class="eg">{it.eg}</span>
+        </p>
+      {/each}
+    {/each}
+    <p class="eg">Examples assume your overall average is 7.0.</p>
+  </div>
+  <footer><button class="button" onclick={() => help?.close()}>Close</button></footer>
+</dialog>
 
 {#snippet board(b: Board)}
   {@const rows = boards[b]}
@@ -297,10 +344,10 @@
   .move.trend-bad {
     color: var(--color-urgent);
   }
-  #tip-score p {
+  .mode-tip p {
     margin: 0 0 0.4rem;
   }
-  #tip-score p:last-child {
+  .mode-tip p:last-child {
     margin: 0;
   }
   .few .who,
@@ -366,5 +413,73 @@
     width: calc(var(--share) * 100%);
     border-radius: var(--radius);
     background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
+  }
+  .how-dialog {
+    width: min(34rem, 100% - 2rem);
+    max-height: calc(100dvh - 1rem);
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: inherit;
+  }
+  .how-dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+  .how-dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  .how-dialog header,
+  .how-dialog footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+  }
+  .how-dialog footer {
+    justify-content: flex-end;
+    border-top: 1px solid var(--color-border);
+  }
+  .how-dialog h2 {
+    margin: 0;
+    font-size: 1.1rem;
+  }
+  .how-dialog h3 {
+    margin: var(--space-3) 0 var(--space-1);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .how-dialog .button {
+    margin: 0;
+    min-height: 2.25rem;
+  }
+  .how-dialog .close {
+    min-width: 2.25rem;
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+  .how-body {
+    overflow-y: auto;
+    padding: 0 var(--space-3) var(--space-3);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+  .how-body h3:first-child {
+    margin-top: 0;
+  }
+  .how-body p {
+    margin: 0 0 var(--space-2);
+  }
+  .eg {
+    color: var(--color-text-muted);
+  }
+  @media (max-width: 640px) {
+    .how-dialog .button {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 </style>

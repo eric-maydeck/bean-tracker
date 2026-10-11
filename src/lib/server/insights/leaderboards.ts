@@ -95,7 +95,7 @@ export function leaderboard(
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
-        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean } : { value: r.value, fewBags: r.fewBags })
+        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean } : { value: board === 'coffees' && avg.startsWith('dial') ? r.dialed : r.value, fewBags: r.fewBags })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();

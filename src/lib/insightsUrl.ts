@@ -17,8 +17,9 @@ export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Rating boards' score: raw mean of bag means; min3 (the same, groups under 3 bags last); k2 / adjusted
 // (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
-// (best pulled toward the overall mean, K = 2 / 5 brews at that score).
-export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
+// (best pulled toward the overall mean, K = 2 / 5 brews at that score); dial-k2 / dial-k5 (each bag's
+// best half of brews, averaged across bags and shrunk, K = 2 / 5 bags).
+export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5', 'dial-k2', 'dial-k5'] as const;
 export type Avg = (typeof AVGS)[number];
 // One line to change the Score default.
 export const DEFAULT_AVG: Avg = 'best-k2';

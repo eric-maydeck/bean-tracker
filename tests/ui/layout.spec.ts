@@ -944,8 +944,8 @@ export const STATES: State[] = [
     name: 'insights-leaderboards-avg',
     path: () => '/insights?tab=leaderboards&avg=best&compare=1',
     act: async (page) => {
-      await expect(page.getByLabel('Score')).toHaveValue('best');
-      await expect(page.getByLabel('Rank by')).toHaveValue('rating');
+      await expect(page.getByRole('combobox', { name: 'Score' })).toHaveValue('best');
+      await expect(page.getByRole('combobox', { name: 'Rank by' })).toHaveValue('rating');
       // Fields sharing a row share label line and control box.
       const f = await page.locator('.rank-bar .form-field').evaluateAll((els) =>
         els.map((e) => {
@@ -962,10 +962,26 @@ export const STATES: State[] = [
         expect(Math.abs(x.cb - y.cb), 'control bottom').toBeLessThanOrEqual(1);
       }
       await expect(page.locator('.board-row small').first()).toContainText(/brews? at \d/);
-      await page.locator('button[popovertarget="tip-score"]').click();
-      await expect(page.locator('#tip-score')).toContainText('The highest single brew rating in the group.');
       await expect(page.locator('.board .move').first()).toHaveAttribute('aria-label', /^(up \d+ places?|down \d+ places?|unchanged|new)$/);
       await expectEqualBoardHeights(page);
+    }
+  },
+  {
+    // How scores work: opens from the Score label, fits the viewport (scrolls inside on landscape),
+    // closes on Escape; nothing in the URL.
+    name: 'insights-leaderboards-how-scores',
+    path: () => '/insights?tab=leaderboards',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Score', exact: true }).click();
+      const dlg = page.getByRole('dialog', { name: 'How scores work' });
+      await expect(dlg).toBeVisible();
+      await expect(dlg).toContainText('Dialed in (strong)');
+      await expect(dlg).toContainText('Best adjusted (light) (default)');
+      await expectDialogInViewport(page);
+      await expect(dlg.getByRole('button', { name: 'Close', exact: true }).last()).toBeInViewport();
+      expect(page.url()).not.toContain('how');
+      await page.keyboard.press('Escape');
+      await expect(dlg).toBeHidden();
     }
   },
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

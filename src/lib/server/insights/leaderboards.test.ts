@@ -77,6 +77,11 @@ describe('leaderboard', () => {
     expect(r.fewBags).toBeUndefined();
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'best').map((x) => [x.value, x.atBest])).toEqual([[9, 1], [9, 1]]);
   });
+  it('dial: coffees board shows the bag\'s own dialed-in value, roasters board shrinks', () => {
+    const brews = [6, 9, 9].map((r) => brew({ coffeeId: 1, rating: r }));
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'dial-k5')[0].value).toBe(9);
+    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'dial-k5')[0]).toMatchObject({ value: 9, fewBags: true }); // one bag: overall = itself
+  });
   it('roast level link includes alias labels', () => {
     const [r] = leaderboard([brew({ roastLevel: 'Light/Medium' })], [], SEPT, 'roast', 'brews', 'all', 'raw');
     expect(r.href).toBe('/coffees?status=all&roast_level=Light%2FMedium&roast_level=Light%2FMed');
