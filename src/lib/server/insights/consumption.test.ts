@@ -108,9 +108,26 @@ describe('consumptionTab', () => {
     expect(a.deltas!.brewed).toMatchObject({ abs: expect.closeTo(50 / 30 - 30 / 31, 5) });
   });
 
-  it('avg per day by day reads per week instead', () => {
-    expect(consumptionTab(brews, bags, ctx({ by: 'day', agg: 'average' })).tiles.avg).toBeCloseTo((50 / 30) * 7);
+  it('avg is Avg per {by} in every mode (no week special case)', () => {
+    expect(consumptionTab(brews, bags, ctx({ by: 'day', agg: 'average' })).tiles.avg).toBeCloseTo(50 / 30);
     expect(consumptionTab(brews, bags, ctx({ by: 'day' })).tiles.avg).toBeCloseTo(50 / 30);
+  });
+
+  describe('busiest day', () => {
+    const busy = (bs: BrewFact[], o: Partial<ConsumptionCtx> = {}) => consumptionTab(bs, bags, ctx(o)).busiest;
+    it('most grams in the period, with that day\'s brews and grams', () =>
+      expect(busy([brew('2026-09-10', 15), brew('2026-09-12', 20), brew('2026-09-12', 25), brew('2026-09-14', 30)]))
+        .toEqual({ date: '2026-09-12', brews: 2, grams: 45 }));
+    it('tie goes to the most recent day', () =>
+      expect(busy([brew('2026-09-10', 30), brew('2026-09-14', 30)])?.date).toBe('2026-09-14'));
+    it('ignores brews outside the period', () =>
+      expect(busy([brew('2026-09-10', 15), brew('2026-10-02', 99)])?.date).toBe('2026-09-10'));
+    it('no brews: null', () => expect(busy([])).toBeNull());
+    it('buckets by local date, not UTC', () =>
+      expect(busy([{ ...brew('2026-09-10', 20), localTime: '2026-09-10T23:30' }, brew('2026-09-11', 10)])?.date).toBe('2026-09-10'));
+    it('compare: the previous period\'s busiest', () =>
+      expect(consumptionTab([brew('2026-08-03', 40), brew('2026-09-10', 15)], bags, ctx({ prev: { start: '2026-08-01', end: '2026-08-31' } })).prevBusiest)
+        .toBe('2026-08-03'));
   });
 
   it('avg follows by', () => expect(consumptionTab(brews, bags, ctx({ by: 'week' })).tiles.avg).toBeCloseTo((50 / 30) * 7));

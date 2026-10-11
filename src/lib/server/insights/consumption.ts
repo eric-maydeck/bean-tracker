@@ -7,9 +7,11 @@ export interface Bucket { start: string; end: string; partial: boolean }
 export type ConsumptionTiles = {
   brewed: number; bought: number; net: number; avg: number | null; onHand: number; daysToClear: number | null;
 };
+export interface Busiest { date: string; brews: number; grams: number }
 export interface ConsumptionTab {
   by: By; // effective (explicit or auto)
   tiles: ConsumptionTiles; clearBy: string | null;
+  busiest: Busiest | null; prevBusiest: string | null; // Avg per day's 4th tile: the day with the most grams (household)
   deltas: { brewed: Delta; bought: Delta; net: Delta; avg: Delta } | null;
   buckets: Bucket[]; labels: string[]; brewed: number[]; bought: number[]; backlog: number[];
   compareBrewed: number[] | null; // same-length compare: bucket for bucket
@@ -106,6 +108,21 @@ function totals(brews: readonly BrewFact[], bags: readonly BagFact[], p: Period,
   return { brewed: brewed / c.size, bought: bought / c.size };
 }
 
+// The calendar day (local) in the period with the most grams brewed; a tie goes to the latest.
+function busiestDay(brews: readonly BrewFact[], p: Period): Busiest | null {
+  const days = new Map<string, Busiest>();
+  for (const b of brews) {
+    if (!inPeriod(b.localDate, p)) continue;
+    const d = days.get(b.localDate) ?? { date: b.localDate, brews: 0, grams: 0 };
+    d.brews++;
+    d.grams += b.dose ?? 0;
+    days.set(b.localDate, d);
+  }
+  let best: Busiest | null = null;
+  for (const d of days.values()) if (!best || d.grams > best.grams || (d.grams === best.grams && d.date > best.date)) best = d;
+  return best;
+}
+
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 const spanOf = (t: { start: string; end: string } | null) => (t ? daysBetween(t.start, t.end) + 1 : 0);
 const avgOf = (brewed: number, span: number, by: By) => (span && brewed ? (brewed / span) * PER[by] : null);
@@ -123,10 +140,8 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     c.agg === 'average' ? { brewed: n ? v.brewed / n : 0, bought: n ? v.bought / n : 0 } : v;
   const raw = totals(brews, bags, c.period, c);
   const cur = rate(raw, span);
-  // Under Avg per day with by=day the Avg tile would repeat Brewed/day: it reads per week instead.
-  const avgBy: By = c.agg === 'average' && by === 'day' ? 'week' : by;
   const tiles: ConsumptionTiles = {
-    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, avgBy),
+    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, by),
     onHand: c.unit === 'grams' ? onHandG : bags.filter((g) => g.status !== 'archive').length,
     daysToClear: use.daysToClear
   };
@@ -134,6 +149,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   let compareBrewed: number[] | null = null;
   let compareAverage: number | null = null;
   let compareTitles: ConsumptionTab['compareTitles'] = null;
+  let prevBusiest: string | null = null;
   if (c.prev) {
     const pt = trackedBounds(c.prev, c.dataStart, c.today);
     const pspan = spanOf(pt);
@@ -147,8 +163,9 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
       brewed: paceDelta(tiles.brewed, p.brewed, span, pspan, pace),
       bought: paceDelta(tiles.bought, p.bought, span, pspan, pace),
       net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, pace),
-      avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, avgBy), span, pspan, false)
+      avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
     };
+    prevBusiest = busiestDay(brews, c.prev)?.date ?? null;
     const pf = flows(brews, bags, pb, c);
     if (c.sameLength) {
       compareBrewed = pf.brewed;
@@ -158,7 +175,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     else compareAverage = !pb.length ? null : c.agg === 'average' ? p.brewed : sum(pf.brewed) / pb.length;
   }
   return {
-    by, tiles, clearBy: use.clearBy, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
+    by, tiles, clearBy: use.clearBy, busiest: busiestDay(brews, c.period), prevBusiest, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
     backlog: backlogSeries(brews, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage
   };
 }

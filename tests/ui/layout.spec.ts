@@ -76,6 +76,17 @@ async function expectGroupsLabelled(page: Page) {
   expect(unnamed).toEqual([]);
   await expectChipsFit(page, 'body');
 }
+// Avg per day's Busiest day tile: a date value, its sub ("6 brews · 112g") on one unclipped line.
+async function expectBusiestDay(page: Page) {
+  const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest day$/ }) });
+  await expect(tile).toHaveCount(1);
+  await expect(tile.locator('.stat-value')).toHaveText(/^[A-Z][a-z]{2} \d{1,2}(, \d{4})?$/);
+  const sub = tile.locator('.stat-unit, .insights-pace').last();
+  await expect(sub).toHaveText(/^\d+ brews? · \d+(\.\d+)?g$/);
+  const lines = await sub.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight || '1'));
+  expect(lines).toBeLessThan(1.6);
+  await expectNoEllipsis(page);
+}
 async function expectNoEllipsis(page: Page) {
   const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
     els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
@@ -1015,6 +1026,20 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Avg per day' })).toBeVisible();
       await expectChipsFit(page);
+      await expectDeltasFit(page);
+    }
+  },
+  {
+    name: 'insights-consumption-busiest-day',
+    path: () => '/insights?tab=consumption&range=all',
+    act: expectBusiestDay
+  },
+  {
+    name: 'insights-consumption-busiest-day-compare',
+    path: () => '/insights?tab=consumption&range=1w&compare=1',
+    act: async (page) => {
+      await expectBusiestDay(page);
+      await expect(page.locator('.stat-item').filter({ hasText: 'Busiest day' }).locator('.insights-delta')).toContainText(/^was /);
       await expectDeltasFit(page);
     }
   },

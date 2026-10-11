@@ -232,7 +232,14 @@
         ]
       : []
   );
+  // Busiest day: the tile's value is the date as epoch days; the year shows when it isn't this year.
+  const busyDate = (d: string) => (d.slice(0, 4) === data.today.slice(0, 4) ? shortDay(d) : day(d));
+  const busyDay = (n: number) => busyDate(new Date(n * 864e5).toISOString().slice(0, 10));
   const signed = (f: (n: number) => string) => (n: number) => (n < 0 ? '−' : '') + f(Math.abs(n));
+  let consumptionValues = $derived({
+    ...data.consumptionTab?.tiles,
+    busiest: data.consumptionTab?.busiest ? Date.parse(data.consumptionTab.busiest.date) / 864e5 : null
+  });
   let FLOW = $derived<Tile[]>(
     data.consumptionTab
       ? (() => {
@@ -244,7 +251,18 @@
             { key: 'brewed', label: g ? 'Brewed' + (avg ? '/day' : '') : avg ? 'Finished/day' : 'Bags finished', fmt: f, split: true },
             { key: 'bought', label: g ? 'Bought' + (avg ? '/day' : '') : avg ? 'Bought/day' : 'Bags bought', fmt: f, split: true },
             { key: 'net', label: avg ? 'Net/day' : 'Net change', fmt: signed(f), split: true },
-            { key: 'avg', label: `Avg per ${avg && data.consumptionTab!.by === 'day' ? 'week' : data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
+            avg
+              ? {
+                  key: 'busiest', label: 'Busiest day', fmt: (n: number) => busyDay(n),
+                  // Comparing puts "was Sep 3" on the delta line; the brews and grams stay beneath it.
+                  was: () => (data.consumptionTab!.prevBusiest ? `was ${busyDate(data.consumptionTab!.prevBusiest)}` : null),
+                  keepSub: true,
+                  sub: () => {
+                    const b = data.consumptionTab!.busiest;
+                    return b ? `${b.brews} brew${b.brews === 1 ? '' : 's'} · ${formatGrams(b.grams)}` : null;
+                  }
+                }
+              : { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
             { key: 'onHand', label: g ? 'On hand' : 'Bags on hand', fmt: g ? formatGrams : count },
             {
               key: 'daysToClear', label: 'Days to clear', fmt: count, suffix: 'days', split: true,
@@ -499,7 +517,7 @@
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
   <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
-    {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
+    {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
