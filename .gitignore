@@ -12,3 +12,4 @@ data/*.db
 data/images/
 # Product page backfill review: marks, shipped list, DB copies (scripts/backfill-review.py)
 data/backfill-review/
+.preview-data/
