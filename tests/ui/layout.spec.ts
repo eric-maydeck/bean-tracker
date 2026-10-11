@@ -920,6 +920,7 @@ export const STATES: State[] = [
   { name: 'labels-stats-bq-favorites', path: () => '/stats?tab=bq&bc=favorites', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-stats-bq-brewing', path: () => '/stats?tab=bq&bc=brewing', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-stats-bq-economics', path: () => '/stats?tab=bq&bc=economics', act: (page) => expectGroupsLabelled(page) },
+  { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-subscriptions', path: () => '/subscriptions', act: (page) => expectGroupsLabelled(page) },
   {

@@ -630,23 +630,29 @@
 <h1>Coffee Collection</h1>
 
 <div class="toolbar">
-  <div class="tab-group">
-    <button aria-pressed={filter === 'backlog'} onclick={() => setFilter('backlog')}>
-      Backlog ({data.backlog.length})
-    </button>
-    <button aria-pressed={filter === 'open'} onclick={() => setFilter('open')}>
-      Open ({data.open.length})
-    </button>
-    <button aria-pressed={filter === 'archive'} onclick={() => setFilter('archive')}>
-      Archive ({data.archive.length})
-    </button>
-    <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
+  <div class="form-field group-field">
+    <span>Show</span>
+    <div class="tab-group">
+      <button aria-pressed={filter === 'backlog'} onclick={() => setFilter('backlog')}>
+        Backlog ({data.backlog.length})
+      </button>
+      <button aria-pressed={filter === 'open'} onclick={() => setFilter('open')}>
+        Open ({data.open.length})
+      </button>
+      <button aria-pressed={filter === 'archive'} onclick={() => setFilter('archive')}>
+        Archive ({data.archive.length})
+      </button>
+      <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
+    </div>
   </div>
 
-  <div class="tab-group">
-    <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
-    <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
-    <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
+  <div class="form-field group-field">
+    <span>View</span>
+    <div class="tab-group">
+      <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
+      <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
+      <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
+    </div>
   </div>
 </div>
 
