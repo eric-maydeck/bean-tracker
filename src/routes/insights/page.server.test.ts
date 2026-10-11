@@ -286,4 +286,26 @@ describe('/insights load', () => {
     seed([[addDays(today, -40), 10]]);
     expect(run('?range=1w').consumption).toEqual({ perDay: null, perWeek: null, perMonth: null, daysToClear: null, clearBy: null });
   });
+
+  it('empty database: every board empty', () => {
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
+    const d = run('?tab=leaderboards&rank=spend&compare=1');
+    expect(Object.values(d.boards).every((rows) => (rows as unknown[]).length === 0)).toBe(true);
+  });
+
+  it('computes boards only on the leaderboards tab', () => {
+    seed([[today, 15]]);
+    expect(run().boards).toBeNull();
+    const d = run('?tab=leaderboards&rank=grams');
+    expect(d.explicit).toMatchObject({ tab: 'leaderboards', rank: 'grams' });
+    expect(Object.keys(d.boards)).toHaveLength(9);
+    expect(d.boards.roasters).toEqual([expect.objectContaining({ label: 'R', value: 15, bags: 1, brews: 1 })]);
+  });
+
+  it('movement against the compare window', () => {
+    seed([[today, 15]]);
+    expect(run('?tab=leaderboards&compare=1').boards.roasters[0].move).toBe('new');
+    expect(run('?tab=leaderboards').boards.roasters[0].move).toBeUndefined();
+  });
 });

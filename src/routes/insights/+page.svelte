@@ -5,6 +5,7 @@
   import {
     PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, type InsightsUrlState
   } from '$lib/insightsUrl';
+  import Leaderboards from './Leaderboards.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -172,6 +173,15 @@
 </div>
 
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
+  <div class="form-field view-field">
+    <span>View</span>
+    <div class="tab-group view-switch" role="group" aria-label="View">
+      <button aria-pressed={s.tab === 'overview'} onclick={() => choose({ tab: 'overview', rank: undefined, open: undefined })}
+        >Overview</button
+      >
+      <button aria-pressed={s.tab === 'leaderboards'} onclick={() => choose({ tab: 'leaderboards' })}>Leaderboards</button>
+    </div>
+  </div>
   <label class="form-field">
     <span>Period</span>
     <select aria-label="Period" value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
@@ -245,6 +255,10 @@
   </dialog>
 
 <p class="insights-period">{periodText}</p>
+<span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
+<span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
+<span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
+<span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
 {#snippet panel(title: string, tiles: Tile[], values: Partial<Record<Key, number | null>>, deltas: Partial<Record<Key, D>> | null)}
   <section class="chart-panel">
@@ -296,13 +310,22 @@
   </section>
 {/snippet}
 
-{@render panel('Totals', TOTALS, data.tiles, data.deltas)}
-<span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
-<span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
-<span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
-<span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
-{@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
-{@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
+{#if data.boards}
+  <Leaderboards
+    boards={data.boards}
+    rank={s.rank}
+    ratings={s.ratings}
+    open={s.open}
+    comparing={!!data.previousPeriod}
+    perPerson={perPersonOn}
+    ratingsHelp={RATINGS_HELP}
+    {choose}
+  />
+{:else}
+  {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
+  {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
+  {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
+{/if}
 
 <style>
   /* Labelled controls, left-packed, one column each on wider screens. */
@@ -329,7 +352,8 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
-  .people-switch button {
+  .people-switch button,
+  .view-switch button {
     min-height: 2.25rem;
     margin: 0;
     font-size: 0.85rem;
@@ -378,7 +402,8 @@
       grid-auto-flow: row;
       grid-template-columns: 1fr 1fr;
     }
-    .people-switch button {
+    .people-switch button,
+    .view-switch button {
       flex: 1;
       min-height: 44px;
     }
@@ -391,6 +416,7 @@
     }
     /* Its own full-width row under the selects, not half a row. */
     .insights-controls > button,
+    .view-field,
     .people-field {
       grid-column: 1 / -1;
     }

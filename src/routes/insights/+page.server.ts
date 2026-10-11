@@ -6,6 +6,7 @@ import {
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, TILE_KIND } from '$lib/server/insights/overview';
+import { leaderboards } from '$lib/server/insights/leaderboards';
 import { RANGES, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
 
 // Public, like /stats.
@@ -59,6 +60,8 @@ export const load: PageServerLoad = ({ url }) => {
     customDefault,
     period,
     previousPeriod: prev,
+    // Leaderboards only on its tab; the overview tiles are cheap and always computed.
+    boards: s.tab === 'leaderboards' ? leaderboards(brews, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
     tiles,
     deltas: cmp ? cmp.deltas : null,
     scaled: cmp ? cmp.scaled : false,
