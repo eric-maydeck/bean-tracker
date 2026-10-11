@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { createDb, applySchema, getStatsRates, setStatsRates, InvalidRatesError } from './db';
+import { createDb, applySchema, getStatsRates, setStatsRates, InvalidRatesError, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
 
 describe('createDb', () => {
   it('creates all expected tables', () => {
@@ -242,6 +242,55 @@ describe('stats rate settings', () => {
        ON CONFLICT(key) DO UPDATE SET value = excluded.value`
     ).run('stats_rate_self_g_per_day', 'not-a-number');
     expect(getStatsRates(db)).toEqual({ selfGPerDay: 72, householdGPerDay: 144 });
+  });
+});
+
+describe('household size', () => {
+  it('defaults to 2 when nothing is saved', () => expect(getHouseholdSize(createDb(':memory:'))).toBe(2));
+
+  it('saves and reads back a whole number from 1 to 20', () => {
+    const db = createDb(':memory:');
+    setHouseholdSize(db, 1);
+    expect(getHouseholdSize(db)).toBe(1);
+    setHouseholdSize(db, 20);
+    expect(getHouseholdSize(db)).toBe(20);
+    const n = db.prepare(`SELECT COUNT(*) AS n FROM app_meta WHERE key = 'household_size'`).get() as { n: number };
+    expect(n.n).toBe(1);
+  });
+
+  it('throws on anything else and keeps the old value', () => {
+    const db = createDb(':memory:');
+    setHouseholdSize(db, 3);
+    for (const bad of [0, 21, 1.5, -1, NaN]) {
+      expect(() => setHouseholdSize(db, bad)).toThrow(InvalidHouseholdSizeError);
+    }
+    expect(getHouseholdSize(db)).toBe(3);
+  });
+
+  it('falls back to 2 on a stored value that is not a valid size', () => {
+    const db = createDb(':memory:');
+    const put = db.prepare(
+      `INSERT INTO app_meta (key, value) VALUES ('household_size', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+    );
+    for (const bad of ['0', 'abc', '2.5', '99', '']) {
+      put.run(bad);
+      expect(getHouseholdSize(db)).toBe(2);
+    }
+  });
+});
+
+describe('hand-set rates migration', () => {
+  it('deletes the two old rate keys at startup, and runs again harmlessly', () => {
+    const db = createDb(':memory:');
+    const put = db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, '90')`);
+    put.run('stats_rate_self_g_per_day');
+    put.run('stats_rate_household_g_per_day');
+    applySchema(db);
+    const left = () =>
+      (db.prepare(`SELECT COUNT(*) AS n FROM app_meta WHERE key LIKE 'stats_rate_%'`).get() as { n: number }).n;
+    expect(left()).toBe(0);
+    applySchema(db);
+    expect(left()).toBe(0);
   });
 });
 

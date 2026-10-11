@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange
+  parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
+  parsePeople, parseRange
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -213,4 +214,38 @@ describe('customRange (Apply is enabled only for a usable range)', () => {
     ['2026-09-15', '2026-09-01'], // wrong order
     ['2026-09-01', '2026-10-11'] // after today
   ])('null for %s..%s', (a, b) => expect(customRange(a, b, T)).toBeNull());
+});
+
+describe('people', () => {
+  const two = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS, YEARS, undefined, 2);
+  it('reads person and household, any case', () => {
+    expect(two('people=person').people).toBe('person');
+    expect(two('people=PERSON').people).toBe('person');
+    expect(two('people=Household').people).toBe('household');
+  });
+  it('ignores a bad value', () => expect(two('people=couple').people).toBeUndefined());
+  it('a household of one drops it (the default size is 1)', () => expect(parse('people=person').people).toBeUndefined());
+  it('writes it only when explicit; default household', () => {
+    expect(insightsParams({ people: 'person' }).toString()).toBe('people=person');
+    expect(insightsParams({}).toString()).toBe('');
+    expect(withDefaults({}).people).toBe('household');
+  });
+});
+
+describe('shared readers (/insights and /stats)', () => {
+  const q = (s: string) => new URLSearchParams(s);
+  it('parsePeople: only above one person', () => {
+    expect(parsePeople(q('people=person'), 2)).toBe('person');
+    expect(parsePeople(q('people=person'), 1)).toBeUndefined();
+    expect(parsePeople(q('people=nobody'), 3)).toBeUndefined();
+    expect(parsePeople(q(''), 2)).toBeUndefined();
+  });
+  it('parseRange: rolling, ytd, all and offered years, any case; nothing else', () => {
+    expect(parseRange(q('range=1M'), [2026])).toBe('1m');
+    expect(parseRange(q('range=all'), [2026])).toBe('all');
+    expect(parseRange(q('range=2025'), [2025, 2026])).toBe('2025');
+    expect(parseRange(q('range=2024'), [2025, 2026])).toBeUndefined();
+    expect(parseRange(q('range=5y'), [2026])).toBeUndefined();
+    expect(parseRange(q(''), [2026])).toBeUndefined();
+  });
 });

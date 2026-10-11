@@ -17,6 +17,18 @@ export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 export const AVGS = ['adjusted', 'raw'] as const;
 export type Avg = (typeof AVGS)[number];
+export const PEOPLE = ['household', 'person'] as const;
+export type People = (typeof PEOPLE)[number];
+
+// people=person splits totals evenly by household size; a household of one has nothing to
+// split, so the param is dropped (a link from a 2-person household still opens cleanly).
+export const parsePeople = (p: URLSearchParams, householdSize: number): People | undefined =>
+  householdSize > 1 ? pickOne(p, 'people', PEOPLE) : undefined;
+
+// A Period: a RANGES value or an offered calendar year (/insights, and /stats' Time to Clear).
+export const parseRange = (p: URLSearchParams, years: readonly number[]): string | undefined =>
+  pickOne(p, 'range', [...RANGES, ...years.map(String)]);
+
 // compare=YYYY-MM-DD..YYYY-MM-DD: a custom window (checked by comparePeriod in time.ts).
 export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
@@ -40,13 +52,15 @@ export interface InsightsUrlState {
   compare?: number | string; // n periods back (0 = off), a longer window ('3m', 'before') or a custom 'YYYY-MM-DD..YYYY-MM-DD'
   ratings?: Ratings;
   avg?: Avg;
+  people?: People;
 }
 
 export const DEFAULTS: Required<InsightsUrlState> = {
   range: '12m',
   compare: 0,
   ratings: 'current',
-  avg: 'adjusted'
+  avg: 'adjusted',
+  people: 'household'
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
@@ -112,11 +126,13 @@ export function keepCompare(c: number | string | undefined, offered: readonly st
 
 // `years`: the calendar years on offer (first brew year → this year);
 // `brewYears`: the ones that have brews (defaults to all of them);
-// `fits`: time.ts compareFits (without it, longer and custom values are ignored).
+// `fits`: time.ts compareFits (without it, longer and custom values are ignored);
+// `householdSize`: getHouseholdSize (1 drops `people`).
 export function parseInsightsUrl(
-  p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false
+  p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false,
+  householdSize = 1
 ): InsightsUrlState {
-  const range = pickOne(p, 'range', [...RANGES, ...years.map(String)]);
+  const range = parseRange(p, years);
   const r = range ?? DEFAULTS.range;
   const c = p.get('compare')?.toLowerCase();
   const offered = compareOptions(r, years, brewYears, fits).flatMap((g) => g.options.map((o) => o.value));
@@ -130,7 +146,8 @@ export function parseInsightsUrl(
     compare,
     // `settled` was the old name for `current`; old links keep working.
     ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
-    avg: pickOne(p, 'avg', AVGS)
+    avg: pickOne(p, 'avg', AVGS),
+    people: parsePeople(p, householdSize)
   };
 }
 
@@ -140,6 +157,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.compare !== undefined) p.set('compare', String(s.compare));
   if (s.ratings) p.set('ratings', s.ratings);
   if (s.avg) p.set('avg', s.avg);
+  if (s.people) p.set('people', s.people);
   return p;
 }
 
@@ -148,6 +166,7 @@ export function withDefaults(s: InsightsUrlState): Required<InsightsUrlState> {
     range: s.range ?? DEFAULTS.range,
     compare: s.compare ?? DEFAULTS.compare,
     ratings: s.ratings ?? DEFAULTS.ratings,
-    avg: s.avg ?? DEFAULTS.avg
+    avg: s.avg ?? DEFAULTS.avg,
+    people: s.people ?? DEFAULTS.people
   };
 }

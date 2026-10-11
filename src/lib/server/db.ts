@@ -36,6 +36,11 @@ function migrateStatusValues(db: DatabaseSync): void {
   db.exec(`UPDATE coffees SET status = 'archive' WHERE status = 'finished'`);
 }
 
+// Measured rates replaced the hand-set ones (stats-per-person spec). Every boot; idempotent.
+function dropHandSetRates(db: DatabaseSync): void {
+  db.exec(`DELETE FROM app_meta WHERE key IN ('stats_rate_self_g_per_day', 'stats_rate_household_g_per_day')`);
+}
+
 function backfillSlugs(db: DatabaseSync): void {
   const rows = db
     .prepare(`SELECT id, roaster, coffee_name, roast_date, created_at FROM coffees WHERE slug IS NULL`)
@@ -149,6 +154,7 @@ export function applySchema(db: DatabaseSync): void {
     );
   }
   migrateStatusValues(db);
+  dropHandSetRates(db);
   backfillSlugs(db);
   db.exec(
     `UPDATE subscriptions SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE updated_at IS NULL`
@@ -216,6 +222,30 @@ export function setStatsRates(db: DatabaseSync, rates: StatsRates): void {
     `INSERT INTO app_meta (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value`
   ).run(HOUSEHOLD_RATE_KEY, String(rates.householdGPerDay));
+}
+
+export class InvalidHouseholdSizeError extends Error {}
+
+const HOUSEHOLD_SIZE_KEY = 'household_size';
+// 2 is right for this household; the multi-user work defaults it to 1 (settings catalogue,
+// docs/backlog/multi-user-or-self-host.md).
+const DEFAULT_HOUSEHOLD_SIZE = 2;
+const isHouseholdSize = (n: number) => Number.isInteger(n) && n >= 1 && n <= 20;
+
+// How many people share the brews: Per person divides totals and rates by it.
+export function getHouseholdSize(db: DatabaseSync): number {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(HOUSEHOLD_SIZE_KEY) as
+    | { value: string }
+    | undefined;
+  const n = row && row.value !== '' ? Number(row.value) : NaN;
+  return isHouseholdSize(n) ? n : DEFAULT_HOUSEHOLD_SIZE;
+}
+
+export function setHouseholdSize(db: DatabaseSync, n: number): void {
+  if (!isHouseholdSize(n)) throw new InvalidHouseholdSizeError('household size must be a whole number from 1 to 20');
+  db.prepare(
+    `INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(HOUSEHOLD_SIZE_KEY, String(n));
 }
 
 export function createDb(path: string): DatabaseSync {
