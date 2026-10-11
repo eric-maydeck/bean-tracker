@@ -409,6 +409,24 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
+/* The compact dropdown of a labelled control row (/insights View, Period, Compare; /on-deck View). */
+.ctl-select {
+  min-height: 2.25rem;
+  padding: 0 0.6rem;
+  font: inherit;
+  font-size: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+@media (max-width: 640px) {
+  .ctl-select {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
 .search-row:has(> .group-field) {
   align-items: end; /* a button beside a labelled group lines up with the chips, not the label */
 }

@@ -334,15 +334,15 @@
 </div>
 
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>View</span>
-    <select aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
+    <select class="ctl-select" aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
       {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
     </select>
   </label>
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>Period</span>
-    <select aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
+    <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
         {#each ROLLING as r (r)}<option value={r}>{RANGE_LABELS[r]}</option>{/each}
       </optgroup>
@@ -359,9 +359,10 @@
   {#if isCustom(s.range)}
     <button class="button button-ghost" onclick={() => openDates('range')}>Dates…</button>
   {/if}
-  <label class="form-field">
+  <label class="form-field group-field">
     <span>Compare</span>
     <select
+      class="ctl-select"
       aria-label="Compare"
       value={custom('compare') ? 'custom' : String(s.compare)}
       onchange={(e) => pickCompare(e.currentTarget.value)}
@@ -520,7 +521,6 @@
   .insights-controls .form-field {
     margin-bottom: 0;
   }
-  .insights-controls select,
   .custom-range input {
     min-height: 2.25rem;
     padding: 0 0.6rem;
@@ -596,7 +596,6 @@
     .people-field {
       grid-column: 1 / -1;
     }
-    .insights-controls select,
     .custom-range input {
       min-height: 44px;
       font-size: 16px;

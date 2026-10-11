@@ -922,6 +922,35 @@ export const STATES: State[] = [
   { name: 'labels-stats-bq-brewing', path: () => '/stats?tab=bq&bc=brewing', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-stats-bq-economics', path: () => '/stats?tab=bq&bc=economics', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
+  {
+    // Two views behind a labelled View select: only the chosen section renders; `next` is the only explicit value.
+    name: 'on-deck-view-open',
+    path: () => '/on-deck',
+    act: async (page) => {
+      const view = page.getByLabel('View');
+      await expect(view).toHaveValue('open');
+      await expect(page.getByRole('heading', { name: 'Currently open' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Next up' })).toHaveCount(0);
+      await expectGroupsLabelled(page);
+      await view.selectOption('next');
+      await expect(page).toHaveURL(/view=next/);
+      await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Decaf' }).click();
+      await expect(page).toHaveURL(/show=decaf&view=next|view=next&show=decaf/);
+      await view.selectOption('open');
+      await expect(page).not.toHaveURL(/view=/);
+    }
+  },
+  {
+    name: 'on-deck-view-next',
+    path: () => '/on-deck?view=next',
+    act: async (page) => {
+      await expect(page.getByLabel('View')).toHaveValue('next');
+      await expect(page.getByRole('heading', { name: 'Next up' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Currently open' })).toHaveCount(0);
+      await expect(page.locator('.card').first()).toBeVisible();
+    }
+  },
   { name: 'labels-on-deck', path: () => '/on-deck', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-subscriptions', path: () => '/subscriptions', act: (page) => expectGroupsLabelled(page) },
   {

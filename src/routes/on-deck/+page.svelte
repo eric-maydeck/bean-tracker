@@ -8,6 +8,7 @@
   import { writeUrlParams } from '$lib/urlState';
   import { formatBag } from '$lib/grams';
   import ShareButton from '$lib/components/ShareButton.svelte';
+  import { onDeckParams, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
 
@@ -22,6 +23,9 @@
   // `loaded` so a bare URL can't stomp the remembered choice with 'all'
   // before afterNavigate has had a chance to restore it.
   let explicit = $state<Show | undefined>(pickOne(currentParams(page.url), 'show', SHOW_VALUES));
+  // The Currently open / Next up view: URL only (never remembered), and only `next` is explicit.
+  let explicitView = $state<'next' | undefined>(parseOnDeckView(currentParams(page.url)));
+  let view = $derived<OnDeckView>(explicitView ?? 'open');
   let loaded = $state(false);
   let filter = $derived(explicit ?? 'all');
   let current = $derived(data[filter]);
@@ -34,6 +38,7 @@
       // ignore — localStorage may be unavailable (private browsing, etc.)
       explicit = fromUrl;
     }
+    explicitView = parseOnDeckView(currentParams(page.url));
     loaded = true;
   });
 
@@ -43,9 +48,7 @@
 
   $effect(() => {
     if (!loaded) return;
-    const params = new URLSearchParams();
-    if (explicit) params.set('show', explicit);
-    writeUrlParams(params);
+    writeUrlParams(onDeckParams({ show: explicit, view: explicitView }));
     try {
       if (explicit) localStorage.setItem(STORAGE_KEY, serializeChoice(explicit, Date.now()));
     } catch {
@@ -68,6 +71,12 @@
 </div>
 
 <div class="search-row">
+  <label class="form-field group-field">
+    <span>View</span>
+    <select class="ctl-select" aria-label="View" value={view} onchange={(e) => (explicitView = e.currentTarget.value === 'next' ? 'next' : undefined)}>
+      {#each VIEWS as v (v)}<option value={v}>{VIEW_LABEL[v]}</option>{/each}
+    </select>
+  </label>
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
@@ -81,6 +90,7 @@
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>
 
+{#if view === 'open'}
 <section>
   <h2>Currently open</h2>
   {#if current.open.length === 0}
@@ -120,9 +130,9 @@
     </section>
   {/if}
 </section>
-
+{:else}
 <section class="detail-section">
-  <h2>Next up from backlog</h2>
+  <h2>Next up</h2>
   {#if current.nextUp.length === 0}
     <p class="text-muted">Backlog is empty.</p>
   {:else}
@@ -154,3 +164,4 @@
     </section>
   {/if}
 </section>
+{/if}
