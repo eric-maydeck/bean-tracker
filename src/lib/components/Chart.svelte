@@ -75,7 +75,8 @@
     vertical?: boolean;
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
     // line overlay; otherwise a paired series in the next palette colour.
-    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean }[];
+    // `names`: per-bar dates for the tooltip when a series' bar covers other days than the axis label says.
+    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[] }[];
     // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
     // Vertical bars and plain lines: the tooltip's value text.
@@ -257,7 +258,10 @@
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
           tooltip: format && !trendValues
-            ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y ?? 0)}` } }
+            ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
+              const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
+              return `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
+            } } }
             : trendValues
             ? {
                 callbacks: {

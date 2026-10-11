@@ -13,6 +13,7 @@ export interface ConsumptionTab {
   deltas: { brewed: Delta; bought: Delta; net: Delta; avg: Delta } | null;
   buckets: Bucket[]; labels: string[]; brewed: number[]; bought: number[]; backlog: number[];
   compareBrewed: number[] | null; // same-length compare: bucket for bucket
+  compareTitles: (string | null)[] | null; // the compare bars' real dates, bucket for bucket with `brewed`
   compareAverage: number | null; // longer/custom compare: its per-bucket average (dashed line)
 }
 export interface ConsumptionCtx {
@@ -44,6 +45,21 @@ export function bucketLabels(bs: readonly Bucket[], by: By = 'day'): string[] {
   const opts: Intl.DateTimeFormatOptions =
     by === 'month' ? { month: 'short', ...(years && { year: 'numeric' }), timeZone: 'UTC' } : { month: 'short', day: 'numeric', timeZone: 'UTC' };
   return bs.map((b) => new Date(`${b.start}T00:00:00Z`).toLocaleDateString('en-US', opts) + (b.partial ? '*' : ''));
+}
+
+// Tooltip names: the dates a bucket really covers, with the year ("Sep 8 – Sep 14, 2025"), so a
+// compare bar says which days it is. A clipped bucket is marked partial.
+export function bucketTitles(bs: readonly Bucket[], by: By): string[] {
+  const f = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { ...o, timeZone: 'UTC' });
+  return bs.map((b) => {
+    const [y0, y1] = [b.start.slice(0, 4), b.end.slice(0, 4)];
+    const md = (d: string, year: boolean) => f(d, { month: 'short', day: 'numeric', ...(year && { year: 'numeric' }) });
+    const name =
+      by === 'month' ? f(b.start, { month: 'short', year: 'numeric' })
+      : b.start === b.end ? md(b.start, true)
+      : `${md(b.start, y0 !== y1)} – ${md(b.end, true)}`;
+    return name + (b.partial ? ' (partial)' : '');
+  });
 }
 
 // On hand at each end date: bought by then and not finished (last brew) by then. Grams count what's
@@ -112,6 +128,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   let deltas: ConsumptionTab['deltas'] = null;
   let compareBrewed: number[] | null = null;
   let compareAverage: number | null = null;
+  let compareTitles: ConsumptionTab['compareTitles'] = null;
   if (c.prev) {
     const pt = trackedBounds(c.prev, c.dataStart, c.today);
     const pspan = spanOf(pt);
@@ -128,11 +145,15 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
       avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
     };
     const pf = flows(brews, bags, pb, c);
-    if (c.sameLength) compareBrewed = pf.brewed;
+    if (c.sameLength) {
+      compareBrewed = pf.brewed;
+      const names = bucketTitles(pb, by);
+      compareTitles = bs.map((_, i) => names[i] ?? null);
+    }
     else compareAverage = !pb.length ? null : c.agg === 'average' ? p.brewed : sum(pf.brewed) / pb.length;
   }
   return {
     by, tiles, clearBy: use.clearBy, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
-    backlog: backlogSeries(brews, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareAverage
+    backlog: backlogSeries(brews, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage
   };
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gramsOnHand } from './overview';
-import { buckets, bucketLabels, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
+import { buckets, bucketLabels, bucketTitles, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (localDate: string, dose: number, coffeeId = 1): BrewFact => ({
@@ -41,6 +41,19 @@ describe('bucketLabels', () => {
   it('month: short month, plus the year only when the span crosses one', () => {
     expect(bucketLabels(buckets({ start: '2026-08-15', end: '2026-10-11' }, 'month'), 'month')).toEqual(['Aug*', 'Sep', 'Oct*']);
     expect(bucketLabels(buckets({ start: '2025-12-01', end: '2026-01-31' }, 'month'), 'month')).toEqual(['Dec 2025', 'Jan 2026']);
+  });
+});
+
+describe('bucketTitles', () => {
+  it('the dates a bucket really covers, with the year', () => {
+    expect(bucketTitles(buckets({ start: '2025-09-06', end: '2025-09-07' }, 'day'), 'day')).toEqual(['Sep 6, 2025', 'Sep 7, 2025']);
+    expect(bucketTitles(buckets({ start: '2025-09-02', end: '2025-09-20' }, 'week'), 'week')).toEqual([
+      'Sep 2 – Sep 7, 2025 (partial)', 'Sep 8 – Sep 14, 2025', 'Sep 15 – Sep 20, 2025 (partial)'
+    ]);
+    expect(bucketTitles(buckets({ start: '2025-12-29', end: '2026-01-11' }, 'week'), 'week')[0]).toBe('Dec 29, 2025 – Jan 4, 2026');
+    expect(bucketTitles(buckets({ start: '2025-08-15', end: '2025-10-11' }, 'month'), 'month')).toEqual([
+      'Aug 2025 (partial)', 'Sep 2025', 'Oct 2025 (partial)'
+    ]);
   });
 });
 
@@ -110,9 +123,13 @@ describe('consumptionTab', () => {
     const same = consumptionTab(older, bags, ctx({ prev }));
     expect(same.compareBrewed![0]).toBe(30);
     expect(same.compareAverage).toBeNull();
+    // The compare bar's tooltip names the day it really covers, not the period's bucket.
+    expect(same.compareTitles![0]).toBe('Aug 2, 2026');
+    expect(same.compareTitles).toHaveLength(same.brewed.length);
     expect(same.deltas!.brewed).toMatchObject({ abs: 20 });
     const longer = consumptionTab(older, bags, ctx({ prev: { start: '2026-06-01', end: '2026-08-31' }, sameLength: false }));
     expect(longer.compareBrewed).toBeNull();
+    expect(longer.compareTitles).toBeNull();
     expect(longer.compareAverage).toBeCloseTo(30 / 92); // 92 daily buckets
   });
 

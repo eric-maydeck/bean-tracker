@@ -30,7 +30,7 @@
   const k3 = $derived(kOf(t.backlog));
   const series1 = $derived(
     compare?.some((v) => v)
-      ? [{ label: compareLabel, values: div(compare, k1), faded: true }]
+      ? [{ label: compareLabel, values: div(compare, k1), faded: true, names: t.compareTitles ?? undefined }]
       : !t.compareBrewed && t.compareAverage
         ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true }]
         : []

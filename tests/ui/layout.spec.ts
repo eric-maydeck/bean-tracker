@@ -955,6 +955,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // The compare bar's tooltip names the dates it covers (screenshot shows it; the server titles are unit-tested).
+    name: 'insights-consumption-compare-tooltip',
+    path: () => '/insights?tab=consumption&range=1w&compare=1&by=day',
+    act: async (page) => {
+      const c = page.locator('.consumption-charts canvas').first();
+      await c.scrollIntoViewIfNeeded();
+      const b = (await c.boundingBox())!;
+      await page.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.5);
+      await page.waitForTimeout(400);
+    }
+  },
+  {
     name: 'insights-consumption-agg-bags',
     path: () => '/insights?tab=consumption&range=1w&compare=1&unit=bags',
     act: async (page) => {
