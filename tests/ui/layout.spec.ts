@@ -34,8 +34,6 @@ function buttonBoxes(scope: Locator) {
   });
 }
 
-// Desktop edit table: every input and button in a row shares one vertical
-// center (±1px).
 // A sticky filter bar: pinned at the top after scrolling, one short row in phone landscape,
 // and a panel scrolled into view starts below it (scroll-padding-top), not under it.
 async function expectStickyBar(page: Page, bar: Locator) {
@@ -50,6 +48,8 @@ async function expectStickyBar(page: Page, bar: Locator) {
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
 }
 
+// Desktop edit table: every input and button in a row shares one vertical
+// center (±1px).
 async function expectRowLevel(row: Locator) {
   const centers = await row.evaluate((tr) =>
     [...tr.querySelectorAll('.inline-input, .sub-actions .button')].map((el) => {
