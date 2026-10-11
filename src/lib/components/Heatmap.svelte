@@ -41,7 +41,6 @@
     let score = Infinity;
     for (const el of (e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(sel)) {
       const b = el.getBoundingClientRect();
-      if (!b.width) continue; // a hidden layout (the Task 8 paired-hours preview)
       const dx = b.left - a.left;
       const dy = b.top - a.top;
       const along = dx * d[0] + dy * d[1];
@@ -60,9 +59,7 @@
     text,
     label,
     cellHeight = '1.6rem',
-    ariaLabel,
-    pairHours = false,
-    pairMean = false
+    ariaLabel
   }: {
     rows: string[];
     cols: string[];
@@ -71,29 +68,31 @@
     label: (r: number, c: number) => string;
     cellHeight?: string;
     ariaLabel: string;
-    // Task 8 preview: phones get 2-hour columns (sum; pairMean = mean of the non-null pair,
-    // an approximation of the true 2-hour mean rating).
-    pairHours?: boolean;
-    pairMean?: boolean;
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
   let tip = $state<{ text: string; x: number; y: number } | null>(null);
   let shade = $derived(shader(cells.flat()));
-  const merge = (a: number | null, b: number | null) =>
-    a === null && b === null ? null : pairMean ? (a === null ? b : b === null ? a : (a + b) / 2) : (a ?? 0) + (b ?? 0);
-  let pCols = $derived(cols.filter((_, j) => j % 2 === 0).map((c, k) => `${c}–${String(2 * k + 2).padStart(2, '0')}`));
-  let pCells = $derived(cells.map((row) => pCols.map((_, k) => merge(row[2 * k] ?? null, row[2 * k + 1] ?? null))));
-  let pShade = $derived(shader(pCells.flat()));
-
   const show = (e: Event) => {
     const el = (e.target as Element).closest('.heat-cell');
     tip = el ? tipAt(wrap!, el, el.getAttribute('aria-label')!) : null;
   };
 </script>
 
-{#snippet grid(cols: string[], cells: (number | null)[][], shade: (v: number | null) => string, label: (r: number, c: number) => string, cls: string)}
-  <div class="grid {cls}" style:--nc={cols.length}>
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
+<div
+  class="heatmap"
+  role="group"
+  aria-label={ariaLabel}
+  bind:this={wrap}
+  style:--nr={rows.length}
+  style:--cell-h={cellHeight}
+  onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
+  onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
+  onclick={show}
+  onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
+>
+  <div class="grid" style:--nc={cols.length}>
     {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
     {#each rows as r, i (i)}
       <span class="row-label" style:--r={i + 2} style:--c={1}>{r}</span>
@@ -114,23 +113,6 @@
       {/each}
     {/each}
   </div>
-{/snippet}
-
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
-<div
-  class="heatmap"
-  role="group"
-  aria-label={ariaLabel}
-  bind:this={wrap}
-  style:--nr={rows.length}
-  style:--cell-h={cellHeight}
-  onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
-  onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-  onclick={show}
-  onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
->
-  {@render grid(cols, cells, shade, label, pairHours ? 'full' : '')}
-  {#if pairHours}{@render grid(pCols, pCells, pShade, (r, k) => `${label(r, 2 * k)}–${String(2 * k + 2).padStart(2, '0')}:00`, 'paired')}{/if}
   {#if tip}
     <div class="cell-tip" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
   {/if}
@@ -153,16 +135,7 @@
     grid-column: var(--c);
   }
   /* Phones: transposed, so 24 hours run down the page and cells stay tappable. */
-  .paired {
-    display: none;
-  }
   @container (width < 560px) {
-    .full {
-      display: none;
-    }
-    .paired {
-      display: grid;
-    }
     .grid {
       grid-template-columns: auto repeat(var(--nr), minmax(0, 1fr));
     }

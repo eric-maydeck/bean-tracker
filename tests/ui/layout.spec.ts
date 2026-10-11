@@ -791,6 +791,18 @@ export const STATES: State[] = [
       await expect(page.locator('.cell-tip')).toBeVisible();
     }
   },
+  {
+    // Long range: mini month blocks, every month shown, none clipped.
+    name: 'insights-habits-all',
+    path: () => '/insights?tab=habits&range=all',
+    act: async (page) => {
+      await expect(page.locator('.brew-calendar .mini').first()).toBeVisible();
+      const clipped = await page.locator('.brew-calendar .mini').evaluateAll((ms) =>
+        ms.filter((m) => m.scrollWidth > m.clientWidth + 1 || m.getBoundingClientRect().right > innerWidth).length
+      );
+      expect(clipped).toBe(0);
+    }
+  },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare',
