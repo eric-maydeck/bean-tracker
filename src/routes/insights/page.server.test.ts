@@ -264,7 +264,7 @@ describe('/insights load', () => {
       expect(run('?range=1w&people=person').consumption).toMatchObject({ perDay: 15, daysToClear: 17, clearBy: '2026-10-27' });
       expect(run('?range=1w').consumptionDeltas).toBeNull();
     } finally {
-      setHouseholdSize(getDb(), 1);
+      setHouseholdSize(getDb(), 2); // the default
       vi.useRealTimers();
     }
   });
