@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import Icon from '$lib/components/Icon.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
@@ -410,9 +411,9 @@
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
               >{t.label}{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  >{s.ratings === 'all' ? 'All' : 'Current'}</button
+                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
-                  >per person</button
+                  ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}</span
             >
           </div>
@@ -646,6 +647,9 @@
     overflow: visible;
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
+  .stat-label.wrap.mode-caption {
+    letter-spacing: 0; /* Rated · Current ⓘ · per person ⓘ must stay on one line in a 3-up tile */
+  }
   .stat-label.wrap {
     white-space: normal;
     line-height: 1.1; /* two lines end flush with the tile; keep them inside */
@@ -659,9 +663,18 @@
     /* Match the label's uppercase; buttons don't inherit either by default. */
     text-transform: inherit;
     letter-spacing: inherit;
+    cursor: help;
+  }
+  /* Click-for-explanation triggers: dotted underline on the text, a circled ? after it. */
+  :global(.mode-tip-button .tip-text) {
     text-decoration: underline dotted;
     text-underline-offset: 0.2em;
-    cursor: help;
+  }
+  :global(.mode-tip-button .icon) {
+    width: 0.85em;
+    height: 0.85em;
+    margin-inline-start: 0.15em;
+    vertical-align: -0.1em;
   }
   :global(.mode-tip-button:focus-visible) {
     outline: 2px solid var(--color-accent);

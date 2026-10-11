@@ -781,6 +781,9 @@ export const STATES: State[] = [
     path: () => '/insights',
     act: async (page) => {
       await expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible();
+      // Every click-for-explanation trigger ends with its circled ?.
+      expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
+      expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);
       // Totals tiles are the /stats "At a glance" hero tiles; Averages are not.
       const color = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
