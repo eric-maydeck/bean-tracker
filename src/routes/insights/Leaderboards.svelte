@@ -1,12 +1,274 @@
 <script lang="ts">
-  import type { Board, InsightsUrlState, Rank, Ratings } from '$lib/insightsUrl';
+  import { formatGrams } from '$lib/grams';
+  import { BAG_BOARDS, RANKS, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
   import type { PageData } from './$types';
+
+  type Rows = NonNullable<PageData['boards']>;
   let {
-    boards
+    boards, rank, ratings, open, comparing, perPerson, ratingsHelp, choose
   }: {
-    boards: NonNullable<PageData['boards']>; rank: Rank; ratings: Ratings; open: Board | undefined; comparing: boolean;
-    perPerson: boolean; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
+    boards: Rows; rank: Rank; ratings: Ratings; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
   } = $props();
+
+  const TITLE: Record<Board, string> = {
+    roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', process: 'Process group', roast: 'Roast level',
+    water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
+  };
+  const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g' };
+  // Top 10 where there are many items, top 5 for small sets (spec "Boards").
+  const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
+  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
+
+  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
+  function fmt(v: number): string {
+    if (rank === 'rating') return v.toFixed(1);
+    if (rank === 'grams') return formatGrams(v);
+    if (rank === 'spend') return usd.format(v);
+    if (rank === 'ppg') return `$${v.toFixed(3)}/g`;
+    return perPerson && v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('en-US');
+  }
+  type Row = Rows[Board][number];
+  const detail = (r: Row) =>
+    [r.sub, plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null].filter(Boolean).join(' · ');
+  const move = (m: Row['move']) =>
+    m === undefined ? null
+    : m === 'new' ? { text: 'new', cls: '' }
+    : m > 0 ? { text: `▲${m}`, cls: 'trend-good' }
+    : m < 0 ? { text: `▼${-m}`, cls: 'trend-bad' }
+    : { text: '=', cls: '' };
+  const RANK_HELP: Record<Rank, string> = {
+    rating: 'Average of your ratings.',
+    brews: 'Number of brews.',
+    grams: 'Grams brewed.',
+    spend: 'Money spent on bags bought in the period.',
+    ppg: 'Price per gram of bags bought in the period.'
+  };
+  const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
+  const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
 </script>
 
-<p>{Object.keys(boards).length} boards</p>
+{#each RANKS as r (r)}<span id="rank-help-{r}" hidden>{RANK_HELP[r]}</span>{/each}
+<div class="rank-bar">
+  <div class="form-field">
+    <span>Rank by</span>
+    <div class="tab-group" role="group" aria-label="Rank by" data-button-row>
+      {#each RANKS as r (r)}
+        <button
+          aria-pressed={rank === r}
+          title={RANK_HELP[r]}
+          aria-describedby="rank-help-{r}"
+          onclick={() => choose({ rank: r })}>{RANK_LABEL[r]}</button
+        >
+      {/each}
+    </div>
+  </div>
+  {#if rank === 'rating'}
+    <div class="form-field">
+      <span>Ratings</span>
+      <div class="tab-group" role="group" aria-label="Ratings">
+        {#each ['current', 'all'] as const as m (m)}
+          <button
+            aria-pressed={ratings === m}
+            title={ratingsHelp[m]}
+            aria-describedby="ratings-help-{m}"
+            onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button
+          >
+        {/each}
+      </div>
+    </div>
+  {/if}
+</div>
+
+{#snippet board(b: Board)}
+  {@const rows = boards[b]}
+  {@const size = SIZE(b)}
+  {@const isOpen = open === b}
+  {@const shown = isOpen ? rows : rows.slice(0, size)}
+  <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
+    <h2>{TITLE[b]}</h2>
+    <div class="board-body">
+      {#if b === 'origins'}<div class="board-map"></div>{/if}
+      {#if bagOnly(b)}
+        <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
+      {:else if !rows.length}
+        <p class="board-note">{emptyText()}</p>
+      {:else}
+        <ol class="board-rows">
+          {#each shown as r, i (r.key)}
+            {@const m = comparing ? move(r.move) : null}
+            <li class="board-row">
+              <span class="rank">{i + 1}</span>
+              <span class="who">
+                {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
+                <small>{detail(r)}</small>
+              </span>
+              <span class="val">{fmt(r.value)}</span>
+              {#if comparing}<span class="move {m?.cls ?? ''}">{m?.text}</span>{/if}
+            </li>
+          {/each}
+          {#each { length: Math.max(0, size - shown.length) } as _, i (i)}
+            <li class="board-row placeholder" aria-hidden="true"><span class="rank">{shown.length + i + 1}</span><span class="who">—</span></li>
+          {/each}
+        </ol>
+      {/if}
+    </div>
+    <footer class="board-foot">
+      {#if rows.length > size && !bagOnly(b)}
+        <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
+          >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
+        >
+      {/if}
+    </footer>
+  </section>
+{/snippet}
+
+{#each BANDS as band, i (i)}
+  <div class="board-band band-{band.length}">
+    {#each band as b (b)}{@render board(b)}{/each}
+  </div>
+{/each}
+
+<style>
+  .rank-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .rank-bar .form-field {
+    margin-bottom: 0;
+  }
+  .rank-bar button {
+    min-height: 2.25rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  /* Cards in a band share one height: fixed rows, placeholders for empty slots, a fixed
+     footer. Only an expanded card grows (align-items: start keeps its neighbours put). */
+  .board-band {
+    --row-h: 3rem;
+    display: grid;
+    grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  @media (min-width: 641px) {
+    .band-2,
+    .band-6 {
+      --cols: 2;
+    }
+  }
+  @media (min-width: 1000px) {
+    .band-6 {
+      --cols: 3;
+    }
+  }
+  .board {
+    margin: 0;
+  }
+  .board-rows,
+  .board-note {
+    min-height: calc(var(--rows) * var(--row-h));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .board-note {
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--color-text-muted);
+  }
+  .board-row {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    height: var(--row-h);
+    border-top: 1px solid var(--color-border);
+  }
+  .board-row:first-child {
+    border-top: 0;
+  }
+  .rank {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .who {
+    display: grid;
+    min-width: 0;
+    line-height: 1.2;
+  }
+  .who a,
+  .who .name,
+  .who small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .who small {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+  .val {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .move {
+    min-width: 2.5rem;
+    text-align: right;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  /* ui-rules 29: the overview's trend colours (same tokens). */
+  .move.trend-good {
+    color: var(--color-fresh);
+  }
+  .move.trend-bad {
+    color: var(--color-urgent);
+  }
+  .placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.45;
+  }
+  .board-foot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 2.75rem;
+  }
+  .board-foot button {
+    margin: 0;
+  }
+  @media (max-width: 640px) {
+    .board-foot button,
+    .rank-bar button {
+      min-height: 44px;
+    }
+    .rank-bar .tab-group button {
+      flex: 1;
+    }
+    .rank-bar .form-field {
+      flex: 1 1 100%;
+    }
+  }
+  /* Origins: map beside its list on wide screens, above it on phones (Task 7 fills the map). */
+  @media (min-width: 800px) {
+    .board[data-board='origins'] .board-body {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: var(--space-3);
+      align-items: stretch;
+    }
+    .board-map {
+      display: grid;
+      place-items: center;
+      min-height: calc(var(--rows) * var(--row-h));
+    }
+  }
+</style>
