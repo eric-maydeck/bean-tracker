@@ -7,6 +7,7 @@
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
+  import Consumption from './Consumption.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -384,7 +385,9 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  {@render panel('Consumption', FLOW, data.consumptionTab.tiles, data.consumptionTab.deltas)}
+  <Consumption t={data.consumptionTab} unit={s.unit} explicitBy={s.by} offered={data.byMenus[s.range]} {choose}>
+    {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
+  </Consumption>
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}

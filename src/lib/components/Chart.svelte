@@ -47,7 +47,8 @@
     vertical = false,
     series = [],
     yMin,
-    format
+    format,
+    dots = true
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -73,8 +74,10 @@
     series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean }[];
     // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
-    // Vertical bars: the tooltip's value text.
+    // Vertical bars and plain lines: the tooltip's value text.
     format?: (v: number) => string;
+    // Plain lines: point markers (off for dense series, where they merge into a blob).
+    dots?: boolean;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -190,7 +193,7 @@
                 backgroundColor: lineColor,
                 pointBackgroundColor: lineColor,
                 borderWidth: 2,
-                pointRadius: 3,
+                pointRadius: dots ? 3 : 0,
                 tension: 0.25,
                 fill: false
               }
@@ -240,7 +243,7 @@
           legend: { display: type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
-          tooltip: vbar && format
+          tooltip: format && !trendValues
             ? { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${format(ctx.parsed.y ?? 0)}` } }
             : trendValues
             ? {
@@ -341,6 +344,7 @@
     void series;
     void yMin;
     void format;
+    void dots;
     render();
 
     const observer = new MutationObserver(render);

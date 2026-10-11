@@ -11,7 +11,7 @@ export interface ConsumptionTab {
   by: By; // effective (explicit or auto)
   tiles: ConsumptionTiles; clearBy: string | null;
   deltas: { brewed: Delta; bought: Delta; net: Delta; avg: Delta } | null;
-  buckets: Bucket[]; brewed: number[]; bought: number[]; backlog: number[];
+  buckets: Bucket[]; labels: string[]; brewed: number[]; bought: number[]; backlog: number[];
   compareBrewed: number[] | null; // same-length compare: bucket for bucket
   compareAverage: number | null; // longer/custom compare: its per-bucket average (dashed line)
 }
@@ -35,6 +35,15 @@ export function buckets(t: { start: string; end: string } | null, by: By): Bucke
     out.push({ start, end, partial: start !== u || end !== natEnd });
   }
   return out;
+}
+
+// Axis labels: day/week → "Sep 7" (bucket start), month → "Sep", or "Sep 2026" when the span crosses a
+// year; a partial bucket gets a trailing "*".
+export function bucketLabels(bs: readonly Bucket[], by: By = 'day'): string[] {
+  const years = by === 'month' && bs.length > 0 && bs[0].start.slice(0, 4) !== bs[bs.length - 1].start.slice(0, 4);
+  const opts: Intl.DateTimeFormatOptions =
+    by === 'month' ? { month: 'short', ...(years && { year: 'numeric' }), timeZone: 'UTC' } : { month: 'short', day: 'numeric', timeZone: 'UTC' };
+  return bs.map((b) => new Date(`${b.start}T00:00:00Z`).toLocaleDateString('en-US', opts) + (b.partial ? '*' : ''));
 }
 
 // On hand at each end date: bought by then and not finished (last brew) by then. Grams count what's
@@ -114,7 +123,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     else compareAverage = pb.length ? sum(pf.brewed) / pb.length : null;
   }
   return {
-    by, tiles, clearBy: use.clearBy, deltas, buckets: bs, brewed, bought,
+    by, tiles, clearBy: use.clearBy, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
     backlog: backlogSeries(brews, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareAverage
   };
 }

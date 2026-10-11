@@ -812,9 +812,28 @@ export const STATES: State[] = [
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-consumption-tab',
-    path: () => '/insights?tab=consumption&unit=bags',
-    act: (page) => expect(page.locator('.chart-panel h2', { hasText: 'Consumption' })).toBeVisible()
+    path: () => '/insights?tab=consumption',
+    act: async (page) => expect(page.locator('.consumption-charts canvas')).toHaveCount(2)
   },
+  {
+    name: 'insights-consumption-bags-week',
+    path: () => '/insights?tab=consumption&unit=bags&by=week&compare=1',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Week' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.stat-label', { hasText: 'Bags finished' })).toBeVisible();
+    }
+  },
+  {
+    // The ~21-day ui seed is too short for months, even over all time (ruling P2).
+    name: 'insights-consumption-all',
+    path: () => '/insights?tab=consumption&range=all',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Month' })).toBeDisabled();
+      await expect(page.locator('.chart-panel canvas')).toHaveCount(3);
+    }
+  },
+  { name: 'insights-consumption-1w', path: () => '/insights?tab=consumption&range=1w',
+    act: async (page) => expect(page.getByRole('button', { name: 'Month' })).toBeDisabled() },
   { name: 'insights-1w-compare', path: () => '/insights?range=1w&compare=1' },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { gramsOnHand } from './overview';
-import { buckets, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
+import { buckets, bucketLabels, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (localDate: string, dose: number, coffeeId = 1): BrewFact => ({
@@ -31,6 +31,17 @@ describe('buckets', () => {
     ]));
   it('days', () => expect(buckets({ start: '2026-09-01', end: '2026-09-03' }, 'day')).toHaveLength(3));
   it('nothing tracked: no buckets', () => expect(buckets(null, 'day')).toEqual([]));
+});
+
+describe('bucketLabels', () => {
+  it('day and week: short date of the (clipped) start; partial gets *', () => {
+    expect(bucketLabels(buckets({ start: '2026-09-02', end: '2026-09-20' }, 'week'))).toEqual(['Sep 2*', 'Sep 7', 'Sep 14']);
+    expect(bucketLabels(buckets({ start: '2026-09-06', end: '2026-09-07' }, 'day'))).toEqual(['Sep 6', 'Sep 7']);
+  });
+  it('month: short month, plus the year only when the span crosses one', () => {
+    expect(bucketLabels(buckets({ start: '2026-08-15', end: '2026-10-11' }, 'month'), 'month')).toEqual(['Aug*', 'Sep', 'Oct*']);
+    expect(bucketLabels(buckets({ start: '2025-12-01', end: '2026-01-31' }, 'month'), 'month')).toEqual(['Dec 2025', 'Jan 2026']);
+  });
 });
 
 describe('backlogSeries', () => {
