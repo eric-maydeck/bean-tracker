@@ -882,6 +882,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // Reset clears every choice but a non-default tab; tab choices survive a tab switch.
+    name: 'insights-reset',
+    path: () => '/insights?tab=habits&range=1w&measure=grams&ratings=all',
+    act: async (page) => {
+      await page.getByLabel('View').selectOption('consumption');
+      await expect(page).toHaveURL(/tab=consumption/);
+      await expect(page).toHaveURL(/measure=grams/);
+      await page.getByRole('button', { name: 'Reset' }).click();
+      await expect(page).toHaveURL(/\/insights\?tab=consumption$/);
+    }
+  },
+  {
     // Consumption: 4 tiles in the same columns as Totals, deltas on the three rates only.
     name: 'insights-consumption',
     path: () => '/insights?range=1w&compare=1',

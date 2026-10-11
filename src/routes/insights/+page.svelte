@@ -36,6 +36,13 @@
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
+  // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
+  function reset() {
+    draft = null;
+    const qs = insightsParams(s.tab === 'overview' ? {} : { tab: s.tab }).toString();
+    goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+  }
+
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL
   // (like inline edit). null = no draft; the form then shows the applied range, if any.
   // One dialog serves both controls: `target` is the one that opened it.
@@ -266,6 +273,7 @@
 
 <div class="toolbar">
   <h1>Insights</h1>
+  <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
   <ShareButton />
 </div>
 
