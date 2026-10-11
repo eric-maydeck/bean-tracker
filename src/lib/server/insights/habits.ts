@@ -163,7 +163,7 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
     // Hour totals pace to this window's tracked days when the lengths differ (the compareTiles rule).
     const k = !v.perDay && c.pace && v.tracked.length && v.tracked.length !== w.tracked.length ? w.tracked.length / v.tracked.length : 1;
     compareHour = v.byHour.map((x) => (x === null || c.measure === 'rating' ? x : x * k));
-    compareWeekday = v.byWeekday;
+    compareWeekday = v.byWeekday.map((x) => (x === null || c.measure === 'rating' ? x : x * k));
   }
   return {
     tiles, deltas, prevPeak, prevActive,

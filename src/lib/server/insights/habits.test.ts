@@ -127,12 +127,12 @@ describe('habits', () => {
     expect(habits(brews, ctx({ size: 2, measure: 'rating' })).byHour[8]).toBe(7);
   });
 
-  it('compare: paced hour series, raw weekday series, deltas and previous peaks', () => {
+  it('compare: paced hour series, paced weekday series, deltas and previous peaks', () => {
     const prev = { start: '2026-08-31', end: '2026-09-06' }; // one week before, 7 tracked days
     const older = [brew('2026-08-31T10:15'), brew('2026-09-01T10:20'), ...brews];
     const h = habits(older, ctx({ prev, pace: true }));
     expect(h.compareHour![10]).toBe(4); // 2 brews over 7 days, paced to 14
-    expect(h.compareWeekday![0]).toBe(1); // 1 Monday brew over 1 Monday
+    expect(h.compareWeekday![0]).toBe(2); // 1 Monday brew over 7 days, paced to 14 like the hours
     expect(h.prevPeak).toEqual({ hour: 10, weekday: 0 });
     expect(h.deltas!.longestStreak).toMatchObject({ abs: 0 });
     expect(h.prevActive).toEqual({ brewDays: 2, trackedDays: 7 }); // the count behind the previous ratio
