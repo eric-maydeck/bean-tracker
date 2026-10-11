@@ -27,7 +27,7 @@ describe('parseInsightsUrl', () => {
   it('ignores a year outside the offered ones', () =>
     expect(parse('range=2019').range).toBeUndefined());
   it('reads every avg mode, old avg=adjusted links included', () => {
-    for (const a of ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
+    for (const a of ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5', 'dial-k2', 'dial-k5']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
     expect(insightsParams({ avg: 'raw' }).toString()).toBe('avg=raw'); // explicit default kept
   });
   it('reads the old ratings=settled as current', () => expect(parse('ratings=Settled').ratings).toBe('current'));
