@@ -5,10 +5,11 @@ import type { BrewFact, BagFact } from './facts';
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', dose: null, rating: null, roaster: null, origin: null,
   processGroup: 'Washed', roastLevel: null, decaf: false, dripper: null, filter: null, water: null, waterProfile: null,
-  restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, ...o
+  restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, grinder: null, ...o
 });
 const bag = (o: Partial<BagFact>): BagFact => ({
-  id: 0, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', origin: null, processGroup: 'Washed',
+  id: 0, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
+  origin: null, processGroup: 'Washed',
   roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, ...o
 });
 const SEPT = { start: '2026-09-01', end: '2026-09-30' };

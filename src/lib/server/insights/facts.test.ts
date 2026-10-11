@@ -97,15 +97,16 @@ describe('loadFacts', () => {
       `INSERT INTO beanconqueror_waters (id, name, calcium, magnesium, sodium, potassium, chloride, sulfate, imported_at)
        VALUES ('w1', 'Lotus - Mg/K 60/10', 0, 14.6, 0, 7.8, 42.5, 0, ?)`
     ).run(now);
+    db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6 (1ZPresso)', ?)`).run(now);
     const brew = db.prepare(
-      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     // stored as local wall time: 23:30 on Jun 30 stays on Jun 30 (no shift)
-    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', now);
-    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, 16, null, null, null, now);
+    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'g1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', now);
+    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, null, 16, null, null, null, now);
     // a brew of an unlinked bean (no bean row at all)
-    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, 14, 7, null, null, now);
+    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, null, 14, 7, null, null, now);
     return { db, coffeeId };
   }
 
@@ -116,13 +117,14 @@ describe('loadFacts', () => {
     expect(brews[0]).toMatchObject({
       coffeeId, localTime: '2026-06-30T23:30', dose: 15, rating: 8.5, roaster: 'Sey', origin: 'Kenya',
       processGroup: 'Extended Ferment Washed', roastLevel: 'Light/Medium', decaf: false, dripper: 'CT62',
-      filter: 'Cafec Abaca', water: 'Lotus - Mg/K 60/10', restDays: 20, brewTimeSeconds: 100, bloomSeconds: null
+      filter: 'Cafec Abaca', grinder: 'ZP6 (1ZPresso)', water: 'Lotus - Mg/K 60/10', restDays: 20, brewTimeSeconds: 100, bloomSeconds: null
     });
     expect(brews[0].costPerBrew).toBeCloseTo(1.8);
     expect(brews[0].waterProfile).toMatchObject({ magnesium: 14.6, potassium: 7.8 });
     expect(brews[0].waterProfile!.gh).toBeCloseTo(60, 0);
     expect(brews[0].waterProfile!.kh).toBeCloseTo(10, 0);
     expect(brews[2].waterProfile).toBeNull();
+    expect(brews[2].grinder).toBeNull();
   });
 
   it('keeps a brew with no linked coffee, with null coffee fields', () => {
@@ -137,8 +139,9 @@ describe('loadFacts', () => {
     const bag = loadFacts(db).bags.find((b) => b.id === coffeeId);
     expect(bag).toMatchObject({
       status: 'archive', purchaseDate: '2026-06-10', cost: 30, amountG: 250, processGroup: 'Extended Ferment Washed',
-      roastLevel: 'Light/Medium', firstBrew: '2026-06-30', lastBrew: '2026-07-03'
+      roastLevel: 'Light/Medium', firstBrew: '2026-06-30', lastBrew: '2026-07-03', name: 'Kiambu', processing: 'Double Ferment Washed'
     });
+    expect(bag!.slug).toEqual(expect.any(String));
   });
 
   it('an empty database has no facts', () => expect(loadFacts(createDb(':memory:'))).toEqual({ brews: [], bags: [] }));

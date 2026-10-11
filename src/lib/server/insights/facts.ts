@@ -61,6 +61,7 @@ export interface BrewFact {
   decaf: boolean;
   dripper: string | null;
   filter: string | null;
+  grinder: string | null;
   water: string | null;
   waterProfile: WaterProfile | null;
   restDays: number | null;
@@ -75,6 +76,9 @@ export interface BagFact {
   cost: number | null;
   amountG: number | null;
   roaster: string;
+  name: string;
+  slug: string | null;
+  processing: string | null; // raw label, for process-group links
   origin: string | null;
   processGroup: ProcessGroup;
   roastLevel: string | null;
@@ -85,7 +89,7 @@ export interface BagFact {
 
 interface BrewRow {
   id: number; bc_created_at: string; dose: number | null; rating: number | null; brew_time: string | null; bloom_time: string | null;
-  method: string | null; tools: string | null; water: string | null; water_id: string | null;
+  method: string | null; tools: string | null; grinder: string | null; water: string | null; water_id: string | null;
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null;
   coffee_id: number | null; roaster: string | null; origin: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
@@ -93,7 +97,7 @@ interface BrewRow {
 }
 
 interface BagRow {
-  id: number; status: BagFact['status']; roaster: string; origin: string | null; processing: string | null;
+  id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; processing: string | null;
   roast_level: string | null; decaf: number; roast_date: string | null; cost: number | null; amount_g: number | null;
 }
 
@@ -104,7 +108,8 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
   const rows = db
     .prepare(
       `SELECT b.id, b.bc_created_at, b.ground_coffee_g AS dose, b.rating, b.brew_time, b.bloom_time,
-              m.name AS method, m.preparation_tools AS tools, COALESCE(w.name, b.water) AS water, w.id AS water_id,
+              m.name AS method, m.preparation_tools AS tools, g.name AS grinder,
+              COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
               c.id AS coffee_id, c.roaster, c.origin, c.processing, c.roast_level, c.decaf, c.roast_date,
               c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g
@@ -112,6 +117,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
        LEFT JOIN beanconqueror_beans bean ON bean.id = b.bean_id
        LEFT JOIN coffees c ON c.id = bean.coffee_id
        LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id
+       LEFT JOIN beanconqueror_grinders g ON g.id = b.mill_id
        LEFT JOIN beanconqueror_waters w ON w.id = b.water_id
        ORDER BY b.bc_created_at, b.id`
     )
@@ -134,6 +140,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       roastLevel: normalizeRoastLevel(r.roast_level),
       decaf: r.decaf === 1,
       ...parseMethod(r.method, r.tools),
+      grinder: r.grinder,
       water: r.water,
       waterProfile: r.water_id
         ? {
@@ -157,7 +164,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
   }
 
   const bagRows = db
-    .prepare(`SELECT id, status, roaster, origin, processing, roast_level, decaf, roast_date, cost, amount_g FROM coffees`)
+    .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g FROM coffees`)
     .all() as unknown as BagRow[];
   const bags = bagRows.map((r): BagFact => ({
     id: r.id,
@@ -166,6 +173,9 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     cost: r.cost,
     amountG: r.amount_g,
     roaster: r.roaster,
+    name: r.coffee_name,
+    slug: r.slug,
+    processing: r.processing,
     origin: r.origin,
     processGroup: processGroup(r.processing),
     roastLevel: normalizeRoastLevel(r.roast_level),
