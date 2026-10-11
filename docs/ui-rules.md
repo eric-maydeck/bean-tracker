@@ -37,6 +37,7 @@ when it can be automated.
 | 28 | Panels don't leave visible empty space (e.g. a lone tile in a 4-column row); flag it in reviews and fill it as tiles and charts arrive (user feedback 2026-10-10). | Insights: `expectStatRowsFull` on every insights state; elsewhere review |
 | 29 | A change/trend figure: metrics with a good direction (polarity) colour by good/bad (green good, red bad; `--color-fresh` / `--color-urgent`); metrics with no good direction colour by direction (up green, down red); no change stays grey (user feedback 2026-10-10). A secondary line under a figure (e.g. the pace) is its own smaller grey line, never inlined into the figure's line (user feedback 2026-10-10). | Partly (`insights-compare-longer`: pace line clear of delta and caption; colour class per tile) |
 | 30 | Stats filter bars (/insights controls, /stats tabs + people switch) stay pinned to the top while scrolling, on a solid background, above tiles and below dialogs; in phone landscape they are one short row. A scrolled-to panel starts below the bar (user decision 2026-10-10). | Per state: `expectStickyBar` (`insights-sticky`, `stats-sticky`, `stats-bq-sticky`) |
+| 31 | Leaderboards show top 10 for many-item dimensions and top 5 for small sets; cards in a band are the same height, with faint placeholder slots (user decision 2026-10-10). | Per state: `expectEqualBoardHeights` (`insights-leaderboards*`) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.
