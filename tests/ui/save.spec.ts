@@ -97,7 +97,7 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
 });
 
 // "Coffee added!" popup: real adds (deleted afterwards), the page clock paused
-// once it shows, so its 3s / 1s / 400ms timings step exactly.
+// once it shows, so its 3s (5s touch) / 2s / 400ms timings step exactly.
 test.describe('coffee added popup', () => {
   test.afterAll(() => {
     const db = new DatabaseSync('.ui-test/ui.db');
@@ -115,7 +115,13 @@ test.describe('coffee added popup', () => {
     await page.clock.pauseAt(await page.evaluate(() => Date.now()));
     return toast;
   }
-  async function addOnList(page: Page) {
+  // Headless Firefox reports `(hover: none)`; pin it so each test picks its timing.
+  async function addOnList(page: Page, touch = false) {
+    await page.addInitScript((touch) => {
+      const real = window.matchMedia.bind(window);
+      window.matchMedia = (q) =>
+        q === '(hover: none)' ? ({ ...real(q), matches: touch } as MediaQueryList) : real(q);
+    }, touch);
     await page.clock.install();
     await page.goto('/coffees', { waitUntil: 'networkidle' });
     await page.getByRole('button', { name: '+ Add Coffee' }).click();
@@ -135,12 +141,12 @@ test.describe('coffee added popup', () => {
 
     await page.getByRole('button', { name: '+ Add Coffee' }).click();
     toast = await add(page);
-    await page.clock.runFor(1500);
+    await page.clock.runFor(500);
     await toast.hover();
     await page.clock.runFor(5000);
     await notFading(toast);
     await page.mouse.move(0, 0);
-    await page.clock.runFor(1300);
+    await page.clock.runFor(2300);
     await notFading(toast);
     await page.clock.runFor(300);
     await fading(toast);
@@ -148,12 +154,20 @@ test.describe('coffee added popup', () => {
     await expect(toast).toHaveCount(0);
   });
 
-  test('leaving late keeps at least 1s; hovering mid-fade snaps back', async ({ page }) => {
+  test('touch screens get 5s', async ({ page }) => {
+    const toast = await addOnList(page, true);
+    await page.clock.runFor(4900);
+    await notFading(toast);
+    await page.clock.runFor(200);
+    await fading(toast);
+  });
+
+  test('leaving late keeps at least 2s; hovering mid-fade snaps back', async ({ page }) => {
     const toast = await addOnList(page);
     await page.clock.runFor(2500);
     await toast.hover();
     await page.mouse.move(0, 0);
-    await page.clock.runFor(900);
+    await page.clock.runFor(1900);
     await notFading(toast);
     await page.clock.runFor(200);
     await fading(toast);
@@ -161,7 +175,7 @@ test.describe('coffee added popup', () => {
     await notFading(toast);
     await expect(toast).toHaveCSS('opacity', '1');
     await page.mouse.move(0, 0);
-    await page.clock.runFor(900);
+    await page.clock.runFor(1900);
     await notFading(toast);
     await page.clock.runFor(200);
     await fading(toast);
