@@ -371,6 +371,7 @@ Graycano lifts +0.28). Hypotheses, not findings: the bean dominates rating.
   grinders on one axis.
 - **Back-filled brews:** brew timestamps are already local, but 9 sit on
   whole hours and 12 predate their bag's creation; exclude from hour-of-day.
+  Insights uses whole hours only (the created_at rule flagged 30 on prod-copy, 2026-10-11).
   BC `roastingDate` is mixed ISO-UTC / plain date: convert ISO carefully so a
   late-evening roast doesn't land on the next day.
 - **Brew upsert key:** two brews share both timestamp and bean; key on
