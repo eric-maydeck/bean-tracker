@@ -841,6 +841,11 @@ export const STATES: State[] = [
         })
       );
       expect(overlaps).toEqual([]);
+      // No sub line is cut off with an ellipsis ("4/Fri · was Sat" must fit a 360px tile).
+      const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
+        els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
+      );
+      expect(clipped).toEqual([]);
     }
   },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
@@ -868,7 +873,25 @@ export const STATES: State[] = [
   },
   { name: 'insights-consumption-1w', path: () => '/insights?tab=consumption&range=1w',
     act: async (page) => expect(page.getByRole('button', { name: 'Month' })).toBeDisabled() },
-  { name: 'insights-1w-compare', path: () => '/insights?range=1w&compare=1' },
+  {
+    // Delta lines: arrow + change + "from" + the previous value; the % is in the title / aria-label.
+    // Never clipped or wrapped (single line, no overflow).
+    name: 'insights-1w-compare',
+    path: () => '/insights?range=1w&compare=1',
+    act: async (page) => {
+      const bad = await page.locator('.stat-item .insights-delta').evaluateAll((els) =>
+        els.flatMap((e) => {
+          const el = e as HTMLElement;
+          const text = el.textContent?.trim() ?? '';
+          const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
+          const ok = text === 'No change' || /^[▲▼] .+ from .+$/.test(text);
+          const titled = text === 'No change' || (/^(Up|Down) \d+% from /.test(el.title) && el.title === el.getAttribute('aria-label'));
+          return ok && titled && el.scrollWidth <= el.clientWidth + 1 && lines <= 1 ? [] : [`${text} | ${el.title}`];
+        })
+      );
+      expect(bad).toEqual([]);
+    }
+  },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },

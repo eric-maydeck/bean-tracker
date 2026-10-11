@@ -187,11 +187,16 @@
               if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
               const wd = WEEKDAYS[h.tiles.busiestWeekday];
               const a = h.busiestAvg;
+              const was = h.prevPeak?.weekday;
+              const n = Number.isInteger(a) ? a : a.toFixed(1);
+              // Comparing adds " · was Thu": the average shortens so both fit a phone tile.
               const avg =
-                s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
-                : s.measure === 'rating' ? `avg ${a.toFixed(1)} rating`
-                : `${Number.isInteger(a) ? a : a.toFixed(1)} ${a === 1 ? 'brew' : 'brews'} per ${wd}`;
-              return h.prevPeak?.weekday != null ? `${avg} · was ${WEEKDAYS[h.prevPeak.weekday]}` : avg;
+                was != null
+                  ? s.measure === 'grams' ? `${formatGrams(a)}/${wd}` : s.measure === 'rating' ? `avg ${a.toFixed(1)}` : `${n}/${wd}`
+                  : s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
+                  : s.measure === 'rating' ? `avg ${a.toFixed(1)} rating`
+                  : `${n} ${a === 1 ? 'brew' : 'brews'} per ${wd}`;
+              return was != null ? `${avg} · was ${WEEKDAYS[was]}` : avg;
             }
           }
         ]
@@ -251,9 +256,15 @@
     const fmt = paced(t);
     // A change that formats as zero (float noise, or under the tile's precision) is none.
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
-    const abs = fmt(Math.abs(d.abs)) + (t.suffix ? ` ${t.suffix}` : '');
-    return `${d.abs > 0 ? '▲' : '▼'} ${abs} (${Math.abs(d.pct).toFixed(0)}%)`;
+    // The tile's unit suffix ("days") stays out of the line: it's on the value above and in the title.
+    return `${d.abs > 0 ? '▲' : '▼'} ${fmt(Math.abs(d.abs))} from ${fmt(d.base)}`;
   }
+  // The percentage lives in the title and the screen-reader label, not the tile line.
+  const deltaTitle = (d: { abs: number; pct: number; base: number }, t: Tile) => {
+    const fmt = paced(t);
+    if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
+    return `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}% from ${fmt(d.base)}${t.suffix ? ` ${t.suffix}` : ''} (${compareLabel})`;
+  };
   // Totals compared across windows of different tracked lengths: what the other window would be at this pace.
   const paceText = (d: { base: number }, t: Tile) =>
     data.scaled && (data.tileKinds as Record<string, string>)[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
@@ -393,7 +404,7 @@
             >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
-            <span class="stat-unit insights-delta {trend(d, t)}">{deltaText(d, t)}</span>
+            <span class="stat-unit insights-delta {trend(d, t)}" title={deltaTitle(d, t)} aria-label={deltaTitle(d, t)}>{deltaText(d, t)}</span>
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
           {/if}
           <!-- Under a delta, a kept sub takes the pace line's slot (no keepSub tile is paced). -->
