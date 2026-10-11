@@ -385,7 +385,7 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption t={data.consumptionTab} unit={s.unit} explicitBy={s.by} offered={data.byMenus[s.range]} {choose}>
+  <Consumption t={data.consumptionTab} unit={s.unit} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}

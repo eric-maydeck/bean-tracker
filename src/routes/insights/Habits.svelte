@@ -61,7 +61,7 @@
       <p class="empty">No brews in this period</p>
     {:else}
       <Chart type="bar" vertical labels={HOURS.map((x) => `${x}:00`)} values={h.byHour} datasetLabel={LABEL[measure]}
-        series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={num} unit={measure === 'grams' ? 'g' : ''} height={260} />
+        series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={num} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''} height={260} />
     {/if}
     <p class="chart-note">Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
   </section>
@@ -71,7 +71,7 @@
       <p class="empty">No brews in this period</p>
     {:else}
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} datasetLabel={LABEL[measure]}
-        series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={num} unit={measure === 'grams' ? 'g' : ''}
+        series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={num} integer={measure === 'brews'} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
     {/if}
     <p class="chart-note">{measure === 'rating' ? 'Mean rating' : 'Average per weekday'}</p>

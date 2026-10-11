@@ -6,9 +6,9 @@
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, unit, explicitBy, offered, choose, tiles
+    t, unit, offered, choose, tiles
   }: {
-    t: ConsumptionTab; unit: Unit; explicitBy: By | undefined; offered: By[];
+    t: ConsumptionTab; unit: Unit; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -45,7 +45,6 @@
     {#each BYS as b (b)}
       <button
         aria-pressed={t.by === b}
-        data-explicit={explicitBy === b || undefined}
         disabled={!offered.includes(b)}
         title={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
         onclick={() => choose({ by: b })}>{CAP(b)}</button
@@ -62,10 +61,10 @@
     {#if empty}
       <p class="empty">No data in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={brewedLabel} series={series1}
+      <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={brewedLabel} series={series1} legend integer={!g}
         format={fmt(k1)} unit={axis(k1)} height={260} />
+      <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} per {t.by}{note}</p>
     {/if}
-    <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} per {t.by}{note}</p>
   </section>
   <section class="chart-panel">
     <h2>Bought vs brewed</h2>
@@ -73,9 +72,9 @@
       <p class="empty">No data in this period</p>
     {:else}
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
-        series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} format={fmt(k2)} unit={axis(k2)} height={260} />
+        series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g} format={fmt(k2)} unit={axis(k2)} height={260} />
+      <p class="chart-note">{g ? 'Grams' : 'Bags'} per {t.by}{note}</p>
     {/if}
-    <p class="chart-note">{g ? 'Grams' : 'Bags'} per {t.by}{note}</p>
   </section>
 </div>
 <section class="chart-panel">
@@ -83,9 +82,9 @@
   {#if empty}
     <p class="empty">No data in this period</p>
   {:else}
-    <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} format={fmt(k3)} unit={axis(k3)} height={260} />
+    <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
+    <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
   {/if}
-  <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
 </section>
 
 <style>

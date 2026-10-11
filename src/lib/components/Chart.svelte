@@ -48,7 +48,10 @@
     series = [],
     yMin,
     format,
-    dots = true
+    dots = true,
+    monotone = false,
+    integer = false,
+    legend = false
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -78,6 +81,12 @@
     format?: (v: number) => string;
     // Plain lines: point markers (off for dense series, where they merge into a blob).
     dots?: boolean;
+    // Plain lines: monotone interpolation, so a step (a delivery) never overshoots past real values.
+    monotone?: boolean;
+    // Value axis: whole-number ticks (counts), never 0.1 steps.
+    integer?: boolean;
+    // Always show the legend, so paired charts' plot areas line up.
+    legend?: boolean;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -195,6 +204,7 @@
                 borderWidth: 2,
                 pointRadius: dots ? 3 : 0,
                 tension: 0.25,
+                ...(monotone && { cubicInterpolationMode: 'monotone' as const }),
                 fill: false
               }
             : vbar
@@ -240,7 +250,7 @@
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
         plugins: {
-          legend: { display: type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
+          legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
           tooltip: format && !trendValues
@@ -278,7 +288,7 @@
               y: {
                 beginAtZero: yMin === undefined,
                 min: yMin,
-                ticks: { color: textColor, ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
+                ticks: { color: textColor, ...(integer && { precision: 0 }), ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
                 grid: { color: gridColor }
               }
             }
@@ -318,6 +328,7 @@
                     beginAtZero: !!trendValues,
                     ticks: {
                       color: textColor,
+                      ...(integer && { precision: 0 }),
                       ...(unit && { callback: (value: string | number) => `${value}${unit}` })
                     },
                     grid: { color: gridColor }
@@ -345,6 +356,9 @@
     void yMin;
     void format;
     void dots;
+    void monotone;
+    void integer;
+    void legend;
     render();
 
     const observer = new MutationObserver(render);
