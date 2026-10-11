@@ -373,7 +373,7 @@
 {#snippet bcAverageToggle()}
   <div class="form-field group-field">
     <span>Average</span>
-    <div class="tab-group tab-group-compact">
+    <div class="tab-group tab-group-compact" role="group" aria-label="Average">
       <button aria-pressed={bcAverage === 'day'} onclick={() => chooseBcAverage('day')}>Per day</button>
       <button aria-pressed={bcAverage === 'brew-day'} onclick={() => chooseBcAverage('brew-day')}
         >Per brew day</button
@@ -390,7 +390,7 @@
 <div class="chart-panel-controls stats-bar filter-bar" bind:offsetHeight={barHeight}>
   <div class="form-field group-field">
     <span>View</span>
-    <div class="tab-group">
+    <div class="tab-group" role="group" aria-label="View">
       <button aria-pressed={tab === 'general'} onclick={() => (explicitTab = 'general')}>General</button>
       <button aria-pressed={tab === 'bq'} onclick={() => (explicitTab = 'bq')}>Bean Conqueror</button>
     </div>
@@ -742,7 +742,7 @@
   <div class="chart-panel-controls">
     <div class="form-field group-field">
       <span>Category</span>
-      <div class="tab-group">
+      <div class="tab-group" role="group" aria-label="Category">
         {#each Object.entries(dimensionLabels) as [key, label] (key)}
           <button aria-pressed={dimension === key} onclick={() => (explicitDimension = key as Dimension)}>{label}</button>
         {/each}
@@ -750,14 +750,14 @@
     </div>
     <div class="form-field group-field">
       <span>Measure</span>
-      <div class="tab-group">
+      <div class="tab-group" role="group" aria-label="Measure">
         <button aria-pressed={metric === 'grams'} onclick={() => (explicitMetric = 'grams')}>Grams</button>
         <button aria-pressed={metric === 'count'} onclick={() => (explicitMetric = 'count')}>Count</button>
       </div>
     </div>
     <div class="form-field group-field">
       <span>Status</span>
-      <div class="tab-group">
+      <div class="tab-group" role="group" aria-label="Status">
         {#each Object.entries(statusLabels) as [key, label] (key)}
           <button aria-pressed={selectedStatuses.includes(key as Status)} onclick={() => toggleStatus(key as Status)}
             >{label}</button
@@ -954,7 +954,7 @@
     <div class="chart-panel-controls">
       <div class="form-field group-field">
         <span>Section</span>
-        <div class="tab-group">
+        <div class="tab-group" role="group" aria-label="Section">
           <button aria-pressed={bcTab === 'overview'} onclick={() => (explicitBc = 'overview')}>Overview</button>
           <button aria-pressed={bcTab === 'favorites'} onclick={() => (explicitBc = 'favorites')}>Favorites</button>
           <button aria-pressed={bcTab === 'brewing'} onclick={() => (explicitBc = 'brewing')}>Brewing</button>
@@ -1076,7 +1076,7 @@
       <div class="chart-panel-controls">
         <div class="form-field group-field">
           <span>Group by</span>
-          <div class="tab-group">
+          <div class="tab-group" role="group" aria-label="Group by">
             {#each Object.entries(bcFavoriteDimensionLabels) as [key, label] (key)}
               <button
                 aria-pressed={bcFavoriteDimension === key}
@@ -1120,7 +1120,7 @@
       <div class="chart-panel-controls">
         <div class="form-field group-field">
           <span>Measure</span>
-          <div class="tab-group">
+          <div class="tab-group" role="group" aria-label="Measure">
             <button aria-pressed={bcBrewingMetric === 'rating'} onclick={() => (explicitBcMetric = 'rating')}
               >Rating</button
             >

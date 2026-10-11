@@ -404,12 +404,14 @@ input:focus-visible {
   margin-bottom: var(--space-4);
 }
 
-.toolbar .form-field,
-.search-row .form-field,
-.chart-panel-controls .form-field,
-.chart-panel-header .form-field,
+/* A labelled toggle group (Unit, Show, People…): flush in its row, the label a tight line above. */
 .group-field {
-  margin-bottom: 0; /* a labelled toggle group in a control row sits flush with its neighbours */
+  margin-bottom: 0;
+}
+
+.group-field > span {
+  display: block;
+  line-height: 1.2;
 }
 
 .form-field-checkbox {

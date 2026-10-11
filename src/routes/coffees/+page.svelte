@@ -632,7 +632,7 @@
 <div class="toolbar">
   <div class="form-field group-field">
     <span>Show</span>
-    <div class="tab-group">
+    <div class="tab-group" role="group" aria-label="Show">
       <button aria-pressed={filter === 'backlog'} onclick={() => setFilter('backlog')}>
         Backlog ({data.backlog.length})
       </button>
@@ -648,7 +648,7 @@
 
   <div class="form-field group-field">
     <span>View</span>
-    <div class="tab-group">
+    <div class="tab-group" role="group" aria-label="View">
       <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
       <button aria-pressed={view === 'list'} onclick={() => setView('list')}>List</button>
       <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>

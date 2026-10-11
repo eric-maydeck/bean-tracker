@@ -374,7 +374,7 @@
 
 <div class="form-field group-field">
   <span>View</span>
-  <div class="tab-group">
+  <div class="tab-group" role="group" aria-label="View">
     <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
     <button aria-pressed={view === 'list'} onclick={() => setView('list')}>Table</button>
   </div>

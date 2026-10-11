@@ -41,13 +41,13 @@
 </script>
 
 <div class="consumption-bar">
-  <div class="form-field">
+  <div class="form-field group-field">
     <span>Unit</span>
     <div class="tab-group" role="group" aria-label="Unit">
       {#each UNITS as u (u)}<button aria-pressed={unit === u} onclick={() => choose({ unit: u })}>{CAP(u)}</button>{/each}
     </div>
   </div>
-  <div class="form-field">
+  <div class="form-field group-field">
     <span>Group by</span>
     <div class="tab-group" role="group" aria-label="Group by">
       {#each BYS as b (b)}
@@ -60,7 +60,7 @@
       {/each}
     </div>
   </div>
-  <div class="form-field">
+  <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
       {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
@@ -108,13 +108,6 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
-  }
-  .consumption-bar .form-field {
-    margin-bottom: 0;
-  }
-  .consumption-bar .form-field > span {
-    display: block;
-    line-height: 1.2;
   }
   .consumption-charts {
     display: grid;

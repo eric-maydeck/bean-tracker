@@ -43,18 +43,25 @@
     const b = (e.target as Element | null)?.closest?.('.mode-tip-button');
     return b && matchMedia('(hover: hover)').matches ? document.getElementById(b.getAttribute('popovertarget') ?? '') : null;
   };
-  const mouse = (e: Event) => (e as PointerEvent).pointerType === 'mouse';
+  // The tip a hover opened: a click on its button must leave it open, not toggle it shut.
+  let hoverTip: HTMLElement | null = null;
   function tipOver(e: PointerEvent) {
-    const tip = mouse(e) && tipOf(e);
-    if (tip && !tip.matches(':popover-open')) tip.showPopover();
+    const tip = e.pointerType === 'mouse' && tipOf(e);
+    if (!tip || tip.matches(':popover-open')) return;
+    tip.showPopover();
+    hoverTip = tip;
   }
   function tipOut(e: PointerEvent) {
-    const tip = mouse(e) && tipOf(e);
+    const tip = e.pointerType === 'mouse' && tipOf(e);
     const to = e.relatedTarget as Element | null;
-    if (tip && !(to && (e.target as Element).closest('.mode-tip-button')!.contains(to))) tip.hidePopover();
+    if (tip && !(to && (e.target as Element).closest('.mode-tip-button')!.contains(to))) {
+      tip.hidePopover();
+      hoverTip = null;
+    }
   }
   function tipClick(e: MouseEvent) {
-    if (mouse(e) && tipOf(e)) e.preventDefault();
+    const tip = tipOf(e);
+    if (tip && tip === hoverTip) e.preventDefault();
   }
 
   // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
@@ -367,7 +374,7 @@
     <button class="button button-ghost" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {#if data.householdSize > 1}
-    <div class="form-field people-field">
+    <div class="form-field group-field people-field">
       <span>People</span>
       <div class="tab-group people-switch" role="group" aria-label="People">
         {#each PEOPLE as m (m)}

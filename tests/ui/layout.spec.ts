@@ -67,11 +67,11 @@ async function expectChipsFit(page: Page, scope = 'main') {
   );
   expect(bad).toEqual([]);
 }
-// Every toggle group names itself with a small label (the in-tile Current/All switch is named by its caption).
+// Every toggle group names itself with a small label and is a named role=group (the in-tile Current/All switch is named by its caption).
 async function expectGroupsLabelled(page: Page) {
   const unnamed = await page.locator('.tab-group:not(.rating-switch):not(.filter-columns)').evaluateAll((gs) =>
     gs.filter((g) => !g.closest('dialog,.filter-editor') && !g.parentElement?.matches('.form-field') ||
-      !g.parentElement!.querySelector(':scope > span')?.textContent?.trim()).map((g) => g.textContent?.trim().slice(0, 30))
+      !g.parentElement!.querySelector(':scope > span')?.textContent?.trim() || g.getAttribute('role') !== 'group' || !g.getAttribute('aria-label')).map((g) => g.textContent?.trim().slice(0, 30))
   );
   expect(unnamed).toEqual([]);
   await expectChipsFit(page, 'body');
@@ -704,7 +704,7 @@ export const STATES: State[] = [
       await expect(link).toBeVisible();
       await expect(link.locator('..')).toContainText('Paused Monthly (Ceto)');
       for (const l of [link, page.getByRole('link', { name: 'Ceto', exact: true })]) {
-        expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        expect((await l.boundingBox())!.height).toBeGreaterThanOrEqual(43.99) // sub-pixel float noise (43.99997) once the page above shifts by a label line;
       }
     }
   },

@@ -70,7 +70,7 @@
 <div class="search-row">
   <div class="form-field group-field">
     <span>Show</span>
-    <div class="tab-group">
+    <div class="tab-group" role="group" aria-label="Show">
       <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
       <button aria-pressed={filter === 'caffeinated'} onclick={() => setFilter('caffeinated')}>
         Caffeinated

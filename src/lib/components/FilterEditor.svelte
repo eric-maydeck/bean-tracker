@@ -244,9 +244,12 @@
     <p class="eyebrow">{editorLabel(column(k))}</p>
 
     {#if kind === 'text'}
-      <div class="tab-group">
-        <button type="button" aria-pressed={mode === 'any'} onclick={() => (mode = 'any')}>Is any of</button>
-        <button type="button" aria-pressed={mode === 'contains'} onclick={() => (mode = 'contains')}>Contains</button>
+      <div class="form-field group-field">
+        <span>Match</span>
+        <div class="tab-group" role="group" aria-label="Match">
+          <button type="button" aria-pressed={mode === 'any'} onclick={() => (mode = 'any')}>Is any of</button>
+          <button type="button" aria-pressed={mode === 'contains'} onclick={() => (mode = 'contains')}>Contains</button>
+        </div>
       </div>
       {#if mode === 'contains'}
         <input class="search-input" type="text" placeholder="Text to match" aria-label="Contains" bind:value={text} />
@@ -265,20 +268,26 @@
         </div>
       {/if}
     {:else if kind === 'window'}
-      <div class="tab-group">
-        <button type="button" aria-pressed={mode === 'includes'} onclick={() => (mode = 'includes')}>includes</button>
-        <button type="button" aria-pressed={mode === 'overlaps'} onclick={() => (mode = 'overlaps')}>overlaps</button>
+      <div class="form-field group-field">
+        <span>Match</span>
+        <div class="tab-group" role="group" aria-label="Match">
+          <button type="button" aria-pressed={mode === 'includes'} onclick={() => (mode = 'includes')}>includes</button>
+          <button type="button" aria-pressed={mode === 'overlaps'} onclick={() => (mode = 'overlaps')}>overlaps</button>
+        </div>
       </div>
       <div class="filter-inputs">
         {@render rangeInputs('date', undefined, 'Date', mode === 'overlaps')}
       </div>
     {:else}
-      <div class="tab-group">
-        {#each OPS as o (o)}
-          <button type="button" aria-pressed={op === o} onclick={() => (op = o)}>
-            {kind === 'date' ? DATE_OP_LABELS[o] : OP_LABELS[o]}
-          </button>
-        {/each}
+      <div class="form-field group-field">
+        <span>Match</span>
+        <div class="tab-group" role="group" aria-label="Match">
+          {#each OPS as o (o)}
+            <button type="button" aria-pressed={op === o} onclick={() => (op = o)}>
+              {kind === 'date' ? DATE_OP_LABELS[o] : OP_LABELS[o]}
+            </button>
+          {/each}
+        </div>
       </div>
       <div class="filter-inputs">
         {@render rangeInputs(
