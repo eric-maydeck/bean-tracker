@@ -1,0 +1,132 @@
+import { BOARDS, type Avg, type Board, type Rank, type Ratings } from '$lib/insightsUrl';
+import { toParams } from '$lib/coffeeViewState';
+import type { ColumnKey } from '$lib/coffeeFilters';
+import { MIXED_FILTER, type BrewFact, type BagFact } from './facts';
+import { inPeriod, type Period } from './time';
+import { ratedGroups } from './ratings';
+
+export interface BoardRow {
+  key: string;
+  label: string;
+  sub?: string;
+  href?: string;
+  value: number;
+  bags: number;
+  brews: number;
+  fewBags?: boolean;
+  move?: number | 'new';
+}
+
+// "N/A" is how a blend/unknown origin was typed; it's no country.
+const country = (o: string | null) => (o && o.trim() && o.trim().toUpperCase() !== 'N/A' ? o : null);
+
+// What a brew is grouped by on each board (null = not on that board).
+const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
+  roasters: (b) => b.roaster,
+  coffees: (b) => (b.coffeeId === null ? null : String(b.coffeeId)),
+  origins: (b) => country(b.origin),
+  process: (b) => b.processGroup,
+  roast: (b) => b.roastLevel,
+  water: (b) => b.water,
+  dripper: (b) => b.dripper,
+  filter: (b) => (b.filter === MIXED_FILTER ? null : b.filter),
+  grinder: (b) => b.grinder
+};
+// Spend and $/g group bags; only bag attributes have a key.
+const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
+  roasters: (b) => b.roaster,
+  coffees: (b) => String(b.id),
+  origins: (b) => country(b.origin),
+  process: (b) => b.processGroup,
+  roast: (b) => b.roastLevel
+};
+// Boards whose rows open the coffee list filtered to them.
+const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level' };
+
+const byRank = (a: BoardRow, b: BoardRow) =>
+  b.value - a.value || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
+
+const listHref = (column: ColumnKey, values: (string | null)[]) =>
+  `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
+
+function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow {
+  if (board === 'coffees') {
+    const bag = bags.find((b) => b.id === Number(r.key));
+    // Built field by field: the coffees board carries no few-bags marker.
+    return {
+      key: r.key, label: bag?.name ?? r.label, sub: bag?.roaster, ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {}),
+      value: r.value, bags: r.bags, brews: r.brews
+    };
+  }
+  if (board === 'process') {
+    const labels = [...new Set(bags.filter((b) => b.processGroup === r.key).map((b) => b.processing))];
+    return labels.length ? { ...r, href: listHref('processing', labels) } : r;
+  }
+  const column = FILTER_COLUMN[board];
+  return column ? { ...r, href: listHref(column, [r.key]) } : r;
+}
+
+export function leaderboard(
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg
+): BoardRow[] {
+  let rows: BoardRow[] = [];
+  if (rank === 'spend' || rank === 'ppg') {
+    const key = BAG_KEY[board];
+    if (!key) return [];
+    const g = new Map<string, { cost: number; grams: number; bags: number }>();
+    for (const b of bags) {
+      const k = key(b);
+      if (k === null || b.cost === null || !b.purchaseDate || !inPeriod(b.purchaseDate, p)) continue;
+      if (rank === 'ppg' && !b.amountG) continue;
+      const x = g.get(k) ?? { cost: 0, grams: 0, bags: 0 };
+      x.cost += b.cost;
+      x.grams += b.amountG ?? 0;
+      x.bags += 1;
+      g.set(k, x);
+    }
+    rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'spend' ? x.cost : x.cost / x.grams, bags: x.bags, brews: 0 }));
+  } else {
+    const inP = brews.filter((b) => inPeriod(b.localDate, p));
+    const key = BREW_KEY[board];
+    if (rank === 'rating') {
+      rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
+        key: r.label, label: r.label, value: avg === 'adjusted' ? r.adjusted : r.mean, bags: r.bags, brews: r.brews, fewBags: r.fewBags
+      }));
+    } else {
+      const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
+      for (const b of inP) {
+        const k = key(b);
+        if (k === null) continue;
+        const x = g.get(k) ?? { brews: 0, grams: 0, bags: new Set<number>() };
+        x.brews += 1;
+        x.grams += b.dose ?? 0;
+        if (b.coffeeId !== null) x.bags.add(b.coffeeId);
+        g.set(k, x);
+      }
+      rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'brews' ? x.brews : x.grams, bags: x.bags.size, brews: x.brews }));
+    }
+  }
+  return rows.map((r) => decorate(r, board, bags)).sort(byRank);
+}
+
+// move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.
+export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
+  const was = new Map(prev.map((r, i) => [r.key, i]));
+  return now.map((r, i) => ({ ...r, move: was.has(r.key) ? was.get(r.key)! - i : 'new' }));
+}
+
+// Every board for the page. Per person divides brews, grams and spend (an even split, like
+// the overview); rating and $/g don't change, and no order changes.
+export function leaderboards(
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, prev: Period | null, rank: Rank, ratings: Ratings,
+  avg: Avg, size = 1
+): Record<Board, BoardRow[]> {
+  const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend');
+  return Object.fromEntries(
+    BOARDS.map((board) => {
+      let rows = leaderboard(brews, bags, p, board, rank, ratings, avg);
+      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, avg));
+      return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
+    })
+  ) as Record<Board, BoardRow[]>;
+}
