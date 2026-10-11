@@ -1,3 +1,11 @@
+# [1.71.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.70.0...v1.71.0) (2026-10-11)
+
+
+### Features
+
+* **coffees:** coffee added popup with open, add coffee on the coffee page
+* **coffees:** popup at the top, 5s on touch screens, 2s minimum after a pause
+
 # [1.70.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.69.0...v1.70.0) (2026-10-11)
 
 
