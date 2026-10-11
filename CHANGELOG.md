@@ -1,3 +1,23 @@
+# [1.65.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.64.0...v1.65.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* insights compare tiles grow on phones instead of shrinking text
+* insights dates button row and open-dialog layout state
+* insights same-length compares pace only when partly tracked
+* insights tiles keep captions inside; 2 columns on narrow phones
+
+
+### Features
+
+* insights compare against longer windows and custom ranges
+* insights compare windows and tracked-day count
+* insights custom range dialog, pace line and trend colours
+* insights pace line and custom range form
+* insights tile grid without empty cells; Settled → Current
+* pace insights totals across window lengths
+
 # [1.64.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.63.0...v1.64.0) (2026-10-10)
 
 
