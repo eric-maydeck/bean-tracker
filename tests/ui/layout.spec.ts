@@ -945,6 +945,22 @@ export const STATES: State[] = [
     path: () => '/insights?tab=leaderboards&avg=best&compare=1',
     act: async (page) => {
       await expect(page.getByLabel('Score')).toHaveValue('best');
+      await expect(page.getByLabel('Rank by')).toHaveValue('rating');
+      // Fields sharing a row share label line and control box.
+      const f = await page.locator('.rank-bar .form-field').evaluateAll((els) =>
+        els.map((e) => {
+          const l = e.firstElementChild!.getBoundingClientRect();
+          const c = e.lastElementChild!.getBoundingClientRect();
+          return { lt: l.top, ct: c.top, cb: c.bottom };
+        })
+      );
+      expect(f).toHaveLength(3);
+      for (const x of f) for (const y of f) {
+        if (Math.abs(x.ct - y.ct) > 20) continue; // wrapped to another row
+        expect(Math.abs(x.lt - y.lt), 'label top').toBeLessThanOrEqual(1);
+        expect(Math.abs(x.ct - y.ct), 'control top').toBeLessThanOrEqual(1);
+        expect(Math.abs(x.cb - y.cb), 'control bottom').toBeLessThanOrEqual(1);
+      }
       await expect(page.locator('.board-row small').first()).toContainText(/brews? at \d/);
       await page.locator('button[popovertarget="tip-score"]').click();
       await expect(page.locator('#tip-score')).toContainText('The highest single brew rating in the group.');

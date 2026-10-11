@@ -34,8 +34,8 @@
   const detail = (r: Row) =>
     [
       r.sub,
-      ...(avg === 'best' && rank === 'rating' && r.atBest
-        ? [`${plural(r.atBest, 'brew')} at ${r.value.toFixed(1)}`, plural(r.bags, 'bag')]
+      ...(avg.startsWith('best') && rank === 'rating' && r.atBest
+        ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
         : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null])
     ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>
@@ -51,33 +51,55 @@
     spend: 'Money spent on bags bought in the period.',
     ppg: 'Price per gram of bags bought in the period.'
   };
-  const AVG_LABEL: Record<Avg, string> = { raw: 'Raw average', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)', best: 'Best brew' };
+  const AVG_LABEL: Record<Avg, string> = {
+    raw: 'Raw average', min3: 'Raw average (3+ bags)', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)',
+    best: 'Best brew', 'best-k2': 'Best adjusted (light)', 'best-k5': 'Best adjusted (strong)'
+  };
   const AVG_HELP: Record<Avg, string> = {
-    raw: "Plain average of each bag's rating. Groups with fewer than 3 bags rank after the rest.",
+    raw: "Plain average of each bag's rating, all groups ranked together.",
+    min3: 'Plain average; groups with fewer than 3 bags rank after the rest.',
     k2: "Pulled slightly toward your overall average, so 1–2 bag groups can't top the board (K = 2).",
     adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).',
-    best: 'The highest single brew rating in the group.'
+    best: 'The highest single brew rating in the group.',
+    'best-k2': 'Best single brew, pulled toward your overall average until the group has hit that score about 2 times.',
+    'best-k5': 'Best single brew, pulled toward your overall average until the group has hit that score about 5 times.'
   };
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
 </script>
 
-{#each RANKS as r (r)}<span id="rank-help-{r}" hidden>{RANK_HELP[r]}</span>{/each}
 <div class="rank-bar">
   <div class="form-field">
-    <span>Rank by</span>
-    <div class="tab-group" role="group" aria-label="Rank by" data-button-row>
-      {#each RANKS as r (r)}
-        <button
-          aria-pressed={rank === r}
-          title={RANK_HELP[r]}
-          aria-describedby="rank-help-{r}"
-          onclick={() => choose({ rank: r, ...(r === 'spend' || r === 'ppg') && open && !BAG_BOARDS.includes(open) ? { open: undefined } : {} })}>{RANK_LABEL[r]}</button
-        >
-      {/each}
-    </div>
+    <span><button class="mode-tip-button" popovertarget="tip-rank" aria-describedby="tip-rank">Rank by</button></span>
+    <select
+      aria-label="Rank by"
+      value={rank}
+      onchange={(e) => {
+        const r = e.currentTarget.value as Rank;
+        choose({ rank: r, ...((r === 'spend' || r === 'ppg') && open && !BAG_BOARDS.includes(open) ? { open: undefined } : {}) });
+      }}
+    >
+      {#each RANKS as r (r)}<option value={r} title={RANK_HELP[r]}>{RANK_LABEL[r]}</option>{/each}
+    </select>
+  </div>
+  <div class="mode-tip" id="tip-rank" popover onbeforetoggle={placeTip}>
+    {#each RANKS as r (r)}<p><b>{RANK_LABEL[r]}.</b> {RANK_HELP[r]}</p>{/each}
   </div>
   {#if rank === 'rating'}
+    <div class="form-field">
+      <span><button class="mode-tip-button" popovertarget="tip-score" aria-describedby="tip-score">Score</button></span>
+      <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
+        <optgroup label="Average">
+          {#each ['raw', 'min3', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
+        </optgroup>
+        <optgroup label="Peak">
+          {#each ['best', 'best-k2', 'best-k5'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
+        </optgroup>
+      </select>
+    </div>
+    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>
+      {#each AVGS as a (a)}<p><b>{AVG_LABEL[a]}.</b> {AVG_HELP[a]}</p>{/each}
+    </div>
     <div class="form-field">
       <span>Ratings</span>
       <div class="tab-group" role="group" aria-label="Ratings">
@@ -90,18 +112,6 @@
           >
         {/each}
       </div>
-    </div>
-    <div class="form-field">
-      <span><button class="mode-tip-button" popovertarget="tip-score" aria-describedby="tip-score">Score</button></span>
-      <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
-        <optgroup label="Average">
-          {#each ['raw', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
-        </optgroup>
-        <optgroup label="Peak"><option value="best" title={AVG_HELP.best}>{AVG_LABEL.best}</option></optgroup>
-      </select>
-    </div>
-    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>
-      {#each AVGS as a (a)}<p><b>{AVG_LABEL[a]}.</b> {AVG_HELP[a]}</p>{/each}
     </div>
   {/if}
 </div>
@@ -123,7 +133,7 @@
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row" class:few={avg === 'raw' && r.fewBags} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            <li class="board-row" class:few={avg === 'min3' && r.fewBags} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
@@ -165,7 +175,22 @@
   .rank-bar .form-field {
     margin-bottom: 0;
   }
-  .rank-bar button {
+  /* All three fields share one label line and one control height (checked in test:ui). */
+  .rank-bar .form-field > span {
+    display: block;
+    line-height: 1.2;
+  }
+  .rank-bar .mode-tip-button {
+    min-height: 0;
+    font-size: inherit;
+    line-height: inherit;
+  }
+  .rank-bar select {
+    min-height: 2.25rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .rank-bar .tab-group button {
     min-height: 2.25rem;
     margin: 0;
     font-size: 0.85rem;
@@ -297,7 +322,7 @@
   }
   @media (max-width: 640px) {
     .board-foot button,
-    .rank-bar button {
+    .rank-bar .tab-group button {
       min-height: 44px;
     }
     .rank-bar .tab-group button {
@@ -307,6 +332,10 @@
     }
     .rank-bar .form-field {
       flex: 1 1 100%;
+    }
+    .rank-bar select {
+      min-height: 44px;
+      font-size: 16px;
     }
   }
   /* Origins: map beside its list on wide screens (list column fixed, map takes the rest and
@@ -336,6 +365,6 @@
     inset: 3px auto 3px 0;
     width: calc(var(--share) * 100%);
     border-radius: var(--radius);
-    background: color-mix(in oklab, var(--map-high) 13%, transparent);
+    background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
   }
 </style>

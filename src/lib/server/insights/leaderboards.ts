@@ -14,8 +14,9 @@ export interface BoardRow {
   bags: number;
   brews: number;
   fewBags?: boolean;
-  atBest?: number; // best mode: brews at the best score (a tie-break, and the detail line)
-  mean?: number; // best mode: raw mean of bag means (second tie-break)
+  best?: number; // peak modes: the group's top brew rating
+  atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
+  mean?: number; // peak modes: raw mean of bag means (second tie-break)
   move?: number | 'new';
 }
 
@@ -57,7 +58,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
     // Built field by field: the coffees board carries no few-bags marker.
     return {
       key: r.key, label: bag?.name ?? r.label, sub: bag?.roaster, ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {}),
-      value: r.value, bags: r.bags, brews: r.brews, atBest: r.atBest, mean: r.mean
+      value: r.value, bags: r.bags, brews: r.brews, best: r.best, atBest: r.atBest, mean: r.mean
     };
   }
   if (board === 'process') {
@@ -94,7 +95,7 @@ export function leaderboard(
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
-        ...(avg === 'best' ? { value: r.best, atBest: r.atBest, mean: r.mean } : { value: r.adjusted, fewBags: r.fewBags })
+        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean } : { value: r.value, fewBags: r.fewBags })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -111,7 +112,7 @@ export function leaderboard(
     }
   }
   // Raw ranks few-bag groups after the rest (the coffees board drops the marker: one bag each).
-  const few = rank === 'rating' && avg === 'raw' ? (r: BoardRow) => Number(!!r.fewBags) : () => 0;
+  const few = rank === 'rating' && avg === 'min3' ? (r: BoardRow) => Number(!!r.fewBags) : () => 0;
   return rows.map((r) => decorate(r, board, bags)).sort((a, b) => few(a) - few(b) || byRank(a, b));
 }
 

@@ -37,7 +37,8 @@ describe('ratedGroups', () => {
 
   it('adjusted ranks the ten-bag group over the one lucky bag; raw does not', () => {
     expect(ratedGroups(brews, key, 'all', 'adjusted').map((g) => g.label)).toEqual(['B', 'A', 'C']);
-    expect(ratedGroups(brews, key, 'all', 'raw').map((g) => g.label)).toEqual(['B', 'C', 'A']); // A has 1 bag: last
+    expect(ratedGroups(brews, key, 'all', 'raw').map((g) => g.label)).toEqual(['A', 'B', 'C']); // no minimum
+    expect(ratedGroups(brews, key, 'all', 'min3').map((g) => g.label)).toEqual(['B', 'C', 'A']); // A has 1 bag: last
   });
 
   it('Current leaves early ratings out', () => {
@@ -51,9 +52,9 @@ describe('ratedGroups', () => {
     expect(ratedGroups(odd, key, 'all', 'raw')).toEqual([]);
     expect(ratedGroups([b('A', 1, 7)], () => null, 'all', 'raw')).toEqual([]);
   });
-  it('raw ranks 3+ bag groups first even when a small group has the higher mean', () => {
+  it('min3 ranks 3+ bag groups first even when a small group has the higher mean', () => {
     const small = [b('S', 1, 10), b('T', 2, 10), ...[3, 4, 5].map((i) => b('L', i, 6)), ...[6, 7, 8].map((i) => b('M', i, 5))];
-    expect(ratedGroups(small, key, 'all', 'raw').map((g) => g.label)).toEqual(['L', 'M', 'S', 'T']);
+    expect(ratedGroups(small, key, 'all', 'min3').map((g) => g.label)).toEqual(['L', 'M', 'S', 'T']);
     expect(ratedGroups(small, key, 'all', 'k2').map((g) => g.label)[0]).not.toBe('L'); // shrinking only, no minimum
   });
   it('k2 shrinks less than adjusted (K = 2 vs 5)', () => {
@@ -74,5 +75,20 @@ describe('ratedGroups', () => {
       ['X', 10, 1], ['Q', 9.5, 1], ['P', 9, 2], ['R', 9, 2]
     ]);
     expect(ratedGroups(t, key, 'current', 'best').map((g) => g.label)).toEqual(['Q', 'P', 'R']);
+  });
+  it('best-k*: one lucky 10 loses to repeated 9.5s; K = 2 vs 5; overall = mean of all brews', () => {
+    const t = [b('L', 1, 10), ...[2, 3, 4, 5].map((i) => b('R', i, 9.5)), ...[6, 7, 8, 9].map((i) => b('Z', i, 5))];
+    const o = (10 + 4 * 9.5 + 4 * 5) / 9;
+    const g = (avg: 'best' | 'best-k2' | 'best-k5') => Object.fromEntries(ratedGroups(t, key, 'all', avg).map((x) => [x.label, x]));
+    expect(ratedGroups(t, key, 'all', 'best')[0].label).toBe('L'); // plain best: the lucky 10 tops
+    expect(g('best-k2').L.value).toBeCloseTo((10 + 2 * o) / 3, 6);
+    expect(g('best-k2').R.value).toBeCloseTo((4 * 9.5 + 2 * o) / 6, 6);
+    expect(ratedGroups(t, key, 'all', 'best-k2')[0].label).toBe('R');
+    expect(g('best-k5').R.value).toBeCloseTo((4 * 9.5 + 5 * o) / 9, 6);
+  });
+  it('best-k* ties: more hits, then raw mean', () => {
+    const t = [b('P', 1, 9), b('P', 2, 9), b('Q', 3, 9), b('Q', 4, 9), b('Q', 5, 1)];
+    // equal best and hits: P's mean (9) beats Q's (6.33)
+    expect(ratedGroups(t, key, 'all', 'best-k5').map((x) => x.label)).toEqual(['P', 'Q']);
   });
 });

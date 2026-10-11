@@ -3,8 +3,8 @@ import type { Ratings, Avg } from '$lib/insightsUrl';
 // Ratings before this date were ~3× as scattered (calibration period), so
 // "Settled" (the default) leaves them out of every rating-based stat.
 export const RATINGS_SETTLED_FROM = '2026-06-01';
-// Shrinkage strength for adjusted means, in bags, per Avg mode (raw doesn't shrink).
-export const ADJUSTED_K: Record<Avg, number> = { raw: 0, k2: 2, adjusted: 5, best: 0 };
+// Shrinkage strength for adjusted means, in bags, per Avg mode (0 = none; the best-k* modes shrink in brews).
+export const ADJUSTED_K: Record<Avg, number> = { raw: 0, min3: 0, k2: 2, adjusted: 5, best: 0, 'best-k2': 2, 'best-k5': 5 };
 export const FEW_BAGS = 3;
 
 export type Rated = { coffeeId: number | null; rating: number | null; localDate: string };
@@ -15,7 +15,8 @@ export const countsForRating = (b: Rated, ratings: Ratings): boolean =>
 export interface RatedGroup {
   label: string;
   mean: number; // mean of the group's bag means
-  adjusted: number; // shrunk by the avg mode's K (= mean for raw)
+  adjusted: number; // shrunk by the avg mode's K (= mean for the unshrunk modes)
+  value: number; // what the mode ranks by
   bags: number;
   brews: number;
   fewBags: boolean;
@@ -25,7 +26,9 @@ export interface RatedGroup {
 
 // Bag-weighted: each bag's mean rating is one point, so 40 brews of one bag
 // don't outvote five bags. adjusted = (bags × groupMean + K × overallMean) / (bags + K).
-// Rows come back best first for the mode; raw ranks groups under FEW_BAGS bags after the rest.
+// Rows come back best first for the mode; min3 ranks groups under FEW_BAGS bags after the rest.
+// best-k*: (hits × best + K × overall) / (hits + K), hits = brews at the group's best score,
+// overall = mean of every counted brew rating on the board (hits are brews, so the prior is too).
 // ponytail: brews with no linked coffee are skipped (every prod bean is linked).
 export function ratedGroups<T extends Rated>(
   brews: readonly T[],
@@ -33,6 +36,8 @@ export function ratedGroups<T extends Rated>(
   ratings: Ratings,
   avg: Avg
 ): RatedGroup[] {
+  let sumAll = 0; // every counted brew rating: the overall mean best-k* shrinks toward
+  let nAll = 0;
   const peak = new Map<string, { best: number; atBest: number }>();
   const perBag = new Map<string, { label: string; sum: number; n: number }>();
   for (const b of brews) {
@@ -43,6 +48,8 @@ export function ratedGroups<T extends Rated>(
     p.sum += b.rating!;
     p.n += 1;
     perBag.set(k, p);
+    sumAll += b.rating!;
+    nAll += 1;
     const t = peak.get(label);
     if (!t || b.rating! > t.best) peak.set(label, { best: b.rating!, atBest: 1 });
     else if (b.rating === t.best) t.atBest += 1;
@@ -58,18 +65,19 @@ export function ratedGroups<T extends Rated>(
     g.brews += p.n;
     groups.set(p.label, g);
   }
+  const K = ADJUSTED_K[avg];
+  const brewMean = sumAll / nAll;
   return [...groups]
-    .map(([label, g]) => ({
-      label,
-      mean: g.sum / g.bags,
-      adjusted: (g.sum + ADJUSTED_K[avg] * overall) / (g.bags + ADJUSTED_K[avg]),
-      bags: g.bags,
-      brews: g.brews,
-      fewBags: g.bags < FEW_BAGS,
-      ...peak.get(label)!
-    }))
+    .map(([label, g]) => {
+      const t = peak.get(label)!;
+      const adjusted = (g.sum + K * overall) / (g.bags + K);
+      const value = avg === 'best' ? t.best
+        : avg.startsWith('best') ? (t.atBest * t.best + K * brewMean) / (t.atBest + K)
+        : adjusted;
+      return { label, mean: g.sum / g.bags, adjusted, value, bags: g.bags, brews: g.brews, fewBags: g.bags < FEW_BAGS, ...t };
+    })
     .sort((a, b) =>
-      avg === 'best' ? b.best - a.best || b.atBest - a.atBest || b.mean - a.mean
-      : (avg === 'raw' ? Number(a.fewBags) - Number(b.fewBags) : 0) || b.adjusted - a.adjusted
+      (avg === 'min3' ? Number(a.fewBags) - Number(b.fewBags) : 0) ||
+      b.value - a.value || (avg.startsWith('best') ? b.atBest - a.atBest : 0) || b.mean - a.mean
     );
 }
