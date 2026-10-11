@@ -1,3 +1,28 @@
+# [1.67.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.66.0...v1.67.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* **insights:** 44px tap target for leaderboard row links
+* **insights:** map svg role group, align dark tokens
+* **insights:** stretch leaderboard row link over the whole row
+
+
+### Features
+
+* **insights:** average switch for rating boards (raw, light, strong)
+* **insights:** best adjusted (light) is the default score
+* **insights:** dialed in scores and a how scores work dialog
+* **insights:** grinder and bag name, slug, processing in facts
+* **insights:** leaderboard cards with rank by, movement and show all
+* **insights:** leaderboard ranking with movement vs compare
+* **insights:** natural earth world map shapes and origin iso lookup
+* **insights:** origin world map with themed tooltip
+* **insights:** overview and leaderboards tabs
+* **insights:** rank by dropdown, seven score modes, stronger value bars
+* **insights:** score dropdown with a best brew mode
+* **insights:** tab, rank and open url params
+
 # [1.66.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.65.0...v1.66.0) (2026-10-11)
 
 
