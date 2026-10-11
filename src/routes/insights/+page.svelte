@@ -168,7 +168,17 @@
           { key: 'peakHour', label: 'Peak hour', fmt: hour, sub: () => (data.habits!.prevPeak?.hour != null ? `was ${hour(data.habits!.prevPeak.hour)}` : null) },
           {
             key: 'busiestWeekday', label: 'Busiest weekday', fmt: (n) => WEEKDAYS[n],
-            sub: () => (data.habits!.prevPeak?.weekday != null ? `was ${WEEKDAYS[data.habits!.prevPeak.weekday]}` : null)
+            sub: () => {
+              const h = data.habits!;
+              if (h.busiestAvg === null || h.tiles.busiestWeekday === null) return null;
+              const wd = WEEKDAYS[h.tiles.busiestWeekday];
+              const a = h.busiestAvg;
+              const avg =
+                s.measure === 'grams' ? `${formatGrams(a)} per ${wd}`
+                : s.measure === 'rating' ? `avg ${a.toFixed(1)} rating`
+                : `${Number.isInteger(a) ? a : a.toFixed(1)} ${a === 1 ? 'brew' : 'brews'} per ${wd}`;
+              return h.prevPeak?.weekday != null ? `${avg} · was ${WEEKDAYS[h.prevPeak.weekday]}` : avg;
+            }
           }
         ]
       : []

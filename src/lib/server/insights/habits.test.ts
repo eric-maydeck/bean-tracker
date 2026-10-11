@@ -59,6 +59,7 @@ describe('habits', () => {
     expect(h.byWeekday[0]).toBe(1.5); // 3 Monday brews over 2 Mondays
     expect(h.byWeekday[1]).toBe(0.5); // the back-filled brew still counts by date
     expect(h.byWeekday[2]).toBe(0);
+    expect(h.busiestAvg).toBe(1.5); // the busiest weekday's average (Mon)
   });
 
   it('grams measure sums doses', () => expect(habits(brews, ctx({ measure: 'grams' })).byHour[8]).toBe(50));

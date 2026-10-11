@@ -18,6 +18,7 @@ export interface Habits {
   tiles: HabitTiles;
   deltas: { activeDays: Delta; longestStreak: Delta; brewsPerBrewDay: Delta } | null;
   prevPeak: { hour: number | null; weekday: number | null } | null;
+  busiestAvg: number | null; // the busiest weekday's byWeekday value: per occurrence of it, or its mean rating
   streakAtEnd: boolean; // the period ends before today: "Streak at period end"
   longestFrom: string | null; // kept out of tiles: tile values are numbers
   longestTo: string | null;
@@ -151,6 +152,7 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
   }
   return {
     tiles, deltas, prevPeak,
+    busiestAvg: w.busiestWeekday === null ? null : w.byWeekday[w.busiestWeekday],
     streakAtEnd: c.period.end < c.today,
     longestFrom: long.from, longestTo: long.to,
     byHour: w.byHour, byWeekday: w.byWeekday, compareHour, compareWeekday,
