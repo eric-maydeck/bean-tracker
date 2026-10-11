@@ -189,6 +189,12 @@
   // router has started (matches On Deck/Subscriptions/Coffees).
   let loaded = $state(false);
 
+  let barHeight = $state(0);
+  $effect(() => {
+    document.documentElement.style.scrollPaddingTop = `${barHeight}px`;
+    return () => document.documentElement.style.removeProperty('scroll-padding-top');
+  });
+
   afterNavigate(() => {
     const p = currentParams(page.url);
     explicitDimension = pickOne(p, 'dimension', DIMENSIONS);
@@ -378,7 +384,7 @@
   <ShareButton />
 </div>
 
-<div class="chart-panel-controls stats-bar">
+<div class="chart-panel-controls stats-bar filter-bar" bind:offsetHeight={barHeight}>
   <div class="tab-group">
     <button aria-pressed={tab === 'general'} onclick={() => (explicitTab = 'general')}>General</button>
     <button aria-pressed={tab === 'bq'} onclick={() => (explicitTab = 'bq')}>Bean Conqueror</button>

@@ -36,6 +36,20 @@ function buttonBoxes(scope: Locator) {
 
 // Desktop edit table: every input and button in a row shares one vertical
 // center (±1px).
+// A sticky filter bar: pinned at the top after scrolling, one short row in phone landscape,
+// and a panel scrolled into view starts below it (scroll-padding-top), not under it.
+async function expectStickyBar(page: Page, bar: Locator) {
+  // Room to scroll on pages shorter than the viewport.
+  await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
+  const target = page.locator('section.chart-panel').nth(1);
+  await target.evaluate((el) => el.scrollIntoView());
+  await page.waitForTimeout(100);
+  const b = (await bar.boundingBox())!;
+  expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
+  if (page.viewportSize()!.height <= 450) expect(b.height).toBeLessThanOrEqual(60);
+  expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
+}
+
 async function expectRowLevel(row: Locator) {
   const centers = await row.evaluate((tr) =>
     [...tr.querySelectorAll('.inline-input, .sub-actions .button')].map((el) => {
@@ -750,6 +764,9 @@ export const STATES: State[] = [
     name: `stats-${tab}`,
     path: () => `/stats?tab=bq&bc=${tab}`
   })),
+  { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
+  { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'insights-default', path: () => '/insights' },
   { name: 'insights-1w-compare', path: () => '/insights?range=1w&compare=1' },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
@@ -772,7 +789,7 @@ export const STATES: State[] = [
     }
   },
   {
-    // Consumption: 4 tiles (2×2 on phones, 4 across wider), deltas on the three rates only.
+    // Consumption: 4 tiles in the same columns as Totals, deltas on the three rates only.
     name: 'insights-consumption',
     path: () => '/insights?range=1w&compare=1',
     act: async (page) => {
@@ -811,9 +828,11 @@ export const STATES: State[] = [
       // A paced count keeps one decimal under 10, whole numbers from 10.
       const brews = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Brews$/ }) });
       await expect(brews.locator('.insights-pace')).toHaveText(/^vs (\d\.\d|\d{2,}[\d,]*) at that pace$/);
-      // Trend colour by polarity: Spend rising is bad (red), Brews rising is good (green).
+      // Trend colour: by polarity, Spend rising is bad (red), Brews rising is good (green).
       const delta = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) }).locator('.insights-delta');
-      await expect(delta(/^Grams$/)).not.toHaveClass(/trend-/); // neutral tile stays grey
+      // A neutral tile (no good direction) goes by direction: up green, down red.
+      const grams = ((await delta(/^Grams$/).textContent()) ?? '').trim()[0];
+      if (grams !== 'N') await expect(delta(/^Grams$/)).toHaveClass(grams === '▲' ? /trend-good/ : /trend-bad/);
       const dir = async (label: RegExp) => ((await delta(label).textContent()) ?? '').trim()[0];
       const spend = await dir(/^Spend$/);
       if (spend !== 'N') await expect(delta(/^Spend$/)).toHaveClass(spend === '▲' ? /trend-bad/ : /trend-good/);

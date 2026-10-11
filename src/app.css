@@ -1734,6 +1734,31 @@ td > .action-buttons.under-form {
   margin-top: var(--space-5);
 }
 
+/* Sticky filter bars (/insights controls, /stats tabs + people switch): pinned to the top
+   while scrolling, on the page background so tiles slide under it. z-index: above tiles
+   (the rating switch is 1), below the phone tab bar (40) and modals (100); dialogs and
+   popovers are in the top layer anyway. */
+.filter-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-bg);
+  padding-block: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+/* Phone landscape (1003×333): one short row; captions go (aria-label keeps the names). */
+@media (max-height: 450px) {
+  .filter-bar {
+    padding-block: var(--space-1);
+  }
+  .filter-bar .form-field > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+}
 .chart-panel-controls {
   display: flex;
   flex-wrap: wrap;

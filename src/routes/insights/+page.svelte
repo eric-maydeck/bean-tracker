@@ -13,6 +13,12 @@
   // The Custom range dialog; its draft is `draft` below.
   let rangeDialog: HTMLDialogElement | undefined = $state();
 
+  let barHeight = $state(0);
+  $effect(() => {
+    document.documentElement.style.scrollPaddingTop = `${barHeight}px`;
+    return () => document.documentElement.style.removeProperty('scroll-padding-top');
+  });
+
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
     const next = { ...data.explicit, ...change };
@@ -74,7 +80,7 @@
   type D = { abs: number; pct: number; base: number } | null;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
-  // `up`: whether a rise is good or bad, for the delta's colour; unset = neutral (grey).
+  // `up`: whether a rise is good or bad, for the delta's colour; unset = by direction (up green).
   // `sub`: a line under the value where there's no delta (Time to clear's date).
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
@@ -144,11 +150,12 @@
   // Totals compared across windows of different tracked lengths: what the other window would be at this pace.
   const paceText = (d: { base: number }, t: Tile) =>
     data.scaled && (data.tileKinds as Record<string, string>)[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
-  // Green when the change is the good way for this tile, red when bad; grey for neutral tiles and no change.
+  // Green when the change is the good way for this tile, red when bad; tiles with no good
+  // direction go by direction (up green, down red); no change stays grey.
   function trend(d: { abs: number }, t: Tile): string {
     const fmt = paced(t);
-    if (!t.up || fmt(Math.abs(d.abs)) === fmt(0)) return '';
-    return (d.abs > 0) === (t.up === 'good') ? 'trend-good' : 'trend-bad';
+    if (fmt(Math.abs(d.abs)) === fmt(0)) return '';
+    return (d.abs > 0) === (t.up !== 'bad') ? 'trend-good' : 'trend-bad';
   }
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
@@ -164,10 +171,10 @@
   <ShareButton />
 </div>
 
-<div class="insights-controls">
+<div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
   <label class="form-field">
     <span>Period</span>
-    <select value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
+    <select aria-label="Period" value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
       <optgroup label="Rolling">
         {#each ROLLING as r (r)}<option value={r}>{RANGE_LABELS[r]}</option>{/each}
       </optgroup>
@@ -183,6 +190,7 @@
   <label class="form-field">
     <span>Compare</span>
     <select
+      aria-label="Compare"
       value={shown ? 'custom' : String(s.compare)}
       onchange={(e) => pickCompare(e.currentTarget.value)}
     >
@@ -586,7 +594,7 @@
   /* Stat rows with no empty cells. Tiles stay square (height --h = one regular tile); a
      tile wider than that (--q per row < --c) keeps its content one-tile wide, centred,
      via padding, so cqw scaling is unchanged. Columns divide the count: 3 on phones
-     (Totals 5, Averages 3-6 wider; Consumption 4: 2×2 on phones, 4 across wider); the short last row stretches. */
+     (Totals 5, Averages 3-6 wider; Consumption 4: same columns as Totals); the short last row stretches. */
   .fit {
     --gap: var(--space-3);
     --c: 3;
@@ -608,8 +616,8 @@
   .fit.n5 .stat-item:nth-last-child(-n + 2) {
     --q: 2;
   }
-  .fit.n4 {
-    --c: 2;
+  .fit.n4 .stat-item:last-child {
+    --q: 1;
   }
   /* Rows this narrow (360-390px phones): 3 columns leave ~88px tiles, too small for the
      Current/All switch and two-line labels. 2 columns; Totals' 5th tile takes the last row. */
@@ -623,13 +631,18 @@
     .fit.n5 .stat-item:last-child {
       --q: 1;
     }
+    .fit.n4 .stat-item:last-child {
+      --q: var(--c);
+    }
   }
   @media (min-width: 641px) {
-    .fit.n4 {
-      --c: 4;
-    }
+    .fit.n4,
     .fit.n5 {
       --c: 5;
+    }
+    .fit.n4 .stat-item,
+    .fit.n4 .stat-item:last-child {
+      --q: 4;
     }
     .fit.n5 .stat-item:nth-last-child(-n + 2) {
       --q: var(--c);
