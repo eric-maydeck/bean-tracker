@@ -995,6 +995,16 @@ export const STATES: State[] = [
     }
   },
   {
+    // $/g rows carry the spend and grams behind it, still one line high.
+    name: 'insights-leaderboards-ppg',
+    path: () => '/insights?tab=leaderboards&rank=ppg',
+    act: async (page) => {
+      for (const b of ['roasters', 'coffees'])
+        await expect(page.locator(`.board[data-board="${b}"] .board-row small`).first()).toHaveText(/bags? · \$[\d,.]+ · [\d.]+k?g$/);
+      await expectEqualBoardHeights(page);
+    }
+  },
+  {
     name: 'insights-leaderboards-open',
     path: () => '/insights?tab=leaderboards&rank=spend&open=coffees',
     act: async (page) => {

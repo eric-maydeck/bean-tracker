@@ -36,7 +36,9 @@
       r.sub,
       ...(avg.startsWith('best') && rank === 'rating' && r.atBest
         ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
-        : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null])
+        : rank === 'ppg' && r.cost !== undefined
+          ? [plural(r.bags, 'bag'), usd.format(r.cost), formatGrams(r.grams!)]
+          : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null])
     ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>
     m === undefined ? null
@@ -213,6 +215,7 @@
 {/each}
 
 <style>
+  /* .mode-tip / .mode-tip-button base styles are :global() in +page.svelte. */
   .rank-bar {
     display: flex;
     flex-wrap: wrap;
@@ -350,9 +353,11 @@
   .mode-tip p:last-child {
     margin: 0;
   }
-  .few .who,
+  /* Muted color, not opacity: dimmed text at 60% fell under 4.5:1 in both themes. */
+  .few .who a,
+  .few .name,
   .few .val {
-    opacity: 0.6;
+    color: var(--color-text-muted);
   }
   .placeholder {
     color: var(--color-text-muted);

@@ -47,6 +47,8 @@ describe('leaderboard', () => {
     const rows = leaderboard(BREWS, BAGS, SEPT, 'roasters', 'ppg', 'all', 'raw');
     expect(vals(rows)).toEqual([['Moonwake', 0.2], ['Sey', 0.1]]); // Moonwake: (40 + 0) / 200 g
     expect(rows.every((r) => Number.isFinite(r.value))).toBe(true);
+    expect([rows[0].cost, rows[0].grams]).toEqual([40, 200]);
+    expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'ppg', 'all', 'raw')[0].cost).toBeGreaterThan(0);
   });
   it('gear and water boards have no spend or $/g rows', () => {
     expect(leaderboard(BREWS, BAGS, SEPT, 'dripper', 'spend', 'all', 'raw')).toEqual([]);
@@ -120,6 +122,7 @@ describe('leaderboards', () => {
   it('per person divides totals only', () => {
     expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'grams', 'all', 'raw', 2).roasters)).toEqual([['Moonwake', 20], ['Sey', 15]]);
     expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'rating', 'all', 'raw', 2).roasters)).toEqual([['Sey', 8.5], ['Moonwake', 7]]);
-    expect(leaderboards(BREWS, BAGS, SEPT, null, 'ppg', 'all', 'raw', 2).roasters[0].value).toBe(0.2);
+    const ppg = leaderboards(BREWS, BAGS, SEPT, null, 'ppg', 'all', 'raw', 2).roasters[0];
+    expect([ppg.value, ppg.cost, ppg.grams]).toEqual([0.2, 20, 100]);
   });
 });

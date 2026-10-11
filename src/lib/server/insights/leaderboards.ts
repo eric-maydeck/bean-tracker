@@ -17,6 +17,8 @@ export interface BoardRow {
   best?: number; // peak modes: the group's top brew rating
   atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
   mean?: number; // peak modes: raw mean of bag means (second tie-break)
+  cost?: number; // $/g: the spend and grams behind it (detail line)
+  grams?: number;
   move?: number | 'new';
 }
 
@@ -55,10 +57,10 @@ const listHref = (column: ColumnKey, values: (string | null)[]) =>
 function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow {
   if (board === 'coffees') {
     const bag = bags.find((b) => b.id === Number(r.key));
-    // Built field by field: the coffees board carries no few-bags marker.
+    // The coffees board carries no few-bags marker.
     return {
-      key: r.key, label: bag?.name ?? r.label, sub: bag?.roaster, ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {}),
-      value: r.value, bags: r.bags, brews: r.brews, best: r.best, atBest: r.atBest, mean: r.mean
+      ...r, fewBags: undefined, label: bag?.name ?? r.label, sub: bag?.roaster,
+      ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {})
     };
   }
   if (board === 'process') {
@@ -88,7 +90,10 @@ export function leaderboard(
       x.bags += 1;
       g.set(k, x);
     }
-    rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'spend' ? x.cost : x.cost / x.grams, bags: x.bags, brews: 0 }));
+    rows = [...g].map(([k, x]) => ({
+      key: k, label: k, bags: x.bags, brews: 0,
+      ...(rank === 'spend' ? { value: x.cost } : { value: x.cost / x.grams, cost: x.cost, grams: x.grams })
+    }));
   } else {
     const inP = brews.filter((b) => inPeriod(b.localDate, p));
     const key = BREW_KEY[board];
@@ -123,7 +128,7 @@ export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
 }
 
 // Every board for the page. Per person divides brews, grams and spend (an even split, like
-// the overview); rating and $/g don't change, and no order changes.
+// the overview); rating and $/g don't change (its spend and grams do), and no order changes.
 export function leaderboards(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, prev: Period | null, rank: Rank, ratings: Ratings,
   avg: Avg, size = 1
@@ -133,6 +138,7 @@ export function leaderboards(
     BOARDS.map((board) => {
       let rows = leaderboard(brews, bags, p, board, rank, ratings, avg);
       if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, avg));
+      if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
       return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
     })
   ) as Record<Board, BoardRow[]>;
