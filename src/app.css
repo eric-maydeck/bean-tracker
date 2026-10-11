@@ -409,6 +409,10 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
+.search-row:has(> .group-field) {
+  align-items: end; /* a button beside a labelled group lines up with the chips, not the label */
+}
+
 .group-field > span {
   display: block;
   line-height: 1.2;
