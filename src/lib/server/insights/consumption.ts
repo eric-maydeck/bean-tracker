@@ -11,7 +11,7 @@ export interface Busiest { date: string; brews: number; grams: number }
 export interface ConsumptionTab {
   by: By; // effective (explicit or auto)
   tiles: ConsumptionTiles; clearBy: string | null;
-  busiest: Busiest | null; prevBusiest: string | null; // Avg per day's 4th tile: the day with the most grams (household)
+  busiest: Busiest | null; prevBusiest: Busiest | null; // Avg per day's 4th tile: the day with the most grams (household)
   deltas: { brewed: Delta; bought: Delta; net: Delta; avg: Delta } | null;
   buckets: Bucket[]; labels: string[]; brewed: number[]; bought: number[]; backlog: number[];
   compareBrewed: number[] | null; // same-length compare: bucket for bucket
@@ -149,7 +149,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   let compareBrewed: number[] | null = null;
   let compareAverage: number | null = null;
   let compareTitles: ConsumptionTab['compareTitles'] = null;
-  let prevBusiest: string | null = null;
+  let prevBusiest: Busiest | null = null;
   if (c.prev) {
     const pt = trackedBounds(c.prev, c.dataStart, c.today);
     const pspan = spanOf(pt);
@@ -165,7 +165,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
       net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, pace),
       avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
     };
-    prevBusiest = busiestDay(brews, c.prev)?.date ?? null;
+    prevBusiest = busiestDay(brews, c.prev);
     const pf = flows(brews, bags, pb, c);
     if (c.sameLength) {
       compareBrewed = pf.brewed;

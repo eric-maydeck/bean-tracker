@@ -45,8 +45,8 @@ async function expectDeltasFit(page: Page) {
       const said = el.querySelector('.sr-only')?.textContent ?? '';
       const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
       const maxLines = el.classList.contains('ratio') ? 2 : 1;
-      const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
-      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+( points?)?%? (from|vs) /.test(said);
+      const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown) || /^vs [A-Z][a-z]{2} \d{1,2}(, \d{4})?: \d+ brews? · \d+(\.\d+)?g$/.test(shown);
+      const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^Busiest day in the comparison period: /.test(said) || /^(Up|Down) \d+( points?)?%? (from|vs) /.test(said);
       return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= maxLines ? [] : [`${shown} | ${said}`];
     })
   );
@@ -1039,8 +1039,27 @@ export const STATES: State[] = [
     path: () => '/insights?tab=consumption&range=1w&compare=1',
     act: async (page) => {
       await expectBusiestDay(page);
-      await expect(page.locator('.stat-item').filter({ hasText: 'Busiest day' }).locator('.insights-delta')).toContainText(/^was /);
+      const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest day$/ }) });
+      const delta = tile.locator('.insights-delta');
+      await expect(delta.locator('[aria-hidden]')).toHaveText(/^vs [A-Z][a-z]{2} \d{1,2}(, \d{4})?: \d+ brews? · \d+(\.\d+)?g$/);
+      await expect(delta.locator('.sr-only')).toHaveText(/^Busiest day in the comparison period: [A-Z][a-z]{2} \d{1,2}(, \d{4})?, \d+ brews?, \d+(\.\d+)?g$/);
       await expectDeltasFit(page);
+      // Value, delta, sub and caption stack without overlapping, inside the tile, which is no taller than its row mates.
+      const m = await tile.evaluate((t) => {
+        const o = t.getBoundingClientRect();
+        const boxes = [...t.querySelectorAll('.stat-value, .insights-delta, .insights-pace, .stat-caption')]
+          .map((e) => [e.className, e.getBoundingClientRect()] as const);
+        const out: string[] = [];
+        if (boxes.length !== 4) out.push(`${boxes.length} lines`);
+        boxes.forEach(([n, b], i) => {
+          if (b.left < o.left - 0.5 || b.right > o.right + 0.5 || b.bottom > o.bottom + 0.5) out.push(`${n} outside tile`);
+          for (const [k, c] of boxes.slice(i + 1)) if (b.top < c.bottom - 0.5 && c.top < b.bottom - 0.5) out.push(`${n} overlaps ${k}`);
+        });
+        const mates = [...t.parentElement!.children].map((e) => e.getBoundingClientRect().height);
+        return { out, tall: o.height - Math.min(...mates) };
+      });
+      expect(m.out).toEqual([]);
+      expect(m.tall).toBeLessThanOrEqual(0.5);
     }
   },
   {

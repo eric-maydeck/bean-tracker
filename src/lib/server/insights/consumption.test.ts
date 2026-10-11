@@ -127,7 +127,7 @@ describe('consumptionTab', () => {
       expect(busy([{ ...brew('2026-09-10', 20), localTime: '2026-09-10T23:30' }, brew('2026-09-11', 10)])?.date).toBe('2026-09-10'));
     it('compare: the previous period\'s busiest', () =>
       expect(consumptionTab([brew('2026-08-03', 40), brew('2026-09-10', 15)], bags, ctx({ prev: { start: '2026-08-01', end: '2026-08-31' } })).prevBusiest)
-        .toBe('2026-08-03'));
+        .toEqual({ date: '2026-08-03', brews: 1, grams: 40 }));
   });
 
   it('avg follows by', () => expect(consumptionTab(brews, bags, ctx({ by: 'week' })).tiles.avg).toBeCloseTo((50 / 30) * 7));

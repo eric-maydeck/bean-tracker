@@ -162,6 +162,7 @@
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
     up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
     was?: () => string | null; // a neutral line in the delta slot ("was Thu")
+    stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
   };
   const shortDay = (d: string) =>
@@ -235,6 +236,7 @@
   // Busiest day: the tile's value is the date as epoch days; the year shows when it isn't this year.
   const busyDate = (d: string) => (d.slice(0, 4) === data.today.slice(0, 4) ? shortDay(d) : day(d));
   const busyDay = (n: number) => busyDate(new Date(n * 864e5).toISOString().slice(0, 10));
+  const brewsText = (n: number) => `${n} brew${n === 1 ? '' : 's'}`;
   const signed = (f: (n: number) => string) => (n: number) => (n < 0 ? '−' : '') + f(Math.abs(n));
   let consumptionValues = $derived({
     ...data.consumptionTab?.tiles,
@@ -254,12 +256,18 @@
             avg
               ? {
                   key: 'busiest', label: 'Busiest day', fmt: (n: number) => busyDay(n),
-                  // Comparing puts "was Sep 3" on the delta line; the brews and grams stay beneath it.
-                  was: () => (data.consumptionTab!.prevBusiest ? `was ${busyDate(data.consumptionTab!.prevBusiest)}` : null),
+                  // Comparing puts "vs Oct 4:" over "3 brews · 48g" in the delta slot; this period's stay beneath.
+                  stack: () => {
+                    const p = data.consumptionTab!.prevBusiest;
+                    return p
+                      ? { head: `vs ${busyDate(p.date)}:`, tail: `${brewsText(p.brews)} · ${formatGrams(p.grams)}`,
+                          said: `Busiest day in the comparison period: ${busyDate(p.date)}, ${brewsText(p.brews)}, ${formatGrams(p.grams)}` }
+                      : null;
+                  },
                   keepSub: true,
                   sub: () => {
                     const b = data.consumptionTab!.busiest;
-                    return b ? `${b.brews} brew${b.brews === 1 ? '' : 's'} · ${formatGrams(b.grams)}` : null;
+                    return b ? `${brewsText(b.brews)} · ${formatGrams(b.grams)}` : null;
                   }
                 }
               : { key: 'avg', label: `Avg per ${data.consumptionTab!.by}`, fmt: g ? formatGrams : (n: number) => n.toFixed(1), split: true },
@@ -448,7 +456,7 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
-        <div class="stat-item" class:stat-item-accent={hero}>
+        <div class="stat-item" class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
               {#each ['current', 'all'] as const as m (m)}
@@ -470,12 +478,17 @@
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
+          {:else if t.stack?.()}
+            {@const st = t.stack()!}
+            <span class="stat-unit insights-delta ratio" title={st.said}
+              ><span aria-hidden="true"><span class="part">{st.head}</span>{' '}<span class="part">{st.tail}</span></span><span class="sr-only">{st.said}</span></span
+            >
           {:else if t.was?.()}
             <span class="stat-unit insights-delta">{t.was()}</span>
           {/if}
           <!-- Under a delta (or a "was" line), a kept sub takes the pace line's slot (no keepSub tile is paced). -->
           {#if t.sub?.() && (!d || t.keepSub)}
-            <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
+            <span class={d || t.was?.() || t.stack?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
@@ -781,6 +794,17 @@
     line-height: 1.1;
     overflow: visible;
     text-overflow: clip;
+  }
+  /* Stacked compare line: "vs Oct 4:" breaks from "3 brews · 48g" (each part stays whole). */
+  .insights-delta .part {
+    display: block;
+  }
+  /* Two-line delta pushes the sub down a line and the caption below it. */
+  .stat-item.stack .insights-pace {
+    top: calc(54.02cqw + 2.2 * max(0.7rem, 6.88cqw) + 1cqw);
+  }
+  .stat-item.stack .stat-caption {
+    top: calc(54.02cqw + 2.2 * max(0.7rem, 6.88cqw) + 2cqw + max(0.6rem, 5.4cqw) + var(--grow-compare, 0px));
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);
