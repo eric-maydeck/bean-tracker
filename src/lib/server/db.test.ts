@@ -235,12 +235,14 @@ describe('hand-set rates migration', () => {
     const put = db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, '90')`);
     put.run('stats_rate_self_g_per_day');
     put.run('stats_rate_household_g_per_day');
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES ('keep_me', 'x')`).run();
     applySchema(db);
     const left = () =>
       (db.prepare(`SELECT COUNT(*) AS n FROM app_meta WHERE key LIKE 'stats_rate_%'`).get() as { n: number }).n;
     expect(left()).toBe(0);
     applySchema(db);
     expect(left()).toBe(0);
+    expect(db.prepare(`SELECT value FROM app_meta WHERE key = 'keep_me'`).get()).toEqual({ value: 'x' });
   });
 });
 

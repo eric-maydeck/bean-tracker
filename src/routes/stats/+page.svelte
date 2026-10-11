@@ -412,7 +412,10 @@
         use:enhance={() => {
           return async ({ update, result }) => {
             await update();
-            if (result.type === 'success') editingHousehold = false;
+            if (result.type === 'success') {
+              editingHousehold = false;
+              if (data.householdSize === 1) explicitPeople = undefined;
+            }
           };
         }}
       >
@@ -435,7 +438,6 @@
 </div>
 
 {#if tab === 'general'}
-
 <section class="chart-panel">
   <h2>At a Glance</h2>
   <div class="stat-row">
@@ -454,7 +456,7 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      {#if data.stats.totalBacklogGrams === 0}
+      {#if data.onHand === 0}
         <span class="stat-value">🎉</span>
         <div class="stat-caption">
           <span class="stat-label">Nothing left to drink through!</span>
@@ -699,7 +701,7 @@
 <div class="chart-panel-row">
   <section class="chart-panel">
     <h2>Open vs. backlog</h2>
-    {#if data.stats.totalBacklogGrams === 0}
+    {#if data.onHand === 0}
       <p class="text-muted">Nothing in the backlog yet.</p>
     {:else}
       <Chart
@@ -713,7 +715,7 @@
 
   <section class="chart-panel">
     <h2>Finished vs. still have</h2>
-    {#if data.stats.finishedGrams === 0 && data.stats.totalBacklogGrams === 0}
+    {#if data.stats.finishedGrams === 0 && data.onHand === 0}
       <p class="text-muted">Nothing tracked yet.</p>
     {:else}
       <Chart
@@ -1181,7 +1183,6 @@
   {/if}
 </section>
 {/if}
-
 
 <style>
   .period-select {

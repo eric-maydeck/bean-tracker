@@ -71,6 +71,17 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
   await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
   await expect(page.getByText(/per person/i)).toHaveCount(0);
   expect(page.url()).not.toContain('people=');
+  // Back to 2: the earlier per-person choice must not come back.
+  await page.getByRole('button', { name: 'Edit household size' }).click();
+  await page.getByLabel('Household size').fill('2');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '2' });
+  await expect(page.getByRole('button', { name: 'Household', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  expect(page.url()).not.toContain('people=');
+  await page.getByRole('button', { name: 'Edit household size' }).click();
+  await page.getByLabel('Household size').fill('1');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect.poll(read(`SELECT value FROM app_meta WHERE key = 'household_size'`)).toEqual({ value: '1' });
   for (const v of VIEWPORTS) {
     await page.setViewportSize(v.viewport);
     for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person']) {

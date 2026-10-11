@@ -53,6 +53,7 @@ export const load: PageServerLoad = ({ locals }) => {
   return {
     stats,
     householdSize,
+    onHand,
     years,
     consumption: consumptionByRange,
     beanConquerorLastImportedAt: lastImportedRow?.value ?? null,

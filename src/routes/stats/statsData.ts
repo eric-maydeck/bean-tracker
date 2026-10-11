@@ -186,7 +186,6 @@ export function buildBacklogStats(
   const totalBacklogCount = openedCount + unopenedBacklogCount;
   const finishedCount = archivedRows.length;
 
-
   const totalCost = sumCost(allRows);
   const pricedCount = allRows.filter((r) => r.cost != null).length;
   const averageBagCost = pricedCount > 0 ? totalCost / pricedCount : null;
