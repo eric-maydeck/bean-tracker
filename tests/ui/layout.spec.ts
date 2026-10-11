@@ -846,6 +846,18 @@ export const STATES: State[] = [
         els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
       );
       expect(clipped).toEqual([]);
+      // Busiest weekday's "N/Fri · was Sat" stays on one line and its tile is no taller than its row mates.
+      const busy = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Busiest weekday$/ }) });
+      const sub = busy.locator('.stat-unit, .insights-pace').first();
+      await expect(sub).toContainText('was');
+      const m = await busy.evaluate((t) => {
+        const sb = t.querySelector('.stat-unit, .insights-pace')!;
+        const lh = parseFloat(getComputedStyle(sb).lineHeight) || parseFloat(getComputedStyle(sb).fontSize) * 1.3;
+        const mates = [...t.parentElement!.children].map((c) => c.getBoundingClientRect().height);
+        return { lines: sb.getBoundingClientRect().height / lh, own: t.getBoundingClientRect().height, max: Math.max(...mates) };
+      });
+      expect(m.lines).toBeLessThan(1.6);
+      expect(m.own).toBeGreaterThanOrEqual(m.max - 1);
     }
   },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

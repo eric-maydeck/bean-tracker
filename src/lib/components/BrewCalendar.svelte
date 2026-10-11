@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { latestMonths } from '$lib/calendarMonths';
+  import { latestMonths, MAX_MONTHS } from '$lib/calendarMonths';
+  import { MON } from '$lib/insightsUrl';
   import { rove, shader, takeFocus, tipAt } from './Heatmap.svelte';
 
   let {
@@ -14,7 +15,6 @@
   } = $props();
 
   const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const weekday = (d: string) => (new Date(d + 'T00:00:00Z').getUTCDay() + 6) % 7;
   const dayLabel = (d: string) => `${WD[weekday(d)]} ${+d.slice(8)} ${MON[+d.slice(5, 7) - 1]}`;
 
@@ -35,7 +35,7 @@
     const per = [fit, fit - 1].find((p) => p > 0 && all.length % p === 0) ?? Math.ceil(all.length / Math.ceil(all.length / fit));
     return Array.from({ length: Math.ceil(all.length / per) }, (_, i) => all.slice(i * per, (i + 1) * per));
   });
-  let tone = $derived(shader(days.map((d) => d.value)));
+  let tone = $derived(shader(latest.days.map((d) => d.value)));
 
   let wrap: HTMLDivElement | undefined = $state();
   let tip = $state<{ text: string; x: number; y: number } | null>(null);
@@ -45,14 +45,14 @@
   };
 </script>
 
-{#snippet cell(d: { date: string; value: number | null }, first: boolean, style = '')}
+{#snippet cell(d: { date: string; value: number | null }, first: boolean)}
   <div
     class="cal-cell"
     class:none={d.value === null}
     role="button"
     tabindex={first ? 0 : -1}
     aria-label="{dayLabel(d.date)} · {text(d.value)}"
-    style="background: {tone(d.value)}; {style}"
+    style="background: {tone(d.value)}"
     onfocus={(e) => (takeFocus(e), show(e))}
     onblur={() => (tip = null)}
   ></div>
@@ -61,7 +61,6 @@
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 <div
   class="brew-calendar"
-  class:short
   role="group"
   aria-label="Brew calendar"
   style:--cell-h={short ? '2.5rem' : cellHeight}
@@ -94,7 +93,7 @@
       </div>
     {/each}
   {/if}
-  {#if !short && latest.cut}<p class="note">Latest 24 months — pick a custom range for earlier.</p>{/if}
+  {#if !short && latest.cut}<p class="note">Latest {MAX_MONTHS} months — pick a custom range for earlier.</p>{/if}
   {#if tip}
     <div class="cell-tip" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
   {/if}

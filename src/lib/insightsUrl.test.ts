@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel
+  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -371,4 +371,23 @@ describe('windowLabel', () => {
   it('spanning years: year on both', () =>
     expect(windowLabel({ start: '2025-12-20', end: '2026-01-09' }, today)).toBe('Dec 20, 2025 – Jan 9, 2026'));
   it('one day', () => expect(windowLabel({ start: '2026-03-01', end: '2026-03-01' }, today)).toBe('Mar 1'));
+});
+
+describe('legend labels', () => {
+  const today = '2026-10-11';
+  const P = { start: '2026-03-01', end: '2026-04-09' };
+  const menu = [{ value: '1', label: 'Previous 12 months' }, { value: '2', label: '2 years ago' }];
+  it('period: preset, year, custom', () => {
+    expect(periodLabel('12m', P, today)).toBe('Last 12 months');
+    expect(periodLabel('ytd', P, today)).toBe('Year to date');
+    expect(periodLabel('2025', P, today)).toBe('2025');
+    expect(periodLabel('2026-03-01..2026-04-09', P, today)).toBe('Mar 1 – Apr 9');
+  });
+  it('compare: menu label, custom dates, none', () => {
+    expect(compareLabel(1, menu, P, today)).toBe('Previous 12 months');
+    expect(compareLabel(2, menu, P, today)).toBe('2 years ago');
+    expect(compareLabel('2026-03-01..2026-04-09', menu, P, today)).toBe('Mar 1 – Apr 9');
+    expect(compareLabel(1, menu, null, today)).toBe('');
+    expect(compareLabel(9, menu, P, today)).toBe('Mar 1 – Apr 9');
+  });
 });

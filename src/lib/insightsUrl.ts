@@ -255,11 +255,25 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
 
 // A window's dates for a legend: "Mar 1 – Apr 9"; the year joins the end when it isn't this
 // year, and both ends when the window spans years.
-const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export function windowLabel(p: { start: string | null; end: string }, today: string): string {
   if (!p.start) return 'All time';
   const f = (d: string, year: boolean) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}${year ? `, ${d.slice(0, 4)}` : ''}`;
   const spans = p.start.slice(0, 4) !== p.end.slice(0, 4);
   if (p.start === p.end) return f(p.start, spans || p.end.slice(0, 4) !== today.slice(0, 4));
   return `${f(p.start, spans)} – ${f(p.end, spans || p.end.slice(0, 4) !== today.slice(0, 4))}`;
+}
+
+// Chart legend names: the Period dropdown's label, and the Compare dropdown's label for the
+// compared window (`menu`: that range's compareOptions options); custom windows use their dates.
+export function periodLabel(range: string, period: { start: string | null; end: string }, today: string): string {
+  return isCustom(range) ? windowLabel(period, today) : (RANGE_LABELS as Record<string, string>)[range] ?? range;
+}
+export function compareLabel(
+  compare: number | string | undefined, menu: readonly { value: string; label: string }[],
+  prev: { start: string | null; end: string } | null, today: string
+): string {
+  if (!prev) return '';
+  if (isCustom(compare)) return windowLabel(prev, today);
+  return menu.find((o) => o.value === String(compare))?.label ?? windowLabel(prev, today);
 }

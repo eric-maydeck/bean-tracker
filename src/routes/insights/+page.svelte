@@ -4,7 +4,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, windowLabel, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -110,13 +110,9 @@
   const day = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   // Chart legends name the series for the Period / Compare dropdown labels.
-  let periodLabel = $derived(
-    isCustom(s.range) ? windowLabel(data.period, data.today) : (RANGE_LABELS as Record<string, string>)[s.range] ?? s.range
-  );
+  let periodLabel = $derived(periodName(s.range, data.period, data.today));
   let compareLabel = $derived(
-    !data.previousPeriod ? '' :
-    isCustom(s.compare) ? windowLabel(data.previousPeriod, data.today)
-    : (data.compareMenus[s.range].flatMap((g) => g.options).find((o) => o.value === String(s.compare))?.label ?? windowLabel(data.previousPeriod, data.today))
+    compareName(s.compare, data.compareMenus[s.range].flatMap((g) => g.options), data.previousPeriod, data.today)
   );
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
