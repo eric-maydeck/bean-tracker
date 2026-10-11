@@ -1,5 +1,5 @@
 import { BC_TIME_ZONE } from '../beanConquerorJson';
-import { CUSTOM_RANGE, type By, type ByFits } from '$lib/insightsUrl';
+import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '$lib/insightsUrl';
 
 // Insights count days in the user's zone (Mountain Time). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
@@ -43,6 +43,8 @@ export function periodBounds(range: string, today: string): Period {
   if (range in MONTHS) return { start: addDays(addMonths(today, -MONTHS[range]), 1), end: today };
   if (range === 'ytd') return { start: `${today.slice(0, 4)}-01-01`, end: today };
   if (range === 'all') return { start: null, end: today };
+  const c = CUSTOM_RANGE.exec(range); // custom: inclusive, end clamps to today
+  if (c) return { start: c[1], end: c[2] < today ? c[2] : today };
   return { start: `${range}-01-01`, end: `${range}-12-31` };
 }
 
@@ -53,6 +55,10 @@ export function previousPeriod(range: string, p: Period, n = 1): Period | null {
   if (p.start === null) return null;
   if (range === 'ytd') return { start: `${Number(p.start.slice(0, 4)) - n}-01-01`, end: addMonths(p.end, -12 * n) };
   if (/^\d{4}$/.test(range)) return periodBounds(String(Number(range) - n), p.end);
+  if (isCustom(range)) { // back to back windows of the same length
+    const len = daysBetween(p.start, p.end) + 1;
+    return { start: addDays(p.start, -len * n), end: addDays(p.start, -1 - len * (n - 1)) };
+  }
   let q = p;
   for (let i = 0; i < n; i++) q = periodBounds(range, addDays(q.start!, -1));
   return q;
@@ -87,7 +93,6 @@ export function trackedSpan(range: string, dataStart: string | null, today: stri
 export const byFits = (dataStart: string | null, today: string): ByFits => (range, by) =>
   BY_FITS[by](trackedSpan(range, dataStart, today));
 
-const isDate = (d: string) => addDays(d, 0) === d; // Date rolls 2026-02-30 over to 03-02
 
 // The window a `compare` value resolves to for period `p`, or null (off or not usable):
 // n = n same-length periods back; '1m'…'3y' = that rolling length and 'before' = from the

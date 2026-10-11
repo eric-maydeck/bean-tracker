@@ -199,3 +199,30 @@ describe('consumption granularity', () => {
     expect(byFits('2024-01-01', '2026-10-11')('all', 'day')).toBe(false);
   });
 });
+
+describe('custom Period', () => {
+  const T = '2026-10-10';
+  const R = '2026-03-01..2026-05-31';
+  it('is inclusive; a later end clamps to today', () => {
+    expect(periodBounds(R, T)).toEqual({ start: '2026-03-01', end: '2026-05-31' });
+    expect(periodBounds('2026-10-01..2027-01-01', T)).toEqual({ start: '2026-10-01', end: T });
+    expect(periodBounds('2026-10-10..2026-10-10', T)).toEqual({ start: T, end: T });
+  });
+  it('trackedDays counts from the first brew; entirely before it is empty', () => {
+    expect(trackedDays(periodBounds(R, T), '2026-04-01', T)).toBe(61);
+    expect(trackedDays(periodBounds(R, T), '2026-06-01', T)).toBe(0);
+    expect(trackedDays(periodBounds('2026-10-10..2026-10-10', T), '2026-01-01', T)).toBe(1);
+  });
+  it('n periods back are same-length windows, back to back', () => {
+    const p = periodBounds(R, T); // 92 days
+    expect(previousPeriod(R, p)).toEqual({ start: '2025-11-29', end: '2026-02-28' });
+    expect(previousPeriod(R, p, 2)).toEqual({ start: '2025-08-29', end: '2025-11-28' });
+    expect(previousPeriod('2026-10-10..2026-10-10', periodBounds('2026-10-10..2026-10-10', T))).toEqual({ start: '2026-10-09', end: '2026-10-09' });
+  });
+  it('drives byFits like any period', () => {
+    const f = byFits('2020-01-01', T);
+    expect(f(R, 'week')).toBe(true);
+    expect(f('2026-10-10..2026-10-10', 'week')).toBe(false);
+    expect(f('2026-10-10..2026-10-10', 'day')).toBe(true);
+  });
+});

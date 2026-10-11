@@ -330,3 +330,44 @@ describe('/insights habits and consumption', () => {
     expect(d.consumptionTab.by).toBe('day');
   });
 });
+
+describe('/insights custom Period', () => {
+  const from = addDays(today, -9);
+  const to = addDays(today, -3);
+  const r = `${from}..${to}`;
+  it('returns the span\'s figures and its compare window', () => {
+    seed([[addDays(today, -4), 15], [addDays(today, -12), 20], [today, 30]]);
+    const d = run(`?range=${r}&compare=1`);
+    expect(d.period).toEqual({ start: from, end: to });
+    expect(d.tiles.brews).toBe(1);
+    expect(d.previousPeriod).toEqual({ start: addDays(from, -7), end: addDays(from, -1) });
+    expect(d.deltas).not.toBeNull();
+    expect(d.compareMenus[r][0].options).toEqual([{ value: '1', label: 'Previous period' }]);
+    expect(d.byMenus[r]).toEqual(['day']);
+  });
+  it('works on every tab', () => {
+    seed([[addDays(today, -4), 15]]);
+    for (const tab of ['leaderboards', 'habits', 'consumption'])
+      expect(run(`?range=${r}&tab=${tab}`).period.start).toBe(from);
+    expect(run(`?range=${r}&tab=consumption`).consumptionTab.by).toBe('day');
+  });
+  it('a span entirely before the first brew gives empty figures, no crash', () => {
+    seed([[today, 15]]);
+    const old = '2019-01-01..2019-01-31';
+    for (const tab of ['overview', 'leaderboards', 'habits', 'consumption']) {
+      const d = run(`?range=${old}&tab=${tab}`);
+      expect(d.tiles.brews).toBe(0);
+    }
+  });
+  it('a one-day span', () => {
+    seed([[to, 15]]);
+    const d = run(`?range=${to}..${to}`);
+    expect(d.tiles.brews).toBe(1);
+    expect(d.byMenus[`${to}..${to}`]).toEqual(['day']);
+  });
+  it('ignores a reversed or future-only span', () => {
+    seed([[today, 15]]);
+    expect(run(`?range=${to}..${from}`).explicit.range).toBeUndefined();
+    expect(run(`?range=${addDays(today, 5)}..${addDays(today, 9)}`).explicit.range).toBeUndefined();
+  });
+});

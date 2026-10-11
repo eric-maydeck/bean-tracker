@@ -9,7 +9,7 @@ import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileD
 import { leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
-import { RANGES, BYS, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
+import { RANGES, BYS, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -23,7 +23,7 @@ export const load: PageServerLoad = ({ url }) => {
   const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
   const fits = compareFits(dataStart, today);
   const fitsBy = byFits(dataStart, today);
-  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy);
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today);
   const s = withDefaults(explicit);
   const size = s.people === 'person' ? householdSize : 1;
   const period = periodBounds(s.range, today);
@@ -51,22 +51,26 @@ export const load: PageServerLoad = ({ url }) => {
     [previousPeriod(s.range, period), comparePeriod(s.range, period, 'before', dataStart, today)].find(
       (w) => w && dataStart && w.start! >= dataStart
     ) ?? { start: dataStart ?? today, end: today };
+  // A custom Period has its own menus (the preset ones don't cover it).
+  const menuRanges = [...RANGES, ...years.map(String), ...(isCustom(s.range) ? [s.range] : [])];
   return {
     explicit,
     householdSize,
     years,
     // Every range's menu, so a Period change can keep or drop the compare (keepCompare).
     compareMenus: Object.fromEntries(
-      [...RANGES, ...years.map(String)].map((r) => [r, compareOptions(r, years, brewYears, fits)])
+      menuRanges.map((r) => [r, compareOptions(r, years, brewYears, fits)])
     ),
     tileKinds: TILE_KIND,
     settledFrom: RATINGS_SETTLED_FROM,
     dataStart,
     today,
     customDefault,
+    // Period › Custom range… opens on the current period (a future calendar-year end clamps to today).
+    periodDefault: { start: period.start ?? dataStart ?? today, end: period.end < today ? period.end : today },
     period,
     previousPeriod: prev,
-    byMenus: Object.fromEntries([...RANGES, ...years.map(String)].map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
+    byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     // Leaderboards only on its tab; the overview tiles are cheap and always computed.
     boards: s.tab === 'leaderboards' ? leaderboards(brews, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
     habits: s.tab === 'habits' ? habits(brews, { ...ctx, measure: s.measure, ratings: s.ratings }) : null,

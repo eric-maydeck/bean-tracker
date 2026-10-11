@@ -330,3 +330,30 @@ describe('habits and consumption params', () => {
     expect(BYS).toEqual(['day', 'week', 'month']);
   });
 });
+
+describe('custom Period (range=YYYY-MM-DD..YYYY-MM-DD)', () => {
+  const T = '2026-10-10';
+  const fits = compareFits('2020-01-01', T);
+  const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS, YEARS, fits, 1, () => true, T);
+  it('reads a valid span, kept explicit; a later end is kept (clamped server-side)', () => {
+    expect(p('range=2026-03-01..2026-05-31').range).toBe('2026-03-01..2026-05-31');
+    expect(p('range=2026-10-01..2027-01-01').range).toBe('2026-10-01..2027-01-01');
+    expect(p('range=2026-10-10..2026-10-10').range).toBe('2026-10-10..2026-10-10');
+  });
+  it.each(['2026-05-31..2026-03-01', '2026-02-30..2026-03-05', '2026-10-11..2026-10-20', '2026-3-1..2026-5-31', 'x..y'])(
+    'ignores %s', (r) => expect(p(`range=${r}`).range).toBeUndefined());
+  it('round-trips through the URL', () =>
+    expect(insightsParams(p('range=2026-03-01..2026-05-31')).toString()).toBe('range=2026-03-01..2026-05-31'));
+  it('/stats parseRange ignores it', () =>
+    expect(parseRange(new URLSearchParams('range=2026-03-01..2026-05-31'), YEARS)).toBeUndefined());
+  it('compare menu: Previous period, plus All before when it fits', () => {
+    const o = compareOptions('2026-03-01..2026-05-31', YEARS, YEARS, fits);
+    expect(o).toEqual([
+      { label: 'Same length', options: [{ value: '1', label: 'Previous period' }] },
+      { label: 'Longer', options: [{ value: 'before', label: 'All before' }] }
+    ]);
+    expect(p('range=2026-03-01..2026-05-31&compare=1').compare).toBe(1);
+    expect(p('range=2026-03-01..2026-05-31&compare=2').compare).toBeUndefined();
+    expect(p('range=2026-03-01..2026-05-31&compare=3m').compare).toBeUndefined();
+  });
+});

@@ -62,6 +62,16 @@ export const parseRange = (p: URLSearchParams, years: readonly number[]): string
 // compare=YYYY-MM-DD..YYYY-MM-DD: a custom window (checked by comparePeriod in time.ts).
 export const CUSTOM_RANGE = /^(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})$/;
 
+export const isDate = (d: string): boolean => !isNaN(Date.parse(d)) && new Date(`${d}T00:00:00Z`).toISOString().slice(0, 10) === d;
+
+// A custom Period from the URL (/insights only; /stats' parseRange ignores it): real dates,
+// from <= to, starting no later than today (a later end clamps to today in periodBounds).
+export const parseCustomPeriod = (p: URLSearchParams, today: string): string | undefined => {
+  const c = p.get('range');
+  const m = c && CUSTOM_RANGE.exec(c);
+  return m && isDate(m[1]) && isDate(m[2]) && m[1] <= m[2] && m[1] <= today ? c : undefined;
+};
+
 export const isCustom = (c: unknown): c is string => typeof c === 'string' && CUSTOM_RANGE.test(c);
 
 // The compare value for drafted From/To dates, or null while Apply must stay disabled.
@@ -78,7 +88,7 @@ export interface CompareGroup {
 }
 
 export interface InsightsUrlState {
-  range?: string; // a RANGES value or a calendar year ("2026")
+  range?: string; // a RANGES value, a calendar year ("2026") or a custom 'YYYY-MM-DD..YYYY-MM-DD'
   compare?: number | string; // n periods back (0 = off), a longer window ('3m', 'before') or a custom 'YYYY-MM-DD..YYYY-MM-DD'
   ratings?: Ratings;
   avg?: Avg;
@@ -132,6 +142,7 @@ function sameLength(
 ): { n: number; label: string }[] {
   if (range in ROLLING_COMPARE) return ROLLING_COMPARE[range].map((label, i) => ({ n: i + 1, label }));
   if (range === 'all') return [];
+  if (isCustom(range)) return [{ n: 1, label: 'Previous period' }];
   const ytd = range === 'ytd';
   const year = ytd ? years[years.length - 1] : Number(range);
   return [...brewYears]
@@ -151,7 +162,7 @@ export function compareOptions(
   );
   return [
     {
-      label: i >= 0 ? 'Same length' : 'Earlier years',
+      label: i >= 0 || isCustom(range) ? 'Same length' : 'Earlier years',
       options: sameLength(range, years, brewYears).map((o) => ({ value: String(o.n), label: o.label }))
     },
     { label: 'Longer', options: longer.map((c) => ({ value: c, label: LONGER[c] })) }
@@ -172,9 +183,9 @@ export function keepCompare(c: number | string | undefined, offered: readonly st
 // `householdSize`: getHouseholdSize (1 drops `people`).
 export function parseInsightsUrl(
   p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false,
-  householdSize = 1, byFits: ByFits = () => true
+  householdSize = 1, byFits: ByFits = () => true, today = '9999-12-31'
 ): InsightsUrlState {
-  const range = parseRange(p, years);
+  const range = parseRange(p, years) ?? parseCustomPeriod(p, today);
   const r = range ?? DEFAULTS.range;
   const tab = pickOne(p, 'tab', TABS);
   const c = p.get('compare')?.toLowerCase();

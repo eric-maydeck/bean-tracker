@@ -983,6 +983,47 @@ export const STATES: State[] = [
     }
   },
   {
+    // A custom Period on the overview (compare 1 = the previous same-length window), applied from
+    // the Period dialog; the select shows the span. Navigation only.
+    name: 'insights-custom-range',
+    path: () => `/insights?range=${daysAgo(40)}..${daysAgo(10)}&compare=1`,
+    act: async (page) => {
+      const period = page.getByLabel('Period');
+      await expect(period).toHaveValue('custom');
+      await expect(period.locator('option:checked')).toHaveText(/\d{4}/);
+      await expect(page.locator('.insights-period')).toContainText(' · vs ');
+      const before = page.url();
+      await page.getByRole('button', { name: 'Dates…' }).click();
+      await expect(page.locator('dialog[open]')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      await expectDialogInViewport(page);
+      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      expect(page.url()).toBe(before);
+      await period.selectOption('1w');
+      await expect(page).toHaveURL(/range=1w/);
+      await expect(page).toHaveURL(/compare=1/);
+    }
+  },
+  {
+    // Period › Custom range… opens the shared dialog (no autofocus, fits the viewport); Apply keeps
+    // the tab. A consumption `by` that no longer fits is dropped.
+    name: 'insights-custom-range-open',
+    path: () => '/insights?tab=consumption&by=month&range=1w',
+    act: async (page) => {
+      await page.getByLabel('Period').selectOption('custom');
+      await expect(page.locator('dialog[open]')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      await expectDialogInViewport(page);
+      await expect(page.getByRole('button', { name: 'Apply', exact: true })).toBeInViewport();
+      await page.getByLabel('From', { exact: true }).fill(daysAgo(20));
+      await page.getByLabel('To', { exact: true }).fill(daysAgo(2));
+      await page.getByRole('button', { name: 'Apply', exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`range=${daysAgo(20)}\\.\\.${daysAgo(2)}`));
+      await expect(page).toHaveURL(/tab=consumption/);
+      await expect(page).not.toHaveURL(/by=month/);
+    }
+  },
+  {
     // Per person: one switch drives `people`; total tiles get the suffix, averages don't;
     // a count under 10 keeps one decimal. Navigation only.
     name: 'insights-people-person',

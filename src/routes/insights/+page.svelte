@@ -26,26 +26,47 @@
   function choose(change: InsightsUrlState) {
     const next = { ...data.explicit, ...change };
     // A compare the new range doesn't offer would be dropped by the parser.
-    if (change.range) next.compare = keepCompare(next.compare, data.compareMenus[change.range].flatMap((g) => g.options.map((o) => o.value)));
+    // A new custom Period has no menu yet: keep what could apply and let the parser drop what doesn't fit.
+    const menu = change.range ? data.compareMenus[change.range] : undefined;
+    if (change.range) next.compare = keepCompare(next.compare, menu ? menu.flatMap((g) => g.options.map((o) => o.value)) : ['1', 'before']);
     // A by the new range doesn't offer is dropped, like the compare.
-    if (change.range && next.by && !data.byMenus[change.range].includes(next.by)) next.by = undefined;
+    if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
     goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL
   // (like inline edit). null = no draft; the form then shows the applied range, if any.
+  // One dialog serves both controls: `target` is the one that opened it.
   let draft = $state<{ from: string; to: string } | null>(null);
+  let target = $state<'range' | 'compare'>('compare');
   let shown = $derived.by(() => {
     if (draft) return draft;
-    if (!isCustom(s.compare)) return null;
-    const [from, to] = s.compare.split('..');
+    const v = target === 'range' ? s.range : s.compare;
+    if (!isCustom(v)) return null;
+    const [from, to] = v.split('..');
     return { from, to };
   });
+  const custom = (t: 'range' | 'compare') => ((!!draft && target === t) || isCustom(t === 'range' ? s.range : s.compare));
+  function openDates(t: 'range' | 'compare') {
+    target = t;
+    rangeDialog?.showModal();
+  }
+  function pickRange(v: string) {
+    if (v === 'custom') {
+      target = 'range';
+      draft = { from: data.periodDefault.start, to: data.periodDefault.end };
+      rangeDialog?.showModal();
+      return;
+    }
+    draft = null;
+    choose({ range: v });
+  }
 
   // Custom range… opens a draft on the prefill; anything else drops the draft and applies.
   function pickCompare(v: string) {
     if (v === 'custom') {
+      target = 'compare';
       draft = { from: data.customDefault.start ?? data.today, to: data.customDefault.end };
       rangeDialog?.showModal();
       return;
@@ -65,7 +86,7 @@
     const c = shown && customRange(shown.from, shown.to, data.today);
     if (!c) return;
     draft = null;
-    choose({ compare: c });
+    choose(target === 'range' ? { range: c } : { compare: c });
     rangeDialog?.close();
   }
 
@@ -239,7 +260,7 @@
   </label>
   <label class="form-field">
     <span>Period</span>
-    <select aria-label="Period" value={s.range} onchange={(e) => choose({ range: e.currentTarget.value })}>
+    <select aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
         {#each ROLLING as r (r)}<option value={r}>{RANGE_LABELS[r]}</option>{/each}
       </optgroup>
@@ -250,13 +271,17 @@
       <optgroup label="Everything">
         <option value="all">{RANGE_LABELS.all}</option>
       </optgroup>
+      <optgroup label="Custom"><option value="custom">{isCustom(s.range) ? span(data.period) : 'Custom range…'}</option></optgroup>
     </select>
   </label>
+  {#if isCustom(s.range)}
+    <button class="button button-ghost" onclick={() => openDates('range')}>Dates…</button>
+  {/if}
   <label class="form-field">
     <span>Compare</span>
     <select
       aria-label="Compare"
-      value={shown ? 'custom' : String(s.compare)}
+      value={custom('compare') ? 'custom' : String(s.compare)}
       onchange={(e) => pickCompare(e.currentTarget.value)}
     >
       <option value="0">Off</option>
@@ -269,7 +294,7 @@
     </select>
   </label>
   {#if isCustom(s.compare)}
-    <button class="button button-ghost" onclick={() => rangeDialog?.showModal()}>Dates…</button>
+    <button class="button button-ghost" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {#if data.householdSize > 1}
     <div class="form-field people-field">
