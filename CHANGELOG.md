@@ -1,3 +1,22 @@
+# [1.66.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.65.0...v1.66.0) (2026-10-11)
+
+
+### Bug Fixes
+
+* stats empty states use grams on hand; reset people choice at household of one
+
+
+### Features
+
+* add insights to the nav (top nav; More on phones)
+* household size and measured time to clear on stats
+* household size editor in the sticky stats bar
+* household size setting and people url param
+* measured consumption panel on insights
+* per person on insights
+* per person on stats
+* sticky filter bars on insights and stats
+
 # [1.65.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.64.0...v1.65.0) (2026-10-11)
 
 
