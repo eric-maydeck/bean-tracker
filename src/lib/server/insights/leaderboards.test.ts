@@ -69,6 +69,13 @@ describe('leaderboard', () => {
     expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'k2').map((r) => r.label)).toEqual(['Few', 'Many']);
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'raw').map((r) => r.value)).toEqual([10, 6, 6, 6]);
   });
+  it('best: value is the top brew; coffees board is that bag\'s top brew', () => {
+    const brews = [brew({ coffeeId: 1, rating: 6 }), brew({ coffeeId: 1, rating: 9 }), brew({ coffeeId: 2, rating: 9 })];
+    const [r] = leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'best');
+    expect(r).toMatchObject({ value: 9, atBest: 2, bags: 2, brews: 3 });
+    expect(r.fewBags).toBeUndefined();
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'best').map((x) => [x.value, x.atBest])).toEqual([[9, 1], [9, 1]]);
+  });
   it('roast level link includes alias labels', () => {
     const [r] = leaderboard([brew({ roastLevel: 'Light/Medium' })], [], SEPT, 'roast', 'brews', 'all', 'raw');
     expect(r.href).toBe('/coffees?status=all&roast_level=Light%2FMedium&roast_level=Light%2FMed');

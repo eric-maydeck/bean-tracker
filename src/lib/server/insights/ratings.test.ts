@@ -63,4 +63,16 @@ describe('ratedGroups', () => {
     expect(get('raw')).toBe(9);
     expect(get('k2')).toBeGreaterThan(get('adjusted'));
   });
+  it('best: highest brew, ties by brews at the max, then mean; Current excludes a pre-cutoff 10', () => {
+    const t = [
+      b('P', 1, 9), b('P', 1, 9), b('P', 2, 5), // 9 twice
+      b('Q', 3, 9), b('Q', 4, 9.5),             // 9.5 once
+      b('R', 5, 9), b('R', 6, 9), b('R', 7, 2), // 9 twice, lower mean than P
+      b('X', 8, 10, '2026-05-01')
+    ];
+    expect(ratedGroups(t, key, 'all', 'best').map((g) => [g.label, g.best, g.atBest])).toEqual([
+      ['X', 10, 1], ['Q', 9.5, 1], ['P', 9, 2], ['R', 9, 2]
+    ]);
+    expect(ratedGroups(t, key, 'current', 'best').map((g) => g.label)).toEqual(['Q', 'P', 'R']);
+  });
 });

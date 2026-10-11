@@ -4,7 +4,7 @@ import type { Ratings, Avg } from '$lib/insightsUrl';
 // "Settled" (the default) leaves them out of every rating-based stat.
 export const RATINGS_SETTLED_FROM = '2026-06-01';
 // Shrinkage strength for adjusted means, in bags, per Avg mode (raw doesn't shrink).
-export const ADJUSTED_K: Record<Avg, number> = { raw: 0, k2: 2, adjusted: 5 };
+export const ADJUSTED_K: Record<Avg, number> = { raw: 0, k2: 2, adjusted: 5, best: 0 };
 export const FEW_BAGS = 3;
 
 export type Rated = { coffeeId: number | null; rating: number | null; localDate: string };
@@ -19,6 +19,8 @@ export interface RatedGroup {
   bags: number;
   brews: number;
   fewBags: boolean;
+  best: number; // highest single brew rating
+  atBest: number; // brews at that rating
 }
 
 // Bag-weighted: each bag's mean rating is one point, so 40 brews of one bag
@@ -31,6 +33,7 @@ export function ratedGroups<T extends Rated>(
   ratings: Ratings,
   avg: Avg
 ): RatedGroup[] {
+  const peak = new Map<string, { best: number; atBest: number }>();
   const perBag = new Map<string, { label: string; sum: number; n: number }>();
   for (const b of brews) {
     const label = key(b);
@@ -40,6 +43,9 @@ export function ratedGroups<T extends Rated>(
     p.sum += b.rating!;
     p.n += 1;
     perBag.set(k, p);
+    const t = peak.get(label);
+    if (!t || b.rating! > t.best) peak.set(label, { best: b.rating!, atBest: 1 });
+    else if (b.rating === t.best) t.atBest += 1;
   }
   const points = [...perBag.values()];
   if (!points.length) return [];
@@ -59,7 +65,11 @@ export function ratedGroups<T extends Rated>(
       adjusted: (g.sum + ADJUSTED_K[avg] * overall) / (g.bags + ADJUSTED_K[avg]),
       bags: g.bags,
       brews: g.brews,
-      fewBags: g.bags < FEW_BAGS
+      fewBags: g.bags < FEW_BAGS,
+      ...peak.get(label)!
     }))
-    .sort((a, b) => (avg === 'raw' ? Number(a.fewBags) - Number(b.fewBags) : 0) || b.adjusted - a.adjusted);
+    .sort((a, b) =>
+      avg === 'best' ? b.best - a.best || b.atBest - a.atBest || b.mean - a.mean
+      : (avg === 'raw' ? Number(a.fewBags) - Number(b.fewBags) : 0) || b.adjusted - a.adjusted
+    );
 }

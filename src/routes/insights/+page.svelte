@@ -320,6 +320,7 @@
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}
     ratingsHelp={RATINGS_HELP}
+    {placeTip}
     {choose}
   />
 {:else}
@@ -525,7 +526,7 @@
     white-space: normal;
     line-height: 1.1; /* two lines end flush with the tile; keep them inside */
   }
-  .mode-tip-button {
+  :global(.mode-tip-button) {
     padding: 0;
     border: 0;
     background: none;
@@ -538,18 +539,18 @@
     text-underline-offset: 0.2em;
     cursor: help;
   }
-  .mode-tip-button:focus-visible {
+  :global(.mode-tip-button:focus-visible) {
     outline: 2px solid var(--color-accent);
     outline-offset: 1px;
   }
   @media (max-width: 640px) {
-    .mode-tip-button {
+    :global(.mode-tip-button) {
       min-width: 44px;
       padding: 16px 15px;
       margin: -16px -15px;
     }
   }
-  .mode-tip {
+  :global(.mode-tip) {
     --w: min(15rem, 100vw - 2rem);
     position: fixed;
     inset: auto;
@@ -567,7 +568,7 @@
     box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
   }
   /* Set from placeTip, so Svelte can't see it. */
-  .mode-tip:global([data-above]) {
+  :global(.mode-tip[data-above]) {
     translate: 0 calc(-100% - 0.5rem);
   }
 

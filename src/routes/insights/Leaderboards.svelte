@@ -6,10 +6,10 @@
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, rank, ratings, avg, open, comparing, perPerson, ratingsHelp, choose
+    boards, rank, ratings, avg, open, comparing, perPerson, ratingsHelp, placeTip, choose
   }: {
     boards: Rows; rank: Rank; ratings: Ratings; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
-    ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
+    ratingsHelp: Record<Ratings, string>; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
   const TITLE: Record<Board, string> = {
@@ -32,7 +32,12 @@
   }
   type Row = Rows[Board][number];
   const detail = (r: Row) =>
-    [r.sub, plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null].filter(Boolean).join(' · ');
+    [
+      r.sub,
+      ...(avg === 'best' && rank === 'rating' && r.atBest
+        ? [`${plural(r.atBest, 'brew')} at ${r.value.toFixed(1)}`, plural(r.bags, 'bag')]
+        : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.fewBags ? 'few bags' : null])
+    ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>
     m === undefined ? null
     : m === 'new' ? { text: 'new', cls: '', label: 'new' }
@@ -46,17 +51,17 @@
     spend: 'Money spent on bags bought in the period.',
     ppg: 'Price per gram of bags bought in the period.'
   };
-  const AVG_LABEL: Record<Avg, string> = { raw: 'Raw', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)' };
+  const AVG_LABEL: Record<Avg, string> = { raw: 'Raw average', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)', best: 'Best brew' };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Plain average of each bag's rating. Groups with fewer than 3 bags rank after the rest.",
     k2: "Pulled slightly toward your overall average, so 1–2 bag groups can't top the board (K = 2).",
-    adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).'
+    adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).',
+    best: 'The highest single brew rating in the group.'
   };
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
 </script>
 
-{#each AVGS as a (a)}<span id="avg-help-{a}" hidden>{AVG_HELP[a]}</span>{/each}
 {#each RANKS as r (r)}<span id="rank-help-{r}" hidden>{RANK_HELP[r]}</span>{/each}
 <div class="rank-bar">
   <div class="form-field">
@@ -87,17 +92,16 @@
       </div>
     </div>
     <div class="form-field">
-      <span>Average</span>
-      <div class="tab-group" role="group" aria-label="Average">
-        {#each AVGS as a (a)}
-          <button
-            aria-pressed={avg === a}
-            title={AVG_HELP[a]}
-            aria-describedby="avg-help-{a}"
-            onclick={() => choose({ avg: a })}>{AVG_LABEL[a]}</button
-          >
-        {/each}
-      </div>
+      <span><button class="mode-tip-button" popovertarget="tip-score" aria-describedby="tip-score">Score</button></span>
+      <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
+        <optgroup label="Average">
+          {#each ['raw', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
+        </optgroup>
+        <optgroup label="Peak"><option value="best" title={AVG_HELP.best}>{AVG_LABEL.best}</option></optgroup>
+      </select>
+    </div>
+    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>
+      {#each AVGS as a (a)}<p><b>{AVG_LABEL[a]}.</b> {AVG_HELP[a]}</p>{/each}
     </div>
   {/if}
 </div>
@@ -267,6 +271,12 @@
   }
   .move.trend-bad {
     color: var(--color-urgent);
+  }
+  #tip-score p {
+    margin: 0 0 0.4rem;
+  }
+  #tip-score p:last-child {
+    margin: 0;
   }
   .few .who,
   .few .val {

@@ -942,11 +942,12 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-leaderboards-avg',
-    path: () => '/insights?tab=leaderboards&avg=k2&compare=1',
+    path: () => '/insights?tab=leaderboards&avg=best&compare=1',
     act: async (page) => {
-      const sw = page.getByRole('group', { name: 'Average' });
-      await expect(sw.getByRole('button', { name: 'Adjusted (light)' })).toHaveAttribute('aria-pressed', 'true');
-      await expect(sw.getByRole('button', { name: 'Raw' })).toHaveAccessibleDescription(/Plain average of each bag/);
+      await expect(page.getByLabel('Score')).toHaveValue('best');
+      await expect(page.locator('.board-row small').first()).toContainText(/brews? at \d/);
+      await page.locator('button[popovertarget="tip-score"]').click();
+      await expect(page.locator('#tip-score')).toContainText('The highest single brew rating in the group.');
       await expect(page.locator('.board .move').first()).toHaveAttribute('aria-label', /^(up \d+ places?|down \d+ places?|unchanged|new)$/);
       await expectEqualBoardHeights(page);
     }

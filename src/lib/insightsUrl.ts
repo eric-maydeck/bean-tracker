@@ -16,8 +16,8 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Rating boards' mean: raw (default; groups under FEW_BAGS bags rank last), or shrunk toward
-// the overall mean with K = 2 (light) or K = 5 (strong).
-export const AVGS = ['raw', 'k2', 'adjusted'] as const;
+// the overall mean with K = 2 (light) or K = 5 (strong), or best (the highest single brew).
+export const AVGS = ['raw', 'k2', 'adjusted', 'best'] as const;
 export type Avg = (typeof AVGS)[number];
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];

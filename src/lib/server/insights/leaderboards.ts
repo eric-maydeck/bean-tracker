@@ -14,6 +14,8 @@ export interface BoardRow {
   bags: number;
   brews: number;
   fewBags?: boolean;
+  atBest?: number; // best mode: brews at the best score (a tie-break, and the detail line)
+  mean?: number; // best mode: raw mean of bag means (second tie-break)
   move?: number | 'new';
 }
 
@@ -44,7 +46,7 @@ const BAG_KEY: Partial<Record<Board, (b: BagFact) => string | null>> = {
 const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', origins: 'origin', roast: 'roast_level' };
 
 const byRank = (a: BoardRow, b: BoardRow) =>
-  b.value - a.value || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
+  b.value - a.value || (b.atBest ?? 0) - (a.atBest ?? 0) || (b.mean ?? 0) - (a.mean ?? 0) || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
 
 const listHref = (column: ColumnKey, values: (string | null)[]) =>
   `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
@@ -55,7 +57,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
     // Built field by field: the coffees board carries no few-bags marker.
     return {
       key: r.key, label: bag?.name ?? r.label, sub: bag?.roaster, ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {}),
-      value: r.value, bags: r.bags, brews: r.brews
+      value: r.value, bags: r.bags, brews: r.brews, atBest: r.atBest, mean: r.mean
     };
   }
   if (board === 'process') {
@@ -91,7 +93,8 @@ export function leaderboard(
     const key = BREW_KEY[board];
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
-        key: r.label, label: r.label, value: r.adjusted, bags: r.bags, brews: r.brews, fewBags: r.fewBags
+        key: r.label, label: r.label, bags: r.bags, brews: r.brews,
+        ...(avg === 'best' ? { value: r.best, atBest: r.atBest, mean: r.mean } : { value: r.adjusted, fewBags: r.fewBags })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
