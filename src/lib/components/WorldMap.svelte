@@ -58,7 +58,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <svg
     viewBox={WORLD_VIEWBOX}
-    role="img"
+    role="group"
     aria-label="Coffees by origin country"
     onpointermove={(e) => e.pointerType === 'mouse' && at(e)}
     onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}

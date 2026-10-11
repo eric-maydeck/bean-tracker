@@ -73,9 +73,9 @@
     --chart-color-6: #a3c15c;
     --chart-color-7: #e07a7a;
     --chart-color-8: #a79ce0;
-  --map-low: #4a3a2e;
-  --map-high: #e8b48a;
-  --map-empty: #3a3a3a;
+    --map-low: #4a3a2e;
+    --map-high: #e8b48a;
+    --map-empty: #3a3a3a;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
