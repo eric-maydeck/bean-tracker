@@ -114,7 +114,8 @@ describe('withDefaults', () => {
       range: '12m',
       compare: 0,
       ratings: 'current',
-      avg: 'adjusted'
+      avg: 'adjusted',
+      people: 'household'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
