@@ -159,3 +159,31 @@ export async function checkLayout(page: Page): Promise<void> {
   });
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
 }
+
+// Insights stat grids: every row of tiles runs edge to edge (no empty cell, no ragged last row).
+export async function expectStatRowsFull(page: Page) {
+  const gaps = await page.locator('.stat-row').evaluateAll((rows) =>
+    rows.flatMap((row) => {
+      const o = row.getBoundingClientRect();
+      const byTop = new Map<number, DOMRect[]>();
+      for (const t of row.children) {
+        const r = t.getBoundingClientRect();
+        byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]);
+      }
+      return [...byTop.values()].flatMap((rs) => {
+        const [l, r] = [Math.min(...rs.map((x) => x.left)) - o.left, o.right - Math.max(...rs.map((x) => x.right))];
+        return Math.abs(l) > 1 || Math.abs(r) > 1 ? [`${rs.length} tiles leave ${Math.round(l)}px left, ${Math.round(r)}px right`] : [];
+      });
+    })
+  );
+  expect(gaps).toEqual([]);
+  // Every caption stays inside its tile (checkLayout misses absolutely positioned overflow).
+  const spills = await page.locator('.stat-row .stat-item').evaluateAll((tiles) =>
+    tiles.flatMap((t) => {
+      const c = t.querySelector('.stat-caption')!.getBoundingClientRect();
+      const b = t.getBoundingClientRect().bottom;
+      return c.bottom > b - 1 ? [`${t.textContent?.trim().slice(0, 30)}: caption ${Math.round(c.bottom - b)}px past the bottom`] : [];
+    })
+  );
+  expect(spills).toEqual([]);
+}

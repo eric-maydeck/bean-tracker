@@ -11,11 +11,11 @@
   import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
-  import { parseRange, parsePeople, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
+  import { parseRange, parsePeople, peopleHelp, PEOPLE, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { parseStatsTab, parseBcAverage } from './statsTab';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
-  import type { RatedGroup, PeriodWindow } from './beanConquerorStatsData';
+  import { bcPerPerson, type RatedGroup, type PeriodWindow } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
   import type { PageData, ActionData } from './$types';
 
@@ -87,7 +87,12 @@
   let explicitRange = $state(parseRange(currentParams(page.url), data.years));
   let explicitPeople = $state(parsePeople(currentParams(page.url), data.householdSize));
   let range = $derived(explicitRange ?? '12m');
-  let people = $derived(explicitPeople ?? 'household');
+  // A household of one has no split, even right after saving size 1 with ?people=person still held.
+  let people = $derived(data.householdSize > 1 ? (explicitPeople ?? 'household') : 'household');
+  let bc = $derived(people === 'person' ? bcPerPerson(data.beanConquerorStats, data.householdSize) : data.beanConquerorStats);
+  // 6.5 brews per person, not "6.5000001" or a rounded 7.
+  const tenth = (n: number) => String(Math.round(n * 10) / 10);
+  const PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let use = $derived(data.consumption[range][people]);
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
   const pp = (label: string) => (people === 'person' ? `${label} · per person` : label);
@@ -212,7 +217,7 @@
     if (explicitStatus) for (const s of explicitStatus) params.append('status', s);
     if (explicitTab) params.set('tab', explicitTab);
     if (explicitRange) params.set('range', explicitRange);
-    if (explicitPeople) params.set('people', explicitPeople);
+    if (explicitPeople && data.householdSize > 1) params.set('people', explicitPeople);
     if (explicitBc) params.set('bc', explicitBc);
     if (explicitBcFav) params.set('bc_fav', explicitBcFav);
     if (explicitBcMetric) params.set('bc_metric', explicitBcMetric);
@@ -242,10 +247,10 @@
 
   let bcFavoriteGroups = $derived(
     {
-      roaster: data.beanConquerorStats.favoritesByRoaster,
-      origin: data.beanConquerorStats.favoritesByOrigin,
-      processing: data.beanConquerorStats.favoritesByProcessing,
-      roastLevel: data.beanConquerorStats.favoritesByRoastLevel
+      roaster: bc.favoritesByRoaster,
+      origin: bc.favoritesByOrigin,
+      processing: bc.favoritesByProcessing,
+      roastLevel: bc.favoritesByRoastLevel
     }[bcFavoriteDimension]
   );
   let bcVisibleFavoriteGroups = $derived(bcFavoriteGroups.slice(0, BEANCONQUEROR_BAR_LIMIT));
@@ -261,15 +266,15 @@
       bcBrewingMetric === 'rating' ? b.averageRating - a.averageRating : b.brewCount - a.brewCount
     );
   }
-  let bcVisibleMethodGroups = $derived(sortByMetric(data.beanConquerorStats.byMethod).slice(0, BEANCONQUEROR_BAR_LIMIT));
+  let bcVisibleMethodGroups = $derived(sortByMetric(bc.byMethod).slice(0, BEANCONQUEROR_BAR_LIMIT));
   let bcVisibleGrinderGroups = $derived(
-    sortByMetric(data.beanConquerorStats.byGrinder).slice(0, BEANCONQUEROR_BAR_LIMIT)
+    sortByMetric(bc.byGrinder).slice(0, BEANCONQUEROR_BAR_LIMIT)
   );
   let bcMethodChartHeight = $derived(Math.max(220, bcVisibleMethodGroups.length * 34 + 40));
   let bcGrinderChartHeight = $derived(Math.max(220, bcVisibleGrinderGroups.length * 34 + 40));
 
   let bcVisibleCostByRoaster = $derived(
-    data.beanConquerorStats.costPerGramByRoaster.slice(0, BEANCONQUEROR_BAR_LIMIT)
+    bc.costPerGramByRoaster.slice(0, BEANCONQUEROR_BAR_LIMIT)
   );
   let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
 
@@ -278,9 +283,9 @@
   // count from a separate COUNT(*) query — data.unmatchedBeans.beans is
   // already the capped list.
 
-  let bcRatingsDates = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.date));
-  let bcRatingsValues = $derived(data.beanConquerorStats.ratingsOverTime.map((r) => r.rating));
-  let bcBrewsPerDay = $derived(data.beanConquerorStats.brewsPerDay);
+  let bcRatingsDates = $derived(bc.ratingsOverTime.map((r) => r.date));
+  let bcRatingsValues = $derived(bc.ratingsOverTime.map((r) => r.rating));
+  let bcBrewsPerDay = $derived(bc.brewsPerDay);
 
   function formatRating(value: number | null): string {
     return value === null ? '—' : value.toFixed(1);
@@ -373,11 +378,25 @@
   <ShareButton />
 </div>
 
-<div class="chart-panel-controls">
+<div class="chart-panel-controls stats-bar">
   <div class="tab-group">
     <button aria-pressed={tab === 'general'} onclick={() => (explicitTab = 'general')}>General</button>
     <button aria-pressed={tab === 'bq'} onclick={() => (explicitTab = 'bq')}>Bean Conqueror</button>
   </div>
+  {#if data.householdSize > 1}
+    <div class="tab-group" role="group" aria-label="People">
+      {#each PEOPLE as m (m)}
+        <button
+          aria-pressed={people === m}
+          title={PEOPLE_HELP[m]}
+          aria-describedby="people-help-{m}"
+          onclick={() => (explicitPeople = m)}>{m === 'person' ? 'Per person' : 'Household'}</button
+        >
+      {/each}
+    </div>
+    <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
+    <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
+  {/if}
 </div>
 
 {#if tab === 'general'}
@@ -906,7 +925,7 @@
     {/if}
   {/if}
 
-  {#if data.beanConquerorStats.totalBrews > 0 || data.beanConquerorStats.totalBeans > 0}
+  {#if bc.totalBrews > 0 || bc.totalBeans > 0}
     <h3>Stats &amp; breakdowns</h3>
     <div class="chart-panel-controls">
       <div class="tab-group">
@@ -920,41 +939,41 @@
     {#if bcTab === 'overview'}
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-value">{data.beanConquerorStats.totalBrews}</span>
+          <span class="stat-value">{tenth(bc.totalBrews)}</span>
           <div class="stat-caption">
-            <span class="stat-label">Total brews</span>
+            <span class="stat-label">{pp('Total brews')}</span>
           </div>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{data.beanConquerorStats.totalBeans}</span>
+          <span class="stat-value">{bc.totalBeans}</span>
           <div class="stat-caption">
             <span class="stat-label">Total beans</span>
           </div>
         </div>
         <div class="stat-item">
-          <span class="stat-value">{formatRating(data.beanConquerorStats.averageRating)}</span>
+          <span class="stat-value">{formatRating(bc.averageRating)}</span>
           <div class="stat-caption">
             <span class="stat-label">Average rating</span>
           </div>
         </div>
         <div class="stat-item">
           <span class="stat-value"
-            >{data.beanConquerorStats.totalGramsBrewed === null
+            >{bc.totalGramsBrewed === null
               ? '—'
-              : formatGrams(data.beanConquerorStats.totalGramsBrewed)}</span
+              : formatGrams(bc.totalGramsBrewed)}</span
           >
           <div class="stat-caption">
-            <span class="stat-label">Total brewed</span>
+            <span class="stat-label">{pp('Total brewed')}</span>
           </div>
         </div>
       </div>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>Brews per day</h2>
+          <h2>{pp('Brews per day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
-          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+          {#each bc.periodAverages as w (w.window)}
             {@const value = bcAverage === 'brew-day' ? w.brewsPerBrewDay : w.brewsPerDay}
             <div class="stat-item">
               <span class="stat-value">{value === null ? '—' : value.toFixed(1)}</span>
@@ -979,11 +998,11 @@
       </section>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>Grams per day</h2>
+          <h2>{pp('Grams per day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
-          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+          {#each bc.periodAverages as w (w.window)}
             {@const value = bcAverage === 'brew-day' ? w.gramsPerBrewDay : w.gramsPerDay}
             <div class="stat-item">
               <span class="stat-value">{value === null ? '—' : formatGrams(value)}</span>
@@ -1010,7 +1029,7 @@
       <section class="chart-panel">
         <h2>Average rating over time</h2>
         <div class="stat-row stat-row-compact">
-          {#each data.beanConquerorStats.periodAverages as w (w.window)}
+          {#each bc.periodAverages as w (w.window)}
             {@const value = w.rating}
             <div class="stat-item">
               <span class="stat-value">{formatRating(value)}</span>
@@ -1052,16 +1071,16 @@
     {:else if bcTab === 'brewing'}
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-value">{formatTemperature(data.beanConquerorStats.averageBrewTemperatureC)}</span>
+          <span class="stat-value">{formatTemperature(bc.averageBrewTemperatureC)}</span>
           <div class="stat-caption">
             <span class="stat-label">Average brew temperature</span>
           </div>
         </div>
         <div class="stat-item">
           <span class="stat-value"
-            >{data.beanConquerorStats.averageBeanAgeAtBrewDays === null
+            >{bc.averageBeanAgeAtBrewDays === null
               ? '—'
-              : formatDays(data.beanConquerorStats.averageBeanAgeAtBrewDays)}</span
+              : formatDays(bc.averageBeanAgeAtBrewDays)}</span
           >
           <div class="stat-caption">
             <span class="stat-label">Average bean age at brew</span>
@@ -1113,7 +1132,7 @@
     {:else if bcTab === 'economics'}
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-value">{formatCostPerGram(data.beanConquerorStats.averageCostPerGram)}</span>
+          <span class="stat-value">{formatCostPerGram(bc.averageCostPerGram)}</span>
           <div class="stat-caption">
             <span class="stat-label">Average cost per gram</span>
           </div>
@@ -1123,7 +1142,7 @@
         <p class="text-muted">No cost data yet.</p>
       {:else}
         <p class="text-muted">
-          Showing top {bcVisibleCostByRoaster.length} of {data.beanConquerorStats.costPerGramByRoaster.length}.
+          Showing top {bcVisibleCostByRoaster.length} of {bc.costPerGramByRoaster.length}.
         </p>
         <Chart
           type="bar"

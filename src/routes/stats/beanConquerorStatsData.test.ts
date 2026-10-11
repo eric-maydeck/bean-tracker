@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from '$lib/server/db';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
-import { buildBeanConquerorStats } from './beanConquerorStatsData';
+import { buildBeanConquerorStats, bcPerPerson, type BeanConquerorStats } from './beanConquerorStatsData';
 
 type SeededBrew = Parameters<typeof importBeanConquerorData>[1]['brews'][number];
 
@@ -386,4 +386,30 @@ describe('buildBeanConquerorStats', () => {
     expect(stats.averageBrewTemperatureC).toBeNull();
     expect(stats.averageBeanAgeAtBrewDays).toBeNull();
   });
+});
+
+describe('bcPerPerson', () => {
+  const S: BeanConquerorStats = {
+    totalBrews: 13, totalBeans: 3, averageRating: 8, totalGramsBrewed: 195,
+    ratingsOverTime: [{ date: '2026-10-01', rating: 8 }],
+    periodAverages: [{ window: 'week', brewsPerDay: 2, brewsPerBrewDay: 3, gramsPerDay: 30, gramsPerBrewDay: 45, rating: 8 }],
+    brewsPerDay: [{ date: '2026-10-01', brews: 2, rollingAverage: 1, grams: 30, gramsRollingAverage: 15 }],
+    favoritesByRoaster: [{ label: 'R', averageRating: 8, brewCount: 4 }], favoritesByOrigin: [], favoritesByProcessing: [],
+    favoritesByRoastLevel: [], byMethod: [{ label: 'V60', averageRating: 8, brewCount: 4 }], byGrinder: [],
+    averageBrewTemperatureC: 93, averageBeanAgeAtBrewDays: 20, averageCostPerGram: 0.1, costPerGramByRoaster: []
+  };
+  it('divides totals and per-day values; averages, ratings, beans and breakdowns stay', () =>
+    expect(bcPerPerson(S, 2)).toEqual({
+      ...S,
+      totalBrews: 6.5,
+      totalGramsBrewed: 97.5,
+      periodAverages: [{ window: 'week', brewsPerDay: 1, brewsPerBrewDay: 1.5, gramsPerDay: 15, gramsPerBrewDay: 22.5, rating: 8 }],
+      brewsPerDay: [{ date: '2026-10-01', brews: 1, rollingAverage: 0.5, grams: 15, gramsRollingAverage: 7.5 }]
+    }));
+  it('keeps missing values missing', () => {
+    const p = bcPerPerson({ ...S, totalGramsBrewed: null, periodAverages: [{ ...S.periodAverages[0], brewsPerDay: null }] }, 2);
+    expect(p.totalGramsBrewed).toBeNull();
+    expect(p.periodAverages[0].brewsPerDay).toBeNull();
+  });
+  it('a household of one is the household', () => expect(bcPerPerson(S, 1)).toBe(S));
 });

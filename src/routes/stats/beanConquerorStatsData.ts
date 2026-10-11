@@ -288,3 +288,23 @@ export function buildBeanConquerorStats(
     costPerGramByRoaster
   };
 }
+
+// Per person (stats-per-person spec): totals and per-day values ÷ household size, an even
+// split. Averages, ratings, bean counts and the breakdowns stay household-wide.
+export function bcPerPerson(s: BeanConquerorStats, size: number): BeanConquerorStats {
+  if (size === 1) return s;
+  const d = (n: number | null) => (n === null ? null : n / size);
+  return {
+    ...s,
+    totalBrews: s.totalBrews / size,
+    totalGramsBrewed: d(s.totalGramsBrewed),
+    periodAverages: s.periodAverages.map((w) => ({
+      ...w, brewsPerDay: d(w.brewsPerDay), brewsPerBrewDay: d(w.brewsPerBrewDay),
+      gramsPerDay: d(w.gramsPerDay), gramsPerBrewDay: d(w.gramsPerBrewDay)
+    })),
+    brewsPerDay: s.brewsPerDay.map((x) => ({
+      ...x, brews: x.brews / size, rollingAverage: x.rollingAverage / size,
+      grams: x.grams / size, gramsRollingAverage: x.gramsRollingAverage / size
+    }))
+  };
+}

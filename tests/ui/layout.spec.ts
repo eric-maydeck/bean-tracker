@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout } from './checkLayout';
+import { checkLayout, expectStatRowsFull } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -14,34 +14,6 @@ const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
 // Read lazily: .ui-test/seed.json only exists once the web server has started.
 let cached: Seed | undefined;
 const seed = (): Seed => (cached ??= JSON.parse(readFileSync('.ui-test/seed.json', 'utf8')));
-
-// Insights stat grids: every row of tiles runs edge to edge (no empty cell, no ragged last row).
-async function expectStatRowsFull(page: Page) {
-  const gaps = await page.locator('.stat-row').evaluateAll((rows) =>
-    rows.flatMap((row) => {
-      const o = row.getBoundingClientRect();
-      const byTop = new Map<number, DOMRect[]>();
-      for (const t of row.children) {
-        const r = t.getBoundingClientRect();
-        byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]);
-      }
-      return [...byTop.values()].flatMap((rs) => {
-        const [l, r] = [Math.min(...rs.map((x) => x.left)) - o.left, o.right - Math.max(...rs.map((x) => x.right))];
-        return Math.abs(l) > 1 || Math.abs(r) > 1 ? [`${rs.length} tiles leave ${Math.round(l)}px left, ${Math.round(r)}px right`] : [];
-      });
-    })
-  );
-  expect(gaps).toEqual([]);
-  // Every caption stays inside its tile (checkLayout misses absolutely positioned overflow).
-  const spills = await page.locator('.stat-row .stat-item').evaluateAll((tiles) =>
-    tiles.flatMap((t) => {
-      const c = t.querySelector('.stat-caption')!.getBoundingClientRect();
-      const b = t.getBoundingClientRect().bottom;
-      return c.bottom > b - 1 ? [`${t.textContent?.trim().slice(0, 30)}: caption ${Math.round(c.bottom - b)}px past the bottom`] : [];
-    })
-  );
-  expect(spills).toEqual([]);
-}
 
 interface State {
   name: string;
@@ -721,6 +693,24 @@ export const STATES: State[] = [
     }
   },
   { name: 'stats-general', path: () => '/stats' },
+  {
+    // The /stats people switch drives both tabs: At a Glance on General, totals on Bean Conqueror.
+    name: 'stats-people-person',
+    path: () => '/stats',
+    act: async (page) => {
+      const people = page.getByRole('group', { name: 'People' });
+      await people.getByRole('button', { name: 'Per person', exact: true }).click();
+      await expect(page).toHaveURL(/people=person/);
+      await expect(page.getByText('To clear per person')).toBeVisible();
+      await page.getByRole('button', { name: 'Bean Conqueror', exact: true }).click();
+      await expect(page).toHaveURL(/people=person/);
+      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews · per person');
+      await expect(page.locator('.stat-label', { hasText: 'Average rating' })).toHaveText('Average rating');
+      await expect(page.locator('.stat-label', { hasText: 'Total beans' })).toHaveText('Total beans');
+      await expect(page.getByRole('heading', { name: 'Brews per day · per person' })).toBeVisible();
+      await expect(page.locator('.stat-item', { hasText: 'Total brews' }).locator('.stat-value')).toHaveText(/^\d+(\.\d)?$/);
+    }
+  },
   {
     // Temporary Time to Clear panel: its own Period select writes `range`; people from the URL.
     name: 'stats-time-to-clear-range',
