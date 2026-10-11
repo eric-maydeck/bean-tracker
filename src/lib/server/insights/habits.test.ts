@@ -103,6 +103,7 @@ describe('habits', () => {
     expect(h.compareWeekday![0]).toBe(1); // 1 Monday brew over 1 Monday
     expect(h.prevPeak).toEqual({ hour: 10, weekday: 0 });
     expect(h.deltas!.longestStreak).toMatchObject({ abs: 0 });
+    expect(h.prevActive).toEqual({ brewDays: 2, trackedDays: 7 }); // the count behind the previous ratio
   });
 
   it('a period ending before today: streak at period end', () => {

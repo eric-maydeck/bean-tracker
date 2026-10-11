@@ -44,7 +44,7 @@ async function expectDeltasFit(page: Page) {
       const shown = el.querySelector('[aria-hidden]')?.textContent?.trim() ?? el.textContent?.trim() ?? '';
       const said = el.querySelector('.sr-only')?.textContent ?? '';
       const lines = Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight || '1'));
-      const shape = /^[▲▼] \S+ (from \S+|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
+      const shape = /^[▲▼] \S+ (from \S+( days \(\d+%\))?|\(\d+%\))$/.test(shown) || shown === 'No change' || /^was /.test(shown);
       const spoken = !el.querySelector('.sr-only') || shown === 'No change' || /^(Up|Down) \d+% (from|vs) /.test(said);
       return shape && spoken && el.scrollWidth <= el.clientWidth + 1 && lines <= 1 ? [] : [`${shown} | ${said}`];
     })
@@ -880,6 +880,16 @@ export const STATES: State[] = [
       });
       expect(m.lines).toBeLessThan(1.6);
       expect(m.own).toBeGreaterThanOrEqual(m.max - 1);
+    }
+  },
+  {
+    // Active days compares as a ratio of a count: "▼ 3% from 31 days (100%)", one line, nothing clipped.
+    name: 'insights-habits-active-from',
+    path: () => '/insights?tab=habits&range=1w&compare=1',
+    act: async (page) => {
+      const tile = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Active days$/ }) });
+      await expect(tile.locator('.insights-delta [aria-hidden]')).toHaveText(/^[▲▼] \d+% from \d+ days \(\d+%\)$|^No change$/);
+      await expectDeltasFit(page);
     }
   },
   {

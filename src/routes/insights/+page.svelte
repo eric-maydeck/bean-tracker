@@ -127,6 +127,7 @@
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
     up?: 'good' | 'bad'; split?: true; sub?: () => string | null; keepSub?: true;
     was?: () => string | null; // a neutral line in the delta slot ("was Thu")
+    from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
   };
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -170,7 +171,9 @@
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
-          { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good', keepSub: true, sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days` },
+          { key: 'activeDays', label: 'Active days', fmt: pct, up: 'good', keepSub: true,
+            from: () => (data.habits!.prevActive ? `${data.habits!.prevActive.brewDays} days` : null),
+            sub: () => `${data.habits!.tiles.brewDays} of ${data.habits!.tiles.trackedDays} days` },
           { key: 'currentStreak', label: data.habits.streakAtEnd ? 'Streak at period end' : 'Current streak', fmt: count, suffix: 'days' },
           {
             key: 'longestStreak', label: 'Longest streak', fmt: count, suffix: 'days', up: 'good', keepSub: true,
@@ -245,6 +248,8 @@
     (data.scaled || perPersonOn) && t.split && t.fmt === count ? (n: number) => (Math.abs(n) < 10 ? n.toFixed(1) : count(n)) : t.fmt;
   const valueText = (t: Tile, v: number | null) => (v === null ? '—' : (perPersonOn ? paced(t) : t.fmt)(v));
 
+  // The previous value as the line says it: "112g", or for a ratio of a count "31 days (100%)".
+  const was = (d: NonNullable<D>, t: Tile) => (t.from?.() ? `${t.from()} (${paced(t)(d.base)})` : paced(t)(d.base));
   // Unscaled: "▼ 19g from 112g". A pace-scaled base isn't the other window's own value, so those
   // keep the change and its %, with "vs X at that pace" on the pace line.
   function deltaText(d: NonNullable<D>, t: Tile): string {
@@ -253,7 +258,7 @@
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
     const arrow = d.abs > 0 ? '▲' : '▼';
     // The tile's unit suffix ("days") stays out of the line: it's on the value above and in the title.
-    return d.paced ? `${arrow} ${fmt(Math.abs(d.abs))} (${Math.abs(d.pct).toFixed(0)}%)` : `${arrow} ${fmt(Math.abs(d.abs))} from ${fmt(d.base)}`;
+    return d.paced ? `${arrow} ${fmt(Math.abs(d.abs))} (${Math.abs(d.pct).toFixed(0)}%)` : `${arrow} ${fmt(Math.abs(d.abs))} from ${was(d, t)}`;
   }
   // Full sentence for the title and screen readers (the % lives here for unscaled tiles).
   function deltaTitle(d: NonNullable<D>, t: Tile): string {
@@ -261,7 +266,7 @@
     if (fmt(Math.abs(d.abs)) === fmt(0)) return 'No change';
     const unit = t.suffix ? ` ${t.suffix}` : '';
     const dir = `${d.abs > 0 ? 'Up' : 'Down'} ${Math.abs(d.pct).toFixed(0)}%`;
-    return d.paced ? `${dir} vs ${fmt(d.base)}${unit} at that pace` : `${dir} from ${fmt(d.base)}${unit} (${compareLabel})`;
+    return d.paced ? `${dir} vs ${fmt(d.base)}${unit} at that pace` : `${dir} from ${t.from?.() ? was(d, t) : fmt(d.base) + unit} (${compareLabel})`;
   }
   const paceText = (d: NonNullable<D>, t: Tile) => (d.paced ? `vs ${paced(t)(d.base)} at that pace` : '');
   // Green when the change is the good way for this tile, red when bad; tiles with no good
@@ -401,7 +406,7 @@
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and hover. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" title={deltaTitle(d, t)}
+            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={t.from && !d.paced} title={deltaTitle(d, t)}
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
@@ -724,6 +729,10 @@
   /* .stat-unit upper-cases; "120G" misreads as a unit. */
   .stat-item .insights-delta {
     text-transform: none;
+  }
+  /* "▼ 14% from 7 days (100%)" is ~14.5em wide: size it to the tile (a container: cqw is its width) (never past the usual 0.8rem). */
+  .stat-item .insights-delta.ratio {
+    font-size: min(0.8rem, calc((100cqw - 2 * var(--space-2)) / 14.5));
   }
   .insights-delta.trend-good {
     color: var(--color-fresh);

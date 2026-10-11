@@ -18,6 +18,7 @@ export interface Habits {
   tiles: HabitTiles;
   deltas: { activeDays: Delta; longestStreak: Delta; brewsPerBrewDay: Delta } | null;
   prevPeak: { hour: number | null; weekday: number | null } | null;
+  prevActive: { brewDays: number; trackedDays: number } | null; // the count behind the previous Active days ratio
   busiestAvg: number | null; // the busiest weekday's byWeekday value: per occurrence of it, or its mean rating
   streakAtEnd: boolean; // the period ends before today: "Streak at period end"
   longestFrom: string | null; // kept out of tiles: tile values are numbers
@@ -135,6 +136,7 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
   for (const b of w.inP) byDay.set(b.localDate, [...(byDay.get(b.localDate) ?? []), b]);
   let deltas: Habits['deltas'] = null;
   let prevPeak: Habits['prevPeak'] = null;
+  let prevActive: Habits['prevActive'] = null;
   let compareHour: Habits['compareHour'] = null;
   let compareWeekday: Habits['compareWeekday'] = null;
   if (c.prev) {
@@ -145,13 +147,14 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
       brewsPerBrewDay: tileDelta(w.brewsPerBrewDay, v.brewsPerBrewDay)
     };
     prevPeak = { hour: v.peakHour, weekday: v.busiestWeekday };
+    prevActive = { brewDays: v.brewDays.length, trackedDays: v.tracked.length };
     // Hour totals pace to this window's tracked days when the lengths differ (the compareTiles rule).
     const k = c.pace && v.tracked.length && v.tracked.length !== w.tracked.length ? w.tracked.length / v.tracked.length : 1;
     compareHour = v.byHour.map((x) => (x === null || c.measure === 'rating' ? x : x * k));
     compareWeekday = v.byWeekday;
   }
   return {
-    tiles, deltas, prevPeak,
+    tiles, deltas, prevPeak, prevActive,
     busiestAvg: w.busiestWeekday === null ? null : w.byWeekday[w.busiestWeekday],
     streakAtEnd: c.period.end < c.today,
     longestFrom: long.from, longestTo: long.to,
