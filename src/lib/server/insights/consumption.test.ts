@@ -48,11 +48,12 @@ describe('bucketTitles', () => {
   it('the dates a bucket really covers, with the year', () => {
     expect(bucketTitles(buckets({ start: '2025-09-06', end: '2025-09-07' }, 'day'), 'day')).toEqual(['Sep 6, 2025', 'Sep 7, 2025']);
     expect(bucketTitles(buckets({ start: '2025-09-02', end: '2025-09-20' }, 'week'), 'week')).toEqual([
-      'Sep 2 – Sep 7, 2025 (partial)', 'Sep 8 – Sep 14, 2025', 'Sep 15 – Sep 20, 2025 (partial)'
+      'Sep 2–7, 2025 (partial)', 'Sep 8–14, 2025', 'Sep 15–20, 2025 (partial)'
     ]);
+    expect(bucketTitles(buckets({ start: '2025-09-24', end: '2025-10-06' }, 'week'), 'week')[1]).toBe('Sep 29 – Oct 5, 2025');
     expect(bucketTitles(buckets({ start: '2025-12-29', end: '2026-01-11' }, 'week'), 'week')[0]).toBe('Dec 29, 2025 – Jan 4, 2026');
     expect(bucketTitles(buckets({ start: '2025-08-15', end: '2025-10-11' }, 'month'), 'month')).toEqual([
-      'Aug 2025 (partial)', 'Sep 2025', 'Oct 2025 (partial)'
+      'Aug 15–31, 2025 (partial)', 'Sep 2025', 'Oct 1–11, 2025 (partial)'
     ]);
   });
 });

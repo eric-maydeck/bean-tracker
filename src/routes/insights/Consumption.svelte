@@ -6,9 +6,9 @@
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, periodLabel, compareLabel, unit, agg, offered, choose, tiles
+    t, periodLabel, compareLabel, compareDates, unit, agg, offered, choose, tiles
   }: {
-    t: ConsumptionTab; periodLabel: string; compareLabel: string; unit: Unit; agg: Agg; offered: By[];
+    t: ConsumptionTab; periodLabel: string; compareLabel: string; compareDates: string; unit: Unit; agg: Agg; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -32,7 +32,7 @@
     compare?.some((v) => v)
       ? [{ label: compareLabel, values: div(compare, k1), faded: true, names: t.compareTitles ?? undefined }]
       : !t.compareBrewed && t.compareAverage
-        ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true }]
+        ? [{ label: `${compareLabel} (avg)`, values: t.brewed.map(() => t.compareAverage! / k1), dashed: true, names: t.brewed.map(() => compareDates) }]
         : []
   );
   // Average: every bar is a per-day rate, whatever the bucket.

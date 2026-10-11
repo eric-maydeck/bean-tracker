@@ -5,7 +5,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -135,6 +135,8 @@
   let compareLabel = $derived(
     compareName(s.compare, data.compareMenus[s.range].flatMap((g) => g.options), data.previousPeriod, data.today)
   );
+  // The compare window's dates for a tooltip, unless its label already is the dates (custom).
+  let compareDates = $derived(data.previousPeriod && !isCustom(s.compare) ? windowLabel(data.previousPeriod, data.today) : '');
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
   type Key = string; // tile keys span four data shapes
@@ -484,7 +486,7 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
+  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, data.consumptionTab!.tiles, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
 {:else}

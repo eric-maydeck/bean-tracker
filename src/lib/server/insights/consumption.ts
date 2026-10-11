@@ -51,13 +51,16 @@ export function bucketLabels(bs: readonly Bucket[], by: By = 'day'): string[] {
 // compare bar says which days it is. A clipped bucket is marked partial.
 export function bucketTitles(bs: readonly Bucket[], by: By): string[] {
   const f = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { ...o, timeZone: 'UTC' });
+  const md = (d: string, year: boolean) => f(d, { month: 'short', day: 'numeric', ...(year && { year: 'numeric' }) });
   return bs.map((b) => {
-    const [y0, y1] = [b.start.slice(0, 4), b.end.slice(0, 4)];
-    const md = (d: string, year: boolean) => f(d, { month: 'short', day: 'numeric', ...(year && { year: 'numeric' }) });
+    const sameMonth = b.start.slice(0, 7) === b.end.slice(0, 7);
+    const sameYear = b.start.slice(0, 4) === b.end.slice(0, 4);
+    // A whole month is just its name; a week, day or clipped month shows its days ("Aug 18–31, 2025").
     const name =
-      by === 'month' ? f(b.start, { month: 'short', year: 'numeric' })
+      by === 'month' && !b.partial ? f(b.start, { month: 'short', year: 'numeric' })
       : b.start === b.end ? md(b.start, true)
-      : `${md(b.start, y0 !== y1)} – ${md(b.end, true)}`;
+      : sameMonth ? `${md(b.start, false)}–${+b.end.slice(8)}, ${b.end.slice(0, 4)}`
+      : `${md(b.start, !sameYear)} – ${md(b.end, true)}`;
     return name + (b.partial ? ' (partial)' : '');
   });
 }
