@@ -757,6 +757,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // Consumption: 4 tiles (2×2 on phones, 4 across wider), deltas on the three rates only.
+    name: 'insights-consumption',
+    path: () => '/insights?range=1w&compare=1',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Consumption' }) });
+      await expect(panel.locator('.stat-label')).toHaveText(['Per day', 'Per week', 'Per month', 'Time to clear']);
+      const clear = panel.locator('.stat-item').last();
+      await expect(clear.locator('.insights-delta')).toHaveCount(0);
+      await expect(clear.locator('.stat-value')).toHaveText(/^(—|[\d,]+ days)$/);
+    }
+  },
+  {
     // A longer window: groups in the Compare menu, totals paced to the period.
     name: 'insights-compare-longer',
     path: () => '/insights?range=1w&compare=before',

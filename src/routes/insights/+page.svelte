@@ -70,11 +70,18 @@
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
-  type Key = keyof PageData['tiles'];
+  type Key = keyof PageData['tiles'] | 'perDay' | 'perWeek' | 'perMonth' | 'daysToClear';
+  type D = { abs: number; pct: number; base: number } | null;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
   // `up`: whether a rise is good or bad, for the delta's colour; unset = neutral (grey).
-  type Tile = { key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean; split?: true; up?: 'good' | 'bad' };
+  // `sub`: a line under the value where there's no delta (Time to clear's date).
+  type Tile = {
+    key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
+    up?: 'good' | 'bad'; split?: true; sub?: () => string | null;
+  };
+  const shortDay = (d: string) =>
+    new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const TOTALS: Tile[] = [
     { key: 'brews', split: true, label: 'Brews', fmt: count, up: 'good' },
     { key: 'grams', split: true, label: 'Grams', fmt: formatGrams },
@@ -89,6 +96,15 @@
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },
     { key: 'avgBrewTime', label: 'Avg brew time', fmt: mss }
+  ];
+  const CONSUMPTION: Tile[] = [
+    { key: 'perDay', label: 'Per day', fmt: formatGrams, split: true },
+    { key: 'perWeek', label: 'Per week', fmt: formatGrams, split: true },
+    { key: 'perMonth', label: 'Per month', fmt: formatGrams, split: true },
+    {
+      key: 'daysToClear', label: 'Time to clear', fmt: (n) => n.toLocaleString('en-US'), suffix: 'days', split: true,
+      sub: () => (data.consumption.clearBy ? `by ${shortDay(data.consumption.clearBy)}` : null)
+    }
   ];
   // One explanation per ratings mode, shared by the switches (hover title,
   // aria-describedby) and the caption's tap-to-open popover.
@@ -127,7 +143,7 @@
   }
   // Totals compared across windows of different tracked lengths: what the other window would be at this pace.
   const paceText = (d: { base: number }, t: Tile) =>
-    data.scaled && data.tileKinds[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
+    data.scaled && (data.tileKinds as Record<string, string>)[t.key] === 'total' ? `vs ${paced(t)(d.base)} at that pace` : '';
   // Green when the change is the good way for this tile, red when bad; grey for neutral tiles and no change.
   function trend(d: { abs: number }, t: Tile): string {
     const fmt = paced(t);
@@ -222,12 +238,12 @@
 
 <p class="insights-period">{periodText}</p>
 
-{#snippet panel(title: string, tiles: Tile[])}
+{#snippet panel(title: string, tiles: Tile[], values: Partial<Record<Key, number | null>>, deltas: Partial<Record<Key, D>> | null)}
   <section class="chart-panel">
     <h2>{title}</h2>
-    <div class="stat-row fit n{tiles.length} {data.deltas ? 'comparing' : ''}">
+    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}">
       {#each tiles as t (t.key)}
-        {@const d = data.deltas?.[t.key]}
+        {@const d = deltas?.[t.key]}
         {@const pp = t.split && perPersonOn}
         <div class="stat-item">
           {#if t.ratingSwitch}
@@ -243,11 +259,13 @@
             </div>
           {/if}
           <span class="stat-value"
-            >{valueText(t, data.tiles[t.key])}{#if t.suffix && data.tiles[t.key] !== null}<small>{` ${t.suffix}`}</small>{/if}</span
+            >{valueText(t, values[t.key] ?? null)}{#if t.suffix && (values[t.key] ?? null) !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
             <span class="stat-unit insights-delta {trend(d, t)}">{deltaText(d, t)}</span>
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
+          {:else if t.sub?.()}
+            <span class="stat-unit">{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
@@ -270,12 +288,13 @@
   </section>
 {/snippet}
 
-{@render panel('Totals', TOTALS)}
+{@render panel('Totals', TOTALS, data.tiles, data.deltas)}
 <span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
-{@render panel('Averages', AVERAGES)}
+{@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
+{@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
 
 <style>
   /* Labelled controls, left-packed, one column each on wider screens. */
@@ -468,7 +487,7 @@
   .stat-caption:has(.mode-tip-button) {
     overflow: visible;
   }
-  /* A rating tile's caption gets a third part per person; let it wrap to a second line. */
+  /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
   .stat-label.wrap {
     white-space: normal;
     line-height: 1.1; /* two lines end flush with the tile; keep them inside */
@@ -567,7 +586,7 @@
   /* Stat rows with no empty cells. Tiles stay square (height --h = one regular tile); a
      tile wider than that (--q per row < --c) keeps its content one-tile wide, centred,
      via padding, so cqw scaling is unchanged. Columns divide the count: 3 on phones
-     (Totals 5, Averages 3-6 wider); the short last row stretches. */
+     (Totals 5, Averages 3-6 wider; Consumption 4: 2×2 on phones, 4 across wider); the short last row stretches. */
   .fit {
     --gap: var(--space-3);
     --c: 3;
@@ -589,6 +608,9 @@
   .fit.n5 .stat-item:nth-last-child(-n + 2) {
     --q: 2;
   }
+  .fit.n4 {
+    --c: 2;
+  }
   /* Rows this narrow (360-390px phones): 3 columns leave ~88px tiles, too small for the
      Current/All switch and two-line labels. 2 columns; Totals' 5th tile takes the last row. */
   @container (max-width: 380px) {
@@ -603,6 +625,9 @@
     }
   }
   @media (min-width: 641px) {
+    .fit.n4 {
+      --c: 4;
+    }
     .fit.n5 {
       --c: 5;
     }

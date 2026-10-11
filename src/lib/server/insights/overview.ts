@@ -1,6 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
-import { inPeriod, trackedDays, type Period } from './time';
+import { inPeriod, trackedDays, addDays, type Period } from './time';
 import { countsForRating } from './ratings';
 
 export interface OverviewTiles {
@@ -96,4 +96,35 @@ export function compareTiles(
   const keys = Object.keys(cur) as (keyof OverviewTiles)[];
   const deltas = Object.fromEntries(keys.map((k) => [k, tileDelta(cur[k], base(k))]));
   return { deltas: deltas as Record<keyof OverviewTiles, Delta>, scaled };
+}
+
+export interface Consumption {
+  perDay: number | null; // g
+  perWeek: number | null;
+  perMonth: number | null;
+  daysToClear: number | null;
+  clearBy: string | null; // 'YYYY-MM-DD'
+}
+
+// Grams on hand: the open and backlog bags (what /stats has always counted).
+export const gramsOnHand = (bags: readonly BagFact[]): number =>
+  bags.reduce((g, b) => g + (b.status === 'archive' ? 0 : (b.amountG ?? 0)), 0);
+
+// Measured rate: grams brewed in `p` over its tracked days (the brews-per-day rule), ÷ size
+// per person. Time to clear: on hand ÷ that rate, rounded up (multiplied out first, so an
+// exact multiple doesn't gain a day from float error), plus the clear-by date.
+export function consumption(
+  brews: readonly BrewFact[], p: Period, dataStart: string | null, today: string, onHandG: number, size = 1
+): Consumption {
+  const grams = brews.reduce((g, b) => g + (inPeriod(b.localDate, p) ? (b.dose ?? 0) : 0), 0);
+  const days = trackedDays(p, dataStart, today);
+  const perDay = grams > 0 && days > 0 ? grams / days / size : null;
+  const daysToClear = perDay !== null && onHandG > 0 ? Math.ceil((onHandG * days * size) / grams) : null;
+  return {
+    perDay,
+    perWeek: perDay === null ? null : perDay * 7,
+    perMonth: perDay === null ? null : perDay * 30.44,
+    daysToClear,
+    clearBy: daysToClear === null ? null : addDays(today, daysToClear)
+  };
 }

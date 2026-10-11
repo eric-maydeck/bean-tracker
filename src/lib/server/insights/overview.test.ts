@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { overviewTiles, tileDelta, compareTiles, perPerson, TILE_KIND, type OverviewTiles } from './overview';
+import { overviewTiles, tileDelta, compareTiles, perPerson, consumption, gramsOnHand, TILE_KIND, type OverviewTiles } from './overview';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -155,4 +155,49 @@ describe('perPerson', () => {
     const p = compareTiles(perPerson(T, 2), perPerson(prev, 2), 7, 7).deltas.brews!;
     expect(p).toEqual({ abs: h.abs / 2, pct: h.pct, base: h.base / 2 });
   });
+});
+
+describe('consumption', () => {
+  const b = (localDate: string, dose: number) => brew({ localDate, dose });
+  const TODAY = '2026-10-10';
+
+  it('grams ÷ tracked days; ×7 and ×30.44; time to clear rounds up, with its date', () => {
+    const c = consumption([b('2026-09-01', 150), b('2026-09-30', 150), b('2026-10-01', 99)], SEPT, '2026-01-01', TODAY, 1001);
+    expect(c.perDay).toBe(10); // 300 g / 30 days
+    expect(c.perWeek).toBe(70);
+    expect(c.perMonth).toBeCloseTo(304.4);
+    expect(c.daysToClear).toBe(101); // 100.1 → 101
+    expect(c.clearBy).toBe('2027-01-19');
+  });
+
+  it('an exact multiple gives exactly that many days', () =>
+    expect(consumption([b('2026-09-01', 300)], SEPT, '2026-01-01', TODAY, 1000).daysToClear).toBe(100));
+
+  it('counts only tracked days: from the first brew, up to today', () => {
+    expect(consumption([b('2026-09-21', 150), b('2026-09-30', 150)], SEPT, '2026-09-21', TODAY, 0).perDay).toBe(30);
+    const oct = { start: '2026-10-01', end: '2026-10-31' }; // 10 days so far
+    expect(consumption([b('2026-10-05', 100)], oct, '2026-01-01', TODAY, 0).perDay).toBe(10);
+  });
+
+  it('per person divides the rate; time to clear is one person alone', () => {
+    const c = consumption([b('2026-09-01', 300)], SEPT, '2026-01-01', TODAY, 1000, 2);
+    expect(c).toMatchObject({ perDay: 5, perWeek: 35, daysToClear: 200, clearBy: '2027-04-28' });
+  });
+
+  it('no brews in the period, or no tracked days: everything missing', () => {
+    const none = { perDay: null, perWeek: null, perMonth: null, daysToClear: null, clearBy: null };
+    expect(consumption([b('2026-08-01', 100)], SEPT, '2026-01-01', TODAY, 500)).toEqual(none);
+    expect(consumption([], SEPT, null, TODAY, 500)).toEqual(none);
+  });
+
+  it('nothing on hand: rates, but no time to clear', () =>
+    expect(consumption([b('2026-09-01', 300)], SEPT, '2026-01-01', TODAY, 0)).toMatchObject({
+      perDay: 10, daysToClear: null, clearBy: null
+    }));
+
+  it('grams on hand: open and backlog bags, not finished ones', () =>
+    expect(gramsOnHand([
+      bag({ status: 'open', amountG: 250 }), bag({ status: 'backlog', amountG: 340 }),
+      bag({ status: 'archive', amountG: 1000 }), bag({ status: 'backlog', amountG: null })
+    ])).toBe(590));
 });

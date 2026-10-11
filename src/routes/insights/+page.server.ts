@@ -5,7 +5,7 @@ import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, perPerson, TILE_KIND } from '$lib/server/insights/overview';
+import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, TILE_KIND } from '$lib/server/insights/overview';
 import { RANGES, parseInsightsUrl, withDefaults, compareOptions } from '$lib/insightsUrl';
 
 // Public, like /stats.
@@ -34,6 +34,10 @@ export const load: PageServerLoad = ({ url }) => {
   const cmp = prev && compareTiles(
     tiles, perPerson(overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
   );
+  // Measured from household grams (consumption divides by `size` itself).
+  const onHand = gramsOnHand(bags);
+  const use = consumption(brews, period, dataStart, today, onHand, size);
+  const usePrev = prev && consumption(brews, prev, dataStart, today, onHand, size);
   // Custom range… opens on the same-length window before the period when it's tracked,
   // else everything before it, else first brew → today (all time, or nothing earlier).
   const customDefault =
@@ -57,6 +61,12 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     tiles,
     deltas: cmp ? cmp.deltas : null,
-    scaled: cmp ? cmp.scaled : false
+    scaled: cmp ? cmp.scaled : false,
+    consumption: use,
+    consumptionDeltas: usePrev && {
+      perDay: tileDelta(use.perDay, usePrev.perDay),
+      perWeek: tileDelta(use.perWeek, usePrev.perWeek),
+      perMonth: tileDelta(use.perMonth, usePrev.perMonth)
+    }
   };
 };

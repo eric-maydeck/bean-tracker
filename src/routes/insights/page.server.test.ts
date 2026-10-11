@@ -251,4 +251,39 @@ describe('/insights load', () => {
     seed([[addDays(today, -9), 10], [today, 15]]); // previous week starts before the first brew
     expect(run('?range=1w').customDefault).toEqual({ start: addDays(today, -9), end: addDays(p1w.start!, -1) });
   });
+
+  it('Consumption: measured over the period, per person too', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
+      setHouseholdSize(getDb(), 2);
+      seed([['2026-10-04', 140], ['2026-10-10', 70]]); // 1w = Oct 4–10: 210 g / 7 days; 250 g on hand
+      expect(run('?range=1w&people=household').consumption).toEqual({
+        perDay: 30, perWeek: 210, perMonth: 30 * 30.44, daysToClear: 9, clearBy: '2026-10-19'
+      });
+      expect(run('?range=1w&people=person').consumption).toMatchObject({ perDay: 15, daysToClear: 17, clearBy: '2026-10-27' });
+      expect(run('?range=1w').consumptionDeltas).toBeNull();
+    } finally {
+      setHouseholdSize(getDb(), 1);
+      vi.useRealTimers();
+    }
+  });
+
+  it('Consumption deltas on the three rates only', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
+      seed([['2026-09-27', 70], ['2026-10-04', 140]]); // previous week 10 g/day, this week 20
+      const d = run('?range=1w&compare=1');
+      expect(d.consumptionDeltas.perDay).toEqual({ abs: 10, pct: 100, base: 10 });
+      expect(Object.keys(d.consumptionDeltas)).toEqual(['perDay', 'perWeek', 'perMonth']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('Consumption with no brews in the period shows nothing', () => {
+    seed([[addDays(today, -40), 10]]);
+    expect(run('?range=1w').consumption).toEqual({ perDay: null, perWeek: null, perMonth: null, daysToClear: null, clearBy: null });
+  });
 });
