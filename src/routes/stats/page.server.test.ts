@@ -139,9 +139,9 @@ describe('/stats load: Time to Clear (temporary panel)', () => {
       expect(d.householdSize).toBe(2);
       expect(d.rates).toBeUndefined();
       expect(d.years).toEqual([2026]);
-      // 210 g over 7 tracked days = 30 g/day; 300 g on hand -> 10 days.
-      expect(d.consumption['1w'].household).toMatchObject({ perDay: 30, daysToClear: 10, clearBy: '2026-10-20' });
-      expect(d.consumption['1w'].person).toMatchObject({ perDay: 15, daysToClear: 20, clearBy: '2026-10-30' });
+      // 210 g over 7 tracked days = 30 g/day; 300 g bag less the 210 logged = 90 g on hand -> 3 days.
+      expect(d.consumption['1w'].household).toMatchObject({ perDay: 30, daysToClear: 3, clearBy: '2026-10-13' });
+      expect(d.consumption['1w'].person).toMatchObject({ perDay: 15, daysToClear: 6, clearBy: '2026-10-16' });
       expect(d.consumption.all.household.perDay).toBe(30); // tracking began Oct 4
       expect(Object.keys(d.consumption).sort()).toEqual(['1m', '1w', '12m', '2026', '3m', '3y', '6m', 'all', 'ytd'].sort());
       expect(d.consumption['12m'].household.perDay).toBe(30);

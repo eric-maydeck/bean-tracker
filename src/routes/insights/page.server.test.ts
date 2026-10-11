@@ -257,11 +257,11 @@ describe('/insights load', () => {
     try {
       vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
       setHouseholdSize(getDb(), 2);
-      seed([['2026-10-04', 140], ['2026-10-10', 70]]); // 1w = Oct 4–10: 210 g / 7 days; 250 g on hand
+      seed([['2026-10-04', 140], ['2026-10-10', 70]]); // 1w = Oct 4–10: 210 g / 7 days; 250 g bag less the 210 logged = 40 g on hand
       expect(run('?range=1w&people=household').consumption).toEqual({
-        perDay: 30, perWeek: 210, perMonth: 30 * 30.44, daysToClear: 9, clearBy: '2026-10-19'
+        perDay: 30, perWeek: 210, perMonth: 30 * 30.44, daysToClear: 2, clearBy: '2026-10-12'
       });
-      expect(run('?range=1w&people=person').consumption).toMatchObject({ perDay: 15, daysToClear: 17, clearBy: '2026-10-27' });
+      expect(run('?range=1w&people=person').consumption).toMatchObject({ perDay: 15, daysToClear: 3, clearBy: '2026-10-13' });
       expect(run('?range=1w').consumptionDeltas).toBeNull();
     } finally {
       setHouseholdSize(getDb(), 2); // the default

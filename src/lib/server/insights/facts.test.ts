@@ -110,6 +110,11 @@ describe('loadFacts', () => {
     return { db, coffeeId };
   }
 
+  it('flags whole-hour brews as back-filled', () => {
+    const { brews } = loadFacts(seed().db);
+    expect(brews.map((b) => b.backfilled)).toEqual([false, true, true]);
+  });
+
   it('derives every brew field', () => {
     const { db, coffeeId } = seed();
     const { brews } = loadFacts(db);

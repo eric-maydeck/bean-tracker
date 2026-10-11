@@ -56,6 +56,7 @@ export interface BrewFact {
   coffeeId: number | null;
   localTime: string; // 'YYYY-MM-DDTHH:mm', Mountain Time
   localDate: string; // 'YYYY-MM-DD'
+  backfilled: boolean; // stored on a whole hour (mm:ss 00:00): typed in later; hour charts skip it
   dose: number | null;
   rating: number | null;
   roaster: string | null;
@@ -136,6 +137,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       coffeeId: r.coffee_id,
       localTime,
       localDate,
+      backfilled: r.bc_created_at.slice(14, 19) === '00:00',
       dose: r.dose,
       rating: r.rating,
       roaster: r.roaster,

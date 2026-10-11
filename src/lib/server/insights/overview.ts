@@ -65,7 +65,7 @@ export function overviewTiles(
     spend: bags.reduce((s, g) => s + (g.purchaseDate && inPeriod(g.purchaseDate, p) ? (g.cost ?? 0) : 0), 0),
     avgRating: mean(rated),
     rated: rated.length,
-    bagsFinished: bags.filter((g) => g.status === 'archive' && g.lastBrew !== null && inPeriod(g.lastBrew, p)).length,
+    bagsFinished: bags.filter((g) => isFinished(g) && inPeriod(g.lastBrew!, p)).length,
     costPerBrew: mean(present(inP.map((b) => b.costPerBrew))),
     brewsPerDay: inP.length && days ? inP.length / days : null,
     avgDose: mean(inP.flatMap((b) => (b.dose ? [b.dose] : []))),
@@ -106,9 +106,52 @@ export interface Consumption {
   clearBy: string | null; // 'YYYY-MM-DD'
 }
 
-// Grams on hand: the open and backlog bags (what /stats has always counted).
-export const gramsOnHand = (bags: readonly BagFact[]): number =>
-  bags.reduce((g, b) => g + (b.status === 'archive' ? 0 : (b.amountG ?? 0)), 0);
+// Grams logged per bag (coffeeId → sum of doses).
+export function loggedGrams(brews: readonly BrewFact[]): Map<number, number> {
+  const m = new Map<number, number>();
+  for (const b of brews) if (b.coffeeId !== null) m.set(b.coffeeId, (m.get(b.coffeeId) ?? 0) + (b.dose ?? 0));
+  return m;
+}
+
+export const remaining = (b: BagFact, logged: Map<number, number>) =>
+  Math.max(0, (b.amountG ?? 0) - (logged.get(b.id) ?? 0));
+
+// A finished bag: archived with a last brew (callers add their own in-period check on lastBrew).
+export const isFinished = (b: BagFact): boolean => b.status === 'archive' && b.lastBrew !== null;
+
+// Grams on hand: what's left of the open and backlog bags (bag weight minus doses logged so far,
+// floored at 0). One rule for Overview, /stats Time to Clear, the Consumption tab and Right now.
+export const gramsOnHand = (bags: readonly BagFact[], brews: readonly BrewFact[]): number => {
+  const logged = loggedGrams(brews);
+  return bags.reduce((g, b) => g + (b.status === 'archive' ? 0 : remaining(b, logged)), 0);
+};
+
+export type RightNow = {
+  openedG: number; unopenedG: number; onHandG: number; finishedG: number;
+  opened: number; unopened: number; onHand: number; finished: number;
+};
+
+// Overview's Right now (ports /stats Weight + Bag Count): a snapshot by status, plus bags
+// finished in `p` (archived, last brew in it; the Bags finished rule), which splits per person.
+export function rightNow(bags: readonly BagFact[], brews: readonly BrewFact[], p: Period, size = 1): RightNow {
+  const logged = loggedGrams(brews);
+  const by = (s: BagFact['status']) => bags.filter((b) => b.status === s);
+  const [open, backlog] = [by('open'), by('backlog')];
+  const done = bags.filter((b) => isFinished(b) && inPeriod(b.lastBrew!, p));
+  const g = (bs: BagFact[]) => bs.reduce((s, b) => s + remaining(b, logged), 0);
+  return {
+    openedG: g(open), unopenedG: g(backlog), onHandG: g(open) + g(backlog),
+    finishedG: done.reduce((s, b) => s + (b.amountG ?? 0), 0) / size,
+    opened: open.length, unopened: backlog.length, onHand: open.length + backlog.length, finished: done.length / size
+  };
+}
+
+// A total's change vs a window of another tracked length: the base becomes its pace over this
+// window's days (the compareTiles rule); averages and same-length windows compare raw.
+export function paceDelta(cur: number | null, prev: number | null, curDays: number, prevDays: number, pace: boolean): Delta {
+  if (!pace || curDays === prevDays) return tileDelta(cur, prev);
+  return prevDays && prev !== null ? tileDelta(cur, (prev * curDays) / prevDays) : null;
+}
 
 // Measured rate: grams brewed in `p` over its tracked days (the brews-per-day rule), ÷ size
 // per person. Time to clear: on hand ÷ that rate, rounded up (multiplied out first, so an

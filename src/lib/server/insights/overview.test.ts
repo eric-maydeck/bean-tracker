@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { overviewTiles, tileDelta, compareTiles, perPerson, consumption, gramsOnHand, TILE_KIND, type OverviewTiles } from './overview';
+import { overviewTiles, tileDelta, compareTiles, perPerson, consumption, gramsOnHand, rightNow, paceDelta, TILE_KIND, type OverviewTiles } from './overview';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
-  id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', dose: null, rating: null, roaster: null, origin: null,
+  id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
   processGroup: 'Washed', roastLevel: null, decaf: false, dripper: null, filter: null, water: null, waterProfile: null,
   restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, grinder: null, ...o
 });
@@ -196,9 +196,38 @@ describe('consumption', () => {
       perDay: 10, daysToClear: null, clearBy: null
     }));
 
-  it('grams on hand: open and backlog bags, not finished ones', () =>
-    expect(gramsOnHand([
-      bag({ status: 'open', amountG: 250 }), bag({ status: 'backlog', amountG: 340 }),
-      bag({ status: 'archive', amountG: 1000 }), bag({ status: 'backlog', amountG: null })
-    ])).toBe(590));
+  it('grams on hand: remaining grams of open and backlog bags', () =>
+    expect(gramsOnHand(
+      [
+        bag({ id: 1, status: 'open', amountG: 250 }), bag({ id: 2, status: 'backlog', amountG: 340 }),
+        bag({ id: 3, status: 'archive', amountG: 1000 }), bag({ id: 4, status: 'backlog', amountG: null })
+      ],
+      [brew({ coffeeId: 1, dose: 15 }), brew({ coffeeId: 1, dose: 20 }), brew({ coffeeId: 3, dose: 18 })]
+    )).toBe(215 + 340));
+
+  it('gramsOnHand floors at 0 (logged past the bag weight)', () =>
+    expect(gramsOnHand([bag({ id: 1, status: 'open', amountG: 20 })], [brew({ coffeeId: 1, dose: 15 }), brew({ coffeeId: 1, dose: 15 })])).toBe(0));
+});
+
+describe('rightNow', () => {
+  const bags = [
+    bag({ id: 1, status: 'open', amountG: 250 }),
+    bag({ id: 2, status: 'backlog', amountG: 340 }),
+    bag({ id: 3, status: 'archive', amountG: 200, lastBrew: '2026-09-10' }), // finished in SEPT
+    bag({ id: 4, status: 'archive', amountG: 300, lastBrew: '2026-08-10' }) // finished before
+  ];
+  const brews = [brew({ coffeeId: 1, dose: 50 })];
+  it('snapshot by status (remaining grams) plus finished in the period', () =>
+    expect(rightNow(bags, brews, SEPT)).toEqual({
+      openedG: 200, unopenedG: 340, onHandG: 540, finishedG: 200, opened: 1, unopened: 1, onHand: 2, finished: 1
+    }));
+  it('per person splits only the finished values', () =>
+    expect(rightNow(bags, brews, SEPT, 2)).toMatchObject({ onHandG: 540, onHand: 2, finishedG: 100, finished: 0.5 }));
+});
+
+describe('paceDelta', () => {
+  it('compares raw without pacing', () => expect(paceDelta(10, 5, 30, 10, false)).toMatchObject({ abs: 5, base: 5 }));
+  it('paces the base to the current length', () => expect(paceDelta(10, 5, 30, 10, true)).toMatchObject({ abs: -5, base: 15 }));
+  it('same length: no pacing even when asked', () => expect(paceDelta(10, 5, 30, 30, true)).toMatchObject({ base: 5 }));
+  it('no previous days: no delta', () => expect(paceDelta(10, 5, 30, 0, true)).toBeNull());
 });

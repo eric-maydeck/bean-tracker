@@ -3,7 +3,7 @@ import { leaderboard, leaderboards, withMovement, type BoardRow } from './leader
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
-  id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', dose: 15, rating: null, roaster: 'Sey', origin: 'Kenya',
+  id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: 15, rating: null, roaster: 'Sey', origin: 'Kenya',
   processGroup: 'Washed', roastLevel: 'Light', decaf: false, dripper: 'V60', filter: 'Cafec Abaca', grinder: 'ZP6',
   water: 'Lotus', waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, ...o
 });

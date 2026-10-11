@@ -36,7 +36,7 @@ export const load: PageServerLoad = ({ url }) => {
     tiles, perPerson(overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
   );
   // Measured from household grams (consumption divides by `size` itself).
-  const onHand = gramsOnHand(bags);
+  const onHand = gramsOnHand(bags, brews);
   const use = consumption(brews, period, dataStart, today, onHand, size);
   const usePrev = prev && consumption(brews, prev, dataStart, today, onHand, size);
   // Custom range… opens on the same-length window before the period when it's tracked,

@@ -42,7 +42,7 @@ export const load: PageServerLoad = ({ locals }) => {
   const dataStart = brews[0]?.localDate ?? null;
   const years = yearsSince(dataStart, day);
   const householdSize = getHouseholdSize(db);
-  const onHand = gramsOnHand(bags);
+  const onHand = gramsOnHand(bags, brews);
   const use = (r: string, size: number) => consumption(brews, periodBounds(r, day), dataStart, day, onHand, size);
   const consumptionByRange = Object.fromEntries(
     [...RANGES, ...years.map(String)].map((r) => [r, { household: use(r, 1), person: use(r, householdSize) }])
