@@ -13,8 +13,11 @@
     { href: '/coffees', label: 'Coffees' },
     { href: '/on-deck', label: 'On Deck' },
     { href: '/subscriptions', label: 'Subscriptions' },
-    { href: '/stats', label: 'Stats' }
+    { href: '/stats', label: 'Stats' },
+    { href: '/insights', label: 'Insights' }
   ];
+  // The bottom bar is full at phone width; Insights (alpha) lives in More there.
+  const tabLinks = links.filter((l) => l.href !== '/insights');
 
   let theme = $state<'light' | 'dark'>('light');
 
@@ -128,7 +131,7 @@
 </nav>
 
 <nav class="bottom-tabs">
-  {#each links as link (link.href)}
+  {#each tabLinks as link (link.href)}
     <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
       <span class="bottom-tabs-icon" aria-hidden="true"><Icon name={tabIcon(link.href, page.url.pathname === link.href)} /></span>
       {link.label}
@@ -147,6 +150,9 @@
 
 {#if showMore}
   <div class="bottom-tabs-more-panel">
+    <a class="nav-link-button" href="/insights" aria-current={page.url.pathname === '/insights' ? 'page' : undefined}
+      ><Icon name="chart-line" /> Insights</a
+    >
     {#if data.isAdmin}
       <form method="POST" action="/login?/logout" use:enhance>
         <button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button>
