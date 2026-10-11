@@ -107,6 +107,11 @@ describe('insightsParams', () => {
     const q = 'range=1w&compare=1&ratings=all&avg=raw';
     expect(insightsParams(parse('avg=raw&ratings=all&compare=1&range=1w')).toString()).toBe(q);
   });
+  it('omits the default Score (best-k2) but keeps an explicit min3', () => {
+    expect(insightsParams({}).toString()).toBe('');
+    expect(insightsParams({ avg: 'min3' }).toString()).toBe('avg=min3');
+    expect(parse('avg=MIN3').avg).toBe('min3');
+  });
   it('writes compare=0 when explicitly off', () =>
     expect(insightsParams({ compare: 0 }).toString()).toBe('compare=0'));
   it('writes compare=N', () => expect(insightsParams({ compare: 2 }).toString()).toBe('compare=2'));
@@ -118,7 +123,7 @@ describe('withDefaults', () => {
       range: '12m',
       compare: 0,
       ratings: 'current',
-      avg: 'min3',
+      avg: 'best-k2',
       people: 'household',
       tab: 'overview',
       rank: 'rating'
@@ -126,7 +131,7 @@ describe('withDefaults', () => {
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'min3', people: 'household', tab: 'overview', rank: 'rating'
+      range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating'
     }));
 });
 

@@ -21,7 +21,7 @@ export type Ratings = (typeof RATINGS)[number];
 export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
 export type Avg = (typeof AVGS)[number];
 // One line to change the Score default.
-export const DEFAULT_AVG: Avg = 'min3';
+export const DEFAULT_AVG: Avg = 'best-k2';
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const TABS = ['overview', 'leaderboards'] as const;
