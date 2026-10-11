@@ -183,6 +183,14 @@ describe('consumption granularity', () => {
     expect(trackedBounds({ start: null, end: '2026-10-11' }, null, '2026-10-11')).toBeNull();
     expect(trackedBounds({ start: '2025-01-01', end: '2025-12-31' }, '2026-02-09', '2026-10-11')).toBeNull();
   });
+  it('no data at all: nothing tracked, even for a bounded period', () => {
+    expect(trackedBounds({ start: '2026-09-01', end: '2026-10-11' }, null, '2026-10-11')).toBeNull();
+    expect(trackedDays({ start: '2026-09-01', end: '2026-10-11' }, null, '2026-10-11')).toBe(0);
+    const f = byFits(null, '2026-10-11');
+    expect(['1w', '1m', '12m', 'all'].map((r) => f(r, 'day'))).toEqual([true, true, true, true]);
+    expect(f('1m', 'week')).toBe(false);
+    expect(f('all', 'month')).toBe(false);
+  });
   it('byFits uses the tracked span', () => {
     const f = byFits('2026-02-09', '2026-10-11'); // all = 245 tracked days
     expect(f('all', 'day')).toBe(true);

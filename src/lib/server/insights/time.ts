@@ -69,9 +69,10 @@ export function trackedDays(p: Period, dataStart: string | null, today: string):
 
 // The tracked part of `p`: max(start, first brew) → min(end, today); null when none of it is.
 export function trackedBounds(p: Period, dataStart: string | null, today: string): { start: string; end: string } | null {
-  const start = p.start === null || (dataStart !== null && dataStart > p.start) ? dataStart : p.start;
+  if (dataStart === null) return null; // no data = nothing tracked, whatever the period
+  const start = p.start === null || dataStart > p.start ? dataStart : p.start;
   const end = today < p.end ? today : p.end;
-  return start === null || start > end ? null : { start, end };
+  return start > end ? null : { start, end };
 }
 
 export const weekday = (d: string): number => (new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7; // 0 = Monday

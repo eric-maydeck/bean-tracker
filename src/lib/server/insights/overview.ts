@@ -54,7 +54,7 @@ const present = (xs: (number | null)[]) => xs.filter((x): x is number => x !== n
 // calendar year's future dilutes it.
 export function overviewTiles(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, ratings: Ratings, today = p.end,
-  dataStart: string | null = null
+  dataStart: string | null = p.start // default: tracked from the period's start
 ): OverviewTiles {
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
   const rated = inP.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
