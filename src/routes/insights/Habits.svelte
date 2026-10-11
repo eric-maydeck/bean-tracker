@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { page } from '$app/state';
   import Chart from '$lib/components/Chart.svelte';
   import Heatmap from '$lib/components/Heatmap.svelte';
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
@@ -22,6 +23,8 @@
     measure === 'grams' ? formatGrams(v) : measure === 'rating' || !Number.isInteger(v) ? v.toFixed(1) : String(v);
   const text = (v: number | null) =>
     v === null ? 'no data' : measure === 'grams' ? num(v) : `${num(v)} ${measure === 'rating' ? 'avg rating' : v === 1 ? 'brew' : 'brews'}`;
+  // ponytail: Task 8 preview switch (?hv=a|b|c), server-rendered; removed once a look is picked.
+  let variant = $derived(page.url.searchParams.get('hv') ?? 'a');
   let empty = $derived(h.tiles.brewDays === 0);
   // A compare window with no data adds no series (and no legend entry).
   const compare = (values: (number | null)[] | null) =>
@@ -77,12 +80,14 @@
     <p class="chart-note">{measure === 'rating' ? 'Mean rating' : 'Average per weekday'}</p>
   </section>
 </div>
+<div data-variant={variant}>
 <section class="chart-panel">
   <h2>Hour × weekday</h2>
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${HOURS[c]}:00`} ariaLabel="Hour by weekday" />
+    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${HOURS[c]}:00`} ariaLabel="Hour by weekday"
+      pairHours={variant === 'b'} pairMean={measure === 'rating'} />
   {/if}
 </section>
 <section class="chart-panel">
@@ -90,11 +95,30 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <BrewCalendar days={h.calendar} {text} />
+    <BrewCalendar days={h.calendar} {text} months={variant === 'b'} />
   {/if}
 </section>
+</div>
 
 <style>
+  /* Variant c: the dataviz default sequential blue ramp, habits only (WorldMap keeps coffee). */
+  [data-variant='c'] {
+    --map-low: #cde2fb;
+    --map-high: #104281;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) [data-variant='c'] {
+      --map-low: #184f95;
+      --map-high: #86b6ef;
+    }
+  }
+  :global(:root[data-theme='dark']) [data-variant='c'] {
+    --map-low: #184f95;
+    --map-high: #86b6ef;
+  }
+  [data-variant='c'] :global(:is(.heat-cell, .cal-cell)) {
+    border-radius: 3px;
+  }
   .habits-bar {
     display: flex;
     flex-wrap: wrap;

@@ -5,13 +5,16 @@
     days,
     text,
     cellHeight = '1.1rem',
-    minCell = 16
+    minCell = 16,
+    months = false
   }: {
     days: { date: string; value: number | null }[];
     text: (v: number | null) => string;
     // Long ranges: a row of 7 cells per week column; lines wrap below `minCell` px per week.
     cellHeight?: string;
     minCell?: number;
+    // Task 8 preview: mini month grids in rows of equal count; a short last row's blocks stretch.
+    months?: boolean;
   } = $props();
 
   const WD = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -44,6 +47,19 @@
         return d ? MON[+d.date.slice(5, 7) - 1] : '';
       })
     }));
+  });
+  let monthRows = $derived.by(() => {
+    if (short || !months) return [];
+    const m = new Map<string, typeof days>();
+    for (const d of days) {
+      const k = d.date.slice(0, 7);
+      if (!m.has(k)) m.set(k, []);
+      m.get(k)!.push(d);
+    }
+    const all = [...m].map(([k, ds]) => ({ title: `${MON[+k.slice(5) - 1]} ${k.slice(0, 4)}`, days: ds }));
+    const fit = w ? Math.max(1, Math.floor(w / 152)) : 4;
+    const per = Math.ceil(all.length / Math.ceil(all.length / fit));
+    return Array.from({ length: Math.ceil(all.length / per) }, (_, i) => all.slice(i * per, (i + 1) * per));
   });
   let tone = $derived(shader(days.map((d) => d.value)));
 
@@ -88,6 +104,21 @@
       {#if days.length && weekday(days[0].date)}<span style:grid-column="span {weekday(days[0].date)}"></span>{/if}
       {#each days as d, i (d.date)}{@render cell(d, i === 0)}{/each}
     </div>
+  {:else if months}
+    {#each monthRows as row, ri (ri)}
+      <div class="month-row">
+        {#each row as b (b.title)}
+          <div class="mini">
+            <h3>{b.title}</h3>
+            <div class="month">
+              {#each WD as d (d)}<span class="wd">{d[0]}</span>{/each}
+              {#if weekday(b.days[0].date)}<span style:grid-column="span {weekday(b.days[0].date)}"></span>{/if}
+              {#each b.days as d (d.date)}{@render cell(d, d === days[0])}{/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/each}
   {:else}
     {#each lines as l, li (li)}
       <div class="strip" style:--per={l.per}>
@@ -116,6 +147,19 @@
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 2px;
+  }
+  .month-row {
+    display: flex;
+    gap: var(--space-3);
+  }
+  .mini {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  h3 {
+    margin: 0 0 0.25rem;
+    font-size: 0.8rem;
+    font-weight: 600;
   }
   .strip {
     display: grid;
