@@ -36,6 +36,7 @@ export type Unit = (typeof UNITS)[number];
 // Consumption: per-day average within each bucket, or the bucket's total (URL carries only `total`).
 export const AGGS = ['average', 'total'] as const;
 export type Agg = (typeof AGGS)[number];
+export const AGG_LABEL: Record<Agg, string> = { average: 'Avg per day', total: 'Total' };
 export const BYS = ['day', 'week', 'month'] as const;
 export type By = (typeof BYS)[number];
 // Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).

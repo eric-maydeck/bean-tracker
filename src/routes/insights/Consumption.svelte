@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
-  import { AGGS, BYS, UNITS, type Agg, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
@@ -55,7 +55,7 @@
     {/each}
   </div>
   <div class="tab-group" role="group" aria-label="Aggregate">
-    {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{CAP(a)}</button>{/each}
+    {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
   </div>
 </div>
 

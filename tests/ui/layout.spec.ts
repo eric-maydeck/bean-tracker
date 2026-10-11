@@ -52,6 +52,20 @@ async function expectDeltasFit(page: Page) {
   expect(bad).toEqual([]);
   await expectNoEllipsis(page);
 }
+// Every chip group (and its label): inside the viewport, one line per chip, nothing clipped.
+async function expectChipsFit(page: Page, scope = 'main') {
+  const bad = await page.locator(`${scope} .tab-group`).evaluateAll((gs) =>
+    gs.flatMap((g) => {
+      const r = g.getBoundingClientRect();
+      const btns = [...g.querySelectorAll('button')];
+      const wrapped = btns.some((b) => b.getBoundingClientRect().height > parseFloat(getComputedStyle(b).lineHeight || '20') * 1.8 + 12);
+      const clipped = btns.some((b) => b.scrollWidth > b.clientWidth + 1);
+      const out = r.right > innerWidth + 0.5 || r.left < -0.5;
+      return wrapped || clipped || out ? [`${g.getAttribute('aria-label')} ${Math.round(r.left)}-${Math.round(r.right)}`] : [];
+    })
+  );
+  expect(bad).toEqual([]);
+}
 async function expectNoEllipsis(page: Page) {
   const clipped = await page.locator('.stat-item .stat-unit, .stat-item .insights-pace').evaluateAll((els) =>
     els.filter((e) => e.scrollWidth > e.clientWidth).map((e) => e.textContent)
@@ -912,7 +926,11 @@ export const STATES: State[] = [
     // Average mode with a compare on: the narrowest strings (per-day labels, bag fractions), grams and bags.
     name: 'insights-consumption-agg-grams',
     path: () => '/insights?tab=consumption&range=1w&compare=1',
-    act: (page) => expectDeltasFit(page)
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Avg per day' })).toBeVisible();
+      await expectChipsFit(page);
+      await expectDeltasFit(page);
+    }
   },
   {
     name: 'insights-consumption-agg-bags',
