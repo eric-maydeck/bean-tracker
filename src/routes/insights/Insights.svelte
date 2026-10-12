@@ -13,6 +13,9 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
+  type Multi = NonNullable<Finding['multi']>;
+  const details = (f: Finding) => f.details?.filter((g) => g.items.length);
+
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
   const STRENGTH_HELP = {
@@ -88,10 +91,29 @@
   const r1 = (n: number) => +n.toFixed(1);
   const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
-  // ---- Too early to tell: one plain sentence each. ----
-  const lc = (s: string) => s[0].toLowerCase() + s.slice(1);
-  const early = (f: Finding) =>
-    `${f.headline}. That's from ${f.sample}, ${f.caveat ? `and ${lc(f.caveat)}` : 'not yet enough to rule out chance.'}${f.settle ? ` ${f.settle}` : ''}`;
+  // ---- Too early to tell: what was seen, the sample, why it isn't trusted yet, what would settle it. ----
+  const early = (f: Finding) => f.caveat ?? 'Not yet enough to rule out chance.';
+  const pct = (p: number) => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
+
+  // Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. "Other" is muted,
+  // every other line takes the next categorical slot in order (never cycled: the server caps lines at ~5).
+  function lines(m: Multi) {
+    const vs = m.lines.flatMap((l) => l.values.filter((v): v is number => v !== null));
+    const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1, n = m.x.length;
+    const px = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 50), py = (v: number) => 38 - ((v - lo) / span) * 36;
+    let slot = 0;
+    return m.lines.map((l) => {
+      const runs: string[] = [];
+      let run: string[] = [];
+      l.values.forEach((v, i) => {
+        if (v === null) { if (run.length) runs.push(run.join(' ')); run = []; return; }
+        run.push(`${px(i)},${py(v).toFixed(2)}`);
+        if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push(`${px(i) + 0.8},${py(v).toFixed(2)}`); // a lone point: a dash
+      });
+      if (run.length) runs.push(run.join(' '));
+      return { label: l.label, runs, color: l.label === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})` };
+    });
+  }
 
   // A series as a 2px line over a 100×32 box; a dashed zero line when it crosses zero.
   function line(s: { value: number }[]) {
@@ -118,9 +140,10 @@
   {#if f.sides?.length === 2}
     <div class="vs">
       {#each f.sides as s, i (i)}
+        {@const [v, unit] = split(s.value)}
         {#if i}<span class="vs-x" aria-hidden="true">vs</span>{/if}
         <div class="vs-side">
-          <span class="hl-value">{s.value}</span>
+          <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
           <span class="vs-label">{s.label}</span>
         </div>
       {/each}
@@ -129,7 +152,18 @@
     {@const [v, unit] = split(f.value)}
     <span class="hl-value" class:long={v.length > 9}>{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
   {/if}
-  {#if f.series && f.series.length > 1}
+  {#if f.multi && f.multi.x.length > 1 && f.multi.lines.length}
+    {@const ls = lines(f.multi)}
+    <div class="multi" role="img" aria-label="{f.multi.lines.map((l) => l.label).join(', ')} from {f.multi.x[0]} to {f.multi.x.at(-1)}">
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+        {#each ls as l (l.label)}{#each l.runs as r, j (j)}<polyline points={r} style:stroke={l.color} />{/each}{/each}
+      </svg>
+      <div class="spark-ends" aria-hidden="true"><span>{f.multi.x[0]}</span><span>{f.multi.x.at(-1)}{f.multi.unit ? ` · ${f.multi.unit}` : ''}</span></div>
+      <ul class="legend" aria-hidden="true">
+        {#each ls as l (l.label)}<li><span class="swatch" style:background={l.color}></span>{l.label}</li>{/each}
+      </ul>
+    </div>
+  {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
     <div class="spark" role="img" aria-label="{f.series.map((p) => p.label).join(', ')}">
       <svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
@@ -137,6 +171,20 @@
         <polyline points={l.points} />
       </svg>
       <div class="spark-ends"><span>{f.series[0].label}</span><span>{f.series.at(-1)!.label}</span></div>
+    </div>
+  {/if}
+  {#if details(f)?.length}
+    <div class="details">
+      {#each details(f)! as g (g.label)}
+        <div class="dgroup">
+          <span class="dlabel">{g.label}</span>
+          <ol>
+            {#each g.items as it, k (k)}
+              <li><span class="dname">{#if it.href}<a href={it.href}>{it.name}</a>{:else}{it.name}{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
+            {/each}
+          </ol>
+        </div>
+      {/each}
     </div>
   {/if}
 {/snippet}
@@ -302,7 +350,22 @@
   <section class="chart-panel">
     <HeadingAnchor id="insights-too-early">Too early to tell</HeadingAnchor>
     <ul class="early">
-      {#each t.tooEarly as f (f.key)}<li>{early(f)}</li>{/each}
+      {#each t.tooEarly as f (f.key)}
+        <li>
+          <div class="early-top"><span class="early-theme">{THEME_LABEL[f.theme]}</span><span>{f.sample}</span></div>
+          <p class="early-head">{f.headline}</p>
+          <p class="early-why">{early(f)}</p>
+          {#if f.progress !== undefined}
+            <div class="meter" role="meter" aria-label="Evidence toward settled" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(f.progress * 100)}>
+              <span style:width={pct(f.progress)}></span>
+            </div>
+          {/if}
+          <div class="early-foot">
+            {#if f.progress !== undefined}<b>{pct(f.progress)} there</b>{/if}
+            {#if f.settle}<span>{f.settle}</span>{/if}
+          </div>
+        </li>
+      {/each}
     </ul>
   </section>
 {/if}
@@ -350,10 +413,17 @@
     white-space: normal;
     line-height: 1.3;
   }
-  /* Headlines are sentences: up to three lines. */
+  /* Headlines are sentences: never cut, however many lines a narrow card needs. */
   .finding :global(.hl-caption .stat-label) {
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    display: block;
+    -webkit-line-clamp: none;
+    line-clamp: none;
+  }
+  /* A long value wraps at its spaces inside the card rather than spill (B3). */
+  .finding > .hl-value {
+    max-width: 100%;
+    white-space: normal;
+    text-wrap: balance;
   }
   .vs {
     display: grid;
@@ -368,8 +438,93 @@
     align-items: center;
     min-width: 0;
   }
+  /* A side's value wraps under its number rather than spill over the card ("33 of 81 bags"). */
   .vs .hl-value {
+    max-width: 100%;
     font-size: min(1.5rem, 11cqw / var(--q, 2));
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+  }
+  /* Categorical slots for multi-line charts (dataviz reference palette, validated on these surfaces;
+     light slots under 3:1 carry their names in the legend). Text stays in text colours. */
+  .multi {
+    --series-1: #2a78d6;
+    --series-2: #eb6834;
+    --series-3: #1baf7a;
+    --series-4: #eda100;
+    --series-5: #e87ba4;
+    --series-other: var(--color-text-muted);
+    width: 100%;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme='light'])) .multi {
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+    }
+  }
+  :global(:root[data-theme='dark']) .multi {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+  }
+  .multi svg {
+    display: block;
+    width: 100%;
+    height: 3rem;
+    overflow: visible;
+  }
+  /* A chart takes the card's spare height (a taller neighbour sets the row), so no hole opens under it. */
+  .hl-card > .multi,
+  .hl-card > .spark {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .hl-card > .multi svg,
+  .hl-card > .spark svg {
+    flex: 1 0 auto;
+  }
+  .multi polyline {
+    fill: none;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.1rem 0.6rem;
+    margin: 0.2rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  .legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+  .swatch {
+    flex-shrink: 0;
+    width: 0.7rem;
+    height: 2px;
+    border-radius: 1px;
+  }
+  .story-visual .multi {
+    max-width: 32rem;
+  }
+  .story-visual .multi svg {
+    height: 5rem;
   }
   .vs-x {
     margin-top: var(--space-2);
@@ -476,6 +631,62 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-3);
+  }
+  .story-head .mode-tip-button {
+    flex-shrink: 0;
+  }
+  /* Supporting lists (details): small label, names left, values right; they take the card's spare
+     height, centred, so a short card beside a chart card has no hole. */
+  .details {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-2);
+    flex: 1 0 auto;
+    width: 100%;
+    margin-top: var(--space-1);
+    text-align: left;
+  }
+  .dlabel {
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .details ol {
+    margin: 0.15rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .details li {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: 0.15rem 0;
+    border-top: 1px solid var(--color-border);
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+  .dname {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  /* Two-up phone cards: a name takes the full line, its value under it at the right. */
+  @container (max-width: 519px) {
+    .finding-grid .details li {
+      flex-wrap: wrap;
+      gap: 0 var(--space-2);
+    }
+    .finding-grid .dval {
+      margin-left: auto;
+    }
+  }
+  .dval {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
   }
   .story h3 {
     margin: 0;
@@ -607,18 +818,80 @@
     accent-color: var(--color-accent);
     min-height: 44px;
   }
+  /* Too early to tell: compact rows in the tile language, two across from ~44rem; an odd last row spans. */
   .early {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+    gap: var(--space-2) var(--space-3);
     margin: 0;
     padding: 0;
     list-style: none;
-    columns: 2 24rem;
-    column-gap: var(--space-5);
+  }
+  @media (min-width: 720px) {
+    .early {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .early li:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
   }
   .early li {
-    break-inside: avoid;
-    padding: var(--space-2) 0;
-    border-top: 1px solid var(--color-border);
-    line-height: 1.4;
-    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+  .early-top,
+  .early-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+  .meter {
+    margin-top: auto;
+  }
+  .early-foot b {
+    flex-shrink: 0;
+    color: var(--color-text);
+    font-weight: 600;
+  }
+  .early-foot span {
+    text-align: right;
+  }
+  .early-theme {
+    color: var(--color-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.68rem;
+  }
+  .early-head {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .early-why {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+  .meter {
+    height: 0.4rem;
+    border-radius: 999px;
+    background: var(--color-border);
+    overflow: hidden;
+  }
+  .meter span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--color-accent);
   }
 </style>

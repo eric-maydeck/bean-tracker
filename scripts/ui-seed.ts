@@ -135,8 +135,8 @@ bean.run('bean-decaf-linked', 'Swiss Water Decaf Colombia Huila', 'Onyx', daysAg
 db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-decaf-linked'`).run(decaf.id);
 brew.run(isoDaysAgo(3), 'bean-decaf-linked', 8, 2, now);
 // Insights tab: 3 coffees bought twice (6 archived bags), 6 days each, two cups a day, 25-60 days ago
-// (72 brews), with planted effects: second cup +0.5, noted brews −0.5, second bag of a pair higher,
-// Origami days swing ±0.8 (the wildcard). First cups before 9 am.
+// (72 brews), with planted effects: second cup +0.5, noted brews −0.15 (too early to tell), second bag of a pair higher,
+// Origami days swing ±1.3 (the wildcard). First cups before 9 am.
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES ('m3', 'ORIGAMI', 'Origami', 'POUR OVER', ?)`).run(now);
 const timed = db.prepare(
@@ -153,10 +153,10 @@ for (let k = 0; k < 6; k++) {
   bean.run(`bean-hl-${k}`, name, roaster, daysAgo(first + ROAST[k]), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-hl-${k}`);
   for (let j = 0; j < 6; j++) {
-    const origami = j % 2 === 1, swing = origami ? ((j + k) % 4 === 1 ? 0.8 : -0.8) : 0;
+    const origami = j % 2 === 1, swing = origami ? ((j + k) % 4 === 1 ? 1.3 : -1.3) : 0;
     for (const cup of [0, 1]) {
       const noted = (j + cup) % 2 === 0;
-      const rating = +(BASE[k] + 0.5 * cup - (noted ? 0.5 : 0) + swing).toFixed(1);
+      const rating = Math.min(9.9, +(BASE[k] + 0.5 * cup - (noted ? 0.15 : 0) + swing).toFixed(2)); // no seeded 10s
       timed.run(cup ? atLocal(first - j, 14, 10) : atLocal(first - j, 8, 20), `bean-hl-${k}`, origami ? 'm3' : 'm1', rating,
         noted ? 'A touch sour' : null, now);
     }

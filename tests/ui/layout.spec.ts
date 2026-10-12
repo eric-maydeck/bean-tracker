@@ -1776,6 +1776,32 @@ export const STATES: State[] = [
       }));
       expect(off).toEqual([]);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined/);
+      // Long text stays inside its card at every width (B1/B3), and a versus side never runs into "vs".
+      const spills = await page.locator('.finding-grid .hl-card, .myth-grid .hl-card').evaluateAll((cards) => cards.flatMap((c) => {
+        const o = c.getBoundingClientRect();
+        const out = [...c.querySelectorAll('.hl-value, .vs-label, .hl-line, .stat-label, .multi, .legend li, .details li')].flatMap((e) => {
+          const r = e.getBoundingClientRect();
+          return r.left < o.left - 1 || r.right > o.right + 1 || r.bottom > o.bottom + 1 ? [`${e.textContent?.trim().slice(0, 24)} spills`] : [];
+        });
+        const x = c.querySelector('.vs-x')?.getBoundingClientRect();
+        const hit = x && x.width ? [...c.querySelectorAll('.vs-side .hl-value')].filter((v) => {
+          const r = v.getBoundingClientRect();
+          return r.right > x.left && r.left < x.right && r.bottom > x.top && r.top < x.bottom;
+        }).map((v) => `${v.textContent} overlaps vs`) : [];
+        return [...out, ...hit];
+      }));
+      expect(spills).toEqual([]);
+      // Too early to tell: compact rows, each with its finding and what would settle it.
+      const rows = page.locator('.early li');
+      await expect(rows.first().locator('.early-head')).toBeVisible();
+      await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
+      await expect(rows.first().locator('.meter')).toBeVisible();
+      // A multi-line chart: a legend entry per line, each line in its own colour (B2).
+      const multi = page.locator('.finding-grid .multi').first();
+      const legend = await multi.locator('.legend li').count();
+      expect(legend).toBeGreaterThan(1);
+      const colors = await multi.locator('.swatch').evaluateAll((ss) => ss.map((s) => getComputedStyle(s).backgroundColor));
+      expect(new Set(colors).size).toBe(legend);
       // A badge explains itself on tap.
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
