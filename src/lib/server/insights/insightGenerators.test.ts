@@ -193,7 +193,7 @@ describe('details (supporting lists)', () => {
     const bs = proc.map((processing, i) => bag({ id: i + 1, name: names[i], slug: `s${i + 1}`, processing, processGroup: 'Co-ferment / Infused', origin: 'Colombia' }));
     const brews = [...seq(1, [7, 7]), ...seq(2, [7, 7]), ...seq(3, [8, 8, 8]), ...seq(4, [6])];
     expect(gen('coFerments', brews, bs)!.details).toEqual([
-      { label: 'Added or applied', items: [{ name: 'Red fruits', value: '2 bags' }, { name: 'Thermal shock', value: '2 bags' }, { name: 'Pink champagne', value: '1 bag' }] },
+      { label: 'Process', items: [{ name: 'Red fruits', value: '2 bags' }, { name: 'Thermal shock', value: '2 bags' }, { name: 'Pink champagne', value: '1 bag' }] },
       { label: 'Most brewed', items: [{ name: 'Red Fruits', value: '4 brews', href: '/coffees/s1' }, { name: 'Shock', value: '3 brews', href: '/coffees/s3' }, { name: 'Pink', value: '1 brew', href: '/coffees/s4' }] }
     ]);
   });

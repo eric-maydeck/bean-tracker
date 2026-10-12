@@ -255,7 +255,7 @@ const coFerments: Generator = (c) => {
     key: 'coFerments', theme: 'taste', kind: 'number', headline: `All ${n} of your co-ferments are ${origin}`,
     value: `${n} of ${n}`, sample: `${plural(n, 'bag')}`, href: `${LB}&open=process`, z: null, strength: null,
     ...details(
-      ['Added or applied', [...groupBy(co, what)].sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0])).map(([k, g]) => detail(k, plural(g.length, 'bag')))],
+      ['Process', [...groupBy(co, what)].sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0])).map(([k, g]) => detail(k, plural(g.length, 'bag')))],
       ['Most brewed', byCoffee.map((x) => detail(x.b.name, plural(x.n, 'brew'), coffeeHref(x.b)))]
     )
   };
