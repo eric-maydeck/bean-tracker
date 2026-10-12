@@ -41,7 +41,7 @@ export interface RecordsTab {
   topCoffees: { mean: number; brews: number; holder: Holder }[]; // ≤ 50 bags by mean rating, like Best bag (topc)
   perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
-  coversAll: boolean; // the period starts on or before the first (filtered) brew: every record is all-time
+  coversAll: boolean; // the period spans the first to the last (filtered) brew: every record is all-time
 }
 export interface BagStat {
   coffeeId: number; rated: number[]; brews: BrewFact[]; // in brew order
@@ -55,7 +55,10 @@ export function pick(cands: readonly Candidate[], dir: 'max' | 'min'): RecordPic
   for (const c of cands) if (better(c.value, best)) best = c.value;
   // Float noise (means) mustn't split a tie.
   const tied = cands.filter((c) => Math.abs(c.value - best) < 1e-9).sort((a, b) => a.holder.date.localeCompare(b.holder.date));
-  return { ...tied[0], value: best, ties: tied.slice(1).map((c) => c.holder) };
+  // Brew-level records (one candidate per brew or window) can tie one bag with itself: name it once.
+  const seen = new Set<string>();
+  const ties = tied.filter((c) => { const k = c.holder.href ?? c.holder.label; return !seen.has(k) && !!seen.add(k); });
+  return { ...ties[0], value: best, ties: ties.slice(1).map((c) => c.holder) };
 }
 
 export const bagHolder = (bags: readonly BagFact[], id: number | null, date: string, sub?: string): Holder => {
@@ -65,9 +68,11 @@ export const bagHolder = (bags: readonly BagFact[], id: number | null, date: str
 const brewHolder = (c: RecCtx, b: BrewFact): Holder =>
   bagHolder(c.bags, b.coffeeId, b.localDate, [b.roaster, b.brewer].filter(Boolean).join(' · ') || undefined);
 const minutes = (lt: string) => Number(lt.slice(11, 13)) * 60 + Number(lt.slice(14, 16));
+// Clock records count from a 04:00 day start: a 00:40 brew is a late night (24:40), not an early bird.
+const lateMinutes = (lt: string) => { const m = minutes(lt); return m < 240 ? m + 1440 : m; };
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
 const sd = (xs: number[]) => { const m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))); };
-const groupBy = <T>(xs: readonly T[], key: (x: T) => string | number | null) => {
+export const groupBy = <T>(xs: readonly T[], key: (x: T) => string | number | null) => {
   const m = new Map<string | number, T[]>();
   for (const x of xs) { const k = key(x); if (k !== null) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
   return m;
@@ -138,7 +143,7 @@ const rolling = (c: RecCtx, f: (w: BrewFact[]) => number): Candidate[] => {
 const held = (c: RecCtx) => c.brews.filter((b) => b.coffeeId !== null);
 
 const clock = (c: RecCtx, only: (b: BrewFact) => boolean): Candidate[] =>
-  held(c).filter((b) => !b.backfilled && only(b)).map((b) => ({ value: minutes(b.localTime), holder: brewHolder(c, b) }));
+  held(c).filter((b) => !b.backfilled && only(b)).map((b) => ({ value: lateMinutes(b.localTime), holder: brewHolder(c, b) }));
 
 const bagCount = (c: RecCtx, f: (s: BagStat) => number): Candidate[] =>
   [...bagStats(c.brews, c.ratings).values()].map((s) => ({ value: f(s), holder: bagHolder(c.bags, s.coffeeId, s.last) }));
@@ -174,7 +179,7 @@ const lifeSpans = (c: RecCtx, finished: boolean): Candidate[] =>
 const restPick = (c: RecCtx): Candidate[] =>
   held(c).filter((b) => b.restDays !== null && b.restDays >= 0)
     .map((b) => ({ value: b.restDays!, ...(b.rating !== null ? { detail: `Rated: ${b.rating}` } : {}), holder: brewHolder(c, b) }));
-const per100 = (c: RecCtx): Candidate[] =>
+const bagPer100 = (c: RecCtx): Candidate[] =>
   c.bags.flatMap((b) => b.purchaseDate && b.cost && b.cost > 0 && b.amountG && b.amountG > 0
     ? [{ value: (b.cost / b.amountG) * 100, detail: `${usd(b.cost)} for ${g(b.amountG)}`, holder: bagHolder(c.bags, b.id, b.purchaseDate) }] : []);
 // Cost per brew = dose × the bag's price per gram.
@@ -294,8 +299,8 @@ export const RECORDS: RecordDef[] = [
       return d === null ? [] : [{ value: d, detail: 'Unopened since bought', holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
-  money('priciestBag', 'Priciest bag per 100\u00a0g', 'max', 'per100', (c) => per100(c), { bought: true }),
-  money('cheapestBag', 'Cheapest bag per 100\u00a0g', 'min', 'per100', (c) => per100(c), { bought: true }),
+  money('priciestBag', 'Priciest bag per 100\u00a0g', 'max', 'per100', (c) => bagPer100(c), { bought: true }),
+  money('cheapestBag', 'Cheapest bag per 100\u00a0g', 'min', 'per100', (c) => bagPer100(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
   money('bestValue', 'Best value for money', 'max', 'value', (c) => value(c), { rating: true }),
@@ -343,12 +348,12 @@ export const RECORDS: RecordDef[] = [
 // 2.004001), so it orders like the setting and stays comparable between windows; detail = the text.
 // ponytail: settings with a part ≥ 1000 or more than 3 parts lose resolution.
 const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
-  [...new Set(brews.map((b) => b.grinder).filter((g): g is string => !!g))].flatMap((g) => {
+  [...new Set(brews.map((b) => b.grinder).filter((x): x is string => !!x))].flatMap((name) => {
     const run = (c: RecCtx): Candidate[] => held(c).flatMap((b) => {
-      const k = b.grinder === g ? grindKey(b.grind) : null;
+      const k = b.grinder === name ? grindKey(b.grind) : null;
       return k ? [{ value: k.reduce((s, n, i) => s + n / 1000 ** i, 0), detail: b.grind!, holder: brewHolder(c, b) }] : [];
     });
-    return [extreme(`grindFine:${g}`, `Finest grind · ${g}`, 'min', 'grind', run), extreme(`grindCoarse:${g}`, `Coarsest grind · ${g}`, 'max', 'grind', run)];
+    return [extreme(`grindFine:${name}`, `Finest grind · ${name}`, 'min', 'grind', run), extreme(`grindCoarse:${name}`, `Coarsest grind · ${name}`, 'max', 'grind', run)];
   });
 
 export interface RecordsCtx {
@@ -395,6 +400,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),
     brewerTypes: BREWER_TYPES.filter((t) => allBrews.some((b) => b.brewerType === t)),
-    coversAll: !c.period.start || !brews.length || c.period.start <= brews[0].localDate
+    coversAll: !brews.length ||
+      ((!c.period.start || c.period.start <= brews[0].localDate) && c.period.end >= brews[brews.length - 1].localDate)
   };
 }

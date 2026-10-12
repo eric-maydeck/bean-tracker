@@ -32,6 +32,12 @@ describe('pick', () => {
       .toEqual({ value: 9, holder: h('2026-03-01'), ties: [h('2026-03-02')] });
   });
   it('empty → null', () => expect(pick([], 'max')).toBeNull());
+  it('ties name each bag once, at its earliest', () => {
+    const h = (label: string, date: string) => ({ label, href: `/coffees/${label}`, date });
+    expect(pick([{ value: 1, holder: h('a', '2026-03-02') }, { value: 1, holder: h('a', '2026-03-01') },
+                 { value: 1, holder: h('b', '2026-03-03') }, { value: 1, holder: h('a', '2026-03-04') }], 'min'))
+      .toEqual({ value: 1, holder: h('a', '2026-03-01'), ties: [h('b', '2026-03-03')] });
+  });
 });
 
 describe('taste', () => {
@@ -81,6 +87,12 @@ describe('volume', () => {
     const late = brew({ localTime: '2026-03-01T23:37', decaf: true });
     const later = brew({ localTime: '2026-03-02T23:59', backfilled: true });
     expect(run('nightOwl', [late, later])?.value).toBe(23 * 60 + 37);
+  });
+  it('clock records turn over at 04:00: 00:40 is a night owl, not an early bird', () => {
+    const at = (lt: string) => brew({ localTime: lt });
+    const b = [at('2026-03-01T00:40'), at('2026-03-01T05:10'), at('2026-03-01T23:37')];
+    expect(run('earlyBird', b)?.value).toBe(5 * 60 + 10);
+    expect(run('nightOwl', b)?.value).toBe(24 * 60 + 40); // shown as 12:40 AM
   });
   it('gear tour = distinct brewers on one bag', () =>
     expect(run('gearTour', ['A - x', 'B - y', 'A - x'].map((m) => brew({ coffeeId: 1, brewer: m })))?.value).toBe(2));
@@ -183,7 +195,7 @@ describe('floors and junk', () => {
 });
 
 describe('gentle', () => {
-  it('lowest bag, off day, kept you guessing, took its time', () => {
+  it('lowest-rated bag, biggest drop, least consistent, slowest to peak', () => {
     const b = [...rated(1, [8, 4, 6, 9, 5]), ...rated(2, [7, 7, 7])];
     expect(run('lowestBag', b)?.holder.label).toBe('Bag 1');
     expect(run('lowestBag', b)?.value).toBeCloseTo(6.4, 9);
@@ -260,11 +272,15 @@ describe('recordsTab', () => {
     expect(t.brewerTypes).toEqual(['pourover', 'soup']);
     expect(tileOf(recordsTab(b, bags, { ...CTX, caffeine: 'caf' }), 'doseLight')!.value).toBe(20);
   });
-  it('coversAll when the period starts on or before the first brew', () => {
+  it('coversAll when the period spans the first to the last brew', () => {
     const b = [brew({ localDate: '2026-09-01', dose: 10 })];
     expect(recordsTab(b, BAGS, { ...CTX, period: { start: '2026-08-01', end: '2026-10-11' } }).coversAll).toBe(true);
     expect(recordsTab(b, BAGS, { ...CTX, period: { start: '2026-09-02', end: '2026-10-11' } }).coversAll).toBe(false);
     expect(recordsTab(b, BAGS, CTX).coversAll).toBe(true);
+    // A window ending before the last brew (a past year) doesn't cover it all.
+    const later = [...b, brew({ localDate: '2026-10-01', dose: 10 })];
+    expect(recordsTab(later, BAGS, { ...CTX, period: { start: '2026-08-01', end: '2026-09-01' } }).coversAll).toBe(false);
+    expect(recordsTab(later, BAGS, { ...CTX, period: { start: '2026-08-01', end: '2026-10-01' } }).coversAll).toBe(true);
   });
   it('brewer switch limits extremes only', () => {
     const b = [brew({ brewerType: 'soup', dose: 40 }), brew({ brewerType: 'pourover', dose: 15 })];
