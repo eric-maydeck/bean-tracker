@@ -1812,20 +1812,55 @@ export const STATES: State[] = [
         });
       });
       expect(sizes).toEqual([]);
-      // Details are filler only (B7): shown groups fit inside the fixed card (checked above), and a shown
-      // chart is never squeezed below its minimum to make room for them.
+      // Details are filler only (B7): they reveal whole entries, in order, only into the spare height of the
+      // card's fixed class height with charts at their base (.fit), and as many as fit: the next hidden entry
+      // would overflow. So a card whose content fills its class shows none.
+      const b7 = await page.locator('.finding-grid').evaluate((grid) => {
+        const over = (c: Element) => c.scrollHeight > c.clientHeight + 1;
+        grid.classList.add('fit');
+        const out = [...grid.children].filter((c) => c.querySelector('.dgroup')).map((c) => {
+          const groups = [...c.querySelectorAll<HTMLElement>('.dgroup')];
+          const shown = c.querySelectorAll('.dgroup:not([hidden]) li:not([hidden])').length;
+          const bad = [...(over(c) ? ['shown details overflow at base chart height'] : []),
+            ...(groups.some((g) => !g.hidden && !g.querySelector('li:not([hidden])')) ? ['a group shows its label only'] : [])];
+          const g = groups.find((x) => x.hidden || x.querySelector('li[hidden]'));
+          const li = g?.querySelector<HTMLElement>(g.hidden ? 'li' : 'li[hidden]');
+          if (g && li) {
+            const was = g.hidden;
+            g.hidden = li.hidden = false;
+            if (c.scrollHeight <= c.clientHeight) bad.push('the next entry fits but stays hidden'); // the filler's own strict test
+            g.hidden = was;
+            li.hidden = true;
+          }
+          return { id: c.id, shown, bad };
+        });
+        grid.classList.remove('fit');
+        return out;
+      });
+      expect(b7.filter((c) => c.bad.length)).toEqual([]);
+      // The seed has both at every viewport: a card with spare room showing entries, and a full one showing none.
+      expect(b7.some((c) => c.shown > 0)).toBe(true);
+      expect(b7.some((c) => c.shown === 0)).toBe(true);
+      // A shown chart is never squeezed below its minimum to make room for details.
       const squeezed = await page.locator('.finding-grid .hl-card:has(.dgroup:not([hidden])) :is(.multi, .bars, .spark) svg').evaluateAll((ss) =>
         ss.filter((s) => s.getBoundingClientRect().height < 23).length);
       expect(squeezed).toBe(0);
-      // A tap on a card with clamped text shows the full headline and body.
-      const clamped = await page.locator('.finding-grid .hl-card').evaluateAll((cs) =>
-        cs.findIndex((c) => [...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)));
-      if (clamped >= 0) {
-        const card = page.locator('.finding-grid .hl-card').nth(clamped);
-        await card.locator('.hl-top').click();
-        await expect(card.locator('.mode-tip:popover-open')).toBeVisible();
-        await page.keyboard.press('Escape');
-      }
+      // A tap on a card with clamped text opens that card's full-text popover (not its badge tip). Where no
+      // seeded card clamps at this width (768, phone landscape), the first graded card's caption is lengthened.
+      const clamped = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
+        const isClamped = (c: Element) => [...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1);
+        const i = cs.findIndex((c) => c.querySelector('.hl-badge') && isClamped(c));
+        if (i >= 0) return i;
+        const j = cs.findIndex((c) => c.querySelector('.hl-badge'));
+        cs[j].querySelector('.caption-link')!.textContent = 'A very long headline '.repeat(12);
+        return isClamped(cs[j]) ? j : -1;
+      });
+      expect(clamped).toBeGreaterThanOrEqual(0);
+      const card = page.locator('.finding-grid .hl-card').nth(clamped);
+      await card.locator('.hl-top').click({ position: { x: 2, y: 2 } }); // clear of the badge at its right
+      await expect(card.locator('.mode-tip:popover-open')).toHaveCount(1);
+      await expect(card.locator(`#full-${await card.getAttribute('id')}:popover-open`)).toBeVisible();
+      await page.keyboard.press('Escape');
       // Too early to tell: compact rows, each with its finding and what would settle it.
       const rows = page.locator('.early li');
       await expect(rows.first().locator('.early-head')).toBeVisible();
@@ -1856,6 +1891,13 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Money', pressed: true })).toBeVisible();
       await expectGridRowsFull(page, '.finding-grid');
+    } },
+  // A period with no brews: no measured brews/day or dose, so the spend card says so instead of "$0 a month".
+  { name: 'insights-insights-nobrews', path: () => '/insights?tab=insights&range=2000-01-01..2000-01-31',
+    act: async (page) => {
+      const spend = page.locator('#insights-spend');
+      await expect(spend).toContainText('Not enough brews to measure your spend yet');
+      await expect(spend).not.toContainText(/\$0 a (month|year)/);
     } },
   { name: 'insights-insights-whatif', path: () => '/insights?tab=insights&range=all&drinkers=2&gpp=60&inflow=500',
     act: async (page) => {

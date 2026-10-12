@@ -1,8 +1,8 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
-  import { runway, spend, type WhatIf } from '$lib/insightsWhatIf';
+  import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -14,7 +14,6 @@
   } = $props();
 
   type Multi = NonNullable<Finding['multi']>;
-  const details = (f: Finding) => f.details?.filter((g) => g.items.length);
 
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
@@ -38,7 +37,8 @@
   // Details are filler only (user rule B7): lay the cards out without them (natural heights, top-aligned;
   // charts at their base height, .fit), then per card reveal groups in order while its content stays within
   // its row's tallest card (a fixed-height findings card: its own height). A group never makes a row
-  // taller or squeezes a chart below its base. Re-runs when the width or the cards change (SSR: all hidden).
+  // taller; once revealed, charts and details share the card's spare height (svg min 1.5rem).
+  // Re-runs when the width or the cards change (SSR: all hidden).
   function filler(el: HTMLElement, _cards: unknown) {
     let w = -1;
     const run = () => {
@@ -76,7 +76,8 @@
       el.style.alignItems = '';
       el.classList.remove('fit');
     };
-    // Width only: revealing groups changes heights, which must not re-trigger (no layout loop).
+    // Width only: revealing groups changes heights, which must not re-trigger (no layout loop). A reveal
+    // that toggles the page scrollbar changes the width once and re-runs; run is deterministic per width.
     const ro = new ResizeObserver(([e]) => {
       if (Math.round(e.contentRect.width) === w) return;
       w = Math.round(e.contentRect.width);
@@ -84,14 +85,15 @@
     });
     ro.observe(el);
     document.fonts?.ready.then(run);
-    return { update: () => requestAnimationFrame(run), destroy: () => ro.disconnect() };
+    let raf = 0;
+    return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
   }
 
   // A tap on a card whose headline or body is clamped shows the full text (title covers hover).
   function unclamp(e: MouseEvent) {
     const c = e.currentTarget as HTMLElement;
     if ((e.target as Element).closest('a, button, .mode-tip')) return;
-    if ([...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)) c.querySelector<HTMLElement>('.mode-tip')!.togglePopover();
+    if ([...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)) document.getElementById(c.dataset.tip!)!.togglePopover();
   }
 
   // ---- Deck: position is component state, not URL (spec). ----
@@ -137,13 +139,13 @@
   let run = $derived(runway(t.whatIf.onHandG, w, today));
   let perMonth = $derived(spend(w, t.whatIf.avgPricePerG));
   // The slider reaches 3× the measured rate (at least 100 g/day), within the URL's 1–500.
-  let gppMax = $derived(Math.min(500, Math.max(100, Math.ceil((d.gpp * 3) / 10) * 10)));
+  // A URL value above it widens the slider so the thumb matches the label.
+  let gppMax = $derived(Math.max(Math.round(w.gpp), Math.min(L.gpp[1], Math.max(100, Math.ceil((d.gpp * 3) / 10) * 10))));
   let timer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => () => clearTimeout(timer));
-  const LIMITS: Record<keyof WhatIf, [number, number]> = { drinkers: [1, 20], gpp: [1, 500], inflow: [0, 10000], bpd: [0.5, 20], dose: [5, 40] };
   function set(k: keyof WhatIf, raw: string, wait = 0) {
     const v = Number(raw);
-    const [lo, hi] = LIMITS[k];
+    const [lo, hi] = L[k];
     if (raw === '' || !Number.isFinite(v) || v < lo || v > hi) return; // a half-typed value waits
     live = { ...live, [k]: k === 'drinkers' ? Math.round(v) : v };
     clearTimeout(timer);
@@ -249,9 +251,9 @@
       <div class="spark-ends"><span>{f.series[0].label}</span><span>{f.series.at(-1)!.label}</span></div>
     </div>
   {/if}
-  {#if details(f)?.length}
+  {#if f.details}
     <div class="details">
-      {#each details(f)! as g (g.label)}
+      {#each f.details as g (g.label)}
         <div class="dgroup" hidden>
           <span class="dlabel">{g.label}</span>
           <ol>
@@ -285,7 +287,7 @@
           {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
-          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.body}<br />{f.body}{/if}</div>
+          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.body}<br />{f.body}{/if}{#if f.caveat}<br />{f.caveat}{/if}</div>
         </div>
       {/each}
     </div>
@@ -364,17 +366,17 @@
           <div class="fields">
             <label class="form-field">
               <span>People drinking</span>
-              <input type="number" min="1" max="20" step="1" inputmode="numeric" aria-label="People drinking" value={w.drinkers}
+              <input type="number" min={L.drinkers[0]} max={L.drinkers[1]} step="1" inputmode="numeric" aria-label="People drinking" value={w.drinkers}
                 oninput={(e) => set('drinkers', e.currentTarget.value, 400)} />
             </label>
             <label class="form-field">
               <span>Incoming g/week</span>
-              <input type="number" min="0" max="10000" step="50" inputmode="numeric" aria-label="Incoming g/week" value={r1(w.inflow)}
+              <input type="number" min={L.inflow[0]} max={L.inflow[1]} step="50" inputmode="numeric" aria-label="Incoming g/week" value={r1(w.inflow)}
                 oninput={(e) => set('inflow', e.currentTarget.value, 400)} />
             </label>
             <label class="form-field wide">
               <span>g/day per person <b>{Math.round(w.gpp)}</b></span>
-              <input type="range" min="1" max={gppMax} step="1" aria-label="g/day per person" value={Math.round(w.gpp)}
+              <input type="range" min={L.gpp[0]} max={gppMax} step="1" aria-label="g/day per person" value={Math.round(w.gpp)}
                 oninput={(e) => set('gpp', e.currentTarget.value, 250)} />
             </label>
           </div>
@@ -396,27 +398,31 @@
           <div class="fields">
             <label class="form-field">
               <span>Brews/day</span>
-              <input type="number" min="0.5" max="20" step="0.1" inputmode="decimal" aria-label="Brews per day" value={r1(w.bpd)}
+              <input type="number" min={L.bpd[0]} max={L.bpd[1]} step="0.1" inputmode="decimal" aria-label="Brews per day" value={r1(w.bpd)}
                 oninput={(e) => set('bpd', e.currentTarget.value, 400)} />
             </label>
             <label class="form-field">
               <span>Dose (g)</span>
-              <input type="number" min="5" max="40" step="0.1" inputmode="decimal" aria-label="Dose" value={r1(w.dose)}
+              <input type="number" min={L.dose[0]} max={L.dose[1]} step="0.1" inputmode="decimal" aria-label="Dose" value={r1(w.dose)}
                 oninput={(e) => set('dose', e.currentTarget.value, 400)} />
             </label>
             <!-- What the month is made of: the row beside the runway's slider, so neither card has a gap. -->
             <div class="form-field wide month">
               <span>Each month</span>
               <div class="month-parts">
-                <span><b>{Math.round(w.bpd * 30.44)}</b> brews</span>
-                <span><b>{formatGrams(w.bpd * w.dose * 30.44)}</b></span>
+                <span><b>{Math.round(w.bpd * DAYS_PER_MONTH)}</b> brews</span>
+                <span><b>{formatGrams(w.bpd * w.dose * DAYS_PER_MONTH)}</b></span>
                 <span><b>${(w.dose * t.whatIf.avgPricePerG!).toFixed(2)}</b> a cup</span>
               </div>
             </div>
           </div>
-          <span class="hl-value result">{usd0(perMonth)}<small>{' a month'}</small></span>
+          {#if w.bpd * w.dose > 0}
+            <span class="hl-value result">{usd0(perMonth)}<small>{' a month'}</small></span>
+          {:else}
+            <span class="hl-line wrap result">Not enough brews to measure your spend yet</span>
+          {/if}
           <span class="hl-line wrap">At ${(t.whatIf.avgPricePerG! * 100).toFixed(2)} / 100&nbsp;g, your last 12 months' average</span>
-          <span class="hl-line">{usd0(perMonth * 12)} a year</span>
+          {#if w.bpd * w.dose > 0}<span class="hl-line">{usd0(perMonth * 12)} a year</span>{/if}
           <TileCaption href="#insights-spend" label="Monthly spend" />
         </div>
       {/if}
@@ -1022,9 +1028,6 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
   }
-  .meter {
-    margin-top: auto;
-  }
   .early-foot b {
     flex-shrink: 0;
     color: var(--color-text);
@@ -1052,6 +1055,7 @@
     line-height: 1.35;
   }
   .meter {
+    margin-top: auto;
     height: 0.4rem;
     border-radius: 999px;
     background: var(--color-border);

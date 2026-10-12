@@ -68,6 +68,9 @@ export function pickNumber(p: URLSearchParams, name: string, min: number, max: n
   return n >= min && n <= max ? n : undefined;
 }
 
+// What if inputs: [min, max] for the URL parser and the inputs.
+export const WHATIF_LIMITS = { drinkers: [1, 20], gpp: [1, 500], inflow: [0, 10000], bpd: [0.5, 20], dose: [5, 40] } as const;
+
 export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
 export type Board = (typeof BOARDS)[number];
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
@@ -270,11 +273,11 @@ export function parseInsightsUrl(
     top: TOPS.find((n) => String(n) === p.get('top')),
     topc: TOPS.find((n) => String(n) === p.get('topc')),
     theme: pickOne(p, 'theme', THEMES),
-    drinkers: pickNumber(p, 'drinkers', 1, 20, true),
-    gpp: pickNumber(p, 'gpp', 1, 500),
-    inflow: pickNumber(p, 'inflow', 0, 10000),
-    bpd: pickNumber(p, 'bpd', 0.5, 20),
-    dose: pickNumber(p, 'dose', 5, 40)
+    drinkers: pickNumber(p, 'drinkers', ...WHATIF_LIMITS.drinkers, true),
+    gpp: pickNumber(p, 'gpp', ...WHATIF_LIMITS.gpp),
+    inflow: pickNumber(p, 'inflow', ...WHATIF_LIMITS.inflow),
+    bpd: pickNumber(p, 'bpd', ...WHATIF_LIMITS.bpd),
+    dose: pickNumber(p, 'dose', ...WHATIF_LIMITS.dose)
   };
 }
 

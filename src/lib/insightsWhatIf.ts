@@ -1,5 +1,6 @@
 // Client-safe What-if math (no server imports): the UI recomputes the runway as sliders move.
 export interface WhatIf { drinkers: number; gpp: number; inflow: number; bpd: number; dose: number }
+export const DAYS_PER_MONTH = 30.44;
 
 const DAY = 86_400_000;
 // Own date add: server/insights/time.ts pulls in server code, so it can't be imported client-side.
@@ -15,4 +16,4 @@ export function runway(onHandG: number, w: WhatIf, today: string): { days: numbe
 
 // Brews/day × dose × average $/g over an average month; null with no price.
 export const spend = (w: Pick<WhatIf, 'bpd' | 'dose'>, avgPricePerG: number | null): number | null =>
-  avgPricePerG === null ? null : w.bpd * w.dose * 30.44 * avgPricePerG;
+  avgPricePerG === null ? null : w.bpd * w.dose * DAYS_PER_MONTH * avgPricePerG;
