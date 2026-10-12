@@ -1601,11 +1601,14 @@ export const STATES: State[] = [
       await ruler.getByRole('button', { name: label }).last().click();
       await expect(oldest).toBeInViewport();
       await expect(ruler).toBeInViewport();
-      // The band (the viewport on the ruler) reaches the oldest month's tick.
-      await expect(ruler.locator('.band')).toBeVisible();
-      const [band, tick] = await Promise.all([ruler.locator('.band').boundingBox(), ruler.getByRole('button', { name: label }).last().boundingBox()]);
-      const tb = (await ruler.locator('.track').boundingBox())!, vert = tb.height > tb.width;
-      expect(vert ? band!.y + band!.height : band!.x + band!.width).toBeGreaterThanOrEqual(vert ? tick!.y + tick!.height / 2 - 1 : tick!.x + tick!.width / 2 - 1);
+      // The thumb is small and fixed-size, whatever the period (M8).
+      const thumb = (await ruler.locator('.band').boundingBox())!;
+      expect(Math.min(thumb.width, thumb.height)).toBeLessThanOrEqual(48);
+      // Scrolled to the feed's very end, the ruler is still wholly on screen (M10).
+      await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
+      const rb = (await ruler.boundingBox())!, vh = page.viewportSize()!.height;
+      expect(rb.y).toBeGreaterThanOrEqual(0);
+      expect(rb.y + rb.height).toBeLessThanOrEqual(vh);
       // A press 60% through the newest month's band lands 60% down its section, at the top of the
       // feed's visible part (under the filter bar, and the phone strip once stuck).
       const track = ruler.locator('.track');
@@ -1625,6 +1628,7 @@ export const STATES: State[] = [
       });
       expect(through).toBeGreaterThan(0.55);
       expect(through).toBeLessThan(0.65);
+      await expect(ruler.locator('[aria-current]')).toHaveAttribute('aria-label', `Jump to ${await page.locator('.feed .month').first().textContent()}`);
       // Dragging along the ruler scrubs the feed: scrollY only grows going towards the oldest.
       const n = await ruler.locator('.tick').count();
       const start = await at(0.1);
@@ -1639,6 +1643,28 @@ export const STATES: State[] = [
       await page.mouse.up();
       expect(ys).toEqual([...ys].sort((x, y) => x - y));
       expect(ys[ys.length - 1]).toBeGreaterThan(ys[0]);
+    } },
+  { name: 'insights-milestones-month-link', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      // A month header's #anchor lands it under the sticky bars, and survives a filter change (M9).
+      const id = (await page.locator('.feed .month').nth(1).getAttribute('id'))!;
+      await page.goto(`/insights?tab=milestones&range=all#${id}`);
+      const head = page.locator(`[id="${id}"]`);
+      await expect(head).toBeInViewport();
+      await expect(head.locator('a')).toHaveAttribute('href', `#${id}`);
+      const bar = await page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
+      const top = (await head.boundingBox())!.y;
+      expect(top).toBeGreaterThanOrEqual(bar - 1);
+      expect(top).toBeLessThan(bar + 80);
+      await page.getByRole('group', { name: 'Kinds' }).getByRole('button', { name: 'Counts' }).click();
+      await expect(page).toHaveURL(new RegExp(`kinds=counts.*#${id}$`));
+      // A month outside the period: no error, the page stays at the top.
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.goto('/insights?tab=milestones&range=1w#m-2000-01');
+      await expect(page.locator('nav.ruler, .hl-empty').first()).toBeVisible();
+      expect(await page.evaluate(() => scrollY)).toBe(0);
+      expect(errors).toEqual([]);
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },

@@ -36,7 +36,12 @@
   let track: HTMLElement | undefined = $state();
   let tw = $state(0), th = $state(0);
   let vertical = $derived(th > tw);
-  let ticks = $derived(rulerTicks(m.months.map((g) => g.month), Math.max(tw, th), vertical ? 22 : 72));
+  let barH = $state(0);
+  // The side bar's full height: the viewport under the filter bar, less its 0.75rem margins.
+  let innerH = $state(0);
+  let fullH = $derived(innerH - barH - 24);
+  // Labels are thinned for the full length, so a ruler shrinking at the feed's end keeps them.
+  let ticks = $derived(rulerTicks(m.months.map((g) => g.month), vertical ? fullH : tw, vertical ? 22 : 72));
   let feed: HTMLElement | undefined = $state();
   let nav: HTMLElement | undefined = $state();
   // Sub-ticks between the month ticks, as dense as the length allows (4 a month, about weekly, or 2).
@@ -44,19 +49,24 @@
     const band = Math.max(tw, th) / Math.max(1, ticks.length);
     return band >= 32 ? 4 : band >= 14 ? 2 : 0;
   });
-  // Where the viewport is, as [from, to] along the ruler: a scrollbar thumb (feedback M4).
-  let band: [number, number] | null = $state(null);
-  let current = $derived(band ? tickAt(ticks, band[0]).ym : null);
+  // Where the feed's visible top is along the ruler (0..1): a small fixed-size thumb (feedback M8).
+  let pos: number | null = $state(null);
+  let current = $derived(pos === null ? null : tickAt(ticks, pos).ym);
+  // The side bar shrinks to end with the feed, so it never runs out of sticky track (M10).
+  let rulerH: number | null = $state(null);
 
   // The month sections' current extents (viewport coordinates).
   function sections(): Section[] {
     const hs = [...feed!.querySelectorAll<HTMLElement>('.month')], end = feed!.getBoundingClientRect().bottom;
     return hs.map((h, j) => ({ ym: h.id.slice(2), top: h.getBoundingClientRect().top, bottom: hs[j + 1]?.getBoundingClientRect().top ?? end }));
   }
+  let dragging = false;
   function update() {
     if (!feed || !nav || !ticks.length) return;
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
-    band = [feedToRuler(ticks, secs, top), feedToRuler(ticks, secs, innerHeight)];
+    pos = feedToRuler(ticks, secs, top + 8); // a few px in: a header just under the bars counts as in view
+    // Not mid-drag: a ruler resizing under the pointer would feed back into the scrub.
+    if (!dragging) rulerH = vertical ? Math.max(120, Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12))) : null;
   }
   $effect(() => {
     void ticks;
@@ -80,7 +90,6 @@
   // section as the pointer is through the month's band, feedback M3) sits at the top of the feed's
   // visible part, under the sticky bars (and the phone strip, once stuck). Pointer capture keeps a
   // drag going off the ruler (M5); the tick buttons' clicks are the keyboard path.
-  let dragging = false;
   function scrub(e: PointerEvent) {
     const r = track!.getBoundingClientRect();
     const y = rulerToFeed(ticks, sections(), vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width);
@@ -93,11 +102,13 @@
     scrub(e);
   }
   const move = (e: PointerEvent) => dragging && scrub(e);
-  const up = () => (dragging = false);
+  const up = () => {
+    dragging = false;
+    update();
+  };
   const jump = (ym: string) => document.getElementById(`m-${ym}`)?.scrollIntoView();
 
-  // The navigator sticks just under the page's sticky filter bar.
-  let barH = $state(0);
+  // The navigator sticks just under the page's sticky filter bar (barH, declared above).
   $effect(() => {
     const bar = document.querySelector<HTMLElement>('.filter-bar');
     if (!bar) return;
@@ -106,6 +117,8 @@
     return () => ro.disconnect();
   });
 </script>
+
+<svelte:window bind:innerHeight={innerH} />
 
 <div class="kinds-bar">
   <div class="tab-group kind-chips" role="group" aria-label="Kinds" data-button-row>
@@ -170,6 +183,7 @@
       <nav
         class="ruler"
         aria-label="Timeline"
+        style:height={rulerH === null ? null : `${rulerH}px`}
         bind:this={nav}
         onpointerdown={down}
         onpointermove={move}
@@ -177,7 +191,7 @@
         onpointercancel={up}
       >
         <div class="track" class:subs={subs > 0} style:--subs={ticks.length * subs} bind:this={track} bind:clientWidth={tw} bind:clientHeight={th}>
-          {#if band}<span class="band" style:--a={band[0]} style:--b={band[1]}></span>{/if}
+          {#if pos !== null}<span class="band" style:--a={pos}></span>{/if}
           {#each ticks as t (t.ym)}
             <button
               class="tick"
@@ -193,7 +207,7 @@
       </nav>
       <div class="feed" bind:this={feed}>
         {#each m.months as g (g.month)}
-          <h3 class="month" id="m-{g.month}">{month(g.month)}</h3>
+          <HeadingAnchor id="m-{g.month}" level={3} class="month">{month(g.month)}</HeadingAnchor>
           <ol class="milestone-feed">
             {#each g.events as e (e.key)}
               <li>
@@ -304,7 +318,7 @@
     font-weight: 600;
     color: var(--color-accent);
   }
-  .month {
+  .feed :global(h3.month) {
     margin: var(--space-4) 0 var(--space-1);
     font-size: 1rem;
   }
@@ -376,25 +390,33 @@
     --sub: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
     background: linear-gradient(to right, var(--sub) 1px, transparent 1px) 0 0 / calc(100% / var(--subs)) 0.3rem repeat-x;
   }
-  /* The viewport's span on the ruler, like a scrollbar thumb. */
+  /* Where the view is: a slim fixed-size thumb centred on the feed's visible top, in a wider grab
+     area (44px on phones; 28px tall beside the feed). A press anywhere on the ruler scrubs, so
+     grabbing the thumb's centre doesn't move it. */
   .band {
     position: absolute;
     top: calc(-1 * var(--space-1));
     bottom: 0;
     left: calc(var(--a) * 100%);
-    width: max(4px, calc((var(--b) - var(--a)) * 100%));
+    translate: -50% 0;
+    width: 44px;
+    cursor: grab;
+  }
+  .band::before {
+    content: '';
+    position: absolute;
+    inset: 0 calc(50% - 5px);
     box-sizing: border-box;
-    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-    border-inline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 22%, transparent);
+    border: 2px solid color-mix(in srgb, var(--color-accent) 75%, transparent);
     border-radius: 3px;
-    pointer-events: none;
   }
   .ruler {
     user-select: none;
     touch-action: pan-y; /* the strip scrubs sideways; vertical swipes still scroll the page */
   }
   @media (max-width: 699px) {
-    .month {
+    .feed :global(h3.month) {
       scroll-margin-top: 3.5rem; /* clear the sticky strip on a jump */
     }
   }
@@ -450,10 +472,12 @@
       bottom: auto;
       left: -0.6rem;
       right: 0;
+      translate: 0 -50%;
       width: auto;
-      height: max(4px, calc((var(--b) - var(--a)) * 100%));
-      border-inline: 0;
-      border-block: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+      height: 28px;
+    }
+    .band::before {
+      inset: calc(50% - 5px) 0;
     }
   }
   .milestone-feed {
