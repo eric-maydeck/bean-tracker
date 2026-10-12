@@ -34,7 +34,18 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights'] as const;
+// Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
+export const LAB_TABS = ['sweetspots', 'brewing', 'water', 'gear'] as const;
+// Brewing breakdowns (tempBy=roast…; absent = None) and the slice functions' names in lab.ts.
+export const SLICES = ['roast', 'process', 'origin', 'roaster'] as const;
+export type Slice = (typeof SLICES)[number];
+export const BY_PARAMS = ['tempBy', 'ratioBy', 'doseBy', 'timeBy', 'bloomBy', 'grindBy'] as const;
+export type ByParam = (typeof BY_PARAMS)[number];
+// The values the lab's pickers offer (lab.ts labOptions, server-side): anything else in the URL is dropped.
+export interface LabValues { bags: string[]; roasts: string[]; processes: string[]; origins: string[]; roasters: string[]; grinders: string[] }
+export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [] };
+
+export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
 export type Tab = (typeof TABS)[number];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).
@@ -148,13 +159,29 @@ export interface InsightsUrlState {
   inflow?: number; // g/week incoming
   bpd?: number; // brews/day
   dose?: number; // g per brew
+  bag?: string; // Sweet spots: a coffee slug
+  roast?: string;
+  process?: string;
+  origin?: string;
+  roaster?: string;
+  grinder?: string; // a grinder slug (absent = the most-used one)
+  tempBy?: Slice;
+  ratioBy?: Slice;
+  doseBy?: Slice;
+  timeBy?: Slice;
+  bloomBy?: Slice;
+  grindBy?: Slice;
+  temp?: 'exact'; // Brewing: bands is the bare default
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose';
+type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | 'temp';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
+  bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; temp?: 'exact';
 };
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
@@ -239,7 +266,7 @@ export function keepCompare(c: number | string | undefined, offered: readonly st
 export function parseInsightsUrl(
   p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false,
   householdSize = 1, byFits: ByFits = () => true, today = '9999-12-31',
-  brewerTypes: readonly BrewerType[] = BREWER_TYPES
+  brewerTypes: readonly BrewerType[] = BREWER_TYPES, lab: LabValues = NO_LAB
 ): InsightsUrlState {
   const range = parseRange(p, years) ?? parseCustomPeriod(p, today);
   const r = range ?? DEFAULTS.range;
@@ -277,7 +304,20 @@ export function parseInsightsUrl(
     gpp: pickNumber(p, 'gpp', ...WHATIF_LIMITS.gpp),
     inflow: pickNumber(p, 'inflow', ...WHATIF_LIMITS.inflow),
     bpd: pickNumber(p, 'bpd', ...WHATIF_LIMITS.bpd),
-    dose: pickNumber(p, 'dose', ...WHATIF_LIMITS.dose)
+    dose: pickNumber(p, 'dose', ...WHATIF_LIMITS.dose),
+    bag: pickOne(p, 'bag', lab.bags),
+    roast: pickOne(p, 'roast', lab.roasts),
+    process: pickOne(p, 'process', lab.processes),
+    origin: pickOne(p, 'origin', lab.origins),
+    roaster: pickOne(p, 'roaster', lab.roasters),
+    grinder: pickOne(p, 'grinder', lab.grinders),
+    tempBy: pickOne(p, 'tempBy', SLICES),
+    ratioBy: pickOne(p, 'ratioBy', SLICES),
+    doseBy: pickOne(p, 'doseBy', SLICES),
+    timeBy: pickOne(p, 'timeBy', SLICES),
+    bloomBy: pickOne(p, 'bloomBy', SLICES),
+    grindBy: pickOne(p, 'grindBy', SLICES),
+    temp: p.get('temp')?.toLowerCase() === 'exact' ? 'exact' : undefined
   };
 }
 
@@ -302,6 +342,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.topc) p.set('topc', String(s.topc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
+  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, 'temp'] as const) if (s[k]) p.set(k, s[k]!);
   return p;
 }
 
@@ -333,7 +374,9 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     gpp: s.gpp,
     inflow: s.inflow,
     bpd: s.bpd,
-    dose: s.dose
+    dose: s.dose,
+    bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
+    tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy, temp: s.temp
   };
 }
 

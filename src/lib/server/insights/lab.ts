@@ -1,4 +1,4 @@
-import { MON, type Ratings } from '$lib/insightsUrl';
+import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, shareCell, type Multi } from './insightGenerators';
@@ -8,7 +8,6 @@ import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
 
-type Slice = 'roast' | 'process' | 'origin' | 'roaster'; // Task 6: from $lib/insightsUrl
 
 // The lab's input rows: the period's linked brews with a counted rating (spec "Shared rules").
 export const ratedIn = (brews: readonly BrewFact[], period: Period, ratings: Ratings): BrewFact[] =>

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType, BREWER_TYPES, type LabValues
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -476,5 +476,46 @@ describe('insights params', () => {
     expect(insightsParams(withDefaults(parse(q)) as never).get('theme')).toBe('gear');
     expect(resetInsights(parse(q))).toEqual({ tab: 'insights' });
     expect(insightsParams({}).toString()).toBe('');
+  });
+});
+
+describe('brewing lab params', () => {
+  const LAB: LabValues = { bags: ['2026-sey-kiambu', '2025-old-bag'], roasts: ['Light', 'Ultralight'], processes: ['Natural', 'Washed'],
+    origins: ['Kenya'], roasters: ['Sey', 'Moonwake'], grinders: ['a4z-femobook', 'zp6-1zpresso'] };
+  const parse = (q: string) => parseInsightsUrl(new URLSearchParams(q), [2026], [2026], () => false, 1, () => true, '2026-10-12', BREWER_TYPES, LAB);
+  it('reads the four tabs', () => {
+    for (const t of ['sweetspots', 'brewing', 'water', 'gear']) expect(parse(`tab=${t.toUpperCase()}`).tab).toBe(t);
+  });
+  it('sweet spots picker: values from the data, canonical case; unknown dropped', () => {
+    expect(parse('bag=2025-OLD-BAG&roast=ultralight&process=natural&origin=kenya&roaster=SEY')).toMatchObject(
+      { bag: '2025-old-bag', roast: 'Ultralight', process: 'Natural', origin: 'Kenya', roaster: 'Sey' });
+    expect(parse('bag=gone&roast=Medium&process=x&origin=Mars&roaster=Nobody')).toEqual(
+      { bag: undefined, roast: undefined, process: undefined, origin: undefined, roaster: undefined });
+  });
+  it('grinder: a slug from the data; an explicit default is kept', () => {
+    expect(parse('grinder=ZP6-1zpresso').grinder).toBe('zp6-1zpresso');
+    expect(parse('grinder=a4z-femobook').grinder).toBe('a4z-femobook');
+    expect(parse('grinder=virtuoso').grinder).toBeUndefined();
+  });
+  it('breakdowns: each *By param takes a slice; junk dropped', () => {
+    expect(parse('tempBy=Roast&ratioBy=process&doseBy=origin&timeBy=roaster&bloomBy=roast&grindBy=process')).toMatchObject(
+      { tempBy: 'roast', ratioBy: 'process', doseBy: 'origin', timeBy: 'roaster', bloomBy: 'roast', grindBy: 'process' });
+    expect(parse('tempBy=altitude&grindBy=').tempBy).toBeUndefined();
+  });
+  it('temp: only exact (bands is the bare default)', () => {
+    expect(parse('temp=EXACT').temp).toBe('exact');
+    expect(parse('temp=bands').temp).toBeUndefined();
+  });
+  it('without lab values (other callers) every lab value is dropped', () =>
+    expect(parseInsightsUrl(new URLSearchParams('bag=2025-old-bag&grinder=zp6-1zpresso'), [2026])).toEqual({}));
+  it('round-trips in a fixed order, omits defaults; reset keeps the tab only', () => {
+    const q = 'tab=brewing&bag=2025-old-bag&roast=Light&process=Natural&origin=Kenya&roaster=Sey&grinder=zp6-1zpresso&tempBy=roast&ratioBy=process&doseBy=origin&timeBy=roaster&bloomBy=roast&grindBy=process&temp=exact';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(insightsParams(parse('tab=water')).toString()).toBe('tab=water');
+    expect(resetInsights(parse(q))).toEqual({ tab: 'brewing' });
+    expect(withDefaults(parse(q))).toMatchObject({
+      bag: '2025-old-bag', roast: 'Light', process: 'Natural', origin: 'Kenya', roaster: 'Sey', grinder: 'zp6-1zpresso', temp: 'exact',
+      tempBy: 'roast', ratioBy: 'process', doseBy: 'origin', timeBy: 'roaster', bloomBy: 'roast', grindBy: 'process'
+    });
   });
 });

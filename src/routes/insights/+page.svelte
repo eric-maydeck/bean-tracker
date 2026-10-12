@@ -155,7 +155,7 @@
     rangeDialog?.close();
   }
 
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights' };
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
   const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
