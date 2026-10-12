@@ -8,7 +8,6 @@ import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
 
-
 // The lab's input rows: the period's linked brews with a counted rating (spec "Shared rules").
 export const ratedIn = (brews: readonly BrewFact[], period: Period, ratings: Ratings): BrewFact[] =>
   brews.filter((b) => b.coffeeId !== null && inPeriod(b.localDate, period) && countsForRating(b, ratings) && b.rating! > 0);

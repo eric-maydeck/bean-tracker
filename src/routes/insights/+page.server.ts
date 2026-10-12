@@ -12,7 +12,8 @@ import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
-import { RANGES, BYS, BREWER_TYPES, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
+import { labOptions, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, parseInsightsUrl, withDefaults, compareOptions, isCustom, type LabValues } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -27,10 +28,21 @@ export const load: PageServerLoad = ({ url }) => {
   const fits = compareFits(dataStart, today);
   const fitsBy = byFits(dataStart, today);
   const brewerTypes = BREWER_TYPES.filter((t) => brews.some((b) => b.brewerType === t));
-  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes);
+  const parse = (lab?: LabValues) => parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes, lab);
+  // The lab's picker values come from the data, so they're only computed on a lab tab (a second parse).
+  const isLab = (LAB_TABS as readonly string[]).includes(parse().tab ?? '');
+  const lab = isLab ? labOptions(brews, bags) : null;
+  const explicit = lab
+    ? parse({
+        bags: lab.bags.map((b) => b.slug), roasts: lab.roasts, processes: lab.processes, origins: lab.origins, roasters: lab.roasters,
+        grinders: lab.grinders.map((g) => g.slug)
+      })
+    : parse();
   const s = withDefaults(explicit);
-  const size = s.people === 'person' ? householdSize : 1;
+  const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);
+  const labCtx = { period, ratings: s.ratings };
+  const size = s.people === 'person' ? householdSize : 1;
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   const tiles = perPerson(overviewTiles(brews, bags, period, s.ratings, today, dataStart), size);
@@ -105,6 +117,17 @@ export const load: PageServerLoad = ({ url }) => {
             s.theme
           )
         : null,
+    lab,
+    grinder,
+    sweetSpots: s.tab === 'sweetspots'
+      ? sweetSpotsTab(brews, bags, { ...labCtx, grinder, filters: { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster } })
+      : null,
+    brewing: s.tab === 'brewing'
+      ? brewingTab(brews, { ...labCtx, grinder, exact: s.temp === 'exact',
+          by: { temp: s.tempBy, ratio: s.ratioBy, dose: s.doseBy, time: s.timeBy, bloom: s.bloomBy, grind: s.grindBy } })
+      : null,
+    water: s.tab === 'water' ? waterTab(brews, bags, labCtx) : null,
+    gear: s.tab === 'gear' ? gearTab(brews, labCtx) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),

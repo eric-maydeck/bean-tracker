@@ -5,7 +5,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -312,6 +312,7 @@
     all: 'Every rated brew, including earlier ones.'
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
+  const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
   // A popover sits in the top layer; put it under its caption button (above
@@ -409,6 +410,7 @@
   {#if isCustom(s.range)}
     <button class="button button-ghost" aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
   {/if}
+  {#if !labTab}
   <label class="form-field group-field">
     <span>Compare</span>
     <select
@@ -429,8 +431,9 @@
   {#if isCustom(s.compare)}
     <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
-  <!-- Milestones are household-level: no People switch there. -->
-  {#if data.householdSize > 1 && s.tab !== 'milestones'}
+  {/if}
+  <!-- Milestones and the lab tabs are household-level: no People switch there. -->
+  {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
     <div class="form-field group-field people-field">
       <span>People</span>
       <div class="tab-group people-switch" role="group" aria-label="People">

@@ -395,3 +395,21 @@ describe('/insights custom Period', () => {
     expect(run('?tab=records&brewer=soup').explicit.brewer).toBeUndefined();
   });
 });
+
+describe('brewing lab tabs', () => {
+  it('computes only the open lab tab', () => {
+    seed([[today, 15]]);
+    for (const t of ['sweetspots', 'brewing', 'water', 'gear'] as const) {
+      const d = run(`?tab=${t}`);
+      const keys = { sweetspots: 'sweetSpots', brewing: 'brewing', water: 'water', gear: 'gear' } as const;
+      for (const [tab, key] of Object.entries(keys)) expect(d[key] === null).toBe(tab !== t);
+      expect(d.lab).not.toBeNull();
+    }
+    expect(run('?tab=overview').lab).toBeNull();
+  });
+  it('lab values come from the data: a real bag slug stays, junk drops', () => {
+    seed([[today, 15]]);
+    const { slug } = getDb().prepare('SELECT slug FROM coffees').get() as { slug: string };
+    expect(run(`?tab=sweetspots&bag=${slug}&grinder=nope&roast=Light`).explicit).toMatchObject({ bag: slug, grinder: undefined, roast: undefined });
+  });
+});
