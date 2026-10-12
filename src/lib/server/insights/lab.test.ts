@@ -153,6 +153,23 @@ describe('ladder', () => {
     expect(ladder(sameBag, [], [exact, temp])!.usual.label).toBe('90–92 °C');
     expect(ladder([brew({ rating: 8 })], [], [temp])).toBeNull();
   });
+  it('bands: every band of the tier used, in band order, solid as that tier counts it', () => {
+    // Tier 1: same-bag deltas of the band set that won (exact temps), thin bands pale.
+    const t1 = ladder([...sameBag, ...many(2, 1, 96, 7), ...many(2, 1, 91, 8)], [], [exact, temp])!;
+    expect(t1.tier).toBe(1);
+    expect(t1.bands.map((b) => [b.label, b.solid])).toEqual([['91 °C', true], ['94 °C', true], ['96 °C', false]]);
+    expect(t1.bands[0].value).toBeCloseTo(t1.best!.value);
+    // Tier 2: the group's bands as means of bag means.
+    const cross = [...[1, 2, 3].flatMap((id) => many(10, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(10, id, 94, 7)), ...many(3, 7, 96, 6)];
+    const t2 = ladder(cross, [{ name: 'g', brews: cross }], [temp])!;
+    expect(t2.bands).toMatchObject([
+      { label: '90–92 °C', bags: 3, brews: 30, solid: true }, { label: '93–94 °C', bags: 3, brews: 30, solid: true },
+      { label: '95+ °C', bags: 1, brews: 3, solid: false }]);
+    expect(t2.bands[1].value).toBeCloseTo(7, 1); // 10 brews cycle r ± 0.1 unevenly
+    // Tier 3: the widest group's coarse bands, all pale.
+    const thin = [...many(3, 1, 91, 8), ...many(3, 2, 94, 7)];
+    expect(ladder(thin, [{ name: 'g', brews: thin }], [temp])!.bands.map((b) => [b.label, b.solid])).toEqual([['90–92 °C', false], ['93–94 °C', false]]);
+  });
   it('verdicts: solid wins, hint leans, anything else none', () =>
     expect([verdictOf('solid'), verdictOf('hint'), verdictOf('early'), verdictOf(null)]).toEqual(['win', 'leaning', 'none', 'none']));
 });
@@ -215,6 +232,15 @@ describe('sweetSpotsTab', () => {
     const r = (id: number, k: number, v: number) => Array.from({ length: k }, () => brew({ coffeeId: id, rating: v }));
     const t = sweetSpotsTab([...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)], bags, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags;
     expect(t.map((b) => b.label)).toEqual(['Bag 2', 'Bag 1', 'Bag 3']);
+  });
+  it('top bags: listed bags sharing a name get their roast dates', () => {
+    const twins = [bag({ id: 1, name: 'Gesha', purchaseDate: '2026-03-04' }), bag({ id: 2, name: 'Gesha', purchaseDate: '2026-08-15' }), bag({ id: 3, name: 'Other', purchaseDate: '2026-05-01' })];
+    const r = [1, 2, 3].map((id) => brew({ coffeeId: id, rating: 9 - id }));
+    expect(sweetSpotsTab(r, twins, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => b.label))
+      .toEqual(['Gesha · roasted Mar 4', 'Gesha · roasted Aug 15', 'Other']);
+    const sameDay = twins.map((b) => ({ ...b, purchaseDate: '2026-05-05', firstBrew: `2026-0${5 + b.id}-02` }));
+    expect(sweetSpotsTab(r, sameDay, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => b.label))
+      .toEqual(['Gesha · opened Jun 2', 'Gesha · opened Jul 2', 'Other']);
   });
   it('top bags: at most 5 of 6', () => {
     const six = [1, 2, 3, 4, 5, 6].map((id) => brew({ coffeeId: id, rating: 8 }));

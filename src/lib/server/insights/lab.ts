@@ -68,6 +68,11 @@ function bagBandMeans(rows: readonly BrewFact[], band: BandFn) {
   return out;
 }
 
+const isSolid = (s: { means: number[]; brews: number }) => s.means.length >= MIN_BAGS && s.brews >= MIN_BREWS;
+const meanBands = (all: ReturnType<typeof bagBandMeans>): SpotBand[] =>
+  [...all].sort((a, b) => a[1].order - b[1].order || a[0].localeCompare(b[0]))
+    .map(([label, s]) => ({ label, value: mean(s.means), bags: s.means.length, brews: s.brews, solid: isSolid(s) }));
+
 export interface Group { name: string; brews: BrewFact[] } // narrowest first
 export interface Spot {
   tier: 1 | 2 | 3;
@@ -78,7 +83,12 @@ export interface Spot {
   bags: number; // tier 1: paired bags behind `best`; tier 2: bags in `best`
   varied: boolean; // tier 3: the widest group used more than one band
   usual: { label: string; mean: number }; // the slice's most-brewed (coarsest) band and its plain mean rating
+  // Every band of the evidence the card used, in band order (the card's mini chart): tier 1 same-bag
+  // deltas of the winning band set; tier 2 the group's mean of bag means; tier 3 the widest group's bag
+  // means on the coarse bands. `solid` as the tier counts it (pale otherwise).
+  bands: SpotBand[];
 }
+export interface SpotBand { label: string; value: number; bags: number; brews: number; solid: boolean }
 // The Insights tab's two badges: Solid wins, Hint leans (spec "Strong/Likely/Hint" mapped onto them).
 export const verdictOf = (s: Strength | null): Spot['verdict'] => (s === 'solid' ? 'win' : s === 'hint' ? 'leaning' : 'none');
 
@@ -91,15 +101,16 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
   if (!top) return null; // no brew in the slice has this variable: the card is hidden
   const base = { next: null, group: null, varied: true, usual: { label: top[0], mean: ratedGroups(top[1], () => 'x', 'all', 'adjusted')[0].mean } };
   for (const f of bands) {
-    const solid = pairedDeltas(slice, f).filter((s) => s.solid);
+    const st = pairedDeltas(slice, f), solid = st.filter((s) => s.solid);
     if (solid.length < 2) continue;
     const b = solid.reduce((x, y) => (y.delta! > x.delta! ? y : x));
-    return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags };
+    const shown = st.filter((s) => s.delta !== null).map((s) => ({ label: s.label, value: s.delta!, bags: s.bags, brews: s.brews, solid: s.solid }));
+    return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
     for (const f of bands) {
       const all = bagBandMeans(g.brews, f);
-      const solid = [...all].filter(([, s]) => s.means.length >= MIN_BAGS && s.brews >= MIN_BREWS)
+      const solid = [...all].filter(([, s]) => isSolid(s))
         .sort((a, b) => mean(b[1].means) - mean(a[1].means) || a[1].order - b[1].order);
       if (solid.length < 2) continue;
       const [[label, s], [nextLabel, n]] = solid;
@@ -108,10 +119,11 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       const strength = sd(pool) < EPS ? 'early' : strengthOf(groupZ(s.means, pool), true, all.size);
       return {
         ...base, tier: 2, verdict: verdictOf(strength), best: { label, value: mean(s.means), strength },
-        next: { label: nextLabel, value: mean(n.means) }, group: g.name, bags: s.means.length
+        next: { label: nextLabel, value: mean(n.means) }, group: g.name, bags: s.means.length, bands: meanBands(all)
       };
     }
-  return { ...base, tier: 3, verdict: 'none', best: null, bags: 0, varied: used(groups.at(-1)?.brews ?? slice).size > 1 };
+  const widest = groups.at(-1)?.brews ?? slice;
+  return { ...base, tier: 3, verdict: 'none', best: null, bags: 0, varied: used(widest).size > 1, bands: meanBands(bagBandMeans(widest, coarse)) };
 }
 
 export const SLICE_OF: Record<Slice, (b: BrewFact) => string | null> = {
@@ -208,11 +220,19 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
     const bag = byId.get(id!);
     return {
       label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
+      roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
-  return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags };
+  // Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
+  // roasted the same day get their opened date instead.
+  const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
+  const twins = <T extends { label: string }>(xs: T[], l: string) => xs.filter((x) => x.label === l).length > 1;
+  const roasted = topBags.map((b) => (twins(topBags, b.label) && b.roastedOn ? { ...b, label: `${b.label} · roasted ${day(b.roastedOn)}` } : b));
+  const named = roasted.map(({ roastedOn: _, openedOn, ...b }, i) =>
+    twins(roasted, b.label) && openedOn ? { ...b, label: `${topBags[i].label} · opened ${day(openedOn)}` } : b);
+  return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags: named };
 }
 
 export type BrewVar = 'temp' | 'ratio' | 'dose' | 'time' | 'bloom' | 'grind';
