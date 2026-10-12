@@ -29,7 +29,10 @@
     void rows;
     tip = null;
   });
-  const showRow = (el: Element) => (tip = tipAt(wrap!, el.querySelector('.track')!, bars[+(el as HTMLElement).dataset.i!]?.tip ?? '', 128));
+  const showRow = (el: Element) => {
+    const b = bars[+(el as HTMLElement).dataset.i!];
+    tip = b ? tipAt(wrap!, el.querySelector('.track')!, b.tip, 128) : null;
+  };
   const show = (e: Event) => {
     const el = (e.target as Element).closest('.bar-row');
     if (el) showRow(el);

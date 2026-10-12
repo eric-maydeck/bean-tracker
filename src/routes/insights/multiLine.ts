@@ -3,7 +3,7 @@ import type { Multi } from '$lib/server/insights/insightGenerators';
 // One shared y scale over a 100×40 box (2 units of padding top and bottom).
 function frame(m: Multi) {
   const vs = m.lines.flatMap((l) => l.values.filter((v): v is number => v !== null));
-  const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+  const lo = vs.length ? Math.min(...vs) : 0, hi = vs.length ? Math.max(...vs) : 0, span = hi - lo || 1;
   return { lo, hi, py: (v: number) => 38 - ((v - lo) / span) * 36 };
 }
 

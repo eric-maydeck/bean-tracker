@@ -16,4 +16,9 @@ describe('multiLine', () => {
     expect(scale(m([[-1, 1]])).zero).toBeCloseTo(20);
     expect(scale(m([[1, 2]])).zero).toBeNull();
   });
+  it('empty or all-null: a flat 0 range, no Infinity', () => {
+    expect(scale({ x: [], lines: [] })).toEqual({ lo: 0, hi: 0, zero: null });
+    expect(scale(m([[null, null]]))).toEqual({ lo: 0, hi: 0, zero: null });
+    expect(lines(m([[null, null]]))[0].runs).toEqual([]);
+  });
 });

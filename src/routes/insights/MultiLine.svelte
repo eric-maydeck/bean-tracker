@@ -31,6 +31,7 @@
   });
   // The tip sits over the guide line, at the plot's top edge.
   async function showCol(i: number) {
+    if (n === 0) return;
     col = Math.min(n - 1, Math.max(0, i));
     await tick();
     if (guide && wrap) tip = { ...tipAt(wrap, guide, '', 128), y: plot!.offsetTop };
@@ -81,6 +82,7 @@
   <ul class="legend" aria-hidden="true">
     {#each ls as l (l.label)}<li><span class="swatch" style:background={l.color}></span>{l.label}</li>{/each}
   </ul>
+  <span class="sr-only" aria-live="polite">{col !== null ? `${m.x[col]}: ${m.lines.flatMap((l) => (l.values[col!] ?? null) === null ? [] : [`${l.label} ${format(l.values[col!]!)}`]).join(', ')}` : ''}</span>
   {#if tip && col !== null}
     <div class="cell-tip wide" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>
       <strong>{m.x[col]}</strong>

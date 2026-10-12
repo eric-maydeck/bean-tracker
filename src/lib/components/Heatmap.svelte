@@ -117,27 +117,27 @@
   onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
 >
   <div class="scroll" onscroll={scrolled}>
-  <div class="grid" style:--nc={cols.length}>
-    {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
-    {#each rows as r, i (i)}
-      <span class="row-label" style:--r={i + 2} style:--c={1}>{r}</span>
-      {#each cols as _, j (j)}
-        {@const v = cells[i]?.[j] ?? null}
-        <div
-          class="heat-cell"
-          role="button"
-          tabindex={i + j ? -1 : 0}
-          aria-label="{label(i, j)} · {text(v)}"
-          style:--r={i + 2}
-          style:--c={j + 2}
-          class:none={v === null}
-          style:background={shade(v)}
-          onfocus={(e) => (takeFocus(e), show(e))}
-          onblur={() => (tip = null)}
-        ></div>
+    <div class="grid" style:--nc={cols.length}>
+      {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
+      {#each rows as r, i (i)}
+        <span class="row-label" style:--r={i + 2} style:--c={1}>{r}</span>
+        {#each cols as _, j (j)}
+          {@const v = cells[i]?.[j] ?? null}
+          <div
+            class="heat-cell"
+            role="button"
+            tabindex={i + j ? -1 : 0}
+            aria-label="{label(i, j)} · {text(v)}"
+            style:--r={i + 2}
+            style:--c={j + 2}
+            class:none={v === null}
+            style:background={shade(v)}
+            onfocus={(e) => (takeFocus(e), show(e))}
+            onblur={() => (tip = null)}
+          ></div>
+        {/each}
       {/each}
-    {/each}
-  </div>
+    </div>
   </div>
   {#if diverging}
     <p class="div-legend">
