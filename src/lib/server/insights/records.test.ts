@@ -59,6 +59,11 @@ describe('taste', () => {
     expect(run('bestDay', [d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-19', 10)])?.holder.date)
       .toBe('2026-08-18');
   });
+  it('most perfect 10s: the bag with the most 10s; ties listed; none → no record', () => {
+    expect(run('mostTens', [...rated(1, [10, 9, 10]), ...rated(2, [10, 10]), ...rated(3, [10])]))
+      .toMatchObject({ value: 2, holder: { label: 'Bag 1' }, ties: [{ label: 'Bag 2' }] });
+    expect(run('mostTens', rated(1, [9, 9.5]))).toBeNull();
+  });
   it('Current excludes pre-2026-06-01 ratings', () =>
     expect(run('bestBag', rated(1, [9, 9, 9], '2026-05-01'), BAGS, 'current')).toBeNull());
 });
@@ -139,7 +144,7 @@ describe('freshness and money', () => {
     const bags = [bag({ id: 1, roaster: 'A', cost: 10, purchaseDate: '2026-03-02' }), bag({ id: 2, roaster: 'A', cost: 15, purchaseDate: '2026-03-20' }),
       bag({ id: 3, roaster: 'B', cost: 40, purchaseDate: '2026-03-21' })];
     expect(run('roasterBags', [], bags)).toMatchObject({ value: 2, holder: { label: 'A' }, detail: '$25.00 spent' });
-    expect(run('roasterSpend', [], bags)).toMatchObject({ value: 40, holder: { label: 'B' }, detail: '1 bag' });
+    expect(run('roasterSpend', [], bags)).toMatchObject({ value: 40, holder: { label: 'B' }, detail: '1 bag bought' });
   });
   it('cups: priciest and cheapest, detail = dose at the bag price', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 25, amountG: 250 })];
@@ -230,11 +235,11 @@ describe('recordsTab', () => {
     expect(tileOf(t, 'marathon')!.value).toBe(MARATHON / 2);
     expect(tileOf(t, 'mostBrewedBag')!.value).toBe(MOST_BREWED);
   });
-  it('topBrews <= 20 best first; perfectTens only 10s', () => {
+  it('topBrews <= 20 best first; perfectTens = bags with a 10, with counts', () => {
     const r = [10, 9.5, 9, 10, 9, 9.5, 9, 9, 10, 9, 9, 9.5, ...Array(10).fill(8)];
     const t = recordsTab(r.map((rating, i) => brew({ coffeeId: 1, rating, localDate: `2026-05-${String(i + 1).padStart(2, '0')}` })), BAGS, CTX);
     expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9, 9, 9, ...Array(8).fill(8)]);
-    expect(t.perfectTens).toHaveLength(3);
+    expect(t.perfectTens).toMatchObject([{ holder: { label: 'Bag 1' }, count: 3 }]);
   });
   it('brewerTypes: present all-time, in BREWER_TYPES order; sections in order, empty omitted', () => {
     const t = recordsTab([brew({ brewerType: 'soup', dose: 10 }), brew({ brewerType: 'pourover', dose: 12 })], BAGS, CTX);

@@ -38,7 +38,7 @@ export interface RecordTile extends RecordPick {
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
   topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 20, best first (10 shown until top=20)
-  perfectTens: { holder: Holder; brewer: string | null }[];
+  perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
   coversAll: boolean; // the period starts on or before the first (filtered) brew: every record is all-time
 }
@@ -103,6 +103,12 @@ const usd = (n: number) => `$${n.toFixed(2)}`;
 const g = (n: number) => `${n < 100 ? +n.toFixed(1) : Math.round(n)}g`;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rangeOf = (xs: number[]) => `${Math.min(...xs)}–${Math.max(...xs)}`;
+
+// Bags with at least one counted 10, by how many (holder date = the bag's latest counted rating).
+const tens = (c: RecCtx): Candidate[] => perBag(c, 1, (s) => {
+  const n = s.rated.filter((x) => x === 10).length;
+  return n ? { value: n } : null;
+});
 
 const dialed = (xs: number[]) => mean([...xs].sort((a, b) => b - a).slice(0, Math.ceil(xs.length / 2)));
 
@@ -241,6 +247,7 @@ export const RECORDS: RecordDef[] = [
   taste('consistent', 'Most consistent bag', 'min', 'sd', (c) =>
     perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews at ${s.mean!.toFixed(2)}` }))),
   taste('bestDay', 'Best day', 'max', 'rating', dayMean),
+  taste('mostTens', 'Coffee with the most perfect 10s', 'max', 'count', (c) => tens(c)),
 
   volume('mostBrewedBag', 'Most-brewed bag', 'max', 'count', (c) => bagCount(c, (s) => s.brews.length)),
   volume('mostGramsBag', 'Most grams from one bag', 'max', 'grams', (c) => bagCount(c, (s) => s.grams)),
@@ -254,7 +261,8 @@ export const RECORDS: RecordDef[] = [
   volume('gearTour', 'Most brewers used on one bag', 'max', 'count', (c) =>
     [...bagStats(c.brews, c.ratings).values()].map((s) => ({
       value: distinct(s.brews.map((b) => b.brewer)),
-      detail: `${distinct(s.brews.map((b) => b.dripper))} drippers · ${distinct(s.brews.map((b) => b.water))} waters`,
+      detail: [plural(distinct(s.brews.map((b) => b.dripper)), 'dripper'), plural(distinct(s.brews.map((b) => b.water)), 'water')]
+        .filter((x) => !x.startsWith('0 ')).join(' · '),
       holder: bagHolder(c.bags, s.coffeeId, s.last)
     }))),
   volume('earlyBird', 'Early bird', 'min', 'clock', (c) => clock(c, () => true)),
@@ -295,7 +303,7 @@ export const RECORDS: RecordDef[] = [
       value: bs.length, detail: `${usd(spent(bs))} spent`, holder: { label: m as string, date: `${m}-01` }
     })), { scope: 'alltime' }),
   money('roasterBags', 'Most bags from one roaster', 'max', 'count', (c) => roasters(c, (bs) => bs.length, (bs) => `${usd(spent(bs))} spent`), { bought: true }),
-  money('roasterSpend', 'Most spent at one roaster', 'max', 'money', (c) => roasters(c, spent, (bs) => plural(bs.length, 'bag')), { bought: true }),
+  money('roasterSpend', 'Most spent at one roaster', 'max', 'money', (c) => roasters(c, spent, (bs) => `${plural(bs.length, 'bag')} bought`), { bought: true }),
 
   extreme('doseHeavy', 'Heaviest dose', 'max', 'grams', (c) => brewMetric(c, (b) => b.dose)),
   extreme('doseLight', 'Lightest dose', 'min', 'grams', (c) => brewMetric(c, (b) => b.dose)),
@@ -379,7 +387,8 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
     topBrews: top.slice(0, 20).map((b) => ({ rating: b.rating!, ...row(b) })),
-    perfectTens: top.filter((b) => b.rating === 10).map(row),
+    perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
+      .map((x) => ({ holder: x.holder, count: x.value })),
     brewerTypes: BREWER_TYPES.filter((t) => allBrews.some((b) => b.brewerType === t)),
     coversAll: !c.period.start || !brews.length || c.period.start <= brews[0].localDate
   };

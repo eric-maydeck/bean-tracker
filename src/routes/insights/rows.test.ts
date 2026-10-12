@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rowSizes } from './rows';
+import { rowSizes, rowVars } from './rows';
 
 describe('rowSizes', () => {
   it('spreads cards evenly over the fewest rows, fuller rows first', () => {
@@ -11,4 +11,6 @@ describe('rowSizes', () => {
     expect(rowSizes(1, 3)).toEqual([1]);
     expect(rowSizes(0, 3)).toEqual([]);
   });
+  it('five cards on a wide grid make one row', () =>
+    expect(rowVars(5)).toEqual(Array(5).fill('--q4:5;--q3:3;--q2:3').map((v, i) => (i < 3 ? v : '--q4:5;--q3:2;--q2:2'))));
 });

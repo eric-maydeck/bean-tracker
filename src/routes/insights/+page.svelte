@@ -541,6 +541,8 @@
     t={data.records}
     ratings={s.ratings}
     brewer={s.brewer}
+    caffeine={s.caffeine}
+    top={s.top}
     perPerson={perPersonOn}
     allRange={!data.period.start}
     ratingsHelp={RATINGS_HELP}
@@ -787,6 +789,46 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+  }
+  /* List tips (Records ties, perfect 10s by coffee): left-aligned rows, each a one-line name and its muted
+     date at the right; a long list scrolls past about eight rows. */
+  :global(.mode-tip.tip-list) {
+    --w: min(20rem, 100vw - 2rem);
+    text-align: left;
+  }
+  :global(.tip-list .tip-head) {
+    margin: 0 0 0.25rem;
+    font-weight: 600;
+  }
+  :global(.tip-list ul) {
+    max-height: 15rem;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+  :global(.tip-list li) {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding: 0.3rem 0;
+    border-top: 1px solid var(--color-border);
+  }
+  :global(.tip-list li:first-child) {
+    border-top: 0;
+  }
+  :global(.tip-list li > span) {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :global(.tip-list li > small) {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
   }
   /* Set from placeTip, so Svelte can't see it. */
   :global(.mode-tip[data-above]) {

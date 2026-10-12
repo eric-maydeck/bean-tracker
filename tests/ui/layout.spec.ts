@@ -1545,6 +1545,24 @@ export const STATES: State[] = [
       for (const h of ['Taste', 'Volume', 'Freshness & lifetime', 'Money', 'Brew extremes', 'Not quite your cup'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
       await expectGridRowsFull(page, '.record-grid');
+      // Every card keeps the switch band; a badge sits right above its caption.
+      const off = await page.locator('.record-grid .hl-card').evaluateAll((cards) => cards.flatMap((c) => {
+        const top = c.querySelector('.hl-top')!.getBoundingClientRect().height;
+        const badge = c.querySelector('.hl-badge')?.getBoundingClientRect();
+        const cap = c.querySelector('.hl-caption')!.getBoundingClientRect();
+        return [...(top < 15 ? [`band ${top}px`] : []), ...(badge && cap.top - badge.bottom > 6 ? [`badge ${cap.top - badge.bottom}px above caption`] : [])];
+      }));
+      expect(off).toEqual([]);
+    } },
+  { name: 'insights-records-decaf', path: () => '/insights?tab=records&range=all&caffeine=decaf',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Decaf', pressed: true })).toBeVisible();
+      await expectGridRowsFull(page, '.record-grid');
+    } },
+  { name: 'insights-records-top20', path: () => '/insights?tab=records&range=all&top=20',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Show top 10' })).toBeVisible();
+      await expect(page.locator('.top-brews li')).not.toHaveCount(10);
     } },
   { name: 'insights-records-soup', path: () => '/insights?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },

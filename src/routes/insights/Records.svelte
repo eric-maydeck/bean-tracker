@@ -2,14 +2,15 @@
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { MON, type BrewerType, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
+  import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
 
   let {
-    t, ratings, brewer, perPerson, allRange, ratingsHelp, personHelp, placeTip, choose
+    t, ratings, brewer, caffeine, top, perPerson, allRange, ratingsHelp, personHelp, placeTip, choose
   }: {
-    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; perPerson: boolean; allRange: boolean;
+    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: 20 | undefined; perPerson: boolean;
+    allRange: boolean;
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -17,6 +18,7 @@
     taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
   };
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
+  const CAFFEINE: Record<Caffeine | 'all', string> = { all: 'All', caf: 'Caffeinated', decaf: 'Decaf' };
   // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
   const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
   // Day and month records are held by the date itself.
@@ -43,7 +45,7 @@
       case 'ratio': return [`1:${n.toFixed(1)}`];
       case 'sd': return [`±${n.toFixed(2)}`];
       // Ranked by the adjusted delta (value), shown as the raw one (mean).
-      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'vs your average'];
+      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'vs your average rating'];
       // An encoded setting: the text is the value.
       case 'grind': return [p.detail ?? ''];
       // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
@@ -51,11 +53,41 @@
     }
   }
   const plain = (p: RecordPick, fmt: Fmt) => parts(p, fmt).filter(Boolean).join(' ');
-  const context = (p: RecordPick, fmt: Fmt) =>
-    [parts(p, fmt)[2] ?? (fmt === 'grind' ? null : p.detail), isDate(p.holder) ? null : date(p.holder.date)].filter(Boolean).join(' · ');
+  // The record's inputs (what its value is made of), on their own line: a derived value shows its working.
+  // Roaster money records count bags bought in the period: the line says which window.
+  const BOUGHT = new Set(['roasterSpend', 'roasterBags']);
+  const inputs = (p: RecordPick, fmt: Fmt, key = '') =>
+    parts(p, fmt)[2] ?? (fmt === 'grind' ? undefined : BOUGHT.has(key) ? `${p.detail}${allRange ? ', all time' : ' this period'}` : p.detail);
   // Badge: a snapshot ("Now"), an all-time-only record, or a period holder that is the all-time record
-  // (not on All time, where every record is).
-  const badge = (r: RecordTile) => (r.scope === 'now' ? 'Now' : r.scope || (r.allTime === null && !allRange) ? 'All-time' : null);
+  // (not when the period covers all the data, where every record is).
+  const badge = (r: RecordTile) => (r.scope === 'now' ? 'Now' : r.scope || (r.allTime === null && !t.coversAll) ? 'All-time' : null);
+
+  // A cut-off line or name shows its full text on hover (mouse) or focus (keyboard, tap): one shared
+  // tip, placed like placeTip's. A cut line with no link inside gets a tabindex so it can take focus.
+  let fullTip = $state<HTMLElement>();
+  const cut = (el: HTMLElement) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+  function full(el: HTMLElement) {
+    const show = () => {
+      if (!fullTip || !cut(el)) return;
+      fullTip.textContent = el.textContent;
+      const r = el.getBoundingClientRect(), below = r.bottom + 96 < innerHeight;
+      fullTip.style.setProperty('--x', `${r.left + r.width / 2}px`);
+      fullTip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);
+      fullTip.toggleAttribute('data-above', !below);
+      fullTip.showPopover();
+    };
+    const hide = () => fullTip?.matches(':popover-open') && fullTip.hidePopover();
+    const over = (e: PointerEvent) => e.pointerType === 'mouse' && show();
+    const ro = new ResizeObserver(() => {
+      if (el.querySelector('a')) return;
+      if (cut(el)) el.tabIndex = 0;
+      else el.removeAttribute('tabindex');
+    });
+    ro.observe(el);
+    const on: [string, EventListener][] = [['pointerenter', over as EventListener], ['pointerleave', hide], ['focusin', show], ['focusout', hide]];
+    for (const [e, f] of on) el.addEventListener(e, f);
+    return { destroy: () => { ro.disconnect(); hide(); for (const [e, f] of on) el.removeEventListener(e, f); } };
+  }
 
   let sections = $derived.by(() => {
     const out = t.sections.map((s) => ({ ...s, title: TITLE[s.key] }));
@@ -92,40 +124,66 @@
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}>{personHelp}</div>{/if}
 {/snippet}
 
+{#snippet link(h: Holder)}{#if h.href}<a href={h.href}>{name(h)}</a>{:else}{name(h)}{/if}{/snippet}
+
+{#snippet holderLine(q: string, p: RecordPick, fmt: Fmt)}
+  <span class="hl-line" use:full>{q}: {plain(p, fmt)} · {@render link(p.holder)}</span>
+{/snippet}
+
+<!-- A list tip: one row per entry, the name cut to a line and its date muted at the right. -->
+{#snippet tipList(id: string, head: string | null, rows: { name: string; side: string }[])}
+  <div class="mode-tip tip-list" id={id} popover onbeforetoggle={placeTip}>
+    {#if head}<p class="tip-head">{head}</p>{/if}
+    <ul>{#each rows as row, i (i)}<li><span>{row.name}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
+  </div>
+{/snippet}
+
 {#snippet tile(r: RecordTile, id: string, style: string)}
   {@const [v, unit] = parts(r, r.fmt)}
   {@const b = badge(r)}
+  {@const why = inputs(r, r.fmt, r.key)}
   <div class="hl-card" {style}>
     <div class="hl-top">{#if r.rating}{@render ratingSwitch()}{/if}</div>
     <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
-    <span class="hl-holder">{#if r.holder.href}<a href={r.holder.href}>{name(r.holder)}</a>{:else}{name(r.holder)}{/if}</span>
-    {#if r.holder.sub}<span class="hl-line">{r.holder.sub}</span>{/if}
-    {#if context(r, r.fmt)}<span class="hl-line">{context(r, r.fmt)}</span>{/if}
+    <span class="hl-holder" use:full>{@render link(r.holder)}</span>
+    {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}
+    {#if why}<span class="hl-line" use:full>{why}</span>{/if}
+    {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
     {#if r.ties.length}
       <button class="mode-tip-button hl-line record-ties" popovertarget="ties-{id}" aria-describedby="ties-{id}"
         ><span class="tip-text">+{r.ties.length} tied</span><Icon name="question" /></button
       >
-      <div class="mode-tip" id="ties-{id}" popover onbeforetoggle={placeTip}>
-        <p>Also {plain(r, r.fmt)}:</p>
-        <ul>{#each r.ties as h, i (i)}<li>{name(h)}{isDate(h) ? '' : ` · ${date(h.date)}`}</li>{/each}</ul>
-      </div>
+      {@render tipList(`ties-${id}`, `Also ${plain(r, r.fmt)}:`, r.ties.map((h) => ({ name: name(h), side: isDate(h) ? '' : date(h.date) })))}
     {/if}
-    {#if b}
-      <span class="badge hl-badge">{b}</span>
-    {:else if r.allTime}
-      <span class="hl-line">All-time: {plain(r.allTime, r.fmt)} · {name(r.allTime.holder)}</span>
+    {#if r.key === 'mostTens' && t.perfectTens.length > r.ties.length + 1}
+      <button class="mode-tip-button hl-line" popovertarget="tens-list" aria-describedby="tens-list"
+        ><span class="tip-text">{t.perfectTens.length} coffees with a 10</span><Icon name="question" /></button
+      >
+      {@render tipList('tens-list', 'Perfect 10s by coffee:', t.perfectTens.map((p) => ({ name: p.holder.label, side: `${p.count}×` })))}
     {/if}
-    {#if r.was}<span class="hl-line">was: {plain(r.was, r.fmt)} · {name(r.was.holder)}</span>{/if}
+    {#if !b && r.allTime}{@render holderLine('All-time', r.allTime, r.fmt)}{/if}
+    {#if r.was}{@render holderLine('Was', r.was, r.fmt)}{/if}
+    {#if b}<span class="badge hl-badge">{b}</span>{/if}
     {@render caption(id, r.label, r.rating, r.perDay && perPerson)}
   </div>
 {/snippet}
 
+<div class="insights-bar">
+  <div class="form-field group-field">
+    <span>Caffeine</span>
+    <div class="tab-group" role="group" aria-label="Caffeine">
+      {#each [undefined, 'caf', 'decaf'] as const as c (c ?? 'all')}
+        <button aria-pressed={caffeine === c} onclick={() => choose({ caffeine: c })}>{CAFFEINE[c ?? 'all']}</button>
+      {/each}
+    </div>
+  </div>
+</div>
+
 {#if !sections.length}
-  <section class="chart-panel"><p class="hl-empty">No brews in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">No {caffeine === 'decaf' ? 'decaf ' : caffeine ? 'caffeinated ' : ''}brews in this period.</p></section>
 {/if}
 {#each sections as s (s.key)}
-  {@const tens = s.key === 'taste' && t.perfectTens.length ? 1 : 0}
-  {@const vars = rowVars(s.tiles.length + tens)}
+  {@const vars = rowVars(s.tiles.length)}
   <section class="chart-panel" class:gentle={s.key === 'gentle'}>
     {#if s.key === 'extremes' && t.brewerTypes.length > 1}
       <div class="chart-panel-header">
@@ -144,43 +202,34 @@
     {:else}
       <div class="hl-grid record-grid">
         {#each s.tiles as r, i (r.key)}{@render tile(r, `${s.key}-${i}`, vars[i])}{/each}
-        {#if tens}
-          {@const last = t.perfectTens[t.perfectTens.length - 1]}
-          <div class="hl-card" style={vars[vars.length - 1]}>
-            <div class="hl-top">{@render ratingSwitch()}</div>
-            <span class="hl-value">{t.perfectTens.length}</span>
-            <span class="hl-holder">{#if last.holder.href}<a href={last.holder.href}>{last.holder.label}</a>{:else}{last.holder.label}{/if}</span>
-            <span class="hl-line">{[last.brewer, `latest ${date(last.holder.date)}`].filter(Boolean).join(' · ')}</span>
-            {#if t.perfectTens.length > 1}
-              <button class="mode-tip-button hl-line" popovertarget="tens-list" aria-describedby="tens-list"
-                ><span class="tip-text">{t.perfectTens.length} brews</span><Icon name="question" /></button
-              >
-              <div class="mode-tip" id="tens-list" popover onbeforetoggle={placeTip}>
-                <ul>{#each t.perfectTens as p, i (i)}<li>{p.holder.label} · {date(p.holder.date)}</li>{/each}</ul>
-              </div>
-            {/if}
-            {@render caption('tens', 'Perfect 10s', true, false)}
-          </div>
-        {/if}
       </div>
     {/if}
     {#if s.key === 'taste' && t.topBrews.length}
-      <h3 class="top-title">Top {t.topBrews.length} brews</h3>
-      <ol class="top-brews" style:--half={Math.ceil(t.topBrews.length / 2)}>
-        {#each t.topBrews as b, i (i)}
+      {@const shown = t.topBrews.slice(0, top ?? 10)}
+      <h3 class="top-title">Top {shown.length} brews</h3>
+      <ol class="top-brews" style:--half={Math.ceil(shown.length / 2)}>
+        {#each shown as b, i (i)}
           <li>
             <span class="rank">{i + 1}</span>
             <span class="top-rating">{b.rating.toFixed(1)}</span>
             <span class="who">
-              {#if b.holder.href}<a href={b.holder.href}>{b.holder.label}</a>{:else}<span>{b.holder.label}</span>{/if}
-              <small>{[date(b.holder.date), b.brewer].filter(Boolean).join(' · ')}</small>
+              {#if b.holder.href}<a href={b.holder.href} use:full>{b.holder.label}</a>{:else}<span use:full>{b.holder.label}</span>{/if}
+              <small use:full>{[date(b.holder.date), b.brewer].filter(Boolean).join(' · ')}</small>
             </span>
           </li>
         {/each}
       </ol>
+      {#if t.topBrews.length > 10}
+        <div class="top-foot">
+          <button class="button button-ghost" aria-expanded={!!top} onclick={() => choose({ top: top ? undefined : 20 })}
+            >{top ? 'Show top 10' : `Show top ${t.topBrews.length}`}</button
+          >
+        </div>
+      {/if}
     {/if}
   </section>
 {/each}
+<div class="mode-tip" popover="manual" bind:this={fullTip}></div>
 
 <style>
   /* Card grid and card base: .hl-grid / .hl-card, :global in +page.svelte (Milestones shares them). */
@@ -204,12 +253,32 @@
   .chart-panel-header h2 {
     margin: 0;
   }
-  .mode-tip p,
-  .mode-tip ul {
+  /* Every card keeps the switch band, switch or not, so values line up across sections (A15). */
+  .hl-top {
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+  }
+  /* The badge sits at the foot, just above the caption, on every card. */
+  .hl-badge {
+    margin-top: auto;
+  }
+  .hl-badge + :global(.hl-caption) {
+    margin-top: 0;
+    padding-top: var(--space-1);
+  }
+  .top-foot {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--space-2);
+  }
+  .top-foot button {
     margin: 0;
   }
-  .mode-tip ul {
-    padding-left: 1.1rem;
+  @media (max-width: 640px) {
+    .top-foot button {
+      min-height: 44px;
+    }
   }
   .top-title {
     margin: var(--space-4) 0 var(--space-2);
