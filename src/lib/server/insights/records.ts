@@ -54,7 +54,7 @@ export function pick(cands: readonly Candidate[], dir: 'max' | 'min'): RecordPic
   return { value: best, holder: tied[0].holder, ...(tied[0].detail ? { detail: tied[0].detail } : {}), ties: tied.slice(1).map((c) => c.holder) };
 }
 
-const bagHolder = (bags: readonly BagFact[], id: number | null, date: string, sub?: string): Holder => {
+export const bagHolder = (bags: readonly BagFact[], id: number | null, date: string, sub?: string): Holder => {
   const b = bags.find((x) => x.id === id);
   return { label: b?.name ?? `Bag ${id}`, sub: sub ?? b?.roaster, ...(b?.slug ? { href: `/coffees/${b.slug}` } : {}), date };
 };

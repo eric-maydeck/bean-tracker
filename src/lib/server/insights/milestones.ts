@@ -1,8 +1,10 @@
-import type { Kind } from '$lib/insightsUrl';
+import type { Kind, Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
-import { countsForRating } from './ratings';
-import { daysBetween } from './time';
+import { countsForRating, RATINGS_SETTLED_FROM } from './ratings';
+import { addMonths, daysBetween, inPeriod, type Period } from './time';
 import { isFinished } from './overview';
+import { BREW_KEY } from './leaderboards';
+import { bagHolder, type Holder } from './records';
 
 export interface Ladder { early: number[]; steps: [until: number, step: number][]; then: number }
 export type LadderKey = 'brews' | 'kgBrewed' | 'kgBought' | 'bagsBought' | 'bagsFinished' | 'coffees'
@@ -121,4 +123,162 @@ export function streakEvents(brewDays: readonly string[]): MilestoneEvent[] {
       out.push({ date, kind: 'streaks', key: `streak:${t}:${date}`, title: `${t}-day streak` });
   }
   return out;
+}
+
+const byTime = (brews: readonly BrewFact[]) => [...brews].sort((a, b) => (a.localTime < b.localTime ? -1 : a.localTime > b.localTime ? 1 : 0));
+const group = <T>(xs: readonly T[], key: (x: T) => string | null) => {
+  const m = new Map<string, T[]>();
+  for (const x of xs) { const k = key(x); if (k !== null) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
+  return m;
+};
+const asKind = (k: Kind, ev: MilestoneEvent[]): MilestoneEvent[] => ev.map((e) => ({ ...e, kind: k }));
+
+// First time each roaster, origin, ... shows up; plus Nth roaster / origin ever and bags per roaster / origin.
+const FIRSTS: [dim: string, label: string, key: (b: BrewFact) => string | null][] = [
+  ['roaster', 'roaster', BREW_KEY.roasters], ['origin', 'origin', BREW_KEY.origins], ['process', 'process group', BREW_KEY.process],
+  ['roast', 'roast level', BREW_KEY.roast], ['dripper', 'dripper', BREW_KEY.dripper], ['filter', 'filter', BREW_KEY.filter],
+  ['grinder', 'grinder', BREW_KEY.grinder], ['water', 'water', BREW_KEY.water]
+];
+export function firstEvents(brews: readonly BrewFact[], bags: readonly BagFact[]): MilestoneEvent[] {
+  const byId = new Map(bags.map((b) => [b.id, b]));
+  const out: MilestoneEvent[] = [];
+  const seen = new Set<string>();
+  const add = (b: BrewFact, key: string, title: string) => {
+    if (seen.has(key)) return;
+    seen.add(key);
+    const c = b.coffeeId === null ? undefined : byId.get(b.coffeeId);
+    out.push({ date: b.localDate, kind: 'firsts', key, title, ...(c ? { detail: c.name } : {}), ...(c?.slug ? { href: `/coffees/${c.slug}` } : {}) });
+  };
+  for (const b of byTime(brews)) {
+    for (const [dim, label, f] of FIRSTS) { const v = f(b); if (v) add(b, `first:${dim}:${v}`, `First ${label}: ${v}`); }
+    if (b.decaf) add(b, 'first:decaf', 'First decaf');
+    add(b, `first:type:${b.brewerType}`, `First ${b.brewerType}`);
+  }
+  const bought = bags.filter((b) => b.purchaseDate).sort((a, b) => a.purchaseDate!.localeCompare(b.purchaseDate!));
+  const origin = (b: BagFact) => BREW_KEY.origins({ origin: b.origin } as BrewFact);
+  const distinct = (key: (b: BagFact) => string | null, name: string, title: (t: number) => string) =>
+    walk(name, [...group(bought, key).values()].map((g) => ({ date: g[0].purchaseDate!, v: 1 })), (n) => thresholds(LADDERS.bagsBought, n), title);
+  const depth = (key: (b: BagFact) => string | null, name: string, L: Ladder) =>
+    [...group(bought, key)].flatMap(([k, g]) => walk(`${name}:${k}`, g.map((b) => ({ date: b.purchaseDate!, v: 1 })), (n) => thresholds(L, n), (t) => `${ordinal(t)} bag from ${k}`));
+  return [
+    ...out,
+    ...asKind('firsts', distinct((b) => b.roaster, 'roasters', (t) => `${ordinal(t)} roaster`)),
+    ...asKind('firsts', distinct(origin, 'origins', (t) => `${ordinal(t)} origin`)),
+    ...asKind('firsts', depth((b) => b.roaster, 'perRoaster', LADDERS.perRoaster)),
+    ...asKind('firsts', depth(origin, 'perOrigin', LADDERS.perOrigin))
+  ];
+}
+
+// Personal-best brew, best bag (mean of >=3 counted ratings) and busiest-day records, as they were broken.
+export function bestEvents(brews: readonly BrewFact[], bags: readonly BagFact[], ratings: Ratings): MilestoneEvent[] {
+  const name = new Map(bags.map((b) => [b.id, b.name]));
+  const out: MilestoneEvent[] = [];
+  const perBag = new Map<number, number[]>();
+  let bestBrew = -Infinity, bestBag = -Infinity, busiest = 0, dayCount = 0;
+  const sorted = byTime(brews);
+  sorted.forEach((b, i) => {
+    if (b.coffeeId !== null && countsForRating(b, ratings)) {
+      const r = b.rating!;
+      if (r > bestBrew) { bestBrew = r; out.push({ date: b.localDate, kind: 'bests', key: `best:brew:${r}`, title: `New best brew: ${r}`, rating: true }); }
+      const xs = perBag.get(b.coffeeId) ?? perBag.set(b.coffeeId, []).get(b.coffeeId)!;
+      xs.push(r);
+      const m = xs.reduce((s, x) => s + x, 0) / xs.length;
+      if (xs.length >= 3 && m > bestBag + 1e-9) {
+        bestBag = m;
+        out.push({ date: b.localDate, kind: 'bests', key: `best:bag:${b.coffeeId}:${b.localTime}`, title: `New best bag: ${name.get(b.coffeeId) ?? `Bag ${b.coffeeId}`}`, detail: `Mean ${m.toFixed(2)}`, rating: true });
+      }
+    }
+    dayCount++;
+    if (sorted[i + 1]?.localDate !== b.localDate) { // end of the day
+      if (dayCount > busiest) { busiest = dayCount; out.push({ date: b.localDate, kind: 'bests', key: `best:day:${dayCount}`, title: `Busiest day: ${dayCount} brews` }); }
+      dayCount = 0;
+    }
+  });
+  return out;
+}
+
+// Brewer, dripper and water mileage.
+const GEAR: [dim: string, key: (b: BrewFact) => string | null, verb: string][] = [
+  ['brewer', (b) => b.brewer, 'on'], ['dripper', (b) => b.dripper, 'on'], ['water', (b) => b.water, 'with']
+];
+export function gearEvents(brews: readonly BrewFact[]): MilestoneEvent[] {
+  const sorted = byTime(brews);
+  return GEAR.flatMap(([dim, key, verb]) => [...group(sorted, key)].flatMap(([k, g]) =>
+    asKind('gear', walk(`mileage:${dim}:${k}`, g.map((b) => ({ date: b.localDate, v: 1 })), (n) => thresholds(LADDERS.mileage, n), (t) => `${ordinal(t)} brew ${verb} ${k}`))));
+}
+
+const span = (m: number) => { const n = m % 12 ? m : m / 12, u = m % 12 ? 'month' : 'year'; return `${n} ${u}${n > 1 ? 's' : ''}`; };
+export function anniversaryEvents(brews: readonly BrewFact[], bags: readonly BagFact[], today: string): MilestoneEvent[] {
+  const out: MilestoneEvent[] = [];
+  const mark = (key: string, start: string, ms: number[], title: (s: string) => string) => {
+    for (const m of ms) { const date = addMonths(start, m); if (date <= today) out.push({ date, kind: 'anniversaries', key: `${key}:${m}`, title: title(span(m)) }); }
+  };
+  const years = (start: string) => Array.from({ length: Math.max(0, Math.floor(daysBetween(start, today) / 365)) + 1 }, (_, i) => 12 * (i + 1));
+  const bought = bags.filter((b) => b.purchaseDate);
+  const firstOf = (xs: BagFact[]) => xs.reduce((m, b) => (b.purchaseDate! < m ? b.purchaseDate! : m), xs[0].purchaseDate!);
+  const sorted = byTime(brews);
+  if (bought.length) { const s = firstOf(bought); mark('ann:bag', s, [1, 3, 6, ...years(s)], (t) => `${t} since the first bag`); }
+  if (sorted.length) { const s = sorted[0].localDate; mark('ann:brew', s, [1, 3, 6, ...years(s)], (t) => `${t} since the first brew`); }
+  for (const [r, g] of group(bought, (b) => b.roaster))
+    if (g.length >= 5) mark(`ann:roaster:${r}`, firstOf(g), years(firstOf(g)), (t) => `${t} with ${r}`);
+  for (const [dim, key] of GEAR) for (const [k, g] of group(sorted, key))
+    if (daysBetween(g[g.length - 1].localDate, today) <= 60) mark(`ann:${dim}:${k}`, g[0].localDate, years(g[0].localDate), (t) => `${t} with ${k}`);
+  mark('ann:ratings', RATINGS_SETTLED_FROM, [6, 12], (t) => `${t} of the Current rating scale`);
+  return out;
+}
+
+export interface MilestonesCtx { period: Period; prev: Period | null; ratings: Ratings; kinds?: Kind[]; today: string }
+type Summary = { total: number; firsts: number; bests: number };
+export interface MilestonesTab {
+  months: { month: string; events: MilestoneEvent[] }[]; // 'YYYY-MM', newest first; events newest first
+  summary: Summary;
+  summaryPrev: Summary | null;
+  nextUp: { key: string; label: string; value: number; target: number }[]; // closest first
+  onThisDay: { holder: Holder; rating: number | null; brewer: string | null } | null;
+}
+
+export function milestonesTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: MilestonesCtx): MilestonesTab {
+  const sorted = byTime(brews);
+  const all = [
+    ...countEvents(brews, bags), ...streakEvents(brews.map((b) => b.localDate)), ...firstEvents(brews, bags),
+    ...bestEvents(brews, bags, c.ratings), ...gearEvents(brews), ...anniversaryEvents(brews, bags, c.today)
+  ].filter((e) => !c.kinds || c.kinds.includes(e.kind));
+  const within = (p: Period) => all.filter((e) => inPeriod(e.date, p));
+  const summarize = (evs: MilestoneEvent[]): Summary =>
+    ({ total: evs.length, firsts: evs.filter((e) => e.kind === 'firsts').length, bests: evs.filter((e) => e.kind === 'bests').length });
+  const months = new Map<string, MilestoneEvent[]>();
+  for (const e of within(c.period).reverse().sort((a, b) => b.date.localeCompare(a.date))) {
+    const m = e.date.slice(0, 7);
+    (months.get(m) ?? months.set(m, []).get(m)!).push(e);
+  }
+
+  const days = [...new Set(sorted.map((b) => b.localDate))];
+  let streak = 0; // the run ending today or yesterday
+  if (days.length && daysBetween(days[days.length - 1], c.today) <= 1) {
+    streak = 1;
+    for (let i = days.length - 2; i >= 0 && daysBetween(days[i], days[i + 1]) === 1; i--) streak++;
+  }
+  const grams = sorted.reduce((s, b) => s + (b.dose ?? 0), 0);
+  const L = (key: string, label: string, ladder: Ladder, value: number) => ({ key, label, value, target: nextThreshold(ladder, value) });
+  const bought = bags.filter((b) => b.purchaseDate);
+  const nextUp = [
+    L('brews', 'Brews', LADDERS.brews, sorted.length),
+    L('kgBrewed', 'kg brewed', LADDERS.kgBrewed, grams / 1000),
+    L('bagsBought', 'Bags bought', LADDERS.bagsBought, bought.length),
+    L('coffees', 'Different coffees', LADDERS.coffees, new Set(sorted.map((b) => b.coffeeId).filter((x) => x !== null)).size),
+    L('roasters', 'Roasters', LADDERS.bagsBought, new Set(bought.map((b) => b.roaster)).size),
+    L('streak', 'Day streak', LADDERS.streak, streak),
+    { key: 'brewDays', label: 'Brew days', value: days.length, target: brewDayThresholds(days.length + 366).find((t) => t > days.length)! }
+  ].sort((a, b) => b.value / b.target - a.value / a.target).slice(0, 6);
+
+  const ago = addMonths(c.today, -12);
+  const top = sorted.length && sorted[0].localDate <= ago
+    ? sorted.filter((b) => b.localDate === ago).sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))[0] : undefined;
+  return {
+    months: [...months].map(([month, events]) => ({ month, events })),
+    summary: summarize(within(c.period)),
+    summaryPrev: c.prev ? summarize(within(c.prev)) : null,
+    nextUp,
+    onThisDay: top ? { holder: bagHolder(bags, top.coffeeId, top.localDate), rating: top.rating, brewer: top.brewer } : null
+  };
 }
