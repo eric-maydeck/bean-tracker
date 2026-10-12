@@ -5,6 +5,7 @@
   import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
+  import HeadingAnchor from './HeadingAnchor.svelte';
 
   let {
     t, ratings, brewer, caffeine, top, perPerson, allRange, ratingsHelp, personHelp, placeTip, choose
@@ -18,6 +19,8 @@
     taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
   };
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
+  // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
+  const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
   const CAFFEINE: Record<Caffeine | 'all', string> = { all: 'All', caf: 'Caffeinated', decaf: 'Decaf' };
   // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
   const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
@@ -115,10 +118,10 @@
   </div>
 {/snippet}
 
-{#snippet caption(id: string, label: string, rating: boolean, pp: boolean)}
+{#snippet caption(id: string, label: string, rating: boolean, pp: boolean, href: string)}
   <div class="hl-caption">
     <span class="stat-label"
-      >{label}{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
+      ><a class="caption-link" {href}>{label}</a>{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
           ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
         >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
           ><span class="tip-text">per person</span><Icon name="question" /></button
@@ -136,10 +139,10 @@
 {/snippet}
 
 <!-- A list tip: one row per entry, the name cut to a line and its date muted at the right. -->
-{#snippet tipList(id: string, head: string | null, rows: { name: string; side: string }[])}
+{#snippet tipList(id: string, head: string | null, rows: { name: string; side: string; href?: string }[])}
   <div class="mode-tip tip-list" id={id} popover onbeforetoggle={placeTip}>
     {#if head}<p class="tip-head">{head}</p>{/if}
-    <ul>{#each rows as row, i (i)}<li><span>{row.name}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
+    <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={row.href}>{row.name}</a>{:else}{row.name}{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
   </div>
 {/snippet}
 
@@ -147,27 +150,39 @@
   {@const [v, unit] = parts(r, r.fmt)}
   {@const b = badge(r)}
   {@const why = inputs(r, r.fmt, r.key)}
-  <div class="hl-card" {style}>
+  <!-- Lines come in groups (holder + its sub; inputs + date; All-time + Was), tight inside, a little
+       apart between. -->
+  <div class="hl-card" id={anchor(r.key)} {style}>
     <div class="hl-top">{#if r.rating}{@render ratingSwitch()}{/if}</div>
     <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
-    <span class="hl-holder" use:full>{@render link(r.holder)}</span>
-    {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}
-    {#if why}<span class="hl-line" use:full>{why}</span>{/if}
-    {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
+    <div class="grp">
+      <span class="hl-holder" use:full>{@render link(r.holder)}</span>
+      {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}
+    </div>
+    {#if why || !isDate(r.holder)}
+      <div class="grp">
+        {#if why}<span class="hl-line" use:full>{why}</span>{/if}
+        {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
+      </div>
+    {/if}
     {#if r.ties.length}
       <button class="mode-tip-button hl-line record-ties" popovertarget="ties-{id}" aria-describedby="ties-{id}"
         ><span class="tip-text">+{r.ties.length} tied</span><Icon name="question" /></button
       >
-      {@render tipList(`ties-${id}`, `Also ${plain(r, r.fmt)}:`, r.ties.map((h) => ({ name: name(h), side: isDate(h) ? '' : date(h.date) })))}
+      {@render tipList(`ties-${id}`, `Also ${plain(r, r.fmt)}:`, r.ties.map((h) => ({ name: name(h), side: isDate(h) ? '' : date(h.date), href: h.href })))}
     {/if}
     {#if r.key === 'mostTens' && t.perfectTens.length > r.ties.length + 1}
       <button class="mode-tip-button hl-line" popovertarget="tens-list" aria-describedby="tens-list"
         ><span class="tip-text">{t.perfectTens.length} coffees with a 10</span><Icon name="question" /></button
       >
-      {@render tipList('tens-list', 'Perfect 10s by coffee:', t.perfectTens.map((p) => ({ name: p.holder.label, side: `${p.count}×` })))}
+      {@render tipList('tens-list', 'Perfect 10s by coffee:', t.perfectTens.map((p) => ({ name: p.holder.label, side: `${p.count}×`, href: p.holder.href })))}
     {/if}
-    {#if !b && r.allTime}{@render holderLine('All-time', r.allTime, r.fmt)}{/if}
-    {#if r.was}{@render holderLine('Was', r.was, r.fmt)}{/if}
+    {#if (!b && r.allTime) || r.was}
+      <div class="grp">
+        {#if !b && r.allTime}{@render holderLine('All-time', r.allTime, r.fmt)}{/if}
+        {#if r.was}{@render holderLine('Was', r.was, r.fmt)}{/if}
+      </div>
+    {/if}
     {#if b}
       <div class="badge-tip">
         <button class="mode-tip-button" popovertarget="badge-{id}" aria-describedby="badge-{id}"
@@ -176,7 +191,7 @@
         <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}>{BADGE_HELP[r.scope ?? 'record']}</div>
       </div>
     {/if}
-    {@render caption(id, r.label, r.rating, r.perDay && perPerson)}
+    {@render caption(id, r.label, r.rating, r.perDay && perPerson, `#${anchor(r.key)}`)}
   </div>
 {/snippet}
 
@@ -199,7 +214,7 @@
   <section class="chart-panel" class:gentle={s.key === 'gentle'}>
     {#if s.key === 'extremes' && t.brewerTypes.length > 1}
       <div class="chart-panel-header">
-        <h2>{s.title}</h2>
+        <HeadingAnchor id="records-{s.key}">{s.title}</HeadingAnchor>
         <div class="tab-group tab-group-compact brewer-switch" role="group" aria-label="Brewer">
           {#each [undefined, ...t.brewerTypes] as b (b ?? 'all')}
             <button aria-pressed={brewer === b} onclick={() => choose({ brewer: b })}>{b ? BREWER[b] : 'All'}</button>
@@ -207,7 +222,7 @@
         </div>
       </div>
     {:else}
-      <h2>{s.title}</h2>
+      <HeadingAnchor id="records-{s.key}">{s.title}</HeadingAnchor>
     {/if}
     {#if !s.tiles.length}
       <p class="hl-empty">No {brewer ? `${BREWER[brewer].toLowerCase()} ` : ''}brews in this period.</p>
@@ -218,8 +233,8 @@
     {/if}
     {#if s.key === 'taste' && t.topBrews.length}
       {@const shown = t.topBrews.slice(0, top ?? 10)}
-      <h3 class="top-title">Top {shown.length} brews</h3>
-      <ol class="top-brews" style:--half={Math.ceil(shown.length / 2)}>
+      <HeadingAnchor id="records-top-brews" level={3} class="top-title">Top {shown.length} brews</HeadingAnchor>
+      <ol class="top-brews" style:--n={shown.length} style:--half={Math.ceil(shown.length / 2)}>
         {#each shown as b, i (i)}
           <li>
             <span class="rank">{i + 1}</span>
@@ -262,7 +277,7 @@
       min-width: 44px;
     }
   }
-  .chart-panel-header h2 {
+  .chart-panel-header :global(h2) {
     margin: 0;
   }
   /* Every card keeps the switch band, switch or not, so values line up across sections (A15). */
@@ -277,6 +292,8 @@
     display: flex;
     justify-content: center;
     margin-top: auto;
+    /* Hugs the caption: the card's 0.4rem gap is for line groups. */
+    margin-bottom: -0.2rem;
     line-height: 1;
   }
   .badge-tip + :global(.hl-caption) {
@@ -296,7 +313,31 @@
       min-height: 44px;
     }
   }
-  .top-title {
+  .hl-card {
+    gap: 0.4rem;
+    scroll-margin-top: var(--space-2);
+  }
+  .grp {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+  }
+  .grp :global(.hl-line),
+  .grp :global(.hl-holder) {
+    line-height: 1.3;
+  }
+  /* The tile's name: bold, in the accent, so it stands apart from the muted lines above it. */
+  .caption-link {
+    color: var(--color-accent);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .caption-link:hover {
+    text-decoration: underline;
+  }
+  .chart-panel :global(.top-title) {
     margin: var(--space-4) 0 var(--space-2);
     font-size: 1rem;
   }
@@ -304,7 +345,8 @@
   .top-brews {
     display: grid;
     grid-auto-flow: column;
-    grid-template-rows: repeat(var(--rows, 10), auto);
+    /* Phones: one column, however many rows (top 20 runs down, not across). */
+    grid-template-rows: repeat(var(--rows, var(--n)), auto);
     column-gap: var(--space-5);
     margin: 0;
     padding: 0;

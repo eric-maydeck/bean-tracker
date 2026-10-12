@@ -1564,6 +1564,16 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Show top 10' })).toBeVisible();
       await expect(page.locator('.top-brews li')).not.toHaveCount(10);
     } },
+  { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
+    act: async (page) => {
+      // The tile's top lands just under the sticky filter bar; a filter change keeps the hash.
+      const gap = () => page.evaluate(() =>
+        document.getElementById('record-nightOwl')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      await page.getByRole('button', { name: 'Decaf' }).click();
+      await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
+    } },
   { name: 'insights-records-soup', path: () => '/insights?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
   { name: 'insights-records-compare', path: () => '/insights?tab=records&range=1w&compare=1' },

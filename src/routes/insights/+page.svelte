@@ -22,8 +22,15 @@
   let rangeDialog: HTMLDialogElement | undefined = $state();
 
   let barHeight = $state(0);
+  // A #anchor on load (a tile or section link) scrolls once the bar's height is known: the browser's
+  // own jump ran before scroll-padding-top was set, leaving the target under the sticky bar.
+  let hashDone = false;
   $effect(() => {
     document.documentElement.style.scrollPaddingTop = `${barHeight}px`;
+    if (barHeight && !hashDone) {
+      hashDone = true;
+      if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+    }
     return () => document.documentElement.style.removeProperty('scroll-padding-top');
   });
 
@@ -37,7 +44,7 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
   // Click-for-explanation triggers also open on mouse hover (mouse only: touch and keyboard keep
@@ -87,7 +94,7 @@
   function reset() {
     draft = null;
     const qs = insightsParams(resetInsights(data.explicit)).toString();
-    goto(qs ? `?${qs}` : location.pathname, { replaceState: true, noScroll: true, keepFocus: true });
+    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
   // Custom range draft: the From/To being edited, not yet applied. Never in the URL
