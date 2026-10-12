@@ -84,7 +84,6 @@ export const load: PageServerLoad = ({ url }) => {
     records: s.tab === 'records' ? recordsTab(brews, bags, { period, prev, ratings: s.ratings, brewer: s.brewer, caffeine: s.caffeine, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
-    brewerTypes,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),

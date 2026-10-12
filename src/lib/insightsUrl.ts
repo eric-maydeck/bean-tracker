@@ -122,7 +122,7 @@ export interface InsightsUrlState {
   measure?: Measure;
   unit?: Unit;
   by?: By;
-  brewer?: BrewerType; // Records/Milestones: one brewer type (absent = all)
+  brewer?: BrewerType; // Records: one brewer type (absent = all)
   caffeine?: Caffeine; // Records: absent = all
   top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
   topc?: Top; // Records: the top-coffees list, likewise

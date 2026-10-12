@@ -44,7 +44,8 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+    // A tab switch drops the old tab's #anchor: it names nothing on the new one.
+    goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
   // Click-for-explanation triggers also open on mouse hover (mouse only: touch and keyboard keep
@@ -57,6 +58,7 @@
   // The tip a hover opened: a click on its button must leave it open, not toggle it shut.
   let hoverTip: HTMLElement | null = null;
   let closing: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => () => clearTimeout(closing));
   // The hover tip and its trigger are one area: the pointer can cross the gap into the tip (to
   // scroll a long list) and back. Leaving the area closes it after a short grace.
   const inHover = (el: EventTarget | null) =>
@@ -901,14 +903,8 @@
     border-radius: var(--radius);
     transition: background-color 150ms ease, border-color 150ms ease;
   }
-  /* A band above the value for the Current/All switch; every card in a grid that has one
-     keeps it, so values line up across the row. Like the overview's rating switch, the pill is
+  /* The Current/All switch (in Records' .hl-top band). Like the overview's rating switch, the pill is
      small and the button around it is the (transparent) 44px phone tap target, reaching past the band. */
-  :global(.hl-grid:has(.hl-switch) .hl-top) {
-    height: 1.4rem;
-    display: flex;
-    align-items: center;
-  }
   :global(.hl-switch) {
     flex-wrap: nowrap;
     gap: 0;
@@ -998,6 +994,7 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     white-space: normal;
     font-weight: 600;
   }
