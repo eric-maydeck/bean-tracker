@@ -1,3 +1,43 @@
+# [1.72.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.71.0...v1.72.0) (2026-10-12)
+
+
+### Bug Fixes
+
+* **insights:** brews rated 9+ follow current/all; on this day skips brews with no coffee
+* **insights:** feed dates beside titles, milestone wording, records polish
+* **insights:** hide the side ruler by screen height only, never on scroll
+* **insights:** milestone wording for type firsts and busiest day, round kg
+* **insights:** no lone record cards, 2-line names, spec deltas and hole-in-one
+* **insights:** period-scope bag price records, format buying month spend
+* **insights:** phone strip waits for a tap or sideways drag; end drags on lost capture
+* **insights:** records all-time badge, after-midnight night owls, ties once per bag
+* **insights:** records round 2 wording, hover tips, badge tip
+* **insights:** sum milestone weights in grams, reuse isFinished
+* **insights:** tab switch drops the old tab's anchor; tidy page leftovers
+* **insights:** taste ties go to the higher-rated roaster, then a–z
+
+
+### Features
+
+* **insights:** brewer, brewer type, water, ratio and grind on brew facts
+* **insights:** caffeine filter, top 20 and clearer records
+* **insights:** firsts, bests, gear and anniversary milestones
+* **insights:** fixed-size ruler thumb, month anchors, ruler fits the feed, closes [#m-YYYY-MM](https://github.com/eric-maydeck/bean-tracker/issues/m-YYYY-MM)
+* **insights:** freshness, money, brew extremes and gentle records
+* **insights:** hide the side ruler when too little room is left
+* **insights:** linked tile names on every tab, card hover tint
+* **insights:** load records and milestones per tab; seed soup and decaf
+* **insights:** milestone ladders, count and streak events
+* **insights:** milestone totals, timeline navigator, coffee links, kind colours
+* **insights:** milestones timeline ruler with current-month marker
+* **insights:** records anchors, caption links and tighter tiles
+* **insights:** records and milestones tabs
+* **insights:** records and milestones tabs, brewer and kinds params
+* **insights:** records engine with taste and volume records
+* **insights:** ruler sub-ticks, viewport band, scrub and relative jumps
+* **insights:** top brews to 50, compare line names its window
+* **insights:** top coffees list, show less first, espresso tile names
+
 # [1.71.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.70.0...v1.71.0) (2026-10-11)
 
 
