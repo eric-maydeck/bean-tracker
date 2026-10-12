@@ -136,7 +136,7 @@ db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-decaf-
 brew.run(isoDaysAgo(3), 'bean-decaf-linked', 8, 2, now);
 // Insights tab: 3 coffees bought twice (6 archived bags), 6 days each, two cups a day, 25-60 days ago
 // (72 brews), with planted effects: second cup +0.5, noted brews −0.15 (too early to tell), second bag of a pair higher,
-// Origami days swing ±1.3 (the wildcard). First cups before 9 am.
+// Origami days swing ±1.5 (the wildcard, solid over the 2 drippers compared). First cups before 9 am.
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
   VALUES ('m3', 'ORIGAMI', 'Origami', 'POUR OVER', ?)`).run(now);
 const timed = db.prepare(
@@ -144,7 +144,8 @@ const timed = db.prepare(
      water_amount_g, rating, notes, imported_at) VALUES (?, ?, ?, 'g1', 15, 93, 250, ?, ?, ?)`
 );
 const PAIRS = [['Kurasu', 'Kenya Gichathaini AA', 'Kenya'], ['Luna', 'Ethiopia Hambela Alaka', 'Ethiopia'], ['Rogue Wave', 'Colombia La Palma', 'Colombia']];
-const BASE = [7.0, 6.8, 7.2, 7.8, 7.4, 8.2]; // A1 B1 C1 A2 B2 C2
+// A1 B1 C1 A2 B2 C2: with the Origami swings, second bags rate 0.5, 0.6 and 0.8 above their first.
+const BASE = [7.0, 6.8, 7.2, 8.5, 6.4, 8.5];
 const ROAST = [7, 12, 9, 15, 10, 13]; // days roasted before the bag's first brew, so rest days vary
 for (let k = 0; k < 6; k++) {
   const [roaster, name, origin] = PAIRS[k % 3];
@@ -153,7 +154,7 @@ for (let k = 0; k < 6; k++) {
   bean.run(`bean-hl-${k}`, name, roaster, daysAgo(first + ROAST[k]), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-hl-${k}`);
   for (let j = 0; j < 6; j++) {
-    const origami = j % 2 === 1, swing = origami ? ((j + k) % 4 === 1 ? 1.3 : -1.3) : 0;
+    const origami = j % 2 === 1, swing = origami ? ((j + k) % 4 === 1 ? 1.5 : -1.5) : 0;
     for (const cup of [0, 1]) {
       const noted = (j + cup) % 2 === 0;
       const rating = Math.min(9.9, +(BASE[k] + 0.5 * cup - (noted ? 0.15 : 0) + swing).toFixed(2)); // no seeded 10s

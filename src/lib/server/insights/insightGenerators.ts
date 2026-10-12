@@ -1,16 +1,15 @@
-import { MON, type Ratings } from '$lib/insightsUrl';
+import { MON, type Ratings, type Theme } from '$lib/insightsUrl';
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
-import { consumption, loggedGrams, remaining } from './overview';
+import { consumption, remaining } from './overview';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
 
-export type Theme = 'taste' | 'dialin' | 'habits' | 'gear' | 'money';
-export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story' | 'whatif';
+export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story';
 export interface Finding {
   key: string; theme: Theme; kind: CardKind;
   headline: string; // short, number-first
@@ -35,6 +34,7 @@ export interface DetailItem { name: string; value?: string; href?: string }
 export interface GenCtx {
   brews: readonly BrewFact[]; bags: readonly BagFact[]; prevBrews: readonly BrewFact[] | null;
   ratings: Ratings; today: string; householdSize: number; onHandG: number;
+  logged: Map<number, number>; // all-history doses per bag (loggedGrams), so on-hand amounts match onHandG
   period: { from: string; to: string }; dataStart: string; // What-if defaults (Task 14)
 }
 export type Generator = (c: GenCtx) => Finding | Finding[] | null;
@@ -46,17 +46,10 @@ const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not ent
 const counted = (c: GenCtx) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
 const bagLabel = (c: GenCtx, id: number) => { const b = c.bags.find((x) => x.id === id); return b ? `${b.roaster} ${b.name}` : `Bag ${id}`; };
 // Mean rating per bag, for bags with at least MIN_BAGS rated brews.
-const bagMeans = (rows: readonly BrewFact[]): Map<number, number> => {
-  const by = new Map<number, number[]>();
-  for (const b of rows) if (b.coffeeId !== null) (by.get(b.coffeeId) ?? by.set(b.coffeeId, []).get(b.coffeeId)!).push(b.rating!);
-  return new Map([...by].filter(([, rs]) => rs.length >= MIN_BAGS).map(([id, rs]) => [id, mean(rs)]));
-};
+const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
+  new Map([...perBag(rows)].filter(([, bs]) => bs.length >= MIN_BAGS).map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
 // Rated brews of each bag, in time order.
-const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
-  const by = new Map<number, BrewFact[]>();
-  for (const b of rows) if (b.coffeeId !== null) (by.get(b.coffeeId) ?? by.set(b.coffeeId, []).get(b.coffeeId)!).push(b);
-  return by;
-};
+const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => groupBy(rows, (b) => b.coffeeId);
 // Supporting lists: `details(['Label', items], …)` keeps non-empty groups, DETAIL_ITEMS each, unique names.
 const DETAIL_ITEMS = 2;
 const detail = (name: string, value?: string, href?: string | null): DetailItem => ({ name, ...(value ? { value } : {}), ...(href ? { href } : {}) });
@@ -66,8 +59,8 @@ function details(...groups: [string, DetailItem[]][]): Pick<Finding, 'details'> 
   return out.length ? { details: out } : {};
 }
 const bagById = (c: GenCtx) => new Map(c.bags.map((b) => [b.id, b]));
-// Mean paired difference with z = mean / (sd / sqrt(n)); null z when the data can't support one.
-const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / (sd(d) / Math.sqrt(d.length)) });
+// Mean paired difference with z = mean / (sample sd / sqrt(n)); non-finite z when the data can't support one.
+const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / ((sd(d) * Math.sqrt(d.length / (d.length - 1))) / Math.sqrt(d.length)) });
 
 // ponytail: "about N more would settle it" assumes the effect and spread stay as seen.
 // progress = n / (n + more): how far the sample is toward settling it (0 when it never would).
@@ -163,9 +156,9 @@ const dialinSpeed: Generator = (c) => {
 };
 
 const secondCup: Generator = (c) => {
-  const days = new Map<string, BrewFact[]>();
-  for (const b of counted(c)) if (b.coffeeId !== null) (days.get(`${b.coffeeId}|${b.localDate}`) ?? days.set(`${b.coffeeId}|${b.localDate}`, []).get(`${b.coffeeId}|${b.localDate}`)!).push(b);
-  const d = [...days.values()].filter((g) => g.length >= 2).map((g) => g.sort((a, b) => a.localTime.localeCompare(b.localTime))).map((g) => g[1].rating! - g[0].rating!);
+  const days = groupBy(counted(c), (b) => (b.coffeeId === null ? null : `${b.coffeeId}|${b.localDate}`));
+  // A backfilled brew's time is a guess, so its day can't say which cup came second.
+  const d = [...days.values()].filter((g) => g.length >= 2 && !g.some((b) => b.backfilled)).map((g) => g.sort((a, b) => a.localTime.localeCompare(b.localTime))).map((g) => g[1].rating! - g[0].rating!);
   if (d.length < MIN_BREWS) return null;
   const { m, z } = paired(d);
   return graded({
@@ -194,8 +187,7 @@ const fondMemory: Generator = (c) => {
 
 const repeatBuys: Generator = (c) => {
   const means = bagMeans(counted(c));
-  const groups = new Map<string, BagFact[]>();
-  for (const b of c.bags) if (means.has(b.id)) (groups.get(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`) ?? groups.set(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`, []).get(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`)!).push(b);
+  const groups = groupBy(c.bags.filter((b) => means.has(b.id)), (b) => `${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`);
   const pairs = [...groups.values()].filter((g) => g.length >= 2)
     .map((g) => g.sort((a, b) => (a.purchaseDate ?? '').localeCompare(b.purchaseDate ?? '') || a.id - b.id))
     .map((g) => ({ b: g[1], d: means.get(g[1].id)! - means.get(g[0].id)! }));
@@ -288,8 +280,7 @@ const backlogRunway: Generator = (c) => {
   if (days < MIN_RUNWAY_DAYS || perDay === null || daysToClear === null) return null;
   const brewed = c.brews.filter((b) => inPeriod(b.localDate, p)).reduce((s, b) => s + (b.dose ?? 0), 0);
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
-  const logged = loggedGrams(c.brews);
-  const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, logged) })).filter((x) => x.g > 0);
+  const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, c.logged) })).filter((x) => x.g > 0);
   return {
     key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
@@ -566,7 +557,8 @@ const wildcardBrewer: Generator = (c) => {
     sides: [{ label: hi.k, value: `±${hi.s.toFixed(2)}` }, { label: lo.k, value: `±${lo.s.toFixed(2)}` }],
     body: `Ratings on the ${hi.k} swing ${hi.s.toFixed(2)} around each bag's average; on the ${lo.k}, ${lo.s.toFixed(2)}.`,
     sample: `${hi.n + lo.n} brews`, href: `${LB}&open=dripper`
-  }, z, true, 'brews', Math.min(hi.n, lo.n));
+    // The pick of k drippers: a Bonferroni bar over the k compared (spec: Strength).
+  }, z, true, 'brews', Math.min(hi.n, lo.n), gs.length > 2 ? `With ${gs.length} drippers compared, one usually stands out by chance.` : undefined, gs.length);
 };
 
 // ---- Money ----
@@ -769,7 +761,7 @@ const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
   const fs = GENERATORS.flatMap((g) => [g(c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
-  const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early' && f.strength !== 'hidden';
+  const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early';
 
   const p = { start: c.period.from, end: c.period.to };
   const { perDay } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);

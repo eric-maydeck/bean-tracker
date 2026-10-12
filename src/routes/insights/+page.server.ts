@@ -5,7 +5,7 @@ import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, rightNow, paceDelta, TILE_KIND } from '$lib/server/insights/overview';
+import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, TILE_KIND } from '$lib/server/insights/overview';
 import { leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
@@ -98,6 +98,7 @@ export const load: PageServerLoad = ({ url }) => {
               today,
               householdSize,
               onHandG: onHand,
+              logged: loggedGrams(brews),
               period: { from: period.start ?? dataStart ?? today, to: period.end },
               dataStart: dataStart ?? today
             },

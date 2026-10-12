@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
+import { loggedGrams } from './overview';
 import { formatGrams } from '$lib/grams';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -14,7 +15,7 @@ const bag = (o: Partial<BagFact>): BagFact => ({
   origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
 });
 const ctx = (brews: BrewFact[], bags: BagFact[] = [], o: Partial<GenCtx> = {}): GenCtx => ({
-  brews, bags, prevBrews: null, ratings: 'all', today: '2026-10-11', householdSize: 2, onHandG: 0,
+  brews, bags, prevBrews: null, ratings: 'all', today: '2026-10-11', householdSize: 2, onHandG: 0, logged: loggedGrams(brews),
   period: { from: '2026-09-01', to: '2026-09-30' }, dataStart: '2026-01-01', ...o
 });
 const all = (c: GenCtx) => GENERATORS.flatMap((g) => [g(c)].flat().filter((f) => f !== null));
@@ -101,11 +102,15 @@ describe('second cup', () => {
     expect(f).toMatchObject({ theme: 'dialin', strength: 'solid', value: '+0.30', headline: 'Your second cup is better', sample: '40 pairs' });
   });
   it('null on 5 pairs', () => expect(gen('secondCup', mk(5))).toBeNull());
-  // 30 pairs with second-cup deltas ±1 around `m`: weak effects land in Too early to tell.
+  it('skips a day with a backfilled brew (its time is a guess)', () => {
+    const f = gen('secondCup', mk(40).map((b) => (b.localDate < '2026-07-11' ? { ...b, backfilled: true } : b)))!;
+    expect(f.sample).toBe('30 pairs');
+  });
+  // 30 pairs with second-cup deltas ±1 around `m` (sample SD √(30/29)): weak effects land in Too early.
   const around = (m: number) => Array.from({ length: 30 }, (_, i) => seq(1, [7, 7 + m + (i % 2 ? 1 : -1)], addDays('2026-07-01', i))).flat();
   it('a delta that rounds to 0.00 is no finding', () => expect(gen('secondCup', around(0.002))).toBeNull());
   it('too early: how many more would settle it', () =>
-    expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 7[01] more pairs would settle it\.$/) }));
+    expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 74 more pairs would settle it\.$/) }));
   it('too early carries progress = n / (n + more)', () => {
     const f = gen('secondCup', around(0.2))!;
     const more = +f.settle!.match(/\d+/)![0];
@@ -147,6 +152,12 @@ describe('repeat buys', () => {
   });
   it('bags with under 3 rated brews are ignored', () => expect(gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, i & 1 ? [9, 9] : [7, 7])), bs)).toBeNull());
   it('null under 3 pairs', () => expect(gen('repeatBuys', brews.slice(0, 12), bs.slice(0, 4))).toBeNull());
+  it('paired z uses the sample SD (n − 1)', () => {
+    // Differences 0.5, 1, 1.5: mean 1, sample SD 0.5 -> z = 1 / (0.5 / √3) = 2√3 (population SD would give 3√2).
+    const b3 = bs.slice(0, 6);
+    const f = gen('repeatBuys', b3.flatMap((x, i) => seq(x.id, Array(3).fill(i & 1 ? 7 + 0.5 * ((i >> 1) + 1) : 7))), b3)!;
+    expect(f.z).toBeCloseTo(2 * Math.sqrt(3), 6);
+  });
 });
 
 describe('group effects', () => {
@@ -164,6 +175,7 @@ describe('group effects', () => {
     const b2 = bags(12, (i) => ({ roaster: `Rst ${i % 3}` }));
     const br = b2.flatMap((x, i) => seq(x.id, [7 + ((i * 7) % 5) * 0.4, 7, 7]));
     const fs = all(ctx(br, b2)).filter((f) => f!.key.startsWith('groupDelta:roaster'));
+    expect(fs.some((f) => f!.strength === 'early')).toBe(true);
     for (const f of fs) if (f!.strength === 'early') expect(f!.caveat).toContain('groups compared');
     expect(finite(fs)).toBe(true);
   });
@@ -230,6 +242,14 @@ describe('details (supporting lists)', () => {
       .toEqual([{ label: 'Most on hand', items: [{ name: 'Big', value: formatGrams(1000) }, { name: 'Half', value: formatGrams(500) }] },
         // today 2026-10-11: Big 40 days; Half 71 days minus 29 frozen = 42; archived and undated bags left out
         { label: 'Oldest on hand', items: [{ name: 'Half', value: '42 days off roast' }, { name: 'Big', value: '40 days off roast' }] }]);
+  });
+  it('runway: on-hand amounts net of all-history brews, not just the period (short range)', () => {
+    const bs = [bag({ id: 1, name: 'Drunk before', amountG: 250, purchaseDate: '2026-08-01' }), bag({ id: 2, name: 'Fresh', amountG: 200, purchaseDate: '2026-09-25' })];
+    const before = Array.from({ length: 10 }, (_, i) => brew({ id: nextId++, coffeeId: 1, dose: 20, localDate: addDays('2026-08-02', i) }));
+    const inside = Array.from({ length: 20 }, (_, i) => brew({ id: nextId++, coffeeId: 2, dose: 5, localDate: addDays('2026-09-20', i) }));
+    const f = gen('backlogRunway', inside, bs, { logged: loggedGrams([...before, ...inside]), onHandG: 150, dataStart: '2026-08-01', period: { from: '2026-09-20', to: '2026-10-11' } })!;
+    // Bag 1: 250 g - 200 g brewed in August = 50 g, not its full 250 g.
+    expect(f.details![0]).toEqual({ label: 'Most on hand', items: [{ name: 'Fresh', value: formatGrams(100) }, { name: 'Drunk before', value: formatGrams(50) }] });
   });
   it('cost per cup: priciest and cheapest coffees (6+ costed bags)', () => {
     const bs = bags(6);
@@ -428,6 +448,14 @@ describe('wildcard brewer', () => {
     expect(f.sides).toEqual([{ label: 'Graycano', value: '±1.00' }, { label: 'Alpha Switch', value: '±0.20' }]);
   });
   it('null under 30 brews a dripper', () => expect(gen('wildcardBrewer', mk(2))).toBeNull());
+  it('the pick of k drippers is held to a Bonferroni bar over k', () => {
+    // SDs 0.3 / 0.25 / 0.2, 30 brews each: z = ln 1.5 / √(2/58) ≈ 2.18, solid alone but a hint over 3 drippers.
+    const k3 = Array.from({ length: 3 }, (_, i) => [['Wide', 0.3], ['Mid', 0.25], ['Tight', 0.2]].flatMap(([d, a], j) =>
+      seq(i + 1, Array.from({ length: 10 }, (_, m) => 8 + (m % 2 ? +a : -a)), `2026-07-0${j + 1}`, { dripper: d as string }))).flat();
+    const f = gen('wildcardBrewer', k3)!;
+    expect(f.z).toBeGreaterThan(2);
+    expect(f.strength).toBe('hint');
+  });
 });
 
 describe('price vs rating', () => {
