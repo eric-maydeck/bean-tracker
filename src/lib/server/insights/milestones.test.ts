@@ -62,6 +62,18 @@ describe('count and streak events', () => {
     expect(ev.map((e) => [e.title, e.date, e.kind])).toEqual([['7-day streak', day(6), 'streaks'], ['7-day streak', day(16), 'streaks']]);
     expect(new Set(ev.map((e) => e.key)).size).toBe(2);
   });
+  it('kg totals sum in grams: 50 x 20 g hits 1 kg on the 50th brew', () => {
+    const ev = countEvents(daily(50, { dose: 20 }), []).find((e) => e.key === 'kgBrewed:1')!;
+    expect(ev.date).toBe(day(49));
+    const big = countEvents(daily(5000, { dose: 20 }), []).find((e) => e.key === 'kgBrewed:100')!;
+    expect(big.date).toBe(day(4999));
+  });
+  it('nines count rated 9+ brews; bagsFinished counts archived bags with a last brew', () => {
+    const brews = [brew({ rating: 9, localDate: '2026-02-01' }), brew({ rating: 8.5, localDate: '2026-02-02', localTime: '2026-02-02T08:00' })];
+    expect(countEvents(brews, []).filter((e) => e.key.startsWith('nines')).map((e) => [e.key, e.date])).toEqual([['nines:1', '2026-02-01']]);
+    const bags = [bag({ id: 1, status: 'archive', lastBrew: '2026-03-01' }), bag({ id: 2, status: 'archive' }), bag({ id: 3, lastBrew: '2026-03-02' })];
+    expect(countEvents([], bags).filter((e) => e.key.startsWith('bagsFinished')).map((e) => [e.key, e.date])).toEqual([['bagsFinished:1', '2026-03-01']]);
+  });
   it('brew-day titles roll up', () => {
     expect(brewDayTitle(7)).toBe('A week of brew days');
     expect(brewDayTitle(30)).toBe('A month of brew days');

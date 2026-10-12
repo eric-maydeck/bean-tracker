@@ -2,6 +2,7 @@ import type { Kind } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
 import { countsForRating } from './ratings';
 import { daysBetween } from './time';
+import { isFinished } from './overview';
 
 export interface Ladder { early: number[]; steps: [until: number, step: number][]; then: number }
 export type LadderKey = 'brews' | 'kgBrewed' | 'kgBought' | 'bagsBought' | 'bagsFinished' | 'coffees'
@@ -68,13 +69,15 @@ export const ordinal = (n: number): string => {
 interface Step { date: string; v: number; detail?: string; href?: string }
 
 // Running total over dated steps; one event per threshold crossed, dated at the step that crossed it.
-function walk(key: string, steps: Step[], ts: (upTo: number) => number[], title: (t: number) => string): MilestoneEvent[] {
+function walk(key: string, steps: Step[], ts: (upTo: number) => number[], title: (t: number) => string, scale = 1): MilestoneEvent[] {
   const out: MilestoneEvent[] = [];
   let total = 0;
   for (const s of [...steps].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))) {
-    const before = total;
+    const before = Math.round((total / scale) * 1e6) / 1e6;
     total += s.v;
-    for (const t of ts(total).filter((t) => t > before))
+    // Weights sum in grams (scale 1000): float kg sums miss exact thresholds (5000 x 20 g = 99.999...).
+    const now = Math.round((total / scale) * 1e6) / 1e6;
+    for (const t of ts(now).filter((t) => t > before))
       out.push({ date: s.date, kind: 'counts', key: `${key}:${t}`, title: title(t), ...(s.detail ? { detail: s.detail } : {}), ...(s.href ? { href: s.href } : {}) });
   }
   return out;
@@ -95,11 +98,11 @@ export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   const bought = bags.filter((b) => b.purchaseDate);
   return [
     ...walk('brews', sorted.map((b) => brewStep(b, 1)), L('brews'), (t) => `${ordinal(t)} brew`),
-    ...walk('kgBrewed', sorted.map((b) => brewStep(b, (b.dose ?? 0) / 1000)), L('kgBrewed'), (t) => `${t} kg brewed`),
-    ...walk('waterL', sorted.map((b) => brewStep(b, (b.waterG ?? 0) / 1000)), L('waterL'), (t) => `${t} L of water poured`),
+    ...walk('kgBrewed', sorted.map((b) => brewStep(b, b.dose ?? 0)), L('kgBrewed'), (t) => `${t} kg brewed`, 1000),
+    ...walk('waterL', sorted.map((b) => brewStep(b, b.waterG ?? 0)), L('waterL'), (t) => `${t} L of water poured`, 1000),
     ...walk('bagsBought', bought.map((b) => ({ date: b.purchaseDate!, v: 1 })), L('bagsBought'), (t) => `${ordinal(t)} bag`),
-    ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: (b.amountG ?? 0) / 1000 })), L('kgBought'), (t) => `${t} kg bought`),
-    ...walk('bagsFinished', bags.filter((b) => b.status === 'archive' && b.lastBrew).map((b) => ({ date: b.lastBrew!, v: 1 })), L('bagsFinished'), (t) => `${t} bags finished`),
+    ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0 })), L('kgBought'), (t) => `${t} kg bought`, 1000),
+    ...walk('bagsFinished', bags.filter(isFinished).map((b) => ({ date: b.lastBrew!, v: 1 })), L('bagsFinished'), (t) => `${t} bags finished`),
     ...walk('coffees', firstOfCoffee.map((b) => brewStep(b, 1)), L('coffees'), (t) => `${t} different coffees`),
     ...walk('nines', sorted.filter((b) => (b.rating ?? 0) >= 9 && countsForRating(b, 'all')).map((b) => brewStep(b, 1)), L('nines'), (t) => `${ordinal(t)} brew rated 9+`),
     ...walk('brewDays', days.map((date) => ({ date, v: 1 })), brewDayThresholds, brewDayTitle)
