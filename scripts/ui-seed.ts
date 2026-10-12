@@ -163,6 +163,47 @@ for (let k = 0; k < 6; k++) {
     }
   }
 }
+// Brewing lab: 8 archived bags × 32 rated brews, one a day from 132 − 10k days ago (all after the
+// 2026-06-01 Current-ratings cutoff, spread over 3+ months for the eras charts), every lab variable
+// varied so each chart has solid bands (≥ 3 paired bags, ≥ 30 brews) and pale ones (95+ °C, ZP6, brew #1–9).
+// Planted: 91–92 °C +0.4 vs the same bag, Lab Water B +0.3, Origami −0.3. 4 Light + 4 Ultralight,
+// Natural / Washed alternating, 2 origins and 2 roasters: every breakdown has rows of ≥ 3 bags.
+db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g2', 'A4Z (Femobook)', ?)`).run(now);
+const water = db.prepare(`INSERT INTO beanconqueror_waters (id, name, calcium, magnesium, sodium, potassium, chloride, sulfate, imported_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+// GH (2.497 Ca + 4.118 Mg): A 74 ppm (60–90), B 124 ppm (90+), C 26 ppm (0–30): three GH bands. Ca/K
+// stay non-zero on enough recipes (Mg:Ca: A, C; Mg:K: A, B) for the ratio cards to have 2+ values.
+water.run('w1', 'Lab Water A', 10, 12, 0, 8, 30, 20, now);
+water.run('w2', 'Lab Water B', 0, 30, 0, 6, 40, 10, now);
+water.run('w3', 'Lab Water C', 4, 4, 5, 0, 25, 30, now);
+const method = db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES (?, 'CUSTOM_PREPARATION', ?, 'POUR OVER', ?)`);
+method.run('m4', 'V60 - Cafec Abaca', now);
+method.run('m5', 'V60 - Sibarist Fast', now);
+method.run('m6', 'Origami - Cafec Abaca', now);
+const labBrew = db.prepare(
+  `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, ground_coffee_g, brew_temperature,
+     water_amount_g, brew_time, bloom_time, grind_setting, rating, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+);
+const LAB = [['Light', 'Natural'], ['Light', 'Washed'], ['Ultralight', 'Natural'], ['Ultralight', 'Washed']] as const;
+const TEMPS = [91, 92, 94, 88], DOSES = [15, 17, 19], WATERS = ['w1', 'w2', 'w3'], METHODS = ['m4', 'm5', 'm6'];
+const TIMES = ['150', '180', '210', '240'], BLOOMS = ['30', '45'];
+for (let k = 0; k < 8; k++) {
+  const [roast_level, processing] = LAB[k % 4];
+  const first = 132 - 10 * k;
+  const name = `Lab Bag ${k + 1}`;
+  const c = coffee({ roaster: k < 4 ? 'Lab Roasters' : 'Other Lab', coffee_name: name, roast_level, processing,
+    origin: k % 2 ? 'Kenya' : 'Ethiopia', status: 'archive', roast_date: daysAgo(first + 10) });
+  bean.run(`bean-lab-${k}`, name, 'Lab', daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-lab-${k}`);
+  for (let j = 0; j < 32; j++) {
+    const temp = k < 2 && j === 31 ? 96 : TEMPS[j % 4];
+    const dose = DOSES[j % 3], w = WATERS[(j + k) % 3], m = METHODS[(j + 2 * k) % 3], zp6 = k === 7 && j % 4 === 0;
+    const rating = 7 + (k % 3) * 0.3 + (temp === 91 || temp === 92 ? 0.4 : 0) + (w === 'w2' ? 0.3 : 0) - (m === 'm6' ? 0.3 : 0) + ((j * 7) % 5) * 0.1 - 0.2;
+    labBrew.run(atLocal(first - j, 8, 15), `bean-lab-${k}`, m, zp6 ? 'g1' : 'g2', w, dose, temp, dose * (15 + ((j >> 1) % 4)),
+      TIMES[(j >> 2) % 4], BLOOMS[j % 2], zp6 ? String(5 + (j % 3) * 0.5) : `1.${6 - Math.floor(j / 8)}.0`, +Math.min(9.9, rating).toFixed(1), now);
+  }
+}
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
