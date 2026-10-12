@@ -4,7 +4,8 @@
   import type { Multi } from '$lib/server/insights/insightGenerators';
   import { lines, px, scale } from './multiLine';
 
-  let { m, ariaLabel, format, faded = false }: { m: Multi; ariaLabel: string; format: (v: number) => string; faded?: boolean } = $props();
+  // `thin`: a month axis (era charts) whose labels may thin out on narrow widths; band axes show every label.
+  let { m, ariaLabel, format, faded = false, thin = false }: { m: Multi; ariaLabel: string; format: (v: number) => string; faded?: boolean; thin?: boolean } = $props();
 
   let ls = $derived(lines(m));
   let sc = $derived(scale(m));
@@ -76,7 +77,7 @@
       {#if col !== null}<div class="guide" bind:this={guide} style:left="{px(col, n)}%"></div>{/if}
     </div>
     <div class="x-labels" aria-hidden="true">
-      {#each xs as i (i)}<span style:left="{px(i, n)}%" class:first={i === 0 && n > 1} class:last={i === n - 1 && n > 1} class:alt={n > 5 && (n - 1 - i) % 2 === 1}>{m.x[i]}</span>{/each}
+      {#each xs as i (i)}<span style:left="{px(i, n)}%" class:first={i === 0 && n > 1} class:last={i === n - 1 && n > 1} class:alt={thin && n > 5 && (n - 1 - i) % 2 === 1}>{m.x[i]}</span>{/each}
     </div>
   </div>
   <ul class="legend" aria-hidden="true">

@@ -207,6 +207,21 @@ const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one gr
 const mode = (bs: readonly BrewFact[], f: (b: BrewFact) => string | null | undefined) =>
   [...groupBy(bs, f)].sort((a, b) => b[1].length - a[1].length || String(a[0]).localeCompare(String(b[0])))[0]?.[0] ?? null;
 
+// Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
+// roasted the same day get their opened date instead.
+type Dated = { label: string; roastedOn: string | null; openedOn: string | null };
+export function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'> & { tag: string | null })[] {
+  const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
+  const key = (b: { label: string; tag: string | null }) => `${b.label}|${b.tag}`;
+  const twins = <U extends { label: string; tag: string | null }>(xs: U[], b: U) => xs.filter((x) => key(x) === key(b)).length > 1;
+  const untagged = rows.map((b) => ({ ...b, tag: null as string | null }));
+  const roasted = untagged.map((b) => (twins(untagged, b) && b.roastedOn ? { ...b, tag: `roasted ${day(b.roastedOn)}` } : b));
+  return roasted.map((b) => {
+    const { roastedOn: _, openedOn, ...row } = b;
+    return twins(roasted, b) && openedOn ? { ...row, tag: `opened ${day(openedOn)}` } : row;
+  });
+}
+
 export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; grinder: string | null; filters: LabFilters }): SweetSpotsTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   const slice = rows.filter(matches(c.filters));
@@ -227,18 +242,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
-  // Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
-  // roasted the same day get their opened date instead.
-  const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
-  const key = (b: { label: string; tag: string | null }) => `${b.label}|${b.tag}`;
-  const twins = <T extends { label: string; tag: string | null }>(xs: T[], b: T) => xs.filter((x) => key(x) === key(b)).length > 1;
-  const untagged = topBags.map((b) => ({ ...b, tag: null as string | null }));
-  const roasted = untagged.map((b) => (twins(untagged, b) && b.roastedOn ? { ...b, tag: `roasted ${day(b.roastedOn)}` } : b));
-  const named = roasted.map((b) => {
-    const { roastedOn: _, openedOn, ...row } = b;
-    return twins(roasted, b) && openedOn ? { ...row, tag: `opened ${day(openedOn)}` } : row;
-  });
-  return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags: named };
+  return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags: tagTwins(topBags) };
 }
 
 export type BrewVar = 'temp' | 'ratio' | 'dose' | 'time' | 'bloom' | 'grind';
@@ -321,7 +325,7 @@ export interface WaterTab {
   recipes: LeaderRow[];
   minerals: { key: Mineral; name: string; overall: number; bars: { label: string; value: number; brews: number; bags: number; solid: boolean }[] }[];
   gh: BandStat[]; byRoast: Breakdown | null; byProcess: Breakdown | null; eras: Multi | null;
-  pairs: { label: string; href: string | null; best: { water: string; mean: number }; others: { water: string; mean: number }[]; gap: number }[];
+  pairs: { label: string; tag: string | null; href: string | null; best: { water: string; mean: number }; others: { water: string; mean: number }[]; gap: number }[];
 }
 export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings }): WaterTab {
   const rows = ratedIn(brews, c.period, c.ratings);
@@ -343,13 +347,14 @@ export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c
     byRoast: breakdown(rows, water, SLICE_OF.roast, cols),
     byProcess: breakdown(rows, water, SLICE_OF.process, cols),
     eras: eraOf(brews, c.period, (b) => b.water),
-    pairs: [...groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)].flatMap(([id, g]) => {
+    pairs: tagTwins([...groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)].flatMap(([id, g]) => {
       const ws = [...groupBy(g, (b) => b.water)].filter(([, x]) => x.length >= 2)
         .map(([w, x]) => ({ water: w!, mean: mean(x.map((b) => b.rating!)) })).sort((a, b) => b.mean - a.mean || a.water.localeCompare(b.water));
       if (ws.length < 2) return [];
       const bag = byId.get(id!);
-      return [{ label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null, best: ws[0], others: ws.slice(1), gap: ws[0].mean - ws[1].mean }];
-    }).sort((a, b) => b.gap - a.gap || a.label.localeCompare(b.label)).slice(0, 10) // ponytail: top 10 pairs; add a Show all when asked
+      return [{ label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null, best: ws[0], others: ws.slice(1), gap: ws[0].mean - ws[1].mean,
+        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null }];
+    }).sort((a, b) => b.gap - a.gap || a.label.localeCompare(b.label)).slice(0, 10)) // ponytail: top 10 pairs; add a Show all when asked
   };
 }
 

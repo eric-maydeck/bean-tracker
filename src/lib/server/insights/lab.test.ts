@@ -411,6 +411,11 @@ describe('waterTab', () => {
     const na = waterTab(rows.map((r) => (r.water === 'B' ? { ...r, waterProfile: { ...r.waterProfile!, sodium: 3 } } : r)), bags, { period: P, ratings: 'all' });
     expect(na.minerals.find((m) => m.key === 'sodium')!.bars.map((b) => b.label)).toEqual(['0', '3']);
   });
+  it('pairs: a repurchase (same roaster and name) carries its roast date', () => {
+    const twin = [1, 2, 3].map((id) => bag({ id, name: 'Same', purchaseDate: `2026-0${id + 5}-0${id}` }));
+    expect(waterTab(rows, twin, { period: P, ratings: 'all' }).pairs.map((p) => p.tag)).toEqual(['roasted Jun 1', 'roasted Jul 2', 'roasted Aug 3']);
+    expect(w.pairs.every((p) => p.tag === null)).toBe(true);
+  });
   it('GH bands, heatmaps, pairs', () => {
     expect(w.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
     expect(w.byRoast!.rows).toEqual(['Light']);

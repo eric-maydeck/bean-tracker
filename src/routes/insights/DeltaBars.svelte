@@ -199,8 +199,4 @@
   .pale .bar-value {
     color: var(--color-text-muted);
   }
-  .hl-badge.hint {
-    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
-    color: var(--color-text-muted);
-  }
 </style>

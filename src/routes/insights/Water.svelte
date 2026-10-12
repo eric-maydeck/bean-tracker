@@ -71,13 +71,13 @@
   {#if t.byRoast || t.byProcess}
     <div class="heat-grid" class:paired={heatPair}>
       {#if t.byRoast}
-        <section class="chart-panel heat-panel" data-section="water-roast">
+        <section class="chart-panel heat-panel heat-fill" data-section="water-roast">
           <LabHead id="water-roast" title="Water × roast level" help={`Each recipe's same-bag delta within one roast level (rows with 3+ bags). ${SAME_BAG_HELP} Faded cells have few brews, blank cells no paired brews.`} {placeTip} />
           <LabHeatmap by={t.byRoast} ariaLabel="Water recipe by roast level" />
         </section>
       {/if}
       {#if t.byProcess}
-        <section class="chart-panel heat-panel" data-section="water-process">
+        <section class="chart-panel heat-panel heat-fill" data-section="water-process">
           <LabHead id="water-process" title="Water × process" help={`Each recipe's same-bag delta within one process (rows with 3+ bags). ${SAME_BAG_HELP} Faded cells have few brews, blank cells no paired brews.`} {placeTip} />
           <LabHeatmap by={t.byProcess} ariaLabel="Water recipe by process" />
         </section>
@@ -88,7 +88,7 @@
   {#if t.eras}
     <section class="chart-panel" data-section="water-eras">
       <LabHead id="water-eras" title="Water eras" help={"Each recipe's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
-      <MultiLine m={t.eras} ariaLabel="Water eras: each recipe's share of brews by month" format={(n) => `${n}%`} />
+      <MultiLine m={t.eras} ariaLabel="Water eras: each recipe's share of brews by month" format={(n) => `${n}%`} thin />
     </section>
   {/if}
 
@@ -96,12 +96,13 @@
     <section class="chart-panel" data-section="water-pairs">
       <LabHead id="water-pairs" title="Same bag, different water" help={"Bags brewed with two or more recipes (2+ rated brews each): the best recipe's average rating against the others'. The gap is best vs runner-up. Top 10 by gap."} {placeTip} />
       <ol class="board-rows" style:--rows={t.pairs.length} style:--row-h="3rem">
-        {#each t.pairs as p, i (p.label)}
+        {#each t.pairs as p, i (i)}
           <li class="board-row">
             <span class="rank">{i + 1}</span>
             <span class="who">
               {#if p.href}<a href={p.href}>{p.label}</a>{:else}<span class="name">{p.label}</span>{/if}
-              <small>{p.best.water} {p.best.mean.toFixed(2)} vs {p.others.map((o) => `${o.water} ${o.mean.toFixed(2)}`).join(', ')}</small>
+              <!-- A repurchase's tag ("roasted May 5") leads, so the ellipsis never hides it. -->
+              <small>{[p.tag, `${p.best.water} ${p.best.mean.toFixed(2)} vs ${p.others.map((o) => `${o.water} ${o.mean.toFixed(2)}`).join(', ')}`].filter(Boolean).join(' · ')}</small>
             </span>
             <span></span>
             <span class="val">+{p.gap.toFixed(2)}</span>
@@ -148,26 +149,10 @@
   }
   .heat-panel {
     margin: 0;
-    display: flex;
-    flex-direction: column;
   }
   @media (min-width: 1150px) {
     .heat-grid.paired {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-    /* A pair is one height: the shorter map's rows stretch (up to 3.5rem each), so no gap under it. */
-    .paired .heat-panel > :global(.heatmap) {
-      flex: 1 1 auto;
-      display: flex;
-      flex-direction: column;
-      max-height: calc(var(--nr) * 3.5rem + 5rem);
-    }
-    .paired .heat-panel > :global(.heatmap .scroll) {
-      flex: 1 1 auto;
-      display: grid;
-    }
-    .paired .heat-panel > :global(.heatmap .grid) {
-      grid-auto-rows: minmax(var(--cell-h), 1fr);
     }
   }
 </style>

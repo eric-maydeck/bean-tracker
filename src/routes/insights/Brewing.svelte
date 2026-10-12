@@ -1,6 +1,6 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
-    import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
+  import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
   import DeltaBars, { bandRows, plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -99,7 +99,7 @@
       <div class="var-grid">
         {#each vars as { v, span } (v.key)}
           {@const by = s[`${v.key}By`]}
-          <section class="chart-panel var-chart" class:span data-section="brewing-{v.key}">
+          <section class="chart-panel var-chart heat-fill" class:span data-section="brewing-{v.key}">
             <div class="var-head">
               <HeadingAnchor id="brewing-{v.key}" level={3}>{TITLE[v.key]}</HeadingAnchor>
               <div class="var-ctls">
@@ -169,20 +169,6 @@
     flex: 1 1 auto;
     max-height: calc(var(--n) * 3rem);
     margin-block: auto;
-  }
-  .var-chart > :global(.heatmap) {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(var(--nr) * 3.5rem + 5rem);
-    margin-block: auto;
-  }
-  .var-chart > :global(.heatmap .scroll) {
-    flex: 1 1 auto;
-    display: grid;
-  }
-  .var-chart > :global(.heatmap .grid) {
-    grid-auto-rows: minmax(var(--cell-h), 1fr);
   }
   @media (min-width: 900px) {
     .var-grid {

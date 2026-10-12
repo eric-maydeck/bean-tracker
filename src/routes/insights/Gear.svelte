@@ -60,7 +60,7 @@
   {#if t.eras}
     <section class="chart-panel" data-section="gear-eras">
       <LabHead id="gear-eras" title="Gear eras" help={"Each dripper's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
-      <MultiLine m={t.eras} ariaLabel="Gear eras: each dripper's share of brews by month" format={(n) => `${n}%`} />
+      <MultiLine m={t.eras} ariaLabel="Gear eras: each dripper's share of brews by month" format={(n) => `${n}%`} thin />
     </section>
   {/if}
 {/if}

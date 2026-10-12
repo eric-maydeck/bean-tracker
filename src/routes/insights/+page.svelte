@@ -927,6 +927,26 @@
     --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
     --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
   }
+  /* A lab panel whose heatmap fills a pair's height (Brewing's var charts, Water's heatmap pair): the map
+     takes the panel's spare height, its rows stretching up to 3.5rem each (centred past that). */
+  :global(.heat-fill) {
+    display: flex;
+    flex-direction: column;
+  }
+  :global(.heat-fill > .heatmap) {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(var(--nr) * 3.5rem + 5rem);
+    margin-block: auto;
+  }
+  :global(.heat-fill > .heatmap .scroll) {
+    flex: 1 1 auto;
+    display: grid;
+  }
+  :global(.heat-fill > .heatmap .grid) {
+    grid-auto-rows: minmax(var(--cell-h), 1fr);
+  }
   /* Leaderboard rows, shared with the lab tabs (Sweet spots' top bags). Set --rows and --row-h on the list
      or an ancestor. Scoped under .board-row: Records and Milestones have their own .rank / .who. */
   :global(.board-rows) {
@@ -1111,6 +1131,11 @@
     background: color-mix(in srgb, var(--color-accent) 15%, transparent);
     color: var(--color-accent);
     font-size: 0.72rem;
+  }
+  /* A Hint badge: the same pill, muted (Insights, Sweet spots and the lab charts and boards). */
+  :global(.hl-badge.hint) {
+    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
+    color: var(--color-text-muted);
   }
   /* Flex: its tip buttons form their own row (checkLayout rule 5), apart from the card's. */
   :global(.hl-caption) {

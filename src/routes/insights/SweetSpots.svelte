@@ -333,10 +333,6 @@
   .hl-top .mode-tip-button {
     line-height: 1;
   }
-  .hl-badge.hint {
-    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
-    color: var(--color-text-muted);
-  }
   /* A long setting (a water recipe, "No clear winner") steps down and wraps inside the card. */
   .spot-card > .hl-value {
     max-width: 100%;

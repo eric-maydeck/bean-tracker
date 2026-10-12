@@ -471,10 +471,6 @@
   .story-head .mode-tip-button {
     line-height: 1;
   }
-  .hl-badge.hint {
-    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
-    color: var(--color-text-muted);
-  }
   .hl-value.long {
     font-size: min(1.6rem, 12cqw / var(--q, 2));
   }
