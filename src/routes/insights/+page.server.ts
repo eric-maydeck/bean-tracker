@@ -9,7 +9,9 @@ import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileD
 import { leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
-import { RANGES, BYS, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
+import { recordsTab } from '$lib/server/insights/records';
+import { milestonesTab } from '$lib/server/insights/milestones';
+import { RANGES, BYS, BREWER_TYPES, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -23,7 +25,8 @@ export const load: PageServerLoad = ({ url }) => {
   const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
   const fits = compareFits(dataStart, today);
   const fitsBy = byFits(dataStart, today);
-  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today);
+  const brewerTypes = BREWER_TYPES.filter((t) => brews.some((b) => b.brewerType === t));
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes);
   const s = withDefaults(explicit);
   const size = s.people === 'person' ? householdSize : 1;
   const period = periodBounds(s.range, today);
@@ -78,6 +81,10 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
         : null,
+    records: s.tab === 'records' ? recordsTab(brews, bags, { period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
+    milestones:
+      s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
+    brewerTypes,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),

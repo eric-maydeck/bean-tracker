@@ -107,6 +107,9 @@ db.prepare(
   `INSERT INTO beanconqueror_bean_origins (bean_id, component_number, country, processing) VALUES (?, 1, ?, ?)`
 ).run('bean-long', 'Colombia', 'Double Anaerobic Thermal Shock Natural');
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, imported_at) VALUES ('m1', 'V60', 'V60', ?)`).run(now);
+db.prepare(`UPDATE beanconqueror_methods SET preparation_style = 'POUR OVER' WHERE id = 'm1'`).run();
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES ('m2', 'CUSTOM_PREPARATION', 'OXO Rapid Brewer - Zuppa Lunga', 'ESPRESSO', ?)`).run(now);
 db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6 Special', ?)`).run(now);
 const brew = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
@@ -115,7 +118,21 @@ const brew = db.prepare(
 for (let i = 0; i < 8; i++) brew.run(isoDaysAgo(i + 1), 'bean-linked', 6 + (i % 4), 14 - i, now);
 for (let i = 0; i < 3; i++) brew.run(isoDaysAgo(i + 2), 'bean-twin-1', 7, 18 + i, now);
 for (let i = 0; i < 2; i++) brew.run(isoDaysAgo(i + 1), 'bean-likely', 8, 7 + i, now);
-for (let i = 0; i < 20; i++) brew.run(isoDaysAgo(i + 1), 'bean-part', 8, 9, now); // 20 × 15g = 300g
+// Ratings 7-10 (one 10); the first brew is at 05:40 and the second at 23:10 local, for the clock records.
+const atLocal = (n: number, h: number, m: number) => { const d = new Date(Date.now() - n * day); d.setHours(h, m, 0, 0); return d.toISOString(); };
+for (let i = 0; i < 20; i++) {
+  brew.run(i === 0 ? atLocal(1, 5, 40) : i === 1 ? atLocal(2, 23, 10) : isoDaysAgo(i + 1), 'bean-part', i === 2 ? 10 : 7 + (i % 3), 9, now);
+} // 20 × 15g = 300g
+// Soup: 3 brews of 20g in 100g water.
+const soup = db.prepare(
+  `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
+     water_amount_g, rating, imported_at) VALUES (?, 'bean-part', 'm2', 'g1', 20, 93, 100, 8, ?)`
+);
+for (let i = 0; i < 3; i++) soup.run(isoDaysAgo(i + 1), now);
+// One decaf brew, through a bean linked to the decaf coffee.
+bean.run('bean-decaf-linked', 'Swiss Water Decaf Colombia Huila', 'Onyx', daysAgo(5), 250, 22, 1, isoDaysAgo(4), now);
+db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-decaf-linked'`).run(decaf.id);
+brew.run(isoDaysAgo(3), 'bean-decaf-linked', 8, 2, now);
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 

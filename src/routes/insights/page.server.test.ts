@@ -370,4 +370,20 @@ describe('/insights custom Period', () => {
     expect(run(`?range=${to}..${from}`).explicit.range).toBeUndefined();
     expect(run(`?range=${addDays(today, 5)}..${addDays(today, 9)}`).explicit.range).toBeUndefined();
   });
+
+  it('loads records or milestones only on their tab', () => {
+    seed(Array.from({ length: 12 }, (_, i) => [addDays(today, -i), 15] as [string, number]));
+    const r = run('?tab=records&range=all');
+    expect(r.records.sections.map((x: { key: string }) => x.key)).toContain('taste');
+    expect(r.milestones).toBeNull();
+    const m = run('?tab=milestones');
+    expect(m.milestones.months).toBeDefined();
+    expect(m.records).toBeNull();
+    expect(run().records).toBeNull();
+  });
+
+  it('drops a brewer with no brews', () => {
+    seed([[today, 15]]);
+    expect(run('?tab=records&brewer=soup').explicit.brewer).toBeUndefined();
+  });
 });
