@@ -47,9 +47,9 @@ describe('taste', () => {
   });
   it('biggest climb: first → best', () =>
     expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: '2.5 → 9 at brew 3 of 4' }));
-  it('hole-in-one counts bags best on their first brew; holder = highest', () => {
-    const p = run('holeInOne', [...rated(1, [9, 8, 8]), ...rated(2, [7, 6]), ...rated(3, [5, 8])]);
-    expect(p).toMatchObject({ value: 2, holder: { label: 'Bag 1' } });
+  it('hole-in-one counts bags (≥3 rated brews) best on their first brew; holder = highest', () => {
+    const p = run('holeInOne', [...rated(1, [9, 8, 8]), ...rated(2, [7, 6, 7]), ...rated(3, [5, 8, 8]), ...rated(4, [9, 1])]);
+    expect(p).toMatchObject({ value: 2, detail: 'of 3 bags', holder: { label: 'Bag 1' } });
   });
   it('most consistent needs ≥5 rated brews, lowest SD', () =>
     expect(run('consistent', [...rated(1, [8.5, 8.5, 8.5, 8.5, 8.5]), ...rated(2, [8, 8, 8, 8])])?.value).toBe(0));
@@ -198,7 +198,8 @@ describe('gentle', () => {
     const mk = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => rated(id, [r, r, r]).map((b) => ({ ...b, roaster })));
     const brews = [...mk('A', [1, 2, 3], 5), ...mk('B', [4, 5], 3), ...mk('C', [6, 7, 8], 9)];
     const bags = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => bag({ id, name: `Bag ${id}` }));
-    expect(run('leastRoaster', brews, bags)).toMatchObject({ holder: { label: 'A' } });
+    // Your average = mean of bag means, 6; A adjusted (3×5 + 5×6) / 8 = 5.625 → −0.375 (ranked), raw 5 → −1 (shown).
+    expect(run('leastRoaster', brews, bags)).toMatchObject({ value: -0.375, mean: -1, holder: { label: 'A' } });
   });
 });
 

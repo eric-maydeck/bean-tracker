@@ -902,10 +902,11 @@
       justify-content: flex-start;
     }
   }
-  /* Sized by the grid's width (its container): 2-up phone cards fit "11:42 PM". */
+  /* Sized by the card's share of the grid (its container): 2-up phone cards fit "11:42 PM", and a
+     phone row of 3 (rows.ts) shrinks to fit. */
   :global(.hl-value) {
     margin-top: var(--space-1);
-    font-size: min(2rem, 7.5cqw);
+    font-size: min(2rem, 15cqw / var(--q, 2));
     font-weight: 600;
     line-height: 1.1;
     white-space: nowrap;
@@ -922,7 +923,12 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Names get two lines before the ellipsis: one line cut most coffees mid-name. */
   :global(.hl-holder) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
     font-weight: 600;
   }
   :global(.hl-line) {
@@ -945,6 +951,13 @@
   :global(.hl-caption .stat-label) {
     display: block;
     overflow: visible;
+  }
+  /* Phone cards: a caption with its mode word often wraps; every caption keeps two lines, top
+     aligned, so wrapped and one-line captions in a row start level. */
+  @container (max-width: 519px) {
+    :global(.hl-caption .stat-label) {
+      min-height: 2lh;
+    }
   }
   :global(.hl-empty) {
     margin: 0;

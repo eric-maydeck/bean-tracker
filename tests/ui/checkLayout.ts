@@ -165,9 +165,10 @@ export async function checkLayout(page: Page): Promise<void> {
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
 }
 
-// Card grids: every row of cards runs edge to edge (no empty cell, no ragged last row; ui-rules 28, 33).
-export async function expectGridRowsFull(page: Page, selector: string) {
-  const gaps = await page.locator(selector).evaluateAll((rows) =>
+// Card grids: every row of cards runs edge to edge (no empty cell, no ragged last row; ui-rules 28, 33),
+// and no card sits alone on a row it stretches across (a lone card, ui-rules 33) unless `allowLone`.
+export async function expectGridRowsFull(page: Page, selector: string, allowLone = false) {
+  const gaps = await page.locator(selector).evaluateAll((rows, allowLone) =>
     rows.flatMap((row) => {
       const o = row.getBoundingClientRect();
       const byTop = new Map<number, DOMRect[]>();
@@ -177,16 +178,18 @@ export async function expectGridRowsFull(page: Page, selector: string) {
       }
       return [...byTop.values()].flatMap((rs) => {
         const [l, r] = [Math.min(...rs.map((x) => x.left)) - o.left, o.right - Math.max(...rs.map((x) => x.right))];
+        if (!allowLone && rs.length === 1 && row.children.length > 1) return [`a lone tile on its own row (of ${row.children.length})`];
         return Math.abs(l) > 1 || Math.abs(r) > 1 ? [`${rs.length} tiles leave ${Math.round(l)}px left, ${Math.round(r)}px right`] : [];
       });
-    })
+    }), allowLone
   );
   expect(gaps, selector).toEqual([]);
 }
 
 // Insights stat grids: full rows, and every caption inside its tile.
 export async function expectStatRowsFull(page: Page) {
-  await expectGridRowsFull(page, '.stat-row');
+  // The overview's square tiles stretch a deliberate lone last tile (.fit.n4 / n5 at 360 px).
+  await expectGridRowsFull(page, '.stat-row', true);
   // Every caption stays inside its tile (checkLayout misses absolutely positioned overflow).
   const spills = await page.locator('.stat-row .stat-item').evaluateAll((tiles) =>
     tiles.flatMap((t) => {

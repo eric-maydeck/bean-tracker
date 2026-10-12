@@ -23,7 +23,8 @@
   let summary = $derived(
     (['total', 'firsts', 'bests'] as const).map((k) => ({
       key: k, label: k === 'total' ? 'Milestones' : k === 'firsts' ? 'Firsts' : 'New bests',
-      value: m.summary[k], prev: m.summaryPrev?.[k] ?? null
+      // Like the overview's tileDelta: a compare window with none (or no data) shows no line, not "from 0".
+      value: m.summary[k], prev: m.summaryPrev?.[k] || null
     }))
   );
   let nextVars = $derived(rowVars(m.nextUp.length));

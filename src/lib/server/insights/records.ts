@@ -1,4 +1,4 @@
-import { BREWER_TYPES, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
+import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindKey, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { isFinished } from './overview';
@@ -6,12 +6,13 @@ import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
 
 export interface Holder { label: string; sub?: string; href?: string; date: string }
-// mean / per100: a Best value pick's parts (its value is their ratio), for display.
+// mean / per100: a Best value pick's parts (its value is their ratio), for display. A "less your
+// style" pick ranks by its adjusted delta (value) and shows its raw one (mean).
 export interface Candidate { value: number; holder: Holder; detail?: string; mean?: number; per100?: number }
 export interface RecordPick { value: number; holder: Holder; detail?: string; mean?: number; per100?: number; ties: Holder[] }
 export type Section = 'taste' | 'volume' | 'freshness' | 'money' | 'extremes' | 'gentle';
 export type Fmt = 'rating' | 'count' | 'grams' | 'days' | 'gpd' | 'money' | 'per100' | 'clock'
-  | 'seconds' | 'ratio' | 'sd' | 'grind' | 'ml' | 'value';
+  | 'seconds' | 'ratio' | 'sd' | 'grind' | 'ml' | 'value' | 'delta';
 export interface RecordDef {
   key: string; section: Section; label: string; fmt: Fmt;
   dir: 'max' | 'min';
@@ -180,17 +181,23 @@ const roasters = (c: RecCtx, f: (bs: BagFact[]) => number): Candidate[] =>
   }));
 const brewMetric = (c: RecCtx, get: (b: BrewFact) => number | null, ok: (b: BrewFact, v: number) => boolean = () => true): Candidate[] =>
   held(c).flatMap((b) => { const v = get(b); return v !== null && v > 0 && ok(b, v) ? [{ value: v, holder: brewHolder(c, b) }] : []; });
-// Rated board groups with ≥3 bags, lowest adjusted rating; the group's latest brew in the window is its date.
-const least = (board: Board) => (c: RecCtx): Candidate[] =>
-  leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, 'adjusted')
+// Rated board groups with ≥3 bags, lowest adjusted rating, vs your average (the mean of the board's
+// bag means, which the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen
+// −2.51). The group's latest brew is its date.
+const least = (board: Board) => (c: RecCtx): Candidate[] => {
+  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
+  const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
+  const rawMean = new Map(raw.map((r) => [r.key, r.value]));
+  return lb('adjusted')
     .filter((r) => r.bags >= 3)
     .map((r) => ({
-      value: r.value,
+      value: r.value - avg, mean: rawMean.get(r.key)! - avg,
       holder: {
         label: r.label, ...(r.href ? { href: r.href } : {}),
         date: c.brews.filter((b) => BREW_KEY[board](b) === r.key).map((b) => b.localDate).sort().pop()!
       }
     }));
+};
 
 export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
@@ -209,9 +216,9 @@ export const RECORDS: RecordDef[] = [
     return top > s.rated[0] ? { value: top - s.rated[0], detail: `${s.rated[0]} → ${top} at brew ${s.rated.indexOf(top) + 1} of ${s.rated.length}` } : null;
   })),
   taste('holeInOne', 'Hole-in-one', 'max', 'count', (c) => {
-    const firsts = perBag(c, 2, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
+    const firsts = perBag(c, 3, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
     const top = pick(firsts, 'max');
-    return top ? [{ value: firsts.length, holder: top.holder }] : [];
+    return top ? [{ value: firsts.length, detail: `of ${perBag(c, 3, () => ({ value: 0 })).length} bags`, holder: top.holder }] : [];
   }),
   taste('consistent', 'Most consistent bag', 'min', 'sd', (c) => perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews` }))),
   taste('bestDay', 'Best day', 'max', 'rating', dayMean),
@@ -294,10 +301,10 @@ export const RECORDS: RecordDef[] = [
     const i = s.rated.indexOf(Math.max(...s.rated));
     return { value: i + 1, detail: `brew ${i + 1} of ${s.rated.length}` };
   })),
-  gentle('leastRoaster', 'Less your style · roaster', 'min', 'rating', least('roasters')),
-  gentle('leastOrigin', 'Less your style · origin', 'min', 'rating', least('origins')),
-  gentle('leastProcess', 'Less your style · process', 'min', 'rating', least('process')),
-  gentle('leastRoast', 'Less your style · roast level', 'min', 'rating', least('roast')),
+  gentle('leastRoaster', 'Less your style · roaster', 'min', 'delta', least('roasters')),
+  gentle('leastOrigin', 'Less your style · origin', 'min', 'delta', least('origins')),
+  gentle('leastProcess', 'Less your style · process', 'min', 'delta', least('process')),
+  gentle('leastRoast', 'Less your style · roast level', 'min', 'delta', least('roast')),
   gentle('toughValue', 'Toughest value', 'min', 'value', (c) => value(c)),
   gentle('toughDay', 'Toughest day', 'min', 'rating', dayMean)
 ];

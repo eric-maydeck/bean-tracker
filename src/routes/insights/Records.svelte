@@ -42,6 +42,8 @@
       case 'seconds': return [mss(n)];
       case 'ratio': return [`1:${n.toFixed(1)}`];
       case 'sd': return [`±${n.toFixed(2)}`];
+      // Ranked by the adjusted delta (value), shown as the raw one (mean).
+      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'vs your average'];
       // An encoded setting: the text is the value.
       case 'grind': return [p.detail ?? ''];
       // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
@@ -79,9 +81,9 @@
 {#snippet caption(id: string, label: string, rating: boolean, pp: boolean)}
   <div class="hl-caption">
     <span class="stat-label"
-      >{label}{#if rating}{' · '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
+      >{label}{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
           ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
-        >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
+        >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
           ><span class="tip-text">per person</span><Icon name="question" /></button
         >{/if}</span
     >
@@ -151,7 +153,7 @@
             <span class="hl-line">{[last.brewer, `latest ${date(last.holder.date)}`].filter(Boolean).join(' · ')}</span>
             {#if t.perfectTens.length > 1}
               <button class="mode-tip-button hl-line" popovertarget="tens-list" aria-describedby="tens-list"
-                ><span class="tip-text">all {t.perfectTens.length}</span><Icon name="question" /></button
+                ><span class="tip-text">{t.perfectTens.length} brews</span><Icon name="question" /></button
               >
               <div class="mode-tip" id="tens-list" popover onbeforetoggle={placeTip}>
                 <ul>{#each t.perfectTens as p, i (i)}<li>{p.holder.label} · {date(p.holder.date)}</li>{/each}</ul>
@@ -184,6 +186,11 @@
   /* Card grid and card base: .hl-grid / .hl-card, :global in +page.svelte (Milestones shares them). */
   .gentle :global(.hl-card) {
     background: var(--color-bg);
+  }
+  /* A tip button's phone padding (its 44px tap target) is cancelled by negative margins, so it
+     needs no room in the card: 100% would squeeze its text out of a narrow card. */
+  button.hl-line {
+    max-width: none;
   }
   .brewer-switch button {
     margin: 0;
