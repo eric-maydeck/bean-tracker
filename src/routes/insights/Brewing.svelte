@@ -7,6 +7,7 @@
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import MultiLine from './MultiLine.svelte';
+  import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
   let { t, lab, s, ratingsHelp, placeTip, choose }: {
@@ -14,9 +15,8 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  let defaultGrinder = $derived(lab.grinders[0]?.slug);
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
-  let empty = $derived(!t.rest && !t.dialIn.length && !t.vars.length);
+  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !t.drift.length && !t.vars.length);
   // A long chart (9+ bars or heatmap rows; prod Grind has ~45) takes a full row. Short ones pair up first,
   // each with the one nearest its row count (pairs and their two charts keep the page order), and a pair
   // stretches the shorter chart's rows to the same height. An odd short one out spans too (full rows).
@@ -40,16 +40,8 @@
 </script>
 
 <div class="insights-bar brewing-bar">
-  {#if lab.grinders.length > 1}
-    <!-- One Grinder for the tab (ui-rules 6): it drives Grind drift and the Grind chart. -->
-    <label class="form-field group-field">
-      <span>Grinder</span>
-      <select class="ctl-select" aria-label="Grinder" value={s.grinder ?? defaultGrinder}
-        onchange={(e) => choose({ grinder: e.currentTarget.value === defaultGrinder ? undefined : e.currentTarget.value })}>
-        {#each lab.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
-      </select>
-    </label>
-  {/if}
+  <!-- One Grinder for the tab: it drives Grind drift and the Grind chart. -->
+  <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
   <RatingsSwitch ratings={s.ratings} {ratingsHelp} {choose} />
 </div>
 

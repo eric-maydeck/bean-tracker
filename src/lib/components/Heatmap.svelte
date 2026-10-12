@@ -149,7 +149,7 @@
     <p class="div-legend">
       <span>Below the bag's average</span><span class="div-swatch" aria-hidden="true"></span><span>Above</span>
       {#if fade}<span>· Faded: few brews</span>{/if}
-      {#if blanks}<span>· Blank: no paired brews</span>{/if}
+      {#if blanks}<span>· Blank: no paired brews (or none)</span>{/if}
     </p>
   {/if}
   {#if tip}

@@ -4,8 +4,8 @@
   import { STRENGTH, STRENGTH_HELP } from './Insights.svelte';
   import { sizedGrid } from './rows';
   import { plural, signed } from './DeltaBars.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
+  import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
 
@@ -25,7 +25,6 @@
   }
   const any = (v: string) => v || undefined;
   let filtered = $derived(!!(s.bag || s.roast || s.process || s.origin || s.roaster));
-  let defaultGrinder = $derived(lab.grinders[0]?.slug);
 
   // The card's number (largest): the winner, a lean, the one setting ever used, or no winner.
   const value = (p: Spot) =>
@@ -62,7 +61,7 @@
       bars: p.bands.map((b, i) => ({
         ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
         pick: b.label === pick, usual: b.label === p.usual.label,
-        text: `${b.label}: ${p.tier === 1 ? `${signed(b.value)} vs same bag` : `${b.value.toFixed(1)} avg (bag means)`} · ${plural(b.bags, 'bag')} · ${plural(b.brews, 'brew')}${b.solid ? '' : ' · few'}${b.label === p.usual.label ? ' · usual' : ''}`
+        text: `${b.label}: ${p.tier === 1 ? `${signed(b.value)} vs same bag` : `${b.value.toFixed(1)} avg (bag means)`} · ${plural(b.bags, 'bag')} · ${plural(b.brews, 'brew')}${b.solid ? '' : ' · few brews'}${b.label === p.usual.label ? ' · usual' : ''}`
       }))
     };
   }
@@ -80,7 +79,7 @@
     const x = Math.min(Math.max(r.left + ((i + 0.5) / n) * r.width, half + 16), innerWidth - half - 16) - r.left;
     tip = { key, i, x, hover };
   }
-  function tipAt(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
+  function tipFrom(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
     const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
     const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
     if (!hover && tip?.key === key && tip.i === i && !tip.hover) return (tip = null);
@@ -176,15 +175,7 @@
       {#each lab.roasters as v (v)}<option value={v}>{v}</option>{/each}
     </select>
   </label>
-  {#if lab.grinders.length > 1}
-    <label class="form-field group-field">
-      <span>Grinder</span>
-      <select class="ctl-select" aria-label="Grinder" value={s.grinder ?? defaultGrinder}
-        onchange={(e) => choose({ grinder: e.currentTarget.value === defaultGrinder ? undefined : e.currentTarget.value })}>
-        {#each lab.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
-      </select>
-    </label>
-  {/if}
+  <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
   <RatingsSwitch ratings={s.ratings} {ratingsHelp} {choose} />
   <button class="button button-ghost reset-picker" type="button" disabled={!filtered}
     onclick={() => choose({ bag: undefined, roast: undefined, process: undefined, origin: undefined, roaster: undefined })}>Reset picker</button>
@@ -225,9 +216,9 @@
               onfocus={(e) => e.currentTarget.matches(':focus-visible') && showTip(e.currentTarget, c.key, ch.bars.length, startAt(ch.bars), false)}
               onblur={() => (tip = null)}
               onkeydown={(e) => chartKey(e, c.key, ch.bars)}
-              onpointermove={(e) => e.pointerType === 'mouse' && tipAt(e, c.key, ch.bars.length, true)}
+              onpointermove={(e) => e.pointerType === 'mouse' && tipFrom(e, c.key, ch.bars.length, true)}
               onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-              onclick={(e) => tipAt(e, c.key, ch.bars.length, false)}>
+              onclick={(e) => tipFrom(e, c.key, ch.bars.length, false)}>
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
@@ -256,7 +247,8 @@
 
   {#if t.topBags.length}
     <section class="chart-panel" data-section="spots-top">
-      <HeadingAnchor id="spots-top">Top bags like this</HeadingAnchor>
+      <LabHead id="spots-top" title="Top bags like this" {placeTip}
+        help="The bags matching these filters with the best ratings: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. Under each: its usual temp · water · dripper." />
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
           <li class="board-row">

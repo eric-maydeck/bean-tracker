@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
-  import DeltaBars, { bandRows, plural, SAME_BAG_HELP } from './DeltaBars.svelte';
+  import DeltaBars, { bandRows, plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import { STRENGTH_HELP } from './Insights.svelte';
   import LabBoard from './LabBoard.svelte';
@@ -105,7 +105,7 @@
               <small>{[p.tag, `${p.best.water} ${p.best.mean.toFixed(2)} vs ${p.others.map((o) => `${o.water} ${o.mean.toFixed(2)}`).join(', ')}`].filter(Boolean).join(' · ')}</small>
             </span>
             <span></span>
-            <span class="val">+{p.gap.toFixed(2)}</span>
+            <span class="val">{signed(p.gap)}</span>
           </li>
         {/each}
       </ol>
