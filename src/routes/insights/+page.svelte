@@ -894,7 +894,7 @@
     box-sizing: border-box;
     padding: var(--space-3) var(--space-2);
     text-align: center;
-    background: var(--color-surface);
+    background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
   }
@@ -1122,6 +1122,16 @@
     flex-wrap: wrap;
     gap: var(--gap);
     container-type: inline-size;
+  }
+  /* Insights tiles sit on the page colour inside their surface panels (user, 2026-10-12); /stats
+     keeps app.css's surface tiles. The hover tint mixes from the same base. */
+  .stat-item {
+    background: var(--color-bg);
+  }
+  @media (hover: hover) {
+    .stat-item:hover {
+      background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
+    }
   }
   .fit .stat-item {
     --q: var(--c);

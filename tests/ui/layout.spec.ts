@@ -1572,6 +1572,9 @@ export const STATES: State[] = [
       const foot = page.locator('#records-top-brews ~ .top-foot');
       await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
       await expect(foot.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+      // Show less steps back one level: 50 → 20.
+      await foot.getByRole('button', { name: 'Show less' }).click();
+      await expect(page).toHaveURL(/top=20/);
     } },
   { name: 'insights-records-topc20', path: () => '/insights?tab=records&range=all&topc=20',
     act: async (page) => {

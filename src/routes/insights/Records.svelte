@@ -201,7 +201,7 @@
   </div>
 {/snippet}
 
-<!-- A ranked list (top coffees, top brews): 10 → 20 → 50 in steps, Show less (left) straight back to 10. -->
+<!-- A ranked list (top coffees, top brews): 10 → 20 → 50 and back a step at a time; Show less sits left. -->
 {#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string }[], n: Top | undefined, set: (v: Top | undefined) => void)}
   {@const shown = rows.slice(0, n ?? 10)}
   <HeadingAnchor {id} level={3} class="top-title">Top {shown.length} {noun}</HeadingAnchor>
@@ -220,7 +220,7 @@
   {#if rows.length > 10}
     {@const next = n === 50 ? null : n === 20 ? 50 : 20}
     <div class="top-foot">
-      {#if n}<button class="button button-ghost" onclick={() => set(undefined)}>Show less</button>{/if}
+      {#if n}<button class="button button-ghost" onclick={() => set(n === 50 ? 20 : undefined)}>Show less</button>{/if}
       {#if next && rows.length > shown.length}<button class="button button-ghost" onclick={() => set(next)}>Show more</button>{/if}
     </div>
   {/if}
@@ -280,8 +280,9 @@
 
 <style>
   /* Card grid and card base: .hl-grid / .hl-card, :global in +page.svelte (Milestones shares them). */
+  /* Insights tiles sit on the page colour; the gentle row swaps to the panel's own surface. */
   .gentle :global(.hl-card) {
-    background: var(--color-bg);
+    background: var(--color-surface);
   }
   /* A tip button's phone padding (its 44px tap target) is cancelled by negative margins, so it
      needs no room in the card: 100% would squeeze its text out of a narrow card. */
