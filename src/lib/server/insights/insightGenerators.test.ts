@@ -98,6 +98,13 @@ describe('second cup', () => {
   it('a delta that rounds to 0.00 is no finding', () => expect(gen('secondCup', around(0.002))).toBeNull());
   it('too early: how many more would settle it', () =>
     expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 7[01] more pairs would settle it\.$/) }));
+  it('too early carries progress = n / (n + more)', () => {
+    const f = gen('secondCup', around(0.2))!;
+    const more = +f.settle!.match(/\d+/)![0];
+    expect(f.progress).toBeCloseTo(30 / (30 + more), 10);
+    expect(gen('secondCup', around(0.04))!.progress).toBeLessThan(0.1);
+    expect(gen('secondCup', mk(28).concat(Array.from({ length: 12 }, (_, i) => pair(i).map((x) => ({ ...x, localDate: `2026-08-${String(i + 1).padStart(2, '0')}` }))).flat()))!.progress).toBeUndefined();
+  });
   it('too early and far off: no giant number', () =>
     expect(gen('secondCup', around(0.04))).toMatchObject({ strength: 'early', settle: 'Too small a difference to settle with your data.' }));
 });
@@ -305,9 +312,23 @@ describe('gear eras', () => {
   it('80%+ months merge into eras', () => {
     const f = gen('gearEras:dripper', brews)!;
     expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', headline: 'Dripper eras: Alpha Switch → CT62', body: 'Alpha Switch 95% of Apr 26–May 26, CT62 85% of Jun 26.', sample: '3 months' });
-    expect(f.series!.map((s) => s.value)).toEqual([90, 100, 85]);
+    expect(f.multi).toEqual({ x: ['Apr 26', 'May 26', 'Jun 26'], unit: '%', lines: [
+      { label: 'Alpha Switch', values: [90, 100, 15] }, { label: 'CT62', values: [10, 0, 85] }
+    ] });
     expect(gen('gearEras:water', brews)).toBeNull(); // no water logged
   });
+  it('items under 20% in every month fold into Other', () => {
+    const f = gen('gearEras:dripper', [...month('04', 15, 2), ...month('05', 20, 0), ...month('06', 3, 17)])!;
+    expect(f.multi!.lines.map((l) => l.label)).toEqual(['Alpha Switch', 'CT62', 'Other']);
+    expect(f.multi!.lines[2].values).toEqual([15, 0, 0]);
+  });
+  it('no two eras but a moving mix: a share card', () => {
+    const f = gen('gearShare:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])!;
+    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', z: null, headline: 'Dripper: Alpha Switch → CT62', body: 'Alpha Switch had 75% of Apr 26; CT62 60% of Jun 26.' });
+    expect(f.multi!.lines.map((l) => l.values)).toEqual([[75, 60, 40], [25, 40, 60]]);
+    expect(gen('gearEras:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])).toBeNull();
+  });
+  it('a flat mix is no card', () => expect(gen('gearShare:dripper', [...month('04', 15, 5), ...month('05', 14, 6), ...month('06', 15, 5)])).toBeNull());
   it('one gear only, or months under 20 brews: null', () => {
     expect(gen('gearEras:dripper', [...month('04', 18, 2), ...month('05', 20, 0)])).toBeNull();
     expect(gen('gearEras:dripper', [...month('04', 18, 2), ...month('06', 3, 16, 19)])).toBeNull();
@@ -393,7 +414,7 @@ describe('roaster loyalty', () => {
   const o = { period: { from: '2026-01-01', to: '2026-10-31' } };
   it('top 3 share and the rising roaster', () =>
     expect(gen('loyalty', [], bs, o)).toMatchObject({
-      theme: 'money', headline: 'Your top 3 roasters are 75% of your bags', value: '75%', sample: '12 bags, 5 roasters',
+      theme: 'money', headline: 'Top 3 roasters: 75% of bags', value: '75%', sample: '12 bags, 5 roasters',
       body: 'A, B and C. Rising: D, 2 of your last 2 bags (0 of 10 before).'
     }));
   it('null under 10 bags', () => expect(gen('loyalty', [], bs.slice(0, 9), o)).toBeNull());
@@ -493,6 +514,50 @@ describe('calibration', () => {
   it('null with one month of 30 rated brews', () => expect(gen('calibration', [...jul, ...sep.slice(0, 29)])).toBeNull());
 });
 
+describe('trend charts', () => {
+  // 3 months x 12 bags of 4 rated brews: roast level A climbs 7 -> 8 -> 9, B stays 7.5 / 8.5.
+  const level = (m: string, i: number) => (i < 6 ? 'A' : 'B');
+  const rate = (m: string, i: number, j: number) => (i < 6 ? { '04': 7, '05': 8, '06': 9 }[m]! : 7.5) + (j % 2 ? 0.5 : -0.5) * (i < 6 ? 0 : 1) + (i >= 6 ? 0.5 : 0);
+  const brews = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 12 }, (_, i) =>
+    seq(100 * k + i + 1, [0, 1, 2, 3].map((j) => rate(m, i, j)), `2026-${m}-${String(i + 1).padStart(2, '0')}`, { roastLevel: level(m, i) })).flat());
+  it('rating by roast level per month', () => {
+    const f = gen('roastRating', brews)!;
+    expect(f).toMatchObject({ theme: 'taste', kind: 'pattern', z: null, strength: null, headline: 'A roasts: 7.00 → 9.00', value: '+2.00', sample: '3 months' });
+    expect(f.multi).toEqual({ x: ['Apr 26', 'May 26', 'Jun 26'], unit: 'rating', lines: [{ label: 'A', values: [7, 8, 9] }, { label: 'B', values: [8, 8, 8] }] });
+  });
+  it('roast share of brews per month', () => {
+    const shifted = brews.map((b) => (b.localDate.startsWith('2026-06') && b.roastLevel === 'B' ? { ...b, roastLevel: 'A' } : b));
+    const f = gen('roastShare', shifted)!;
+    expect(f).toMatchObject({ theme: 'taste', headline: 'A: 50% → 100% of brews', value: '100%' });
+    expect(gen('roastShare', brews)).toBeNull(); // 50/50 every month: flat
+  });
+  it('rating trend: flat or under 3 months is no card', () => {
+    expect(gen('roastRating', brews.map((b) => ({ ...b, rating: 8 })))).toBeNull();
+    expect(gen('roastRating', brews.filter((b) => !b.localDate.startsWith('2026-06')))).toBeNull();
+  });
+  it('brew #1 vs later brews by month', () => {
+    const bs = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 4 }, (_, i) =>
+      seq(10 * k + i + 1, [6 + k * 0.5, 8, 8, 8], `2026-${m}-${String(i + 1).padStart(2, '0')}`)).flat());
+    const f = gen('firstVsLater', bs)!;
+    expect(f).toMatchObject({ theme: 'dialin', headline: 'Brew #1 gap: -2.00 → -1.00', value: '-1.00' });
+    expect(f.multi!.lines).toEqual([{ label: 'Brew #1', values: [6, 6.5, 7] }, { label: 'Later brews', values: [8, 8, 8] }]);
+    // first brews under 20% of a month still get their own line (no folding into Other)
+    const long = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 4 }, (_, i) =>
+      seq(10 * k + i + 1, [6 + k * 0.5, 8, 8, 8, 8, 8], `2026-${m}-${String(i + 1).padStart(2, '0')}`)).flat());
+    expect(gen('firstVsLater', long)!.multi!.lines.map((l) => l.label)).toEqual(['Brew #1', 'Later brews']);
+    expect(gen('firstVsLater', bs.filter((b) => b.coffeeId! > 2 && b.coffeeId! < 10 || b.coffeeId! > 10))).toBeNull(); // April under 3 first brews
+  });
+  it('brews to settle by month', () => {
+    const settle = (k: number) => [[8, 8, 8, 8, 8], [6, 8, 8, 8, 8], [5, 6, 7, 8, 8]][k];
+    const bs = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 3 }, (_, i) =>
+      seq(10 * k + i + 1, settle(k), `2026-${m}-${String(i + 1).padStart(2, '0')}`)).flat());
+    const f = gen('settleTrend', bs)!;
+    expect(f).toMatchObject({ theme: 'dialin', headline: 'Dial-in: 1 → 4 brews to settle', value: '4 brews', sample: '9 bags' });
+    expect(f.multi).toEqual({ x: ['Apr 26', 'May 26', 'Jun 26'], lines: [{ label: 'Brews to settle', values: [1, 2, 4] }], unit: 'brews' });
+    expect(gen('settleTrend', bs.filter((b) => b.coffeeId !== 23))).toBeNull(); // June under 3 bags
+  });
+});
+
 describe('registry', () => {
   it('empty: no findings', () => expect(all(ctx([]))).toEqual([]));
   it('empty with an empty comparison window', () => expect(all(ctx([], [], { prevBrews: [] }))).toEqual([]));
@@ -504,6 +569,10 @@ describe('registry', () => {
     const c = ctx(flat, bs, { prevBrews: flat, period: { from: '2026-01-01', to: '2026-09-30' } });
     expect(finite(all(c))).toBe(true);
     expect(finite(all({ ...c, brews: flat.map((b) => ({ ...b, rating: 0 })) }))).toBe(true);
+    // the same brews over 3 months with a roast level: every trend chart runs
+    const spread = flat.map((b, i) => ({ ...b, roastLevel: 'Light', localDate: `2026-0${4 + (i % 3)}-01` }));
+    expect(finite(all({ ...c, brews: spread }))).toBe(true);
+    expect(finite(all({ ...c, brews: spread.map((b) => ({ ...b, rating: 0 })) }))).toBe(true);
   });
 });
 

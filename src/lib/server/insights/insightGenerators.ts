@@ -24,6 +24,9 @@ export interface Finding {
   strength: Strength | null;
   caveat?: string;
   of?: string; // a story: the key of the grid finding it retells (left out of the grid)
+  // Multi-line trend: x = period labels ("Mar 26"), one line per category, null = gap.
+  multi?: { x: string[]; lines: { label: string; values: (number | null)[] }[]; unit?: string };
+  progress?: number; // too early only: n / (n + more needed), 0..1, how close to settled
 }
 export interface GenCtx {
   brews: readonly BrewFact[]; bags: readonly BagFact[]; prevBrews: readonly BrewFact[] | null;
@@ -54,10 +57,11 @@ const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
 const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / (sd(d) / Math.sqrt(d.length)) });
 
 // ponytail: "about N more would settle it" assumes the effect and spread stay as seen.
-const settleText = (z: number, n: number, unit: string, bar = 2): string | undefined => {
+// progress = n / (n + more): how far the sample is toward settling it (0 when it never would).
+const settleText = (z: number, n: number, unit: string, bar = 2): { settle?: string; progress: number } => {
   const more = Math.ceil(n * ((bar / z) ** 2 - 1));
-  if (!Number.isFinite(more) || more > 10 * n) return 'Too small a difference to settle with your data.';
-  return more > 0 ? `About ${more} more ${unit} would settle it.` : undefined;
+  if (!Number.isFinite(more) || more > 10 * n) return { settle: 'Too small a difference to settle with your data.', progress: Number.isFinite(more) ? n / (n + more) : 0 };
+  return more > 0 ? { settle: `About ${more} more ${unit} would settle it.`, progress: n / (n + more) } : { progress: 1 };
 };
 
 // Attach z and strength; null when z isn't finite or the strength is hidden. `tests` > 1: the finding
@@ -68,7 +72,7 @@ function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, 
   const strength = strengthOf(z, enough, tests);
   if (strength === 'hidden') return null;
   const early = strength === 'early';
-  return { ...f, z, strength, ...(early ? { settle: settleText(z, n, unit, solidBar(tests)), caveat: caveatEarly ?? f.caveat } : {}) };
+  return { ...f, z, strength, ...(early ? { ...settleText(z, n, unit, solidBar(tests)), caveat: caveatEarly ?? f.caveat } : {}) };
 }
 
 const LB = '/insights?tab=leaderboards';
@@ -109,15 +113,20 @@ const dialinCurve: Generator = (c) => {
 };
 
 // Rated brews to reach the bag's settled rating: the first at or above (mean of its best half) - 0.5.
-const dialinSpeed: Generator = (c) => {
-  const slow: { id: number; pos: number }[] = [];
+// Bags with 5+ counted rated brews that began in the period; `month` = the month of its first rated brew.
+const settlePositions = (c: GenCtx) => {
+  const out: { id: number; pos: number; month: string }[] = [];
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
     if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
     const rs = bs.map((b) => b.rating!);
     const top = [...rs].sort((a, b) => b - a).slice(0, Math.ceil(rs.length / 2));
-    slow.push({ id, pos: rs.findIndex((r) => r >= mean(top) - 0.5) + 1 });
+    out.push({ id, pos: rs.findIndex((r) => r >= mean(top) - 0.5) + 1, month: bs[0].localDate.slice(0, 7) });
   }
+  return out;
+};
+const dialinSpeed: Generator = (c) => {
+  const slow = settlePositions(c);
   if (slow.length < MIN_BAGS) return null;
   const label = (x: { id: number }) => bagLabel(c, x.id);
   const by = (a: { id: number; pos: number }, b: { id: number; pos: number }) => a.pos - b.pos || label(a).localeCompare(label(b));
@@ -359,11 +368,91 @@ const periodVsPrevious: Generator = (c) => {
   };
 };
 
+// ---- Trend charts (descriptive, `multi`) ----
+const MULTI_LINES = 5, MULTI_KEEP = 0.2;
+type Multi = NonNullable<Finding['multi']>;
+// Months with `minMonth`+ rows (3+ needed); one line per category holding MULTI_KEEP+ of some month's
+// rows, at most MULTI_LINES with the rest folded into "Other". `cell` = a line's value in one month
+// from its rows and the month's rows (null = gap). `fixed` = these lines, in this order, no folding.
+function monthlyMulti<T extends { localDate: string }>(
+  rows: readonly T[], cat: (x: T) => string | null, cell: (g: T[], month: T[]) => number | null, unit: string, minMonth = 10, fixed?: string[]
+): Multi | null {
+  const months = [...groupBy(rows.filter((x) => cat(x) !== null), (x) => x.localDate.slice(0, 7))]
+    .filter(([, g]) => g.length >= minMonth).sort(([a], [b]) => a.localeCompare(b));
+  if (months.length < 3) return null;
+  const totals = [...groupBy(months.flatMap(([, g]) => g), cat)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  const big = totals.map(([k]) => k).filter((k) => months.some(([, g]) => g.filter((x) => cat(x) === k).length >= MULTI_KEEP * g.length));
+  const names = fixed ?? (big.length === totals.length && big.length <= MULTI_LINES ? big : big.slice(0, MULTI_LINES - 1));
+  const line = (x: T) => (names.includes(cat(x)!) ? cat(x)! : 'Other');
+  const labels = !fixed && names.length < totals.length ? [...names, 'Other'] : names;
+  return { x: months.map(([m]) => monthLabel(m)), unit, lines: labels.map((label) => ({ label, values: months.map(([, g]) => cell(g.filter((x) => line(x) === label), g)) })) };
+}
+const shareCell = (g: unknown[], month: unknown[]) => Math.round((100 * g.length) / month.length);
+const meanCell = (min: number) => (g: { rating: number | null }[]) => (g.length >= min ? Math.round(100 * mean(g.map((b) => b.rating!))) / 100 : null);
+const ends = (vs: (number | null)[]) => { const v = vs.filter((x): x is number => x !== null); return v.length ? { a: v[0], b: v.at(-1)!, range: Math.max(...v) - Math.min(...v) } : null; };
+// The named line (not "Other") that moved most from its first to its last value.
+const mover = (m: Multi) => m.lines.flatMap((l) => { const e = l.label !== 'Other' && ends(l.values); return e ? [{ label: l.label, ...e }] : []; })
+  .sort((x, y) => Math.abs(y.b - y.a) - Math.abs(x.b - x.a) || x.label.localeCompare(y.label))[0];
+const flat = (m: Multi, min: number) => !m.lines.some((l) => (ends(l.values)?.range ?? 0) >= min);
+
+// Taste: monthly mean rating per roast level (5+ rated brews a cell), and each roast level's share of brews.
+const roastRating: Generator = (c) => {
+  const m = monthlyMulti(counted(c), (b) => b.roastLevel, meanCell(5), 'rating');
+  const t = m && m.lines.length >= 2 && !flat(m, 0.3) && mover(m);
+  if (!m || !t) return null;
+  return {
+    key: 'roastRating', theme: 'taste', kind: 'pattern', headline: `${t.label} roasts: ${t.a.toFixed(2)} → ${t.b.toFixed(2)}`,
+    value: signed(t.b - t.a), body: 'Mean rating by roast level each month (5+ rated brews).', multi: m,
+    sample: plural(m.x.length, 'month'), href: `${LB}&open=roast`, z: null, strength: null
+  };
+};
+const roastShare: Generator = (c) => {
+  const m = monthlyMulti(c.brews, (b) => b.roastLevel, shareCell, '%');
+  const t = m && m.lines.length >= 2 && !flat(m, 15) && mover(m);
+  if (!m || !t) return null;
+  return {
+    key: 'roastShare', theme: 'taste', kind: 'pattern', headline: `${t.label}: ${t.a}% → ${t.b}% of brews`,
+    value: `${t.b}%`, body: 'Share of brews by roast level each month.', multi: m,
+    sample: plural(m.x.length, 'month'), href: `${LB}&open=roast&rank=brews`, z: null, strength: null
+  };
+};
+
+// Dial-in: each bag's first brew vs its later brews, by month; brews to settle by the month a bag began.
+const firstVsLater: Generator = (c) => {
+  const m = monthlyMulti(counted(c).filter((b) => b.brewIndex > 0), (b) => (b.brewIndex === 1 ? 'Brew #1' : 'Later brews'), meanCell(3), 'rating', 10, ['Brew #1', 'Later brews']);
+  if (!m) return null;
+  const [one, later] = m.lines.map((l) => l.values);
+  const gaps = one.flatMap((v, i) => (v !== null && later[i] !== null ? [v - later[i]!] : []));
+  if (gaps.length < 3) return null;
+  return {
+    key: 'firstVsLater', theme: 'dialin', kind: 'pattern', headline: `Brew #1 gap: ${signed(gaps[0])} → ${signed(gaps.at(-1)!)}`,
+    value: signed(gaps.at(-1)!), body: "Each bag's first brew vs its later brews, mean rating by month.", multi: m,
+    sample: plural(m.x.length, 'month'), href: `${LB}&open=coffees`, z: null, strength: null
+  };
+};
+const settleTrend: Generator = (c) => {
+  const months = [...groupBy(settlePositions(c), (x) => x.month)].filter(([, g]) => g.length >= MIN_BAGS).sort(([a], [b]) => a.localeCompare(b));
+  if (months.length < 3) return null;
+  const values = months.map(([, g]) => Math.round(10 * mean(g.map((x) => x.pos))) / 10);
+  const e = ends(values)!;
+  if (e.range < 0.5) return null;
+  return {
+    key: 'settleTrend', theme: 'dialin', kind: 'pattern', headline: `Dial-in: ${e.a} → ${e.b} brews to settle`, value: `${e.b} brews`,
+    body: 'Mean brews to settle a bag, by the month you opened it.',
+    multi: { x: months.map(([m]) => monthLabel(m)), lines: [{ label: 'Brews to settle', values }], unit: 'brews' },
+    sample: plural(sum(months.map(([, g]) => g.length)), 'bag'), href: `${LB}&open=coffees`, z: null, strength: null
+  };
+};
+
 // ---- Gear ----
-// Months (20+ brews) where one dripper / water has 80%+ of brews; back-to-back months of the same gear merge.
-const ERA_DIMS = [['dripper', 'Dripper'], ['water', 'Water']] as const;
-const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]) => {
-  const months = [...groupBy(c.brews, (b) => b.localDate.slice(0, 7))].filter(([, bs]) => bs.length >= 20).sort(([a], [b]) => a.localeCompare(b))
+// Months (20+ brews) where one item has 80%+ of brews; back-to-back months of the same item merge.
+// With no two eras, a share-over-time card when the mix moved (15+ points) instead.
+const ERA_DIMS = [['dripper', 'Dripper'], ['water', 'Water'], ['grinder', 'Grinder']] as const;
+const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]): Finding[] => {
+  const rows = c.brews.filter((b) => b[dim]);
+  const multi = monthlyMulti(rows, (b) => b[dim], shareCell, '%', 20);
+  if (!multi) return [];
+  const months = [...groupBy(rows, (b) => b.localDate.slice(0, 7))].filter(([, bs]) => bs.length >= 20).sort(([a], [b]) => a.localeCompare(b))
     .map(([m, bs]) => ({ m, top: topOf(bs, (b) => b[dim]), total: bs.length }));
   const eras: { g: string; from: string; to: string; n: number; total: number; i: number }[] = [];
   months.forEach(({ m, top, total }, i) => {
@@ -372,14 +461,20 @@ const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]) => {
     if (last && last.g === top.name && last.i === i - 1) Object.assign(last, { to: m, n: last.n + top.n, total: last.total + total, i });
     else eras.push({ g: top.name, from: m, to: m, n: top.n, total, i });
   });
-  if (new Set(eras.map((e) => e.g)).size < 2) return [];
-  const when = (e: (typeof eras)[number]) => (e.from === e.to ? monthLabel(e.from) : `${monthLabel(e.from)}–${monthLabel(e.to)}`);
+  const base = { theme: 'gear' as const, kind: 'pattern' as const, multi, sample: plural(months.length, 'month'), href: `${LB}&open=${dim}`, z: null, strength: null };
+  if (new Set(eras.map((e) => e.g)).size >= 2) {
+    const when = (e: (typeof eras)[number]) => (e.from === e.to ? monthLabel(e.from) : `${monthLabel(e.from)}–${monthLabel(e.to)}`);
+    return [{
+      ...base, key: `gearEras:${dim}`, headline: `${name} eras: ${eras.map((e) => e.g).join(' → ')}`,
+      body: `${eras.map((e) => `${e.g} ${pct(e.n / e.total)} of ${when(e)}`).join(', ')}.`
+    }];
+  }
+  if (multi.lines.length < 2 || flat(multi, 15)) return [];
+  const [a, b] = [months[0], months.at(-1)!];
   return [{
-    key: `gearEras:${dim}`, theme: 'gear', kind: 'pattern', headline: `${name} eras: ${eras.map((e) => e.g).join(' → ')}`,
-    body: `${eras.map((e) => `${e.g} ${pct(e.n / e.total)} of ${when(e)}`).join(', ')}.`,
-    series: months.map((x) => ({ label: monthLabel(x.m), value: Math.round((100 * (x.top?.n ?? 0)) / x.total) })),
-    sample: plural(months.length, 'month'), href: `${LB}&open=${dim}`, z: null, strength: null
-  } satisfies Finding];
+    ...base, key: `gearShare:${dim}`, headline: a.top!.name === b.top!.name ? `${name}: mostly ${b.top!.name}` : `${name}: ${a.top!.name} → ${b.top!.name}`,
+    body: `${a.top!.name} had ${pct(a.top!.n / a.total)} of ${monthLabel(a.m)}; ${b.top!.name} ${pct(b.top!.n / b.total)} of ${monthLabel(b.m)}.`
+  }];
 });
 
 // The top 2 by brews, on bags brewed with both (demeaned within those bags). A confident dead heat
@@ -478,7 +573,7 @@ const loyalty: Generator = (c) => {
   const rising = r && r.n >= 2 && before.length && r.n / recent.length > was / before.length
     ? ` Rising: ${r.name}, ${r.n} of your last ${recent.length} bags (${was} of ${before.length} before).` : '';
   return {
-    key: 'loyalty', theme: 'money', kind: 'number', headline: `Your top 3 roasters are ${pct(sum(top3.map(([, g]) => g.length)) / bs.length)} of your bags`,
+    key: 'loyalty', theme: 'money', kind: 'number', headline: `Top 3 roasters: ${pct(sum(top3.map(([, g]) => g.length)) / bs.length)} of bags`,
     value: pct(sum(top3.map(([, g]) => g.length)) / bs.length), body: `${list(top3.map(([k]) => k))}.${rising}`,
     sample: `${bs.length} bags, ${by.length} roasters`, href: `${LB}&open=roasters`, z: null, strength: null
   };
@@ -598,7 +693,7 @@ const calibration: Generator = (c) => {
 };
 
 export const GENERATORS: Generator[] = [
-  dialinCurve, dialinSpeed, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
+  dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
   morningDrift, weekendVsWeekday, earlyBrews, weekdayRatings, periodVsPrevious, gearEras, sameBagVersus, wildcardBrewer,
   priceVsRating, costPerCup, pricePerMonth, loyalty, restMyth, restWindowMyth, originMyth, backlogWaitMyth, variablesMyth, calibration
 ];
