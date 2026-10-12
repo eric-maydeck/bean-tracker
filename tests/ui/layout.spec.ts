@@ -1596,8 +1596,44 @@ export const STATES: State[] = [
       await ruler.getByRole('button', { name: label }).last().click();
       await expect(oldest).toBeInViewport();
       await expect(ruler).toBeInViewport();
-      await expect(ruler.locator('[aria-current]').last()).toHaveAttribute('aria-label', label);
-      await expect(ruler.locator('.marker')).toBeVisible();
+      // The band (the viewport on the ruler) reaches the oldest month's tick.
+      await expect(ruler.locator('.band')).toBeVisible();
+      const [band, tick] = await Promise.all([ruler.locator('.band').boundingBox(), ruler.getByRole('button', { name: label }).last().boundingBox()]);
+      const tb = (await ruler.locator('.track').boundingBox())!, vert = tb.height > tb.width;
+      expect(vert ? band!.y + band!.height : band!.x + band!.width).toBeGreaterThanOrEqual(vert ? tick!.y + tick!.height / 2 - 1 : tick!.x + tick!.width / 2 - 1);
+      // A press 60% through the newest month's band lands 60% down its section, at the top of the
+      // feed's visible part (under the filter bar, and the phone strip once stuck).
+      const track = ruler.locator('.track');
+      const at = async (f: number) => {
+        const b = (await track.boundingBox())!, n = await ruler.locator('.tick').count();
+        return b.height > b.width ? { x: b.x + 2, y: b.y + (f * b.height) / n } : { x: b.x + (f * b.width) / n, y: b.y + 2 };
+      };
+      await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView()); // the ruler stuck in view
+      const p = await at(0.6);
+      await page.mouse.click(p.x, p.y);
+      const through = await page.evaluate(() => {
+        const r = document.querySelector('nav.ruler')!.getBoundingClientRect();
+        const top = r.width > r.height ? r.bottom : (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
+        const hs = document.querySelectorAll('.feed .month');
+        const a = hs[0].getBoundingClientRect().top, z = hs[1]?.getBoundingClientRect().top ?? document.querySelector('.feed')!.getBoundingClientRect().bottom;
+        return (top - a) / (z - a);
+      });
+      expect(through).toBeGreaterThan(0.55);
+      expect(through).toBeLessThan(0.65);
+      // Dragging along the ruler scrubs the feed: scrollY only grows going towards the oldest.
+      const n = await ruler.locator('.tick').count();
+      const start = await at(0.1);
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      const ys: number[] = [];
+      for (let i = 1; i <= 8; i++) {
+        const q = await at(0.1 + (i * (n - 0.2)) / 8);
+        await page.mouse.move(q.x, q.y);
+        ys.push(await page.evaluate(() => scrollY));
+      }
+      await page.mouse.up();
+      expect(ys).toEqual([...ys].sort((x, y) => x - y));
+      expect(ys[ys.length - 1]).toBeGreaterThan(ys[0]);
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },

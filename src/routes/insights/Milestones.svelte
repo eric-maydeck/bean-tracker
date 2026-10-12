@@ -3,7 +3,8 @@
   import { KINDS, MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
   import type { MilestonesTab } from '$lib/server/insights/milestones';
   import { rowVars } from './rows';
-  import { rulerTicks, tickAt } from './ruler';
+  import HeadingAnchor from './HeadingAnchor.svelte';
+  import { rulerTicks, tickAt, rulerToFeed, feedToRuler, type Section } from './ruler';
 
   let { m, kinds, choose }: { m: MilestonesTab; kinds: Kind[] | undefined; choose: (c: InsightsUrlState) => void } = $props();
 
@@ -36,43 +37,64 @@
   let tw = $state(0), th = $state(0);
   let vertical = $derived(th > tw);
   let ticks = $derived(rulerTicks(m.months.map((g) => g.month), Math.max(tw, th), vertical ? 22 : 72));
-  let current: string | null = $state(null);
-  let marker = $derived(ticks.find((t) => t.ym === current));
-  function jump(ym: string) {
-    document.getElementById(`m-${ym}`)?.scrollIntoView();
-    current = ym;
-  }
-  // Clicks between ticks land on the month under the pointer; the tick buttons are the keyboard path.
-  function rulerClick(e: MouseEvent) {
-    const r = track!.getBoundingClientRect();
-    jump(tickAt(ticks, vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width).target);
-  }
-  // The marker follows the month scrolled into view: the last heading above a line a quarter of
-  // the way down the feed's visible part, under the sticky bars (a heading crossing that line is
-  // exactly when it changes). Once the tab's end is on screen the oldest months can't reach that
-  // line, so it drops to the viewport's foot.
-  let end: HTMLElement | undefined = $state();
+  let feed: HTMLElement | undefined = $state();
   let nav: HTMLElement | undefined = $state();
-  $effect(() => {
-    void m.months;
-    const top = vertical ? barH : barH + (nav?.offsetHeight ?? 0);
-    const line = top + (innerHeight - top) / 4;
-    const hs = [...document.querySelectorAll<HTMLElement>('.feed .month')];
-    const pick = () => {
-      const at = end && end.getBoundingClientRect().top <= innerHeight ? innerHeight : line;
-      let c = hs[0];
-      for (const h of hs) if (h.getBoundingClientRect().top <= at + 1) c = h;
-      current = c?.id.slice(2) ?? null;
-    };
-    // The observed band runs from far above the page down to the line, so a jump past the line
-    // (a ruler click) still flips the headings it crossed.
-    const io = new IntersectionObserver(pick, { rootMargin: `99999px 0px ${Math.round(line - innerHeight)}px 0px` });
-    const atEnd = new IntersectionObserver(pick);
-    hs.forEach((h) => io.observe(h));
-    if (end) atEnd.observe(end);
-    pick();
-    return () => (io.disconnect(), atEnd.disconnect());
+  // Sub-ticks between the month ticks, as dense as the length allows (4 a month, about weekly, or 2).
+  let subs = $derived.by(() => {
+    const band = Math.max(tw, th) / Math.max(1, ticks.length);
+    return band >= 32 ? 4 : band >= 14 ? 2 : 0;
   });
+  // Where the viewport is, as [from, to] along the ruler: a scrollbar thumb (feedback M4).
+  let band: [number, number] | null = $state(null);
+  let current = $derived(band ? tickAt(ticks, band[0]).ym : null);
+
+  // The month sections' current extents (viewport coordinates).
+  function sections(): Section[] {
+    const hs = [...feed!.querySelectorAll<HTMLElement>('.month')], end = feed!.getBoundingClientRect().bottom;
+    return hs.map((h, j) => ({ ym: h.id.slice(2), top: h.getBoundingClientRect().top, bottom: hs[j + 1]?.getBoundingClientRect().top ?? end }));
+  }
+  function update() {
+    if (!feed || !nav || !ticks.length) return;
+    const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
+    band = [feedToRuler(ticks, secs, top), feedToRuler(ticks, secs, innerHeight)];
+  }
+  $effect(() => {
+    void ticks;
+    void barH;
+    let raf = 0;
+    const on = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    on();
+    addEventListener('scroll', on, { passive: true });
+    addEventListener('resize', on);
+    return () => {
+      cancelAnimationFrame(raf);
+      removeEventListener('scroll', on);
+      removeEventListener('resize', on);
+    };
+  });
+
+  // Press, or drag, on the ruler: scroll so that point of the feed (as far through its month's
+  // section as the pointer is through the month's band, feedback M3) sits at the top of the feed's
+  // visible part, under the sticky bars (and the phone strip, once stuck). Pointer capture keeps a
+  // drag going off the ruler (M5); the tick buttons' clicks are the keyboard path.
+  let dragging = false;
+  function scrub(e: PointerEvent) {
+    const r = track!.getBoundingClientRect();
+    const y = rulerToFeed(ticks, sections(), vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width);
+    if (y !== null) scrollBy(0, y - (vertical ? barH : barH + nav!.offsetHeight));
+  }
+  function down(e: PointerEvent) {
+    if (e.button !== 0) return;
+    nav!.setPointerCapture(e.pointerId);
+    dragging = true;
+    scrub(e);
+  }
+  const move = (e: PointerEvent) => dragging && scrub(e);
+  const up = () => (dragging = false);
+  const jump = (ym: string) => document.getElementById(`m-${ym}`)?.scrollIntoView();
 
   // The navigator sticks just under the page's sticky filter bar.
   let barH = $state(0);
@@ -96,7 +118,7 @@
 </div>
 
 <section class="chart-panel">
-  <h2>All-time totals</h2>
+  <HeadingAnchor id="milestones-totals">All-time totals</HeadingAnchor>
   <div class="hl-grid milestone-totals">
     {#each m.totals as t, i (t.key)}
       <div class="hl-card" style={totalVars[i]}>
@@ -108,7 +130,7 @@
 </section>
 
 <section class="chart-panel">
-  <h2>Milestones</h2>
+  <HeadingAnchor id="milestones-timeline">Milestones</HeadingAnchor>
   <div class="hl-grid milestone-summary">
     {#each summary as s (s.key)}
       {@const d = s.prev === null ? null : s.value - s.prev}
@@ -129,7 +151,7 @@
     <div class="on-this-day">
       <Icon name="cake" />
       <div class="who">
-        <span class="otd-title">On this day a year ago</span>
+        <HeadingAnchor id="milestones-on-this-day" level={3} class="otd-title">On this day a year ago</HeadingAnchor>
         <span>
           {#if o.holder.href}<a href={o.holder.href}>{o.holder.label}</a>{:else}{o.holder.label}{/if}
         </span>
@@ -144,9 +166,18 @@
   {/if}
   {#if m.months.length}
     <div class="timeline" style:--bar-h="{barH}px">
-      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-      <nav class="ruler" aria-label="Timeline" bind:this={nav} onclick={rulerClick}>
-        <div class="track" bind:this={track} bind:clientWidth={tw} bind:clientHeight={th}>
+      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+      <nav
+        class="ruler"
+        aria-label="Timeline"
+        bind:this={nav}
+        onpointerdown={down}
+        onpointermove={move}
+        onpointerup={up}
+        onpointercancel={up}
+      >
+        <div class="track" class:subs={subs > 0} style:--subs={ticks.length * subs} bind:this={track} bind:clientWidth={tw} bind:clientHeight={th}>
+          {#if band}<span class="band" style:--a={band[0]} style:--b={band[1]}></span>{/if}
           {#each ticks as t (t.ym)}
             <button
               class="tick"
@@ -155,16 +186,12 @@
               aria-label="Jump to {month(t.target)}"
               aria-current={t.ym === current ? 'true' : undefined}
               tabindex={t.major || t.ym === t.target ? 0 : -1}
-              onclick={(e) => {
-                e.stopPropagation();
-                jump(t.target);
-              }}>{#if t.major}<span>{t.label}</span>{/if}</button
+              onclick={(e) => e.detail === 0 && jump(t.target)}>{#if t.major}<span>{t.label}</span>{/if}</button
             >
           {/each}
-          {#if marker}<span class="marker" style:--p={marker.p}></span>{/if}
         </div>
       </nav>
-      <div class="feed">
+      <div class="feed" bind:this={feed}>
         {#each m.months as g (g.month)}
           <h3 class="month" id="m-{g.month}">{month(g.month)}</h3>
           <ol class="milestone-feed">
@@ -189,7 +216,7 @@
 
 {#if m.nextUp.length}
   <section class="chart-panel">
-    <h2>Next up</h2>
+    <HeadingAnchor id="milestones-next-up">Next up</HeadingAnchor>
     <div class="hl-grid next-up">
       {#each m.nextUp as u, i (u.key)}
         <div class="hl-card" style={nextVars[i]}>
@@ -210,7 +237,6 @@
     </div>
   </section>
 {/if}
-<div bind:this={end}></div>
 
 <style>
   .kinds-bar {
@@ -232,11 +258,16 @@
   .kind-chips button:not([aria-pressed='true']) :global(.icon) {
     color: var(--kind);
   }
-  /* ui-rules 17: on phones the chips share each line evenly. */
+  /* Phones: the six chips as a 2×3 grid of equal buttons (feedback M6). */
   @media (max-width: 640px) {
+    .kind-chips {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
     .kind-chips button {
-      flex: 1 1 auto;
       justify-content: center;
+      padding-inline: var(--space-1);
     }
   }
   .hl-delta.trend-good {
@@ -261,7 +292,10 @@
     height: 1.75rem;
     color: var(--color-accent);
   }
-  .otd-title {
+  .on-this-day :global(.otd-title) {
+    margin: 0;
+    font-family: inherit;
+    font-weight: 400;
     color: var(--color-text-muted);
     font-size: 0.8rem;
   }
@@ -336,18 +370,28 @@
   .tick[aria-current] span {
     font-weight: 700;
   }
-  .marker {
+  /* Sub-ticks: a repeating hairline every 1/--subs of the track, so they fall between (and on)
+     the month ticks at the band centres (2 or 4 a month: even, so they line up). */
+  .track.subs {
+    --sub: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+    background: linear-gradient(to right, var(--sub) 1px, transparent 1px) 0 0 / calc(100% / var(--subs)) 0.3rem repeat-x;
+  }
+  /* The viewport's span on the ruler, like a scrollbar thumb. */
+  .band {
     position: absolute;
-    top: -6px;
-    left: calc(var(--p) * 100%);
-    translate: -50% 0;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-surface);
+    top: calc(-1 * var(--space-1));
+    bottom: 0;
+    left: calc(var(--a) * 100%);
+    width: max(4px, calc((var(--b) - var(--a)) * 100%));
+    box-sizing: border-box;
+    background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+    border-inline: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
+    border-radius: 3px;
     pointer-events: none;
-    transition: left 0.2s, top 0.2s;
+  }
+  .ruler {
+    user-select: none;
+    touch-action: pan-y; /* the strip scrubs sideways; vertical swipes still scroll the page */
   }
   @media (max-width: 699px) {
     .month {
@@ -395,10 +439,21 @@
     .tick span {
       margin-left: 0.35rem;
     }
-    .marker {
-      top: calc(var(--p) * 100%);
-      left: -1px;
-      translate: -50% -50%;
+    .ruler {
+      touch-action: none;
+    }
+    .track.subs {
+      background: linear-gradient(to bottom, var(--sub) 1px, transparent 1px) 0 0 / 0.3rem calc(100% / var(--subs)) repeat-y;
+    }
+    .band {
+      top: calc(var(--a) * 100%);
+      bottom: auto;
+      left: -0.6rem;
+      right: 0;
+      width: auto;
+      height: max(4px, calc((var(--b) - var(--a)) * 100%));
+      border-inline: 0;
+      border-block: 2px solid color-mix(in srgb, var(--color-accent) 70%, transparent);
     }
   }
   .milestone-feed {

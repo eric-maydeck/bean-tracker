@@ -29,3 +29,26 @@ export function rulerTicks(months: readonly string[], len: number, size: number)
 
 // The tick under a point a fraction f along the ruler.
 export const tickAt = (ticks: readonly Tick[], f: number) => ticks[Math.min(ticks.length - 1, Math.max(0, Math.floor(f * ticks.length)))];
+
+// Feed sections (one per month with milestones, newest first), in one coordinate space, top-down.
+export interface Section { ym: string; top: number; bottom: number }
+
+// A fraction along the ruler → a point in the feed: as far through that month's section as the
+// point is through its band. An empty month lands on the start of the earlier month it jumps to.
+export function rulerToFeed(ticks: readonly Tick[], secs: readonly Section[], f: number): number | null {
+  if (!ticks.length) return null;
+  const n = ticks.length, x = Math.min(n, Math.max(0, f * n)), i = Math.min(n - 1, Math.floor(x)), t = ticks[i];
+  const s = secs.find((s) => s.ym === t.target);
+  if (!s) return null;
+  return s.top + (t.ym === t.target ? x - i : 0) * (s.bottom - s.top);
+}
+
+// The inverse: a point in the feed → a fraction along the ruler (0 above the feed, 1 below it).
+export function feedToRuler(ticks: readonly Tick[], secs: readonly Section[], y: number): number {
+  if (!ticks.length || !secs.length || y <= secs[0].top) return 0;
+  const last = secs[secs.length - 1];
+  if (y >= last.bottom) return 1;
+  const s = secs.findLast((s) => s.top <= y)!;
+  const k = ticks.findIndex((t) => t.ym === s.ym);
+  return (k + Math.min(1, (y - s.top) / Math.max(1, s.bottom - s.top))) / ticks.length;
+}
