@@ -48,13 +48,15 @@ export interface BagStat {
   mean: number | null; sd: number | null; grams: number; first: string; last: string;
 }
 
-export function pick(cands: readonly Candidate[], dir: 'max' | 'min'): RecordPick | null {
+// tie orders tied holders before the date fallback (default: earliest first).
+export function pick(cands: readonly Candidate[], dir: 'max' | 'min', tie: (a: Holder, b: Holder) => number = () => 0): RecordPick | null {
   if (!cands.length) return null;
   const better = (a: number, b: number) => (dir === 'max' ? a > b : a < b);
   let best = cands[0].value;
   for (const c of cands) if (better(c.value, best)) best = c.value;
   // Float noise (means) mustn't split a tie.
-  const tied = cands.filter((c) => Math.abs(c.value - best) < 1e-9).sort((a, b) => a.holder.date.localeCompare(b.holder.date));
+  const tied = cands.filter((c) => Math.abs(c.value - best) < 1e-9)
+    .sort((a, b) => tie(a.holder, b.holder) || a.holder.date.localeCompare(b.holder.date));
   // Brew-level records (one candidate per brew or window) can tie one bag with itself: name it once.
   const seen = new Set<string>();
   const ties = tied.filter((c) => { const k = c.holder.href ?? c.holder.label; return !seen.has(k) && !!seen.add(k); });
@@ -372,9 +374,20 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     brews: w ? brews.filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
     bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today
   });
+  // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
+  // Bag holders carry their roaster as sub; day holders have none and fall through to a–z.
+  const tasteTie = (x: RecCtx) => {
+    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw').map((r) => [r.key, r.value]));
+    const r = (h: Holder) => (h.sub ? m.get(h.sub) : undefined) ?? -Infinity;
+    return (a: Holder, b: Holder) => r(b) - r(a) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
+  };
   const tiles: RecordTile[] = [];
   for (const def of [...RECORDS, ...grindDefs(brews)]) {
-    const p = (w: Period | null) => (w ? pick(def.run(ctx(w, def)), def.dir) : null);
+    const p = (w: Period | null) => {
+      if (!w) return null;
+      const x = ctx(w, def);
+      return pick(def.run(x), def.dir, def.section === 'taste' && def.rating ? tasteTie(x) : undefined);
+    };
     const cur = p(def.scope ? all : c.period);
     if (!cur) continue;
     const ever = def.scope ? null : p(all);

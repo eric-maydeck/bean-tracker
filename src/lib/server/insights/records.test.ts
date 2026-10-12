@@ -253,6 +253,24 @@ describe('recordsTab', () => {
     expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9, 9, 9, ...Array(38).fill(8)]);
     expect(t.perfectTens).toMatchObject([{ holder: { label: 'Bag 1' }, count: 3 }]);
   });
+  describe('taste ties', () => {
+    const TB = [bag({ id: 1, name: 'Zeta', roaster: 'Hi' }), bag({ id: 2, name: 'Alpha', roaster: 'Lo' }),
+                bag({ id: 3, name: 'beta', roaster: 'Lo' })];
+    const of = (id: number, ratings: number[], date: string) =>
+      rated(id, ratings, date).map((b) => ({ ...b, roaster: TB.find((x) => x.id === id)!.roaster }));
+    it('go to the higher-rated roaster, despite a later date', () => {
+      const t = recordsTab([...of(2, [10, 6], '2026-07-01'), ...of(1, [10, 9], '2026-08-01')], TB, CTX);
+      expect(tileOf(t, 'mostTens')).toMatchObject({ value: 1, holder: { label: 'Zeta' }, ties: [{ label: 'Alpha' }] });
+    });
+    it('equal roaster means fall back to a–z, ignoring case', () => {
+      const t = recordsTab([...of(3, [10, 8], '2026-07-01'), ...of(2, [10, 8], '2026-08-01')], TB, CTX);
+      expect(tileOf(t, 'mostTens')).toMatchObject({ holder: { label: 'Alpha' }, ties: [{ label: 'beta' }] });
+    });
+    it('other records keep earliest-first', () => {
+      const t = recordsTab([...of(1, [6, 6], '2026-07-01'), ...of(2, [10, 10], '2026-08-01')], TB, CTX);
+      expect(tileOf(t, 'mostBrewedBag')).toMatchObject({ value: 2, holder: { label: 'Zeta' }, ties: [{ label: 'Alpha' }] });
+    });
+  });
   it('brewerTypes: present all-time, in BREWER_TYPES order; sections in order, empty omitted', () => {
     const t = recordsTab([brew({ brewerType: 'soup', dose: 10 }), brew({ brewerType: 'pourover', dose: 12 })], BAGS, CTX);
     expect(t.brewerTypes).toEqual(['pourover', 'soup']);
