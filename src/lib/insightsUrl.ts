@@ -34,7 +34,7 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones'] as const;
+export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights'] as const;
 export type Tab = (typeof TABS)[number];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).
@@ -56,6 +56,18 @@ export type Rank = (typeof RANKS)[number];
 // Milestones: which kinds of moment to show (kinds=firsts,bests; absent = all).
 export const KINDS = ['counts', 'firsts', 'bests', 'streaks', 'gear', 'anniversaries'] as const;
 export type Kind = (typeof KINDS)[number];
+// Insights: theme chip (absent = All).
+export const THEMES = ['taste', 'dialin', 'habits', 'gear', 'money'] as const;
+export type Theme = (typeof THEMES)[number];
+
+// A plain decimal in [min, max] (integers only when `int`); anything else is dropped.
+export function pickNumber(p: URLSearchParams, name: string, min: number, max: number, int = false): number | undefined {
+  const v = p.get(name)?.trim();
+  if (!v || !(int ? /^\d+$/ : /^\d+(\.\d+)?$/).test(v)) return undefined;
+  const n = Number(v);
+  return n >= min && n <= max ? n : undefined;
+}
+
 export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
 export type Board = (typeof BOARDS)[number];
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
@@ -127,12 +139,19 @@ export interface InsightsUrlState {
   top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
   topc?: Top; // Records: the top-coffees list, likewise
   kinds?: Kind[]; // Milestones: absent = all kinds
+  theme?: Theme; // Insights: absent = All
+  drinkers?: number; // Insights What if: absent = household size
+  gpp?: number; // g/day per person
+  inflow?: number; // g/week incoming
+  bpd?: number; // brews/day
+  dose?: number; // g per brew
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc';
+type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
+  theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
 };
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
@@ -249,7 +268,13 @@ export function parseInsightsUrl(
     kinds: parseList(p, 'kinds', KINDS),
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
     top: TOPS.find((n) => String(n) === p.get('top')),
-    topc: TOPS.find((n) => String(n) === p.get('topc'))
+    topc: TOPS.find((n) => String(n) === p.get('topc')),
+    theme: pickOne(p, 'theme', THEMES),
+    drinkers: pickNumber(p, 'drinkers', 1, 20, true),
+    gpp: pickNumber(p, 'gpp', 1, 500),
+    inflow: pickNumber(p, 'inflow', 0, 10000),
+    bpd: pickNumber(p, 'bpd', 0.5, 20),
+    dose: pickNumber(p, 'dose', 5, 40)
   };
 }
 
@@ -272,6 +297,8 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.caffeine) p.set('caffeine', s.caffeine);
   if (s.top) p.set('top', String(s.top));
   if (s.topc) p.set('topc', String(s.topc));
+  if (s.theme) p.set('theme', s.theme);
+  for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
   return p;
 }
 
@@ -297,7 +324,13 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     kinds: s.kinds,
     caffeine: s.caffeine,
     top: s.top,
-    topc: s.topc
+    topc: s.topc,
+    theme: s.theme,
+    drinkers: s.drinkers,
+    gpp: s.gpp,
+    inflow: s.inflow,
+    bpd: s.bpd,
+    dose: s.dose
   };
 }
 

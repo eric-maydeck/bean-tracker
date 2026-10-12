@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -444,5 +444,37 @@ describe('highlights params', () => {
     expect(parse('topc=10').topc).toBeUndefined();
     expect(insightsParams(parse('tab=records&topc=50')).toString()).toBe('tab=records&topc=50');
     expect(insightsParams(parse('tab=records&top=20')).toString()).toBe('tab=records&top=20');
+  });
+});
+
+describe('insights params', () => {
+  it('tab, theme', () => {
+    expect(parse('tab=Insights').tab).toBe('insights');
+    expect(parse('theme=Money').theme).toBe('money');
+    expect(parse('theme=x').theme).toBeUndefined();
+  });
+  it('drinkers: integer 1-20', () => {
+    expect(parse('drinkers=2').drinkers).toBe(2);
+    for (const v of ['0', 'abc', '21', '1.5', '']) expect(parse(`drinkers=${v}`).drinkers).toBeUndefined();
+  });
+  it('gpp, inflow, bpd, dose: decimals within bounds', () => {
+    expect(parse('gpp=101.5').gpp).toBe(101.5);
+    expect(parse('gpp=0').gpp).toBeUndefined();
+    expect(parse('gpp=501').gpp).toBeUndefined();
+    expect(parse('inflow=0').inflow).toBe(0);
+    expect(parse('inflow=10001').inflow).toBeUndefined();
+    expect(parse('bpd=2.5').bpd).toBe(2.5);
+    expect(parse('bpd=0.4').bpd).toBeUndefined();
+    expect(parse('dose=40').dose).toBe(40);
+    expect(parse('dose=4').dose).toBeUndefined();
+    expect(parse('dose=1e1').dose).toBeUndefined();
+    expect(pickNumber(new URLSearchParams('x=-3'), 'x', -5, 5)).toBeUndefined();
+  });
+  it('round trips; reset clears them but keeps the tab', () => {
+    const q = 'tab=insights&theme=gear&drinkers=3&gpp=80&inflow=0&bpd=2.5&dose=18';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(insightsParams(withDefaults(parse(q)) as never).get('theme')).toBe('gear');
+    expect(resetInsights(parse(q))).toEqual({ tab: 'insights' });
+    expect(insightsParams({}).toString()).toBe('');
   });
 });

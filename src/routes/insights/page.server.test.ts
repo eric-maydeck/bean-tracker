@@ -371,6 +371,14 @@ describe('/insights custom Period', () => {
     expect(run(`?range=${addDays(today, 5)}..${addDays(today, 9)}`).explicit.range).toBeUndefined();
   });
 
+  it('loads insights only on its tab, what-if defaults from household size', () => {
+    seed(Array.from({ length: 12 }, (_, i) => [addDays(today, -i), 15] as [string, number]));
+    const d = run('?tab=insights&range=all&drinkers=3&theme=money');
+    expect(d.insights.whatIf.defaults.drinkers).toBe(d.householdSize);
+    expect(run().insights).toBeNull();
+    expect(run('?tab=records').insights).toBeNull();
+  });
+
   it('loads records or milestones only on their tab', () => {
     seed(Array.from({ length: 12 }, (_, i) => [addDays(today, -i), 15] as [string, number]));
     const r = run('?tab=records&range=all');

@@ -2,7 +2,7 @@ import type { PageServerLoad } from './$types';
 import { getDb, getHouseholdSize } from '$lib/server/db';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
-  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, yearsSince, type Period
+  localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, tileDelta, rightNow, paceDelta, TILE_KIND } from '$lib/server/insights/overview';
@@ -11,6 +11,7 @@ import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
+import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { RANGES, BYS, BREWER_TYPES, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
@@ -48,6 +49,8 @@ export const load: PageServerLoad = ({ url }) => {
   const onHand = gramsOnHand(bags, brews);
   const use = consumption(brews, period, dataStart, today, onHand, size);
   const usePrev = prev && consumption(brews, prev, dataStart, today, onHand, size);
+  // Insights compare against the Compare window, else the previous period (null for all time).
+  const before = prev ?? previousPeriod(s.range, period);
   // Custom range… opens on the same-length window before the period when it's tracked,
   // else everything before it, else first brew → today (all time, or nothing earlier).
   const customDefault =
@@ -84,6 +87,24 @@ export const load: PageServerLoad = ({ url }) => {
     records: s.tab === 'records' ? recordsTab(brews, bags, { period, prev, ratings: s.ratings, brewer: s.brewer, caffeine: s.caffeine, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
+    insights:
+      s.tab === 'insights'
+        ? insightsTab(
+            {
+              brews: brews.filter((b) => inPeriod(b.localDate, period)),
+              bags,
+              prevBrews: before && brews.filter((b) => inPeriod(b.localDate, before)),
+              ratings: s.ratings,
+              today,
+              householdSize,
+              onHandG: onHand,
+              period: { from: period.start ?? dataStart ?? today, to: period.end },
+              dataStart: dataStart ?? today
+            },
+            s.theme,
+            { drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }
+          )
+        : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),
