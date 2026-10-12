@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GENERATORS, insightsTab, type GenCtx } from './insightGenerators';
+import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 
@@ -415,13 +415,14 @@ describe('backlog wait myth', () => {
 });
 
 describe('brew variables myth', () => {
-  const mk = (n: number, ratio = [15, 15, 17, 17]) => Array.from({ length: n }, (_, i) =>
-    seq(i + 1, [7.9, 8.1, 8.1, 7.9], '2026-07-01', (j) => ({ ratio: ratio[j], dose: [15, 15, 16, 16][j], grind: ['1.5', '1.5', '1.10', '1.10'][j], grinder: 'ZP6' }))).flat();
+  const mk = (n: number, ratio = [15, 15, 17, 17], ratings = [7.9, 8.1, 8.12, 7.9]) => Array.from({ length: n }, (_, i) =>
+    seq(i + 1, ratings, '2026-07-01', (j) => ({ ratio: ratio[j], dose: [15, 15, 16, 16][j], grind: ['1.5', '1.5', '1.10', '1.10'][j], grinder: 'ZP6' }))).flat();
   it('all |r| ≤ 0.1: one myth card', () => {
     const f = gen('variablesMyth', mk(10))!;
-    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', value: '|r| ≤ 0.00', sample: '40 brews' });
-    expect(f.body).toBe('Ratio, dose and ZP6 grind all stay within |r| ≤ 0.00 of your rating, within a bag.');
+    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', value: '|r| ≤ 0.05', sample: '40 brews' });
+    expect(f.body).toBe('Ratio, dose and ZP6 grind all stay within |r| ≤ 0.05 of your rating, within a bag.');
   });
+  it('no card when every |r| rounds to 0.00', () => expect(gen('variablesMyth', mk(10, undefined, [7.9, 8.1, 8.1, 7.9]))).toBeNull());
   it('a variable that matters: no myth', () => expect(gen('variablesMyth', mk(10, [15, 17, 17, 15]))).toBeNull());
   it('null under 30 brews', () => expect(gen('variablesMyth', mk(7))).toBeNull());
 });
@@ -467,31 +468,47 @@ describe('insightsTab', () => {
   const bs = bags(30, (i) => ({ purchaseDate: '2026-08-01', cost: 20 + i, amountG: 250, status: 'archive' as const }));
   it('theme filters the grid only; stories unchanged', () => {
     const c = ctx(brews, bs, { onHandG: 1000 });
-    const a = insightsTab(c, undefined, {}), d = insightsTab(c, 'dialin', {});
-    expect(a.grid.length).toBeGreaterThan(0);
+    const a = insightsTab(c, undefined), th = a.grid[0].theme, d = insightsTab(c, th);
     expect(d.grid.length).toBeGreaterThan(0);
-    expect(d.grid.every((x) => x.theme === 'dialin')).toBe(true);
+    expect(d.grid.every((x) => x.theme === th)).toBe(true);
     expect(d.myths).toEqual(a.myths);
     expect(d.tooEarly).toEqual(a.tooEarly);
     expect(d.stories).toEqual(a.stories);
-    expect(a.stories.every((x) => x.kind === 'story')).toBe(true);
+    expect(a.stories[0].kind).toBe('story');
+    // The story retells the dial-in curve: that card leaves the grid.
+    expect(a.grid.some((x) => x.key === 'dialinCurve')).toBe(false);
     expect(a.grid.every((x, i, g) => i === 0 || Math.abs(g[i - 1].z ?? -1) >= Math.abs(x.z ?? -1))).toBe(true);
+  });
+  it('the deck tops up with graded findings that have a body, the same under any theme, out of the grid by key', () => {
+    const f = (key: string, o: Partial<Finding>): Finding => ({ key, theme: 'taste', kind: 'number', headline: 'Same words', sample: 's', z: 3, strength: 'solid', ...o });
+    const fake: Generator[] = [() => [
+      f('story', { kind: 'story', of: 'curve', body: 'b', z: 5 }), f('curve', { kind: 'pattern', z: 5 }),
+      f('wordy', { body: 'b', theme: 'gear', z: 4 }), f('hint', { body: 'b', strength: 'hint', z: 1.7 }),
+      f('plain', { z: 3.5 }), f('descr', { body: 'b', z: null, strength: null }),
+      f('early', { body: 'b', strength: 'early', z: 1 }), ...['a', 'b', 'c'].map((k) => f(`more-${k}`, { body: 'b', z: 2.5 }))
+    ]];
+    const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
+    try {
+      const a = insightsTab(ctx([]), undefined), g = insightsTab(ctx([]), 'gear');
+      expect(a.stories.map((x) => x.key)).toEqual(['story', 'wordy', 'more-a', 'more-b', 'more-c']);
+      expect(g.stories).toEqual(a.stories);
+      // Out by key: 'plain' shares the headline but stays; the story's twin 'curve' goes.
+      expect(a.grid.map((x) => x.key)).toEqual(['plain', 'hint', 'descr']);
+      expect(g.grid).toEqual([]);
+    } finally {
+      GENERATORS.splice(0, GENERATORS.length, ...saved);
+    }
   });
   it('defaults come from the data: drinkers = household size, gpp = measured g/day ÷ size', () => {
     // 180 brews × 20 g over Sep 1-30 (30 tracked days): 120 g/day, 2 drinkers → 60 g each; 6 brews/day.
-    const t = insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined, {});
-    expect(t.whatIf.defaults).toEqual({ drinkers: 2, gpp: 60, inflow: 0, bpd: 6, dose: 20 });
-    expect(t.whatIf.runway).toEqual({ days: 30, emptyOn: '2026-11-10' });
+    const t = insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined);
+    expect(t.whatIf).toEqual({ defaults: { drinkers: 2, gpp: 60, inflow: 0, bpd: 6, dose: 20 }, onHandG: 3600, avgPricePerG: expect.any(Number) });
     expect(t.whatIf.avgPricePerG).toBeCloseTo((30 * 20 + (29 * 30) / 2) / 7500, 6);
-    expect(t.whatIf.spend.perMonth).toBeCloseTo(6 * 20 * 30.44 * t.whatIf.avgPricePerG!, 6);
-    expect(insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined, { drinkers: 1 }).whatIf.runway.days).toBe(60);
   });
   it('no divide-by-zero: empty data, household 0, unpriced bags', () => {
-    const t = insightsTab(ctx([], [bag({ purchaseDate: '2026-08-01', cost: 0, amountG: 250 })], { householdSize: 0 }), undefined, {});
+    const t = insightsTab(ctx([], [bag({ purchaseDate: '2026-08-01', cost: 0, amountG: 250 })], { householdSize: 0 }), undefined);
     expect(t.whatIf.defaults).toEqual({ drinkers: 0, gpp: 0, inflow: 0, bpd: 0, dose: 0 });
     expect(t.whatIf.avgPricePerG).toBeNull();
-    expect(t.whatIf.spend.perMonth).toBeNull();
-    expect(t.whatIf.runway).toEqual({ days: null, emptyOn: null });
     expect(finite(t)).toBe(true);
   });
 });

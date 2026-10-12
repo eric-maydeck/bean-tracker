@@ -1780,6 +1780,13 @@ export const STATES: State[] = [
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
     } },
+  { name: 'insights-insights-story-link', path: () => '/insights?tab=insights&range=all#insight-wildcardBrewer',
+    act: async (page) => {
+      // A link to a deck card opens the deck on it, in view.
+      await expect(page.locator('#insight-wildcardBrewer')).toBeInViewport();
+      expect(await page.locator('.dot').evaluateAll((ds) => ds.findIndex((d) => d.classList.contains('on')))).toBe(1);
+      expect(await page.locator('.deck').evaluate((e) => e.scrollLeft)).toBe(0);
+    } },
   { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Money', pressed: true })).toBeVisible();

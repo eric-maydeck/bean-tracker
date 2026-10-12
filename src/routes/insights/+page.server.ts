@@ -101,8 +101,7 @@ export const load: PageServerLoad = ({ url }) => {
               period: { from: period.start ?? dataStart ?? today, to: period.end },
               dataStart: dataStart ?? today
             },
-            s.theme,
-            { drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }
+            s.theme
           )
         : null,
     rightNow: now,

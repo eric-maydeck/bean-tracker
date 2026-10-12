@@ -12,3 +12,7 @@ export function runway(onHandG: number, w: WhatIf, today: string): { days: numbe
   const days = Math.ceil(+(onHandG / daily).toFixed(9)); // toFixed: float noise must not add a day
   return { days, emptyOn: plusDays(today, days) };
 }
+
+// Brews/day × dose × average $/g over an average month; null with no price.
+export const spend = (w: Pick<WhatIf, 'bpd' | 'dose'>, avgPricePerG: number | null): number | null =>
+  avgPricePerG === null ? null : w.bpd * w.dose * 30.44 * avgPricePerG;

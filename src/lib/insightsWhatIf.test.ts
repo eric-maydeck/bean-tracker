@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runway } from './insightsWhatIf';
+import { runway, spend } from './insightsWhatIf';
 
 const w = { drinkers: 1, gpp: 100, inflow: 0, bpd: 0, dose: 0 };
 describe('runway', () => {
@@ -14,4 +14,9 @@ describe('runway', () => {
     expect(runway(10400, { ...w, gpp: 0 }, '2026-10-11')).toEqual(none);
     expect(runway(0, w, '2026-10-11')).toEqual(none);
   });
+});
+
+describe('spend', () => {
+  it('brews/day × dose × $/g over 30.44 days', () => expect(spend({ bpd: 5, dose: 18 }, 0.16)).toBeCloseTo(5 * 18 * 30.44 * 0.16, 9));
+  it('null with no price', () => expect(spend({ bpd: 5, dose: 18 }, null)).toBeNull());
 });

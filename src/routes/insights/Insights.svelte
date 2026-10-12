@@ -2,7 +2,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
   import { MON, THEMES, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
-  import { runway, type WhatIf } from '$lib/insightsWhatIf';
+  import { runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -24,13 +24,9 @@
   // "115 days" → 115 + a small "days"; "r = 0.04" and "8:20 → 8:52" stay whole.
   const split = (v: string) => /^(\S*\d\S*) ([a-z].*)$/i.exec(v)?.slice(1) ?? [v];
 
-  // Top stories: the story findings, topped up (to 5) with the strongest graded grid findings that have
-  // something to say (a body); those leave the grid, as does a card repeating a story's headline.
-  let deck = $derived.by(() => {
-    const extra = t.grid.filter((f) => f.body && f.strength && !t.stories.some((s) => s.headline === f.headline));
-    return [...t.stories, ...extra].slice(0, 5);
-  });
-  let grid = $derived(t.grid.filter((f) => !deck.some((d) => d.headline === f.headline)));
+  // Top stories come bucketed from the server (insightsTab): the deck and the grid never share a finding.
+  let deck = $derived(t.stories);
+  let grid = $derived(t.grid);
   let gridVars = $derived(rowVars(grid.length));
   let mythVars = $derived(rowVars(t.myths.length));
 
@@ -38,6 +34,14 @@
   let at = $state(0);
   let pos = $derived(Math.min(at, Math.max(0, deck.length - 1)));
   const go = (i: number) => (at = Math.max(0, Math.min(deck.length - 1, i)));
+  // A #insight-… link to a deck card opens the deck on it (the page scrolls to the deck's card).
+  let hashed = false;
+  $effect(() => {
+    if (hashed) return;
+    hashed = true;
+    const i = deck.findIndex((f) => `#${anchor(f.key)}` === decodeURIComponent(location.hash));
+    if (i >= 0) at = i;
+  });
   // A sideways swipe moves a card; a vertical one is the page's (touch-action: pan-y, which cancels the pointer).
   let start: { x: number; y: number } | null = null;
   function swipeEnd(e: PointerEvent) {
@@ -54,7 +58,8 @@
   }
 
   // ---- What if: URL value, else the measured default. Typing shows at once; the URL follows. ----
-  const d = $derived(t.whatIf.defaults);
+  // No household size: one drinker.
+  const d = $derived({ ...t.whatIf.defaults, drinkers: t.whatIf.defaults.drinkers || 1 });
   let live = $state<Partial<WhatIf>>({});
   // A navigation (the URL caught up, or Reset) hands the inputs back to the URL.
   $effect(() => {
@@ -66,7 +71,7 @@
     inflow: live.inflow ?? inputs.inflow ?? d.inflow, bpd: live.bpd ?? inputs.bpd ?? d.bpd, dose: live.dose ?? inputs.dose ?? d.dose
   });
   let run = $derived(runway(t.whatIf.onHandG, w, today));
-  let perMonth = $derived(t.whatIf.avgPricePerG === null ? null : w.bpd * w.dose * 30.44 * t.whatIf.avgPricePerG);
+  let perMonth = $derived(spend(w, t.whatIf.avgPricePerG));
   // The slider reaches 3× the measured rate (at least 100 g/day), within the URL's 1–500.
   let gppMax = $derived(Math.min(500, Math.max(100, Math.ceil((d.gpp * 3) / 10) * 10)));
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -247,7 +252,9 @@
                 oninput={(e) => set('gpp', e.currentTarget.value, 250)} />
             </label>
           </div>
-          {#if run.days !== null}
+          {#if !(w.gpp > 0)}
+            <!-- No measured rate yet: no answer to give until the slider sets one. -->
+          {:else if run.days !== null}
             <span class="hl-value result">{run.days.toLocaleString('en-US')}<small>{' days'}</small></span>
             <span class="hl-line wrap">to clear · empty on {date(run.emptyOn!)}</span>
           {:else}
@@ -423,8 +430,9 @@
     margin-top: auto;
   }
   /* Story deck: one card visible, the track slides (no animation for reduced motion). */
+  /* clip, not hidden: a hash jump's scrollIntoView can't scroll the track sideways. */
   .deck {
-    overflow: hidden;
+    overflow: clip;
     touch-action: pan-y;
     border-radius: var(--radius);
   }

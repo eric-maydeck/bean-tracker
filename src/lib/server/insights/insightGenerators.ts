@@ -1,6 +1,6 @@
 import { MON, type Ratings } from '$lib/insightsUrl';
 import { formatGrams } from '$lib/grams';
-import { runway, type WhatIf } from '$lib/insightsWhatIf';
+import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, strengthOf, type Strength } from './stats';
@@ -23,6 +23,7 @@ export interface Finding {
   z: number | null; // null = descriptive (no badge)
   strength: Strength | null;
   caveat?: string;
+  of?: string; // a story: the key of the grid finding it retells (left out of the grid)
 }
 export interface GenCtx {
   brews: readonly BrewFact[]; bags: readonly BagFact[]; prevBrews: readonly BrewFact[] | null;
@@ -97,7 +98,7 @@ const dialinCurve: Generator = (c) => {
   const pick = lower ? Math.min : Math.max;
   const extreme = first.filter((r) => r.dm === pick(...rows.filter((x) => x.coffeeId === r.coffeeId).map((x) => x.dm))).length;
   const story: Finding = {
-    ...curve, key: 'dialinStory', kind: 'story',
+    ...curve, key: 'dialinStory', kind: 'story', of: 'dialinCurve',
     body: `Brew #1 averages ${raw(1).toFixed(2)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(2)}. ` +
       `The first brew was the ${lower ? 'worst' : 'best'} in ${Math.round((100 * extreme) / first.length)}% of ${first.length} bags.`
   };
@@ -193,7 +194,7 @@ const groupDelta: Generator = (c) => {
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(2)} ${delta < 0 ? 'lower' : 'higher'}`,
         value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`
-      }, groupZ(ms, all), true, 'bags', ms.length, `With ${big.length} ${dimName} groups compared, one usually stands out by chance.`);
+      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined);
       return f ? [f] : [];
     });
   });
@@ -552,7 +553,8 @@ const variablesMyth: Generator = (c) => {
   }
   if (rs.length < 2) return null;
   const max = Math.max(...rs.map((x) => Math.abs(x.r)));
-  if (max > 0.1) return null;
+  // Rounds to 0.00: the variables barely vary at all, so "|r| ≤ 0.00" would say nothing.
+  if (max > 0.1 || max < 0.005) return null;
   const names = rs.map((x) => x.name);
   names[0] = names[0][0].toUpperCase() + names[0].slice(1);
   return myth({
@@ -590,12 +592,12 @@ export const GENERATORS: Generator[] = [
 // ---- Insights tab: bucketing and What-if ----
 export interface InsightsTab {
   grid: Finding[]; stories: Finding[]; myths: Finding[]; tooEarly: Finding[];
-  whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null;
-    runway: { days: number | null; emptyOn: string | null }; spend: { perMonth: number | null } };
+  whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null }; // the client computes runway and spend
 }
+const DECK = 5;
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
-export function insightsTab(c: GenCtx, theme: Theme | undefined, w: Partial<WhatIf> = {}): InsightsTab {
+export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
   const fs = GENERATORS.flatMap((g) => [g(c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early' && f.strength !== 'hidden';
 
@@ -611,20 +613,23 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined, w: Partial<What
     bpd: days > 0 ? doses.length / days : 0, // brews per tracked day
     dose: doses.length ? sum(doses.map((b) => b.dose!)) / doses.length : 0 // mean dose
   };
-  const merged = { ...defaults, ...w };
   // Weighted $/g over bags bought in the last 12 months; cost 0/null excluded.
   const since = addDays(c.today, -365);
   const priced = c.bags.filter((b) => b.purchaseDate && b.purchaseDate >= since && b.purchaseDate <= c.today && b.cost && b.amountG);
   const grams = sum(priced.map((b) => b.amountG!));
   const avgPricePerG = grams > 0 ? sum(priced.map((b) => b.cost!)) / grams : null;
+  // Top stories: the story findings, topped up with the strongest graded grid findings that have a
+  // body. Picked before the theme filter, so the deck is the same under every theme; a finding in the
+  // deck (or retold by a story) leaves the grid.
+  const graded = (f: Finding) => f.strength === 'solid' || f.strength === 'hint';
+  const told = fs.filter((f) => f.kind === 'story' && graded(f)).slice(0, DECK);
+  const stories = [...told, ...fs.filter((f) => inGrid(f) && graded(f) && f.body)].slice(0, DECK);
+  const out = new Set(stories.flatMap((f) => (f.of ? [f.key, f.of] : [f.key])));
   return {
-    grid: fs.filter((f) => inGrid(f) && (!theme || f.theme === theme)),
-    stories: fs.filter((f) => f.kind === 'story' && f.strength !== 'early' && f.strength !== 'hidden').slice(0, 5),
+    grid: fs.filter((f) => inGrid(f) && !out.has(f.key) && (!theme || f.theme === theme)),
+    stories,
     myths: fs.filter((f) => f.kind === 'myth'),
     tooEarly: fs.filter((f) => f.strength === 'early'),
-    whatIf: {
-      defaults, onHandG: c.onHandG, avgPricePerG, runway: runway(c.onHandG, merged, c.today),
-      spend: { perMonth: avgPricePerG === null ? null : merged.bpd * merged.dose * 30.44 * avgPricePerG }
-    }
+    whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }
