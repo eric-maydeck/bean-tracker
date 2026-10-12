@@ -263,7 +263,8 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
   // Rest is mostly a bag-level property (a bag spans about one rest band), so same-bag deltas barely exist:
   // compare bags instead (Sweet spots tier 2), each line centred on its roast level's mean bag rating.
   const rest = labFn('rest');
-  const restLines = (solidOnly: boolean) => [...groupBy(rows, (b) => b.roastLevel)].flatMap(([label, g]) => {
+  // The centre uses the same brews as the bands: a brew (or bag) with no rest band counts in neither.
+  const restLines = (solidOnly: boolean) => [...groupBy(rows.filter((b) => rest(b)), (b) => b.roastLevel)].flatMap(([label, g]) => {
     const centre = mean([...groupBy(g, (b) => b.coffeeId).values()].map((bs) => mean(bs.map((b) => b.rating!))));
     const bm = bagBandMeans(g, rest);
     const values = REST_LABELS.map((l) => { const s = bm.get(l); return s && (!solidOnly || isSolid(s)) ? round2(mean(s.means) - centre) : null; });

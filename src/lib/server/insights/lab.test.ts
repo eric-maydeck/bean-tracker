@@ -279,6 +279,9 @@ describe('brewingTab', () => {
     expect(r.lines[0].values).toEqual([-0.1, 0.2, -0.1]);
     expect(r.faded).toBe(false);
     expect(r.unit).toBe('vs roast level average');
+    // A bag with no rest band (and an outlier rating) moves neither the bands nor the centre.
+    const extra = [...rows, ...Array.from({ length: 10 }, () => brew({ coffeeId: 7, roastLevel: 'Light', restDays: null, rating: 2 }))];
+    expect(brewingTab(extra, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false }).rest!.lines[0].values).toEqual([-0.1, 0.2, -0.1]);
   });
   it('rest curve: bags at one rest band each still draw (unit = bag, no pairs needed)', () => {
     // 6 Light bags, 10 brews each, all at one rest: 3 at 10 d rated 7, 3 at 25 d rated 8.

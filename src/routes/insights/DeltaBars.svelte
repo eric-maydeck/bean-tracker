@@ -1,4 +1,7 @@
 <script lang="ts" module>
+  // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
+  export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
+  export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   export const SAME_BAG_HELP =
     "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40. Only bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip also shows the plain bag-weighted average.";
 </script>

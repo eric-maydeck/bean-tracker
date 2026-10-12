@@ -1,10 +1,11 @@
 <script lang="ts">
-  import Icon from '$lib/components/Icon.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_HELP } from './Insights.svelte';
   import { sizedGrid } from './rows';
+  import { plural, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import LabHead from './LabHead.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
 
@@ -26,8 +27,6 @@
   let filtered = $derived(!!(s.bag || s.roast || s.process || s.origin || s.roaster));
   let defaultGrinder = $derived(lab.grinders[0]?.slug);
 
-  const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const signed = (n: number) => `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`;
   // The card's number (largest): the winner, a lean, the one setting ever used, or no winner.
   const value = (p: Spot) =>
     p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
@@ -199,15 +198,8 @@
   <p class="insights-period">Matching: {plural(t.matching.bags, 'bag')}, {plural(t.matching.brews, 'brew')}</p>
 
   <section class="chart-panel" data-section="spots-cards">
-    <div class="spots-head">
-      <HeadingAnchor id="spots-cards">Sweet spots</HeadingAnchor>
-      <button class="mode-tip-button" popovertarget="spots-help" aria-label="How sweet spots work" aria-describedby="spots-help"><Icon name="question" /></button>
-      <div class="mode-tip" id="spots-help" popover onbeforetoggle={placeTip}>
-        For each setting, the band your ratings favour for coffees like this. First choice: the same bag brewed both ways
-        (+0.4 = beat the same bag's other brews by 0.4). Not enough of those: bag averages across similar coffees, widening
-        the group until there's enough. Solid = at least twice its noise; Hint = 1.5 to 2.
-      </div>
-    </div>
+    <LabHead id="spots-cards" title="Sweet spots" {placeTip}
+      help="For each setting, the band your ratings favour for coffees like this. First choice: the same bag brewed both ways (+0.4 = beat the same bag's other brews by 0.4). Not enough of those: bag averages across similar coffees, widening the group until there's enough. Solid = at least twice its noise; Hint = 1.5 to 2." />
     <div class="hl-grid finding-grid spot-grid" use:tighten={sized}>
       {#each sized as { item: c, style } (c.key)}
         {@const p = c.spot}
@@ -322,16 +314,6 @@
       min-height: 44px;
       padding-inline: 0.4rem;
     }
-  }
-
-  .spots-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-  .spots-head :global(h2) {
-    margin: 0;
   }
 
   /* Findings card language (Insights.svelte): its row's height token, badge band, value, muted lines, caption. */

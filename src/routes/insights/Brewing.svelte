@@ -1,11 +1,11 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
   import Heatmap from '$lib/components/Heatmap.svelte';
-  import Icon from '$lib/components/Icon.svelte';
   import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
   import type { BandStat, BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
-  import DeltaBars, { SAME_BAG_HELP } from './DeltaBars.svelte';
+  import DeltaBars, { plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import LabHead from './LabHead.svelte';
   import MultiLine from './MultiLine.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
@@ -20,8 +20,10 @@
   // A long chart (9+ bars or heatmap rows; prod Grind has ~45) takes a full row. Short ones pair up first,
   // each with the one nearest its row count (pairs and their two charts keep the page order), and a pair
   // stretches the shorter chart's rows to the same height. An odd short one out spans too (full rows).
-  const long = (v: VarChart) => v.bands.length > 8 || (v.by?.rows.length ?? 0) > 8;
-  const size = (v: VarChart) => v.by?.rows.length ?? v.bands.length;
+  // A breakdown that has no rows (no slice with 3+ bags) is a one-line message: size 1, always short.
+  const noRows = (v: VarChart) => !!s[`${v.key}By`] && !v.by;
+  const long = (v: VarChart) => !noRows(v) && (v.bands.length > 8 || (v.by?.rows.length ?? 0) > 8);
+  const size = (v: VarChart) => (noRows(v) ? 1 : (v.by?.rows.length ?? v.bands.length));
   let vars = $derived.by(() => {
     const at = (v: VarChart) => t.vars.indexOf(v), order = (a: VarChart, b: VarChart) => at(a) - at(b);
     const short = t.vars.filter((v) => !long(v)).sort((a, b) => size(a) - size(b) || order(a, b));
@@ -32,17 +34,14 @@
     return [...pairs.flat().map((v) => ({ v, span: false })), ...rest.map((v) => ({ v, span: true }))];
   });
 
-  // True minus sign; a value that rounds to 0 reads "0.00", never "−0.00".
-  const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
   const NOTABLE = ['85 °C', '88 °C', '91 °C', '92 °C', '94 °C']; // the user's notable temps, bold in Exact (spec)
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
 
-  const n = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;
   const rowsOf = (bands: BandStat[], bold = false) => bands.map((b) => ({
     label: b.label, value: b.delta, text: b.delta === null ? 'unpaired' : signed(b.delta), pale: !b.solid, strength: b.strength,
     bold: bold && NOTABLE.includes(b.label),
-    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${n(b.brews, 'brew')}, ${n(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${n(b.plainBrews, 'brew')}, ${n(b.plainBags, 'bag')})`
+    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${plural(b.plainBrews, 'brew')}, ${plural(b.plainBags, 'bag')})`
   }));
   // A thin cell draws faded with its value; a blank one says why: no brews at all, or none from a bag
   // brewed in two bands (nothing to compare).
@@ -52,17 +51,9 @@
   };
   const cellLabel = (v: VarChart) => (r: number, c: number) => {
     const by = v.by!, cell = by.cells[r][c];
-    return `${by.rows[r]} · ${by.cols[c]}${cell?.brews ? ` · ${n(cell.brews, 'brew')}, ${n(cell.bags, 'bag')}` : ''}`;
+    return `${by.rows[r]} · ${by.cols[c]}${cell?.brews ? ` · ${plural(cell.brews, 'brew')}, ${plural(cell.bags, 'bag')}` : ''}`;
   };
 </script>
-
-{#snippet head(id: string, title: string, help: string)}
-  <div class="lab-head">
-    <HeadingAnchor {id}>{title}</HeadingAnchor>
-    <button class="mode-tip-button" popovertarget="{id}-help" aria-label="About {title}" aria-describedby="{id}-help"><Icon name="question" /></button>
-    <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}>{help}</div>
-  </div>
-{/snippet}
 
 <div class="insights-bar brewing-bar">
   {#if lab.grinders.length > 1}
@@ -83,7 +74,7 @@
 {:else}
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
-      {@render head('brewing-rest', 'Rest curve', "Each line is a roast level: its bags' average rating per rest band (each bag counts once), minus that roast level's average, so the lines compare. A bag is mostly brewed at one rest, so this compares bags rather than brews of the same bag: it also moves with which coffees were rested longer. Solid: 3+ bags and 30+ brews in the band; a line needs two solid bands.")}
+      <LabHead id="brewing-rest" title="Rest curve" help={"Each line is a roast level: its bags' average rating per rest band (each bag counts once), minus that roast level's average, so the lines compare. A bag is mostly brewed at one rest, so this compares bags rather than brews of the same bag: it also moves with which coffees were rested longer. Solid: 3+ bags and 30+ brews in the band; a line needs two solid bands."} {placeTip} />
       <MultiLine m={t.rest} faded={t.rest.faded} ariaLabel="Rest curve: rating vs the roast level's average by days off roast, one line per roast level" format={signed} />
       {#if t.rest.faded}<p class="chart-note">Faded: no roast level has two rest bands with 3+ bags and 30+ brews yet</p>{/if}
     </section>
@@ -93,13 +84,13 @@
     <div class="insights-charts brewing-pair">
       {#if t.dialIn.length}
         <section class="chart-panel" data-section="brewing-dialin">
-          {@render head('brewing-dialin', 'Dial-in', SAME_BAG_HELP)}
+          <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
           <DeltaBars rows={rowsOf(t.dialIn)} ariaLabel="Dial-in: same-bag delta by brew number in the bag" />
         </section>
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel" data-section="brewing-best">
-          {@render head('brewing-best', 'Brews to your best', "For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie).")}
+          <LabHead id="brewing-best" title="Brews to your best" help={"For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie)."} {placeTip} />
           <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
             integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={260} />
           <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews)</p>
@@ -110,17 +101,17 @@
 
   {#if t.drift.length}
     <section class="chart-panel" data-section="brewing-drift">
-      {@render head('brewing-drift', 'Grind drift', "Mean change in grind setting vs each bag's first brew this period on this grinder, by brew number. Pale: under 3 bags.")}
+      <LabHead id="brewing-drift" title="Grind drift" help={"Mean change in grind setting vs each bag's first brew this period on this grinder, by brew number. Pale: under 3 bags."} {placeTip} />
       <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
         rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), pale: !d.solid,
-          tip: `${d.label}: ${signed(d.value)} vs the first brew's setting · ${n(d.bags, 'bag')}` }))} />
+          tip: `${d.label}: ${signed(d.value)} vs the first brew's setting · ${plural(d.bags, 'bag')}` }))} />
       <p class="chart-note">Negative = finer. {grinderName}</p>
     </section>
   {/if}
 
   {#if t.vars.length}
     <section class="brewing-vars" data-section="brewing-vars">
-      {@render head('brewing-vars', 'Variables vs rating', `${SAME_BAG_HELP} Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no paired brews. Bands with no paired brews are left out (exact temps list every °C used).`)}
+      <LabHead id="brewing-vars" title="Variables vs rating" help={`${SAME_BAG_HELP} Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no paired brews. Bands with no paired brews are left out (exact temps list every °C used).`} {placeTip} />
       <div class="var-grid">
         {#each vars as { v, span } (v.key)}
           {@const by = s[`${v.key}By`]}
@@ -167,15 +158,6 @@
   .brewing-bar {
     align-items: end;
   }
-  .lab-head {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-  .lab-head :global(h2) {
-    margin: 0;
-  }
   .brewing-vars {
     margin-bottom: var(--space-5);
   }
@@ -197,6 +179,9 @@
     display: flex;
     flex-direction: column;
     --bar-rows: minmax(0, 1fr);
+  }
+  .var-chart > .hl-empty {
+    margin-block: auto;
   }
   .var-chart > :global(.delta-bars) {
     flex: 1 1 auto;
