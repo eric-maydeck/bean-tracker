@@ -1781,12 +1781,26 @@ export const STATES: State[] = [
         const o = c.getBoundingClientRect();
         return [...c.querySelectorAll('.hl-top, .hl-value, .hl-line, .stat-label')].flatMap((e) => {
           const r = e.getBoundingClientRect();
+          if (!r.width) return []; // a line the card hid to fit (data-tight)
           return r.left < o.left - 1 || r.right > o.right + 1 || r.bottom > o.bottom + 1 ? [`${c.id}: ${e.textContent?.trim().slice(0, 24)} spills`] : [];
         });
       }));
       expect(spills).toEqual([]);
       const over = await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.id));
       expect(over).toEqual([]);
+      // Every card's mini chart takes spare height (≥ 1.5rem of columns), under a value that stays the largest text.
+      const charts = await page.locator('.spot-card').evaluateAll((cs) => cs.flatMap((c) => {
+        const cols = c.querySelector('.cols')?.getBoundingClientRect();
+        const big = parseFloat(getComputedStyle(c.querySelector('.hl-value')!).fontSize);
+        const bigger = [...c.querySelectorAll('.hl-line, .ends, .stat-label')].some((e) => parseFloat(getComputedStyle(e).fontSize) >= big);
+        return [...(!cols || cols.height < 23 ? [`${c.id} chart ${cols?.height}px`] : []), ...(bigger ? [`${c.id} value not largest`] : [])];
+      }));
+      expect(charts).toEqual([]);
+      // A tap on a chart shows its themed tip; a tap elsewhere closes it.
+      await page.locator('#spot-temp .spot-chart').click();
+      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/bags? · \d+ brews?/);
+      await page.locator('.insights-period').last().click();
+      await expect(page.locator('.spot-tip')).toHaveCount(0);
     } },
   { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {

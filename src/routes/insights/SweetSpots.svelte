@@ -45,15 +45,48 @@
 
   let sized = $derived(sizedGrid(t.cards, () => false));
 
+  // The card's mini chart: every band of the evidence it used, zero-centred. Tier 1 bars are same-bag
+  // deltas; tier 2/3 bars are bag means less their bag-weighted average, so above/below reads the same
+  // way. Winner (or lean) in the accent, other solid bands neutral, thin bands pale; the usual band dotted.
+  function chart(p: Spot) {
+    const n = p.bands.reduce((a, b) => a + b.bags, 0) || 1;
+    const centre = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + b.value * b.bags, 0) / n;
+    const ds = p.bands.map((b) => b.value - centre);
+    const hi = Math.max(0, ...ds), lo = Math.min(0, ...ds), span = hi - lo || 1;
+    const pick = p.best && p.verdict !== 'none' ? p.best.label : null;
+    return {
+      zero: (hi / span) * 100,
+      bars: p.bands.map((b, i) => ({
+        ...b, top: ((hi - Math.max(0, ds[i])) / span) * 100, h: (Math.abs(ds[i]) / span) * 100, up: ds[i] >= 0,
+        pick: b.label === pick, usual: b.label === p.usual.label,
+        text: `${b.label}: ${p.tier === 1 ? `${signed(b.value)} vs same bag` : `${b.value.toFixed(1)} avg (bag means)`} · ${plural(b.bags, 'bag')} · ${plural(b.brews, 'brew')}${b.solid ? '' : ' · few'}${b.label === p.usual.label ? ' · usual' : ''}`
+      }))
+    };
+  }
+  // Its themed tip (the Heatmap's .cell-tip): mouse hover, or a tap on touch; one open at a time.
+  // A tap toggles; a mouse click on a tip its hover opened keeps it open.
+  let tip = $state<{ key: string; i: number; x: number; hover: boolean } | null>(null);
+  function tipAt(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
+    const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
+    const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
+    if (!hover && tip?.key === key && tip.i === i && !tip.hover) return (tip = null);
+    // Centred on its column, kept inside the viewport (the tip is at most 16rem wide).
+    const half = Math.min(128, innerWidth / 2 - 16);
+    const x = Math.min(Math.max(r.left + ((i + 0.5) / n) * r.width, half + 16), innerWidth - half - 16) - r.left;
+    tip = { key, i, x, hover };
+  }
+
   // A card whose text doesn't fit its row's height token tightens (ui-rules 34, as Findings cards do):
-  // 1 = evidence to one line, 2 = the Usually line goes too (the card's title and popover keep both).
+  // 1 = evidence to one line, 2 = the Usually line goes too (the card's title and popover keep both),
+  // 3 = the chart's end labels go (its tip and aria-label name every band), 4 = the evidence line goes
+  // (phone rows: the chart still shows its shape; the line stays in the title and the tap popover).
   // Re-runs on a width change only, so tightening can't loop.
   function tighten(el: HTMLElement, _cards: unknown) {
     let w = -1;
     const run = () => {
       for (const c of el.children as HTMLCollectionOf<HTMLElement>) {
         delete c.dataset.tight;
-        for (let t = 1; t <= 2 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
+        for (let t = 1; t <= 4 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
       }
     };
     const ro = new ResizeObserver(([e]) => {
@@ -70,11 +103,14 @@
   // Tap on a card whose evidence is clamped opens its full text (as Findings cards do); hover has the title.
   function unclamp(e: MouseEvent) {
     const c = e.currentTarget as HTMLElement;
-    if ((e.target as Element).closest('a, button, .mode-tip')) return;
+    if ((e.target as Element).closest('a, button, .mode-tip, .spot-chart')) return;
     const ev = c.querySelector('.evidence');
-    if (c.dataset.tight === '2' || (ev && ev.scrollHeight > ev.clientHeight + 1)) document.getElementById(`${c.id}-full`)?.togglePopover();
+    if (+(c.dataset.tight ?? 0) >= 2 || (ev && ev.scrollHeight > ev.clientHeight + 1)) document.getElementById(`${c.id}-full`)?.togglePopover();
   }
 </script>
+
+<!-- A tap outside a chart closes its tip. -->
+<svelte:document onclick={(e) => tip && !(e.target as Element).closest?.('.spot-chart') && (tip = null)} />
 
 <div class="insights-bar spot-picker" class:even={lab.grinders.length > 1}>
   <label class="form-field group-field bag-field">
@@ -161,6 +197,28 @@
             {/if}
           </div>
           <span class="hl-value" class:long={v.length > 9}>{#if leaning(p)}<small>Leaning </small>{/if}{v}</span>
+          {#if p.bands.length > 1}
+            {@const ch = chart(p)}
+            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions (the bands are in aria-label) -->
+            <div class="spot-chart" role="img" aria-label={ch.bars.map((b) => b.text).join('; ')}
+              onpointermove={(e) => e.pointerType === 'mouse' && tipAt(e, c.key, ch.bars.length, true)}
+              onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
+              onclick={(e) => tipAt(e, c.key, ch.bars.length, false)}>
+              <div class="cols" style:--zero="{ch.zero}%">
+                {#each ch.bars as b (b.label)}
+                  <span class="col"
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid}
+                      style:top="{b.top}%" style:height="{b.h}%"></span
+                    >{#if b.usual}<span class="usual-dot"></span>{/if}</span
+                  >
+                {/each}
+              </div>
+              <div class="ends" aria-hidden="true"><span>{ch.bars[0].label}</span><span>{ch.bars.at(-1)!.label}</span></div>
+              {#if tip?.key === c.key}
+                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{ch.bars[tip.i].text}</div>
+              {/if}
+            </div>
+          {/if}
           <span class="hl-line evidence">{evidence(p)}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
@@ -265,17 +323,18 @@
     color: var(--color-text-muted);
   }
   /* A long setting (a water recipe, "No clear winner") steps down and wraps inside the card. */
-  /* Spare height splits above the value and above the caption (its margin-top: auto): the content
-     block sits mid-card like a stat tile's value, not stacked at the top. */
   .spot-card > .hl-value {
-    margin-top: auto;
     max-width: 100%;
     white-space: normal;
     text-wrap: balance;
     overflow-wrap: anywhere;
   }
-  .hl-value.long {
-    font-size: min(1.6rem, 12cqw / var(--q, 2));
+  /* Floors keep the setting the largest text in a narrow phone card (a row of 3 at 360px). */
+  .spot-card > .hl-value {
+    font-size: max(1.05rem, min(2rem, 15cqw / var(--q, 2)));
+  }
+  .spot-card > .hl-value.long {
+    font-size: max(0.95rem, min(1.6rem, 12cqw / var(--q, 2)));
   }
   .evidence {
     display: -webkit-box;
@@ -293,7 +352,98 @@
     -webkit-line-clamp: 1;
     line-clamp: 1;
   }
-  .spot-card:global([data-tight='2']) .usually {
+  .spot-card:global(:is([data-tight='2'], [data-tight='3'], [data-tight='4'])) .usually {
+    display: none;
+  }
+
+  /* The mini chart takes the card's spare height (min 1.5rem), as Findings charts do (ui-rules 34). */
+  /* No explicit min-height: its content (columns ≥ 1.5rem + end labels) is the floor, so a card that can't
+     hold it overflows and tighten() steps in rather than the labels overlapping the text below. */
+  .spot-chart {
+    position: relative;
+    flex: 1 1 0;
+    width: 100%;
+    max-width: 16rem;
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--space-1);
+    cursor: default;
+  }
+  .cols {
+    flex: 1 1 0;
+    min-height: 1.5rem;
+    display: flex;
+    gap: 2px;
+    position: relative;
+  }
+  /* The zero line: recessive, behind the bars. */
+  .cols::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--zero);
+    border-top: 1px solid var(--color-border);
+  }
+  .col {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .bar {
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    min-height: 2px;
+    background: color-mix(in oklab, var(--color-text-muted) 55%, transparent);
+    border-radius: 0 0 3px 3px;
+  }
+  .bar.up {
+    border-radius: 3px 3px 0 0;
+  }
+  .bar.pale {
+    background: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
+  }
+  .bar.pick {
+    background: var(--chart-color-1);
+  }
+  .bar.pick.lean {
+    background: color-mix(in oklab, var(--chart-color-1) 60%, transparent);
+  }
+  /* The usual band: a small dot under its column. */
+  .usual-dot {
+    position: absolute;
+    left: 50%;
+    bottom: -5px;
+    width: 4px;
+    height: 4px;
+    translate: -50% 0;
+    border-radius: 50%;
+    background: var(--color-text);
+  }
+  .ends {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: 6px;
+    font-size: 0.65rem;
+    line-height: 1.1;
+    color: var(--color-text-muted);
+  }
+  .ends span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .spot-tip {
+    white-space: normal;
+    width: max-content;
+    max-width: min(16rem, 100vw - 2rem);
+    text-align: left;
+  }
+  .spot-card:global(:is([data-tight='3'], [data-tight='4'])) .ends,
+  .spot-card:global([data-tight='4']) .evidence {
     display: none;
   }
 
