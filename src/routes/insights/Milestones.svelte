@@ -104,17 +104,39 @@
     const y = rulerToFeed(ticks, sections(), vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width);
     if (y !== null) scrollBy(0, y - (vertical ? barH : barH + nav!.offsetHeight));
   }
-  function down(e: PointerEvent) {
-    if (e.button !== 0) return;
+  function grab(e: PointerEvent) {
     nav!.setPointerCapture(e.pointerId);
     dragging = true;
     scrub(e);
   }
-  const move = (e: PointerEvent) => dragging && scrub(e);
-  const up = () => {
+  // A touch on the phone strip waits to see the gesture: a tap jumps and a sideways drag scrubs,
+  // but a vertical swipe that starts on the strip just scrolls the page (pan-y), never jumping the feed.
+  let touch: { x: number; y: number } | null = null;
+  function down(e: PointerEvent) {
+    if (e.button !== 0) return;
+    if (!vertical && e.pointerType === 'touch') touch = { x: e.clientX, y: e.clientY };
+    else grab(e);
+  }
+  function move(e: PointerEvent) {
+    if (touch) {
+      const dx = Math.abs(e.clientX - touch.x), dy = Math.abs(e.clientY - touch.y);
+      if (Math.max(dx, dy) < 8) return; // still a tap
+      touch = null;
+      if (dx > dy) grab(e);
+    } else if (dragging) scrub(e);
+  }
+  const cancel = () => {
+    touch = null;
     dragging = false;
     update();
   };
+  function up(e: PointerEvent) {
+    if (touch) scrub(e); // a tap
+    cancel();
+  }
+  // Capture lost without a pointerup (a re-render, an OS gesture) ends the drag. Only the nav's own:
+  // a tick's implicit touch capture passing to the nav bubbles a lostpointercapture up from the tick.
+  const lost = (e: PointerEvent) => e.target === nav && cancel();
   const jump = (ym: string) => document.getElementById(`m-${ym}`)?.scrollIntoView();
 
   // The navigator sticks just under the page's sticky filter bar (barH, declared above).
@@ -201,7 +223,8 @@
         onpointerdown={down}
         onpointermove={move}
         onpointerup={up}
-        onpointercancel={up}
+        onpointercancel={cancel}
+        onlostpointercapture={lost}
       >
         <div class="track" class:subs={subs > 0} style:--subs={ticks.length * subs} bind:this={track} bind:clientWidth={tw} bind:clientHeight={th}>
           {#if pos !== null}<span class="band" style:--a={pos}></span>{/if}
