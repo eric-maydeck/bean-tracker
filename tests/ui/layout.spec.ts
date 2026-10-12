@@ -1579,13 +1579,15 @@ export const STATES: State[] = [
       await expectGridRowsFull(page, '.milestone-summary');
       await expectGridRowsFull(page, '.next-up');
       await expectGridRowsFull(page, '.milestone-totals');
-      // The navigator jumps to a month and stays in view (sticky) once scrolled there.
-      const nav = page.locator('.timeline-nav');
-      const target = nav.locator('a:not(.year)').last();
-      const id = (await target.getAttribute('href'))!.slice(1);
-      await target.click();
-      await expect(page.locator(`[id="${id}"]`)).toBeInViewport();
-      await expect(nav).toBeInViewport();
+      // The ruler jumps to the oldest month, stays in view (sticky) and marks it as current.
+      const ruler = page.locator('nav.ruler');
+      const oldest = page.locator('.feed .month').last();
+      const label = `Jump to ${await oldest.textContent()}`;
+      await ruler.getByRole('button', { name: label }).last().click();
+      await expect(oldest).toBeInViewport();
+      await expect(ruler).toBeInViewport();
+      await expect(ruler.locator('[aria-current]').last()).toHaveAttribute('aria-label', label);
+      await expect(ruler.locator('.marker')).toBeVisible();
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },

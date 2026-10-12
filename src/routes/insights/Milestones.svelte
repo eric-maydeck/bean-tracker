@@ -3,6 +3,7 @@
   import { KINDS, MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
   import type { MilestonesTab } from '$lib/server/insights/milestones';
   import { rowVars } from './rows';
+  import { rulerTicks, tickAt } from './ruler';
 
   let { m, kinds, choose }: { m: MilestonesTab; kinds: Kind[] | undefined; choose: (c: InsightsUrlState) => void } = $props();
 
@@ -29,10 +30,49 @@
   );
   let nextVars = $derived(rowVars(m.nextUp.length));
   let totalVars = $derived(rowVars(m.totals.length));
-  // The navigator: years (newest first), each with its months that have milestones.
-  let years = $derived(
-    [...Map.groupBy(m.months.map((g) => g.month), (ym) => ym.slice(0, 4))]
-  );
+  // The timeline ruler (feedback M1): vertical beside the feed, horizontal on phones (the CSS
+  // decides; the track's shape tells which). Labels fit the track's length.
+  let track: HTMLElement | undefined = $state();
+  let tw = $state(0), th = $state(0);
+  let vertical = $derived(th > tw);
+  let ticks = $derived(rulerTicks(m.months.map((g) => g.month), Math.max(tw, th), vertical ? 22 : 72));
+  let current: string | null = $state(null);
+  let marker = $derived(ticks.find((t) => t.ym === current));
+  function jump(ym: string) {
+    document.getElementById(`m-${ym}`)?.scrollIntoView();
+    current = ym;
+  }
+  // Clicks between ticks land on the month under the pointer; the tick buttons are the keyboard path.
+  function rulerClick(e: MouseEvent) {
+    const r = track!.getBoundingClientRect();
+    jump(tickAt(ticks, vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width).target);
+  }
+  // The marker follows the month scrolled into view: the last heading above a line a quarter of
+  // the way down the feed's visible part, under the sticky bars (a heading crossing that line is
+  // exactly when it changes). Once the tab's end is on screen the oldest months can't reach that
+  // line, so it drops to the viewport's foot.
+  let end: HTMLElement | undefined = $state();
+  let nav: HTMLElement | undefined = $state();
+  $effect(() => {
+    void m.months;
+    const top = vertical ? barH : barH + (nav?.offsetHeight ?? 0);
+    const line = top + (innerHeight - top) / 4;
+    const hs = [...document.querySelectorAll<HTMLElement>('.feed .month')];
+    const pick = () => {
+      const at = end && end.getBoundingClientRect().top <= innerHeight ? innerHeight : line;
+      let c = hs[0];
+      for (const h of hs) if (h.getBoundingClientRect().top <= at + 1) c = h;
+      current = c?.id.slice(2) ?? null;
+    };
+    // The observed band runs from far above the page down to the line, so a jump past the line
+    // (a ruler click) still flips the headings it crossed.
+    const io = new IntersectionObserver(pick, { rootMargin: `99999px 0px ${Math.round(line - innerHeight)}px 0px` });
+    const atEnd = new IntersectionObserver(pick);
+    hs.forEach((h) => io.observe(h));
+    if (end) atEnd.observe(end);
+    pick();
+    return () => (io.disconnect(), atEnd.disconnect());
+  });
 
   // The navigator sticks just under the page's sticky filter bar.
   let barH = $state(0);
@@ -104,13 +144,25 @@
   {/if}
   {#if m.months.length}
     <div class="timeline" style:--bar-h="{barH}px">
-      <nav class="timeline-nav" aria-label="Jump to month">
-        {#each years as [y, yms] (y)}
-          <div class="nav-year">
-            <a class="year" href="#m-{yms[0]}">{y}</a>
-            {#each yms as ym (ym)}<a href="#m-{ym}">{MON[+ym.slice(5, 7) - 1]}</a>{/each}
-          </div>
-        {/each}
+      <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+      <nav class="ruler" aria-label="Timeline" bind:this={nav} onclick={rulerClick}>
+        <div class="track" bind:this={track} bind:clientWidth={tw} bind:clientHeight={th}>
+          {#each ticks as t (t.ym)}
+            <button
+              class="tick"
+              class:major={t.major}
+              style:--p={t.p}
+              aria-label="Jump to {month(t.target)}"
+              aria-current={t.ym === current ? 'true' : undefined}
+              tabindex={t.major || t.ym === t.target ? 0 : -1}
+              onclick={(e) => {
+                e.stopPropagation();
+                jump(t.target);
+              }}>{#if t.major}<span>{t.label}</span>{/if}</button
+            >
+          {/each}
+          {#if marker}<span class="marker" style:--p={marker.p}></span>{/if}
+        </div>
       </nav>
       <div class="feed">
         {#each m.months as g (g.month)}
@@ -158,6 +210,7 @@
     </div>
   </section>
 {/if}
+<div bind:this={end}></div>
 
 <style>
   .kinds-bar {
@@ -221,38 +274,80 @@
     margin: var(--space-4) 0 var(--space-1);
     font-size: 1rem;
   }
-  /* Timeline navigator (feedback B4): a sticky side bar beside the feed; on phones a sticky
-     strip above it that scrolls sideways inside itself. Both stick just under the filter bar. */
-  .timeline-nav {
+  /* Timeline ruler (feedback M1): the feed's months scaled onto a fixed length, newest first.
+     Phones: a sticky strip across the panel; from 700px a sticky bar beside the feed, the
+     viewport's height under the filter bar. Ticks sit at --p (0..1) along the track. */
+  .ruler {
     position: sticky;
     top: var(--bar-h);
     z-index: 2;
-    display: flex;
-    gap: var(--space-3);
-    overflow-x: auto;
-    scrollbar-width: thin;
     margin: var(--space-3) calc(-1 * var(--space-4)) 0;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-1) 2.5rem 0;
+    overflow: hidden;
+    cursor: pointer;
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
   }
-  .nav-year {
+  .track {
+    position: relative;
+    height: 46px;
+    border-top: 2px solid var(--color-border);
+  }
+  .tick {
+    position: absolute;
+    top: -2px;
+    left: calc(var(--p) * 100%);
+    translate: -50% 0;
     display: flex;
-    gap: var(--space-1);
+    flex-direction: column;
+    align-items: center;
+    /* A 44px phone tap target, wide enough for its label. */
+    min-width: 44px;
+    width: max-content;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    cursor: pointer;
+  }
+  .tick::before {
+    content: '';
+    flex-shrink: 0;
+    width: 1px;
+    height: 0.4rem;
+    background: currentColor;
+  }
+  .tick.major::before {
+    width: 2px;
+    height: 0.7rem;
+  }
+  .tick span {
+    font-size: 0.75rem;
+    line-height: 1.3;
     white-space: nowrap;
   }
-  .timeline-nav a {
-    padding: 0.2rem 0.4rem;
-    border-radius: var(--radius);
-    font-size: 0.85rem;
-    text-decoration: none;
+  .tick:hover,
+  .tick[aria-current] {
+    color: var(--color-accent);
   }
-  .timeline-nav a:hover {
-    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-  }
-  .timeline-nav .year {
+  .tick[aria-current] span {
     font-weight: 700;
-    color: var(--color-text);
+  }
+  .marker {
+    position: absolute;
+    top: -6px;
+    left: calc(var(--p) * 100%);
+    translate: -50% 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-surface);
+    pointer-events: none;
+    transition: left 0.2s, top 0.2s;
   }
   @media (max-width: 699px) {
     .month {
@@ -262,22 +357,48 @@
   @media (min-width: 700px) {
     .timeline {
       display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: var(--space-5);
+      grid-template-columns: 6.5rem minmax(0, 1fr);
+      gap: var(--space-4);
     }
-    .timeline-nav {
+    .ruler {
       top: calc(var(--bar-h) + var(--space-3));
       align-self: start;
-      flex-direction: column;
-      max-height: calc(100vh - var(--bar-h) - 2 * var(--space-3));
-      overflow: auto;
+      box-sizing: border-box;
+      height: calc(100vh - var(--bar-h) - 2 * var(--space-3));
       margin: var(--space-4) 0 0;
-      padding: 0 var(--space-3) 0 0;
-      border-bottom: 0;
-      border-right: 1px solid var(--color-border);
+      padding: var(--space-3) 0;
+      overflow: visible;
+      background: none;
+      border: 0;
     }
-    .nav-year {
-      flex-direction: column;
+    .track {
+      height: 100%;
+      border-top: 0;
+      border-left: 2px solid var(--color-border);
+    }
+    .tick {
+      top: calc(var(--p) * 100%);
+      left: -2px;
+      translate: 0 -50%;
+      flex-direction: row;
+      min-width: 0;
+      height: 1.25rem;
+    }
+    .tick::before {
+      width: 0.4rem;
+      height: 1px;
+    }
+    .tick.major::before {
+      width: 0.7rem;
+      height: 2px;
+    }
+    .tick span {
+      margin-left: 0.35rem;
+    }
+    .marker {
+      top: calc(var(--p) * 100%);
+      left: -1px;
+      translate: -50% -50%;
     }
   }
   .milestone-feed {
