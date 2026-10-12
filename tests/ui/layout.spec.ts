@@ -1803,6 +1803,18 @@ export const STATES: State[] = [
       await expect(page.locator('#spot-temp .spot-tip')).toContainText(/bags? · \d+ brews?/);
       await page.locator('.insights-period').last().click();
       await expect(page.locator('.spot-tip')).toHaveCount(0);
+      // Keyboard: focus opens a band tip, → moves it, Escape closes it, Enter opens the card's full text.
+      const chart = page.locator('#spot-temp .spot-chart');
+      await chart.focus();
+      await chart.press('ArrowRight');
+      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/ · \d+ brews?/);
+      await chart.press('Escape');
+      await expect(page.locator('.spot-tip')).toHaveCount(0);
+      await chart.press('Enter');
+      await expect(page.locator('#spot-temp-full')).toBeVisible();
+      await expect(page.locator('#spot-temp-full')).toContainText(/vs same bag|Across|No comparison|Not enough/);
+      await chart.press('Enter');
+      await chart.blur();
     } },
   { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {

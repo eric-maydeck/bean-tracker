@@ -24,7 +24,7 @@
   }
   const any = (v: string) => v || undefined;
   let filtered = $derived(!!(s.bag || s.roast || s.process || s.origin || s.roaster));
-  const defaultGrinder = $derived(lab.grinders[0]?.slug);
+  let defaultGrinder = $derived(lab.grinders[0]?.slug);
 
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   const signed = (n: number) => `${n < 0 ? '−' : '+'}${Math.abs(n).toFixed(2)}`;
@@ -70,14 +70,35 @@
   // Its themed tip (the Heatmap's .cell-tip): mouse hover, or a tap on touch; one open at a time.
   // A tap toggles; a mouse click on a tip its hover opened keeps it open.
   let tip = $state<{ key: string; i: number; x: number; hover: boolean } | null>(null);
+  // New data (a picker change) drops any open tip: its band index may not exist any more.
+  $effect(() => {
+    void t;
+    tip = null;
+  });
+  // Show band i's tip over its column, kept inside the viewport (the tip is at most 16rem wide).
+  function showTip(wrap: HTMLElement, key: string, n: number, i: number, hover: boolean) {
+    const r = wrap.getBoundingClientRect(), half = Math.min(128, innerWidth / 2 - 16);
+    const x = Math.min(Math.max(r.left + ((i + 0.5) / n) * r.width, half + 16), innerWidth - half - 16) - r.left;
+    tip = { key, i, x, hover };
+  }
   function tipAt(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
     const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
     const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
     if (!hover && tip?.key === key && tip.i === i && !tip.hover) return (tip = null);
-    // Centred on its column, kept inside the viewport (the tip is at most 16rem wide).
-    const half = Math.min(128, innerWidth / 2 - 16);
-    const x = Math.min(Math.max(r.left + ((i + 0.5) / n) * r.width, half + 16), innerWidth - half - 16) - r.left;
-    tip = { key, i, x, hover };
+    showTip(wrap, key, n, i, hover);
+  }
+  // Keyboard (as Heatmap's cells): focus opens the winning (else usual) band's tip, ←/→ move it, Escape
+  // closes it, Enter opens the card's full text (its evidence line, even when the card hid it to fit).
+  const startAt = (bars: { pick: boolean; usual: boolean }[]) => Math.max(0, bars.findIndex((b) => b.pick), bars.findIndex((b) => b.usual));
+  function chartKey(e: KeyboardEvent, key: string, bars: { pick: boolean; usual: boolean }[]) {
+    const wrap = e.currentTarget as HTMLElement, n = bars.length;
+    if (e.key === 'Escape') tip = null;
+    else if (e.key === 'Enter') document.getElementById(`spot-${key}-full`)?.togglePopover();
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const from = tip?.key === key ? tip.i : startAt(bars);
+      showTip(wrap, key, n, Math.min(n - 1, Math.max(0, from + (e.key === 'ArrowRight' ? 1 : -1))), false);
+    }
   }
 
   // A card whose text doesn't fit its row's height token tightens (ui-rules 34, as Findings cards do):
@@ -203,8 +224,11 @@
           <span class="hl-value" class:long={v.length > 9}>{#if leaning(p)}<small>Leaning </small>{/if}{v}</span>
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
-            <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions (the bands are in aria-label) -->
-            <div class="spot-chart" role="img" aria-label={ch.bars.map((b) => b.text).join('; ')}
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
+            <div class="spot-chart" role="img" tabindex="0" aria-label={ch.bars.map((b) => b.text).join('; ')} aria-describedby="{id}-full"
+              onfocus={(e) => e.currentTarget.matches(':focus-visible') && showTip(e.currentTarget, c.key, ch.bars.length, startAt(ch.bars), false)}
+              onblur={() => (tip = null)}
+              onkeydown={(e) => chartKey(e, c.key, ch.bars)}
               onpointermove={(e) => e.pointerType === 'mouse' && tipAt(e, c.key, ch.bars.length, true)}
               onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
               onclick={(e) => tipAt(e, c.key, ch.bars.length, false)}>
@@ -219,7 +243,7 @@
               </div>
               <div class="ends" aria-hidden="true"><span>{ch.bars[0].label}</span><span>{ch.bars.at(-1)!.label}</span></div>
               {#if tip?.key === c.key}
-                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{ch.bars[tip.i].text}</div>
+                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{ch.bars[tip.i]?.text}</div>
               {/if}
             </div>
           {/if}
@@ -238,7 +262,7 @@
     <section class="chart-panel" data-section="spots-top">
       <HeadingAnchor id="spots-top">Top bags like this</HeadingAnchor>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
-        {#each t.topBags as r, i (r.href ?? r.label)}
+        {#each t.topBags as r, i (`${r.href ?? r.label}|${r.tag}`)}
           <li class="board-row">
             <span class="rank">{i + 1}</span>
             <span class="who">
@@ -448,6 +472,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .spot-chart:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: var(--radius);
   }
   .spot-tip {
     white-space: normal;
