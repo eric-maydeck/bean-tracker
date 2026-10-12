@@ -105,7 +105,8 @@ describe('freshness and money', () => {
   it('fastest finish only counts finished bags', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', status: 'archive', firstBrew: '2026-03-01', lastBrew: '2026-03-04' }),
       bag({ id: 2, name: 'Bag 2', status: 'open', firstBrew: '2026-03-01', lastBrew: '2026-03-02' })];
-    const brews = [1, 2].flatMap((id) => ['2026-03-01', '2026-03-02'].map((d) => brew({ coffeeId: id, localDate: d })));
+    const brews = [brew({ coffeeId: 1, localDate: '2026-03-01' }), brew({ coffeeId: 1, localDate: '2026-03-04' }),
+      brew({ coffeeId: 2, localDate: '2026-03-01' }), brew({ coffeeId: 2, localDate: '2026-03-02' })];
     expect(run('fastestFinish', brews, bags)).toMatchObject({ value: 4, holder: { label: 'Bag 1' } });
   });
   it('longest wait to open counts rest days net of freezer', () => {
@@ -137,7 +138,7 @@ describe('freshness and money', () => {
   it('biggest buying month is all-time, by bags', () => {
     expect(RECORDS.find((r) => r.key === 'buyingMonth')!.scope).toBe('alltime');
     const bags = [bag({ id: 1, purchaseDate: '2026-03-02', cost: 10 }), bag({ id: 2, purchaseDate: '2026-03-20', cost: 15 }), bag({ id: 3, purchaseDate: '2026-04-01' })];
-    expect(run('buyingMonth', [], bags)).toMatchObject({ value: 2, holder: { label: '2026-03' }, detail: '$25' });
+    expect(run('buyingMonth', [], bags)).toMatchObject({ value: 2, holder: { label: '2026-03' }, detail: '$25.00' });
   });
   it('roaster records group bags by roaster', () => {
     const bags = [bag({ id: 1, roaster: 'A', cost: 10, purchaseDate: '2026-03-02' }), bag({ id: 2, roaster: 'A', cost: 15, purchaseDate: '2026-03-20' }),
@@ -217,10 +218,11 @@ describe('recordsTab', () => {
     expect(tile.was).toMatchObject({ value: 8, holder: { label: 'Bag 2' } });
   });
   it('all-time records ignore the period', () => {
-    const bags = [bag({ id: 1, purchaseDate: '2026-01-02' }), bag({ id: 2, purchaseDate: '2026-01-20' })];
+    const bags = [bag({ id: 1, purchaseDate: '2026-01-02', cost: 20, amountG: 250 }), bag({ id: 2, purchaseDate: '2026-01-20' })];
     const t = recordsTab([], bags, { ...CTX, period: march });
     expect(tileOf(t, 'buyingMonth')).toMatchObject({ value: 2, scope: 'alltime', allTime: null });
     expect(tileOf(t, 'roasterBags')).toBeUndefined(); // bought outside March
+    expect(tileOf(t, 'priciestBag')).toBeUndefined();
   });
   it('people split divides perDay records only', () => {
     const MARATHON = 6, MOST_BREWED = 8;

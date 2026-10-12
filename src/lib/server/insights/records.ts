@@ -257,14 +257,14 @@ export const RECORDS: RecordDef[] = [
       return d === null ? [] : [{ value: d, holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
-  money('priciestBag', 'Priciest bag per 100 g', 'max', 'per100', (c) => per100(c)),
-  money('cheapestBag', 'Cheapest bag per 100 g', 'min', 'per100', (c) => per100(c)),
+  money('priciestBag', 'Priciest bag per 100 g', 'max', 'per100', (c) => per100(c), { bought: true }),
+  money('cheapestBag', 'Cheapest bag per 100 g', 'min', 'per100', (c) => per100(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
   money('bestValue', 'Best value', 'max', 'value', (c) => value(c), { rating: true }),
   money('buyingMonth', 'Biggest buying month', 'max', 'count', (c) =>
     [...groupBy(c.bags, (b) => b.purchaseDate?.slice(0, 7) ?? null)].map(([m, bs]) => ({
-      value: bs.length, detail: `$${bs.reduce((s, b) => s + (b.cost ?? 0), 0)}`, holder: { label: m as string, date: `${m}-01` }
+      value: bs.length, detail: `$${bs.reduce((s, b) => s + (b.cost ?? 0), 0).toFixed(2)}`, holder: { label: m as string, date: `${m}-01` }
     })), { scope: 'alltime' }),
   money('roasterBags', 'Most bags from one roaster', 'max', 'count', (c) => roasters(c, (bs) => bs.length), { bought: true }),
   money('roasterSpend', 'Most spent at one roaster', 'max', 'money', (c) => roasters(c, (bs) => bs.reduce((s, b) => s + (b.cost ?? 0), 0)), { bought: true }),
