@@ -271,69 +271,18 @@
   .board {
     margin: 0;
   }
-  .board-rows,
+  /* The row rules (.board-rows, .board-row, .rank, .who, .val, .few) are :global() in +page.svelte,
+     shared with the lab tabs. */
   .board-note {
     min-height: calc(var(--rows) * var(--row-h));
     margin: 0;
     padding: 0;
-    list-style: none;
   }
   .board-note {
     display: grid;
     place-items: center;
     text-align: center;
     color: var(--color-text-muted);
-  }
-  .board-row {
-    display: grid;
-    grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: var(--space-2);
-    position: relative;
-    height: var(--row-h);
-    border-top: 1px solid var(--color-border);
-  }
-  .board-row:first-child {
-    border-top: 0;
-  }
-  .rank {
-    color: var(--color-text-muted);
-    font-variant-numeric: tabular-nums;
-    text-align: right;
-  }
-  .who {
-    display: grid;
-    min-width: 0;
-    line-height: 1.2;
-  }
-  .who a,
-  .who .name,
-  .who small {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  /* Stretched link: the whole 48px row is the tap target. The link stays static so its
-     overflow:hidden doesn't clip the overlay; the row is the containing block. */
-  .who a::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-  }
-  .who a:focus-visible {
-    outline: none;
-  }
-  .who a:focus-visible::after {
-    outline: 2px solid var(--color-accent);
-    outline-offset: -2px;
-  }
-  .who small {
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-  }
-  .val {
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
   }
   .move {
     min-width: 2.5rem;
@@ -354,12 +303,6 @@
   }
   .mode-tip p:last-child {
     margin: 0;
-  }
-  /* Muted color, not opacity: dimmed text at 60% fell under 4.5:1 in both themes. */
-  .few .who a,
-  .few .name,
-  .few .val {
-    color: var(--color-text-muted);
   }
   .placeholder {
     color: var(--color-text-muted);

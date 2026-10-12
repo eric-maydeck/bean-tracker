@@ -1,3 +1,12 @@
+<script lang="ts" module>
+  // The strength badges' words and explanations, shared with Sweet spots.
+  export const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
+  export const STRENGTH_HELP = {
+    solid: 'Solid: the difference is at least twice its usual noise, so chance is an unlikely explanation.',
+    hint: 'Hint: 1.5 to 2 times its usual noise. Worth watching; more data will tell.'
+  };
+</script>
+
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
@@ -16,11 +25,6 @@
   type Multi = NonNullable<Finding['multi']>;
 
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
-  const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
-  const STRENGTH_HELP = {
-    solid: 'Solid: the difference is at least twice its usual noise, so chance is an unlikely explanation.',
-    hint: 'Hint: 1.5 to 2 times its usual noise. Worth watching; more data will tell.'
-  };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
   const date = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`;
   // "115 days" → 115 + a small "days"; "r = 0.04" and "8:20 → 8:52" stay whole.
@@ -503,14 +507,7 @@
      token per column count, +page.svelte's --h by the grid's width), measured from the 2026-10-12
      layout the user picked. Content is forced to fit: charts take what's left, text clamps (the card's
      title has the headline, the body's its full text). */
-  .finding-grid {
-    --fs-s4: 10rem; /* 160px: rows of 4, numbers (1280 wide) */
-    --fs-l4: 16.5rem; /* 264px: rows of 4, charts / versus */
-    --fs-3: 15.75rem; /* 252px: every row of 3 */
-    --fs-s2: 12rem; /* 192px: 2-up phone rows (480×909), numbers */
-    --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
-    --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
-  }
+  /* The --fs-* height tokens are :global(.finding-grid) in +page.svelte (shared with Sweet spots). */
   .finding {
     height: var(--h);
   }

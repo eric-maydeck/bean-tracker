@@ -13,6 +13,7 @@
   import Records from './Records.svelte';
   import Milestones from './Milestones.svelte';
   import Insights from './Insights.svelte';
+  import SweetSpots from './SweetSpots.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
@@ -589,6 +590,8 @@
     {placeTip}
     {choose}
   />
+{:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
+  <SweetSpots t={data.sweetSpots} lab={data.lab} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
@@ -905,6 +908,81 @@
       --h: var(--h5, var(--h4));
     }
   }
+  /* Findings card height tokens (ui-rules 34; rows.ts sizedGrid picks one per row, --h above by width),
+     measured from the 2026-10-12 layout the user picked. Shared by Insights' Findings and Sweet spots. */
+  :global(.finding-grid) {
+    --fs-s4: 10rem; /* 160px: rows of 4, numbers (1280 wide) */
+    --fs-l4: 16.5rem; /* 264px: rows of 4, charts / versus */
+    --fs-3: 15.75rem; /* 252px: every row of 3 */
+    --fs-s2: 12rem; /* 192px: 2-up phone rows (480×909), numbers */
+    --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
+    --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
+  }
+  /* Leaderboard rows, shared with the lab tabs (Sweet spots' top bags). Set --rows and --row-h on the list
+     or an ancestor. Scoped under .board-row: Records and Milestones have their own .rank / .who. */
+  :global(.board-rows) {
+    min-height: calc(var(--rows) * var(--row-h));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  :global(.board-row) {
+    display: grid;
+    grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: var(--space-2);
+    position: relative;
+    height: var(--row-h);
+    border-top: 1px solid var(--color-border);
+  }
+  :global(.board-row:first-child) {
+    border-top: 0;
+  }
+  :global(.board-row .rank) {
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  :global(.board-row .who) {
+    display: grid;
+    min-width: 0;
+    line-height: 1.2;
+  }
+  :global(.board-row .who a),
+  :global(.board-row .who .name),
+  :global(.board-row .who small) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Stretched link: the whole 48px row is the tap target. The link stays static so its
+     overflow:hidden doesn't clip the overlay; the row is the containing block. */
+  :global(.board-row .who a::after) {
+    content: '';
+    position: absolute;
+    inset: 0;
+  }
+  :global(.board-row .who a:focus-visible) {
+    outline: none;
+  }
+  :global(.board-row .who a:focus-visible::after) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+  :global(.board-row .who small) {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+  }
+  :global(.board-row .val) {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  /* Thin rows (few bags / few brews): muted color, not opacity (dimmed text at 60% fell under 4.5:1). */
+  :global(.board-row.few .who a),
+  :global(.board-row.few .name),
+  :global(.board-row.few .val) {
+    color: var(--color-text-muted);
+  }
   /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
      Cards in a row share its height, so captions line up. */
   :global(.hl-card) {
@@ -1124,7 +1202,7 @@
       top: calc(73.98cqw + 0.75rem);
     }
   }
-  .insights-period {
+  :global(.insights-period) {
     color: var(--color-text-muted);
     margin: 0 0 var(--space-3);
   }

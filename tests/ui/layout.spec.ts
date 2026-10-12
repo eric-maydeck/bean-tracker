@@ -1763,6 +1763,37 @@ export const STATES: State[] = [
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
+  { name: 'insights-sweetspots', path: () => '/insights?tab=sweetspots',
+    act: async (page) => {
+      await expect(page.locator('.spot-card')).not.toHaveCount(0);
+      await expect(page.getByText(/^Matching: \d+ bags, \d+ brews$/)).toBeVisible();
+      await expect(page.locator('#spot-temp .hl-value')).not.toHaveText(/NaN|undefined/);
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
+      // Nothing takes focus on load (the phone keyboard would pop up).
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+      await expectGridRowsFull(page, '.spot-grid');
+      // ui-rules 34: every card in a row is that row's height token.
+      const off = await page.locator('.spot-grid').evaluate((g) => [...g.children].map((c) => c.getBoundingClientRect())
+        .filter((r, _, all) => all.some((o) => Math.round(o.top) === Math.round(r.top) && Math.abs(o.height - r.height) > 2)).length);
+      expect(off).toBe(0);
+      // Card content stays inside the card (the token holds it at every width).
+      const spills = await page.locator('.spot-card').evaluateAll((cards) => cards.flatMap((c) => {
+        const o = c.getBoundingClientRect();
+        return [...c.querySelectorAll('.hl-top, .hl-value, .hl-line, .stat-label')].flatMap((e) => {
+          const r = e.getBoundingClientRect();
+          return r.left < o.left - 1 || r.right > o.right + 1 || r.bottom > o.bottom + 1 ? [`${c.id}: ${e.textContent?.trim().slice(0, 24)} spills`] : [];
+        });
+      }));
+      expect(spills).toEqual([]);
+      const over = await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.id));
+      expect(over).toEqual([]);
+    } },
+  { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
+    act: async (page) => {
+      await expect(page.getByLabel('Roast level')).toHaveValue('Light');
+      await expect(page.locator('.top-bags li').first()).toBeVisible();
+    } },
+  { name: 'insights-sweetspots-filters', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters' },
   { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       await expectGridRowsFull(page, '.finding-grid');
