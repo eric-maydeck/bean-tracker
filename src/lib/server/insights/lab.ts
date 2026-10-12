@@ -1,8 +1,8 @@
-import type { Ratings } from '$lib/insightsUrl';
+import { MON, type Ratings } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
-import { grindKey, type BagFact, type BrewFact } from './facts';
-import type { Multi } from './insightGenerators';
-import { BREW_NO_LABELS, REST_LABELS, bandOf, type Band, type LabVar } from './labBands';
+import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
+import { monthlyMulti, shareCell, type Multi } from './insightGenerators';
+import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
@@ -262,5 +262,77 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
       const by = c.by[key];
       return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label)) : null }] : [];
     })
+  };
+}
+
+export type LeaderRow = BandStat & { months?: string };
+// Leaderboard order: rows with a same-bag delta first (best first), then the rest by adjusted mean.
+export const ranked = <T extends BandStat>(st: T[]): T[] =>
+  [...st].sort((a, b) => Number(b.delta !== null) - Number(a.delta !== null) || (b.delta ?? 0) - (a.delta ?? 0) || b.adjusted - a.adjusted || a.label.localeCompare(b.label));
+// "Feb–Apr", one month "Sep", across years "Nov 25–Feb 26" (rows in time order).
+const monthsOf = (bs: readonly BrewFact[]) => {
+  const [a, b] = [bs[0].localDate, bs.at(-1)!.localDate], y = a.slice(0, 4) !== b.slice(0, 4);
+  const m = (d: string) => `${MON[+d.slice(5, 7) - 1]}${y ? ` ${d.slice(2, 4)}` : ''}`;
+  return a.slice(0, 7) === b.slice(0, 7) ? m(a) : `${m(a)}–${m(b)}`;
+};
+const bagMeanAvg = (rs: readonly BrewFact[]) => mean([...groupBy(rs, (b) => b.coffeeId).values()].map((g) => mean(g.map((b) => b.rating!))));
+const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) => string | null) =>
+  monthlyMulti(brews.filter((b) => inPeriod(b.localDate, period) && key(b)), key, shareCell, '%', 20);
+
+export interface WaterTab {
+  recipes: LeaderRow[];
+  minerals: { key: Mineral; name: string; overall: number; bars: { label: string; value: number; brews: number; bags: number; solid: boolean }[] }[];
+  gh: BandStat[]; byRoast: Breakdown | null; byProcess: Breakdown | null; eras: Multi | null;
+  pairs: { label: string; href: string | null; best: { water: string; mean: number }; others: { water: string; mean: number }[]; gap: number }[];
+}
+export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings }): WaterTab {
+  const rows = ratedIn(brews, c.period, c.ratings);
+  const water = labFn('water');
+  const byWater = groupBy(rows, (b) => b.water);
+  const recipes = ranked(pairedDeltas(rows, water)).map((s) => ({ ...s, months: monthsOf(byWater.get(s.label)!) }));
+  const cols = recipes.map((r) => r.label);
+  const byId = new Map(bags.map((b) => [b.id, b]));
+  return {
+    recipes,
+    // Plain adjusted means (spec exception): same-bag water pairs are too thin; the UI notes the confound.
+    minerals: MINERALS.flatMap(([key, name]) => {
+      const has = rows.filter((b) => mineralOf(key, b) !== null);
+      const g = ratedGroups(has, (b) => String(mineralOf(key, b)), 'all', 'adjusted');
+      if (g.length < 2) return [];
+      return [{ key, name, overall: bagMeanAvg(has), bars: g.map((x) => ({ label: x.label, value: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS })).sort((a, b) => +a.label - +b.label) }];
+    }),
+    gh: pairedDeltas(rows, labFn('gh')),
+    byRoast: breakdown(rows, water, SLICE_OF.roast, cols),
+    byProcess: breakdown(rows, water, SLICE_OF.process, cols),
+    eras: eraOf(brews, c.period, (b) => b.water),
+    pairs: [...groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)].flatMap(([id, g]) => {
+      const ws = [...groupBy(g, (b) => b.water)].filter(([, x]) => x.length >= 2)
+        .map(([w, x]) => ({ water: w!, mean: mean(x.map((b) => b.rating!)) })).sort((a, b) => b.mean - a.mean || a.water.localeCompare(b.water));
+      if (ws.length < 2) return [];
+      const bag = byId.get(id!);
+      return [{ label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null, best: ws[0], others: ws.slice(1), gap: ws[0].mean - ws[1].mean }];
+    }).sort((a, b) => b.gap - a.gap || a.label.localeCompare(b.label)).slice(0, 10) // ponytail: top 10 pairs; add a Show all when asked
+  };
+}
+
+export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; eras: Multi | null }
+export function gearTab(brews: readonly BrewFact[], c: { period: Period; ratings: Ratings }): GearTab {
+  const rows = ratedIn(brews, c.period, c.ratings);
+  const drippers = ranked(pairedDeltas(rows, labFn('dripper')));
+  const filters = ranked(pairedDeltas(rows, labFn('filter')));
+  // The matrix: each dripper + filter pair is one band; pivoted into rows (drippers) × columns (filters).
+  const combos = new Map(pairedDeltas(rows, (b) => (b.dripper && b.filter && b.filter !== MIXED_FILTER ? { label: `${b.dripper}\u0000${b.filter}`, order: 0 } : null))
+    .map((s) => [s.label, s]));
+  const used = [...combos.keys()].map((k) => k.split('\u0000'));
+  const mRows = drippers.map((d) => d.label).filter((d) => used.some(([x]) => x === d));
+  const mCols = filters.map((f) => f.label).filter((f) => used.some(([, y]) => y === f));
+  return {
+    drippers, filters,
+    matrix: mRows.length && mCols.length ? {
+      rows: mRows, cols: mCols,
+      cells: mRows.map((d) => mCols.map((f) => { const s = combos.get(`${d}\u0000${f}`); return s ? cellOf(s) : null; }))
+    } : null,
+    byRoast: breakdown(rows, labFn('dripper'), SLICE_OF.roast, drippers.map((d) => d.label)),
+    eras: eraOf(brews, c.period, (b) => b.dripper)
   };
 }

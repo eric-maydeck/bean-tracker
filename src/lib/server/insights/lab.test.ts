@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, brewingTab, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf } from './lab';
+import { breakdown, brewingTab, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
+import type { BandStat } from './lab';
 
 let n = 0;
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -308,5 +309,92 @@ describe('brewingTab', () => {
       brew({ coffeeId: 1, brewIndex: 0, grinder: 'A4Z', grind: '2.0.0', localDate: '2026-08-01' }) // before the period: not the baseline
     ];
     expect(brewingTab(rows, c1).drift).toMatchObject([{ label: '#2', value: 0 }, { label: '#3', value: -0.1 }]);
+  });
+});
+
+describe('waterTab', () => {
+  const prof = (calcium: number, magnesium: number) => ({ calcium, magnesium, sodium: 0, potassium: 5, chloride: 10, sulfate: 10, gh: calcium * 2.5 + magnesium * 4.1, kh: 6 });
+  const rows = [1, 2, 3].flatMap((id) => [
+    ...many(10, id, 92, 8, { water: 'A', waterProfile: prof(10, 15), roastLevel: 'Light', localDate: '2026-09-02' }),
+    ...many(10, id, 92, 7.5, { water: 'B', waterProfile: prof(20, 5), roastLevel: 'Light', localDate: '2026-09-20' })]);
+  const bags = [1, 2, 3].map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` }));
+  const w = waterTab(rows, bags, { period: P, ratings: 'all' });
+  it('recipes: same-bag delta first, months used', () => {
+    expect(w.recipes.map((r) => r.label)).toEqual(['A', 'B']);
+    expect(w.recipes[0]).toMatchObject({ months: 'Sep', solid: true });
+    expect(w.recipes[0].delta).toBeCloseTo(0.25);
+  });
+  it('minerals: plain adjusted means per value, only minerals with ≥ 2 values', () => {
+    expect(w.minerals.map((m) => m.key)).toEqual(['calcium', 'magnesium', 'gh', 'mgca', 'mgk']);
+    expect(w.minerals[0].bars.map((b) => b.label)).toEqual(['10', '20']);
+    expect(w.minerals[0].bars.map((b) => b.solid)).toEqual([true, true]); // 3 bags, 30 brews each
+    expect(w.minerals[0].bars[0].value).toBeGreaterThan(w.minerals[0].bars[1].value);
+    expect(w.minerals[0].overall).toBeCloseTo(7.74);
+  });
+  it('mineral bars are not solid under MIN_BAGS / MIN_BREWS', () => {
+    const thin = waterTab(rows.filter((r) => r.coffeeId === 1 || r.coffeeId === 2), bags, { period: P, ratings: 'all' });
+    expect(thin.minerals[0].bars.map((b) => b.solid)).toEqual([false, false]); // 2 bags
+    const few = waterTab([1, 2, 3].flatMap((id) => [
+      ...many(5, id, 92, 8, { water: 'A', waterProfile: prof(10, 15) }), ...many(5, id, 92, 7.5, { water: 'B', waterProfile: prof(20, 5) })]), bags, { period: P, ratings: 'all' });
+    expect(few.minerals[0].bars.map((b) => b.solid)).toEqual([false, false]); // 15 brews each
+  });
+  it('GH bands, heatmaps, pairs', () => {
+    expect(w.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
+    expect(w.byRoast!.rows).toEqual(['Light']);
+    expect(w.byProcess!.cols).toEqual(['A', 'B']);
+    expect(w.pairs[0]).toMatchObject({ label: 'R Bag 1', href: '/coffees/s1', best: { water: 'A' }, others: [{ water: 'B' }] });
+    expect(w.pairs[0].gap).toBeCloseTo(0.5);
+  });
+  it('pairs: biggest gap first, capped at 10, need ≥ 2 brews per water', () => {
+    const many12 = Array.from({ length: 12 }, (_, i) => i + 1);
+    const r = many12.flatMap((id) => [...many(2, id, 92, 8, { water: 'A' }), ...many(2, id, 92, 8 - id / 10, { water: 'B' })]);
+    const p = waterTab(r, many12.map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` })), { period: P, ratings: 'all' }).pairs;
+    expect(p).toHaveLength(10);
+    expect(p[0].label).toBe('R Bag 12');
+    const one = waterTab([...many(1, 1, 92, 8, { water: 'A' }), ...many(2, 1, 92, 7, { water: 'B' }), ...many(2, 1, 92, 6, { water: 'C' })], bags, { period: P, ratings: 'all' }).pairs;
+    expect(one[0].best.water).toBe('B');
+    expect(one[0].others.map((o) => o.water)).toEqual(['C']);
+  });
+  it('months span years as "Nov 25–Feb 26"', () => {
+    const span = waterTab([...many(2, 1, 92, 8, { water: 'A', localDate: '2025-11-03' }), ...many(2, 1, 92, 8, { water: 'A', localDate: '2026-02-01' })],
+      bags, { period: { start: null, end: '2026-09-30' }, ratings: 'all' });
+    expect(span.recipes[0].months).toBe('Nov 25–Feb 26');
+  });
+  it('months within a year: "Feb–Apr"', () => {
+    const s = waterTab([...many(2, 1, 92, 8, { water: 'A', localDate: '2026-02-03' }), ...many(2, 1, 92, 8, { water: 'A', localDate: '2026-04-01' })], bags, { period: { start: null, end: '2026-09-30' }, ratings: 'all' });
+    expect(s.recipes[0].months).toBe('Feb–Apr');
+  });
+  it('empty period: every list empty, nulls, no NaN', () => {
+    const e = waterTab(rows, bags, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all' });
+    expect(e).toEqual({ recipes: [], minerals: [], gh: [], byRoast: null, byProcess: null, eras: null, pairs: [] });
+  });
+});
+
+describe('ranked', () => {
+  it('delta rows first (desc), then adjusted desc', () => {
+    const s = (label: string, delta: number | null, adjusted: number) => ({ label, delta, adjusted }) as unknown as BandStat;
+    expect(ranked([s('x', null, 9), s('a', 0.1, 1), s('b', 0.4, 1), s('y', null, 8)]).map((r) => r.label)).toEqual(['b', 'a', 'x', 'y']);
+  });
+});
+
+describe('gearTab', () => {
+  const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 92, 8, { dripper: 'V60', filter: 'Abaca', roastLevel: 'Light' }),
+    ...many(10, id, 92, 7, { dripper: 'Origami', filter: 'Abaca', roastLevel: 'Light' }),
+    ...many(2, id, 92, 7, { dripper: 'Gabi Master A', filter: '155 (mixed)', roastLevel: 'Light' })]);
+  const g = gearTab(rows, { period: P, ratings: 'all' });
+  it('drippers ranked by same-bag delta; spread = consistency', () => {
+    expect(g.drippers.map((d) => d.label)).toEqual(['V60', 'Origami', 'Gabi Master A']);
+    expect(g.drippers[0].spread).not.toBeNull();
+  });
+  it('filters leave the mixed filter out', () => expect(g.filters.map((f) => f.label)).toEqual(['Abaca']));
+  it('dripper × filter matrix and dripper × roast level', () => {
+    expect(g.matrix).toMatchObject({ rows: ['V60', 'Origami'], cols: ['Abaca'] });
+    expect(g.matrix!.cells[0][0]!.delta).toBeGreaterThan(g.matrix!.cells[1][0]!.delta!);
+    expect(g.matrix!.cells[0][0]).toMatchObject({ brews: 30, bags: 3 });
+    expect(g.byRoast!.cols).toEqual(['V60', 'Origami', 'Gabi Master A']);
+  });
+  it('no filters at all: no matrix', () => {
+    const r = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8, { dripper: 'V60' }), ...many(4, id, 92, 7, { dripper: 'Origami' })]);
+    expect(gearTab(r, { period: P, ratings: 'all' }).matrix).toBeNull();
   });
 });
