@@ -30,6 +30,8 @@
   let deck = $derived(t.stories);
   let grid = $derived(t.grid);
   // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
+  // The card's title: the headline plus each versus side in full (a clamped side label's only full-text route besides the popover).
+  const full = (f: Finding) => [f.headline, ...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : [])].join('\n');
   const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
   let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
@@ -281,13 +283,13 @@
       {#each sized as { item: f, size, style }, i (f.key)}
         {@const id = anchor(f.key)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
-        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" title={f.headline} onclick={unclamp}>
+        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" title={full(f)} onclick={unclamp}>
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
-          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.body}<br />{f.body}{/if}{#if f.caveat}<br />{f.caveat}{/if}</div>
+          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.sides?.length === 2}{#each f.sides as s, i (i)}<br />{s.label}: {s.value}{/each}{/if}{#if f.body}<br />{f.body}{/if}{#if f.caveat}<br />{f.caveat}{/if}</div>
         </div>
       {/each}
     </div>
@@ -529,14 +531,12 @@
      line to 1 line each, then headline and body to 1. */
   .finding:global([data-tight]) {
     --clamp: 2;
+    --vs-clamp: 2;
   }
   .finding:global([data-tight='3']) {
     --clamp: 1;
   }
-  /* Versus side labels give way too (the headline carries both names in the full-text tip). */
-  .finding:global([data-tight]) {
-    --vs-clamp: 2;
-  }
+  /* Versus side labels give way too (the full-text popover and title list each side in full). */
   .finding:global(:is([data-tight='2'], [data-tight='3'])) {
     --vs-clamp: 1;
   }
@@ -709,7 +709,7 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
   }
-  /* A long bag name keeps to three lines (ponytail: cut without a tip; Records' use:full if it matters). */
+  /* A long side label clamps to 3 lines, fewer when the card tightens; the full text is in the card's popover and title. */
   .vs-label {
     display: -webkit-box;
     -webkit-box-orient: vertical;
