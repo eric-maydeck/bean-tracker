@@ -32,10 +32,10 @@ const bags = (n: number, o: (i: number) => Partial<BagFact> = () => ({})) =>
   Array.from({ length: n }, (_, i) => bag({ id: i + 1, name: `Bag ${i + 1}`, ...o(i) }));
 
 describe('dial-in curve', () => {
-  const brews = Array.from({ length: 12 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8])).flat();
+  const brews = Array.from({ length: 30 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8])).flat();
   it('brew #1 below later brews', () => {
     const f = gen('dialinCurve', brews)!;
-    expect(f).toMatchObject({ theme: 'dialin', kind: 'pattern', strength: 'solid', headline: 'Your first brew of a bag is your worst', sample: '12 bags' });
+    expect(f).toMatchObject({ theme: 'dialin', kind: 'pattern', strength: 'solid', headline: 'Your first brew of a bag is your worst', sample: '30 bags' });
     expect(f.series).toHaveLength(6);
     expect(f.series![0].value).toBeCloseTo(6 - 44.5 / 6, 10); // demeaned: -1.4167
     expect(f.z).toBeLessThan(-2);
@@ -43,12 +43,14 @@ describe('dial-in curve', () => {
   it('story variant: raw means and share of bags', () => {
     const f = gen('dialinStory', brews)!;
     expect(f.kind).toBe('story');
-    expect(f.body).toBe("Brew #1 averages 6.00; by brew #6 you're at 8.00. The first brew was the worst in 100% of 12 bags.");
+    expect(f.body).toBe("Brew #1 averages 6.00; by brew #6 you're at 8.00. The first brew was the worst in 100% of 30 bags.");
   });
+  it('under 30 first brews is hidden, not a finding', () =>
+    expect(gen('dialinCurve', Array.from({ length: 12 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8])).flat())).toBeNull());
   it('null under MIN_BAGS', () => expect(gen('dialinCurve', seq(1, [6, 8, 8]))).toBeNull());
-  it('null when every rating is equal (SD 0)', () => expect(gen('dialinCurve', Array.from({ length: 12 }, (_, i) => seq(i + 1, [8, 8, 8, 8])).flat())).toBeNull());
+  it('null when every rating is equal (SD 0)', () => expect(gen('dialinCurve', Array.from({ length: 30 }, (_, i) => seq(i + 1, [8, 8, 8, 8])).flat())).toBeNull());
   it('first brew best -> the other headline', () => {
-    const f = gen('dialinCurve', Array.from({ length: 12 }, (_, i) => seq(i + 1, [9, 8, 7.5, 8, 7.5, 8])).flat())!;
+    const f = gen('dialinCurve', Array.from({ length: 30 }, (_, i) => seq(i + 1, [9, 8, 7.5, 8, 7.5, 8])).flat())!;
     expect(f.headline).toBe('You nail a bag from the first brew');
   });
 });
@@ -59,6 +61,13 @@ describe('dial-in speed', () => {
     const f = gen('dialinSpeed', b, bags(3))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'versus', z: null, strength: null, headline: 'Dial-in takes 1 to 4 brews' });
     expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Fastest: R Bag 2', value: '1 brew' }]);
+  });
+  it('skips bags that began before the period (brewIndex > 1)', () => {
+    const late = seq(4, [9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
+    const f = gen('dialinSpeed', [...b, ...late], bags(4))!;
+    expect(f.sides![1].label).toBe('Fastest: R Bag 2'); // Bag 4 would have won with 1 brew
+    expect(f.sample).toBe('3 bags');
+    expect(gen('dialinSpeed', [...b.slice(0, 11), ...late], bags(4))).toBeNull();
   });
   it('null below MIN_BAGS bags with 5+ rated brews', () => expect(gen('dialinSpeed', b.slice(0, 11), bags(3))).toBeNull());
 });
@@ -97,6 +106,12 @@ describe('repeat buys', () => {
     expect(f.headline).toBe('Repeat buys rate higher');
     expect(finite(f)).toBe(true);
   });
+  it('null when every pair differs by the same amount (z not finite)', () => {
+    const b2 = bs.map((x) => bag({ ...x }));
+    const br = b2.flatMap((x, i) => seq(x.id, i & 1 ? [8, 8, 8] : [7, 7, 7]));
+    expect(gen('repeatBuys', br, b2)).toBeNull();
+  });
+  it('bags with under 3 rated brews are ignored', () => expect(gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, i & 1 ? [9, 9] : [7, 7])), bs)).toBeNull());
   it('null under 3 pairs', () => expect(gen('repeatBuys', brews.slice(0, 12), bs.slice(0, 4))).toBeNull());
 });
 
@@ -118,6 +133,8 @@ describe('group effects', () => {
     for (const f of fs) if (f!.strength === 'early') expect(f!.caveat).toContain('groups compared');
     expect(finite(fs)).toBe(true);
   });
+  it('bags with under 3 rated brews are ignored', () =>
+    expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i)])), bs)).toBeNull());
   it('null with too few bags', () => expect(all(ctx(brews.slice(0, 6), bs.slice(0, 2))).filter((f) => f!.key.startsWith('groupDelta'))).toEqual([]));
 });
 
@@ -125,6 +142,8 @@ describe('co-ferments', () => {
   const mk = (origins: string[]) => origins.map((origin, i) => bag({ id: i + 1, processGroup: 'Co-ferment / Infused', origin }));
   it('all from one origin', () =>
     expect(gen('coFerments', [], mk(Array(5).fill('Colombia')))).toMatchObject({ headline: 'All 5 of your co-ferments are Colombia', z: null, strength: null }));
+  it('a co-ferment with no origin breaks "all one origin"', () =>
+    expect(gen('coFerments', [], [...mk(Array(5).fill('Colombia')), bag({ id: 9, processGroup: 'Co-ferment / Infused', origin: null })])).toBeNull());
   it('null when mixed or under 5', () => {
     expect(gen('coFerments', [], mk(['Colombia', 'Colombia', 'Colombia', 'Colombia', 'Kenya']))).toBeNull();
     expect(gen('coFerments', [], mk(Array(4).fill('Colombia')))).toBeNull();
@@ -141,15 +160,19 @@ describe('notes mean trouble', () => {
 describe('backlog runway', () => {
   const brews = Array.from({ length: 30 }, (_, i) => brew({ id: i + 1, coffeeId: 1, dose: 100, localDate: `2026-09-${String(i + 1).padStart(2, '0')}` }));
   const bs = [bag({ id: 1, purchaseDate: '2026-09-05', amountG: 3800 }), bag({ id: 2, purchaseDate: '2026-06-01', amountG: 9999 })];
-  it('days of cover, bought vs brewed', () =>
-    expect(gen('backlogRunway', brews, bs, { onHandG: 10400 })).toMatchObject({
-      theme: 'money', z: null, strength: null, headline: '10.4kg on hand, about 104 days',
-      body: 'At 100 g/day. Bought 3.8kg vs brewed 3kg in this period.'
+  // Period runs past today (Oct 11) and starts at dataStart: 41 tracked days, 3000 g -> 73 g/day.
+  const o = { onHandG: 10400, dataStart: '2026-09-01', period: { from: '2026-09-01', to: '2026-10-31' } };
+  it('days of cover over tracked days, bought vs brewed', () =>
+    expect(gen('backlogRunway', brews, bs, o)).toMatchObject({
+      theme: 'money', z: null, strength: null, headline: '10.4kg on hand, about 143 days', sample: '41 days',
+      body: 'At 73 g/day. Bought 3.8kg vs brewed 3kg in this period.'
     }));
+  it('a period starting before dataStart counts only tracked days', () =>
+    expect(gen('backlogRunway', brews, bs, { ...o, period: { from: '2026-01-01', to: '2026-09-30' } })!.sample).toBe('30 days'));
   it('null with nothing on hand, no brews or a tiny period', () => {
-    expect(gen('backlogRunway', brews, bs, { onHandG: 0 })).toBeNull();
-    expect(gen('backlogRunway', [], bs, { onHandG: 500 })).toBeNull();
-    expect(gen('backlogRunway', brews, bs, { onHandG: 500, period: { from: '2026-09-01', to: '2026-09-05' } })).toBeNull();
+    expect(gen('backlogRunway', brews, bs, { ...o, onHandG: 0 })).toBeNull();
+    expect(gen('backlogRunway', [], bs, o)).toBeNull();
+    expect(gen('backlogRunway', brews, bs, { ...o, period: { from: '2026-09-01', to: '2026-09-05' } })).toBeNull();
   });
 });
 

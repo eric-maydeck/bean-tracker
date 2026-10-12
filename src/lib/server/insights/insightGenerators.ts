@@ -3,7 +3,8 @@ import { formatGrams } from '$lib/grams';
 import type { BagFact, BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
-import { daysBetween, inPeriod } from './time';
+import { consumption } from './overview';
+import { inPeriod, trackedDays } from './time';
 
 export type Theme = 'taste' | 'dialin' | 'habits' | 'gear' | 'money';
 export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story' | 'whatif';
@@ -32,10 +33,11 @@ const signed = (x: number, d = 2) => `${x < 0 ? '-' : '+'}${Math.abs(x).toFixed(
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const counted = (c: GenCtx) => c.brews.filter((b) => countsForRating(b, c.ratings));
 const bagLabel = (c: GenCtx, id: number) => { const b = c.bags.find((x) => x.id === id); return b ? `${b.roaster} ${b.name}` : `Bag ${id}`; };
+// Mean rating per bag, for bags with at least MIN_BAGS rated brews.
 const bagMeans = (rows: readonly BrewFact[]): Map<number, number> => {
   const by = new Map<number, number[]>();
   for (const b of rows) if (b.coffeeId !== null) (by.get(b.coffeeId) ?? by.set(b.coffeeId, []).get(b.coffeeId)!).push(b.rating!);
-  return new Map([...by].map(([id, rs]) => [id, mean(rs)]));
+  return new Map([...by].filter(([, rs]) => rs.length >= MIN_BAGS).map(([id, rs]) => [id, mean(rs)]));
 };
 // Rated brews of each bag, in time order.
 const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
@@ -71,6 +73,7 @@ const dialinCurve: Generator = (c) => {
   const bags = new Set(rows.map((r) => r.coffeeId));
   const first = rows.filter((r) => r.brewIndex === 1), rest = rows.filter((r) => r.brewIndex > 1);
   if (bags.size < MIN_BAGS || first.length < MIN_BAGS || !rest.length) return null;
+  const enough = first.length >= MIN_BREWS;
   const bucket = (r: { brewIndex: number }) => Math.min(r.brewIndex, 7);
   const series = [1, 2, 3, 4, 5, 6, 7].flatMap((i) => {
     const rs = rows.filter((r) => bucket(r) === i);
@@ -83,7 +86,7 @@ const dialinCurve: Generator = (c) => {
     ...base, key: 'dialinCurve', kind: 'pattern',
     headline: lower ? 'Your first brew of a bag is your worst' : 'You nail a bag from the first brew',
     value: signed(mean(first.map((r) => r.dm)) - mean(rest.map((r) => r.dm))), series
-  }, z, true, 'bags', bags.size);
+  }, z, enough, 'bags', first.length);
   if (!curve) return null;
   const raw = (i: number) => mean(rows.filter((r) => bucket(r) === i).map((r) => r.rating!));
   const lastI = series.length ? Math.max(...series.map((s) => (s.label === '7+' ? 7 : +s.label))) : 1;
@@ -92,7 +95,7 @@ const dialinCurve: Generator = (c) => {
   const story: Finding = {
     ...curve, key: 'dialinStory', kind: 'story',
     body: `Brew #1 averages ${raw(1).toFixed(2)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(2)}. ` +
-      `The first brew was the ${lower ? 'worst' : 'best'} in ${Math.round((100 * extreme) / first.length)}% of ${bags.size} bags.`
+      `The first brew was the ${lower ? 'worst' : 'best'} in ${Math.round((100 * extreme) / first.length)}% of ${first.length} bags.`
   };
   return [curve, story];
 };
@@ -100,8 +103,9 @@ const dialinCurve: Generator = (c) => {
 // Rated brews to reach the bag's settled rating: the first at or above (mean of its best half) - 0.5.
 const dialinSpeed: Generator = (c) => {
   const slow: { id: number; pos: number }[] = [];
+  const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
-    if (bs.length < 5) continue;
+    if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
     const rs = bs.map((b) => b.rating!);
     const top = [...rs].sort((a, b) => b - a).slice(0, Math.ceil(rs.length / 2));
     slow.push({ id, pos: rs.findIndex((r) => r >= mean(top) - 0.5) + 1 });
@@ -161,7 +165,7 @@ const repeatBuys: Generator = (c) => {
     value: signed(m), body: `${d.filter((x) => x > 0).length} of ${d.length} second bags rated higher.`,
     sample: `${d.length} repeat pairs`, href: `${LB}&open=coffees`, caveat: 'Ratings settled over time and you re-buy winners.'
   };
-  return graded(f, z, true, 'pairs', d.length) ?? { ...f, z: null, strength: null };
+  return graded(f, z, true, 'pairs', d.length);
 };
 
 const DIMS = [
@@ -192,9 +196,9 @@ const groupDelta: Generator = (c) => {
 };
 
 const coFerments: Generator = (c) => {
-  const co = c.bags.filter((b) => b.processGroup === 'Co-ferment / Infused' && b.origin);
+  const co = c.bags.filter((b) => b.processGroup === 'Co-ferment / Infused');
   const top = new Map<string, number>();
-  for (const b of co) top.set(b.origin!, (top.get(b.origin!) ?? 0) + 1);
+  for (const b of co) if (b.origin) top.set(b.origin, (top.get(b.origin) ?? 0) + 1);
   const [origin, n] = [...top].sort((a, b) => b[1] - a[1])[0] ?? [];
   if (co.length < 5 || n !== co.length) return null;
   return {
@@ -214,18 +218,18 @@ const notesTrouble: Generator = (c) => {
   }, brewZ(yes, no, sd(rows.map((r) => r.dm))), true, 'brews', Math.min(yes.length, no.length));
 };
 
-// On hand / recent g/day over the period; bought vs brewed kg in it. Descriptive.
+// On hand / measured g/day (consumption); bought vs brewed kg in the period. Descriptive.
 const MIN_RUNWAY_DAYS = 14;
 const backlogRunway: Generator = (c) => {
   const p = { start: c.period.from, end: c.period.to };
-  const days = daysBetween(p.start, p.end) + 1;
+  const days = trackedDays(p, c.dataStart, c.today);
+  const { perDay, daysToClear } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);
+  if (days < MIN_RUNWAY_DAYS || perDay === null || daysToClear === null) return null;
   const brewed = c.brews.filter((b) => inPeriod(b.localDate, p)).reduce((s, b) => s + (b.dose ?? 0), 0);
-  if (days < MIN_RUNWAY_DAYS || brewed <= 0 || c.onHandG <= 0) return null;
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
-  const perDay = brewed / days;
   return {
-    key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${Math.round(c.onHandG / perDay)} days`,
-    value: `${Math.round(c.onHandG / perDay)} days`,
+    key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
+    value: `${daysToClear} days`,
     body: `At ${Math.round(perDay)} g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
     sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null
   };
