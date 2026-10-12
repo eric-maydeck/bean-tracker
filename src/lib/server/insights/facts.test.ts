@@ -16,7 +16,7 @@ const METHODS: [string, string, string, string][] = [
   ['MK PRO V - Cafec Abaca', 'Cafec Abaca filters', 'MK PRO V', 'Cafec Abaca'],
   ['MK PRO V - Cafec T90', 'Cafec T90 filters', 'MK PRO V', 'Cafec T90'],
   ['MK PRO V - Sibarist Fast', 'Sibarist Fast filters', 'MK PRO V', 'Sibarist Fast'],
-  ['OXO Rapid Brewer - Zuppa Lunga', '', 'OXO Rapid Brewer', 'Zuppa Lunga'],
+  ['OXO Rapid Brewer - Long Soup', '', 'OXO Rapid Brewer', 'Long Soup'],
   ['Origami - Cafec Abaca', 'Cafec Abaca filters', 'Origami', 'Cafec Abaca'],
   ['Origami - XBloom 155', 'XBloom 155 filters', 'Origami', 'XBloom 155'],
   ['V60 - Cafec Abaca', 'Cafec Abaca', 'V60', 'Cafec Abaca'],
@@ -89,7 +89,8 @@ describe('brewerType', () => {
     expect(brewerType('Mystery', null)).toBe('other');
   });
   it('OXO Rapid Brewer (and ORB) is soup, whatever its style', () => {
-    expect(brewerType('OXO Rapid Brewer - Zuppa Lunga', 'ESPRESSO')).toBe('soup');
+    expect(brewerType('OXO Rapid Brewer - Long Soup', 'ESPRESSO')).toBe('soup');
+    expect(brewerType('OXO Rapid Brewer - Zuppa Lunga', 'ESPRESSO')).toBe('soup'); // its old name
     expect(brewerType('My ORB', 'ESPRESSO')).toBe('soup');
     expect(brewerType('Orbit dripper', 'POUR OVER')).toBe('pourover');
   });

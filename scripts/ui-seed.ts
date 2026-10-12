@@ -109,7 +109,7 @@ db.prepare(
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, imported_at) VALUES ('m1', 'V60', 'V60', ?)`).run(now);
 db.prepare(`UPDATE beanconqueror_methods SET preparation_style = 'POUR OVER' WHERE id = 'm1'`).run();
 db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
-  VALUES ('m2', 'CUSTOM_PREPARATION', 'OXO Rapid Brewer - Zuppa Lunga', 'ESPRESSO', ?)`).run(now);
+  VALUES ('m2', 'CUSTOM_PREPARATION', 'OXO Rapid Brewer - Long Soup', 'ESPRESSO', ?)`).run(now);
 db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6 Special', ?)`).run(now);
 const brew = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
