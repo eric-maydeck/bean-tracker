@@ -8,7 +8,7 @@ interface Seed {
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
 // asserts each stays on one line).
-const GRAMS = { big: '2kg (2kg left)', under: '999g (999g left)', part: '1.5kg (1.2kg left)' };
+const GRAMS = { big: '2kg (2kg left)', under: '999g (999g left)', part: '1.5kg (1.1kg left)' };
 type GramsKey = keyof typeof GRAMS;
 const GRAMS_KEYS = Object.keys(GRAMS) as GramsKey[];
 // Read lazily: .ui-test/seed.json only exists once the web server has started.
@@ -1304,7 +1304,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(8)}`));
       await expect(page.locator('.insights-period')).toContainText(' · vs ');
       // Enter in a date input applies too (once the dates are valid).
-      await page.getByRole('button', { name: 'Dates…' }).click();
+      await page.getByRole('button', { name: 'Compare dates' }).click();
       await to.fill(daysAgo(9));
       await to.press('Enter');
       await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(9)}`));
@@ -1330,12 +1330,12 @@ export const STATES: State[] = [
     name: 'insights-custom-range',
     path: () => `/insights?range=${daysAgo(40)}..${daysAgo(10)}&compare=1`,
     act: async (page) => {
-      const period = page.getByLabel('Period');
+      const period = page.getByLabel('Period', { exact: true });
       await expect(period).toHaveValue('custom');
       await expect(period.locator('option:checked')).toHaveText(/\d{4}/);
       await expect(page.locator('.insights-period')).toContainText(' · vs ');
       const before = page.url();
-      await page.getByRole('button', { name: 'Dates…' }).click();
+      await page.getByRole('button', { name: 'Period dates' }).click();
       await expect(page.locator('dialog[open]')).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
       await expectDialogInViewport(page);
@@ -1352,7 +1352,7 @@ export const STATES: State[] = [
     name: 'insights-custom-range-open',
     path: () => '/insights?tab=consumption&by=month&range=1w',
     act: async (page) => {
-      await page.getByLabel('Period').selectOption('custom');
+      await page.getByLabel('Period', { exact: true }).selectOption('custom');
       await expect(page.locator('dialog[open]')).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
       await expectDialogInViewport(page);

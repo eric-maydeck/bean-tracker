@@ -122,7 +122,7 @@ for (let i = 0; i < 2; i++) brew.run(isoDaysAgo(i + 1), 'bean-likely', 8, 7 + i,
 const atLocal = (n: number, h: number, m: number) => { const d = new Date(Date.now() - n * day); d.setHours(h, m, 0, 0); return d.toISOString(); };
 for (let i = 0; i < 20; i++) {
   brew.run(i === 0 ? atLocal(1, 5, 40) : i === 1 ? atLocal(2, 23, 10) : isoDaysAgo(i + 1), 'bean-part', i === 2 ? 10 : 7 + (i % 3), 9, now);
-} // 20 × 15g = 300g
+} // 20 × 15g = 300g, plus 60g of soup below = 360g
 // Soup: 3 brews of 20g in 100g water.
 const soup = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
