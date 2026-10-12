@@ -533,6 +533,13 @@
   .finding:global([data-tight='3']) {
     --clamp: 1;
   }
+  /* Versus side labels give way too (the headline carries both names in the full-text tip). */
+  .finding:global([data-tight]) {
+    --vs-clamp: 2;
+  }
+  .finding:global(:is([data-tight='2'], [data-tight='3'])) {
+    --vs-clamp: 1;
+  }
   .finding:global([data-tight='3']) .sample {
     white-space: nowrap;
   }
@@ -706,8 +713,8 @@
   .vs-label {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    -webkit-line-clamp: var(--vs-clamp, 3);
+    line-clamp: var(--vs-clamp, 3);
     overflow: hidden;
     font-size: 0.8rem;
     line-height: 1.25;
