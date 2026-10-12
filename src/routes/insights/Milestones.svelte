@@ -28,15 +28,44 @@
     }))
   );
   let nextVars = $derived(rowVars(m.nextUp.length));
+  let totalVars = $derived(rowVars(m.totals.length));
+  // The navigator: years (newest first), each with its months that have milestones.
+  let years = $derived(
+    [...Map.groupBy(m.months.map((g) => g.month), (ym) => ym.slice(0, 4))]
+  );
+
+  // The navigator sticks just under the page's sticky filter bar.
+  let barH = $state(0);
+  $effect(() => {
+    const bar = document.querySelector<HTMLElement>('.filter-bar');
+    if (!bar) return;
+    const ro = new ResizeObserver(() => (barH = bar.offsetHeight));
+    ro.observe(bar);
+    return () => ro.disconnect();
+  });
 </script>
 
 <div class="kinds-bar">
   <div class="tab-group kind-chips" role="group" aria-label="Kinds" data-button-row>
     {#each KINDS as k (k)}
-      <button aria-pressed={!!kinds?.includes(k)} onclick={() => toggle(k)}><Icon name={ICON[k]} />{LABEL[k]}</button>
+      <button aria-pressed={!!kinds?.includes(k)} onclick={() => toggle(k)} style:--kind="var(--kind-{k})"
+        ><Icon name={ICON[k]} />{LABEL[k]}</button
+      >
     {/each}
   </div>
 </div>
+
+<section class="chart-panel">
+  <h2>All-time totals</h2>
+  <div class="hl-grid milestone-totals">
+    {#each m.totals as t, i (t.key)}
+      <div class="hl-card" style={totalVars[i]}>
+        <span class="hl-value">{n(t.value)}{#if t.unit}<small>{`\u00a0${t.unit}`}</small>{/if}</span>
+        <div class="hl-caption"><span class="stat-label">{t.label}</span></div>
+      </div>
+    {/each}
+  </div>
+</section>
 
 <section class="chart-panel">
   <h2>Milestones</h2>
@@ -73,23 +102,37 @@
   {#if !m.months.length}
     <p class="hl-empty">No milestones in this period.</p>
   {/if}
-  {#each m.months as g (g.month)}
-    <h3 class="month">{month(g.month)}</h3>
-    <ol class="milestone-feed">
-      {#each g.events as e (e.key)}
-        <li>
-          <span class="kind-icon kind-{e.kind}" title={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
-          <time datetime={e.date}>{day(e.date)}</time>
-          <span class="who">
-            <span class="ev-title">{e.title}</span>
-            {#if e.detail}
-              <small>{#if e.href}<a href={e.href}>{e.detail}</a>{:else}{e.detail}{/if}</small>
-            {/if}
-          </span>
-        </li>
-      {/each}
-    </ol>
-  {/each}
+  {#if m.months.length}
+    <div class="timeline" style:--bar-h="{barH}px">
+      <nav class="timeline-nav" aria-label="Jump to month">
+        {#each years as [y, yms] (y)}
+          <div class="nav-year">
+            <a class="year" href="#m-{yms[0]}">{y}</a>
+            {#each yms as ym (ym)}<a href="#m-{ym}">{MON[+ym.slice(5, 7) - 1]}</a>{/each}
+          </div>
+        {/each}
+      </nav>
+      <div class="feed">
+        {#each m.months as g (g.month)}
+          <h3 class="month" id="m-{g.month}">{month(g.month)}</h3>
+          <ol class="milestone-feed">
+            {#each g.events as e (e.key)}
+              <li>
+                <span class="kind-icon" style:--kind="var(--kind-{e.kind})" title={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
+                <time datetime={e.date}>{day(e.date)}</time>
+                <span class="who">
+                  <span class="ev-title">{e.title}</span>
+                  {#if e.detail}
+                    <small>{#if e.href}<a href={e.href}>{e.detail}</a>{:else}{e.detail}{/if}</small>
+                  {/if}
+                </span>
+              </li>
+            {/each}
+          </ol>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </section>
 
 {#if m.nextUp.length}
@@ -133,6 +176,9 @@
     width: 1rem;
     height: 1rem;
   }
+  .kind-chips button:not([aria-pressed='true']) :global(.icon) {
+    color: var(--kind);
+  }
   /* ui-rules 17: on phones the chips share each line evenly. */
   @media (max-width: 640px) {
     .kind-chips button {
@@ -175,6 +221,65 @@
     margin: var(--space-4) 0 var(--space-1);
     font-size: 1rem;
   }
+  /* Timeline navigator (feedback B4): a sticky side bar beside the feed; on phones a sticky
+     strip above it that scrolls sideways inside itself. Both stick just under the filter bar. */
+  .timeline-nav {
+    position: sticky;
+    top: var(--bar-h);
+    z-index: 2;
+    display: flex;
+    gap: var(--space-3);
+    overflow-x: auto;
+    scrollbar-width: thin;
+    margin: var(--space-3) calc(-1 * var(--space-4)) 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .nav-year {
+    display: flex;
+    gap: var(--space-1);
+    white-space: nowrap;
+  }
+  .timeline-nav a {
+    padding: 0.2rem 0.4rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+  .timeline-nav a:hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+  }
+  .timeline-nav .year {
+    font-weight: 700;
+    color: var(--color-text);
+  }
+  @media (max-width: 699px) {
+    .month {
+      scroll-margin-top: 3.5rem; /* clear the sticky strip on a jump */
+    }
+  }
+  @media (min-width: 700px) {
+    .timeline {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-5);
+    }
+    .timeline-nav {
+      top: calc(var(--bar-h) + var(--space-3));
+      align-self: start;
+      flex-direction: column;
+      max-height: calc(100vh - var(--bar-h) - 2 * var(--space-3));
+      overflow: auto;
+      margin: var(--space-4) 0 0;
+      padding: 0 var(--space-3) 0 0;
+      border-bottom: 0;
+      border-right: 1px solid var(--color-border);
+    }
+    .nav-year {
+      flex-direction: column;
+    }
+  }
   .milestone-feed {
     margin: 0;
     padding: 0;
@@ -196,8 +301,8 @@
     width: 2rem;
     height: 2rem;
     border-radius: 50%;
-    color: var(--color-accent);
-    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    color: var(--kind);
+    background: color-mix(in srgb, var(--kind) 14%, var(--color-surface));
   }
   .kind-icon :global(.icon) {
     width: 1.1rem;

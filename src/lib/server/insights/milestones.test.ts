@@ -100,7 +100,11 @@ describe('firsts', () => {
     expect(ev.filter((e) => e.key === 'first:roaster:H&S')).toHaveLength(1);
     expect(ev.find((e) => e.key === 'first:type:soup')).toMatchObject({ date: '2026-03-01', title: 'First soup brew', kind: 'firsts' });
     expect(keys(firstEvents([at('2026-02-09', { brewerType: 'other' })], BAGS)).some((k) => k.startsWith('first:type'))).toBe(false);
-    expect(ev.find((e) => e.key === 'first:roaster:H&S')).toMatchObject({ title: 'First roaster: H&S', href: '/coffees/eth' });
+    expect(ev.find((e) => e.key === 'first:roaster:H&S')).toMatchObject({ title: 'First brew from roaster: H&S', href: '/coffees/eth' });
+    const title = (k: string) => ev.find((e) => e.key === k)!.title;
+    expect([title('first:origin:Kenya'), title('first:process:Washed'), title('first:roast:Light'), title('first:filter:Abaca'), title('first:decaf')])
+      .toEqual(['First brew from origin: Kenya', 'First Washed coffee', 'First Light roast', 'First brew with filter: Abaca', 'First decaf brew']);
+    expect(keys(firstEvents([at('2026-02-09', { processGroup: 'Other / Unknown' })], BAGS)).some((k) => k.startsWith('first:process'))).toBe(false);
   });
   it('N/A origin and the mixed filter are skipped', () => {
     const ev = firstEvents([at('2026-02-09', { origin: 'N/A', filter: '155 (mixed)' })], BAGS);
@@ -130,7 +134,7 @@ describe('bests', () => {
   });
   it('best bag needs 3 rated brews and a strictly higher mean', () => {
     const ev = bestEvents(rated, BAGS, 'all').filter((e) => e.key.startsWith('best:bag'));
-    expect(ev.map((e) => [e.date, e.title])).toEqual([['2026-03-03', 'New best bag: Ethiopia']]);
+    expect(ev.map((e) => [e.date, e.title, e.detail, e.href])).toEqual([['2026-03-03', 'New best bag: mean 8.00', 'Ethiopia', '/coffees/eth']]);
     const two = bestEvents(rated.slice(0, 2), BAGS, 'all').filter((e) => e.key.startsWith('best:bag'));
     expect(two).toEqual([]);
   });
@@ -142,14 +146,28 @@ describe('bests', () => {
 });
 
 describe('gear mileage', () => {
-  it('per brewer, dripper and water; 100 brews on V60', () => {
-    const ev = gearEvents(daily(100, { brewer: 'V60 - Abaca', dripper: 'V60', water: 'RO' }));
-    expect(keys(ev).sort()).toEqual(['mileage:brewer:V60 - Abaca:100', 'mileage:dripper:V60:100', 'mileage:water:RO:100']);
-    expect(ev.find((e) => e.key === 'mileage:dripper:V60:100')).toMatchObject({ title: '100th brew on V60', date: day(99), kind: 'gear' });
+  it('per dripper, filter and water (no dripper+filter combo); 100 brews on V60', () => {
+    const ev = gearEvents(daily(100, { brewer: 'V60 - Abaca', dripper: 'V60', filter: 'Abaca', water: 'RO' }), BAGS);
+    expect(keys(ev).sort()).toEqual(['mileage:dripper:V60:100', 'mileage:filter:Abaca:100', 'mileage:water:RO:100']);
+    expect(ev.find((e) => e.key === 'mileage:dripper:V60:100')).toMatchObject({ title: '100th brew on V60', date: day(99), kind: 'gear', href: '/coffees/eth' });
+    expect(ev.find((e) => e.key === 'mileage:filter:Abaca:100')!.title).toBe('100th brew with Abaca');
     expect(ev.find((e) => e.key === 'mileage:water:RO:100')!.title).toBe('100th brew with RO');
   });
   it('keeps climbing past 1000', () => {
     expect(keys(gearEvents(daily(1500, { dripper: 'V60' }))).slice(-2)).toEqual(['mileage:dripper:V60:1000', 'mileage:dripper:V60:1500']);
+  });
+});
+
+describe('links', () => {
+  it('every milestone links the coffee that crossed it; anniversaries the coffee brewed that day', () => {
+    const bags = [bag({ id: 1, name: 'Eth', slug: 'eth', purchaseDate: '2025-12-15', amountG: 1000, status: 'archive', lastBrew: day(7) })];
+    const brews = [...daily(8, { coffeeId: 1 }), at('2026-02-01', { coffeeId: 1 })];
+    const tab = milestonesTab(brews, bags, ctx({ today: day(40) }));
+    const ev = tab.months.flatMap((m) => m.events);
+    const href = (k: string) => ev.find((e) => e.key.startsWith(k))?.href;
+    for (const k of ['bagsBought:1', 'kgBought:1', 'bagsFinished:1', 'brewDays:7', 'streak:7', 'ann:brew:1'])
+      expect(href(k), k).toBe('/coffees/eth');
+    expect(href('ann:bag:1')).toBeUndefined(); // 2026-01-15: nothing brewed that day
   });
 });
 
@@ -200,6 +218,9 @@ describe('milestonesTab', () => {
     const ev = tab.months.flatMap((m) => m.events);
     expect(ev.length).toBeGreaterThan(0);
     expect(new Set(ev.map((e) => e.kind))).toEqual(new Set(['firsts']));
+    // The summary still counts every kind.
+    expect(tab.summary).toEqual(milestonesTab(brews, BAGS, ctx()).summary);
+    expect(tab.summary.total).toBeGreaterThan(ev.length);
   });
   it('months and events are newest first', () => {
     const tab = milestonesTab([at('2026-02-09', { roaster: 'A' }), at('2026-03-05', { roaster: 'B' })], BAGS, ctx({ kinds: ['firsts'] }));
@@ -208,11 +229,15 @@ describe('milestonesTab', () => {
   it('summary and compare summary', () => {
     const brews = [at('2026-02-09', { roaster: 'A', rating: 8 }), at('2026-03-05', { roaster: 'B', rating: 9 })];
     const feb = { start: '2026-02-01', end: '2026-02-28' }, mar = { start: '2026-03-01', end: '2026-03-31' };
+    // The kind chips don't narrow the summary: counts, streaks, gear and anniversaries count too.
     const tab = milestonesTab(brews, [], ctx({ period: mar, prev: feb, kinds: ['firsts', 'bests'] }));
-    // March: first roaster B (process and type already seen) + new best brew 9
-    expect(tab.summary).toEqual({ total: 2, firsts: 1, bests: 1 });
-    // February: first roaster A, process Washed and pour-over type, plus best brew 8 (day one sets no busiest-day record)
-    expect(tab.summaryPrev).toEqual({ total: 4, firsts: 3, bests: 1 });
+    const n = (p: { start: string; end: string }) =>
+      milestonesTab(brews, [], ctx()).months.flatMap((m) => m.events).filter((e) => e.date >= p.start && e.date <= p.end).length;
+    // March: first roaster B (process and type already seen) + new best brew 9 + anniversaries (1 month since first brew)
+    expect(tab.summary).toMatchObject({ firsts: 1, bests: 1, total: n(mar) });
+    // February: first roaster A, process Washed and pour-over type, plus best brew 8 and the 1st brew / brew day
+    expect(tab.summaryPrev).toMatchObject({ firsts: 3, bests: 1, total: n(feb) });
+    expect(tab.summaryPrev!.total).toBeGreaterThan(4);
     expect(milestonesTab(brews, [], ctx()).summaryPrev).toBeNull();
   });
   it('next up: closest thresholds by fraction done, from all-time totals', () => {
@@ -223,6 +248,13 @@ describe('milestonesTab', () => {
     expect(tab.nextUp).toContainEqual(expect.objectContaining({ key: 'brews', target: 1500, value: 1365 }));
     const frac = tab.nextUp.map((n) => n.value / n.target);
     expect(frac).toEqual([...frac].sort((a, b) => b - a));
+  });
+  it('totals: one all-time tile per count ladder', () => {
+    const bags = [bag({ id: 1, purchaseDate: '2026-01-01', amountG: 250 }), bag({ id: 2, purchaseDate: '2026-01-02', amountG: 1000, status: 'archive', lastBrew: day(1) })];
+    const tab = milestonesTab(daily(3, { dose: 20, waterG: 320, rating: 9 }), bags, ctx({ period: { start: '2026-09-01', end: '2026-09-30' } }));
+    expect(Object.fromEntries(tab.totals.map((t) => [t.key, t.value]))).toEqual({
+      brews: 3, kgBrewed: 0.1, waterL: 1, bagsBought: 2, kgBought: 1.3, bagsFinished: 1, coffees: 1, nines: 3, brewDays: 3
+    });
   });
   it('next up kg brewed is rounded to one decimal', () => {
     const tab = milestonesTab(daily(3, { dose: 18.37 }), BAGS, ctx());

@@ -25,6 +25,13 @@
   --chart-color-6: #6b8e23;
   --chart-color-7: #b23b3b;
   --chart-color-8: #6a5acd;
+  /* Milestone kinds: one hue each (an approved exception to the brown palette, user 2026-10-11). */
+  --kind-counts: #2e6f9e;
+  --kind-firsts: #2f7d6b;
+  --kind-bests: #a8650a;
+  --kind-streaks: #c0392b;
+  --kind-gear: #6a5acd;
+  --kind-anniversaries: #a24f79;
   /* Origin map (sequential ramp, dataviz palette rules): low → high share, no-data dark grey. */
   --map-low: #ead9c6;
   --map-high: #8a5a3b;
@@ -74,6 +81,12 @@
     --chart-color-6: #a3c15c;
     --chart-color-7: #e07a7a;
     --chart-color-8: #a79ce0;
+    --kind-counts: #7fb3d9;
+    --kind-firsts: #5fb89e;
+    --kind-bests: #e8b04b;
+    --kind-streaks: #e57368;
+    --kind-gear: #a79ce0;
+    --kind-anniversaries: #cf82ab;
     --map-low: #4a3a2e;
     --map-high: #e8b48a;
     --bar-alpha: 13%;
@@ -108,6 +121,12 @@
   --chart-color-6: #a3c15c;
   --chart-color-7: #e07a7a;
   --chart-color-8: #a79ce0;
+  --kind-counts: #7fb3d9;
+  --kind-firsts: #5fb89e;
+  --kind-bests: #e8b04b;
+  --kind-streaks: #e57368;
+  --kind-gear: #a79ce0;
+  --kind-anniversaries: #cf82ab;
   --map-low: #4a3a2e;
   --map-high: #e8b48a;
   --bar-alpha: 13%;

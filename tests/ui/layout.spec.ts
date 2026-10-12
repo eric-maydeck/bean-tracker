@@ -1560,6 +1560,14 @@ export const STATES: State[] = [
       await expect(page.locator('.people-switch')).toHaveCount(0);
       await expectGridRowsFull(page, '.milestone-summary');
       await expectGridRowsFull(page, '.next-up');
+      await expectGridRowsFull(page, '.milestone-totals');
+      // The navigator jumps to a month and stays in view (sticky) once scrolled there.
+      const nav = page.locator('.timeline-nav');
+      const target = nav.locator('a:not(.year)').last();
+      const id = (await target.getAttribute('href'))!.slice(1);
+      await target.click();
+      await expect(page.locator(`[id="${id}"]`)).toBeInViewport();
+      await expect(nav).toBeInViewport();
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
