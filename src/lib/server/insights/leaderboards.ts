@@ -51,7 +51,7 @@ const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', 
 const byRank = (a: BoardRow, b: BoardRow) =>
   b.value - a.value || (b.atBest ?? 0) - (a.atBest ?? 0) || (b.mean ?? 0) - (a.mean ?? 0) || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
 
-const listHref = (column: ColumnKey, values: (string | null)[]) =>
+export const listHref = (column: ColumnKey, values: (string | null)[]) =>
   `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
 
 function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow {

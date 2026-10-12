@@ -4,7 +4,8 @@ import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
-import { consumption } from './overview';
+import { consumption, loggedGrams, remaining } from './overview';
+import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
 
@@ -27,7 +28,9 @@ export interface Finding {
   // Multi-line trend: x = period labels ("Mar 26"), one line per category, null = gap.
   multi?: { x: string[]; lines: { label: string; values: (number | null)[] }[]; unit?: string };
   progress?: number; // too early only: n / (n + more needed), 0..1, how close to settled
+  details?: { label: string; items: DetailItem[] }[]; // supporting lists from real data: ≤ 2 groups × 3 items
 }
+export interface DetailItem { name: string; value?: string; href?: string }
 export interface GenCtx {
   brews: readonly BrewFact[]; bags: readonly BagFact[]; prevBrews: readonly BrewFact[] | null;
   ratings: Ratings; today: string; householdSize: number; onHandG: number;
@@ -53,6 +56,14 @@ const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
   for (const b of rows) if (b.coffeeId !== null) (by.get(b.coffeeId) ?? by.set(b.coffeeId, []).get(b.coffeeId)!).push(b);
   return by;
 };
+// Supporting lists: `details(['Label', items], …)` keeps non-empty groups, 3 items each, unique names.
+const detail = (name: string, value?: string, href?: string | null): DetailItem => ({ name, ...(value ? { value } : {}), ...(href ? { href } : {}) });
+const coffeeHref = (b: BagFact | undefined) => (b?.slug ? `/coffees/${b.slug}` : null);
+function details(...groups: [string, DetailItem[]][]): Pick<Finding, 'details'> {
+  const out = groups.map(([label, items]) => ({ label, items: items.filter((x, i) => items.findIndex((y) => y.name === x.name) === i).slice(0, 3) })).filter((g) => g.items.length);
+  return out.length ? { details: out } : {};
+}
+const bagById = (c: GenCtx) => new Map(c.bags.map((b) => [b.id, b]));
 // Mean paired difference with z = mean / (sd / sqrt(n)); null z when the data can't support one.
 const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / (sd(d) / Math.sqrt(d.length)) });
 
@@ -158,16 +169,19 @@ const secondCup: Generator = (c) => {
 
 const fondMemory: Generator = (c) => {
   const by = perBag(counted(c));
-  const d = c.bags.flatMap((b) => {
+  const gaps = c.bags.flatMap((b) => {
     const bs = by.get(b.id);
-    return b.bagRating !== null && bs && bs.length >= MIN_BAGS ? [b.bagRating - mean(bs.map((x) => x.rating!))] : [];
+    return b.bagRating !== null && bs && bs.length >= MIN_BAGS ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
   });
+  const d = gaps.map((g) => g.gap);
   if (d.length < MIN_BREWS) return null;
   const { m, z } = paired(d);
+  const most = [...gaps].sort((x, y) => (m >= 0 ? y.gap - x.gap : x.gap - y.gap) || x.b.name.localeCompare(y.b.name));
   return graded({
     key: 'fondMemory', theme: 'taste', kind: 'number', headline: m >= 0 ? 'You remember bags more fondly than you brewed them' : 'You remember bags less fondly than you brewed them',
     value: signed(m), body: `${Math.round((100 * d.filter((x) => (m >= 0 ? x > 0 : x < 0)).length) / d.length)}% of ${d.length} bags.`,
-    sample: `${d.length} bags`, href: `${LB}&open=coffees`
+    sample: `${d.length} bags`, href: `${LB}&open=coffees`,
+    ...details([m >= 0 ? 'Remembered most fondly' : 'Remembered least fondly', most.map((g) => detail(g.b.name, signed(g.gap), coffeeHref(g.b)))])
   }, z, true, 'bags', d.length);
 };
 
@@ -175,15 +189,18 @@ const repeatBuys: Generator = (c) => {
   const means = bagMeans(counted(c));
   const groups = new Map<string, BagFact[]>();
   for (const b of c.bags) if (means.has(b.id)) (groups.get(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`) ?? groups.set(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`, []).get(`${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`)!).push(b);
-  const d = [...groups.values()].filter((g) => g.length >= 2)
+  const pairs = [...groups.values()].filter((g) => g.length >= 2)
     .map((g) => g.sort((a, b) => (a.purchaseDate ?? '').localeCompare(b.purchaseDate ?? '') || a.id - b.id))
-    .map((g) => means.get(g[1].id)! - means.get(g[0].id)!);
+    .map((g) => ({ b: g[1], d: means.get(g[1].id)! - means.get(g[0].id)! }));
+  const d = pairs.map((x) => x.d);
   if (d.length < MIN_BAGS) return null;
   const { m, z } = paired(d);
+  const big = [...pairs].sort((x, y) => (m >= 0 ? y.d - x.d : x.d - y.d) || x.b.name.localeCompare(y.b.name));
   const f = {
     key: 'repeatBuys', theme: 'taste' as const, kind: 'number' as const, headline: m >= 0 ? 'Repeat buys rate higher' : 'Repeat buys rate lower',
     value: signed(m), body: `${d.filter((x) => x > 0).length} of ${d.length} second bags rated higher.`,
-    sample: `${d.length} repeat pairs`, href: `${LB}&open=coffees`, caveat: 'Ratings settled over time and you re-buy winners.'
+    sample: `${d.length} repeat pairs`, href: `${LB}&open=coffees`, caveat: 'Ratings settled over time and you re-buy winners.',
+    ...details([m >= 0 ? 'Biggest second-bag gains' : 'Biggest second-bag drops', big.map((x) => detail(x.b.name, signed(x.d), coffeeHref(x.b)))])
   };
   return graded(f, z, true, 'pairs', d.length);
 };
@@ -197,33 +214,50 @@ const groupDelta: Generator = (c) => {
   const rated = c.bags.filter((b) => means.has(b.id));
   const all = rated.map((b) => means.get(b.id)!);
   return DIMS.flatMap(([dim, board, noun, dimName]) => {
-    const groups = new Map<string, number[]>();
-    for (const b of rated) {
-      const label = b[dim];
-      if (label && label !== 'Other / Unknown') (groups.get(label) ?? groups.set(label, []).get(label)!).push(means.get(b.id)!);
-    }
-    const big = [...groups].filter(([, ms]) => ms.length >= MIN_BAGS);
-    return big.flatMap(([label, ms]) => {
+    const groups = groupBy(rated, (b) => (b[dim] && b[dim] !== 'Other / Unknown' ? b[dim] : null));
+    const big = [...groups].filter(([, bs]) => bs.length >= MIN_BAGS);
+    return big.flatMap(([label, bs]) => {
+      const ms = bs.map((b) => means.get(b.id)!);
       const delta = mean(ms) - mean(all);
+      const ranked = [...bs].sort((x, y) => (delta >= 0 ? means.get(y.id)! - means.get(x.id)! : means.get(x.id)! - means.get(y.id)!) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(2)} ${delta < 0 ? 'lower' : 'higher'}`,
-        value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`
+        value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
+        ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(2), coffeeHref(b)))])
       }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length);
       return f ? [f] : [];
     });
   });
 };
 
+// processGroups.ts's co-ferment / infused keywords (minus "co-ferment", parsed for its fruit).
+const CO_METHODS = ['thermal shock', 'tartaric acid', 'pink champagne', 'infused'];
 const coFerments: Generator = (c) => {
   const co = c.bags.filter((b) => b.processGroup === 'Co-ferment / Infused');
   const top = new Map<string, number>();
   for (const b of co) if (b.origin) top.set(b.origin, (top.get(b.origin) ?? 0) + 1);
   const [origin, n] = [...top].sort((a, b) => b[1] - a[1])[0] ?? [];
   if (co.length < 5 || n !== co.length) return null;
+  // What was added, from the process text: "Red fruits co-ferment" → "Red fruits"; else the method named.
+  const what = (b: BagFact) => {
+    const s = (b.processing ?? '').toLowerCase();
+    const fruit = /^(.+?)\s*co-?ferment/.exec(s)?.[1];
+    const k = fruit ?? CO_METHODS.find((x) => s.includes(x));
+    return k ? k[0].toUpperCase() + k.slice(1) : null;
+  };
+  // Most brewed by brew count (all bags of one coffee together); ratings would hide pre-cutoff co-ferments.
+  const brews = groupBy(c.brews, (b) => b.coffeeId);
+  const byCoffee = [...groupBy(co, (b) => `${b.roaster}|${b.name}`).values()]
+    .map((bs) => ({ b: bs.find((b) => b.slug) ?? bs[0], n: sum(bs.map((b) => brews.get(b.id)?.length ?? 0)) })).filter((x) => x.n > 0)
+    .sort((x, y) => y.n - x.n || x.b.name.localeCompare(y.b.name));
   return {
     key: 'coFerments', theme: 'taste', kind: 'number', headline: `All ${n} of your co-ferments are ${origin}`,
-    value: `${n} of ${n}`, sample: `${plural(n, 'bag')}`, href: `${LB}&open=process`, z: null, strength: null
+    value: `${n} of ${n}`, sample: `${plural(n, 'bag')}`, href: `${LB}&open=process`, z: null, strength: null,
+    ...details(
+      ['Added or applied', [...groupBy(co, what)].sort((x, y) => y[1].length - x[1].length || x[0].localeCompare(y[0])).map(([k, g]) => detail(k, plural(g.length, 'bag')))],
+      ['Most brewed', byCoffee.map((x) => detail(x.b.name, plural(x.n, 'brew'), coffeeHref(x.b)))]
+    )
   };
 };
 
@@ -251,7 +285,9 @@ const backlogRunway: Generator = (c) => {
     key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
     body: `At ${Math.round(perDay)} g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
-    sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null
+    sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null,
+    ...details(['Most on hand', ((logged) => c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, logged) })))(loggedGrams(c.brews))
+      .filter((x) => x.g > 0).sort((x, y) => y.g - x.g || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, formatGrams(x.g), coffeeHref(x.b)))])
   };
 };
 
@@ -536,10 +572,15 @@ const costPerCup: Generator = (c) => {
   if (cost.length < MIN_BREWS) return null;
   const avg = mean(cost.map((b) => b.costPerBrew!));
   const top = cost.filter((b) => countsForRating(b, c.ratings) && b.rating! >= 9);
+  const bags = bagById(c);
+  const perBagCost = [...groupBy(cost, (b) => b.coffeeId)].filter(([, g]) => g.length >= MIN_BAGS).map(([id, g]) => ({ b: bags.get(id), v: mean(g.map((x) => x.costPerBrew!)) }))
+    .filter((x): x is { b: BagFact; v: number } => !!x.b).sort((x, y) => y.v - x.v || x.b.name.localeCompare(y.b.name));
+  const cup = (x: { b: BagFact; v: number }) => detail(x.b.name, money(x.v), coffeeHref(x.b));
   return {
     key: 'costPerCup', theme: 'money', kind: 'number', headline: `${money(avg)} a cup`, value: money(avg),
     ...(top.length >= 10 ? { body: `A 9+ cup costs ${money(mean(top.map((b) => b.costPerBrew!)))} on average.` } : {}),
-    sample: `${cost.length} brews`, href: `${LB}&rank=spend`, z: null, strength: null
+    sample: `${cost.length} brews`, href: `${LB}&rank=spend`, z: null, strength: null,
+    ...(perBagCost.length >= 6 ? details(['Priciest cups', perBagCost.map(cup)], ['Cheapest cups', [...perBagCost].reverse().map(cup)]) : {})
   };
 };
 
@@ -575,7 +616,8 @@ const loyalty: Generator = (c) => {
   return {
     key: 'loyalty', theme: 'money', kind: 'number', headline: `Top 3 roasters: ${pct(sum(top3.map(([, g]) => g.length)) / bs.length)} of bags`,
     value: pct(sum(top3.map(([, g]) => g.length)) / bs.length), body: `${list(top3.map(([k]) => k))}.${rising}`,
-    sample: `${bs.length} bags, ${by.length} roasters`, href: `${LB}&open=roasters`, z: null, strength: null
+    sample: `${bs.length} bags, ${by.length} roasters`, href: `${LB}&open=roasters`, z: null, strength: null,
+    ...details(['Top roasters', top3.map(([k, g]) => detail(k, plural(g.length, 'bag'), listHref('roaster', [k])))])
   };
 };
 

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
+import { formatGrams } from '$lib/grams';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
@@ -182,6 +183,52 @@ describe('co-ferments', () => {
   it('null when mixed or under 5', () => {
     expect(gen('coFerments', [], mk(['Colombia', 'Colombia', 'Colombia', 'Colombia', 'Kenya']))).toBeNull();
     expect(gen('coFerments', [], mk(Array(4).fill('Colombia')))).toBeNull();
+  });
+});
+
+describe('details (supporting lists)', () => {
+  it('co-ferments: what was added (from the process text) and the most brewed coffees', () => {
+    const proc = ['Red fruits co-ferment', 'Red Fruits Co-Ferment Decaf', 'Thermal Shock Washed', 'Pink Champagne Natural', 'Double Anaerobic Thermal Shock Washed'];
+    const names = ['Red Fruits', 'Red Fruits', 'Shock', 'Pink', 'Shock 2'];
+    const bs = proc.map((processing, i) => bag({ id: i + 1, name: names[i], slug: `s${i + 1}`, processing, processGroup: 'Co-ferment / Infused', origin: 'Colombia' }));
+    const brews = [...seq(1, [7, 7]), ...seq(2, [7, 7]), ...seq(3, [8, 8, 8]), ...seq(4, [6])];
+    expect(gen('coFerments', brews, bs)!.details).toEqual([
+      { label: 'Added or applied', items: [{ name: 'Red fruits', value: '2 bags' }, { name: 'Thermal shock', value: '2 bags' }, { name: 'Pink champagne', value: '1 bag' }] },
+      { label: 'Most brewed', items: [{ name: 'Red Fruits', value: '4 brews', href: '/coffees/s1' }, { name: 'Shock', value: '3 brews', href: '/coffees/s3' }, { name: 'Pink', value: '1 brew', href: '/coffees/s4' }] }
+    ]);
+  });
+  it('no real data: no details', () =>
+    expect(gen('coFerments', [], Array.from({ length: 5 }, (_, i) => bag({ id: i + 1, processGroup: 'Co-ferment / Infused', origin: 'Colombia' })))!.details).toBeUndefined());
+  it('remembered fondly: the biggest gaps', () => {
+    const bs = bags(30, (i) => ({ bagRating: 8 + (i % 2 ? 0.3 : 0.5) }));
+    expect(gen('fondMemory', bs.flatMap((x) => seq(x.id, [7, 8, 9])), bs)!.details).toEqual([{ label: 'Remembered most fondly', items: [
+      { name: 'Bag 1', value: '+0.50' }, { name: 'Bag 11', value: '+0.50' }, { name: 'Bag 13', value: '+0.50' }] }]);
+  });
+  it('repeat buys: the biggest second-bag gains', () => {
+    const bs = Array.from({ length: 10 }, (_, i) => bag({ id: i + 1, name: `Cof ${i >> 1}`, roaster: 'Same', purchaseDate: `2026-0${1 + (i & 1)}-01` }));
+    const f = gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, [i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7])), bs)!;
+    expect(f.details).toEqual([{ label: 'Biggest second-bag gains', items: [{ name: 'Cof 4', value: '+0.83' }, { name: 'Cof 3', value: '+0.75' }, { name: 'Cof 2', value: '+0.67' }] }]);
+  });
+  it('group effects: the group\'s lowest-rated bags when it rates lower', () => {
+    const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', slug: `b${i + 1}` }));
+    const rate = (i: number) => (i < 4 ? 6 + i * 0.1 : 8 + (i % 2 ? 0.2 : -0.2));
+    expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i), rate(i)])), bs)!.details).toEqual([{ label: 'Lowest rated', items: [
+      { name: 'Bag 1', value: '6.00', href: '/coffees/b1' }, { name: 'Bag 2', value: '6.10', href: '/coffees/b2' }, { name: 'Bag 3', value: '6.20', href: '/coffees/b3' }] }]);
+  });
+  it('runway: most on hand among open and backlog bags', () => {
+    const bs = [bag({ id: 1, name: 'Big', amountG: 1000 }), bag({ id: 2, name: 'Half', amountG: 1000 }), bag({ id: 3, name: 'Gone', amountG: 1000, status: 'archive' })];
+    const brews = Array.from({ length: 20 }, (_, i) => brew({ id: nextId++, coffeeId: 2, dose: 25, localDate: addDays('2026-09-01', i) }));
+    expect(gen('backlogRunway', brews, bs, { onHandG: 1500, dataStart: '2026-09-01', period: { from: '2026-09-01', to: '2026-09-30' } })!.details)
+      .toEqual([{ label: 'Most on hand', items: [{ name: 'Big', value: formatGrams(1000) }, { name: 'Half', value: formatGrams(500) }] }]);
+  });
+  it('cost per cup: priciest and cheapest coffees (6+ costed bags)', () => {
+    const bs = bags(6);
+    const brews = bs.flatMap((b) => Array.from({ length: 6 }, () => brew({ id: nextId++, coffeeId: b.id, costPerBrew: b.id })));
+    expect(gen('costPerCup', brews, bs)!.details).toEqual([
+      { label: 'Priciest cups', items: [{ name: 'Bag 6', value: '$6.00' }, { name: 'Bag 5', value: '$5.00' }, { name: 'Bag 4', value: '$4.00' }] },
+      { label: 'Cheapest cups', items: [{ name: 'Bag 1', value: '$1.00' }, { name: 'Bag 2', value: '$2.00' }, { name: 'Bag 3', value: '$3.00' }] }
+    ]);
+    expect(gen('costPerCup', brews.slice(0, 30), bs)!.details).toBeUndefined(); // 5 costed bags
   });
 });
 
@@ -415,7 +462,10 @@ describe('roaster loyalty', () => {
   it('top 3 share and the rising roaster', () =>
     expect(gen('loyalty', [], bs, o)).toMatchObject({
       theme: 'money', headline: 'Top 3 roasters: 75% of bags', value: '75%', sample: '12 bags, 5 roasters',
-      body: 'A, B and C. Rising: D, 2 of your last 2 bags (0 of 10 before).'
+      body: 'A, B and C. Rising: D, 2 of your last 2 bags (0 of 10 before).',
+      details: [{ label: 'Top roasters', items: [
+        { name: 'A', value: '4 bags', href: '/coffees?status=all&roaster=A' }, { name: 'B', value: '3 bags', href: '/coffees?status=all&roaster=B' },
+        { name: 'C', value: '2 bags', href: '/coffees?status=all&roaster=C' }] }]
     }));
   it('null under 10 bags', () => expect(gen('loyalty', [], bs.slice(0, 9), o)).toBeNull());
 });
