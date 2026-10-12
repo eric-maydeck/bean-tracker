@@ -4,7 +4,7 @@
   import { MON, THEMES, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
-  import { rowVars } from './rows';
+  import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
 
@@ -30,22 +30,32 @@
   // Top stories come bucketed from the server (insightsTab): the deck and the grid never share a finding.
   let deck = $derived(t.stories);
   let grid = $derived(t.grid);
-  let gridVars = $derived(rowVars(grid.length));
+  // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
+  const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
+  let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
 
-  // Details are filler only (user rule B7): lay the cards out without them (natural heights, top-aligned),
-  // then per card reveal groups in order while the card stays within its row's tallest card. A group
-  // never makes a row taller. Re-runs when the container's width or the cards change (SSR: all hidden).
+  // Details are filler only (user rule B7): lay the cards out without them (natural heights, top-aligned;
+  // charts at their base height, .fit), then per card reveal groups in order while its content stays within
+  // its row's tallest card (a fixed-height findings card: its own height). A group never makes a row
+  // taller or squeezes a chart below its base. Re-runs when the width or the cards change (SSR: all hidden).
   function filler(el: HTMLElement, _cards: unknown) {
     let w = -1;
     const run = () => {
       const groups = [...el.querySelectorAll<HTMLElement>('.dgroup')];
       for (const g of groups) g.hidden = true;
+      const cards = [...el.children] as HTMLElement[];
+      // A fixed-height findings card whose text doesn't fit tightens step by step (CSS [data-tight],
+      // ui-rules 34); still overflowing at 3 is a test failure. Auto-height cards never overflow.
+      for (const c of cards) {
+        delete c.dataset.tight;
+        for (let t = 1; t <= 3 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
+      }
       if (!groups.length) return;
       el.style.alignItems = 'flex-start';
-      const cards = [...el.children] as HTMLElement[];
+      el.classList.add('fit');
       const rowMax = new Map<number, number>();
-      for (const c of cards) rowMax.set(c.offsetTop, Math.max(rowMax.get(c.offsetTop) ?? 0, c.offsetHeight));
+      for (const c of cards) rowMax.set(c.offsetTop, Math.max(rowMax.get(c.offsetTop) ?? 0, c.clientHeight));
       // Item by item, so a group can show its top entries when the whole list doesn't fit.
       for (const c of cards) {
         const max = rowMax.get(c.offsetTop)!;
@@ -55,7 +65,7 @@
           g.hidden = false;
           for (const [i, li] of items.entries()) {
             li.hidden = false;
-            if (c.offsetHeight > max) {
+            if (c.scrollHeight > max) {
               li.hidden = true;
               if (i === 0) g.hidden = true;
               break fill;
@@ -64,6 +74,7 @@
         }
       }
       el.style.alignItems = '';
+      el.classList.remove('fit');
     };
     // Width only: revealing groups changes heights, which must not re-trigger (no layout loop).
     const ro = new ResizeObserver(([e]) => {
@@ -74,6 +85,13 @@
     ro.observe(el);
     document.fonts?.ready.then(run);
     return { update: () => requestAnimationFrame(run), destroy: () => ro.disconnect() };
+  }
+
+  // A tap on a card whose headline or body is clamped shows the full text (title covers hover).
+  function unclamp(e: MouseEvent) {
+    const c = e.currentTarget as HTMLElement;
+    if ((e.target as Element).closest('a, button, .mode-tip')) return;
+    if ([...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)) c.querySelector<HTMLElement>('.mode-tip')!.togglePopover();
   }
 
   // ---- Deck: position is component state, not URL (spec). ----
@@ -257,15 +275,17 @@
   {#if !grid.length}
     <p class="hl-empty">No {theme ? `${THEME_LABEL[theme].toLowerCase()} ` : ''}findings in this period{deck.length ? ' beyond the top stories' : ''}.</p>
   {:else}
-    <div class="hl-grid finding-grid" use:filler={grid}>
-      {#each grid as f, i (f.key)}
+    <div class="hl-grid finding-grid" use:filler={sized}>
+      {#each sized as { item: f, size, style }, i (f.key)}
         {@const id = anchor(f.key)}
-        <div class="hl-card finding" {id} style={gridVars[i]}>
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
+        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" title={f.headline} onclick={unclamp}>
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
-          {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
-          <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
+          {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
+          <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
+          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.body}<br />{f.body}{/if}</div>
         </div>
       {/each}
     </div>
@@ -471,11 +491,56 @@
     white-space: normal;
     line-height: 1.3;
   }
-  /* Headlines are sentences: never cut, however many lines a narrow card needs. */
-  .finding :global(.hl-caption .stat-label) {
+  /* Findings card sizes (ui-rules 34): a card is its row's height token (rows.ts sizedGrid picks the
+     token per column count, +page.svelte's --h by the grid's width), measured from the 2026-10-12
+     layout the user picked. Content is forced to fit: charts take what's left, text clamps (the card's
+     title has the headline, the body's its full text). */
+  .finding-grid {
+    --fs-s4: 10rem; /* 160px: rows of 4, numbers (1280 wide) */
+    --fs-l4: 16.5rem; /* 264px: rows of 4, charts / versus */
+    --fs-3: 15.75rem; /* 252px: every row of 3 */
+    --fs-s2: 12rem; /* 192px: 2-up phone rows (480×909), numbers */
+    --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
+    --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
+  }
+  .finding {
+    height: var(--h);
+  }
+  /* Only a chart gives way; text never shrinks (a clipped line would hide, not overflow). */
+  .finding > * {
+    flex-shrink: 0;
+  }
+  .finding :global(.hl-caption .stat-label),
+  .finding .body,
+  .finding:global([data-tight='2']) .sample {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--clamp, 3);
+    line-clamp: var(--clamp, 3);
+    overflow: hidden;
+  }
+  /* Too little room (narrow phones): headline and body to 2 lines, then legend entries and the sample
+     line to 1 line each, then headline and body to 1. */
+  .finding:global([data-tight]) {
+    --clamp: 2;
+  }
+  .finding:global([data-tight='3']) {
+    --clamp: 1;
+  }
+  .finding:global([data-tight='3']) .sample {
+    white-space: nowrap;
+  }
+  .finding:global(:is([data-tight='2'], [data-tight='3'])) .legend li {
     display: block;
-    -webkit-line-clamp: none;
-    line-clamp: none;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .finding:global(:is([data-tight='2'], [data-tight='3'])) .swatch {
+    display: inline-block;
+    margin-right: 0.25rem;
+    vertical-align: middle;
   }
   /* A long value wraps at its spaces inside the card rather than spill (B3). */
   .finding > .hl-value {
@@ -576,6 +641,19 @@
   .hl-card > .multi svg,
   .hl-card > .spark svg {
     flex: 1 0 auto;
+  }
+  /* A findings card's height is fixed: its chart takes the spare height, down to a readable minimum.
+     While details are fitted (.fit), charts sit at their base height so details only take true spare. */
+  .finding > :is(.bars, .multi, .spark) {
+    flex: 1 1 0;
+  }
+  .finding > :is(.bars, .multi, .spark) svg {
+    flex: 1 1 0;
+    min-height: 1.5rem;
+  }
+  :global(.finding-grid.fit) .finding > :is(.bars, .multi, .spark),
+  :global(.finding-grid.fit) .finding > :is(.bars, .multi, .spark) svg {
+    flex: none;
   }
   .multi polyline {
     fill: none;

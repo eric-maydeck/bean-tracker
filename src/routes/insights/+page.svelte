@@ -870,7 +870,8 @@
   }
 
   /* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
-     (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. */
+     (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. Findings
+     cards also get their row's height token the same way (--h, rows.ts sizedGrid). */
   :global(.hl-grid) {
     --gap: var(--space-3);
     display: flex;
@@ -880,21 +881,25 @@
   }
   :global(.hl-grid > .hl-card) {
     --q: var(--q2);
+    --h: var(--h2);
     flex: 1 0 calc((100% - (var(--q) - 1) * var(--gap)) / var(--q) - 0.5px);
   }
   @container (min-width: 520px) {
     :global(.hl-grid > .hl-card) {
       --q: var(--q3);
+      --h: var(--h3);
     }
   }
   @container (min-width: 900px) {
     :global(.hl-grid > .hl-card) {
       --q: var(--q4);
+      --h: var(--h4);
     }
   }
   @container (min-width: 1150px) {
     :global(.hl-grid > .hl-card) {
       --q: var(--q5, var(--q4));
+      --h: var(--h5, var(--h4));
     }
   }
   /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.

@@ -1792,35 +1792,39 @@ export const STATES: State[] = [
         return [...out, ...hit];
       }));
       expect(spills).toEqual([]);
-      // Details are filler only (B7): no row is taller with its shown details than without any.
-      const grown = await page.locator('.finding-grid').evaluate((grid) => {
-        const g = grid as HTMLElement, cards = [...g.children] as HTMLElement[];
-        const shown = [...g.querySelectorAll<HTMLElement>('.dgroup:not([hidden])')];
-        const rows = () => { const m = new Map<number, number>(); for (const c of cards) m.set(c.offsetTop, Math.max(m.get(c.offsetTop) ?? 0, c.offsetHeight)); return [...m.values()]; };
-        g.style.alignItems = 'flex-start';
-        const withDetails = rows();
-        for (const d of shown) d.hidden = true;
-        const without = rows();
-        for (const d of shown) d.hidden = false;
-        g.style.alignItems = '';
-        return withDetails.flatMap((h, i) => (h > without[i] + 1 ? [`row ${i} grows ${h - without[i]}px`] : []));
+      // Card sizes (ui-rules 34): every row is one size class, its cards all the row's height token (±2px),
+      // and no card's content runs past its bottom (the tightening ladder must make it fit).
+      const sizes = await page.locator('.finding-grid').evaluate((grid) => {
+        const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+        const rows = new Map<number, HTMLElement[]>();
+        for (const c of grid.children as HTMLCollectionOf<HTMLElement>) rows.set(c.offsetTop, [...(rows.get(c.offsetTop) ?? []), c]);
+        return [...rows.values()].flatMap((cs, i) => {
+          const token = getComputedStyle(cs[0]).getPropertyValue('--h').trim();
+          const px = token.endsWith('rem') ? parseFloat(token) * rem : parseFloat(token);
+          return [
+            ...(new Set(cs.map((c) => c.dataset.size)).size > 1 ? [`row ${i} mixes size classes`] : []),
+            ...(!(px > 0) ? [`row ${i} has no height token (${token})`] : []),
+            ...cs.flatMap((c) => [
+              ...(Math.abs(c.offsetHeight - px) > 2 ? [`${c.id} ${c.offsetHeight}px, token ${Math.round(px)}px`] : []),
+              ...(c.scrollHeight > c.clientHeight + 1 ? [`${c.id} overflows by ${c.scrollHeight - c.clientHeight}px`] : [])
+            ])
+          ];
+        });
       });
-      expect(grown).toEqual([]);
-      // Dial-in speed: at 1280 its row has no spare height, so its details stay hidden. On a phone, once its
-      // row neighbour is taller (here: 300px of room added to the runway card, then a resize re-runs the
-      // fit), its first group shows and the row doesn't grow past the neighbour.
-      const speed = page.locator('#insight-dialinSpeed .dgroup:not([hidden])');
-      const proj = test.info().project.name;
-      if (proj === 'w1280') await expect(speed).toHaveCount(0);
-      if (proj === 'phone-portrait' || proj === 'w480') {
-        await page.locator('#insight-backlogRunway').evaluate((c) => c.insertAdjacentHTML('beforeend', '<div class="room" style="height:300px"></div>'));
-        const vp = page.viewportSize()!;
-        await page.setViewportSize({ width: vp.width - 1, height: vp.height });
-        await expect.poll(() => speed.count()).toBeGreaterThan(0);
-        const [a, b] = await Promise.all(['#insight-dialinSpeed', '#insight-backlogRunway'].map((id) => page.locator(id).evaluate((e) => (e as HTMLElement).offsetHeight)));
-        expect(a).toBe(b);
-        await page.locator('#insight-backlogRunway .room').evaluate((e) => e.remove());
-        await page.setViewportSize(vp);
+      expect(sizes).toEqual([]);
+      // Details are filler only (B7): shown groups fit inside the fixed card (checked above), and a shown
+      // chart is never squeezed below its minimum to make room for them.
+      const squeezed = await page.locator('.finding-grid .hl-card:has(.dgroup:not([hidden])) :is(.multi, .bars, .spark) svg').evaluateAll((ss) =>
+        ss.filter((s) => s.getBoundingClientRect().height < 23).length);
+      expect(squeezed).toBe(0);
+      // A tap on a card with clamped text shows the full headline and body.
+      const clamped = await page.locator('.finding-grid .hl-card').evaluateAll((cs) =>
+        cs.findIndex((c) => [...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)));
+      if (clamped >= 0) {
+        const card = page.locator('.finding-grid .hl-card').nth(clamped);
+        await card.locator('.hl-top').click();
+        await expect(card.locator('.mode-tip:popover-open')).toBeVisible();
+        await page.keyboard.press('Escape');
       }
       // Too early to tell: compact rows, each with its finding and what would settle it.
       const rows = page.locator('.early li');
