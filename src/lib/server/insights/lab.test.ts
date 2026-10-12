@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { brewZ, demeaned, sd, strengthOf } from './stats';
+import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
 import { breakdown, cellOf, labFn, ladder, pairedDeltas, ratedIn, SLICE_OF, verdictOf } from './lab';
 import type { BrewFact } from './facts';
 
@@ -13,6 +13,9 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 // k brews of one bag at one temp, ratings r-0.1 / r / r+0.1 cycling (non-zero SDs).
 const many = (k: number, coffeeId: number, tempC: number, r: number, o: Partial<BrewFact> = {}) =>
   Array.from({ length: k }, (_, i) => brew({ coffeeId, tempC, rating: +(r + ((i % 3) - 1) * 0.1).toFixed(2), ...o }));
+// Same, with +-0.3 noise: keeps z near the solid bar, so the Bonferroni test count changes the verdict.
+const noisy = (k: number, coffeeId: number, tempC: number, r: number) =>
+  Array.from({ length: k }, (_, i) => brew({ coffeeId, tempC, rating: +(r + ((i % 3) - 1) * 0.3).toFixed(2) }));
 const temp = labFn('temp'), exact = labFn('tempExact');
 const P = { start: '2026-09-01', end: '2026-09-30' };
 
@@ -45,22 +48,28 @@ describe('pairedDeltas', () => {
     const two = [1, 2].flatMap((id) => [...many(20, id, 91, 8), ...many(20, id, 94, 7)]);
     expect(pairedDeltas(two, temp).map((s) => s.solid)).toEqual([false, false]);
   });
-  it('strength: brewZ vs the other bands, Bonferroni over the band count', () => {
-    const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8), ...many(10, id, 94, 7.6), ...many(10, id, 88, 7.4)]);
-    const st = pairedDeltas(rows, temp);
+  const near = (extra: BrewFact[] = []) => [1, 2, 3].flatMap((id) => [...noisy(10, id, 91, 8.06), ...noisy(10, id, 94, 7.94), ...noisy(10, id, 88, 7.94)]).concat(extra);
+  const zOf = (rows: BrewFact[], skip = -1) => {
     const dm = demeaned(rows);
-    const of = (lo: number, hi: number) => dm.filter((r) => r.tempC! >= lo && r.tempC! < hi).map((r) => r.dm);
-    const z = brewZ(of(90, 93), [...of(0, 90), ...of(93, 99)], sd(dm.map((r) => r.dm)));
-    expect(st.find((s) => s.label === '90–92 °C')!.strength).toBe(strengthOf(z, true, 3));
+    const of = (lo: number, hi: number) => dm.filter((r) => r.tempC! >= lo && r.tempC! < hi && r.coffeeId !== skip).map((r) => r.dm);
+    return brewZ(of(90, 93), [...of(0, 90), ...of(93, 99)], sd(of(0, 99)));
+  };
+  it('strength: brewZ vs the other bands, Bonferroni over the band count', () => {
+    const rows = near();
+    const z = zOf(rows);
+    const got = pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength;
+    expect(got).toBe(strengthOf(z, true, 3));
+    expect(got).toBe('hint');
+    expect(got).not.toBe(strengthOf(z, true, 1)); // would be solid without the correction
   });
   it('Bonferroni counts every band in the data, also bands with no pairs', () => {
-    // 95 °C is a 4th band (one unpaired bag, no pairs): tests = 4, not 3.
-    const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8), ...many(10, id, 94, 7.6), ...many(10, id, 88, 7.4)]);
-    const more = [...rows, ...many(3, 9, 96, 7)];
-    const dm = demeaned(more);
-    const of = (lo: number, hi: number) => dm.filter((r) => r.tempC! >= lo && r.tempC! < hi && r.coffeeId !== 9).map((r) => r.dm);
-    const z = brewZ(of(90, 93), [...of(0, 90), ...of(93, 99)], sd(of(0, 99)));
-    expect(pairedDeltas(more, temp).find((s) => s.label === '90–92 °C')!.strength).toBe(strengthOf(z, true, 4));
+    // 96 °C is a 4th band (one unpaired bag, no pairs): tests = 4, not 3.
+    const more = near(many(3, 9, 96, 7));
+    const z = zOf(more, 9);
+    const got = pairedDeltas(more, temp).find((s) => s.label === '90–92 °C')!.strength;
+    expect(got).toBe(strengthOf(z, true, 4));
+    expect(got).toBe('early');
+    expect(got).not.toBe(strengthOf(z, true, 3));
   });
   it('in-period bag means (ratedIn drops the old brews before demeaning)', () => {
     const rows = [...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(5, 1, 91, 2, { localDate: '2026-01-01' })];
@@ -79,6 +88,11 @@ describe('pairedDeltas', () => {
   });
   it('spread: sample SD of the band brews\' same-bag deltas', () => {
     const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7)], temp);
+    expect(st[0].spread).toBeCloseTo(0.1);
+  });
+  it('spread ignores unpaired bags', () => {
+    const wide = [4, 6, 8].map((rating) => brew({ coffeeId: 2, tempC: 91, rating })); // bag 2 never leaves 90–92: unpaired
+    const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7), ...wide], temp);
     expect(st[0].spread).toBeCloseTo(0.1);
   });
 });
@@ -100,6 +114,29 @@ describe('ladder', () => {
     const s = ladder(cross, [{ name: 'too narrow', brews: cross.slice(0, 20) }, { name: 'Natural Ultralight coffees', brews: cross }], [temp])!;
     expect(s).toMatchObject({ tier: 2, group: 'Natural Ultralight coffees', bags: 3, next: { label: '93–94 °C' } });
     expect(s.best!.value).toBeCloseTo(8, 1);
+  });
+  it('tier 2: strength is Bonferroni-corrected over every band of the group, solid or not', () => {
+    const a = [1, 2, 3].flatMap((id) => many(12, id, 91, 8));
+    const bm = [6.8, 7.2, 6.9, 7.1, 6.8, 7.2];
+    const b = bm.flatMap((r, i) => many(6, 10 + i, 94, r));
+    const cross = [...a, ...b, ...many(3, 20, 96, 7)]; // 95+ °C: a third band, one bag, not solid
+    const z = groupZ([8, 8, 8], [8, 8, 8, ...bm]);
+    const s = ladder(cross, [{ name: 'g', brews: cross }], [temp])!;
+    expect(s).toMatchObject({ tier: 2, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
+    expect(strengthOf(z, true, 2)).toBe('solid'); // solid.length as the test count would say win
+  });
+  it('tier 2: bag means identical to float noise are not a finding', () => {
+    const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
+    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'none', best: { strength: 'early' } });
+  });
+  it('tier 1: a hint leans, a weak gap is no clear winner', () => {
+    const two = (hi: number, lo: number) => [1, 2, 3].flatMap((id) => [...noisy(10, id, 91, hi), ...noisy(10, id, 94, lo)]);
+    expect(ladder(two(8.07, 7.93), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
+    expect(ladder(two(8.02, 7.98), [], [temp])).toMatchObject({ tier: 1, verdict: 'none', best: { strength: 'early' } });
+  });
+  it('usual.mean is bag-weighted: a 40-brew bag does not outvote a 2-brew one', () => {
+    const rows = [...many(39, 1, 91, 8), ...many(2, 2, 91, 6)];
+    expect(ladder(rows, [], [temp])!.usual.mean).toBeCloseTo(7, 1);
   });
   it('tier 2 counts bags, not brews: one big bag is not solid', () => {
     const rows = [...many(40, 1, 91, 8), ...[4, 5, 6].flatMap((id) => many(10, id, 94, 7))];
