@@ -39,6 +39,7 @@ when it can be automated.
 | 30 | Stats filter bars (/insights controls, /stats tabs + people switch) stay pinned to the top while scrolling, on a solid background, above tiles and below dialogs; in phone landscape they are one short row. A scrolled-to panel starts below the bar (user decision 2026-10-10). | Per state: `expectStickyBar` (`insights-sticky`, `stats-sticky`, `stats-bq-sticky`) |
 | 31 | Leaderboards show top 10 for many-item dimensions and top 5 for small sets; cards in a band are the same height, with faint placeholder slots (user decision 2026-10-10). | Per state: `expectEqualBoardHeights` (`insights-leaderboards*`) |
 | 32 | Option controls: a segmented switch for 2–4 short options that fit one row at 360px (Current \| All, Household \| Per person); a native dropdown for 5+ options, long labels, or grouped options (optgroups, rule 14), e.g. Rank by and Score (user decision 2026-10-11). Sibling controls in one bar share a baseline. | Alignment per state: `insights-leaderboards-avg` |
+| 33 | Card grids (records, milestones, insights) always fill their rows at every width: the column count divides the items or the last row's cards widen; a lone or stray card is a defect (user, 2026-10-11). | Yes (`expectGridRowsFull`: `insights-records`, `insights-milestones`) |
 
 Opting out: put `data-layout-ignore="<why, and the backlog item that tracks it>"`
 on the element. An empty reason fails the check.

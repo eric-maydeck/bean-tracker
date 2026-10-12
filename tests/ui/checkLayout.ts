@@ -165,9 +165,9 @@ export async function checkLayout(page: Page): Promise<void> {
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
 }
 
-// Insights stat grids: every row of tiles runs edge to edge (no empty cell, no ragged last row).
-export async function expectStatRowsFull(page: Page) {
-  const gaps = await page.locator('.stat-row').evaluateAll((rows) =>
+// Card grids: every row of cards runs edge to edge (no empty cell, no ragged last row; ui-rules 28, 33).
+export async function expectGridRowsFull(page: Page, selector: string) {
+  const gaps = await page.locator(selector).evaluateAll((rows) =>
     rows.flatMap((row) => {
       const o = row.getBoundingClientRect();
       const byTop = new Map<number, DOMRect[]>();
@@ -181,7 +181,12 @@ export async function expectStatRowsFull(page: Page) {
       });
     })
   );
-  expect(gaps).toEqual([]);
+  expect(gaps, selector).toEqual([]);
+}
+
+// Insights stat grids: full rows, and every caption inside its tile.
+export async function expectStatRowsFull(page: Page) {
+  await expectGridRowsFull(page, '.stat-row');
   // Every caption stays inside its tile (checkLayout misses absolutely positioned overflow).
   const spills = await page.locator('.stat-row .stat-item').evaluateAll((tiles) =>
     tiles.flatMap((t) => {

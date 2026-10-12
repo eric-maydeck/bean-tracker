@@ -10,6 +10,8 @@
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
   import Consumption from './Consumption.svelte';
+  import Records from './Records.svelte';
+  import Milestones from './Milestones.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
@@ -404,7 +406,8 @@
   {#if isCustom(s.compare)}
     <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
-  {#if data.householdSize > 1}
+  <!-- Milestones are household-level: no People switch there. -->
+  {#if data.householdSize > 1 && s.tab !== 'milestones'}
     <div class="form-field group-field people-field">
       <span>People</span>
       <div class="tab-group people-switch" role="group" aria-label="People">
@@ -533,6 +536,20 @@
   <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
+{:else if s.tab === 'records' && data.records}
+  <Records
+    t={data.records}
+    ratings={s.ratings}
+    brewer={s.brewer}
+    perPerson={perPersonOn}
+    allRange={!data.period.start}
+    ratingsHelp={RATINGS_HELP}
+    personHelp={PEOPLE_HELP.person}
+    {placeTip}
+    {choose}
+  />
+{:else if s.tab === 'milestones' && data.milestones}
+  <Milestones m={data.milestones} kinds={s.kinds} {choose} />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
@@ -774,6 +791,166 @@
   /* Set from placeTip, so Svelte can't see it. */
   :global(.mode-tip[data-above]) {
     translate: 0 calc(-100% - 0.5rem);
+  }
+
+  /* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
+     (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. */
+  :global(.hl-grid) {
+    --gap: var(--space-3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap);
+    container-type: inline-size;
+  }
+  :global(.hl-grid > .hl-card) {
+    --q: var(--q2);
+    flex: 1 0 calc((100% - (var(--q) - 1) * var(--gap)) / var(--q) - 0.5px);
+  }
+  @container (min-width: 520px) {
+    :global(.hl-grid > .hl-card) {
+      --q: var(--q3);
+    }
+  }
+  @container (min-width: 900px) {
+    :global(.hl-grid > .hl-card) {
+      --q: var(--q4);
+    }
+  }
+  /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
+     Cards in a row share its height, so captions line up. */
+  :global(.hl-card) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: var(--space-3) var(--space-2);
+    text-align: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+  /* A band above the value for the Current/All switch; every card in a grid that has one
+     keeps it, so values line up across the row. Like the overview's rating switch, the pill is
+     small and the button around it is the (transparent) 44px phone tap target, reaching past the band. */
+  :global(.hl-grid:has(.hl-switch) .hl-top) {
+    height: 1.4rem;
+    display: flex;
+    align-items: center;
+  }
+  :global(.hl-switch) {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  :global(.hl-switch button),
+  :global(.hl-switch button[aria-pressed='true']) {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: 0;
+    color: var(--color-text);
+  }
+  :global(.hl-switch span) {
+    display: block;
+    padding: 0.1rem 0.55rem;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+  }
+  :global(.hl-switch button:first-child span) {
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+  :global(.hl-switch button:last-child span) {
+    border-left: 0;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  :global(.hl-switch button[aria-pressed='true'] span) {
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    border-color: var(--color-accent);
+  }
+  @media (hover: hover) {
+    :global(.hl-switch button:not([aria-pressed='true']):hover) {
+      background: none;
+    }
+    :global(.hl-switch button:not([aria-pressed='true']):hover span) {
+      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+      border-color: var(--color-accent);
+    }
+  }
+  :global(.hl-switch button:focus-visible) {
+    outline: none;
+  }
+  :global(.hl-switch button:focus-visible span) {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  @media (max-width: 640px) {
+    :global(.hl-switch button) {
+      min-width: 44px;
+    }
+    /* A 44px button is wider than its half of the pill: push each half against the seam. */
+    :global(.hl-switch button:first-child) {
+      justify-content: flex-end;
+    }
+    :global(.hl-switch button:last-child) {
+      justify-content: flex-start;
+    }
+  }
+  /* Sized by the grid's width (its container): 2-up phone cards fit "11:42 PM". */
+  :global(.hl-value) {
+    margin-top: var(--space-1);
+    font-size: min(2rem, 7.5cqw);
+    font-weight: 600;
+    line-height: 1.1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  :global(.hl-value small) {
+    font-size: 0.45em;
+    font-weight: 600;
+  }
+  :global(.hl-holder),
+  :global(.hl-line) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :global(.hl-holder) {
+    font-weight: 600;
+  }
+  :global(.hl-line) {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+  :global(.hl-badge) {
+    background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    color: var(--color-accent);
+    font-size: 0.72rem;
+  }
+  /* Flex: its tip buttons form their own row (checkLayout rule 5), apart from the card's. */
+  :global(.hl-caption) {
+    display: flex;
+    justify-content: center;
+    margin-top: auto;
+    padding-top: var(--space-2);
+    max-width: 100%;
+  }
+  :global(.hl-caption .stat-label) {
+    display: block;
+    overflow: visible;
+  }
+  :global(.hl-empty) {
+    margin: 0;
+    padding: var(--space-4) 0;
+    text-align: center;
+    color: var(--color-text-muted);
   }
 
   /* Reset sits beside Share, not mid-row (the toolbar spaces its children apart). */

@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectStatRowsFull } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectStatRowsFull } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -1540,6 +1540,29 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
     }
   },
+  { name: 'insights-records', path: () => '/insights?tab=records',
+    act: async (page) => {
+      for (const h of ['Taste', 'Volume', 'Freshness & lifetime', 'Money', 'Brew extremes', 'Not quite your cup'])
+        await expect(page.getByRole('heading', { name: h })).toBeVisible();
+      await expectGridRowsFull(page, '.record-grid');
+    } },
+  { name: 'insights-records-soup', path: () => '/insights?tab=records&brewer=soup',
+    act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
+  { name: 'insights-records-compare', path: () => '/insights?tab=records&range=1w&compare=1' },
+  { name: 'insights-records-all-ratings', path: () => '/insights?tab=records&ratings=all',
+    act: async (page) => {
+      await page.locator('.record-ties').first().click(); // tie tip opens on tap
+      await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
+    } },
+  { name: 'insights-milestones', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      await expect(page.locator('.milestone-feed li').first()).toBeVisible();
+      await expect(page.locator('.people-switch')).toHaveCount(0);
+      await expectGridRowsFull(page, '.milestone-summary');
+      await expectGridRowsFull(page, '.next-up');
+    } },
+  { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
+  { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
   {
     // Ethiopia (every seeded coffee but a few) is tapped at a point known to be inside its outline.
     name: 'insights-leaderboards-map-tip',
