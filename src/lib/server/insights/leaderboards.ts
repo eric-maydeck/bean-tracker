@@ -26,7 +26,7 @@ export interface BoardRow {
 const country = (o: string | null) => (o && o.trim() && o.trim().toUpperCase() !== 'N/A' ? o : null);
 
 // What a brew is grouped by on each board (null = not on that board).
-const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
+export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
   roasters: (b) => b.roaster,
   coffees: (b) => (b.coffeeId === null ? null : String(b.coffeeId)),
   origins: (b) => country(b.origin),
