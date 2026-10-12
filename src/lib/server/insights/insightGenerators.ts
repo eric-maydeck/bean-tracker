@@ -3,10 +3,10 @@ import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
-import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, strengthOf, type Strength } from './stats';
+import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption } from './overview';
 import { groupBy } from './records';
-import { addDays, inPeriod, trackedDays, weekday } from './time';
+import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
 
 export type Theme = 'taste' | 'dialin' | 'habits' | 'gear' | 'money';
 export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story' | 'whatif';
@@ -54,20 +54,21 @@ const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
 const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / (sd(d) / Math.sqrt(d.length)) });
 
 // ponytail: "about N more would settle it" assumes the effect and spread stay as seen.
-const settleText = (z: number, n: number, unit: string): string | undefined => {
-  const more = Math.ceil(n * (4 / z ** 2 - 1));
+const settleText = (z: number, n: number, unit: string, bar = 2): string | undefined => {
+  const more = Math.ceil(n * ((bar / z) ** 2 - 1));
   if (!Number.isFinite(more) || more > 10 * n) return 'Too small a difference to settle with your data.';
   return more > 0 ? `About ${more} more ${unit} would settle it.` : undefined;
 };
 
-// Attach z and strength; null when z isn't finite or the strength is hidden.
-function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string): Finding | null {
+// Attach z and strength; null when z isn't finite or the strength is hidden. `tests` > 1: the finding
+// is the pick of a multiple-comparison set, held to a Bonferroni bar (spec: Strength).
+function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string, tests = 1): Finding | null {
   // A signed delta that rounds to ±0.00 isn't a finding ("rate 0.00 higher").
   if (!Number.isFinite(z) || /^[-+]0\.00$/.test(f.value ?? '')) return null;
-  const strength = strengthOf(z, enough);
+  const strength = strengthOf(z, enough, tests);
   if (strength === 'hidden') return null;
   const early = strength === 'early';
-  return { ...f, z, strength, ...(early ? { settle: settleText(z, n, unit), caveat: caveatEarly ?? f.caveat } : {}) };
+  return { ...f, z, strength, ...(early ? { settle: settleText(z, n, unit, solidBar(tests)), caveat: caveatEarly ?? f.caveat } : {}) };
 }
 
 const LB = '/insights?tab=leaderboards';
@@ -91,18 +92,18 @@ const dialinCurve: Generator = (c) => {
   const base = { theme: 'dialin' as const, sample: `${bags.size} bags`, href: `${LB}&open=coffees` };
   const curve = graded({
     ...base, key: 'dialinCurve', kind: 'pattern',
-    headline: lower ? 'Your first brew of a bag is your worst' : 'You nail a bag from the first brew',
+    headline: lower ? 'Your first brew of a bag rates below the rest' : 'You nail a bag from the first brew',
     value: signed(mean(first.map((r) => r.dm)) - mean(rest.map((r) => r.dm))), series
   }, z, enough, 'bags', first.length);
   if (!curve) return null;
   const raw = (i: number) => mean(rows.filter((r) => bucket(r) === i).map((r) => r.rating!));
   const lastI = series.length ? Math.max(...series.map((s) => (s.label === '7+' ? 7 : +s.label))) : 1;
-  const pick = lower ? Math.min : Math.max;
-  const extreme = first.filter((r) => r.dm === pick(...rows.filter((x) => x.coffeeId === r.coffeeId).map((x) => x.dm))).length;
+  // Below (above) the bag's own average = below (above) its later brews' average.
+  const share = first.filter((r) => (lower ? r.dm < 0 : r.dm > 0)).length;
   const story: Finding = {
     ...curve, key: 'dialinStory', kind: 'story', of: 'dialinCurve',
     body: `Brew #1 averages ${raw(1).toFixed(2)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(2)}. ` +
-      `The first brew was the ${lower ? 'worst' : 'best'} in ${Math.round((100 * extreme) / first.length)}% of ${first.length} bags.`
+      `The first brew rated ${lower ? 'below' : 'above'} the bag's later brews in ${Math.round((100 * share) / first.length)}% of ${first.length} bags.`
   };
   return [curve, story];
 };
@@ -124,9 +125,12 @@ const dialinSpeed: Generator = (c) => {
   const fast = sorted[0], last = sorted[sorted.length - 1];
   if (fast.pos === last.pos) return null;
   const s = sorted.filter((x) => x.pos === last.pos).sort((a, b) => label(a).localeCompare(label(b)))[0];
+  // "Fastest: 1 brew" is no contest (any bag right on brew 1 wins): count those bags instead.
+  const hits = sorted.filter((x) => x.pos === 1).length;
   return {
-    key: 'dialinSpeed', theme: 'dialin', kind: 'versus', headline: `Dial-in takes ${fast.pos} to ${last.pos} brews`,
-    sides: [{ label: `Slowest: ${label(s)}`, value: plural(s.pos, 'brew') }, { label: `Fastest: ${label(fast)}`, value: plural(fast.pos, 'brew') }],
+    key: 'dialinSpeed', theme: 'dialin', kind: 'versus', headline: hits ? `Dial-in takes up to ${last.pos} brews` : `Dial-in takes ${fast.pos} to ${last.pos} brews`,
+    sides: [{ label: `Slowest: ${label(s)}`, value: plural(s.pos, 'brew') },
+      hits ? { label: 'Right on brew 1', value: `${hits} of ${plural(slow.length, 'bag')}` } : { label: `Fastest: ${label(fast)}`, value: plural(fast.pos, 'brew') }],
     sample: `${slow.length} bags`, href: `${LB}&open=coffees`, z: null, strength: null
   };
 };
@@ -196,7 +200,7 @@ const groupDelta: Generator = (c) => {
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(2)} ${delta < 0 ? 'lower' : 'higher'}`,
         value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`
-      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined);
+      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length);
       return f ? [f] : [];
     });
   });
@@ -279,15 +283,19 @@ const morningDrift: Generator = (c) => {
   };
 };
 
+// Brews per tracked day (a day with no brews counts as 0).
 const weekendVsWeekday: Generator = (c) => {
-  const days = [...groupBy(c.brews, (b) => b.localDate)];
-  const [we, wd] = [true, false].map((w) => days.filter(([d]) => (weekday(d) >= 5) === w).map(([, bs]) => bs.length));
+  const t = trackedBounds(period(c), c.dataStart, c.today);
+  if (!t) return null;
+  const n = new Map([...groupBy(c.brews, (b) => b.localDate)].map(([d, bs]) => [d, bs.length]));
+  const all = Array.from({ length: daysBetween(t.start, t.end) + 1 }, (_, i) => addDays(t.start, i));
+  const [we, wd] = [true, false].map((w) => all.filter((d) => (weekday(d) >= 5) === w).map((d) => n.get(d) ?? 0));
   if (sum(we) < MIN_BREWS || sum(wd) < MIN_BREWS) return null;
   const [a, b] = [mean(we), mean(wd)];
   return {
     key: 'weekendVsWeekday', theme: 'habits', kind: 'versus', headline: a > b * 1.1 ? 'You brew more on weekends' : "Weekends aren't binges",
-    sides: [{ label: 'Weekends', value: a.toFixed(2) }, { label: 'Weekdays', value: b.toFixed(2) }], body: 'Brews per brew day.',
-    sample: `${we.length + wd.length} brew days`, href: HABITS, z: null, strength: null
+    sides: [{ label: 'Weekends', value: a.toFixed(2) }, { label: 'Weekdays', value: b.toFixed(2) }], body: 'Brews per day.',
+    sample: plural(all.length, 'day'), href: HABITS, z: null, strength: null
   };
 };
 
@@ -303,20 +311,24 @@ const earlyBrews: Generator = (c) => {
 };
 
 // The weekday that stands out most (demeaned, vs the other days); one card, multiple-comparison caveat.
+// The unit is the brew day: one day's brews move together (same bag, same morning), so z is on day
+// means, and the pick of the weekdays is held to a Bonferroni bar.
 const weekdayRatings: Generator = (c) => {
   const rows = demeaned(counted(c));
-  const res = sd(rows.map((r) => r.dm));
+  const dayMeans = [...groupBy(rows, (r) => r.localDate)].map(([d, g]) => ({ wd: weekday(d), m: mean(g.map((r) => r.dm)) }));
+  const res = sd(dayMeans.map((x) => x.m));
   const groups = [...groupBy(rows, (r) => weekday(r.localDate))].filter(([, g]) => g.length >= MIN_BREWS);
   if (groups.length < 2) return null;
   const best = groups.map(([d, g]) => {
     const dm = g.map((r) => r.dm), rest = rows.filter((r) => weekday(r.localDate) !== d).map((r) => r.dm);
-    return { d, n: g.length, diff: mean(dm) - mean(rest), z: brewZ(dm, rest, res) };
+    const [a, b] = [true, false].map((on) => dayMeans.filter((x) => (x.wd === d) === on).map((x) => x.m));
+    return { d, n: g.length, days: a.length, diff: mean(dm) - mean(rest), z: brewZ(a, b, res) };
   }).filter((x) => Number.isFinite(x.z)).sort((a, b) => Math.abs(b.z) - Math.abs(a.z) || a.d - b.d)[0];
   if (!best) return null;
   return graded({
     key: 'weekday', theme: 'habits', kind: 'number', headline: `${DAY_NAMES[best.d]} rate ${Math.abs(best.diff).toFixed(2)} ${best.diff < 0 ? 'lower' : 'higher'}`,
-    value: signed(best.diff), sample: `${best.n} brews`, href: HABITS
-  }, best.z, true, 'brews', best.n, `With ${groups.length} weekdays compared, one usually stands out by chance.`);
+    value: signed(best.diff), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS
+  }, best.z, true, DAY_NAMES[best.d], best.days, `With ${groups.length} weekdays compared, one usually stands out by chance.`, groups.length);
 };
 
 // This period vs prevBrews (Compare window when on, else the previous period). Descriptive; the
@@ -597,6 +609,10 @@ export interface InsightsTab {
   whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null }; // the client computes runway and spend
 }
 const DECK = 5;
+// Too early to tell: a rating delta under EARLY_FLOOR is noise, not a lead ("rate 0.01 higher");
+// the list keeps the EARLY_CAP strongest. Not in the spec: set 2026-10-12 against prod data.
+const EARLY_FLOOR = 0.1, EARLY_CAP = 12;
+const negligible = (f: Finding) => /^[-+]\d/.test(f.value ?? '') && Math.abs(parseFloat(f.value!)) < EARLY_FLOOR;
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
@@ -631,7 +647,7 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
     grid: fs.filter((f) => inGrid(f) && !out.has(f.key) && (!theme || f.theme === theme)),
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
-    tooEarly: fs.filter((f) => f.strength === 'early'),
+    tooEarly: fs.filter((f) => f.strength === 'early' && !negligible(f)).slice(0, EARLY_CAP),
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }

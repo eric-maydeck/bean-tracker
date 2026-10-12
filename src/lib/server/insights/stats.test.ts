@@ -35,6 +35,13 @@ describe('stats', () => {
     expect(strengthOf(1.0, true)).toBe('early');
     expect(strengthOf(5, false)).toBe('hidden');
   });
+  it('strengthOf over a multiple-comparison set: a Bonferroni bar', () => {
+    expect(strengthOf(2.1, true, 7)).toBe('early'); // p .036 × 7 = .25
+    expect(strengthOf(2.5, true, 7)).toBe('hint'); // p .012 × 7 = .087
+    expect(strengthOf(-3, true, 7)).toBe('solid'); // p .0027 × 7 = .019
+    expect(strengthOf(2, true, 1)).toBe('solid');
+    expect(strengthOf(1.5, true, 1)).toBe('hint');
+  });
   it('groupZ: all bags [6..10] mean 8 sd sqrt2; group [9,10] mean 9.5 -> 1.5 / (sqrt2/sqrt2) = 1.5', () =>
     expect(groupZ([9, 10], [6, 7, 8, 9, 10])).toBeCloseTo(1.5));
   it('brewZ: a mean 8, b mean 7, n 2+2, sd 0.5 -> 1 / (0.5 * 1) = 2', () =>
