@@ -91,6 +91,8 @@ export interface BrewFact {
   costPerBrew: number | null;
   brewTimeSeconds: number | null;
   bloomSeconds: number | null;
+  hasNote: boolean; // notes non-blank
+  brewIndex: number; // 1-based position within its bag, by time; 0 when no bag
 }
 export interface BagFact {
   id: number;
@@ -110,12 +112,13 @@ export interface BagFact {
   frozenEnd?: string | null;
   firstBrew: string | null; // local dates
   lastBrew: string | null;
+  bagRating: number | null; // the linked Bean Conqueror bean's rating (> 0), else null
 }
 
 interface BrewRow {
   id: number; bc_created_at: string; dose: number | null; rating: number | null; brew_time: string | null; bloom_time: string | null;
   method: string | null; tools: string | null; grinder: string | null; water: string | null; water_id: string | null;
-  calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null;
+  calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null; notes: string | null;
   coffee_id: number | null; roaster: string | null; origin: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
   cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
@@ -124,7 +127,7 @@ interface BrewRow {
 interface BagRow {
   id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; processing: string | null;
   roast_level: string | null; decaf: number; roast_date: string | null; cost: number | null; amount_g: number | null;
-  frozen_start_date: string | null; frozen_end_date: string | null;
+  frozen_start_date: string | null; frozen_end_date: string | null; bag_rating: number | null;
 }
 
 // Every brew joined to its bean's coffee, method and water, plus every bag,
@@ -139,7 +142,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
               c.id AS coffee_id, c.roaster, c.origin, c.processing, c.roast_level, c.decaf, c.roast_date,
               c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g,
-              b.water_amount_g, b.grind_setting, m.preparation_style AS style
+              b.water_amount_g, b.grind_setting, b.notes, m.preparation_style AS style
        FROM beanconqueror_brews b
        LEFT JOIN beanconqueror_beans bean ON bean.id = b.bean_id
        LEFT JOIN coffees c ON c.id = bean.coffee_id
@@ -185,9 +188,13 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       restDays: restDays(r.roast_date, r.frozen_start_date, r.frozen_end_date, localDate),
       costPerBrew: costPerBrew(r.dose, r.cost, r.amount_g),
       brewTimeSeconds: seconds(r.brew_time),
-      bloomSeconds: seconds(r.bloom_time)
+      bloomSeconds: seconds(r.bloom_time),
+      hasNote: !!r.notes?.trim(),
+      brewIndex: 0
     };
   });
+  const seen = new Map<number, number>();
+  for (const b of brews) if (b.coffeeId !== null) b.brewIndex = seen.set(b.coffeeId, (seen.get(b.coffeeId) ?? 0) + 1).get(b.coffeeId)!;
 
   const span = new Map<number, { first: string; last: string }>();
   for (const b of brews) {
@@ -198,7 +205,8 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
   }
 
   const bagRows = db
-    .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date FROM coffees`)
+    .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date,
+            (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
     .all() as unknown as BagRow[];
   const bags = bagRows.map((r): BagFact => ({
     id: r.id,
@@ -217,7 +225,8 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     frozenStart: r.frozen_start_date,
     frozenEnd: r.frozen_end_date,
     firstBrew: span.get(r.id)?.first ?? null,
-    lastBrew: span.get(r.id)?.last ?? null
+    lastBrew: span.get(r.id)?.last ?? null,
+    bagRating: r.bag_rating
   }));
 
   return { brews, bags };

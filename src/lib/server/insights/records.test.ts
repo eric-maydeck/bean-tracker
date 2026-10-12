@@ -6,11 +6,11 @@ import type { Ratings } from '$lib/insightsUrl';
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
   processGroup: 'Washed', roastLevel: null, decaf: false, brewer: null, brewerType: 'pourover', waterG: null, ratio: null, grind: null, dripper: null, filter: null, water: null, waterProfile: null,
-  restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, grinder: null, ...o
+  restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, grinder: null, hasNote: false, brewIndex: 0, ...o
 });
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 0, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
-  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, ...o
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
 });
 const BAGS = [1, 2, 3, 4].map((id) => bag({ id, name: `Bag ${id}`, slug: `bag-${id}` }));
 // Consecutive rated brews of one bag, one per ten minutes from 09:00.

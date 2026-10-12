@@ -181,5 +181,20 @@ describe('loadFacts', () => {
     expect(bag!.slug).toEqual(expect.any(String));
   });
 
+  it('hasNote, brewIndex and bagRating', () => {
+    const { db, coffeeId } = seed();
+    db.prepare(`UPDATE beanconqueror_brews SET notes = '  ' WHERE bc_created_at LIKE '2026-06-30%'`).run();
+    db.prepare(`UPDATE beanconqueror_brews SET notes = 'bright' WHERE bc_created_at LIKE '2026-07-03%'`).run();
+    let { brews, bags } = loadFacts(db);
+    expect(brews.map((b) => b.hasNote)).toEqual([false, false, true]);
+    expect(brews.map((b) => b.brewIndex)).toEqual([1, 0, 2]); // the unlinked brew is 0
+    expect(bags.find((b) => b.id === coffeeId)!.bagRating).toBeNull();
+    db.prepare(`UPDATE beanconqueror_beans SET rating = 0`).run();
+    expect(loadFacts(db).bags.find((b) => b.id === coffeeId)!.bagRating).toBeNull();
+    db.prepare(`UPDATE beanconqueror_beans SET rating = 4.5`).run();
+    ({ brews, bags } = loadFacts(db));
+    expect(bags.find((b) => b.id === coffeeId)!.bagRating).toBe(4.5);
+  });
+
   it('an empty database has no facts', () => expect(loadFacts(createDb(':memory:'))).toEqual({ brews: [], bags: [] }));
 });
