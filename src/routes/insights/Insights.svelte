@@ -163,6 +163,21 @@
         {#each ls as l (l.label)}<li><span class="swatch" style:background={l.color}></span>{l.label}</li>{/each}
       </ul>
     </div>
+  {:else if f.series && f.series.length > 1 && f.chart === 'bars'}
+    {@const max = Math.max(...f.series.map((p) => p.value)) || 1}
+    {@const w = 100 / f.series.length}
+    <!-- Magnitudes from zero: bars. Weekend bars take the second colour (and their initials are bold). -->
+    <div class="bars" role="img" aria-label={f.series.map((p) => `${p.label} ${+p.value.toFixed(2)}`).join(', ')}>
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+        {#each f.series as p, i (i)}
+          <rect x={i * w + w * 0.15} width={w * 0.7} y={40 - (Math.max(0, p.value) / max) * 38} height={(Math.max(0, p.value) / max) * 38}
+            class:weekend={/^(Sat|Sun)/.test(p.label)} />
+        {/each}
+      </svg>
+      <div class="bar-labels" aria-hidden="true" style:--n={f.series.length}>
+        {#each f.series as p, i (i)}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/each}
+      </div>
+    </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
     <div class="spark" role="img" aria-label="{f.series.map((p) => p.label).join(', ')}">
@@ -480,12 +495,41 @@
     overflow: visible;
   }
   /* A chart takes the card's spare height (a taller neighbour sets the row), so no hole opens under it. */
+  .bars {
+    width: 100%;
+    max-width: 14rem;
+  }
+  .bars svg {
+    display: block;
+    width: 100%;
+    height: 2.5rem;
+  }
+  .bars rect {
+    fill: var(--chart-color-1);
+  }
+  .bars rect.weekend {
+    fill: var(--chart-color-2);
+  }
+  .bar-labels {
+    display: grid;
+    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+    margin-top: 0.15rem;
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    text-align: center;
+  }
+  .bar-labels .weekend {
+    color: var(--color-text);
+    font-weight: 700;
+  }
+  .hl-card > .bars,
   .hl-card > .multi,
   .hl-card > .spark {
     flex: 1 0 auto;
     display: flex;
     flex-direction: column;
   }
+  .hl-card > .bars svg,
   .hl-card > .multi svg,
   .hl-card > .spark svg {
     flex: 1 0 auto;

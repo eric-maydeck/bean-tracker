@@ -1802,6 +1802,10 @@ export const STATES: State[] = [
       expect(legend).toBeGreaterThan(1);
       const colors = await multi.locator('.swatch').evaluateAll((ss) => ss.map((s) => getComputedStyle(s).backgroundColor));
       expect(new Set(colors).size).toBe(legend);
+      // Weekday bars: seven bars, the weekend two in the second colour (B6).
+      const bars = page.locator('.finding-grid .bars').first();
+      await expect(bars.locator('rect')).toHaveCount(7);
+      expect(await bars.locator('rect.weekend').count()).toBe(2);
       // A badge explains itself on tap.
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
