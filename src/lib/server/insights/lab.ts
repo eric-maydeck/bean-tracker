@@ -189,6 +189,7 @@ export interface SweetSpotsTab {
   cards: { key: SpotVar; name: string; spot: Spot }[];
   topBags: { label: string; sub: string; href: string | null; score: number; brews: number; usual: string }[];
 }
+const TOP_N = 5; // bags listed
 const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
 const mode = (bs: readonly BrewFact[], f: (b: BrewFact) => string | null | undefined) =>
   [...groupBy(bs, f)].sort((a, b) => b[1].length - a[1].length || String(a[0]).localeCompare(String(b[0])))[0]?.[0] ?? null;
@@ -211,6 +212,6 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
-  }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, 5);
+  }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
   return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags };
 }

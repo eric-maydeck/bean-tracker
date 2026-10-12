@@ -210,6 +210,19 @@ describe('sweetSpotsTab', () => {
     expect(t[0].usual).toBe('91 °C · A · V60');
   });
   it('top bags tie order: by score, then label', () => expect(tab().topBags.map((b) => b.label)).toEqual(['Bag 1', 'Bag 2', 'Bag 3']));
+  it('top bags: shrinkage ranks 10 brews at 8.5 above one 10-rated brew', () => {
+    const r = (id: number, k: number, v: number) => Array.from({ length: k }, () => brew({ coffeeId: id, rating: v }));
+    const t = sweetSpotsTab([...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)], bags, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags;
+    expect(t.map((b) => b.label)).toEqual(['Bag 2', 'Bag 1', 'Bag 3']);
+  });
+  it('top bags: at most 5 of 6', () => {
+    const six = [1, 2, 3, 4, 5, 6].map((id) => brew({ coffeeId: id, rating: 8 }));
+    expect(sweetSpotsTab(six, [], { period: P, ratings: 'all', grinder: null, filters: {} }).topBags).toHaveLength(5);
+  });
+  it('groups with partial filters', () => {
+    expect(groupsFor(rows, { roast: 'Light', origin: 'Kenya' }).map((g) => g.name)).toEqual(['Light coffees from Kenya', 'Light coffees']);
+    expect(groupsFor(rows, { origin: 'Kenya' }).map((g) => g.name)).toEqual(['all coffees from Kenya', 'all coffees']);
+  });
   it('groups widen origin → roaster → process → roast, deduped', () => {
     expect(groupsFor(rows, { roast: 'Light', process: 'Natural', origin: 'Kenya', roaster: 'R' }).map((g) => g.name)).toEqual(
       ['Natural Light coffees from Kenya by R', 'Natural Light coffees by R', 'Natural Light coffees', 'Light coffees']);
