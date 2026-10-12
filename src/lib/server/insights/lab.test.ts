@@ -301,6 +301,9 @@ describe('brewingTab', () => {
     expect(r.faded).toBe(true);
     expect(r.lines).toEqual([{ label: 'Solo', values: [-0.08, 0.42] }]);
     expect(brewingTab(solo.filter((b) => b.restDays === 10), c0).rest).toBeNull(); // one band: no line at all
+    // A roast level under 3 bags stays out of the faded fallback (same rule as the Roast picker).
+    const pair = [7, 8].flatMap((id) => [...at(id, 10, 10, [7, 8]), ...at(id, 25, 2, [8])]).map((b) => ({ ...b, roastLevel: 'Duo' }));
+    expect(brewingTab([...solo, ...pair], c0).rest!.lines.map((l) => l.label)).toEqual(['Solo']);
   });
   it('variable charts drop bands with no paired brews; exact temps keep every °C used', () => {
     const extra = [...rows, ...[7, 8].flatMap((id) => Array.from({ length: 4 }, () => brew({ coffeeId: id, tempC: 88, rating: 7 })))];
@@ -449,9 +452,10 @@ describe('waterTab', () => {
 });
 
 describe('ranked', () => {
-  it('delta rows first (desc), then adjusted desc', () => {
-    const s = (label: string, delta: number | null, adjusted: number) => ({ label, delta, adjusted }) as unknown as BandStat;
-    expect(ranked([s('x', null, 9), s('a', 0.1, 1), s('b', 0.4, 1), s('y', null, 8)]).map((r) => r.label)).toEqual(['b', 'a', 'x', 'y']);
+  it('delta rows first, solid before thin, then delta desc; no-delta rows by adjusted desc', () => {
+    const s = (label: string, delta: number | null, adjusted: number, solid = true) => ({ label, delta, adjusted, solid }) as unknown as BandStat;
+    expect(ranked([s('x', null, 9, false), s('a', 0.1, 1), s('t', 0.9, 1, false), s('b', 0.4, 1), s('y', null, 8, false)]).map((r) => r.label))
+      .toEqual(['b', 'a', 't', 'x', 'y']);
   });
 });
 

@@ -194,7 +194,7 @@ export function groupsFor(rows: readonly BrewFact[], f: LabFilters): Group[] {
 }
 
 export type SpotVar = 'temp' | 'water' | 'dripper' | 'filter' | 'ratio' | 'dose' | 'grind' | 'bloom' | 'rest';
-export const SPOT_NAMES: Record<SpotVar, string> = { temp: 'Temp', water: 'Water', dripper: 'Dripper', filter: 'Filter', ratio: 'Ratio', dose: 'Dose', grind: 'Grind', bloom: 'Bloom', rest: 'Rest' };
+const SPOT_NAMES: Record<SpotVar, string> = { temp: 'Temp', water: 'Water', dripper: 'Dripper', filter: 'Filter', ratio: 'Ratio', dose: 'Dose', grind: 'Grind', bloom: 'Bloom', rest: 'Rest' };
 const SPOT_VARS: Record<SpotVar, LabVar[]> = { temp: ['tempExact', 'temp'], water: ['water'], dripper: ['dripper'], filter: ['filter'], ratio: ['ratio'], dose: ['dose'], grind: ['grind'], bloom: ['bloom'], rest: ['rest'] };
 export interface SweetSpotsTab {
   matching: { bags: number; brews: number };
@@ -210,7 +210,7 @@ const mode = (bs: readonly BrewFact[], f: (b: BrewFact) => string | null | undef
 // Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
 // roasted the same day get their opened date instead.
 type Dated = { label: string; roastedOn: string | null; openedOn: string | null };
-export function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'> & { tag: string | null })[] {
+function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'> & { tag: string | null })[] {
   const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
   const key = (b: { label: string; tag: string | null }) => `${b.label}|${b.tag}`;
   const twins = <U extends { label: string; tag: string | null }>(xs: U[], b: U) => xs.filter((x) => key(x) === key(b)).length > 1;
@@ -272,7 +272,8 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
     const centre = mean([...groupBy(g, (b) => b.coffeeId).values()].map((bs) => mean(bs.map((b) => b.rating!))));
     const bm = bagBandMeans(g, rest);
     const values = REST_LABELS.map((l) => { const s = bm.get(l); return s && (!solidOnly || isSolid(s)) ? round2(mean(s.means) - centre) : null; });
-    return label && values.filter((v) => v !== null).length >= 2 ? [{ label, values }] : [];
+    // A roast level needs ≥ MIN_BAGS bags (as the Roast picker and breakdowns): the faded fallback draws no 1–2 bag lines.
+    return label && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS && values.filter((v) => v !== null).length >= 2 ? [{ label, values }] : [];
   }).sort((a, b) => a.label.localeCompare(b.label));
   const solidLines = restLines(true);
   const all = solidLines.length ? solidLines : restLines(false);
@@ -308,9 +309,11 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
 }
 
 export type LeaderRow = BandStat & { months?: string };
-// Leaderboard order: rows with a same-bag delta first (best first), then the rest by adjusted mean.
+// Leaderboard order: rows with a same-bag delta first, solid before thin (as Leaderboards' min3), best
+// delta first; then the rest by adjusted mean.
 export const ranked = <T extends BandStat>(st: T[]): T[] =>
-  [...st].sort((a, b) => Number(b.delta !== null) - Number(a.delta !== null) || (b.delta ?? 0) - (a.delta ?? 0) || b.adjusted - a.adjusted || a.label.localeCompare(b.label));
+  [...st].sort((a, b) => Number(b.delta !== null) - Number(a.delta !== null) || Number(b.solid) - Number(a.solid) ||
+    (b.delta ?? 0) - (a.delta ?? 0) || b.adjusted - a.adjusted || a.label.localeCompare(b.label));
 // "Feb–Apr", one month "Sep", across years "Nov 25–Feb 26" (rows in time order).
 const monthsOf = (bs: readonly BrewFact[]) => {
   const [a, b] = [bs[0].localDate, bs.at(-1)!.localDate], y = a.slice(0, 4) !== b.slice(0, 4);
