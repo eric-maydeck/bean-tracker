@@ -4,7 +4,7 @@ import type { BrewFact } from './facts';
 
 const brew = (localTime: string, o: Partial<BrewFact> = {}): BrewFact => ({
   id: 0, coffeeId: 1, localTime, localDate: localTime.slice(0, 10), backfilled: false, dose: 15, rating: null, roaster: null,
-  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, dripper: null, filter: null, grinder: null, water: null,
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, brewer: null, brewerType: 'pourover', waterG: null, ratio: null, grind: null, dripper: null, filter: null, grinder: null, water: null,
   waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, ...o
 });
 // Mon 2026-09-07 … Sun 2026-09-20: two full weeks.

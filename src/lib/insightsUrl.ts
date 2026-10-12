@@ -25,6 +25,9 @@ export type Avg = (typeof AVGS)[number];
 export const DEFAULT_AVG: Avg = 'best-k2';
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
+export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;
+export type BrewerType = (typeof BREWER_TYPES)[number];
+
 export const TABS = ['overview', 'leaderboards', 'habits', 'consumption'] as const;
 export type Tab = (typeof TABS)[number];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month

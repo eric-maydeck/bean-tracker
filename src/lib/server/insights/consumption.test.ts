@@ -5,7 +5,7 @@ import type { BrewFact, BagFact } from './facts';
 
 const brew = (localDate: string, dose: number, coffeeId = 1): BrewFact => ({
   id: 0, coffeeId, localTime: `${localDate}T08:00`, localDate, backfilled: false, dose, rating: null, roaster: null, origin: null,
-  processGroup: 'Washed', roastLevel: null, decaf: false, dripper: null, filter: null, grinder: null, water: null, waterProfile: null,
+  processGroup: 'Washed', roastLevel: null, decaf: false, brewer: null, brewerType: 'pourover', waterG: null, ratio: null, grind: null, dripper: null, filter: null, grinder: null, water: null, waterProfile: null,
   restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null
 });
 const bag = (o: Partial<BagFact>): BagFact => ({

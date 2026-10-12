@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { processGroup, type ProcessGroup } from '$lib/processGroups';
 import { generalHardness, carbonateHardness } from '$lib/water';
+import type { BrewerType } from '$lib/insightsUrl';
 import { bcLocalTime, daysBetween } from './time';
 
 // Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
@@ -15,6 +16,18 @@ export function parseMethod(name: string | null, tools: string | null): { drippe
   const i = name.indexOf(' - ');
   if (i >= 0) return { dripper: name.slice(0, i).trim(), filter: name.slice(i + 3).trim() || null };
   return { dripper: name.trim(), filter: tools?.replace(/ filters$/i, '').trim() || null };
+}
+
+// Bean Conqueror's preparation style, except the OXO Rapid Brewer: styled ESPRESSO in BC but it
+// brews soup (user, 2026-10-11).
+const STYLE: Record<string, BrewerType> = { 'POUR OVER': 'pourover', ESPRESSO: 'espresso', 'FULL IMMERSION': 'immersion' };
+export const brewerType = (name: string | null, style: string | null): BrewerType =>
+  name && /oxo rapid brewer|\borb\b/i.test(name) ? 'soup' : (style && STYLE[style.toUpperCase()]) || 'other';
+
+// A grind setting as numbers, for ordering within one grinder; malformed strings are skipped.
+export function grindKey(grind: string | null): number[] | null {
+  if (!grind || !/^\d+(\.\d+)*$/.test(grind.trim())) return null;
+  return grind.trim().split('.').map(Number);
 }
 
 // Belt and braces next to the coffee_corrections_2026_10_b migration: a
@@ -64,6 +77,11 @@ export interface BrewFact {
   processGroup: ProcessGroup;
   roastLevel: string | null;
   decaf: boolean;
+  brewer: string | null; // full method name, e.g. "V60 - Cafec Abaca"
+  brewerType: BrewerType;
+  waterG: number | null; // water_amount_g; null when not entered
+  ratio: number | null; // waterG / dose
+  grind: string | null; // grind_setting, trimmed
   dripper: string | null;
   filter: string | null;
   grinder: string | null;
@@ -98,7 +116,7 @@ interface BrewRow {
   calcium: number | null; magnesium: number | null; sodium: number | null; potassium: number | null; chloride: number | null; sulfate: number | null;
   coffee_id: number | null; roaster: string | null; origin: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
-  cost: number | null; amount_g: number | null;
+  cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
 }
 
 interface BagRow {
@@ -117,7 +135,8 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
               COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
               c.id AS coffee_id, c.roaster, c.origin, c.processing, c.roast_level, c.decaf, c.roast_date,
-              c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g
+              c.frozen_start_date, c.frozen_end_date, c.cost, c.amount_g,
+              b.water_amount_g, b.grind_setting, m.preparation_style AS style
        FROM beanconqueror_brews b
        LEFT JOIN beanconqueror_beans bean ON bean.id = b.bean_id
        LEFT JOIN coffees c ON c.id = bean.coffee_id
@@ -132,6 +151,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     // bc_created_at is local wall time despite its trailing 'Z' (see bcLocalTime).
     const localTime = bcLocalTime(r.bc_created_at);
     const localDate = localTime.slice(0, 10);
+    const waterG = r.water_amount_g && r.water_amount_g > 0 ? r.water_amount_g : null;
     return {
       id: r.id,
       coffeeId: r.coffee_id,
@@ -145,6 +165,11 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       processGroup: processGroup(r.processing),
       roastLevel: normalizeRoastLevel(r.roast_level),
       decaf: r.decaf === 1,
+      brewer: r.method,
+      brewerType: brewerType(r.method, r.style),
+      waterG,
+      ratio: waterG && r.dose && r.dose > 0 ? waterG / r.dose : null,
+      grind: r.grind_setting?.trim() || null,
       ...parseMethod(r.method, r.tools),
       grinder: r.grinder,
       water: r.water,

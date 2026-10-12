@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, MIXED_FILTER } from './facts';
+import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, MIXED_FILTER } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 
@@ -81,6 +81,30 @@ describe('seconds', () => {
   });
 });
 
+describe('brewerType', () => {
+  it('maps Bean Conqueror styles', () => {
+    expect(brewerType('V60 - Cafec Abaca', 'POUR OVER')).toBe('pourover');
+    expect(brewerType('Decent', 'ESPRESSO')).toBe('espresso');
+    expect(brewerType('Clever', 'FULL IMMERSION')).toBe('immersion');
+    expect(brewerType('Mystery', null)).toBe('other');
+  });
+  it('OXO Rapid Brewer (and ORB) is soup, whatever its style', () => {
+    expect(brewerType('OXO Rapid Brewer - Zuppa Lunga', 'ESPRESSO')).toBe('soup');
+    expect(brewerType('My ORB', 'ESPRESSO')).toBe('soup');
+    expect(brewerType('Orbit dripper', 'POUR OVER')).toBe('pourover');
+  });
+});
+
+describe('grindKey', () => {
+  it('parses dotted settings, rejects malformed ones', () => {
+    expect(grindKey('2.4.1')).toEqual([2, 4, 1]);
+    expect(grindKey('5.5')).toEqual([5, 5]);
+    expect(grindKey('1..5.0')).toBeNull();
+    expect(grindKey('')).toBeNull();
+    expect(grindKey(null)).toBeNull();
+  });
+});
+
 describe('loadFacts', () => {
   function seed() {
     const db = createDb(':memory:');
@@ -92,21 +116,21 @@ describe('loadFacts', () => {
     });
     db.prepare(`UPDATE coffees SET status = 'archive' WHERE id = ?`).run(coffeeId);
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b1', 'Kiambu', ?, ?)`).run(now, coffeeId);
-    db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_tools, imported_at) VALUES ('m1', 'CT62 - Cafec Abaca', 'Cafec Abaca filters', ?)`).run(now);
+    db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_style, preparation_tools, imported_at) VALUES ('m1', 'CT62 - Cafec Abaca', 'POUR OVER', 'Cafec Abaca filters', ?)`).run(now);
     db.prepare(
       `INSERT INTO beanconqueror_waters (id, name, calcium, magnesium, sodium, potassium, chloride, sulfate, imported_at)
        VALUES ('w1', 'Lotus - Mg/K 60/10', 0, 14.6, 0, 7.8, 42.5, 0, ?)`
     ).run(now);
     db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6 (1ZPresso)', ?)`).run(now);
     const brew = db.prepare(
-      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, water_amount_g, grind_setting, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     // stored as local wall time: 23:30 on Jun 30 stays on Jun 30 (no shift)
-    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'g1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', now);
-    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, null, 16, null, null, null, now);
+    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'g1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', 250, '2.4.1', now);
+    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, null, 16, null, null, null, 0, null, now);
     // a brew of an unlinked bean (no bean row at all)
-    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, null, 14, 7, null, null, now);
+    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, null, 14, 7, null, null, null, null, now);
     return { db, coffeeId };
   }
 
@@ -130,6 +154,13 @@ describe('loadFacts', () => {
     expect(brews[0].waterProfile!.kh).toBeCloseTo(10, 0);
     expect(brews[2].waterProfile).toBeNull();
     expect(brews[2].grinder).toBeNull();
+  });
+
+  it('loads brewer, type, water, ratio and grind', () => {
+    const [a, b] = loadFacts(seed().db).brews;
+    expect(a).toMatchObject({ brewer: 'CT62 - Cafec Abaca', brewerType: 'pourover', waterG: 250, grind: '2.4.1' });
+    expect(a.ratio).toBeCloseTo(250 / a.dose!);
+    expect(b).toMatchObject({ waterG: null, ratio: null, grind: null });
   });
 
   it('keeps a brew with no linked coffee, with null coffee fields', () => {
