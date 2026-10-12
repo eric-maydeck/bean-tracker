@@ -1833,6 +1833,82 @@ export const STATES: State[] = [
       await expect(page.locator('.top-bags li').first()).toBeVisible();
     } },
   { name: 'insights-sweetspots-filters', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters' },
+  { name: 'insights-brewing', path: () => '/insights?tab=brewing',
+    act: async (page) => {
+      for (const h of ['Rest curve', 'Dial-in', 'Brews to your best', 'Grind drift', 'Variables vs rating'])
+        await expect(page.getByRole('heading', { name: h })).toBeVisible();
+      await expect(page.locator('.var-chart')).toHaveCount(6);
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
+      // Nothing takes focus on load (the phone keyboard would pop up).
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+      // Full rows: two columns ≥ 900 px, an odd last chart spans both; Dial-in beside Brews to your best.
+      await expectGridRowsFull(page, '.var-grid', true);
+      await expectGridRowsFull(page, '.brewing-pair', true);
+      // Each chart's header (title + toggles) is one row from 768 px.
+      if ((page.viewportSize()?.width ?? 0) >= 768) {
+        const rows = await page.locator('.var-head').evaluateAll((hs) => hs.filter((h) => {
+          const rs = [...h.children].map((c) => c.getBoundingClientRect());
+          return Math.max(...rs.map((r) => r.top)) >= Math.min(...rs.map((r) => r.bottom)); // a second line starts below the first
+        }).length);
+        expect(rows).toBe(0);
+      }
+      // Value text is never clipped by its panel.
+      const clipped = await page.locator('.bar-value').evaluateAll((vs) => vs.filter((v) => {
+        const r = v.getBoundingClientRect(), p = v.closest('.chart-panel')!.getBoundingClientRect();
+        return r.right > p.right + 1 || r.left < p.left - 1;
+      }).length);
+      expect(clipped).toBe(0);
+      // Keyboard: Tab onto the Temp bars opens a themed tip, an arrow moves it, Escape closes it.
+      const first = page.locator('[data-section="brewing-temp"] .bar-row').first();
+      await first.evaluate((el) => {
+        const all = [...document.querySelectorAll<HTMLElement>('a[href], button, select, [tabindex="0"]')];
+        all[all.indexOf(el as HTMLElement) - 1].focus();
+      });
+      await page.keyboard.press('Tab');
+      await expect(first).toBeFocused();
+      const tip = page.locator('[data-section="brewing-temp"] .cell-tip');
+      await expect(tip).toContainText(/brews/);
+      const was = await tip.textContent();
+      await page.keyboard.press('ArrowDown');
+      await expect(tip).not.toHaveText(was!);
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+      await page.locator('[data-section="brewing-temp"] .bar-row').nth(1).blur();
+    } },
+  ...(['roast', 'process', 'origin', 'roaster'] as const).map((by) => ({
+    name: `insights-brewing-by-${by}`, path: () => `/insights?tab=brewing&tempBy=${by}`,
+    act: async (page: Page) => {
+      await expect(page.getByLabel('Break down by').first()).toHaveValue(by);
+      const hm = page.locator('[data-section="brewing-temp"] .heatmap.diverging');
+      await expect(hm).toBeVisible();
+      // Scrolls inside itself; the row labels stay pinned.
+      const pinned = await hm.locator('.scroll').evaluate((s) => {
+        s.scrollLeft = s.scrollWidth;
+        const label = s.querySelector('.row-label')!.getBoundingClientRect();
+        return Math.abs(label.left - s.getBoundingClientRect().left) <= 1;
+      });
+      expect(pinned).toBe(true);
+      await hm.locator('.scroll').evaluate((s) => (s.scrollLeft = 0));
+      // A cell tip names its row, column and counts.
+      await hm.locator('.heat-cell').first().click();
+      await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
+    } })),
+  { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
+      const bold = page.locator('[data-section="brewing-temp"] .bar-label.bold');
+      await expect(bold).toHaveText(['88 °C', '91 °C', '92 °C', '94 °C']);
+    } },
+  { name: 'insights-brewing-zp6', path: () => '/insights?tab=brewing&grinder=zp6-special',
+    act: async (page) => {
+      await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
+      await expect(page.locator('[data-section="brewing-grind"] .bar-row.pale').first()).toBeVisible();
+    } },
+  { name: 'insights-brewing-tip', path: () => '/insights?tab=brewing',
+    act: async (page) => {
+      await page.locator('[data-section="brewing-temp"] .bar-row').first().click();
+      await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
+    } },
   { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       await expectGridRowsFull(page, '.finding-grid');

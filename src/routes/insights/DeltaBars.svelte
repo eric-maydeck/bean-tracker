@@ -70,7 +70,7 @@
       role="button"
       tabindex={i ? -1 : 0}
       data-i={i}
-      aria-label="{b.label}: {b.tip}"
+      aria-label={b.tip.startsWith(b.label) ? b.tip : `${b.label}: ${b.tip}`}
       onfocus={(e) => (takeFocus(e), showRow(e.currentTarget))}
       onblur={() => (tip = null)}
     >
@@ -96,7 +96,7 @@
     --neg: var(--color-urgent);
     position: relative;
     display: grid;
-    grid-template-columns: fit-content(45%) minmax(0, 1fr) max-content;
+    grid-template-columns: var(--bar-label-w, fit-content(45%)) minmax(0, 1fr) var(--bar-value-w, max-content); /* a page can fix the outer columns so sibling charts' 0 lines align */
     column-gap: var(--space-2);
   }
   /* Grind drift and the like: no good side, so the diverging pair by direction (ui-rules 29). */

@@ -76,7 +76,7 @@
     rows: string[];
     cols: string[];
     cells: (number | null)[][];
-    text: (v: number | null) => string;
+    text: (v: number | null, r: number, c: number) => string; // r, c: a caller can word a blank cell by why it's blank
     label: (r: number, c: number) => string;
     ariaLabel: string;
     diverging?: boolean;
@@ -127,7 +127,7 @@
             class="heat-cell"
             role="button"
             tabindex={i + j ? -1 : 0}
-            aria-label="{label(i, j)} · {text(v)}"
+            aria-label="{label(i, j)} · {text(v, i, j)}"
             style:--r={i + 2}
             style:--c={j + 2}
             class:none={v === null}
