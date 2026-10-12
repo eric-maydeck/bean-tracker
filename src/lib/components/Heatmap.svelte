@@ -14,11 +14,23 @@
     };
   }
 
-  // Tooltip position inside `wrap` for a cell: centred on it, clamped 5rem from either edge.
-  export function tipAt(wrap: HTMLElement, el: Element, text: string) {
+  // Diverging (the Brewing lab's deltas): 0 is the surface, sign picks --div-low / --div-high and the
+  // tone runs 15–100% by |v| over the largest |v|; an exact 0 gets the border colour so it isn't blank.
+  export function diverge(values: (number | null)[]) {
+    const max = Math.max(...values.map((v) => Math.abs(v ?? 0))) || 1;
+    return (v: number | null) => {
+      if (v === null) return 'transparent';
+      if (v === 0) return 'var(--color-border)';
+      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + (85 * Math.abs(v)) / max)}%, var(--color-surface))`;
+    };
+  }
+
+  // Tooltip position inside `wrap` for a cell: centred on it, clamped `half` px (the tip's half width,
+  // 5rem for the nowrap tip, 8rem for a .wide one) from either edge.
+  export function tipAt(wrap: HTMLElement, el: Element, text: string, half = 80) {
     const w = wrap.getBoundingClientRect();
     const b = el.getBoundingClientRect();
-    const x = Math.min(Math.max(b.left + b.width / 2 - w.left, 80), w.width - 80);
+    const x = Math.min(Math.max(b.left + b.width / 2 - w.left, half), w.width - half);
     return { text, x, y: b.top - w.top };
   }
 
@@ -58,7 +70,8 @@
     cells,
     text,
     label,
-    ariaLabel
+    ariaLabel,
+    diverging = false
   }: {
     rows: string[];
     cols: string[];
@@ -66,30 +79,44 @@
     text: (v: number | null) => string;
     label: (r: number, c: number) => string;
     ariaLabel: string;
+    diverging?: boolean;
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
   let tip = $state<{ text: string; x: number; y: number } | null>(null);
-  let shade = $derived(shader(cells.flat()));
+  let shade = $derived(diverging ? diverge(cells.flat()) : shader(cells.flat()));
+  let blanks = $derived(cells.flat().some((v) => v === null));
+  // New data drops an open tip: its cell may not exist any more.
+  $effect(() => {
+    void cells;
+    tip = null;
+  });
+  const tipFor = (el: Element) => tipAt(wrap!, el, el.getAttribute('aria-label')!, diverging ? 128 : 80);
   const show = (e: Event) => {
     const el = (e.target as Element).closest('.heat-cell');
-    tip = el ? tipAt(wrap!, el, el.getAttribute('aria-label')!) : null;
+    tip = el ? tipFor(el) : null;
+  };
+  // Scrolling moves the cells under the tip: follow the focused cell (arrow keys scroll it into view), else close.
+  const scrolled = () => {
+    const a = document.activeElement;
+    tip = a?.matches('.heat-cell') && wrap!.contains(a) ? tipFor(a) : null;
   };
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
 <div
   class="heatmap"
+  class:diverging
   role="group"
   aria-label={ariaLabel}
   bind:this={wrap}
   style:--nr={rows.length}
-  style:--cell-h="1.6rem"
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
   onclick={show}
   onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
 >
+  <div class="scroll" onscroll={scrolled}>
   <div class="grid" style:--nc={cols.length}>
     {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
     {#each rows as r, i (i)}
@@ -111,15 +138,35 @@
       {/each}
     {/each}
   </div>
+  </div>
+  {#if diverging}
+    <p class="div-legend">
+      <span>Below the bag's average</span><span class="div-swatch" aria-hidden="true"></span><span>Above</span>
+      {#if blanks}<span>· Blank: few brews</span>{/if}
+    </p>
+  {/if}
   {#if tip}
-    <div class="cell-tip" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
+    <div class="cell-tip" class:wide={diverging} role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
   {/if}
 </div>
 
 <style>
   .heatmap {
+    --cell-h: 1.6rem;
     position: relative;
     container-type: inline-size;
+  }
+  /* Diverging: a table that scrolls sideways on phones (the page never does), row labels pinned. */
+  .diverging {
+    --cell-h: 2rem;
+  }
+  @media (max-width: 480px) {
+    .diverging {
+      --cell-h: 2.75rem;
+    }
+  }
+  .diverging .scroll {
+    overflow-x: auto;
   }
   /* Desktop: weekdays as rows, hours as columns. */
   .grid {
@@ -132,12 +179,16 @@
     grid-row: var(--r);
     grid-column: var(--c);
   }
+  .diverging .grid {
+    grid-template-columns: max-content repeat(var(--nc), minmax(3.25rem, 1fr));
+    grid-template-rows: auto;
+  }
   /* Phones: transposed, so 24 hours run down the page and cells stay tappable. */
   @container (width < 560px) {
-    .grid {
+    .heatmap:not(.diverging) .grid {
       grid-template-columns: auto repeat(var(--nr), minmax(0, 1fr));
     }
-    .grid > * {
+    .heatmap:not(.diverging) .grid > * {
       grid-row: var(--c);
       grid-column: var(--r);
     }
@@ -149,6 +200,36 @@
     color: var(--color-text-muted);
     text-align: center;
     padding-inline: 0.25rem;
+  }
+  .diverging .row-label {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--color-surface);
+    text-align: left;
+    white-space: nowrap;
+  }
+  /* Up to 2 lines, centred under their column. */
+  .diverging .col-label {
+    align-self: end;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+  .div-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    margin: var(--space-2) 0 0;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+  }
+  .div-swatch {
+    width: 6rem;
+    height: 0.6rem;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--div-low), var(--color-surface), var(--div-high));
+    border: 1px solid var(--color-border);
   }
   .heat-cell {
     border-radius: 2px;

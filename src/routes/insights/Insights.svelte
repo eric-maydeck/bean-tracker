@@ -13,6 +13,7 @@
   import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
+  import { lines } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
@@ -22,7 +23,6 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  type Multi = NonNullable<Finding['multi']>;
 
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
@@ -163,26 +163,6 @@
   // ---- Too early to tell: what was seen, the sample, why it isn't trusted yet, what would settle it. ----
   const early = (f: Finding) => f.caveat ?? 'Not yet enough to rule out chance.';
   const pct = (p: number) => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
-
-  // Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. "Other" is muted,
-  // every other line takes the next categorical slot in order (never cycled: the server caps lines at ~5).
-  function lines(m: Multi) {
-    const vs = m.lines.flatMap((l) => l.values.filter((v): v is number => v !== null));
-    const lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1, n = m.x.length;
-    const px = (i: number) => (n > 1 ? (i / (n - 1)) * 100 : 50), py = (v: number) => 38 - ((v - lo) / span) * 36;
-    let slot = 0;
-    return m.lines.map((l) => {
-      const runs: string[] = [];
-      let run: string[] = [];
-      l.values.forEach((v, i) => {
-        if (v === null) { if (run.length) runs.push(run.join(' ')); run = []; return; }
-        run.push(`${px(i)},${py(v).toFixed(2)}`);
-        if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push(`${px(i) + 0.8},${py(v).toFixed(2)}`); // a lone point: a dash
-      });
-      if (run.length) runs.push(run.join(' '));
-      return { label: l.label, runs, color: l.label === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})` };
-    });
-  }
 
   // A series as a 2px line over a 100×32 box; a dashed zero line when it crosses zero.
   function line(s: { value: number }[]) {
@@ -579,32 +559,9 @@
     overflow-wrap: anywhere;
     text-wrap: balance;
   }
-  /* Categorical slots for multi-line charts (dataviz reference palette, validated on these surfaces;
-     light slots under 3:1 carry their names in the legend). Text stays in text colours. */
+  /* Multi-line charts take the categorical slots (--series-*, app.css). Text stays in text colours. */
   .multi {
-    --series-1: #2a78d6;
-    --series-2: #eb6834;
-    --series-3: #1baf7a;
-    --series-4: #eda100;
-    --series-5: #e87ba4;
-    --series-other: var(--color-text-muted);
     width: 100%;
-  }
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme='light'])) .multi {
-      --series-1: #3987e5;
-      --series-2: #d95926;
-      --series-3: #199e70;
-      --series-4: #c98500;
-      --series-5: #d55181;
-    }
-  }
-  :global(:root[data-theme='dark']) .multi {
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
   }
   .multi svg {
     display: block;

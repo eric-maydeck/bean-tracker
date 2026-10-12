@@ -38,6 +38,18 @@
   --map-high: #8a5a3b;
   --bar-alpha: 28%; /* leaderboard value bars: stronger on light */
   --map-empty: #6b6b6b;
+  /* Insights line charts: categorical slots in fixed order (dataviz reference palette, validated on
+     these surfaces; light slots under 3:1 carry their names in the legend). "Other" is muted. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-other: var(--color-text-muted);
+  /* Diverging pair (blue ↔ orange, not red/green: those mean good/bad, ui-rules 29); the surface is
+     the midpoint. Validated (dataviz validate_palette.js) against --color-surface in both themes. */
+  --div-low: #2a78d6;
+  --div-high: #eb6834;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -93,6 +105,13 @@
     --map-high: #e8b48a;
     --bar-alpha: 13%;
     --map-empty: #3a3a3a;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --div-low: #3987e5;
+    --div-high: #d95926;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
@@ -134,6 +153,13 @@
   --map-high: #e8b48a;
   --bar-alpha: 13%;
   --map-empty: #3a3a3a;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --div-low: #3987e5;
+  --div-high: #d95926;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
 }
@@ -2264,6 +2290,13 @@ td > .action-buttons.under-form {
 }
 .cell-tip.below {
   translate: -50% calc(var(--cell-h, 1.6rem) + 0.4rem);
+}
+/* A longer tip (lab charts: band, delta, bags, brews) wraps at 16rem; place it with tipAt(…, 128). */
+.cell-tip.wide {
+  white-space: normal;
+  width: max-content;
+  max-width: min(16rem, 100vw - 2rem);
+  text-align: left;
 }
 .heat-cell.none,
 .cal-cell.none {
