@@ -134,6 +134,34 @@ for (let i = 0; i < 3; i++) soup.run(isoDaysAgo(i + 1), now);
 bean.run('bean-decaf-linked', 'Swiss Water Decaf Colombia Huila', 'Onyx', daysAgo(5), 250, 22, 1, isoDaysAgo(4), now);
 db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'bean-decaf-linked'`).run(decaf.id);
 brew.run(isoDaysAgo(3), 'bean-decaf-linked', 8, 2, now);
+// Insights tab: 3 coffees bought twice (6 archived bags), 6 days each, two cups a day, 25-60 days ago
+// (72 brews), with planted effects: second cup +0.5, noted brews −0.5, second bag of a pair higher,
+// Origami days swing ±0.8 (the wildcard). First cups before 9 am.
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES ('m3', 'ORIGAMI', 'Origami', 'POUR OVER', ?)`).run(now);
+const timed = db.prepare(
+  `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
+     water_amount_g, rating, notes, imported_at) VALUES (?, ?, ?, 'g1', 15, 93, 250, ?, ?, ?)`
+);
+const PAIRS = [['Kurasu', 'Kenya Gichathaini AA', 'Kenya'], ['Luna', 'Ethiopia Hambela Alaka', 'Ethiopia'], ['Rogue Wave', 'Colombia La Palma', 'Colombia']];
+const BASE = [7.0, 6.8, 7.2, 7.8, 7.4, 8.2]; // A1 B1 C1 A2 B2 C2
+const ROAST = [7, 12, 9, 15, 10, 13]; // days roasted before the bag's first brew, so rest days vary
+for (let k = 0; k < 6; k++) {
+  const [roaster, name, origin] = PAIRS[k % 3];
+  const first = 60 - k * 6;
+  const c = coffee({ roaster, coffee_name: name, origin, status: 'archive', roast_date: daysAgo(first + ROAST[k]) });
+  bean.run(`bean-hl-${k}`, name, roaster, daysAgo(first + ROAST[k]), 250, 22, 0, isoDaysAgo(first), now);
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-hl-${k}`);
+  for (let j = 0; j < 6; j++) {
+    const origami = j % 2 === 1, swing = origami ? ((j + k) % 4 === 1 ? 0.8 : -0.8) : 0;
+    for (const cup of [0, 1]) {
+      const noted = (j + cup) % 2 === 0;
+      const rating = +(BASE[k] + 0.5 * cup - (noted ? 0.5 : 0) + swing).toFixed(1);
+      timed.run(cup ? atLocal(first - j, 14, 10) : atLocal(first - j, 8, 20), `bean-hl-${k}`, origami ? 'm3' : 'm1', rating,
+        noted ? 'A touch sour' : null, now);
+    }
+  }
+}
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 

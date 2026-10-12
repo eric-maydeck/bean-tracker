@@ -1179,7 +1179,8 @@ export const STATES: State[] = [
     name: 'insights-consumption-all',
     path: () => '/insights?tab=consumption&range=all',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Month' })).toBeDisabled();
+      // The seed's insights brews reach back 60 days: all time spans months (1w keeps Month disabled).
+      await expect(page.getByRole('button', { name: 'Month' })).toBeEnabled();
       await expect(page.locator('.chart-panel canvas')).toHaveCount(3);
     }
   },
@@ -1762,6 +1763,54 @@ export const STATES: State[] = [
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
+  { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      await expectGridRowsFull(page, '.finding-grid');
+      for (const h of ['Top stories', 'Myth busters', 'What if…']) await expect(page.getByRole('heading', { name: h })).toBeVisible();
+      // Nothing takes focus on load (the phone keyboard would pop up).
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+      // Every grid card keeps the badge band, and a badge sits at its right edge.
+      const off = await page.locator('.finding-grid .hl-card').evaluateAll((cards) => cards.flatMap((c) => {
+        const band = c.querySelector('.hl-top')!.getBoundingClientRect(), b = c.querySelector('.hl-badge')?.getBoundingClientRect();
+        return [...(band.height < 15 ? [`band ${band.height}px`] : []), ...(b && band.right - b.right > 2 ? [`badge ${band.right - b.right}px from the right`] : [])];
+      }));
+      expect(off).toEqual([]);
+      await expect(page.locator('main')).not.toContainText(/NaN|undefined/);
+      // A badge explains itself on tap.
+      await page.locator('.finding-grid .hl-badge').first().click();
+      await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
+    } },
+  { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Money', pressed: true })).toBeVisible();
+      await expectGridRowsFull(page, '.finding-grid');
+    } },
+  { name: 'insights-insights-whatif', path: () => '/insights?tab=insights&range=all&drinkers=2&gpp=60&inflow=500',
+    act: async (page) => {
+      await expect(page.getByLabel('People drinking')).toHaveValue('2');
+      await page.getByRole('button', { name: 'Next story' }).click(); // deck moves, URL unchanged
+      await expect(page).toHaveURL(/drinkers=2/);
+      await expect(page.getByRole('button', { name: 'Previous story' })).toBeEnabled();
+      // A vertical swipe on the deck doesn't move it; a sideways one does.
+      const deck = page.locator('.deck');
+      const swipe = (dx: number, dy: number, end: 'pointerup' | 'pointercancel') => deck.evaluate((el, [dx, dy, end]) => {
+        const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const fire = (type: string, ox: number, oy: number) => el.dispatchEvent(new PointerEvent(type,
+          { pointerId: 9, pointerType: 'touch', isPrimary: true, bubbles: true, clientX: x + ox, clientY: y + oy }));
+        fire('pointerdown', 0, 0);
+        fire(end as string, dx as number, dy as number);
+      }, [dx, dy, end] as const);
+      const dot = () => page.locator('.dot').evaluateAll((ds) => ds.findIndex((d) => d.classList.contains('on')));
+      await swipe(5, 120, 'pointercancel');
+      await swipe(10, 120, 'pointerup');
+      expect(await dot()).toBe(1);
+      await swipe(120, 5, 'pointerup');
+      expect(await dot()).toBe(0);
+      // Inputs write the URL and the answer follows.
+      await page.getByLabel('People drinking').fill('3');
+      await expect(page).toHaveURL(/drinkers=3/);
+      await expect(page.locator('#insights-runway .hl-value')).toContainText(/days|Never/);
+    } },
   {
     // Ethiopia (every seeded coffee but a few) is tapped at a point known to be inside its outline.
     name: 'insights-leaderboards-map-tip',
@@ -2251,7 +2300,10 @@ for (const state of STATES) {
     if (state.act) await state.act(page, s);
     if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
     // Screenshot first, so a failing state still leaves a picture to look at.
-    await page.screenshot({ path: `.ui-test/screenshots/${state.name}-${info.project.name}.png`, fullPage: true });
+    // Firefox can't capture past 32767 device px: a long page (phone cards at DPR 3) keeps its top part.
+    const [w, h, dpr] = await page.evaluate(() => [innerWidth, document.documentElement.scrollHeight, devicePixelRatio]);
+    await page.screenshot({ path: `.ui-test/screenshots/${state.name}-${info.project.name}.png`, fullPage: true,
+      clip: { x: 0, y: 0, width: w, height: Math.min(h, Math.floor(32767 / dpr)) } });
     await checkLayout(page);
   });
 }

@@ -12,6 +12,7 @@
   import Consumption from './Consumption.svelte';
   import Records from './Records.svelte';
   import Milestones from './Milestones.svelte';
+  import Insights from './Insights.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
@@ -576,6 +577,15 @@
   />
 {:else if s.tab === 'milestones' && data.milestones}
   <Milestones m={data.milestones} kinds={s.kinds} {choose} />
+{:else if s.tab === 'insights' && data.insights}
+  <Insights
+    t={data.insights}
+    theme={s.theme}
+    inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
+    today={data.today}
+    {placeTip}
+    {choose}
+  />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
