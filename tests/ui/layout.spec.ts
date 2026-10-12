@@ -1604,21 +1604,41 @@ export const STATES: State[] = [
       await expectGridRowsFull(page, '.milestone-summary');
       await expectGridRowsFull(page, '.next-up');
       await expectGridRowsFull(page, '.milestone-totals');
+      // The ruler updates a frame after a scroll (rAF): let it settle before measuring it.
+      const settle = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
       // The ruler jumps to the oldest month, stays in view (sticky) and marks it as current.
       const ruler = page.locator('nav.ruler');
       const oldest = page.locator('.feed .month').last();
       const label = `Jump to ${await oldest.textContent()}`;
       await ruler.getByRole('button', { name: label }).last().click();
       await expect(oldest).toBeInViewport();
-      await expect(ruler).toBeInViewport();
-      // The thumb is small and fixed-size, whatever the period (M8).
-      const thumb = (await ruler.locator('.band').boundingBox())!;
-      expect(Math.min(thumb.width, thumb.height)).toBeLessThanOrEqual(48);
+      if (await ruler.isVisible()) await expect(ruler).toBeInViewport(); // else hidden: too little room left (M11)
       // Scrolled to the feed's very end, the ruler is still wholly on screen (M10).
       await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
+      await settle();
       const rb = (await ruler.boundingBox())!, vh = page.viewportSize()!.height;
       expect(rb.y).toBeGreaterThanOrEqual(0);
       expect(rb.y + rb.height).toBeLessThanOrEqual(vh);
+      // The thumb is small and fixed-size, whatever the period (M8).
+      const thumb = (await ruler.locator('.band').boundingBox())!;
+      expect(Math.min(thumb.width, thumb.height)).toBeLessThanOrEqual(48);
+      // With under 120px of feed left beside it, the side ruler hides and the feed takes its column (M11).
+      // (Only short screens can scroll the feed's end that high; taller ones keep it, checked too.)
+      if (page.viewportSize()!.width >= 700) {
+        const feedW = (await page.locator('.feed').boundingBox())!.width;
+        const room = await page.evaluate(async () => {
+          const bar = (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
+          scrollBy(0, document.querySelector('.feed')!.getBoundingClientRect().bottom - (bar + 80));
+          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          return document.querySelector('.feed')!.getBoundingClientRect().bottom - bar - 12;
+        });
+        if (room < 120) {
+          await expect(ruler).toBeHidden();
+          expect((await page.locator('.feed').boundingBox())!.width).toBeGreaterThan(feedW);
+        } else await expect(ruler).toBeVisible();
+        await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
+        await expect(ruler).toBeVisible();
+      }
       // A press 60% through the newest month's band lands 60% down its section, at the top of the
       // feed's visible part (under the filter bar, and the phone strip once stuck).
       const track = ruler.locator('.track');
@@ -1627,6 +1647,7 @@ export const STATES: State[] = [
         return b.height > b.width ? { x: b.x + 2, y: b.y + (f * b.height) / n } : { x: b.x + (f * b.width) / n, y: b.y + 2 };
       };
       await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView()); // the ruler stuck in view
+      await settle();
       const p = await at(0.6);
       await page.mouse.click(p.x, p.y);
       const through = await page.evaluate(() => {

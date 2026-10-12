@@ -31,11 +31,12 @@
   );
   let nextVars = $derived(rowVars(m.nextUp.length));
   let totalVars = $derived(rowVars(m.totals.length));
-  // The timeline ruler (feedback M1): vertical beside the feed, horizontal on phones (the CSS
-  // decides; the track's shape tells which). Labels fit the track's length.
+  // The timeline ruler (feedback M1): vertical beside the feed from 700px (the CSS breakpoint),
+  // a horizontal strip on phones. Labels fit the track's length.
   let track: HTMLElement | undefined = $state();
   let tw = $state(0), th = $state(0);
-  let vertical = $derived(th > tw);
+  let innerW = $state(0);
+  let vertical = $derived(innerW >= 700);
   let barH = $state(0);
   // The side bar's full height: the viewport under the filter bar, less its 0.75rem margins.
   let innerH = $state(0);
@@ -54,6 +55,8 @@
   let current = $derived(pos === null ? null : tickAt(ticks, pos).ym);
   // The side bar shrinks to end with the feed, so it never runs out of sticky track (M10).
   let rulerH: number | null = $state(null);
+  // Under 120px of room it's too small to use: hidden, and the feed takes its column (M11).
+  let hideRuler = $state(false);
 
   // The month sections' current extents (viewport coordinates).
   function sections(): Section[] {
@@ -66,7 +69,12 @@
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
     pos = feedToRuler(ticks, secs, top + 8); // a few px in: a header just under the bars counts as in view
     // Not mid-drag: a ruler resizing under the pointer would feed back into the scrub.
-    if (!dragging) rulerH = vertical ? Math.max(120, Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12))) : null;
+    if (!dragging) {
+      const room = Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12));
+      // 10px of hysteresis: the feed reflowing as it widens can't toggle it back and forth.
+      hideRuler = vertical && room < (hideRuler ? 130 : 120);
+      rulerH = vertical && !hideRuler ? room : null;
+    }
   }
   $effect(() => {
     void ticks;
@@ -118,7 +126,7 @@
   });
 </script>
 
-<svelte:window bind:innerHeight={innerH} />
+<svelte:window bind:innerHeight={innerH} bind:innerWidth={innerW} />
 
 <div class="kinds-bar">
   <div class="tab-group kind-chips" role="group" aria-label="Kinds" data-button-row>
@@ -178,7 +186,7 @@
     <p class="hl-empty">No milestones in this period.</p>
   {/if}
   {#if m.months.length}
-    <div class="timeline" style:--bar-h="{barH}px">
+    <div class="timeline" class:no-ruler={hideRuler} style:--bar-h="{barH}px">
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <nav
         class="ruler"
@@ -425,6 +433,12 @@
       display: grid;
       grid-template-columns: 6.5rem minmax(0, 1fr);
       gap: var(--space-4);
+    }
+    .timeline.no-ruler {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .no-ruler .ruler {
+      display: none;
     }
     .ruler {
       top: calc(var(--bar-h) + var(--space-3));
