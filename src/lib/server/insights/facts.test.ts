@@ -179,6 +179,13 @@ describe('loadFacts', () => {
       roastLevel: 'Light/Medium', firstBrew: '2026-06-30', lastBrew: '2026-07-03', name: 'Kiambu', processing: 'Double Ferment Washed'
     });
     expect(bag!.slug).toEqual(expect.any(String));
+    expect(bag).toMatchObject({ restLow: null, restHigh: null });
+  });
+
+  it('bags carry the rest window', () => {
+    const { db, coffeeId } = seed();
+    db.prepare(`UPDATE coffees SET rest_days_low = 7, rest_days_high = 21 WHERE id = ?`).run(coffeeId);
+    expect(loadFacts(db).bags.find((b) => b.id === coffeeId)).toMatchObject({ restLow: 7, restHigh: 21 });
   });
 
   it('hasNote, brewIndex and bagRating', () => {

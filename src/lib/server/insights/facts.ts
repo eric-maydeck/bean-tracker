@@ -110,6 +110,8 @@ export interface BagFact {
   decaf: boolean;
   frozenStart?: string | null; // freezer span, for rest days of a bag nobody brewed yet
   frozenEnd?: string | null;
+  restLow?: number | null; // the roaster's suggested rest window, days
+  restHigh?: number | null;
   firstBrew: string | null; // local dates
   lastBrew: string | null;
   bagRating: number | null; // the linked Bean Conqueror bean's rating (> 0), else null
@@ -128,6 +130,7 @@ interface BagRow {
   id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; processing: string | null;
   roast_level: string | null; decaf: number; roast_date: string | null; cost: number | null; amount_g: number | null;
   frozen_start_date: string | null; frozen_end_date: string | null; bag_rating: number | null;
+  rest_days_low: number | null; rest_days_high: number | null;
 }
 
 // Every brew joined to its bean's coffee, method and water, plus every bag,
@@ -206,7 +209,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
 
   const bagRows = db
     .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date,
-            (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
+            rest_days_low, rest_days_high, (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
     .all() as unknown as BagRow[];
   const bags = bagRows.map((r): BagFact => ({
     id: r.id,
@@ -224,6 +227,8 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     decaf: r.decaf === 1,
     frozenStart: r.frozen_start_date,
     frozenEnd: r.frozen_end_date,
+    restLow: r.rest_days_low,
+    restHigh: r.rest_days_high,
     firstBrew: span.get(r.id)?.first ?? null,
     lastBrew: span.get(r.id)?.last ?? null,
     bagRating: r.bag_rating
