@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GENERATORS, fillRows, insightsTab, splitRows, type Finding, type GenCtx } from './insightGenerators';
+import { GENERATORS, insightsTab, type GenCtx } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 
@@ -462,20 +462,10 @@ describe('registry', () => {
 });
 
 describe('insightsTab', () => {
-  const f = (z: number, o: Partial<Finding> = {}): Finding => ({ key: `k${z}`, theme: 'taste', kind: 'number', headline: 'h', sample: 's', z, strength: 'solid', ...o });
-  it('fillRows keeps 12/6 multiples; splitRows hands back the weakest', () => {
-    const rows = (n: number) => Array.from({ length: n }, (_, i) => f(10 - i * 0.1));
-    expect(fillRows(rows(14))).toHaveLength(12);
-    expect(fillRows(rows(8))).toHaveLength(6);
-    expect(fillRows(rows(3))).toHaveLength(3);
-    const { kept, moved } = splitRows(rows(14));
-    expect(moved.map((x) => x.key)).toEqual(rows(14).slice(12).map((x) => x.key));
-    expect(kept.length + moved.length).toBe(14);
-  });
   // 30 bags × 6 brews: dial-in curve (theme dialin) and a pricey/cheap bag set (money).
   const brews = Array.from({ length: 30 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-09-10', { dose: 20 })).flat();
   const bs = bags(30, (i) => ({ purchaseDate: '2026-08-01', cost: 20 + i, amountG: 250, status: 'archive' as const }));
-  it('theme filters the grid only; overflow lands below instead of vanishing', () => {
+  it('theme filters the grid only; stories unchanged', () => {
     const c = ctx(brews, bs, { onHandG: 1000 });
     const a = insightsTab(c, undefined, {}), d = insightsTab(c, 'dialin', {});
     expect(a.grid.length).toBeGreaterThan(0);
@@ -483,8 +473,8 @@ describe('insightsTab', () => {
     expect(d.grid.every((x) => x.theme === 'dialin')).toBe(true);
     expect(d.myths).toEqual(a.myths);
     expect(d.tooEarly).toEqual(a.tooEarly);
-    const gridable = all(c).filter((x) => ['number', 'pattern', 'versus'].includes(x!.kind) && x!.strength !== 'early').length;
-    expect(a.grid.length + a.stories.filter((x) => x.kind !== 'story').length).toBe(gridable);
+    expect(d.stories).toEqual(a.stories);
+    expect(a.stories.every((x) => x.kind === 'story')).toBe(true);
     expect(a.grid.every((x, i, g) => i === 0 || Math.abs(g[i - 1].z ?? -1) >= Math.abs(x.z ?? -1))).toBe(true);
   });
   it('defaults come from the data: drinkers = household size, gpp = measured g/day ÷ size', () => {

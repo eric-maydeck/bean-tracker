@@ -595,18 +595,9 @@ export interface InsightsTab {
 }
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
-// Full rows at 4/3/2 columns: keep floor(n/12)*12 (n >= 12), else floor(n/6)*6 (n >= 6), else all.
-// The rest ("moved") are the weakest; insightsTab sends them to the section below the grid.
-export function splitRows(grid: Finding[]): { kept: Finding[]; moved: Finding[] } {
-  const n = grid.length, keep = n >= 12 ? n - (n % 12) : n >= 6 ? 6 : n;
-  return { kept: grid.slice(0, keep), moved: grid.slice(keep) };
-}
-export const fillRows = (grid: Finding[]): Finding[] => splitRows(grid).kept;
-
 export function insightsTab(c: GenCtx, theme: Theme | undefined, w: Partial<WhatIf> = {}): InsightsTab {
   const fs = GENERATORS.flatMap((g) => [g(c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early' && f.strength !== 'hidden';
-  const { kept, moved } = splitRows(fs.filter((f) => inGrid(f) && (!theme || f.theme === theme)));
 
   const p = { start: c.period.from, end: c.period.to };
   const { perDay } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);
@@ -627,8 +618,8 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined, w: Partial<What
   const grams = sum(priced.map((b) => b.amountG!));
   const avgPricePerG = grams > 0 ? sum(priced.map((b) => b.cost!)) / grams : null;
   return {
-    grid: kept,
-    stories: [...fs.filter((f) => f.kind === 'story' && f.strength !== 'early' && f.strength !== 'hidden').slice(0, 5), ...moved],
+    grid: fs.filter((f) => inGrid(f) && (!theme || f.theme === theme)),
+    stories: fs.filter((f) => f.kind === 'story' && f.strength !== 'early' && f.strength !== 'hidden').slice(0, 5),
     myths: fs.filter((f) => f.kind === 'myth'),
     tooEarly: fs.filter((f) => f.strength === 'early'),
     whatIf: {

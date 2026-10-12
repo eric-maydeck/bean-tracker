@@ -2,6 +2,7 @@
 export interface WhatIf { drinkers: number; gpp: number; inflow: number; bpd: number; dose: number }
 
 const DAY = 86_400_000;
+// Own date add: server/insights/time.ts pulls in server code, so it can't be imported client-side.
 const plusDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * DAY).toISOString().slice(0, 10);
 
 // People × g/day, less incoming g/week. null when it never empties (or nothing is on hand).
