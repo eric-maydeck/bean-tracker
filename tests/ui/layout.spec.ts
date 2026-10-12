@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectStatRowsFull } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectStatRowsFull } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -1904,6 +1904,7 @@ export const STATES: State[] = [
       });
       expect(pinned).toBe(true);
       await hm.locator('.scroll').evaluate((s) => (s.scrollLeft = 0));
+      await expectInnerScroll(page, '.heatmap.diverging .scroll');
       // A cell tip names its row, column and counts.
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
@@ -1930,6 +1931,36 @@ export const STATES: State[] = [
       await page.locator('[data-section="brewing-temp"] .bar-row').first().click();
       await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
     } },
+  ...(['ratio', 'dose', 'time', 'bloom', 'grind'] as const).map((v) => ({
+    name: `insights-brewing-${v}-by-roast`, path: () => `/insights?tab=brewing&${v}By=roast`,
+    act: async (page: Page) => {
+      await expect(page.locator(`[data-section="brewing-${v}"] .heatmap.diverging`)).toBeVisible();
+      await expectInnerScroll(page, '.heatmap.diverging .scroll');
+    } })),
+  { name: 'insights-brewing-all-ratings', path: () => '/insights?tab=brewing&ratings=all' },
+  { name: 'insights-sweetspots-grinder', path: () => '/insights?tab=sweetspots&grinder=zp6-special' },
+  ...(['sweetspots', 'brewing', 'water', 'gear'] as const).map((tab) => ({
+    name: `insights-lab-empty-${tab}`, path: () => `/insights?tab=${tab}&range=2000-01-01..2000-01-31`,
+    act: async (page: Page) => {
+      await expect(page.getByText(/^No rated brews (with [a-z ]+ )?in this period\.$/)).toHaveCount(1);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    } })),
+  { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&compare=1&people=person',
+    act: async (page) => {
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
+      await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
+      await page.getByLabel('View').selectOption('overview'); // sticky: both come back on Overview
+      await expect(page.getByLabel('Compare')).toHaveValue('1');
+      await expect(page).toHaveURL(/compare=1/);
+      await expect(page).toHaveURL(/people=person/);
+    } },
+  { name: 'insights-lab-reset', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Reset', exact: true }).click();
+      await expect(page).toHaveURL(/\/insights\?tab=brewing$/);
+    } },
+  { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
+    act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',
     act: async (page) => {
       for (const h of ['Recipes', 'Minerals vs rating', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water eras', 'Same bag, different water'])
@@ -1939,6 +1970,7 @@ export const STATES: State[] = [
       await expect(page.getByText('Strongly tied to era and roast level')).toBeVisible();
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
+      await expectInnerScroll(page, '.heatmap.diverging .scroll');
       // Nothing takes focus on load (the phone keyboard would pop up).
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
       await expectGridRowsFull(page, '.mineral-grid');
@@ -1995,6 +2027,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="gear-matrix"] .heat-cell.none')).not.toHaveCount(0); // Origami · Sibarist: no brews
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
+      await expectInnerScroll(page, '.heatmap.diverging .scroll');
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
       // Drippers beside Filters from 768 px, one height; stacked below, each its own height.
       const [d, f] = await Promise.all(['drippers', 'filters'].map((k) => page.locator(`[data-section="gear-${k}"]`).boundingBox()));

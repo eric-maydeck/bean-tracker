@@ -186,6 +186,22 @@ export async function expectGridRowsFull(page: Page, selector: string, allowLone
   expect(gaps, selector).toEqual([]);
 }
 
+// Wide content scrolls inside its own box: each match's scrollWidth may exceed its width, the page's never
+// does, and the box itself sits inside the viewport.
+export async function expectInnerScroll(page: Page, selector: string) {
+  await expect(page.locator(selector).first()).toBeVisible();
+  const bad = await page.locator(selector).evaluateAll((els) => {
+    const de = document.documentElement;
+    const out = de.scrollWidth > de.clientWidth + 1 ? ['the page scrolls sideways'] : [];
+    for (const e of els) {
+      const r = e.getBoundingClientRect();
+      if (r.left < -1 || r.right > de.clientWidth + 1) out.push(`${e.className} sits outside the viewport`);
+    }
+    return out;
+  });
+  expect(bad, selector).toEqual([]);
+}
+
 // Insights stat grids: full rows, and every caption inside its tile.
 export async function expectStatRowsFull(page: Page) {
   // The overview's square tiles stretch a deliberate lone last tile (.fit.n4 / n5 at 360 px).
