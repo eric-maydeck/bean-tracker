@@ -1781,6 +1781,7 @@ export const STATES: State[] = [
         const o = c.getBoundingClientRect();
         const out = [...c.querySelectorAll('.hl-value, .vs-label, .hl-line, .stat-label, .multi, .legend li, .details li')].flatMap((e) => {
           const r = e.getBoundingClientRect();
+          if (!r.width) return []; // a hidden details group
           return r.left < o.left - 1 || r.right > o.right + 1 || r.bottom > o.bottom + 1 ? [`${e.textContent?.trim().slice(0, 24)} spills`] : [];
         });
         const x = c.querySelector('.vs-x')?.getBoundingClientRect();
@@ -1791,6 +1792,36 @@ export const STATES: State[] = [
         return [...out, ...hit];
       }));
       expect(spills).toEqual([]);
+      // Details are filler only (B7): no row is taller with its shown details than without any.
+      const grown = await page.locator('.finding-grid').evaluate((grid) => {
+        const g = grid as HTMLElement, cards = [...g.children] as HTMLElement[];
+        const shown = [...g.querySelectorAll<HTMLElement>('.dgroup:not([hidden])')];
+        const rows = () => { const m = new Map<number, number>(); for (const c of cards) m.set(c.offsetTop, Math.max(m.get(c.offsetTop) ?? 0, c.offsetHeight)); return [...m.values()]; };
+        g.style.alignItems = 'flex-start';
+        const withDetails = rows();
+        for (const d of shown) d.hidden = true;
+        const without = rows();
+        for (const d of shown) d.hidden = false;
+        g.style.alignItems = '';
+        return withDetails.flatMap((h, i) => (h > without[i] + 1 ? [`row ${i} grows ${h - without[i]}px`] : []));
+      });
+      expect(grown).toEqual([]);
+      // Dial-in speed: at 1280 its row has no spare height, so its details stay hidden. On a phone, once its
+      // row neighbour is taller (here: 300px of room added to the runway card, then a resize re-runs the
+      // fit), its first group shows and the row doesn't grow past the neighbour.
+      const speed = page.locator('#insight-dialinSpeed .dgroup:not([hidden])');
+      const proj = test.info().project.name;
+      if (proj === 'w1280') await expect(speed).toHaveCount(0);
+      if (proj === 'phone-portrait' || proj === 'w480') {
+        await page.locator('#insight-backlogRunway').evaluate((c) => c.insertAdjacentHTML('beforeend', '<div class="room" style="height:300px"></div>'));
+        const vp = page.viewportSize()!;
+        await page.setViewportSize({ width: vp.width - 1, height: vp.height });
+        await expect.poll(() => speed.count()).toBeGreaterThan(0);
+        const [a, b] = await Promise.all(['#insight-dialinSpeed', '#insight-backlogRunway'].map((id) => page.locator(id).evaluate((e) => (e as HTMLElement).offsetHeight)));
+        expect(a).toBe(b);
+        await page.locator('#insight-backlogRunway .room').evaluate((e) => e.remove());
+        await page.setViewportSize(vp);
+      }
       // Too early to tell: compact rows, each with its finding and what would settle it.
       const rows = page.locator('.early li');
       await expect(rows.first().locator('.early-head')).toBeVisible();

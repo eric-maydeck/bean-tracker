@@ -33,6 +33,49 @@
   let gridVars = $derived(rowVars(grid.length));
   let mythVars = $derived(rowVars(t.myths.length));
 
+  // Details are filler only (user rule B7): lay the cards out without them (natural heights, top-aligned),
+  // then per card reveal groups in order while the card stays within its row's tallest card. A group
+  // never makes a row taller. Re-runs when the container's width or the cards change (SSR: all hidden).
+  function filler(el: HTMLElement, _cards: unknown) {
+    let w = -1;
+    const run = () => {
+      const groups = [...el.querySelectorAll<HTMLElement>('.dgroup')];
+      for (const g of groups) g.hidden = true;
+      if (!groups.length) return;
+      el.style.alignItems = 'flex-start';
+      const cards = [...el.children] as HTMLElement[];
+      const rowMax = new Map<number, number>();
+      for (const c of cards) rowMax.set(c.offsetTop, Math.max(rowMax.get(c.offsetTop) ?? 0, c.offsetHeight));
+      // Item by item, so a group can show its top entries when the whole list doesn't fit.
+      for (const c of cards) {
+        const max = rowMax.get(c.offsetTop)!;
+        fill: for (const g of c.querySelectorAll<HTMLElement>('.dgroup')) {
+          const items = [...g.querySelectorAll<HTMLElement>('li')];
+          for (const li of items) li.hidden = true;
+          g.hidden = false;
+          for (const [i, li] of items.entries()) {
+            li.hidden = false;
+            if (c.offsetHeight > max) {
+              li.hidden = true;
+              if (i === 0) g.hidden = true;
+              break fill;
+            }
+          }
+        }
+      }
+      el.style.alignItems = '';
+    };
+    // Width only: revealing groups changes heights, which must not re-trigger (no layout loop).
+    const ro = new ResizeObserver(([e]) => {
+      if (Math.round(e.contentRect.width) === w) return;
+      w = Math.round(e.contentRect.width);
+      run();
+    });
+    ro.observe(el);
+    document.fonts?.ready.then(run);
+    return { update: () => requestAnimationFrame(run), destroy: () => ro.disconnect() };
+  }
+
   // ---- Deck: position is component state, not URL (spec). ----
   let at = $state(0);
   let pos = $derived(Math.min(at, Math.max(0, deck.length - 1)));
@@ -191,7 +234,7 @@
   {#if details(f)?.length}
     <div class="details">
       {#each details(f)! as g (g.label)}
-        <div class="dgroup">
+        <div class="dgroup" hidden>
           <span class="dlabel">{g.label}</span>
           <ol>
             {#each g.items as it, k (k)}
@@ -214,7 +257,7 @@
   {#if !grid.length}
     <p class="hl-empty">No {theme ? `${THEME_LABEL[theme].toLowerCase()} ` : ''}findings in this period{deck.length ? ' beyond the top stories' : ''}.</p>
   {:else}
-    <div class="hl-grid finding-grid">
+    <div class="hl-grid finding-grid" use:filler={grid}>
       {#each grid as f, i (f.key)}
         {@const id = anchor(f.key)}
         <div class="hl-card finding" {id} style={gridVars[i]}>
@@ -244,7 +287,7 @@
       onpointerup={swipeEnd}
       onpointercancel={() => (start = null)}
     >
-      <div class="deck-track" style:translate="{-pos * 100}% 0">
+      <div class="deck-track" style:translate="{-pos * 100}% 0" use:filler={deck}>
         {#each deck as f, i (f.key)}
           <article class="story" id={anchor(f.key)} aria-hidden={i !== pos} inert={i !== pos}>
             <div class="story-head">
@@ -681,6 +724,10 @@
   }
   /* Supporting lists (details): small label, names left, values right; they take the card's spare
      height, centred, so a short card beside a chart card has no hole. */
+  .details:not(:has(.dgroup:not([hidden]))),
+  .details :global(li[hidden]) {
+    display: none;
+  }
   .details {
     display: flex;
     flex-direction: column;
