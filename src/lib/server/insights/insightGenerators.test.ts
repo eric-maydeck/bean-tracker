@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GENERATORS, type GenCtx } from './insightGenerators';
+import { GENERATORS, fillRows, insightsTab, splitRows, type Finding, type GenCtx } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 
@@ -458,5 +458,50 @@ describe('registry', () => {
     const c = ctx(flat, bs, { prevBrews: flat, period: { from: '2026-01-01', to: '2026-09-30' } });
     expect(finite(all(c))).toBe(true);
     expect(finite(all({ ...c, brews: flat.map((b) => ({ ...b, rating: 0 })) }))).toBe(true);
+  });
+});
+
+describe('insightsTab', () => {
+  const f = (z: number, o: Partial<Finding> = {}): Finding => ({ key: `k${z}`, theme: 'taste', kind: 'number', headline: 'h', sample: 's', z, strength: 'solid', ...o });
+  it('fillRows keeps 12/6 multiples; splitRows hands back the weakest', () => {
+    const rows = (n: number) => Array.from({ length: n }, (_, i) => f(10 - i * 0.1));
+    expect(fillRows(rows(14))).toHaveLength(12);
+    expect(fillRows(rows(8))).toHaveLength(6);
+    expect(fillRows(rows(3))).toHaveLength(3);
+    const { kept, moved } = splitRows(rows(14));
+    expect(moved.map((x) => x.key)).toEqual(rows(14).slice(12).map((x) => x.key));
+    expect(kept.length + moved.length).toBe(14);
+  });
+  // 30 bags × 6 brews: dial-in curve (theme dialin) and a pricey/cheap bag set (money).
+  const brews = Array.from({ length: 30 }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-09-10', { dose: 20 })).flat();
+  const bs = bags(30, (i) => ({ purchaseDate: '2026-08-01', cost: 20 + i, amountG: 250, status: 'archive' as const }));
+  it('theme filters the grid only; overflow lands below instead of vanishing', () => {
+    const c = ctx(brews, bs, { onHandG: 1000 });
+    const a = insightsTab(c, undefined, {}), d = insightsTab(c, 'dialin', {});
+    expect(a.grid.length).toBeGreaterThan(0);
+    expect(d.grid.length).toBeGreaterThan(0);
+    expect(d.grid.every((x) => x.theme === 'dialin')).toBe(true);
+    expect(d.myths).toEqual(a.myths);
+    expect(d.tooEarly).toEqual(a.tooEarly);
+    const gridable = all(c).filter((x) => ['number', 'pattern', 'versus'].includes(x!.kind) && x!.strength !== 'early').length;
+    expect(a.grid.length + a.stories.filter((x) => x.kind !== 'story').length).toBe(gridable);
+    expect(a.grid.every((x, i, g) => i === 0 || Math.abs(g[i - 1].z ?? -1) >= Math.abs(x.z ?? -1))).toBe(true);
+  });
+  it('defaults come from the data: drinkers = household size, gpp = measured g/day ÷ size', () => {
+    // 180 brews × 20 g over Sep 1-30 (30 tracked days): 120 g/day, 2 drinkers → 60 g each; 6 brews/day.
+    const t = insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined, {});
+    expect(t.whatIf.defaults).toEqual({ drinkers: 2, gpp: 60, inflow: 0, bpd: 6, dose: 20 });
+    expect(t.whatIf.runway).toEqual({ days: 30, emptyOn: '2026-11-10' });
+    expect(t.whatIf.avgPricePerG).toBeCloseTo((30 * 20 + (29 * 30) / 2) / 7500, 6);
+    expect(t.whatIf.spend.perMonth).toBeCloseTo(6 * 20 * 30.44 * t.whatIf.avgPricePerG!, 6);
+    expect(insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined, { drinkers: 1 }).whatIf.runway.days).toBe(60);
+  });
+  it('no divide-by-zero: empty data, household 0, unpriced bags', () => {
+    const t = insightsTab(ctx([], [bag({ purchaseDate: '2026-08-01', cost: 0, amountG: 250 })], { householdSize: 0 }), undefined, {});
+    expect(t.whatIf.defaults).toEqual({ drinkers: 0, gpp: 0, inflow: 0, bpd: 0, dose: 0 });
+    expect(t.whatIf.avgPricePerG).toBeNull();
+    expect(t.whatIf.spend.perMonth).toBeNull();
+    expect(t.whatIf.runway).toEqual({ days: null, emptyOn: null });
+    expect(finite(t)).toBe(true);
   });
 });

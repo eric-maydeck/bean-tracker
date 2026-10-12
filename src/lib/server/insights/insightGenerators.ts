@@ -1,5 +1,6 @@
 import { MON, type Ratings } from '$lib/insightsUrl';
 import { formatGrams } from '$lib/grams';
+import { runway, type WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, strengthOf, type Strength } from './stats';
@@ -585,3 +586,54 @@ export const GENERATORS: Generator[] = [
   morningDrift, weekendVsWeekday, earlyBrews, weekdayRatings, periodVsPrevious, gearEras, sameBagVersus, wildcardBrewer,
   priceVsRating, costPerCup, pricePerMonth, loyalty, restMyth, restWindowMyth, originMyth, backlogWaitMyth, variablesMyth, calibration
 ];
+
+// ---- Insights tab: bucketing and What-if ----
+export interface InsightsTab {
+  grid: Finding[]; stories: Finding[]; myths: Finding[]; tooEarly: Finding[];
+  whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null;
+    runway: { days: number | null; emptyOn: string | null }; spend: { perMonth: number | null } };
+}
+const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
+
+// Full rows at 4/3/2 columns: keep floor(n/12)*12 (n >= 12), else floor(n/6)*6 (n >= 6), else all.
+// The rest ("moved") are the weakest; insightsTab sends them to the section below the grid.
+export function splitRows(grid: Finding[]): { kept: Finding[]; moved: Finding[] } {
+  const n = grid.length, keep = n >= 12 ? n - (n % 12) : n >= 6 ? 6 : n;
+  return { kept: grid.slice(0, keep), moved: grid.slice(keep) };
+}
+export const fillRows = (grid: Finding[]): Finding[] => splitRows(grid).kept;
+
+export function insightsTab(c: GenCtx, theme: Theme | undefined, w: Partial<WhatIf> = {}): InsightsTab {
+  const fs = GENERATORS.flatMap((g) => [g(c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early' && f.strength !== 'hidden';
+  const { kept, moved } = splitRows(fs.filter((f) => inGrid(f) && (!theme || f.theme === theme)));
+
+  const p = { start: c.period.from, end: c.period.to };
+  const { perDay } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);
+  const days = trackedDays(p, c.dataStart, c.today);
+  const doses = c.brews.filter((b) => inPeriod(b.localDate, p) && (b.dose ?? 0) > 0);
+  const size = Math.max(c.householdSize, 0);
+  const defaults: WhatIf = {
+    drinkers: size,
+    gpp: perDay !== null && size > 0 ? perDay / size : 0, // measured g/day ÷ household
+    inflow: 0,
+    bpd: days > 0 ? doses.length / days : 0, // brews per tracked day
+    dose: doses.length ? sum(doses.map((b) => b.dose!)) / doses.length : 0 // mean dose
+  };
+  const merged = { ...defaults, ...w };
+  // Weighted $/g over bags bought in the last 12 months; cost 0/null excluded.
+  const since = addDays(c.today, -365);
+  const priced = c.bags.filter((b) => b.purchaseDate && b.purchaseDate >= since && b.purchaseDate <= c.today && b.cost && b.amountG);
+  const grams = sum(priced.map((b) => b.amountG!));
+  const avgPricePerG = grams > 0 ? sum(priced.map((b) => b.cost!)) / grams : null;
+  return {
+    grid: kept,
+    stories: [...fs.filter((f) => f.kind === 'story' && f.strength !== 'early' && f.strength !== 'hidden').slice(0, 5), ...moved],
+    myths: fs.filter((f) => f.kind === 'myth'),
+    tooEarly: fs.filter((f) => f.strength === 'early'),
+    whatIf: {
+      defaults, onHandG: c.onHandG, avgPricePerG, runway: runway(c.onHandG, merged, c.today),
+      spend: { perMonth: avgPricePerG === null ? null : merged.bpd * merged.dose * 30.44 * avgPricePerG }
+    }
+  };
+}
