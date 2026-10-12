@@ -50,7 +50,7 @@
         {#each t.minerals as m, i (m.key)}
           {@const unit = unitOf(m.key)}
           <div class="hl-card mineral-card" style={mineralVars[i]}>
-            <HeadingAnchor id="water-{m.key}" level={3}>{m.name}{#if unit}<small class="unit">{unit}</small>{/if}</HeadingAnchor>
+            <HeadingAnchor id="water-mineral-{m.key}" level={3}>{m.name}{#if unit}<small class="unit">{unit}</small>{/if}</HeadingAnchor>
             <DeltaBars ariaLabel="{m.name} vs rating, against an average of {m.overall.toFixed(2)}"
               rows={m.bars.map((b) => ({ label: b.label, value: b.value - m.overall, text: b.value.toFixed(2), pale: !b.solid,
                 tip: `${b.label}${unit ? ` ${unit}` : ''}: avg ${b.value.toFixed(2)} (${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')}) · overall ${m.overall.toFixed(2)}` }))} />
