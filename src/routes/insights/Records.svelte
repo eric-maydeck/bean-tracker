@@ -6,6 +6,7 @@
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import TileCaption from './TileCaption.svelte';
 
   let {
     t, ratings, brewer, caffeine, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
@@ -125,15 +126,13 @@
 {/snippet}
 
 {#snippet caption(id: string, label: string, rating: boolean, pp: boolean, href: string)}
-  <div class="hl-caption">
-    <span class="stat-label"
-      ><a class="caption-link" {href}>{label}</a>{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
-          ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
-        >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
-          ><span class="tip-text">per person</span><Icon name="question" /></button
-        >{/if}</span
-    >
-  </div>
+  <TileCaption {href} {label}
+    >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
+        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
+      >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
+        ><span class="tip-text">per person</span><Icon name="question" /></button
+      >{/if}</TileCaption
+  >
   {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}>{ratingsHelp[ratings]}</div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}>{personHelp}</div>{/if}
 {/snippet}
@@ -349,15 +348,6 @@
   .grp :global(.hl-line),
   .grp :global(.hl-holder) {
     line-height: 1.3;
-  }
-  /* The tile's name: bold, in the label colour, apart from the muted lines above it and the accent links. */
-  .caption-link {
-    color: var(--color-label);
-    font-weight: 700;
-    text-decoration: none;
-  }
-  .caption-link:hover {
-    text-decoration: underline;
   }
   .chart-panel :global(.top-title) {
     margin: var(--space-4) 0 var(--space-2);

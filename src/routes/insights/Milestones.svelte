@@ -4,6 +4,7 @@
   import type { MilestonesTab } from '$lib/server/insights/milestones';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import TileCaption from './TileCaption.svelte';
   import { rulerTicks, tickAt, rulerToFeed, feedToRuler, type Section } from './ruler';
 
   let { m, kinds, choose }: { m: MilestonesTab; kinds: Kind[] | undefined; choose: (c: InsightsUrlState) => void } = $props();
@@ -127,7 +128,7 @@
 </script>
 
 {#snippet caption(id: string, label: string)}
-  <div class="hl-caption"><span class="stat-label"><a class="caption-link" href="#{id}">{label}</a></span></div>
+  <TileCaption href="#{id}" {label} />
 {/snippet}
 
 <svelte:window bind:innerHeight={innerH} bind:innerWidth={innerW} />
@@ -265,18 +266,10 @@
 {/if}
 
 <style>
-  /* Tile names as on Records: bold in the label colour, linking to the tile's own anchor, which
-     lands under the sticky bar (scroll-padding) with a little room. */
+  /* Tile names (TileCaption) link to the tile's own anchor, which lands under the sticky bar
+     (scroll-padding) with a little room. */
   .hl-card {
     scroll-margin-top: var(--space-2);
-  }
-  .caption-link {
-    color: var(--color-label);
-    font-weight: 700;
-    text-decoration: none;
-  }
-  .caption-link:hover {
-    text-decoration: underline;
   }
   .kinds-bar {
     margin-bottom: var(--space-3);
