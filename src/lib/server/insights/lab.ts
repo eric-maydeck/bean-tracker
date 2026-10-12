@@ -1,7 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
-import type { BagFact, BrewFact } from './facts';
-import { grindKey } from './facts';
+import { grindKey, type BagFact, type BrewFact } from './facts';
 import type { Multi } from './insightGenerators';
 import { BREW_NO_LABELS, REST_LABELS, bandOf, type Band, type LabVar } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
@@ -242,12 +241,14 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
   }).sort((a, b) => a.label.localeCompare(b.label));
   const best = [...groupBy(rows.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
     .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
+  // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
+  // about settings, not ratings (controller ruling).
   const first = new Map<number, number>();
-  for (const b of brews) if (b.coffeeId !== null && b.grinder === c.grinder && !first.has(b.coffeeId) && dial(b.grind) !== null) first.set(b.coffeeId, dial(b.grind)!);
+  for (const b of brews) if (b.coffeeId !== null && inPeriod(b.localDate, c.period) && b.grinder === c.grinder && !first.has(b.coffeeId) && dial(b.grind) !== null) first.set(b.coffeeId, dial(b.grind)!);
   const drifted = brews.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
   const drift = [...groupBy(drifted, (b) => bandOf('brewNo', b)!.label)].map(([label, g]) => {
     const bags = new Set(g.map((b) => b.coffeeId)).size;
-    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS };
+    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS }; // solid counts bags only: the bag is the unit, brews within it aren't independent
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: [BrewVar, LabVar][] = [['temp', c.exact ? 'tempExact' : 'temp'], ['ratio', 'ratio'], ['dose', 'dose'], ['time', 'time'], ['bloom', 'bloom'], ['grind', 'grind']];
   return {

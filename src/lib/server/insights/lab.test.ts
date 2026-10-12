@@ -235,7 +235,7 @@ describe('brewingTab', () => {
   const rows = [1, 2, 3, 4, 5, 6].flatMap((id) => [10, 25, 35].flatMap((rest, k) =>
     Array.from({ length: 10 }, (_, i) => brew({ coffeeId: id, restDays: rest, roastLevel: id < 4 ? 'Light' : 'Nordic', tempC: i % 2 ? 91 : 94,
       rating: +(7 + (i % 2) * 0.5 + (k === 1 ? 0.3 : 0) + ((i % 3) - 1) * 0.1).toFixed(2), brewIndex: k * 10 + i + 1,
-      grinder: 'A4Z', grind: `1.${6 - k}.0` }))));
+      grinder: 'A4Z', grind: `1.${6 - k}.0`, ratio: i % 2 ? 16 : 17, dose: i % 2 ? 15 : 17, brewTimeSeconds: i % 2 ? 100 : 200, bloomSeconds: i % 2 ? 30 : 45 }))));
   const tab = (o: Partial<Parameters<typeof brewingTab>[1]> = {}) =>
     brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false, ...o });
   it('rest curve: a line per roast level with ≥ 2 solid bands', () => {
@@ -262,7 +262,9 @@ describe('brewingTab', () => {
     expect(tab({ grinder: 'ZP6' }).drift).toEqual([]);
   });
   it('variable charts; exact temps; breakdown rows', () => {
-    expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'grind']);
+    expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'ratio', 'dose', 'time', 'bloom', 'grind']);
+    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30 s', '1.4.0']);
+    expect(tab({ grinder: 'ZP6' }).vars.map((v) => v.key)).not.toContain('grind');
     expect(tab({ exact: true }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
     const by = tab({ by: { temp: 'roast' } }).vars[0].by!;
     expect(by.rows).toEqual(['Light', 'Nordic']);
@@ -273,14 +275,38 @@ describe('brewingTab', () => {
     const e = brewingTab(rows, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: false });
     expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], vars: [] });
   });
+  it('rest curve: a lone solid band draws no line; a thin band is null; values are rounded', () => {
+    const at = (id: number, roastLevel: string, rest: number, n: number, ratings: number[]) =>
+      Array.from({ length: n }, (_, i) => brew({ coffeeId: id, roastLevel, restDays: rest, rating: ratings[i % ratings.length] }));
+    // Thin: bags 1-3 have 10 + 10 solid brews per band and 2 at 31–45 d (6 paired brews < 30). Solo: one solid band, one thin.
+    const thin = [1, 2, 3].flatMap((id) => [...at(id, 'Thin', 10, 10, [7, 8]), ...at(id, 'Thin', 25, 10, [8, 9]), ...at(id, 'Thin', 35, 2, [7])]);
+    const solo = [4, 5, 6].flatMap((id) => [...at(id, 'Solo', 10, 10, [7, 8]), ...at(id, 'Solo', 25, 2, [8])]);
+    const r = brewingTab([...thin, ...solo], { period: P, ratings: 'all', grinder: null, by: {}, exact: false }).rest!;
+    expect(r.lines.map((l) => l.label)).toEqual(['Thin']);
+    expect(r.lines[0].values).toEqual([-0.41, 0.59, null, null, null, null]);
+  });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
+  const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: false };
   it('best brew: earliest wins a tie', () => {
-    expect(brewingTab(bag1([7, 8, 8, 7, 7]), { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false }).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+    expect(brewingTab(bag1([7, 8, 8, 7, 7]), c1).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+  });
+  it('best brew: a 4-brew bag does not count', () => {
+    const b = brewingTab([...bag1([7, 8, 8, 7, 7]), ...bag1([7, 7, 7, 9], [2])], c1).bestAt;
+    expect(b.reduce((s, x) => s + x.bags, 0)).toBe(1);
+    expect(b.find((x) => x.label === '#4')!.bags).toBe(0);
   });
   it('drift: solid needs ≥ 3 bags; a single brew number is no curve', () => {
-    const c = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: false };
-    expect(brewingTab(bag1([7, 8, 8], [1, 2]), c).drift.map((d) => d.solid)).toEqual([false, false, false]);
-    expect(brewingTab(bag1([7, 8, 8], [1, 2, 3]), c).drift.map((d) => d.solid)).toEqual([true, true, true]);
-    expect(brewingTab(bag1([7]), c).drift).toEqual([]);
+    expect(brewingTab(bag1([7, 8, 8], [1, 2]), c1).drift.map((d) => d.solid)).toEqual([false, false, false]);
+    expect(brewingTab(bag1([7, 8, 8], [1, 2, 3]), c1).drift.map((d) => d.solid)).toEqual([true, true, true]);
+    expect(brewingTab(bag1([7]), c1).drift).toEqual([]);
+  });
+  it('drift baseline: the first in-period brew on the chosen grinder', () => {
+    const rows = [
+      brew({ coffeeId: 1, brewIndex: 1, grinder: 'ZP6', grind: '9.0.0' }), // another grinder: not the baseline
+      brew({ coffeeId: 1, brewIndex: 2, grinder: 'A4Z', grind: '1.5.0' }),
+      brew({ coffeeId: 1, brewIndex: 3, grinder: 'A4Z', grind: '1.4.0' }),
+      brew({ coffeeId: 1, brewIndex: 0, grinder: 'A4Z', grind: '2.0.0', localDate: '2026-08-01' }) // before the period: not the baseline
+    ];
+    expect(brewingTab(rows, c1).drift).toMatchObject([{ label: '#2', value: 0 }, { label: '#3', value: -0.1 }]);
   });
 });
