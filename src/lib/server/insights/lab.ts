@@ -1,7 +1,9 @@
 import type { Ratings } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import type { BagFact, BrewFact } from './facts';
-import { bandOf, type Band, type LabVar } from './labBands';
+import { grindKey } from './facts';
+import type { Multi } from './insightGenerators';
+import { BREW_NO_LABELS, REST_LABELS, bandOf, type Band, type LabVar } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
@@ -214,4 +216,50 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
   return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags };
+}
+
+export type BrewVar = 'temp' | 'ratio' | 'dose' | 'time' | 'bloom' | 'grind';
+export interface VarChart { key: BrewVar; bands: BandStat[]; by: Breakdown | null }
+export interface BrewingTab {
+  rest: Multi | null; // x = rest bands; a line per roast level with ≥ 2 solid bands (delta; null where not solid)
+  dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
+  bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
+  drift: { label: string; value: number; bags: number; solid: boolean }[]; // mean setting change vs the bag's first brew
+  vars: VarChart[];
+}
+const round2 = (x: number) => Math.round(x * 100) / 100;
+// A grind setting read as a decimal (1.3.5 → 1.35, 6.2 → 6.2), so drift reads in the grinder's own steps.
+// ponytail: a part ≥ 10 overlaps the next digit; fine for A4Z / ZP6 settings, revisit for other grinders.
+const dial = (g: string | null) => grindKey(g)?.reduce((s, n, i) => s + n / 10 ** i, 0) ?? null;
+
+export function brewingTab(brews: readonly BrewFact[], c: { period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: boolean }): BrewingTab {
+  const rows = ratedIn(brews, c.period, c.ratings);
+  const rest = labFn('rest');
+  const lines = [...groupBy(rows, (b) => b.roastLevel)].flatMap(([label, g]) => {
+    const st = new Map(pairedDeltas(g, rest).map((s) => [s.label, s]));
+    const values = REST_LABELS.map((l) => { const s = st.get(l); return s?.solid ? round2(s.delta!) : null; });
+    return values.filter((v) => v !== null).length >= 2 ? [{ label, values }] : [];
+  }).sort((a, b) => a.label.localeCompare(b.label));
+  const best = [...groupBy(rows.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
+    .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
+  const first = new Map<number, number>();
+  for (const b of brews) if (b.coffeeId !== null && b.grinder === c.grinder && !first.has(b.coffeeId) && dial(b.grind) !== null) first.set(b.coffeeId, dial(b.grind)!);
+  const drifted = brews.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
+  const drift = [...groupBy(drifted, (b) => bandOf('brewNo', b)!.label)].map(([label, g]) => {
+    const bags = new Set(g.map((b) => b.coffeeId)).size;
+    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS };
+  }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
+  const VARS: [BrewVar, LabVar][] = [['temp', c.exact ? 'tempExact' : 'temp'], ['ratio', 'ratio'], ['dose', 'dose'], ['time', 'time'], ['bloom', 'bloom'], ['grind', 'grind']];
+  return {
+    rest: lines.length ? { x: REST_LABELS, lines, unit: 'vs same bag' } : null,
+    dialIn: pairedDeltas(rows, labFn('brewNo'), 1),
+    bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
+    drift: drift.length >= 2 ? drift : [],
+    vars: VARS.flatMap(([key, v]) => {
+      const f = labFn(v, c.grinder);
+      const bands = pairedDeltas(rows, f);
+      const by = c.by[key];
+      return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label)) : null }] : [];
+    })
+  };
 }

@@ -412,11 +412,11 @@ const periodVsPrevious: Generator = (c) => {
 
 // ---- Trend charts (descriptive, `multi`) ----
 const MULTI_LINES = 5, MULTI_KEEP = 0.2;
-type Multi = NonNullable<Finding['multi']>;
+export type Multi = NonNullable<Finding['multi']>;
 // Months with `minMonth`+ rows (3+ needed); one line per category holding MULTI_KEEP+ of some month's
 // rows, at most MULTI_LINES with the rest folded into "Other". `cell` = a line's value in one month
 // from its rows and the month's rows (null = gap). `fixed` = these lines, in this order, no folding.
-function monthlyMulti<T extends { localDate: string }>(
+export function monthlyMulti<T extends { localDate: string }>(
   rows: readonly T[], cat: (x: T) => string | null, cell: (g: T[], month: T[]) => number | null, unit: string, minMonth = 10, fixed?: string[]
 ): Multi | null {
   const months = [...groupBy(rows.filter((x) => cat(x) !== null), (x) => x.localDate.slice(0, 7))]
@@ -429,7 +429,7 @@ function monthlyMulti<T extends { localDate: string }>(
   const labels = !fixed && names.length < totals.length ? [...names, 'Other'] : names;
   return { x: months.map(([m]) => monthLabel(m)), unit, lines: labels.map((label) => ({ label, values: months.map(([, g]) => cell(g.filter((x) => line(x) === label), g)) })) };
 }
-const shareCell = (g: unknown[], month: unknown[]) => Math.round((100 * g.length) / month.length);
+export const shareCell = (g: unknown[], month: unknown[]) => Math.round((100 * g.length) / month.length);
 const meanCell = (min: number) => (g: { rating: number | null }[]) => (g.length >= min ? Math.round(100 * mean(g.map((b) => b.rating!))) / 100 : null);
 const ends = (vs: (number | null)[]) => { const v = vs.filter((x): x is number => x !== null); return v.length ? { a: v[0], b: v.at(-1)!, range: Math.max(...v) - Math.min(...v) } : null; };
 // The named line (not "Other") that moved most from its first to its last value.

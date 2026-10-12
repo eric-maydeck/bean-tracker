@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf } from './lab';
+import { breakdown, brewingTab, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf } from './lab';
 import type { BagFact, BrewFact } from './facts';
 
 let n = 0;
@@ -227,5 +227,60 @@ describe('sweetSpotsTab', () => {
     expect(groupsFor(rows, { roast: 'Light', process: 'Natural', origin: 'Kenya', roaster: 'R' }).map((g) => g.name)).toEqual(
       ['Natural Light coffees from Kenya by R', 'Natural Light coffees by R', 'Natural Light coffees', 'Light coffees']);
     expect(groupsFor(rows, {}).map((g) => g.name)).toEqual(['all coffees']);
+  });
+});
+
+describe('brewingTab', () => {
+  // 3 Light + 3 Nordic bags: 10 brews each at rest 10 (0–21 d), 25 (22–30 d), 35 (31–45 d); 91 °C beats 94 °C.
+  const rows = [1, 2, 3, 4, 5, 6].flatMap((id) => [10, 25, 35].flatMap((rest, k) =>
+    Array.from({ length: 10 }, (_, i) => brew({ coffeeId: id, restDays: rest, roastLevel: id < 4 ? 'Light' : 'Nordic', tempC: i % 2 ? 91 : 94,
+      rating: +(7 + (i % 2) * 0.5 + (k === 1 ? 0.3 : 0) + ((i % 3) - 1) * 0.1).toFixed(2), brewIndex: k * 10 + i + 1,
+      grinder: 'A4Z', grind: `1.${6 - k}.0` }))));
+  const tab = (o: Partial<Parameters<typeof brewingTab>[1]> = {}) =>
+    brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false, ...o });
+  it('rest curve: a line per roast level with ≥ 2 solid bands', () => {
+    const r = tab().rest!;
+    expect(r.x).toEqual(['0–21 d', '22–30 d', '31–45 d', '46–60 d', '61–90 d', '91+ d']);
+    expect(r.lines.map((l) => l.label)).toEqual(['Light', 'Nordic']);
+    expect(r.lines[0].values[1]).toBeGreaterThan(0);
+    expect(r.lines[0].values[3]).toBeNull();
+  });
+  it('dial-in pairs single brews per brew number', () => {
+    const d = tab().dialIn;
+    expect(d.map((s) => s.label)).toEqual(['#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10+']);
+    expect(d[0].delta).not.toBeNull();
+  });
+  it('brews to your best: brew # of each bag\'s best (earliest on ties), every label', () => {
+    const b = tab().bestAt;
+    expect(b.map((x) => x.label)).toEqual(['#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10+']);
+    expect(b.reduce((s, x) => s + x.bags, 0)).toBe(6);
+  });
+  it('grind drift: change vs the bag\'s first setting, negative = finer', () => {
+    const d = tab().drift;
+    expect(d[0]).toMatchObject({ label: '#1', value: 0, bags: 6, solid: true });
+    expect(d.at(-1)!.value).toBeLessThan(0);
+    expect(tab({ grinder: 'ZP6' }).drift).toEqual([]);
+  });
+  it('variable charts; exact temps; breakdown rows', () => {
+    expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'grind']);
+    expect(tab({ exact: true }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
+    const by = tab({ by: { temp: 'roast' } }).vars[0].by!;
+    expect(by.rows).toEqual(['Light', 'Nordic']);
+    expect(by.cols).toEqual(['90–92 °C', '93–94 °C']);
+    expect(tab().vars[0].by).toBeNull();
+  });
+  it('empty period: nothing, no NaN', () => {
+    const e = brewingTab(rows, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: false });
+    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], vars: [] });
+  });
+  const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
+  it('best brew: earliest wins a tie', () => {
+    expect(brewingTab(bag1([7, 8, 8, 7, 7]), { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false }).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+  });
+  it('drift: solid needs ≥ 3 bags; a single brew number is no curve', () => {
+    const c = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: false };
+    expect(brewingTab(bag1([7, 8, 8], [1, 2]), c).drift.map((d) => d.solid)).toEqual([false, false, false]);
+    expect(brewingTab(bag1([7, 8, 8], [1, 2, 3]), c).drift.map((d) => d.solid)).toEqual([true, true, true]);
+    expect(brewingTab(bag1([7]), c).drift).toEqual([]);
   });
 });
