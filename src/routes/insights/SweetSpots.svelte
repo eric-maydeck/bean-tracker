@@ -89,15 +89,19 @@
   }
   // Keyboard (as Heatmap's cells): focus opens the winning (else usual) band's tip, ←/→ move it, Escape
   // closes it, Enter opens the card's full text (its evidence line, even when the card hid it to fit).
-  const startAt = (bars: { pick: boolean; usual: boolean }[]) => Math.max(0, bars.findIndex((b) => b.pick), bars.findIndex((b) => b.usual));
+  const startAt = (bars: { pick: boolean; usual: boolean }[]) => {
+    const p = bars.findIndex((b) => b.pick);
+    return p >= 0 ? p : Math.max(0, bars.findIndex((b) => b.usual));
+  };
   function chartKey(e: KeyboardEvent, key: string, bars: { pick: boolean; usual: boolean }[]) {
     const wrap = e.currentTarget as HTMLElement, n = bars.length;
     if (e.key === 'Escape') tip = null;
     else if (e.key === 'Enter') document.getElementById(`spot-${key}-full`)?.togglePopover();
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
-      const from = tip?.key === key ? tip.i : startAt(bars);
-      showTip(wrap, key, n, Math.min(n - 1, Math.max(0, from + (e.key === 'ArrowRight' ? 1 : -1))), false);
+      // The first press with no tip open shows the start band rather than stepping past it.
+      const i = tip?.key === key ? Math.min(n - 1, Math.max(0, tip.i + (e.key === 'ArrowRight' ? 1 : -1))) : startAt(bars);
+      showTip(wrap, key, n, i, false);
     }
   }
 
@@ -262,7 +266,7 @@
     <section class="chart-panel" data-section="spots-top">
       <HeadingAnchor id="spots-top">Top bags like this</HeadingAnchor>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
-        {#each t.topBags as r, i (`${r.href ?? r.label}|${r.tag}`)}
+        {#each t.topBags as r, i (i)}
           <li class="board-row">
             <span class="rank">{i + 1}</span>
             <span class="who">

@@ -1804,8 +1804,19 @@ export const STATES: State[] = [
       await page.locator('.insights-period').last().click();
       await expect(page.locator('.spot-tip')).toHaveCount(0);
       // Keyboard: focus opens a band tip, → moves it, Escape closes it, Enter opens the card's full text.
+      // Reached by Tab (the keyboard path): from the card's last control before the chart.
       const chart = page.locator('#spot-temp .spot-chart');
-      await chart.focus();
+      await chart.evaluate((el) => {
+        const prev = [...document.querySelectorAll<HTMLElement>('a[href], button, select, [tabindex="0"]')];
+        prev[prev.indexOf(el as HTMLElement) - 1].focus();
+      });
+      await page.keyboard.press('Tab');
+      await expect(chart).toBeFocused();
+      await expect(page.locator('#spot-temp .spot-tip')).toBeVisible();
+      const start = await page.locator('#spot-temp .spot-tip').textContent();
+      await chart.press('Escape');
+      await chart.press('ArrowRight'); // first press, no tip open: the start band, not one past it
+      await expect(page.locator('#spot-temp .spot-tip')).toHaveText(start!);
       await chart.press('ArrowRight');
       await expect(page.locator('#spot-temp .spot-tip')).toContainText(/ · \d+ brews?/);
       await chart.press('Escape');
