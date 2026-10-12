@@ -1,4 +1,4 @@
-import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
+import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Caffeine, type Ratings } from '$lib/insightsUrl';
 import { grindKey, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { isFinished } from './overview';
@@ -37,9 +37,10 @@ export interface RecordTile extends RecordPick {
 }
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
-  topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 10, best first
+  topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 20, best first (10 shown until top=20)
   perfectTens: { holder: Holder; brewer: string | null }[];
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
+  coversAll: boolean; // the period starts on or before the first (filtered) brew: every record is all-time
 }
 export interface BagStat {
   coffeeId: number; rated: number[]; brews: BrewFact[]; // in brew order
@@ -98,6 +99,11 @@ const perBag = (c: RecCtx, min: number, f: (s: BagStat, id: number) => Omit<Cand
     return r ? [{ ...r, holder: bagHolder(c.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }] : [];
   });
 
+const usd = (n: number) => `$${n.toFixed(2)}`;
+const g = (n: number) => `${n < 100 ? +n.toFixed(1) : Math.round(n)}g`;
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const rangeOf = (xs: number[]) => `${Math.min(...xs)}–${Math.max(...xs)}`;
+
 const dialed = (xs: number[]) => mean([...xs].sort((a, b) => b - a).slice(0, Math.ceil(xs.length / 2)));
 
 // Per-day groups of brews, as candidates (day record holders are the day itself).
@@ -137,11 +143,11 @@ const volume = (key: string, label: string, dir: 'max' | 'min', fmt: Fmt, run: R
 
 const dayMean = (c: RecCtx) => perDay(c, (bs) => {
   const r = bs.filter((b) => countsForRating(b, c.ratings)).map((b) => b.rating!);
-  return r.length >= 3 ? { value: mean(r), detail: `${r.length} brews` } : null;
+  return r.length >= 3 ? { value: mean(r), detail: plural(r.length, 'rated brew') } : null;
 });
 
 const bestBag = (only?: (b: BrewFact) => boolean) => (c: RecCtx) =>
-  perBag(c, 3, (s) => ({ value: s.mean!, detail: `${s.rated.length} brews` }), only);
+  perBag(c, 3, (s) => ({ value: s.mean!, detail: plural(s.rated.length, 'rated brew') }), only);
 
 // Pour-over floors: a 1:6.7 "ratio" or a 30 s "brew" is a typo or a different drink.
 export const FLOORS: Partial<Record<BrewerType, { ratio: number; seconds: number }>> = { pourover: { ratio: 12, seconds: 60 } };
@@ -156,17 +162,21 @@ const lifeSpans = (c: RecCtx, finished: boolean): Candidate[] =>
   [...bagStats(c.brews, c.ratings).values()].flatMap((s) => {
     const bag = c.bags.find((x) => x.id === s.coffeeId);
     return bag?.firstBrew && bag.lastBrew && (!finished || isFinished(bag))
-      ? [{ value: daysBetween(bag.firstBrew, bag.lastBrew) + 1, holder: bagHolder(c.bags, s.coffeeId, bag.lastBrew) }] : [];
+      ? [{ value: daysBetween(bag.firstBrew, bag.lastBrew) + 1, detail: 'first to last brew', holder: bagHolder(c.bags, s.coffeeId, bag.lastBrew) }] : [];
   });
 const restPick = (c: RecCtx): Candidate[] =>
   held(c).filter((b) => b.restDays !== null && b.restDays >= 0)
-    .map((b) => ({ value: b.restDays!, ...(b.rating !== null ? { detail: `rated ${b.rating}` } : {}), holder: brewHolder(c, b) }));
+    .map((b) => ({ value: b.restDays!, ...(b.rating !== null ? { detail: `Rated: ${b.rating}` } : {}), holder: brewHolder(c, b) }));
 const per100 = (c: RecCtx): Candidate[] =>
   c.bags.flatMap((b) => b.purchaseDate && b.cost && b.cost > 0 && b.amountG && b.amountG > 0
-    ? [{ value: (b.cost / b.amountG) * 100, holder: bagHolder(c.bags, b.id, b.purchaseDate) }] : []);
+    ? [{ value: (b.cost / b.amountG) * 100, detail: `${usd(b.cost)} for ${g(b.amountG)}`, holder: bagHolder(c.bags, b.id, b.purchaseDate) }] : []);
+// Cost per brew = dose × the bag's price per gram.
 const cups = (c: RecCtx): Candidate[] =>
-  held(c).filter((b) => b.costPerBrew !== null)
-    .map((b) => ({ value: b.costPerBrew!, ...(b.rating !== null ? { detail: `rated ${b.rating}` } : {}), holder: brewHolder(c, b) }));
+  held(c).filter((b) => b.costPerBrew !== null).map((b) => {
+    const bag = c.bags.find((x) => x.id === b.coffeeId);
+    const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100\u00a0g` : null;
+    return { value: b.costPerBrew!, ...(per100 && b.dose ? { detail: `${g(b.dose)} at ${per100}` } : {}), holder: brewHolder(c, b) };
+  });
 // Mean rating ÷ $ per 100 g, for bags with ≥3 counted rated brews and a known price.
 const value = (c: RecCtx): Candidate[] =>
   perBag(c, 3, (s, id) => {
@@ -175,12 +185,19 @@ const value = (c: RecCtx): Candidate[] =>
     const p = (bag.cost / bag.amountG) * 100;
     return { value: s.mean! / p, mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at $${p.toFixed(2)}/100\u00a0g` };
   });
-const roasters = (c: RecCtx, f: (bs: BagFact[]) => number): Candidate[] =>
+const spent = (bs: BagFact[]) => bs.reduce((s, b) => s + (b.cost ?? 0), 0);
+const roasters = (c: RecCtx, f: (bs: BagFact[]) => number, detail: (bs: BagFact[]) => string): Candidate[] =>
   [...groupBy(c.bags.filter((b) => b.purchaseDate), (b) => b.roaster)].map(([r, bs]) => ({
-    value: f(bs), holder: { label: r as string, date: bs.map((b) => b.purchaseDate!).sort().pop()! }
+    value: f(bs), detail: detail(bs), holder: { label: r as string, date: bs.map((b) => b.purchaseDate!).sort().pop()! }
   }));
-const brewMetric = (c: RecCtx, get: (b: BrewFact) => number | null, ok: (b: BrewFact, v: number) => boolean = () => true): Candidate[] =>
-  held(c).flatMap((b) => { const v = get(b); return v !== null && v > 0 && ok(b, v) ? [{ value: v, holder: brewHolder(c, b) }] : []; });
+const brewMetric = (c: RecCtx, get: (b: BrewFact) => number | null, ok: (b: BrewFact, v: number) => boolean = () => true,
+  detail?: (b: BrewFact) => string | null): Candidate[] =>
+  held(c).flatMap((b) => {
+    const v = get(b), d = detail?.(b);
+    return v !== null && v > 0 && ok(b, v) ? [{ value: v, ...(d ? { detail: d } : {}), holder: brewHolder(c, b) }] : [];
+  });
+// A ratio's inputs: dose to water.
+const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.waterG)}` : null);
 // Rated board groups with ≥3 bags, lowest adjusted rating, vs your average (the mean of the board's
 // bag means, which the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen
 // −2.51). The group's latest brew is its date.
@@ -188,8 +205,9 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
   const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
   const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
   const rawMean = new Map(raw.map((r) => [r.key, r.value]));
-  return lb('adjusted')
-    .filter((r) => r.bags >= 3)
+  const rows = lb('adjusted').filter((r) => r.bags >= 3);
+  // One group is the average itself: nothing to be lowest against.
+  return rows.length < 2 ? [] : rows
     .map((r) => ({
       value: r.value - avg, mean: rawMean.get(r.key)! - avg,
       holder: {
@@ -201,8 +219,8 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
 
 export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
-  taste('bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) => perBag(c, 3, (s) => ({ value: dialed(s.rated) }))),
-  taste('bestDecaf', 'Best decaf', 'max', 'rating', bestBag((b) => b.decaf)),
+  taste('bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) =>
+    perBag(c, 3, (s) => ({ value: dialed(s.rated), detail: `best ${Math.ceil(s.rated.length / 2)} of ${s.rated.length} brews` }))),
   taste('dialJump', 'Biggest dial-in jump', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
@@ -213,26 +231,27 @@ export const RECORDS: RecordDef[] = [
   })),
   taste('climb', 'Biggest climb', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     const top = Math.max(...s.rated);
-    return top > s.rated[0] ? { value: top - s.rated[0], detail: `${s.rated[0]} → ${top} at brew ${s.rated.indexOf(top) + 1} of ${s.rated.length}` } : null;
+    return top > s.rated[0] ? { value: top - s.rated[0], detail: `first ${s.rated[0]} → best ${top} (brew ${s.rated.indexOf(top) + 1} of ${s.rated.length})` } : null;
   })),
-  taste('holeInOne', 'Hole-in-one', 'max', 'count', (c) => {
+  taste('holeInOne', 'Bags best on the first brew', 'max', 'count', (c) => {
     const firsts = perBag(c, 3, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
     const top = pick(firsts, 'max');
-    return top ? [{ value: firsts.length, detail: `of ${perBag(c, 3, () => ({ value: 0 })).length} bags`, holder: top.holder }] : [];
+    return top ? [{ value: firsts.length, detail: `of ${perBag(c, 3, () => ({ value: 0 })).length} bags with 3+ ratings`, holder: top.holder }] : [];
   }),
-  taste('consistent', 'Most consistent bag', 'min', 'sd', (c) => perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews` }))),
+  taste('consistent', 'Most consistent bag', 'min', 'sd', (c) =>
+    perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews at ${s.mean!.toFixed(2)}` }))),
   taste('bestDay', 'Best day', 'max', 'rating', dayMean),
 
   volume('mostBrewedBag', 'Most-brewed bag', 'max', 'count', (c) => bagCount(c, (s) => s.brews.length)),
   volume('mostGramsBag', 'Most grams from one bag', 'max', 'grams', (c) => bagCount(c, (s) => s.grams)),
-  volume('marathon', 'Marathon session', 'max', 'count', (c) =>
+  volume('marathon', 'Most brews of one bag in a day', 'max', 'count', (c) =>
     [...groupBy(c.brews, (b) => (b.coffeeId === null ? null : `${b.coffeeId}|${b.localDate}`)).values()]
       .map((bs) => ({ value: bs.length, holder: bagHolder(c.bags, bs[0].coffeeId, bs[0].localDate) })), { perDay: true }),
   volume('bagsInDay', 'Most bags brewed in one day', 'max', 'count', (c) =>
     perDay(c, (bs) => ({ value: distinct(bs.map((b) => (b.coffeeId === null ? null : String(b.coffeeId)))) })), { perDay: true }),
   volume('brews24h', 'Most brews in 24 hours', 'max', 'count', (c) => rolling(c, (w) => w.length), { perDay: true }),
   volume('grams24h', 'Most grams in 24 hours', 'max', 'grams', (c) => rolling(c, (w) => w.reduce((s, b) => s + (b.dose && b.dose > 0 ? b.dose : 0), 0)), { perDay: true }),
-  volume('gearTour', 'Gear tour', 'max', 'count', (c) =>
+  volume('gearTour', 'Most brewers used on one bag', 'max', 'count', (c) =>
     [...bagStats(c.brews, c.ratings).values()].map((s) => ({
       value: distinct(s.brews.map((b) => b.brewer)),
       detail: `${distinct(s.brews.map((b) => b.dripper))} drippers · ${distinct(s.brews.map((b) => b.water))} waters`,
@@ -240,13 +259,14 @@ export const RECORDS: RecordDef[] = [
     }))),
   volume('earlyBird', 'Early bird', 'min', 'clock', (c) => clock(c, () => true)),
   volume('nightOwl', 'Night owl', 'max', 'clock', (c) => clock(c, () => true)),
-  volume('nightOwlCaf', 'Night owl (caffeinated)', 'max', 'clock', (c) => clock(c, (b) => !b.decaf)),
 
   fresh('fastestFinish', 'Fastest finish', 'min', 'days', (c) => lifeSpans(c, true)),
   fresh('drinkRate', 'Fastest drinking rate', 'max', 'gpd', (c) =>
     [...bagStats(c.brews, c.ratings).values()].flatMap((s) => {
       const d = distinct(s.brews.map((b) => b.localDate));
-      return d >= 2 || s.grams >= 100 ? [{ value: s.grams / (daysBetween(s.first, s.last) + 1), holder: bagHolder(c.bags, s.coffeeId, s.last) }] : [];
+      const days = daysBetween(s.first, s.last) + 1;
+      return d >= 2 || s.grams >= 100
+        ? [{ value: s.grams / days, detail: `${g(s.grams)} over ${plural(days, 'day')}`, holder: bagHolder(c.bags, s.coffeeId, s.last) }] : [];
     })),
   fresh('lifetime', 'Longest bag lifetime', 'max', 'days', (c) => lifeSpans(c, false)),
   fresh('waitToOpen', 'Longest wait to open', 'max', 'days', (c) =>
@@ -256,39 +276,39 @@ export const RECORDS: RecordDef[] = [
       return bag?.purchaseDate && bag.firstBrew === s.first && rest !== null && rest >= 0
         ? [{ value: rest, holder: bagHolder(c.bags, s.coffeeId, s.first) }] : [];
     })),
-  fresh('oldestBrewed', 'Oldest coffee brewed', 'max', 'days', (c) => restPick(c)),
-  fresh('freshestBrew', 'Freshest brew', 'min', 'days', (c) => restPick(c)),
+  fresh('oldestBrewed', 'Most days off roast', 'max', 'days', (c) => restPick(c)),
+  fresh('freshestBrew', 'Fewest days off roast', 'min', 'days', (c) => restPick(c)),
   fresh('oldestWaiting', 'Oldest bag waiting', 'max', 'days', (c) =>
     c.bags.flatMap((b) => {
       const d = b.status === 'backlog' && b.firstBrew === null && b.purchaseDate
         ? restDays(b.purchaseDate, b.frozenStart ?? null, b.frozenEnd ?? null, c.today) : null;
-      return d === null ? [] : [{ value: d, holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
+      return d === null ? [] : [{ value: d, detail: 'unopened since bought', holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
   money('priciestBag', 'Priciest bag per 100\u00a0g', 'max', 'per100', (c) => per100(c), { bought: true }),
   money('cheapestBag', 'Cheapest bag per 100\u00a0g', 'min', 'per100', (c) => per100(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
-  money('bestValue', 'Best value', 'max', 'value', (c) => value(c), { rating: true }),
+  money('bestValue', 'Best value for money', 'max', 'value', (c) => value(c), { rating: true }),
   money('buyingMonth', 'Biggest buying month', 'max', 'count', (c) =>
     [...groupBy(c.bags, (b) => b.purchaseDate?.slice(0, 7) ?? null)].map(([m, bs]) => ({
-      value: bs.length, detail: `$${bs.reduce((s, b) => s + (b.cost ?? 0), 0).toFixed(2)}`, holder: { label: m as string, date: `${m}-01` }
+      value: bs.length, detail: `${usd(spent(bs))} spent`, holder: { label: m as string, date: `${m}-01` }
     })), { scope: 'alltime' }),
-  money('roasterBags', 'Most bags from one roaster', 'max', 'count', (c) => roasters(c, (bs) => bs.length), { bought: true }),
-  money('roasterSpend', 'Most spent at one roaster', 'max', 'money', (c) => roasters(c, (bs) => bs.reduce((s, b) => s + (b.cost ?? 0), 0)), { bought: true }),
+  money('roasterBags', 'Most bags from one roaster', 'max', 'count', (c) => roasters(c, (bs) => bs.length, (bs) => `${usd(spent(bs))} spent`), { bought: true }),
+  money('roasterSpend', 'Most spent at one roaster', 'max', 'money', (c) => roasters(c, spent, (bs) => plural(bs.length, 'bag')), { bought: true }),
 
   extreme('doseHeavy', 'Heaviest dose', 'max', 'grams', (c) => brewMetric(c, (b) => b.dose)),
   extreme('doseLight', 'Lightest dose', 'min', 'grams', (c) => brewMetric(c, (b) => b.dose)),
-  extreme('ratioLong', 'Longest ratio', 'max', 'ratio', (c) => brewMetric(c, (b) => b.ratio, (b, v) => v >= (FLOORS[b.brewerType]?.ratio ?? 0))),
-  extreme('ratioShort', 'Shortest ratio', 'min', 'ratio', (c) => brewMetric(c, (b) => b.ratio, (b, v) => v >= (FLOORS[b.brewerType]?.ratio ?? 0))),
+  extreme('ratioLong', 'Longest ratio', 'max', 'ratio', (c) => brewMetric(c, (b) => b.ratio, (b, v) => v >= (FLOORS[b.brewerType]?.ratio ?? 0), ratioIn)),
+  extreme('ratioShort', 'Shortest ratio', 'min', 'ratio', (c) => brewMetric(c, (b) => b.ratio, (b, v) => v >= (FLOORS[b.brewerType]?.ratio ?? 0), ratioIn)),
   extreme('bloomLong', 'Longest bloom', 'max', 'seconds', (c) => brewMetric(c, (b) => b.bloomSeconds)),
   extreme('bloomShort', 'Shortest bloom', 'min', 'seconds', (c) => brewMetric(c, (b) => b.bloomSeconds)),
   extreme('brewTimeLong', 'Longest brew', 'max', 'seconds', (c) => brewMetric(c, (b) => b.brewTimeSeconds, (b, v) => v >= (FLOORS[b.brewerType]?.seconds ?? 0))),
   extreme('brewTimeShort', 'Shortest brew', 'min', 'seconds', (c) => brewMetric(c, (b) => b.brewTimeSeconds, (b, v) => v >= (FLOORS[b.brewerType]?.seconds ?? 0))),
   extreme('waterMost', 'Most water in one brew', 'max', 'ml', (c) => brewMetric(c, (b) => b.waterG)),
 
-  gentle('lowestBag', "Didn't click", 'min', 'rating', bestBag()),
-  gentle('biggestDip', 'Off day', 'max', 'rating', (c) => perBag(c, 2, (s) => {
+  gentle('lowestBag', 'Lowest-rated bag', 'min', 'rating', bestBag()),
+  gentle('biggestDip', 'Biggest drop between brews', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
       const d = s.rated[i - 1] - s.rated[i];
@@ -296,17 +316,18 @@ export const RECORDS: RecordDef[] = [
     }
     return best;
   })),
-  gentle('wildest', 'Kept you guessing', 'max', 'sd', (c) => perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews` }))),
-  gentle('slowestPeak', 'Took its time', 'max', 'count', (c) => perBag(c, 5, (s) => {
+  gentle('wildest', 'Most inconsistent bag', 'max', 'sd', (c) =>
+    perBag(c, 5, (s) => ({ value: s.sd!, detail: `ratings ranged ${rangeOf(s.rated)} over ${s.rated.length} brews` }))),
+  gentle('slowestPeak', 'Slowest to peak', 'max', 'count', (c) => perBag(c, 5, (s) => {
     const i = s.rated.indexOf(Math.max(...s.rated));
-    return { value: i + 1, detail: `brew ${i + 1} of ${s.rated.length}` };
+    return { value: i + 1, detail: `best brew was #${i + 1} of ${s.rated.length}` };
   })),
-  gentle('leastRoaster', 'Less your style · roaster', 'min', 'delta', least('roasters')),
-  gentle('leastOrigin', 'Less your style · origin', 'min', 'delta', least('origins')),
-  gentle('leastProcess', 'Less your style · process', 'min', 'delta', least('process')),
-  gentle('leastRoast', 'Less your style · roast level', 'min', 'delta', least('roast')),
-  gentle('toughValue', 'Toughest value', 'min', 'value', (c) => value(c)),
-  gentle('toughDay', 'Toughest day', 'min', 'rating', dayMean)
+  gentle('leastRoaster', 'Lowest-rated roaster', 'min', 'delta', least('roasters')),
+  gentle('leastOrigin', 'Lowest-rated origin', 'min', 'delta', least('origins')),
+  gentle('leastProcess', 'Lowest-rated process', 'min', 'delta', least('process')),
+  gentle('leastRoast', 'Lowest-rated roast level', 'min', 'delta', least('roast')),
+  gentle('toughValue', 'Least value for money', 'min', 'value', (c) => value(c)),
+  gentle('toughDay', 'Lowest-rated day', 'min', 'rating', dayMean)
 ];
 
 // Grind extremes are generated per grinder. Value = the setting as a base-1000 fraction (2.4.1 →
@@ -321,13 +342,18 @@ const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
     return [extreme(`grindFine:${g}`, `Finest grind · ${g}`, 'min', 'grind', run), extreme(`grindCoarse:${g}`, `Coarsest grind · ${g}`, 'max', 'grind', run)];
   });
 
-export interface RecordsCtx { period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; size: number; today: string }
+export interface RecordsCtx {
+  period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; caffeine?: Caffeine; size: number; today: string;
+}
 
 const SECTIONS: Section[] = ['taste', 'volume', 'freshness', 'money', 'extremes', 'gentle'];
 const bagsIn = (bags: readonly BagFact[], w: Period | null) => (w ? bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, w)) : []);
 
-export function recordsTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: RecordsCtx): RecordsTab {
+export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagFact[], c: RecordsCtx): RecordsTab {
   const all: Period = { start: null, end: c.today };
+  // Caffeine filters every record's brews and bags; the brewer switch still offers every type.
+  const caf = <T extends { decaf: boolean }>(x: T) => !c.caffeine || x.decaf === (c.caffeine === 'decaf');
+  const brews = allBrews.filter(caf), bags = allBags.filter(caf);
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => ({
     brews: w ? brews.filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
     bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today
@@ -352,8 +378,9 @@ export function recordsTab(brews: readonly BrewFact[], bags: readonly BagFact[],
   const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer });
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
-    topBrews: top.slice(0, 10).map((b) => ({ rating: b.rating!, ...row(b) })),
+    topBrews: top.slice(0, 20).map((b) => ({ rating: b.rating!, ...row(b) })),
     perfectTens: top.filter((b) => b.rating === 10).map(row),
-    brewerTypes: BREWER_TYPES.filter((t) => brews.some((b) => b.brewerType === t))
+    brewerTypes: BREWER_TYPES.filter((t) => allBrews.some((b) => b.brewerType === t)),
+    coversAll: !c.period.start || !brews.length || c.period.start <= brews[0].localDate
   };
 }

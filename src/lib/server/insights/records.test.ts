@@ -46,21 +46,18 @@ describe('taste', () => {
     expect(p).toMatchObject({ value: 7.5, detail: '1 → 8.5' });
   });
   it('biggest climb: first → best', () =>
-    expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: '2.5 → 9 at brew 3 of 4' }));
+    expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: 'first 2.5 → best 9 (brew 3 of 4)' }));
   it('hole-in-one counts bags (≥3 rated brews) best on their first brew; holder = highest', () => {
     const p = run('holeInOne', [...rated(1, [9, 8, 8]), ...rated(2, [7, 6, 7]), ...rated(3, [5, 8, 8]), ...rated(4, [9, 1])]);
-    expect(p).toMatchObject({ value: 2, detail: 'of 3 bags', holder: { label: 'Bag 1' } });
+    expect(p).toMatchObject({ value: 2, detail: 'of 3 bags with 3+ ratings', holder: { label: 'Bag 1' } });
   });
-  it('most consistent needs ≥5 rated brews, lowest SD', () =>
-    expect(run('consistent', [...rated(1, [8.5, 8.5, 8.5, 8.5, 8.5]), ...rated(2, [8, 8, 8, 8])])?.value).toBe(0));
+  it('most consistent needs ≥5 rated brews, lowest SD; detail names the mean', () =>
+    expect(run('consistent', [...rated(1, [8.5, 8.5, 8.5, 8.5, 8.5]), ...rated(2, [8, 8, 8, 8])]))
+      .toMatchObject({ value: 0, detail: '5 brews at 8.50' }));
   it('best day needs ≥3 rated brews that day', () => {
     const d = (date: string, r: number) => brew({ localDate: date, localTime: `${date}T09:00`, rating: r, coffeeId: 1 });
     expect(run('bestDay', [d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-19', 10)])?.holder.date)
       .toBe('2026-08-18');
-  });
-  it('best decaf only among decaf bags; omitted when none', () => {
-    expect(run('bestDecaf', rated(1, [9, 9, 9]))).toBeNull();
-    expect(run('bestDecaf', rated(4, [7, 7, 7]).map((b) => ({ ...b, decaf: true })))?.value).toBe(7);
   });
   it('Current excludes pre-2026-06-01 ratings', () =>
     expect(run('bestBag', rated(1, [9, 9, 9], '2026-05-01'), BAGS, 'current')).toBeNull());
@@ -75,12 +72,10 @@ describe('volume', () => {
   });
   it('marathon = most brews of one bag in one calendar day', () =>
     expect(run('marathon', [...rated(1, [8, 8, 8], '2026-04-15'), ...rated(2, [8, 8], '2026-04-15')])?.value).toBe(3));
-  it('night owl (caffeinated) skips decaf; back-filled brews skipped', () => {
+  it('night owl skips back-filled brews', () => {
     const late = brew({ localTime: '2026-03-01T23:37', decaf: true });
     const later = brew({ localTime: '2026-03-02T23:59', backfilled: true });
-    const caf = brew({ localTime: '2026-03-03T22:10' });
-    expect(run('nightOwl', [late, later, caf])?.value).toBe(23 * 60 + 37);
-    expect(run('nightOwlCaf', [late, later, caf])?.value).toBe(22 * 60 + 10);
+    expect(run('nightOwl', [late, later])?.value).toBe(23 * 60 + 37);
   });
   it('gear tour = distinct brewers on one bag', () =>
     expect(run('gearTour', ['A - x', 'B - y', 'A - x'].map((m) => brew({ coffeeId: 1, brewer: m })))?.value).toBe(2));
@@ -99,7 +94,7 @@ describe('freshness and money', () => {
     const thin = [brew({ coffeeId: 1, dose: 90, localDate: '2026-03-01' })]; // 90 g/day but 1 day and < 100 g
     const big = [10, 11, 12].flatMap((d) => [1, 2, 3, 4, 5].map(() => brew({ coffeeId: 2, dose: 16.6, localDate: `2026-03-${d}` })));
     const p = run('drinkRate', [...thin, ...big]);
-    expect(p?.holder.label).toBe('Bag 2');
+    expect(p).toMatchObject({ holder: { label: 'Bag 2' }, detail: '249g over 3 days' });
     expect(p?.value).toBeCloseTo(83, 6);
   });
   it('fastest finish only counts finished bags', () => {
@@ -127,7 +122,7 @@ describe('freshness and money', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 0, amountG: 250, purchaseDate: '2026-03-01' }),
       bag({ id: 2, name: 'Bag 2', cost: 30, amountG: null, purchaseDate: '2026-03-01' }),
       bag({ id: 3, name: 'Bag 3', cost: 20, amountG: 250, purchaseDate: '2026-03-01' })];
-    expect(run('priciestBag', [], bags)).toMatchObject({ holder: { label: 'Bag 3' }, value: 8 });
+    expect(run('priciestBag', [], bags)).toMatchObject({ holder: { label: 'Bag 3' }, value: 8, detail: '$20.00 for 250g' });
   });
   it('best value = mean / $ per 100 g, detail names both', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 20, amountG: 200 }), bag({ id: 2, name: 'Bag 2', cost: 10, amountG: 100 })];
@@ -138,18 +133,19 @@ describe('freshness and money', () => {
   it('biggest buying month is all-time, by bags', () => {
     expect(RECORDS.find((r) => r.key === 'buyingMonth')!.scope).toBe('alltime');
     const bags = [bag({ id: 1, purchaseDate: '2026-03-02', cost: 10 }), bag({ id: 2, purchaseDate: '2026-03-20', cost: 15 }), bag({ id: 3, purchaseDate: '2026-04-01' })];
-    expect(run('buyingMonth', [], bags)).toMatchObject({ value: 2, holder: { label: '2026-03' }, detail: '$25.00' });
+    expect(run('buyingMonth', [], bags)).toMatchObject({ value: 2, holder: { label: '2026-03' }, detail: '$25.00 spent' });
   });
   it('roaster records group bags by roaster', () => {
     const bags = [bag({ id: 1, roaster: 'A', cost: 10, purchaseDate: '2026-03-02' }), bag({ id: 2, roaster: 'A', cost: 15, purchaseDate: '2026-03-20' }),
       bag({ id: 3, roaster: 'B', cost: 40, purchaseDate: '2026-03-21' })];
-    expect(run('roasterBags', [], bags)).toMatchObject({ value: 2, holder: { label: 'A' } });
-    expect(run('roasterSpend', [], bags)).toMatchObject({ value: 40, holder: { label: 'B' } });
+    expect(run('roasterBags', [], bags)).toMatchObject({ value: 2, holder: { label: 'A' }, detail: '$25.00 spent' });
+    expect(run('roasterSpend', [], bags)).toMatchObject({ value: 40, holder: { label: 'B' }, detail: '1 bag' });
   });
-  it('cups: priciest and cheapest', () => {
-    const b = [brew({ costPerBrew: 1.5, rating: 8 }), brew({ costPerBrew: 0.4 })];
-    expect(run('priciestCup', b)).toMatchObject({ value: 1.5, detail: 'rated 8' });
-    expect(run('cheapestCup', b)?.value).toBe(0.4);
+  it('cups: priciest and cheapest, detail = dose at the bag price', () => {
+    const bags = [bag({ id: 1, name: 'Bag 1', cost: 25, amountG: 250 })];
+    const b = [brew({ costPerBrew: 1.5, dose: 15 }), brew({ costPerBrew: 0.4 })];
+    expect(run('priciestCup', b, bags)).toMatchObject({ value: 1.5, detail: '15g at $10.00/100\u00a0g' });
+    expect(run('cheapestCup', b, bags)?.value).toBe(0.4);
   });
 });
 
@@ -157,6 +153,7 @@ describe('floors and junk', () => {
   it('pour-over ratio floor 1:12 and brew-time floor 60 s', () => {
     const b = [brew({ ratio: 6.7 }), brew({ ratio: 15 }), brew({ brewTimeSeconds: 30 }), brew({ brewTimeSeconds: 200 })];
     expect(run('ratioShort', b)?.value).toBe(15);
+    expect(run('ratioLong', [brew({ ratio: 16, dose: 15, waterG: 240 })])?.detail).toBe('15g to 240g');
     expect(run('brewTimeShort', b)?.value).toBe(200);
   });
   it('soup has no floors', () =>
@@ -186,8 +183,8 @@ describe('gentle', () => {
     expect(run('lowestBag', b)?.holder.label).toBe('Bag 1');
     expect(run('lowestBag', b)?.value).toBeCloseTo(6.4, 9);
     expect(run('biggestDip', b)).toMatchObject({ value: 4, detail: '8 → 4' });
-    expect(run('wildest', b)?.holder.label).toBe('Bag 1');
-    expect(run('slowestPeak', b)).toMatchObject({ value: 4, detail: 'brew 4 of 5' });
+    expect(run('wildest', b)).toMatchObject({ holder: { label: 'Bag 1' }, detail: 'ratings ranged 4–9 over 5 brews' });
+    expect(run('slowestPeak', b)).toMatchObject({ value: 4, detail: 'best brew was #4 of 5' });
   });
   it('toughest day is the lowest day with 3+ rated brews', () => {
     const d = (date: string, r: number) => brew({ localDate: date, localTime: `${date}T09:00`, rating: r });
@@ -200,6 +197,7 @@ describe('gentle', () => {
     const bags = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => bag({ id, name: `Bag ${id}` }));
     // Your average = mean of bag means, 6; A adjusted (3×5 + 5×6) / 8 = 5.625 → −0.375 (ranked), raw 5 → −1 (shown).
     expect(run('leastRoaster', brews, bags)).toMatchObject({ value: -0.375, mean: -1, holder: { label: 'A' } });
+    expect(run('leastRoaster', mk('A', [1, 2, 3], 5), bags)).toBeNull(); // one group is the average
   });
 });
 
@@ -232,16 +230,32 @@ describe('recordsTab', () => {
     expect(tileOf(t, 'marathon')!.value).toBe(MARATHON / 2);
     expect(tileOf(t, 'mostBrewedBag')!.value).toBe(MOST_BREWED);
   });
-  it('topBrews <= 10 best first; perfectTens only 10s', () => {
-    const r = [10, 9.5, 9, 10, 9, 9.5, 9, 9, 10, 9, 9, 9.5];
+  it('topBrews <= 20 best first; perfectTens only 10s', () => {
+    const r = [10, 9.5, 9, 10, 9, 9.5, 9, 9, 10, 9, 9, 9.5, ...Array(10).fill(8)];
     const t = recordsTab(r.map((rating, i) => brew({ coffeeId: 1, rating, localDate: `2026-05-${String(i + 1).padStart(2, '0')}` })), BAGS, CTX);
-    expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9]);
+    expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9, 9, 9, ...Array(8).fill(8)]);
     expect(t.perfectTens).toHaveLength(3);
   });
   it('brewerTypes: present all-time, in BREWER_TYPES order; sections in order, empty omitted', () => {
     const t = recordsTab([brew({ brewerType: 'soup', dose: 10 }), brew({ brewerType: 'pourover', dose: 12 })], BAGS, CTX);
     expect(t.brewerTypes).toEqual(['pourover', 'soup']);
     expect(t.sections.map((s) => s.key)).toEqual(['volume', 'extremes']);
+  });
+  it('caffeine filters brews and bags; brewer types stay all-time', () => {
+    const bags = [bag({ id: 1, name: 'Caf', cost: 30, amountG: 250, purchaseDate: '2026-03-01' }),
+      bag({ id: 2, name: 'Dec', decaf: true, cost: 10, amountG: 250, purchaseDate: '2026-03-01' })];
+    const b = [brew({ coffeeId: 1, dose: 20, brewerType: 'soup' }), brew({ coffeeId: 2, dose: 12, decaf: true })];
+    const t = recordsTab(b, bags, { ...CTX, caffeine: 'decaf' });
+    expect(tileOf(t, 'doseHeavy')!.value).toBe(12);
+    expect(tileOf(t, 'priciestBag')!.holder.label).toBe('Dec');
+    expect(t.brewerTypes).toEqual(['pourover', 'soup']);
+    expect(tileOf(recordsTab(b, bags, { ...CTX, caffeine: 'caf' }), 'doseLight')!.value).toBe(20);
+  });
+  it('coversAll when the period starts on or before the first brew', () => {
+    const b = [brew({ localDate: '2026-09-01', dose: 10 })];
+    expect(recordsTab(b, BAGS, { ...CTX, period: { start: '2026-08-01', end: '2026-10-11' } }).coversAll).toBe(true);
+    expect(recordsTab(b, BAGS, { ...CTX, period: { start: '2026-09-02', end: '2026-10-11' } }).coversAll).toBe(false);
+    expect(recordsTab(b, BAGS, CTX).coversAll).toBe(true);
   });
   it('brewer switch limits extremes only', () => {
     const b = [brew({ brewerType: 'soup', dose: 40 }), brew({ brewerType: 'pourover', dose: 15 })];

@@ -424,5 +424,17 @@ describe('highlights params', () => {
     expect(insightsParams(parse('')).toString()).toBe('');
   });
   it('reset keeps the tab only', () =>
-    expect(resetInsights(parse('tab=records&brewer=soup'))).toEqual({ tab: 'records' }));
+    expect(resetInsights(parse('tab=records&brewer=soup&caffeine=decaf&top=20'))).toEqual({ tab: 'records' }));
+  it('caffeine: caf or decaf, junk dropped, round-trips', () => {
+    expect(parse('caffeine=Decaf').caffeine).toBe('decaf');
+    expect(parse('caffeine=caf').caffeine).toBe('caf');
+    expect(parse('caffeine=all').caffeine).toBeUndefined();
+    expect(insightsParams(parse('tab=records&caffeine=caf')).toString()).toBe('tab=records&caffeine=caf');
+  });
+  it('top: only 20 expands the top brews', () => {
+    expect(parse('top=20').top).toBe(20);
+    expect(parse('top=10').top).toBeUndefined();
+    expect(parse('top=50').top).toBeUndefined();
+    expect(insightsParams(parse('tab=records&top=20')).toString()).toBe('tab=records&top=20');
+  });
 });

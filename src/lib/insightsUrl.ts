@@ -27,6 +27,9 @@ export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;
 export type BrewerType = (typeof BREWER_TYPES)[number];
+// Records: caffeinated or decaf brews and bags only (absent = all).
+export const CAFFEINES = ['caf', 'decaf'] as const;
+export type Caffeine = (typeof CAFFEINES)[number];
 
 export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones'] as const;
 export type Tab = (typeof TABS)[number];
@@ -117,15 +120,18 @@ export interface InsightsUrlState {
   unit?: Unit;
   by?: By;
   brewer?: BrewerType; // Records/Milestones: one brewer type (absent = all)
+  caffeine?: Caffeine; // Records: absent = all
+  top?: 20; // Records: the top-brews list expanded from 10 to 20
   kinds?: Kind[]; // Milestones: absent = all kinds
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg' | 'brewer' | 'kinds'>> & {
-  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[];
+type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top';
+export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
+  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: 20;
 };
 
-export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg' | 'brewer' | 'kinds'>> & { agg: Agg } = {
+export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
   range: '12m',
   compare: 0,
   ratings: 'current',
@@ -236,7 +242,9 @@ export function parseInsightsUrl(
     by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)),
     agg: pickOne(p, 'agg', AGGS) === 'total' ? 'total' : undefined,
     brewer: pickOne(p, 'brewer', brewerTypes),
-    kinds: parseList(p, 'kinds', KINDS)
+    kinds: parseList(p, 'kinds', KINDS),
+    caffeine: pickOne(p, 'caffeine', CAFFEINES),
+    top: p.get('top') === '20' ? 20 : undefined
   };
 }
 
@@ -256,6 +264,8 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.agg === 'total') p.set('agg', 'total');
   if (s.brewer) p.set('brewer', s.brewer);
   if (s.kinds) p.set('kinds', s.kinds.join(','));
+  if (s.caffeine) p.set('caffeine', s.caffeine);
+  if (s.top) p.set('top', String(s.top));
   return p;
 }
 
@@ -278,7 +288,9 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     by: s.by,
     agg: s.agg ?? DEFAULTS.agg,
     brewer: s.brewer,
-    kinds: s.kinds
+    kinds: s.kinds,
+    caffeine: s.caffeine,
+    top: s.top
   };
 }
 
