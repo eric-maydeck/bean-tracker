@@ -30,6 +30,9 @@ export type BrewerType = (typeof BREWER_TYPES)[number];
 // Records: caffeinated or decaf brews and bags only (absent = all).
 export const CAFFEINES = ['caf', 'decaf'] as const;
 export type Caffeine = (typeof CAFFEINES)[number];
+// Records: how many top brews show (absent = 10).
+export const TOPS = [20, 50] as const;
+export type Top = (typeof TOPS)[number];
 
 export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones'] as const;
 export type Tab = (typeof TABS)[number];
@@ -121,14 +124,14 @@ export interface InsightsUrlState {
   by?: By;
   brewer?: BrewerType; // Records/Milestones: one brewer type (absent = all)
   caffeine?: Caffeine; // Records: absent = all
-  top?: 20; // Records: the top-brews list expanded from 10 to 20
+  top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
   kinds?: Kind[]; // Milestones: absent = all kinds
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
 type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: 20;
+  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top;
 };
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
@@ -244,7 +247,7 @@ export function parseInsightsUrl(
     brewer: pickOne(p, 'brewer', brewerTypes),
     kinds: parseList(p, 'kinds', KINDS),
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
-    top: p.get('top') === '20' ? 20 : undefined
+    top: TOPS.find((n) => String(n) === p.get('top'))
   };
 }
 

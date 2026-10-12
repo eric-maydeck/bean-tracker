@@ -1561,8 +1561,13 @@ export const STATES: State[] = [
     } },
   { name: 'insights-records-top20', path: () => '/insights?tab=records&range=all&top=20',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Show top 10' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Show less' })).toBeVisible();
       await expect(page.locator('.top-brews li')).not.toHaveCount(10);
+    } },
+  { name: 'insights-records-top50', path: () => '/insights?tab=records&range=all&top=50',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Show less' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Show more' })).toHaveCount(0);
     } },
   { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
     act: async (page) => {

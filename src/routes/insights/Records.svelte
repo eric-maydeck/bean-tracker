@@ -2,16 +2,16 @@
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
+  import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
 
   let {
-    t, ratings, brewer, caffeine, top, perPerson, allRange, ratingsHelp, personHelp, placeTip, choose
+    t, ratings, brewer, caffeine, top, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
   }: {
-    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: 20 | undefined; perPerson: boolean;
-    allRange: boolean;
+    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; perPerson: boolean;
+    allRange: boolean; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -63,6 +63,12 @@
     parts(p, fmt)[2] ?? (fmt === 'grind' ? undefined : BOUGHT.has(key) ? `${p.detail}${allRange ? ', all time' : ' this period'}` : p.detail);
   // Badge: a snapshot ("Now"), an all-time-only record, or a period holder that is the all-time record
   // (not when the period covers all the data, where every record is).
+  // The compare line names its window, as the Compare menu does ("Previous 12 months" → "Prev. 12
+  // months"); a label too long for a tile line (custom dates) says "Previous period".
+  let wasLabel = $derived.by(() => {
+    const l = compareLabel.replace(/^Previous /, 'Prev. ');
+    return l && l.length <= 16 ? l : 'Previous period';
+  });
   const BADGE_HELP = {
     record: 'Holds the all-time record.',
     alltime: 'Counted over all time, whatever the Period.',
@@ -180,7 +186,7 @@
     {#if (!b && r.allTime) || r.was}
       <div class="grp">
         {#if !b && r.allTime}{@render holderLine('All-time', r.allTime, r.fmt)}{/if}
-        {#if r.was}{@render holderLine('Was', r.was, r.fmt)}{/if}
+        {#if r.was}{@render holderLine(wasLabel, r.was, r.fmt)}{/if}
       </div>
     {/if}
     {#if b}
@@ -246,11 +252,14 @@
           </li>
         {/each}
       </ol>
+      <!-- 10 → 20 → 50 in steps; Show less goes straight back to 10. -->
       {#if t.topBrews.length > 10}
+        {@const next = top === 50 ? null : top === 20 ? 50 : 20}
         <div class="top-foot">
-          <button class="button button-ghost" aria-expanded={!!top} onclick={() => choose({ top: top ? undefined : 20 })}
-            >{top ? 'Show top 10' : `Show top ${t.topBrews.length}`}</button
-          >
+          {#if next && t.topBrews.length > shown.length}
+            <button class="button button-ghost" onclick={() => choose({ top: next })}>Show more</button>
+          {/if}
+          {#if top}<button class="button button-ghost" onclick={() => choose({ top: undefined })}>Show less</button>{/if}
         </div>
       {/if}
     {/if}
@@ -303,6 +312,7 @@
   .top-foot {
     display: flex;
     justify-content: center;
+    gap: var(--space-3);
     padding-top: var(--space-2);
   }
   .top-foot button {
@@ -328,9 +338,9 @@
   .grp :global(.hl-holder) {
     line-height: 1.3;
   }
-  /* The tile's name: bold, in the accent, so it stands apart from the muted lines above it. */
+  /* The tile's name: bold body text, apart from the muted lines above it and the accent links. */
   .caption-link {
-    color: var(--color-accent);
+    color: var(--color-text);
     font-weight: 700;
     text-decoration: none;
   }

@@ -37,7 +37,7 @@ export interface RecordTile extends RecordPick {
 }
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
-  topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 20, best first (10 shown until top=20)
+  topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 50, best first (10 shown, or top=20|50)
   perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
   coversAll: boolean; // the period starts on or before the first (filtered) brew: every record is all-time
@@ -386,7 +386,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer });
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
-    topBrews: top.slice(0, 20).map((b) => ({ rating: b.rating!, ...row(b) })),
+    topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),
     brewerTypes: BREWER_TYPES.filter((t) => allBrews.some((b) => b.brewerType === t)),

@@ -235,10 +235,10 @@ describe('recordsTab', () => {
     expect(tileOf(t, 'marathon')!.value).toBe(MARATHON / 2);
     expect(tileOf(t, 'mostBrewedBag')!.value).toBe(MOST_BREWED);
   });
-  it('topBrews <= 20 best first; perfectTens = bags with a 10, with counts', () => {
-    const r = [10, 9.5, 9, 10, 9, 9.5, 9, 9, 10, 9, 9, 9.5, ...Array(10).fill(8)];
+  it('topBrews <= 50 best first; perfectTens = bags with a 10, with counts', () => {
+    const r = [10, 9.5, 9, 10, 9, 9.5, 9, 9, 10, 9, 9, 9.5, ...Array(48).fill(8)];
     const t = recordsTab(r.map((rating, i) => brew({ coffeeId: 1, rating, localDate: `2026-05-${String(i + 1).padStart(2, '0')}` })), BAGS, CTX);
-    expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9, 9, 9, ...Array(8).fill(8)]);
+    expect(t.topBrews.map((x) => x.rating)).toEqual([10, 10, 10, 9.5, 9.5, 9.5, 9, 9, 9, 9, 9, 9, ...Array(38).fill(8)]);
     expect(t.perfectTens).toMatchObject([{ holder: { label: 'Bag 1' }, count: 3 }]);
   });
   it('brewerTypes: present all-time, in BREWER_TYPES order; sections in order, empty omitted', () => {

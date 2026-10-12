@@ -563,6 +563,7 @@
     top={s.top}
     perPerson={perPersonOn}
     allRange={!data.period.start}
+    {compareLabel}
     ratingsHelp={RATINGS_HELP}
     personHelp={PEOPLE_HELP.person}
     {placeTip}

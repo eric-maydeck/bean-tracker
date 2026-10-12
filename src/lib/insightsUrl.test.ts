@@ -431,10 +431,12 @@ describe('highlights params', () => {
     expect(parse('caffeine=all').caffeine).toBeUndefined();
     expect(insightsParams(parse('tab=records&caffeine=caf')).toString()).toBe('tab=records&caffeine=caf');
   });
-  it('top: only 20 expands the top brews', () => {
+  it('top: 20 or 50 expand the top brews; 10 is the bare URL', () => {
     expect(parse('top=20').top).toBe(20);
+    expect(parse('top=50').top).toBe(50);
     expect(parse('top=10').top).toBeUndefined();
-    expect(parse('top=50').top).toBeUndefined();
+    expect(parse('top=30').top).toBeUndefined();
+    expect(insightsParams(parse('tab=records&top=50')).toString()).toBe('tab=records&top=50');
     expect(insightsParams(parse('tab=records&top=20')).toString()).toBe('tab=records&top=20');
   });
 });
