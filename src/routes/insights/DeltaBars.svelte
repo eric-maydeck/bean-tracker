@@ -1,9 +1,16 @@
 <script lang="ts" module>
+  import type { BandStat } from '$lib/server/insights/lab';
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   export const SAME_BAG_HELP =
     "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40. Only bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip also shows the plain bag-weighted average.";
+  // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
+  export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false) => bands.map((b) => ({
+    label: b.label, value: b.delta, text: b.delta === null ? 'unpaired' : signed(b.delta), pale: !b.solid, strength: b.strength,
+    bold: bold(b.label),
+    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${plural(b.plainBrews, 'brew')}, ${plural(b.plainBags, 'bag')})`
+  }));
 </script>
 
 <script lang="ts">

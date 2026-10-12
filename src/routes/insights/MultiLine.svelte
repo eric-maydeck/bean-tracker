@@ -76,7 +76,7 @@
       {#if col !== null}<div class="guide" bind:this={guide} style:left="{px(col, n)}%"></div>{/if}
     </div>
     <div class="x-labels" aria-hidden="true">
-      {#each xs as i (i)}<span style:left="{px(i, n)}%" class:first={i === 0 && n > 1} class:last={i === n - 1 && n > 1}>{m.x[i]}</span>{/each}
+      {#each xs as i (i)}<span style:left="{px(i, n)}%" class:first={i === 0 && n > 1} class:last={i === n - 1 && n > 1} class:alt={n > 5 && (n - 1 - i) % 2 === 1}>{m.x[i]}</span>{/each}
     </div>
   </div>
   <ul class="legend" aria-hidden="true">
@@ -98,6 +98,13 @@
   .multi-line {
     position: relative;
     width: 100%;
+    container-type: inline-size;
+  }
+  /* Narrow (phones): 6–8 month labels collide, so every other one shows, counted back from the last. */
+  @container (width < 560px) {
+    .x-labels .alt {
+      display: none;
+    }
   }
   .plot-row {
     display: grid;

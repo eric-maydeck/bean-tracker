@@ -15,6 +15,7 @@
   import Insights from './Insights.svelte';
   import SweetSpots from './SweetSpots.svelte';
   import Brewing from './Brewing.svelte';
+  import Water from './Water.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
@@ -595,6 +596,8 @@
   <SweetSpots t={data.sweetSpots} lab={data.lab} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
   <Brewing t={data.brewing} lab={data.lab} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
+{:else if s.tab === 'water' && data.water}
+  <Water t={data.water} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}

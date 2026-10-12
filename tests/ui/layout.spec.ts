@@ -1930,6 +1930,64 @@ export const STATES: State[] = [
       await page.locator('[data-section="brewing-temp"] .bar-row').first().click();
       await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
     } },
+  { name: 'insights-water', path: () => '/insights?tab=water',
+    act: async (page) => {
+      for (const h of ['Recipes', 'Minerals vs rating', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water eras', 'Same bag, different water'])
+        await expect(page.getByRole('heading', { name: h })).toBeVisible();
+      await expect(page.locator('[data-section="water-recipes"] .board-row')).toHaveCount(3);
+      await expect(page.locator('[data-section="water-gh"] .bar-row')).toHaveCount(3); // 0–30, 60–90, 90+ ppm
+      await expect(page.getByText('Strongly tied to era and roast level')).toBeVisible();
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
+      await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
+      // Nothing takes focus on load (the phone keyboard would pop up).
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+      await expectGridRowsFull(page, '.mineral-grid');
+      // Mineral cards in a row are one height, and every bar value stays inside its card.
+      const off = await page.locator('.mineral-card').evaluateAll((cs) => cs.flatMap((c) => {
+        const r = c.getBoundingClientRect();
+        const mate = cs.find((o) => o !== c && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
+        const spill = [...c.querySelectorAll('.bar-value, .bar-label')].some((v) => { const b = v.getBoundingClientRect(); return b.right > r.right + 1 || b.left < r.left - 1; });
+        return [...(mate && Math.abs(mate.getBoundingClientRect().height - r.height) > 1 ? [`${c.textContent?.slice(0, 8)} height`] : []), ...(spill ? [`${c.textContent?.slice(0, 8)} spills`] : [])];
+      }));
+      expect(off).toEqual([]);
+      // Recipe deltas line up down the list.
+      const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
+      expect(new Set(rights).size).toBe(1);
+      // The heatmaps pair up from 1150 px (neither scrolls), stacked below.
+      const w = page.viewportSize()?.width ?? 0;
+      const tops = await page.locator('.heat-panel').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().top)));
+      expect(tops[0] === tops[1]).toBe(w >= 1150);
+      if (w >= 1150) {
+        const scrolls = await page.locator('.heat-panel .scroll').evaluateAll((ss) => ss.filter((s) => s.scrollWidth > s.clientWidth + 1).length);
+        expect(scrolls).toBe(0);
+        const hs = await page.locator('.heat-panel').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().height)));
+        expect(Math.abs(hs[0] - hs[1])).toBeLessThanOrEqual(1);
+      }
+      // Keyboard: Tab onto the GH bars opens a themed tip, an arrow moves it, Escape closes it.
+      const first = page.locator('[data-section="water-gh"] .bar-row').first();
+      await first.evaluate((el) => {
+        const all = [...document.querySelectorAll<HTMLElement>('a[href], button, select, [tabindex="0"]')];
+        all[all.indexOf(el as HTMLElement) - 1].focus();
+      });
+      await page.keyboard.press('Tab');
+      await expect(first).toBeFocused();
+      const tip = page.locator('[data-section="water-gh"] .cell-tip');
+      await expect(tip).toContainText(/brews?/);
+      const was = await tip.textContent();
+      await page.keyboard.press('ArrowDown');
+      await expect(tip).not.toHaveText(was!);
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+      await page.locator('[data-section="water-gh"] .bar-row').nth(1).blur();
+      // A mineral bar's tip names its unit and the overall average.
+      await page.locator('.mineral-card .bar-row').first().click();
+      await expect(page.locator('.mineral-card .cell-tip')).toContainText(/: avg \d\.\d\d \(.* · overall \d\.\d\d$/);
+    } },
+  { name: 'insights-water-tip', path: () => '/insights?tab=water',
+    act: async (page) => {
+      await page.locator('[data-section="water-gh"] .bar-row').first().click();
+      await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
+    } },
   { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       await expectGridRowsFull(page, '.finding-grid');

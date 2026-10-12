@@ -1,11 +1,11 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
-  import Heatmap from '$lib/components/Heatmap.svelte';
-  import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
-  import type { BandStat, BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
-  import DeltaBars, { plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
+    import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
+  import type { BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
+  import DeltaBars, { bandRows, plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
+  import LabHeatmap from './LabHeatmap.svelte';
   import MultiLine from './MultiLine.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
@@ -37,22 +37,6 @@
   const NOTABLE = ['85 °C', '88 °C', '91 °C', '92 °C', '94 °C']; // the user's notable temps, bold in Exact (spec)
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
-
-  const rowsOf = (bands: BandStat[], bold = false) => bands.map((b) => ({
-    label: b.label, value: b.delta, text: b.delta === null ? 'unpaired' : signed(b.delta), pale: !b.solid, strength: b.strength,
-    bold: bold && NOTABLE.includes(b.label),
-    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${plural(b.plainBrews, 'brew')}, ${plural(b.plainBags, 'bag')})`
-  }));
-  // A thin cell draws faded with its value; a blank one says why: no brews at all, or none from a bag
-  // brewed in two bands (nothing to compare).
-  const cellText = (v: VarChart) => (x: number | null, r: number, c: number) => {
-    const cell = v.by!.cells[r][c];
-    return x !== null ? `${signed(x)}${cell?.solid ? '' : ' (few brews)'}` : !cell ? 'No brews' : 'No paired brews';
-  };
-  const cellLabel = (v: VarChart) => (r: number, c: number) => {
-    const by = v.by!, cell = by.cells[r][c];
-    return `${by.rows[r]} · ${by.cols[c]}${cell?.brews ? ` · ${plural(cell.brews, 'brew')}, ${plural(cell.bags, 'bag')}` : ''}`;
-  };
 </script>
 
 <div class="insights-bar brewing-bar">
@@ -85,7 +69,7 @@
       {#if t.dialIn.length}
         <section class="chart-panel" data-section="brewing-dialin">
           <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
-          <DeltaBars rows={rowsOf(t.dialIn)} ariaLabel="Dial-in: same-bag delta by brew number in the bag" />
+          <DeltaBars rows={bandRows(t.dialIn)} ariaLabel="Dial-in: same-bag delta by brew number in the bag" />
         </section>
       {/if}
       {#if t.bestAt.length}
@@ -138,13 +122,11 @@
               </div>
             </div>
             {#if v.by}
-              <Heatmap diverging rows={v.by.rows} cols={v.by.cols} cells={v.by.cells.map((r) => r.map((c) => c?.delta ?? null))}
-                faded={v.by.cells.map((r) => r.map((c) => !!c && c.delta !== null && !c.solid))}
-                text={cellText(v)} label={cellLabel(v)} ariaLabel="{TITLE[v.key]} by {BY.find(([k]) => k === by)?.[1]}" />
+              <LabHeatmap by={v.by} ariaLabel="{TITLE[v.key]} by {BY.find(([k]) => k === by)?.[1]}" />
             {:else if by}
               <p class="hl-empty">No {BY.find(([k]) => k === by)?.[1].toLowerCase()} has 3+ bags here.</p>
             {:else}
-              <DeltaBars rows={rowsOf(v.bands, v.key === 'temp' && s.temp === 'exact')} ariaLabel="{TITLE[v.key]} vs rating" />
+              <DeltaBars rows={bandRows(v.bands, (l) => v.key === 'temp' && s.temp === 'exact' && NOTABLE.includes(l))} ariaLabel="{TITLE[v.key]} vs rating" />
             {/if}
             {#if v.key === 'grind'}<p class="chart-note">{grinderName}</p>{/if}
           </section>
