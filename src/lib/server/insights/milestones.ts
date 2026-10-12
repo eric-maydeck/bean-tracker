@@ -4,7 +4,7 @@ import { countsForRating, RATINGS_SETTLED_FROM } from './ratings';
 import { addMonths, daysBetween, inPeriod, type Period } from './time';
 import { isFinished } from './overview';
 import { BREW_KEY } from './leaderboards';
-import { bagHolder, type Holder } from './records';
+import { bagHolder, groupBy, type Holder } from './records';
 
 export interface Ladder { early: number[]; steps: [until: number, step: number][]; then: number }
 export type LadderKey = 'brews' | 'kgBrewed' | 'kgBought' | 'bagsBought' | 'bagsFinished' | 'coffees'
@@ -68,6 +68,7 @@ export const ordinal = (n: number): string => {
   return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
 };
 
+// loadFacts already returns brews in time order; tests and callers may not.
 const byTime = (brews: readonly BrewFact[]) => [...brews].sort((a, b) => (a.localTime < b.localTime ? -1 : a.localTime > b.localTime ? 1 : 0));
 // Every milestone links the coffee behind it: the brew or bag that crossed it.
 type Link = { detail?: string; href?: string };
@@ -103,8 +104,10 @@ function walk(key: string, steps: Step[], ts: (upTo: number) => number[], title:
   return out;
 }
 
+// Brews rated 9+ follow Current/All, like the rating Bests.
+const nine = (b: BrewFact, ratings: Ratings) => (b.rating ?? 0) >= 9 && countsForRating(b, ratings);
 // Count milestones over all-time history: thresholds are the real totals, the caller filters by period.
-export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]): MilestoneEvent[] {
+export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[], ratings: Ratings): MilestoneEvent[] {
   const sorted = byTime(brews);
   const L = (k: LadderKey) => (upTo: number) => thresholds(LADDERS[k], upTo);
   const link = brewLinker(bags);
@@ -121,7 +124,8 @@ export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
     ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0, ...bagLink(b) })), L('kgBought'), (t) => `${t} kg bought`, 1000),
     ...walk('bagsFinished', bags.filter(isFinished).map((b) => ({ date: b.lastBrew!, v: 1, ...bagLink(b) })), L('bagsFinished'), (t) => `${t} bags finished`),
     ...walk('coffees', firstOfCoffee.map((b) => brewStep(b, 1)), L('coffees'), (t) => `${t} different coffee${t === 1 ? '' : 's'}`),
-    ...walk('nines', sorted.filter((b) => (b.rating ?? 0) >= 9 && countsForRating(b, 'all')).map((b) => brewStep(b, 1)), L('nines'), (t) => `${ordinal(t)} brew rated 9+`),
+    ...walk('nines', sorted.filter((b) => nine(b, ratings)).map((b) => brewStep(b, 1)), L('nines'), (t) => `${ordinal(t)} brew rated 9+`)
+      .map((e) => ({ ...e, rating: true as const })),
     ...walk('brewDays', [...days].map(([date, l]) => ({ date, v: 1, ...l })), brewDayThresholds, brewDayTitle)
   ];
 }
@@ -140,11 +144,6 @@ export function streakEvents(brewDays: readonly string[], links = new Map<string
   return out;
 }
 
-const group = <T>(xs: readonly T[], key: (x: T) => string | null) => {
-  const m = new Map<string, T[]>();
-  for (const x of xs) { const k = key(x); if (k !== null) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
-  return m;
-};
 const asKind = (k: Kind, ev: MilestoneEvent[]): MilestoneEvent[] => ev.map((e) => ({ ...e, kind: k }));
 
 // First time each roaster, origin, ... shows up; plus Nth roaster / origin ever and bags per roaster / origin.
@@ -177,9 +176,9 @@ export function firstEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   const origin = (b: BagFact) => BREW_KEY.origins({ origin: b.origin } as BrewFact);
   // From the 10th: the first roaster / origin is already a "First brew from roaster: X" event.
   const distinct = (key: (b: BagFact) => string | null, name: string, title: (t: number) => string) =>
-    walk(name, [...group(bought, key).values()].map((g) => ({ date: g[0].purchaseDate!, v: 1, ...bagLink(g[0]) })), (n) => thresholds(LADDERS.bagsBought, n).filter((t) => t > 1), title);
+    walk(name, [...groupBy(bought, key).values()].map((g) => ({ date: g[0].purchaseDate!, v: 1, ...bagLink(g[0]) })), (n) => thresholds(LADDERS.bagsBought, n).filter((t) => t > 1), title);
   const depth = (key: (b: BagFact) => string | null, name: string, L: Ladder) =>
-    [...group(bought, key)].flatMap(([k, g]) => walk(`${name}:${k}`, g.map((b) => ({ date: b.purchaseDate!, v: 1, ...bagLink(b) })), (n) => thresholds(L, n), (t) => `${ordinal(t)} bag from ${k}`));
+    [...groupBy(bought, key)].flatMap(([k, g]) => walk(`${name}:${k}`, g.map((b) => ({ date: b.purchaseDate!, v: 1, ...bagLink(b) })), (n) => thresholds(L, n), (t) => `${ordinal(t)} bag from ${k}`));
   return [
     ...out,
     ...asKind('firsts', distinct((b) => b.roaster, 'roasters', (t) => `${ordinal(t)} roaster`)),
@@ -227,7 +226,7 @@ const GEAR: [dim: string, key: (b: BrewFact) => string | null, verb: string][] =
 ];
 export function gearEvents(brews: readonly BrewFact[], bags: readonly BagFact[] = []): MilestoneEvent[] {
   const sorted = byTime(brews), link = brewLinker(bags);
-  return GEAR.flatMap(([dim, key, verb]) => [...group(sorted, key)].flatMap(([k, g]) =>
+  return GEAR.flatMap(([dim, key, verb]) => [...groupBy(sorted, key)].flatMap(([k, g]) =>
     asKind('gear', walk(`mileage:${dim}:${k}`, g.map((b) => ({ date: b.localDate, v: 1, ...link(b) })), (n) => thresholds(LADDERS.mileage, n), (t) => `${ordinal(t)} brew ${verb} ${k}`))));
 }
 
@@ -244,9 +243,9 @@ export function anniversaryEvents(brews: readonly BrewFact[], bags: readonly Bag
   const sorted = byTime(brews);
   if (bought.length) { const s = firstOf(bought); mark('ann:bag', s, [1, 3, 6, ...years(s)], (t) => `${t} since the first bag`); }
   if (sorted.length) { const s = sorted[0].localDate; mark('ann:brew', s, [1, 3, 6, ...years(s)], (t) => `${t} since the first brew`); }
-  for (const [r, g] of group(bought, (b) => b.roaster))
+  for (const [r, g] of groupBy(bought, (b) => b.roaster))
     if (g.length >= 5) mark(`ann:roaster:${r}`, firstOf(g), years(firstOf(g)), (t) => `${t} with ${r}`);
-  for (const [dim, key] of GEAR) for (const [k, g] of group(sorted, key))
+  for (const [dim, key] of GEAR) for (const [k, g] of groupBy(sorted, key))
     if (daysBetween(g[g.length - 1].localDate, today) <= 60) mark(`ann:${dim}:${k}`, g[0].localDate, years(g[0].localDate), (t) => `${t} with ${k}`);
   mark('ann:ratings', RATINGS_SETTLED_FROM, [6, 12], (t) => `${t} of the Current rating scale`);
   return out;
@@ -266,7 +265,7 @@ export interface MilestonesTab {
 export function milestonesTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: MilestonesCtx): MilestonesTab {
   const sorted = byTime(brews);
   const all = [
-    ...countEvents(brews, bags), ...streakEvents(brews.map((b) => b.localDate), dayLinks(brews, bags)), ...firstEvents(brews, bags),
+    ...countEvents(brews, bags, c.ratings), ...streakEvents(brews.map((b) => b.localDate), dayLinks(brews, bags)), ...firstEvents(brews, bags),
     ...bestEvents(brews, bags, c.ratings), ...gearEvents(brews, bags), ...anniversaryEvents(brews, bags, c.today)
   ];
   // The kind chips filter the feed only: the summary counts every kind (user, 2026-10-11), so
@@ -299,7 +298,7 @@ export function milestonesTab(brews: readonly BrewFact[], bags: readonly BagFact
     { key: 'kgBought', label: 'Coffee bought', value: kg(sum(bought, (b) => b.amountG)), unit: 'kg' },
     { key: 'bagsFinished', label: 'Bags finished', value: bags.filter(isFinished).length },
     { key: 'coffees', label: 'Different coffees', value: coffees },
-    { key: 'nines', label: 'Brews rated 9+', value: sorted.filter((b) => (b.rating ?? 0) >= 9 && countsForRating(b, 'all')).length },
+    { key: 'nines', label: 'Brews rated 9+', value: sorted.filter((b) => nine(b, c.ratings)).length },
     { key: 'brewDays', label: 'Brew days', value: days.length }
   ];
   const L = (key: string, label: string, ladder: Ladder, value: number) => ({ key, label, value, target: nextThreshold(ladder, value) });
@@ -315,7 +314,7 @@ export function milestonesTab(brews: readonly BrewFact[], bags: readonly BagFact
 
   const ago = addMonths(c.today, -12);
   const top = sorted.length && sorted[0].localDate <= ago
-    ? sorted.filter((b) => b.localDate === ago).sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))[0] : undefined;
+    ? sorted.filter((b) => b.localDate === ago && b.coffeeId !== null).sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1))[0] : undefined;
   return {
     months: [...months].map(([month, events]) => ({ month, events })),
     summary: summarize(within(c.period)),

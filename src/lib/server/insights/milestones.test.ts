@@ -41,19 +41,19 @@ describe('ladders', () => {
 describe('count and streak events', () => {
   it('one step crosses two thresholds → two events, same date', () => {
     const bags = [bag({ id: 1, amountG: 4800, purchaseDate: '2026-02-01' }), bag({ id: 2, amountG: 1000, purchaseDate: '2026-03-01' })];
-    const ev = countEvents([], bags).filter((e) => e.key.startsWith('kgBought'));
+    const ev = countEvents([], bags, 'all').filter((e) => e.key.startsWith('kgBought'));
     expect(ev.map((e) => [e.key, e.date])).toEqual([['kgBought:1', '2026-02-01'], ['kgBought:2', '2026-02-01'],
       ['kgBought:5', '2026-03-01']]);
   });
   it('the 1000th brew is dated at the 1000th brew', () => {
-    const ev = countEvents(daily(1000, { coffeeId: 1 }), [bag({ id: 1, name: 'Ethiopia', slug: 'eth' })]).find((e) => e.key === 'brews:1000')!;
+    const ev = countEvents(daily(1000, { coffeeId: 1 }), [bag({ id: 1, name: 'Ethiopia', slug: 'eth' })], 'all').find((e) => e.key === 'brews:1000')!;
     expect(ev.date).toBe(day(999));
     expect(ev.title).toBe('1000th brew');
     expect(ev.kind).toBe('counts');
     expect(ev.href).toBe('/coffees/eth');
   });
   it('water poured in litres', () => {
-    const ev = countEvents(daily(40, { waterG: 250 }), []).filter((e) => e.key.startsWith('waterL'));
+    const ev = countEvents(daily(40, { waterG: 250 }), [], 'all').filter((e) => e.key.startsWith('waterL'));
     expect(ev.map((e) => [e.key, e.title, e.date])).toEqual([['waterL:10', '10 L of water poured', day(39)]]);
   });
   it('streak thresholds fire on the day reached; a broken run restarts', () => {
@@ -64,16 +64,20 @@ describe('count and streak events', () => {
     expect(new Set(ev.map((e) => e.key)).size).toBe(2);
   });
   it('kg totals sum in grams: 50 x 20 g hits 1 kg on the 50th brew', () => {
-    const ev = countEvents(daily(50, { dose: 20 }), []).find((e) => e.key === 'kgBrewed:1')!;
+    const ev = countEvents(daily(50, { dose: 20 }), [], 'all').find((e) => e.key === 'kgBrewed:1')!;
     expect(ev.date).toBe(day(49));
-    const big = countEvents(daily(5000, { dose: 20 }), []).find((e) => e.key === 'kgBrewed:100')!;
+    const big = countEvents(daily(5000, { dose: 20 }), [], 'all').find((e) => e.key === 'kgBrewed:100')!;
     expect(big.date).toBe(day(4999));
   });
   it('nines count rated 9+ brews; bagsFinished counts archived bags with a last brew', () => {
     const brews = [brew({ rating: 9, localDate: '2026-02-01' }), brew({ rating: 8.5, localDate: '2026-02-02', localTime: '2026-02-02T08:00' })];
-    expect(countEvents(brews, []).filter((e) => e.key.startsWith('nines')).map((e) => [e.key, e.date])).toEqual([['nines:1', '2026-02-01']]);
+    expect(countEvents(brews, [], 'all').filter((e) => e.key.startsWith('nines')).map((e) => [e.key, e.date])).toEqual([['nines:1', '2026-02-01']]);
+    // Current/All, like the rating Bests: a 9 before the Current scale doesn't count under Current.
+    const later = [...brews, brew({ rating: 9.5, localDate: '2026-07-01', localTime: '2026-07-01T08:00' })];
+    expect(countEvents(later, [], 'current').filter((e) => e.key.startsWith('nines')).map((e) => [e.key, e.date, e.rating]))
+      .toEqual([['nines:1', '2026-07-01', true]]);
     const bags = [bag({ id: 1, status: 'archive', lastBrew: '2026-03-01' }), bag({ id: 2, status: 'archive' }), bag({ id: 3, lastBrew: '2026-03-02' })];
-    expect(countEvents([], bags).filter((e) => e.key.startsWith('bagsFinished')).map((e) => [e.key, e.date])).toEqual([['bagsFinished:1', '2026-03-01']]);
+    expect(countEvents([], bags, 'all').filter((e) => e.key.startsWith('bagsFinished')).map((e) => [e.key, e.date])).toEqual([['bagsFinished:1', '2026-03-01']]);
   });
   it('brew-day titles roll up', () => {
     expect(brewDayTitle(7)).toBe('A week of brew days');
@@ -255,6 +259,8 @@ describe('milestonesTab', () => {
     expect(Object.fromEntries(tab.totals.map((t) => [t.key, t.value]))).toEqual({
       brews: 3, kgBrewed: 0.1, waterL: 1, bagsBought: 2, kgBought: 1.3, bagsFinished: 1, coffees: 1, nines: 3, brewDays: 3
     });
+    // Brews rated 9+ follows Current/All: January's nines predate the Current scale.
+    expect(milestonesTab(daily(3, { rating: 9 }), bags, ctx({ ratings: 'current' })).totals.find((t) => t.key === 'nines')!.value).toBe(0);
   });
   it('next up kg brewed is rounded to one decimal', () => {
     const tab = milestonesTab(daily(3, { dose: 18.37 }), BAGS, ctx());
@@ -271,5 +277,9 @@ describe('milestonesTab', () => {
     expect(hit.onThisDay).toMatchObject({ rating: 9, brewer: 'Kalita', holder: { label: 'Ethiopia', date: '2026-02-09' } });
     expect(milestonesTab(b, BAGS, ctx({ today: '2026-12-09' })).onThisDay).toBeNull();
     expect(milestonesTab([at('2026-01-01')], BAGS, ctx({ today: '2027-02-09' })).onThisDay).toBeNull(); // nothing brewed that day
+    // A brew with no coffee never shows as "Bag null".
+    const loose = [at('2026-02-09', { rating: 10, coffeeId: null, localTime: '2026-02-09T07:00' }), b[0]];
+    expect(milestonesTab(loose, BAGS, ctx({ today: '2027-02-09' })).onThisDay).toMatchObject({ rating: 7, holder: { label: 'Ethiopia' } });
+    expect(milestonesTab([loose[0]], BAGS, ctx({ today: '2027-02-09' })).onThisDay).toBeNull();
   });
 });
