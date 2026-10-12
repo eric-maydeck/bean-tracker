@@ -1057,6 +1057,17 @@ nav.site-nav a[aria-current='page'] {
   letter-spacing: 0.04em;
 }
 
+/* An /insights tile's name (TileCaption, the overview's stat captions): bold in the label colour,
+   linking to the tile's own #anchor; mode words after it stay muted. */
+.caption-link {
+  color: var(--color-label);
+  font-weight: 700;
+  text-decoration: none;
+}
+.caption-link:hover {
+  text-decoration: underline;
+}
+
 .stat-value {
   font-weight: 600;
 }

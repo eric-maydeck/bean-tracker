@@ -185,6 +185,8 @@
     stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
   };
+  // A stat tile's own anchor, its caption links to it: avgRating on Overview → #overview-avg-rating.
+  const tileId = (key: string) => `${s.tab}-${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const TOTALS: Tile[] = [
@@ -477,7 +479,7 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
-        <div class="stat-item" class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
+        <div class="stat-item" id={tileId(t.key)} class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
           {#if t.ratingSwitch}
             <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
               {#each ['current', 'all'] as const as m (m)}
@@ -514,7 +516,7 @@
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
-              >{t.label}{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
@@ -897,6 +899,7 @@
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
+    transition: background-color 150ms ease, border-color 150ms ease;
   }
   /* A band above the value for the Current/All switch; every card in a grid that has one
      keeps it, so values line up across the row. Like the overview's rating switch, the pill is
@@ -1127,10 +1130,15 @@
      keeps app.css's surface tiles. The hover tint mixes from the same base. */
   .stat-item {
     background: var(--color-bg);
+    scroll-margin-top: var(--space-2);
   }
+  /* Records and Milestones cards (.hl-card) share the stat tiles' hover tint (app.css's tint, from the
+     page-colour base; mouse only); the gentle row's surface version is in Records.svelte. */
   @media (hover: hover) {
-    .stat-item:hover {
+    .stat-item:hover,
+    :global(.hl-card:hover) {
       background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
+      border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
     }
   }
   .fit .stat-item {

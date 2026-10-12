@@ -1592,6 +1592,33 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Decaf' }).click();
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
+  { name: 'insights-overview-anchor', path: () => '/insights?tab=overview#overview-avg-brew-time',
+    act: async (page) => {
+      // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
+      await expect(page.locator('#overview-avg-brew-time a.caption-link')).toHaveAttribute('href', '#overview-avg-brew-time');
+      const gap = () => page.evaluate(() =>
+        document.getElementById('overview-avg-brew-time')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-habits-anchor', path: () => '/insights?tab=habits#habits-current-streak',
+    act: async (page) => {
+      // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
+      await expect(page.locator('#habits-current-streak a.caption-link')).toHaveAttribute('href', '#habits-current-streak');
+      const gap = () => page.evaluate(() =>
+        document.getElementById('habits-current-streak')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-consumption-anchor', path: () => '/insights?tab=consumption#consumption-brewed',
+    act: async (page) => {
+      // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
+      await expect(page.locator('#consumption-brewed a.caption-link')).toHaveAttribute('href', '#consumption-brewed');
+      const gap = () => page.evaluate(() =>
+        document.getElementById('consumption-brewed')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      await expect.poll(gap).toBeGreaterThanOrEqual(0);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
   { name: 'insights-records-soup', path: () => '/insights?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
   { name: 'insights-records-compare', path: () => '/insights?tab=records&range=1w&compare=1' },

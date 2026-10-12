@@ -264,7 +264,7 @@
     {#if s.key === 'taste'}
       {#if t.topCoffees.length}
         {@render topList('records-top-coffees', 'coffees', t.topCoffees.map((c) => ({
-          score: c.mean, holder: c.holder, line: [`${c.brews} rated brews`, c.holder.sub].filter(Boolean).join(' · ')
+          score: c.mean, holder: c.holder, line: [c.holder.sub, `${c.brews} rated brews`].filter(Boolean).join(' · ')
         })), topc, (v) => choose({ topc: v }))}
       {/if}
       {#if t.topBrews.length}
@@ -282,6 +282,11 @@
   /* Insights tiles sit on the page colour; the gentle row swaps to the panel's own surface. */
   .gentle :global(.hl-card) {
     background: var(--color-surface);
+  }
+  @media (hover: hover) {
+    .gentle :global(.hl-card:hover) {
+      background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+    }
   }
   /* A tip button's phone padding (its 44px tap target) is cancelled by negative margins, so it
      needs no room in the card: 100% would squeeze its text out of a narrow card. */
