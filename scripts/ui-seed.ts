@@ -119,7 +119,8 @@ for (let i = 0; i < 8; i++) brew.run(isoDaysAgo(i + 1), 'bean-linked', 6 + (i % 
 for (let i = 0; i < 3; i++) brew.run(isoDaysAgo(i + 2), 'bean-twin-1', 7, 18 + i, now);
 for (let i = 0; i < 2; i++) brew.run(isoDaysAgo(i + 1), 'bean-likely', 8, 7 + i, now);
 // Ratings 7-10 (one 10); the first brew is at 05:40 and the second at 23:10 local, for the clock records.
-const atLocal = (n: number, h: number, m: number) => { const d = new Date(Date.now() - n * day); d.setHours(h, m, 0, 0); return d.toISOString(); };
+// bc_created_at is read as wall time (its digits), so write the clock time as-is, whatever the machine's zone.
+const atLocal = (n: number, h: number, m: number) => `${daysAgo(n)}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`;
 for (let i = 0; i < 20; i++) {
   brew.run(i === 0 ? atLocal(1, 5, 40) : i === 1 ? atLocal(2, 23, 10) : isoDaysAgo(i + 1), 'bean-part', i === 2 ? 10 : 7 + (i % 3), 9, now);
 } // 20 × 15g = 300g, plus 60g of soup below = 360g

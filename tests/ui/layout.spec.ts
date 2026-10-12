@@ -1703,19 +1703,48 @@ export const STATES: State[] = [
       await page.mouse.up();
       expect(ys).toEqual([...ys].sort((x, y) => x - y));
       expect(ys[ys.length - 1]).toBeGreaterThan(ys[0]);
+      // Phone strip, touch: a vertical swipe starting on it doesn't jump the feed; a tap does.
+      if (page.viewportSize()!.width < 700) {
+        await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView());
+        await settle();
+        const q = await at(n - 0.5); // the oldest month: a tap scrolls down
+        const touch = (moves: [number, number][], end: 'pointerup' | 'pointercancel') => page.evaluate(([x, y, moves, end]) => {
+          const nav = document.querySelector<HTMLElement>('nav.ruler')!, before = scrollY;
+          nav.setPointerCapture = () => {}; // a synthetic pointer can't be captured
+          const fire = (type: string, dx: number, dy: number) => nav.dispatchEvent(new PointerEvent(type,
+            { pointerId: 7, pointerType: 'touch', button: 0, isPrimary: true, bubbles: true, clientX: x + dx, clientY: y + dy }));
+          fire('pointerdown', 0, 0);
+          for (const [dx, dy] of moves) fire('pointermove', dx, dy);
+          const last = moves[moves.length - 1] ?? [0, 0];
+          fire(end, last[0], last[1]);
+          return scrollY - before;
+        }, [q.x, q.y, moves, end] as const);
+        expect(await touch([[1, 6], [2, 30], [3, 60]], 'pointercancel')).toBe(0); // the browser pans: cancel
+        expect(await touch([[1, 6], [2, 30]], 'pointerup')).toBe(0);
+        expect(await touch([[2, 1]], 'pointerup')).toBeGreaterThan(0); // a tap jumps
+        await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView());
+        await settle();
+        expect(await touch([[10, 2], [40, 3]], 'pointerup')).toBeGreaterThan(0); // a sideways drag scrubs
+      }
     } },
   { name: 'insights-milestones-month-link', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
       // A month header's #anchor lands it under the sticky bars, and survives a filter change (M9).
       const id = (await page.locator('.feed .month').nth(1).getAttribute('id'))!;
+      // about:blank first: a real load, so the page's own on-load hash scroll runs (not a same-page jump).
+      await page.goto('about:blank');
       await page.goto(`/insights?tab=milestones&range=all#${id}`);
       const head = page.locator(`[id="${id}"]`);
       await expect(head).toBeInViewport();
       await expect(head.locator('a')).toHaveAttribute('href', `#${id}`);
-      const bar = await page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
-      const top = (await head.boundingBox())!.y;
-      expect(top).toBeGreaterThanOrEqual(bar - 1);
-      expect(top).toBeLessThan(bar + 80);
+      // Polled: the on-load scroll and the ruler's rAF layout can land after the first read.
+      const barBottom = () => page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
+      const below = async (el: typeof head, max: number) => {
+        const off = async () => (await el.boundingBox())!.y - (await barBottom());
+        await expect.poll(off).toBeGreaterThanOrEqual(-1);
+        await expect.poll(off).toBeLessThan(max);
+      };
+      await below(head, 80);
       await page.getByRole('group', { name: 'Kinds' }).getByRole('button', { name: 'Counts' }).click();
       await expect(page).toHaveURL(new RegExp(`kinds=counts.*#${id}$`));
       // A month outside the period: no error, the page stays at the top.
@@ -1729,10 +1758,7 @@ export const STATES: State[] = [
       await page.goto('/insights?tab=milestones&range=all#milestones-total-brews');
       const tile = page.locator('#milestones-total-brews');
       await expect(tile.locator('.caption-link')).toHaveAttribute('href', '#milestones-total-brews');
-      const barB = await page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
-      const tileTop = (await tile.boundingBox())!.y;
-      expect(tileTop).toBeGreaterThanOrEqual(barB - 1);
-      expect(tileTop).toBeLessThan(barB + 40);
+      await below(tile, 40);
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
