@@ -29,6 +29,9 @@ export function grindKey(grind: string | null): number[] | null {
   if (!grind || !/^\d+(\.\d+)*$/.test(grind.trim())) return null;
   return grind.trim().split('.').map(Number);
 }
+// A grind setting as one number, base-1000 per part (2.4.1 → 2.004001), so it orders like the setting.
+// ponytail: settings with a part ≥ 1000 or more than 3 parts lose resolution.
+export const grindValue = (grind: string | null): number | null => grindKey(grind)?.reduce((s, n, i) => s + n / 1000 ** i, 0) ?? null;
 
 // Belt and braces next to the coffee_corrections_2026_10_b migration: a
 // future stray label still sorts on the roast_levels scale.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, MIXED_FILTER } from './facts';
+import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 
@@ -103,6 +103,11 @@ describe('grindKey', () => {
     expect(grindKey('1..5.0')).toBeNull();
     expect(grindKey('')).toBeNull();
     expect(grindKey(null)).toBeNull();
+  });
+  it('grindValue orders like the setting', () => {
+    expect(grindValue('2.4.1')).toBeCloseTo(2.004001, 9);
+    expect(grindValue('1.10')!).toBeGreaterThan(grindValue('1.5')!);
+    expect(grindValue('1..5')).toBeNull();
   });
 });
 

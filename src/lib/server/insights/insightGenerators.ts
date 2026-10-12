@@ -1,9 +1,10 @@
 import { MON, type Ratings } from '$lib/insightsUrl';
 import { formatGrams } from '$lib/grams';
-import { grindKey, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
+import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, strengthOf, type Strength } from './stats';
 import { consumption } from './overview';
+import { groupBy } from './records';
 import { addDays, inPeriod, trackedDays, weekday } from './time';
 
 export type Theme = 'taste' | 'dialin' | 'habits' | 'gear' | 'money';
@@ -238,11 +239,6 @@ const backlogRunway: Generator = (c) => {
 };
 
 // ---- shared helpers for Habits / Gear / Money / Myths ----
-const groupBy = <T, K>(xs: readonly T[], key: (x: T) => K | null | undefined): Map<K, T[]> => {
-  const m = new Map<K, T[]>();
-  for (const x of xs) { const k = key(x); if (k !== null && k !== undefined) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
-  return m;
-};
 // The most common key and its count; ties go to the name first in order.
 const topOf = <T>(xs: readonly T[], key: (x: T) => string | null): { name: string; n: number } | null => {
   const [name, g] = [...groupBy(xs, key)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0] ?? [];
@@ -548,8 +544,8 @@ const variablesMyth: Generator = (c) => {
     ['ratio', (b) => b.ratio], ['dose', (b) => (b.dose && b.dose > 0 ? b.dose : null)], ['bloom', (b) => b.bloomSeconds], ['time', (b) => b.brewTimeSeconds]
   ];
   for (const [name, f] of VARS) add(name, rows.flatMap((r) => { const v = f(r); return v === null ? [] : [[v, r.dm]]; }));
-  for (const [grinder, g] of groupBy(rows.filter((r) => grindKey(r.grind)), (r) => r.grinder)) {
-    const pos = (s: string) => grindKey(s)!.reduce((t, n, i) => t + n / 1000 ** i, 0); // orders like the setting (see records.ts)
+  for (const [grinder, g] of groupBy(rows.filter((r) => grindValue(r.grind) !== null), (r) => r.grinder)) {
+    const pos = (s: string) => grindValue(s)!;
     const settings = [...new Set(g.map((r) => r.grind!))].sort((a, b) => pos(a) - pos(b));
     add(`${grinder} grind`, g.map((r) => [settings.indexOf(r.grind!), r.dm]));
   }
@@ -565,9 +561,10 @@ const variablesMyth: Generator = (c) => {
   });
 };
 
-// Rating SD of the first vs last month with 30+ rated brews, plus brews rated in a row (brews come in time order).
+// Rating SD of the first vs last full month with 30+ rated brews (every rated brew: ignores the Current/All
+// ratings switch; the current month is partial and left out), plus brews rated in a row (brews come in time order).
 const calibration: Generator = (c) => {
-  const months = [...groupBy(counted(c), (b) => b.localDate.slice(0, 7))].filter(([, g]) => g.length >= MIN_BREWS).sort(([a], [b]) => a.localeCompare(b))
+  const months = [...groupBy(c.brews.filter(rated), (b) => b.localDate.slice(0, 7))].filter(([m, g]) => m < c.today.slice(0, 7) && g.length >= MIN_BREWS).sort(([a], [b]) => a.localeCompare(b))
     .map(([m, g]) => ({ m, s: sd(g.map((b) => b.rating!)) }));
   if (months.length < 2) return null;
   const [a, b] = [months[0], months.at(-1)!];

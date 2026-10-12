@@ -1,5 +1,5 @@
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Caffeine, type Ratings } from '$lib/insightsUrl';
-import { grindKey, restDays, type BrewFact, type BagFact } from './facts';
+import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { isFinished } from './overview';
 import { countsForRating } from './ratings';
@@ -74,9 +74,9 @@ const minutes = (lt: string) => Number(lt.slice(11, 13)) * 60 + Number(lt.slice(
 const lateMinutes = (lt: string) => { const m = minutes(lt); return m < 240 ? m + 1440 : m; };
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
 const sd = (xs: number[]) => { const m = mean(xs); return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))); };
-export const groupBy = <T>(xs: readonly T[], key: (x: T) => string | number | null) => {
-  const m = new Map<string | number, T[]>();
-  for (const x of xs) { const k = key(x); if (k !== null) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
+export const groupBy = <T, K>(xs: readonly T[], key: (x: T) => K | null | undefined): Map<K, T[]> => {
+  const m = new Map<K, T[]>();
+  for (const x of xs) { const k = key(x); if (k !== null && k !== undefined) (m.get(k) ?? m.set(k, []).get(k)!).push(x); }
   return m;
 };
 const distinct = (xs: (string | null)[]) => new Set(xs.filter((x) => x !== null)).size;
@@ -346,14 +346,13 @@ export const RECORDS: RecordDef[] = [
   gentle('toughDay', 'Lowest-rated day', 'min', 'rating', dayMean)
 ];
 
-// Grind extremes are generated per grinder. Value = the setting as a base-1000 fraction (2.4.1 →
-// 2.004001), so it orders like the setting and stays comparable between windows; detail = the text.
-// ponytail: settings with a part ≥ 1000 or more than 3 parts lose resolution.
+// Grind extremes are generated per grinder. Value = grindValue (orders like the setting and stays
+// comparable between windows); detail = the text.
 const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
   [...new Set(brews.map((b) => b.grinder).filter((x): x is string => !!x))].flatMap((name) => {
     const run = (c: RecCtx): Candidate[] => held(c).flatMap((b) => {
-      const k = b.grinder === name ? grindKey(b.grind) : null;
-      return k ? [{ value: k.reduce((s, n, i) => s + n / 1000 ** i, 0), detail: b.grind!, holder: brewHolder(c, b) }] : [];
+      const v = b.grinder === name ? grindValue(b.grind) : null;
+      return v !== null ? [{ value: v, detail: b.grind!, holder: brewHolder(c, b) }] : [];
     });
     return [extreme(`grindFine:${name}`, `Finest grind · ${name}`, 'min', 'grind', run), extreme(`grindCoarse:${name}`, `Coarsest grind · ${name}`, 'max', 'grind', run)];
   });

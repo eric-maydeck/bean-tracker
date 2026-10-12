@@ -220,13 +220,17 @@ describe('weekday ratings', () => {
   // 2026-09-07 is a Monday; each bag brewed once a day for a week, Mondays 1 point up.
   const mk = (bags: number, monday: number) => Array.from({ length: bags }, (_, i) =>
     days('2026-09-07', 7).map((d, j) => at(d, '09:15', { coffeeId: i + 1, rating: j === 0 ? 7.5 + monday : 7.5 + alt(-0.2, 0.2)(i + j) }))).flat();
-  it('the standout weekday, with the multiple-comparison caveat when early', () => {
+  it('the standout weekday', () => {
     const f = gen('weekday', mk(35, 1))!;
     expect(f).toMatchObject({ theme: 'habits', strength: 'solid', sample: '35 brews' });
     expect(f.headline).toMatch(/^Mondays rate 1\.\d\d higher$/);
-    const weak = gen('weekday', mk(35, 0.02));
-    if (weak?.strength === 'early') expect(weak.caveat).toBe('With 7 weekdays compared, one usually stands out by chance.');
-    expect(finite(weak)).toBe(true);
+  });
+  it('a weak standout is too early, with the multiple-comparison caveat', () => {
+    // ±0.5 day-to-day noise that cancels per weekday over 36 bags; Mondays only +0.05
+    const weak = Array.from({ length: 36 }, (_, i) =>
+      days('2026-09-07', 7).map((d, j) => at(d, '09:15', { coffeeId: i + 1, rating: 7.5 + alt(-0.5, 0.5)(i + j) + (j === 0 ? 0.05 : 0) }))).flat();
+    expect(gen('weekday', weak)).toMatchObject({ strength: 'early', caveat: 'With 7 weekdays compared, one usually stands out by chance.' });
+    expect(gen('weekday', weak)!.headline).toMatch(/^Mondays rate 0\.\d\d higher$/);
   });
   it('null under 30 brews a weekday', () => expect(gen('weekday', mk(20, 1))).toBeNull());
 });
@@ -398,12 +402,14 @@ describe('backlog wait myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10);
     expect(gen('backlogWaitMyth', brews, bs)).toMatchObject({ kind: 'myth', headline: "Waiting in the backlog doesn't hurt", value: 'r = 0.00', sample: '30 bags' });
   });
-  it('freezer time is left out of the wait', () => {
+  it('a link shows; freezer time is left out of the wait', () => {
     const { bs, brews } = mk((i) => 9 - i / 20);
     expect(gen('backlogWaitMyth', brews, bs)!.headline).toBe('Bags that wait rate lower');
-    // freeze each bag for all but 1 day of its wait: every wait is ~0, so the link is gone
-    const frozen = bs.map((b, i) => ({ ...b, frozenStart: '2026-06-01', frozenEnd: addDays('2026-06-01', Math.max(0, i - 1)) }));
-    expect(gen('backlogWaitMyth', brews, frozen)!.value).not.toBe('r = -1.00');
+    // every bag first brewed 29 days after roast (no spread: null), but frozen for i of them: net wait 29 - i
+    const same = bs.map((b) => ({ ...b, firstBrew: '2026-06-30' }));
+    expect(gen('backlogWaitMyth', brews, same)).toBeNull();
+    const frozen = same.map((b, i) => ({ ...b, frozenStart: '2026-06-01', frozenEnd: addDays('2026-06-01', i) }));
+    expect(gen('backlogWaitMyth', brews, frozen)).toMatchObject({ headline: 'Bags that wait rate higher', value: 'r = 1.00' });
   });
   it('null under 30 bags', () => { const { bs, brews } = mk((i) => 9 - i / 20, 29); expect(gen('backlogWaitMyth', brews, bs)).toBeNull(); });
 });
@@ -429,6 +435,15 @@ describe('calibration', () => {
       theme: 'taste', kind: 'myth', headline: 'Your ratings have settled', value: '2.00 → 0.50', sample: '2 months',
       body: 'Monthly rating spread (SD) went from 2.00 in Jul 26 to 0.50 in Sep 26. 30 brews in a row rated.'
     }));
+  it('the current (partial) month is left out', () => {
+    const oct = seq(3, Array.from({ length: 30 }, (_, i) => alt(2, 10)(i)), '2026-10-05'); // today is 2026-10-11
+    expect(gen('calibration', [...jul, ...sep, ...oct])).toMatchObject({ value: '2.00 → 0.50', sample: '2 months' });
+  });
+  it('ignores the Current/All ratings switch: a pre-June month still counts', () => {
+    const mar = seq(1, Array.from({ length: 30 }, (_, i) => alt(6, 10)(i)), '2026-03-01');
+    expect(gen('calibration', [...mar, ...sep], [], { ratings: 'current' })).toMatchObject({ value: '2.00 → 0.50' });
+    expect(gen('calibration', [...mar, ...sep], [], { ratings: 'current' })!.body).toContain('in Mar 26 to 0.50 in Sep 26');
+  });
   it('null with one month of 30 rated brews', () => expect(gen('calibration', [...jul, ...sep.slice(0, 29)])).toBeNull());
 });
 
