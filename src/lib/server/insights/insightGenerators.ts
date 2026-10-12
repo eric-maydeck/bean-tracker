@@ -56,12 +56,14 @@ const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / (sd(d) / Math.sqrt(d
 // ponytail: "about N more would settle it" assumes the effect and spread stay as seen.
 const settleText = (z: number, n: number, unit: string): string | undefined => {
   const more = Math.ceil(n * (4 / z ** 2 - 1));
-  return Number.isFinite(more) && more > 0 ? `About ${more} more ${unit} would settle it.` : undefined;
+  if (!Number.isFinite(more) || more > 10 * n) return 'Too small a difference to settle with your data.';
+  return more > 0 ? `About ${more} more ${unit} would settle it.` : undefined;
 };
 
 // Attach z and strength; null when z isn't finite or the strength is hidden.
 function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string): Finding | null {
-  if (!Number.isFinite(z)) return null;
+  // A signed delta that rounds to ±0.00 isn't a finding ("rate 0.00 higher").
+  if (!Number.isFinite(z) || /^[-+]0\.00$/.test(f.value ?? '')) return null;
   const strength = strengthOf(z, enough);
   if (strength === 'hidden') return null;
   const early = strength === 'early';

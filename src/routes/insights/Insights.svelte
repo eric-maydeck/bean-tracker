@@ -253,7 +253,7 @@
             </label>
           </div>
           {#if !(w.gpp > 0)}
-            <!-- No measured rate yet: no answer to give until the slider sets one. -->
+            <span class="hl-line wrap result">Not enough brews to measure your daily use yet</span>
           {:else if run.days !== null}
             <span class="hl-value result">{run.days.toLocaleString('en-US')}<small>{' days'}</small></span>
             <span class="hl-line wrap">to clear · empty on {date(run.emptyOn!)}</span>
@@ -278,6 +278,15 @@
               <input type="number" min="5" max="40" step="0.1" inputmode="decimal" aria-label="Dose" value={r1(w.dose)}
                 oninput={(e) => set('dose', e.currentTarget.value, 400)} />
             </label>
+            <!-- What the month is made of: the row beside the runway's slider, so neither card has a gap. -->
+            <div class="form-field wide month">
+              <span>Each month</span>
+              <div class="month-parts">
+                <span><b>{Math.round(w.bpd * 30.44)}</b> brews</span>
+                <span><b>{formatGrams(w.bpd * w.dose * 30.44)}</b></span>
+                <span><b>${(w.dose * t.whatIf.avgPricePerG!).toFixed(2)}</b> a cup</span>
+              </div>
+            </div>
           </div>
           <span class="hl-value result">{usd0(perMonth)}<small>{' a month'}</small></span>
           <span class="hl-line wrap">At ${(t.whatIf.avgPricePerG! * 100).toFixed(2)} / 100&nbsp;g, your last 12 months' average</span>
@@ -582,6 +591,14 @@
     width: 100%;
     min-width: 0;
     box-sizing: border-box;
+  }
+  .month-parts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0 var(--space-3);
+    min-height: 44px;
   }
   .fields input[type='range'] {
     padding: 0;

@@ -82,6 +82,13 @@ describe('second cup', () => {
     expect(f).toMatchObject({ theme: 'dialin', strength: 'solid', value: '+0.30', headline: 'Your second cup is better', sample: '40 pairs' });
   });
   it('null on 5 pairs', () => expect(gen('secondCup', mk(5))).toBeNull());
+  // 30 pairs with second-cup deltas ±1 around `m`: weak effects land in Too early to tell.
+  const around = (m: number) => Array.from({ length: 30 }, (_, i) => seq(1, [7, 7 + m + (i % 2 ? 1 : -1)], addDays('2026-07-01', i))).flat();
+  it('a delta that rounds to 0.00 is no finding', () => expect(gen('secondCup', around(0.002))).toBeNull());
+  it('too early: how many more would settle it', () =>
+    expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 7[01] more pairs would settle it\.$/) }));
+  it('too early and far off: no giant number', () =>
+    expect(gen('secondCup', around(0.04))).toMatchObject({ strength: 'early', settle: 'Too small a difference to settle with your data.' }));
 });
 
 describe('remembered fondly', () => {
