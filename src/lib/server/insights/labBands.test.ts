@@ -22,7 +22,7 @@ describe('bandOf', () => {
   it('ratio, dose, GH: every edge', () => {
     expect([15.4, 15.5, 16.5, 17.5].map((r) => label('ratio', { ratio: r }))).toEqual(['< 1:15.5', '1:15.5–16.5', '1:16.5–17.5', '1:17.5+']);
     expect([15.9, 16, 18, 20].map((d) => label('dose', { dose: d }))).toEqual(['< 16 g', '16–18 g', '18–20 g', '20+ g']);
-    const gh = (g: number) => label('gh', { waterProfile: { calcium: null, magnesium: null, sodium: null, potassium: null, chloride: null, sulfate: null, gh: g, kh: 0 } });
+    const gh = (g: number) => label('gh', { waterProfile: { calcium: 1, magnesium: null, sodium: null, potassium: null, chloride: null, sulfate: null, gh: g, kh: 0 } });
     expect([29.9, 30, 60, 90].map(gh)).toEqual(['0–30 ppm', '30–60 ppm', '60–90 ppm', '90+ ppm']);
   });
   it('brew time: 15 s bands, open ends', () => {

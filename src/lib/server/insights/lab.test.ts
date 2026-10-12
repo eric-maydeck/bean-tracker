@@ -401,6 +401,16 @@ describe('waterTab', () => {
       ...many(5, id, 92, 8, { water: 'A', waterProfile: prof(10, 15) }), ...many(5, id, 92, 7.5, { water: 'B', waterProfile: prof(20, 5) })]), bags, { period: P, ratings: 'all' });
     expect(few.minerals[0].bars.map((b) => b.solid)).toEqual([false, false]); // 15 brews each
   });
+  it('a profile with every mineral 0 or empty counts as not entered; one 0 among others is real', () => {
+    const blank = { calcium: 0, magnesium: null, sodium: 0, potassium: 0, chloride: null, sulfate: 0, gh: 0, kh: 40 };
+    const x = waterTab([...rows, ...[4, 5, 6].flatMap((id) => many(10, id, 92, 6, { water: 'C', waterProfile: blank, localDate: '2026-09-10' }))], bags, { period: P, ratings: 'all' });
+    expect(x.minerals.map((m) => m.key)).toEqual(w.minerals.map((m) => m.key)); // KH 40 would add a second KH value
+    expect(x.minerals.flatMap((m) => m.bars.map((b) => b.label))).toEqual(w.minerals.flatMap((m) => m.bars.map((b) => b.label)));
+    expect(x.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
+    expect(w.minerals.find((m) => m.key === 'calcium')).toBeDefined(); // sodium 0 in prof() stays a real (single) value
+    const na = waterTab(rows.map((r) => (r.water === 'B' ? { ...r, waterProfile: { ...r.waterProfile!, sodium: 3 } } : r)), bags, { period: P, ratings: 'all' });
+    expect(na.minerals.find((m) => m.key === 'sodium')!.bars.map((b) => b.label)).toEqual(['0', '3']);
+  });
   it('GH bands, heatmaps, pairs', () => {
     expect(w.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
     expect(w.byRoast!.rows).toEqual(['Light']);

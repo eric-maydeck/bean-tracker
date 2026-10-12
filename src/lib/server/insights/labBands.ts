@@ -35,13 +35,17 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);
     case 'filter': return b.filter === MIXED_FILTER ? null : cat(b.filter);
-    case 'gh': return cut(b.waterProfile?.gh || null, [30, 60, 90], ['0–30 ppm', '30–60 ppm', '60–90 ppm', '90+ ppm']);
+    case 'gh': return cut(profileOf(b)?.gh || null, [30, 60, 90], ['0–30 ppm', '30–60 ppm', '60–90 ppm', '90+ ppm']);
     case 'brewNo': return b.brewIndex < 1 ? null : { label: BREW_NO_LABELS[Math.min(b.brewIndex, 10) - 1], order: Math.min(b.brewIndex, 10) };
   }
 }
 
 // Water tab "Minerals vs rating" (plain adjusted means): each distinct value used. A mineral's 0 is
 // a real recipe value (no potassium), unlike brew fields; null = not entered or no water profile.
+// A profile whose six minerals are all 0 or empty was never filled in (user, 2026-10-12): its brews
+// count in no mineral, GH, KH or ratio chart.
+const SIX = ['calcium', 'magnesium', 'potassium', 'sodium', 'chloride', 'sulfate'] as const;
+const profileOf = (b: BrewFact) => (b.waterProfile && SIX.some((k) => b.waterProfile![k]) ? b.waterProfile : null);
 export const MINERALS = [
   ['calcium', 'Ca'], ['magnesium', 'Mg'], ['potassium', 'K'], ['sodium', 'Na'], ['chloride', 'Chloride'], ['sulfate', 'Sulfate'],
   ['gh', 'GH'], ['kh', 'KH'], ['mgca', 'Mg:Ca'], ['mgk', 'Mg:K']
@@ -49,7 +53,7 @@ export const MINERALS = [
 export type Mineral = (typeof MINERALS)[number][0];
 const round = (x: number, d: number) => Math.round(x * 10 ** d) / 10 ** d;
 export function mineralOf(m: Mineral, b: BrewFact): number | null {
-  const w = b.waterProfile;
+  const w = profileOf(b);
   if (!w) return null;
   if (m === 'mgca') return w.magnesium !== null && w.calcium ? round(w.magnesium / w.calcium, 2) : null;
   if (m === 'mgk') return w.magnesium !== null && w.potassium ? round(w.magnesium / w.potassium, 2) : null;
