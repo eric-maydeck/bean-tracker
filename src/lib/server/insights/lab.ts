@@ -198,7 +198,8 @@ const SPOT_VARS: Record<SpotVar, LabVar[]> = { temp: ['tempExact', 'temp'], wate
 export interface SweetSpotsTab {
   matching: { bags: number; brews: number };
   cards: { key: SpotVar; name: string; spot: Spot }[];
-  topBags: { label: string; sub: string; href: string | null; score: number; brews: number; usual: string }[];
+  // `tag`: what tells apart listed bags sharing a name ("roasted May 5" / "opened Jul 30"), else null.
+  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; usual: string }[];
 }
 const TOP_N = 5; // bags listed
 const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
@@ -228,10 +229,14 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   // Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
   // roasted the same day get their opened date instead.
   const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
-  const twins = <T extends { label: string }>(xs: T[], l: string) => xs.filter((x) => x.label === l).length > 1;
-  const roasted = topBags.map((b) => (twins(topBags, b.label) && b.roastedOn ? { ...b, label: `${b.label} · roasted ${day(b.roastedOn)}` } : b));
-  const named = roasted.map(({ roastedOn: _, openedOn, ...b }, i) =>
-    twins(roasted, b.label) && openedOn ? { ...b, label: `${topBags[i].label} · opened ${day(openedOn)}` } : b);
+  const key = (b: { label: string; tag: string | null }) => `${b.label}|${b.tag}`;
+  const twins = <T extends { label: string; tag: string | null }>(xs: T[], b: T) => xs.filter((x) => key(x) === key(b)).length > 1;
+  const untagged = topBags.map((b) => ({ ...b, tag: null as string | null }));
+  const roasted = untagged.map((b) => (twins(untagged, b) && b.roastedOn ? { ...b, tag: `roasted ${day(b.roastedOn)}` } : b));
+  const named = roasted.map((b) => {
+    const { roastedOn: _, openedOn, ...row } = b;
+    return twins(roasted, b) && openedOn ? { ...row, tag: `opened ${day(openedOn)}` } : row;
+  });
   return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags: named };
 }
 

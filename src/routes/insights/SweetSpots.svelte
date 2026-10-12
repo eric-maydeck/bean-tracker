@@ -52,12 +52,16 @@
     const n = p.bands.reduce((a, b) => a + b.bags, 0) || 1;
     const centre = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + b.value * b.bags, 0) / n;
     const ds = p.bands.map((b) => b.value - centre);
-    const hi = Math.max(0, ...ds), lo = Math.min(0, ...ds), span = hi - lo || 1;
+    // The axis fits the solid bands when there are any: a thin band past it is clipped at the edge with a cap
+    // (its value stays in the tip), so thin data shows without dominating.
+    const fit = p.bands.some((b) => b.solid) ? ds.filter((_, i) => p.bands[i].solid) : ds;
+    const hi = Math.max(0, ...fit), lo = Math.min(0, ...fit), span = hi - lo || 1;
+    const shown = ds.map((d) => Math.min(hi, Math.max(lo, d)));
     const pick = p.best && p.verdict !== 'none' ? p.best.label : null;
     return {
       zero: (hi / span) * 100,
       bars: p.bands.map((b, i) => ({
-        ...b, top: ((hi - Math.max(0, ds[i])) / span) * 100, h: (Math.abs(ds[i]) / span) * 100, up: ds[i] >= 0,
+        ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
         pick: b.label === pick, usual: b.label === p.usual.label,
         text: `${b.label}: ${p.tier === 1 ? `${signed(b.value)} vs same bag` : `${b.value.toFixed(1)} avg (bag means)`} · ${plural(b.bags, 'bag')} · ${plural(b.brews, 'brew')}${b.solid ? '' : ' · few'}${b.label === p.usual.label ? ' · usual' : ''}`
       }))
@@ -207,7 +211,7 @@
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
-                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid}
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip}
                       style:top="{b.top}%" style:height="{b.h}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
@@ -239,7 +243,8 @@
             <span class="rank">{i + 1}</span>
             <span class="who">
               {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
-              <small>{[r.sub, r.usual].filter(Boolean).join(' · ')}</small>
+              <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
+              <small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>
             </span>
             <span class="val">{r.score.toFixed(2)}</span>
           </li>
@@ -403,6 +408,14 @@
   }
   .bar.pale {
     background: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
+  }
+  /* Clipped at the axis edge (a thin band past the solid bands' range): a cap marks the cut end. */
+  .bar.clip {
+    border-bottom: 2px solid var(--color-text-muted);
+  }
+  .bar.clip.up {
+    border-bottom: 0;
+    border-top: 2px solid var(--color-text-muted);
   }
   .bar.pick {
     background: var(--chart-color-1);

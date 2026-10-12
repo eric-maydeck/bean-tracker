@@ -1793,7 +1793,9 @@ export const STATES: State[] = [
         const cols = c.querySelector('.cols')?.getBoundingClientRect();
         const big = parseFloat(getComputedStyle(c.querySelector('.hl-value')!).fontSize);
         const bigger = [...c.querySelectorAll('.hl-line, .ends, .stat-label')].some((e) => parseFloat(getComputedStyle(e).fontSize) >= big);
-        return [...(!cols || cols.height < 23 ? [`${c.id} chart ${cols?.height}px`] : []), ...(bigger ? [`${c.id} value not largest`] : [])];
+        // Every bar (clipped thin ones too) stays inside the chart's column area.
+        const out = cols && [...c.querySelectorAll('.bar')].some((b) => { const r = b.getBoundingClientRect(); return r.top < cols.top - 1 || r.bottom > cols.bottom + 1; });
+        return [...(!cols || cols.height < 23 ? [`${c.id} chart ${cols?.height}px`] : []), ...(bigger ? [`${c.id} value not largest`] : []), ...(out ? [`${c.id} bar outside chart`] : [])];
       }));
       expect(charts).toEqual([]);
       // A tap on a chart shows its themed tip; a tap elsewhere closes it.

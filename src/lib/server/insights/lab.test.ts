@@ -233,14 +233,14 @@ describe('sweetSpotsTab', () => {
     const t = sweetSpotsTab([...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)], bags, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags;
     expect(t.map((b) => b.label)).toEqual(['Bag 2', 'Bag 1', 'Bag 3']);
   });
-  it('top bags: listed bags sharing a name get their roast dates', () => {
+  it('top bags: listed bags sharing a name get their roast dates as a tag', () => {
     const twins = [bag({ id: 1, name: 'Gesha', purchaseDate: '2026-03-04' }), bag({ id: 2, name: 'Gesha', purchaseDate: '2026-08-15' }), bag({ id: 3, name: 'Other', purchaseDate: '2026-05-01' })];
     const r = [1, 2, 3].map((id) => brew({ coffeeId: id, rating: 9 - id }));
-    expect(sweetSpotsTab(r, twins, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => b.label))
-      .toEqual(['Gesha · roasted Mar 4', 'Gesha · roasted Aug 15', 'Other']);
+    expect(sweetSpotsTab(r, twins, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => [b.label, b.tag]))
+      .toEqual([['Gesha', 'roasted Mar 4'], ['Gesha', 'roasted Aug 15'], ['Other', null]]);
     const sameDay = twins.map((b) => ({ ...b, purchaseDate: '2026-05-05', firstBrew: `2026-0${5 + b.id}-02` }));
-    expect(sweetSpotsTab(r, sameDay, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => b.label))
-      .toEqual(['Gesha · opened Jun 2', 'Gesha · opened Jul 2', 'Other']);
+    expect(sweetSpotsTab(r, sameDay, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => [b.label, b.tag]))
+      .toEqual([['Gesha', 'opened Jun 2'], ['Gesha', 'opened Jul 2'], ['Other', null]]);
   });
   it('top bags: at most 5 of 6', () => {
     const six = [1, 2, 3, 4, 5, 6].map((id) => brew({ coffeeId: id, rating: 8 }));
