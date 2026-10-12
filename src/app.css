@@ -5,6 +5,7 @@
   --color-text-muted: #6b5c4f;
   --color-border: #e6ddd2;
   --color-accent: #8a5a3b;
+  --color-label: #5c3a24; /* "Espresso": bold labels (record tile names), apart from accent links */
   --color-accent-contrast: #ffffff;
   --button-shade: #000000;
   --color-urgent: #c0392b;
@@ -59,6 +60,7 @@
     --color-text-muted: #b3a494;
     --color-border: #3a2f26;
     --color-accent: #d99a6c;
+    --color-label: #e8c9ab;
     --color-accent-contrast: #1c1712;
     --button-shade: #ffffff;
     --color-urgent: #e57368;
@@ -103,6 +105,7 @@
   --color-text-muted: #b3a494;
   --color-border: #3a2f26;
   --color-accent: #d99a6c;
+  --color-label: #e8c9ab;
   --color-accent-contrast: #1c1712;
   --button-shade: #ffffff;
   --color-urgent: #e57368;

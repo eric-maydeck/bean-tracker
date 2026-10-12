@@ -561,6 +561,7 @@
     brewer={s.brewer}
     caffeine={s.caffeine}
     top={s.top}
+    topc={s.topc}
     perPerson={perPersonOn}
     allRange={!data.period.start}
     {compareLabel}

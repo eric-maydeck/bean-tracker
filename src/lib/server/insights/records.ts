@@ -38,6 +38,7 @@ export interface RecordTile extends RecordPick {
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
   topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 50, best first (10 shown, or top=20|50)
+  topCoffees: { mean: number; brews: number; holder: Holder }[]; // ≤ 50 bags by mean rating, like Best bag (topc)
   perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
   coversAll: boolean; // the period starts on or before the first (filtered) brew: every record is all-time
@@ -387,6 +388,10 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
+    // Bags with 3+ counted rated brews (Best bag's rule), best mean first.
+    topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length >= 3)
+      .map((s) => ({ mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
+      .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),
     brewerTypes: BREWER_TYPES.filter((t) => allBrews.some((b) => b.brewerType === t)),

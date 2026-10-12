@@ -125,13 +125,14 @@ export interface InsightsUrlState {
   brewer?: BrewerType; // Records/Milestones: one brewer type (absent = all)
   caffeine?: Caffeine; // Records: absent = all
   top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
+  topc?: Top; // Records: the top-coffees list, likewise
   kinds?: Kind[]; // Milestones: absent = all kinds
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top';
+type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top;
+  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
 };
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
@@ -247,7 +248,8 @@ export function parseInsightsUrl(
     brewer: pickOne(p, 'brewer', brewerTypes),
     kinds: parseList(p, 'kinds', KINDS),
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
-    top: TOPS.find((n) => String(n) === p.get('top'))
+    top: TOPS.find((n) => String(n) === p.get('top')),
+    topc: TOPS.find((n) => String(n) === p.get('topc'))
   };
 }
 
@@ -269,6 +271,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.kinds) p.set('kinds', s.kinds.join(','));
   if (s.caffeine) p.set('caffeine', s.caffeine);
   if (s.top) p.set('top', String(s.top));
+  if (s.topc) p.set('topc', String(s.topc));
   return p;
 }
 
@@ -293,7 +296,8 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     brewer: s.brewer,
     kinds: s.kinds,
     caffeine: s.caffeine,
-    top: s.top
+    top: s.top,
+    topc: s.topc
   };
 }
 

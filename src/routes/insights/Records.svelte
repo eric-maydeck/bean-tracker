@@ -8,9 +8,9 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
 
   let {
-    t, ratings, brewer, caffeine, top, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
+    t, ratings, brewer, caffeine, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
   }: {
-    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; perPerson: boolean;
+    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
     allRange: boolean; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
@@ -201,6 +201,31 @@
   </div>
 {/snippet}
 
+<!-- A ranked list (top coffees, top brews): 10 → 20 → 50 in steps, Show less (left) straight back to 10. -->
+{#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string }[], n: Top | undefined, set: (v: Top | undefined) => void)}
+  {@const shown = rows.slice(0, n ?? 10)}
+  <HeadingAnchor {id} level={3} class="top-title">Top {shown.length} {noun}</HeadingAnchor>
+  <ol class="top-brews" style:--n={shown.length} style:--half={Math.ceil(shown.length / 2)}>
+    {#each shown as row, i (i)}
+      <li>
+        <span class="rank">{i + 1}</span>
+        <span class="top-rating">{row.score.toFixed(1)}</span>
+        <span class="who">
+          {#if row.holder.href}<a href={row.holder.href} use:full>{row.holder.label}</a>{:else}<span use:full>{row.holder.label}</span>{/if}
+          <small use:full>{row.line}</small>
+        </span>
+      </li>
+    {/each}
+  </ol>
+  {#if rows.length > 10}
+    {@const next = n === 50 ? null : n === 20 ? 50 : 20}
+    <div class="top-foot">
+      {#if n}<button class="button button-ghost" onclick={() => set(undefined)}>Show less</button>{/if}
+      {#if next && rows.length > shown.length}<button class="button button-ghost" onclick={() => set(next)}>Show more</button>{/if}
+    </div>
+  {/if}
+{/snippet}
+
 <div class="insights-bar">
   <div class="form-field group-field">
     <span>Caffeine</span>
@@ -237,30 +262,16 @@
         {#each s.tiles as r, i (r.key)}{@render tile(r, `${s.key}-${i}`, vars[i])}{/each}
       </div>
     {/if}
-    {#if s.key === 'taste' && t.topBrews.length}
-      {@const shown = t.topBrews.slice(0, top ?? 10)}
-      <HeadingAnchor id="records-top-brews" level={3} class="top-title">Top {shown.length} brews</HeadingAnchor>
-      <ol class="top-brews" style:--n={shown.length} style:--half={Math.ceil(shown.length / 2)}>
-        {#each shown as b, i (i)}
-          <li>
-            <span class="rank">{i + 1}</span>
-            <span class="top-rating">{b.rating.toFixed(1)}</span>
-            <span class="who">
-              {#if b.holder.href}<a href={b.holder.href} use:full>{b.holder.label}</a>{:else}<span use:full>{b.holder.label}</span>{/if}
-              <small use:full>{[date(b.holder.date), b.brewer].filter(Boolean).join(' · ')}</small>
-            </span>
-          </li>
-        {/each}
-      </ol>
-      <!-- 10 → 20 → 50 in steps; Show less goes straight back to 10. -->
-      {#if t.topBrews.length > 10}
-        {@const next = top === 50 ? null : top === 20 ? 50 : 20}
-        <div class="top-foot">
-          {#if next && t.topBrews.length > shown.length}
-            <button class="button button-ghost" onclick={() => choose({ top: next })}>Show more</button>
-          {/if}
-          {#if top}<button class="button button-ghost" onclick={() => choose({ top: undefined })}>Show less</button>{/if}
-        </div>
+    {#if s.key === 'taste'}
+      {#if t.topCoffees.length}
+        {@render topList('records-top-coffees', 'coffees', t.topCoffees.map((c) => ({
+          score: c.mean, holder: c.holder, line: [`${c.brews} rated brews`, c.holder.sub].filter(Boolean).join(' · ')
+        })), topc, (v) => choose({ topc: v }))}
+      {/if}
+      {#if t.topBrews.length}
+        {@render topList('records-top-brews', 'brews', t.topBrews.map((b) => ({
+          score: b.rating, holder: b.holder, line: [date(b.holder.date), b.brewer].filter(Boolean).join(' · ')
+        })), top, (v) => choose({ top: v }))}
       {/if}
     {/if}
   </section>
@@ -338,9 +349,9 @@
   .grp :global(.hl-holder) {
     line-height: 1.3;
   }
-  /* The tile's name: bold body text, apart from the muted lines above it and the accent links. */
+  /* The tile's name: bold, in the label colour, apart from the muted lines above it and the accent links. */
   .caption-link {
-    color: var(--color-text);
+    color: var(--color-label);
     font-weight: 700;
     text-decoration: none;
   }

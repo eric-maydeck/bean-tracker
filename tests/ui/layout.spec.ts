@@ -1561,13 +1561,23 @@ export const STATES: State[] = [
     } },
   { name: 'insights-records-top20', path: () => '/insights?tab=records&range=all&top=20',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Show less' })).toBeVisible();
-      await expect(page.locator('.top-brews li')).not.toHaveCount(10);
+      // Show less sits left of Show more.
+      const foot = page.locator('#records-top-brews ~ .top-foot');
+      const [less, more] = await Promise.all(['Show less', 'Show more'].map((n) => foot.getByRole('button', { name: n }).boundingBox()));
+      expect(less!.x).toBeLessThan(more!.x);
+      await expect(page.locator('#records-top-brews + ol li')).not.toHaveCount(10);
     } },
   { name: 'insights-records-top50', path: () => '/insights?tab=records&range=all&top=50',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Show less' })).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+      const foot = page.locator('#records-top-brews ~ .top-foot');
+      await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
+      await expect(foot.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+    } },
+  { name: 'insights-records-topc20', path: () => '/insights?tab=records&range=all&topc=20',
+    act: async (page) => {
+      // The seed has under 11 coffees with 3+ ratings: the list shows them all, with no controls.
+      await expect(page.locator('#records-top-coffees')).toBeVisible();
+      await expect(page.locator('#records-top-coffees + ol li').first()).toBeVisible();
     } },
   { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
     act: async (page) => {

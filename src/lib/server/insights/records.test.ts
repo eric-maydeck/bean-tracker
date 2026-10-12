@@ -246,6 +246,10 @@ describe('recordsTab', () => {
     expect(t.brewerTypes).toEqual(['pourover', 'soup']);
     expect(t.sections.map((s) => s.key)).toEqual(['volume', 'extremes']);
   });
+  it('topCoffees: bags with 3+ rated brews by mean, best first', () => {
+    const t = recordsTab([...rated(1, [8, 8, 8]), ...rated(2, [9, 9, 9, 9]), ...rated(3, [10, 10])], BAGS, CTX);
+    expect(t.topCoffees).toMatchObject([{ mean: 9, brews: 4, holder: { label: 'Bag 2' } }, { mean: 8, brews: 3, holder: { label: 'Bag 1' } }]);
+  });
   it('caffeine filters brews and bags; brewer types stay all-time', () => {
     const bags = [bag({ id: 1, name: 'Caf', cost: 30, amountG: 250, purchaseDate: '2026-03-01' }),
       bag({ id: 2, name: 'Dec', decaf: true, cost: 10, amountG: 250, purchaseDate: '2026-03-01' })];

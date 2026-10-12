@@ -437,6 +437,12 @@ describe('highlights params', () => {
     expect(parse('top=10').top).toBeUndefined();
     expect(parse('top=30').top).toBeUndefined();
     expect(insightsParams(parse('tab=records&top=50')).toString()).toBe('tab=records&top=50');
+  });
+  it('topc: the top coffees likewise, separate from top', () => {
+    expect(parse('topc=20').topc).toBe(20);
+    expect(parse('topc=50&top=20')).toMatchObject({ topc: 50, top: 20 });
+    expect(parse('topc=10').topc).toBeUndefined();
+    expect(insightsParams(parse('tab=records&topc=50')).toString()).toBe('tab=records&topc=50');
     expect(insightsParams(parse('tab=records&top=20')).toString()).toBe('tab=records&top=20');
   });
 });
