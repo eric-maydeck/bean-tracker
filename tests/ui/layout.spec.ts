@@ -1612,7 +1612,7 @@ export const STATES: State[] = [
       const label = `Jump to ${await oldest.textContent()}`;
       await ruler.getByRole('button', { name: label }).last().click();
       await expect(oldest).toBeInViewport();
-      if (await ruler.isVisible()) await expect(ruler).toBeInViewport(); // else hidden: too little room left (M11)
+      await expect(ruler).toBeInViewport();
       // Scrolled to the feed's very end, the ruler is still wholly on screen (M10).
       await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       await settle();
@@ -1622,22 +1622,21 @@ export const STATES: State[] = [
       // The thumb is small and fixed-size, whatever the period (M8).
       const thumb = (await ruler.locator('.band').boundingBox())!;
       expect(Math.min(thumb.width, thumb.height)).toBeLessThanOrEqual(48);
-      // With under 120px of feed left beside it, the side ruler hides and the feed takes its column (M11).
-      // (Only short screens can scroll the feed's end that high; taller ones keep it, checked too.)
+      // Scrolling never hides it: past the feed's end it stays (and slides off with the feed) (M11).
       if (page.viewportSize()!.width >= 700) {
         const feedW = (await page.locator('.feed').boundingBox())!.width;
-        const room = await page.evaluate(async () => {
-          const bar = (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
-          scrollBy(0, document.querySelector('.feed')!.getBoundingClientRect().bottom - (bar + 80));
-          await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-          return document.querySelector('.feed')!.getBoundingClientRect().bottom - bar - 12;
-        });
-        if (room < 120) {
-          await expect(ruler).toBeHidden();
-          expect((await page.locator('.feed').boundingBox())!.width).toBeGreaterThan(feedW);
-        } else await expect(ruler).toBeVisible();
-        await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
+        await page.evaluate(() => scrollBy(0, document.querySelector('.feed')!.getBoundingClientRect().bottom - 120));
+        await settle();
+        expect(await ruler.evaluate((e) => getComputedStyle(e).display)).not.toBe('none');
+        expect((await page.locator('.feed').boundingBox())!.width).toBe(feedW);
+        // A screen too short for it drops it from the start, and the feed takes its column.
+        const size = page.viewportSize()!;
+        await page.setViewportSize({ width: size.width, height: 260 });
+        await expect(ruler).toBeHidden();
+        expect((await page.locator('.feed').boundingBox())!.width).toBeGreaterThan(feedW);
+        await page.setViewportSize(size);
         await expect(ruler).toBeVisible();
+        await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       }
       // A press 60% through the newest month's band lands 60% down its section, at the top of the
       // feed's visible part (under the filter bar, and the phone strip once stuck).

@@ -55,8 +55,10 @@
   let current = $derived(pos === null ? null : tickAt(ticks, pos).ym);
   // The side bar shrinks to end with the feed, so it never runs out of sticky track (M10).
   let rulerH: number | null = $state(null);
-  // Under 120px of room it's too small to use: hidden, and the feed takes its column (M11).
-  let hideRuler = $state(false);
+  // A screen too short for a usable side ruler (under 200px under the bars) drops it, and the feed
+  // takes its column (M11). Viewport only, so it changes on resize, never mid-scroll.
+  const MIN_RULER = 200;
+  let hideRuler = $derived(vertical && fullH < MIN_RULER);
 
   // The month sections' current extents (viewport coordinates).
   function sections(): Section[] {
@@ -69,12 +71,8 @@
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
     pos = feedToRuler(ticks, secs, top + 8); // a few px in: a header just under the bars counts as in view
     // Not mid-drag: a ruler resizing under the pointer would feed back into the scrub.
-    if (!dragging) {
-      const room = Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12));
-      // 10px of hysteresis: the feed reflowing as it widens can't toggle it back and forth.
-      hideRuler = vertical && room < (hideRuler ? 130 : 120);
-      rulerH = vertical && !hideRuler ? room : null;
-    }
+    // Shrinks to end with the feed (down to MIN_RULER, then slides off with it); not mid-drag.
+    if (!dragging) rulerH = vertical && !hideRuler ? Math.max(MIN_RULER, Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12))) : null;
   }
   $effect(() => {
     void ticks;
