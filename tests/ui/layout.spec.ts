@@ -1954,6 +1954,8 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/compare=1/);
       await expect(page).toHaveURL(/people=person/);
       await expect(page).toHaveURL(/grinder=zp6-special/); // lab picks stick through a non-lab tab too
+      await page.getByLabel('View').selectOption('gear'); // a second action on the non-lab tab
+      await expect(page).toHaveURL(/grinder=zp6-special/);
     } },
   { name: 'insights-lab-reset', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
     act: async (page) => {
