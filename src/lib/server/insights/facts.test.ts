@@ -129,14 +129,14 @@ describe('loadFacts', () => {
     ).run(now);
     db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6 (1ZPresso)', ?)`).run(now);
     const brew = db.prepare(
-      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, water_amount_g, grind_setting, imported_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, water, ground_coffee_g, rating, brew_time, bloom_time, water_amount_g, grind_setting, brew_temperature, imported_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     );
     // stored as local wall time: 23:30 on Jun 30 stays on Jun 30 (no shift)
-    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'g1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', 250, '2.4.1', now);
-    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, null, 16, null, null, null, 0, null, now);
+    brew.run('2026-06-30T23:30:00.000Z', 'b1', 'm1', 'g1', 'w1', 'Lotus - Mg/K 60/10', 15, 8.5, '100', '0', 250, '2.4.1', 92, now);
+    brew.run('2026-07-03T15:00:00.000Z', 'b1', 'm1', null, null, null, 16, null, null, null, 0, null, 0, now);
     // a brew of an unlinked bean (no bean row at all)
-    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, null, 14, 7, null, null, null, null, now);
+    brew.run('2026-07-02T15:00:00.000Z', null, null, null, null, null, 14, 7, null, null, null, null, null, now);
     return { db, coffeeId };
   }
 
@@ -193,6 +193,11 @@ describe('loadFacts', () => {
     expect(loadFacts(db).bags.find((b) => b.id === coffeeId)).toMatchObject({ restLow: 7, restHigh: 21 });
   });
 
+  it('tempC: brew_temperature, 0 = not entered', () => {
+    const [a, b, c] = loadFacts(seed().db).brews;
+    expect(a.tempC).toBe(92);
+    expect([b.tempC, c.tempC]).toEqual([null, null]);
+  });
   it('hasNote, brewIndex and bagRating', () => {
     const { db, coffeeId } = seed();
     db.prepare(`UPDATE beanconqueror_brews SET notes = '  ' WHERE bc_created_at LIKE '2026-06-30%'`).run();

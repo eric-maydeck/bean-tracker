@@ -5,7 +5,7 @@ import type { BrewFact, BagFact } from './facts';
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: 15, rating: null, roaster: 'Sey', origin: 'Kenya',
   processGroup: 'Washed', roastLevel: 'Light', decaf: false, brewer: null, brewerType: 'pourover', waterG: null, ratio: null, grind: null, dripper: 'V60', filter: 'Cafec Abaca', grinder: 'ZP6',
-  water: 'Lotus', waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, hasNote: false, brewIndex: 0, ...o
+  water: 'Lotus', waterProfile: null, restDays: null, costPerBrew: null, brewTimeSeconds: null, bloomSeconds: null, hasNote: false, brewIndex: 0, tempC: null, ...o
 });
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 1, status: 'open', purchaseDate: '2026-09-10', cost: 25, amountG: 250, roaster: 'Sey', name: 'Kiambu', slug: 'sey-kiambu',

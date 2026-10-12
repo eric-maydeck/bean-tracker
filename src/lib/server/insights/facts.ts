@@ -95,6 +95,7 @@ export interface BrewFact {
   brewTimeSeconds: number | null;
   bloomSeconds: number | null;
   hasNote: boolean; // notes non-blank
+  tempC: number | null; // brew_temperature, °C; null when not entered
   brewIndex: number; // 1-based position within its bag, by time; 0 when no bag
 }
 export interface BagFact {
@@ -127,6 +128,7 @@ interface BrewRow {
   coffee_id: number | null; roaster: string | null; origin: string | null; processing: string | null; roast_level: string | null;
   decaf: number | null; roast_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
   cost: number | null; amount_g: number | null; water_amount_g: number | null; grind_setting: string | null; style: string | null;
+  brew_temperature: number | null;
 }
 
 interface BagRow {
@@ -142,7 +144,7 @@ interface BagRow {
 export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[] } {
   const rows = db
     .prepare(
-      `SELECT b.id, b.bc_created_at, b.ground_coffee_g AS dose, b.rating, b.brew_time, b.bloom_time,
+      `SELECT b.id, b.bc_created_at, b.ground_coffee_g AS dose, b.rating, b.brew_time, b.bloom_time, b.brew_temperature,
               m.name AS method, m.preparation_tools AS tools, g.name AS grinder,
               COALESCE(w.name, b.water) AS water, w.id AS water_id,
               w.calcium, w.magnesium, w.sodium, w.potassium, w.chloride, w.sulfate,
@@ -196,6 +198,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
       brewTimeSeconds: seconds(r.brew_time),
       bloomSeconds: seconds(r.bloom_time),
       hasNote: !!r.notes?.trim(),
+      tempC: r.brew_temperature && r.brew_temperature > 0 ? r.brew_temperature : null,
       brewIndex: 0
     };
   });
