@@ -1,3 +1,37 @@
+# [1.73.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.72.0...v1.73.0) (2026-10-12)
+
+
+### Bug Fixes
+
+* **insights:** calibration full months, shared groupBy and grindValue
+* **insights:** clamped tap opens the full text, no $0 spend, B7 test
+* **insights:** co-ferment details label reads Process
+* **insights:** deck bucketed on the server, shared spend, what-if and caveat fixes
+* **insights:** fuller what-if cards, no 0.00 findings or giant settle counts
+* **insights:** match spec definitions on prod data
+* **insights:** on-hand lists from all brews, bonferroni wildcard, sample sd
+* **insights:** return the full grid, drop fillRows and splitRows
+* **insights:** runway uses consumption, stricter minimums for generators
+* **insights:** weekday side first, weekends over the Sat/Sun bars
+
+
+### Features
+
+* **insights:** details fill spare row height only
+* **insights:** generator registry with dial-in, taste and runway findings
+* **insights:** habits, gear, money and myth findings
+* **insights:** insights tab bucketing and what-if math
+* **insights:** insights tab params and load
+* **insights:** insights tab ui
+* **insights:** multi-line charts, details lists, too-early meters, wrapping versus cards
+* **insights:** notes, brew index, bag rating facts and stats helpers
+* **insights:** rule-based findings card sizes
+* **insights:** runway lists the oldest bags on hand
+* **insights:** supporting detail lists on descriptive and number cards
+* **insights:** trend charts, multi-line gear shares and too-early progress
+* **insights:** weekday bar chart
+* **insights:** weekday bars, 2-item details, dial-in speed details
+
 # [1.72.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.71.0...v1.72.0) (2026-10-12)
 
 
