@@ -289,7 +289,7 @@ describe('weekends vs weekdays', () => {
   it('brews per day, versus', () => {
     const f = gen('weekendVsWeekday', mk(28, 5), [], sep)!;
     expect(f).toMatchObject({ theme: 'habits', kind: 'versus', headline: "Weekends aren't binges", sample: '28 days', z: null });
-    expect(f.sides).toEqual([{ label: 'Weekends', value: '5.00' }, { label: 'Weekdays', value: '6.00' }]);
+    expect(f.sides).toEqual([{ label: 'Weekdays', value: '6.00' }, { label: 'Weekends', value: '5.00' }]); // weekends right, over Sat/Sun
     expect(gen('weekendVsWeekday', mk(28, 8), [], sep)!.headline).toBe('You brew more on weekends');
   });
   it('a Mon..Sun bar series of brews per day', () => {
@@ -301,7 +301,7 @@ describe('weekends vs weekdays', () => {
     // Every other Saturday and Sunday off: weekends average 4 a day, not 8.
     const off = new Set(['2026-09-12', '2026-09-13', '2026-09-26', '2026-09-27']);
     const f = gen('weekendVsWeekday', mk(28, 8).filter((b) => !off.has(b.localDate)), [], sep)!;
-    expect(f.sides).toEqual([{ label: 'Weekends', value: '4.00' }, { label: 'Weekdays', value: '6.00' }]);
+    expect(f.sides).toEqual([{ label: 'Weekdays', value: '6.00' }, { label: 'Weekends', value: '4.00' }]);
   });
   it('null under 30 weekend brews', () => expect(gen('weekendVsWeekday', mk(7, 5), [], sep)).toBeNull());
 });

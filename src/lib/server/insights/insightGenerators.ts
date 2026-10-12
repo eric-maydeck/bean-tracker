@@ -348,7 +348,7 @@ const weekendVsWeekday: Generator = (c) => {
   return {
     series, chart: 'bars',
     key: 'weekendVsWeekday', theme: 'habits', kind: 'versus', headline: a > b * 1.1 ? 'You brew more on weekends' : "Weekends aren't binges",
-    sides: [{ label: 'Weekends', value: a.toFixed(2) }, { label: 'Weekdays', value: b.toFixed(2) }], body: 'Brews per day.',
+    sides: [{ label: 'Weekdays', value: b.toFixed(2) }, { label: 'Weekends', value: a.toFixed(2) }], body: 'Brews per day.',
     sample: plural(all.length, 'day'), href: HABITS, z: null, strength: null
   };
 };
