@@ -28,7 +28,7 @@ export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;
 export type BrewerType = (typeof BREWER_TYPES)[number];
 
-export const TABS = ['overview', 'leaderboards', 'habits', 'consumption'] as const;
+export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones'] as const;
 export type Tab = (typeof TABS)[number];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).
@@ -47,6 +47,9 @@ export type ByFits = (range: string, by: By) => boolean;
 // Leaderboards: one Rank by for every board; `open` = the one board showing all its rows.
 export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg'] as const;
 export type Rank = (typeof RANKS)[number];
+// Milestones: which kinds of moment to show (kinds=firsts,bests; absent = all).
+export const KINDS = ['counts', 'firsts', 'bests', 'streaks', 'gear', 'anniversaries'] as const;
+export type Kind = (typeof KINDS)[number];
 export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const;
 export type Board = (typeof BOARDS)[number];
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
@@ -61,6 +64,13 @@ export const peopleHelp = (size: number): Record<People, string> => ({
 // split, so the param is dropped (a link from a 2-person household still opens cleanly).
 export const parsePeople = (p: URLSearchParams, householdSize: number): People | undefined =>
   householdSize > 1 ? pickOne(p, 'people', PEOPLE) : undefined;
+
+// A comma list (kinds=firsts,bests): allowed values in their own order, junk dropped.
+export function parseList<T extends string>(p: URLSearchParams, name: string, allowed: readonly T[]): T[] | undefined {
+  const given = new Set((p.get(name) ?? '').toLowerCase().split(',').map((v) => v.trim()));
+  const picked = allowed.filter((a) => given.has(a));
+  return picked.length ? picked : undefined;
+}
 
 // A Period: a RANGES value or an offered calendar year (/insights, and /stats' Time to Clear).
 export const parseRange = (p: URLSearchParams, years: readonly number[]): string | undefined =>
@@ -106,12 +116,16 @@ export interface InsightsUrlState {
   measure?: Measure;
   unit?: Unit;
   by?: By;
+  brewer?: BrewerType; // Records/Milestones: one brewer type (absent = all)
+  kinds?: Kind[]; // Milestones: absent = all kinds
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
-export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg'>> & { open?: Board; by?: By; agg: Agg };
+export type InsightsView = Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg' | 'brewer' | 'kinds'>> & {
+  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[];
+};
 
-export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg'>> & { agg: Agg } = {
+export const DEFAULTS: Required<Omit<InsightsUrlState, 'open' | 'by' | 'agg' | 'brewer' | 'kinds'>> & { agg: Agg } = {
   range: '12m',
   compare: 0,
   ratings: 'current',
@@ -192,7 +206,8 @@ export function keepCompare(c: number | string | undefined, offered: readonly st
 // `householdSize`: getHouseholdSize (1 drops `people`).
 export function parseInsightsUrl(
   p: URLSearchParams, years: readonly number[], brewYears: readonly number[] = years, fits: Fits = () => false,
-  householdSize = 1, byFits: ByFits = () => true, today = '9999-12-31'
+  householdSize = 1, byFits: ByFits = () => true, today = '9999-12-31',
+  brewerTypes: readonly BrewerType[] = BREWER_TYPES
 ): InsightsUrlState {
   const range = parseRange(p, years) ?? parseCustomPeriod(p, today);
   const r = range ?? DEFAULTS.range;
@@ -219,7 +234,9 @@ export function parseInsightsUrl(
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
     by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)),
-    agg: pickOne(p, 'agg', AGGS) === 'total' ? 'total' : undefined
+    agg: pickOne(p, 'agg', AGGS) === 'total' ? 'total' : undefined,
+    brewer: pickOne(p, 'brewer', brewerTypes),
+    kinds: parseList(p, 'kinds', KINDS)
   };
 }
 
@@ -237,6 +254,8 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.unit) p.set('unit', s.unit);
   if (s.by) p.set('by', s.by);
   if (s.agg === 'total') p.set('agg', 'total');
+  if (s.brewer) p.set('brewer', s.brewer);
+  if (s.kinds) p.set('kinds', s.kinds.join(','));
   return p;
 }
 
@@ -257,7 +276,9 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     measure: s.measure ?? DEFAULTS.measure,
     unit: s.unit ?? DEFAULTS.unit,
     by: s.by,
-    agg: s.agg ?? DEFAULTS.agg
+    agg: s.agg ?? DEFAULTS.agg,
+    brewer: s.brewer,
+    kinds: s.kinds
   };
 }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel
+  parsePeople, parseRange, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -400,4 +400,29 @@ describe('sticky tab choices and reset', () => {
     expect(resetInsights(parse('range=1w&tab=overview&unit=bags'))).toEqual({});
     expect(resetInsights({})).toEqual({});
   });
+});
+
+describe('highlights params', () => {
+  const parse = (q: string, types: readonly BrewerType[] = ['pourover', 'soup']) =>
+    parseInsightsUrl(new URLSearchParams(q), [2026], [2026], () => false, 1, () => true, '2026-10-11', types);
+  it('reads the new tabs', () => {
+    expect(parse('tab=records').tab).toBe('records');
+    expect(parse('tab=Milestones').tab).toBe('milestones');
+  });
+  it('brewer: only types present in the data', () => {
+    expect(parse('brewer=soup').brewer).toBe('soup');
+    expect(parse('brewer=espresso').brewer).toBeUndefined();
+    expect(parse('brewer=nonsense').brewer).toBeUndefined();
+  });
+  it('kinds: comma list, allowed order, junk dropped', () => {
+    expect(parse('kinds=bests,Firsts,junk').kinds).toEqual(['firsts', 'bests']);
+    expect(parse('kinds=junk').kinds).toBeUndefined();
+  });
+  it('round-trips and omits defaults', () => {
+    const s = parse('tab=records&brewer=soup&kinds=firsts,bests');
+    expect(insightsParams(s).toString()).toBe('tab=records&brewer=soup&kinds=firsts%2Cbests');
+    expect(insightsParams(parse('')).toString()).toBe('');
+  });
+  it('reset keeps the tab only', () =>
+    expect(resetInsights(parse('tab=records&brewer=soup'))).toEqual({ tab: 'records' }));
 });
