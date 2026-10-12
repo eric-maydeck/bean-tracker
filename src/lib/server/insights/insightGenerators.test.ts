@@ -223,10 +223,13 @@ describe('details (supporting lists)', () => {
       { name: 'Bag 1', value: '6.00', href: '/coffees/b1' }, { name: 'Bag 2', value: '6.10', href: '/coffees/b2' }] }]);
   });
   it('runway: most on hand among open and backlog bags', () => {
-    const bs = [bag({ id: 1, name: 'Big', amountG: 1000 }), bag({ id: 2, name: 'Half', amountG: 1000 }), bag({ id: 3, name: 'Gone', amountG: 1000, status: 'archive' })];
+    const bs = [bag({ id: 1, name: 'Big', amountG: 1000, purchaseDate: '2026-09-01' }), bag({ id: 2, name: 'Half', amountG: 1000, purchaseDate: '2026-08-01', frozenStart: '2026-08-02', frozenEnd: '2026-08-31' }),
+      bag({ id: 3, name: 'Gone', amountG: 1000, status: 'archive', purchaseDate: '2026-01-01' }), bag({ id: 4, name: 'Undated', amountG: 100 })];
     const brews = Array.from({ length: 20 }, (_, i) => brew({ id: nextId++, coffeeId: 2, dose: 25, localDate: addDays('2026-09-01', i) }));
     expect(gen('backlogRunway', brews, bs, { onHandG: 1500, dataStart: '2026-09-01', period: { from: '2026-09-01', to: '2026-09-30' } })!.details)
-      .toEqual([{ label: 'Most on hand', items: [{ name: 'Big', value: formatGrams(1000) }, { name: 'Half', value: formatGrams(500) }] }]);
+      .toEqual([{ label: 'Most on hand', items: [{ name: 'Big', value: formatGrams(1000) }, { name: 'Half', value: formatGrams(500) }] },
+        // today 2026-10-11: Big 40 days; Half 71 days minus 29 frozen = 42; archived and undated bags left out
+        { label: 'Oldest on hand', items: [{ name: 'Half', value: '42 days off roast' }, { name: 'Big', value: '40 days off roast' }] }]);
   });
   it('cost per cup: priciest and cheapest coffees (6+ costed bags)', () => {
     const bs = bags(6);

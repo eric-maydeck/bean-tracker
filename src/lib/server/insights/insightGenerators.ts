@@ -288,13 +288,19 @@ const backlogRunway: Generator = (c) => {
   if (days < MIN_RUNWAY_DAYS || perDay === null || daysToClear === null) return null;
   const brewed = c.brews.filter((b) => inPeriod(b.localDate, p)).reduce((s, b) => s + (b.dose ?? 0), 0);
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
+  const logged = loggedGrams(c.brews);
+  const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, logged) })).filter((x) => x.g > 0);
   return {
     key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
     body: `At ${Math.round(perDay)} g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
     sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null,
-    ...details(['Most on hand', ((logged) => c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, logged) })))(loggedGrams(c.brews))
-      .filter((x) => x.g > 0).sort((x, y) => y.g - x.g || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, formatGrams(x.g), coffeeHref(x.b)))])
+    ...details(
+      ['Most on hand', [...held].sort((x, y) => y.g - x.g || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, formatGrams(x.g), coffeeHref(x.b)))],
+      // Oldest off roast still on hand, rest net of freezer time.
+      ['Oldest on hand', held.flatMap((x) => { const d = restDays(x.b.purchaseDate, x.b.frozenStart ?? null, x.b.frozenEnd ?? null, c.today); return d === null ? [] : [{ ...x, d }]; })
+        .sort((x, y) => y.d - x.d || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, `${plural(x.d, 'day')} off roast`, coffeeHref(x.b)))]
+    )
   };
 };
 
