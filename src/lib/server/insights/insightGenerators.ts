@@ -28,7 +28,8 @@ export interface Finding {
   // Multi-line trend: x = period labels ("Mar 26"), one line per category, null = gap.
   multi?: { x: string[]; lines: { label: string; values: (number | null)[] }[]; unit?: string };
   progress?: number; // too early only: n / (n + more needed), 0..1, how close to settled
-  details?: { label: string; items: DetailItem[] }[]; // supporting lists from real data: ≤ 2 groups × 3 items
+  details?: { label: string; items: DetailItem[] }[]; // supporting lists from real data: ≤ 2 groups × 2 items
+  chart?: 'bars'; // draw `series` as mini vertical bars instead of a line
 }
 export interface DetailItem { name: string; value?: string; href?: string }
 export interface GenCtx {
@@ -56,11 +57,12 @@ const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => {
   for (const b of rows) if (b.coffeeId !== null) (by.get(b.coffeeId) ?? by.set(b.coffeeId, []).get(b.coffeeId)!).push(b);
   return by;
 };
-// Supporting lists: `details(['Label', items], …)` keeps non-empty groups, 3 items each, unique names.
+// Supporting lists: `details(['Label', items], …)` keeps non-empty groups, DETAIL_ITEMS each, unique names.
+const DETAIL_ITEMS = 2;
 const detail = (name: string, value?: string, href?: string | null): DetailItem => ({ name, ...(value ? { value } : {}), ...(href ? { href } : {}) });
 const coffeeHref = (b: BagFact | undefined) => (b?.slug ? `/coffees/${b.slug}` : null);
 function details(...groups: [string, DetailItem[]][]): Pick<Finding, 'details'> {
-  const out = groups.map(([label, items]) => ({ label, items: items.filter((x, i) => items.findIndex((y) => y.name === x.name) === i).slice(0, 3) })).filter((g) => g.items.length);
+  const out = groups.map(([label, items]) => ({ label, items: items.filter((x, i) => items.findIndex((y) => y.name === x.name) === i).slice(0, DETAIL_ITEMS) })).filter((g) => g.items.length);
   return out.length ? { details: out } : {};
 }
 const bagById = (c: GenCtx) => new Map(c.bags.map((b) => [b.id, b]));
@@ -151,7 +153,12 @@ const dialinSpeed: Generator = (c) => {
     key: 'dialinSpeed', theme: 'dialin', kind: 'versus', headline: hits ? `Dial-in takes up to ${last.pos} brews` : `Dial-in takes ${fast.pos} to ${last.pos} brews`,
     sides: [{ label: `Slowest: ${label(s)}`, value: plural(s.pos, 'brew') },
       hits ? { label: 'Right on brew 1', value: `${hits} of ${plural(slow.length, 'bag')}` } : { label: `Fastest: ${label(fast)}`, value: plural(fast.pos, 'brew') }],
-    sample: `${slow.length} bags`, href: `${LB}&open=coffees`, z: null, strength: null
+    sample: `${slow.length} bags`, href: `${LB}&open=coffees`, z: null, strength: null,
+    ...details(
+      ['Next slowest', [...sorted].reverse().filter((x) => x !== s).map((x) => detail(label(x), plural(x.pos, 'brew'), coffeeHref(c.bags.find((b) => b.id === x.id))))],
+      ['Most bags settle by', [...groupBy(sorted, (x) => x.pos)].sort((a, b) => b[1].length - a[1].length || a[0] - b[0])
+        .map(([pos, g]) => detail(`brew ${pos}`, plural(g.length, 'bag')))]
+    )
   };
 };
 
@@ -337,7 +344,9 @@ const weekendVsWeekday: Generator = (c) => {
   const [we, wd] = [true, false].map((w) => all.filter((d) => (weekday(d) >= 5) === w).map((d) => n.get(d) ?? 0));
   if (sum(we) < MIN_BREWS || sum(wd) < MIN_BREWS) return null;
   const [a, b] = [mean(we), mean(wd)];
+  const series = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label, i) => ({ label, value: mean(all.filter((d) => weekday(d) === i).map((d) => n.get(d) ?? 0)) || 0 }));
   return {
+    series, chart: 'bars',
     key: 'weekendVsWeekday', theme: 'habits', kind: 'versus', headline: a > b * 1.1 ? 'You brew more on weekends' : "Weekends aren't binges",
     sides: [{ label: 'Weekends', value: a.toFixed(2) }, { label: 'Weekdays', value: b.toFixed(2) }], body: 'Brews per day.',
     sample: plural(all.length, 'day'), href: HABITS, z: null, strength: null
