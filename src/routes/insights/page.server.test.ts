@@ -412,4 +412,23 @@ describe('brewing lab tabs', () => {
     const { slug } = getDb().prepare('SELECT slug FROM coffees').get() as { slug: string };
     expect(run(`?tab=sweetspots&bag=${slug}&grinder=nope&roast=Light`).explicit).toMatchObject({ bag: slug, grinder: undefined, roast: undefined });
   });
+  it('lab picks survive a non-lab tab (Sweet spots → Insights → back keeps them)', () => {
+    seed([]);
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_grinders;');
+    db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'A4Z', ?)`).run(today);
+    for (const i of [1, 2, 3]) {
+      const { id } = createCoffee(db, {
+        roaster: 'R', coffee_name: `L${i}`, origin: null, roast_level: 'Light', processing: 'Washed', amount_g: 250, cost: 25,
+        roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
+      });
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, 'C', ?, ?)`).run(`l${i}`, today, id);
+      db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, mill_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 'g1', 15, 8, ?)`)
+        .run(`${today}T15:00:0${i}.000Z`, `l${i}`, today);
+    }
+    const { slug } = db.prepare(`SELECT slug FROM coffees WHERE coffee_name = 'L1'`).get() as { slug: string };
+    const d = run(`?tab=insights&bag=${slug}&roast=Light&grinder=a4z`);
+    expect(d.explicit).toMatchObject({ tab: 'insights', bag: slug, roast: 'Light', grinder: 'a4z' });
+    expect(d.lab).toBeNull();
+  });
 });

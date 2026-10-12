@@ -13,7 +13,7 @@ import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
-import { RANGES, BYS, BREWER_TYPES, LAB_TABS, parseInsightsUrl, withDefaults, compareOptions, isCustom, type LabValues } from '$lib/insightsUrl';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -28,17 +28,15 @@ export const load: PageServerLoad = ({ url }) => {
   const fits = compareFits(dataStart, today);
   const fitsBy = byFits(dataStart, today);
   const brewerTypes = BREWER_TYPES.filter((t) => brews.some((b) => b.brewerType === t));
-  const parse = (lab?: LabValues) => parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes, lab);
-  // The lab's picker values come from the data, so they're only computed on a lab tab (a second parse).
-  const isLab = (LAB_TABS as readonly string[]).includes(parse().tab ?? '');
-  const lab = isLab ? labOptions(brews, bags) : null;
-  const explicit = lab
-    ? parse({
-        bags: lab.bags.map((b) => b.slug), roasts: lab.roasts, processes: lab.processes, origins: lab.origins, roasters: lab.roasters,
-        grinders: lab.grinders.map((g) => g.slug)
-      })
-    : parse();
+  // The lab's picker values come from the data. Parsed with them on every tab (O(n)), so a non-lab tab
+  // keeps the lab picks in `explicit` and switching back restores them.
+  const opts = labOptions(brews, bags);
+  const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes, {
+    bags: opts.bags.map((b) => b.slug), roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters,
+    grinders: opts.grinders.map((g) => g.slug)
+  });
   const s = withDefaults(explicit);
+  const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;
   const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);
   const labCtx = { period, ratings: s.ratings };

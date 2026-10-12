@@ -1945,7 +1945,7 @@ export const STATES: State[] = [
       await expect(page.getByText(/^No rated brews (with [a-z ]+ )?in this period\.$/)).toHaveCount(1);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } })),
-  { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&compare=1&people=person',
+  { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&compare=1&people=person&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
@@ -1953,6 +1953,7 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Compare')).toHaveValue('1');
       await expect(page).toHaveURL(/compare=1/);
       await expect(page).toHaveURL(/people=person/);
+      await expect(page).toHaveURL(/grinder=zp6-special/); // lab picks stick through a non-lab tab too
     } },
   { name: 'insights-lab-reset', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
     act: async (page) => {
