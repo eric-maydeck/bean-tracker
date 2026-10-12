@@ -46,10 +46,10 @@ describe('taste', () => {
     expect(p).toMatchObject({ value: 7.5, detail: '1 → 8.5' });
   });
   it('biggest climb: first → best', () =>
-    expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: 'first 2.5 → best 9 (brew 3 of 4)' }));
+    expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: 'First 2.5 → Best 9 (brew 3 of 4)' }));
   it('hole-in-one counts bags (≥3 rated brews) best on their first brew; holder = highest', () => {
     const p = run('holeInOne', [...rated(1, [9, 8, 8]), ...rated(2, [7, 6, 7]), ...rated(3, [5, 8, 8]), ...rated(4, [9, 1])]);
-    expect(p).toMatchObject({ value: 2, detail: 'of 3 bags with 3+ ratings', holder: { label: 'Bag 1' } });
+    expect(p).toMatchObject({ value: 2, detail: 'Of 3 bags with 3+ ratings', holder: { label: 'Bag 1' } });
   });
   it('most consistent needs ≥5 rated brews, lowest SD; detail names the mean', () =>
     expect(run('consistent', [...rated(1, [8.5, 8.5, 8.5, 8.5, 8.5]), ...rated(2, [8, 8, 8, 8])]))
@@ -188,8 +188,8 @@ describe('gentle', () => {
     expect(run('lowestBag', b)?.holder.label).toBe('Bag 1');
     expect(run('lowestBag', b)?.value).toBeCloseTo(6.4, 9);
     expect(run('biggestDip', b)).toMatchObject({ value: 4, detail: '8 → 4' });
-    expect(run('wildest', b)).toMatchObject({ holder: { label: 'Bag 1' }, detail: 'ratings ranged 4–9 over 5 brews' });
-    expect(run('slowestPeak', b)).toMatchObject({ value: 4, detail: 'best brew was #4 of 5' });
+    expect(run('wildest', b)).toMatchObject({ holder: { label: 'Bag 1' }, detail: 'Ratings ranged 4–9 over 5 brews' });
+    expect(run('slowestPeak', b)).toMatchObject({ value: 4, detail: 'Best brew was #4 of 5' });
   });
   it('toughest day is the lowest day with 3+ rated brews', () => {
     const d = (date: string, r: number) => brew({ localDate: date, localTime: `${date}T09:00`, rating: r });
@@ -268,4 +268,21 @@ describe('recordsTab', () => {
     expect(tileOf(t, 'doseHeavy')!.value).toBe(15);
     expect(tileOf(t, 'mostBrewedBag')!.value).toBe(2);
   });
+});
+
+it('every record detail reads as a sentence: no lowercase first letter', () => {
+  const bags = [1, 2, 3, 4].map((id) => bag({
+    id, name: `Bag ${id}`, roaster: id < 3 ? 'A' : 'B', cost: 20 + id, amountG: 250, purchaseDate: '2026-03-01',
+    status: id === 4 ? 'backlog' : 'archive', firstBrew: id === 4 ? null : '2026-03-02', lastBrew: id === 4 ? null : '2026-03-05'
+  }));
+  const brews = [1, 2, 3].flatMap((id) => [10, 6, 9, 4, 10, 8].map((rating, i) => brew({
+    coffeeId: id, rating, localDate: `2026-03-0${2 + (i % 4)}`, localTime: `2026-03-0${2 + (i % 4)}T0${i}:1${id}`,
+    dose: 15 + i, waterG: 250, ratio: 250 / (15 + i), restDays: 10 + i, costPerBrew: 1 + i / 10,
+    brewTimeSeconds: 120 + i, bloomSeconds: 30 + i, brewer: `D${i} - F`, dripper: `D${i}`, water: 'RO', roaster: id < 3 ? 'A' : 'B'
+  })));
+  const lower = RECORDS.flatMap((r) => {
+    const p = pick(r.run({ brews, bags, ratings: 'all', today: '2026-10-11' }), r.dir);
+    return p?.detail && /^[a-z]/.test(p.detail) ? [`${r.key}: ${p.detail}`] : [];
+  });
+  expect(lower).toEqual([]);
 });

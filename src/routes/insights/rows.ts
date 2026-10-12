@@ -9,9 +9,10 @@ export function rowSizes(n: number, cols: number): number[] {
   return Array.from({ length: rows }, (_, r) => (r < extra ? base + 1 : base)).flatMap((q) => Array(q).fill(q));
 }
 
-// The grid's CSS picks --q4 / --q3 / --q2 by its own width (.hl-grid in +page.svelte). Five cards on
-// a wide grid make one row of five, not 3 + 2: two cards would stretch to half the page each.
+// The grid's CSS picks --q5 / --q4 / --q3 / --q2 by its own width (.hl-grid in +page.svelte). Five cards
+// on a very wide grid make one row of five, not 3 + 2 (two cards would stretch to half the page each);
+// --q5 is --q4 for every other count.
 export const rowVars = (n: number) => {
-  const [a, b, c] = [n === 5 ? 5 : 4, 3, 2].map((cols) => rowSizes(n, cols));
-  return a.map((_, i) => `--q4:${a[i]};--q3:${b[i]};--q2:${c[i]}`);
+  const [a, b, c] = [4, 3, 2].map((cols) => rowSizes(n, cols));
+  return a.map((_, i) => `--q5:${n === 5 ? 5 : a[i]};--q4:${a[i]};--q3:${b[i]};--q2:${c[i]}`);
 };

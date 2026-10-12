@@ -45,11 +45,11 @@
       case 'ratio': return [`1:${n.toFixed(1)}`];
       case 'sd': return [`±${n.toFixed(2)}`];
       // Ranked by the adjusted delta (value), shown as the raw one (mean).
-      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'vs your average rating'];
+      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'Vs your average rating'];
       // An encoded setting: the text is the value.
       case 'grind': return [p.detail ?? ''];
       // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
-      case 'value': return [p.mean!.toFixed(1), undefined, `at ${usd(p.per100!)}/100\u00a0g`];
+      case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.per100!)}/100\u00a0g`];
     }
   }
   const plain = (p: RecordPick, fmt: Fmt) => parts(p, fmt).filter(Boolean).join(' ');
@@ -60,6 +60,11 @@
     parts(p, fmt)[2] ?? (fmt === 'grind' ? undefined : BOUGHT.has(key) ? `${p.detail}${allRange ? ', all time' : ' this period'}` : p.detail);
   // Badge: a snapshot ("Now"), an all-time-only record, or a period holder that is the all-time record
   // (not when the period covers all the data, where every record is).
+  const BADGE_HELP = {
+    record: 'Holds the all-time record.',
+    alltime: 'Counted over all time, whatever the Period.',
+    now: 'Right now, whatever the Period.'
+  };
   const badge = (r: RecordTile) => (r.scope === 'now' ? 'Now' : r.scope || (r.allTime === null && !t.coversAll) ? 'All-time' : null);
 
   // A cut-off line or name shows its full text on hover (mouse) or focus (keyboard, tap): one shared
@@ -163,7 +168,14 @@
     {/if}
     {#if !b && r.allTime}{@render holderLine('All-time', r.allTime, r.fmt)}{/if}
     {#if r.was}{@render holderLine('Was', r.was, r.fmt)}{/if}
-    {#if b}<span class="badge hl-badge">{b}</span>{/if}
+    {#if b}
+      <div class="badge-tip">
+        <button class="mode-tip-button" popovertarget="badge-{id}" aria-describedby="badge-{id}"
+          ><span class="badge hl-badge">{b}</span></button
+        >
+        <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}>{BADGE_HELP[r.scope ?? 'record']}</div>
+      </div>
+    {/if}
     {@render caption(id, r.label, r.rating, r.perDay && perPerson)}
   </div>
 {/snippet}
@@ -260,10 +272,14 @@
     align-items: center;
   }
   /* The badge sits at the foot, just above the caption, on every card. */
-  .hl-badge {
+  /* Flex: the badge's tip button is its own row (checkLayout rule 5), apart from "+N tied". */
+  .badge-tip {
+    display: flex;
+    justify-content: center;
     margin-top: auto;
+    line-height: 1;
   }
-  .hl-badge + :global(.hl-caption) {
+  .badge-tip + :global(.hl-caption) {
     margin-top: 0;
     padding-top: var(--space-1);
   }

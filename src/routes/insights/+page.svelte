@@ -49,19 +49,30 @@
   };
   // The tip a hover opened: a click on its button must leave it open, not toggle it shut.
   let hoverTip: HTMLElement | null = null;
+  let closing: ReturnType<typeof setTimeout> | undefined;
+  // The hover tip and its trigger are one area: the pointer can cross the gap into the tip (to
+  // scroll a long list) and back. Leaving the area closes it after a short grace.
+  const inHover = (el: EventTarget | null) =>
+    !!hoverTip && el instanceof Element &&
+    (hoverTip.contains(el) || !!document.querySelector(`[popovertarget="${hoverTip.id}"], [data-tip="${hoverTip.id}"]`)?.contains(el));
+  function closeHover() {
+    clearTimeout(closing);
+    if (hoverTip?.matches(':popover-open')) hoverTip.hidePopover();
+    hoverTip = null;
+  }
   function tipOver(e: PointerEvent) {
-    const tip = e.pointerType === 'mouse' && tipOf(e);
+    if (e.pointerType !== 'mouse') return;
+    if (inHover(e.target)) return clearTimeout(closing);
+    const tip = tipOf(e);
     if (!tip || tip.matches(':popover-open')) return;
+    closeHover();
     tip.showPopover();
     hoverTip = tip;
   }
   function tipOut(e: PointerEvent) {
-    const tip = e.pointerType === 'mouse' && tipOf(e);
-    const to = e.relatedTarget as Element | null;
-    if (tip && !(to && (e.target as Element).closest('.mode-tip-button')!.contains(to))) {
-      tip.hidePopover();
-      hoverTip = null;
-    }
+    if (e.pointerType !== 'mouse' || !inHover(e.target) || inHover(e.relatedTarget)) return;
+    clearTimeout(closing);
+    closing = setTimeout(closeHover, 200);
   }
   function tipClick(e: MouseEvent) {
     const tip = tipOf(e);
@@ -856,6 +867,11 @@
   @container (min-width: 900px) {
     :global(.hl-grid > .hl-card) {
       --q: var(--q4);
+    }
+  }
+  @container (min-width: 1150px) {
+    :global(.hl-grid > .hl-card) {
+      --q: var(--q5, var(--q4));
     }
   }
   /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
