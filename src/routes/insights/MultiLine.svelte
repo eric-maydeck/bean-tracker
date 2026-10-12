@@ -4,7 +4,7 @@
   import type { Multi } from '$lib/server/insights/insightGenerators';
   import { lines, px, scale } from './multiLine';
 
-  let { m, ariaLabel, format }: { m: Multi; ariaLabel: string; format: (v: number) => string } = $props();
+  let { m, ariaLabel, format, faded = false }: { m: Multi; ariaLabel: string; format: (v: number) => string; faded?: boolean } = $props();
 
   let ls = $derived(lines(m));
   let sc = $derived(scale(m));
@@ -69,7 +69,7 @@
       {#each ys as t (t.y)}<span style:top="{(t.y / 40) * 100}%">{format(t.v)}</span>{/each}
     </div>
     <div class="plot" bind:this={plot}>
-      <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" class:faded>
         {#if sc.zero !== null}<line class="zero" x1="0" x2="100" y1={sc.zero} y2={sc.zero} />{/if}
         {#each ls as l (l.label)}{#each l.runs as r, j (j)}<polyline points={r} style:stroke={l.color} />{/each}{/each}
       </svg>
@@ -151,6 +151,10 @@
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
+  }
+  /* Thin data only (no solid line): every line drawn faded. */
+  .faded polyline {
+    opacity: 0.4;
   }
   .zero {
     stroke: var(--color-border);

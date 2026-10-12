@@ -79,7 +79,7 @@
         {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} style:width="{b.w}%"></span>{/if}
       </span>
       <span class="bar-value">
-        {b.value === null ? 'few brews' : b.text}
+        {b.value === null ? b.text || 'few brews' : b.text}
         {#if b.strength === 'solid' || b.strength === 'hint'}<span class="badge hl-badge" class:hint={b.strength === 'hint'}>{STRENGTH[b.strength]}</span>{/if}
       </span>
     </div>

@@ -1892,6 +1892,12 @@ export const STATES: State[] = [
       // A cell tip names its row, column and counts.
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
+      // A thin cell draws faded with its value; the legend names it.
+      const faded = hm.locator('.heat-cell.faded');
+      if (await faded.count()) {
+        await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
+        await expect(hm.locator('.div-legend')).toContainText('Faded: few brews');
+      }
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
     act: async (page) => {

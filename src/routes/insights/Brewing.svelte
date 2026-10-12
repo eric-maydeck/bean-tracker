@@ -31,15 +31,15 @@
 
   const n = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;
   const rowsOf = (bands: BandStat[], bold = false) => bands.map((b) => ({
-    label: b.label, value: b.delta, text: b.delta === null ? '' : signed(b.delta), pale: !b.solid, strength: b.strength,
+    label: b.label, value: b.delta, text: b.delta === null ? 'unpaired' : signed(b.delta), pale: !b.solid, strength: b.strength,
     bold: bold && NOTABLE.includes(b.label),
-    tip: `${b.label}: ${b.delta === null ? 'few brews' : `${signed(b.delta)} vs same bag`} · ${n(b.brews, 'brew')}, ${n(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${n(b.plainBrews, 'brew')}, ${n(b.plainBags, 'bag')})`
+    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${n(b.brews, 'brew')}, ${n(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${n(b.plainBrews, 'brew')}, ${n(b.plainBags, 'bag')})`
   }));
-  // Every thin or empty cell is blank; its words say which: no brews at all, brews but none from a bag
-  // brewed in two bands (nothing to compare), or a few paired brews.
+  // A thin cell draws faded with its value; a blank one says why: no brews at all, or none from a bag
+  // brewed in two bands (nothing to compare).
   const cellText = (v: VarChart) => (x: number | null, r: number, c: number) => {
     const cell = v.by!.cells[r][c];
-    return x !== null ? signed(x) : !cell ? 'No brews' : cell.brews ? 'few brews' : 'No paired brews';
+    return x !== null ? `${signed(x)}${cell?.solid ? '' : ' (few brews)'}` : !cell ? 'No brews' : 'No paired brews';
   };
   const cellLabel = (v: VarChart) => (r: number, c: number) => {
     const by = v.by!, cell = by.cells[r][c];
@@ -74,8 +74,9 @@
 {:else}
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
-      {@render head('brewing-rest', 'Rest curve', `${SAME_BAG_HELP} Rest moves with dial-in too: later brews of a bag are older and better dialled.`)}
-      <MultiLine m={t.rest} ariaLabel="Rest curve: same-bag delta by days off roast, one line per roast level" format={signed} />
+      {@render head('brewing-rest', 'Rest curve', "Each line is a roast level: its bags' average rating per rest band (each bag counts once), minus that roast level's average, so the lines compare. A bag is mostly brewed at one rest, so this compares bags rather than brews of the same bag: it also moves with which coffees were rested longer. Solid: 3+ bags and 30+ brews in the band; a line needs two solid bands.")}
+      <MultiLine m={t.rest} faded={t.rest.faded} ariaLabel="Rest curve: rating vs the roast level's average by days off roast, one line per roast level" format={signed} />
+      {#if t.rest.faded}<p class="chart-note">Faded: no roast level has two rest bands with 3+ bags and 30+ brews yet</p>{/if}
     </section>
   {/if}
 
@@ -110,7 +111,7 @@
 
   {#if t.vars.length}
     <section class="brewing-vars" data-section="brewing-vars">
-      {@render head('brewing-vars', 'Variables vs rating', `${SAME_BAG_HELP} Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); blank cells have few brews or none.`)}
+      {@render head('brewing-vars', 'Variables vs rating', `${SAME_BAG_HELP} Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no paired brews. Bands with no paired brews are left out (exact temps list every °C used).`)}
       <div class="var-grid">
         {#each vars as v, i (v.key)}
           {@const by = s[`${v.key}By`]}
@@ -138,6 +139,7 @@
             </div>
             {#if v.by}
               <Heatmap diverging rows={v.by.rows} cols={v.by.cols} cells={v.by.cells.map((r) => r.map((c) => c?.delta ?? null))}
+                faded={v.by.cells.map((r) => r.map((c) => !!c && c.delta !== null && !c.solid))}
                 text={cellText(v)} label={cellLabel(v)} ariaLabel="{TITLE[v.key]} by {BY.find(([k]) => k === by)?.[1]}" />
             {:else if by}
               <p class="hl-empty">No {BY.find(([k]) => k === by)?.[1].toLowerCase()} has 3+ bags here.</p>

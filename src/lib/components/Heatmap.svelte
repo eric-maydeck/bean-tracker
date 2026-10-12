@@ -15,13 +15,14 @@
   }
 
   // Diverging (the Brewing lab's deltas): 0 is the surface, sign picks --div-low / --div-high and the
-  // tone runs 15–100% by |v| over the largest |v|; an exact 0 gets the border colour so it isn't blank.
+  // tone runs 15–100% by |v| over the largest |v| of `values` (a value past it is capped at 100%);
+  // an exact 0 gets the border colour so it isn't blank.
   export function diverge(values: (number | null)[]) {
     const max = Math.max(...values.map((v) => Math.abs(v ?? 0))) || 1;
     return (v: number | null) => {
       if (v === null) return 'transparent';
       if (v === 0) return 'var(--color-border)';
-      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + (85 * Math.abs(v)) / max)}%, var(--color-surface))`;
+      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + 85 * Math.min(1, Math.abs(v) / max))}%, var(--color-surface))`;
     };
   }
 
@@ -71,7 +72,8 @@
     text,
     label,
     ariaLabel,
-    diverging = false
+    diverging = false,
+    faded
   }: {
     rows: string[];
     cols: string[];
@@ -80,11 +82,14 @@
     label: (r: number, c: number) => string;
     ariaLabel: string;
     diverging?: boolean;
+    faded?: boolean[][]; // diverging: thin cells, drawn faded; the scale fits the other cells when there are any
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
   let tip = $state<{ text: string; x: number; y: number } | null>(null);
-  let shade = $derived(diverging ? diverge(cells.flat()) : shader(cells.flat()));
+  let fade = $derived(faded?.flat().some(Boolean) ?? false);
+  let solid = $derived(cells.flatMap((r, i) => r.filter((v, j) => v !== null && !faded?.[i]?.[j])));
+  let shade = $derived(diverging ? diverge(solid.length ? solid : cells.flat()) : shader(cells.flat()));
   let blanks = $derived(cells.flat().some((v) => v === null));
   // New data drops an open tip: its cell may not exist any more.
   $effect(() => {
@@ -131,6 +136,7 @@
             style:--r={i + 2}
             style:--c={j + 2}
             class:none={v === null}
+            class:faded={!!faded?.[i]?.[j]}
             style:background={shade(v)}
             onfocus={(e) => (takeFocus(e), show(e))}
             onblur={() => (tip = null)}
@@ -142,7 +148,8 @@
   {#if diverging}
     <p class="div-legend">
       <span>Below the bag's average</span><span class="div-swatch" aria-hidden="true"></span><span>Above</span>
-      {#if blanks}<span>· Blank: few brews</span>{/if}
+      {#if fade}<span>· Faded: few brews</span>{/if}
+      {#if blanks}<span>· Blank: no paired brews</span>{/if}
     </p>
   {/if}
   {#if tip}
@@ -234,6 +241,9 @@
   .heat-cell {
     border-radius: 2px;
     cursor: pointer;
+  }
+  .heat-cell.faded {
+    opacity: 0.4;
   }
   .heat-cell:focus-visible {
     outline: 2px solid var(--color-accent);
