@@ -1988,6 +1988,42 @@ export const STATES: State[] = [
       await page.locator('[data-section="water-gh"] .bar-row').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
+  { name: 'insights-gear', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      for (const h of ['Drippers', 'Filters', 'Dripper × filter', 'Dripper × roast level', 'Gear eras'])
+        await expect(page.getByRole('heading', { name: h })).toBeVisible();
+      await expect(page.locator('[data-section="gear-matrix"] .heat-cell.none')).not.toHaveCount(0); // Origami · Sibarist: no brews
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
+      await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
+      expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+      // Drippers beside Filters from 768 px, one height; stacked below, each its own height.
+      const [d, f] = await Promise.all(['drippers', 'filters'].map((k) => page.locator(`[data-section="gear-${k}"]`).boundingBox()));
+      const wide = (page.viewportSize()?.width ?? 0) >= 768;
+      expect(Math.round(d!.y) === Math.round(f!.y)).toBe(wide);
+      if (wide) expect(Math.abs(d!.height - f!.height)).toBeLessThanOrEqual(1);
+      else {
+        const lists = await page.locator('.gear-pair .board-rows').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height - [...l.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0)));
+        expect(lists.every((x) => Math.abs(x) <= 1)).toBe(true);
+      }
+      // Deltas line up down each list.
+      for (const k of ['drippers', 'filters']) {
+        const rights = await page.locator(`[data-section="gear-${k}"] .val`).evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
+        expect(new Set(rights).size).toBe(1);
+      }
+      // A thin matrix cell draws faded with its value; a cell tip names the pairing and its counts (tap and keyboard).
+      const hm = page.locator('[data-section="gear-matrix"] .heatmap');
+      const faded = hm.locator('.heat-cell.faded');
+      if (await faded.count()) await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
+      await hm.locator('.heat-cell').first().click();
+      await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
+      await hm.locator('.heat-cell').first().focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(hm.locator('.heat-cell').nth(1)).toBeFocused();
+      await expect(hm.locator('.cell-tip')).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(hm.locator('.cell-tip')).toHaveCount(0);
+      await hm.locator('.heat-cell').nth(1).blur();
+    } },
   { name: 'insights-insights', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       await expectGridRowsFull(page, '.finding-grid');

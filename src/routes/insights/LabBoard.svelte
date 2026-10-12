@@ -5,7 +5,8 @@
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows, the same-bag
   // delta and its Solid/Hint badge on the right; thin rows muted (global .few). `spread`: show ±SD.
-  let { rows, spread = false }: { rows: LeaderRow[]; spread?: boolean } = $props();
+  // `slots`: a side-by-side partner's length; the empty slots are faint placeholders (as on Leaderboards).
+  let { rows, spread = false, slots = 0 }: { rows: LeaderRow[]; spread?: boolean; slots?: number } = $props();
 </script>
 
 <ol class="board-rows lab-rows">
@@ -23,12 +24,19 @@
       <span class="val">{r.delta === null ? 'unpaired' : signed(r.delta)}</span>
     </li>
   {/each}
+  {#each { length: Math.max(0, slots - rows.length) }, i (i)}
+    <li class="board-row placeholder" aria-hidden="true"><span class="rank">{rows.length + i + 1}</span><span class="who">—</span></li>
+  {/each}
 </ol>
 
 <style>
   /* The delta column lines up down the list: the badge column is fixed, the value right-aligned. */
   .lab-rows .board-row {
     grid-template-columns: 1.75rem minmax(0, 1fr) 3.5rem 4.25rem;
+  }
+  .placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.45;
   }
   .lab-badge {
     justify-self: end;
