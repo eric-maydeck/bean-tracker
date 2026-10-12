@@ -58,6 +58,7 @@
   role="group"
   aria-label={ariaLabel}
   bind:this={wrap}
+  style:--n={rows.length}
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
   onclick={show}
@@ -98,6 +99,7 @@
     display: grid;
     grid-template-columns: var(--bar-label-w, fit-content(45%)) minmax(0, 1fr) var(--bar-value-w, max-content); /* a page can fix the outer columns so sibling charts' 0 lines align */
     column-gap: var(--space-2);
+    grid-auto-rows: var(--bar-rows, auto); /* a page can stretch the rows to fill a taller box */
   }
   /* Grind drift and the like: no good side, so the diverging pair by direction (ui-rules 29). */
   .direction {

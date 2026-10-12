@@ -273,17 +273,22 @@ describe('brewingTab', () => {
     brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false, ...o });
   it('rest curve: a line per roast level with ≥ 2 solid bands, bag means less the roast level\'s mean', () => {
     const r = tab().rest!;
-    expect(r.x).toEqual(['0–21 d', '22–30 d', '31–45 d', '46–60 d', '61–90 d', '91+ d']);
+    expect(r.x).toEqual(['0–21 d', '22–30 d', '31–45 d']); // trimmed to the bands with data
     expect(r.lines.map((l) => l.label)).toEqual(['Light', 'Nordic']);
     // Each bag: 7.24 / 7.54 / 7.24 by band, mean 7.34.
-    expect(r.lines[0].values).toEqual([-0.1, 0.2, -0.1, null, null, null]);
+    expect(r.lines[0].values).toEqual([-0.1, 0.2, -0.1]);
     expect(r.faded).toBe(false);
     expect(r.unit).toBe('vs roast level average');
   });
   it('rest curve: bags at one rest band each still draw (unit = bag, no pairs needed)', () => {
     // 6 Light bags, 10 brews each, all at one rest: 3 at 10 d rated 7, 3 at 25 d rated 8.
     const one = [1, 2, 3, 4, 5, 6].flatMap((id) => Array.from({ length: 10 }, () => brew({ coffeeId: id, roastLevel: 'Light', restDays: id < 4 ? 10 : 25, rating: id < 4 ? 7 : 8 })));
-    expect(brewingTab(one, c0).rest!.lines).toEqual([{ label: 'Light', values: [-0.5, 0.5, null, null, null, null] }]);
+    expect(brewingTab(one, c0).rest!.lines).toEqual([{ label: 'Light', values: [-0.5, 0.5] }]);
+    // Leading and trailing empty bands trimmed, an inner gap kept: 22–30 d and 46–60 d → x 22–30 … 46–60.
+    const gap = one.map((b) => ({ ...b, restDays: b.restDays === 10 ? 25 : 50 }));
+    const g = brewingTab(gap, c0).rest!;
+    expect(g.x).toEqual(['22–30 d', '31–45 d', '46–60 d']);
+    expect(g.lines[0].values).toEqual([-0.5, null, 0.5]);
   });
   it('rest curve: no roast level with 2 solid bands → every band drawn, faded', () => {
     const at = (id: number, rest: number, n: number, ratings: number[]) =>
@@ -291,7 +296,7 @@ describe('brewingTab', () => {
     const solo = [4, 5, 6].flatMap((id) => [...at(id, 10, 10, [7, 8]), ...at(id, 25, 2, [8])]);
     const r = brewingTab(solo, c0).rest!;
     expect(r.faded).toBe(true);
-    expect(r.lines).toEqual([{ label: 'Solo', values: [-0.08, 0.42, null, null, null, null] }]);
+    expect(r.lines).toEqual([{ label: 'Solo', values: [-0.08, 0.42] }]);
     expect(brewingTab(solo.filter((b) => b.restDays === 10), c0).rest).toBeNull(); // one band: no line at all
   });
   it('variable charts drop bands with no paired brews; exact temps keep every °C used', () => {
@@ -339,7 +344,7 @@ describe('brewingTab', () => {
     const r = brewingTab([...thin, ...solo], { period: P, ratings: 'all', grinder: null, by: {}, exact: false }).rest!;
     expect(r.lines.map((l) => l.label)).toEqual(['Thin']);
     expect(r.faded).toBe(false);
-    expect(r.lines[0].values).toEqual([-0.41, 0.59, null, null, null, null]);
+    expect(r.lines[0].values).toEqual([-0.41, 0.59]);
   });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: false };

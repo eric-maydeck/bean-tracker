@@ -270,7 +270,11 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
     return label && values.filter((v) => v !== null).length >= 2 ? [{ label, values }] : [];
   }).sort((a, b) => a.label.localeCompare(b.label));
   const solidLines = restLines(true);
-  const lines = solidLines.length ? solidLines : restLines(false);
+  const all = solidLines.length ? solidLines : restLines(false);
+  // The axis starts and ends where the data does: bands with no value in any line are trimmed off both ends.
+  const has = REST_LABELS.map((_, i) => all.some((l) => l.values[i] !== null));
+  const [from, to] = [has.indexOf(true), has.lastIndexOf(true) + 1];
+  const lines = all.map((l) => ({ ...l, values: l.values.slice(from, to) }));
   const best = [...groupBy(rows.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
     .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
   // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
@@ -284,7 +288,7 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: [BrewVar, LabVar][] = [['temp', c.exact ? 'tempExact' : 'temp'], ['ratio', 'ratio'], ['dose', 'dose'], ['time', 'time'], ['bloom', 'bloom'], ['grind', 'grind']];
   return {
-    rest: lines.length ? { x: REST_LABELS, lines, unit: 'vs roast level average', faded: !solidLines.length } : null,
+    rest: lines.length ? { x: REST_LABELS.slice(from, to), lines, unit: 'vs roast level average', faded: !solidLines.length } : null,
     dialIn: pairedDeltas(rows, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],

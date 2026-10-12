@@ -17,11 +17,20 @@
   let defaultGrinder = $derived(lab.grinders[0]?.slug);
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
   let empty = $derived(!t.rest && !t.dialIn.length && !t.vars.length);
-  // A long chart (9+ bars or heatmap rows; prod Grind has ~45) takes a full row; the short ones pair up first,
-  // so a pair is never a 200px chart beside a 1500px one. An odd short one out spans too (full rows).
+  // A long chart (9+ bars or heatmap rows; prod Grind has ~45) takes a full row. Short ones pair up first,
+  // each with the one nearest its row count (pairs and their two charts keep the page order), and a pair
+  // stretches the shorter chart's rows to the same height. An odd short one out spans too (full rows).
   const long = (v: VarChart) => v.bands.length > 8 || (v.by?.rows.length ?? 0) > 8;
-  let vars = $derived([...t.vars.filter((v) => !long(v)), ...t.vars.filter(long)]);
-  let shortN = $derived(t.vars.filter((v) => !long(v)).length);
+  const size = (v: VarChart) => v.by?.rows.length ?? v.bands.length;
+  let vars = $derived.by(() => {
+    const at = (v: VarChart) => t.vars.indexOf(v), order = (a: VarChart, b: VarChart) => at(a) - at(b);
+    const short = t.vars.filter((v) => !long(v)).sort((a, b) => size(a) - size(b) || order(a, b));
+    const pairs: VarChart[][] = [];
+    for (let i = 0; i + 1 < short.length; i += 2) pairs.push([short[i], short[i + 1]].sort(order));
+    pairs.sort((a, b) => order(a[0], b[0]));
+    const rest = [...(short.length % 2 ? [short.at(-1)!] : []), ...t.vars.filter(long)];
+    return [...pairs.flat().map((v) => ({ v, span: false })), ...rest.map((v) => ({ v, span: true }))];
+  });
 
   // True minus sign; a value that rounds to 0 reads "0.00", never "−0.00".
   const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
@@ -113,9 +122,9 @@
     <section class="brewing-vars" data-section="brewing-vars">
       {@render head('brewing-vars', 'Variables vs rating', `${SAME_BAG_HELP} Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no paired brews. Bands with no paired brews are left out (exact temps list every °C used).`)}
       <div class="var-grid">
-        {#each vars as v, i (v.key)}
+        {#each vars as { v, span } (v.key)}
           {@const by = s[`${v.key}By`]}
-          <section class="chart-panel var-chart" class:span={i >= shortN || (shortN % 2 === 1 && i === shortN - 1)} data-section="brewing-{v.key}">
+          <section class="chart-panel var-chart" class:span data-section="brewing-{v.key}">
             <div class="var-head">
               <HeadingAnchor id="brewing-{v.key}" level={3}>{TITLE[v.key]}</HeadingAnchor>
               <div class="var-ctls">
@@ -180,10 +189,33 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
-    align-items: start;
   }
+  /* A pair is one height: the chart takes the panel's spare height, its rows stretching up to 3rem each
+     (centred past that), so the shorter chart of a pair leaves no gap. */
   .var-chart {
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    --bar-rows: minmax(0, 1fr);
+  }
+  .var-chart > :global(.delta-bars) {
+    flex: 1 1 auto;
+    max-height: calc(var(--n) * 3rem);
+    margin-block: auto;
+  }
+  .var-chart > :global(.heatmap) {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(var(--nr) * 3.5rem + 5rem);
+    margin-block: auto;
+  }
+  .var-chart > :global(.heatmap .scroll) {
+    flex: 1 1 auto;
+    display: grid;
+  }
+  .var-chart > :global(.heatmap .grid) {
+    grid-auto-rows: minmax(var(--cell-h), 1fr);
   }
   @media (min-width: 900px) {
     .var-grid {

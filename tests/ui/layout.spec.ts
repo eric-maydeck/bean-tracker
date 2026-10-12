@@ -1844,6 +1844,21 @@ export const STATES: State[] = [
       // Full rows: two columns ≥ 900 px, an odd last chart spans both; Dial-in beside Brews to your best.
       await expectGridRowsFull(page, '.var-grid', true);
       await expectGridRowsFull(page, '.brewing-pair', true);
+      // A pair of charts is one height, and the shorter one's chart fills it (no gap under its rows).
+      const uneven = await page.locator('.var-grid > .var-chart').evaluateAll((ps) => ps.flatMap((p) => {
+        const r = p.getBoundingClientRect();
+        const mate = ps.find((o) => o !== p && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
+        if (!mate) return [];
+        const rows = [...p.querySelectorAll('.bar-row, .heatmap .grid')].at(-1)!.getBoundingClientRect(); // the drawn rows, not the box
+        const pad = parseFloat(getComputedStyle(p).paddingBottom);
+        const note = p.querySelector<HTMLElement>('.chart-note');
+        const under = r.bottom - pad - rows.bottom - (note ? note.offsetHeight + parseFloat(getComputedStyle(note).marginTop) : 0);
+        const bars = p.querySelectorAll('.bar-row');
+        // Rows stop at 3rem each (then the chart centres): only then may a gap show.
+        const capped = !!bars.length && rows.bottom - bars[0].getBoundingClientRect().top >= bars.length * 48 - 1;
+        return Math.abs(mate.getBoundingClientRect().height - r.height) > 1 || (!capped && under > 8) ? [`${p.dataset.section}: ${Math.round(under)}px under`] : [];
+      }));
+      expect(uneven).toEqual([]);
       // Each chart's header (title + toggles) is one row from 768 px.
       if ((page.viewportSize()?.width ?? 0) >= 768) {
         const rows = await page.locator('.var-head').evaluateAll((hs) => hs.filter((h) => {
