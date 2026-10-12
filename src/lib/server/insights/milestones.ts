@@ -139,6 +139,7 @@ const FIRSTS: [dim: string, label: string, key: (b: BrewFact) => string | null][
   ['roast', 'roast level', BREW_KEY.roast], ['dripper', 'dripper', BREW_KEY.dripper], ['filter', 'filter', BREW_KEY.filter],
   ['grinder', 'grinder', BREW_KEY.grinder], ['water', 'water', BREW_KEY.water]
 ];
+const TYPE_LABEL: Record<string, string> = { pourover: 'pour-over', espresso: 'espresso', immersion: 'immersion', soup: 'soup' };
 export function firstEvents(brews: readonly BrewFact[], bags: readonly BagFact[]): MilestoneEvent[] {
   const byId = new Map(bags.map((b) => [b.id, b]));
   const out: MilestoneEvent[] = [];
@@ -152,7 +153,7 @@ export function firstEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   for (const b of byTime(brews)) {
     for (const [dim, label, f] of FIRSTS) { const v = f(b); if (v) add(b, `first:${dim}:${v}`, `First ${label}: ${v}`); }
     if (b.decaf) add(b, 'first:decaf', 'First decaf');
-    add(b, `first:type:${b.brewerType}`, `First ${b.brewerType}`);
+    if (b.brewerType !== 'other') add(b, `first:type:${b.brewerType}`, `First ${TYPE_LABEL[b.brewerType]} brew`);
   }
   const bought = bags.filter((b) => b.purchaseDate).sort((a, b) => a.purchaseDate!.localeCompare(b.purchaseDate!));
   const origin = (b: BagFact) => BREW_KEY.origins({ origin: b.origin } as BrewFact);
@@ -190,7 +191,10 @@ export function bestEvents(brews: readonly BrewFact[], bags: readonly BagFact[],
     }
     dayCount++;
     if (sorted[i + 1]?.localDate !== b.localDate) { // end of the day
-      if (dayCount > busiest) { busiest = dayCount; out.push({ date: b.localDate, kind: 'bests', key: `best:day:${dayCount}`, title: `Busiest day: ${dayCount} brews` }); }
+      if (dayCount > busiest) { // the first day only sets the bar
+        if (busiest > 0) out.push({ date: b.localDate, kind: 'bests', key: `best:day:${dayCount}`, title: `Busiest day: ${dayCount} brew${dayCount > 1 ? 's' : ''}` });
+        busiest = dayCount;
+      }
       dayCount = 0;
     }
   });
@@ -263,7 +267,7 @@ export function milestonesTab(brews: readonly BrewFact[], bags: readonly BagFact
   const bought = bags.filter((b) => b.purchaseDate);
   const nextUp = [
     L('brews', 'Brews', LADDERS.brews, sorted.length),
-    L('kgBrewed', 'kg brewed', LADDERS.kgBrewed, grams / 1000),
+    L('kgBrewed', 'kg brewed', LADDERS.kgBrewed, Math.round(grams / 100) / 10),
     L('bagsBought', 'Bags bought', LADDERS.bagsBought, bought.length),
     L('coffees', 'Different coffees', LADDERS.coffees, new Set(sorted.map((b) => b.coffeeId).filter((x) => x !== null)).size),
     L('roasters', 'Roasters', LADDERS.bagsBought, new Set(bought.map((b) => b.roaster)).size),

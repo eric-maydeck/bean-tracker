@@ -97,7 +97,8 @@ describe('firsts', () => {
     expect(keys(ev)).toEqual(expect.arrayContaining(['first:roaster:H&S', 'first:origin:Kenya', 'first:process:Washed', 'first:roast:Light', 'first:decaf',
       'first:dripper:V60', 'first:filter:Abaca', 'first:grinder:Q2', 'first:water:RO', 'first:type:pourover', 'first:type:soup']));
     expect(ev.filter((e) => e.key === 'first:roaster:H&S')).toHaveLength(1);
-    expect(ev.find((e) => e.key === 'first:type:soup')).toMatchObject({ date: '2026-03-01', title: 'First soup', kind: 'firsts' });
+    expect(ev.find((e) => e.key === 'first:type:soup')).toMatchObject({ date: '2026-03-01', title: 'First soup brew', kind: 'firsts' });
+    expect(keys(firstEvents([at('2026-02-09', { brewerType: 'other' })], BAGS)).some((k) => k.startsWith('first:type'))).toBe(false);
     expect(ev.find((e) => e.key === 'first:roaster:H&S')).toMatchObject({ title: 'First roaster: H&S', href: '/coffees/eth' });
   });
   it('N/A origin and the mixed filter are skipped', () => {
@@ -132,10 +133,10 @@ describe('bests', () => {
     const two = bestEvents(rated.slice(0, 2), BAGS, 'all').filter((e) => e.key.startsWith('best:bag'));
     expect(two).toEqual([]);
   });
-  it('busiest-day record broken', () => {
+  it('busiest-day record broken (first day only sets the bar)', () => {
     const dayOf = (d: string, n: number) => Array.from({ length: n }, (_, i) => brew({ localDate: d, localTime: `${d}T0${i}:00` }));
     const ev = bestEvents([...dayOf('2026-03-01', 3), ...dayOf('2026-03-02', 2), ...dayOf('2026-03-03', 5)], BAGS, 'all').filter((e) => e.key.startsWith('best:day'));
-    expect(ev.map((e) => [e.key, e.date, e.kind])).toEqual([['best:day:3', '2026-03-01', 'bests'], ['best:day:5', '2026-03-03', 'bests']]);
+    expect(ev.map((e) => [e.key, e.date, e.kind])).toEqual([['best:day:5', '2026-03-03', 'bests']]);
   });
 });
 
@@ -207,10 +208,10 @@ describe('milestonesTab', () => {
     const brews = [at('2026-02-09', { roaster: 'A', rating: 8 }), at('2026-03-05', { roaster: 'B', rating: 9 })];
     const feb = { start: '2026-02-01', end: '2026-02-28' }, mar = { start: '2026-03-01', end: '2026-03-31' };
     const tab = milestonesTab(brews, [], ctx({ period: mar, prev: feb, kinds: ['firsts', 'bests'] }));
-    // March: first roaster B (plus other first-times: none new beyond roaster/type 'pourover' already seen) + new best brew 9
+    // March: first roaster B (process and type already seen) + new best brew 9
     expect(tab.summary).toEqual({ total: 2, firsts: 1, bests: 1 });
-    // February: first roaster A, pourover, plus best brew 8 and busiest day
-    expect(tab.summaryPrev).toEqual({ total: 5, firsts: 3, bests: 2 });
+    // February: first roaster A, process Washed and pour-over type, plus best brew 8 (day one sets no busiest-day record)
+    expect(tab.summaryPrev).toEqual({ total: 4, firsts: 3, bests: 1 });
     expect(milestonesTab(brews, [], ctx()).summaryPrev).toBeNull();
   });
   it('next up: closest thresholds by fraction done, from all-time totals', () => {
@@ -221,6 +222,10 @@ describe('milestonesTab', () => {
     expect(tab.nextUp).toContainEqual(expect.objectContaining({ key: 'brews', target: 1500, value: 1365 }));
     const frac = tab.nextUp.map((n) => n.value / n.target);
     expect(frac).toEqual([...frac].sort((a, b) => b - a));
+  });
+  it('next up kg brewed is rounded to one decimal', () => {
+    const tab = milestonesTab(daily(3, { dose: 18.37 }), BAGS, ctx());
+    expect(tab.nextUp.find((n) => n.key === 'kgBrewed')!.value).toBe(0.1);
   });
   it('next up streak uses the current run only', () => {
     const run = (s: number, n: number) => Array.from({ length: n }, (_, i) => at(day(s + i)));
