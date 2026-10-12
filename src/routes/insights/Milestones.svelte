@@ -14,6 +14,8 @@
   const month = (ym: string) => `${FULL[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
   const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}`;
   const n = (v: number) => v.toLocaleString('en-US');
+  // A tile's own anchor, its caption links to it (as Records' #record-…): kgBrewed → milestones-total-kg-brewed.
+  const tileId = (group: string, key: string) => `milestones-${group}-${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
 
   // Chips: none pressed = every kind (no param).
   function toggle(k: Kind) {
@@ -124,6 +126,10 @@
   });
 </script>
 
+{#snippet caption(id: string, label: string)}
+  <div class="hl-caption"><span class="stat-label"><a class="caption-link" href="#{id}">{label}</a></span></div>
+{/snippet}
+
 <svelte:window bind:innerHeight={innerH} bind:innerWidth={innerW} />
 
 <div class="kinds-bar">
@@ -140,9 +146,9 @@
   <HeadingAnchor id="milestones-totals">All-time totals</HeadingAnchor>
   <div class="hl-grid milestone-totals">
     {#each m.totals as t, i (t.key)}
-      <div class="hl-card" style={totalVars[i]}>
+      <div class="hl-card" id={tileId('total', t.key)} style={totalVars[i]}>
         <span class="hl-value">{n(t.value)}{#if t.unit}<small>{`\u00a0${t.unit}`}</small>{/if}</span>
-        <div class="hl-caption"><span class="stat-label">{t.label}</span></div>
+        {@render caption(tileId('total', t.key), t.label)}
       </div>
     {/each}
   </div>
@@ -153,14 +159,14 @@
   <div class="hl-grid milestone-summary">
     {#each summary as s (s.key)}
       {@const d = s.prev === null ? null : s.value - s.prev}
-      <div class="hl-card" style="--q4:3;--q3:3;--q2:3">
+      <div class="hl-card" id={tileId('summary', s.key)} style="--q4:3;--q3:3;--q2:3">
         <span class="hl-value">{n(s.value)}</span>
         {#if d !== null}
           <span class="hl-line hl-delta" class:trend-good={d > 0} class:trend-bad={d < 0}
             >{d === 0 ? 'No change' : `${d > 0 ? '▲' : '▼'} ${n(Math.abs(d))} from ${n(s.prev!)}`}</span
           >
         {/if}
-        <div class="hl-caption"><span class="stat-label">{s.label}</span></div>
+        {@render caption(tileId('summary', s.key), s.label)}
       </div>
     {/each}
   </div>
@@ -239,7 +245,7 @@
     <HeadingAnchor id="milestones-next-up">Next up</HeadingAnchor>
     <div class="hl-grid next-up">
       {#each m.nextUp as u, i (u.key)}
-        <div class="hl-card" style={nextVars[i]}>
+        <div class="hl-card" id={tileId('next', u.key)} style={nextVars[i]}>
           <span class="hl-value">{n(u.value)}<small>{` / ${n(u.target)}${u.key === 'kgBrewed' ? '\u00a0kg' : ''}`}</small></span>
           <div
             class="bar"
@@ -251,7 +257,7 @@
           >
             <span style:width="{Math.min(100, (u.value / u.target) * 100)}%"></span>
           </div>
-          <div class="hl-caption"><span class="stat-label">{u.label}</span></div>
+          {@render caption(tileId('next', u.key), u.label)}
         </div>
       {/each}
     </div>
@@ -259,6 +265,19 @@
 {/if}
 
 <style>
+  /* Tile names as on Records: bold in the label colour, linking to the tile's own anchor, which
+     lands under the sticky bar (scroll-padding) with a little room. */
+  .hl-card {
+    scroll-margin-top: var(--space-2);
+  }
+  .caption-link {
+    color: var(--color-label);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .caption-link:hover {
+    text-decoration: underline;
+  }
   .kinds-bar {
     margin-bottom: var(--space-3);
   }

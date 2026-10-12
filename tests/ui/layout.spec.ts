@@ -1695,6 +1695,14 @@ export const STATES: State[] = [
       await expect(page.locator('nav.ruler, .hl-empty').first()).toBeVisible();
       expect(await page.evaluate(() => scrollY)).toBe(0);
       expect(errors).toEqual([]);
+      // A tile's caption links its own anchor, which lands the tile under the sticky bar (M12).
+      await page.goto('/insights?tab=milestones&range=all#milestones-total-brews');
+      const tile = page.locator('#milestones-total-brews');
+      await expect(tile.locator('.caption-link')).toHaveAttribute('href', '#milestones-total-brews');
+      const barB = await page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
+      const tileTop = (await tile.boundingBox())!.y;
+      expect(tileTop).toBeGreaterThanOrEqual(barB - 1);
+      expect(tileTop).toBeLessThan(barB + 40);
     } },
   { name: 'insights-milestones-firsts', path: () => '/insights?tab=milestones&range=all&kinds=firsts' },
   { name: 'insights-milestones-compare', path: () => '/insights?tab=milestones&range=1w&compare=1' },
