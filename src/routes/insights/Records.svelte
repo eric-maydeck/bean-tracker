@@ -2,7 +2,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import type { BrewerType, InsightsUrlState, Ratings } from '$lib/insightsUrl';
+  import { MON, type BrewerType, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
 
@@ -17,7 +17,6 @@
     taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
   };
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
-  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
   const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
   // Day and month records are held by the date itself.
@@ -38,7 +37,7 @@
       case 'days': return [num(n), n === 1 ? 'day' : 'days'];
       case 'gpd': return [num(n), 'g/day'];
       case 'money': return [usd(n)];
-      case 'per100': return [usd(n), '/ 100 g'];
+      case 'per100': return [usd(n), '/ 100\u00a0g'];
       case 'clock': { const [hm, ap] = clock12(n).split(' '); return [hm, ap]; }
       case 'seconds': return [mss(n)];
       case 'ratio': return [`1:${n.toFixed(1)}`];
@@ -46,10 +45,10 @@
       // An encoded setting: the text is the value.
       case 'grind': return [p.detail ?? ''];
       // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
-      case 'value': { const [r, at] = (p.detail ?? '').split(' at '); return [(+r).toFixed(1), undefined, `at ${at}`]; }
+      case 'value': return [p.mean!.toFixed(1), undefined, `at ${usd(p.per100!)}/100\u00a0g`];
     }
   }
-  const plain = (p: RecordPick, fmt: Fmt) => (fmt === 'value' ? p.detail : parts(p, fmt).slice(0, 2).filter(Boolean).join(' '));
+  const plain = (p: RecordPick, fmt: Fmt) => parts(p, fmt).filter(Boolean).join(' ');
   const context = (p: RecordPick, fmt: Fmt) =>
     [parts(p, fmt)[2] ?? (fmt === 'grind' ? null : p.detail), isDate(p.holder) ? null : date(p.holder.date)].filter(Boolean).join(' · ');
   // Badge: a snapshot ("Now"), an all-time-only record, or a period holder that is the all-time record
@@ -139,7 +138,7 @@
       <h2>{s.title}</h2>
     {/if}
     {#if !s.tiles.length}
-      <p class="hl-empty">No {BREWER[brewer!].toLowerCase()} brews in this period.</p>
+      <p class="hl-empty">No {brewer ? `${BREWER[brewer].toLowerCase()} ` : ''}brews in this period.</p>
     {:else}
       <div class="hl-grid record-grid">
         {#each s.tiles as r, i (r.key)}{@render tile(r, `${s.key}-${i}`, vars[i])}{/each}
@@ -165,7 +164,7 @@
     {/if}
     {#if s.key === 'taste' && t.topBrews.length}
       <h3 class="top-title">Top {t.topBrews.length} brews</h3>
-      <ol class="top-brews">
+      <ol class="top-brews" style:--half={Math.ceil(t.topBrews.length / 2)}>
         {#each t.topBrews as b, i (i)}
           <li>
             <span class="rank">{i + 1}</span>
@@ -221,7 +220,7 @@
   }
   @media (min-width: 641px) {
     .top-brews {
-      --rows: 5;
+      --rows: var(--half);
     }
   }
   .top-brews li {

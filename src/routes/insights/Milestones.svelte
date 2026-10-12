@@ -78,13 +78,13 @@
       {#each g.events as e (e.key)}
         <li>
           <span class="kind-icon kind-{e.kind}" title={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
+          <time datetime={e.date}>{day(e.date)}</time>
           <span class="who">
             <span class="ev-title">{e.title}</span>
             {#if e.detail}
               <small>{#if e.href}<a href={e.href}>{e.detail}</a>{:else}{e.detail}{/if}</small>
             {/if}
           </span>
-          <time datetime={e.date}>{day(e.date)}</time>
         </li>
       {/each}
     </ol>
@@ -97,7 +97,7 @@
     <div class="hl-grid next-up">
       {#each m.nextUp as u, i (u.key)}
         <div class="hl-card" style={nextVars[i]}>
-          <span class="hl-value">{n(u.value)}<small>{` / ${n(u.target)}`}</small></span>
+          <span class="hl-value">{n(u.value)}<small>{` / ${n(u.target)}${u.key === 'kgBrewed' ? '\u00a0kg' : ''}`}</small></span>
           <div
             class="bar"
             role="progressbar"
@@ -181,7 +181,8 @@
   }
   .milestone-feed li {
     display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    /* The date sits beside the title (not across the panel from it on wide screens). */
+    grid-template-columns: 2rem 3.25rem minmax(0, 1fr);
     align-items: center;
     gap: var(--space-3);
     min-height: 3rem;

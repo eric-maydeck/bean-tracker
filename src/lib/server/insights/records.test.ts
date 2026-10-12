@@ -132,7 +132,7 @@ describe('freshness and money', () => {
   it('best value = mean / $ per 100 g, detail names both', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 20, amountG: 200 }), bag({ id: 2, name: 'Bag 2', cost: 10, amountG: 100 })];
     const brews = [...rated(1, [8, 8, 8]), ...rated(2, [9, 9, 9])];
-    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, detail: '9.00 at $10.00/100 g' });
+    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, per100: 10, detail: '9.00 at $10.00/100\u00a0g' });
     expect(run('toughValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 1' }, value: 0.8 });
   });
   it('biggest buying month is all-time, by bags', () => {

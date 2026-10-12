@@ -56,7 +56,7 @@ export function brewDayTitle(t: number): string {
   if (t === 30) return 'A month of brew days';
   if (t === 365) return "A year's worth of brew days";
   if (t % 365 === 0) return `${NUM[t / 365 - 2] ?? t / 365} years' worth of brew days`;
-  return `${t} brew days`;
+  return `${t} brew day${t === 1 ? '' : 's'}`;
 }
 
 export interface MilestoneEvent {
@@ -105,7 +105,7 @@ export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
     ...walk('bagsBought', bought.map((b) => ({ date: b.purchaseDate!, v: 1 })), L('bagsBought'), (t) => `${ordinal(t)} bag`),
     ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0 })), L('kgBought'), (t) => `${t} kg bought`, 1000),
     ...walk('bagsFinished', bags.filter(isFinished).map((b) => ({ date: b.lastBrew!, v: 1 })), L('bagsFinished'), (t) => `${t} bags finished`),
-    ...walk('coffees', firstOfCoffee.map((b) => brewStep(b, 1)), L('coffees'), (t) => `${t} different coffees`),
+    ...walk('coffees', firstOfCoffee.map((b) => brewStep(b, 1)), L('coffees'), (t) => `${t} different coffee${t === 1 ? '' : 's'}`),
     ...walk('nines', sorted.filter((b) => (b.rating ?? 0) >= 9 && countsForRating(b, 'all')).map((b) => brewStep(b, 1)), L('nines'), (t) => `${ordinal(t)} brew rated 9+`),
     ...walk('brewDays', days.map((date) => ({ date, v: 1 })), brewDayThresholds, brewDayTitle)
   ];
@@ -157,8 +157,9 @@ export function firstEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   }
   const bought = bags.filter((b) => b.purchaseDate).sort((a, b) => a.purchaseDate!.localeCompare(b.purchaseDate!));
   const origin = (b: BagFact) => BREW_KEY.origins({ origin: b.origin } as BrewFact);
+  // From the 10th: the first roaster / origin is already a "First roaster: X" event.
   const distinct = (key: (b: BagFact) => string | null, name: string, title: (t: number) => string) =>
-    walk(name, [...group(bought, key).values()].map((g) => ({ date: g[0].purchaseDate!, v: 1 })), (n) => thresholds(LADDERS.bagsBought, n), title);
+    walk(name, [...group(bought, key).values()].map((g) => ({ date: g[0].purchaseDate!, v: 1 })), (n) => thresholds(LADDERS.bagsBought, n).filter((t) => t > 1), title);
   const depth = (key: (b: BagFact) => string | null, name: string, L: Ladder) =>
     [...group(bought, key)].flatMap(([k, g]) => walk(`${name}:${k}`, g.map((b) => ({ date: b.purchaseDate!, v: 1 })), (n) => thresholds(L, n), (t) => `${ordinal(t)} bag from ${k}`));
   return [

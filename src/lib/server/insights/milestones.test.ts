@@ -81,6 +81,7 @@ describe('count and streak events', () => {
     expect(brewDayTitle(365)).toBe("A year's worth of brew days");
     expect(brewDayTitle(730)).toBe("Two years' worth of brew days");
     expect(brewDayTitle(100)).toBe('100 brew days');
+    expect(brewDayTitle(1)).toBe('1 brew day');
   });
 });
 
@@ -110,7 +111,7 @@ describe('firsts', () => {
     const ev = firstEvents([], bags);
     expect(ev.find((e) => e.key === 'roasters:10')).toMatchObject({ title: '10th roaster', date: day(9), kind: 'firsts' });
     expect(ev.find((e) => e.key === 'origins:10')!.title).toBe('10th origin');
-    expect(keys(ev).filter((k) => k.startsWith('roasters:'))).toEqual(['roasters:1', 'roasters:10']);
+    expect(keys(ev).filter((k) => k.startsWith('roasters:'))).toEqual(['roasters:10']);
   });
   it('per-roaster depth: 10th bag from H&S', () => {
     const bags = Array.from({ length: 10 }, (_, i) => bag({ id: i + 1, roaster: 'H&S', purchaseDate: day(i) }));

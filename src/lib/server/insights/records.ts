@@ -6,8 +6,9 @@ import { countsForRating } from './ratings';
 import { daysBetween, inPeriod, type Period } from './time';
 
 export interface Holder { label: string; sub?: string; href?: string; date: string }
-export interface Candidate { value: number; holder: Holder; detail?: string }
-export interface RecordPick { value: number; holder: Holder; detail?: string; ties: Holder[] }
+// mean / per100: a Best value pick's parts (its value is their ratio), for display.
+export interface Candidate { value: number; holder: Holder; detail?: string; mean?: number; per100?: number }
+export interface RecordPick { value: number; holder: Holder; detail?: string; mean?: number; per100?: number; ties: Holder[] }
 export type Section = 'taste' | 'volume' | 'freshness' | 'money' | 'extremes' | 'gentle';
 export type Fmt = 'rating' | 'count' | 'grams' | 'days' | 'gpd' | 'money' | 'per100' | 'clock'
   | 'seconds' | 'ratio' | 'sd' | 'grind' | 'ml' | 'value';
@@ -51,7 +52,7 @@ export function pick(cands: readonly Candidate[], dir: 'max' | 'min'): RecordPic
   for (const c of cands) if (better(c.value, best)) best = c.value;
   // Float noise (means) mustn't split a tie.
   const tied = cands.filter((c) => Math.abs(c.value - best) < 1e-9).sort((a, b) => a.holder.date.localeCompare(b.holder.date));
-  return { value: best, holder: tied[0].holder, ...(tied[0].detail ? { detail: tied[0].detail } : {}), ties: tied.slice(1).map((c) => c.holder) };
+  return { ...tied[0], value: best, ties: tied.slice(1).map((c) => c.holder) };
 }
 
 export const bagHolder = (bags: readonly BagFact[], id: number | null, date: string, sub?: string): Holder => {
@@ -171,7 +172,7 @@ const value = (c: RecCtx): Candidate[] =>
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
     const p = (bag.cost / bag.amountG) * 100;
-    return { value: s.mean! / p, detail: `${s.mean!.toFixed(2)} at $${p.toFixed(2)}/100 g` };
+    return { value: s.mean! / p, mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at $${p.toFixed(2)}/100\u00a0g` };
   });
 const roasters = (c: RecCtx, f: (bs: BagFact[]) => number): Candidate[] =>
   [...groupBy(c.bags.filter((b) => b.purchaseDate), (b) => b.roaster)].map(([r, bs]) => ({
@@ -257,8 +258,8 @@ export const RECORDS: RecordDef[] = [
       return d === null ? [] : [{ value: d, holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
-  money('priciestBag', 'Priciest bag per 100 g', 'max', 'per100', (c) => per100(c), { bought: true }),
-  money('cheapestBag', 'Cheapest bag per 100 g', 'min', 'per100', (c) => per100(c), { bought: true }),
+  money('priciestBag', 'Priciest bag per 100\u00a0g', 'max', 'per100', (c) => per100(c), { bought: true }),
+  money('cheapestBag', 'Cheapest bag per 100\u00a0g', 'min', 'per100', (c) => per100(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
   money('bestValue', 'Best value', 'max', 'value', (c) => value(c), { rating: true }),
