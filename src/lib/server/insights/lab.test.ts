@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, cellOf, labFn, ladder, pairedDeltas, ratedIn, SLICE_OF, verdictOf } from './lab';
-import type { BrewFact } from './facts';
+import { breakdown, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf } from './lab';
+import type { BagFact, BrewFact } from './facts';
 
 let n = 0;
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -173,4 +173,46 @@ describe('breakdown', () => {
     expect(cellOf({ ...a, solid: true })).toMatchObject({ delta: a.delta, brews: 2, bags: 1 });
   });
   it('nothing qualifies → null', () => expect(breakdown(many(4, 1, 91, 8), temp, SLICE_OF.roast, ['90–92 °C'])).toBeNull());
+});
+
+const bag = (o: Partial<BagFact>): BagFact => ({
+  id: 1, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
+});
+describe('labOptions', () => {
+  const bags = [1, 2, 3, 4].map((id) => bag({ id, slug: `s${id}`, roastLevel: id < 4 ? 'Light' : 'Medium', processGroup: 'Natural',
+    origin: 'Kenya', roaster: `R${id}`, firstBrew: '2026-09-01', status: id === 1 ? 'archive' : 'open' }));
+  const o = labOptions([...many(3, 1, 91, 8, { grinder: 'ZP6 (1ZPresso)' }), ...many(5, 2, 91, 8, { grinder: 'A4Z (Femobook)' })], bags);
+  it('roast levels need ≥ 3 bags; other values any brewed bag', () => {
+    expect(o.roasts).toEqual(['Light']);
+    expect(o.roasters).toEqual(['R1', 'R2', 'R3', 'R4']);
+  });
+  it('grinders: most rated brews first, slugged', () =>
+    expect(o.grinders).toEqual([{ slug: 'a4z-femobook', name: 'A4Z (Femobook)' }, { slug: 'zp6-1zpresso', name: 'ZP6 (1ZPresso)' }]));
+  it('bags: every slugged bag, on-hand flagged', () =>
+    expect(o.bags[0]).toEqual({ slug: 's1', label: 'R1 C', onHand: false, roast: 'Light', process: 'Natural' }));
+});
+
+describe('sweetSpotsTab', () => {
+  const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8, { roastLevel: 'Light', water: 'A', dripper: 'V60' }),
+    ...many(10, id, 94, 7, { roastLevel: 'Light', water: 'B', dripper: 'V60' })]);
+  const bags = [1, 2, 3].map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` }));
+  const tab = (filters = {}) => sweetSpotsTab(rows, bags, { period: P, ratings: 'all', grinder: null, filters });
+  it('matching line counts the slice', () => expect(tab().matching).toEqual({ bags: 3, brews: 60 }));
+  it('cards: only variables with data, in spec order', () =>
+    expect(tab().cards.map((c) => c.key)).toEqual(['temp', 'water', 'dripper']));
+  it('no matching brews: zero line, no cards, no top bags', () =>
+    expect(tab({ roast: 'Nordic' })).toEqual({ matching: { bags: 0, brews: 0 }, cards: [], topBags: [] }));
+  it('top bags: ≤ 5 by adjusted bag rating (K = 5 brews), usual temp · water · dripper', () => {
+    const t = tab().topBags;
+    expect(t.length).toBeLessThanOrEqual(5);
+    expect(t[0]).toMatchObject({ label: 'Bag 1', sub: 'R', href: '/coffees/s1', brews: 20 });
+    expect(t[0].usual).toBe('91 °C · A · V60');
+  });
+  it('top bags tie order: by score, then label', () => expect(tab().topBags.map((b) => b.label)).toEqual(['Bag 1', 'Bag 2', 'Bag 3']));
+  it('groups widen origin → roaster → process → roast, deduped', () => {
+    expect(groupsFor(rows, { roast: 'Light', process: 'Natural', origin: 'Kenya', roaster: 'R' }).map((g) => g.name)).toEqual(
+      ['Natural Light coffees from Kenya by R', 'Natural Light coffees by R', 'Natural Light coffees', 'Light coffees']);
+    expect(groupsFor(rows, {}).map((g) => g.name)).toEqual(['all coffees']);
+  });
 });

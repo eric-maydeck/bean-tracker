@@ -1,5 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
-import type { BrewFact } from './facts';
+import { slugify } from '$lib/server/slug';
+import type { BagFact, BrewFact } from './facts';
 import { bandOf, type Band, type LabVar } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { groupBy } from './records';
@@ -138,4 +139,78 @@ export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: Br
       return cols.map((c) => { const s = st.get(c); return s ? cellOf(s) : null; });
     })
   };
+}
+
+export interface LabOptions {
+  bags: { slug: string; label: string; onHand: boolean; roast: string | null; process: string }[];
+  roasts: string[]; processes: string[]; origins: string[]; roasters: string[];
+  grinders: { slug: string; name: string }[]; // most rated brews first: [0] is the default
+}
+// The values the pickers offer and the URL parser accepts (spec "URL state": values from the data).
+// Roast levels need ≥ MIN_BAGS brewed bags (spec "Bands"); every slugged bag parses (an archived bag's
+// link still works), the Bag select shows the on-hand ones.
+export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[]): LabOptions {
+  const brewed = bags.filter((b) => b.firstBrew);
+  const values = (f: (b: BagFact) => string | null, min = 1) =>
+    [...groupBy(brewed, f)].filter(([, g]) => g.length >= min).map(([k]) => k).sort((a, b) => a.localeCompare(b));
+  return {
+    bags: bags.filter((b) => b.slug).map((b) => ({ slug: b.slug!, label: `${b.roaster} ${b.name}`, onHand: b.status !== 'archive', roast: b.roastLevel, process: b.processGroup })),
+    roasts: values((b) => b.roastLevel, MIN_BAGS), processes: values((b) => b.processGroup), origins: values((b) => b.origin), roasters: values((b) => b.roaster),
+    grinders: [...groupBy(brews.filter((b) => b.rating! > 0), (b) => b.grinder)]
+      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => ({ slug: slugify(name), name }))
+  };
+}
+
+export interface LabFilters { roast?: string; process?: string; origin?: string; roaster?: string }
+const matches = (f: LabFilters) => (b: BrewFact) =>
+  (!f.roast || b.roastLevel === f.roast) && (!f.process || b.processGroup === f.process) && (!f.origin || b.origin === f.origin) && (!f.roaster || b.roaster === f.roaster);
+// Tier 2 groups, narrowest first: roast + process + roaster + origin → roast + process + roaster → roast +
+// process → roast level (spec; levels with an Any filter are skipped or deduped by name). With no Roast
+// level set the widest group is all coffees.
+const LEVELS: (keyof LabFilters)[][] = [['roast', 'process', 'origin', 'roaster'], ['roast', 'process', 'roaster'], ['roast', 'process'], ['roast']];
+const groupName = (g: LabFilters) =>
+  `${[g.process, g.roast].filter(Boolean).join(' ') || 'all'} coffees${g.origin ? ` from ${g.origin}` : ''}${g.roaster ? ` by ${g.roaster}` : ''}`;
+export function groupsFor(rows: readonly BrewFact[], f: LabFilters): Group[] {
+  const seen = new Set<string>();
+  return LEVELS.flatMap((keys) => {
+    const g: LabFilters = Object.fromEntries(keys.filter((k) => f[k]).map((k) => [k, f[k]]));
+    const name = groupName(g);
+    if (seen.has(name)) return [];
+    seen.add(name);
+    return [{ name, brews: rows.filter(matches(g)) }];
+  });
+}
+
+export type SpotVar = 'temp' | 'water' | 'dripper' | 'filter' | 'ratio' | 'dose' | 'grind' | 'bloom' | 'rest';
+export const SPOT_NAMES: Record<SpotVar, string> = { temp: 'Temp', water: 'Water', dripper: 'Dripper', filter: 'Filter', ratio: 'Ratio', dose: 'Dose', grind: 'Grind', bloom: 'Bloom', rest: 'Rest' };
+const SPOT_VARS: Record<SpotVar, LabVar[]> = { temp: ['tempExact', 'temp'], water: ['water'], dripper: ['dripper'], filter: ['filter'], ratio: ['ratio'], dose: ['dose'], grind: ['grind'], bloom: ['bloom'], rest: ['rest'] };
+export interface SweetSpotsTab {
+  matching: { bags: number; brews: number };
+  cards: { key: SpotVar; name: string; spot: Spot }[];
+  topBags: { label: string; sub: string; href: string | null; score: number; brews: number; usual: string }[];
+}
+const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
+const mode = (bs: readonly BrewFact[], f: (b: BrewFact) => string | null | undefined) =>
+  [...groupBy(bs, f)].sort((a, b) => b[1].length - a[1].length || String(a[0]).localeCompare(String(b[0])))[0]?.[0] ?? null;
+
+export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; grinder: string | null; filters: LabFilters }): SweetSpotsTab {
+  const rows = ratedIn(brews, c.period, c.ratings);
+  const slice = rows.filter(matches(c.filters));
+  const perBag = groupBy(slice, (b) => b.coffeeId);
+  const groups = groupsFor(rows, c.filters);
+  const cards = (Object.keys(SPOT_VARS) as SpotVar[]).flatMap((key) => {
+    const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)));
+    return spot ? [{ key, name: SPOT_NAMES[key], spot }] : [];
+  });
+  const overall = mean(slice.map((b) => b.rating!));
+  const byId = new Map(bags.map((b) => [b.id, b]));
+  const topBags = [...perBag].map(([id, bs]) => {
+    const bag = byId.get(id!);
+    return {
+      label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
+      score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
+      usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
+    };
+  }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, 5);
+  return { matching: { bags: perBag.size, brews: slice.length }, cards, topBags };
 }
