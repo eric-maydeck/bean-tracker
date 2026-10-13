@@ -74,6 +74,8 @@ export async function checkLayout(page: Page): Promise<void> {
         // A 100% stacked bar's segment is as tall as its share; a tap anywhere picks the segment under it, the
         // arrow keys reach every one, and the legend names each series.
         if (el.matches('.stacked .seg')) continue;
+        // A mineral dot is sized by its brews; a tap anywhere on the plot picks the nearest dot (MineralDots).
+        if (el.matches('.dots-chart .dot')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
@@ -202,6 +204,29 @@ export async function expectInnerScroll(page: Page, selector: string) {
     }
     return out;
   });
+  expect(bad, selector).toEqual([]);
+}
+
+// Paired lab cards (fitPairs, ui-rules 37): the two cards of a row are one height, and each card's .fit-body
+// is either filled (no gap under its content taller than one of its rows) or scrolls inside itself.
+export async function expectPairsFilled(page: Page, selector: string) {
+  const bad = await page.locator(selector).evaluateAll((grids) => grids.flatMap((g) => {
+    const cards = [...g.children] as HTMLElement[];
+    return cards.flatMap((c) => {
+      const r = c.getBoundingClientRect();
+      const mate = cards.find((o) => o !== c && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
+      if (!mate) return [];
+      const name = c.dataset.section ?? c.className;
+      if (Math.abs(mate.getBoundingClientRect().height - r.height) > 1) return [`${name}: ${Math.round(r.height)}px beside ${Math.round(mate.getBoundingClientRect().height)}px`];
+      const fb = c.querySelector<HTMLElement>('.fit-body');
+      if (!fb) return [`${name}: no .fit-body`];
+      if (fb.scrollHeight > fb.clientHeight + 1) return []; // the taller card: scrolls inside
+      const parts = [...fb.querySelectorAll('*')].filter((e) => !e.closest('.cell-tip, [popover]')).map((e) => e.getBoundingClientRect()).filter((b) => b.height > 0);
+      const row = fb.querySelector('.bar-row, .heat-cell, .board-row')?.getBoundingClientRect().height ?? 48;
+      const gap = fb.getBoundingClientRect().bottom - Math.max(...parts.map((b) => b.bottom));
+      return gap > row + 1 ? [`${name}: ${Math.round(gap)}px empty under a ${Math.round(row)}px row`] : [];
+    });
+  }));
   expect(bad, selector).toEqual([]);
 }
 
