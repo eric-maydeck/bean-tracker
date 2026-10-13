@@ -16,8 +16,8 @@ export function scale(m: Multi) {
 // x of column i in the 100-wide box.
 export const px = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
 
-// The categorical slots (--series-1..10, app.css; distinctness checked in palette.test.ts).
-export const SLOTS = Array.from({ length: 10 }, (_, i) => `var(--series-${i + 1})`);
+// The categorical slots (--series-1..7, app.css; distinctness checked in palette.test.ts).
+export const SLOTS = Array.from({ length: 7 }, (_, i) => `var(--series-${i + 1})`);
 const OTHER = 'var(--series-other)';
 
 // Categorical slots in line order; "Other" is muted.
