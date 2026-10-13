@@ -1,7 +1,8 @@
 <script lang="ts">
   import { latestMonths, MAX_MONTHS } from '$lib/calendarMonths';
   import { MON, WEEKDAYS, weekday } from '$lib/insightsUrl';
-  import { rove, shader, takeFocus, tipAt } from './Heatmap.svelte';
+  import FloatTip from './FloatTip.svelte';
+  import { rove, shader, takeFocus } from './Heatmap.svelte';
 
   let {
     days,
@@ -32,12 +33,8 @@
   });
   let tone = $derived(shader(latest.days.map((d) => d.value)));
 
-  let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ text: string; x: number; y: number } | null>(null);
-  const show = (e: Event) => {
-    const el = (e.target as Element).closest('.cal-cell');
-    tip = el ? tipAt(wrap!, el, el.getAttribute('aria-label')!) : null;
-  };
+  let tip = $state<Element | null>(null); // the open tip's cell
+  const show = (e: Event) => (tip = (e.target as Element).closest('.cal-cell'));
 </script>
 
 {#snippet cell(d: { date: string; value: number | null }, first: boolean)}
@@ -59,7 +56,6 @@
   role="group"
   aria-label="Brew calendar"
   style:--cell-h={short ? '2.5rem' : '1.1rem'}
-  bind:this={wrap}
   bind:clientWidth={w}
   onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
@@ -90,7 +86,7 @@
   {/if}
   {#if !short && latest.cut}<p class="note">Latest {MAX_MONTHS} months — pick a custom range for earlier.</p>{/if}
   {#if tip}
-    <div class="cell-tip" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
+    <FloatTip anchor={tip} wide={false}>{tip.getAttribute('aria-label')}</FloatTip>
   {/if}
 </div>
 

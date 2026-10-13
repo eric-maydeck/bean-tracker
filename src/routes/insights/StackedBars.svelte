@@ -1,27 +1,35 @@
 <script lang="ts">
-  import { rove, takeFocus, tipAt } from '$lib/components/Heatmap.svelte';
+  import FloatTip from '$lib/components/FloatTip.svelte';
+  import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { Multi } from '$lib/server/insights/insightGenerators';
   import { seriesColors } from './multiLine';
 
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.
-  let { m, ariaLabel }: { m: Multi; ariaLabel: string } = $props();
+  // `m.other[i]`: what month i's "Other" holds ([name, %], biggest first), listed in its tip (C4).
+  let { m, ariaLabel }: { m: Multi & { other?: [string, number][][] }; ariaLabel: string } = $props();
 
   let colors = $derived(seriesColors(m.lines.map((l) => l.label)));
   let n = $derived(m.x.length);
   // Month labels counted back from the last: up to 8 wide, up to 4 in a narrow container.
   let [wide, narrow] = $derived([Math.ceil(n / 8), Math.ceil(n / 4)]);
-  const tipOf = (k: number, i: number): Tip => ({ title: `${m.lines[k].label} · ${m.x[i]}`, rows: [['Share', `${m.lines[k].values[i] ?? 0}%`]] });
+  const OTHER_ROWS = 3;
+  const pct = (v: number) => (v ? `${v}%` : '<1%');
+  const tipOf = (k: number, i: number): Tip => {
+    const title = `${m.lines[k].label} · ${m.x[i]}`, share: [string, string] = ['Share', `${m.lines[k].values[i] ?? 0}%`];
+    const held = m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [];
+    return { title, rows: [share, ...held.slice(0, OTHER_ROWS).map(([name, v]): [string, string] => [name, pct(v)])],
+      note: held.length > OTHER_ROWS ? `+${held.length - OTHER_ROWS} more` : undefined };
+  };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
   let stop = $derived.by(() => {
     for (let i = 0; i < n; i++) for (let k = 0; k < m.lines.length; k++) if ((m.lines[k].values[i] ?? 0) > 0) return `${i}:${k}`;
     return '';
   });
 
-  let wrap: HTMLDivElement | undefined = $state();
   // `hover`: opened by the mouse, so leaving closes it (a focus tip survives the page scrolling under the mouse).
-  let tip = $state<{ k: number; i: number; x: number; y: number; hover: boolean } | null>(null);
+  let tip = $state<{ k: number; i: number; el: Element; hover: boolean } | null>(null);
   // New data drops an open tip: its segment may not exist any more.
   $effect(() => {
     void m;
@@ -29,7 +37,7 @@
   });
   const showSeg = (el: Element, hover = false) => {
     const d = (el as HTMLElement).dataset;
-    tip = { ...tipAt(wrap!, el, '', 128), k: +d.k!, i: +d.i!, hover };
+    tip = { el, k: +d.k!, i: +d.i!, hover };
   };
   const pick = (e: Event, hover = false) => {
     const el = (e.target as Element).closest('.seg');
@@ -38,7 +46,7 @@
   };
 </script>
 
-<div class="stacked" bind:this={wrap}>
+<div class="stacked">
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
   <div
     class="plot-row"
@@ -54,7 +62,7 @@
     </div>
     <div class="plot">
       {#each m.x as x, i (i)}
-        <div class="col">
+        <div class="col"><div class="stack">
           {#each m.lines as l, k (k)}
             {@const v = l.values[i] ?? 0}
             {#if v > 0}
@@ -62,7 +70,7 @@
                 aria-label={tipText(tipOf(k, i))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
             {/if}
           {/each}
-        </div>
+        </div></div>
       {/each}
     </div>
     <div class="x-labels" aria-hidden="true">
@@ -73,7 +81,7 @@
     {#each m.lines as l, k (k)}<li><span class="swatch" style:background={colors[k]}></span>{l.label}</li>{/each}
   </ul>
   {#if tip && m.lines[tip.k]}
-    <div class="cell-tip wide" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}><TipBody tip={tipOf(tip.k, tip.i)} /></div>
+    <FloatTip anchor={tip.el}><TipBody tip={tipOf(tip.k, tip.i)} /></FloatTip>
   {/if}
 </div>
 
@@ -109,7 +117,6 @@
   /* Recessive 25% gridlines behind the bars. */
   .plot {
     display: flex;
-    gap: 2px;
     height: 12rem;
     background: repeating-linear-gradient(to bottom, var(--color-border) 0 1px, transparent 1px 25%);
     border-bottom: 1px solid var(--color-border);
@@ -121,9 +128,15 @@
   }
   /* The first line at the bottom. A 2px surface line tops each segment but the last, inside its own share
      (border-box), so the stack stays true to the 25% gridlines. */
+  /* Each month's slot centers a bar 75% of its width (C4): a gap between bars and half a gap at the plot edges. */
   .col {
     flex: 1 1 0;
     min-width: 0;
+    display: flex;
+    justify-content: center;
+  }
+  .stack {
+    width: 75%;
     display: flex;
     flex-direction: column-reverse;
   }
@@ -135,7 +148,7 @@
   .seg:not(:last-child) {
     border-top: 2px solid var(--color-surface);
   }
-  .col > .seg:last-child {
+  .stack > .seg:last-child {
     border-radius: 3px 3px 0 0;
   }
   @media (hover: hover) {
@@ -150,7 +163,6 @@
   .x-labels {
     grid-column: 2;
     display: flex;
-    gap: 2px;
     margin-top: 0.3rem;
   }
   .x-labels span {

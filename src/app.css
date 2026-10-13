@@ -2295,10 +2295,16 @@ td > .action-buttons.under-form {
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
 }
-.cell-tip.below {
-  translate: -50% calc(var(--cell-h, 1.6rem) + 0.4rem);
+/* A tip in the top layer (FloatTip.svelte, ui-rules 38): fixed at the spot tipPlace picks; the popover's
+   UA box (centered, inset 0) is undone. */
+.cell-tip.float-tip {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  translate: none;
+  overflow: visible;
 }
-/* A lab tip (ui-rules 36): a bold title, then label/value rows; wraps at 15rem; place it with tipAt(…, 128). */
+/* A lab tip (ui-rules 36): a bold title, then label/value rows; wraps at 15rem (FloatTip places it). */
 .cell-tip.wide {
   white-space: normal;
   width: max-content;

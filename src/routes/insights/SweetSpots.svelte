@@ -3,11 +3,12 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_HELP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { plural, signed } from './DeltaBars.svelte';
+  import { plural, SD_HELP, signed } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
+  import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, ratingsHelp, placeTip, choose }: {
@@ -64,7 +65,7 @@
         pick: b.label === pick, usual: b.label === p.usual.label,
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
         tip: {
-          title: b.label,
+          title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
           rows: [p.tier === 1 ? ['vs same bag', signed(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
             ...(b.solid ? [] : [['Strength', 'Few brews']])],
           note: b.label === p.usual.label ? 'Your usual setting.' : undefined
@@ -72,19 +73,18 @@
       }))
     };
   }
-  // Its themed tip (the Heatmap's .cell-tip): mouse hover, or a tap on touch; one open at a time.
+  // Its tip (FloatTip, over the band's column): mouse hover, or a tap on touch; one open at a time.
   // A tap toggles; a mouse click on a tip its hover opened keeps it open.
-  let tip = $state<{ key: string; i: number; x: number; hover: boolean } | null>(null);
+  let tip = $state<{ key: string; i: number; el: Element; hover: boolean } | null>(null);
   // New data (a picker change) drops any open tip: its band index may not exist any more.
   $effect(() => {
     void t;
     tip = null;
   });
-  // Show band i's tip over its column, kept inside the viewport (the tip is at most 16rem wide).
+  // Show band i's tip over its column.
   function showTip(wrap: HTMLElement, key: string, n: number, i: number, hover: boolean) {
-    const r = wrap.getBoundingClientRect(), half = Math.min(128, innerWidth / 2 - 16);
-    const x = Math.min(Math.max(r.left + ((i + 0.5) / n) * r.width, half + 16), innerWidth - half - 16) - r.left;
-    tip = { key, i, x, hover };
+    const el = wrap.querySelectorAll('.col')[i];
+    tip = el ? { key, i, el, hover } : null;
   }
   function tipFrom(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
     const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
@@ -237,7 +237,7 @@
               </div>
               <div class="ends" aria-hidden="true"><span>{ch.bars[0].label}</span><span>{ch.bars.at(-1)!.label}</span></div>
               {#if tip?.key === c.key}
-                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{#if ch.bars[tip.i]}<TipBody tip={ch.bars[tip.i].tip} />{/if}</div>
+                {#if ch.bars[tip.i]}<FloatTip anchor={tip.el}><TipBody tip={ch.bars[tip.i].tip} /></FloatTip>{/if}
               {/if}
             </div>
           {/if}
@@ -257,7 +257,10 @@
       <LabHead id="spots-top" title="Top bags like this" {placeTip}
         help={"The bags matching these filters with the best ratings.\nScore: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. SD: how widely its ratings vary.\nUnder each: its roaster and usual temp · water · dripper."} />
       <!-- Numbers in aligned columns under one header (G4): brews · SD · score; the sub line is context only. -->
-      <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num">SD</span><span class="num">Score</span></div>
+      <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num"
+        ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd"><span class="tip-text">SD</span></button></span
+      ><span class="num">Score</span></div>
+      <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}>{SD_HELP}</div>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
           <li class="board-row">
@@ -462,12 +465,6 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 2px;
     border-radius: var(--radius);
-  }
-  .spot-tip {
-    white-space: normal;
-    width: max-content;
-    max-width: min(15rem, 100vw - 2rem);
-    text-align: left;
   }
   .spot-card:global(:is([data-tight='3'], [data-tight='4'])) .ends,
   .spot-card:global([data-tight='4']) .evidence {
