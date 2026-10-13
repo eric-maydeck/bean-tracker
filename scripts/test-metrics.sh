@@ -15,7 +15,7 @@ node scripts/lag-probe.ts > "$out/lag.jsonl" & pids="$pids $!"
   done > "$out/sys.jsonl" ) & pids="$pids $!"
 start=$(date +%s)
 "$@"; code=$?
-printf '{"wallS":%s,"exitCode":%s,"command":"%s"}\n' "$(( $(date +%s) - start ))" "$code" "$*" > "$out/run.json"
+printf '{"wallS":%s,"exitCode":%s}\n' "$(( $(date +%s) - start ))" "$code" > "$out/run.json"
 kill $pids 2>/dev/null; wait 2>/dev/null
 node scripts/testMetricsSummary.ts "$out"
 exit $code
