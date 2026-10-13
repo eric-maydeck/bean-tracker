@@ -10,6 +10,7 @@
   import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
+  import { deltaInk } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, ratingsHelp, placeTip, choose }: {
@@ -67,7 +68,7 @@
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
         tip: {
           title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
-          rows: [p.tier === 1 ? ['vs same bag', signed(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
+          rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
             ...(b.solid ? [] : [['Strength', 'Few brews']])],
           note: b.label === p.usual.label ? 'Your usual setting.' : undefined
         } as Tip
@@ -243,7 +244,8 @@
               {/if}
             </div>
           {/if}
-          <span class="hl-line evidence">{evidence(p)}</span>
+          <!-- A same-bag delta reads green or red (T4); the rest of the line stays muted. -->
+          <span class="hl-line evidence">{#if p.tier === 1 && p.best}{@const d = signed(p.best.value)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(d.length)}{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>

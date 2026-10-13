@@ -14,6 +14,6 @@ export function deltaColor(v: number | null): string {
   const t = deltaTone(v);
   return t ? `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(100 * t)}%, var(--div-mid))` : 'var(--div-mid)';
 }
-// A signed delta as text (round 3, T4): green from +0.05, red from −0.05 (the scale's thresholds), else ink.
-export const deltaInk = (v: number | null): 'better' | 'worse' | undefined =>
-  v === null || Math.abs(v) < GRAY_BELOW ? undefined : v > 0 ? 'better' : 'worse';
+// A signed delta as text (round 3, T4): its class, green from +0.05, red from −0.05 (the scale's thresholds), else ink.
+export const deltaInk = (v: number | null): 'ink-better' | 'ink-worse' | '' =>
+  v === null || Math.abs(v) < GRAY_BELOW ? '' : v > 0 ? 'ink-better' : 'ink-worse';

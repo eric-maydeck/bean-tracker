@@ -94,6 +94,29 @@ async function expectNoEllipsis(page: Page) {
   expect(clipped).toEqual([]);
 }
 
+// T4 (ui-rules 29): a signed vs-usual delta shown as text is green from +0.05, red from −0.05, ink between
+// (thin rows stay muted; neutral is never green or red). Checks every board delta, polarity bar value and tagged delta (.delta-text) on the page.
+async function expectDeltaInk(page: Page) {
+  const bad = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    document.body.append(probe);
+    const ink = (v: string) => ((probe.style.color = v), getComputedStyle(probe).color);
+    const [better, worse] = [ink('var(--div-high-ink)'), ink('var(--div-low-ink)')];
+    probe.remove();
+    const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row:not(.few) .val, .delta-bars:not(.direction) .bar-row:not(.pale) .bar-value, .delta-text')];
+    return els.flatMap((e) => {
+      const m = /^([+−])(\d+\.\d+)/.exec(e.textContent!.trim());
+      if (!m) return [];
+      const v = (m[1] === '−' ? -1 : 1) * +m[2], got = getComputedStyle(e).color;
+      // A shown "±0.05" may round from just under 0.05: either color passes there. Neutral: never green or red.
+      if (Math.abs(Math.abs(v) - 0.05) < 0.006) return [];
+      const ok = Math.abs(v) < 0.05 ? got !== better && got !== worse : got === (v > 0 ? better : worse);
+      return ok ? [] : [`${e.textContent!.trim()}: ${got}`];
+    });
+  });
+  expect(bad).toEqual([]);
+}
+
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
@@ -1790,6 +1813,7 @@ export const STATES: State[] = [
       expect(spills).toEqual([]);
       const over = await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.id));
       expect(over).toEqual([]);
+      await expectDeltaInk(page);
       // Every card's mini chart takes spare height (≥ 1.5rem of columns), under a value that stays the largest text.
       const charts = await page.locator('.spot-card').evaluateAll((cs) => cs.flatMap((c) => {
         const cols = c.querySelector('.cols')?.getBoundingClientRect();
@@ -1911,6 +1935,7 @@ export const STATES: State[] = [
       });
       expect(colors.out).toEqual([]);
       expect(colors.drift).toBe(colors.muted);
+      await expectDeltaInk(page);
       // C2: a tip never clips: the Bloom chart's last row and a top-row heat cell, scrolled just under the sticky bar.
       for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
         const el = page.locator(target);
@@ -2093,6 +2118,7 @@ export const STATES: State[] = [
       await expect(map.locator('.cell-tip .tip-title')).not.toHaveText(firstTip!);
       await page.keyboard.press('Escape');
       await map.locator('.map-name:focus').blur();
+      await expectDeltaInk(page);
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
@@ -2213,6 +2239,7 @@ export const STATES: State[] = [
         });
         expect(cols).toBe(true);
       }
+      await expectDeltaInk(page);
       // Narrow boards drop SD first; brews and the delta always show.
       const sdShown = await page.locator('[data-section="gear-drippers"] .board-head .sd').evaluate((e) => e.getBoundingClientRect().width > 0);
       const boardW = (await page.locator('[data-section="gear-drippers"] .lab-board').boundingBox())!.width;

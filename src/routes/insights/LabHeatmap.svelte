@@ -2,6 +2,7 @@
   import Heatmap from '$lib/components/Heatmap.svelte';
   import type { Tip } from '$lib/components/TipBody.svelte';
   import type { Breakdown } from '$lib/server/insights/lab';
+  import { deltaInk } from '$lib/components/deltaColor';
   import { noMatch, plural, signed } from './DeltaBars.svelte';
 
   // A lab breakdown as a diverging heatmap of same-bag deltas (green better, red worse). A thin cell draws
@@ -25,7 +26,7 @@
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
     if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
-    return { title, rows: [[`vs ${vs}`, signed(cell.delta)], ...counts, ...(cell.solid ? [] : [['Strength', 'Few brews'] as [string, string]])] };
+    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...counts, ...(cell.solid ? [] : [['Strength', 'Few brews'] as [string, string]])] };
   };
 </script>
 

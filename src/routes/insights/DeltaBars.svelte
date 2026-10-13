@@ -33,7 +33,7 @@
 </script>
 
 <script lang="ts">
-  import { deltaColor } from '$lib/components/deltaColor';
+  import { deltaColor, deltaInk } from '$lib/components/deltaColor';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText } from '$lib/components/TipBody.svelte';
@@ -113,7 +113,7 @@
         {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} style:width="{b.w}%"
           style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
-      <span class="bar-value">
+      <span class="bar-value {colors === 'direction' || b.pale ? '' : deltaInk(b.value)}">
         {b.value === null ? b.text || 'few brews' : b.text}
         {#if b.strength === 'solid' || b.strength === 'hint'}<span class="badge hl-badge" class:hint={b.strength === 'hint'}>{STRENGTH[b.strength]}</span>{/if}
       </span>

@@ -3,6 +3,7 @@
   import type { LeaderRow } from '$lib/server/insights/lab';
   import { noMatch, SD_TIP, signed } from './DeltaBars.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import { deltaInk } from '$lib/components/deltaColor';
   import { STRENGTH } from './Insights.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
@@ -42,7 +43,7 @@
           <span class="val"><button class="mode-tip-button no-match" popovertarget="{uid}-nm-{i}">no match</button></span>
           <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'No match', lines: [noMatch(noun)] }} /></div>
         {:else}
-          <span class="val">{signed(r.delta)}</span>
+          <span class="val {deltaInk(r.delta)}">{signed(r.delta)}</span>
         {/if}
       </li>
     {/each}

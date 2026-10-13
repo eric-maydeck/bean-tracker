@@ -21,10 +21,10 @@ describe('deltaColor (fixed scale, T3)', () => {
 
 describe('deltaInk (T4)', () => {
   it('green from +0.05, red from −0.05, ink between and for no data', () => {
-    expect(deltaInk(0.05)).toBe('better');
-    expect(deltaInk(-0.05)).toBe('worse');
-    expect(deltaInk(0.049)).toBeUndefined();
-    expect(deltaInk(-0.01)).toBeUndefined();
-    expect(deltaInk(null)).toBeUndefined();
+    expect(deltaInk(0.05)).toBe('ink-better');
+    expect(deltaInk(-0.05)).toBe('ink-worse');
+    expect(deltaInk(0.049)).toBe('');
+    expect(deltaInk(-0.01)).toBe('');
+    expect(deltaInk(null)).toBe('');
   });
 });
