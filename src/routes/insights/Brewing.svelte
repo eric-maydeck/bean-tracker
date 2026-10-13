@@ -40,8 +40,8 @@
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
-        help={["Rows: roast levels · columns: days off roast.", "A cell: the roast level's bags' average rating in that window (each bag once), minus its usual.",
-          'Green: better than usual · red: worse.', "Outlined: the row's best window (2+ solid cells).", 'Striped: under 3 bags or 30 brews.',
+        help={["A cell: the roast level's bags' average rating in that window (each bag once), minus its usual.",
+          'Green: better than usual.', 'Red: worse.', "Outlined: the row's best window (2+ solid cells).", 'Striped: under 3 bags or 30 brews.',
           'It compares bags, not brews of one bag, so it also moves with which coffees rested longer.']} />
       <LabHeatmap by={t.rest} best={t.rest.best} vs="usual" noun="rest window" scale={['Below the roast level\'s usual', 'Above']}
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />

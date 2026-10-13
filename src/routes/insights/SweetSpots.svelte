@@ -265,8 +265,8 @@
   {#if t.topBags.length}
     <section class="chart-panel" data-section="spots-top">
       <LabHead id="spots-top" title="Top bags like this" {placeTip}
-        help={['The bags matching these filters with the best ratings.', "Score: each bag's average pulled toward the matching brews' average by 5 brews.",
-          "So one great brew doesn't top the list.", 'SD: how much its ratings vary (small: consistent · big: hit or miss).', 'Under each: its roaster, then usual temp · water · dripper.']} />
+        help={['The bags matching these filters with the best ratings.', "Score: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top.",
+          'SD: how much its ratings vary.', '', 'Small: consistent.', 'Big: hit or miss.', 'Under each: its roaster, then usual temp · water · dripper.']} />
       <!-- Numbers in aligned columns under one header (G4): brews · SD · score; the sub line is context only. -->
       <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num"
         ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span

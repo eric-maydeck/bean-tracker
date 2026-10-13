@@ -12,7 +12,7 @@
   ];
   export const STRENGTH_LINE = 'Solid: at least 2× its usual noise · Hint: 1.5 to 2×.';
   // The SD help, wherever SD shows (T2).
-  export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', 'Small: consistent · big: hit or miss.'] };
+  export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', '', 'Small: consistent.', 'Big: hit or miss.'] };
   // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.
   export const sdFocus = (e: FocusEvent) => { const b = e.currentTarget as HTMLButtonElement; if (b.matches(':focus-visible')) (b.popoverTargetElement as HTMLElement | null)?.showPopover(); };
   export const sdBlur = (e: FocusEvent) => ((e.currentTarget as HTMLButtonElement).popoverTargetElement as HTMLElement | null)?.hidePopover();

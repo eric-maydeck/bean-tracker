@@ -292,7 +292,7 @@ export async function expectTipsFormatted(page: Page) {
     if ([...t.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())) out.push(`${id}: loose text`);
     if (/^full-|-full$/.test(t.id)) return out;
     if (!t.querySelector('.tip-rows, .tip-lines')) out.push(`${id}: no rows or lines`);
-    const n = t.querySelectorAll('.tip-lines li').length;
+    const n = t.querySelectorAll('.tip-lines li:not(.gap)').length;
     if (n > 6) out.push(`${id}: ${n} lines (6 at most)`);
     for (const li of t.querySelectorAll('.tip-lines li')) {
       const s = li.textContent!.trim();
