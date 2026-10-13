@@ -12,7 +12,7 @@
   import MineralMap from './MineralMap.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import StackedBars from './StackedBars.svelte';
-  import { nameColors } from './multiLine';
+  import { inkOf, nameColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
@@ -122,9 +122,9 @@
           {@const all = !!s.pairs?.includes(p.slug)}
           <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
-          <div class="pair" class:span={spans[i]} style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)}>
+          <div class="pair" class:span={spans[i]} style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)} style:--ia={inkOf(colorOf(p.a))} style:--ib={inkOf(colorOf(p.b))}>
             <p class="pair-sum"
-              ><strong>{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
+              ><strong class="pair-a">{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
               ></p>
             <div class="pair-row pair-cols">
@@ -201,6 +201,10 @@
   .pair.span {
     column-span: all;
   }
+  /* The headline's recipe name: bold, in its recipe color (the text-safe variant, 4.5:1). */
+  .pair-a {
+    color: var(--ia);
+  }
   .pair-sum {
     margin: 0 0 var(--space-2);
     font-size: 0.85rem;
@@ -247,6 +251,7 @@
     flex: none;
     margin-right: 0.3rem;
     border-radius: 2px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent);
     background: var(--ca);
   }
   .pair-col.b .swatch {

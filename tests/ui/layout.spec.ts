@@ -2194,6 +2194,10 @@ export const STATES: State[] = [
       // two recipes in their colors, then each bag's two plain ratings, the winner's bold and green.
       const pair = page.locator('.pair').first();
       await expect(pair.locator('.pair-sum')).toHaveText(/ won \d+ of \d+ bags?( \(\d+ tied\))? · (even|[+−]\d\.\d\d on average)$/);
+      // The headline's recipe name: bold, in its recipe's ink color (not the body text color).
+      const nm = await pair.locator('.pair-a').evaluate((e) => ({ w: +getComputedStyle(e).fontWeight, c: getComputedStyle(e).color, body: getComputedStyle(e.closest('.pair')!).color }));
+      expect(nm.w).toBeGreaterThanOrEqual(600);
+      expect(nm.c).not.toBe(nm.body);
       await expect(pair.locator('.pair-bags li').first().locator('.score')).toHaveText([/^\d+\.\d\d$/, /^\d+\.\d\d$/]);
       const pc = await page.locator('.pair').evaluateAll((ps) => ps.map((p) => {
         const css = (e: Element) => getComputedStyle(e);

@@ -205,5 +205,6 @@
     width: 0.6rem;
     height: 0.6rem;
     border-radius: 2px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent); /* light tiers stay visible on the card */
   }
 </style>

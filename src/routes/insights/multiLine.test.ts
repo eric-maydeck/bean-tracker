@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { capList, lines, nameColors, scale, smooth, SLOTS } from './multiLine';
+import { capList, inkOf, lines, nameColors, scale, smooth, SLOTS } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -30,6 +30,8 @@ describe('multiLine', () => {
   });
 });
 
+it('inkOf maps a slot to its text-safe variant', () => expect(inkOf('var(--series-3)')).toBe('var(--series-3-ink)'));
+
 describe('nameColors', () => {
   const pairs = [{ a: 'E', b: 'F' }, { a: 'A', b: 'E' }, { a: 'F', b: 'G' }];
   it('one color per name, distinct while slots last; lines keep their order; Other is not a name', () => {
@@ -40,10 +42,10 @@ describe('nameColors', () => {
     expect(c.has('Other')).toBe(false);
   });
   it('past the palette, a name reuses only a slot none of its bar or pair partners use', () => {
-    const lines = Array.from({ length: 7 }, (_, i) => `L${i}`);
+    const lines = Array.from({ length: 21 }, (_, i) => `L${i}`);
     const many = [{ a: 'L0', b: 'X' }, { a: 'X', b: 'Y' }, { a: 'Y', b: 'L1' }];
     const c = nameColors(lines, many);
-    expect(new Set(lines.map((l) => c.get(l))).size).toBe(7); // every bar's segments differ
+    expect(new Set(lines.map((l) => c.get(l))).size).toBe(21); // every bar's segments differ
     for (const p of many) expect(c.get(p.a)).not.toBe(c.get(p.b)); // every pair's two differ
   });
 });
