@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 // The automatable rules from docs/ui-rules.md. Anything inside an element with
 // data-layout-ignore="<why>" is skipped; an empty reason is itself a problem.
@@ -221,11 +221,34 @@ export async function expectPairsFilled(page: Page, selector: string) {
       if (fb.scrollHeight > fb.clientHeight + 1) return []; // the taller card: scrolls inside
       const parts = [...fb.querySelectorAll('*')].filter((e) => !e.closest('.cell-tip, [popover]')).map((e) => e.getBoundingClientRect()).filter((b) => b.height > 0);
       const row = fb.querySelector('.bar-row, .heat-cell, .board-row')?.getBoundingClientRect().height ?? 48;
+      // Stretched bars scale up, not apart (C3): with the body grown g× (fitPairs' --grow), a bar is ~60% of its
+      // 2rem row × g (12px at g = 1, at most 32px).
+      const g = parseFloat(getComputedStyle(fb).getPropertyValue('--grow')) || 1;
+      const want = Math.min(32, Math.max(12, 32 * (0.6 * g - 0.225)));
+      const thin = [...fb.querySelectorAll('.bar-row .bar')].filter((bar) => bar.getBoundingClientRect().height < want - 1);
+      if (thin.length) return [`${name}: ${thin.length} bars thinner than their stretched rows call for`];
       const gap = fb.getBoundingClientRect().bottom - Math.max(...parts.map((b) => b.bottom));
       return gap > row + 1 ? [`${name}: ${Math.round(gap)}px empty under a ${Math.round(row)}px row`] : [];
     });
   }));
   expect(bad, selector).toEqual([]);
+}
+
+// A chart tip is never clipped (ui-rules 39): it is an open popover (the top layer: no card overflow, scroll
+// wrapper or sticky bar can cover or cut it), and its box is inside the viewport and below the sticky filter bar.
+// ponytail: Firefox's elementFromPoint skipped the open top-layer tip in the runner (it hit the content under
+// it even with pointer-events on), so the top-layer check stands in for a per-corner hit test.
+export async function expectTipInView(page: Page, tip: Locator) {
+  await expect(tip).toBeVisible();
+  const bad = await tip.evaluate((el) => {
+    const r = el.getBoundingClientRect(), out: string[] = [];
+    const bar = document.querySelector('.filter-bar')?.getBoundingClientRect();
+    if (!el.matches(':popover-open')) out.push('not in the top layer (an open popover)');
+    if (r.left < 0 || r.top < 0 || r.right > document.documentElement.clientWidth || r.bottom > innerHeight) out.push(`outside the viewport: ${JSON.stringify(r)}`);
+    if (bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
+    return out;
+  });
+  expect(bad).toEqual([]);
 }
 
 // Insights stat grids: full rows, and every caption inside its tile.

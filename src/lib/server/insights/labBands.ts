@@ -69,7 +69,7 @@ export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): B
   }
 }
 
-// Water tab "Minerals vs rating" (plain adjusted means): each distinct value used. A mineral's 0 is
+// Water tab "Recipe mineral map" and GH: a recipe profile's amounts. A mineral's 0 is
 // a real recipe value (no potassium), unlike brew fields; null = not entered or no water profile.
 // A profile whose six minerals are all 0 or empty was never filled in (user, 2026-10-12): its brews
 // count in no mineral, GH, KH or ratio chart.

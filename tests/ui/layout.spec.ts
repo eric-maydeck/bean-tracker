@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -1801,10 +1801,10 @@ export const STATES: State[] = [
       // A tap on a chart shows its themed tip; a tap elsewhere closes it.
       await page.locator('#spot-temp .spot-chart').click();
       // A short structured tip (ui-rules 36): the band as its title, then label/value rows.
-      await expect(page.locator('#spot-temp .spot-tip .tip-title')).not.toBeEmpty();
-      await expect(page.locator('#spot-temp .spot-tip .tip-rows')).toContainText(/Bags\s*\d+\s*Brews\s*\d+/);
+      await expect(page.locator('#spot-temp .cell-tip .tip-title')).not.toBeEmpty();
+      await expect(page.locator('#spot-temp .cell-tip .tip-rows')).toContainText(/Bags\s*\d+\s*Brews\s*\d+/);
       await page.locator('.insights-period').last().click();
-      await expect(page.locator('.spot-tip')).toHaveCount(0);
+      await expect(page.locator('.cell-tip')).toHaveCount(0);
       // Keyboard: focus opens a band tip, → moves it, Escape closes it, Enter opens the card's full text.
       // Reached by Tab (the keyboard path): from the card's last control before the chart.
       const chart = page.locator('#spot-temp .spot-chart');
@@ -1814,15 +1814,15 @@ export const STATES: State[] = [
       });
       await page.keyboard.press('Tab');
       await expect(chart).toBeFocused();
-      await expect(page.locator('#spot-temp .spot-tip')).toBeVisible();
-      const start = await page.locator('#spot-temp .spot-tip').textContent();
+      await expect(page.locator('#spot-temp .cell-tip')).toBeVisible();
+      const start = await page.locator('#spot-temp .cell-tip').textContent();
       await chart.press('Escape');
       await chart.press('ArrowRight'); // first press, no tip open: the start band, not one past it
-      await expect(page.locator('#spot-temp .spot-tip')).toHaveText(start!);
+      await expect(page.locator('#spot-temp .cell-tip')).toHaveText(start!);
       await chart.press('ArrowRight');
-      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/Brews\s*\d+/);
+      await expect(page.locator('#spot-temp .cell-tip')).toContainText(/Brews\s*\d+/);
       await chart.press('Escape');
-      await expect(page.locator('.spot-tip')).toHaveCount(0);
+      await expect(page.locator('.cell-tip')).toHaveCount(0);
       await chart.press('Enter');
       await expect(page.locator('#spot-temp-full')).toBeVisible();
       await expect(page.locator('#spot-temp-full')).toContainText(/vs same bag|Across|No comparison|Not enough/);
@@ -1865,22 +1865,55 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
       // Full rows: two columns ≥ 900 px, Brew time spans both; Dial-in beside Brews until dialed.
       await expectGridRowsFull(page, '.lab-grid', true);
+      // A4Z grind bands: labeled "1.3.0", the tip gives the range "1.3.0 – 1.3.9".
+      const grindRow = page.locator('[data-section="brewing-grind"] .bar-row').first();
+      await expect(grindRow.locator('.bar-label')).toHaveText(/^\d+\.\d+\.0$/);
+      await grindRow.click();
+      await expect(page.locator('[data-section="brewing-grind"] .cell-tip .tip-title')).toHaveText(/^(\d+\.\d+)\.0 – \1\.9$/);
+      await page.locator('h1').click();
       // A pair of charts is one height; the shorter fills it, the taller scrolls inside past 2× (ui-rules 37).
       await expectPairsFilled(page, '.lab-grid');
       await expectInnerScroll(page, '.fit-body');
       // G1/G2 colors: same-bag bars use the heatmaps' --div-high/--div-low; Grind drift is one neutral ink.
+      // C1: every bar and heat cell colors by its own value on one fixed scale (gray under 0.05, full at 0.5).
       const colors = await page.evaluate(() => {
-        const css = (el: Element, p: string) => getComputedStyle(el).getPropertyValue(p);
         const probe = document.createElement('span');
         document.body.append(probe);
-        const resolve = (v: string) => ((probe.style.color = `var(${v})`), getComputedStyle(probe).color);
-        const up = document.querySelector('[data-section="brewing-temp"] .bar.up')!, drift = document.querySelector('[data-section="brewing-drift"] .bar')!;
-        const out = { up: css(up, 'background-color'), high: resolve('--div-high'), drift: css(drift, 'background-color'), muted: resolve('--color-text-muted') };
+        const resolve = (bg: string) => ((probe.style.background = bg), getComputedStyle(probe).backgroundColor);
+        const expected = (v: number) => {
+          const t = Math.abs(v) < 0.05 ? 0 : Math.min(1, (Math.abs(v) - 0.05) / 0.45);
+          return resolve(t ? `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(100 * t)}%, var(--div-mid))` : 'var(--div-mid)');
+        };
+        const num = (s: string) => parseFloat(s.replace('−', '-'));
+        // The shown value is rounded to 2 dp: any value that rounds to it may be the drawn one.
+        const near = (got: string, v: number) => [-0.005, -0.0025, 0, 0.0025, 0.005].some((d) => expected(v + d) === got);
+        const out: string[] = [];
+        for (const row of document.querySelectorAll('[data-section="brewing-vars"] .bar-row')) {
+          const bar = row.querySelector('.bar'), v = num(row.querySelector('.bar-value')!.textContent!.trim());
+          if (bar && !row.closest('[data-section="brewing-drift"]') && !near(getComputedStyle(bar).backgroundColor, v)) out.push(`bar ${v}`);
+        }
+        for (const cell of document.querySelectorAll<HTMLElement>('[data-section="brewing-rest"] .heat-cell:not(.none)')) {
+          const v = num(cell.getAttribute('aria-label')!.split(' · ').at(-1)!);
+          if (!near(getComputedStyle(cell).backgroundColor, v)) out.push(`cell ${v}`);
+        }
+        const drift = getComputedStyle(document.querySelector('[data-section="brewing-drift"] .bar')!).backgroundColor;
+        const muted = resolve('var(--color-text-muted)');
         probe.remove();
-        return out;
+        return { out, drift, muted };
       });
-      expect(colors.up).toBe(colors.high);
+      expect(colors.out).toEqual([]);
       expect(colors.drift).toBe(colors.muted);
+      // C2: a tip never clips: the Bloom chart's last row and a top-row heat cell, scrolled just under the sticky bar.
+      for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
+        const el = page.locator(target);
+        await el.evaluate((e) => {
+          const bar = document.querySelector('.filter-bar')!.getBoundingClientRect().bottom;
+          scrollBy(0, e.getBoundingClientRect().top - bar - 4); // nothing above it in view: the tip must flip below
+        });
+        await el.click();
+        await expectTipInView(page, page.locator('.cell-tip:popover-open'));
+      }
+      await page.locator('h1').click();
       // Each chart's header (title + toggles) is one row from 768 px.
       if ((page.viewportSize()?.width ?? 0) >= 768) {
         const rows = await page.locator('.var-head').evaluateAll((hs) => hs.filter((h) => {
@@ -1947,6 +1980,13 @@ export const STATES: State[] = [
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
       await expect(hm.locator('.cell-tip')).toContainText(/Brews|No brews/);
+      await expectTipInView(page, hm.locator('.cell-tip'));
+      // C2: the rightmost column (scrolled into view inside the card) keeps its tip on screen too.
+      const edge = hm.locator('.heat-cell[data-r="0"]').last();
+      await edge.scrollIntoViewIfNeeded();
+      await edge.click();
+      await expectTipInView(page, hm.locator('.cell-tip'));
+      await page.locator('h1').click();
       // A thin cell draws faded with its value; the legend names it.
       const faded = hm.locator('.heat-cell.faded');
       if (await faded.count()) {
@@ -1966,6 +2006,11 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
       await expect(page.locator('[data-section="brewing-grind"] .bar-row.pale').first()).toBeVisible();
+      // ZP6 half-number bands are labeled by their first setting, the tip gives the range (no-match bands: vitest).
+      const grind = page.locator('[data-section="brewing-grind"]');
+      await expect(grind.locator('.bar-label')).toHaveText(['5.0', '5.5', '6.0']);
+      await grind.locator('.bar-row').first().click();
+      await expect(grind.locator('.cell-tip .tip-title')).toHaveText('5.0 – 5.4');
     } },
   { name: 'insights-brewing-tip', path: () => '/insights?tab=brewing',
     act: async (page) => {
@@ -2007,33 +2052,39 @@ export const STATES: State[] = [
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',
     act: async (page) => {
-      for (const h of ['Ratings by recipe', 'Minerals vs rating', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water usage over time', 'Same bag, different water'])
+      for (const h of ['Ratings by recipe', 'Recipe mineral map', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water usage over time', 'Same bag, different water'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
       await expect(page.locator('[data-section="water-recipes"] .lab-rows .board-row')).toHaveCount(3);
       await expect(page.locator('[data-section="water-gh"] .bar-row')).toHaveCount(3); // 26, 74, 124 ppm
-      await expect(page.getByText('Strongly tied to era and roast level')).toBeVisible();
+      await expect(page.locator('#water-minerals-help')).toContainText('Strongly tied to era and roast level');
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
       // Nothing takes focus on load (the phone keyboard would pop up).
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-      await expectGridRowsFull(page, '.mineral-grid');
-      // Mineral cards in a row are one height, and every dot and axis label stays inside its card.
-      const off = await page.locator('.mineral-card').evaluateAll((cs) => cs.flatMap((c) => {
-        const r = c.getBoundingClientRect();
-        const mate = cs.find((o) => o !== c && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
-        const inside = (x: number, y: number) => x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1;
-        const spill = [...c.querySelectorAll('.x-axis span, .y-axis span')].some((v) => {
-          const b = v.getBoundingClientRect();
-          return !inside(b.left, b.top) || !inside(b.right, b.bottom);
-        }) || [...c.querySelectorAll<HTMLElement>('.dot')].some((d) => { // the drawn mark (its 44px tap box may overhang)
-          const b = d.getBoundingClientRect(), half = parseFloat(d.style.getPropertyValue('--d')) / 2;
-          const [x, y] = [b.left + b.width / 2, b.top + b.height / 2];
-          return !inside(x - half, y - half) || !inside(x + half, y + half);
-        });
-        return [...(mate && Math.abs(mate.getBoundingClientRect().height - r.height) > 1 ? [`${c.textContent?.slice(0, 8)} height`] : []), ...(spill ? [`${c.textContent?.slice(0, 8)} spills`] : [])];
-      }));
-      expect(off).toEqual([]);
+      // Recipe mineral map: a row per profiled recipe (all three seeded waters), the delta then the 8 minerals;
+      // scrolls inside its card with the recipe column pinned.
+      const map = page.locator('[data-section="water-minerals"]');
+      await expect(map.locator('tbody tr')).toHaveCount(3);
+      await expect(map.locator('thead th')).toHaveText(['Recipe', 'vs usual', 'Camg/L', 'Mgmg/L', 'Kmg/L', 'Namg/L', 'GHppm', 'KHppm', 'Mg:Ca', 'Mg:K']);
+      await expect(map.locator('tbody td.delta').first()).toHaveText(/^[+−]\d\.\d\d$|^0\.00$/);
+      await expectInnerScroll(page, '.map-scroll');
+      const pinned = await map.locator('.map-scroll').evaluate((sc) => {
+        sc.scrollLeft = sc.scrollWidth;
+        const ok = Math.abs(sc.querySelector('tbody th')!.getBoundingClientRect().left - sc.getBoundingClientRect().left) <= 3;
+        sc.scrollLeft = 0;
+        return ok;
+      });
+      expect(pinned).toBe(true);
+      // A row's tip: brews, bags, strength; keyboard ↓ moves to the next recipe.
+      await map.locator('.map-name').first().focus();
+      await expect(map.locator('.cell-tip .tip-rows')).toContainText(/Brews\s*\d+\s*Bags\s*\d+\s*Strength/);
+      await expectTipInView(page, map.locator('.cell-tip'));
+      const firstTip = await map.locator('.cell-tip .tip-title').textContent();
+      await page.keyboard.press('ArrowDown');
+      await expect(map.locator('.cell-tip .tip-title')).not.toHaveText(firstTip!);
+      await page.keyboard.press('Escape');
+      await map.locator('.map-name:focus').blur();
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
@@ -2063,30 +2114,6 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
       await page.locator('[data-section="water-gh"] .bar-row').nth(1).blur();
-      // A mineral dot's tip: the amount as its title, then the rating and counts; arrows move between dots.
-      // A tap anywhere on the plot picks the nearest dot, so every dot is reachable even where dots overlap.
-      const card = page.locator('.mineral-card').first(), tipTitle = card.locator('.cell-tip .tip-title');
-      await card.evaluate((c) => c.scrollIntoView({ block: 'center' })); // clear of the sticky bar
-      const dots = await card.locator('.dot').evaluateAll((ds) => ds.map((d) => {
-        const b = d.getBoundingClientRect();
-        return { x: b.left + b.width / 2, y: b.top + b.height / 2, label: d.getAttribute('aria-label')!.split(' · ')[0] };
-      }));
-      for (const d of dots) {
-        await page.mouse.click(d.x, d.y);
-        await expect(tipTitle).toHaveText(d.label);
-      }
-      await expect(tipTitle).toHaveText(/^[\d.]+( mg\/L| ppm)?$/);
-      await expect(card.locator('.cell-tip .tip-rows')).toContainText(/Avg rating\s*\d\.\d\d\s*Brews\s*\d+\s*Bags\s*\d+/);
-      // Keyboard: one tab stop; arrows step through the dots in value order.
-      await expect(card.locator('.dot[tabindex="0"]')).toHaveCount(1);
-      await card.locator('.dot').first().focus();
-      for (let i = 1; i < dots.length; i++) {
-        await page.keyboard.press('ArrowRight');
-        await expect(card.locator('.dot').nth(i)).toBeFocused();
-        await expect(tipTitle).toHaveText(dots[i].label);
-      }
-      await page.keyboard.press('Escape');
-      await card.locator('.dot').nth(dots.length - 1).blur();
       // Ratings by recipe beside GH vs rating from 900 px, one height, both filled (W3, ui-rules 37).
       if (w >= 900) {
         const [a, b] = await Promise.all(['recipes', 'gh'].map((k) => page.locator(`[data-section="water-${k}"]`).boundingBox()));
@@ -2097,6 +2124,13 @@ export const STATES: State[] = [
       const pair = page.locator('.pair').first();
       await expect(pair.locator('.pair-sum')).toHaveText(/ won \d+ of \d+ bags?( \(\d+ tied\))? · (even|[+−]\d\.\d\d on average)$/);
       await expect(pair.locator('.pair-bags li').first().locator('.score')).toHaveText([/^\d+\.\d\d$/, /^\d+\.\d\d$/]);
+      // Each recipe of a pair carries its usage-over-time color: a swatch at its name, an underline under its ratings.
+      const pc = await pair.evaluate((p) => {
+        const css = (sel: string, prop: string) => getComputedStyle(p.querySelector(sel)!).getPropertyValue(prop);
+        return { a: css('.swatch.a', 'background-color'), b: css('.swatch.b', 'background-color'), ua: css('.score.a', 'text-decoration-color') };
+      });
+      expect(pc.a).not.toBe(pc.b);
+      expect(pc.ua).toBe(pc.a);
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
@@ -2175,6 +2209,16 @@ export const STATES: State[] = [
       const sdShown = await page.locator('[data-section="gear-drippers"] .board-head .sd').evaluate((e) => e.getBoundingClientRect().width > 0);
       const boardW = (await page.locator('[data-section="gear-drippers"] .lab-board').boundingBox())!.width;
       expect(sdShown).toBe(boardW >= 27 * 16);
+      // C5: the SD header explains itself (tap or keyboard opens its tip).
+      if (sdShown) {
+        await page.locator('[data-section="gear-drippers"] .board-head .sd button').click();
+        await expect(page.locator('.mode-tip:popover-open')).toContainText('Spread: how much ratings for this vary from brew to brew.');
+        await page.keyboard.press('Escape');
+      }
+      // C4: usage bars are bars: each takes ~75% of its month's slot, the rest a gap.
+      const slot = await page.locator('[data-section="gear-eras"] .col').first().evaluate((c) => c.querySelector('.stack')!.getBoundingClientRect().width / c.getBoundingClientRect().width);
+      expect(slot).toBeGreaterThan(0.6);
+      expect(slot).toBeLessThan(0.85);
       // A thin matrix cell draws faded with its value; a cell tip names the pairing and its counts (tap and keyboard).
       const hm = page.locator('[data-section="gear-matrix"] .heatmap');
       const faded = hm.locator('.heat-cell.faded');
