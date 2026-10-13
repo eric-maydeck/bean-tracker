@@ -11,7 +11,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "nice -n 10 vitest run",
-    "test:ui": "nice -n 10 playwright test",
+    "test:ui": "playwright test",
+    "test:ui:performance": "UI_PROFILE=performance playwright test",
+    "test:ui:background": "UI_PROFILE=background playwright test",
     "migrate": "node scripts/migrate.ts",
     "prepare": "husky"
   },
