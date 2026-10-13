@@ -78,6 +78,8 @@
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: minmax(7rem, 1fr) auto;
     column-gap: var(--space-2);
+    overflow: clip; /* the dots' 44px tap boxes never widen the card (or the page) */
+    overflow-clip-margin: 4px;
   }
   .y-axis,
   .x-axis {
@@ -121,29 +123,32 @@
     border-top: 1px dashed var(--color-text-muted);
     opacity: 0.6;
   }
+  /* The dot is a 44px tap target (ui-rules 4); the mark inside it is sized by brews. */
   .dot {
     position: absolute;
-    width: var(--d);
-    height: var(--d);
+    width: 44px;
+    height: 44px;
     translate: -50% -50%;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+  .dot::before {
+    content: '';
+    position: absolute;
+    inset: calc(50% - var(--d) / 2);
     border-radius: 50%;
     background: color-mix(in oklab, var(--chart-color-1) 75%, transparent);
     border: 2px solid var(--chart-color-1);
     box-shadow: 0 0 0 1.5px var(--color-bg);
-    cursor: pointer;
   }
-  .dot.hollow {
+  .dot.hollow::before {
     background: transparent;
     opacity: 0.7;
   }
-  /* A bigger hit area than the mark. */
-  .dot::after {
-    content: '';
-    position: absolute;
-    inset: -8px;
-    border-radius: 50%;
-  }
   .dot:focus-visible {
+    outline: none;
+  }
+  .dot:focus-visible::before {
     outline: 2px solid var(--color-text);
     outline-offset: 2px;
   }
