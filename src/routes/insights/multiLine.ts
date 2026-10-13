@@ -16,20 +16,39 @@ export function scale(m: Multi) {
 // x of column i in the 100-wide box.
 export const px = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
 
-// Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. "Other" is muted,
-// every other line takes the next categorical slot in order (never cycled: the server caps lines at ~5).
-export function lines(m: Multi) {
-  const { py } = frame(m), n = m.x.length;
+// Categorical slots in line order (never cycled: the server caps lines at ~5); "Other" is muted.
+export function seriesColors(labels: string[]) {
   let slot = 0;
-  return m.lines.map((l) => {
+  return labels.map((l) => (l === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})`));
+}
+
+// A smooth path through the points (monotone cubic, ui-rules G5): tangents are the harmonic mean of the
+// neighbouring slopes (0 at a turn), so the curve never overshoots the data.
+export function smooth(p: [number, number][]): string {
+  const f = (x: number) => +x.toFixed(2);
+  if (p.length < 3) return `M${p.map(([x, y]) => `${f(x)},${f(y)}`).join('L')}`;
+  const d = p.slice(1).map(([x, y], i) => (y - p[i][1]) / (x - p[i][0]));
+  const m = p.map((_, i) => (i === 0 ? d[0] : i === p.length - 1 ? d[i - 1] : d[i - 1] * d[i] <= 0 ? 0 : (2 * d[i - 1] * d[i]) / (d[i - 1] + d[i])));
+  let s = `M${f(p[0][0])},${f(p[0][1])}`;
+  for (let i = 1; i < p.length; i++) {
+    const [x0, y0] = p[i - 1], [x1, y1] = p[i], h = (x1 - x0) / 3;
+    s += `C${f(x0 + h)},${f(y0 + m[i - 1] * h)} ${f(x1 - h)},${f(y1 - m[i] * h)} ${f(x1)},${f(y1)}`;
+  }
+  return s;
+}
+
+// Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. Each run is an SVG path.
+export function lines(m: Multi) {
+  const { py } = frame(m), n = m.x.length, colors = seriesColors(m.lines.map((l) => l.label));
+  return m.lines.map((l, k) => {
     const runs: string[] = [];
-    let run: string[] = [];
+    let run: [number, number][] = [];
     l.values.forEach((v, i) => {
-      if (v === null) { if (run.length) runs.push(run.join(' ')); run = []; return; }
-      run.push(`${px(i, n)},${py(v).toFixed(2)}`);
-      if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push(`${px(i, n) + 0.8},${py(v).toFixed(2)}`); // a lone point: a dash
+      if (v === null) { if (run.length) runs.push(smooth(run)); run = []; return; }
+      run.push([px(i, n), py(v)]);
+      if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push([px(i, n) + 0.8, py(v)]); // a lone point: a dash
     });
-    if (run.length) runs.push(run.join(' '));
-    return { label: l.label, runs, color: l.label === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})` };
+    if (run.length) runs.push(smooth(run));
+    return { label: l.label, runs, color: colors[k] };
   });
 }

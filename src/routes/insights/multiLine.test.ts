@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lines, scale } from './multiLine';
+import { lines, scale, smooth } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -7,7 +7,14 @@ describe('multiLine', () => {
   it('a null breaks a line into runs; a lone point is a dash', () => {
     const [l] = lines(m([[1, 2, null, 3]]));
     expect(l.runs).toHaveLength(2);
-    expect(l.runs[1].split(' ')).toHaveLength(2);
+    expect(l.runs[1]).toMatch(/^M[\d.,]+L[\d.,]+$/);
+  });
+  it('smooth: a monotone curve never overshoots (a flat end stays flat)', () => {
+    const d = smooth([[0, 10], [50, 0], [100, 0]]);
+    const ys = [...d.matchAll(/[\d.]+,([\d.]+)/g)].map((x) => +x[1]);
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...ys)).toBeLessThanOrEqual(10);
+    expect(d.endsWith('100,0')).toBe(true);
   });
   it('categorical slots in order; Other muted', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4]], ['A', 'Other', 'B'])).map((l) => l.color)).toEqual(

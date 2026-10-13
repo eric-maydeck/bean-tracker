@@ -204,7 +204,7 @@
     {@const ls = lines(f.multi)}
     <div class="multi" role="img" aria-label="{f.multi.lines.map((l) => l.label).join(', ')} from {f.multi.x[0]} to {f.multi.x.at(-1)}">
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
-        {#each ls as l (l.label)}{#each l.runs as r, j (j)}<polyline points={r} style:stroke={l.color} />{/each}{/each}
+        {#each ls as l (l.label)}{#each l.runs as r, j (j)}<path d={r} style:stroke={l.color} />{/each}{/each}
       </svg>
       <div class="spark-ends" aria-hidden="true"><span>{f.multi.x[0]}</span><span>{f.multi.x.at(-1)}{f.multi.unit ? ` · ${f.multi.unit}` : ''}</span></div>
       <ul class="legend" aria-hidden="true">
@@ -617,9 +617,9 @@
   :global(.finding-grid.fit) .finding > :is(.bars, .multi, .spark) svg {
     flex: none;
   }
-  .multi polyline {
+  .multi path {
     fill: none;
-    stroke-width: 2;
+    stroke-width: 2.5;
     stroke-linejoin: round;
     stroke-linecap: round;
     vector-effect: non-scaling-stroke;
