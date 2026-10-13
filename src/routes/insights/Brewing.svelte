@@ -50,13 +50,13 @@
     <div class="lab-grid" use:fitPairs={t}>
       {#if t.dialIn.length}
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
-          <LabHead id="brewing-dialin" title="Dial-in" level={3} help={SAME_BAG_HELP} {placeTip} />
+          <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
           <div class="fit-body"><DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" /></div>
         </section>
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
-          <LabHead id="brewing-best" title="Brews until dialed" level={3} help={"For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie)."} {placeTip} />
+          <LabHead id="brewing-best" title="Brews until dialed" help={"For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie)."} {placeTip} />
           <div class="fit-body">
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />

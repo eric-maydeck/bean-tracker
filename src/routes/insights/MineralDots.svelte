@@ -23,6 +23,24 @@
       }))
     };
   });
+  // X ticks: one per distinct amount, thinned left to right so labels (~0.45rem per char) never overlap; the
+  // first and last always stay (a middle one makes way for the last).
+  let axisW = $state(0);
+  let ticks = $derived.by(() => {
+    const px = (t: { x: number; label: string }) => (t.x / 100) * axisW;
+    const half = (t: { label: string }) => t.label.length * 3.6 + 2;
+    const all = plot.dots.map((d) => ({ x: d.x, label: fmt(d.value) }));
+    const clash = (a: (typeof all)[0], b: (typeof all)[0]) => px(b) - px(a) < half(a) + half(b) + 4;
+    const kept: typeof all = [];
+    for (const t of all) {
+      if (kept.length && clash(kept[kept.length - 1], t)) {
+        if (t !== all[all.length - 1]) continue;
+        while (kept.length > 1 && clash(kept[kept.length - 1], t)) kept.pop();
+      }
+      kept.push(t);
+    }
+    return kept;
+  });
   const tipOf = (p: MineralPoint): Tip => ({
     title: `${fmt(p.value)}${unit ? ` ${unit}` : ''}`,
     rows: [['Avg rating', p.mean.toFixed(2)], ['Brews', `${p.brews}`], ['Bags', `${p.bags}`], ...(p.solid ? [] : [['Strength', 'Few brews'] as [string, string]])]
@@ -36,7 +54,7 @@
     tip = null;
   });
   const showDot = (el: Element, hover = false) => (tip = { ...tipAt(wrap!, el, '', 128), i: +(el as HTMLElement).dataset.i!, hover });
-  // The dot whose centre is nearest the pointer, within 2rem; none past that.
+  // The dot whose center is nearest the pointer, within 2rem; none past that.
   const pick = (e: MouseEvent, hover = false) => {
     let best: Element | null = null, d = 32 ** 2;
     for (const el of wrap!.querySelectorAll('.dot')) {
@@ -73,7 +91,10 @@
           onfocus={(e) => (takeFocus(e), showDot(e.currentTarget))} onblur={() => (tip = null)}></span>
       {/each}
     </div>
-    <div class="x-axis" aria-hidden="true"><span>{fmt(plot.lo)}</span><span class="axis-name">{unit || 'ratio'}</span><span>{fmt(plot.hi)}</span></div>
+    <div class="x-axis" aria-hidden="true">
+      <div class="x-ticks" bind:clientWidth={axisW}>{#each ticks as t (t.label)}<span style:left="{t.x}%">{t.label}</span>{/each}</div>
+      <span class="axis-name">{unit || 'ratio'}</span>
+    </div>
   </div>
   {#if tip && plot.dots[tip.i]}
     <div class="cell-tip wide" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}><TipBody tip={tipOf(plot.dots[tip.i])} /></div>
@@ -113,11 +134,26 @@
   .x-axis {
     grid-column: 2;
     margin-top: 0.3rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  /* Ticks sit under their dots: same inset as the plot, each centered on its value. */
+  .x-ticks {
+    position: relative;
+    align-self: stretch;
+    height: 1em;
+    margin-inline: 0.6rem;
+  }
+  .x-ticks span {
+    position: absolute;
+    translate: -50% 0;
+    white-space: nowrap;
   }
   .axis-name {
     font-style: italic;
   }
-  /* Dots stay inside the box: an inset of the largest radius keeps the centres off its edges. */
+  /* Dots stay inside the box: an inset of the largest radius keeps the centers off its edges. */
   .plot {
     position: relative;
     margin: 0.6rem;
