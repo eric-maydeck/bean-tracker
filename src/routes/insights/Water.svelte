@@ -133,8 +133,8 @@
               ></p>
             <div class="pair-row pair-cols">
               <span class="bag-h">Bag</span>
-              <span class="pair-col a"><span class="swatch" aria-hidden="true"></span>{p.a}</span>
-              <span class="pair-col b"><span class="swatch" aria-hidden="true"></span>{p.b}</span>
+              <span class="pair-col a" title={p.a}><span class="swatch" aria-hidden="true"></span>{p.a}</span>
+              <span class="pair-col b" title={p.b}><span class="swatch" aria-hidden="true"></span>{p.b}</span>
             </div>
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
@@ -208,7 +208,7 @@
   /* Bag | recipe A | recipe B: the header and every bag row share the columns. */
   .pair-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 5.5rem 5.5rem;
+    grid-template-columns: minmax(0, 1fr) 7rem 7rem;
     align-items: baseline;
     gap: var(--space-2);
   }
@@ -220,9 +220,20 @@
     line-height: 1.2;
     color: var(--color-text-muted);
   }
+  /* A long recipe name stays within two lines (its full name is the title). */
   .pair-col {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
     text-align: right;
     overflow-wrap: anywhere;
+  }
+  @media (max-width: 480px) {
+    .pair-row {
+      grid-template-columns: minmax(0, 1fr) 5.5rem 5.5rem;
+    }
   }
   /* Each recipe's color (as in Water usage over time): a block before its name. */
   .swatch {
