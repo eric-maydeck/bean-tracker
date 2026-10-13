@@ -1,38 +1,99 @@
 <script lang="ts">
   import type { LeaderRow } from '$lib/server/insights/lab';
-  import { plural, signed } from './DeltaBars.svelte';
+  import { noMatch, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
 
-  // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows, the same-bag
-  // delta and its Solid/Hint badge on the right; thin rows muted (global .few). `spread`: show ±SD.
-  // `slots`: a side-by-side partner's length; the empty slots are faint placeholders (as on Leaderboards).
-  let { rows, spread = false, slots = 0 }: { rows: LeaderRow[]; spread?: boolean; slots?: number } = $props();
+  // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
+  // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Solid/Hint
+  // badge and the same-bag delta. The sub line keeps non-numeric context only (a recipe's months). Narrow
+  // boards drop SD, then bags. Thin rows muted (global .few). `slots`: a side-by-side partner's length; the
+  // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).
+  let { rows, slots = 0, noun, placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; placeTip: (e: ToggleEvent) => void } = $props();
+  const uid = $props.id();
 </script>
 
-<ol class="board-rows lab-rows">
-  {#each rows as r, i (r.label)}
-    <li class="board-row" class:few={!r.solid}>
-      <span class="rank">{i + 1}</span>
-      <span class="who">
-        <span class="name">{r.label}</span>
-        <small>{[r.months, plural(r.plainBrews, 'brew'), plural(r.plainBags, 'bag'), `avg ${r.adjusted.toFixed(2)}`,
-          spread && r.spread !== null ? `±${r.spread.toFixed(2)} SD` : ''].filter(Boolean).join(' · ')}</small>
-      </span>
-      <span class="lab-badge">
-        {#if r.strength === 'solid' || r.strength === 'hint'}<span class="badge hl-badge" class:hint={r.strength === 'hint'}>{STRENGTH[r.strength]}</span>{/if}
-      </span>
-      <span class="val">{r.delta === null ? 'unpaired' : signed(r.delta)}</span>
-    </li>
-  {/each}
-  {#each { length: Math.max(0, slots - rows.length) }, i (i)}
-    <li class="board-row placeholder" aria-hidden="true"><span class="rank">{rows.length + i + 1}</span><span class="who">—</span></li>
-  {/each}
-</ol>
+<div class="lab-board">
+  <div class="board-row board-head">
+    <span></span><span class="who">{noun[0].toUpperCase() + noun.slice(1)}</span>
+    <span class="num">Brews</span><span class="num bags">Bags</span><span class="num">Avg</span><span class="num sd">SD</span>
+    <span></span><span class="num">vs bag</span>
+  </div>
+  <ol class="board-rows lab-rows">
+    {#each rows as r, i (r.label)}
+      <li class="board-row" class:few={!r.solid}>
+        <span class="rank">{i + 1}</span>
+        <span class="who">
+          <span class="name">{r.label}</span>
+          {#if r.months}<small>{r.months}</small>{/if}
+        </span>
+        <span class="num">{r.plainBrews}</span>
+        <span class="num bags">{r.plainBags}</span>
+        <span class="num">{r.adjusted.toFixed(2)}</span>
+        <span class="num sd">{r.sd?.toFixed(2) ?? '—'}</span>
+        <span class="lab-badge">
+          {#if r.strength === 'solid' || r.strength === 'hint'}<span class="badge hl-badge" class:hint={r.strength === 'hint'}>{STRENGTH[r.strength]}</span>{/if}
+        </span>
+        {#if r.delta === null}
+          <span class="val"><button class="mode-tip-button no-match" popovertarget="{uid}-nm-{i}">no match</button></span>
+          <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}>{noMatch(noun)}</div>
+        {:else}
+          <span class="val">{signed(r.delta)}</span>
+        {/if}
+      </li>
+    {/each}
+    {#each { length: Math.max(0, slots - rows.length) }, i (i)}
+      <li class="board-row placeholder" aria-hidden="true"><span class="rank">{rows.length + i + 1}</span><span class="who">—</span></li>
+    {/each}
+  </ol>
+</div>
 
 <style>
-  /* The delta column lines up down the list: the badge column is fixed, the value right-aligned. */
-  .lab-rows .board-row {
-    grid-template-columns: 1.75rem minmax(0, 1fr) 3.5rem 4.25rem;
+  .lab-board {
+    container-type: inline-size;
+  }
+  /* The columns line up down the list and with the header: fixed number columns, the delta right-aligned. */
+  .board-row {
+    grid-template-columns: 1.5rem minmax(0, 1fr) 2.5rem 2.25rem 2.5rem 2.25rem 3.25rem 3.75rem;
+    column-gap: var(--space-2);
+  }
+  .board-head {
+    height: auto;
+    padding-bottom: var(--space-1);
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+  .board-head + .board-rows > :global(.board-row:first-child) {
+    border-top: 0;
+  }
+  .num {
+    text-align: right;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .board-head .num {
+    font-size: inherit;
+  }
+  .few .num {
+    color: var(--color-text-muted);
+  }
+  /* Narrow boards (a phone, or a half-width card): SD goes first, then bags; delta and brews stay. */
+  @container (width < 27rem) {
+    .board-row {
+      grid-template-columns: 1.5rem minmax(0, 1fr) 2.5rem 2.25rem 2.5rem 3.25rem 3.75rem;
+    }
+    .sd {
+      display: none;
+    }
+  }
+  @container (width < 22rem) {
+    .board-row {
+      grid-template-columns: 1.5rem minmax(0, 1fr) 2.25rem 2.5rem 3.25rem 3.75rem;
+    }
+    .bags {
+      display: none;
+    }
   }
   .placeholder {
     color: var(--color-text-muted);
@@ -43,5 +104,13 @@
   }
   .val {
     text-align: right;
+  }
+  .no-match {
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--color-text-muted);
+    text-decoration: underline dotted;
+    white-space: nowrap;
   }
 </style>

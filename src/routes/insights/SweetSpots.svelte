@@ -8,6 +8,7 @@
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
+  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, ratingsHelp, placeTip, choose }: {
     t: SweetSpotsTab; lab: LabOptions; s: InsightsView; ratingsHelp: Record<Ratings, string>;
@@ -61,7 +62,13 @@
       bars: p.bands.map((b, i) => ({
         ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
         pick: b.label === pick, usual: b.label === p.usual.label,
-        text: `${b.label}: ${p.tier === 1 ? `${signed(b.value)} vs same bag` : `${b.value.toFixed(1)} avg (bag means)`} · ${plural(b.bags, 'bag')} · ${plural(b.brews, 'brew')}${b.solid ? '' : ' · few brews'}${b.label === p.usual.label ? ' · usual' : ''}`
+        // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
+        tip: {
+          title: b.label,
+          rows: [p.tier === 1 ? ['vs same bag', signed(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
+            ...(b.solid ? [] : [['Strength', 'Few brews']])],
+          note: b.label === p.usual.label ? 'Your usual setting.' : undefined
+        } as Tip
       }))
     };
   }
@@ -212,7 +219,7 @@
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
-            <div class="spot-chart" role="img" tabindex="0" aria-label={ch.bars.map((b) => b.text).join('; ')} aria-describedby="{id}-full"
+            <div class="spot-chart" role="img" tabindex="0" aria-label={ch.bars.map((b) => tipText(b.tip)).join('; ')} aria-describedby="{id}-full"
               onfocus={(e) => e.currentTarget.matches(':focus-visible') && showTip(e.currentTarget, c.key, ch.bars.length, startAt(ch.bars), false)}
               onblur={() => (tip = null)}
               onkeydown={(e) => chartKey(e, c.key, ch.bars)}
@@ -230,7 +237,7 @@
               </div>
               <div class="ends" aria-hidden="true"><span>{ch.bars[0].label}</span><span>{ch.bars.at(-1)!.label}</span></div>
               {#if tip?.key === c.key}
-                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{ch.bars[tip.i]?.text}</div>
+                <div class="cell-tip spot-tip" role="tooltip" style:left="{tip.x}px" style:top="0">{#if ch.bars[tip.i]}<TipBody tip={ch.bars[tip.i].tip} />{/if}</div>
               {/if}
             </div>
           {/if}
@@ -248,7 +255,9 @@
   {#if t.topBags.length}
     <section class="chart-panel" data-section="spots-top">
       <LabHead id="spots-top" title="Top bags like this" {placeTip}
-        help="The bags matching these filters with the best ratings: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. Under each: its usual temp · water · dripper." />
+        help={"The bags matching these filters with the best ratings.\nScore: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. SD: how widely its ratings vary.\nUnder each: its roaster and usual temp · water · dripper."} />
+      <!-- Numbers in aligned columns under one header (G4): brews · SD · score; the sub line is context only. -->
+      <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num">SD</span><span class="num">Score</span></div>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
           <li class="board-row">
@@ -258,6 +267,8 @@
               <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
               <small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>
             </span>
+            <span class="num">{r.brews}</span>
+            <span class="num">{r.sd?.toFixed(2) ?? '—'}</span>
             <span class="val">{r.score.toFixed(2)}</span>
           </li>
         {/each}
@@ -455,7 +466,7 @@
   .spot-tip {
     white-space: normal;
     width: max-content;
-    max-width: min(16rem, 100vw - 2rem);
+    max-width: min(15rem, 100vw - 2rem);
     text-align: left;
   }
   .spot-card:global(:is([data-tight='3'], [data-tight='4'])) .ends,
@@ -463,7 +474,28 @@
     display: none;
   }
 
-  .top-bags {
+  .top-head,
+  .top-bags .board-row {
+    grid-template-columns: 1.75rem minmax(0, 1fr) 2.75rem 2.75rem 3rem;
+  }
+  .top-head {
+    height: auto;
     margin-top: calc(-1 * var(--space-2));
+    padding-bottom: var(--space-1);
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+  .top-bags > .board-row:first-child {
+    border-top: 0;
+  }
+  .num,
+  .top-bags .val {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .top-bags .num {
+    font-size: 0.85rem;
   }
 </style>
