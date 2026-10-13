@@ -183,7 +183,7 @@
   type D = Delta;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
   // the value where the full word wouldn't fit the tile ("12 days").
-  // `up`: whether a rise is good or bad, for the delta's colour; unset = by direction (up green).
+  // `up`: whether a rise is good or bad, for the delta's color; unset = by direction (up green).
   // `sub`: a line under the value where there's no delta (Time to clear's date).
   type Tile = {
     key: Key; label: string; fmt: (n: number) => string; suffix?: string; ratingSwitch?: boolean;
@@ -365,7 +365,7 @@
   }
   const paceText = (d: NonNullable<D>, t: Tile) => (d.paced ? `vs ${paced(t)(d.base)} at that pace` : '');
   // Green when the change is the good way for this tile, red when bad; tiles with no good
-  // direction go by direction (up green, down red); no change stays grey.
+  // direction go by direction (up green, down red); no change stays gray.
   function trend(d: { abs: number }, t: Tile): string {
     const fmt = paced(t);
     if (fmt(Math.abs(d.abs)) === fmt(0)) return '';
@@ -609,7 +609,7 @@
 {/if}
 
 <style>
-  /* Labelled controls, left-packed, one column each on wider screens. */
+  /* Labeled controls, left-packed, one column each on wider screens. */
   .insights-controls {
     display: flex;
     flex-wrap: wrap; /* View + Period + Compare + Dates… + People outgrow 768px */
@@ -699,7 +699,7 @@
      a small tile it reaches over the value's top edge without hiding it. */
   .rating-switch {
     position: absolute;
-    /* Centred between the tile's top edge and the top of the value's digits
+    /* Centered between the tile's top edge and the top of the value's digits
        (box top 24.09cqw + ~0.18em of blank line box above the glyphs ≈ 28.7cqw):
        half of what's left after the pill (1.2 line × font + 3cqw padding + 2px border). */
     top: calc((28.7cqw - 1.2 * max(0.7rem, 6.2cqw) - 3cqw - 2px) / 2);
@@ -1253,7 +1253,7 @@
   }
 
   /* Stat rows with no empty cells. Tiles stay square (height --h = one regular tile); a
-     tile wider than that (--q per row < --c) keeps its content one-tile wide, centred,
+     tile wider than that (--q per row < --c) keeps its content one-tile wide, centered,
      via padding, so cqw scaling is unchanged. Columns divide the count: 3 on phones
      (Totals 5, Averages 3-6 wider; Consumption 4: same columns as Totals); the short last row stretches. */
   .fit {
@@ -1264,7 +1264,7 @@
     gap: var(--gap);
     container-type: inline-size;
   }
-  /* Insights tiles sit on the page colour inside their surface panels (user, 2026-10-12); /stats
+  /* Insights tiles sit on the page color inside their surface panels (user, 2026-10-12); /stats
      keeps app.css's surface tiles. The hover tint mixes from the same base. */
   .stat-item {
     background: var(--color-bg);

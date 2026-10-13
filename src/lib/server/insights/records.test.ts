@@ -208,7 +208,7 @@ describe('gentle', () => {
     expect(run('toughDay', [d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-18', 9), d('2026-08-19', 4), d('2026-08-19', 4), d('2026-08-19', 4)])?.holder.date)
       .toBe('2026-08-19');
   });
-  it('least favourite roaster needs 3+ bags', () => {
+  it('least favorite roaster needs 3+ bags', () => {
     const mk = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => rated(id, [r, r, r]).map((b) => ({ ...b, roaster })));
     const brews = [...mk('A', [1, 2, 3], 5), ...mk('B', [4, 5], 3), ...mk('C', [6, 7, 8], 9)];
     const bags = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => bag({ id, name: `Bag ${id}` }));

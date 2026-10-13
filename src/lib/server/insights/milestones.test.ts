@@ -52,7 +52,7 @@ describe('count and streak events', () => {
     expect(ev.kind).toBe('counts');
     expect(ev.href).toBe('/coffees/eth');
   });
-  it('water poured in litres', () => {
+  it('water poured in liters', () => {
     const ev = countEvents(daily(40, { waterG: 250 }), [], 'all').filter((e) => e.key.startsWith('waterL'));
     expect(ev.map((e) => [e.key, e.title, e.date])).toEqual([['waterL:10', '10 L of water poured', day(39)]]);
   });

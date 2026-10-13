@@ -291,7 +291,7 @@ describe('brewingTab', () => {
     expect(r.cells[0].map((c) => c!.delta)).toEqual([-0.1, 0.2, -0.1].map((x) => expect.closeTo(x)));
     expect(r.cells[0][1]).toMatchObject({ solid: true, bags: 3, brews: 30 });
     expect(r.best).toEqual([1, 1]);
-    // A bag with no rest band (and an outlier rating) moves neither the bands nor the centre.
+    // A bag with no rest band (and an outlier rating) moves neither the bands nor the center.
     const extra = [...rows, ...Array.from({ length: 10 }, () => brew({ coffeeId: 7, roastLevel: 'Light', restDays: null, rating: 2 }))];
     expect(brewingTab(extra, c0).rest!.cells[0].map((c) => c!.delta)).toEqual([-0.1, 0.2, -0.1].map((x) => expect.closeTo(x)));
   });

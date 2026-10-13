@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { InsightsUrlState, Ratings } from '$lib/insightsUrl';
 
-  // The labelled Current | All switch of a tab's bar (ui-rules 26–27: title + aria-describedby on each option;
+  // The labeled Current | All switch of a tab's bar (ui-rules 26–27: title + aria-describedby on each option;
   // the #ratings-help-* spans live in +page.svelte).
-  // ponytail: migrate Habits/Records/Leaderboards to RatingsSwitch later (no behaviour change).
+  // ponytail: migrate Habits/Records/Leaderboards to RatingsSwitch later (no behavior change).
   let { ratings, ratingsHelp, choose }: {
     ratings: Ratings; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
   } = $props();

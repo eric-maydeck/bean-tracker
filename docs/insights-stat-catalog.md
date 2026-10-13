@@ -37,7 +37,7 @@ Sources in brackets. All rating stats follow the foundation's rating switches
 | opened_date | thin | 37 rows, since 2026-09-20 |
 | Decaf, free bags, repeat buys | thin | 16 decaf, 5 free, 33 repeat pairs |
 | Brew notes (recipe tags, coarser/finer) | thin | 62% have a note, heuristic parsing only |
-| TDS/EY, farm/region/variety/elevation, coordinates, cupping, first drip time, favourite, vessel, BC frozen/buy/open dates, brew photos, pressure/temperature curves, second scale | **empty (0%)** | settings off or never used; stats on these need new data |
+| TDS/EY, farm/region/variety/elevation, coordinates, cupping, first drip time, favorite, vessel, BC frozen/buy/open dates, brew photos, pressure/temperature curves, second scale | **empty (0%)** | settings off or never used; stats on these need new data |
 
 ## Overview
 
@@ -77,7 +77,7 @@ Sources in brackets. All rating stats follow the foundation's rating switches
 - **Bloom length vs rating** — entered bloom (30/40/45/60 s); prefer the measured bloom from flow profiles once sub-project 6 exists (Alpha Switch: 45 s 7.5 vs 30 s 6.4) [BC, FP] | coffee_blooming_time / bloom_s, rating | ok | bar | 4 → 6 | high
 - **Recipe tag leaderboard** — rating per recipe tag parsed from brew notes [BC] | notes | thin | table | 4 | high
 - **Where the best brew lands** — position in the bag (median ~70% through) and days off roast [BC] | best_brew, order, roast_date | ok | bar | 4 | med
-- **Temperature by roast level** — chosen temp vs roast level, rating as colour [BC] | temp, roast level, rating | ok | heatmap | 4 | med
+- **Temperature by roast level** — chosen temp vs roast level, rating as color [BC] | temp, roast level, rating | ok | heatmap | 4 | med
 - **Dose sizes** — dose histogram (8–33 g) and rating by dose [BC] | grind_weight, rating | ok | bar | 4 | med
 - **Back-to-back brews** — same bag twice in a day (436 bean-days): rating change on the second [BC] | bag, date, rating | ok | tile | 4 | med
 - **Sweet spot per process** — best grind/temp/ratio band per process group [BC] | brew vars, processGroup | ok | table | 4 | med
@@ -180,7 +180,7 @@ Subscriptions (own sub-section, user-requested in the roadmap):
 - **Days saved by freezing** — rest days paused across frozen bags [DB] | frozen_* | thin | tile | 4 | low
 - **What gets frozen** — frozen bags by roaster/process/window [DB] | frozen_* | thin | table | 4 | low
 - **Bags never brewed** — archived without brews (3) [DB] | status, BC link | ok | tile | 4 | low
-- **On-deck behaviour** — opened → first brew, open → archive [DB] | opened_date | thin (since 2026-09-20) | tile | 4 | low
+- **On-deck behavior** — opened → first brew, open → archive [DB] | opened_date | thin (since 2026-09-20) | tile | 4 | low
 
 ## Records & fun
 

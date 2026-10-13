@@ -26,7 +26,7 @@
     };
   }
 
-  // Tooltip position inside `wrap` for a cell: centred on it, clamped `half` px (the tip's half width,
+  // Tooltip position inside `wrap` for a cell: centered on it, clamped `half` px (the tip's half width,
   // 5rem for the nowrap tip, 8rem for a .wide one) from either edge; a wrap narrower than the tip (a small
   // mineral card) clamps it inside the viewport instead.
   export function tipAt(wrap: HTMLElement, el: Element, text: string, half = 80) {
@@ -236,7 +236,7 @@
     text-align: left;
     white-space: nowrap;
   }
-  /* Up to 2 lines, centred under their column. */
+  /* Up to 2 lines, centered under their column. */
   .diverging .col-label {
     align-self: end;
     line-height: 1.2;

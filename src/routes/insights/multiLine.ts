@@ -23,7 +23,7 @@ export function seriesColors(labels: string[]) {
 }
 
 // A smooth path through the points (monotone cubic, ui-rules G5): tangents are the harmonic mean of the
-// neighbouring slopes (0 at a turn), so the curve never overshoots the data.
+// neighboring slopes (0 at a turn), so the curve never overshoots the data.
 export function smooth(p: [number, number][]): string {
   const f = (x: number) => +x.toFixed(2);
   if (p.length < 3) return `M${p.map(([x, y]) => `${f(x)},${f(y)}`).join('L')}`;

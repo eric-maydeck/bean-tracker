@@ -214,7 +214,7 @@
   {:else if f.series && f.series.length > 1 && f.chart === 'bars'}
     {@const max = Math.max(...f.series.map((p) => p.value)) || 1}
     {@const w = 100 / f.series.length}
-    <!-- Magnitudes from zero: bars. Weekend bars take the second colour (and their initials are bold). -->
+    <!-- Magnitudes from zero: bars. Weekend bars take the second color (and their initials are bold). -->
     <div class="bars" role="img" aria-label={f.series.map((p) => `${p.label} ${+p.value.toFixed(2)}`).join(', ')}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
@@ -554,7 +554,7 @@
     overflow-wrap: anywhere;
     text-wrap: balance;
   }
-  /* Multi-line charts take the categorical slots (--series-*, app.css). Text stays in text colours. */
+  /* Multi-line charts take the categorical slots (--series-*, app.css). Text stays in text colors. */
   .multi {
     width: 100%;
   }
@@ -564,7 +564,7 @@
     height: 3rem;
     overflow: visible;
   }
-  /* A chart takes the card's spare height (a taller neighbour sets the row), so no hole opens under it. */
+  /* A chart takes the card's spare height (a taller neighbor sets the row), so no hole opens under it. */
   .bars {
     width: 100%;
     max-width: 14rem;
@@ -763,7 +763,7 @@
     flex-shrink: 0;
   }
   /* Supporting lists (details): small label, names left, values right; they take the card's spare
-     height, centred, so a short card beside a chart card has no hole. */
+     height, centered, so a short card beside a chart card has no hole. */
   .details:not(:has(.dgroup:not([hidden]))),
   .details :global(li[hidden]) {
     display: none;

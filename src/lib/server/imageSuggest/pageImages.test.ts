@@ -83,7 +83,7 @@ describe('excerptOf', () => {
   it('starts at the segment with the first tasting-notes cue', () => {
     const intro = 'A long story about the farm and the family who grow it. '.repeat(3);
     expect(excerptOf(`<p>${intro}Tasting notes: plum, cacao.</p>`)).toBe('Tasting notes: plum, cacao.');
-    expect(excerptOf('<p>Origin: Peru</p><p>Our flavour picks: fig</p>')).toBe('Our flavour picks: fig');
+    expect(excerptOf('<p>Origin: Peru</p><p>Our flavor picks: fig</p>')).toBe('Our flavor picks: fig');
     expect(excerptOf('<p>It denotes care. Fig</p>')).toBe('It denotes care. Fig');
   });
   it('Big Sur (captured body_html and live meta) start at the flavor notes', () => {

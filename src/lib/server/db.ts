@@ -182,7 +182,7 @@ export function getLastDeployed(db: DatabaseSync): string | null {
 export class InvalidHouseholdSizeError extends Error {}
 
 const HOUSEHOLD_SIZE_KEY = 'household_size';
-// 2 is right for this household; the multi-user work defaults it to 1 (settings catalogue,
+// 2 is right for this household; the multi-user work defaults it to 1 (settings catalog,
 // docs/backlog/multi-user-or-self-host.md).
 const DEFAULT_HOUSEHOLD_SIZE = 2;
 const isHouseholdSize = (n: number) => Number.isInteger(n) && n >= 1 && n <= 20;

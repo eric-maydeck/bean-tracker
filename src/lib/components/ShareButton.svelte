@@ -28,7 +28,7 @@
       try {
         await navigator.share({ url: link });
       } catch {
-        // user cancelled
+        // user canceled
       }
       return;
     }

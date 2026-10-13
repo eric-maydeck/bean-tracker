@@ -181,7 +181,7 @@ describe('findRoastLevel', () => {
 describe('pickVariant', () => {
   const hs = [row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 250 }), row('H&S', { amount_g: 125 })];
   it('always applies a single variant', () => expect(pickVariant([1000], null, null, [])).toBe(0));
-  it('honours a preferred (?variant=) index', () => expect(pickVariant([125, 250, 1000], 2, null, [])).toBe(2));
+  it('honors a preferred (?variant=) index', () => expect(pickVariant([125, 250, 1000], 2, null, [])).toBe(2));
   it('applies the only variant in 50–250g', () => expect(pickVariant([125, 1000], null, null, [])).toBe(0));
   it('picks the most-bought size among several in range', () => expect(pickVariant([125, 250, 1000], null, 'H&S', hs)).toBe(1));
   it('selects none when several in range and no history, or a tie', () => {

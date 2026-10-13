@@ -49,8 +49,8 @@
   // way. Winner (or lean) in the accent, other solid bands neutral, thin bands pale; the usual band dotted.
   function chart(p: Spot) {
     const n = p.bands.reduce((a, b) => a + b.bags, 0) || 1;
-    const centre = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + b.value * b.bags, 0) / n;
-    const ds = p.bands.map((b) => b.value - centre);
+    const center = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + b.value * b.bags, 0) / n;
+    const ds = p.bands.map((b) => b.value - center);
     // The axis fits the solid bands when there are any: a thin band past it is clipped at the edge with a cap
     // (its value stays in the tip), so thin data shows without dominating.
     const fit = p.bands.some((b) => b.solid) ? ds.filter((_, i) => p.bands[i].solid) : ds;
@@ -278,7 +278,7 @@
 {/if}
 
 <style>
-  /* The picker: one wrapping row of labelled selects, Ratings and Reset on the same baseline. */
+  /* The picker: one wrapping row of labeled selects, Ratings and Reset on the same baseline. */
   .spot-picker {
     align-items: end;
   }

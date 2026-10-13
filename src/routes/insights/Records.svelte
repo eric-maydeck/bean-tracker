@@ -279,7 +279,7 @@
 
 <style>
   /* Card grid and card base: .hl-grid / .hl-card, :global in +page.svelte (Milestones shares them). */
-  /* Insights tiles sit on the page colour; the gentle row swaps to the panel's own surface. */
+  /* Insights tiles sit on the page color; the gentle row swaps to the panel's own surface. */
   .gentle :global(.hl-card) {
     background: var(--color-surface);
   }
@@ -288,7 +288,7 @@
       background: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
     }
   }
-  /* A tip button's phone padding (its 44px tap target) is cancelled by negative margins, so it
+  /* A tip button's phone padding (its 44px tap target) is canceled by negative margins, so it
      needs no room in the card: 100% would squeeze its text out of a narrow card. */
   button.hl-line {
     max-width: none;

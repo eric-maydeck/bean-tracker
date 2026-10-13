@@ -885,12 +885,12 @@ export const STATES: State[] = [
       // Every click-for-explanation trigger ends with its circled ?.
       expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
       expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);
-      // Totals values take the /stats "At a glance" hero colour; Averages do not.
+      // Totals values take the /stats "At a glance" hero color; Averages do not.
       const color = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
       expect(await color('Totals')).not.toBe(await color('Averages'));
-      // ...but only the value colour: background and border match the other tiles.
+      // ...but only the value color: background and border match the other tiles.
       const box = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-item').first().evaluate((e) => getComputedStyle(e).backgroundColor + getComputedStyle(e).borderColor);
@@ -977,7 +977,7 @@ export const STATES: State[] = [
   { name: 'labels-stats-bq-economics', path: () => '/stats?tab=bq&bc=economics', act: (page) => expectGroupsLabelled(page) },
   { name: 'labels-coffees', path: () => '/coffees?status=all&view=compact', act: (page) => expectGroupsLabelled(page) },
   {
-    // Two views behind a labelled View select: only the chosen section renders; `next` is the only explicit value.
+    // Two views behind a labeled View select: only the chosen section renders; `next` is the only explicit value.
     name: 'on-deck-view-open',
     path: () => '/on-deck',
     act: async (page) => {
@@ -1264,7 +1264,7 @@ export const STATES: State[] = [
       // A paced count keeps one decimal under 10, whole numbers from 10.
       const brews = page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: /^Brews$/ }) });
       await expect(brews.locator('.insights-pace')).toHaveText(/^vs (\d\.\d|\d{2,}[\d,]*) at that pace$/);
-      // Trend colour: by polarity, Spend rising is bad (red), Brews rising is good (green).
+      // Trend color: by polarity, Spend rising is bad (red), Brews rising is good (green).
       const delta = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) }).locator('.insights-delta');
       // A neutral tile (no good direction) goes by direction: up green, down red.
       const grams = ((await delta(/^Grams$/).textContent()) ?? '').trim()[0];
@@ -1310,7 +1310,7 @@ export const STATES: State[] = [
       await to.press('Enter');
       await expect(page).toHaveURL(new RegExp(`compare=${daysAgo(20)}\\.\\.${daysAgo(9)}`));
       await expect(page.locator('dialog[open]')).toHaveCount(0);
-      await page.waitForTimeout(300); // let the focused Dates… button's colour transition settle for the screenshot
+      await page.waitForTimeout(300); // let the focused Dates… button's color transition settle for the screenshot
     }
   },
   {
@@ -2292,13 +2292,13 @@ export const STATES: State[] = [
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
       await expect(rows.first().locator('.meter')).toBeVisible();
-      // A multi-line chart: a legend entry per line, each line in its own colour (B2).
+      // A multi-line chart: a legend entry per line, each line in its own color (B2).
       const multi = page.locator('.finding-grid .multi').first();
       const legend = await multi.locator('.legend li').count();
       expect(legend).toBeGreaterThan(1);
       const colors = await multi.locator('.swatch').evaluateAll((ss) => ss.map((s) => getComputedStyle(s).backgroundColor));
       expect(new Set(colors).size).toBe(legend);
-      // Weekday bars: seven bars, the weekend two in the second colour (B6).
+      // Weekday bars: seven bars, the weekend two in the second color (B6).
       const bars = page.locator('.finding-grid .bars').first();
       await expect(bars.locator('rect')).toHaveCount(7);
       expect(await bars.locator('rect.weekend').count()).toBe(2);

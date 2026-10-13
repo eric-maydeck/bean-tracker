@@ -31,7 +31,7 @@
 
   function place(el: SVGPathElement, clientX: number, clientY: number) {
     const r = wrap!.getBoundingClientRect();
-    // Keep the tip inside the map: clamp its centre 5rem from either edge.
+    // Keep the tip inside the map: clamp its center 5rem from either edge.
     const x = Math.min(Math.max(clientX - r.left, 80), r.width - 80);
     tip = { iso: el.dataset.iso!, name: el.dataset.name!, x, y: clientY - r.top };
   }

@@ -1,8 +1,8 @@
 import { MON } from '$lib/insightsUrl';
 
 // The Milestones timeline ruler: every calendar month from the newest to the oldest with
-// milestones, newest first like the feed, each at the centre of its equal band (p: 0..1).
-// Major (labelled) ticks every 1 / 3 / 6 / 12 months, whichever lets the labels fit `len` px at
+// milestones, newest first like the feed, each at the center of its equal band (p: 0..1).
+// Major (labeled) ticks every 1 / 3 / 6 / 12 months, whichever lets the labels fit `len` px at
 // `size` px each. `target` is the month a click on the tick jumps to: itself, or the nearest
 // earlier month with milestones.
 export interface Tick { ym: string; label: string; p: number; major: boolean; target: string }

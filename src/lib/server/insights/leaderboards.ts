@@ -68,7 +68,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
     return labels.length ? { ...r, href: listHref('processing', labels) } : r;
   }
   const column = FILTER_COLUMN[board];
-  // Bags stored under an alias label (Light/Med) normalise to this row, so link them too.
+  // Bags stored under an alias label (Light/Med) normalize to this row, so link them too.
   return column ? { ...r, href: listHref(column, board === 'roast' ? roastLevelLabels(r.key) : [r.key]) } : r;
 }
 

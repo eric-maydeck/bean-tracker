@@ -426,14 +426,14 @@
     font-weight: 700;
   }
   /* Sub-ticks: a repeating hairline every 1/--subs of the track, so they fall between (and on)
-     the month ticks at the band centres (2 or 4 a month: even, so they line up). */
+     the month ticks at the band centers (2 or 4 a month: even, so they line up). */
   .track.subs {
     --sub: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
     background: linear-gradient(to right, var(--sub) 1px, transparent 1px) 0 0 / calc(100% / var(--subs)) 0.3rem repeat-x;
   }
-  /* Where the view is: a slim fixed-size thumb centred on the feed's visible top, in a wider grab
+  /* Where the view is: a slim fixed-size thumb centered on the feed's visible top, in a wider grab
      area (44px on phones; 28px tall beside the feed). A press anywhere on the ruler scrubs, so
-     grabbing the thumb's centre doesn't move it. */
+     grabbing the thumb's center doesn't move it. */
   .band {
     position: absolute;
     top: calc(-1 * var(--space-1));

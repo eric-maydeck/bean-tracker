@@ -13,7 +13,7 @@ const SHAREABLE_PATH = /^\/(coffees(\/[a-z0-9-]+)?|stats|on-deck|subscriptions)$
 const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Validates and normalises a shareable link in one pass. The raw input
+// Validates and normalizes a shareable link in one pass. The raw input
 // string is never what gets stored: it can carry characters (e.g. a
 // stripped "\n", or non-ASCII in the query) that the parsed URL's
 // pathname/search don't, and storing the raw string let those through into

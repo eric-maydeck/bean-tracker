@@ -248,7 +248,7 @@
     font-size: 0.85rem;
   }
   /* Cards in a band share one height: fixed rows, placeholders for empty slots, a fixed
-     footer. Only an expanded card grows (align-items: start keeps its neighbours put). */
+     footer. Only an expanded card grows (align-items: start keeps its neighbors put). */
   .board-band {
     --row-h: 3rem;
     display: grid;
@@ -291,7 +291,7 @@
     color: var(--color-text-muted);
     font-variant-numeric: tabular-nums;
   }
-  /* ui-rules 29: the overview's trend colours (same tokens). */
+  /* ui-rules 29: the overview's trend colors (same tokens). */
   .move.trend-good {
     color: var(--color-fresh);
   }

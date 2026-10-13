@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  // A Records / Milestones tile's name at its foot: bold in the label colour, linking to the tile's
+  // A Records / Milestones tile's name at its foot: bold in the label color, linking to the tile's
   // own #anchor. `children` follows the name on the same line (Records' "· Current" mode words).
   // .hl-caption / .stat-label / .caption-link are global (+page.svelte, app.css); the overview's
   // stat tiles use .caption-link in their own caption markup.

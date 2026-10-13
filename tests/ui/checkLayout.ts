@@ -125,7 +125,7 @@ export async function checkLayout(page: Page): Promise<void> {
     }
 
     // 7. (ui-rules 14) Every option in a custom picker sits under a visible
-    // group header: role="group" labelled by a shown element.
+    // group header: role="group" labeled by a shown element.
     for (const el of all('[role="option"]')) {
       const header = document.getElementById(el.closest('[role="group"]')?.getAttribute('aria-labelledby') ?? '');
       if (!header || !shown(header)) out.push(`option without a group header: ${describe(el)}`);

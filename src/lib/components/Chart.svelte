@@ -74,7 +74,7 @@
     // Bar charts only: upright bars in one hue (a distribution, not ranked categories).
     vertical?: boolean;
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
-    // line overlay; otherwise a paired series in the next palette colour.
+    // line overlay; otherwise a paired series in the next palette color.
     // `names`: per-bar dates for the tooltip when a series' bar covers other days than the axis label says.
     series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[] }[];
     // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.

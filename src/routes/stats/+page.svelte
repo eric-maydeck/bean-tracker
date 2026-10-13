@@ -183,7 +183,7 @@
   const bcWindowLabels: Record<PeriodWindow, string> = { all: 'All time', year: 'Year', month: 'Month', week: 'Week' };
 
   // Same-route navigation (e.g. opening a different /stats link while
-  // already here) re-reads the URL; the $state initialisers above already
+  // already here) re-reads the URL; the $state initializers above already
   // cover the first load (including SSR). `loaded` gates the effect below
   // so it doesn't write/replaceState during hydration, before SvelteKit's
   // router has started (matches On Deck/Subscriptions/Coffees).
