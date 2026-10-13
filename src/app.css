@@ -2295,7 +2295,7 @@ td > .action-buttons.under-form {
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
 }
-/* A tip in the top layer (FloatTip.svelte, ui-rules 38): fixed at the spot tipPlace picks; the popover's
+/* A tip in the top layer (FloatTip.svelte, ui-rules 39): fixed at the spot tipPlace picks; the popover's
    UA box (centered, inset 0) is undone. */
 .cell-tip.float-tip {
   position: fixed;
