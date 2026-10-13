@@ -29,20 +29,21 @@
   });
 
   let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ i: number; x: number; y: number } | null>(null);
+  // `hover`: opened by the mouse, so leaving closes it (a focus tip survives the page scrolling under the mouse).
+  let tip = $state<{ i: number; x: number; y: number; hover: boolean } | null>(null);
   $effect(() => {
     void points;
     tip = null;
   });
-  const showDot = (el: Element) => (tip = { ...tipAt(wrap!, el, '', 128), i: +(el as HTMLElement).dataset.i! });
+  const showDot = (el: Element, hover = false) => (tip = { ...tipAt(wrap!, el, '', 128), i: +(el as HTMLElement).dataset.i!, hover });
   // The dot whose centre is nearest the pointer, within 2rem; none past that.
-  const pick = (e: MouseEvent) => {
+  const pick = (e: MouseEvent, hover = false) => {
     let best: Element | null = null, d = 32 ** 2;
     for (const el of wrap!.querySelectorAll('.dot')) {
       const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - e.clientX, dy = r.top + r.height / 2 - e.clientY;
       if (dx * dx + dy * dy < d) [best, d] = [el, dx * dx + dy * dy];
     }
-    if (best) showDot(best);
+    if (best) showDot(best, hover);
     else tip = null;
   };
   function key(e: KeyboardEvent) {
@@ -59,9 +60,9 @@
 <div class="dots-chart" bind:this={wrap}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
   <div class="frame" role="group" aria-label={ariaLabel}
-    onpointermove={(e) => e.pointerType === 'mouse' && pick(e)}
-    onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-    onclick={pick}
+    onpointermove={(e) => e.pointerType === 'mouse' && pick(e, true)}
+    onpointerleave={(e) => e.pointerType === 'mouse' && tip?.hover && (tip = null)}
+    onclick={(e) => pick(e)}
     onkeydown={key}>
     <div class="y-axis" aria-hidden="true"><span>{plot.yhi.toFixed(1)}</span><span class="axis-name">rating</span><span>{plot.ylo.toFixed(1)}</span></div>
     <div class="plot">

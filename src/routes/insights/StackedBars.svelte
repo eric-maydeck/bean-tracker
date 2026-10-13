@@ -20,19 +20,20 @@
   });
 
   let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ k: number; i: number; x: number; y: number } | null>(null);
+  // `hover`: opened by the mouse, so leaving closes it (a focus tip survives the page scrolling under the mouse).
+  let tip = $state<{ k: number; i: number; x: number; y: number; hover: boolean } | null>(null);
   // New data drops an open tip: its segment may not exist any more.
   $effect(() => {
     void m;
     tip = null;
   });
-  const showSeg = (el: Element) => {
+  const showSeg = (el: Element, hover = false) => {
     const d = (el as HTMLElement).dataset;
-    tip = { ...tipAt(wrap!, el, '', 128), k: +d.k!, i: +d.i! };
+    tip = { ...tipAt(wrap!, el, '', 128), k: +d.k!, i: +d.i!, hover };
   };
-  const pick = (e: Event) => {
+  const pick = (e: Event, hover = false) => {
     const el = (e.target as Element).closest('.seg');
-    if (el) showSeg(el);
+    if (el) showSeg(el, hover);
     else tip = null;
   };
 </script>
@@ -43,9 +44,9 @@
     class="plot-row"
     role="group"
     aria-label={ariaLabel}
-    onpointermove={(e) => e.pointerType === 'mouse' && pick(e)}
-    onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-    onclick={pick}
+    onpointermove={(e) => e.pointerType === 'mouse' && pick(e, true)}
+    onpointerleave={(e) => e.pointerType === 'mouse' && tip?.hover && (tip = null)}
+    onclick={(e) => pick(e)}
     onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.seg'))}
   >
     <div class="y-labels" aria-hidden="true">
