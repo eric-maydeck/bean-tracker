@@ -3071,7 +3071,8 @@ test.describe('signed out', () => {
     await expect(img).toBeVisible();
     expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expectContained(page.locator('a.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img'), WIDE_FILL);
-    await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png`, fullPage: true });
+    // Viewport only: the public card wall (every seeded bag) passes the 32767 px full-page screenshot cap at DPR 3.
+    await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png` });
     await checkLayout(page);
   });
 });
