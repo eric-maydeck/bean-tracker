@@ -76,6 +76,7 @@
   function key(e: KeyboardEvent) {
     const from = (e.target as Element).closest<HTMLElement>('.bar-row');
     if (e.key === 'Escape') return (tip = null);
+    if ((e.key === 'Enter' || e.key === ' ') && from) return e.preventDefault(), showRow(from); // as a click does
     const d = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key];
     if (!d || !from) return;
     e.preventDefault();

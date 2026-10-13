@@ -13,6 +13,6 @@
 </script>
 
 {#if tip.title}<strong class="tip-title">{tip.title}</strong>{/if}
-{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink] (l)}<dt>{l}</dt><dd class={ink}>{v}</dd>{/each}</dl>{/if}
+{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{l}</dt><dd class={ink}>{v}</dd>{/each}</dl>{/if}
 {#if tip.lines?.length}<ul class="tip-lines">{#each tip.lines as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{line}</li>{/each}</ul>{/if}
 {#if tip.note}<span class="tip-note">{tip.note}</span>{/if}

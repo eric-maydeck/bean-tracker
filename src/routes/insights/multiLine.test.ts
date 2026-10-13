@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { capList, inkOf, lines, nameColors, scale, smooth, SLOTS } from './multiLine';
+import { capList, inkOf, lines, nameColors, smooth, SLOTS } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -19,13 +19,7 @@ describe('multiLine', () => {
   it('categorical slots in order; Other muted', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4]], ['A', 'Other', 'B'])).map((l) => l.color)).toEqual(
       ['var(--series-1)', 'var(--series-other)', 'var(--series-2)']));
-  it('scale: the zero line only when the range crosses 0', () => {
-    expect(scale(m([[-1, 1]])).zero).toBeCloseTo(20);
-    expect(scale(m([[1, 2]])).zero).toBeNull();
-  });
-  it('empty or all-null: a flat 0 range, no Infinity', () => {
-    expect(scale({ x: [], lines: [] })).toEqual({ lo: 0, hi: 0, zero: null });
-    expect(scale(m([[null, null]]))).toEqual({ lo: 0, hi: 0, zero: null });
+  it('all-null: no runs, no Infinity', () => {
     expect(lines(m([[null, null]]))[0].runs).toEqual([]);
   });
 });

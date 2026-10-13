@@ -242,6 +242,12 @@ describe('breakdown', () => {
       .toEqual({ rows: ['a', 'c'], cols: ['x'], cells: [[c(1)], [c(-1)]] });
     expect(trimBlank({ rows: ['a'], cols: ['x'], cells: [[c(null)]] })).toBeNull();
   });
+  it('trimBlank ordered: interior blank columns stay, leading/trailing ones go', () => {
+    const c = (delta: number | null) => ({ delta, solid: true, brews: 4, bags: 2 });
+    expect(trimBlank({ rows: ['a'], cols: ['w', 'x', 'y', 'z'], cells: [[null, c(1), null, c(2)]] }, true))
+      .toEqual({ rows: ['a'], cols: ['x', 'y', 'z'], cells: [[c(1), null, c(2)]] });
+    expect(trimBlank({ rows: ['a'], cols: ['x'], cells: [[c(null)]] }, true)).toBeNull();
+  });
   it('nothing qualifies → null', () => expect(breakdown(many(4, 1, 91, 8), temp, SLICE_OF.roast, ['90–92 °C'])).toBeNull());
 });
 
@@ -331,15 +337,15 @@ describe('brewingTab', () => {
     const extra = [...rows, ...Array.from({ length: 10 }, () => brew({ coffeeId: 7, roastLevel: 'Light', restDays: null, rating: 2 }))];
     expect(brewingTab(extra, c0).rest!.cells[0].map((c) => c!.delta)).toEqual([-0.1, 0.2, -0.1].map((x) => expect.closeTo(x)));
   });
-  it('rest heatmap: bags at one rest band each still count (unit = bag, no pairs needed); empty windows dropped', () => {
+  it('rest heatmap: bags at one rest band each still count (unit = bag, no pairs needed); leading/trailing empty windows dropped', () => {
     // 6 Light bags, 10 brews each, all at one rest: 3 at 10 d rated 7, 3 at 25 d rated 8.
     const one = [1, 2, 3, 4, 5, 6].flatMap((id) => Array.from({ length: 10 }, () => brew({ coffeeId: id, roastLevel: 'Light', restDays: id < 4 ? 10 : 25, rating: id < 4 ? 7 : 8 })));
     expect(brewingTab(one, c0).rest).toEqual({ rows: ['Light'], cols: ['0–21 d', '22–30 d'], best: [1],
       cells: [[{ delta: -0.5, solid: true, brews: 30, bags: 3 }, { delta: 0.5, solid: true, brews: 30, bags: 3 }]] });
     const gap = one.map((b) => ({ ...b, restDays: b.restDays === 10 ? 25 : 50 }));
     const g = brewingTab(gap, c0).rest!;
-    expect(g.cols).toEqual(['22–30 d', '46–60 d']);
-    expect(g.cells[0].map((c) => c?.delta ?? null)).toEqual([-0.5, 0.5]);
+    expect(g.cols).toEqual(['22–30 d', '31–45 d', '46–60 d']); // an interior blank window stays (ui-rules 35)
+    expect(g.cells[0].map((c) => c?.delta ?? null)).toEqual([-0.5, null, 0.5]);
   });
   it('rest heatmap: thin cells stay (faded), best only among ≥ 2 solid cells; a roast level needs 3 bags and 2 bands', () => {
     const at = (id: number, roastLevel: string, rest: number, n: number, ratings: number[]) =>
@@ -490,7 +496,7 @@ describe('waterTab', () => {
     expect(p.map((x) => [x.a, x.b, x.won, x.lost, x.tied, x.bags.length])).toEqual([['B', 'A', 2, 1, 1, 4], ['A', 'C', 1, 0, 0, 1], ['B', 'C', 1, 0, 0, 1]]);
     expect(p[0].delta).toBeCloseTo((1 + 0.5 + 0 - 0.1) / 4);
     expect(p[0].bags.map((b) => b.label)).toEqual(['R · Bag 1', 'R · Bag 2', 'R · Bag 4', 'R · Bag 3']); // biggest |gap| first
-    expect(p.map((x) => x.slug)).toEqual(['b--a', 'a--c', 'b--c']);
+    expect(p.map((x) => x.slug)).toEqual(['a--b', 'a--c', 'b--c']);
     expect([p[0].bags[0].a, p[0].bags[0].b]).toEqual([expect.closeTo(7.95), expect.closeTo(6.95)]);
   });
   it('pairs need ≥ 2 brews per water on the bag', () => {

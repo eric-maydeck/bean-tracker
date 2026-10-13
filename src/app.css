@@ -2369,14 +2369,11 @@ td > .action-buttons.under-form {
    no-data cell, an outline rather than a fill so it never reads as a value. One tip look (T1): the
    same padding, type and frame as the help popovers (.mode-tip, +page.svelte). */
 .cell-tip {
-  position: absolute;
-  translate: -50% calc(-100% - 0.4rem);
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
   line-height: 1.35;
   white-space: nowrap;
   pointer-events: none;
-  z-index: 1;
   color: var(--color-text);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -2389,7 +2386,6 @@ td > .action-buttons.under-form {
   position: fixed;
   inset: auto;
   margin: 0;
-  translate: none;
   overflow: visible;
 }
 /* A lab tip (ui-rules 36): a bold title, then label/value rows; wraps at 15rem (FloatTip places it). */

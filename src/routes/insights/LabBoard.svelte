@@ -25,7 +25,7 @@
     <span></span><span class="num">vs bag</span>
   </div>
   <ol class="board-rows lab-rows">
-    {#each rows as r, i (r.label)}
+    {#each rows as r, i (i)}
       <li class="board-row" class:few={!r.solid}>
         <span class="rank">{i + 1}</span>
         <span class="who">

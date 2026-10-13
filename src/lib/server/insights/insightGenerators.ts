@@ -429,7 +429,7 @@ export function monthlyMulti<T extends { localDate: string }>(
   const labels = !fixed && names.length < totals.length ? [...names, 'Other'] : names;
   return { x: months.map(([m]) => monthLabel(m)), unit, lines: labels.map((label) => ({ label, values: months.map(([, g]) => cell(g.filter((x) => line(x) === label), g)) })) };
 }
-export const shareCell = (g: unknown[], month: unknown[]) => Math.round((100 * g.length) / month.length);
+const shareCell = (g: unknown[], month: unknown[]) => Math.round((100 * g.length) / month.length);
 const meanCell = (min: number) => (g: { rating: number | null }[]) => (g.length >= min ? Math.round(100 * mean(g.map((b) => b.rating!))) / 100 : null);
 const ends = (vs: (number | null)[]) => { const v = vs.filter((x): x is number => x !== null); return v.length ? { a: v[0], b: v.at(-1)!, range: Math.max(...v) - Math.min(...v) } : null; };
 // The named line (not "Other") that moved most from its first to its last value.

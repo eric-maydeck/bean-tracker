@@ -158,15 +158,19 @@ export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'>):
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
 // Drop rows, then columns, with no cell that has a delta (all blank: nothing to show, round 1 I8); null when none is left.
 const live = (c: Cell | null) => c !== null && c.delta !== null;
-export function trimBlank(b: Breakdown): Breakdown | null {
+// `ordered` columns (grind steps, rest windows; ui-rules 35) keep every step between the first and last live one.
+export function trimBlank(b: Breakdown, ordered = false): Breakdown | null {
   const ri = b.rows.map((_, i) => i).filter((i) => b.cells[i].some(live));
-  const ci = b.cols.map((_, j) => j).filter((j) => ri.some((i) => live(b.cells[i][j])));
+  const used = (j: number) => ri.some((i) => live(b.cells[i][j]));
+  const all = b.cols.map((_, j) => j);
+  const first = all.findIndex(used), last = all.findLastIndex(used);
+  const ci = ordered ? (first < 0 ? [] : all.slice(first, last + 1)) : all.filter(used);
   return ri.length && ci.length ? { rows: ri.map((i) => b.rows[i]), cols: ci.map((j) => b.cols[j]), cells: ri.map((i) => ci.map((j) => b.cells[i][j])) } : null;
 }
 
 // A heatmap of same-bag deltas: rows = slice values with ≥ MIN_BAGS bags that have the variable,
 // most-brewed first; columns = `cols`. A bag's mean stays its mean over the whole row (all its brews).
-export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: BrewFact) => string | null, cols: string[], minPerBand = 2): Breakdown | null {
+export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: BrewFact) => string | null, cols: string[], minPerBand = 2, ordered = false): Breakdown | null {
   const groups = [...groupBy(rows, slice)]
     .filter(([, g]) => new Set(g.filter((b) => band(b)).map((b) => b.coffeeId)).size >= MIN_BAGS)
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
@@ -178,7 +182,7 @@ export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: Br
       const st = new Map(pairedDeltas(g, band, minPerBand).map((s) => [s.label, s]));
       return cols.map((c) => { const s = st.get(c); return s ? cellOf(s) : null; });
     })
-  });
+  }, ordered);
 }
 
 export interface LabOptions {
@@ -308,8 +312,8 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     // A roast level needs ≥ MIN_BAGS bags (as the Roast picker and breakdowns).
     return label && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS && cells.filter(Boolean).length >= 2 ? [{ label, cells }] : [];
   }).sort((a, b) => a.label.localeCompare(b.label));
-  // Rest windows with no cell in any row are dropped (trimBlank).
-  const restMap = levels.length ? trimBlank({ rows: levels.map((l) => l.label), cols: [...REST_LABELS], cells: levels.map((l) => l.cells) }) : null;
+  // Rest windows: only leading/trailing blank ones are dropped (trimBlank, ordered).
+  const restMap = levels.length ? trimBlank({ rows: levels.map((l) => l.label), cols: [...REST_LABELS], cells: levels.map((l) => l.cells) }, true) : null;
   const bestOf = (row: (Cell | null)[]) => {
     const solid = row.flatMap((x, i) => (x?.solid ? [{ i, d: x.delta! }] : []));
     return solid.length >= 2 ? solid.reduce((x, y) => (y.d > x.d ? y : x)).i : null;
@@ -339,7 +343,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
       // Grind bands: no step skipped inside the range (M-6); Exact lists only the settings used.
       const bands = key === 'grind' && !c.exact.grind ? fillGrind(paired, emptyStat) : paired;
       const by = c.by[key];
-      return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label)) : null }] : [];
+      return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label), 2, key === 'grind') : null }] : [];
     })
   };
 }
@@ -382,10 +386,10 @@ const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) =>
 
 export interface WaterPair {
   a: string; b: string; // A = the recipe that won more bags (then the higher mean delta, then name)
-  slug: string; // "a--b" (slugified): the URL's `pairs` names the expanded pairs by it
+  slug: string; // "a--b" (slugified, sorted: independent of which recipe wins): the URL's `pairs` names the expanded pairs by it
   won: number; lost: number; tied: number; // bags, from A's side; tied = bag means within 0.005
   delta: number; // mean over the bags of A's bag mean minus B's
-  bags: { label: string; tag: string | null; href: string | null; a: number; b: number }[]; // biggest |a − b| first
+  bags: { label: string; tag: string | null; href: string | null; a: number; b: number; win: 'a' | 'b' | null }[]; // win: the higher side, null = a tie; biggest |a − b| first
 }
 export interface WaterTab {
   recipes: LeaderRow[];
@@ -403,6 +407,7 @@ export interface MineralMap {
 }
 const MAP_COLS = MINERALS.filter(([k]) => k !== 'chloride' && k !== 'sulfate');
 function mineralMap(rows: readonly BrewFact[], recipes: LeaderRow[]): MineralMap | null {
+  // ponytail: keyed by recipe name, last brew wins; recipes with equal names but different profiles show one. Key by water id if that ever happens.
   const profiled = new Map(rows.filter((b) => b.water && MAP_COLS.some(([k]) => mineralOf(k, b) !== null)).map((b) => [b.water!, b]));
   const out = recipes.flatMap((r) => {
     const b = profiled.get(r.label);
@@ -450,10 +455,10 @@ function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): Wate
     const bags = p.bags.map(({ id, x, y }) => {
       const bag = byId.get(id);
       return { label: bag ? `${bag.roaster} · ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
-        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y };
+        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y, win: Math.abs(x - y) < TIE ? null : (x > y) !== flip ? 'a' as const : 'b' as const };
     }).sort((u, v) => Math.abs(v.a - v.b) - Math.abs(u.a - u.b) || u.label.localeCompare(v.label)); // biggest gap first (the UI shows 5)
     const [a, b] = flip ? [p.y, p.x] : [p.x, p.y];
-    return { a, b, slug: `${slugify(a)}--${slugify(b)}`, won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,
+    return { a, b, slug: [slugify(a) || 'x', slugify(b) || 'x'].sort().join('--'), won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,
       delta: (flip ? -1 : 1) * mean(d), bags: tagTwins(bags) };
   }).sort((p, q) => q.bags.length - p.bags.length || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
 }

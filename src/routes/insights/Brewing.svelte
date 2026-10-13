@@ -1,7 +1,7 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
-  import type { BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
+  import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';

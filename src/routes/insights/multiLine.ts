@@ -7,12 +7,6 @@ function frame(m: Multi) {
   return { lo, hi, py: (v: number) => 38 - ((v - lo) / span) * 36 };
 }
 
-// The y range, and the 0 line's y when the range crosses zero.
-export function scale(m: Multi) {
-  const { lo, hi, py } = frame(m);
-  return { lo, hi, zero: lo < 0 && hi > 0 ? py(0) : null };
-}
-
 // x of column i in the 100-wide box.
 export const px = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
 

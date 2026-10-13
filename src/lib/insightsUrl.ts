@@ -333,10 +333,10 @@ export function parseInsightsUrl(
 }
 
 // Expanded recipe pairs: slug pairs "a--b", lowercased, deduped, in the given order; anything else is dropped.
-// A slug that names no current pair (another period) matches nothing and is harmless.
+// Either order is accepted: stored sorted, as WaterPair.slug is. A slug that names no current pair (another period) matches nothing and is harmless.
 const PAIR = /^[a-z0-9]+(-[a-z0-9]+)*--[a-z0-9]+(-[a-z0-9]+)*$/;
 function parsePairs(v: string | null): string[] | undefined {
-  const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => PAIR.test(x)))];
+  const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => PAIR.test(x)).map((x) => x.split('--').sort().join('--')))];
   return xs.length ? xs : undefined;
 }
 

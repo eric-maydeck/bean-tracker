@@ -68,7 +68,7 @@
     label: (r: number, c: number) => string;
     ariaLabel: string;
     diverging?: boolean;
-    faded?: boolean[][]; // diverging: thin cells, striped over their color (T3); the scale fits the other cells when there are any
+    faded?: boolean[][]; // diverging: thin cells, striped over their color (T3)
     marked?: boolean[][]; // outlined cells (the lab's rest heatmap: each row's best)
     tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's label as the title, its text under it
     scale?: [string, string]; // diverging legend: the low and high ends

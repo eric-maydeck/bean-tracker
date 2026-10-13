@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
+  import { mainColorToken } from './chartColor';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { type Tip } from './TipBody.svelte';
 
@@ -192,7 +193,7 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    const lineColor = themeColor('--series-1'); // the main series: the palette's first slot
+    const lineColor = themeColor(mainColorToken(series.length)); // brand brown alone, the palette's first slot beside other series
     const bgColors = paletteColors(labels.length);
     const vbar = type === 'bar' && vertical;
 
@@ -211,7 +212,7 @@
                 type: 'bar' as const,
                 label: datasetLabel,
                 data: values,
-                // ponytail: assumes --series-1 is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
+                // ponytail: assumes the color is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineColor}4d`,
                 barPercentage: 1,

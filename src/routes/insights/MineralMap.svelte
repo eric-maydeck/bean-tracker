@@ -54,7 +54,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each map.rows as r, i (r.label)}
+      {#each map.rows as r, i (i)}
         <tr class:few={!r.solid}>
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>

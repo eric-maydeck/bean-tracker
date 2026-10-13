@@ -1,10 +1,9 @@
 <script lang="ts">
-  import { sdFocus, sdBlur } from './DeltaBars.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { noMatch, plural, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
+  import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -25,7 +24,7 @@
   function pickBag(slug: string) {
     const b = lab.bags.find((x) => x.slug === slug);
     // A bag fills Roast level and Process from itself; Origin and Roaster stay as set.
-    choose(b ? { bag: b.slug, roast: b.roast && lab.roasts.includes(b.roast) ? b.roast : undefined, process: b.process } : { bag: undefined });
+    choose(b ? { bag: b.slug, roast: b.roast && lab.roasts.includes(b.roast) ? b.roast : undefined, process: lab.processes.includes(b.process) ? b.process : undefined } : { bag: undefined });
   }
   const any = (v: string) => v || undefined;
   let filtered = $derived(!!(s.bag || s.roast || s.process || s.origin || s.roaster));
@@ -90,7 +89,7 @@
     tip = null;
   });
   // Show band i's tip over its column.
-  function showTip(wrap: HTMLElement, key: string, n: number, i: number, hover: boolean) {
+  function showTip(wrap: HTMLElement, key: string, i: number, hover: boolean) {
     const el = wrap.querySelectorAll('.col')[i];
     tip = el ? { key, i, el, hover } : null;
   }
@@ -98,7 +97,7 @@
     const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
     const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
     if (!hover && tip?.key === key && tip.i === i && !tip.hover) return (tip = null);
-    showTip(wrap, key, n, i, hover);
+    showTip(wrap, key, i, hover);
   }
   // Keyboard (as Heatmap's cells): focus opens the winning (else usual) band's tip, ←/→ move it, Escape
   // closes it, Enter opens the card's full text (its evidence line, even when the card hid it to fit).
@@ -114,7 +113,7 @@
       e.preventDefault();
       // The first press with no tip open shows the start band rather than stepping past it.
       const i = tip?.key === key ? Math.min(n - 1, Math.max(0, tip.i + (e.key === 'ArrowRight' ? 1 : -1))) : startAt(bars);
-      showTip(wrap, key, n, i, false);
+      showTip(wrap, key, i, false);
     }
   }
 
@@ -229,7 +228,7 @@
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
             <div class="spot-chart" role="img" tabindex="0" aria-label={ch.bars.map((b) => tipText(b.tip)).join('; ')} aria-describedby="{id}-full"
-              onfocus={(e) => e.currentTarget.matches(':focus-visible') && showTip(e.currentTarget, c.key, ch.bars.length, startAt(ch.bars), false)}
+              onfocus={(e) => e.currentTarget.matches(':focus-visible') && showTip(e.currentTarget, c.key, startAt(ch.bars), false)}
               onblur={() => (tip = null)}
               onkeydown={(e) => chartKey(e, c.key, ch.bars)}
               onpointermove={(e) => e.pointerType === 'mouse' && tipFrom(e, c.key, ch.bars.length, true)}

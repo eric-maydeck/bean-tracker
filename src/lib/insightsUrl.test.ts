@@ -521,9 +521,12 @@ describe('brewing lab params', () => {
     expect(resetInsights(parse(`${q.replace('overview', 'brewing')}`))).toEqual({ tab: 'brewing' });
   });
   it('pairs: expanded recipe pairs as "a--b" slugs, case-insensitive, deduped, junk dropped', () => {
-    expect(parse('pairs=Lotus-mg-k-60-10--bottled-water,a--b,a--b').pairs).toEqual(['lotus-mg-k-60-10--bottled-water', 'a--b']);
+    expect(parse('pairs=Lotus-mg-k-60-10--bottled-water,a--b,a--b').pairs).toEqual(['bottled-water--lotus-mg-k-60-10', 'a--b']);
     expect(parse('pairs=a-b,--b,a--,a---b,a b--c,all').pairs).toBeUndefined();
     expect(parse('pairs=').pairs).toBeUndefined();
+  });
+  it('pairs: either order parses to the same sorted slug', () => {
+    expect(parse('pairs=b--a,a--b,c--b').pairs).toEqual(['a--b', 'b--c']);
   });
   it('pairs are sticky through any tab and cleared by Reset', () => {
     const q = 'tab=overview&pairs=a--b%2Cc--d';

@@ -31,12 +31,11 @@
 
   // W7: the pair's average gap, from A's side; "even" when it rounds to 0.
   const gap = (d: number) => (Math.abs(d) < 0.005 ? 'even' : `${signed(d)} on average`);
-  const TIE = 0.005;
   // W7: a pair shows its 5 biggest gaps (the server sorts by |a − b|); "Show all" puts its slug in `pairs`.
   const SHOWN = 5;
   // Pair blocks flow in balanced columns (ui-rules 40); only an expanded block (Show all, a long list) spans both.
   const spans = $derived(t.pairs.map((p) => !!s.pairs?.includes(p.slug) && p.bags.length > SHOWN));
-  // A truncated recipe name in a pair header: hover or focus shows it whole in the shared tip.
+  // A truncated recipe name in a pair header: hover shows it whole in the shared tip.
   let nameTip = $state<{ el: Element; name: string } | null>(null);
   const showName = (e: Event, name: string) => {
     const el = e.currentTarget as HTMLElement, text = el.querySelector('.pair-name') as HTMLElement;
@@ -131,9 +130,9 @@
             <div class="pair-row pair-cols">
               <span class="bag-h">Bag</span>
               {#each [[p.a, 'a'], [p.b, 'b']] as [name, side] (side)}
-                <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable so a truncated name's full text shows in the tip) -->
-                <span class="pair-col {side}" tabindex="0" onpointerenter={(e) => e.pointerType === 'mouse' && showName(e, name)}
-                  onpointerleave={() => (nameTip = null)} onfocus={(e) => showName(e, name)} onblur={() => (nameTip = null)}
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions (hover-only tip; the full name is in the text for keyboard and screen readers) -->
+                <span class="pair-col {side}" onpointerenter={(e) => e.pointerType === 'mouse' && showName(e, name)}
+                  onpointerleave={() => (nameTip = null)}
                   ><span class="swatch" aria-hidden="true"></span><span class="pair-name">{name}</span></span>
               {/each}
             </div>
@@ -141,8 +140,8 @@
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
                 <li class="pair-row">
                   <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
-                  <span class="score a" class:win={b.a - b.b >= TIE}>{b.a.toFixed(2)}</span>
-                  <span class="score b" class:win={b.b - b.a >= TIE}>{b.b.toFixed(2)}</span>
+                  <span class="score a" class:win={b.win === 'a'}>{b.a.toFixed(2)}</span>
+                  <span class="score b" class:win={b.win === 'b'}>{b.b.toFixed(2)}</span>
                 </li>
               {/each}
             </ol>
