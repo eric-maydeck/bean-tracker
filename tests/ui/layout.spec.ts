@@ -1800,7 +1800,9 @@ export const STATES: State[] = [
       expect(charts).toEqual([]);
       // A tap on a chart shows its themed tip; a tap elsewhere closes it.
       await page.locator('#spot-temp .spot-chart').click();
-      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/bags? · \d+ brews?/);
+      // A short structured tip (ui-rules 36): the band as its title, then label/value rows.
+      await expect(page.locator('#spot-temp .spot-tip .tip-title')).not.toBeEmpty();
+      await expect(page.locator('#spot-temp .spot-tip .tip-rows')).toContainText(/Bags\s*\d+\s*Brews\s*\d+/);
       await page.locator('.insights-period').last().click();
       await expect(page.locator('.spot-tip')).toHaveCount(0);
       // Keyboard: focus opens a band tip, → moves it, Escape closes it, Enter opens the card's full text.
@@ -1818,7 +1820,7 @@ export const STATES: State[] = [
       await chart.press('ArrowRight'); // first press, no tip open: the start band, not one past it
       await expect(page.locator('#spot-temp .spot-tip')).toHaveText(start!);
       await chart.press('ArrowRight');
-      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/ · \d+ brews?/);
+      await expect(page.locator('#spot-temp .spot-tip')).toContainText(/Brews\s*\d+/);
       await chart.press('Escape');
       await expect(page.locator('.spot-tip')).toHaveCount(0);
       await chart.press('Enter');
@@ -1831,25 +1833,45 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Roast level')).toHaveValue('Light');
       await expect(page.locator('.top-bags li').first()).toBeVisible();
+      // Value columns line up under their header (G4).
+      const cols = await page.locator('[data-section="spots-top"]').evaluate((sec) => {
+        const right = (e: Element | null) => Math.round(e!.getBoundingClientRect().right);
+        const head = [...sec.querySelectorAll('.top-head .num')].map(right);
+        return [...sec.querySelectorAll('.top-bags .board-row')].every((row) => [...row.querySelectorAll('.num')].map(right).every((x, i) => Math.abs(x - head[i]) <= 1));
+      });
+      expect(cols).toBe(true);
     } },
   { name: 'insights-sweetspots-filters', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters' },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
-      for (const h of ['Rest curve', 'Dial-in', 'Brews to your best', 'Grind drift', 'Variables vs rating'])
+      for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
-      await expect(page.locator('.var-chart')).toHaveCount(6);
+      // Fixed slots (G9/B5): Temp | Ratio, Dose | Bloom, Brew time full width, Grind | Grind drift.
+      const order = await page.locator('.brewing-vars .lab-chart').evaluateAll((ps) => ps.map((p) => (p as HTMLElement).dataset.section));
+      expect(order).toEqual(['temp', 'ratio', 'dose', 'bloom', 'time', 'grind', 'drift'].map((k) => `brewing-${k}`));
+      const box = async (k: string) => (await page.locator(`[data-section="brewing-${k}"]`).boundingBox())!;
+      if ((page.viewportSize()?.width ?? 0) >= 900) {
+        expect(Math.round((await box('grind')).y)).toBe(Math.round((await box('drift')).y));
+        expect((await box('time')).width).toBeGreaterThan((await box('temp')).width * 1.8);
+      }
+      // The rest heatmap: a cell tip is a title and label/value rows (ui-rules 36).
+      const rest = page.locator('[data-section="brewing-rest"] .heatmap.diverging');
+      await rest.locator('.heat-cell:not(.none)').first().click();
+      await expect(rest.locator('.cell-tip .tip-title')).toContainText(' · ');
+      await expect(rest.locator('.cell-tip .tip-rows')).toContainText('vs usual');
+      await page.locator('.insights-period, h1').first().click();
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       // Nothing takes focus on load (the phone keyboard would pop up).
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-      // Full rows: two columns ≥ 900 px, an odd last chart spans both; Dial-in beside Brews to your best.
-      await expectGridRowsFull(page, '.var-grid', true);
-      await expectGridRowsFull(page, '.brewing-pair', true);
+      // Full rows: two columns ≥ 900 px, Brew time spans both; Dial-in beside Brews until dialed.
+      await expectGridRowsFull(page, '.lab-grid', true);
       // A pair of charts is one height, and the shorter one's chart fills it (no gap under its rows).
-      const uneven = await page.locator('.var-grid > .var-chart').evaluateAll((ps) => ps.flatMap((p) => {
+      const uneven = await page.locator('.lab-grid > .lab-chart').evaluateAll((ps) => ps.flatMap((p) => {
         const r = p.getBoundingClientRect();
         const mate = ps.find((o) => o !== p && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
         if (!mate) return [];
-        const rows = [...p.querySelectorAll('.bar-row, .heatmap .grid')].at(-1)!.getBoundingClientRect(); // the drawn rows, not the box
+        const drawn = [...p.querySelectorAll('.bar-row, .heatmap .grid, .chart-container')].at(-1)!;
+        const rows = drawn.getBoundingClientRect(); // the drawn rows, not the box
         const pad = parseFloat(getComputedStyle(p).paddingBottom);
         const note = p.querySelector<HTMLElement>('.chart-note');
         const under = r.bottom - pad - rows.bottom - (note ? note.offsetHeight + parseFloat(getComputedStyle(note).marginTop) : 0);
@@ -1883,12 +1905,22 @@ export const STATES: State[] = [
       await expect(first).toBeFocused();
       const tip = page.locator('[data-section="brewing-temp"] .cell-tip');
       await expect(tip).toContainText(/brews/);
+      await expect(tip.locator('dt')).not.toHaveCount(0);
       const was = await tip.textContent();
       await page.keyboard.press('ArrowDown');
       await expect(tip).not.toHaveText(was!);
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
       await page.locator('[data-section="brewing-temp"] .bar-row').nth(1).blur();
+      // A toggle never moves a chart (G9): Exact on Temp keeps every chart in its slot.
+      const slots = () => page.locator('.brewing-vars .lab-chart').evaluateAll((ps) => ps.map((p) => {
+        const r = p.getBoundingClientRect();
+        return `${(p as HTMLElement).dataset.section}@${Math.round(r.left)},${Math.round(r.width)}`;
+      }));
+      const before = await slots();
+      await page.getByRole('group', { name: 'Temp bands' }).getByRole('button', { name: 'Exact' }).click();
+      await expect(page).toHaveURL(/temp=exact/);
+      expect(await slots()).toEqual(before);
     } },
   ...(['roast', 'process', 'origin', 'roaster'] as const).map((by) => ({
     name: `insights-brewing-by-${by}`, path: () => `/insights?tab=brewing&tempBy=${by}`,
@@ -1905,9 +1937,16 @@ export const STATES: State[] = [
       expect(pinned).toBe(true);
       await hm.locator('.scroll').evaluate((s) => (s.scrollLeft = 0));
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
-      // A cell tip names its row, column and counts.
+      // Never widens (G9): Temp keeps Ratio's width beside it, the heatmap scrolling inside the card.
+      if ((page.viewportSize()?.width ?? 0) >= 900) {
+        const [t, r] = await Promise.all(['temp', 'ratio'].map((k) => page.locator(`[data-section="brewing-${k}"]`).boundingBox()));
+        expect(Math.abs(t!.width - r!.width)).toBeLessThanOrEqual(1);
+        expect(Math.round(t!.y)).toBe(Math.round(r!.y));
+      }
+      // A cell tip: its row · column as the title, then the delta and counts as rows.
       await hm.locator('.heat-cell').first().click();
-      await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
+      await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
+      await expect(hm.locator('.cell-tip')).toContainText(/Brews|No brews/);
       // A thin cell draws faded with its value; the legend names it.
       const faded = hm.locator('.heat-cell.faded');
       if (await faded.count()) {
@@ -1968,9 +2007,9 @@ export const STATES: State[] = [
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',
     act: async (page) => {
-      for (const h of ['Recipes', 'Minerals vs rating', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water eras', 'Same bag, different water'])
+      for (const h of ['Ratings by recipe', 'Minerals vs rating', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water usage over time', 'Same bag, different water'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
-      await expect(page.locator('[data-section="water-recipes"] .board-row')).toHaveCount(3);
+      await expect(page.locator('[data-section="water-recipes"] .lab-rows .board-row')).toHaveCount(3);
       await expect(page.locator('[data-section="water-gh"] .bar-row')).toHaveCount(3); // 0–30, 60–90, 90+ ppm
       await expect(page.getByText('Strongly tied to era and roast level')).toBeVisible();
       await expect(page.getByLabel('Compare')).toHaveCount(0);
@@ -1979,11 +2018,19 @@ export const STATES: State[] = [
       // Nothing takes focus on load (the phone keyboard would pop up).
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
       await expectGridRowsFull(page, '.mineral-grid');
-      // Mineral cards in a row are one height, and every bar value stays inside its card.
+      // Mineral cards in a row are one height, and every dot and axis label stays inside its card.
       const off = await page.locator('.mineral-card').evaluateAll((cs) => cs.flatMap((c) => {
         const r = c.getBoundingClientRect();
         const mate = cs.find((o) => o !== c && Math.round(o.getBoundingClientRect().top) === Math.round(r.top));
-        const spill = [...c.querySelectorAll('.bar-value, .bar-label')].some((v) => { const b = v.getBoundingClientRect(); return b.right > r.right + 1 || b.left < r.left - 1; });
+        const inside = (x: number, y: number) => x >= r.left - 1 && x <= r.right + 1 && y >= r.top - 1 && y <= r.bottom + 1;
+        const spill = [...c.querySelectorAll('.x-axis span, .y-axis span')].some((v) => {
+          const b = v.getBoundingClientRect();
+          return !inside(b.left, b.top) || !inside(b.right, b.bottom);
+        }) || [...c.querySelectorAll<HTMLElement>('.dot')].some((d) => { // the drawn mark (its 44px tap box may overhang)
+          const b = d.getBoundingClientRect(), half = parseFloat(d.style.getPropertyValue('--d')) / 2;
+          const [x, y] = [b.left + b.width / 2, b.top + b.height / 2];
+          return !inside(x - half, y - half) || !inside(x + half, y + half);
+        });
         return [...(mate && Math.abs(mate.getBoundingClientRect().height - r.height) > 1 ? [`${c.textContent?.slice(0, 8)} height`] : []), ...(spill ? [`${c.textContent?.slice(0, 8)} spills`] : [])];
       }));
       expect(off).toEqual([]);
@@ -2016,9 +2063,25 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
       await page.locator('[data-section="water-gh"] .bar-row').nth(1).blur();
-      // A mineral bar's tip names its unit and the overall average.
-      await page.locator('.mineral-card .bar-row').first().click();
-      await expect(page.locator('.mineral-card .cell-tip')).toContainText(/: avg \d\.\d\d \(.* · overall \d\.\d\d$/);
+      // A mineral dot's tip: the amount as its title, then the rating and counts; arrows move between dots.
+      const dot = page.locator('.mineral-card').first().locator('.dot').first();
+      await dot.click();
+      await expect(page.locator('.mineral-card .cell-tip .tip-title')).toHaveText(/^[\d.]+( mg\/L| ppm)?$/);
+      await expect(page.locator('.mineral-card .cell-tip .tip-rows')).toContainText(/Avg rating\s*\d\.\d\d\s*Brews\s*\d+\s*Bags\s*\d+/);
+      // Ratings by recipe beside GH vs rating from 900 px, one height (W3).
+      if (w >= 900) {
+        const [a, b] = await Promise.all(['recipes', 'gh'].map((k) => page.locator(`[data-section="water-${k}"]`).boundingBox()));
+        expect(Math.round(a!.y)).toBe(Math.round(b!.y));
+        expect(Math.abs(a!.height - b!.height)).toBeLessThanOrEqual(1);
+      }
+      // Same bag, different water (W7): one block per recipe pair, a headline, then each bag's two ratings.
+      const pair = page.locator('.pair').first();
+      await expect(pair.locator('.pair-sum')).toHaveText(/ won \d+ of \d+ bags?( \(\d+ tied\))? · (even|[+−]\d\.\d\d on average)$/);
+      await expect(pair.locator('.pair-bags li').first().locator('.score')).toHaveText([/^\d+\.\d\d$/, /^\d+\.\d\d$/]);
+      // Usage over time: 100% stacked bars; a segment's tip names the recipe, month and share.
+      const seg = page.locator('[data-section="water-eras"] .seg').first();
+      await seg.click();
+      await expect(page.locator('[data-section="water-eras"] .cell-tip .tip-rows')).toContainText(/Month.*Share\s*\d+%/);
     } },
   { name: 'insights-water-tip', path: () => '/insights?tab=water',
     act: async (page) => {
@@ -2027,7 +2090,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {
-      for (const h of ['Drippers', 'Filters', 'Dripper × filter', 'Dripper × roast level', 'Gear eras'])
+      for (const h of ['Ratings by dripper', 'Ratings by filter', 'Filters within each dripper', 'Dripper × roast level', 'Gear usage over time'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
       // Filters within each dripper: only V60 uses two filters (Abaca, Sibarist), so one row of two cells.
       await expect(page.locator('[data-section="gear-matrix"] .heat-cell')).toHaveCount(2);
@@ -2044,17 +2107,29 @@ export const STATES: State[] = [
         const lists = await page.locator('.gear-pair .board-rows').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height - [...l.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0)));
         expect(lists.every((x) => Math.abs(x) <= 1)).toBe(true);
       }
-      // Deltas line up down each list.
+      // Deltas line up down each list, and every value column under its header (G4).
       for (const k of ['drippers', 'filters']) {
         const rights = await page.locator(`[data-section="gear-${k}"] .val`).evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
         expect(new Set(rights).size).toBe(1);
+        const cols = await page.locator(`[data-section="gear-${k}"]`).evaluate((sec) => {
+          const shown = (e: Element) => e.getBoundingClientRect().width > 0;
+          const right = (e: Element) => Math.round(e.getBoundingClientRect().right);
+          const head = [...sec.querySelectorAll('.board-head .num')].filter(shown).map(right);
+          return [...sec.querySelectorAll('.lab-rows .board-row:not(.placeholder)')].every((row) =>
+            [...row.querySelectorAll('.num, .val')].filter(shown).map(right).every((x, i) => Math.abs(x - head[i]) <= 1));
+        });
+        expect(cols).toBe(true);
       }
+      // Narrow boards drop SD first; brews and the delta always show.
+      const sdShown = await page.locator('[data-section="gear-drippers"] .board-head .sd').evaluate((e) => e.getBoundingClientRect().width > 0);
+      const boardW = (await page.locator('[data-section="gear-drippers"] .lab-board').boundingBox())!.width;
+      expect(sdShown).toBe(boardW >= 27 * 16);
       // A thin matrix cell draws faded with its value; a cell tip names the pairing and its counts (tap and keyboard).
       const hm = page.locator('[data-section="gear-matrix"] .heatmap');
       const faded = hm.locator('.heat-cell.faded');
       if (await faded.count()) await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
       await hm.locator('.heat-cell').first().click();
-      await expect(hm.locator('.cell-tip')).toContainText(/ · .* · /);
+      await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
       await hm.locator('.heat-cell').first().focus();
       await page.keyboard.press('ArrowRight');
       await expect(hm.locator('.heat-cell').nth(1)).toBeFocused();

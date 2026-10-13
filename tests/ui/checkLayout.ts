@@ -71,6 +71,9 @@ export async function checkLayout(page: Page): Promise<void> {
         if (el.matches('.world-map svg path')) continue;
         // Heatmap and calendar cells can't be 44px; the hour and weekday charts carry the same data.
         if (el.matches('.heat-cell, .cal-cell')) continue;
+        // A 100% stacked bar's segment is as tall as its share; a tap anywhere picks the segment under it, the
+        // arrow keys reach every one, and the legend names each series.
+        if (el.matches('.stacked .seg')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
