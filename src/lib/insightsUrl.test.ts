@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseInsightsUrl, insightsParams, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
+  parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType, BREWER_TYPES, type LabValues
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
@@ -505,6 +505,20 @@ describe('brewing lab params', () => {
   it('temp: only exact (bands is the bare default)', () => {
     expect(parse('temp=EXACT').temp).toBe('exact');
     expect(parse('temp=bands').temp).toBeUndefined();
+  });
+  it('band/exact per chart: <var>=exact, case-insensitive, junk dropped; dose uses dosing= (dose= is What if)', () => {
+    expect(parse('ratio=Exact&dosing=EXACT&time=exact&bloom=exact&grind=eXact')).toMatchObject(
+      { ratio: 'exact', dosing: 'exact', time: 'exact', bloom: 'exact', grind: 'exact', temp: undefined });
+    expect(parse('ratio=bands&dosing=1&time=&bloom=x&grind=exactly')).toMatchObject(
+      { ratio: undefined, dosing: undefined, time: undefined, bloom: undefined, grind: undefined });
+    expect(parse('dose=18&dosing=exact')).toMatchObject({ dose: 18, dosing: 'exact' }); // the two never collide
+    expect(EXACT_PARAM).toEqual({ temp: 'temp', ratio: 'ratio', dose: 'dosing', time: 'time', bloom: 'bloom', grind: 'grind' });
+  });
+  it('band/exact picks are sticky through any tab and cleared by Reset', () => {
+    const q = 'tab=overview&temp=exact&ratio=exact&dosing=exact&time=exact&bloom=exact&grind=exact';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(withDefaults(parse(q))).toMatchObject({ temp: 'exact', ratio: 'exact', dosing: 'exact', time: 'exact', bloom: 'exact', grind: 'exact' });
+    expect(resetInsights(parse(`${q.replace('overview', 'brewing')}`))).toEqual({ tab: 'brewing' });
   });
   it('without lab values (other callers) every lab value is dropped', () =>
     expect(parseInsightsUrl(new URLSearchParams('bag=2025-old-bag&grinder=zp6-1zpresso'), [2026])).toEqual({}));

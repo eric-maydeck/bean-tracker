@@ -41,6 +41,10 @@ export const SLICES = ['roast', 'process', 'origin', 'roaster'] as const;
 export type Slice = (typeof SLICES)[number];
 export const BY_PARAMS = ['tempBy', 'ratioBy', 'doseBy', 'timeBy', 'bloomBy', 'grindBy'] as const;
 export type ByParam = (typeof BY_PARAMS)[number];
+// Brewing Band/Exact toggles (G10): <param>=exact, absent = bands. Dose's is `dosing` because `dose` is What if's.
+export const EXACT_PARAM = { temp: 'temp', ratio: 'ratio', dose: 'dosing', time: 'time', bloom: 'bloom', grind: 'grind' } as const;
+export const EXACT_PARAMS = Object.values(EXACT_PARAM);
+export type ExactParam = (typeof EXACT_PARAMS)[number];
 // The values the lab's pickers offer (lab.ts labOptions, server-side): anything else in the URL is dropped.
 export interface LabValues { bags: string[]; roasts: string[]; processes: string[]; origins: string[]; roasters: string[]; grinders: string[] }
 export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [] };
@@ -171,18 +175,23 @@ export interface InsightsUrlState {
   timeBy?: Slice;
   bloomBy?: Slice;
   grindBy?: Slice;
-  temp?: 'exact'; // Brewing: bands is the bare default
+  temp?: 'exact'; // Brewing Band/Exact toggles (EXACT_PARAM): bands is the bare default
+  ratio?: 'exact';
+  dosing?: 'exact';
+  time?: 'exact';
+  bloom?: 'exact';
+  grind?: 'exact';
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
 type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | 'temp';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam;
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; temp?: 'exact';
-};
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice;
+} & Partial<Record<ExactParam, 'exact'>>;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
   range: '12m',
@@ -317,7 +326,7 @@ export function parseInsightsUrl(
     timeBy: pickOne(p, 'timeBy', SLICES),
     bloomBy: pickOne(p, 'bloomBy', SLICES),
     grindBy: pickOne(p, 'grindBy', SLICES),
-    temp: p.get('temp')?.toLowerCase() === 'exact' ? 'exact' : undefined
+    ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>)
   };
 }
 
@@ -342,7 +351,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.topc) p.set('topc', String(s.topc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
-  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, 'temp'] as const) if (s[k]) p.set(k, s[k]!);
+  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   return p;
 }
 
@@ -376,7 +385,8 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bpd: s.bpd,
     dose: s.dose,
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
-    tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy, temp: s.temp
+    tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind
   };
 }
 
