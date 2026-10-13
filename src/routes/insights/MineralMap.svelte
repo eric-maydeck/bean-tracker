@@ -59,7 +59,7 @@
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
-          <td class="delta">{#if r.delta === null}no match{:else}<span class="delta-chip"
+          <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip"
             style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{signed(r.delta)}</span>{/if}</td>
           {#each map.cols as c, j (c.key)}<td style:background={shades[j](r.values[j])}>{fmt(r.values[j], c.unit)}</td>{/each}
         </tr>
@@ -120,6 +120,11 @@
   .delta {
     width: 1%;
     font-weight: 600;
+  }
+  /* No match: a chip-sized muted dash (the row's tip says why), so the column always hugs a chip. */
+  .none {
+    color: var(--color-text-muted);
+    font-weight: 400;
   }
   .delta-chip {
     display: inline-block;
