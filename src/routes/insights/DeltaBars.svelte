@@ -105,7 +105,7 @@
       <span class="bar-label" class:bold={b.bold}>{b.label}</span>
       <span class="track" aria-hidden="true">
         {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} style:width="{b.w}%"
-          style:background={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
+          style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
       <span class="bar-value">
         {b.value === null ? b.text || 'few brews' : b.text}
@@ -204,7 +204,7 @@
     border-right: 2px solid var(--color-text);
   }
   .pale .bar {
-    opacity: var(--faded);
+    background-image: var(--thin-hatch);
   }
   .bar-value {
     display: inline-flex;

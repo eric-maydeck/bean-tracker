@@ -1875,13 +1875,14 @@ export const STATES: State[] = [
       await expectPairsFilled(page, '.lab-grid');
       await expectInnerScroll(page, '.fit-body');
       // G1/G2 colors: same-bag bars use the heatmaps' --div-high/--div-low; Grind drift is one neutral ink.
-      // C1: every bar and heat cell colors by its own value on one fixed scale (gray under 0.05, full at 0.5).
+      // T3: every bar and heat cell colors by its own value on one fixed scale: gray under 0.05, then a visible
+      // 33% tint floor ramping to full color at 0.4.
       const colors = await page.evaluate(() => {
         const probe = document.createElement('span');
         document.body.append(probe);
         const resolve = (bg: string) => ((probe.style.background = bg), getComputedStyle(probe).backgroundColor);
         const expected = (v: number) => {
-          const t = Math.abs(v) < 0.05 ? 0 : Math.min(1, (Math.abs(v) - 0.05) / 0.45);
+          const t = Math.abs(v) < 0.05 ? 0 : 0.33 + 0.67 * Math.min(1, (Math.abs(v) - 0.05) / 0.35);
           return resolve(t ? `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(100 * t)}%, var(--div-mid))` : 'var(--div-mid)');
         };
         const num = (s: string) => parseFloat(s.replace('−', '-'));
@@ -1895,6 +1896,11 @@ export const STATES: State[] = [
         for (const cell of document.querySelectorAll<HTMLElement>('[data-section="brewing-rest"] .heat-cell:not(.none)')) {
           const v = num(cell.getAttribute('aria-label')!.split(' · ').at(-1)!);
           if (!near(getComputedStyle(cell).backgroundColor, v)) out.push(`cell ${v}`);
+        }
+        // Thin data is striped over its full color, never faded with opacity (the hue must not wash to gray).
+        for (const el of document.querySelectorAll('.heat-cell.faded, .bar-row.pale .bar')) {
+          const cs = getComputedStyle(el);
+          if (cs.opacity !== '1' || !cs.backgroundImage.includes('gradient')) out.push(`thin mark ${cs.opacity} ${cs.backgroundImage.slice(0, 20)}`);
         }
         const drift = getComputedStyle(document.querySelector('[data-section="brewing-drift"] .bar')!).backgroundColor;
         const muted = resolve('var(--color-text-muted)');
@@ -1991,7 +1997,7 @@ export const STATES: State[] = [
       const faded = hm.locator('.heat-cell.faded');
       if (await faded.count()) {
         await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
-        await expect(hm.locator('.div-legend')).toContainText('Faded: few brews');
+        await expect(hm.locator('.div-legend')).toContainText('Striped: few brews');
       }
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',

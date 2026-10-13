@@ -68,7 +68,7 @@
     label: (r: number, c: number) => string;
     ariaLabel: string;
     diverging?: boolean;
-    faded?: boolean[][]; // diverging: thin cells, drawn faded; the scale fits the other cells when there are any
+    faded?: boolean[][]; // diverging: thin cells, striped over their color (T3); the scale fits the other cells when there are any
     marked?: boolean[][]; // outlined cells (the lab's rest heatmap: each row's best)
     tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's aria-label
     scale?: [string, string]; // diverging legend: the low and high ends
@@ -133,7 +133,7 @@
             class:none={v === null}
             class:faded={!!faded?.[i]?.[j]}
             class:marked={!!marked?.[i]?.[j]}
-            style:background={shade(v)}
+            style:background-color={shade(v)}
             onfocus={(e) => (takeFocus(e), show(e))}
             onblur={() => (tip = null)}
           ></div>
@@ -144,7 +144,7 @@
   {#if diverging}
     <p class="div-legend">
       <span>{scale[0]}</span><span class="div-swatch" aria-hidden="true"></span><span>{scale[1]}</span>
-      {#if fade}<span>· Faded: few brews</span>{/if}
+      {#if fade}<span>· Striped: few brews</span>{/if}
       {#if marked?.flat().some(Boolean)}<span>· Outlined: best in its row</span>{/if}
       {#if blanks}<span>· Blank: no match (or no brews)</span>{/if}
     </p>
@@ -242,7 +242,7 @@
     cursor: pointer;
   }
   .heat-cell.faded {
-    opacity: var(--faded);
+    background-image: var(--thin-hatch);
   }
   .heat-cell.marked {
     outline: 2px solid var(--color-text);

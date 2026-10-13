@@ -52,7 +52,12 @@
   --div-low: #d8573c;
   --div-mid: #dcd9d4;
   --div-high: #1a9b7c;
-  --faded: 0.4; /* thin data (few brews): faded heat cells and pale bars */
+  /* A signed delta as text (T4): the diverging pair darkened to 4.5:1+ on the surface. */
+  --div-high-ink: #137a61;
+  --div-low-ink: #b5452b;
+  --faded: 0.4; /* thin data in neutral marks (mineral amounts) */
+  /* Thin data on a delta color (T3): surface stripes over the full tint, so the hue never washes to gray. */
+  --thin-hatch: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--color-surface) 70%, transparent) 3px 6px);
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -116,6 +121,8 @@
     --div-low: #e5603f;
     --div-mid: #635d57;
     --div-high: #24a383;
+    --div-high-ink: #2fb893;
+    --div-low-ink: #f0775a;
     --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -166,6 +173,8 @@
   --div-low: #e5603f;
   --div-mid: #635d57;
   --div-high: #24a383;
+  --div-high-ink: #2fb893;
+  --div-low-ink: #f0775a;
   --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
@@ -2336,6 +2345,12 @@ td > .action-buttons.under-form {
   margin-top: 0.15rem;
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+.ink-better {
+  color: var(--div-high-ink);
+}
+.ink-worse {
+  color: var(--div-low-ink);
 }
 .heat-cell.none,
 .cal-cell.none {
