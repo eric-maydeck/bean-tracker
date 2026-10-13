@@ -6,9 +6,8 @@
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   // Help popovers are one idea per line (ui-rules 36, T1); a section's help builds on these.
   export const SAME_BAG_HELP = [
-    "Each brew's rating minus its bag's average this period, averaged per band.",
-    "+0.40: brews in this band beat the same bag's other brews by 0.40.",
-    'Counts only bags brewed in 2+ bands (2+ brews each).',
+    "vs bag: each brew's rating minus its bag's average this period, averaged over the row's brews.",
+    'Only bags brewed 2+ ways (2+ brews each) count.',
     'Striped: under 3 bags or 30 brews.'
   ];
   export const STRENGTH_LINE = 'Solid: at least 2× its usual noise · Hint: 1.5 to 2×.';

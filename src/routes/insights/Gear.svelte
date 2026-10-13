@@ -18,7 +18,7 @@
   // The matrix fills the shorter board's column when both boards are there (ui-rules 40).
   let stack = $derived(!!t.matrix && t.drippers.length > 0 && t.filters.length > 0);
   let underDrippers = $derived(t.drippers.length < t.filters.length);
-  const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD.', 'Narrow screens drop SD, then bags.',
+  const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).',
     'No match: never brewed on the same bag as anything else.'];
 </script>
 

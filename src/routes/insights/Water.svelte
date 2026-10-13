@@ -68,7 +68,7 @@
       {#if t.recipes.length}
         <section class="chart-panel" class:span={!t.gh.length} data-section="water-recipes" style:--row-h="3rem">
           <LabHead id="water-recipes" title="Ratings by recipe" {placeTip}
-            help={["vs bag: each recipe's same-bag delta.", ...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD.', 'Under the name: the months it was used.',
+            help={[...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD; under the name, the months used.',
               'No match: never brewed on the same bag as another recipe.']} />
           <div class="fit-body"><LabBoard rows={t.recipes} noun="recipe" {placeTip} /></div>
         </section>

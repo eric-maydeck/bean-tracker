@@ -40,10 +40,9 @@
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
-        help={["Rows: roast levels · columns: days off roast.", "A cell: the roast level's bags' average rating in that window, minus the roast level's usual.",
-          'Each bag counts once, so rows compare.', 'Green: better than usual · red: worse.', "Outlined: the row's best window (2+ solid cells).",
-          'Striped: under 3 bags or 30 brews.', 'A bag is mostly brewed at one rest, so this compares bags, not brews of one bag.',
-          'It also moves with which coffees rested longer.']} />
+        help={["Rows: roast levels · columns: days off roast.", "A cell: the roast level's bags' average rating in that window (each bag once), minus its usual.",
+          'Green: better than usual · red: worse.', "Outlined: the row's best window (2+ solid cells).", 'Striped: under 3 bags or 30 brews.',
+          'It compares bags, not brews of one bag, so it also moves with which coffees rested longer.']} />
       <LabHeatmap by={t.rest} best={t.rest.best} vs="usual" noun="rest window" scale={['Below the roast level\'s usual', 'Above']}
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />
     </section>
@@ -73,7 +72,7 @@
   {#if slots.length}
     <section class="brewing-vars" data-section="brewing-vars">
       <LabHead id="brewing-vars" title="Variables vs rating" {placeTip}
-        help={[...SAME_BAG_HELP, 'Bands · Exact: group a setting into bands, or list each value.', 'Exact rounds ratio and dose to 0.5, brew time to 5 s.',
+        help={[...SAME_BAG_HELP, 'Bands · Exact: group a setting into bands, or list each value (rounded).',
           'Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags).', 'Blank: no match.']} />
       <div class="lab-grid" use:fitPairs={[t, s]}>
         {#each slots as row (row.join())}

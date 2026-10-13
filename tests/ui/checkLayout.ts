@@ -280,7 +280,7 @@ export async function expectStatRowsFull(page: Page) {
 }
 
 // One tip look (ui-rules 36, T1): every help popover on the page (closed ones are in the DOM too) is a bold
-// title, then label/value rows or short lines, never loose text. A help line holds one idea: at most 120
+// title, then label/value rows or short lines (at most 6), never loose text. A help line holds one idea: at most 120
 // characters, and never a second "Term: …" after a sentence ends ("A: x. B: y."). A full-text popover
 // (a card's clamped text: id full-… / …-full) carries content, so only its title is checked.
 export async function expectTipsFormatted(page: Page) {
@@ -292,6 +292,8 @@ export async function expectTipsFormatted(page: Page) {
     if ([...t.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())) out.push(`${id}: loose text`);
     if (/^full-|-full$/.test(t.id)) return out;
     if (!t.querySelector('.tip-rows, .tip-lines')) out.push(`${id}: no rows or lines`);
+    const n = t.querySelectorAll('.tip-lines li').length;
+    if (n > 6) out.push(`${id}: ${n} lines (6 at most)`);
     for (const li of t.querySelectorAll('.tip-lines li')) {
       const s = li.textContent!.trim();
       if (s.length > 120) out.push(`${id}: ${s.length}-char line`);
