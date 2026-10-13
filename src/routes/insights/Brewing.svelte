@@ -7,6 +7,7 @@
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
+  import { fitPairs } from './fitPairs';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
   let { t, lab, s, ratingsHelp, placeTip, choose }: {
@@ -46,18 +47,20 @@
   {/if}
 
   {#if t.dialIn.length || t.bestAt.length}
-    <div class="lab-grid">
+    <div class="lab-grid" use:fitPairs={t}>
       {#if t.dialIn.length}
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
           <LabHead id="brewing-dialin" title="Dial-in" level={3} help={SAME_BAG_HELP} {placeTip} />
-          <DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" />
+          <div class="fit-body"><DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" /></div>
         </section>
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
           <LabHead id="brewing-best" title="Brews until dialed" level={3} help={"For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie)."} {placeTip} />
-          <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
-            integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
+          <div class="fit-body">
+            <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
+              integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
+          </div>
           <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews)</p>
         </section>
       {/if}
@@ -68,23 +71,25 @@
     <section class="brewing-vars" data-section="brewing-vars">
       <LabHead id="brewing-vars" title="Variables vs rating" {placeTip}
         help={`${SAME_BAG_HELP}\nBands or Exact: each chart groups its setting into bands, or lists each value (rounded: ratio and dose to 0.5, brew time to 5 s).\nBreak down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no match.`} />
-      <div class="lab-grid">
+      <div class="lab-grid" use:fitPairs={[t, s]}>
         {#each slots as row (row.join())}
           {#each row as k (k)}
             {#if k === 'drift'}
               <section class="chart-panel lab-chart" class:span={row.length === 1} data-section="brewing-drift">
                 <LabHead id="brewing-drift" title="Grind drift" level={3} {placeTip}
                   help={"Mean change in grind setting vs each bag's first brew this period on this grinder, by brew number.\nPale: under 3 bags."} />
-                <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
-                  rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), pale: !d.solid,
-                    tip: { title: d.label, rows: [['Bags', `${d.bags}`], ...(d.solid ? [] : [['Strength', 'Few bags']])] as [string, string][] } }))} />
+                <div class="fit-body">
+                  <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
+                    rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), pale: !d.solid,
+                      tip: { title: d.label, rows: [['Bags', `${d.bags}`], ...(d.solid ? [] : [['Strength', 'Few bags']])] as [string, string][] } }))} />
+                </div>
                 <p class="chart-note">Negative = finer. {grinderName}</p>
               </section>
             {:else}
               {@const v = chartOf(k)}
               {@const by = s[`${v.key}By`]}
               {@const ek = EXACT_PARAM[v.key]}
-              <section class="chart-panel lab-chart heat-fill" class:span={row.length === 1} data-section="brewing-{v.key}">
+              <section class="chart-panel lab-chart" class:span={row.length === 1} data-section="brewing-{v.key}">
                 <div class="var-head">
                   <HeadingAnchor id="brewing-{v.key}" level={3}>{TITLE[v.key]}</HeadingAnchor>
                   <div class="var-ctls">
@@ -104,13 +109,15 @@
                     </div>
                   </div>
                 </div>
-                {#if v.by}
-                  <LabHeatmap by={v.by} ariaLabel="{TITLE[v.key]} by {BY.find(([k]) => k === by)?.[1]}" />
-                {:else if by}
-                  <p class="hl-empty">No {BY.find(([k]) => k === by)?.[1].toLowerCase()} has 3+ bags here.</p>
-                {:else}
-                  <DeltaBars rows={bandRows(v.bands, (l) => v.key === 'temp' && s.temp === 'exact' && NOTABLE.includes(l))} ariaLabel="{TITLE[v.key]} vs rating" />
-                {/if}
+                <div class="fit-body">
+                  {#if v.by}
+                    <LabHeatmap by={v.by} ariaLabel="{TITLE[v.key]} by {BY.find(([k]) => k === by)?.[1]}" />
+                  {:else if by}
+                    <p class="hl-empty">No {BY.find(([k]) => k === by)?.[1].toLowerCase()} has 3+ bags with paired brews here.</p>
+                  {:else}
+                    <DeltaBars rows={bandRows(v.bands, (l) => v.key === 'temp' && s.temp === 'exact' && NOTABLE.includes(l))} ariaLabel="{TITLE[v.key]} vs rating" />
+                  {/if}
+                </div>
                 {#if v.key === 'grind'}<p class="chart-note">{grinderName}</p>{/if}
               </section>
             {/if}
@@ -140,28 +147,22 @@
   .brewing-vars .lab-grid {
     margin-bottom: 0;
   }
-  /* A pair is one height: the chart takes the panel's spare height, its rows stretching up to 3rem each
-     (centred past that), so the shorter chart of a pair leaves no gap. */
+  /* A pair is one height (fitPairs, ui-rules 37): the chart body fills the card. */
   .lab-chart {
     margin: 0;
     display: flex;
     flex-direction: column;
-    --bar-rows: minmax(0, 1fr);
   }
-  .lab-chart > .hl-empty {
-    margin-block: auto;
-  }
-  .lab-chart > :global(.delta-bars) {
-    flex: 1 1 auto;
-    max-height: calc(var(--n) * 3rem);
-    margin-block: auto;
-  }
-  /* Brews until dialed fills its tile's height beside Dial-in (B2); 240px is its floor. */
-  .best-chart > :global(.chart-container) {
-    flex: 1 1 auto;
+  /* Brews until dialed fills its tile's height beside Dial-in (B2); 240px is its floor. The canvas is taken
+     out of flow, so the card's natural height is the floor, not the last drawn size. */
+  .best-chart :global(.chart-container) {
     height: auto !important; /* over Chart's inline height, which stays the minimum */
     min-height: 240px;
     position: relative;
+  }
+  .best-chart :global(.chart-container canvas) {
+    position: absolute;
+    inset: 0;
   }
   @media (min-width: 900px) {
     .lab-grid {

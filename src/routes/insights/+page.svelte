@@ -927,24 +927,35 @@
     --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
     --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
   }
-  /* A lab panel whose heatmap fills a pair's height (Brewing's var charts, Water's heatmap pair): the map
-     takes the panel's spare height, its rows stretching up to 3.5rem each (centred past that). */
-  :global(.heat-fill) {
+  /* Paired lab cards (fitPairs.ts, ui-rules 37): the card is a column, its .fit-body takes the card's spare
+     height (scrolling inside when the pair height is under its natural height) and the chart inside fills it:
+     bar and heatmap rows stretch, keeping their marks' thickness. */
+  :global(.fit-body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
   }
-  :global(.heat-fill > .heatmap) {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    max-height: calc(var(--nr) * 3.5rem + 5rem);
+  :global(.fit-body > *) {
+    flex: 1 0 auto;
+  }
+  :global(.fit-body > .hl-empty) {
+    flex: none;
     margin-block: auto;
   }
-  :global(.heat-fill > .heatmap .scroll) {
+  :global(.fit-body > .delta-bars) {
+    --bar-rows: minmax(0, 1fr);
+  }
+  :global(.fit-body > .heatmap) {
+    display: flex;
+    flex-direction: column;
+  }
+  :global(.fit-body > .heatmap .scroll) {
     flex: 1 1 auto;
     display: grid;
   }
-  :global(.heat-fill > .heatmap .grid) {
+  :global(.fit-body > .heatmap .grid) {
     grid-auto-rows: minmax(var(--cell-h), 1fr);
   }
   /* Leaderboard rows, shared with the lab tabs (Sweet spots' top bags). Set --rows and --row-h on the list

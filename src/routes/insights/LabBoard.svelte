@@ -50,6 +50,17 @@
 <style>
   .lab-board {
     container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Rows are --row-h tall, stretching evenly when a paired card is taller (fitPairs). */
+  .lab-rows {
+    flex: 1 0 auto;
+    display: grid;
+    grid-auto-rows: minmax(var(--row-h), 1fr);
+  }
+  .lab-rows .board-row {
+    height: auto;
   }
   /* The columns line up down the list and with the header: fixed number columns, the delta right-aligned. */
   .board-row {
