@@ -24,7 +24,7 @@
     const cell = by.cells[r][c], title = `${by.rows[r]} · ${by.cols[c]}`;
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
-    if (cell.delta === null) return { title, rows: counts, note: noMatch(noun) };
+    if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
     return { title, rows: [[`vs ${vs}`, signed(cell.delta)], ...counts, ...(cell.solid ? [] : [['Strength', 'Few brews'] as [string, string]])] };
   };
 </script>
