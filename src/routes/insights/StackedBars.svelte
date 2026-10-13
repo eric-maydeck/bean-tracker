@@ -12,7 +12,12 @@
   let n = $derived(m.x.length);
   // Month labels counted back from the last: up to 8 wide, up to 4 in a narrow container.
   let [wide, narrow] = $derived([Math.ceil(n / 8), Math.ceil(n / 4)]);
-  const tipOf = (k: number, i: number): Tip => ({ title: m.lines[k].label, rows: [['Month', m.x[i]], ['Share', `${m.lines[k].values[i] ?? 0}%`]] });
+  const tipOf = (k: number, i: number): Tip => ({ title: `${m.lines[k].label} · ${m.x[i]}`, rows: [['Share', `${m.lines[k].values[i] ?? 0}%`]] });
+  // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
+  let stop = $derived.by(() => {
+    for (let i = 0; i < n; i++) for (let k = 0; k < m.lines.length; k++) if ((m.lines[k].values[i] ?? 0) > 0) return `${i}:${k}`;
+    return '';
+  });
 
   let wrap: HTMLDivElement | undefined = $state();
   let tip = $state<{ k: number; i: number; x: number; y: number } | null>(null);
@@ -52,7 +57,7 @@
           {#each m.lines as l, k (k)}
             {@const v = l.values[i] ?? 0}
             {#if v > 0}
-              <div class="seg" role="button" tabindex={i + k ? -1 : 0} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]}
+              <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]}
                 aria-label={tipText(tipOf(k, i))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
             {/if}
           {/each}
@@ -113,18 +118,21 @@
       height: 10rem;
     }
   }
-  /* The first line at the bottom; a 2px surface gap between segments. */
+  /* The first line at the bottom. A 2px surface line tops each segment but the last, inside its own share
+     (border-box), so the stack stays true to the 25% gridlines. */
   .col {
     flex: 1 1 0;
     min-width: 0;
     display: flex;
     flex-direction: column-reverse;
-    gap: 2px;
   }
   .seg {
     flex-basis: 0;
-    min-height: 2px;
+    box-sizing: border-box;
     cursor: pointer;
+  }
+  .seg:not(:last-child) {
+    border-top: 2px solid var(--color-surface);
   }
   .col > .seg:last-child {
     border-radius: 3px 3px 0 0;

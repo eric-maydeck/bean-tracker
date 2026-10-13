@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { rove, takeFocus, tipAt } from '$lib/components/Heatmap.svelte';
+  import { takeFocus, tipAt } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { MineralPoint } from '$lib/server/insights/lab';
 
   // A mineral vs rating dot chart (W4): x = the amount on a real numeric axis, y = the adjusted mean rating,
   // one dot per amount, area ∝ brews, hollow under 3 bags or 30 brews; the dashed line is the average.
-  // Dots are tap/keyboard targets with tips (arrows move between them), as DeltaBars rows are.
+  // Pointer: the whole plot is the target, the dot nearest the pointer shows its tip (overlapping dots never
+  // hide each other). Keyboard: the dots are a roving tab stop; arrows step through them in value order.
   let { points, unit, overall, ariaLabel }: { points: MineralPoint[]; unit: string; overall: number; ariaLabel: string } = $props();
 
   const pad = (lo: number, hi: number, f: number) => (hi > lo ? [lo - (hi - lo) * f, hi + (hi - lo) * f] : [lo - 1, hi + 1]);
@@ -34,11 +35,25 @@
     tip = null;
   });
   const showDot = (el: Element) => (tip = { ...tipAt(wrap!, el, '', 128), i: +(el as HTMLElement).dataset.i! });
-  const pick = (e: Event) => {
-    const el = (e.target as Element).closest('.dot');
-    if (el) showDot(el);
+  // The dot whose centre is nearest the pointer, within 2rem; none past that.
+  const pick = (e: MouseEvent) => {
+    let best: Element | null = null, d = 32 ** 2;
+    for (const el of wrap!.querySelectorAll('.dot')) {
+      const r = el.getBoundingClientRect(), dx = r.left + r.width / 2 - e.clientX, dy = r.top + r.height / 2 - e.clientY;
+      if (dx * dx + dy * dy < d) [best, d] = [el, dx * dx + dy * dy];
+    }
+    if (best) showDot(best);
     else tip = null;
   };
+  function key(e: KeyboardEvent) {
+    if (e.key === 'Escape') return (tip = null);
+    const step = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key];
+    const from = (e.target as HTMLElement).closest<HTMLElement>('.dot');
+    if (!step || !from) return;
+    e.preventDefault();
+    const all = [...wrap!.querySelectorAll<HTMLElement>('.dot')]; // DOM order = value order (points are sorted)
+    all[Math.min(all.length - 1, Math.max(0, all.indexOf(from) + step))].focus();
+  }
 </script>
 
 <div class="dots-chart" bind:this={wrap}>
@@ -47,7 +62,7 @@
     onpointermove={(e) => e.pointerType === 'mouse' && pick(e)}
     onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
     onclick={pick}
-    onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.dot'))}>
+    onkeydown={key}>
     <div class="y-axis" aria-hidden="true"><span>{plot.yhi.toFixed(1)}</span><span class="axis-name">rating</span><span>{plot.ylo.toFixed(1)}</span></div>
     <div class="plot">
       <span class="avg" style:top="{plot.avg}%" aria-hidden="true"></span>
@@ -78,8 +93,6 @@
     grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: minmax(7rem, 1fr) auto;
     column-gap: var(--space-2);
-    overflow: clip; /* the dots' 44px tap boxes never widen the card (or the page) */
-    overflow-clip-margin: 4px;
   }
   .y-axis,
   .x-axis {
@@ -123,19 +136,21 @@
     border-top: 1px dashed var(--color-text-muted);
     opacity: 0.6;
   }
-  /* The dot is a 44px tap target (ui-rules 4); the mark inside it is sized by brews. */
+  /* The mark, sized by brews. Pointer picking is the plot's (nearest dot), so the dot itself takes no events. */
+  .frame {
+    cursor: pointer;
+  }
   .dot {
     position: absolute;
-    width: 44px;
-    height: 44px;
+    width: var(--d);
+    height: var(--d);
     translate: -50% -50%;
-    border-radius: 50%;
-    cursor: pointer;
+    pointer-events: none;
   }
   .dot::before {
     content: '';
     position: absolute;
-    inset: calc(50% - var(--d) / 2);
+    inset: 0;
     border-radius: 50%;
     background: color-mix(in oklab, var(--chart-color-1) 75%, transparent);
     border: 2px solid var(--chart-color-1);
