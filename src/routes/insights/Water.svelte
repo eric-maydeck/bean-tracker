@@ -23,8 +23,6 @@
   // ponytail: column-count estimate, not a measurement; measure the grids if long row labels ever scroll.
   let heatPair = $derived(!!t.byRoast && !!t.byProcess && t.byRoast.cols.length <= 7);
 
-  const UNIT: Record<string, string> = { gh: 'ppm', kh: 'ppm', mgca: '', mgk: '' };
-  const unitOf = (key: string) => UNIT[key] ?? 'mg/L';
   const BADGE_HELP = `${STRENGTH_HELP.solid} ${STRENGTH_HELP.hint}`;
 </script>
 
@@ -48,12 +46,13 @@
       <p class="chart-note mineral-note">Strongly tied to era and roast level: these are plain averages, not same-bag comparisons.</p>
       <div class="hl-grid mineral-grid">
         {#each t.minerals as m, i (m.key)}
-          {@const unit = unitOf(m.key)}
+          {@const unit = m.unit}
           <div class="hl-card mineral-card" style={mineralVars[i]}>
             <HeadingAnchor id="water-mineral-{m.key}" level={3}>{m.name}{#if unit}<small class="unit">{unit}</small>{/if}</HeadingAnchor>
+            <!-- ponytail: crude bars from the points until the UI dispatch draws the dot chart (round 1, W4). -->
             <DeltaBars ariaLabel="{m.name} vs rating, against an average of {m.overall.toFixed(2)}"
-              rows={m.bars.map((b) => ({ label: b.label, value: b.value - m.overall, text: b.value.toFixed(2), pale: !b.solid,
-                tip: `${b.label}${unit ? ` ${unit}` : ''}: avg ${b.value.toFixed(2)} (${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')}) · overall ${m.overall.toFixed(2)}` }))} />
+              rows={m.points.map((b) => ({ label: String(b.value), value: b.mean - m.overall, text: b.mean.toFixed(2), pale: !b.solid,
+                tip: `${b.value}${unit ? ` ${unit}` : ''}: avg ${b.mean.toFixed(2)} (${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')}) · overall ${m.overall.toFixed(2)}` }))} />
             <p class="chart-note">Centre: avg {m.overall.toFixed(2)}</p>
           </div>
         {/each}
@@ -96,16 +95,16 @@
     <section class="chart-panel" data-section="water-pairs">
       <LabHead id="water-pairs" title="Same bag, different water" help={"Bags brewed with two or more recipes (2+ rated brews each): the best recipe's average rating against the others'. The gap is best vs runner-up. Top 10 by gap."} {placeTip} />
       <ol class="board-rows" style:--rows={t.pairs.length} style:--row-h="3rem">
+        <!-- ponytail: crude one row per recipe pair until the UI dispatch lays out W7. -->
         {#each t.pairs as p, i (i)}
           <li class="board-row">
             <span class="rank">{i + 1}</span>
             <span class="who">
-              {#if p.href}<a href={p.href}>{p.label}</a>{:else}<span class="name">{p.label}</span>{/if}
-              <!-- A repurchase's tag ("roasted May 5") leads, so the ellipsis never hides it. -->
-              <small>{[p.tag, `${p.best.water} ${p.best.mean.toFixed(2)} vs ${p.others.map((o) => `${o.water} ${o.mean.toFixed(2)}`).join(', ')}`].filter(Boolean).join(' · ')}</small>
+              <span class="name">{p.a} vs {p.b}</span>
+              <small>{p.a} won {p.won} of {p.bags.length} · {p.bags.map((b) => `${b.label}${b.tag ? ` (${b.tag})` : ''} ${b.a.toFixed(2)} · ${b.b.toFixed(2)}`).join('; ')}</small>
             </span>
             <span></span>
-            <span class="val">{signed(p.gap)}</span>
+            <span class="val">{signed(p.delta)}</span>
           </li>
         {/each}
       </ol>

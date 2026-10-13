@@ -13,7 +13,7 @@ import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
-import { RANGES, BYS, BREWER_TYPES, LAB_TABS, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -121,7 +121,7 @@ export const load: PageServerLoad = ({ url }) => {
       ? sweetSpotsTab(brews, bags, { ...labCtx, grinder, filters: { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster } })
       : null,
     brewing: s.tab === 'brewing'
-      ? brewingTab(brews, { ...labCtx, grinder, exact: s.temp === 'exact',
+      ? brewingTab(brews, { ...labCtx, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
           by: { temp: s.tempBy, ratio: s.ratioBy, dose: s.doseBy, time: s.timeBy, bloom: s.bloomBy, grind: s.grindBy } })
       : null,
     water: s.tab === 'water' ? waterTab(brews, bags, labCtx) : null,

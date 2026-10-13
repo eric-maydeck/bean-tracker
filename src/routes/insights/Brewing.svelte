@@ -1,12 +1,11 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
-  import type { InsightsUrlState, InsightsView, Ratings, Slice } from '$lib/insightsUrl';
+  import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions, VarChart } from '$lib/server/insights/lab';
   import DeltaBars, { bandRows, plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import MultiLine from './MultiLine.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
@@ -51,8 +50,8 @@
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" help={"Each line is a roast level: its bags' average rating per rest band (each bag counts once), minus that roast level's average, so the lines compare. A bag is mostly brewed at one rest, so this compares bags rather than brews of the same bag: it also moves with which coffees were rested longer. Solid: 3+ bags and 30+ brews in the band; a line needs two solid bands."} {placeTip} />
-      <MultiLine m={t.rest} faded={t.rest.faded} ariaLabel="Rest curve: rating vs the roast level's average by days off roast, one line per roast level" format={signed} />
-      {#if t.rest.faded}<p class="chart-note">Faded: no roast level has two rest bands with 3+ bags and 30+ brews yet</p>{/if}
+      <!-- ponytail: crude heatmap until the UI dispatch draws t.rest.best (round 1, B1). -->
+      <LabHeatmap by={t.rest} ariaLabel="Rest curve: rating vs the roast level's average by days off roast, one row per roast level" />
     </section>
   {/if}
 
@@ -91,6 +90,7 @@
       <div class="var-grid">
         {#each vars as { v, span } (v.key)}
           {@const by = s[`${v.key}By`]}
+          {@const ek = EXACT_PARAM[v.key]}
           <section class="chart-panel var-chart heat-fill" class:span data-section="brewing-{v.key}">
             <div class="var-head">
               <HeadingAnchor id="brewing-{v.key}" level={3}>{TITLE[v.key]}</HeadingAnchor>
@@ -102,15 +102,13 @@
                     {#each BY as [val, name] (val)}<option value={val}>{name}</option>{/each}
                   </select>
                 </label>
-                {#if v.key === 'temp'}
-                  <div class="form-field group-field">
-                    <span>Show</span>
-                    <div class="tab-group tab-group-compact" role="group" aria-label="Temp bands">
-                      <button aria-pressed={s.temp !== 'exact'} onclick={() => choose({ temp: undefined })}>Bands</button>
-                      <button aria-pressed={s.temp === 'exact'} onclick={() => choose({ temp: 'exact' })}>Exact</button>
-                    </div>
+                <div class="form-field group-field">
+                  <span>Show</span>
+                  <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[v.key]} bands">
+                    <button aria-pressed={s[ek] !== 'exact'} onclick={() => choose({ [ek]: undefined })}>Bands</button>
+                    <button aria-pressed={s[ek] === 'exact'} onclick={() => choose({ [ek]: 'exact' })}>Exact</button>
                   </div>
-                {/if}
+                </div>
               </div>
             </div>
             {#if v.by}

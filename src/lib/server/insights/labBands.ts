@@ -1,9 +1,11 @@
-import { grindValue, MIXED_FILTER, type BrewFact } from './facts';
+import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
 
 // Brewing lab bands (spec "Bands"): a brew's band for one variable, or null when the value isn't
 // entered (facts already turn zeros into null) or the brew is outside the variable (another grinder).
 export interface Band { label: string; order: number }
-export type LabVar = 'temp' | 'tempExact' | 'ratio' | 'dose' | 'time' | 'bloom' | 'grind' | 'rest' | 'water' | 'dripper' | 'filter' | 'gh' | 'brewNo';
+// `<var>Exact`: the chart's Exact mode (preview round 1, G10); the bare name is its Bands mode.
+export type LabVar = 'temp' | 'tempExact' | 'ratio' | 'ratioExact' | 'dose' | 'doseExact' | 'time' | 'timeExact' | 'bloom' | 'bloomExact'
+  | 'grind' | 'grindExact' | 'rest' | 'water' | 'dripper' | 'filter' | 'gh' | 'brewNo';
 
 export const REST_LABELS = ['0–21 d', '22–30 d', '31–45 d', '46–60 d', '61–90 d', '91+ d'];
 export const BREW_NO_LABELS = [...Array.from({ length: 9 }, (_, i) => `#${i + 1}`), '#10+'];
@@ -18,24 +20,45 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, 
 const TIME_EDGES = Array.from({ length: 14 }, (_, i) => 90 + 15 * i); // 1:30 … 4:45
 const TIME_LABELS = ['< 1:30', ...TIME_EDGES.slice(0, -1).map((e) => `${mmss(e)}–${mmss(e + 14)}`), '4:45+'];
 const cat = (s: string | null | undefined): Band | null => (s ? { label: s, order: 0 } : null);
+const exact = (x: number | null | undefined, step: number, label: (v: number) => string): Band | null => {
+  if (x === null || x === undefined || !Number.isFinite(x)) return null;
+  const v = Math.round(x / step) * step;
+  return { label: label(v), order: v };
+};
+// B10: a bloom within 2 s of a multiple of 5 counts as that multiple (31 → 30, 43 → 45).
+export const bloomRound = (s: number) => (Math.abs(s - Math.round(s / 5) * 5) <= 2 ? Math.round(s / 5) * 5 : s);
+// B7: an a.b.c setting (A4Z) bands to a.b; a plain number (ZP6) to half-number bands ("5" = "5.0");
+// any other format stays exact. Exact: the raw setting, a whole number written as "5.0".
+function grindBand(grind: string, bands: boolean): Band | null {
+  const k = grindKey(grind);
+  if (!k) return null;
+  if (k.length > 2 || !bands) {
+    const short = bands && k.length === 3 ? k.slice(0, 2).join('.') : k.length === 1 ? `${k[0]}.0` : grind.trim();
+    return { label: short, order: grindValue(short)! };
+  }
+  const lo = Math.floor(Number(grind) * 2) / 2;
+  return { label: `${lo.toFixed(1)}–${(lo + 0.4).toFixed(1)}`, order: lo };
+}
 
 export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): Band | null {
   switch (v) {
     case 'temp': return cut(b.tempC, [90, 93, 95], ['< 90 °C', '90–92 °C', '93–94 °C', '95+ °C']);
     case 'tempExact': return b.tempC === null ? null : { label: `${Math.round(b.tempC)} °C`, order: Math.round(b.tempC) };
     case 'ratio': return cut(b.ratio, [15.5, 16.5, 17.5], ['< 1:15.5', '1:15.5–16.5', '1:16.5–17.5', '1:17.5+']);
+    case 'ratioExact': return exact(b.ratio, 0.5, (v) => `1:${v}`);
     case 'dose': return cut(b.dose && b.dose > 0 ? b.dose : null, [16, 18, 20], ['< 16 g', '16–18 g', '18–20 g', '20+ g']);
+    case 'doseExact': return exact(b.dose && b.dose > 0 ? b.dose : null, 0.5, (v) => `${v} g`);
     case 'time': return cut(b.brewTimeSeconds, TIME_EDGES, TIME_LABELS);
-    case 'bloom': return b.bloomSeconds === null ? null : { label: `${b.bloomSeconds} s`, order: b.bloomSeconds };
-    case 'grind': {
-      const g = grinder && b.grinder === grinder ? grindValue(b.grind) : null;
-      return g === null ? null : { label: b.grind!, order: g };
-    }
+    case 'timeExact': return exact(b.brewTimeSeconds, 5, mmss);
+    case 'bloom': return b.bloomSeconds === null ? null : cut(bloomRound(b.bloomSeconds), [30, 45, 60], ['0–29 s', '30–44 s', '45–59 s', '60 s+']);
+    case 'bloomExact': return b.bloomSeconds === null ? null : exact(bloomRound(b.bloomSeconds), 1, (v) => `${v} s`);
+    case 'grind': case 'grindExact':
+      return grinder && b.grinder === grinder && b.grind ? grindBand(b.grind, v === 'grind') : null;
     case 'rest': return b.restDays === null || b.restDays < 0 ? null : cut(b.restDays, [22, 31, 46, 61, 91], REST_LABELS);
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);
     case 'filter': return b.filter === MIXED_FILTER ? null : cat(b.filter);
-    case 'gh': return cut(profileOf(b)?.gh || null, [30, 60, 90], ['0–30 ppm', '30–60 ppm', '60–90 ppm', '90+ ppm']);
+    case 'gh': return exact(profileOf(b)?.gh || null, 1, (v) => `${v} ppm`); // W5: one band per GH value used
     case 'brewNo': return b.brewIndex < 1 ? null : { label: BREW_NO_LABELS[Math.min(b.brewIndex, 10) - 1], order: Math.min(b.brewIndex, 10) };
   }
 }

@@ -407,6 +407,13 @@ describe('brewing lab tabs', () => {
     }
     expect(run('?tab=overview').lab).toBeNull();
   });
+  it('each Band/Exact toggle reaches its own Brewing chart (dosing=exact → dose exact)', () => {
+    seed([[today, 15], [today, 15], [today, 17], [today, 17]]);
+    const dose = (q: string) => run(`?tab=brewing${q}`).brewing.vars.find((v: { key: string }) => v.key === 'dose').bands.map((b: { label: string }) => b.label);
+    expect(dose('')).toEqual(['< 16 g', '16–18 g']);
+    expect(dose('&dosing=exact')).toEqual(['15 g', '17 g']);
+    expect(dose('&temp=exact&ratio=exact')).toEqual(['< 16 g', '16–18 g']);
+  });
   it('lab values come from the data: a real bag slug stays, junk drops', () => {
     seed([[today, 15]]);
     const { slug } = getDb().prepare('SELECT slug FROM coffees').get() as { slug: string };

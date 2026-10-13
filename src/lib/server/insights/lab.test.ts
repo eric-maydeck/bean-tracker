@@ -91,6 +91,11 @@ describe('pairedDeltas', () => {
     const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7)], temp);
     expect(st[0].spread).toBeCloseTo(0.1);
   });
+  it('sd: sample SD of the band\'s rated brews\' ratings (every brew, paired or not); null under 2', () => {
+    const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7), brew({ coffeeId: 2, tempC: 96, rating: 5 })], temp);
+    expect(st[0].sd).toBeCloseTo(0.1);
+    expect(st[2]).toMatchObject({ label: '95+ °C', sd: null });
+  });
   it('spread ignores unpaired bags', () => {
     const wide = [4, 6, 8].map((rating) => brew({ coffeeId: 2, tempC: 91, rating })); // bag 2 never leaves 90–92: unpaired
     const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7), ...wide], temp);
@@ -237,6 +242,7 @@ describe('sweetSpotsTab', () => {
     const r = (id: number, k: number, v: number) => Array.from({ length: k }, () => brew({ coffeeId: id, rating: v }));
     const t = sweetSpotsTab([...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)], bags, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags;
     expect(t.map((b) => b.label)).toEqual(['Bag 2', 'Bag 1', 'Bag 3']);
+    expect(t.map((b) => b.sd)).toEqual([0, null, 0]); // sample SD of the bag's ratings; null under 2 brews
   });
   it('top bags: listed bags sharing a name get their roast dates as a tag', () => {
     const twins = [bag({ id: 1, name: 'Gesha', purchaseDate: '2026-03-04' }), bag({ id: 2, name: 'Gesha', purchaseDate: '2026-08-15' }), bag({ id: 3, name: 'Other', purchaseDate: '2026-05-01' })];
@@ -263,51 +269,55 @@ describe('sweetSpotsTab', () => {
 });
 
 describe('brewingTab', () => {
-  const c0 = { period: P, ratings: 'all' as const, grinder: null, by: {}, exact: false };
+  const c0 = { period: P, ratings: 'all' as const, grinder: null, by: {}, exact: {} };
   // 3 Light + 3 Nordic bags: 10 brews each at rest 10 (0–21 d), 25 (22–30 d), 35 (31–45 d); 91 °C beats 94 °C.
   const rows = [1, 2, 3, 4, 5, 6].flatMap((id) => [10, 25, 35].flatMap((rest, k) =>
     Array.from({ length: 10 }, (_, i) => brew({ coffeeId: id, restDays: rest, roastLevel: id < 4 ? 'Light' : 'Nordic', tempC: i % 2 ? 91 : 94,
       rating: +(7 + (i % 2) * 0.5 + (k === 1 ? 0.3 : 0) + ((i % 3) - 1) * 0.1).toFixed(2), brewIndex: k * 10 + i + 1,
       grinder: 'A4Z', grind: `1.${6 - k}.0`, ratio: i % 2 ? 16 : 17, dose: i % 2 ? 15 : 17, brewTimeSeconds: i % 2 ? 100 : 200, bloomSeconds: i % 2 ? 30 : 45 }))));
   const tab = (o: Partial<Parameters<typeof brewingTab>[1]> = {}) =>
-    brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false, ...o });
-  it('rest curve: a line per roast level with ≥ 2 solid bands, bag means less the roast level\'s mean', () => {
+    brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: {}, ...o });
+  it('rest heatmap: a row per roast level, cells = bag-mean per band less the roast level\'s mean', () => {
     const r = tab().rest!;
-    expect(r.x).toEqual(['0–21 d', '22–30 d', '31–45 d']); // trimmed to the bands with data
-    expect(r.lines.map((l) => l.label)).toEqual(['Light', 'Nordic']);
+    expect(r.cols).toEqual(['0–21 d', '22–30 d', '31–45 d']); // trimmed to the bands with data
+    expect(r.rows).toEqual(['Light', 'Nordic']);
     // Each bag: 7.24 / 7.54 / 7.24 by band, mean 7.34.
-    expect(r.lines[0].values).toEqual([-0.1, 0.2, -0.1]);
-    expect(r.faded).toBe(false);
-    expect(r.unit).toBe('vs roast level average');
+    expect(r.cells[0].map((c) => c!.delta)).toEqual([-0.1, 0.2, -0.1].map((x) => expect.closeTo(x)));
+    expect(r.cells[0][1]).toMatchObject({ solid: true, bags: 3, brews: 30 });
+    expect(r.best).toEqual([1, 1]);
     // A bag with no rest band (and an outlier rating) moves neither the bands nor the centre.
     const extra = [...rows, ...Array.from({ length: 10 }, () => brew({ coffeeId: 7, roastLevel: 'Light', restDays: null, rating: 2 }))];
-    expect(brewingTab(extra, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: false }).rest!.lines[0].values).toEqual([-0.1, 0.2, -0.1]);
+    expect(brewingTab(extra, c0).rest!.cells[0].map((c) => c!.delta)).toEqual([-0.1, 0.2, -0.1].map((x) => expect.closeTo(x)));
   });
-  it('rest curve: bags at one rest band each still draw (unit = bag, no pairs needed)', () => {
+  it('rest heatmap: bags at one rest band each still count (unit = bag, no pairs needed); inner gaps blank', () => {
     // 6 Light bags, 10 brews each, all at one rest: 3 at 10 d rated 7, 3 at 25 d rated 8.
     const one = [1, 2, 3, 4, 5, 6].flatMap((id) => Array.from({ length: 10 }, () => brew({ coffeeId: id, roastLevel: 'Light', restDays: id < 4 ? 10 : 25, rating: id < 4 ? 7 : 8 })));
-    expect(brewingTab(one, c0).rest!.lines).toEqual([{ label: 'Light', values: [-0.5, 0.5] }]);
-    // Leading and trailing empty bands trimmed, an inner gap kept: 22–30 d and 46–60 d → x 22–30 … 46–60.
+    expect(brewingTab(one, c0).rest).toEqual({ rows: ['Light'], cols: ['0–21 d', '22–30 d'], best: [1],
+      cells: [[{ delta: -0.5, solid: true, brews: 30, bags: 3 }, { delta: 0.5, solid: true, brews: 30, bags: 3 }]] });
     const gap = one.map((b) => ({ ...b, restDays: b.restDays === 10 ? 25 : 50 }));
     const g = brewingTab(gap, c0).rest!;
-    expect(g.x).toEqual(['22–30 d', '31–45 d', '46–60 d']);
-    expect(g.lines[0].values).toEqual([-0.5, null, 0.5]);
+    expect(g.cols).toEqual(['22–30 d', '31–45 d', '46–60 d']);
+    expect(g.cells[0].map((c) => c?.delta ?? null)).toEqual([-0.5, null, 0.5]);
   });
-  it('rest curve: no roast level with 2 solid bands → every band drawn, faded', () => {
-    const at = (id: number, rest: number, n: number, ratings: number[]) =>
-      Array.from({ length: n }, (_, i) => brew({ coffeeId: id, roastLevel: 'Solo', restDays: rest, rating: ratings[i % ratings.length] }));
-    const solo = [4, 5, 6].flatMap((id) => [...at(id, 10, 10, [7, 8]), ...at(id, 25, 2, [8])]);
-    const r = brewingTab(solo, c0).rest!;
-    expect(r.faded).toBe(true);
-    expect(r.lines).toEqual([{ label: 'Solo', values: [-0.08, 0.42] }]);
-    expect(brewingTab(solo.filter((b) => b.restDays === 10), c0).rest).toBeNull(); // one band: no line at all
-    // A roast level under 3 bags stays out of the faded fallback (same rule as the Roast picker).
-    const pair = [7, 8].flatMap((id) => [...at(id, 10, 10, [7, 8]), ...at(id, 25, 2, [8])]).map((b) => ({ ...b, roastLevel: 'Duo' }));
-    expect(brewingTab([...solo, ...pair], c0).rest!.lines.map((l) => l.label)).toEqual(['Solo']);
+  it('rest heatmap: thin cells stay (faded), best only among ≥ 2 solid cells; a roast level needs 3 bags and 2 bands', () => {
+    const at = (id: number, roastLevel: string, rest: number, n: number, ratings: number[]) =>
+      Array.from({ length: n }, (_, i) => brew({ coffeeId: id, roastLevel, restDays: rest, rating: ratings[i % ratings.length] }));
+    // Thin: bags 1-3 have 10 + 10 brews in two bands and 2 at 31–45 d (6 brews < 30). Solo: one solid band, one thin.
+    const thin = [1, 2, 3].flatMap((id) => [...at(id, 'Thin', 10, 10, [7, 8]), ...at(id, 'Thin', 25, 10, [8, 9]), ...at(id, 'Thin', 35, 2, [7])]);
+    const solo = [4, 5, 6].flatMap((id) => [...at(id, 'Solo', 10, 10, [7, 8]), ...at(id, 'Solo', 25, 2, [8])]);
+    const duo = [7, 8].flatMap((id) => [...at(id, 'Duo', 10, 10, [7, 8]), ...at(id, 'Duo', 25, 10, [8])]);
+    const r = brewingTab([...thin, ...solo, ...duo], c0).rest!;
+    expect(r.rows).toEqual(['Solo', 'Thin']);
+    expect(r.cols).toEqual(['0–21 d', '22–30 d', '31–45 d']);
+    expect(r.cells[0].map((c) => c && [c.solid, c.bags, c.brews])).toEqual([[true, 3, 30], [false, 3, 6], null]);
+    expect(r.cells[0][1]!.delta).toBeCloseTo(0.42, 2);
+    expect(r.cells[1][2]).toMatchObject({ solid: false, bags: 3, brews: 6 });
+    expect(r.best).toEqual([null, 1]);
+    expect(brewingTab(solo.filter((b) => b.restDays === 10), c0).rest).toBeNull(); // one band: no row
   });
   it('variable charts drop bands with no paired brews; exact temps keep every °C used', () => {
     const extra = [...rows, ...[7, 8].flatMap((id) => Array.from({ length: 4 }, () => brew({ coffeeId: id, tempC: 88, rating: 7 })))];
-    const t = (exact: boolean) => brewingTab(extra, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact }).vars[0].bands.map((b) => b.label);
+    const t = (temp: boolean) => brewingTab(extra, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: { temp } }).vars[0].bands.map((b) => b.label);
     expect(t(false)).toEqual(['90–92 °C', '93–94 °C']);
     expect(t(true)).toEqual(['88 °C', '91 °C', '94 °C']);
   });
@@ -329,31 +339,23 @@ describe('brewingTab', () => {
   });
   it('variable charts; exact temps; breakdown rows', () => {
     expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'ratio', 'dose', 'time', 'bloom', 'grind']);
-    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30 s', '1.4.0']);
+    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30–44 s', '1.4']);
     expect(tab({ grinder: 'ZP6' }).vars.map((v) => v.key)).not.toContain('grind');
-    expect(tab({ exact: true }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
+    expect(tab({ exact: { temp: true } }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
+    // Each chart's mode is its own: exact grind leaves temp in bands.
+    const x = tab({ exact: { ratio: true, dose: true, time: true, bloom: true, grind: true } }).vars;
+    expect(x.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:16', '15 g', '1:40', '30 s', '1.4.0']);
     const by = tab({ by: { temp: 'roast' } }).vars[0].by!;
     expect(by.rows).toEqual(['Light', 'Nordic']);
     expect(by.cols).toEqual(['90–92 °C', '93–94 °C']);
     expect(tab().vars[0].by).toBeNull();
   });
   it('empty period: nothing, no NaN', () => {
-    const e = brewingTab(rows, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: false });
+    const e = brewingTab(rows, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
     expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], vars: [] });
   });
-  it('rest curve: a lone solid band draws no line; a thin band is null; values are rounded', () => {
-    const at = (id: number, roastLevel: string, rest: number, n: number, ratings: number[]) =>
-      Array.from({ length: n }, (_, i) => brew({ coffeeId: id, roastLevel, restDays: rest, rating: ratings[i % ratings.length] }));
-    // Thin: bags 1-3 have 10 + 10 solid brews per band and 2 at 31–45 d (6 paired brews < 30). Solo: one solid band, one thin.
-    const thin = [1, 2, 3].flatMap((id) => [...at(id, 'Thin', 10, 10, [7, 8]), ...at(id, 'Thin', 25, 10, [8, 9]), ...at(id, 'Thin', 35, 2, [7])]);
-    const solo = [4, 5, 6].flatMap((id) => [...at(id, 'Solo', 10, 10, [7, 8]), ...at(id, 'Solo', 25, 2, [8])]);
-    const r = brewingTab([...thin, ...solo], { period: P, ratings: 'all', grinder: null, by: {}, exact: false }).rest!;
-    expect(r.lines.map((l) => l.label)).toEqual(['Thin']);
-    expect(r.faded).toBe(false);
-    expect(r.lines[0].values).toEqual([-0.41, 0.59]);
-  });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
-  const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: false };
+  const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };
   it('best brew: earliest wins a tie', () => {
     expect(brewingTab(bag1([7, 8, 8, 7, 7]), c1).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
   });
@@ -390,51 +392,67 @@ describe('waterTab', () => {
     expect(w.recipes[0]).toMatchObject({ months: 'Sep', solid: true });
     expect(w.recipes[0].delta).toBeCloseTo(0.25);
   });
-  it('minerals: plain adjusted means per value, only minerals with ≥ 2 values', () => {
+  it('minerals: plain adjusted means per value as points on a numeric axis, only minerals with ≥ 2 values', () => {
     expect(w.minerals.map((m) => m.key)).toEqual(['calcium', 'magnesium', 'gh', 'mgca', 'mgk']);
-    expect(w.minerals[0].bars.map((b) => b.label)).toEqual(['10', '20']);
-    expect(w.minerals[0].bars.map((b) => b.solid)).toEqual([true, true]); // 3 bags, 30 brews each
-    expect(w.minerals[0].bars[0].value).toBeGreaterThan(w.minerals[0].bars[1].value);
+    expect(w.minerals.map((m) => m.unit)).toEqual(['mg/L', 'mg/L', 'ppm', '', '']);
+    expect(w.minerals[0].points.map((b) => b.value)).toEqual([10, 20]);
+    expect(w.minerals[1].points.map((b) => b.value)).toEqual([5, 15]); // sorted by amount, numerically
+    expect(w.minerals[0].points[0]).toMatchObject({ brews: 30, bags: 3, solid: true }); // 3 bags, 30 brews each
+    expect(w.minerals[0].points[0].mean).toBeGreaterThan(w.minerals[0].points[1].mean);
     expect(w.minerals[0].overall).toBeCloseTo(7.74);
   });
   it('mineral bars are not solid under MIN_BAGS / MIN_BREWS', () => {
     const thin = waterTab(rows.filter((r) => r.coffeeId === 1 || r.coffeeId === 2), bags, { period: P, ratings: 'all' });
-    expect(thin.minerals[0].bars.map((b) => b.solid)).toEqual([false, false]); // 2 bags
+    expect(thin.minerals[0].points.map((b) => b.solid)).toEqual([false, false]); // 2 bags
     const few = waterTab([1, 2, 3].flatMap((id) => [
       ...many(5, id, 92, 8, { water: 'A', waterProfile: prof(10, 15) }), ...many(5, id, 92, 7.5, { water: 'B', waterProfile: prof(20, 5) })]), bags, { period: P, ratings: 'all' });
-    expect(few.minerals[0].bars.map((b) => b.solid)).toEqual([false, false]); // 15 brews each
+    expect(few.minerals[0].points.map((b) => b.solid)).toEqual([false, false]); // 15 brews each
   });
   it('a profile with every mineral 0 or empty counts as not entered; one 0 among others is real', () => {
     const blank = { calcium: 0, magnesium: null, sodium: 0, potassium: 0, chloride: null, sulfate: 0, gh: 0, kh: 40 };
     const x = waterTab([...rows, ...[4, 5, 6].flatMap((id) => many(10, id, 92, 6, { water: 'C', waterProfile: blank, localDate: '2026-09-10' }))], bags, { period: P, ratings: 'all' });
     expect(x.minerals.map((m) => m.key)).toEqual(w.minerals.map((m) => m.key)); // KH 40 would add a second KH value
-    expect(x.minerals.flatMap((m) => m.bars.map((b) => b.label))).toEqual(w.minerals.flatMap((m) => m.bars.map((b) => b.label)));
-    expect(x.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
+    expect(x.minerals.flatMap((m) => m.points.map((b) => b.value))).toEqual(w.minerals.flatMap((m) => m.points.map((b) => b.value)));
+    expect(x.gh.map((s) => s.label)).toEqual(['71 ppm', '87 ppm']);
     expect(w.minerals.find((m) => m.key === 'calcium')).toBeDefined(); // sodium 0 in prof() stays a real (single) value
     const na = waterTab(rows.map((r) => (r.water === 'B' ? { ...r, waterProfile: { ...r.waterProfile!, sodium: 3 } } : r)), bags, { period: P, ratings: 'all' });
-    expect(na.minerals.find((m) => m.key === 'sodium')!.bars.map((b) => b.label)).toEqual(['0', '3']);
+    expect(na.minerals.find((m) => m.key === 'sodium')!.points.map((b) => b.value)).toEqual([0, 3]);
   });
   it('pairs: a repurchase (same roaster and name) carries its roast date', () => {
     const twin = [1, 2, 3].map((id) => bag({ id, name: 'Same', purchaseDate: `2026-0${id + 5}-0${id}` }));
-    expect(waterTab(rows, twin, { period: P, ratings: 'all' }).pairs.map((p) => p.tag)).toEqual(['roasted Jun 1', 'roasted Jul 2', 'roasted Aug 3']);
-    expect(w.pairs.every((p) => p.tag === null)).toBe(true);
+    expect(waterTab(rows, twin, { period: P, ratings: 'all' }).pairs[0].bags.map((p) => p.tag)).toEqual(['roasted Jun 1', 'roasted Jul 2', 'roasted Aug 3']);
+    expect(w.pairs[0].bags.every((p) => p.tag === null)).toBe(true);
   });
-  it('GH bands, heatmaps, pairs', () => {
-    expect(w.gh.map((s) => s.label)).toEqual(['60–90 ppm']);
+  it('GH by exact value, heatmaps', () => {
+    expect(w.gh.map((s) => s.label)).toEqual(['71 ppm', '87 ppm']);
     expect(w.byRoast!.rows).toEqual(['Light']);
     expect(w.byProcess!.cols).toEqual(['A', 'B']);
-    expect(w.pairs[0]).toMatchObject({ label: 'R Bag 1', href: '/coffees/s1', best: { water: 'A' }, others: [{ water: 'B' }] });
-    expect(w.pairs[0].gap).toBeCloseTo(0.5);
   });
-  it('pairs: biggest gap first, capped at 10, need ≥ 2 brews per water', () => {
-    const many12 = Array.from({ length: 12 }, (_, i) => i + 1);
-    const r = many12.flatMap((id) => [...many(2, id, 92, 8, { water: 'A' }), ...many(2, id, 92, 8 - id / 10, { water: 'B' })]);
-    const p = waterTab(r, many12.map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` })), { period: P, ratings: 'all' }).pairs;
-    expect(p).toHaveLength(10);
-    expect(p[0].label).toBe('R Bag 12');
+  it('pairs: grouped by recipe pair, won/lost/tied and mean delta from A\'s side, bags with both ratings', () => {
+    expect(w.pairs).toHaveLength(1);
+    const p = w.pairs[0];
+    expect(p).toMatchObject({ a: 'A', b: 'B', won: 3, lost: 0, tied: 0 });
+    expect(p.delta).toBeCloseTo(0.5);
+    expect(p.bags[0]).toMatchObject({ label: 'R Bag 1', href: '/coffees/s1', tag: null });
+    expect(p.bags[0].a).toBeCloseTo(8, 1);
+    expect(p.bags[0].b).toBeCloseTo(7.5, 1);
+  });
+  it('pairs: A is the side that won more bags; ties counted; a 3-recipe bag joins 3 pairs; most bags first', () => {
+    const ids = [1, 2, 3, 4];
+    const r = [
+      ...many(2, 1, 92, 7, { water: 'A' }), ...many(2, 1, 92, 8, { water: 'B' }), ...many(2, 1, 92, 6, { water: 'C' }),
+      ...many(2, 2, 92, 7, { water: 'A' }), ...many(2, 2, 92, 7.5, { water: 'B' }),
+      ...many(2, 3, 92, 7, { water: 'A' }), ...many(2, 3, 92, 7, { water: 'B' }),
+      ...many(2, 4, 92, 8, { water: 'A' }), ...many(2, 4, 92, 7.9, { water: 'B' })];
+    const p = waterTab(r, ids.map((id) => bag({ id, name: `Bag ${id}` })), { period: P, ratings: 'all' }).pairs;
+    expect(p.map((x) => [x.a, x.b, x.won, x.lost, x.tied, x.bags.length])).toEqual([['B', 'A', 2, 1, 1, 4], ['A', 'C', 1, 0, 0, 1], ['B', 'C', 1, 0, 0, 1]]);
+    expect(p[0].delta).toBeCloseTo((1 + 0.5 + 0 - 0.1) / 4);
+    expect(p[0].bags.map((b) => b.label)).toEqual(['R Bag 1', 'R Bag 2', 'R Bag 3', 'R Bag 4']); // A's gap, biggest first
+    expect([p[0].bags[0].a, p[0].bags[0].b]).toEqual([expect.closeTo(7.95), expect.closeTo(6.95)]);
+  });
+  it('pairs need ≥ 2 brews per water on the bag', () => {
     const one = waterTab([...many(1, 1, 92, 8, { water: 'A' }), ...many(2, 1, 92, 7, { water: 'B' }), ...many(2, 1, 92, 6, { water: 'C' })], bags, { period: P, ratings: 'all' }).pairs;
-    expect(one[0].best.water).toBe('B');
-    expect(one[0].others.map((o) => o.water)).toEqual(['C']);
+    expect(one.map((x) => [x.a, x.b])).toEqual([['B', 'C']]);
   });
   it('months span years as "Nov 25–Feb 26"', () => {
     const span = waterTab([...many(2, 1, 92, 8, { water: 'A', localDate: '2025-11-03' }), ...many(2, 1, 92, 8, { water: 'A', localDate: '2026-02-01' })],
@@ -469,11 +487,28 @@ describe('gearTab', () => {
     expect(g.drippers[0].spread).not.toBeNull();
   });
   it('filters leave the mixed filter out', () => expect(g.filters.map((f) => f.label)).toEqual(['Abaca']));
-  it('dripper × filter matrix and dripper × roast level', () => {
-    expect(g.matrix).toMatchObject({ rows: ['V60', 'Origami'], cols: ['Abaca'] });
-    expect(g.matrix!.cells[0][0]!.delta).toBeGreaterThan(g.matrix!.cells[1][0]!.delta!);
-    expect(g.matrix!.cells[0][0]).toMatchObject({ brews: 30, bags: 3 });
-    expect(g.byRoast!.cols).toEqual(['V60', 'Origami', 'Gabi Master A']);
+  it('dripper × roast level', () => expect(g.byRoast!.cols).toEqual(['V60', 'Origami', 'Gabi Master A']));
+  it('filters within each dripper: same bag, same dripper; rows = drippers with rated brews on ≥ 2 filters', () => {
+    expect(g.matrix).toBeNull(); // every dripper here uses one filter
+    const r = [1, 2, 3].flatMap((id) => [
+      ...many(10, id, 92, 8, { dripper: 'V60', filter: 'Abaca' }), ...many(10, id, 92, 7, { dripper: 'V60', filter: 'T90' }),
+      ...many(10, id, 92, 6, { dripper: 'Origami', filter: 'Abaca' }), ...many(10, id, 92, 6.5, { dripper: 'Origami', filter: 'T90' }),
+      ...many(10, id, 92, 7, { dripper: 'Kalita', filter: 'Wave' }),
+      ...many(2, id, 92, 7, { dripper: 'April', filter: id === 1 ? 'Paper' : 'Abaca' })]); // two filters, never on one bag
+    const m = gearTab(r, { period: P, ratings: 'all' }).matrix!;
+    expect(m.rows).toEqual(['V60', 'Origami', 'April']);
+    expect(m.cols).toEqual(['Abaca', 'T90', 'Paper']);
+    expect(m.cells[2]).toEqual([{ delta: null, solid: false, brews: 0, bags: 0 }, null, { delta: null, solid: false, brews: 0, bags: 0 }]);
+    expect(m.cells.slice(0, 2).map((row) => row.slice(0, 2).map((c) => c!.delta))).toEqual([[0.5, -0.5], [-0.25, 0.25]].map((row) => row.map((x) => expect.closeTo(x))));
+    expect(m.cells[0][0]).toMatchObject({ solid: true, brews: 30, bags: 3 });
+  });
+  it('eras: each month\'s shares sum to 100', () => {
+    const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
+    const r = months.flatMap((localDate) => ['X', 'Y', 'Z'].flatMap((dripper) => many(7, 1, 92, 8, { dripper, localDate })));
+    const e = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    expect(e.lines.map((l) => l.label)).toEqual(['X', 'Y', 'Z']);
+    for (let i = 0; i < 3; i++) expect(e.lines.reduce((s, l) => s + l.values[i]!, 0)).toBe(100);
+    expect(e.lines.map((l) => l.values[0])).toEqual([34, 33, 33]);
   });
   it('no filters at all: no matrix', () => {
     const r = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8, { dripper: 'V60' }), ...many(4, id, 92, 7, { dripper: 'Origami' })]);

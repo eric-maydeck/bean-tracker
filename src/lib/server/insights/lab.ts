@@ -1,7 +1,7 @@
 import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
-import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
-import { monthlyMulti, shareCell, type Multi } from './insightGenerators';
+import { grindKey, type BagFact, type BrewFact } from './facts';
+import { monthlyMulti, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { groupBy } from './records';
@@ -23,6 +23,7 @@ export interface BandStat {
   strength: Strength | null; // vs the other bands' deltas, Bonferroni over every band of the variable in the period's data; null = nothing to compare
   adjusted: number; plainBrews: number; plainBags: number; // bag-weighted adjusted mean (K = 5) over every rated brew in the band
   spread: number | null; // sample SD of the paired brews' same-bag deltas (consistency); null under 2 paired brews
+  sd: number | null; // sample SD of the band's rated brews' ratings (board SD column, over plainBrews); null under 2 brews
 }
 const EPS = 1e-9; // an SD below this is float noise: no spread to measure a gap against
 const byOrder = (a: { order: number; label: string }, b: { order: number; label: string }) => a.order - b.order || a.label.localeCompare(b.label);
@@ -43,6 +44,7 @@ export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand
   const tests = bands.size; // Bonferroni: every band of the variable present in the data (spec), not only those with pairs
   const residual = sd([...bands.values()].flatMap((s) => s.paired));
   const pairedSd = new Map([...bands].map(([l, s]) => [l, s.paired.length >= 2 ? sampleSd(s.paired) : null]));
+  const ratingSd = new Map([...groupBy(dm, (r) => r.k.label)].map(([l, g]) => [l, g.length >= 2 ? sampleSd(g.map((r) => r.rating!)) : null]));
   return [...bands].map(([label, s]): BandStat => {
     const others = [...bands].filter(([l]) => l !== label).flatMap(([, o]) => o.paired);
     const solid = s.bags.size >= MIN_BAGS && s.paired.length >= MIN_BREWS;
@@ -51,7 +53,7 @@ export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand
     return {
       label, order: s.order, delta: s.paired.length ? mean(s.paired) : null, brews: s.paired.length, bags: s.bags.size, solid,
       strength: z === null ? null : strengthOf(z, solid, tests),
-      adjusted: g.adjusted, plainBrews: g.brews, plainBags: g.bags, spread: pairedSd.get(label)!
+      adjusted: g.adjusted, plainBrews: g.brews, plainBags: g.bags, spread: pairedSd.get(label)!, sd: ratingSd.get(label)!
     };
   }).sort(byOrder);
 }
@@ -133,7 +135,7 @@ export const SLICE_OF: Record<Slice, (b: BrewFact) => string | null> = {
 export interface Cell { delta: number | null; solid: boolean; brews: number; bags: number }
 // One mapping for every heatmap (breakdown, gearTab's matrix): counts are the paired brews and bags
 // behind the delta, so a tip never reads "6 brews, 0 bags".
-export const cellOf = (s: BandStat): Cell => ({ delta: s.delta, solid: s.solid, brews: s.brews, bags: s.bags });
+export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'>): Cell => ({ delta: s.delta, solid: s.solid, brews: s.brews, bags: s.bags });
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
 
 // A heatmap of same-bag deltas: rows = slice values with ≥ MIN_BAGS bags that have the variable,
@@ -200,7 +202,7 @@ export interface SweetSpotsTab {
   matching: { bags: number; brews: number };
   cards: { key: SpotVar; name: string; spot: Spot }[];
   // `tag`: what tells apart listed bags sharing a name ("roasted May 5" / "opened Jul 30"), else null.
-  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; usual: string }[];
+  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; sd: number | null; usual: string }[];
 }
 const TOP_N = 5; // bags listed
 const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
@@ -239,6 +241,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
       label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
       roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
+      sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null,
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
@@ -248,10 +251,11 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
 export type BrewVar = 'temp' | 'ratio' | 'dose' | 'time' | 'bloom' | 'grind';
 export interface VarChart { key: BrewVar; bands: BandStat[]; by: Breakdown | null }
 export interface BrewingTab {
-  // x = rest bands; a line per roast level: its bags' mean rating per band (bag = unit) less the roast level's
-  // mean bag rating. Lines need ≥ 2 solid bands (null where not solid); when no roast level has that, `faded`
-  // and every roast level with ≥ 2 bands of any size is drawn.
-  rest: (Multi & { faded: boolean }) | null;
+  // Rest heatmap: rows = roast levels (≥ MIN_BAGS bags, ≥ 2 rest bands with data), cols = rest bands trimmed to
+  // the data; cell = its bags' mean rating in the band (bag = unit) less the roast level's mean bag rating,
+  // thin cells (not solid) kept for a faded draw. `best[row]`: column of the row's best solid cell, null
+  // under 2 solid cells (nothing to compare).
+  rest: (Breakdown & { best: (number | null)[] }) | null;
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
   drift: { label: string; value: number; bags: number; solid: boolean }[]; // mean setting change vs the bag's first brew
@@ -262,25 +266,29 @@ const round2 = (x: number) => Math.round(x * 100) / 100;
 // ponytail: a part ≥ 10 overlaps the next digit; fine for A4Z / ZP6 settings, revisit for other grinders.
 const dial = (g: string | null) => grindKey(g)?.reduce((s, n, i) => s + n / 10 ** i, 0) ?? null;
 
-export function brewingTab(brews: readonly BrewFact[], c: { period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: boolean }): BrewingTab {
+export function brewingTab(brews: readonly BrewFact[], c: {
+  period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: Partial<Record<BrewVar, boolean>>;
+}): BrewingTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   // Rest is mostly a bag-level property (a bag spans about one rest band), so same-bag deltas barely exist:
-  // compare bags instead (Sweet spots tier 2), each line centred on its roast level's mean bag rating.
+  // compare bags instead (Sweet spots tier 2), each row centered on its roast level's mean bag rating.
   const rest = labFn('rest');
-  // The centre uses the same brews as the bands: a brew (or bag) with no rest band counts in neither.
-  const restLines = (solidOnly: boolean) => [...groupBy(rows.filter((b) => rest(b)), (b) => b.roastLevel)].flatMap(([label, g]) => {
-    const centre = mean([...groupBy(g, (b) => b.coffeeId).values()].map((bs) => mean(bs.map((b) => b.rating!))));
+  // The center uses the same brews as the bands: a brew (or bag) with no rest band counts in neither.
+  const levels = [...groupBy(rows.filter((b) => rest(b)), (b) => b.roastLevel)].flatMap(([label, g]) => {
+    const center = bagMeanAvg(g);
     const bm = bagBandMeans(g, rest);
-    const values = REST_LABELS.map((l) => { const s = bm.get(l); return s && (!solidOnly || isSolid(s)) ? round2(mean(s.means) - centre) : null; });
-    // A roast level needs ≥ MIN_BAGS bags (as the Roast picker and breakdowns): the faded fallback draws no 1–2 bag lines.
-    return label && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS && values.filter((v) => v !== null).length >= 2 ? [{ label, values }] : [];
+    const cells = REST_LABELS.map((l) => { const s = bm.get(l); return s ? cellOf({ delta: mean(s.means) - center, solid: isSolid(s), brews: s.brews, bags: s.means.length }) : null; });
+    // A roast level needs ≥ MIN_BAGS bags (as the Roast picker and breakdowns).
+    return label && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS && cells.filter(Boolean).length >= 2 ? [{ label, cells }] : [];
   }).sort((a, b) => a.label.localeCompare(b.label));
-  const solidLines = restLines(true);
-  const all = solidLines.length ? solidLines : restLines(false);
-  // The axis starts and ends where the data does: bands with no value in any line are trimmed off both ends.
-  const has = REST_LABELS.map((_, i) => all.some((l) => l.values[i] !== null));
+  // The columns start and end where the data does: bands with no cell in any row are trimmed off both ends.
+  const has = REST_LABELS.map((_, i) => levels.some((l) => l.cells[i]));
   const [from, to] = [has.indexOf(true), has.lastIndexOf(true) + 1];
-  const lines = all.map((l) => ({ ...l, values: l.values.slice(from, to) }));
+  const restCells = levels.map((l) => l.cells.slice(from, to));
+  const bestOf = (row: (Cell | null)[]) => {
+    const solid = row.flatMap((x, i) => (x?.solid ? [{ i, d: x.delta! }] : []));
+    return solid.length >= 2 ? solid.reduce((x, y) => (y.d > x.d ? y : x)).i : null;
+  };
   const best = [...groupBy(rows.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
     .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
   // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
@@ -292,16 +300,16 @@ export function brewingTab(brews: readonly BrewFact[], c: { period: Period; rati
     const bags = new Set(g.map((b) => b.coffeeId)).size;
     return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS }; // solid counts bags only: the bag is the unit, brews within it aren't independent
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
-  const VARS: [BrewVar, LabVar][] = [['temp', c.exact ? 'tempExact' : 'temp'], ['ratio', 'ratio'], ['dose', 'dose'], ['time', 'time'], ['bloom', 'bloom'], ['grind', 'grind']];
+  const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
   return {
-    rest: lines.length ? { x: REST_LABELS.slice(from, to), lines, unit: 'vs roast level average', faded: !solidLines.length } : null,
+    rest: levels.length ? { rows: levels.map((l) => l.label), cols: REST_LABELS.slice(from, to), cells: restCells, best: restCells.map(bestOf) } : null,
     dialIn: pairedDeltas(rows, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],
-    vars: VARS.flatMap(([key, v]) => {
-      const f = labFn(v, c.grinder);
+    vars: VARS.flatMap((key) => {
+      const f = labFn(c.exact[key] ? `${key}Exact` : key, c.grinder); // each chart's own Band/Exact toggle (G10)
       // A band with no paired brews carries no delta: dropped, except exact temps (every whole °C used is listed, user).
-      const bands = pairedDeltas(rows, f).filter((b) => b.delta !== null || (key === 'temp' && c.exact));
+      const bands = pairedDeltas(rows, f).filter((b) => b.delta !== null || (key === 'temp' && c.exact.temp));
       const by = c.by[key];
       return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label)) : null }] : [];
     })
@@ -321,15 +329,37 @@ const monthsOf = (bs: readonly BrewFact[]) => {
   return a.slice(0, 7) === b.slice(0, 7) ? m(a) : `${m(a)}–${m(b)}`;
 };
 const bagMeanAvg = (rs: readonly BrewFact[]) => mean([...groupBy(rs, (b) => b.coffeeId).values()].map((g) => mean(g.map((b) => b.rating!))));
-const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) => string | null) =>
-  monthlyMulti(brews.filter((b) => inPeriod(b.localDate, period) && key(b)), key, shareCell, '%', 20);
+// Whole percents that sum to exactly 100 (largest remainder; ties go to the earlier line).
+const hundred = (xs: number[]) => {
+  const out = xs.map(Math.floor);
+  let left = 100 - out.reduce((s, x) => s + x, 0);
+  for (const i of xs.map((_, i) => i).sort((a, b) => xs[b] - out[b] - (xs[a] - out[a]) || a - b)) if (left-- > 0) out[i]++;
+  return out;
+};
+// Each month's shares of brews (the lines, with "Other", cover every brew) sum to 100: stacked bars (G6).
+const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) => string | null): Multi | null => {
+  const m = monthlyMulti(brews.filter((b) => inPeriod(b.localDate, period) && key(b)), key, (g, month) => (100 * g.length) / month.length, '%', 20);
+  if (!m) return null;
+  const cols = m.x.map((_, i) => hundred(m.lines.map((l) => l.values[i] ?? 0)));
+  return { ...m, lines: m.lines.map((l, j) => ({ ...l, values: cols.map((col) => col[j]) })) };
+};
 
+export interface MineralPoint { value: number; mean: number; brews: number; bags: number; solid: boolean } // value = the amount; mean = adjusted mean rating
+export interface WaterPair {
+  a: string; b: string; // A = the recipe that won more bags (then the higher mean delta, then name)
+  won: number; lost: number; tied: number; // bags, from A's side; tied = bag means within 0.005
+  delta: number; // mean over the bags of A's bag mean minus B's
+  bags: { label: string; tag: string | null; href: string | null; a: number; b: number }[]; // A's gap, biggest first
+}
 export interface WaterTab {
   recipes: LeaderRow[];
-  minerals: { key: Mineral; name: string; overall: number; bars: { label: string; value: number; brews: number; bags: number; solid: boolean }[] }[];
+  // `unit`: mg/L, ppm (GH, KH), '' for the Mg:Ca and Mg:K ratios. Points sorted by value.
+  minerals: { key: Mineral; name: string; unit: string; overall: number; points: MineralPoint[] }[];
   gh: BandStat[]; byRoast: Breakdown | null; byProcess: Breakdown | null; eras: Multi | null;
-  pairs: { label: string; tag: string | null; href: string | null; best: { water: string; mean: number }; others: { water: string; mean: number }[]; gap: number }[];
+  pairs: WaterPair[]; // most bags first
 }
+const MINERAL_UNIT: Partial<Record<Mineral, string>> = { gh: 'ppm', kh: 'ppm', mgca: '', mgk: '' };
+const TIE = 0.005; // bag means this close show the same at 2 dp: a tie
 export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings }): WaterTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   const water = labFn('water');
@@ -344,39 +374,62 @@ export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c
       const has = rows.filter((b) => mineralOf(key, b) !== null);
       const g = ratedGroups(has, (b) => String(mineralOf(key, b)), 'all', 'adjusted');
       if (g.length < 2) return [];
-      return [{ key, name, overall: bagMeanAvg(has), bars: g.map((x) => ({ label: x.label, value: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS })).sort((a, b) => +a.label - +b.label) }];
+      const points = g.map((x) => ({ value: +x.label, mean: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS }));
+      return [{ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L', overall: bagMeanAvg(has), points: points.sort((a, b) => a.value - b.value) }];
     }),
     gh: pairedDeltas(rows, labFn('gh')),
     byRoast: breakdown(rows, water, SLICE_OF.roast, cols),
     byProcess: breakdown(rows, water, SLICE_OF.process, cols),
     eras: eraOf(brews, c.period, (b) => b.water),
-    pairs: tagTwins([...groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)].flatMap(([id, g]) => {
-      const ws = [...groupBy(g, (b) => b.water)].filter(([, x]) => x.length >= 2)
-        .map(([w, x]) => ({ water: w!, mean: mean(x.map((b) => b.rating!)) })).sort((a, b) => b.mean - a.mean || a.water.localeCompare(b.water));
-      if (ws.length < 2) return [];
-      const bag = byId.get(id!);
-      return [{ label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null, best: ws[0], others: ws.slice(1), gap: ws[0].mean - ws[1].mean,
-        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null }];
-    }).sort((a, b) => b.gap - a.gap || a.label.localeCompare(b.label)).slice(0, 10)) // ponytail: top 10 pairs; add a Show all when asked
+    pairs: waterPairs(rows, byId)
   };
+}
+
+// Same bag, different water (W7): every two recipes a bag was brewed with (≥ 2 rated brews each), grouped by
+// recipe pair. A bag with three recipes joins three pairs.
+function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): WaterPair[] {
+  const pairs = new Map<string, { x: string; y: string; bags: { id: number; x: number; y: number }[] }>();
+  for (const [id, g] of groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)) {
+    const ws = [...groupBy(g, (b) => b.water)].filter(([, x]) => x.length >= 2)
+      .map(([w, x]) => ({ w: w!, m: mean(x.map((b) => b.rating!)) })).sort((a, b) => a.w.localeCompare(b.w));
+    for (let i = 0; i < ws.length; i++)
+      for (let j = i + 1; j < ws.length; j++) {
+        const k = `${ws[i].w}\u0000${ws[j].w}`;
+        (pairs.get(k) ?? pairs.set(k, { x: ws[i].w, y: ws[j].w, bags: [] }).get(k)!).bags.push({ id: id!, x: ws[i].m, y: ws[j].m });
+      }
+  }
+  return [...pairs.values()].map((p) => {
+    const d = p.bags.map((b) => b.x - b.y);
+    const xw = d.filter((x) => x >= TIE).length, yw = d.filter((x) => x <= -TIE).length;
+    const flip = yw > xw || (yw === xw && mean(d) < 0);
+    const bags = p.bags.map(({ id, x, y }) => {
+      const bag = byId.get(id);
+      return { label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
+        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y };
+    }).sort((u, v) => v.a - v.b - (u.a - u.b) || u.label.localeCompare(v.label));
+    return { a: flip ? p.y : p.x, b: flip ? p.x : p.y, won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,
+      delta: (flip ? -1 : 1) * mean(d), bags: tagTwins(bags) };
+  }).sort((p, q) => q.bags.length - p.bags.length || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
 }
 
 export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; eras: Multi | null }
 export function gearTab(brews: readonly BrewFact[], c: { period: Period; ratings: Ratings }): GearTab {
   const rows = ratedIn(brews, c.period, c.ratings);
+  const filter = labFn('filter');
   const drippers = ranked(pairedDeltas(rows, labFn('dripper')));
-  const filters = ranked(pairedDeltas(rows, labFn('filter')));
-  // The matrix: each dripper + filter pair is one band; pivoted into rows (drippers) × columns (filters).
-  const combos = new Map(pairedDeltas(rows, (b) => (b.dripper && b.filter && b.filter !== MIXED_FILTER ? { label: `${b.dripper}\u0000${b.filter}`, order: 0 } : null))
-    .map((s) => [s.label, s]));
-  const used = [...combos.keys()].map((k) => k.split('\u0000'));
-  const mRows = drippers.map((d) => d.label).filter((d) => used.some(([x]) => x === d));
-  const mCols = filters.map((f) => f.label).filter((f) => used.some(([, y]) => y === f));
+  const filters = ranked(pairedDeltas(rows, filter));
+  // Filters within each dripper (R3): same bag AND same dripper, different filter. Rows = drippers with rated
+  // brews on ≥ 2 filters (unpaired cells blank); columns = the filters those rows used.
+  const within = new Map([...groupBy(rows.filter((b) => b.dripper && filter(b)), (b) => b.dripper)]
+    .map(([d, g]) => [d!, new Map(pairedDeltas(g, filter).map((s) => [s.label, s]))] as const)
+    .filter(([, st]) => st.size >= 2));
+  const mRows = drippers.map((d) => d.label).filter((d) => within.has(d));
+  const mCols = filters.map((f) => f.label).filter((f) => mRows.some((d) => within.get(d)!.has(f)));
   return {
     drippers, filters,
-    matrix: mRows.length && mCols.length ? {
+    matrix: mRows.length ? {
       rows: mRows, cols: mCols,
-      cells: mRows.map((d) => mCols.map((f) => { const s = combos.get(`${d}\u0000${f}`); return s ? cellOf(s) : null; }))
+      cells: mRows.map((d) => mCols.map((f) => { const s = within.get(d)!.get(f); return s ? cellOf(s) : null; }))
     } : null,
     byRoast: breakdown(rows, labFn('dripper'), SLICE_OF.roast, drippers.map((d) => d.label)),
     eras: eraOf(brews, c.period, (b) => b.dripper)
