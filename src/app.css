@@ -38,14 +38,19 @@
   --map-high: #8a5a3b;
   --bar-alpha: 28%; /* leaderboard value bars: stronger on light */
   --map-empty: #6b6b6b;
-  /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order, every two at
-     least 18 apart in OKLab ×100 (no pink beside red, round 3; palette.test.ts checks both themes); light
+  /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: slots 1–5
+     every two ≥ 18 apart in OKLab ×100 (no pink beside red), all 10 ≥ 14 (palette.test.ts, both themes); light
      slots under 3:1 carry their names in the legend. "Other" is muted. */
   --series-1: #2a78d6;
   --series-2: #eb6834;
   --series-3: #1baf7a;
   --series-4: #b5338a;
   --series-5: #eabb1e;
+  --series-6: #c681f5;
+  --series-7: #6928b0;
+  --series-8: #67addd;
+  --series-9: #a01206;
+  --series-10: #2d7917;
   --series-other: var(--color-text-muted);
   /* Diverging pair for same-bag deltas: teal-green better ↔ red-orange worse (ui-rules 29), a neutral
      gray midpoint (≈0). Validated (dataviz validate_palette.js, deutan ΔE ≥ 9.7) against --color-surface
@@ -119,6 +124,16 @@
     --series-3: #1fae7a;
     --series-4: #c75ec8;
     --series-5: #dcbc2a;
+  --series-6: #d3a3f7;
+  --series-7: #7b4fd8;
+  --series-8: #56c9fb;
+  --series-9: #a52a24;
+  --series-10: #4fdf80;
+    --series-6: #d3a3f7;
+    --series-7: #7b4fd8;
+    --series-8: #56c9fb;
+    --series-9: #a52a24;
+    --series-10: #4fdf80;
     --div-low: #e5603f;
     --div-mid: #635d57;
     --div-high: #24a383;

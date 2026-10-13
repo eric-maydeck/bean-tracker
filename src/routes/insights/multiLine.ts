@@ -16,27 +16,36 @@ export function scale(m: Multi) {
 // x of column i in the 100-wide box.
 export const px = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
 
-// Categorical slots in line order (never cycled: the server caps lines at ~5); "Other" is muted.
+// The categorical slots (--series-1..10, app.css; distinctness checked in palette.test.ts).
+export const SLOTS = Array.from({ length: 10 }, (_, i) => `var(--series-${i + 1})`);
+const OTHER = 'var(--series-other)';
+
+// Categorical slots in line order; "Other" is muted.
 export function seriesColors(labels: string[]) {
   let slot = 0;
-  return labels.map((l) => (l === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})`));
+  return labels.map((l) => (l === 'Other' ? OTHER : SLOTS[slot++ % SLOTS.length]));
 }
 
-// Same bag, different water (ui-rules 42): each pair's two colors. A recipe keeps its usage-over-time color (its
-// line's slot); one folded into "Other" there takes an unused slot (stable per recipe). The two of a pair are
-// never the same: when the free slots run out, the partner takes the first slot its recipe doesn't use.
-const SLOTS = [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`);
-export function pairColors(lines: string[], pairs: { a: string; b: string }[]) {
-  const cs = seriesColors(lines);
-  const c = new Map(lines.map((l, i) => [l, cs[i]]));
-  const free = SLOTS.filter((v) => !cs.includes(v));
-  const pool = free.length ? free : SLOTS;
-  let k = 0;
-  for (const p of pairs) for (const r of [p.a, p.b]) if (!c.has(r)) c.set(r, pool[k++ % pool.length]);
-  return (p: { a: string; b: string }): [string, string] => {
-    const a = c.get(p.a) ?? 'var(--series-other)', b = c.get(p.b) ?? 'var(--series-other)';
-    return [a, a === b ? [...free, ...SLOTS].find((v) => v !== a)! : b];
-  };
+// One color per name for a whole page (ui-rules 42; Water's recipes): usage lines first, in line order, then each
+// pair's recipes. Every name gets its own slot while slots last; past that a name reuses a slot no name it is
+// shown with uses (the lines share every bar; a pair's two share a block), so a bar or pair never repeats a color.
+// "Other" (a usage segment) stays gray; its member recipes keep their own colors elsewhere.
+export function nameColors(lines: string[], pairs: { a: string; b: string }[]): Map<string, string> {
+  const shown = lines.filter((l) => l !== 'Other');
+  const names = [...new Set([...shown, ...pairs.flatMap((p) => [p.a, p.b])])];
+  const near = new Map(names.map((n) => [n, new Set<string>()]));
+  const link = (a: string, b: string) => a !== b && (near.get(a)!.add(b), near.get(b)!.add(a));
+  for (const a of shown) for (const b of shown) link(a, b);
+  for (const p of pairs) link(p.a, p.b);
+  const c = new Map<string, string>();
+  const users = new Map(SLOTS.map((v) => [v, 0]));
+  for (const n of names) {
+    const taken = new Set([...near.get(n)!].map((m) => c.get(m)));
+    const slot = SLOTS.find((v) => !users.get(v)) ?? SLOTS.find((v) => !taken.has(v)) ?? SLOTS[c.size % SLOTS.length];
+    c.set(n, slot);
+    users.set(slot, users.get(slot)! + 1);
+  }
+  return c;
 }
 
 // A smooth path through the points (monotone cubic, ui-rules G5): tangents are the harmonic mean of the

@@ -8,9 +8,10 @@
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.
   // `m.other[i]`: what month i's "Other" holds ([name, %], biggest first), listed in its tip (C4).
-  let { m, ariaLabel }: { m: Multi & { other?: [string, number][][] }; ariaLabel: string } = $props();
+  // `colors`: a page-wide color per line (Water's recipe map); else the slots in line order.
+  let { m, ariaLabel, colors: given }: { m: Multi & { other?: [string, number][][] }; ariaLabel: string; colors?: string[] } = $props();
 
-  let colors = $derived(seriesColors(m.lines.map((l) => l.label)));
+  let colors = $derived(given ?? seriesColors(m.lines.map((l) => l.label)));
   let n = $derived(m.x.length);
   // Month labels counted back from the last: up to 8 wide, up to 4 in a narrow container.
   let [wide, narrow] = $derived([Math.ceil(n / 8), Math.ceil(n / 4)]);

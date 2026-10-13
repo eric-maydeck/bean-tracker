@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-// Categorical colors stay apart (round 3): recipes, gear and line series share the --series slots, so every two
-// slots are ≥ 18 apart in OKLab (×100; pink beside red-orange measured 13 and failed), and each is ≥ 12 from the
-// muted "Other", in the light theme and both copies of the dark one (media query and [data-theme='dark']).
+// Categorical colors stay apart (round 3): recipes, gear and line series share the --series slots. Slots 1–5
+// (lines, the usual few) are every two ≥ 18 apart in OKLab (×100; pink beside red-orange measured 13 and failed),
+// all 10 (a page's recipes) every two ≥ 14, each ≥ 12 from the muted "Other", in the light theme and both copies
+// of the dark one (media query and [data-theme='dark']).
 const css = readFileSync(new URL('../../app.css', import.meta.url), 'utf8');
 const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 function oklab(hex: string) {
@@ -15,16 +16,16 @@ function oklab(hex: string) {
 }
 const dE = (a: string, b: string) => 100 * Math.hypot(...oklab(a).map((v, i) => v - oklab(b)[i]));
 const all = (name: string) => [...css.matchAll(new RegExp(`${name}:\\s*(#[0-9a-f]{6})`, 'gi'))].map((m) => m[1]);
-const themes = [0, 1, 2].map((t) => ({ slots: [1, 2, 3, 4, 5].map((n) => all(`--series-${n}`)[t]), other: all('--color-text-muted')[t] }));
+const themes = [0, 1, 2].map((t) => ({ slots: Array.from({ length: 10 }, (_, i) => i + 1).map((n) => all(`--series-${n}`)[t]), other: all('--color-text-muted')[t] }));
 
 describe('series palette', () => {
-  it('has five slots in each of the three theme blocks', () => {
+  it('has ten slots in each of the three theme blocks', () => {
     for (const t of themes) expect(t.slots.every(Boolean) && !!t.other).toBe(true);
   });
   it('every two slots are clearly distinct, and each from Other', () => {
     for (const { slots, other } of themes) {
       for (let i = 0; i < slots.length; i++) {
-        for (let j = i + 1; j < slots.length; j++) expect(dE(slots[i], slots[j]), `${slots[i]} vs ${slots[j]}`).toBeGreaterThanOrEqual(18);
+        for (let j = i + 1; j < slots.length; j++) expect(dE(slots[i], slots[j]), `${slots[i]} vs ${slots[j]}`).toBeGreaterThanOrEqual(j < 5 ? 18 : 14);
         expect(dE(slots[i], other), `${slots[i]} vs Other ${other}`).toBeGreaterThanOrEqual(12);
       }
     }

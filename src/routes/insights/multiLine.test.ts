@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lines, pairColors, scale, smooth } from './multiLine';
+import { lines, nameColors, scale, smooth, SLOTS } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -30,14 +30,20 @@ describe('multiLine', () => {
   });
 });
 
-describe('pairColors', () => {
-  it('keeps usage colors, gives folded recipes free slots, never one color for both of a pair', () => {
-    const of = pairColors(['A', 'B', 'C', 'D', 'Other'], [{ a: 'E', b: 'F' }, { a: 'A', b: 'E' }]);
-    const [e, f] = of({ a: 'E', b: 'F' });
-    expect(e).toBe('var(--series-5)'); // the only free slot
-    expect(f).not.toBe(e);
-    expect(of({ a: 'A', b: 'E' })).toEqual(['var(--series-1)', 'var(--series-5)']);
-    const [x, y] = pairColors(['A'], [{ a: 'A', b: 'A2' }])({ a: 'A', b: 'A2' });
-    expect(x).not.toBe(y);
+describe('nameColors', () => {
+  const pairs = [{ a: 'E', b: 'F' }, { a: 'A', b: 'E' }, { a: 'F', b: 'G' }];
+  it('one color per name, distinct while slots last; lines keep their order; Other is not a name', () => {
+    const c = nameColors(['A', 'B', 'C', 'D', 'Other'], pairs);
+    expect([...c.keys()]).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G']);
+    expect(new Set(c.values()).size).toBe(7);
+    expect(c.get('A')).toBe(SLOTS[0]);
+    expect(c.has('Other')).toBe(false);
+  });
+  it('past the palette, a name reuses only a slot none of its bar or pair partners use', () => {
+    const lines = Array.from({ length: 10 }, (_, i) => `L${i}`);
+    const many = [{ a: 'L0', b: 'X' }, { a: 'X', b: 'Y' }, { a: 'Y', b: 'L1' }];
+    const c = nameColors(lines, many);
+    expect(new Set(lines.map((l) => c.get(l))).size).toBe(10); // every bar's segments differ
+    for (const p of many) expect(c.get(p.a)).not.toBe(c.get(p.b)); // every pair's two differ
   });
 });

@@ -2196,7 +2196,22 @@ export const STATES: State[] = [
         return { two: sw.length === 2 && sw[0] !== sw[1], plain, wins, others, boxed: css(p).borderTopStyle !== 'none' };
       }));
       expect(pc.every((x) => x.two && x.plain && x.wins && x.others && x.boxed)).toBe(true);
-      await expectGridRowsFull(page, '.pairs', true); // an odd last pair spans the row
+      // One color per recipe across the tab (ui-rules 42): usage legend and every pair header agree, and two
+      // recipes never share a color (the palette has 10 slots).
+      const byName = await page.evaluate(() => {
+        const seen: [string, string][] = [];
+        for (const li of document.querySelectorAll('[data-section="water-eras"] .legend li'))
+          if (li.textContent!.trim() !== 'Other') seen.push([li.textContent!.trim(), getComputedStyle(li.querySelector('.swatch')!).backgroundColor]);
+        for (const col of document.querySelectorAll('.pair-col')) seen.push([col.textContent!.trim(), getComputedStyle(col.querySelector('.swatch')!).backgroundColor]);
+        return seen;
+      });
+      const nameTo = new Map<string, Set<string>>(), colorTo = new Map<string, Set<string>>();
+      for (const [n, c] of byName) {
+        nameTo.set(n, (nameTo.get(n) ?? new Set()).add(c));
+        colorTo.set(c, (colorTo.get(c) ?? new Set()).add(n));
+      }
+      expect([...nameTo.values()].every((cs) => cs.size === 1)).toBe(true);
+      expect([...colorTo.values()].every((ns) => ns.size === 1)).toBe(true);
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();

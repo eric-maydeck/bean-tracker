@@ -10,7 +10,7 @@
   import MineralMap from './MineralMap.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import StackedBars from './StackedBars.svelte';
-  import { pairColors } from './multiLine';
+  import { nameColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
@@ -19,8 +19,9 @@
   } = $props();
 
   let empty = $derived(!t.recipes.length && !t.map && !t.gh.length && !t.byRoast && !t.byProcess && !t.eras && !t.pairs.length);
-  // Each pair's two colors (pairColors): a recipe's usage-over-time color, never the same as its partner's.
-  let colorsOf = $derived(pairColors(t.eras?.lines.map((l) => l.label) ?? [], t.pairs));
+  // One color per recipe for the whole tab (ui-rules 42): usage bars, pair headers, every swatch.
+  let recipeColor = $derived(nameColors(t.eras?.lines.map((l) => l.label) ?? [], t.pairs));
+  const colorOf = (r: string) => recipeColor.get(r) ?? 'var(--series-other)';
   // The two heatmaps share their columns (the recipes). Side by side from 1150 px only when both exist and
   // neither would scroll there: a column takes ≥ 3.25rem, so 7 recipes fit beside a roast/process label.
   // ponytail: column-count estimate, not a measurement; measure the grids if long row labels ever scroll.
@@ -97,7 +98,7 @@
   {#if t.eras}
     <section class="chart-panel" data-section="water-eras">
       <LabHead id="water-eras" title="Water usage over time" help={["Each recipe's share of the month's brews, rated or not.", 'Shows when you switched.']} {placeTip} />
-      <StackedBars m={t.eras} ariaLabel="Water usage over time: each recipe's share of brews by month" />
+      <StackedBars m={t.eras} colors={t.eras.lines.map((l) => colorOf(l.label))} ariaLabel="Water usage over time: each recipe's share of brews by month" />
     </section>
   {/if}
 
@@ -111,7 +112,7 @@
           {@const all = !!s.pairs?.includes(p.slug)}
           <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
-          <div class="pair" style:--ca={colorsOf(p)[0]} style:--cb={colorsOf(p)[1]}>
+          <div class="pair" style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)}>
             <p class="pair-sum"
               ><strong>{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
