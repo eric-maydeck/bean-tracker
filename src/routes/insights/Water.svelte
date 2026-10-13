@@ -19,11 +19,20 @@
   } = $props();
 
   let empty = $derived(!t.recipes.length && !t.map && !t.gh.length && !t.byRoast && !t.byProcess && !t.eras && !t.pairs.length);
-  // A recipe's color, the same as in Water usage over time (its line's series slot); a recipe folded into
-  // "Other" there takes the muted Other color.
+  // A recipe's color, the same as in Water usage over time (its line's series slot). A recipe folded into
+  // "Other" there takes an unused series slot instead (stable per recipe), so the two recipes of a pair are
+  // never the same color; if the slots run out, the partner takes the next slot over.
   let recipeColor = $derived.by(() => {
     const labels = t.eras?.lines.map((l) => l.label) ?? [];
-    const c = new Map(labels.map((l, i) => [l, seriesColors(labels)[i]]));
+    const cs = seriesColors(labels);
+    const c = new Map(labels.map((l, i) => [l, cs[i]]));
+    const free = [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`).filter((v) => !cs.includes(v));
+    const pool = free.length ? free : [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`);
+    let k = 0;
+    for (const p of t.pairs) {
+      for (const r of [p.a, p.b]) if (!c.has(r)) c.set(r, pool[k++ % pool.length]);
+      if (c.get(p.a) === c.get(p.b)) c.set(p.b, pool[(pool.indexOf(c.get(p.a)!) + 1) % pool.length]);
+    }
     return (recipe: string) => c.get(recipe) ?? 'var(--series-other)';
   });
   // The two heatmaps share their columns (the recipes). Side by side from 1150 px only when both exist and
