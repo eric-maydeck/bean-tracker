@@ -46,10 +46,12 @@
   --series-4: #eda100;
   --series-5: #e87ba4;
   --series-other: var(--color-text-muted);
-  /* Diverging pair (blue ↔ orange, not red/green: those mean good/bad, ui-rules 29); the surface is
-     the midpoint. Validated (dataviz validate_palette.js) against --color-surface in both themes. */
-  --div-low: #2a78d6;
-  --div-high: #eb6834;
+  /* Diverging pair for same-bag deltas: teal-green better ↔ red-orange worse (ui-rules 29), a neutral
+     gray midpoint (≈0). Validated (dataviz validate_palette.js, deutan ΔE ≥ 9.7) against --color-surface
+     in both themes; the signed number in every tip is the second channel. */
+  --div-low: #d8573c;
+  --div-mid: #dcd9d4;
+  --div-high: #1a9b7c;
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -110,8 +112,9 @@
     --series-3: #199e70;
     --series-4: #c98500;
     --series-5: #d55181;
-    --div-low: #3987e5;
-    --div-high: #d95926;
+    --div-low: #e5603f;
+    --div-mid: #4a4642;
+    --div-high: #24a383;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
@@ -158,8 +161,9 @@
   --series-3: #199e70;
   --series-4: #c98500;
   --series-5: #d55181;
-  --div-low: #3987e5;
-  --div-high: #d95926;
+  --div-low: #e5603f;
+  --div-mid: #4a4642;
+  --div-high: #24a383;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
 }
@@ -2291,12 +2295,38 @@ td > .action-buttons.under-form {
 .cell-tip.below {
   translate: -50% calc(var(--cell-h, 1.6rem) + 0.4rem);
 }
-/* A longer tip (lab charts: band, delta, bags, brews) wraps at 16rem; place it with tipAt(…, 128). */
+/* A lab tip (ui-rules 36): a bold title, then label/value rows; wraps at 15rem; place it with tipAt(…, 128). */
 .cell-tip.wide {
   white-space: normal;
   width: max-content;
-  max-width: min(16rem, 100vw - 2rem);
+  max-width: min(15rem, 100vw - 2rem);
   text-align: left;
+}
+.tip-title {
+  display: block;
+  font-weight: 700;
+}
+.tip-rows {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0 var(--space-3);
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+}
+.tip-rows dt {
+  color: var(--color-text-muted);
+}
+.tip-rows dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tip-note {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 .heat-cell.none,
 .cal-cell.none {

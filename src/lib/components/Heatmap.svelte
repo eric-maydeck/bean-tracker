@@ -14,24 +14,27 @@
     };
   }
 
-  // Diverging (the Brewing lab's deltas): 0 is the surface, sign picks --div-low / --div-high and the
-  // tone runs 15–100% by |v| over the largest |v| of `values` (a value past it is capped at 100%);
-  // an exact 0 gets the border colour so it isn't blank.
+  // Diverging (the lab's deltas): 0 is the neutral gray --div-mid, sign picks --div-low (worse, red) /
+  // --div-high (better, green) and the tone runs 15–100% by |v| over the largest |v| of `values` (a value
+  // past it is capped at 100%).
   export function diverge(values: (number | null)[]) {
     const max = Math.max(...values.map((v) => Math.abs(v ?? 0))) || 1;
     return (v: number | null) => {
       if (v === null) return 'transparent';
-      if (v === 0) return 'var(--color-border)';
-      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + 85 * Math.min(1, Math.abs(v) / max))}%, var(--color-surface))`;
+      if (v === 0) return 'var(--div-mid)';
+      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + 85 * Math.min(1, Math.abs(v) / max))}%, var(--div-mid))`;
     };
   }
 
   // Tooltip position inside `wrap` for a cell: centred on it, clamped `half` px (the tip's half width,
-  // 5rem for the nowrap tip, 8rem for a .wide one) from either edge.
+  // 5rem for the nowrap tip, 8rem for a .wide one) from either edge; a wrap narrower than the tip (a small
+  // mineral card) clamps it inside the viewport instead.
   export function tipAt(wrap: HTMLElement, el: Element, text: string, half = 80) {
     const w = wrap.getBoundingClientRect();
     const b = el.getBoundingClientRect();
-    const x = Math.min(Math.max(b.left + b.width / 2 - w.left, half), w.width - half);
+    const c = b.left + b.width / 2;
+    const x = w.width >= 2 * half ? Math.min(Math.max(c - w.left, half), w.width - half)
+      : Math.min(Math.max(c, half + 8), document.documentElement.clientWidth - half - 8) - w.left;
     return { text, x, y: b.top - w.top };
   }
 
@@ -65,6 +68,8 @@
 </script>
 
 <script lang="ts">
+  import TipBody, { type Tip } from './TipBody.svelte';
+
   let {
     rows,
     cols,
@@ -73,7 +78,10 @@
     label,
     ariaLabel,
     diverging = false,
-    faded
+    faded,
+    marked,
+    tip: tipOf,
+    scale = ["Below the bag's average", 'Above']
   }: {
     rows: string[];
     cols: string[];
@@ -83,10 +91,13 @@
     ariaLabel: string;
     diverging?: boolean;
     faded?: boolean[][]; // diverging: thin cells, drawn faded; the scale fits the other cells when there are any
+    marked?: boolean[][]; // outlined cells (the lab's rest heatmap: each row's best)
+    tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's aria-label
+    scale?: [string, string]; // diverging legend: the low and high ends
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ text: string; x: number; y: number } | null>(null);
+  let tip = $state<{ text: string; r: number; c: number; x: number; y: number } | null>(null);
   let fade = $derived(faded?.flat().some(Boolean) ?? false);
   let solid = $derived(cells.flatMap((r, i) => r.filter((v, j) => v !== null && !faded?.[i]?.[j])));
   let shade = $derived(diverging ? diverge(solid.length ? solid : cells.flat()) : shader(cells.flat()));
@@ -96,7 +107,10 @@
     void cells;
     tip = null;
   });
-  const tipFor = (el: Element) => tipAt(wrap!, el, el.getAttribute('aria-label')!, diverging ? 128 : 80);
+  const tipFor = (el: Element) => {
+    const d = (el as HTMLElement).dataset;
+    return { ...tipAt(wrap!, el, el.getAttribute('aria-label')!, diverging ? 128 : 80), r: +d.r!, c: +d.c! };
+  };
   const show = (e: Event) => {
     const el = (e.target as Element).closest('.heat-cell');
     tip = el ? tipFor(el) : null;
@@ -132,11 +146,14 @@
             class="heat-cell"
             role="button"
             tabindex={i + j ? -1 : 0}
+            data-r={i}
+            data-c={j}
             aria-label="{label(i, j)} · {text(v, i, j)}"
             style:--r={i + 2}
             style:--c={j + 2}
             class:none={v === null}
             class:faded={!!faded?.[i]?.[j]}
+            class:marked={!!marked?.[i]?.[j]}
             style:background={shade(v)}
             onfocus={(e) => (takeFocus(e), show(e))}
             onblur={() => (tip = null)}
@@ -147,13 +164,16 @@
   </div>
   {#if diverging}
     <p class="div-legend">
-      <span>Below the bag's average</span><span class="div-swatch" aria-hidden="true"></span><span>Above</span>
+      <span>{scale[0]}</span><span class="div-swatch" aria-hidden="true"></span><span>{scale[1]}</span>
       {#if fade}<span>· Faded: few brews</span>{/if}
-      {#if blanks}<span>· Blank: no paired brews (or none)</span>{/if}
+      {#if marked?.flat().some(Boolean)}<span>· Outlined: best in its row</span>{/if}
+      {#if blanks}<span>· Blank: no match (or no brews)</span>{/if}
     </p>
   {/if}
   {#if tip}
-    <div class="cell-tip" class:wide={diverging} role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
+    <div class="cell-tip" class:wide={diverging} role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>
+      {#if tipOf}<TipBody tip={tipOf(tip.r, tip.c)} />{:else}{tip.text}{/if}
+    </div>
   {/if}
 </div>
 
@@ -235,7 +255,7 @@
     width: 6rem;
     height: 0.6rem;
     border-radius: 2px;
-    background: linear-gradient(90deg, var(--div-low), var(--color-surface), var(--div-high));
+    background: linear-gradient(90deg, var(--div-low), var(--div-mid), var(--div-high));
     border: 1px solid var(--color-border);
   }
   .heat-cell {
@@ -244,6 +264,10 @@
   }
   .heat-cell.faded {
     opacity: 0.4;
+  }
+  .heat-cell.marked {
+    outline: 2px solid var(--color-text);
+    outline-offset: -2px;
   }
   .heat-cell:focus-visible {
     outline: 2px solid var(--color-accent);

@@ -2,14 +2,17 @@
   import Icon from '$lib/components/Icon.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
 
-  // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27).
-  let { id, title, help, placeTip }: { id: string; title: string; help: string; placeTip: (e: ToggleEvent) => void } = $props();
+  // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27); a newline in
+  // `help` starts a new short paragraph (ui-rules 36).
+  let { id, title, help, placeTip, level = 2 }: { id: string; title: string; help: string; placeTip: (e: ToggleEvent) => void; level?: 2 | 3 } = $props();
 </script>
 
 <div class="lab-head">
-  <HeadingAnchor {id}>{title}</HeadingAnchor>
+  <HeadingAnchor {id} {level}>{title}</HeadingAnchor>
   <button class="mode-tip-button" popovertarget="{id}-help" aria-label="About {title}" aria-describedby="{id}-help"><Icon name="question" /></button>
-  <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}>{help}</div>
+  <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}>
+    {#each help.split(/\n+/) as p, i (i)}<p>{p}</p>{/each}
+  </div>
 </div>
 
 <style>
@@ -19,7 +22,16 @@
     gap: var(--space-2);
     margin-bottom: var(--space-3);
   }
-  .lab-head :global(h2) {
+  .lab-head :global(:is(h2, h3)) {
     margin: 0;
+  }
+  .lab-head .mode-tip {
+    --w: min(20rem, 100vw - 2rem);
+  }
+  .mode-tip p {
+    margin: 0;
+  }
+  .mode-tip p + p {
+    margin-top: 0.4rem;
   }
 </style>

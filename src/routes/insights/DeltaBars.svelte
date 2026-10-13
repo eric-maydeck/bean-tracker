@@ -1,24 +1,32 @@
 <script lang="ts" module>
   import type { BandStat } from '$lib/server/insights/lab';
+  import type { Tip } from '$lib/components/TipBody.svelte';
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   export const SAME_BAG_HELP =
-    "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40. Only bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip also shows the plain bag-weighted average.";
+    "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40.\n\nOnly bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip adds the plain bag-weighted average.";
+  // A band, recipe or piece of gear with no same-bag partner (W1): shown as "no match".
+  export const noMatch = (what: string) => `Never brewed on the same bag as another ${what}, so there's nothing to compare.`;
   // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
-  export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false) => bands.map((b) => ({
-    label: b.label, value: b.delta, text: b.delta === null ? 'unpaired' : signed(b.delta), pale: !b.solid, strength: b.strength,
+  // The tip (ui-rules 36) adds what the bar doesn't show: the counts behind it, the plain average, few brews.
+  export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false, what = 'band') => bands.map((b) => ({
+    label: b.label, value: b.delta, text: b.delta === null ? 'no match' : signed(b.delta), pale: !b.solid, strength: b.strength,
     bold: bold(b.label),
-    tip: `${b.label}: ${b.delta === null ? 'no paired brews' : `${signed(b.delta)} vs same bag${b.solid ? '' : ' (few brews)'}`} · ${plural(b.brews, 'brew')}, ${plural(b.bags, 'bag')} · avg ${b.adjusted.toFixed(2)} (${plural(b.plainBrews, 'brew')}, ${plural(b.plainBags, 'bag')})`
+    tip: (b.delta === null
+      ? { title: b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
+      : { title: b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)],
+          ...(b.solid ? [] : [['Strength', 'Few brews']])] }) as Tip
   }));
 </script>
 
 <script lang="ts">
   import { takeFocus, tipAt } from '$lib/components/Heatmap.svelte';
+  import TipBody, { tipText } from '$lib/components/TipBody.svelte';
   import type { Strength } from '$lib/server/insights/stats';
   import { STRENGTH } from './Insights.svelte';
 
-  type Row = { label: string; value: number | null; text: string; tip: string; pale: boolean; bold?: boolean; strength?: Strength | null };
+  type Row = { label: string; value: number | null; text: string; tip: Tip; pale: boolean; bold?: boolean; strength?: Strength | null };
   let { rows, ariaLabel, colors = 'polarity' }: { rows: Row[]; ariaLabel: string; colors?: 'polarity' | 'direction' } = $props();
 
   // Zero-centred: the axis fits the solid rows when there are any, so a pale row past it is clipped at the
@@ -33,15 +41,15 @@
   });
 
   let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ text: string; x: number; y: number } | null>(null);
+  let tip = $state<{ i: number; x: number; y: number } | null>(null);
   // New rows (a toggle or period change) drop an open tip: its row may not exist any more.
   $effect(() => {
     void rows;
     tip = null;
   });
   const showRow = (el: Element) => {
-    const b = bars[+(el as HTMLElement).dataset.i!];
-    tip = b ? tipAt(wrap!, el.querySelector('.track')!, b.tip, 128) : null;
+    const i = +(el as HTMLElement).dataset.i!;
+    tip = bars[i] ? { ...tipAt(wrap!, el.querySelector('.track')!, '', 128), i } : null;
   };
   const show = (e: Event) => {
     const el = (e.target as Element).closest('.bar-row');
@@ -81,7 +89,7 @@
       role="button"
       tabindex={i ? -1 : 0}
       data-i={i}
-      aria-label={b.tip.startsWith(b.label) ? b.tip : `${b.label}: ${b.tip}`}
+      aria-label="{b.label}: {b.text} · {tipText({ ...b.tip, title: '' })}"
       onfocus={(e) => (takeFocus(e), showRow(e.currentTarget))}
       onblur={() => (tip = null)}
     >
@@ -95,8 +103,8 @@
       </span>
     </div>
   {/each}
-  {#if tip}
-    <div class="cell-tip wide" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>{tip.text}</div>
+  {#if tip && bars[tip.i]}
+    <div class="cell-tip wide" role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}><TipBody tip={bars[tip.i].tip} /></div>
   {/if}
 </div>
 
@@ -111,10 +119,10 @@
     column-gap: var(--space-2);
     grid-auto-rows: var(--bar-rows, auto); /* a page can stretch the rows to fill a taller box */
   }
-  /* Grind drift and the like: no good side, so the diverging pair by direction (ui-rules 29). */
+  /* Grind drift and the like: no good side, so two neutral series colors by direction (ui-rules 29). */
   .direction {
-    --pos: var(--div-high);
-    --neg: var(--div-low);
+    --pos: var(--series-4);
+    --neg: var(--series-1);
   }
   @media (max-width: 480px) {
     .delta-bars {
