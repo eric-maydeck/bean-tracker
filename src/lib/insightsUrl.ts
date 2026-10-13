@@ -181,16 +181,17 @@ export interface InsightsUrlState {
   time?: 'exact';
   bloom?: 'exact';
   grind?: 'exact';
+  pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // only 'total' is ever explicit: average is the default
 }
 
 type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam;
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice;
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
 } & Partial<Record<ExactParam, 'exact'>>;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
@@ -326,8 +327,17 @@ export function parseInsightsUrl(
     timeBy: pickOne(p, 'timeBy', SLICES),
     bloomBy: pickOne(p, 'bloomBy', SLICES),
     grindBy: pickOne(p, 'grindBy', SLICES),
-    ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>)
+    ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
+    pairs: parsePairs(p.get('pairs'))
   };
+}
+
+// Expanded recipe pairs: slug pairs "a--b", lowercased, deduped, in the given order; anything else is dropped.
+// A slug that names no current pair (another period) matches nothing and is harmless.
+const PAIR = /^[a-z0-9]+(-[a-z0-9]+)*--[a-z0-9]+(-[a-z0-9]+)*$/;
+function parsePairs(v: string | null): string[] | undefined {
+  const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => PAIR.test(x)))];
+  return xs.length ? xs : undefined;
 }
 
 export function insightsParams(s: InsightsUrlState): URLSearchParams {
@@ -352,6 +362,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
   for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
+  if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   return p;
 }
 
@@ -386,7 +397,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     dose: s.dose,
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs
   };
 }
 

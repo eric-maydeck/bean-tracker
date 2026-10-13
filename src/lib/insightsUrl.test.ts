@@ -520,6 +520,17 @@ describe('brewing lab params', () => {
     expect(withDefaults(parse(q))).toMatchObject({ temp: 'exact', ratio: 'exact', dosing: 'exact', time: 'exact', bloom: 'exact', grind: 'exact' });
     expect(resetInsights(parse(`${q.replace('overview', 'brewing')}`))).toEqual({ tab: 'brewing' });
   });
+  it('pairs: expanded recipe pairs as "a--b" slugs, case-insensitive, deduped, junk dropped', () => {
+    expect(parse('pairs=Lotus-mg-k-60-10--bottled-water,a--b,a--b').pairs).toEqual(['lotus-mg-k-60-10--bottled-water', 'a--b']);
+    expect(parse('pairs=a-b,--b,a--,a---b,a b--c,all').pairs).toBeUndefined();
+    expect(parse('pairs=').pairs).toBeUndefined();
+  });
+  it('pairs are sticky through any tab and cleared by Reset', () => {
+    const q = 'tab=overview&pairs=a--b%2Cc--d';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(withDefaults(parse(q)).pairs).toEqual(['a--b', 'c--d']);
+    expect(resetInsights(parse('tab=water&pairs=a--b'))).toEqual({ tab: 'water' });
+  });
   it('without lab values (other callers) every lab value is dropped', () =>
     expect(parseInsightsUrl(new URLSearchParams('bag=2025-old-bag&grinder=zp6-1zpresso'), [2026])).toEqual({}));
   it('round-trips in a fixed order, omits defaults; reset keeps the tab only', () => {

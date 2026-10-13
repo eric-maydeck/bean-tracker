@@ -137,6 +137,13 @@ export interface Cell { delta: number | null; solid: boolean; brews: number; bag
 // behind the delta, so a tip never reads "6 brews, 0 bags".
 export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'>): Cell => ({ delta: s.delta, solid: s.solid, brews: s.brews, bags: s.bags });
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
+// Drop rows, then columns, with no cell that has a delta (all blank: nothing to show, round 1 I8); null when none is left.
+const live = (c: Cell | null) => c !== null && c.delta !== null;
+export function trimBlank(b: Breakdown): Breakdown | null {
+  const ri = b.rows.map((_, i) => i).filter((i) => b.cells[i].some(live));
+  const ci = b.cols.map((_, j) => j).filter((j) => ri.some((i) => live(b.cells[i][j])));
+  return ri.length && ci.length ? { rows: ri.map((i) => b.rows[i]), cols: ci.map((j) => b.cols[j]), cells: ri.map((i) => ci.map((j) => b.cells[i][j])) } : null;
+}
 
 // A heatmap of same-bag deltas: rows = slice values with ≥ MIN_BAGS bags that have the variable,
 // most-brewed first; columns = `cols`. A bag's mean stays its mean over the whole row (all its brews).
@@ -145,14 +152,14 @@ export function breakdown(rows: readonly BrewFact[], band: BandFn, slice: (b: Br
     .filter(([, g]) => new Set(g.filter((b) => band(b)).map((b) => b.coffeeId)).size >= MIN_BAGS)
     .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   if (!groups.length) return null;
-  return {
+  return trimBlank({
     rows: groups.map(([k]) => k),
     cols,
     cells: groups.map(([, g]) => {
       const st = new Map(pairedDeltas(g, band, minPerBand).map((s) => [s.label, s]));
       return cols.map((c) => { const s = st.get(c); return s ? cellOf(s) : null; });
     })
-  };
+  });
 }
 
 export interface LabOptions {
@@ -281,10 +288,8 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     // A roast level needs ≥ MIN_BAGS bags (as the Roast picker and breakdowns).
     return label && new Set(g.map((b) => b.coffeeId)).size >= MIN_BAGS && cells.filter(Boolean).length >= 2 ? [{ label, cells }] : [];
   }).sort((a, b) => a.label.localeCompare(b.label));
-  // The columns start and end where the data does: bands with no cell in any row are trimmed off both ends.
-  const has = REST_LABELS.map((_, i) => levels.some((l) => l.cells[i]));
-  const [from, to] = [has.indexOf(true), has.lastIndexOf(true) + 1];
-  const restCells = levels.map((l) => l.cells.slice(from, to));
+  // Rest windows with no cell in any row are dropped (trimBlank).
+  const restMap = levels.length ? trimBlank({ rows: levels.map((l) => l.label), cols: [...REST_LABELS], cells: levels.map((l) => l.cells) }) : null;
   const bestOf = (row: (Cell | null)[]) => {
     const solid = row.flatMap((x, i) => (x?.solid ? [{ i, d: x.delta! }] : []));
     return solid.length >= 2 ? solid.reduce((x, y) => (y.d > x.d ? y : x)).i : null;
@@ -302,7 +307,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
   return {
-    rest: levels.length ? { rows: levels.map((l) => l.label), cols: REST_LABELS.slice(from, to), cells: restCells, best: restCells.map(bestOf) } : null,
+    rest: restMap && { ...restMap, best: restMap.cells.map(bestOf) },
     dialIn: pairedDeltas(rows, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],
@@ -344,17 +349,27 @@ const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) =>
   return { ...m, lines: m.lines.map((l, j) => ({ ...l, values: cols.map((col) => col[j]) })) };
 };
 
+// A mineral chart's top point far above the rest (> FAR × the next-highest value) squashes the axis: left out,
+// repeatedly while it applies, but never below 2 points nor against a next-highest of 0 (no scale to compare).
+const FAR = 1.5;
+export function farAbove<T extends { value: number }>(sorted: T[]): { kept: T[]; out: T[] } {
+  const kept = [...sorted], out: T[] = [];
+  while (kept.length > 2 && kept.at(-2)!.value > 0 && kept.at(-1)!.value > FAR * kept.at(-2)!.value) out.unshift(kept.pop()!);
+  return { kept, out };
+}
 export interface MineralPoint { value: number; mean: number; brews: number; bags: number; solid: boolean } // value = the amount; mean = adjusted mean rating
 export interface WaterPair {
   a: string; b: string; // A = the recipe that won more bags (then the higher mean delta, then name)
+  slug: string; // "a--b" (slugified): the URL's `pairs` names the expanded pairs by it
   won: number; lost: number; tied: number; // bags, from A's side; tied = bag means within 0.005
   delta: number; // mean over the bags of A's bag mean minus B's
-  bags: { label: string; tag: string | null; href: string | null; a: number; b: number }[]; // A's gap, biggest first
+  bags: { label: string; tag: string | null; href: string | null; a: number; b: number }[]; // biggest |a − b| first
 }
 export interface WaterTab {
   recipes: LeaderRow[];
   // `unit`: mg/L, ppm (GH, KH), '' for the Mg:Ca and Mg:K ratios. Points sorted by value.
-  minerals: { key: Mineral; name: string; unit: string; overall: number; points: MineralPoint[] }[];
+  // `left`: points left out as far above the rest (farAbove), with the recipes that used that value.
+  minerals: { key: Mineral; name: string; unit: string; overall: number; points: MineralPoint[]; left: { value: number; brews: number; recipes: string[] }[] }[];
   gh: BandStat[]; byRoast: Breakdown | null; byProcess: Breakdown | null; eras: Multi | null;
   pairs: WaterPair[]; // most bags first
 }
@@ -374,8 +389,12 @@ export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c
       const has = rows.filter((b) => mineralOf(key, b) !== null);
       const g = ratedGroups(has, (b) => String(mineralOf(key, b)), 'all', 'adjusted');
       if (g.length < 2) return [];
-      const points = g.map((x) => ({ value: +x.label, mean: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS }));
-      return [{ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L', overall: bagMeanAvg(has), points: points.sort((a, b) => a.value - b.value) }];
+      const points = g.map((x) => ({ value: +x.label, mean: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS }))
+        .sort((a, b) => a.value - b.value);
+      const { kept, out } = farAbove(points);
+      const left = out.map((o) => ({ value: o.value, brews: o.brews,
+        recipes: [...new Set(has.filter((b) => mineralOf(key, b) === o.value).map((b) => b.water!))].sort() }));
+      return [{ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L', overall: bagMeanAvg(has), points: kept, left }];
     }),
     gh: pairedDeltas(rows, labFn('gh')),
     byRoast: breakdown(rows, water, SLICE_OF.roast, cols),
@@ -406,8 +425,9 @@ function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): Wate
       const bag = byId.get(id);
       return { label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
         roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y };
-    }).sort((u, v) => v.a - v.b - (u.a - u.b) || u.label.localeCompare(v.label));
-    return { a: flip ? p.y : p.x, b: flip ? p.x : p.y, won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,
+    }).sort((u, v) => Math.abs(v.a - v.b) - Math.abs(u.a - u.b) || u.label.localeCompare(v.label)); // biggest gap first (the UI shows 5)
+    const [a, b] = flip ? [p.y, p.x] : [p.x, p.y];
+    return { a, b, slug: `${slugify(a)}--${slugify(b)}`, won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,
       delta: (flip ? -1 : 1) * mean(d), bags: tagTwins(bags) };
   }).sort((p, q) => q.bags.length - p.bags.length || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
 }
@@ -427,10 +447,10 @@ export function gearTab(brews: readonly BrewFact[], c: { period: Period; ratings
   const mCols = filters.map((f) => f.label).filter((f) => mRows.some((d) => within.get(d)!.has(f)));
   return {
     drippers, filters,
-    matrix: mRows.length ? {
+    matrix: mRows.length ? trimBlank({
       rows: mRows, cols: mCols,
       cells: mRows.map((d) => mCols.map((f) => { const s = within.get(d)!.get(f); return s ? cellOf(s) : null; }))
-    } : null,
+    }) : null,
     byRoast: breakdown(rows, labFn('dripper'), SLICE_OF.roast, drippers.map((d) => d.label)),
     eras: eraOf(brews, c.period, (b) => b.dripper)
   };
