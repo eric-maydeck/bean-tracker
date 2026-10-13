@@ -74,8 +74,6 @@ export async function checkLayout(page: Page): Promise<void> {
         // A 100% stacked bar's segment is as tall as its share; a tap anywhere picks the segment under it, the
         // arrow keys reach every one, and the legend names each series.
         if (el.matches('.stacked .seg')) continue;
-        // A mineral dot is sized by its brews; a tap anywhere on the plot picks the nearest dot (MineralDots).
-        if (el.matches('.dots-chart .dot')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);

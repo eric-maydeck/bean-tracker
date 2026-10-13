@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { LeaderRow } from '$lib/server/insights/lab';
-  import { noMatch, signed } from './DeltaBars.svelte';
+  import { noMatch, SD_HELP, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
@@ -15,7 +15,10 @@
 <div class="lab-board">
   <div class="board-row board-head">
     <span></span><span class="who">{noun[0].toUpperCase() + noun.slice(1)}</span>
-    <span class="num">Brews</span><span class="num bags">Bags</span><span class="num">Avg</span><span class="num sd">SD</span>
+    <span class="num">Brews</span><span class="num bags">Bags</span><span class="num">Avg</span><span class="num sd"
+      ><button class="mode-tip-button sd-tip" popovertarget="{uid}-sd" aria-describedby="{uid}-sd"><span class="tip-text">SD</span></button></span
+    >
+    <div class="mode-tip" id="{uid}-sd" popover onbeforetoggle={placeTip}>{SD_HELP}</div>
     <span></span><span class="num">vs bag</span>
   </div>
   <ol class="board-rows lab-rows">

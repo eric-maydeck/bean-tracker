@@ -2,16 +2,15 @@
   import { tick } from 'svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
-  import DeltaBars, { bandRows, plural, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
-  import HeadingAnchor from './HeadingAnchor.svelte';
+  import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import { STRENGTH_HELP } from './Insights.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import MineralDots from './MineralDots.svelte';
+  import MineralMap from './MineralMap.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import StackedBars from './StackedBars.svelte';
-  import { rowVars } from './rows';
+  import { seriesColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
@@ -19,8 +18,14 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  let empty = $derived(!t.recipes.length && !t.minerals.length && !t.gh.length && !t.byRoast && !t.byProcess && !t.eras && !t.pairs.length);
-  let mineralVars = $derived(rowVars(t.minerals.length));
+  let empty = $derived(!t.recipes.length && !t.map && !t.gh.length && !t.byRoast && !t.byProcess && !t.eras && !t.pairs.length);
+  // A recipe's color, the same as in Water usage over time (its line's series slot); a recipe folded into
+  // "Other" there takes the muted Other color.
+  let recipeColor = $derived.by(() => {
+    const labels = t.eras?.lines.map((l) => l.label) ?? [];
+    const c = new Map(labels.map((l, i) => [l, seriesColors(labels)[i]]));
+    return (recipe: string) => c.get(recipe) ?? 'var(--series-other)';
+  });
   // The two heatmaps share their columns (the recipes). Side by side from 1150 px only when both exist and
   // neither would scroll there: a column takes ≥ 3.25rem, so 7 recipes fit beside a roast/process label.
   // ponytail: column-count estimate, not a measurement; measure the grids if long row labels ever scroll.
@@ -67,23 +72,11 @@
     </div>
   {/if}
 
-  {#if t.minerals.length}
+  {#if t.map}
     <section class="chart-panel" data-section="water-minerals">
-      <LabHead id="water-minerals" title="Minerals vs rating" {placeTip}
-        help={"For each amount of a mineral used in your water recipes: the plain bag-weighted average rating of the brews made with it. Bigger dots: more brews; hollow: under 3 bags or 30 brews. The dashed line is your average for that mineral (every rated brew whose recipe lists it).\nThese are not same-bag comparisons: the water changed with time and with what you were brewing, so read them as leads, not causes."} />
-      <p class="chart-note mineral-note">Strongly tied to era and roast level: these are plain averages, not same-bag comparisons.</p>
-      <div class="hl-grid mineral-grid">
-        {#each t.minerals as m, i (m.key)}
-          <div class="hl-card mineral-card" style={mineralVars[i]}>
-            <HeadingAnchor id="water-mineral-{m.key}" level={3}>{m.name}{#if m.unit}<small class="unit">{m.unit}</small>{/if}</HeadingAnchor>
-            <MineralDots points={m.points} unit={m.unit} overall={m.overall} ariaLabel="{m.name} vs rating, against an average of {m.overall.toFixed(2)}" />
-            <p class="chart-note">Dashed: avg {m.overall.toFixed(2)}</p>
-            {#each m.left as o (o.value)}
-              <p class="chart-note left-out">Left out: {o.recipes.join(' / ')} ({+o.value.toFixed(2)}{m.unit ? ` ${m.unit}` : ''}, {plural(o.brews, 'brew')}), far above the rest.</p>
-            {/each}
-          </div>
-        {/each}
-      </div>
+      <LabHead id="water-minerals" title="Recipe mineral map" {placeTip}
+        help={"Each recipe with an entered water profile, best rating vs usual first (the same-bag delta from Ratings by recipe; no match last), and its minerals. A mineral cell is shaded within its column: light = little, dark = the most any recipe used.\nStrongly tied to era and roast level: the water changed with time and with what you were brewing, so read the minerals as leads, not causes."} />
+      <MineralMap map={t.map} />
     </section>
   {/if}
 
@@ -118,18 +111,20 @@
       <div class="pairs">
         {#each t.pairs as p (p.slug)}
           {@const all = !!s.pairs?.includes(p.slug)}
-          <div class="pair">
+          <div class="pair" style:--ca={recipeColor(p.a)} style:--cb={recipeColor(p.b)}>
             <p class="pair-head">
-              <span class="pair-names"><strong>{p.a}</strong> vs {p.b}</span>
+              <span class="pair-names"
+                ><span class="swatch a" aria-hidden="true"></span><strong>{p.a}</strong> vs <span class="swatch b" aria-hidden="true"></span>{p.b}</span
+              >
               <span class="pair-sum">{p.a} won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · {gap(p.delta)}</span>
             </p>
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
                 <li>
                   <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
-                  <span class="score" class:win={b.a - b.b >= TIE}>{b.a.toFixed(2)}</span>
+                  <span class="score a" class:win={b.a - b.b >= TIE}>{b.a.toFixed(2)}</span>
                   <span class="sep" aria-hidden="true">·</span>
-                  <span class="score" class:win={b.b - b.a >= TIE}>{b.b.toFixed(2)}</span>
+                  <span class="score b" class:win={b.b - b.a >= TIE}>{b.b.toFixed(2)}</span>
                 </li>
               {/each}
             </ol>
@@ -154,28 +149,6 @@
     .water-pair > .span {
       grid-column: 1 / -1;
     }
-  }
-  .mineral-note {
-    margin: calc(-1 * var(--space-2)) 0 var(--space-3);
-  }
-  /* A mineral card is a small chart: title left, the dots taking its spare height so a row's cards match. */
-  .mineral-card {
-    align-items: stretch;
-    text-align: start;
-    gap: var(--space-2);
-  }
-  .mineral-card :global(h3) {
-    margin: 0;
-    font-size: 0.95rem;
-  }
-  .unit {
-    margin-left: 0.3em;
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--color-text-muted);
-  }
-  .mineral-card > .chart-note {
-    margin: 0;
   }
   .heat-grid {
     display: grid;
@@ -206,6 +179,26 @@
     display: grid;
     margin: 0 0 var(--space-1);
     line-height: 1.3;
+  }
+  /* Each recipe's color (as in Water usage over time): a swatch at its name, an underline under its ratings. */
+  .swatch {
+    display: inline-block;
+    width: 0.6rem;
+    height: 0.6rem;
+    margin-right: 0.3rem;
+    border-radius: 2px;
+    background: var(--ca);
+  }
+  .swatch.b {
+    background: var(--cb);
+  }
+  .score.a {
+    text-decoration: underline 3px var(--ca);
+    text-underline-offset: 3px;
+  }
+  .score.b {
+    text-decoration: underline 3px var(--cb);
+    text-underline-offset: 3px;
   }
   .pair-sum {
     font-size: 0.8rem;
