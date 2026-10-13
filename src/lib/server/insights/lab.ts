@@ -359,16 +359,6 @@ const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) =>
   return { ...m, lines: m.lines.map((l, j) => ({ ...l, values: cols.map((col) => col[j]) })), other };
 };
 
-// A mineral chart's top point far above the rest (> FAR × the next-highest value) squashes the axis: left out,
-// repeatedly while it applies, but never below 2 points, never against a next-highest of 0 (no scale to compare),
-// and never a solid point (3+ bags, 30+ brews: a main recipe is real data, not an outlier; prod's Mg/K 60/10).
-const FAR = 1.5;
-export function farAbove<T extends { value: number; solid?: boolean }>(sorted: T[]): { kept: T[]; out: T[] } {
-  const kept = [...sorted], out: T[] = [];
-  while (kept.length > 2 && !kept.at(-1)!.solid && kept.at(-2)!.value > 0 && kept.at(-1)!.value > FAR * kept.at(-2)!.value) out.unshift(kept.pop()!);
-  return { kept, out };
-}
-export interface MineralPoint { value: number; mean: number; brews: number; bags: number; solid: boolean } // value = the amount; mean = adjusted mean rating
 export interface WaterPair {
   a: string; b: string; // A = the recipe that won more bags (then the higher mean delta, then name)
   slug: string; // "a--b" (slugified): the URL's `pairs` names the expanded pairs by it
@@ -378,13 +368,28 @@ export interface WaterPair {
 }
 export interface WaterTab {
   recipes: LeaderRow[];
-  // `unit`: mg/L, ppm (GH, KH), '' for the Mg:Ca and Mg:K ratios. Points sorted by value.
-  // `left`: points left out as far above the rest (farAbove), with the recipes that used that value.
-  minerals: { key: Mineral; name: string; unit: string; overall: number; points: MineralPoint[]; left: { value: number; brews: number; recipes: string[] }[] }[];
+  map: MineralMap | null;
   gh: BandStat[]; byRoast: Breakdown | null; byProcess: Breakdown | null; eras: Eras | null;
   pairs: WaterPair[]; // most bags first
 }
 const MINERAL_UNIT: Partial<Record<Mineral, string>> = { gh: 'ppm', kh: 'ppm', mgca: '', mgk: '' };
+// Recipe mineral map (round 2, W-map): a row per recipe with an entered profile, in Ratings by recipe order
+// (no match last), its same-bag delta and counts, and its profile's amounts per column (null = not entered).
+// `unit`: mg/L, ppm (GH, KH), '' for the ratios.
+export interface MineralMap {
+  cols: { key: Mineral; name: string; unit: string }[];
+  rows: { label: string; delta: number | null; solid: boolean; strength: Strength | null; brews: number; bags: number; values: (number | null)[] }[];
+}
+const MAP_COLS = MINERALS.filter(([k]) => k !== 'chloride' && k !== 'sulfate');
+function mineralMap(rows: readonly BrewFact[], recipes: LeaderRow[]): MineralMap | null {
+  const profiled = new Map(rows.filter((b) => b.water && MAP_COLS.some(([k]) => mineralOf(k, b) !== null)).map((b) => [b.water!, b]));
+  const out = recipes.flatMap((r) => {
+    const b = profiled.get(r.label);
+    return b ? [{ label: r.label, delta: r.delta, solid: r.solid, strength: r.strength, brews: r.plainBrews, bags: r.plainBags,
+      values: MAP_COLS.map(([k]) => mineralOf(k, b)) }] : [];
+  });
+  return out.length ? { cols: MAP_COLS.map(([key, name]) => ({ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L' })), rows: out } : null;
+}
 const TIE = 0.005; // bag means this close show the same at 2 dp: a tie
 export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings }): WaterTab {
   const rows = ratedIn(brews, c.period, c.ratings);
@@ -395,18 +400,7 @@ export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c
   const byId = new Map(bags.map((b) => [b.id, b]));
   return {
     recipes,
-    // Plain adjusted means (spec exception): same-bag water pairs are too thin; the UI notes the confound.
-    minerals: MINERALS.flatMap(([key, name]) => {
-      const has = rows.filter((b) => mineralOf(key, b) !== null);
-      const g = ratedGroups(has, (b) => String(mineralOf(key, b)), 'all', 'adjusted');
-      if (g.length < 2) return [];
-      const points = g.map((x) => ({ value: +x.label, mean: x.adjusted, brews: x.brews, bags: x.bags, solid: x.bags >= MIN_BAGS && x.brews >= MIN_BREWS }))
-        .sort((a, b) => a.value - b.value);
-      const { kept, out } = farAbove(points);
-      const left = out.map((o) => ({ value: o.value, brews: o.brews,
-        recipes: [...new Set(has.filter((b) => mineralOf(key, b) === o.value).map((b) => b.water!))].sort() }));
-      return [{ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L', overall: bagMeanAvg(has), points: kept, left }];
-    }),
+    map: mineralMap(rows, recipes),
     gh: pairedDeltas(rows, labFn('gh')),
     byRoast: breakdown(rows, water, SLICE_OF.roast, cols),
     byProcess: breakdown(rows, water, SLICE_OF.process, cols),

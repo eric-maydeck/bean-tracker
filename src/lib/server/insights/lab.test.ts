@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, brewingTab, farAbove, trimBlank, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
+import { breakdown, brewingTab, trimBlank, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
 
@@ -418,32 +418,22 @@ describe('waterTab', () => {
     expect(w.recipes[0]).toMatchObject({ months: 'Sep', solid: true });
     expect(w.recipes[0].delta).toBeCloseTo(0.25);
   });
-  it('minerals: plain adjusted means per value as points on a numeric axis, only minerals with ≥ 2 values', () => {
-    expect(w.minerals.map((m) => m.key)).toEqual(['calcium', 'magnesium', 'gh', 'mgca', 'mgk']);
-    expect(w.minerals.map((m) => m.unit)).toEqual(['mg/L', 'mg/L', 'ppm', '', '']);
-    expect(w.minerals[0].points.map((b) => b.value)).toEqual([10, 20]);
-    expect(w.minerals[1].points.map((b) => b.value)).toEqual([5, 15]); // sorted by amount, numerically
-    expect(w.minerals[0].points[0]).toMatchObject({ brews: 30, bags: 3, solid: true }); // 3 bags, 30 brews each
-    expect(w.minerals[0].points[0].mean).toBeGreaterThan(w.minerals[0].points[1].mean);
-    expect(w.minerals[0].overall).toBeCloseTo(7.74);
-    expect(w.minerals.every((m) => m.left.length === 0)).toBe(true);
+  it('mineral map: a row per recipe with an entered profile, ranked as Ratings by recipe; columns Ca … Mg:K', () => {
+    expect(w.map!.cols.map((c) => [c.name, c.unit])).toEqual([['Ca', 'mg/L'], ['Mg', 'mg/L'], ['K', 'mg/L'], ['Na', 'mg/L'], ['GH', 'ppm'], ['KH', 'ppm'], ['Mg:Ca', ''], ['Mg:K', '']]);
+    expect(w.map!.rows.map((r) => r.label)).toEqual(['A', 'B']);
+    expect(w.map!.rows[0]).toMatchObject({ solid: true, brews: 30, bags: 3 });
+    expect(w.map!.rows[0].delta).toBeCloseTo(0.25);
+    expect(w.map!.rows[0].values).toEqual([10, 15, 5, 0, 87, 6, 1.5, 3]);
   });
-  it('mineral bars are not solid under MIN_BAGS / MIN_BREWS', () => {
-    const thin = waterTab(rows.filter((r) => r.coffeeId === 1 || r.coffeeId === 2), bags, { period: P, ratings: 'all' });
-    expect(thin.minerals[0].points.map((b) => b.solid)).toEqual([false, false]); // 2 bags
-    const few = waterTab([1, 2, 3].flatMap((id) => [
-      ...many(5, id, 92, 8, { water: 'A', waterProfile: prof(10, 15) }), ...many(5, id, 92, 7.5, { water: 'B', waterProfile: prof(20, 5) })]), bags, { period: P, ratings: 'all' });
-    expect(few.minerals[0].points.map((b) => b.solid)).toEqual([false, false]); // 15 brews each
-  });
-  it('a profile with every mineral 0 or empty counts as not entered; one 0 among others is real', () => {
+  it('mineral map: a recipe with no profile, or one with every mineral 0 or empty, has no row; no match rows last', () => {
     const blank = { calcium: 0, magnesium: null, sodium: 0, potassium: 0, chloride: null, sulfate: 0, gh: 0, kh: 40 };
-    const x = waterTab([...rows, ...[4, 5, 6].flatMap((id) => many(10, id, 92, 6, { water: 'C', waterProfile: blank, localDate: '2026-09-10' }))], bags, { period: P, ratings: 'all' });
-    expect(x.minerals.map((m) => m.key)).toEqual(w.minerals.map((m) => m.key)); // KH 40 would add a second KH value
-    expect(x.minerals.flatMap((m) => m.points.map((b) => b.value))).toEqual(w.minerals.flatMap((m) => m.points.map((b) => b.value)));
-    expect(x.gh.map((s) => s.label)).toEqual(['71 ppm', '87 ppm']);
-    expect(w.minerals.find((m) => m.key === 'calcium')).toBeDefined(); // sodium 0 in prof() stays a real (single) value
-    const na = waterTab(rows.map((r) => (r.water === 'B' ? { ...r, waterProfile: { ...r.waterProfile!, sodium: 3 } } : r)), bags, { period: P, ratings: 'all' });
-    expect(na.minerals.find((m) => m.key === 'sodium')!.points.map((b) => b.value)).toEqual([0, 3]);
+    const x = waterTab([...rows,
+      ...[4, 5, 6].flatMap((id) => many(10, id, 92, 6, { water: 'C', waterProfile: blank, localDate: '2026-09-10' })),
+      ...many(4, 7, 92, 7, { water: 'D', localDate: '2026-09-10' }),
+      ...many(4, 8, 92, 7, { water: 'E', waterProfile: prof(30, 2), localDate: '2026-09-10' })], bags, { period: P, ratings: 'all' });
+    expect(x.map!.rows.map((r) => [r.label, r.delta === null])).toEqual([['A', false], ['B', false], ['E', true]]);
+    expect(x.gh.map((s) => [s.label, s.delta === null])).toEqual([['71 ppm', false], ['83 ppm', true], ['87 ppm', false]]); // E's GH: no match
+    expect(waterTab(rows.map((r) => ({ ...r, waterProfile: null })), bags, { period: P, ratings: 'all' }).map).toBeNull();
   });
   it('pairs: a repurchase (same roaster and name) carries its roast date', () => {
     const twin = [1, 2, 3].map((id) => bag({ id, name: 'Same', purchaseDate: `2026-0${id + 5}-0${id}` }));
@@ -478,25 +468,6 @@ describe('waterTab', () => {
     expect(p.map((x) => x.slug)).toEqual(['b--a', 'a--c', 'b--c']);
     expect([p[0].bags[0].a, p[0].bags[0].b]).toEqual([expect.closeTo(7.95), expect.closeTo(6.95)]);
   });
-  it('farAbove: a top value > 1.5× the next is left out, repeatedly; even spreads, 2 points, a 0 next and solid points are kept', () => {
-    const v = (...xs: number[]) => xs.map((value) => ({ value }));
-    expect(farAbove(v(40, 60, 70, 80, 90, 168))).toEqual({ kept: v(40, 60, 70, 80, 90), out: v(168) });
-    expect(farAbove(v(5, 10, 20, 100))).toEqual({ kept: v(5, 10), out: v(20, 100) }); // 100 > 30, then 20 > 15
-    expect(farAbove(v(10, 20, 30, 40)).out).toEqual([]); // evenly spread
-    expect(farAbove(v(10, 15, 22.5)).out).toEqual([]); // exactly 1.5×: kept
-    expect(farAbove(v(10, 100)).out).toEqual([]); // never below 2 points
-    expect(farAbove(v(0, 0.5, 9)).out).toEqual(v(9));
-    expect(farAbove(v(0, 0, 9)).out).toEqual([]); // next-highest 0: no scale
-    expect(farAbove([{ value: 9.7 }, { value: 14.6, solid: true }, { value: 31.7 }]).out).toEqual([{ value: 31.7 }]); // a solid point stays
-  });
-  it('minerals: a far-above point is left out with its recipe and brews', () => {
-    const far = waterTab([...rows, ...[4, 5].flatMap((id) => many(10, id, 92, 7, { water: 'TWW', waterProfile: prof(15, 31.7), localDate: '2026-09-10' }))],
-      [...bags, ...[4, 5].map((id) => bag({ id, name: `Bag ${id}` }))], { period: P, ratings: 'all' }); // 2 bags: not solid
-    const mg = far.minerals.find((m) => m.key === 'magnesium')!;
-    expect(mg.points.map((p) => p.value)).toEqual([5, 15]);
-    expect(mg.left).toEqual([{ value: 31.7, brews: 20, recipes: ['TWW'] }]);
-    expect(far.minerals.find((m) => m.key === 'calcium')!.left).toEqual([]); // 10, 15, 20: evenly spread
-  });
   it('pairs need ≥ 2 brews per water on the bag', () => {
     const one = waterTab([...many(1, 1, 92, 8, { water: 'A' }), ...many(2, 1, 92, 7, { water: 'B' }), ...many(2, 1, 92, 6, { water: 'C' })], bags, { period: P, ratings: 'all' }).pairs;
     expect(one.map((x) => [x.a, x.b])).toEqual([['B', 'C']]);
@@ -512,7 +483,7 @@ describe('waterTab', () => {
   });
   it('empty period: every list empty, nulls, no NaN', () => {
     const e = waterTab(rows, bags, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all' });
-    expect(e).toEqual({ recipes: [], minerals: [], gh: [], byRoast: null, byProcess: null, eras: null, pairs: [] });
+    expect(e).toEqual({ recipes: [], map: null, gh: [], byRoast: null, byProcess: null, eras: null, pairs: [] });
   });
 });
 
