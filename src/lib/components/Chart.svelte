@@ -1,6 +1,8 @@
 <script lang="ts">
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
+  import FloatTip from './FloatTip.svelte';
+  import TipBody, { type Tip } from './TipBody.svelte';
 
   // Only draws for horizontal bar charts (this app's composition breakdown) —
   // Chart.js has no built-in "show the value next to each bar" option, and
@@ -100,13 +102,20 @@
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
-  // One tip look (ui-rules 36, T1): canvas tooltips wear the HTML tips' frame — surface fill, ink text, a bold
-  // title, the border and radius — instead of Chart.js's dark default.
-  const tipLook = () => ({
-    backgroundColor: themeColor('--color-surface'), titleColor: themeColor('--color-text'), bodyColor: themeColor('--color-text'),
-    borderColor: themeColor('--color-border'), borderWidth: 1, cornerRadius: 10, padding: { x: 12, y: 8 },
-    titleFont: { weight: 'bold' as const, size: 13.6 }, bodyFont: { size: 12.8 }
-  });
+  // One tip look (ui-rules 36, T1): Chart.js draws no tooltip of its own; its tooltip model renders as the shared
+  // HTML tip (TipBody in a FloatTip) at the caret: the x label as the title, each "Series: value" line as a
+  // label/value row (a line without a value stays a line).
+  let tipAt = $state<{ x: number; y: number; tip: Tip } | null>(null);
+  let tipAnchor: HTMLSpanElement | undefined = $state();
+  const external = ({ tooltip }: { tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[] } }) => {
+    if (!tooltip.opacity) return (tipAt = null);
+    const all = (tooltip.body ?? []).flatMap((b) => b.lines);
+    const split = all.map((l) => [l, l.lastIndexOf(': ')] as const);
+    const rows = split.filter(([, i]) => i > 0).map(([l, i]): [string, string] => [l.slice(0, i), l.slice(i + 2)]);
+    const lines = split.filter(([, i]) => i <= 0).map(([l]) => l);
+    const title = (tooltip.title ?? []).join(' ');
+    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: title ? { title, rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) } };
+  };
 
   function paletteColors(count: number): string[] {
     const colors: string[] = [];
@@ -265,7 +274,7 @@
           legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
-          tooltip: { ...tipLook(), ...(format && !trendValues
+          tooltip: { enabled: false, external, ...(format && !trendValues
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
               return `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
@@ -277,7 +286,7 @@
                     `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(ctx.datasetIndex === 0 ? 0 : 1)}${unit}`
                 }
               }
-            : { enabled: true }) },
+            : {}) },
           datalabels:
             type === 'doughnut'
               ? {
@@ -389,4 +398,18 @@
 
 <div class="chart-container" style="height: {height}px">
   <canvas bind:this={canvasEl}></canvas>
+  <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px"></span>
+  {#if tipAt && tipAnchor}
+    {#key `${tipAt.x},${tipAt.y}`}<FloatTip anchor={tipAnchor}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
+  {/if}
 </div>
+
+<style>
+  /* The tooltip's anchor: a point at the caret (FloatTip places the tip from its rect). */
+  .tip-anchor {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+</style>

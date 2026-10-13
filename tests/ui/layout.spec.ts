@@ -1166,8 +1166,17 @@ export const STATES: State[] = [
       const c = page.locator('.insights-charts canvas').first();
       await c.scrollIntoViewIfNeeded();
       const b = (await c.boundingBox())!;
-      await page.mouse.move(b.x + b.width * 0.9, b.y + b.height * 0.5);
-      await page.waitForTimeout(400);
+      // T1: a canvas chart's tip is the shared HTML tip: a bold title, then label/value rows (no "Label: value").
+      // Swept from the right until a bar is under the pointer (bars hover by intersection).
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      for (let f = 0.95; f > 0 && !(await tip.count()); f -= 0.05) {
+        await page.mouse.move(b.x + b.width * f, b.y + b.height * 0.75);
+        await page.waitForTimeout(100);
+      }
+      await expect(tip.locator('.tip-title')).not.toBeEmpty();
+      await expect(tip.locator('.tip-rows dt').first()).toBeVisible();
+      expect(await tip.locator('.tip-rows dt').evaluateAll((ds) => ds.every((d) => !d.textContent!.includes(':')))).toBe(true);
+      await expectTipInView(page, tip);
     }
   },
   {
