@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lines, nameColors, scale, smooth, SLOTS } from './multiLine';
+import { capList, lines, nameColors, scale, smooth, SLOTS } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -45,5 +45,18 @@ describe('nameColors', () => {
     const c = nameColors(lines, many);
     expect(new Set(lines.map((l) => c.get(l))).size).toBe(10); // every bar's segments differ
     for (const p of many) expect(c.get(p.a)).not.toBe(c.get(p.b)); // every pair's two differ
+  });
+});
+
+describe('capList (Other tips: 8 on desktop, 4 on phones)', () => {
+  const ten = Array.from({ length: 10 }, (_, i) => i);
+  it('cuts at max with "+N more"', () => {
+    expect(capList(ten, 8)).toEqual({ shown: ten.slice(0, 8), more: 2 });
+    expect(capList(ten, 4)).toEqual({ shown: ten.slice(0, 4), more: 6 });
+  });
+  it('never "+1 more": one leftover is shown; short lists stay whole', () => {
+    expect(capList(ten.slice(0, 9), 8)).toEqual({ shown: ten.slice(0, 9), more: 0 });
+    expect(capList(ten.slice(0, 5), 4).more).toBe(0);
+    expect(capList([], 4)).toEqual({ shown: [], more: 0 });
   });
 });

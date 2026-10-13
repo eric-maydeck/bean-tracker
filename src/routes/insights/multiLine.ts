@@ -26,6 +26,13 @@ export function seriesColors(labels: string[]) {
   return labels.map((l) => (l === 'Other' ? OTHER : SLOTS[slot++ % SLOTS.length]));
 }
 
+// A capped list in a tip: up to `max` items, then "+N more"; a single leftover item is shown rather than "+1 more"
+// (it costs the same row).
+export function capList<T>(items: T[], max: number): { shown: T[]; more: number } {
+  const n = items.length <= max + 1 ? items.length : max;
+  return { shown: items.slice(0, n), more: items.length - n };
+}
+
 // One color per name for a whole page (ui-rules 42; Water's recipes): usage lines first, in line order, then each
 // pair's recipes. Every name gets its own slot while slots last; past that a name reuses a slot no name it is
 // shown with uses (the lines share every bar; a pair's two share a block), so a bar or pair never repeats a color.

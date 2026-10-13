@@ -3,7 +3,7 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { Multi } from '$lib/server/insights/insightGenerators';
-  import { seriesColors } from './multiLine';
+  import { capList, seriesColors } from './multiLine';
 
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.
@@ -21,9 +21,9 @@
   // aria-label names every member.
   const otherRows = () => (typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 8 : 4);
   const tipOf = (k: number, i: number, max = otherRows()): Tip => {
-    const held = m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [];
-    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...held.slice(0, max).map(([name, v]): [string, string] => [name, pct(v)])],
-      note: held.length > max ? `+${held.length - max} more` : undefined };
+    const { shown, more } = capList(m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [], max);
+    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v]): [string, string] => [name, pct(v)])],
+      note: more ? `+${more} more` : undefined };
   };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
   let stop = $derived.by(() => {

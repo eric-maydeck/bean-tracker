@@ -2132,11 +2132,15 @@ export const STATES: State[] = [
       // The name text is the tip target, not the cell's empty space; the vs usual chip hugs its value.
       const target = await map.locator('tbody th').first().evaluate((th) => {
         const name = th.querySelector('.map-name')!.getBoundingClientRect(), cell = th.getBoundingClientRect();
-        const chip = th.parentElement!.querySelector('.delta-chip')?.getBoundingClientRect(), td = th.parentElement!.querySelector('.delta')!.getBoundingClientRect();
-        return { inside: name.width <= cell.width, chipW: chip?.width ?? 0, tdW: td.width };
+        // Every row's vs usual cell hugs its content (a chip, or the no-match dash): at most 24px wider.
+        const loose = [...th.closest('tbody')!.querySelectorAll('td.delta')].filter((td) => {
+          const content = Math.max(...[...td.children].map((e) => e.getBoundingClientRect().width));
+          return td.getBoundingClientRect().width - content > 24;
+        }).length;
+        return { inside: name.width <= cell.width, loose };
       });
       expect(target.inside).toBe(true);
-      if (target.chipW) expect(target.tdW - target.chipW).toBeLessThanOrEqual(24);
+      expect(target.loose).toBe(0);
       await map.locator('tbody th').first().click({ position: { x: (await map.locator('tbody th').first().boundingBox())!.width - 3, y: 3 } });
       if (await map.locator('.map-name').first().evaluate((n) => n.getBoundingClientRect().right < n.parentElement!.getBoundingClientRect().right - 6))
         await expect(map.locator('.cell-tip')).toHaveCount(0);
@@ -2296,8 +2300,9 @@ export const STATES: State[] = [
         await expect(tip.locator('dt').first()).toHaveText('Other');
         const members = (await tip.locator('dt').count()) - 1, all = (await others.last().getAttribute('aria-label'))!.split(' · ').length - 2; // title · Other row · each member
         const max = (page.viewportSize()?.width ?? 0) >= 768 ? 8 : 4;
-        expect(members).toBe(Math.min(all, max));
-        if (all > max) await expect(tip.locator('.tip-note')).toHaveText(`+${all - max} more`);
+        const shown = all <= max + 1 ? all : max; // never "+1 more"
+        expect(members).toBe(shown);
+        if (all > shown) await expect(tip.locator('.tip-note')).toHaveText(`+${all - shown} more`);
         await page.locator('h1').click();
       }
       await expect(page.getByLabel('Compare')).toHaveCount(0);
