@@ -1917,7 +1917,9 @@ export const STATES: State[] = [
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
+      // Each chart's toggle is its own: temp=exact leaves Grind on bands.
+      await expect(page.getByRole('group', { name: 'Temp bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('group', { name: 'Grind bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'false');
       const bold = page.locator('[data-section="brewing-temp"] .bar-label.bold');
       await expect(bold).toHaveText(['88 °C', '91 °C', '92 °C', '94 °C']);
     } },
@@ -2027,7 +2029,8 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const h of ['Drippers', 'Filters', 'Dripper × filter', 'Dripper × roast level', 'Gear eras'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
-      await expect(page.locator('[data-section="gear-matrix"] .heat-cell.none')).not.toHaveCount(0); // Origami · Sibarist: no brews
+      // Filters within each dripper: only V60 uses two filters (Abaca, Sibarist), so one row of two cells.
+      await expect(page.locator('[data-section="gear-matrix"] .heat-cell')).toHaveCount(2);
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
