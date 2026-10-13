@@ -122,6 +122,13 @@
   .val {
     text-align: right;
   }
+  /* A delta's color (T4) holds on thin rows too (the muted numbers beside it carry the few-brews cue). */
+  .lab-rows .val:global(.ink-better) {
+    color: var(--div-high-ink);
+  }
+  .lab-rows .val:global(.ink-worse) {
+    color: var(--div-low-ink);
+  }
   .no-match {
     font: inherit;
     font-size: 0.8rem;

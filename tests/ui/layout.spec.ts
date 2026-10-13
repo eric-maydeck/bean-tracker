@@ -95,7 +95,7 @@ async function expectNoEllipsis(page: Page) {
 }
 
 // T4 (ui-rules 29): a signed vs-usual delta shown as text is green from +0.05, red from −0.05, ink between
-// (thin rows stay muted; neutral is never green or red). Checks every board delta, polarity bar value and tagged delta (.delta-text) on the page.
+// (thin rows too; neutral is never green or red). Checks every board delta, polarity bar value and tagged delta (.delta-text) on the page.
 async function expectDeltaInk(page: Page) {
   const bad = await page.evaluate(() => {
     const probe = document.createElement('span');
@@ -103,7 +103,7 @@ async function expectDeltaInk(page: Page) {
     const ink = (v: string) => ((probe.style.color = v), getComputedStyle(probe).color);
     const [better, worse] = [ink('var(--div-high-ink)'), ink('var(--div-low-ink)')];
     probe.remove();
-    const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row:not(.few) .val, .delta-bars:not(.direction) .bar-row:not(.pale) .bar-value, .delta-text')];
+    const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row .val, .delta-bars:not(.direction) .bar-row .bar-value, .delta-text')];
     return els.flatMap((e) => {
       const m = /^([+−])(\d+\.\d+)/.exec(e.textContent!.trim());
       if (!m) return [];

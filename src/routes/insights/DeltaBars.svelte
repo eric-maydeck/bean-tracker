@@ -113,7 +113,7 @@
         {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} style:width="{b.w}%"
           style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
-      <span class="bar-value {colors === 'direction' || b.pale ? '' : deltaInk(b.value)}">
+      <span class="bar-value {colors === 'direction' ? '' : deltaInk(b.value)}">
         {b.value === null ? b.text || 'few brews' : b.text}
         {#if b.strength === 'solid' || b.strength === 'hint'}<span class="badge hl-badge" class:hint={b.strength === 'hint'}>{STRENGTH[b.strength]}</span>{/if}
       </span>
@@ -222,5 +222,12 @@
   }
   .pale .bar-value {
     color: var(--color-text-muted);
+  }
+  /* A delta's color (T4) holds on thin rows too; the stripes carry the few-brews cue. */
+  .pale .bar-value:global(.ink-better) {
+    color: var(--div-high-ink);
+  }
+  .pale .bar-value:global(.ink-worse) {
+    color: var(--div-low-ink);
   }
 </style>
