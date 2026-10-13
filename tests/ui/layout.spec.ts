@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -2217,12 +2217,18 @@ export const STATES: State[] = [
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
       expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
-      // Drippers beside Filters from 768 px, one height; stacked below, each its own height.
+      // Drippers beside Filters from 768 px, the matrix stacked under the board with fewer rows (ui-rules 40):
+      // the columns end level, no placeholder rows, no empty space in a card; stacked below, each its own height.
       const [d, f] = await Promise.all(['drippers', 'filters'].map((k) => page.locator(`[data-section="gear-${k}"]`).boundingBox()));
       const wide = (page.viewportSize()?.width ?? 0) >= 768;
       expect(Math.round(d!.y) === Math.round(f!.y)).toBe(wide);
-      if (wide) expect(Math.abs(d!.height - f!.height)).toBeLessThanOrEqual(1);
-      else {
+      if (wide) {
+        await expectColumnsFilled(page, '.gear-pair');
+        const m = (await page.locator('[data-section="gear-matrix"]').boundingBox())!;
+        const nd = await page.locator('[data-section="gear-drippers"] .lab-rows > li').count();
+        const nf = await page.locator('[data-section="gear-filters"] .lab-rows > li').count();
+        expect(Math.round(m.x)).toBe(Math.round(nf <= nd ? f!.x : d!.x)); // under the shorter board
+      } else {
         const lists = await page.locator('.gear-pair .board-rows').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height - [...l.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0)));
         expect(lists.every((x) => Math.abs(x) <= 1)).toBe(true);
       }

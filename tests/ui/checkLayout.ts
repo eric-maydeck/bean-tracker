@@ -301,3 +301,28 @@ export async function expectTipsFormatted(page: Page) {
   }));
   expect(bad).toEqual([]);
 }
+
+// Leftover column space holds real content (ui-rules 40): in a grid of cards laid out in columns, the columns
+// end level (±1px); a column with two cards never also pads with placeholder rows; and inside every card the
+// content reaches its bottom (the shorter column's rows stretch, nothing empty under the last row).
+export async function expectColumnsFilled(page: Page, selector: string) {
+  const bad = await page.locator(selector).evaluateAll((grids) => grids.flatMap((g) => {
+    const cards = [...g.children] as HTMLElement[];
+    const cols = new Map<number, HTMLElement[]>();
+    for (const c of cards) cols.set(Math.round(c.getBoundingClientRect().left), [...(cols.get(Math.round(c.getBoundingClientRect().left)) ?? []), c]);
+    const out: string[] = [];
+    if (cols.size > 1) {
+      const ends = [...cols.values()].map((cs) => Math.max(...cs.map((c) => c.getBoundingClientRect().bottom)));
+      if (Math.max(...ends) - Math.min(...ends) > 1) out.push(`columns end ${Math.round(Math.max(...ends) - Math.min(...ends))}px apart`);
+      if ([...cols.values()].some((cs) => cs.length > 1) && g.querySelector('.placeholder')) out.push('placeholder rows beside a stacked card');
+    }
+    for (const c of cards) {
+      const pad = parseFloat(getComputedStyle(c).paddingBottom);
+      const inner = Math.max(...[...c.querySelectorAll('*')].filter((e) => !e.closest('[popover]')).map((e) => e.getBoundingClientRect().bottom));
+      const gap = c.getBoundingClientRect().bottom - pad - inner;
+      if (gap > 2) out.push(`${c.dataset.section ?? c.className}: ${Math.round(gap)}px empty at the bottom`);
+    }
+    return out;
+  }));
+  expect(bad, selector).toEqual([]);
+}
