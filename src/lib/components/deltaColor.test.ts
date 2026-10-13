@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deltaColor, deltaInk, deltaTone } from './deltaColor';
+import { deltaColor, deltaInk, deltaRamp } from './deltaColor';
 
 describe('deltaColor (fixed scale, T3)', () => {
   it('under 0.05 is plain gray, either sign', () => {
@@ -7,14 +7,13 @@ describe('deltaColor (fixed scale, T3)', () => {
     expect(deltaColor(0.049)).toBe('var(--div-mid)');
     expect(deltaColor(0)).toBe('var(--div-mid)');
   });
-  it('from 0.05 a visible floor, full color from 0.4; linear between; sign picks the pole', () => {
-    expect(deltaTone(0.05)).toBeCloseTo(0.33);
-    expect(deltaTone(-0.05)).toBeCloseTo(0.33);
-    expect(deltaTone(0.4)).toBe(1);
-    expect(deltaTone(-1.2)).toBe(1);
-    expect(deltaTone(0.225)).toBeCloseTo(0.665);
-    expect(deltaColor(-0.08)).toBe('color-mix(in oklab, var(--div-low) 39%, var(--div-mid))'); // a small delta still reads red
-    expect(deltaColor(0.6)).toBe('color-mix(in oklab, var(--div-high) 100%, var(--div-mid))');
+  it('from 0.05 the theme floor, full color from 0.4; linear between; sign picks the pole', () => {
+    expect(deltaRamp(0.05)).toBe(0);
+    expect(deltaRamp(-0.4)).toBe(1);
+    expect(deltaRamp(-1.2)).toBe(1);
+    expect(deltaRamp(0.225)).toBeCloseTo(0.5);
+    expect(deltaColor(-0.05)).toBe('color-mix(in oklab, var(--div-low) calc((var(--div-floor) + (1 - var(--div-floor)) * 0) * 100%), var(--div-mid))');
+    expect(deltaColor(0.6)).toContain('var(--div-high) calc((var(--div-floor) + (1 - var(--div-floor)) * 1) * 100%)');
   });
   it('null (no data) is transparent', () => expect(deltaColor(null)).toBe('transparent'));
 });

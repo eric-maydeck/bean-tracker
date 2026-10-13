@@ -58,6 +58,7 @@
   --div-low: #d8573c;
   --div-mid: #dcd9d4;
   --div-high: #1a9b7c;
+  --div-floor: 0.35; /* the first tint (|Δ| 0.05): ≥ 10 OKLab ΔE×100 from --div-mid (divFloor.test.ts) */
   /* A signed delta as text (T4): the diverging pair darkened to 4.5:1+ on the surface. */
   --div-high-ink: #137a61;
   --div-low-ink: #b5452b;
@@ -137,6 +138,7 @@
     --div-low: #e5603f;
     --div-mid: #635d57;
     --div-high: #24a383;
+    --div-floor: 0.52; /* dark: green sits close to the gray, so the first tint starts stronger */
     --div-high-ink: #2fb893;
     --div-low-ink: #f0775a;
     --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */
@@ -189,6 +191,7 @@
   --div-low: #e5603f;
   --div-mid: #635d57;
   --div-high: #24a383;
+  --div-floor: 0.52;
   --div-high-ink: #2fb893;
   --div-low-ink: #f0775a;
   --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */

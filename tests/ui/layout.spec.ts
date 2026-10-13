@@ -1919,19 +1919,23 @@ export const STATES: State[] = [
       await expectPairsFilled(page, '.lab-grid');
       await expectInnerScroll(page, '.fit-body');
       // G1/G2 colors: same-bag bars use the heatmaps' --div-high/--div-low; Grind drift is one neutral ink.
-      // T3: every bar and heat cell colors by its own value on one fixed scale: gray under 0.05, then a visible
-      // 33% tint floor ramping to full color at 0.4.
+      // T3: every bar and heat cell colors by its own value on one fixed scale: gray under 0.05, then the theme's
+      // visible tint floor (--div-floor) ramping to full color at 0.4.
       const colors = await page.evaluate(() => {
         const probe = document.createElement('span');
         document.body.append(probe);
         const resolve = (bg: string) => ((probe.style.background = bg), getComputedStyle(probe).backgroundColor);
+        const floor = +getComputedStyle(document.documentElement).getPropertyValue('--div-floor');
         const expected = (v: number) => {
-          const t = Math.abs(v) < 0.05 ? 0 : 0.33 + 0.67 * Math.min(1, (Math.abs(v) - 0.05) / 0.35);
-          return resolve(t ? `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(100 * t)}%, var(--div-mid))` : 'var(--div-mid)');
+          const t = Math.abs(v) < 0.05 ? 0 : floor + (1 - floor) * Math.min(1, (Math.abs(v) - 0.05) / 0.35);
+          return resolve(t ? `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${(100 * t).toFixed(2)}%, var(--div-mid))` : 'var(--div-mid)');
         };
         const num = (s: string) => parseFloat(s.replace('−', '-'));
         // The shown value is rounded to 2 dp: any value that rounds to it may be the drawn one.
-        const near = (got: string, v: number) => [-0.005, -0.0025, 0, 0.0025, 0.005].some((d) => expected(v + d) === got);
+        // Colors match within 2 per channel (the drawn mix rounds its percentage).
+        const rgb = (c: string) => (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+        const same = (a: string, b: string) => rgb(a).every((x, i) => Math.abs(x - rgb(b)[i]) <= 2);
+        const near = (got: string, v: number) => [-0.005, -0.0025, 0, 0.0025, 0.005].some((d) => same(expected(v + d), got));
         const out: string[] = [];
         for (const row of document.querySelectorAll('[data-section="brewing-vars"] .bar-row')) {
           const bar = row.querySelector('.bar'), v = num(row.querySelector('.bar-value')!.textContent!.trim());
