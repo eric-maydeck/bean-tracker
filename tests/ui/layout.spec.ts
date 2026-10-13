@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -927,7 +927,7 @@ export const STATES: State[] = [
       await expect(page.locator('.insights-charts canvas')).toHaveCount(2);
       await expect(page.locator('.heatmap .heat-cell')).toHaveCount(7 * 24);
       await page.locator('.brew-calendar .cal-cell').last().click();
-      await expect(page.locator('.cell-tip')).toBeVisible();
+      await expectDataTip(page.locator('.cell-tip'));
     }
   },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
@@ -937,7 +937,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
       await page.locator('.heatmap .heat-cell').first().focus();
-      await expect(page.locator('.cell-tip')).toBeVisible();
+      await expectDataTip(page.locator('.cell-tip'));
       // Roving tabindex: one tab stop per grid; arrow keys move focus (and the tip).
       await expect(page.locator('.heatmap [tabindex="0"]')).toHaveCount(1);
       await expect(page.locator('.brew-calendar [tabindex="0"]')).toHaveCount(1);
@@ -1173,9 +1173,7 @@ export const STATES: State[] = [
         await page.mouse.move(b.x + b.width * f, b.y + b.height * 0.75);
         await page.waitForTimeout(100);
       }
-      await expect(tip.locator('.tip-title')).not.toBeEmpty();
-      await expect(tip.locator('.tip-rows dt').first()).toBeVisible();
-      expect(await tip.locator('.tip-rows dt').evaluateAll((ds) => ds.every((d) => !d.textContent!.includes(':')))).toBe(true);
+      await expectDataTip(tip);
       await expectTipInView(page, tip);
     }
   },

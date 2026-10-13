@@ -7,11 +7,14 @@
 
   let {
     days,
-    text
+    text,
+    row
   }: {
     days: { date: string; value: number | null }[];
-    text: (v: number | null) => string;
+    text: (v: number | null) => string; // the cell's aria-label value
+    row: (v: number | null) => [string, string]; // its tip row (ui-rules 36): label, value
   } = $props();
+  let valueOf = $derived(new Map(days.map((d) => [d.date, d.value])));
 
   const dayLabel = (d: string) => `${WEEKDAYS[weekday(d)]}, ${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}`;
 
@@ -45,6 +48,7 @@
     role="button"
     tabindex={first ? 0 : -1}
     aria-label="{dayLabel(d.date)} · {text(d.value)}"
+    data-date={d.date}
     style="background: {tone(d.value)}"
     onfocus={(e) => (takeFocus(e), show(e))}
     onblur={() => (tip = null)}
@@ -87,8 +91,8 @@
   {/if}
   {#if !short && latest.cut}<p class="note">Latest {MAX_MONTHS} months — pick a custom range for earlier.</p>{/if}
   {#if tip}
-    {@const [day, ...rest] = tip.getAttribute('aria-label')!.split(' · ')}
-    <FloatTip anchor={tip}><TipBody tip={{ title: day, lines: [rest.join(' · ')] }} /></FloatTip>
+    {@const date = (tip as HTMLElement).dataset.date!}
+    <FloatTip anchor={tip}><TipBody tip={{ title: dayLabel(date), rows: [row(valueOf.get(date) ?? null)] }} /></FloatTip>
   {/if}
 </div>
 

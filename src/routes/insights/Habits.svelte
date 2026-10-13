@@ -27,6 +27,11 @@
       : measure === 'grams' ? num(v) + (avg ? ' avg' : '')
       : `${num(v)} ${measure === 'rating' ? 'avg rating' : v === 1 && !avg ? 'brew' : 'brews'}${avg ? ' avg' : ''}`;
   };
+  // The same value as a tip row (ui-rules 36): what it counts, then the number ("Brews (avg)  0.31").
+  const rowOf = (avg: boolean) => (v: number | null): [string, string] => [
+    measure === 'rating' ? 'Avg rating' : `${measure === 'grams' ? 'Grams' : 'Brews'}${avg ? ' (avg)' : ''}`,
+    v === null ? 'No data' : textOf(avg)(v).replace(/ (avg rating|brews?|avg)( avg)?$/, '')
+  ];
   const text = $derived(textOf(avg));
   const dayText = $derived(textOf(false)); // the calendar is per day in either mode
   const what = $derived(measure === 'grams' ? 'Grams' : 'Brews');
@@ -103,7 +108,8 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday" />
+    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
+      tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)] })} />
   {/if}
 </section>
 <section class="chart-panel">
@@ -111,6 +117,6 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <BrewCalendar days={h.calendar} text={dayText} />
+    <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
   {/if}
 </section>
