@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
@@ -108,10 +109,10 @@
     </select>
   </div>
   <div class="mode-tip" id="tip-rank" popover onbeforetoggle={placeTip}>
-    {#each RANKS as r (r)}<p><b>{RANK_LABEL[r]}.</b> {RANK_HELP[r]}</p>{/each}
+    <TipBody tip={{ title: 'Rank by', lines: RANKS.map((r) => `${RANK_LABEL[r]}: ${RANK_HELP[r][0].toLowerCase()}${RANK_HELP[r].slice(1)}`) }} />
   </div>
   {#if rank === 'rating'}
-    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}>How each score is worked out. Click for the full explanation.</div>
+    <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Score', lines: ['How each score is worked out.', 'Click for the full explanation.'] }} /></div>
     <div class="form-field">
       <span><button class="mode-tip-button" aria-haspopup="dialog" data-tip="tip-score" onclick={() => help?.showModal()}><span class="tip-text">Score</span><Icon name="question" /></button></span>
       <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
@@ -297,12 +298,6 @@
   }
   .move.trend-bad {
     color: var(--color-urgent);
-  }
-  .mode-tip p {
-    margin: 0 0 0.4rem;
-  }
-  .mode-tip p:last-child {
-    margin: 0;
   }
   .placeholder {
     color: var(--color-text-muted);

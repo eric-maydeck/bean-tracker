@@ -2289,12 +2289,14 @@ td > .action-buttons.under-form {
 }
 
 /* Heatmap and BrewCalendar: the cell tooltip (themed like WorldMap's .map-tip), and the
-   no-data cell, an outline rather than a fill so it never reads as a value. */
+   no-data cell, an outline rather than a fill so it never reads as a value. One tip look (T1): the
+   same padding, type and frame as the help popovers (.mode-tip, +page.svelte). */
 .cell-tip {
   position: absolute;
   translate: -50% calc(-100% - 0.4rem);
-  padding: 0.4rem 0.6rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
+  line-height: 1.35;
   white-space: nowrap;
   pointer-events: none;
   z-index: 1;
@@ -2339,6 +2341,16 @@ td > .action-buttons.under-form {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+/* Help popovers: one idea per line (T1), a little air between lines. */
+.tip-lines {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8rem;
+}
+.tip-lines li + li {
+  margin-top: 0.25rem;
 }
 .tip-note {
   display: block;

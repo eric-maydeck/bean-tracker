@@ -2,9 +2,9 @@
   import { sdFocus, sdBlur } from './DeltaBars.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
-  import { STRENGTH, STRENGTH_HELP } from './Insights.svelte';
+  import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { plural, SD_HELP, signed } from './DeltaBars.svelte';
+  import { plural, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -198,7 +198,8 @@
 
   <section class="chart-panel" data-section="spots-cards">
     <LabHead id="spots-cards" title="Sweet spots" {placeTip}
-      help="For each setting, the band your ratings favour for coffees like this. First choice: the same bag brewed both ways (+0.4 = beat the same bag's other brews by 0.4). Not enough of those: bag averages across similar coffees, widening the group until there's enough. Solid = at least twice its noise; Hint = 1.5 to 2." />
+      help={['For each setting, the band your ratings favor for coffees like this.', 'First choice: the same bag brewed both ways.',
+        "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", STRENGTH_LINE]} />
     <div class="hl-grid finding-grid spot-grid" use:tighten={sized}>
       {#each sized as { item: c, style } (c.key)}
         {@const p = c.spot}
@@ -213,7 +214,7 @@
               <button class="mode-tip-button" popovertarget="{id}-badge" aria-describedby="{id}-badge"
                 ><span class="badge hl-badge" class:hint={b === 'hint'}>{STRENGTH[b]}</span></button
               >
-              <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}>{STRENGTH_HELP[b]}</div>
+              <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
           </div>
           <span class="hl-value" class:long={v.length > 9}>{#if leaning(p)}<small>Leaning </small>{/if}{v}</span>
@@ -246,7 +247,7 @@
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
-            {#each full.split('\n') as line, i (i)}{#if i}<br />{/if}{line}{/each}
+            <TipBody tip={{ title: full.split('\n')[0], lines: full.split('\n').slice(1) }} />
           </div>
         </div>
       {/each}
@@ -256,12 +257,13 @@
   {#if t.topBags.length}
     <section class="chart-panel" data-section="spots-top">
       <LabHead id="spots-top" title="Top bags like this" {placeTip}
-        help={"The bags matching these filters with the best ratings.\nScore: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. SD: how widely its ratings vary.\nUnder each: its roaster and usual temp · water · dripper."} />
+        help={['The bags matching these filters with the best ratings.', "Score: each bag's average pulled toward the matching brews' average by 5 brews.",
+          "So one great brew doesn't top the list.", 'SD: how much its ratings vary (small: consistent · big: hit or miss).', 'Under each: its roaster, then usual temp · water · dripper.']} />
       <!-- Numbers in aligned columns under one header (G4): brews · SD · score; the sub line is context only. -->
       <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num"
         ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
       ><span class="num">Score</span></div>
-      <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}>{SD_HELP}</div>
+      <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
           <li class="board-row">

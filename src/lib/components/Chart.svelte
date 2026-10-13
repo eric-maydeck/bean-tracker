@@ -100,6 +100,14 @@
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   }
 
+  // One tip look (ui-rules 36, T1): canvas tooltips wear the HTML tips' frame — surface fill, ink text, a bold
+  // title, the border and radius — instead of Chart.js's dark default.
+  const tipLook = () => ({
+    backgroundColor: themeColor('--color-surface'), titleColor: themeColor('--color-text'), bodyColor: themeColor('--color-text'),
+    borderColor: themeColor('--color-border'), borderWidth: 1, cornerRadius: 10, padding: { x: 12, y: 8 },
+    titleFont: { weight: 'bold' as const, size: 13.6 }, bodyFont: { size: 12.8 }
+  });
+
   function paletteColors(count: number): string[] {
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -257,7 +265,7 @@
           legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
-          tooltip: format && !trendValues
+          tooltip: { ...tipLook(), ...(format && !trendValues
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
               return `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
@@ -269,7 +277,7 @@
                     `${ctx.dataset.label}: ${(ctx.parsed.y ?? 0).toFixed(ctx.datasetIndex === 0 ? 0 : 1)}${unit}`
                 }
               }
-            : { enabled: true },
+            : { enabled: true }) },
           datalabels:
             type === 'doughnut'
               ? {

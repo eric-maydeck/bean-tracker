@@ -40,7 +40,10 @@
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
-        help={"Rows are roast levels, columns are days off roast. A cell is that roast level's bags' average rating in the window (each bag counts once), minus the roast level's usual, so rows compare.\nGreen: better than usual; red: worse. Outlined: the row's best window (2+ solid cells). Faded: under 3 bags or 30 brews.\nA bag is mostly brewed at one rest, so this compares bags rather than brews of the same bag: it also moves with which coffees were rested longer."} />
+        help={["Rows: roast levels · columns: days off roast.", "A cell: the roast level's bags' average rating in that window, minus the roast level's usual.",
+          'Each bag counts once, so rows compare.', 'Green: better than usual · red: worse.', "Outlined: the row's best window (2+ solid cells).",
+          'Striped: under 3 bags or 30 brews.', 'A bag is mostly brewed at one rest, so this compares bags, not brews of one bag.',
+          'It also moves with which coffees rested longer.']} />
       <LabHeatmap by={t.rest} best={t.rest.best} vs="usual" noun="rest window" scale={['Below the roast level\'s usual', 'Above']}
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />
     </section>
@@ -56,7 +59,7 @@
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
-          <LabHead id="brewing-best" title="Brews until dialed" help={"For each bag with 5+ rated brews this period: the brew number of its best-rated brew (the earliest on a tie)."} {placeTip} />
+          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews this period: the brew number of its best-rated brew.', 'A tie: the earliest.']} {placeTip} />
           <div class="fit-body">
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
@@ -70,14 +73,15 @@
   {#if slots.length}
     <section class="brewing-vars" data-section="brewing-vars">
       <LabHead id="brewing-vars" title="Variables vs rating" {placeTip}
-        help={`${SAME_BAG_HELP}\nBands or Exact: each chart groups its setting into bands, or lists each value (rounded: ratio and dose to 0.5, brew time to 5 s).\nBreak down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags); faded cells have few brews, blank cells no match.`} />
+        help={[...SAME_BAG_HELP, 'Bands · Exact: group a setting into bands, or list each value.', 'Exact rounds ratio and dose to 0.5, brew time to 5 s.',
+          'Break down by: the same delta per roast level, process, origin or roaster (rows with 3+ bags).', 'Blank: no match.']} />
       <div class="lab-grid" use:fitPairs={[t, s]}>
         {#each slots as row (row.join())}
           {#each row as k (k)}
             {#if k === 'drift'}
               <section class="chart-panel lab-chart" class:span={row.length === 1} data-section="brewing-drift">
                 <LabHead id="brewing-drift" title="Grind drift" level={3} {placeTip}
-                  help={"Mean change in grind setting vs each bag's first brew this period on this grinder, by brew number.\nPale: under 3 bags."} />
+                  help={["Mean change in grind setting vs each bag's first brew this period, on this grinder.", 'One row per brew number in the bag.', 'Striped: under 3 bags.']} />
                 <div class="fit-body">
                   <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), pale: !d.solid,

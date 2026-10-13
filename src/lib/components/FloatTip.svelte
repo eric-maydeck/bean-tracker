@@ -4,8 +4,8 @@
 
   // A chart tip in the top layer (round 2, C2): a manual popover, so no card overflow, scroll wrapper or
   // container clips it and it sits above the sticky bars; placed from its anchor's rect (tipPlace) and
-  // re-placed on scroll and resize while open. `wide`: the lab's structured tip (wraps at 15rem).
-  let { anchor, wide = true, children }: { anchor: Element; wide?: boolean; children: Snippet } = $props();
+  // re-placed on scroll and resize while open. Every tip is the structured one (TipBody), wrapping at 15rem.
+  let { anchor, children }: { anchor: Element; children: Snippet } = $props();
 
   let el: HTMLDivElement | undefined = $state();
   function place() {
@@ -29,4 +29,4 @@
   });
 </script>
 
-<div bind:this={el} class="cell-tip float-tip" class:wide popover="manual" role="tooltip">{@render children()}</div>
+<div bind:this={el} class="cell-tip float-tip wide" popover="manual" role="tooltip">{@render children()}</div>

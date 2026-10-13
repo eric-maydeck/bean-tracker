@@ -1,14 +1,17 @@
 <script lang="ts" module>
+  import type { Tip } from '$lib/components/TipBody.svelte';
   // The strength badges' words and explanations, shared with Sweet spots.
   export const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
-  export const STRENGTH_HELP = {
-    solid: 'Solid: the difference is at least twice its usual noise, so chance is an unlikely explanation.',
-    hint: 'Hint: 1.5 to 2 times its usual noise. Worth watching; more data will tell.'
+  // Their help popovers (ui-rules 36: a title, one idea per line).
+  export const STRENGTH_TIP: Record<keyof typeof STRENGTH, Tip> = {
+    solid: { title: 'Solid', lines: ['The difference is at least 2× its usual noise.', 'Chance is an unlikely explanation.'] },
+    hint: { title: 'Hint', lines: ['The difference is 1.5 to 2× its usual noise.', 'Worth watching; more data will tell.'] }
   };
 </script>
 
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
@@ -179,7 +182,7 @@
     <button class="mode-tip-button" popovertarget="badge-{id}" aria-describedby="badge-{id}"
       ><span class="badge hl-badge" class:hint={f.strength === 'hint'}>{STRENGTH[f.strength]}</span></button
     >
-    <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}>{STRENGTH_HELP[f.strength]}</div>
+    <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[f.strength]} /></div>
   {/if}
 {/snippet}
 
@@ -272,7 +275,7 @@
           {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
-          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}>{f.headline}{#if f.sides?.length === 2}{#each f.sides as s, i (i)}<br />{s.label}: {s.value}{/each}{/if}{#if f.body}<br />{f.body}{/if}{#if f.caveat}<br />{f.caveat}{/if}</div>
+          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
         </div>
       {/each}
     </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
   import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Top } from '$lib/insightsUrl';
@@ -133,8 +134,8 @@
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
   >
-  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}>{ratingsHelp[ratings]}</div>{/if}
-  {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}>{personHelp}</div>{/if}
+  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings]] }} /></div>{/if}
+  {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 
 {#snippet link(h: Holder)}{#if h.href}<a href={h.href}>{name(h)}</a>{:else}{name(h)}{/if}{/snippet}
@@ -146,7 +147,7 @@
 <!-- A list tip: one row per entry, the name cut to a line and its date muted at the right. -->
 {#snippet tipList(id: string, head: string | null, rows: { name: string; side: string; href?: string }[])}
   <div class="mode-tip tip-list" id={id} popover onbeforetoggle={placeTip}>
-    {#if head}<p class="tip-head">{head}</p>{/if}
+    {#if head}<strong class="tip-title">{head}</strong>{/if}
     <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={row.href}>{row.name}</a>{:else}{row.name}{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
   </div>
 {/snippet}
@@ -193,7 +194,7 @@
         <button class="mode-tip-button" popovertarget="badge-{id}" aria-describedby="badge-{id}"
           ><span class="badge hl-badge">{b}</span></button
         >
-        <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}>{BADGE_HELP[r.scope ?? 'record']}</div>
+        <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: b, lines: [BADGE_HELP[r.scope ?? 'record']] }} /></div>
       </div>
     {/if}
     {@render caption(id, r.label, r.rating, r.perDay && perPerson, `#${anchor(r.key)}`)}

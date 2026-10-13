@@ -1,8 +1,7 @@
 <script lang="ts">
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { GearTab } from '$lib/server/insights/lab';
-  import { SAME_BAG_HELP } from './DeltaBars.svelte';
-  import { STRENGTH_HELP } from './Insights.svelte';
+  import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -15,7 +14,8 @@
   } = $props();
 
   let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras);
-  const BOARD_HELP = `${SAME_BAG_HELP}\n${STRENGTH_HELP.solid} ${STRENGTH_HELP.hint}\nColumns: rated brews and bags, the plain bag-weighted average rating, and SD: how widely its ratings vary (smaller is more consistent). Narrow screens drop SD, then bags.\nNo match: never brewed on the same bag as anything else.`;
+  const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD.', 'Narrow screens drop SD, then bags.',
+    'No match: never brewed on the same bag as anything else.'];
 </script>
 
 <div class="insights-bar">
@@ -46,21 +46,22 @@
   {#if t.matrix}
     <section class="chart-panel" data-section="gear-matrix">
       <LabHead id="gear-matrix" title="Filters within each dripper" {placeTip}
-        help={"Rows are drippers you used with 2+ filters. A cell is that filter's same-bag delta against the dripper's other filters, counting only brews on that dripper (same bag, same dripper, different filter).\nFaded: few brews. Blank: no match, or never used together."} />
+        help={['Rows: drippers you used with 2+ filters.', "A cell: that filter's same-bag delta vs the dripper's other filters.", 'Counts only brews on that dripper.',
+          'Striped: few brews · blank: no match, or never used together.']} />
       <LabHeatmap by={t.matrix} noun="filter on this dripper" scale={['Worse than its other filters', 'Better']} ariaLabel="Filters within each dripper" />
     </section>
   {/if}
 
   {#if t.byRoast}
     <section class="chart-panel" data-section="gear-roast">
-      <LabHead id="gear-roast" title="Dripper × roast level" help={`Each dripper's same-bag delta within one roast level (rows with 3+ bags).\n${SAME_BAG_HELP}\nFaded: few brews. Blank: no match.`} {placeTip} />
+      <LabHead id="gear-roast" title="Dripper × roast level" help={["Each dripper's same-bag delta within one roast level (rows with 3+ bags).", ...SAME_BAG_HELP, 'Blank: no match.']} {placeTip} />
       <LabHeatmap by={t.byRoast} noun="dripper" ariaLabel="Dripper by roast level" />
     </section>
   {/if}
 
   {#if t.eras}
     <section class="chart-panel" data-section="gear-eras">
-      <LabHead id="gear-eras" title="Gear usage over time" help={"Each dripper's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
+      <LabHead id="gear-eras" title="Gear usage over time" help={["Each dripper's share of the month's brews, rated or not.", 'Shows when you switched.']} {placeTip} />
       <StackedBars m={t.eras} ariaLabel="Gear usage over time: each dripper's share of brews by month" />
     </section>
   {/if}

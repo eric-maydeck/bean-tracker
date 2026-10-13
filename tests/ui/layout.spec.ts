@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -1423,7 +1423,8 @@ export const STATES: State[] = [
       const tip = page.locator('#tip-score');
       await score.hover();
       await expect(tip).toBeVisible();
-      await expect(tip).toHaveText('How each score is worked out. Click for the full explanation.');
+      await expect(tip.locator('.tip-title')).toHaveText('Score');
+      await expect(tip.locator('.tip-lines li')).toHaveText(['How each score is worked out.', 'Click for the full explanation.']);
       await page.mouse.move(2, 2);
       await expect(tip).toBeHidden();
       await score.hover();
@@ -1450,7 +1451,8 @@ export const STATES: State[] = [
       await page.locator('.mode-tip-button').first().click();
       const tip = page.locator('#tip-rated');
       await expect(tip).toBeVisible();
-      await expect(tip).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
+      await expect(tip.locator('.tip-title')).toHaveText('Current ratings');
+      await expect(tip.locator('.tip-lines')).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
       await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/once the scale settled/);
       const r = (await tip.boundingBox())!;
       const vw = page.viewportSize()!.width;
@@ -2218,7 +2220,8 @@ export const STATES: State[] = [
       // C5: the SD header explains itself (tap or keyboard opens its tip).
       if (sdShown) {
         await page.locator('[data-section="gear-drippers"] .board-head .sd button').click();
-        await expect(page.locator('.mode-tip:popover-open')).toContainText('Spread: how much ratings for this vary from brew to brew.');
+        await expect(page.locator('.mode-tip:popover-open .tip-title')).toHaveText('SD · standard deviation');
+        await expect(page.locator('.mode-tip:popover-open')).toContainText('How much ratings vary from brew to brew.');
         await page.keyboard.press('Escape');
       }
       // C4: usage bars are bars: each takes ~75% of its month's slot, the rest a gap.
@@ -2888,7 +2891,10 @@ for (const state of STATES) {
     const s = seed();
     await page.goto(state.path(s), { waitUntil: 'networkidle' });
     if (state.act) await state.act(page, s);
-    if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
+    if (state.name.startsWith('insights-')) {
+      await expectStatRowsFull(page);
+      await expectTipsFormatted(page);
+    }
     // Screenshot first, so a failing state still leaves a picture to look at.
     // Firefox can't capture past 32767 device px: a long page (phone cards at DPR 3) keeps its top part.
     const [w, h, dpr] = await page.evaluate(() => [innerWidth, document.documentElement.scrollHeight, devicePixelRatio]);

@@ -1,7 +1,8 @@
 <script lang="ts">
   import { sdFocus, sdBlur } from './DeltaBars.svelte';
   import type { LeaderRow } from '$lib/server/insights/lab';
-  import { noMatch, SD_HELP, signed } from './DeltaBars.svelte';
+  import { noMatch, SD_TIP, signed } from './DeltaBars.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import { STRENGTH } from './Insights.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
@@ -19,7 +20,7 @@
     <span class="num">Brews</span><span class="num bags">Bags</span><span class="num">Avg</span><span class="num sd"
       ><button class="mode-tip-button sd-tip" popovertarget="{uid}-sd" aria-describedby="{uid}-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
     >
-    <div class="mode-tip" id="{uid}-sd" popover onbeforetoggle={placeTip}>{SD_HELP}</div>
+    <div class="mode-tip" id="{uid}-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
     <span></span><span class="num">vs bag</span>
   </div>
   <ol class="board-rows lab-rows">
@@ -39,7 +40,7 @@
         </span>
         {#if r.delta === null}
           <span class="val"><button class="mode-tip-button no-match" popovertarget="{uid}-nm-{i}">no match</button></span>
-          <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}>{noMatch(noun)}</div>
+          <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'No match', lines: [noMatch(noun)] }} /></div>
         {:else}
           <span class="val">{signed(r.delta)}</span>
         {/if}

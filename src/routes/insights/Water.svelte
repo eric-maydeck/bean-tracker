@@ -2,8 +2,7 @@
   import { tick } from 'svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
-  import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
-  import { STRENGTH_HELP } from './Insights.svelte';
+  import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -40,7 +39,6 @@
   // ponytail: column-count estimate, not a measurement; measure the grids if long row labels ever scroll.
   let heatPair = $derived(!!t.byRoast && !!t.byProcess && t.byRoast.cols.length <= 7);
 
-  const BADGE_HELP = `${STRENGTH_HELP.solid} ${STRENGTH_HELP.hint}`;
   // W7: the pair's average gap, from A's side; "even" when it rounds to 0.
   const gap = (d: number) => (Math.abs(d) < 0.005 ? 'even' : `${signed(d)} on average`);
   const TIE = 0.005;
@@ -68,13 +66,14 @@
       {#if t.recipes.length}
         <section class="chart-panel" class:span={!t.gh.length} data-section="water-recipes" style:--row-h="3rem">
           <LabHead id="water-recipes" title="Ratings by recipe" {placeTip}
-            help={`Each recipe's same-bag delta.\n${SAME_BAG_HELP}\n${BADGE_HELP}\nColumns: rated brews and bags, the plain bag-weighted average rating and the SD of its ratings. Under the name: the months it was used.\nNo match: never brewed on the same bag as another recipe.`} />
+            help={["vs bag: each recipe's same-bag delta.", ...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD.', 'Under the name: the months it was used.',
+              'No match: never brewed on the same bag as another recipe.']} />
           <div class="fit-body"><LabBoard rows={t.recipes} noun="recipe" {placeTip} /></div>
         </section>
       {/if}
       {#if t.gh.length}
         <section class="chart-panel gh-chart" class:span={!t.recipes.length} data-section="water-gh">
-          <LabHead id="water-gh" title="GH vs rating" help={`General hardness (ppm as CaCO₃) of the recipe, one row per value used.\n${SAME_BAG_HELP}`} {placeTip} />
+          <LabHead id="water-gh" title="GH vs rating" help={["The recipe's general hardness (ppm as CaCO₃), one row per value used.", ...SAME_BAG_HELP]} {placeTip} />
           <div class="fit-body"><DeltaBars rows={bandRows(t.gh, undefined, 'hardness')} ariaLabel="GH vs rating: same-bag delta by hardness" /></div>
         </section>
       {/if}
@@ -84,7 +83,9 @@
   {#if t.map}
     <section class="chart-panel" data-section="water-minerals">
       <LabHead id="water-minerals" title="Recipe mineral map" {placeTip}
-        help={"Each recipe with an entered water profile, best rating vs usual first (the same-bag delta from Ratings by recipe; no match last), and its minerals. A mineral cell is shaded within its column: light = little, dark = the most any recipe used.\nStrongly tied to era and roast level: the water changed with time and with what you were brewing, so read the minerals as leads, not causes."} />
+        help={['Each recipe with an entered water profile, best vs usual first, no match last.', 'vs usual: its same-bag delta, from Ratings by recipe.',
+          'A mineral cell is shaded within its column: light = little · dark = the most any recipe used.',
+          'Strongly tied to era and roast level: the water changed with time and with what you brewed.', 'Read the minerals as leads, not causes.']} />
       <MineralMap map={t.map} />
     </section>
   {/if}
@@ -93,13 +94,13 @@
     <div class="heat-grid" class:paired={heatPair} use:fitPairs={[t, heatPair]}>
       {#if t.byRoast}
         <section class="chart-panel heat-panel" data-section="water-roast">
-          <LabHead id="water-roast" title="Water × roast level" help={`Each recipe's same-bag delta within one roast level (rows with 3+ bags).\n${SAME_BAG_HELP}\nFaded: few brews. Blank: no match.`} {placeTip} />
+          <LabHead id="water-roast" title="Water × roast level" help={["Each recipe's same-bag delta within one roast level (rows with 3+ bags).", ...SAME_BAG_HELP, 'Blank: no match.']} {placeTip} />
           <div class="fit-body"><LabHeatmap by={t.byRoast} noun="recipe" ariaLabel="Water recipe by roast level" /></div>
         </section>
       {/if}
       {#if t.byProcess}
         <section class="chart-panel heat-panel" data-section="water-process">
-          <LabHead id="water-process" title="Water × process" help={`Each recipe's same-bag delta within one process (rows with 3+ bags).\n${SAME_BAG_HELP}\nFaded: few brews. Blank: no match.`} {placeTip} />
+          <LabHead id="water-process" title="Water × process" help={["Each recipe's same-bag delta within one process (rows with 3+ bags).", ...SAME_BAG_HELP, 'Blank: no match.']} {placeTip} />
           <div class="fit-body"><LabHeatmap by={t.byProcess} noun="recipe" ariaLabel="Water recipe by process" /></div>
         </section>
       {/if}
@@ -108,7 +109,7 @@
 
   {#if t.eras}
     <section class="chart-panel" data-section="water-eras">
-      <LabHead id="water-eras" title="Water usage over time" help={"Each recipe's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
+      <LabHead id="water-eras" title="Water usage over time" help={["Each recipe's share of the month's brews, rated or not.", 'Shows when you switched.']} {placeTip} />
       <StackedBars m={t.eras} ariaLabel="Water usage over time: each recipe's share of brews by month" />
     </section>
   {/if}
@@ -116,7 +117,8 @@
   {#if t.pairs.length}
     <section class="chart-panel" data-section="water-pairs">
       <LabHead id="water-pairs" title="Same bag, different water" {placeTip}
-        help={"Every two recipes used on the same bag (2+ rated brews each), most shared bags first.\nThe headline counts the bags each recipe won and the average gap, from the first recipe's side. Under it, the 5 bags with the biggest gap (Show all lists every bag): each bag's two average ratings, the first recipe's first; the higher one is bold."} />
+        help={['Every two recipes used on the same bag (2+ rated brews each), most shared bags first.', "Headline: the bags each recipe won and the average gap, from the first recipe's side.",
+          'Under it: the 5 bags with the biggest gap; Show all lists every bag.', "Each bag's two average ratings; the winner's is bold and green."]} />
       <div class="pairs">
         {#each t.pairs as p (p.slug)}
           {@const all = !!s.pairs?.includes(p.slug)}

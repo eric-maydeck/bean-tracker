@@ -270,3 +270,26 @@ export async function expectStatRowsFull(page: Page) {
   );
   expect(spills).toEqual([]);
 }
+
+// One tip look (ui-rules 36, T1): every help popover on the page (closed ones are in the DOM too) is a bold
+// title, then label/value rows or short lines, never loose text. A help line holds one idea: at most 120
+// characters, and never a second "Term: …" after a sentence ends ("A: x. B: y."). A full-text popover
+// (a card's clamped text: id full-… / …-full) carries content, so only its title is checked.
+export async function expectTipsFormatted(page: Page) {
+  const bad = await page.locator('.mode-tip:not(.tip-list):not([popover="manual"])').evaluateAll((tips) => tips.flatMap((t) => {
+    const id = t.id || t.className;
+    const out: string[] = [];
+    const first = t.firstElementChild;
+    if (!first?.classList.contains('tip-title') || !first.textContent?.trim()) out.push(`${id}: no bold title first`);
+    if ([...t.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())) out.push(`${id}: loose text`);
+    if (/^full-|-full$/.test(t.id)) return out;
+    if (!t.querySelector('.tip-rows, .tip-lines')) out.push(`${id}: no rows or lines`);
+    for (const li of t.querySelectorAll('.tip-lines li')) {
+      const s = li.textContent!.trim();
+      if (s.length > 120) out.push(`${id}: ${s.length}-char line`);
+      if (/[.!?]\s+[^.]*:\s/.test(s)) out.push(`${id}: two ideas in "${s.slice(0, 40)}…"`);
+    }
+    return out;
+  }));
+  expect(bad).toEqual([]);
+}

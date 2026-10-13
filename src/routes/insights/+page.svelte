@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import Icon from '$lib/components/Icon.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
@@ -534,10 +535,10 @@
             >
           </div>
           {#if t.ratingSwitch}
-            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}>{RATINGS_HELP[s.ratings]}</div>
+            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: s.ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [RATINGS_HELP[s.ratings]] }} /></div>
           {/if}
           {#if pp}
-            <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}>{PEOPLE_HELP.person}</div>
+            <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></div>
           {/if}
         </div>
       {/each}
@@ -830,9 +831,10 @@
     left: clamp(1rem, var(--x) - var(--w) / 2, 100vw - 1rem - var(--w));
     width: var(--w);
     margin: 0.25rem 0 0;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.75rem; /* one tip look (T1): .cell-tip in app.css matches */
     font-size: 0.85rem;
     line-height: 1.35;
+    text-align: left;
     color: var(--color-text);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -845,9 +847,8 @@
     --w: min(20rem, 100vw - 2rem);
     text-align: left;
   }
-  :global(.tip-list .tip-head) {
+  :global(.tip-list .tip-title) {
     margin: 0 0 0.25rem;
-    font-weight: 600;
   }
   :global(.tip-list ul) {
     max-height: 15rem;

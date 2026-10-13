@@ -2,6 +2,7 @@
   import { latestMonths, MAX_MONTHS } from '$lib/calendarMonths';
   import { MON, WEEKDAYS, weekday } from '$lib/insightsUrl';
   import FloatTip from './FloatTip.svelte';
+  import TipBody from './TipBody.svelte';
   import { rove, shader, takeFocus } from './Heatmap.svelte';
 
   let {
@@ -86,7 +87,8 @@
   {/if}
   {#if !short && latest.cut}<p class="note">Latest {MAX_MONTHS} months — pick a custom range for earlier.</p>{/if}
   {#if tip}
-    <FloatTip anchor={tip} wide={false}>{tip.getAttribute('aria-label')}</FloatTip>
+    {@const [day, ...rest] = tip.getAttribute('aria-label')!.split(' · ')}
+    <FloatTip anchor={tip}><TipBody tip={{ title: day, lines: [rest.join(' · ')] }} /></FloatTip>
   {/if}
 </div>
 

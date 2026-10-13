@@ -4,10 +4,16 @@
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  export const SAME_BAG_HELP =
-    "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40.\n\nOnly bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip adds the plain bag-weighted average.";
-  // The SD column header's tip on every board (round 2, C5).
-  export const SD_HELP = 'Spread: how much ratings for this vary from brew to brew. Small = consistent; big = hit or miss.';
+  // Help popovers are one idea per line (ui-rules 36, T1); a section's help builds on these.
+  export const SAME_BAG_HELP = [
+    "Each brew's rating minus its bag's average this period, averaged per band.",
+    "+0.40: brews in this band beat the same bag's other brews by 0.40.",
+    'Counts only bags brewed in 2+ bands (2+ brews each).',
+    'Striped: under 3 bags or 30 brews.'
+  ];
+  export const STRENGTH_LINE = 'Solid: at least 2× its usual noise · Hint: 1.5 to 2×.';
+  // The SD help, wherever SD shows (T2).
+  export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', 'Small: consistent · big: hit or miss.'] };
   // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.
   export const sdFocus = (e: FocusEvent) => { const b = e.currentTarget as HTMLButtonElement; if (b.matches(':focus-visible')) (b.popoverTargetElement as HTMLElement | null)?.showPopover(); };
   export const sdBlur = (e: FocusEvent) => ((e.currentTarget as HTMLButtonElement).popoverTargetElement as HTMLElement | null)?.hidePopover();

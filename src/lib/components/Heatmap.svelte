@@ -70,7 +70,7 @@
     diverging?: boolean;
     faded?: boolean[][]; // diverging: thin cells, striped over their color (T3); the scale fits the other cells when there are any
     marked?: boolean[][]; // outlined cells (the lab's rest heatmap: each row's best)
-    tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's aria-label
+    tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's label as the title, its text under it
     scale?: [string, string]; // diverging legend: the low and high ends
   } = $props();
 
@@ -150,8 +150,8 @@
     </p>
   {/if}
   {#if tip}
-    <FloatTip anchor={tip.el} wide={diverging}>
-      {#if tipOf}<TipBody tip={tipOf(tip.r, tip.c)} />{:else}{tip.el.getAttribute('aria-label')}{/if}
+    <FloatTip anchor={tip.el}>
+      <TipBody tip={tipOf ? tipOf(tip.r, tip.c) : { title: label(tip.r, tip.c), lines: [text(cells[tip.r]?.[tip.c] ?? null, tip.r, tip.c)] }} />
     </FloatTip>
   {/if}
 </div>
