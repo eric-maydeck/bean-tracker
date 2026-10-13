@@ -962,7 +962,7 @@
     display: flex;
     flex-direction: column;
   }
-  :global(.fit-body > .heatmap .scroll) {
+  :global(.fit-body > .heatmap > .scroll, .fit-body > .heatmap > .frame) {
     flex: 1 1 auto;
     display: grid;
   }

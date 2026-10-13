@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
@@ -2016,13 +2016,8 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Break down by').first()).toHaveValue(by);
       const hm = page.locator('[data-section="brewing-temp"] .heatmap.diverging');
       await expect(hm).toBeVisible();
-      // Scrolls inside itself; the row labels stay pinned.
-      const pinned = await hm.locator('.scroll').evaluate((s) => {
-        s.scrollLeft = s.scrollWidth;
-        const label = s.querySelector('.row-label')!.getBoundingClientRect();
-        return Math.abs(label.left - s.getBoundingClientRect().left) <= 1;
-      });
-      expect(pinned).toBe(true);
+      // Scrolls inside itself; the row labels stay put and no cell shows under one (ui-rules 43).
+      await expectLabelsOutsidePlot(hm.locator('.scroll'));
       await hm.locator('.scroll').evaluate((s) => (s.scrollLeft = 0));
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
       // Never widens (G9): Temp keeps Ratio's width beside it, the heatmap scrolling inside the card.
@@ -2131,6 +2126,10 @@ export const STATES: State[] = [
         return ok;
       });
       expect(pinned).toBe(true);
+      // The pinned name column is opaque and fills the cell gap beside it (ui-rules 43): no cell shows beside or under a name.
+      const edge = await map.locator('tbody th').first().evaluate((th) => { const c = getComputedStyle(th); return { bg: c.backgroundColor, shadow: c.boxShadow }; });
+      expect(edge.bg).not.toMatch(/rgba\(.*, 0\)|transparent/);
+      expect(edge.shadow).not.toBe('none');
       // The name text is the tip target, not the cell's empty space; the vs usual chip hugs its value.
       const target = await map.locator('tbody th').first().evaluate((th) => {
         const name = th.querySelector('.map-name')!.getBoundingClientRect(), cell = th.getBoundingClientRect();
@@ -2342,7 +2341,7 @@ export const STATES: State[] = [
         await rerun();
         await expect.poll(async () => { try { await expectColumnsFilled(page, '.gear-pair'); return 'ok'; } catch (e) { return String(e); } }).toBe('ok');
         await rows.evaluate((ol) => { while (ol.children.length > 1) ol.lastElementChild!.remove(); }); // stack taller
-        await page.locator('[data-section="gear-matrix"] .heatmap .grid').evaluate((g) => { for (let k = 0; k < 6; k++) for (const c of [...g.children].slice(-4)) g.append(c.cloneNode(true)); });
+        await page.locator('[data-section="gear-matrix"] .heatmap .scroll').evaluate((g) => { for (let k = 0; k < 6; k++) for (const c of [...g.children].slice(-4)) g.append(c.cloneNode(true)); });
         await rerun();
         await expect.poll(async () => { try { await expectColumnsFilled(page, '.gear-pair'); return 'ok'; } catch (e) { return String(e); } }).toBe('ok');
         await page.reload({ waitUntil: 'networkidle' });

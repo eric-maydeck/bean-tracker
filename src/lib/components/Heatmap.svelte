@@ -114,33 +114,48 @@
   onclick={(e) => show(e)}
   onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
 >
-  <div class="scroll" onscroll={scrolled}>
-    <div class="grid" style:--nc={cols.length}>
-      {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
-      {#each rows as r, i (i)}
-        <span class="row-label" style:--r={i + 2} style:--c={1}>{r}</span>
-        {#each cols as _, j (j)}
-          {@const v = cells[i]?.[j] ?? null}
-          <div
-            class="heat-cell"
-            role="button"
-            tabindex={i + j ? -1 : 0}
-            data-r={i}
-            data-c={j}
-            aria-label="{label(i, j)} · {text(v, i, j)}"
-            style:--r={i + 2}
-            style:--c={j + 2}
-            class:none={v === null}
-            class:faded={!!faded?.[i]?.[j]}
-            class:marked={!!marked?.[i]?.[j]}
-            style:background-color={shade(v)}
-            onfocus={(e) => (takeFocus(e), show(e))}
-            onblur={() => (tip = null)}
-          ></div>
-        {/each}
-      {/each}
+  {#snippet cell(i: number, j: number, c0: number)}
+    {@const v = cells[i]?.[j] ?? null}
+    <div
+      class="heat-cell"
+      role="button"
+      tabindex={i + j ? -1 : 0}
+      data-r={i}
+      data-c={j}
+      aria-label="{label(i, j)} · {text(v, i, j)}"
+      style:--r={i + 2}
+      style:--c={j + c0}
+      class:none={v === null}
+      class:faded={!!faded?.[i]?.[j]}
+      class:marked={!!marked?.[i]?.[j]}
+      style:background-color={shade(v)}
+      onfocus={(e) => (takeFocus(e), show(e))}
+      onblur={() => (tip = null)}
+    ></div>
+  {/snippet}
+  {#if diverging}
+    <!-- Axis labels sit outside the data area (ui-rules 43): the row labels are their own column, only the plot
+         (column labels + cells, a subgrid of the frame's rows) scrolls sideways and clips at its left edge. -->
+    <div class="frame">
+      <div class="grid" style:--nc={cols.length} style:--nr={rows.length}>
+        {#each rows as r, i (i)}<span class="row-label" style:--r={i + 2}>{r}</span>{/each}
+        <div class="scroll" onscroll={scrolled}>
+          {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 1}>{c}</span>{/each}
+          {#each rows as _, i (i)}{#each cols as __, j (j)}{@render cell(i, j, 1)}{/each}{/each}
+        </div>
+      </div>
     </div>
-  </div>
+  {:else}
+    <div class="scroll" onscroll={scrolled}>
+      <div class="grid" style:--nc={cols.length}>
+        {#each cols as c, j (j)}<span class="col-label" style:--r={1} style:--c={j + 2}>{c}</span>{/each}
+        {#each rows as r, i (i)}
+          <span class="row-label" style:--r={i + 2} style:--c={1}>{r}</span>
+          {#each cols as _, j (j)}{@render cell(i, j, 2)}{/each}
+        {/each}
+      </div>
+    </div>
+  {/if}
   {#if diverging}
     <p class="div-legend">
       <span>{scale[0]}</span><span class="div-swatch" aria-hidden="true"></span><span>{scale[1]}</span>
@@ -171,9 +186,6 @@
       --cell-h: 2.75rem;
     }
   }
-  .diverging .scroll {
-    overflow-x: auto;
-  }
   /* Desktop: weekdays as rows, hours as columns. */
   .grid {
     display: grid;
@@ -185,9 +197,24 @@
     grid-row: var(--r);
     grid-column: var(--c);
   }
+  /* Diverging: row labels in their own column; the plot beside it is a subgrid of the rows and scrolls sideways
+     on phones (the page never does), clipped at its left edge so no cell slides under a label. */
   .diverging .grid {
-    grid-template-columns: max-content repeat(var(--nc), minmax(3.25rem, 1fr));
+    grid-template-columns: max-content minmax(0, 1fr);
     grid-template-rows: auto;
+  }
+  .diverging .grid > .scroll {
+    grid-column: 2;
+    grid-row: 1 / span calc(var(--nr) + 1);
+    display: grid;
+    grid-template-rows: subgrid;
+    grid-template-columns: repeat(var(--nc), minmax(3.25rem, 1fr));
+    column-gap: 2px;
+    overflow-x: auto;
+  }
+  .diverging .grid > .scroll > * {
+    grid-row: var(--r);
+    grid-column: var(--c);
   }
   /* Phones: transposed, so 24 hours run down the page and cells stay tappable. */
   @container (width < 560px) {
@@ -208,10 +235,8 @@
     padding-inline: 0.25rem;
   }
   .diverging .row-label {
-    position: sticky;
-    left: 0;
-    z-index: 1;
-    background: var(--color-surface);
+    grid-column: 1;
+    grid-row: var(--r);
     text-align: left;
     white-space: nowrap;
   }

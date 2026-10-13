@@ -96,7 +96,7 @@
     display: block;
     font-weight: 400;
   }
-  /* The recipe column stays in view while the minerals scroll under it. */
+  /* The recipe column stays in view (opaque, edge-to-edge) while the minerals scroll behind it. */
   .name-col {
     position: sticky;
     left: 0;
@@ -106,6 +106,7 @@
     text-align: left;
     white-space: normal;
     background: var(--color-surface);
+    box-shadow: 2px 0 0 var(--color-surface); /* covers the cell gap, so no cell shows beside or under the name */
   }
   .map-name {
     font-weight: 500;

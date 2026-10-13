@@ -347,3 +347,19 @@ export async function expectDataTip(tip: Locator) {
   await expect(tip.locator('.tip-rows dt').first()).toBeVisible();
   expect(await tip.locator('.tip-rows dt').evaluateAll((ds) => ds.every((d) => !d.textContent!.includes(':')))).toBe(true);
 }
+
+// Axis labels sit outside the data area (ui-rules 43): scroll the plot all the way right; the topmost element at
+// a point just inside the first label's right edge is the label itself (never a cell sliding under it), and the
+// plot starts at or after the label column's edge.
+export async function expectLabelsOutsidePlot(plot: Locator, labels = '.row-label') {
+  const r = await plot.evaluate((s, sel) => {
+    s.scrollIntoView({ block: 'center' });
+    s.scrollLeft = s.scrollWidth;
+    const label = (s.parentElement ?? s).querySelector(sel)!.getBoundingClientRect();
+    const top = document.elementFromPoint(label.right - 2, label.top + label.height / 2);
+    s.scrollLeft = 0;
+    return { hit: !!top?.closest(sel), gap: s.getBoundingClientRect().left - label.right };
+  }, labels);
+  expect(r.hit, 'a label (not a cell) is topmost at its inner edge after scrolling').toBe(true);
+  expect(r.gap, 'the plot starts after the label column').toBeGreaterThanOrEqual(-0.5);
+}
