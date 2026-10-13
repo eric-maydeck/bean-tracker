@@ -114,7 +114,8 @@
     const rows = split.filter(([, i]) => i > 0).map(([l, i]): [string, string] => [l.slice(0, i), l.slice(i + 2)]);
     const lines = split.filter(([, i]) => i <= 0).map(([l]) => l);
     const title = (tooltip.title ?? []).join(' ');
-    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: title ? { title, rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) } };
+    // No title: one row's label is the title over its value; several rows keep all of them under no title.
+    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) } };
   };
 
   function paletteColors(count: number): string[] {
@@ -196,6 +197,7 @@
     const vbar = type === 'bar' && vertical;
 
     chart?.destroy();
+    tipAt = null; // a rebuilt chart never fires the old hover's close
     chart = new ChartJS(canvasEl, {
       type,
       data: {
@@ -392,6 +394,7 @@
       observer.disconnect();
       chart?.destroy();
       chart = undefined;
+      tipAt = null;
     };
   });
 </script>
