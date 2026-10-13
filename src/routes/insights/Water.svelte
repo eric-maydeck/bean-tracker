@@ -35,12 +35,21 @@
   const SHOWN = 5;
   // Pair blocks flow in balanced columns (ui-rules 40); only an expanded block (Show all, a long list) spans both.
   const spans = $derived(t.pairs.map((p) => !!s.pairs?.includes(p.slug) && p.bags.length > SHOWN));
-  // A truncated recipe name in a pair header: hover shows it whole in the shared tip.
+  // A truncated recipe name in a pair header: hover or focus shows it whole in the shared tip; only a truncated name is a tab stop.
   let nameTip = $state<{ el: Element; name: string } | null>(null);
   const showName = (e: Event, name: string) => {
     const el = e.currentTarget as HTMLElement, text = el.querySelector('.pair-name') as HTMLElement;
     nameTip = text.scrollWidth > text.clientWidth ? { el, name } : null;
   };
+  function focusIfClipped(node: HTMLElement) {
+    const text = node.querySelector('.pair-name') as HTMLElement;
+    const ro = new ResizeObserver(() => {
+      if (text.scrollWidth > text.clientWidth) node.tabIndex = 0;
+      else node.removeAttribute('tabindex');
+    });
+    ro.observe(text);
+    return { destroy: () => ro.disconnect() };
+  }
   async function togglePair(slug: string, e: MouseEvent) {
     const open = s.pairs?.includes(slug);
     const next = open ? (s.pairs ?? []).filter((x) => x !== slug) : [...(s.pairs ?? []), slug];
@@ -130,9 +139,9 @@
             <div class="pair-row pair-cols">
               <span class="bag-h">Bag</span>
               {#each [[p.a, 'a'], [p.b, 'b']] as [name, side] (side)}
-                <!-- svelte-ignore a11y_no_noninteractive_element_interactions (hover-only tip; the full name is in the text for keyboard and screen readers) -->
-                <span class="pair-col {side}" onpointerenter={(e) => e.pointerType === 'mouse' && showName(e, name)}
-                  onpointerleave={() => (nameTip = null)}
+                <!-- svelte-ignore a11y_no_static_element_interactions (a truncated name is focusable so its full text shows in the tip) -->
+                <span class="pair-col {side}" use:focusIfClipped onpointerenter={(e) => e.pointerType === 'mouse' && showName(e, name)}
+                  onpointerleave={() => (nameTip = null)} onfocus={(e) => showName(e, name)} onblur={() => (nameTip = null)}
                   ><span class="swatch" aria-hidden="true"></span><span class="pair-name">{name}</span></span>
               {/each}
             </div>
