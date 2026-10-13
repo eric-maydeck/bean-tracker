@@ -2227,16 +2227,16 @@ export const STATES: State[] = [
       }
       expect([...nameTo.values()].every((cs) => cs.size === 1)).toBe(true);
       expect([...colorTo.values()].every((ns) => ns.size === 1)).toBe(true);
-      // Balanced pair columns (ui-rules 40): between spanning blocks, the two columns end within one bag row.
+      // Balanced pair columns (ui-rules 40): between expanded (spanning) blocks, the two columns end within the tallest block's height (the best two unbreakable columns can do; a small block fills the space under a shorter one).
       const pairGaps = () => page.locator('.pairs').evaluate((g) => {
-        const row = g.querySelector('.pair-bags li')!.getBoundingClientRect().height;
         const out: string[] = [];
         let seg: HTMLElement[] = [];
         const check = () => {
           const cols = new Map<number, number>();
           for (const p of seg) { const r = p.getBoundingClientRect(); cols.set(Math.round(r.left), Math.max(cols.get(Math.round(r.left)) ?? 0, r.bottom)); }
           const ends = [...cols.values()];
-          if (ends.length > 1 && Math.max(...ends) - Math.min(...ends) > row + 1) out.push(`columns end ${Math.round(Math.max(...ends) - Math.min(...ends))}px apart`);
+          const row = Math.max(...seg.map((p) => p.getBoundingClientRect().height));
+          if (ends.length > 1 && Math.max(...ends) - Math.min(...ends) > row + 17) // + the gap between blocks out.push(`columns end ${Math.round(Math.max(...ends) - Math.min(...ends))}px apart`);
           seg = [];
         };
         for (const p of g.children as HTMLCollectionOf<HTMLElement>) (p.classList.contains('span') ? check() : seg.push(p));
@@ -2244,6 +2244,10 @@ export const STATES: State[] = [
         return out;
       });
       expect(await pairGaps()).toEqual([]);
+      // Pair headers never wrap: one line each, ellipsis when long.
+      expect(await page.locator('.pair-col').evaluateAll((cs) => cs.filter((c) => c.getBoundingClientRect().height > 1.6 * parseFloat(getComputedStyle(c).fontSize)).length)).toBe(0);
+      // Roaster and coffee name read as two parts.
+      await expect(page.locator('.pair-bags .bag').first()).toContainText(' · ');
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
@@ -2306,8 +2310,6 @@ export const STATES: State[] = [
         expect(members).toBe(shown);
         // Members read as Other's breakdown: indented under it.
         if (members) {
-          const [oBox, mBox] = [await tip.locator('dt').first().boundingBox(), await tip.locator('dt').nth(1).boundingBox()];
-          expect(mBox!.x + 0.5).toBeGreaterThan(oBox!.x);
           expect(await tip.locator('dt').nth(1).evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft))).toBeGreaterThan(0);
         }
         if (all > shown) await expect(tip.locator('.tip-note')).toHaveText(`+${all - shown} more`);

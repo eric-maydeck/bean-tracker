@@ -1,5 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import FloatTip from '$lib/components/FloatTip.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
@@ -32,20 +34,14 @@
   const TIE = 0.005;
   // W7: a pair shows its 5 biggest gaps (the server sorts by |a − b|); "Show all" puts its slug in `pairs`.
   const SHOWN = 5;
-  // Pair blocks flow in balanced columns (ui-rules 40). A block spans both columns when it is expanded (Show all:
-  // a long list beside a short one would leave a gap) or when it is the odd last of a run between spanning blocks
-  // (so the run splits evenly).
-  let spans = $derived.by(() => {
-    const out = t.pairs.map(() => false);
-    let run: number[] = [];
-    const flush = () => (run.length % 2 && (out[run.at(-1)!] = true), (run = []));
-    t.pairs.forEach((p, i) => {
-      if (s.pairs?.includes(p.slug) && p.bags.length > SHOWN) (flush(), (out[i] = true));
-      else run.push(i);
-    });
-    flush();
-    return out;
-  });
+  // Pair blocks flow in balanced columns (ui-rules 40); only an expanded block (Show all, a long list) spans both.
+  const spans = $derived(t.pairs.map((p) => !!s.pairs?.includes(p.slug) && p.bags.length > SHOWN));
+  // A truncated recipe name in a pair header: hover or focus shows it whole in the shared tip.
+  let nameTip = $state<{ el: Element; name: string } | null>(null);
+  const showName = (e: Event, name: string) => {
+    const el = e.currentTarget as HTMLElement, text = el.querySelector('.pair-name') as HTMLElement;
+    nameTip = text.scrollWidth > text.clientWidth ? { el, name } : null;
+  };
   async function togglePair(slug: string, e: MouseEvent) {
     const open = s.pairs?.includes(slug);
     const next = open ? (s.pairs ?? []).filter((x) => x !== slug) : [...(s.pairs ?? []), slug];
@@ -133,8 +129,12 @@
               ></p>
             <div class="pair-row pair-cols">
               <span class="bag-h">Bag</span>
-              <span class="pair-col a" title={p.a}><span class="swatch" aria-hidden="true"></span>{p.a}</span>
-              <span class="pair-col b" title={p.b}><span class="swatch" aria-hidden="true"></span>{p.b}</span>
+              {#each [[p.a, 'a'], [p.b, 'b']] as [name, side] (side)}
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable so a truncated name's full text shows in the tip) -->
+                <span class="pair-col {side}" tabindex="0" onpointerenter={(e) => e.pointerType === 'mouse' && showName(e, name)}
+                  onpointerleave={() => (nameTip = null)} onfocus={(e) => showName(e, name)} onblur={() => (nameTip = null)}
+                  ><span class="swatch" aria-hidden="true"></span><span class="pair-name">{name}</span></span>
+              {/each}
             </div>
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
@@ -153,6 +153,7 @@
           </div>
         {/each}
       </div>
+      {#if nameTip}<FloatTip anchor={nameTip.el}><TipBody tip={{ title: nameTip.name }} /></FloatTip>{/if}
     </section>
   {/if}
 {/if}
@@ -220,15 +221,18 @@
     line-height: 1.2;
     color: var(--color-text-muted);
   }
-  /* A long recipe name stays within two lines (its full name is the title). */
+  /* A recipe name never wraps: one line, ellipsis (the full name is the hover/focus tip). */
   .pair-col {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .pair-name {
+    min-width: 0;
     overflow: hidden;
-    text-align: right;
-    overflow-wrap: anywhere;
+    text-overflow: ellipsis;
   }
   @media (max-width: 480px) {
     .pair-row {
@@ -240,8 +244,8 @@
     display: inline-block;
     width: 0.7rem;
     height: 0.7rem;
+    flex: none;
     margin-right: 0.3rem;
-    vertical-align: -0.1rem;
     border-radius: 2px;
     background: var(--ca);
   }

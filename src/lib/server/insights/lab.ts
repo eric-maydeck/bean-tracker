@@ -449,7 +449,7 @@ function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): Wate
     const flip = yw > xw || (yw === xw && mean(d) < 0);
     const bags = p.bags.map(({ id, x, y }) => {
       const bag = byId.get(id);
-      return { label: bag ? `${bag.roaster} ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
+      return { label: bag ? `${bag.roaster} · ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
         roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y };
     }).sort((u, v) => Math.abs(v.a - v.b) - Math.abs(u.a - u.b) || u.label.localeCompare(v.label)); // biggest gap first (the UI shows 5)
     const [a, b] = flip ? [p.y, p.x] : [p.x, p.y];

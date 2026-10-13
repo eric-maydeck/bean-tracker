@@ -475,7 +475,7 @@ describe('waterTab', () => {
     const p = w.pairs[0];
     expect(p).toMatchObject({ a: 'A', b: 'B', won: 3, lost: 0, tied: 0 });
     expect(p.delta).toBeCloseTo(0.5);
-    expect(p.bags[0]).toMatchObject({ label: 'R Bag 1', href: '/coffees/s1', tag: null });
+    expect(p.bags[0]).toMatchObject({ label: 'R · Bag 1', href: '/coffees/s1', tag: null });
     expect(p.bags[0].a).toBeCloseTo(8, 1);
     expect(p.bags[0].b).toBeCloseTo(7.5, 1);
   });
@@ -489,7 +489,7 @@ describe('waterTab', () => {
     const p = waterTab(r, ids.map((id) => bag({ id, name: `Bag ${id}` })), { period: P, ratings: 'all' }).pairs;
     expect(p.map((x) => [x.a, x.b, x.won, x.lost, x.tied, x.bags.length])).toEqual([['B', 'A', 2, 1, 1, 4], ['A', 'C', 1, 0, 0, 1], ['B', 'C', 1, 0, 0, 1]]);
     expect(p[0].delta).toBeCloseTo((1 + 0.5 + 0 - 0.1) / 4);
-    expect(p[0].bags.map((b) => b.label)).toEqual(['R Bag 1', 'R Bag 2', 'R Bag 4', 'R Bag 3']); // biggest |gap| first
+    expect(p[0].bags.map((b) => b.label)).toEqual(['R · Bag 1', 'R · Bag 2', 'R · Bag 4', 'R · Bag 3']); // biggest |gap| first
     expect(p.map((x) => x.slug)).toEqual(['b--a', 'a--c', 'b--c']);
     expect([p[0].bags[0].a, p[0].bags[0].b]).toEqual([expect.closeTo(7.95), expect.closeTo(6.95)]);
   });
