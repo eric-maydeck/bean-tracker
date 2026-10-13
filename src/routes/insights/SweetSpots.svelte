@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { sdFocus, sdBlur } from './DeltaBars.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_HELP } from './Insights.svelte';
@@ -258,7 +259,7 @@
         help={"The bags matching these filters with the best ratings.\nScore: each bag's average pulled toward the matching brews' average by 5 brews, so one great brew doesn't top the list. SD: how widely its ratings vary.\nUnder each: its roaster and usual temp · water · dripper."} />
       <!-- Numbers in aligned columns under one header (G4): brews · SD · score; the sub line is context only. -->
       <div class="board-row top-head"><span></span><span>Bag</span><span class="num">Brews</span><span class="num"
-        ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd"><span class="tip-text">SD</span></button></span
+        ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
       ><span class="num">Score</span></div>
       <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}>{SD_HELP}</div>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">

@@ -8,6 +8,9 @@
     "Each brew's rating minus its bag's average this period, averaged per band: +0.40 means brews in this band beat the same bag's other brews by 0.40.\n\nOnly bags brewed in two or more bands (2+ brews each) count. Pale: under 3 bags or 30 brews. The tip adds the plain bag-weighted average.";
   // The SD column header's tip on every board (round 2, C5).
   export const SD_HELP = 'Spread: how much ratings for this vary from brew to brew. Small = consistent; big = hit or miss.';
+  // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.
+  export const sdFocus = (e: FocusEvent) => { const b = e.currentTarget as HTMLButtonElement; if (b.matches(':focus-visible')) (b.popoverTargetElement as HTMLElement | null)?.showPopover(); };
+  export const sdBlur = (e: FocusEvent) => ((e.currentTarget as HTMLButtonElement).popoverTargetElement as HTMLElement | null)?.hidePopover();
   // A band, recipe or piece of gear with no same-bag partner (W1): shown as "no match".
   export const noMatch = (what: string) => `Never brewed on the same bag as another ${what}, so there's nothing to compare.`;
   // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
@@ -119,8 +122,8 @@
   .delta-bars {
     --cell-h: 2rem;
     /* Stretched rows (fitPairs' --grow) scale the chart up, not apart (C3): bars thicken toward ~60% of the
-       row (at most 32px), type grows up to 1.2×. At --grow 1 the bar is 0.75rem. */
-    --bar-h: clamp(0.75rem, calc(2rem * (0.6 * var(--grow, 1) - 0.225)), 32px);
+       row (at most 32px), type grows up to 1.2×. Unstretched (no --grow) the bar is 0.75rem. */
+    --bar-h: clamp(0.75rem, calc(0.6 * var(--cell-h) * var(--grow, 0)), 32px);
     --type: calc(0.8rem * min(var(--grow, 1), 1.2));
     position: relative;
     display: grid;

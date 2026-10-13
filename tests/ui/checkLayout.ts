@@ -221,12 +221,17 @@ export async function expectPairsFilled(page: Page, selector: string) {
       if (fb.scrollHeight > fb.clientHeight + 1) return []; // the taller card: scrolls inside
       const parts = [...fb.querySelectorAll('*')].filter((e) => !e.closest('.cell-tip, [popover]')).map((e) => e.getBoundingClientRect()).filter((b) => b.height > 0);
       const row = fb.querySelector('.bar-row, .heat-cell, .board-row')?.getBoundingClientRect().height ?? 48;
-      // Stretched bars scale up, not apart (C3): with the body grown g× (fitPairs' --grow), a bar is ~60% of its
-      // 2rem row × g (12px at g = 1, at most 32px).
+      // Stretched bars scale up, not apart (C3): a bar is 55-65% of its row (at most 32px, so taller rows may go lower).
       const g = parseFloat(getComputedStyle(fb).getPropertyValue('--grow')) || 1;
-      const want = Math.min(32, Math.max(12, 32 * (0.6 * g - 0.225)));
-      const thin = [...fb.querySelectorAll('.bar-row .bar')].filter((bar) => bar.getBoundingClientRect().height < want - 1);
-      if (thin.length) return [`${name}: ${thin.length} bars thinner than their stretched rows call for`];
+      const thin = g > 1 ? [...fb.querySelectorAll('.bar-row')].filter((r) => {
+        const bar = r.querySelector('.bar')?.getBoundingClientRect(), h = r.getBoundingClientRect().height;
+        return bar && bar.height < Math.min(32, 0.55 * h) - 1;
+      }) : [];
+      const fat = g > 1 ? [...fb.querySelectorAll('.bar-row')].filter((r) => {
+        const bar = r.querySelector('.bar')?.getBoundingClientRect();
+        return bar && bar.height > 0.65 * r.getBoundingClientRect().height + 1;
+      }) : [];
+      if (thin.length || fat.length) return [`${name}: ${thin.length} bars under 55% / ${fat.length} over 65% of their stretched rows`];
       const gap = fb.getBoundingClientRect().bottom - Math.max(...parts.map((b) => b.bottom));
       return gap > row + 1 ? [`${name}: ${Math.round(gap)}px empty under a ${Math.round(row)}px row`] : [];
     });
