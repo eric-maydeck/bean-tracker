@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { lines, scale, smooth } from './multiLine';
+import { lines, pairColors, scale, smooth } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -27,5 +27,17 @@ describe('multiLine', () => {
     expect(scale({ x: [], lines: [] })).toEqual({ lo: 0, hi: 0, zero: null });
     expect(scale(m([[null, null]]))).toEqual({ lo: 0, hi: 0, zero: null });
     expect(lines(m([[null, null]]))[0].runs).toEqual([]);
+  });
+});
+
+describe('pairColors', () => {
+  it('keeps usage colors, gives folded recipes free slots, never one color for both of a pair', () => {
+    const of = pairColors(['A', 'B', 'C', 'D', 'Other'], [{ a: 'E', b: 'F' }, { a: 'A', b: 'E' }]);
+    const [e, f] = of({ a: 'E', b: 'F' });
+    expect(e).toBe('var(--series-5)'); // the only free slot
+    expect(f).not.toBe(e);
+    expect(of({ a: 'A', b: 'E' })).toEqual(['var(--series-1)', 'var(--series-5)']);
+    const [x, y] = pairColors(['A'], [{ a: 'A', b: 'A2' }])({ a: 'A', b: 'A2' });
+    expect(x).not.toBe(y);
   });
 });

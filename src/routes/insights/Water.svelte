@@ -10,7 +10,7 @@
   import MineralMap from './MineralMap.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import StackedBars from './StackedBars.svelte';
-  import { seriesColors } from './multiLine';
+  import { pairColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
@@ -19,22 +19,8 @@
   } = $props();
 
   let empty = $derived(!t.recipes.length && !t.map && !t.gh.length && !t.byRoast && !t.byProcess && !t.eras && !t.pairs.length);
-  // A recipe's color, the same as in Water usage over time (its line's series slot). A recipe folded into
-  // "Other" there takes an unused series slot instead (stable per recipe), so the two recipes of a pair are
-  // never the same color; if the slots run out, the partner takes the next slot over.
-  let recipeColor = $derived.by(() => {
-    const labels = t.eras?.lines.map((l) => l.label) ?? [];
-    const cs = seriesColors(labels);
-    const c = new Map(labels.map((l, i) => [l, cs[i]]));
-    const free = [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`).filter((v) => !cs.includes(v));
-    const pool = free.length ? free : [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`);
-    let k = 0;
-    for (const p of t.pairs) {
-      for (const r of [p.a, p.b]) if (!c.has(r)) c.set(r, pool[k++ % pool.length]);
-      if (c.get(p.a) === c.get(p.b)) c.set(p.b, pool[(pool.indexOf(c.get(p.a)!) + 1) % pool.length]);
-    }
-    return (recipe: string) => c.get(recipe) ?? 'var(--series-other)';
-  });
+  // Each pair's two colors (pairColors): a recipe's usage-over-time color, never the same as its partner's.
+  let colorsOf = $derived(pairColors(t.eras?.lines.map((l) => l.label) ?? [], t.pairs));
   // The two heatmaps share their columns (the recipes). Side by side from 1150 px only when both exist and
   // neither would scroll there: a column takes ≥ 3.25rem, so 7 recipes fit beside a roast/process label.
   // ponytail: column-count estimate, not a measurement; measure the grids if long row labels ever scroll.
@@ -125,7 +111,7 @@
           {@const all = !!s.pairs?.includes(p.slug)}
           <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
-          <div class="pair" style:--ca={recipeColor(p.a)} style:--cb={recipeColor(p.b)}>
+          <div class="pair" style:--ca={colorsOf(p)[0]} style:--cb={colorsOf(p)[1]}>
             <p class="pair-sum"
               ><strong>{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span

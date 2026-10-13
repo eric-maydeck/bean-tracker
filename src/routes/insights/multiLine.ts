@@ -22,6 +22,23 @@ export function seriesColors(labels: string[]) {
   return labels.map((l) => (l === 'Other' ? 'var(--series-other)' : `var(--series-${(slot++ % 5) + 1})`));
 }
 
+// Same bag, different water (ui-rules 42): each pair's two colors. A recipe keeps its usage-over-time color (its
+// line's slot); one folded into "Other" there takes an unused slot (stable per recipe). The two of a pair are
+// never the same: when the free slots run out, the partner takes the first slot its recipe doesn't use.
+const SLOTS = [1, 2, 3, 4, 5].map((n) => `var(--series-${n})`);
+export function pairColors(lines: string[], pairs: { a: string; b: string }[]) {
+  const cs = seriesColors(lines);
+  const c = new Map(lines.map((l, i) => [l, cs[i]]));
+  const free = SLOTS.filter((v) => !cs.includes(v));
+  const pool = free.length ? free : SLOTS;
+  let k = 0;
+  for (const p of pairs) for (const r of [p.a, p.b]) if (!c.has(r)) c.set(r, pool[k++ % pool.length]);
+  return (p: { a: string; b: string }): [string, string] => {
+    const a = c.get(p.a) ?? 'var(--series-other)', b = c.get(p.b) ?? 'var(--series-other)';
+    return [a, a === b ? [...free, ...SLOTS].find((v) => v !== a)! : b];
+  };
+}
+
 // A smooth path through the points (monotone cubic, ui-rules G5): tangents are the harmonic mean of the
 // neighboring slopes (0 at a turn), so the curve never overshoots the data.
 export function smooth(p: [number, number][]): string {
