@@ -4,7 +4,7 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { plural, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
+  import { noMatch, plural, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -50,10 +50,12 @@
   // The card's mini chart: every band of the evidence it used, zero-centred. Tier 1 bars are same-bag
   // deltas; tier 2/3 bars are bag means less their bag-weighted average, so above/below reads the same
   // way. Winner (or lean) in the accent, other solid bands neutral, thin bands pale; the usual band dotted.
+  // A no-match band (grind, value null) keeps its column with a dotted mark at 0, so the axis runs from the
+  // lowest setting brewed to the highest (S-grind).
   function chart(p: Spot) {
-    const n = p.bands.reduce((a, b) => a + b.bags, 0) || 1;
-    const center = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + b.value * b.bags, 0) / n;
-    const ds = p.bands.map((b) => b.value - center);
+    const n = p.bands.reduce((a, b) => a + (b.value === null ? 0 : b.bags), 0) || 1;
+    const center = p.tier === 1 ? 0 : p.bands.reduce((a, b) => a + (b.value ?? 0) * b.bags, 0) / n;
+    const ds = p.bands.map((b) => (b.value === null ? 0 : b.value - center));
     // The axis fits the solid bands when there are any: a thin band past it is clipped at the edge with a cap
     // (its value stays in the tip), so thin data shows without dominating.
     const fit = p.bands.some((b) => b.solid) ? ds.filter((_, i) => p.bands[i].solid) : ds;
@@ -64,14 +66,16 @@
       zero: (hi / span) * 100,
       bars: p.bands.map((b, i) => ({
         ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
-        pick: b.label === pick, usual: b.label === p.usual.label,
+        pick: b.label === pick, usual: b.label === p.usual.label, none: b.value === null,
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
-        tip: {
-          title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
-          rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
-            ...(b.solid ? [] : [['Strength', 'Few brews']])],
-          note: b.label === p.usual.label ? 'Your usual setting.' : undefined
-        } as Tip
+        tip: (b.value === null
+          ? { title: b.range ?? b.label, rows: [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]], note: noMatch('grind setting') }
+          : {
+              title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
+              rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
+                ...(b.solid ? [] : [['Strength', 'Few brews']])],
+              note: b.label === p.usual.label ? 'Your usual setting.' : undefined
+            }) as Tip
       }))
     };
   }
@@ -232,7 +236,7 @@
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
-                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip}
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip} class:none={b.none}
                       style:top="{b.top}%" style:height="{b.h}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
@@ -425,6 +429,13 @@
   }
   .bar.pale {
     background: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
+  }
+  /* No match (grind brewed there, never paired): a dotted mark on the zero line keeps the setting in range. */
+  .bar.none {
+    top: var(--zero) !important; /* over the inline top */
+    min-height: 0;
+    background: none;
+    border-top: 2px dotted var(--color-text-muted);
   }
   /* Clipped at the axis edge (a thin band past the solid bands' range): a cap marks the cut end. */
   .bar.clip {

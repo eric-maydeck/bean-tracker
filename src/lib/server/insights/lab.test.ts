@@ -122,6 +122,15 @@ describe('ladder', () => {
     expect(t2.tier).toBe(2);
     expect(t2.bands.map((b) => b.range)).toEqual(['1.3.0 – 1.3.9', '1.4.0 – 1.4.9']);
   });
+  it('grind keeps its no-match bands, so the card spans every setting brewed (S-grind)', () => {
+    const g = (coffeeId: number, grind: string, rating: number) => Array.from({ length: 10 }, () => brew({ coffeeId, grinder: 'A4Z', grind, rating }));
+    const grind = labFn('grind', 'A4Z');
+    const rows = [...[1, 2, 3].flatMap((id) => [...g(id, '1.3.4', 8), ...g(id, '1.4.1', 7)]), ...g(4, '1.5.2', 6)]; // bag 4: one setting, never paired
+    expect(ladder(rows, [], [grind])!.bands.map((b) => b.label)).toEqual(['1.3.0', '1.4.0']);
+    const kept = ladder(rows, [], [grind], true)!;
+    expect(kept.tier).toBe(1);
+    expect(kept.bands.map((b) => [b.label, b.value === null, b.brews])).toEqual([['1.3.0', false, 30], ['1.4.0', false, 30], ['1.5.0', true, 10]]);
+  });
   it('falls back to bands when no exact temp is solid', () => {
     const rows = [1, 2, 3].flatMap((id) => [...many(5, id, 91, 8), ...many(5, id, 92, 8), ...many(10, id, 94, 7)]);
     expect(ladder(rows, [], [exact, temp])!.best!.label).toBe('90–92 °C');

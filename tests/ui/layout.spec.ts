@@ -1854,6 +1854,17 @@ export const STATES: State[] = [
       await expect(page.locator('#spot-temp-full')).toContainText(/vs same bag|Across|No comparison|Not enough/);
       await chart.press('Enter');
       await chart.blur();
+      // S-grind: the Grind card spans every setting brewed, lowest to highest, no-match ones too: the same
+      // bands as Brewing's Grind chart (same period, ratings and grinder, no filters).
+      const spotBands = (await page.locator('#spot-grind .spot-chart').getAttribute('aria-label'))!.split('; ').map((t) => t.split(' · ')[0]);
+      await page.goto('/insights?tab=brewing', { waitUntil: 'networkidle' });
+      const titles: string[] = [];
+      for (const row of await page.locator('[data-section="brewing-grind"] .bar-row').all()) {
+        await row.click();
+        titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').textContent())!.trim());
+      }
+      expect(spotBands).toEqual(titles);
+      await page.goto('/insights?tab=sweetspots', { waitUntil: 'networkidle' });
     } },
   { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {

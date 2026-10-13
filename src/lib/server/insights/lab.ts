@@ -91,13 +91,16 @@ export interface Spot {
   // means on the coarse bands. `solid` as the tier counts it (pale otherwise).
   bands: SpotBand[];
 }
-export interface SpotBand { label: string; range?: string; value: number; bags: number; brews: number; solid: boolean }
+// value null: a no-match band (brews, never paired on the same bag): tier 1 of an ordered dial (grind) keeps it, so
+// the chart spans every setting brewed, lowest to highest (round 3, S-grind); bags/brews are then its plain counts.
+export interface SpotBand { label: string; range?: string; value: number | null; bags: number; brews: number; solid: boolean }
 // The Insights tab's two badges: Solid wins, Hint leans (spec "Strong/Likely/Hint" mapped onto them).
 export const verdictOf = (s: Strength | null): Spot['verdict'] => (s === 'solid' ? 'win' : s === 'hint' ? 'leaning' : 'none');
 
 // Sweet spots grouping ladder (spec): same bag within the slice, else bag means within the narrowest
 // group with ≥ 2 solid bands, else no comparison. `bands` are tried in order (temp: exact, then bands).
-export function ladder(slice: readonly BrewFact[], groups: readonly Group[], bands: readonly BandFn[]): Spot | null {
+// `keepUnpaired`: tier 1 keeps no-match bands (grind), as Brewing's Grind chart does.
+export function ladder(slice: readonly BrewFact[], groups: readonly Group[], bands: readonly BandFn[], keepUnpaired = false): Spot | null {
   const coarse = bands.at(-1)!;
   const used = (rows: readonly BrewFact[]) => groupBy(rows, (b) => coarse(b)?.label);
   const top = [...used(slice)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
@@ -107,7 +110,8 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
     const st = pairedDeltas(slice, f), solid = st.filter((s) => s.solid);
     if (solid.length < 2) continue;
     const b = solid.reduce((x, y) => (y.delta! > x.delta! ? y : x));
-    const shown = st.filter((s) => s.delta !== null).map((s) => ({ label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta!, bags: s.bags, brews: s.brews, solid: s.solid }));
+    const shown = st.filter((s) => s.delta !== null || keepUnpaired).map((s) => ({ label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta,
+      bags: s.delta === null ? s.plainBags : s.bags, brews: s.delta === null ? s.plainBrews : s.brews, solid: s.solid }));
     return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
@@ -238,7 +242,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   const perBag = groupBy(slice, (b) => b.coffeeId);
   const groups = groupsFor(rows, c.filters);
   const cards = (Object.keys(SPOT_VARS) as SpotVar[]).flatMap((key) => {
-    const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)));
+    const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)), key === 'grind');
     return spot ? [{ key, name: SPOT_NAMES[key], spot }] : [];
   });
   const overall = mean(slice.map((b) => b.rating!));
