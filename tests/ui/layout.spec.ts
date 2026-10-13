@@ -2306,6 +2306,22 @@ export const STATES: State[] = [
         const nd = await page.locator('[data-section="gear-drippers"] .lab-rows > li').count();
         const nf = await page.locator('[data-section="gear-filters"] .lab-rows > li').count();
         expect(Math.round(m.x)).toBe(Math.round(nf <= nd ? f!.x : d!.x)); // under the shorter board
+        // Other data (rules 37/40 are data-independent): a much longer board, then a much taller stack. The
+        // columns stay one height, rows stretch at most 2× (or to the 20rem floor), the over-cap side scrolls.
+        const vw = page.viewportSize()!;
+        const rerun = async () => {
+          await page.setViewportSize({ width: vw.width - 7, height: vw.height });
+          await page.setViewportSize(vw);
+        };
+        const rows = page.locator('[data-section="gear-drippers"] .lab-rows');
+        await rows.evaluate((ol) => { for (let k = 0; k < 4; k++) for (const li of [...ol.children].slice(0, 3)) ol.append(li.cloneNode(true)); }); // board taller
+        await rerun();
+        await expect.poll(async () => { try { await expectColumnsFilled(page, '.gear-pair'); return 'ok'; } catch (e) { return String(e); } }).toBe('ok');
+        await rows.evaluate((ol) => { while (ol.children.length > 1) ol.lastElementChild!.remove(); }); // stack taller
+        await page.locator('[data-section="gear-matrix"] .heatmap .grid').evaluate((g) => { for (let k = 0; k < 6; k++) for (const c of [...g.children].slice(-4)) g.append(c.cloneNode(true)); });
+        await rerun();
+        await expect.poll(async () => { try { await expectColumnsFilled(page, '.gear-pair'); return 'ok'; } catch (e) { return String(e); } }).toBe('ok');
+        await page.reload({ waitUntil: 'networkidle' });
       } else {
         const lists = await page.locator('.gear-pair .board-rows').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height - [...l.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0)));
         expect(lists.every((x) => Math.abs(x) <= 1)).toBe(true);

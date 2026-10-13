@@ -7,6 +7,7 @@
   import LabHeatmap from './LabHeatmap.svelte';
   import StackedBars from './StackedBars.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
+  import { fitPairs } from './fitPairs';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
     t: GearTab; s: InsightsView; ratingsHelp: Record<Ratings, string>;
@@ -16,6 +17,7 @@
   let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras);
   // The matrix fills the shorter board's column when both boards are there (ui-rules 40).
   let stack = $derived(!!t.matrix && t.drippers.length > 0 && t.filters.length > 0);
+  let underDrippers = $derived(t.drippers.length < t.filters.length);
   const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD.', 'Narrow screens drop SD, then bags.',
     'No match: never brewed on the same bag as anything else.'];
 </script>
@@ -25,7 +27,15 @@
     <LabHead id="gear-matrix" title="Filters within each dripper" {placeTip}
       help={['Rows: drippers you used with 2+ filters.', "A cell: that filter's same-bag delta vs the dripper's other filters.", 'Counts only brews on that dripper.',
         'Striped: few brews · blank: no match, or never used together.']} />
-    <LabHeatmap by={t.matrix!} noun="filter on this dripper" scale={['Worse than its other filters', 'Better']} ariaLabel="Filters within each dripper" />
+    <div class="fit-body"><LabHeatmap by={t.matrix!} noun="filter on this dripper" scale={['Worse than its other filters', 'Better']} ariaLabel="Filters within each dripper" /></div>
+  </section>
+{/snippet}
+
+{#snippet board(key: 'drippers' | 'filters')}
+  {@const [rows, other, title, noun] = key === 'drippers' ? [t.drippers, t.filters, 'Ratings by dripper', 'dripper'] : [t.filters, t.drippers, 'Ratings by filter', 'filter']}
+  <section class="chart-panel" data-section="gear-{key}">
+    <LabHead id="gear-{key}" {title} help={BOARD_HELP} {placeTip} />
+    <div class="fit-body"><LabBoard {rows} slots={stack ? 0 : other.length} {noun} {placeTip} /></div>
   </section>
 {/snippet}
 
@@ -37,23 +47,18 @@
   <section class="chart-panel"><p class="hl-empty">No rated brews with gear recorded in this period.</p></section>
 {:else}
   {#if t.drippers.length || t.filters.length}
-    <!-- Side by side from 768 px. With both boards and the matrix, the matrix stacks under the board with fewer
-         rows, beside the longer one (ui-rules 40): real content fills that column, the shorter board's rows
-         stretch for any rest. Without the matrix the shorter list shows placeholder slots (rule 31). -->
-    <div class="gear-pair" class:stack class:under-drippers={stack && t.drippers.length < t.filters.length} style:--row-h="3rem">
-      {#if t.drippers.length}
-        <section class="chart-panel" data-section="gear-drippers">
-          <LabHead id="gear-drippers" title="Ratings by dripper" help={BOARD_HELP} {placeTip} />
-          <LabBoard rows={t.drippers} slots={stack ? 0 : t.filters.length} noun="dripper" {placeTip} />
-        </section>
+    <!-- Side by side from 768 px, one height (fitPairs, ui-rules 37/40). With both boards and the matrix, the matrix
+         stacks under the board with fewer rows: real content fills that column; any height left stretches the shorter
+         column's rows, and a column past the 2× cap scrolls inside. Without the matrix the shorter list shows
+         placeholder slots (rule 31). -->
+    <div class="gear-pair" class:stack use:fitPairs={[t, stack]} style:--row-h="3rem">
+      {#if stack}
+        <div class="fit-col">{@render board('drippers')}{#if underDrippers}{@render matrix()}{/if}</div>
+        <div class="fit-col">{@render board('filters')}{#if !underDrippers}{@render matrix()}{/if}</div>
+      {:else}
+        {#if t.drippers.length}{@render board('drippers')}{/if}
+        {#if t.filters.length}{@render board('filters')}{/if}
       {/if}
-      {#if t.filters.length}
-        <section class="chart-panel" data-section="gear-filters">
-          <LabHead id="gear-filters" title="Ratings by filter" help={BOARD_HELP} {placeTip} />
-          <LabBoard rows={t.filters} slots={stack ? 0 : t.drippers.length} noun="filter" {placeTip} />
-        </section>
-      {/if}
-      {#if stack}{@render matrix()}{/if}
     </div>
   {/if}
 
@@ -81,42 +86,27 @@
     gap: var(--space-3);
     margin-bottom: var(--space-5);
   }
-  /* A card is a column: its board takes the spare height and its rows stretch (LabBoard: minmax(--row-h, 1fr)). */
-  .gear-pair > .chart-panel {
+  /* A card is a column: its .fit-body takes the spare height and the board's rows stretch (LabBoard: minmax(--row-h, 1fr)). */
+  .gear-pair :global(.chart-panel) {
     margin: 0;
     display: flex;
     flex-direction: column;
   }
-  .gear-pair :global(.lab-board) {
-    flex: 1 0 auto;
-  }
-  /* Stacked, each list is its own height. */
+  /* Stacked (phones), each list is its own height; the matrix follows both boards. */
   @media (max-width: 767px) {
     .gear-pair :global(.placeholder) {
       display: none;
+    }
+    .gear-pair :global(.fit-col) {
+      display: contents;
+    }
+    .gear-pair :global([data-section='gear-matrix']) {
+      order: 1;
     }
   }
   @media (min-width: 768px) {
     .gear-pair {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-    /* The matrix under the board with fewer rows; the longer board spans both rows. The first row is the
-       flexible one, so any height left over goes to the shorter board's rows, never under the matrix. */
-    .gear-pair.stack {
-      grid-template-areas: 'drippers filters' 'drippers matrix';
-      grid-template-rows: 1fr auto;
-    }
-    .gear-pair.stack.under-drippers {
-      grid-template-areas: 'drippers filters' 'matrix filters';
-    }
-    .stack > [data-section='gear-drippers'] {
-      grid-area: drippers;
-    }
-    .stack > [data-section='gear-filters'] {
-      grid-area: filters;
-    }
-    .stack > [data-section='gear-matrix'] {
-      grid-area: matrix;
     }
   }
 </style>

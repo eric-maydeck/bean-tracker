@@ -940,6 +940,17 @@
   :global(.fit-body > *) {
     flex: 1 0 auto;
   }
+  /* A column of stacked cards (fitPairs): its cards keep their natural height unless fitPairs grows them
+     (in proportion) or lets the tallest shrink and scroll inside its .fit-body. */
+  :global(.fit-col) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  :global(.fit-col > *) {
+    flex: 0 0 auto;
+  }
   :global(.fit-body > .hl-empty) {
     flex: none;
     margin-block: auto;

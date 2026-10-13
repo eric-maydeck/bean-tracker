@@ -302,25 +302,36 @@ export async function expectTipsFormatted(page: Page) {
   expect(bad).toEqual([]);
 }
 
-// Leftover column space holds real content (ui-rules 40): in a grid of cards laid out in columns, the columns
-// end level (±1px); a column with two cards never also pads with placeholder rows; and inside every card the
-// content reaches its bottom (the shorter column's rows stretch, nothing empty under the last row).
+// Leftover column space holds real content (ui-rules 37, 40): two side-by-side columns (a card, or a .fit-col of
+// stacked cards) are one height (±1px); a column with two cards never also pads with placeholder rows; inside
+// every card that doesn't scroll, the content reaches its bottom (no gap over one row); and no stretched rows
+// grow past the cap: --grow ≤ 2 (±0.05 rounding), unless the pair sits at the 20rem floor.
 export async function expectColumnsFilled(page: Page, selector: string) {
   const bad = await page.locator(selector).evaluateAll((grids) => grids.flatMap((g) => {
-    const cards = [...g.children] as HTMLElement[];
-    const cols = new Map<number, HTMLElement[]>();
-    for (const c of cards) cols.set(Math.round(c.getBoundingClientRect().left), [...(cols.get(Math.round(c.getBoundingClientRect().left)) ?? []), c]);
+    const cols = [...g.children] as HTMLElement[];
     const out: string[] = [];
-    if (cols.size > 1) {
-      const ends = [...cols.values()].map((cs) => Math.max(...cs.map((c) => c.getBoundingClientRect().bottom)));
-      if (Math.max(...ends) - Math.min(...ends) > 1) out.push(`columns end ${Math.round(Math.max(...ends) - Math.min(...ends))}px apart`);
-      if ([...cols.values()].some((cs) => cs.length > 1) && g.querySelector('.placeholder')) out.push('placeholder rows beside a stacked card');
-    }
-    for (const c of cards) {
-      const pad = parseFloat(getComputedStyle(c).paddingBottom);
-      const inner = Math.max(...[...c.querySelectorAll('*')].filter((e) => !e.closest('[popover]')).map((e) => e.getBoundingClientRect().bottom));
-      const gap = c.getBoundingClientRect().bottom - pad - inner;
-      if (gap > 2) out.push(`${c.dataset.section ?? c.className}: ${Math.round(gap)}px empty at the bottom`);
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const tops = new Map<number, HTMLElement[]>();
+    for (const c of cols) tops.set(Math.round(c.getBoundingClientRect().top), [...(tops.get(Math.round(c.getBoundingClientRect().top)) ?? []), c]);
+    for (const row of tops.values()) {
+      if (row.length !== 2) continue;
+      const hs = row.map((c) => c.getBoundingClientRect().height);
+      if (Math.abs(hs[0] - hs[1]) > 1) out.push(`columns ${hs.map(Math.round).join(' vs ')}px`);
+      if (row.some((c) => c.classList.contains('fit-col')) && g.querySelector('.placeholder')) out.push('placeholder rows beside a stacked card');
+      for (const card of row.flatMap((c) => (c.classList.contains('fit-col') ? ([...c.children] as HTMLElement[]) : [c]))) {
+        const name = card.dataset.section ?? card.className;
+        const fb = card.querySelector<HTMLElement>('.fit-body');
+        if (!fb) { out.push(`${name}: no .fit-body`); continue; }
+        const grow = parseFloat(getComputedStyle(fb).getPropertyValue('--grow')) || 1;
+        if (grow > 2.05 && hs[0] > 20 * rem + 1) out.push(`${name}: rows stretched ${grow}×`);
+        if (fb.scrollHeight > fb.clientHeight + 1) continue; // past the cap: scrolls inside
+        const parts = [...fb.querySelectorAll('*')].filter((e) => !e.closest('[popover]')).map((e) => e.getBoundingClientRect()).filter((b) => b.height > 0);
+        const rowH = fb.querySelector('.board-row, .heat-cell, .bar-row')?.getBoundingClientRect().height ?? 48;
+        const gap = fb.getBoundingClientRect().bottom - Math.max(...parts.map((b) => b.bottom));
+        if (gap > rowH + 1) out.push(`${name}: ${Math.round(gap)}px empty under a ${Math.round(rowH)}px row`);
+        const cardGap = card.getBoundingClientRect().bottom - parseFloat(getComputedStyle(card).paddingBottom) - Math.max(...[...card.querySelectorAll('*')].filter((e) => !e.closest('[popover]')).map((e) => e.getBoundingClientRect().bottom));
+        if (cardGap > rowH + 1) out.push(`${name}: ${Math.round(cardGap)}px empty at the bottom`);
+      }
     }
     return out;
   }));
