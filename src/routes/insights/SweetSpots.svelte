@@ -66,9 +66,11 @@
       zero: (hi / span) * 100,
       bars: p.bands.map((b, i) => ({
         ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
-        pick: b.label === pick, usual: b.label === p.usual.label, none: b.value === null,
+        pick: b.label === pick, usual: b.label === p.usual.label, none: b.value === null && b.brews > 0, empty: !b.brews,
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
-        tip: (b.value === null
+        tip: (!b.brews
+          ? { title: b.range ?? b.label, note: 'No brews in this band.' }
+          : b.value === null
           ? { title: b.range ?? b.label, rows: [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]], note: noMatch('grind setting') }
           : {
               title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
@@ -236,7 +238,7 @@
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
-                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip} class:none={b.none}
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
                       style:top="{b.top}%" style:height="{b.h}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
@@ -436,6 +438,10 @@
     min-height: 0;
     background: none;
     border-top: 2px dotted var(--color-text-muted);
+  }
+  /* No brews (a step inside the grind range): the column stays, with no mark. */
+  .bar.empty {
+    display: none;
   }
   /* Clipped at the axis edge (a thin band past the solid bands' range): a cap marks the cut end. */
   .bar.clip {

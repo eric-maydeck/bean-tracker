@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bandOf, bloomRound, mineralOf, REST_LABELS, type LabVar } from './labBands';
+import { bandOf, bloomRound, grindSteps, mineralOf, REST_LABELS, type LabVar } from './labBands';
 import { MIXED_FILTER, type BrewFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -110,5 +110,21 @@ describe('mineralOf', () => {
   it('ratios need a non-zero denominator; no profile → null', () => {
     expect(mineralOf('mgca', brew({ waterProfile: { ...w, calcium: 0 } }))).toBeNull();
     expect(mineralOf('calcium', brew({}))).toBeNull();
+  });
+});
+
+describe('grindSteps (M-6: no step skipped inside the range)', () => {
+  it('A4Z bands: every a.b step from lowest to highest, across the a boundary', () => {
+    expect(grindSteps(['1.1.0', '0.8.0']))?.toEqual(['0.8.0', '0.9.0', '1.0.0', '1.1.0'].map((l) => expect.objectContaining({ label: l, range: `${l.slice(0, -2)}.0 – ${l.slice(0, -2)}.9` })));
+  });
+  it('half-number bands: every 0.5 step', () => {
+    expect(grindSteps(['6.0', '5.0'])!.map((b) => [b.label, b.range])).toEqual([['5.0', '5.0 – 5.4'], ['5.5', '5.5 – 5.9'], ['6.0', '6.0 – 6.4']]);
+  });
+  it('ordered like bandOf; nothing outside the range; other forms left alone', () => {
+    const s = grindSteps(['1.3.0', '1.5.0'])!;
+    expect(s.map((b) => b.order)).toEqual([...s.map((b) => b.order)].sort((a, b) => a - b));
+    expect(s).toHaveLength(3);
+    expect(grindSteps(['1.3.4', '1.5.0'])).toBeNull();
+    expect(grindSteps([])).toEqual([]);
   });
 });

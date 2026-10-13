@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, brewingTab, trimBlank, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
+import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
 
@@ -130,6 +130,22 @@ describe('ladder', () => {
     const kept = ladder(rows, [], [grind], true)!;
     expect(kept.tier).toBe(1);
     expect(kept.bands.map((b) => [b.label, b.value === null, b.brews])).toEqual([['1.3.0', false, 30], ['1.4.0', false, 30], ['1.5.0', true, 10]]);
+  });
+  it('fillGrind: an empty band for each missing step, kept bands untouched', () => {
+    const have = [emptyStat({ label: '1.3.0', order: 1 }), { ...emptyStat({ label: '1.6.0', order: 2 }), delta: 0.2, brews: 9 }];
+    const out = fillGrind(have, emptyStat);
+    expect(out.map((b) => [b.label, b.brews])).toEqual([['1.3.0', 0], ['1.4.0', 0], ['1.5.0', 0], ['1.6.0', 9]]);
+    expect(out[3]).toBe(have[1]);
+    expect(out[1]).toMatchObject({ delta: null, plainBrews: 0, range: '1.4.0 – 1.4.9' });
+  });
+  it('Brewing and Sweet spots grind (Bands) fill interior steps; Exact lists only settings used', () => {
+    const g = (coffeeId: number, grind: string, rating: number) => Array.from({ length: 10 }, () => brew({ coffeeId, grinder: 'A4Z', grind, rating }));
+    const rows = [1, 2, 3].flatMap((id) => [...g(id, '1.3.4', 8), ...g(id, '1.6.1', 7)]);
+    const grindOf = (exact: boolean) => brewingTab(rows, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: { grind: exact } }).vars.find((v) => v.key === 'grind')!.bands;
+    expect(grindOf(false).map((b) => [b.label, b.plainBrews])).toEqual([['1.3.0', 30], ['1.4.0', 0], ['1.5.0', 0], ['1.6.0', 30]]);
+    expect(grindOf(true).map((b) => b.label)).toEqual(['1.3.4', '1.6.1']);
+    const spot = sweetSpotsTab(rows, [], { period: P, ratings: 'all', grinder: 'A4Z', filters: {} }).cards.find((c) => c.key === 'grind')!.spot;
+    expect(spot.bands.map((b) => [b.label, b.brews])).toEqual([['1.3.0', 30], ['1.4.0', 0], ['1.5.0', 0], ['1.6.0', 30]]);
   });
   it('falls back to bands when no exact temp is solid', () => {
     const rows = [1, 2, 3].flatMap((id) => [...many(5, id, 91, 8), ...many(5, id, 92, 8), ...many(10, id, 94, 7)]);

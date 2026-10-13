@@ -21,10 +21,12 @@
   // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
   // The tip (ui-rules 36) adds what the bar doesn't show: the counts behind it, the plain average, few brews.
   export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false, what = 'band') => bands.map((b) => ({
-    label: b.label, value: b.delta, text: b.delta === null ? 'no match' : signed(b.delta), pale: !b.solid, strength: b.strength,
+    label: b.label, value: b.delta, text: !b.plainBrews ? 'no brews' : b.delta === null ? 'no match' : signed(b.delta), pale: !b.solid, strength: b.strength,
     bold: bold(b.label),
     // A grind band's label is its first setting: the tip's title is its range ("0.9.0 – 0.9.9").
-    tip: (b.delta === null
+    tip: (!b.plainBrews
+      ? { title: b.range ?? b.label, note: 'No brews in this band.' }
+      : b.delta === null
       ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
       : { title: b.range ?? b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)],
           ...(b.solid ? [] : [['Strength', 'Few brews']])] }) as Tip

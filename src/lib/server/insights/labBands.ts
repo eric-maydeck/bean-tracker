@@ -46,6 +46,29 @@ function grindBand(grind: string, bands: boolean): Band | null {
   return { label: lo.toFixed(1), order: lo, range: `${lo.toFixed(1)} – ${(lo + 0.4).toFixed(1)}` };
 }
 
+// Bands mode (round 3, M-6): every grind band step from the lowest band present to the highest, in order, so a
+// chart never skips a step inside its range (the user). A.b.c bands step by b ("0.9.0", "1.0.0"); half-number
+// bands by 0.5. Null when a label is in neither form (an exact-only setting): then nothing is filled.
+export function grindSteps(labels: string[]): Band[] | null {
+  if (!labels.length) return [];
+  const abc = labels.map((l) => /^(\d+)\.(\d)\.0$/.exec(l));
+  if (abc.every(Boolean)) {
+    const ns = abc.map((m) => +m![1] * 10 + +m![2]);
+    return Array.from({ length: Math.max(...ns) - Math.min(...ns) + 1 }, (_, i) => {
+      const n = Math.min(...ns) + i, ab = `${Math.floor(n / 10)}.${n % 10}`;
+      return { label: `${ab}.0`, order: grindValue(`${ab}.0`)!, range: `${ab}.0 – ${ab}.9` };
+    });
+  }
+  if (labels.every((l) => /^\d+\.[05]$/.test(l))) {
+    const ns = labels.map((l) => Math.round(+l * 2));
+    return Array.from({ length: Math.max(...ns) - Math.min(...ns) + 1 }, (_, i) => {
+      const lo = (Math.min(...ns) + i) / 2;
+      return { label: lo.toFixed(1), order: lo, range: `${lo.toFixed(1)} – ${(lo + 0.4).toFixed(1)}` };
+    });
+  }
+  return null;
+}
+
 export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): Band | null {
   switch (v) {
     case 'temp': return cut(b.tempC, [90, 93, 95], ['< 90 °C', '90–92 °C', '93–94 °C', '95+ °C']);

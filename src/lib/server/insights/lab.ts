@@ -2,7 +2,7 @@ import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import { grindKey, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, type Multi } from './insightGenerators';
-import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
+import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
@@ -57,6 +57,20 @@ export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand
     };
   }).sort(byOrder);
 }
+
+// Grind in Bands mode (ui-rules 35, M-6): every step from the lowest band present to the highest; a step with no
+// brews becomes an empty band (no delta, 0 brews: a "no brews" row, no bar). Other forms are left as they are.
+export function fillGrind<T extends { label: string }>(bands: T[], empty: (b: Band) => T): T[] {
+  const steps = grindSteps(bands.map((b) => b.label));
+  if (!steps) return bands;
+  const have = new Map(bands.map((b) => [b.label, b]));
+  return steps.map((s) => have.get(s.label) ?? empty(s));
+}
+export const emptyStat = (b: Band): BandStat => ({
+  label: b.label, order: b.order, ...(b.range ? { range: b.range } : {}), delta: null, brews: 0, bags: 0, solid: false, strength: null,
+  adjusted: 0, plainBrews: 0, plainBags: 0, spread: null, sd: null
+});
+const emptySpot = (b: Band): SpotBand => ({ label: b.label, ...(b.range ? { range: b.range } : {}), value: null, bags: 0, brews: 0, solid: false });
 
 // Tier 2: per band, each bag's mean rating within the band (the bag is the unit, no pseudo-replication).
 function bagBandMeans(rows: readonly BrewFact[], band: BandFn) {
@@ -243,6 +257,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   const groups = groupsFor(rows, c.filters);
   const cards = (Object.keys(SPOT_VARS) as SpotVar[]).flatMap((key) => {
     const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)), key === 'grind');
+    if (spot && key === 'grind') spot.bands = fillGrind(spot.bands, emptySpot);
     return spot ? [{ key, name: SPOT_NAMES[key], spot }] : [];
   });
   const overall = mean(slice.map((b) => b.rating!));
@@ -320,7 +335,9 @@ export function brewingTab(brews: readonly BrewFact[], c: {
       const f = labFn(c.exact[key] ? `${key}Exact` : key, c.grinder); // each chart's own Band/Exact toggle (G10)
       // A band with no paired brews carries no delta: dropped, except exact temps (every whole °C used is listed, user)
       // and grind (round 2: a setting with brews but no same-bag pair shows as "no match", as Recipes do).
-      const bands = pairedDeltas(rows, f).filter((b) => b.delta !== null || key === 'grind' || (key === 'temp' && c.exact.temp));
+      const paired = pairedDeltas(rows, f).filter((b) => b.delta !== null || key === 'grind' || (key === 'temp' && c.exact.temp));
+      // Grind bands: no step skipped inside the range (M-6); Exact lists only the settings used.
+      const bands = key === 'grind' && !c.exact.grind ? fillGrind(paired, emptyStat) : paired;
       const by = c.by[key];
       return bands.length ? [{ key, bands, by: by ? breakdown(rows, f, SLICE_OF[by], bands.map((b) => b.label)) : null }] : [];
     })
