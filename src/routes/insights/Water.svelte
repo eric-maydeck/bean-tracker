@@ -32,6 +32,20 @@
   const TIE = 0.005;
   // W7: a pair shows its 5 biggest gaps (the server sorts by |a − b|); "Show all" puts its slug in `pairs`.
   const SHOWN = 5;
+  // Pair blocks flow in balanced columns (ui-rules 40). A block spans both columns when it is expanded (Show all:
+  // a long list beside a short one would leave a gap) or when it is the odd last of a run between spanning blocks
+  // (so the run splits evenly).
+  let spans = $derived.by(() => {
+    const out = t.pairs.map(() => false);
+    let run: number[] = [];
+    const flush = () => (run.length % 2 && (out[run.at(-1)!] = true), (run = []));
+    t.pairs.forEach((p, i) => {
+      if (s.pairs?.includes(p.slug) && p.bags.length > SHOWN) (flush(), (out[i] = true));
+      else run.push(i);
+    });
+    flush();
+    return out;
+  });
   async function togglePair(slug: string, e: MouseEvent) {
     const open = s.pairs?.includes(slug);
     const next = open ? (s.pairs ?? []).filter((x) => x !== slug) : [...(s.pairs ?? []), slug];
@@ -108,11 +122,11 @@
         help={['Every two recipes used on the same bag (2+ rated brews each), most shared bags first.', "Headline: the bags each recipe won and the average gap, from the first recipe's side.",
           'Under it: the 5 bags with the biggest gap; Show all lists every bag.', "Each bag's two average ratings; the winner's is bold and green."]} />
       <div class="pairs">
-        {#each t.pairs as p (p.slug)}
+        {#each t.pairs as p, i (p.slug)}
           {@const all = !!s.pairs?.includes(p.slug)}
           <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
-          <div class="pair" style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)}>
+          <div class="pair" class:span={spans[i]} style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)}>
             <p class="pair-sum"
               ><strong>{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
@@ -171,29 +185,20 @@
   }
   /* Same bag, different water (W7): one bordered block per recipe pair, balanced over two columns when wide;
      the borders and the gap between blocks show where one pair ends and the next starts. */
-  /* Two across when the panel fits two 22rem blocks; an odd last pair spans the row (rule 33), so no empty
-     half row is left in the panel. */
-  [data-section='water-pairs'] {
-    container-type: inline-size;
-  }
+  /* Balanced columns (two when two 22rem blocks fit, one on phones): no empty space beside a shorter block. */
   .pairs {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-3) var(--space-4);
-  }
-  @container (min-width: 45rem) {
-    .pairs {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-    .pair:last-child:nth-child(odd) {
-      grid-column: 1 / -1;
-    }
+    columns: 2 22rem;
+    column-gap: var(--space-4);
   }
   .pair {
+    break-inside: avoid;
+    margin-bottom: var(--space-3);
     padding: var(--space-2) var(--space-3) var(--space-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
+  }
+  .pair.span {
+    column-span: all;
   }
   .pair-sum {
     margin: 0 0 var(--space-2);

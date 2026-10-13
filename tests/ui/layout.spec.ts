@@ -2212,12 +2212,30 @@ export const STATES: State[] = [
       }
       expect([...nameTo.values()].every((cs) => cs.size === 1)).toBe(true);
       expect([...colorTo.values()].every((ns) => ns.size === 1)).toBe(true);
+      // Balanced pair columns (ui-rules 40): between spanning blocks, the two columns end within one bag row.
+      const pairGaps = () => page.locator('.pairs').evaluate((g) => {
+        const row = g.querySelector('.pair-bags li')!.getBoundingClientRect().height;
+        const out: string[] = [];
+        let seg: HTMLElement[] = [];
+        const check = () => {
+          const cols = new Map<number, number>();
+          for (const p of seg) { const r = p.getBoundingClientRect(); cols.set(Math.round(r.left), Math.max(cols.get(Math.round(r.left)) ?? 0, r.bottom)); }
+          const ends = [...cols.values()];
+          if (ends.length > 1 && Math.max(...ends) - Math.min(...ends) > row + 1) out.push(`columns end ${Math.round(Math.max(...ends) - Math.min(...ends))}px apart`);
+          seg = [];
+        };
+        for (const p of g.children as HTMLCollectionOf<HTMLElement>) (p.classList.contains('span') ? check() : seg.push(p));
+        check();
+        return out;
+      });
+      expect(await pairGaps()).toEqual([]);
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
       await expect(page).toHaveURL(/[?&]pairs=[a-z0-9-]+--[a-z0-9-]+/);
       await expect(pair.locator('.pair-bags li')).toHaveCount(8); // every seeded bag used all three waters
       await expect(page.locator('.pair').nth(1).locator('.pair-bags li')).toHaveCount(5); // only that pair
+      expect(await pairGaps()).toEqual([]); // expanded, it spans; the rest stay balanced
       await pair.getByRole('button', { name: 'Show fewer' }).click();
       await expect(page).not.toHaveURL(/pairs=/);
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
