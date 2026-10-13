@@ -350,11 +350,12 @@ const eraOf = (brews: readonly BrewFact[], period: Period, key: (b: BrewFact) =>
 };
 
 // A mineral chart's top point far above the rest (> FAR × the next-highest value) squashes the axis: left out,
-// repeatedly while it applies, but never below 2 points nor against a next-highest of 0 (no scale to compare).
+// repeatedly while it applies, but never below 2 points, never against a next-highest of 0 (no scale to compare),
+// and never a solid point (3+ bags, 30+ brews: a main recipe is real data, not an outlier; prod's Mg/K 60/10).
 const FAR = 1.5;
-export function farAbove<T extends { value: number }>(sorted: T[]): { kept: T[]; out: T[] } {
+export function farAbove<T extends { value: number; solid?: boolean }>(sorted: T[]): { kept: T[]; out: T[] } {
   const kept = [...sorted], out: T[] = [];
-  while (kept.length > 2 && kept.at(-2)!.value > 0 && kept.at(-1)!.value > FAR * kept.at(-2)!.value) out.unshift(kept.pop()!);
+  while (kept.length > 2 && !kept.at(-1)!.solid && kept.at(-2)!.value > 0 && kept.at(-1)!.value > FAR * kept.at(-2)!.value) out.unshift(kept.pop()!);
   return { kept, out };
 }
 export interface MineralPoint { value: number; mean: number; brews: number; bags: number; solid: boolean } // value = the amount; mean = adjusted mean rating

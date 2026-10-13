@@ -458,7 +458,7 @@ describe('waterTab', () => {
     expect(p.map((x) => x.slug)).toEqual(['b--a', 'a--c', 'b--c']);
     expect([p[0].bags[0].a, p[0].bags[0].b]).toEqual([expect.closeTo(7.95), expect.closeTo(6.95)]);
   });
-  it('farAbove: a top value > 1.5× the next is left out, repeatedly; even spreads, 2 points and a 0 next are kept', () => {
+  it('farAbove: a top value > 1.5× the next is left out, repeatedly; even spreads, 2 points, a 0 next and solid points are kept', () => {
     const v = (...xs: number[]) => xs.map((value) => ({ value }));
     expect(farAbove(v(40, 60, 70, 80, 90, 168))).toEqual({ kept: v(40, 60, 70, 80, 90), out: v(168) });
     expect(farAbove(v(5, 10, 20, 100))).toEqual({ kept: v(5, 10), out: v(20, 100) }); // 100 > 30, then 20 > 15
@@ -467,13 +467,14 @@ describe('waterTab', () => {
     expect(farAbove(v(10, 100)).out).toEqual([]); // never below 2 points
     expect(farAbove(v(0, 0.5, 9)).out).toEqual(v(9));
     expect(farAbove(v(0, 0, 9)).out).toEqual([]); // next-highest 0: no scale
+    expect(farAbove([{ value: 9.7 }, { value: 14.6, solid: true }, { value: 31.7 }]).out).toEqual([{ value: 31.7 }]); // a solid point stays
   });
   it('minerals: a far-above point is left out with its recipe and brews', () => {
-    const far = waterTab([...rows, ...[4, 5, 6].flatMap((id) => many(10, id, 92, 7, { water: 'TWW', waterProfile: prof(15, 31.7), localDate: '2026-09-10' }))],
-      [...bags, ...[4, 5, 6].map((id) => bag({ id, name: `Bag ${id}` }))], { period: P, ratings: 'all' });
+    const far = waterTab([...rows, ...[4, 5].flatMap((id) => many(10, id, 92, 7, { water: 'TWW', waterProfile: prof(15, 31.7), localDate: '2026-09-10' }))],
+      [...bags, ...[4, 5].map((id) => bag({ id, name: `Bag ${id}` }))], { period: P, ratings: 'all' }); // 2 bags: not solid
     const mg = far.minerals.find((m) => m.key === 'magnesium')!;
     expect(mg.points.map((p) => p.value)).toEqual([5, 15]);
-    expect(mg.left).toEqual([{ value: 31.7, brews: 30, recipes: ['TWW'] }]);
+    expect(mg.left).toEqual([{ value: 31.7, brews: 20, recipes: ['TWW'] }]);
     expect(far.minerals.find((m) => m.key === 'calcium')!.left).toEqual([]); // 10, 15, 20: evenly spread
   });
   it('pairs need ≥ 2 brews per water on the bag', () => {
