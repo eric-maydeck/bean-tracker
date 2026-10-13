@@ -15,14 +15,14 @@
   }
 
   // Diverging (the lab's deltas): 0 is the neutral gray --div-mid, sign picks --div-low (worse, red) /
-  // --div-high (better, green) and the tone runs 15–100% by |v| over the largest |v| of `values` (a value
+  // --div-high (better, green) and the tone runs 30–100% by |v| over the largest |v| of `values` (a value
   // past it is capped at 100%).
   export function diverge(values: (number | null)[]) {
     const max = Math.max(...values.map((v) => Math.abs(v ?? 0))) || 1;
     return (v: number | null) => {
       if (v === null) return 'transparent';
       if (v === 0) return 'var(--div-mid)';
-      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(15 + 85 * Math.min(1, Math.abs(v) / max))}%, var(--div-mid))`;
+      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(30 + 70 * Math.min(1, Math.abs(v) / max))}%, var(--div-mid))`;
     };
   }
 
@@ -263,7 +263,7 @@
     cursor: pointer;
   }
   .heat-cell.faded {
-    opacity: 0.4;
+    opacity: var(--faded);
   }
   .heat-cell.marked {
     outline: 2px solid var(--color-text);

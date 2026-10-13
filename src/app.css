@@ -52,6 +52,7 @@
   --div-low: #d8573c;
   --div-mid: #dcd9d4;
   --div-high: #1a9b7c;
+  --faded: 0.4; /* thin data (few brews): faded heat cells and pale bars */
   --radius: 10px;
   --shadow: 0 1px 3px rgba(43, 33, 27, 0.08), 0 1px 2px rgba(43, 33, 27, 0.06);
   --shadow-hover: 0 4px 10px rgba(43, 33, 27, 0.12), 0 2px 4px rgba(43, 33, 27, 0.08);
@@ -113,8 +114,9 @@
     --series-4: #c98500;
     --series-5: #d55181;
     --div-low: #e5603f;
-    --div-mid: #4a4642;
+    --div-mid: #635d57;
     --div-high: #24a383;
+    --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
   }
@@ -162,8 +164,9 @@
   --series-4: #c98500;
   --series-5: #d55181;
   --div-low: #e5603f;
-  --div-mid: #4a4642;
+  --div-mid: #635d57;
   --div-high: #24a383;
+  --faded: 0.62; /* dark: 0.4 sank into the surface (muddy browns, red vs green lost) */
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 4px 10px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);
 }

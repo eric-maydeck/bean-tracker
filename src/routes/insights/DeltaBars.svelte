@@ -111,18 +111,18 @@
 <style>
   .delta-bars {
     --cell-h: 2rem;
-    --pos: var(--color-fresh);
-    --neg: var(--color-urgent);
+    --pos: var(--div-high); /* the lab's one green/red pair (G1), as the heatmaps */
+    --neg: var(--div-low);
     position: relative;
     display: grid;
     grid-template-columns: var(--bar-label-w, fit-content(45%)) minmax(0, 1fr) var(--bar-value-w, max-content); /* a page can fix the outer columns so sibling charts' 0 lines align */
     column-gap: var(--space-2);
     grid-auto-rows: var(--bar-rows, auto); /* a page can stretch the rows to fill a taller box */
   }
-  /* Grind drift and the like: no good side, so two neutral series colors by direction (ui-rules 29). */
+  /* Grind drift and the like: no good side, so one neutral ink; the side of zero shows the direction (ui-rules 29). */
   .direction {
-    --pos: var(--series-4);
-    --neg: var(--series-1);
+    --pos: var(--color-text-muted);
+    --neg: var(--color-text-muted);
   }
   @media (max-width: 480px) {
     .delta-bars {
@@ -194,7 +194,7 @@
     border-right: 2px solid var(--color-text);
   }
   .pale .bar {
-    opacity: 0.4;
+    opacity: var(--faded);
   }
   .bar-value {
     display: inline-flex;
