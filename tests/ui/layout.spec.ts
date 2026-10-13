@@ -2304,6 +2304,12 @@ export const STATES: State[] = [
         const max = (page.viewportSize()?.width ?? 0) >= 768 ? 8 : 4;
         const shown = all <= max + 1 ? all : max; // never "+1 more"
         expect(members).toBe(shown);
+        // Members read as Other's breakdown: indented under it.
+        if (members) {
+          const [oBox, mBox] = [await tip.locator('dt').first().boundingBox(), await tip.locator('dt').nth(1).boundingBox()];
+          expect(mBox!.x + 0.5).toBeGreaterThan(oBox!.x);
+          expect(await tip.locator('dt').nth(1).evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft))).toBeGreaterThan(0);
+        }
         if (all > shown) await expect(tip.locator('.tip-note')).toHaveText(`+${all - shown} more`);
         await page.locator('h1').click();
       }

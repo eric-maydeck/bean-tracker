@@ -22,7 +22,7 @@
   const otherRows = () => (typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 8 : 4);
   const tipOf = (k: number, i: number, max = otherRows()): Tip => {
     const { shown, more } = capList(m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [], max);
-    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v]): [string, string] => [name, pct(v)])],
+    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v]): [string, string, string] => [name, pct(v), 'sub'])],
       note: more ? `+${more} more` : undefined };
   };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
