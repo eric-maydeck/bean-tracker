@@ -17,7 +17,7 @@
     const vs = map.rows.map((r) => r.values[j]).filter((v): v is number => v !== null);
     const lo = Math.min(...vs), hi = Math.max(...vs);
     return (v: number | null) =>
-      v === null || v === 0 ? 'transparent' : `color-mix(in oklab, var(--map-high) ${Math.round(8 + 47 * (hi > lo ? (v - lo) / (hi - lo) : 1))}%, transparent)`;
+      v === null || v === 0 ? 'transparent' : `color-mix(in oklab, var(--map-high) ${Math.round(8 + 37 * (hi > lo ? (v - lo) / (hi - lo) : 1))}%, transparent)`;
   }));
   const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit ? `${+v.toFixed(1)}` : v.toFixed(2));
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
