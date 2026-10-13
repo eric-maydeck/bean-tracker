@@ -179,7 +179,8 @@
 
 <section class="chart-panel">
   <HeadingAnchor id="milestones-timeline">Milestones</HeadingAnchor>
-  <div class="hl-grid milestone-summary">
+  <!-- A stat strip (ui-rules 33): three single-figure totals keep one row on phones. -->
+  <div class="hl-grid milestone-summary stat-strip">
     {#each summary as s (s.key)}
       {@const d = s.prev === null ? null : s.value - s.prev}
       <div class="hl-card" id={tileId('summary', s.key)} style="--q4:3;--q3:3;--q2:3">

@@ -169,7 +169,8 @@ export async function checkLayout(page: Page): Promise<void> {
 }
 
 // Card grids: every row of cards runs edge to edge (no empty cell, no ragged last row; ui-rules 28, 33),
-// and no card sits alone on a row it stretches across (a lone card, ui-rules 33) unless `allowLone`.
+// and no card sits alone on a row it stretches across (a lone card, ui-rules 33) unless `allowLone` or it is a
+// phone card grid's odd last card (T5).
 export async function expectGridRowsFull(page: Page, selector: string, allowLone = false) {
   const gaps = await page.locator(selector).evaluateAll((rows, allowLone) =>
     rows.flatMap((row) => {
@@ -179,9 +180,16 @@ export async function expectGridRowsFull(page: Page, selector: string, allowLone
         const r = t.getBoundingClientRect();
         byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]);
       }
-      return [...byTop.values()].flatMap((rs) => {
+      const all = [...byTop.entries()].sort((a, b) => a[0] - b[0]).map(([, rs]) => rs);
+      return all.flatMap((rs, i) => {
         const [l, r] = [Math.min(...rs.map((x) => x.left)) - o.left, o.right - Math.max(...rs.map((x) => x.right))];
-        if (!allowLone && rs.length === 1 && row.children.length > 1) return [`a lone tile on its own row (of ${row.children.length})`];
+        // T5: a card grid on a phone (.hl-grid under 520px: 2 across; a .stat-strip of single figures is exempt)
+        // never puts 3 in a row; an odd count ends in one card spanning the row (the end of a size class, too).
+        const phone = row.classList.contains('hl-grid') && !row.classList.contains('stat-strip') && o.width < 520;
+        if (phone && rs.length > 2) return [`${rs.length} cards in a phone row`];
+        const next = all[i + 1];
+        const lastOfTwoUp = phone && (!next || Math.abs(next[0].height - rs[0].height) > 2);
+        if (!allowLone && !lastOfTwoUp && rs.length === 1 && row.children.length > 1) return [`a lone tile on its own row (of ${row.children.length})`];
         return Math.abs(l) > 1 || Math.abs(r) > 1 ? [`${rs.length} tiles leave ${Math.round(l)}px left, ${Math.round(r)}px right`] : [];
       });
     }), allowLone

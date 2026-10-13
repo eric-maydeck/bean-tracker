@@ -925,8 +925,7 @@
     --fs-l4: 16.5rem; /* 264px: rows of 4, charts / versus */
     --fs-3: 15.75rem; /* 252px: every row of 3 */
     --fs-s2: 12rem; /* 192px: 2-up phone rows (480×909), numbers */
-    --fs-l2: 18.5rem; /* 296px: 2-up phone rows, charts / versus */
-    --fs-p3: 11rem; /* 176px: a phone (2-column grid) row of 3 */
+    --fs-l2: 18.5rem; /* 296px: 2-up phone rows (and a lone full-width last card), charts / versus */
   }
   /* Paired lab cards (fitPairs.ts, ui-rules 37): the card is a column, its .fit-body takes the card's spare
      height (scrolling inside when the pair height is under its natural height) and the chart inside fills it:
