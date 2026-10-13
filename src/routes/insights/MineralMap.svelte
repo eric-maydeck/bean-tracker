@@ -9,8 +9,9 @@
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the
   // lab's fixed green/gray/red scale, then each mineral's amount shaded within its column (one neutral hue:
-  // light = little, dark = most, 0 = blank). Thin rows faded. A row's name is its tip target (brews, bags,
-  // strength); ↑/↓ move between rows. Scrolls inside its card with the name column pinned.
+  // light = little, dark = most, 0 = blank). Thin rows: minerals faded, the delta chip striped (T3). A row's
+  // name text (not its cell's empty space) is its tip target (brews, bags, strength); ↑/↓ move between rows.
+  // The vs usual chip is sized to its value. Scrolls inside its card with the name column pinned.
   let { map }: { map: MineralMap } = $props();
 
   let shades = $derived(map.cols.map((_, j) => {
@@ -55,11 +56,11 @@
     <tbody>
       {#each map.rows as r, i (r.label)}
         <tr class:few={!r.solid}>
-          <th scope="row" class="name-col map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
-            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</th>
-          <td class="delta" style:background={r.delta === null ? null : `color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>
-            {r.delta === null ? 'no match' : signed(r.delta)}
-          </td>
+          <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
+            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>
+          <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
+          <td class="delta">{#if r.delta === null}no match{:else}<span class="delta-chip"
+            style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{signed(r.delta)}</span>{/if}</td>
           {#each map.cols as c, j (c.key)}<td style:background={shades[j](r.values[j])}>{fmt(r.values[j], c.unit)}</td>{/each}
         </tr>
       {/each}
@@ -109,16 +110,27 @@
   .map-name {
     font-weight: 500;
     cursor: pointer;
+    border-radius: 2px;
   }
   .map-name:focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: -2px;
+    outline-offset: 2px;
   }
+  /* As narrow as its chip: the column hugs the value, never stretching the color far left. */
   .delta {
+    width: 1%;
     font-weight: 600;
   }
-  .few > :not(.name-col) {
+  .delta-chip {
+    display: inline-block;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+  }
+  .few > :not(.name-col, .delta) {
     opacity: var(--faded);
+  }
+  .few .delta-chip {
+    background-image: var(--thin-hatch);
   }
   .few .map-name {
     color: var(--color-text-muted);
@@ -127,6 +139,16 @@
     tbody th,
     tbody td {
       height: 44px;
+    }
+    /* The name is the tap target: at least 44×44 (ui-rules 4), hugging the text otherwise. */
+    .map-name {
+      display: inline-flex;
+      align-items: center;
+      min-width: 44px;
+      min-height: 44px;
+    }
+    tbody th {
+      padding-block: 0;
     }
   }
 </style>

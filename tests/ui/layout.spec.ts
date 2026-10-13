@@ -2120,6 +2120,17 @@ export const STATES: State[] = [
         return ok;
       });
       expect(pinned).toBe(true);
+      // The name text is the tip target, not the cell's empty space; the vs usual chip hugs its value.
+      const target = await map.locator('tbody th').first().evaluate((th) => {
+        const name = th.querySelector('.map-name')!.getBoundingClientRect(), cell = th.getBoundingClientRect();
+        const chip = th.parentElement!.querySelector('.delta-chip')?.getBoundingClientRect(), td = th.parentElement!.querySelector('.delta')!.getBoundingClientRect();
+        return { inside: name.width <= cell.width, chipW: chip?.width ?? 0, tdW: td.width };
+      });
+      expect(target.inside).toBe(true);
+      if (target.chipW) expect(target.tdW - target.chipW).toBeLessThanOrEqual(24);
+      await map.locator('tbody th').first().click({ position: { x: (await map.locator('tbody th').first().boundingBox())!.width - 3, y: 3 } });
+      if (await map.locator('.map-name').first().evaluate((n) => n.getBoundingClientRect().right < n.parentElement!.getBoundingClientRect().right - 6))
+        await expect(map.locator('.cell-tip')).toHaveCount(0);
       // A row's tip: brews, bags, strength; keyboard ↓ moves to the next recipe.
       await map.locator('.map-name').first().focus();
       await expect(map.locator('.cell-tip .tip-rows')).toContainText(/Brews\s*\d+\s*Bags\s*\d+\s*Strength/);
