@@ -1,3 +1,99 @@
+# [1.74.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.73.0...v1.74.0) (2026-10-13)
+
+
+### Bug Fixes
+
+* **charts:** canvas chart tips render the shared tip format
+* **insights:** a water pair never shows both recipes in one color
+* **insights:** a water profile with no minerals entered stays out of mineral charts
+* **insights:** brewing chart pairs fill their height; rest axis starts at the data
+* **insights:** dark mineral map cells keep 4.5:1 text contrast
+* **insights:** delta colors get a visible tint floor, thin data striped
+* **insights:** delta tint floor set per theme, at least 10 from gray
+* **insights:** empty heat cell tip says no brews
+* **insights:** every tip and help popover shares one titled format
+* **insights:** final review fixes (series color, ordered trim, pair slug, a11y)
+* **insights:** gear matrix fills the shorter board's column
+* **insights:** give mineral cards their own anchor ids, clear of the GH section
+* **insights:** grind bands never skip a step inside their range
+* **insights:** habits heatmap and calendar tips use label value rows
+* **insights:** heatmap row labels outside the scrolling plot; opaque mineral names
+* **insights:** help popovers hold six short lines at most
+* **insights:** lab boards rank solid before thin; faded rest curve needs 3 bags
+* **insights:** lab Bonferroni test counts, paired spread, bag-weighted usual mean
+* **insights:** lab charts guard empty data, announce line tips, tidy markup
+* **insights:** lab picks stay in the url through non-lab tabs
+* **insights:** lab wording, top bags help, shared grinder select, brewing empty state
+* **insights:** mineral map no match keeps the vs usual column narrow
+* **insights:** mineral map tip opens from the name, vs usual is a chip
+* **insights:** one color per recipe across the water tab, ten slots
+* **insights:** other tip lists members indented under other
+* **insights:** other tips show a lone leftover instead of +1 more
+* **insights:** pair headers get wider columns and clamp to two lines
+* **insights:** phone card grids hold two per row, odd last spans
+* **insights:** rest centre uses banded brews; shared lab number formats and section header
+* **insights:** sd and green/red help tips put each state on its own line
+* **insights:** sd help tip opens on keyboard focus
+* **insights:** series colors stay clearly distinct, checked by delta e
+* **insights:** seven recipe colors, every two at least 20 apart; drop duplicate dark slots
+* **insights:** signed rating deltas read green or red as text
+* **insights:** stacked gear columns share the paired-chart height cap
+* **insights:** sweet spot chart keys start at the winning band
+* **insights:** sweet spot charts work from the keyboard
+* **insights:** sweet spot twin tags lead the sub line; charts scale to solid bands
+* **insights:** sweet spots grind card spans every setting brewed
+* **insights:** thin rows keep their delta's green or red
+* **insights:** truncated pair names stay keyboard-focusable
+* **insights:** usage tips show name and share, other lists its members
+* **insights:** versus side labels tighten with the card
+* **insights:** versus sides in the full-text popover and title
+* **insights:** water pair recipes never share a color
+* **insights:** water pairs flow by column, one-line headers with tip, roaster · name
+* **insights:** water pairs flow in balanced columns
+* **insights:** water pairs get recipe column headers and bordered blocks
+* **insights:** water pairs tag repurchases; shared hint badge and heatmap fill
+* **lab:** a focus tip survives the page scrolling under the mouse
+* **lab:** brewing headings are h2 siblings, mineral dots tick every shown value
+* **lab:** mineral dots are 44px tap targets
+* **lab:** never leave out a solid mineral point
+* **lab:** one green/red pair for bars and heatmaps, neutral drift, dark-mode faded tones
+* **lab:** paired cards share a fitted height, the taller scrolls inside
+* **lab:** reachable segments and dots, left-out mineral notes, show all bags per water pair
+* **tips:** untitled chart tips keep all rows; close on rebuild, escape, scroll away
+
+
+### Features
+
+* **insights:** 21-slot recipe palette in three tones; ink-colored pair headline
+* **insights:** band/exact url param per brewing chart
+* **insights:** brew temperature fact and brewing lab bands
+* **insights:** brewing lab tab builder
+* **insights:** brewing lab tabs and url params
+* **insights:** brewing tab
+* **insights:** brewing thin cells faded, rest curve by bag, unpaired bands dropped
+* **insights:** gear tab
+* **insights:** lab chart pieces: delta bars, line chart, diverging heatmap
+* **insights:** load the brewing lab tabs per tab
+* **insights:** same-bag deltas, sweet-spot ladder and breakdowns
+* **insights:** sweet spot cards chart their evidence
+* **insights:** sweet spot evidence bands and distinct top bag names
+* **insights:** sweet spots builder and lab picker options
+* **insights:** sweet spots tab
+* **insights:** two-tone site-wide categorical palette, neutral other gray, a vs b pair headings
+* **insights:** water and gear lab tab builders
+* **insights:** water tab
+* **lab:** board value columns and short spot tips
+* **lab:** chart tips in the top layer, never clipped; spaced stacked bars with other contents
+* **lab:** drop all-blank heatmap rows/columns, leave out far-above mineral points, pairs url param
+* **lab:** fixed absolute delta color scale, stretched bars scale up
+* **lab:** fixed brewing layout, rest heatmap, mineral dots, grouped water pairs, gear titles
+* **lab:** green/gray/red diverging scale, structured tips, no match label
+* **lab:** grind band labels with ranges, no-match grind bands, eras other contents
+* **lab:** preview round 1 data shapes (exact modes, bands, sd, heatmaps, pairs)
+* **lab:** recipe mineral map rows replace per-mineral points
+* **lab:** recipe mineral map, water pair colors, SD help tips
+* **lab:** usage over time as 100% stacked bars, smooth trend lines
+
 # [1.73.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.72.0...v1.73.0) (2026-10-12)
 
 
