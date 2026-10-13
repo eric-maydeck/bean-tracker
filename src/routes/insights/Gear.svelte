@@ -6,7 +6,7 @@
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import MultiLine from './MultiLine.svelte';
+  import StackedBars from './StackedBars.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
 
   let { t, s, ratingsHelp, placeTip, choose }: {
@@ -15,7 +15,7 @@
   } = $props();
 
   let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras);
-  const BOARD_HELP = `${SAME_BAG_HELP} ${STRENGTH_HELP.solid} ${STRENGTH_HELP.hint} Under the name: rated brews and bags, the plain bag-weighted average, and ±: how much ratings swing within the same bag (the spread of the same-bag deltas; smaller is more consistent). Unpaired: no bag was brewed with it and something else.`;
+  const BOARD_HELP = `${SAME_BAG_HELP}\n${STRENGTH_HELP.solid} ${STRENGTH_HELP.hint}\nColumns: rated brews and bags, the plain bag-weighted average rating, and SD: how widely its ratings vary (smaller is more consistent). Narrow screens drop SD, then bags.\nNo match: never brewed on the same bag as anything else.`;
 </script>
 
 <div class="insights-bar">
@@ -30,14 +30,14 @@
     <div class="gear-pair" style:--row-h="3rem">
       {#if t.drippers.length}
         <section class="chart-panel" data-section="gear-drippers">
-          <LabHead id="gear-drippers" title="Drippers" help={BOARD_HELP} {placeTip} />
-          <LabBoard rows={t.drippers} spread slots={t.filters.length} />
+          <LabHead id="gear-drippers" title="Ratings by dripper" help={BOARD_HELP} {placeTip} />
+          <LabBoard rows={t.drippers} slots={t.filters.length} noun="dripper" {placeTip} />
         </section>
       {/if}
       {#if t.filters.length}
         <section class="chart-panel" data-section="gear-filters">
-          <LabHead id="gear-filters" title="Filters" help={BOARD_HELP} {placeTip} />
-          <LabBoard rows={t.filters} spread slots={t.drippers.length} />
+          <LabHead id="gear-filters" title="Ratings by filter" help={BOARD_HELP} {placeTip} />
+          <LabBoard rows={t.filters} slots={t.drippers.length} noun="filter" {placeTip} />
         </section>
       {/if}
     </div>
@@ -45,22 +45,23 @@
 
   {#if t.matrix}
     <section class="chart-panel" data-section="gear-matrix">
-      <LabHead id="gear-matrix" title="Dripper × filter" help={`Each dripper and filter pairing as one band: its same-bag delta. ${SAME_BAG_HELP} Faded cells have few brews, blank cells no paired brews (or none at all).`} {placeTip} />
-      <LabHeatmap by={t.matrix} ariaLabel="Dripper by filter" />
+      <LabHead id="gear-matrix" title="Filters within each dripper" {placeTip}
+        help={"Rows are drippers you used with 2+ filters. A cell is that filter's same-bag delta against the dripper's other filters, counting only brews on that dripper (same bag, same dripper, different filter).\nFaded: few brews. Blank: no match, or never used together."} />
+      <LabHeatmap by={t.matrix} noun="filter on this dripper" scale={['Worse than its other filters', 'Better']} ariaLabel="Filters within each dripper" />
     </section>
   {/if}
 
   {#if t.byRoast}
     <section class="chart-panel" data-section="gear-roast">
-      <LabHead id="gear-roast" title="Dripper × roast level" help={`Each dripper's same-bag delta within one roast level (rows with 3+ bags). ${SAME_BAG_HELP} Faded cells have few brews, blank cells no paired brews.`} {placeTip} />
-      <LabHeatmap by={t.byRoast} ariaLabel="Dripper by roast level" />
+      <LabHead id="gear-roast" title="Dripper × roast level" help={`Each dripper's same-bag delta within one roast level (rows with 3+ bags).\n${SAME_BAG_HELP}\nFaded: few brews. Blank: no match.`} {placeTip} />
+      <LabHeatmap by={t.byRoast} noun="dripper" ariaLabel="Dripper by roast level" />
     </section>
   {/if}
 
   {#if t.eras}
     <section class="chart-panel" data-section="gear-eras">
-      <LabHead id="gear-eras" title="Gear eras" help={"Each dripper's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
-      <MultiLine m={t.eras} ariaLabel="Gear eras: each dripper's share of brews by month" format={(n) => `${n}%`} thin />
+      <LabHead id="gear-eras" title="Gear usage over time" help={"Each dripper's share of the month's brews (rated or not), so you can see when you switched."} {placeTip} />
+      <StackedBars m={t.eras} ariaLabel="Gear usage over time: each dripper's share of brews by month" />
     </section>
   {/if}
 {/if}
