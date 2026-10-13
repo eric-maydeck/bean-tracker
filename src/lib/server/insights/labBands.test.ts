@@ -65,10 +65,15 @@ describe('bandOf', () => {
       expect(bandOf(v, none)).toBeNull();
     expect(label('dose', { dose: 0 })).toBeNull();
   });
-  it('grind bands: a.b.c → a.b; plain numbers → half-number bands; unknown formats exact', () => {
+  it('grind bands: a.b.c → a.b.0 (range a.b.0 – a.b.9); plain numbers → half-number bands (4.5: 4.5 – 4.9); unknown formats exact', () => {
     const g = (grind: string) => label('grind', { grinder: 'G', grind }, 'G');
-    expect(['1.3.0', '1.3.9', '1.4.5', '1.10.2'].map(g)).toEqual(['1.3', '1.3', '1.4', '1.10']);
-    expect(['4.5', '4.9', '5', '5.0', '5.4', '5.5', '6.2'].map(g)).toEqual(['4.5–4.9', '4.5–4.9', '5.0–5.4', '5.0–5.4', '5.0–5.4', '5.5–5.9', '6.0–6.4']);
+    const range = (grind: string) => bandOf('grind', brew({ grinder: 'G', grind }), 'G')!.range ?? null;
+    expect(['1.3.0', '1.3.9', '1.4.5', '1.10.2'].map(g)).toEqual(['1.3.0', '1.3.0', '1.4.0', '1.10.0']);
+    expect(['1.3.4', '0.9.0'].map(range)).toEqual(['1.3.0 – 1.3.9', '0.9.0 – 0.9.9']);
+    expect(['4.5', '4.9', '5', '5.0', '5.4', '5.5', '6.2'].map(g)).toEqual(['4.5', '4.5', '5.0', '5.0', '5.0', '5.5', '6.0']);
+    expect(['4.6', '5', '6.2'].map(range)).toEqual(['4.5 – 4.9', '5.0 – 5.4', '6.0 – 6.4']);
+    expect(range('1.2.3.4')).toBeNull();
+    expect(bandOf('grindExact', brew({ grinder: 'G', grind: '4.6' }), 'G')!.range).toBeUndefined(); // exact: one value, no range
     expect(g('1.2.3.4')).toBe('1.2.3.4');
     const o = (grind: string) => bandOf('grind', brew({ grinder: 'G', grind }), 'G')!.order;
     expect(o('1.3.9')).toBeLessThan(o('1.4.0'));

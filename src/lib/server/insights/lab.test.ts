@@ -111,6 +111,17 @@ describe('ladder', () => {
     expect(s.best).toMatchObject({ label: '91 °C', strength: 'solid' });
     expect(s.best!.value).toBeCloseTo(0.5);
   });
+  it('grind bands carry their range into the card bands (tiers 1 and 2)', () => {
+    const g = (coffeeId: number, grind: string, rating: number) => Array.from({ length: 10 }, () => brew({ coffeeId, grinder: 'A4Z', grind, rating }));
+    const grind = labFn('grind', 'A4Z');
+    const t1 = ladder([1, 2, 3].flatMap((id) => [...g(id, '1.3.4', 8), ...g(id, '1.4.1', 7)]), [], [grind])!;
+    expect(t1.tier).toBe(1);
+    expect(t1.bands.map((b) => [b.label, b.range])).toEqual([['1.3.0', '1.3.0 – 1.3.9'], ['1.4.0', '1.4.0 – 1.4.9']]);
+    const cross = [...[1, 2, 3].flatMap((id) => g(id, '1.3.4', 8)), ...[4, 5, 6].flatMap((id) => g(id, '1.4.1', 7))];
+    const t2 = ladder(cross, [{ name: 'g', brews: cross }], [grind])!;
+    expect(t2.tier).toBe(2);
+    expect(t2.bands.map((b) => b.range)).toEqual(['1.3.0 – 1.3.9', '1.4.0 – 1.4.9']);
+  });
   it('falls back to bands when no exact temp is solid', () => {
     const rows = [1, 2, 3].flatMap((id) => [...many(5, id, 91, 8), ...many(5, id, 92, 8), ...many(10, id, 94, 7)]);
     expect(ladder(rows, [], [exact, temp])!.best!.label).toBe('90–92 °C');
@@ -345,7 +356,8 @@ describe('brewingTab', () => {
   });
   it('variable charts; exact temps; breakdown rows', () => {
     expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'ratio', 'dose', 'time', 'bloom', 'grind']);
-    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30–44 s', '1.4']);
+    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30–44 s', '1.4.0']);
+    expect(tab().vars[5].bands[0].range).toBe('1.4.0 – 1.4.9');
     expect(tab({ grinder: 'ZP6' }).vars.map((v) => v.key)).not.toContain('grind');
     expect(tab({ exact: { temp: true } }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
     // Each chart's mode is its own: exact grind leaves temp in bands.
@@ -355,6 +367,14 @@ describe('brewingTab', () => {
     expect(by.rows).toEqual(['Light', 'Nordic']);
     expect(by.cols).toEqual(['90–92 °C', '93–94 °C']);
     expect(tab().vars[0].by).toBeNull();
+  });
+  it('grind: a band with brews but no same-bag pair shows as no match (delta null), not dropped', () => {
+    const lone = [...rows, ...Array.from({ length: 3 }, () => brew({ coffeeId: 9, rating: 7, grinder: 'A4Z', grind: '1.9.2' }))];
+    const g = brewingTab(lone, { period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} }).vars.find((v) => v.key === 'grind')!.bands;
+    expect(g.find((b) => b.label === '1.9.0')).toMatchObject({ delta: null, plainBrews: 3, plainBags: 1 });
+    // Other charts still drop a band with no pair.
+    const r2 = [...rows, ...Array.from({ length: 3 }, () => brew({ coffeeId: 9, rating: 7, ratio: 20 }))];
+    expect(brewingTab(r2, c0).vars.find((v) => v.key === 'ratio')!.bands.map((b) => b.label)).not.toContain('1:17.5+');
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
@@ -535,6 +555,16 @@ describe('gearTab', () => {
     expect(e.lines.map((l) => l.label)).toEqual(['X', 'Y', 'Z']);
     for (let i = 0; i < 3; i++) expect(e.lines.reduce((s, l) => s + l.values[i]!, 0)).toBe(100);
     expect(e.lines.map((l) => l.values[0])).toEqual([34, 33, 33]);
+  });
+  it('eras: "Other" lists what it holds each month, biggest share first', () => {
+    const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
+    const r = months.flatMap((localDate) => [['A', 40], ['B', 40], ['C', 40], ['D', 40], ['E', 20], ['F', 5]].flatMap(([dripper, n]) =>
+      many(n as number, 1, 92, 8, { dripper: dripper as string, localDate })));
+    const e = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    expect(e.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'Other']);
+    expect(e.other).toEqual(months.map(() => [['E', 11], ['F', 3]]));
+    const plain = gearTab(months.flatMap((localDate) => ['X', 'Y'].flatMap((dripper) => many(10, 1, 92, 8, { dripper, localDate }))), { period: { start: null, end: '2026-09-30' }, ratings: 'all' }).eras!;
+    expect(plain.other).toEqual([[], [], []]); // nothing folded
   });
   it('no filters at all: no matrix', () => {
     const r = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8, { dripper: 'V60' }), ...many(4, id, 92, 7, { dripper: 'Origami' })]);

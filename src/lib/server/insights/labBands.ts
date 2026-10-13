@@ -2,7 +2,8 @@ import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
 
 // Brewing lab bands (spec "Bands"): a brew's band for one variable, or null when the value isn't
 // entered (facts already turn zeros into null) or the brew is outside the variable (another grinder).
-export interface Band { label: string; order: number }
+// `range`: a band's span when its label names only its first value (grind bands: "1.3.0" = 1.3.0 – 1.3.9).
+export interface Band { label: string; order: number; range?: string }
 // `<var>Exact`: the chart's Exact mode (preview round 1, G10); the bare name is its Bands mode.
 export type LabVar = 'temp' | 'tempExact' | 'ratio' | 'ratioExact' | 'dose' | 'doseExact' | 'time' | 'timeExact' | 'bloom' | 'bloomExact'
   | 'grind' | 'grindExact' | 'rest' | 'water' | 'dripper' | 'filter' | 'gh' | 'brewNo';
@@ -27,17 +28,22 @@ const exact = (x: number | null | undefined, step: number, label: (v: number) =>
 };
 // B10: a bloom within 2 s of a multiple of 5 counts as that multiple (31 → 30, 43 → 45).
 export const bloomRound = (s: number) => (Math.abs(s - Math.round(s / 5) * 5) <= 2 ? Math.round(s / 5) * 5 : s);
-// B7: an a.b.c setting (A4Z) bands to a.b; a plain number (ZP6) to half-number bands ("5" = "5.0");
-// any other format stays exact. Exact: the raw setting, a whole number written as "5.0".
+// B7: an a.b.c setting (A4Z) bands to a.b, labeled by its first setting "a.b.0" (range a.b.0 – a.b.9); a
+// plain number (ZP6) to half-number bands labeled "4.5" (range 4.5 – 4.9; "5" = "5.0"); any other format
+// stays exact. Exact: the raw setting, a whole number written as "5.0".
 function grindBand(grind: string, bands: boolean): Band | null {
   const k = grindKey(grind);
   if (!k) return null;
+  if (bands && k.length === 3) {
+    const ab = k.slice(0, 2).join('.');
+    return { label: `${ab}.0`, order: grindValue(`${ab}.0`)!, range: `${ab}.0 – ${ab}.9` };
+  }
   if (k.length > 2 || !bands) {
-    const short = bands && k.length === 3 ? k.slice(0, 2).join('.') : k.length === 1 ? `${k[0]}.0` : grind.trim();
+    const short = k.length === 1 ? `${k[0]}.0` : grind.trim();
     return { label: short, order: grindValue(short)! };
   }
   const lo = Math.floor(Number(grind) * 2) / 2;
-  return { label: `${lo.toFixed(1)}–${(lo + 0.4).toFixed(1)}`, order: lo };
+  return { label: lo.toFixed(1), order: lo, range: `${lo.toFixed(1)} – ${(lo + 0.4).toFixed(1)}` };
 }
 
 export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): Band | null {
