@@ -14,30 +14,6 @@
     };
   }
 
-  // Diverging (the lab's deltas): 0 is the neutral gray --div-mid, sign picks --div-low (worse, red) /
-  // --div-high (better, green) and the tone runs 30–100% by |v| over the largest |v| of `values` (a value
-  // past it is capped at 100%).
-  export function diverge(values: (number | null)[]) {
-    const max = Math.max(...values.map((v) => Math.abs(v ?? 0))) || 1;
-    return (v: number | null) => {
-      if (v === null) return 'transparent';
-      if (v === 0) return 'var(--div-mid)';
-      return `color-mix(in oklab, var(${v < 0 ? '--div-low' : '--div-high'}) ${Math.round(30 + 70 * Math.min(1, Math.abs(v) / max))}%, var(--div-mid))`;
-    };
-  }
-
-  // Tooltip position inside `wrap` for a cell: centered on it, clamped `half` px (the tip's half width,
-  // 5rem for the nowrap tip, 8rem for a .wide one) from either edge; a wrap narrower than the tip (a small
-  // mineral card) clamps it inside the viewport instead.
-  export function tipAt(wrap: HTMLElement, el: Element, text: string, half = 80) {
-    const w = wrap.getBoundingClientRect();
-    const b = el.getBoundingClientRect();
-    const c = b.left + b.width / 2;
-    const x = w.width >= 2 * half ? Math.min(Math.max(c - w.left, half), w.width - half)
-      : Math.min(Math.max(c, half + 8), document.documentElement.clientWidth - half - 8) - w.left;
-    return { text, x, y: b.top - w.top };
-  }
-
   // Roving tabindex: the focused cell is the grid's one tab stop.
   export function takeFocus(e: FocusEvent) {
     const el = e.currentTarget as HTMLElement;
@@ -68,6 +44,8 @@
 </script>
 
 <script lang="ts">
+  import { deltaColor } from './deltaColor';
+  import FloatTip from './FloatTip.svelte';
   import TipBody, { type Tip } from './TipBody.svelte';
 
   let {
@@ -97,23 +75,24 @@
   } = $props();
 
   let wrap: HTMLDivElement | undefined = $state();
-  let tip = $state<{ text: string; r: number; c: number; x: number; y: number } | null>(null);
+  // The open tip: its cell (the anchor) and indexes; `hover`: opened by the mouse, so leaving closes it.
+  let tip = $state<{ el: Element; r: number; c: number; hover: boolean } | null>(null);
   let fade = $derived(faded?.flat().some(Boolean) ?? false);
-  let solid = $derived(cells.flatMap((r, i) => r.filter((v, j) => v !== null && !faded?.[i]?.[j])));
-  let shade = $derived(diverging ? diverge(solid.length ? solid : cells.flat()) : shader(cells.flat()));
+  // Diverging: one fixed scale for every lab chart (deltaColor, C1); else the sequential ramp over the values.
+  let shade = $derived(diverging ? deltaColor : shader(cells.flat()));
   let blanks = $derived(cells.flat().some((v) => v === null));
   // New data drops an open tip: its cell may not exist any more.
   $effect(() => {
     void cells;
     tip = null;
   });
-  const tipFor = (el: Element) => {
+  const tipFor = (el: Element, hover = false) => {
     const d = (el as HTMLElement).dataset;
-    return { ...tipAt(wrap!, el, el.getAttribute('aria-label')!, diverging ? 128 : 80), r: +d.r!, c: +d.c! };
+    return { el, r: +d.r!, c: +d.c!, hover };
   };
-  const show = (e: Event) => {
+  const show = (e: Event, hover = false) => {
     const el = (e.target as Element).closest('.heat-cell');
-    tip = el ? tipFor(el) : null;
+    tip = el ? tipFor(el, hover) : null;
   };
   // Scrolling moves the cells under the tip: follow the focused cell (arrow keys scroll it into view), else close.
   const scrolled = () => {
@@ -130,9 +109,9 @@
   aria-label={ariaLabel}
   bind:this={wrap}
   style:--nr={rows.length}
-  onpointermove={(e) => e.pointerType === 'mouse' && show(e)}
-  onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-  onclick={show}
+  onpointermove={(e) => e.pointerType === 'mouse' && show(e, true)}
+  onpointerleave={(e) => e.pointerType === 'mouse' && tip?.hover && (tip = null)}
+  onclick={(e) => show(e)}
   onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.heat-cell'))}
 >
   <div class="scroll" onscroll={scrolled}>
@@ -171,9 +150,9 @@
     </p>
   {/if}
   {#if tip}
-    <div class="cell-tip" class:wide={diverging} role="tooltip" style:left="{tip.x}px" style:top="{tip.y}px" class:below={tip.y < 48}>
-      {#if tipOf}<TipBody tip={tipOf(tip.r, tip.c)} />{:else}{tip.text}{/if}
-    </div>
+    <FloatTip anchor={tip.el} wide={diverging}>
+      {#if tipOf}<TipBody tip={tipOf(tip.r, tip.c)} />{:else}{tip.el.getAttribute('aria-label')}{/if}
+    </FloatTip>
   {/if}
 </div>
 
@@ -223,7 +202,7 @@
   .col-label,
   .row-label {
     align-self: center;
-    font-size: 0.75rem;
+    font-size: calc(0.75rem * min(var(--grow, 1), 1.2)); /* a stretched lab pair (fitPairs' --grow) scales type up (C3) */
     color: var(--color-text-muted);
     text-align: center;
     padding-inline: 0.25rem;
