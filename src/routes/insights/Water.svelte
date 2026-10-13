@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
+  import { deltaInk } from '$lib/components/deltaColor';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
@@ -122,19 +123,23 @@
       <div class="pairs">
         {#each t.pairs as p (p.slug)}
           {@const all = !!s.pairs?.includes(p.slug)}
+          <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
+               usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
           <div class="pair" style:--ca={recipeColor(p.a)} style:--cb={recipeColor(p.b)}>
-            <p class="pair-head">
-              <span class="pair-names"
-                ><span class="swatch a" aria-hidden="true"></span><strong>{p.a}</strong> vs <span class="swatch b" aria-hidden="true"></span>{p.b}</span
-              >
-              <span class="pair-sum">{p.a} won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · {gap(p.delta)}</span>
-            </p>
+            <p class="pair-sum"
+              ><strong>{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
+                class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
+              ></p>
+            <div class="pair-row pair-cols">
+              <span class="bag-h">Bag</span>
+              <span class="pair-col a"><span class="swatch" aria-hidden="true"></span>{p.a}</span>
+              <span class="pair-col b"><span class="swatch" aria-hidden="true"></span>{p.b}</span>
+            </div>
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
-                <li>
+                <li class="pair-row">
                   <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
                   <span class="score a" class:win={b.a - b.b >= TIE}>{b.a.toFixed(2)}</span>
-                  <span class="sep" aria-hidden="true">·</span>
                   <span class="score b" class:win={b.b - b.a >= TIE}>{b.b.toFixed(2)}</span>
                 </li>
               {/each}
@@ -177,43 +182,68 @@
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
   }
-  /* Same bag, different water (W7): one block per recipe pair, balanced over two columns when wide. */
+  /* Same bag, different water (W7): one bordered block per recipe pair, balanced over two columns when wide;
+     the borders and the gap between blocks show where one pair ends and the next starts. */
+  /* Two across when the panel fits two 22rem blocks; an odd last pair spans the row (rule 33), so no empty
+     half row is left in the panel. */
+  [data-section='water-pairs'] {
+    container-type: inline-size;
+  }
   .pairs {
-    columns: 2 22rem;
-    column-gap: var(--space-5);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-3) var(--space-4);
+  }
+  @container (min-width: 45rem) {
+    .pairs {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .pair:last-child:nth-child(odd) {
+      grid-column: 1 / -1;
+    }
   }
   .pair {
-    break-inside: avoid;
-    padding-bottom: var(--space-3);
+    padding: var(--space-2) var(--space-3) var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
   }
-  .pair-head {
-    display: grid;
-    margin: 0 0 var(--space-1);
+  .pair-sum {
+    margin: 0 0 var(--space-2);
+    font-size: 0.85rem;
     line-height: 1.3;
   }
-  /* Each recipe's color (as in Water usage over time): a swatch at its name, an underline under its ratings. */
+  /* Bag | recipe A | recipe B: the header and every bag row share the columns. */
+  .pair-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5.5rem 5.5rem;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+  .pair-cols {
+    align-items: end;
+    padding-bottom: var(--space-1);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--color-text-muted);
+  }
+  .pair-col {
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  /* Each recipe's color (as in Water usage over time): a block before its name. */
   .swatch {
     display: inline-block;
-    width: 0.6rem;
-    height: 0.6rem;
+    width: 0.7rem;
+    height: 0.7rem;
     margin-right: 0.3rem;
+    vertical-align: -0.1rem;
     border-radius: 2px;
     background: var(--ca);
   }
-  .swatch.b {
+  .pair-col.b .swatch {
     background: var(--cb);
-  }
-  .score.a {
-    text-decoration: underline 3px var(--ca);
-    text-underline-offset: 3px;
-  }
-  .score.b {
-    text-decoration: underline 3px var(--cb);
-    text-underline-offset: 3px;
-  }
-  .pair-sum {
-    font-size: 0.8rem;
-    color: var(--color-text-muted);
   }
   .pair-bags {
     margin: 0;
@@ -221,10 +251,6 @@
     list-style: none;
   }
   .pair-bags li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 2.5rem 0.5rem 2.5rem;
-    align-items: baseline;
-    gap: var(--space-1);
     min-height: 2rem;
     padding: 0.3rem 0;
     border-top: 1px solid var(--color-border);
@@ -260,11 +286,9 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
+  /* The bag's winner: bold and green. */
   .score.win {
     font-weight: 700;
-  }
-  .sep {
-    text-align: center;
-    color: var(--color-text-muted);
+    color: var(--div-high-ink);
   }
 </style>

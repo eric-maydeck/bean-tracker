@@ -2176,17 +2176,27 @@ export const STATES: State[] = [
         expect(Math.round(a!.y)).toBe(Math.round(b!.y));
       }
       await expectPairsFilled(page, '.water-pair, .heat-grid');
-      // Same bag, different water (W7): one block per recipe pair, a headline, then each bag's two ratings.
+      // Same bag, different water (W7): one bordered block per recipe pair, a headline, column headers naming the
+      // two recipes in their colors, then each bag's two plain ratings, the winner's bold and green.
       const pair = page.locator('.pair').first();
       await expect(pair.locator('.pair-sum')).toHaveText(/ won \d+ of \d+ bags?( \(\d+ tied\))? · (even|[+−]\d\.\d\d on average)$/);
       await expect(pair.locator('.pair-bags li').first().locator('.score')).toHaveText([/^\d+\.\d\d$/, /^\d+\.\d\d$/]);
-      // Each recipe of a pair carries its usage-over-time color: a swatch at its name, an underline under its ratings.
-      const pc = await pair.evaluate((p) => {
-        const css = (sel: string, prop: string) => getComputedStyle(p.querySelector(sel)!).getPropertyValue(prop);
-        return { a: css('.swatch.a', 'background-color'), b: css('.swatch.b', 'background-color'), ua: css('.score.a', 'text-decoration-color') };
-      });
-      expect(pc.a).not.toBe(pc.b);
-      expect(pc.ua).toBe(pc.a);
+      const pc = await page.locator('.pair').evaluateAll((ps) => ps.map((p) => {
+        const css = (e: Element) => getComputedStyle(e);
+        const sw = [...p.querySelectorAll('.pair-cols .swatch')].map((e) => css(e).backgroundColor);
+        const scores = [...p.querySelectorAll('.score')];
+        const plain = scores.every((e) => css(e).textDecorationLine === 'none');
+        const probe = document.createElement('span');
+        p.append(probe);
+        probe.style.color = 'var(--div-high-ink)';
+        const green = css(probe).color;
+        probe.remove();
+        const wins = scores.filter((e) => e.classList.contains('win')).every((e) => css(e).color === green && +css(e).fontWeight >= 700);
+        const others = scores.filter((e) => !e.classList.contains('win')).every((e) => css(e).color !== green);
+        return { two: sw.length === 2 && sw[0] !== sw[1], plain, wins, others, boxed: css(p).borderTopStyle !== 'none' };
+      }));
+      expect(pc.every((x) => x.two && x.plain && x.wins && x.others && x.boxed)).toBe(true);
+      await expectGridRowsFull(page, '.pairs', true); // an odd last pair spans the row
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
