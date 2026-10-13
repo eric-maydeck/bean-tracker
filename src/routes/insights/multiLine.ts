@@ -16,8 +16,8 @@ export function scale(m: Multi) {
 // x of column i in the 100-wide box.
 export const px = (i: number, n: number) => (n > 1 ? (i / (n - 1)) * 100 : 50);
 
-// The categorical slots (--series-1..21 (7 hues x 3 tones: 1-7 every hue once, 8-14 the opposite lightness, 15-21 the mid-tones), app.css; distinctness checked in palette.test.ts).
-export const SLOTS = Array.from({ length: 21 }, (_, i) => `var(--series-${i + 1})`);
+// The categorical slots (--series-1..14 (7 hues x 2 tones: 1-7 every hue once, 8-14 the other tone), app.css; distinctness checked in palette.test.ts).
+export const SLOTS = Array.from({ length: 14 }, (_, i) => `var(--series-${i + 1})`);
 // A slot's text-safe variant (4.5:1 on the card): `var(--series-3)` -> `var(--series-3-ink)`.
 export const inkOf = (slot: string) => slot.replace(/\)$/, '-ink)');
 const OTHER = 'var(--series-other)';

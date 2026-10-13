@@ -578,10 +578,10 @@
     height: 2.5rem;
   }
   .bars rect {
-    fill: var(--chart-color-1);
+    fill: var(--series-1);
   }
   .bars rect.weekend {
-    fill: var(--chart-color-2);
+    fill: var(--series-2);
   }
   .bar-labels {
     display: grid;

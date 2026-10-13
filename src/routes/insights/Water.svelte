@@ -123,8 +123,9 @@
           <!-- Each pair is its own bordered group: a headline, then column headers naming the two recipes in their
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
           <div class="pair" class:span={spans[i]} style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)} style:--ia={inkOf(colorOf(p.a))} style:--ib={inkOf(colorOf(p.b))}>
+            <h4 class="pair-title"><span class="pair-a">{p.a}</span> vs <span class="pair-b">{p.b}</span></h4>
             <p class="pair-sum"
-              ><strong class="pair-a">{p.a}</strong> won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
+              >{p.a} won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
               ></p>
             <div class="pair-row pair-cols">
@@ -201,9 +202,18 @@
   .pair.span {
     column-span: all;
   }
-  /* The headline's recipe name: bold, in its recipe color (the text-safe variant, 4.5:1). */
+  /* The pair's heading: "A vs B" bold, each name in its recipe's ink color (text-safe, 4.5:1). */
+  .pair-title {
+    margin: 0 0 var(--space-1);
+    font-size: 0.95rem;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
   .pair-a {
     color: var(--ia);
+  }
+  .pair-b {
+    color: var(--ib);
   }
   .pair-sum {
     margin: 0 0 var(--space-2);

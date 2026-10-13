@@ -121,7 +121,7 @@
   function paletteColors(count: number): string[] {
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
-      colors.push(themeColor(`--chart-color-${(i % 8) + 1}`));
+      colors.push(themeColor(`--series-${(i % 14) + 1}`)); // the site's categorical palette (ui-rules 42)
     }
     return colors;
   }
@@ -192,7 +192,7 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    const lineColor = themeColor('--chart-color-1');
+    const lineColor = themeColor('--series-1'); // the main series: the palette's first slot
     const bgColors = paletteColors(labels.length);
     const vbar = type === 'bar' && vertical;
 
@@ -211,7 +211,7 @@
                 type: 'bar' as const,
                 label: datasetLabel,
                 data: values,
-                // ponytail: assumes --chart-color-1 is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
+                // ponytail: assumes --series-1 is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineColor}4d`,
                 barPercentage: 1,
@@ -257,7 +257,7 @@
           ...series.map((x, i) =>
             x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineColor, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(`--chart-color-${i + 2}`), borderWidth: 0 }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(`--series-${((i + 1) % 14) + 1}`), borderWidth: 0 }
           )
         ]
       },

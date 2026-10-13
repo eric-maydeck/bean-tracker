@@ -42,10 +42,10 @@ describe('nameColors', () => {
     expect(c.has('Other')).toBe(false);
   });
   it('past the palette, a name reuses only a slot none of its bar or pair partners use', () => {
-    const lines = Array.from({ length: 21 }, (_, i) => `L${i}`);
+    const lines = Array.from({ length: 14 }, (_, i) => `L${i}`);
     const many = [{ a: 'L0', b: 'X' }, { a: 'X', b: 'Y' }, { a: 'Y', b: 'L1' }];
     const c = nameColors(lines, many);
-    expect(new Set(lines.map((l) => c.get(l))).size).toBe(21); // every bar's segments differ
+    expect(new Set(lines.map((l) => c.get(l))).size).toBe(14); // every bar's segments differ
     for (const p of many) expect(c.get(p.a)).not.toBe(c.get(p.b)); // every pair's two differ
   });
 });
