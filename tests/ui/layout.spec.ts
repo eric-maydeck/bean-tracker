@@ -2206,18 +2206,19 @@ export const STATES: State[] = [
       await pair.getByRole('button', { name: 'Show fewer' }).click();
       await expect(page).not.toHaveURL(/pairs=/);
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
-      // Usage over time: 100% stacked bars; a segment's tip names the recipe, month and share.
+      // Usage over time: 100% stacked bars; a segment's tip: the month, then the recipe and its share in one row.
       const eras = page.locator('[data-section="water-eras"]');
       await eras.locator('.seg').first().click();
-      await expect(eras.locator('.cell-tip .tip-title')).toContainText(' · ');
-      await expect(eras.locator('.cell-tip .tip-rows')).toContainText(/Share\s*\d+%/);
+      await expect(eras.locator('.cell-tip .tip-title')).toHaveText(/^[A-Z][a-z]{2} \d{2}$/);
+      await expect(eras.locator('.cell-tip .tip-rows dt').first()).not.toHaveText('Share');
+      await expect(eras.locator('.cell-tip .tip-rows dd').first()).toHaveText(/^\d+%$/);
       // Keyboard: one tab stop on a drawn segment; arrows move through segments and months.
       const stop = eras.locator('.seg[tabindex="0"]');
       await expect(stop).toHaveCount(1);
       await stop.focus();
-      const at = await eras.locator('.cell-tip .tip-title').textContent();
+      const at = await eras.locator('.cell-tip').textContent();
       await page.keyboard.press('ArrowUp');
-      await expect(eras.locator('.cell-tip .tip-title')).not.toHaveText(at!);
+      await expect(eras.locator('.cell-tip')).not.toHaveText(at!);
       const up = await eras.locator('.cell-tip .tip-title').textContent();
       await page.keyboard.press('ArrowRight');
       await expect(eras.locator('.cell-tip .tip-title')).not.toHaveText(up!);
@@ -2245,6 +2246,18 @@ export const STATES: State[] = [
       expect(blankRows).toEqual([]);
       // Gear usage over time: the tab stop is a drawn segment.
       await expect(page.locator('[data-section="gear-eras"] .seg[tabindex="0"]')).toHaveCount(1);
+      // An "Other" segment's tip lists its members after its own row: up to 8 from 768 px, 4 on phones, then "+N more".
+      const others = page.locator('[data-section="gear-eras"] .seg[aria-label*=" · Other "]');
+      if (await others.count()) {
+        await others.last().click();
+        const tip = page.locator('[data-section="gear-eras"] .cell-tip');
+        await expect(tip.locator('dt').first()).toHaveText('Other');
+        const members = (await tip.locator('dt').count()) - 1, all = (await others.last().getAttribute('aria-label'))!.split(' · ').length - 2; // title · Other row · each member
+        const max = (page.viewportSize()?.width ?? 0) >= 768 ? 8 : 4;
+        expect(members).toBe(Math.min(all, max));
+        if (all > max) await expect(tip.locator('.tip-note')).toHaveText(`+${all - max} more`);
+        await page.locator('h1').click();
+      }
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined|±null/);
       await expectInnerScroll(page, '.heatmap.diverging .scroll');

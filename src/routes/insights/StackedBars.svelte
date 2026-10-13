@@ -14,13 +14,15 @@
   let n = $derived(m.x.length);
   // Month labels counted back from the last: up to 8 wide, up to 4 in a narrow container.
   let [wide, narrow] = $derived([Math.ceil(n / 8), Math.ceil(n / 4)]);
-  const OTHER_ROWS = 3;
   const pct = (v: number) => (v ? `${v}%` : '<1%');
-  const tipOf = (k: number, i: number): Tip => {
-    const title = `${m.lines[k].label} · ${m.x[i]}`, share: [string, string] = ['Share', `${m.lines[k].values[i] ?? 0}%`];
+  // A segment's tip (round 3): the month as the title, then the series and its share as one row ("V60  38%");
+  // "Other" lists what it holds, up to 8 on desktop (≥ 768px) and 4 on phones, then "+N more". `max`: the
+  // aria-label names every member.
+  const otherRows = () => (typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 8 : 4);
+  const tipOf = (k: number, i: number, max = otherRows()): Tip => {
     const held = m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [];
-    return { title, rows: [share, ...held.slice(0, OTHER_ROWS).map(([name, v]): [string, string] => [name, pct(v)])],
-      note: held.length > OTHER_ROWS ? `+${held.length - OTHER_ROWS} more` : undefined };
+    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...held.slice(0, max).map(([name, v]): [string, string] => [name, pct(v)])],
+      note: held.length > max ? `+${held.length - max} more` : undefined };
   };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
   let stop = $derived.by(() => {
@@ -67,7 +69,7 @@
             {@const v = l.values[i] ?? 0}
             {#if v > 0}
               <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]}
-                aria-label={tipText(tipOf(k, i))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
+                aria-label={tipText(tipOf(k, i, Infinity))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
             {/if}
           {/each}
         </div></div>
