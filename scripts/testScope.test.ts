@@ -5,10 +5,10 @@ describe('scopeFor', () => {
   it('maps a route directory to its tag', () => {
     expect(scopeFor(['src/routes/insights/+page.svelte'])).toEqual({ kind: 'tags', tags: ['@insights'] });
     expect(scopeFor(['src/routes/coffees/[slug]/+page.svelte', 'src/lib/server/insights/habits.ts']))
-      .toEqual({ kind: 'tags', tags: ['@coffees', '@insights'] });
+      .toEqual({ kind: 'tags', tags: ['@coffees', '@insights', '@stats'] });
   });
   it('runs everything for shared or unknown paths', () => {
-    for (const f of ['src/routes/+layout.svelte', 'src/app.css', 'src/lib/components/Chart.svelte',
+    for (const f of ['src/routes/+layout.svelte', 'src/lib/insightsUrl.ts', 'src/routes/login/+page.svelte', 'src/app.css', 'src/lib/components/Chart.svelte',
       'tests/ui/checkLayout.ts', 'playwright.config.ts', 'package.json', 'src/lib/somethingNew.ts'])
       expect(scopeFor([f]).kind, f).toBe('full');
   });
