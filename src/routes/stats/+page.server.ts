@@ -16,8 +16,8 @@ import { handleCoffeeCreateAndLink } from '$lib/server/coffeeFormActions';
 import { queueFillMissing } from '$lib/server/imageFills';
 import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
 import { loadFacts } from '$lib/server/insights/facts';
-import { localToday, periodBounds, yearsSince } from '$lib/server/insights/time';
-import { localTodayDate } from '$lib/server/localToday';
+import { periodBounds, yearsSince } from '$lib/server/insights/time';
+import { localToday } from '$lib/server/localToday';
 import { consumption, gramsOnHand } from '$lib/server/insights/overview';
 import { RANGES } from '$lib/insightsUrl';
 import { buildBacklogStats } from './statsData';
@@ -30,7 +30,8 @@ const UNMATCHED_BEAN_LIMIT = 20;
 
 export const load: PageServerLoad = ({ locals }) => {
   const db = getDb();
-  const today = localTodayDate();
+  const day = localToday(); // one clock read for both forms
+  const today = new Date(`${day}T00:00:00Z`);
   const openRows = getOpenCoffees(db);
   const backlogRows = getBacklogCoffees(db);
   const archivedRows = getArchivedCoffees(db);
@@ -39,7 +40,6 @@ export const load: PageServerLoad = ({ locals }) => {
   // Temporary (until Ocean of statistics fills /insights out): the Time to Clear panel's
   // measured rates for every Period and both people modes; the page picks by URL.
   const { brews, bags } = loadFacts(db);
-  const day = localToday();
   const dataStart = brews[0]?.localDate ?? null;
   const years = yearsSince(dataStart, day);
   const householdSize = getHouseholdSize(db);
