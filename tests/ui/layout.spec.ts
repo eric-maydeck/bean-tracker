@@ -1608,7 +1608,9 @@ export const STATES: State[] = [
       await expect(foot.getByRole('button', { name: 'Show more' })).toHaveCount(0);
       // Show less steps back one level: 50 → 20.
       await foot.getByRole('button', { name: 'Show less' }).click();
-      await expect(page).toHaveURL(/top=20/);
+      // The URL changes only once the server load is fetched and parsed: on starved E-cores
+      // (UI_PROFILE=background) that took up to ~8s, past the 5s default.
+      await expect(page).toHaveURL(/top=20/, { timeout: 15_000 });
     } },
   { name: 'insights-records-topc20', path: () => '/insights?tab=records&range=all&topc=20',
     act: async (page) => {
