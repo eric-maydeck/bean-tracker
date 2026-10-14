@@ -1,3 +1,13 @@
+## [1.74.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.1...v1.74.2) (2026-10-14)
+
+
+### Bug Fixes
+
+* **coffees:** record open/freeze/thaw on the local date, not utc
+* **coffees:** show opened/archived dates on the local calendar, not utc's
+* **data:** boot-correct coffee 6's thaw date the utc bug wrote a day late
+* **test:** seed brew times on the local clock, not utc
+
 ## [1.74.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.0...v1.74.1) (2026-10-14)
 
 
