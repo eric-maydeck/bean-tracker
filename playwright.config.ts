@@ -22,6 +22,8 @@ export default defineConfig({
   retries: 1,
   // Not the default half-the-cores (9 Firefoxes lag the laptop); see scripts/uiProfile.ts.
   workers: profile.workers,
+  // E-core-only runs: SvelteKit goto's URL update can land ~8s after the click.
+  expect: { timeout: profile.background ? 15_000 : 5_000 },
   use: { baseURL: `http://localhost:${PORT}`, browserName: 'firefox', headless: true },
   webServer: {
     // Fresh seed every run; never reuse a server (it could be on a real DB).
