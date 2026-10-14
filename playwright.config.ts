@@ -37,6 +37,8 @@ export default defineConfig({
       name,
       testMatch: /layout\.spec\.ts/,
       dependencies: ['setup'],
+      // States never save, so tests within a viewport can spread across workers.
+      fullyParallel: true,
       use: { ...use, storageState: '.ui-test/admin.json' }
     })),
     // Adds coffees to the shared DB, so it waits for every layout check.
