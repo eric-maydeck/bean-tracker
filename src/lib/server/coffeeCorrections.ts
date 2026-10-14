@@ -29,5 +29,13 @@ export const COFFEE_CORRECTIONS: CoffeeFixBatch[] = [
     ],
     websites: [],
     tavilyCalls: []
+  },
+  {
+    // The UTC "today" bug (fixed 2026-10-14): opened (and so thawed) 2026-10-04 23:07 MDT, recorded
+    // as the UTC date. The only provable case on prod (read-only check, 2026-10-14).
+    marker: 'coffee_corrections_2026_10_c',
+    fixes: [{ coffee_id: 6, roaster: 'Still', field: 'frozen_end_date', from: '2026-10-05', to: '2026-10-04' }],
+    websites: [],
+    tavilyCalls: []
   }
 ];
