@@ -5,7 +5,7 @@ import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
-import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, TILE_KIND } from '$lib/server/insights/overview';
+import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
 import { leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
@@ -126,6 +126,7 @@ export const load: PageServerLoad = ({ url }) => {
       : null,
     water: s.tab === 'water' ? waterTab(brews, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(brews, labCtx) : null,
+    recent: s.tab === 'overview' ? recent(brews, bags) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),

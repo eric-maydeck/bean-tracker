@@ -1,6 +1,6 @@
 import type { Ratings } from '$lib/insightsUrl';
 import type { BrewFact, BagFact } from './facts';
-import { inPeriod, trackedDays, addDays, type Period } from './time';
+import { inPeriod, trackedDays, addDays, daysBetween, type Period } from './time';
 import { countsForRating } from './ratings';
 
 export interface OverviewTiles {
@@ -174,5 +174,30 @@ export function consumption(
     perMonth: perDay === null ? null : perDay * 30.44,
     daysToClear,
     clearBy: daysToClear === null ? null : addDays(today, daysToClear)
+  };
+}
+
+export type RecentBrew = { id: number; name: string | null; slug: string | null; date: string; rating: number | null };
+export type RecentBag = { id: number; name: string; slug: string | null; finished: string; days: number; rating: number | null };
+
+// Overview's Recent panel: the household's last 10 brews and last 10 bags finished, newest first,
+// regardless of period or people. A bag's days run from opened (else its first brew) to its last brew;
+// a bag with neither date is skipped.
+export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n = 10): { brews: RecentBrew[]; bags: RecentBag[] } {
+  const byId = new Map(bags.map((b) => [b.id, b]));
+  return {
+    brews: brews.slice(-n).reverse().map((b) => {
+      const g = b.coffeeId === null ? undefined : byId.get(b.coffeeId);
+      return { id: b.id, name: g?.name ?? null, slug: g?.slug ?? null, date: b.localDate, rating: b.rating };
+    }),
+    bags: bags
+      .flatMap((g) => {
+        const from = g.openedDate ?? g.firstBrew;
+        return isFinished(g) && from
+          ? [{ id: g.id, name: g.name, slug: g.slug, finished: g.lastBrew!, days: Math.max(0, daysBetween(from, g.lastBrew!)), rating: g.bagRating }]
+          : [];
+      })
+      .sort((a, b) => b.finished.localeCompare(a.finished) || b.id - a.id)
+      .slice(0, n)
   };
 }

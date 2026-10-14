@@ -3,6 +3,7 @@ import { processGroup, type ProcessGroup } from '$lib/processGroups';
 import { generalHardness, carbonateHardness } from '$lib/water';
 import type { BrewerType } from '$lib/insightsUrl';
 import { bcLocalTime, daysBetween } from './time';
+import { localDate as toLocalDate } from '$lib/localDate';
 
 // Method names are "Dripper - Filter". Gabi Master A brews used Kalita,
 // xBloom or Timemore 155 filters interchangeably (user, 2026-10-09), so its
@@ -116,6 +117,7 @@ export interface BagFact {
   frozenEnd?: string | null;
   restLow?: number | null; // the roaster's suggested rest window, days
   restHigh?: number | null;
+  openedDate?: string | null; // local date the bag was opened (moved to open), when recorded
   firstBrew: string | null; // local dates
   lastBrew: string | null;
   bagRating: number | null; // the linked Bean Conqueror bean's rating (> 0), else null
@@ -135,7 +137,7 @@ interface BagRow {
   id: number; status: BagFact['status']; roaster: string; coffee_name: string; slug: string | null; origin: string | null; processing: string | null;
   roast_level: string | null; decaf: number; roast_date: string | null; cost: number | null; amount_g: number | null;
   frozen_start_date: string | null; frozen_end_date: string | null; bag_rating: number | null;
-  rest_days_low: number | null; rest_days_high: number | null;
+  rest_days_low: number | null; rest_days_high: number | null; opened_date: string | null;
 }
 
 // Every brew joined to its bean's coffee, method and water, plus every bag,
@@ -215,7 +217,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
 
   const bagRows = db
     .prepare(`SELECT id, status, roaster, coffee_name, slug, origin, processing, roast_level, decaf, roast_date, cost, amount_g, frozen_start_date, frozen_end_date,
-            rest_days_low, rest_days_high, (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
+            rest_days_low, rest_days_high, opened_date, (SELECT MAX(rating) FROM beanconqueror_beans WHERE coffee_id = coffees.id AND rating > 0) AS bag_rating FROM coffees`)
     .all() as unknown as BagRow[];
   const bags = bagRows.map((r): BagFact => ({
     id: r.id,
@@ -235,6 +237,7 @@ export function loadFacts(db: DatabaseSync): { brews: BrewFact[]; bags: BagFact[
     frozenEnd: r.frozen_end_date,
     restLow: r.rest_days_low,
     restHigh: r.rest_days_high,
+    openedDate: r.opened_date && toLocalDate(r.opened_date),
     firstBrew: span.get(r.id)?.first ?? null,
     lastBrew: span.get(r.id)?.last ?? null,
     bagRating: r.bag_rating

@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { overviewTiles, tileDelta, compareTiles, perPerson, consumption, gramsOnHand, rightNow, paceDelta, TILE_KIND, type OverviewTiles } from './overview';
+import {
+  overviewTiles, tileDelta, compareTiles, perPerson, consumption, gramsOnHand, rightNow, paceDelta, recent, TILE_KIND, type OverviewTiles
+} from './overview';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -230,4 +232,33 @@ describe('paceDelta', () => {
   it('paces the base to the current length', () => expect(paceDelta(10, 5, 30, 10, true)).toMatchObject({ abs: -5, base: 15 }));
   it('same length: no pacing even when asked', () => expect(paceDelta(10, 5, 30, 30, true)).toMatchObject({ base: 5 }));
   it('no previous days: no delta', () => expect(paceDelta(10, 5, 30, 0, true)).toBeNull());
+});
+
+describe('recent', () => {
+  it('lists the last brews newest first, unrated ones too, with their bag', () => {
+    const brews = Array.from({ length: 12 }, (_, i) =>
+      brew({ id: i + 1, coffeeId: i === 11 ? null : 1, localDate: `2026-09-${String(i + 1).padStart(2, '0')}`, rating: i === 10 ? null : 8 }));
+    const r = recent(brews, [bag({ id: 1, name: 'Kenya', slug: 'kenya' })]).brews;
+    expect(r.map((b) => b.id)).toEqual([12, 11, 10, 9, 8, 7, 6, 5, 4, 3]);
+    expect(r[0]).toEqual({ id: 12, name: null, slug: null, date: '2026-09-12', rating: 8 });
+    expect(r[1]).toEqual({ id: 11, name: 'Kenya', slug: 'kenya', date: '2026-09-11', rating: null });
+    expect(r[2].rating).toBe(8);
+  });
+
+  it('lists finished bags newest first: days from opened, else first brew; skips undated; caps at 10', () => {
+    const done = (id: number, o: Partial<BagFact>) => bag({ id, status: 'archive', firstBrew: '2026-09-01', lastBrew: '2026-09-10', ...o });
+    const bags = [
+      done(1, { openedDate: '2026-09-03', bagRating: 9 }),
+      done(2, { lastBrew: '2026-09-20' }), // no opened date: from first brew
+      done(3, { firstBrew: null }), // no start date: skipped
+      bag({ id: 4, status: 'open', firstBrew: '2026-09-01', lastBrew: '2026-09-30' }), // not finished
+      ...Array.from({ length: 10 }, (_, i) => done(10 + i, { lastBrew: '2026-08-15', firstBrew: '2026-08-01' }))
+    ];
+    const r = recent([], bags).bags;
+    expect(r).toHaveLength(10);
+    expect(r[0]).toMatchObject({ id: 2, finished: '2026-09-20', days: 19 });
+    expect(r[1]).toMatchObject({ id: 1, days: 7, rating: 9 });
+    expect(r.map((b) => b.id)).not.toContain(3);
+    expect(r[2]).toMatchObject({ id: 19, days: 14 });
+  });
 });
