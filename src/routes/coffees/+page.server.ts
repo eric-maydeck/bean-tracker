@@ -1,5 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
+import { localTodayDate } from '$lib/server/localToday';
 import { getBacklogCoffees, getOpenCoffees, getArchivedCoffees, getDistinctFieldValues } from '$lib/server/coffees';
 import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
@@ -10,7 +11,7 @@ import { queueFillMissing } from '$lib/server/imageFills';
 
 export const load: PageServerLoad = () => {
   const db = getDb();
-  const today = new Date();
+  const today = localTodayDate();
   const backlog = getBacklogCoffees(db).map((c) => withComputedFields(c, today));
   const open = getOpenCoffees(db).map((c) => withComputedFields(c, today));
   const archive = getArchivedCoffees(db).map((c) => withComputedFields(c, today));

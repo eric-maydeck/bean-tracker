@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { isRedirect, isActionFailure } from '@sveltejs/kit';
 
 // getDb() is a lazily-created singleton keyed off DB_PATH — set before the
@@ -78,5 +78,21 @@ describe('coffee page Bean Conqueror link', () => {
     expect(await actions.unlinkBeanConqueror(event(true))).toEqual({ success: true });
     const again = await actions.unlinkBeanConqueror(event(true));
     expect(isActionFailure(again) && again.status).toBe(400);
+  });
+});
+
+describe("coffee page counts days on the local date", () => {
+  it('at 21:00 local (UTC already the next day) days since roast is local-today minus roast', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-14T03:00:00Z')); // 2026-10-13 21:00 MDT
+    try {
+      const { slug } = createCoffee(getDb(), sampleInput({ coffee_name: 'local Day Test', roast_date: '2026-10-01' }));
+      const data = (await load({ params: { slug }, setHeaders: () => {}, locals: { isAdmin: false } } as never)) as {
+        coffee: { days_since_roast: number };
+      };
+      expect(data.coffee.days_since_roast).toBe(12);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

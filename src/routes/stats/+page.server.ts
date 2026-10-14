@@ -17,6 +17,7 @@ import { queueFillMissing } from '$lib/server/imageFills';
 import { linkBeanConquerorBean, getLinkableCoffees, BeanLinkError } from '$lib/server/beanConquerorLinks';
 import { loadFacts } from '$lib/server/insights/facts';
 import { localToday, periodBounds, yearsSince } from '$lib/server/insights/time';
+import { localTodayDate } from '$lib/server/localToday';
 import { consumption, gramsOnHand } from '$lib/server/insights/overview';
 import { RANGES } from '$lib/insightsUrl';
 import { buildBacklogStats } from './statsData';
@@ -29,7 +30,7 @@ const UNMATCHED_BEAN_LIMIT = 20;
 
 export const load: PageServerLoad = ({ locals }) => {
   const db = getDb();
-  const today = new Date();
+  const today = localTodayDate();
   const openRows = getOpenCoffees(db);
   const backlogRows = getBacklogCoffees(db);
   const archivedRows = getArchivedCoffees(db);
@@ -57,7 +58,7 @@ export const load: PageServerLoad = ({ locals }) => {
     years,
     consumption: consumptionByRange,
     beanConquerorLastImportedAt: lastImportedRow?.value ?? null,
-    beanConquerorStats: buildBeanConquerorStats(db),
+    beanConquerorStats: buildBeanConquerorStats(db, day),
     unmatchedBeans: {
       beans: getUnmatchedBeanConquerorBeans(db, UNMATCHED_BEAN_LIMIT),
       total: countUnmatchedBeanConquerorBeans(db)

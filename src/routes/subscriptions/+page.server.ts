@@ -1,5 +1,6 @@
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
+import { localTodayDate } from '$lib/server/localToday';
 import { getSubscriptions, createSubscription, withTotalGrams, withNextRenewalDate } from '$lib/server/subscriptions';
 import { requireAdmin } from '$lib/server/auth';
 import { parseSubscriptionUrl } from '$lib/subscriptionView';
@@ -15,7 +16,7 @@ function readSubscriptionFields(formData: FormData) {
 }
 
 export const load: PageServerLoad = () => {
-  const today = new Date();
+  const today = localTodayDate();
   const subscriptions = getSubscriptions(getDb())
     .map(withTotalGrams)
     .map((s) => withNextRenewalDate(s, today));

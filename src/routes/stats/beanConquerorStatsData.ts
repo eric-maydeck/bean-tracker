@@ -66,7 +66,7 @@ function scalarOrNull(db: DatabaseSync, sql: string): number | null {
 
 export function buildBeanConquerorStats(
   db: DatabaseSync,
-  today: string = new Date().toISOString().slice(0, 10)
+  today: string // the local date (localToday); the page imports this module, so no server import here
 ): BeanConquerorStats {
   const totalBrews = (db.prepare(`SELECT COUNT(*) AS value FROM beanconqueror_brews`).get() as { value: number })
     .value;

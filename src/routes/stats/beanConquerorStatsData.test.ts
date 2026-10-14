@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from '$lib/server/db';
+import { localToday } from '$lib/server/localToday';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
 import { buildBeanConquerorStats, bcPerPerson, type BeanConquerorStats } from './beanConquerorStatsData';
 
@@ -73,7 +74,7 @@ describe('buildBeanConquerorStats', () => {
   it('computes totals, average rating, and per-dimension favorites', () => {
     const db = createDb(':memory:');
     seed(db);
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
     expect(stats.totalBrews).toBe(6);
     expect(stats.totalBeans).toBe(2);
     expect(stats.averageRating).toBe(7);
@@ -89,7 +90,7 @@ describe('buildBeanConquerorStats', () => {
 
   it('returns zeroed/null stats gracefully with no data', () => {
     const db = createDb(':memory:');
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
     expect(stats.totalBrews).toBe(0);
     expect(stats.totalBeans).toBe(0);
     expect(stats.averageRating).toBeNull();
@@ -134,7 +135,7 @@ describe('buildBeanConquerorStats', () => {
       )
     });
 
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
 
     // The unrated brews still count toward the raw totals...
     expect(stats.totalBrews).toBe(9);
@@ -176,7 +177,7 @@ describe('buildBeanConquerorStats', () => {
       })
     });
 
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
 
     expect(stats.favoritesByRoaster.find((g) => g.label === 'One Hit Wonder')).toBeUndefined();
     expect(stats.favoritesByOrigin.find((g) => g.label === 'Panama')).toBeUndefined();
@@ -210,7 +211,7 @@ describe('buildBeanConquerorStats', () => {
       ]
     });
 
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
 
     expect(stats.ratingsOverTime).toEqual([
       { date: '2026-06-08', rating: 7 },
@@ -248,7 +249,7 @@ describe('buildBeanConquerorStats', () => {
       ]
     });
 
-    const days = buildBeanConquerorStats(db).brewsPerDay;
+    const days = buildBeanConquerorStats(db, localToday()).brewsPerDay;
 
     expect(days.map((d) => [d.date, d.brews])).toEqual([
       ['2026-06-01', 2],
@@ -335,7 +336,7 @@ describe('buildBeanConquerorStats', () => {
       grinders: [],
       brews: []
     });
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
     // Budget Roaster: $10/200g = $0.05/g. Luxury Roaster: $30/100g = $0.30/g.
     expect(stats.costPerGramByRoaster.map((g) => g.label)).toEqual(['Luxury Roaster', 'Budget Roaster']);
   });
@@ -382,7 +383,7 @@ describe('buildBeanConquerorStats', () => {
         }
       ]
     });
-    const stats = buildBeanConquerorStats(db);
+    const stats = buildBeanConquerorStats(db, localToday());
     expect(stats.averageBrewTemperatureC).toBeNull();
     expect(stats.averageBeanAgeAtBrewDays).toBeNull();
   });

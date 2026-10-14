@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { setImageFill } from './imageFills';
@@ -211,6 +211,24 @@ describe('freezeCoffee / thawCoffee', () => {
     expect(getCoffeeById(db, id)?.frozen_end_date).toBeNull();
     thawCoffee(db, id);
     expect(getCoffeeById(db, id)?.frozen_end_date).not.toBeNull();
+  });
+});
+
+describe("open/freeze/thaw record the local date, not UTC's", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('at 21:00 local (UTC already the next day) they record the local date', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-14T03:00:00Z')); // 2026-10-13 21:00 MDT
+    const { id } = createCoffee(db, sampleInput());
+    freezeCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_start_date).toBe('2026-10-13');
+    thawCoffee(db, id);
+    expect(getCoffeeById(db, id)?.frozen_end_date).toBe('2026-10-13');
+    const other = createCoffee(db, sampleInput({ coffee_name: 'Other' })).id;
+    freezeCoffee(db, other);
+    openCoffee(db, other); // thaws on open
+    expect(getCoffeeById(db, other)?.frozen_end_date).toBe('2026-10-13');
   });
 });
 

@@ -3,6 +3,7 @@ import type { CoffeeRow } from '../types';
 import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
 import { getRoasterImage } from './roasterImages.ts';
 import { hostMatchesRoaster } from '../imageSuggest.ts';
+import { localToday } from './localToday.ts';
 
 export interface NewCoffeeInput {
   roaster: string;
@@ -284,7 +285,7 @@ export function applyCoffeeFixes(
 
 export function openCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   const coffee = getCoffeeById(db, id);
   const needsThaw = coffee?.frozen_start_date != null && coffee?.frozen_end_date == null;
   if (needsThaw) {
@@ -310,7 +311,7 @@ export function unopenCoffee(db: DatabaseSync, id: number): void {
 
 export function freezeCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   db.prepare(
     `UPDATE coffees SET frozen_start_date = ?, frozen_end_date = NULL, updated_at = ?
      WHERE id = ? AND status = 'backlog'`
@@ -319,7 +320,7 @@ export function freezeCoffee(db: DatabaseSync, id: number): void {
 
 export function thawCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
   db.prepare(
     `UPDATE coffees SET frozen_end_date = ?, updated_at = ?
      WHERE id = ? AND status = 'backlog'`

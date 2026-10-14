@@ -1,6 +1,7 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
+import { localTodayDate } from '$lib/server/localToday';
 import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
 import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
@@ -24,7 +25,7 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     error(404, 'Coffee not found');
   }
   return {
-    coffee: withComputedFields(coffee, new Date()),
+    coffee: withComputedFields(coffee, localTodayDate()),
     roastLevels: getRoastLevels(db),
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),

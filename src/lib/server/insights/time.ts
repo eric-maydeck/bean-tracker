@@ -12,8 +12,7 @@ export const INSIGHTS_TIME_ZONE = BC_TIME_ZONE;
 export const bcLocalTime = (stored: string): string => stored.slice(0, 16);
 
 // The zone is only needed for "now": today's date in local, DST-aware.
-const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: INSIGHTS_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
-export const localToday = (now = new Date()): string => dayFmt.format(now); // en-CA → YYYY-MM-DD
+export { localToday } from '../localToday';
 
 const DAY = 86_400_000;
 const toMs = (d: string) => Date.parse(`${d}T00:00:00Z`);
