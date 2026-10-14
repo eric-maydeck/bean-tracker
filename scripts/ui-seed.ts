@@ -6,6 +6,7 @@ import { createDb } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
+import { bcTimestamp } from '../src/lib/server/beanConquerorJson.ts';
 
 const path = process.argv[2] ?? '';
 if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
@@ -16,9 +17,14 @@ for (const p of [path, `${path}-wal`, `${path}-shm`]) rmSync(p, { force: true })
 rmSync('.ui-test/screenshots', { recursive: true, force: true });
 mkdirSync('.ui-test', { recursive: true });
 
+// Dates count back from the local "now", as the app does (insights/time.ts): bc_created_at is local
+// wall time with a fake 'Z' (bcTimestamp). UTC "now" put every brew a day late from 18:00 local.
 const day = 24 * 60 * 60 * 1000;
-const daysAgo = (n: number) => new Date(Date.now() - n * day).toISOString().slice(0, 10);
-const isoDaysAgo = (n: number) => new Date(Date.now() - n * day).toISOString();
+// the local offset, fixed at seed time (wall clock as fake UTC: no DST jumps). The clock keeps
+// ticking, so same-day brews of one bean keep distinct timestamps (a unique index).
+const toLocal = Date.parse(bcTimestamp(Date.now() / 1000)) - Date.now();
+const isoDaysAgo = (n: number) => new Date(Date.now() + toLocal - n * day).toISOString();
+const daysAgo = (n: number) => isoDaysAgo(n).slice(0, 10);
 
 const LONG_ROASTER = 'The Extraordinarily Long-Named Specialty Roasting Collective of Portland';
 const LONG_NAME = 'Finca El Paraíso Lychee Double Anaerobic Thermal Shock Gesha Lot 42 Competition Reserve';
