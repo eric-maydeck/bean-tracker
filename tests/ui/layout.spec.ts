@@ -443,6 +443,26 @@ async function fakeAdd(page: Page, slug: string) {
   await expect(toast.getByRole('link', { name: 'Open' })).toHaveAttribute('href', `/coffees/${slug}`);
 }
 
+// A value bar turns accent on hover (mouse only). Headless Firefox can report (hover: none), where the
+// rule can't apply; then check the rule is there.
+async function expectBarHover(page: Page) {
+  const row = page.locator('.board-row.bar').first();
+  const bar = () => row.evaluate((e) => getComputedStyle(e, '::before').backgroundColor);
+  if (await page.evaluate(() => matchMedia('(hover: hover)').matches)) {
+    const before = await bar();
+    await row.hover();
+    await expect.poll(bar).not.toBe(before);
+    return;
+  }
+  const found = await page.evaluate(() => [...document.styleSheets].some((sh) => {
+    let rules: CSSRule[] = [];
+    try { rules = [...sh.cssRules]; } catch { /* cross-origin (fonts) */ }
+    return rules.some((r) => r instanceof CSSMediaRule && r.conditionText === '(hover: hover)' && r.cssText.includes('.board-row.bar:hover::before'));
+  }));
+  expect(found).toBe(true);
+  expect(await row.evaluate((e) => getComputedStyle(e, '::before').transitionProperty)).toBe('background-color');
+}
+
 // UTC calendar days back: never after the insights "today" (local is behind UTC).
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
@@ -488,6 +508,17 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: '+ Add Coffee' }).click();
       await fakeAdd(page, s.slugs.long);
       await expect(page.locator('#add-coffee')).toHaveCount(0);
+    }
+  },
+  {
+    // Clone on the detail page stays put and shows the same popup as Add.
+    name: 'coffee-clone-added-toast',
+    path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page, s) => {
+      await page.locator('.detail-clone').click();
+      await fakeAdd(page, s.slugs.frozen);
+      await expect(page.locator('.modal')).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`/coffees/${s.slugs.long}$`));
     }
   },
   {
@@ -1497,6 +1528,25 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('.board')).toHaveCount(9);
       await expectEqualBoardHeights(page);
+      await expectBarHover(page);
+    }
+  },
+  {
+    // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
+    name: 'insights-recent',
+    path: () => '/insights',
+    act: async (page) => {
+      const panel = page.locator('section.recent');
+      await expect(panel.getByRole('heading', { name: 'Last 10 brews' })).toBeVisible();
+      await expect(panel.getByRole('heading', { name: 'Last 10 coffees finished' })).toBeVisible();
+      const lists = panel.locator('.board-rows');
+      await expect(lists).toHaveCount(2);
+      // Both boards are one height (padded with placeholders).
+      const [a, b] = await lists.evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height));
+      expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
+      expect(await lists.first().locator('.board-row.bar').count()).toBeGreaterThan(0);
+      await expect(lists.first().locator('.board-row.bar a').first()).toHaveAttribute('href', /^\/coffees\//);
+      await expectBarHover(page);
     }
   },
   {

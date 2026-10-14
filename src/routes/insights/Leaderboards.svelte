@@ -185,7 +185,7 @@
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row" class:few={avg === 'min3' && r.fewBags} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            <li class="board-row bar" class:few={avg === 'min3' && r.fewBags} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
@@ -344,20 +344,6 @@
     .board-map {
       height: calc(var(--rows) * var(--row-h));
     }
-  }
-  /* Value bar behind each row (share of the top row), inset inside the row so it never crosses
-     the row borders; z-index -1 inside the row's own stacking context keeps text on top. */
-  .board-row:not(.placeholder) {
-    isolation: isolate;
-  }
-  .board-row:not(.placeholder)::before {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    inset: 3px auto 3px 0;
-    width: calc(var(--share) * 100%);
-    border-radius: var(--radius);
-    background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
   }
   .how-dialog {
     width: min(34rem, 100% - 2rem);
