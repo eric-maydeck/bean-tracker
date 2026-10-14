@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
+import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -1864,14 +1865,14 @@ export const STATES: State[] = [
       // S-grind: the Grind card spans every setting brewed, lowest to highest, no-match ones too: the same
       // bands as Brewing's Grind chart (same period, ratings and grinder, no filters).
       const spotBands = (await page.locator('#spot-grind .spot-chart').getAttribute('aria-label'))!.split('; ').map((t) => t.split(' · ')[0]);
-      await page.goto('/insights?tab=brewing', { waitUntil: 'networkidle' });
+      await gotoReady(page, '/insights?tab=brewing');
       const titles: string[] = [];
       for (const row of await page.locator('[data-section="brewing-grind"] .bar-row').all()) {
         await row.click();
         titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').textContent())!.trim());
       }
       expect(spotBands).toEqual(titles);
-      await page.goto('/insights?tab=sweetspots', { waitUntil: 'networkidle' });
+      await gotoReady(page, '/insights?tab=sweetspots');
     } },
   { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {
@@ -2352,7 +2353,7 @@ export const STATES: State[] = [
         await page.locator('[data-section="gear-matrix"] .heatmap .scroll').evaluate((g) => { for (let k = 0; k < 6; k++) for (const c of [...g.children].slice(-4)) g.append(c.cloneNode(true)); });
         await rerun();
         await expect.poll(async () => { try { await expectColumnsFilled(page, '.gear-pair'); return 'ok'; } catch (e) { return String(e); } }).toBe('ok');
-        await page.reload({ waitUntil: 'networkidle' });
+        await reloadReady(page);
       } else {
         const lists = await page.locator('.gear-pair .board-rows').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height - [...l.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0)));
         expect(lists.every((x) => Math.abs(x) <= 1)).toBe(true);
@@ -3047,7 +3048,7 @@ for (const state of STATES) {
       'list view breaks at tablet widths: docs/backlog/list-view-tablet-width.md'
     );
     const s = seed();
-    await page.goto(state.path(s), { waitUntil: 'networkidle' });
+    await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
     if (state.name.startsWith('insights-')) {
       await expectStatRowsFull(page);
@@ -3066,7 +3067,7 @@ for (const state of STATES) {
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
   test('coffees-cards-public-roaster-default', async ({ page }, info) => {
-    await page.goto('/coffees?status=all&view=cards', { waitUntil: 'networkidle' });
+    await gotoReady(page, '/coffees?status=all&view=cards');
     const img = page.getByRole('img', { name: 'Moonwake logo', exact: true });
     await expect(img).toBeVisible();
     expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);

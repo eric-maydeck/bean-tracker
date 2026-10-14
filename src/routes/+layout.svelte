@@ -7,7 +7,10 @@
   import type { AlertRow } from '$lib/types';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { formatUpdated } from '$lib/formatDate';
+  import { onMount } from 'svelte';
   let { children, data } = $props();
+  // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
+  onMount(() => { document.documentElement.dataset.hydrated = ''; });
 
   const links = [
     { href: '/coffees', label: 'Coffees' },

@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
+import { gotoReady } from './ready';
 import { DatabaseSync } from 'node:sqlite';
 import { VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull } from './checkLayout';
@@ -29,7 +30,7 @@ test.afterAll(() => {
 });
 
 test('cards: inline edit, Set as roaster default, Save writes the default', async ({ page }) => {
-  await page.goto('/coffees?status=all&view=cards', { waitUntil: 'networkidle' });
+  await gotoReady(page, '/coffees?status=all&view=cards');
   await page.locator('.card').filter({ hasText: NAME }).getByRole('button', { name: 'Edit', exact: true }).click();
   await page.locator('#image_url').fill(LOGO);
   await page.getByRole('button', { name: 'Set as roaster default' }).click();
@@ -40,7 +41,7 @@ test('cards: inline edit, Set as roaster default, Save writes the default', asyn
 });
 
 test('cards: two inline edits open, Save on A writes A and leaves B open', async ({ page }) => {
-  await page.goto('/coffees?status=all&view=cards', { waitUntil: 'networkidle' });
+  await gotoReady(page, '/coffees?status=all&view=cards');
   for (const [name, probe] of [[A, 'a'], [B, 'b']]) {
     const card = page.locator('.card').filter({ hasText: name });
     await card.evaluate((el, p) => (el.dataset.probe = p), probe); // the card element survives the form swap
@@ -62,7 +63,7 @@ test('cards: two inline edits open, Save on A writes A and leaves B open', async
 // people=person link, and nothing leaves empty space.
 test('household of one hides the people switch everywhere', async ({ page }) => {
   // Saving from a held ?people=person view, without reloading, drops back to the household view.
-  await page.goto('/stats?people=person', { waitUntil: 'networkidle' });
+  await gotoReady(page, '/stats?people=person');
   await expect(page.getByRole('group', { name: 'People' })).toBeVisible();
   await page.getByRole('button', { name: 'Edit household size' }).click();
   await page.getByLabel('Household size').fill('1');
@@ -85,7 +86,7 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
   for (const v of VIEWPORTS) {
     await page.setViewportSize(v.viewport);
     for (const path of ['/insights?people=person', '/stats?people=person', '/stats?tab=bq&people=person']) {
-      await page.goto(path, { waitUntil: 'networkidle' });
+      await gotoReady(page, path);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
       await expect(page.getByText(/per person/i)).toHaveCount(0);
       if (path.startsWith('/insights')) await expectStatRowsFull(page);
@@ -123,7 +124,7 @@ test.describe('coffee added popup', () => {
         q === '(hover: none)' ? ({ ...real(q), matches: touch } as MediaQueryList) : real(q);
     }, touch);
     await page.clock.install();
-    await page.goto('/coffees', { waitUntil: 'networkidle' });
+    await gotoReady(page, '/coffees');
     await page.getByRole('button', { name: '+ Add Coffee' }).click();
     return add(page);
   }
@@ -186,7 +187,7 @@ test.describe('coffee added popup', () => {
   test('+ Add Coffee on a coffee page stays there; Open goes to the new coffee', async ({ page }) => {
     const { slug: here } = read(`SELECT slug FROM coffees WHERE coffee_name = ?`, A)() as { slug: string };
     await page.clock.install();
-    await page.goto(`/coffees/${here}`, { waitUntil: 'networkidle' });
+    await gotoReady(page, `/coffees/${here}`);
     await page.getByRole('button', { name: '+ Add Coffee' }).click();
     await expect(page.getByRole('heading', { name: 'Add Coffee' })).toBeVisible();
     const toast = await add(page);

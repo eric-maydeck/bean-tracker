@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { gotoReady } from './ready';
 import { DatabaseSync } from 'node:sqlite';
 import { createCoffee } from '../../src/lib/server/coffees';
 
@@ -31,7 +32,7 @@ test.afterAll(() => {
 });
 
 test('link picker opens and filters within budget', async ({ page }) => {
-  await page.goto('/stats?tab=bq', { waitUntil: 'networkidle' });
+  await gotoReady(page, '/stats?tab=bq');
   const row = page.locator('.compact-row-wrap, tbody tr').filter({ hasText: 'Kenya Kiambu' }).first();
   await row.getByRole('button', { name: 'Link', exact: true }).click();
   await expect(page.getByRole('button', { name: /^Coffee to link/ })).toBeVisible();
