@@ -1,3 +1,12 @@
+## [1.74.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.0...v1.74.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **db:** wait up to 5s on a locked database instead of failing
+* **test:** reject prototype keys as ui profiles
+* **ui:** drop command from metrics run.json to keep it valid json
+
 # [1.74.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.73.0...v1.74.0) (2026-10-13)
 
 
