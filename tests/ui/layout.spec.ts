@@ -2092,7 +2092,9 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/people=person/);
       await expect(page).toHaveURL(/grinder=zp6-special/); // lab picks stick through a non-lab tab too
       await page.getByLabel('View').selectOption('gear'); // a second action on the non-lab tab
-      await expect(page).toHaveURL(/grinder=zp6-special/);
+      // grinder= already matched on Overview: wait for the Gear tab itself before the layout checks.
+      await expect(page).toHaveURL(/tab=gear.*grinder=zp6-special/);
+      await expect(page.getByLabel('Compare')).toHaveCount(0);
     } },
   { name: 'insights-lab-reset', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
     act: async (page) => {
