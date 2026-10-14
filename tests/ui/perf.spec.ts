@@ -12,7 +12,8 @@ const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.len
 let ids: number[] = [];
 
 test.beforeAll(() => {
-  const db = new DatabaseSync('.ui-test/ui.db');
+  // The server writes in the background; wait on a lock instead of failing.
+  const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
   for (let i = 0; i < 300; i++) {
     ids.push(createCoffee(db, {
       roaster: `Perf Roaster ${i % 25}`, coffee_name: `Perf Coffee ${i} Washed Gesha Lot`, origin: 'Ethiopia',
@@ -25,7 +26,7 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
-  const db = new DatabaseSync('.ui-test/ui.db');
+  const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
   db.prepare(`DELETE FROM coffees WHERE id IN (${ids.map(() => '?').join(',')})`).run(...ids);
   db.close();
   ids = [];

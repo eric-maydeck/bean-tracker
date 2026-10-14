@@ -13,7 +13,8 @@ const LOGO = 'data:image/svg+xml,' + encodeURIComponent(
 const A = 'Ethiopia Bensa Bombe';
 const B = 'Rwanda Gitega Natural';
 const read = (sql: string, ...args: string[]) => () => {
-  const db = new DatabaseSync('.ui-test/ui.db');
+  // The server writes in the background; wait on a lock instead of failing.
+  const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
   try { return db.prepare(sql).get(...args); } finally { db.close(); }
 };
 let aProcessing: { processing: string | null };
@@ -22,7 +23,7 @@ test.beforeAll(() => {
 });
 
 test.afterAll(() => {
-  const db = new DatabaseSync('.ui-test/ui.db');
+  const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
   db.prepare(`DELETE FROM roaster_images WHERE roaster = 'Hydrangea'`).run();
   db.prepare(`UPDATE coffees SET processing = ? WHERE coffee_name = ?`).run(aProcessing.processing, A);
   db.prepare(`DELETE FROM app_meta WHERE key = 'household_size'`).run();
@@ -101,7 +102,7 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
 // once it shows, so its 3s (5s touch) / 2s / 400ms timings step exactly.
 test.describe('coffee added popup', () => {
   test.afterAll(() => {
-    const db = new DatabaseSync('.ui-test/ui.db');
+    const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
     db.prepare(`DELETE FROM coffees WHERE roaster = 'Popup Test Roaster'`).run();
     db.close();
   });
