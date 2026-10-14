@@ -184,6 +184,19 @@ describe('buildBacklogStats', () => {
     expect(stats.averageDaysToFinish).toBe(15);
   });
 
+  it('counts opened/moved instants (UTC ISO, as the app stores them) on their local date', () => {
+    const archived = [
+      // opened 2026-08-10 21:00 MDT, archived 2026-08-20 23:30 MDT; imported date-only moved_date also works
+      sampleRow({ id: 1, roast_date: '2026-08-01', opened_date: '2026-08-11T03:00:00.000Z',
+        moved_date: '2026-08-21T05:30:00.000Z', status: 'archive' }),
+      sampleRow({ id: 2, roast_date: '2026-08-01', opened_date: '2026-08-11T03:00:00.000Z',
+        moved_date: '2026-08-30', status: 'archive' })
+    ];
+    const stats = buildBacklogStats([], [], archived, roastLevels, today);
+    expect(stats.averageDaysToOpen).toBe(9);
+    expect(stats.averageDaysToFinish).toBe(15); // 10 and 20
+  });
+
   it('returns null averageDaysToFinish when there are no archived rows with both dates', () => {
     const stats = buildBacklogStats([], [], [], roastLevels, today);
     expect(stats.averageDaysToFinish).toBeNull();

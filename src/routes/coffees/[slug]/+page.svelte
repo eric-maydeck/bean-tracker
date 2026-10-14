@@ -9,6 +9,7 @@
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import { originWithFlag } from '$lib/countryFlags';
   import { formatDate, formatUpdated } from '$lib/formatDate';
+  import { localDate } from '$lib/localDate';
   import {
     stageFieldChange,
     stageStatusAction,
@@ -442,13 +443,13 @@
           {#if data.coffee.opened_date}
             <div class="stat">
               <span class="stat-label">Opened</span>
-              <span class="stat-value">{data.coffee.opened_date.slice(0, 10)}</span>
+              <span class="stat-value">{localDate(data.coffee.opened_date)}</span>
             </div>
           {/if}
           {#if data.coffee.status === 'archive' && data.coffee.moved_date}
             <div class="stat">
               <span class="stat-label">Archived on</span>
-              <span class="stat-value">{data.coffee.moved_date.slice(0, 10)}</span>
+              <span class="stat-value">{localDate(data.coffee.moved_date)}</span>
             </div>
           {/if}
         </div>

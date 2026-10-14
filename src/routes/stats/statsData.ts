@@ -1,5 +1,6 @@
 import type { CoffeeRow, RoastLevelRow } from '$lib/types';
 import { parseDate, diffDays, withComputedFields } from '$lib/server/urgency';
+import { localDate } from '$lib/localDate';
 
 export interface BreakdownEntry {
   label: string;
@@ -157,8 +158,9 @@ function averageDaysBetween(
 ): number | null {
   const diffs: number[] = [];
   for (const row of rows) {
-    const start = startDate(row);
-    const end = endDate(row);
+    // opened_date / moved_date are UTC instants (or imported dates): count them on the local date.
+    const s = startDate(row), e = endDate(row);
+    const start = s && localDate(s), end = e && localDate(e);
     if (isValidDateString(start) && isValidDateString(end)) {
       diffs.push(diffDays(parseDate(end), parseDate(start)));
     }
