@@ -1,7 +1,8 @@
-// The user's zone: Bean Conqueror's wall clock and every "today" (server and client). Client-safe.
-export const HOME_TIME_ZONE = 'America/Denver';
+// The app's zone (the user's): Bean Conqueror's wall clock, every "today" and every displayed
+// date, server and client. Client-safe, so both import this one constant.
+export const APP_TIME_ZONE = 'America/Denver';
 
-const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: HOME_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
+const dayFmt = new Intl.DateTimeFormat('en-CA', { timeZone: APP_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 
 // A stored date as a local calendar date: a UTC ISO instant (opened_date, moved_date) converts;
 // an imported date-only 'YYYY-MM-DD' (or anything unparseable) passes through. Not for

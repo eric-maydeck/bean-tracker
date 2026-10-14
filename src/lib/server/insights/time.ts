@@ -1,9 +1,7 @@
-import { BC_TIME_ZONE } from '../beanConquerorJson';
 import { CUSTOM_RANGE, isCustom, isDate, type By, type ByFits } from '$lib/insightsUrl';
 
-// Insights count days in the user's zone (Mountain Time). Dates here are
+// Insights count days in the app's zone (APP_TIME_ZONE, src/lib/localDate.ts). Dates here are
 // local 'YYYY-MM-DD' strings, compared as strings.
-export const INSIGHTS_TIME_ZONE = BC_TIME_ZONE;
 
 // beanconqueror_*.bc_created_at is ALREADY America/Denver local wall time
 // with a misleading trailing 'Z' (the xlsx import stored it that way, verified

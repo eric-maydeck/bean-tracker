@@ -2,7 +2,7 @@
 // Bean Conqueror's regular export (Beanconqueror.zip, JSON) → ParsedBeanConquerorData.
 // Spec: docs/superpowers/specs/2026-10-09-beanconqueror-json-import-design.md.
 import JSZip from 'jszip';
-import { HOME_TIME_ZONE } from '../localDate.ts';
+import { APP_TIME_ZONE } from '../localDate.ts';
 import type {
   ParsedBean, ParsedBeanConquerorData, ParsedBeanOrigin, ParsedBrew, ParsedGrinder, ParsedMethod, ParsedWater
 } from './beanconqueror';
@@ -16,7 +16,7 @@ export interface BeanConquerorJsonFiles {
 // timestamps were parsed as UTC), and stats bucket by date(bc_created_at). Measured on
 // the 2026-10-09 export: America/Denver matched every bean and every already-imported
 // brew. ponytail: fixed zone; make it a setting if the user ever logs brews elsewhere.
-export const BC_TIME_ZONE = HOME_TIME_ZONE;
+export const BC_TIME_ZONE = APP_TIME_ZONE;
 const wallClock = new Intl.DateTimeFormat('en-US', {
   timeZone: BC_TIME_ZONE, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', second: '2-digit'

@@ -1,4 +1,4 @@
-// "Today" is the local calendar date (the user's zone, HOME_TIME_ZONE), never UTC's: from 18:00 local
+// "Today" is the local calendar date (the user's zone, APP_TIME_ZONE), never UTC's: from 18:00 local
 // UTC is already tomorrow. Relative .ts import so node scripts (ui-seed) can load coffees.ts.
 import { localDate } from '../localDate.ts';
 
