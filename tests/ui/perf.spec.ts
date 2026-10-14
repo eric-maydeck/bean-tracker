@@ -32,7 +32,7 @@ test.afterAll(() => {
   ids = [];
 });
 
-test('link picker opens and filters within budget', async ({ page }) => {
+test('link picker opens and filters within budget', { tag: '@stats' }, async ({ page }) => {
   await gotoReady(page, '/stats?tab=bq');
   const row = page.locator('.compact-row-wrap, tbody tr').filter({ hasText: 'Kenya Kiambu' }).first();
   await row.getByRole('button', { name: 'Link', exact: true }).click();

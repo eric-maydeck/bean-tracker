@@ -3041,8 +3041,12 @@ const KNOWN_FAILURES = new Set([
   ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-list-inline-edit-action-row-${w}`, `coffees-list-inline-edit-two-open-${w}`, `coffees-bc-yes-${w}`])
 ]);
 
+// Route tag for test:changed (scripts/testScope.ts): the path's first segment, read with a stub seed.
+const stubSeed = new Proxy({}, { get: () => new Proxy({}, { get: () => 'x' }) }) as unknown as Seed;
+const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
+
 for (const state of STATES) {
-  test(state.name, async ({ page }, info) => {
+  test(state.name, { tag: routeTag(state) }, async ({ page }, info) => {
     test.fail(
       KNOWN_FAILURES.has(`${state.name}-${info.project.name}`),
       'list view breaks at tablet widths: docs/backlog/list-view-tablet-width.md'
@@ -3066,7 +3070,7 @@ for (const state of STATES) {
 // Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
-  test('coffees-cards-public-roaster-default', async ({ page }, info) => {
+  test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');
     const img = page.getByRole('img', { name: 'Moonwake logo', exact: true });
     await expect(img).toBeVisible();

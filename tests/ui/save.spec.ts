@@ -30,7 +30,7 @@ test.afterAll(() => {
   db.close();
 });
 
-test('cards: inline edit, Set as roaster default, Save writes the default', async ({ page }) => {
+test('cards: inline edit, Set as roaster default, Save writes the default', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
   await page.locator('.card').filter({ hasText: NAME }).getByRole('button', { name: 'Edit', exact: true }).click();
   await page.locator('#image_url').fill(LOGO);
@@ -41,7 +41,7 @@ test('cards: inline edit, Set as roaster default, Save writes the default', asyn
   await expect.poll(read(`SELECT image_url FROM coffees WHERE coffee_name = ?`, NAME)).toEqual({ image_url: null });
 });
 
-test('cards: two inline edits open, Save on A writes A and leaves B open', async ({ page }) => {
+test('cards: two inline edits open, Save on A writes A and leaves B open', { tag: '@coffees' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=cards');
   for (const [name, probe] of [[A, 'a'], [B, 'b']]) {
     const card = page.locator('.card').filter({ hasText: name });
@@ -62,7 +62,7 @@ test('cards: two inline edits open, Save on A writes A and leaves B open', async
 // Save size 1 through the form, then both pages at every viewport size (width x height;
 // no DPR/touch emulation). The switch and every "per person" are gone, even from a shared
 // people=person link, and nothing leaves empty space.
-test('household of one hides the people switch everywhere', async ({ page }) => {
+test('household of one hides the people switch everywhere', { tag: ['@stats', '@insights'] }, async ({ page }) => {
   // Saving from a held ?people=person view, without reloading, drops back to the household view.
   await gotoReady(page, '/stats?people=person');
   await expect(page.getByRole('group', { name: 'People' })).toBeVisible();
@@ -100,7 +100,7 @@ test('household of one hides the people switch everywhere', async ({ page }) => 
 
 // "Coffee added!" popup: real adds (deleted afterwards), the page clock paused
 // once it shows, so its 3s (5s touch) / 2s / 400ms timings step exactly.
-test.describe('coffee added popup', () => {
+test.describe('coffee added popup', { tag: '@coffees' }, () => {
   test.afterAll(() => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
     db.prepare(`DELETE FROM coffees WHERE roaster = 'Popup Test Roaster'`).run();

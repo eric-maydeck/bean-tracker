@@ -1,7 +1,7 @@
 import { test as setup } from '@playwright/test';
 import { gotoReady } from './ready';
 
-setup('sign in as admin', async ({ page }) => {
+setup('sign in as admin', { tag: '@setup' }, async ({ page }) => {
   await page.goto('/login');
   await page.locator('#password').fill('test');
   await page.locator('#password').press('Enter');
@@ -12,7 +12,7 @@ setup('sign in as admin', async ({ page }) => {
 // Signed-out context of its own (no storageState). The query is added by
 // replaceState, as the app's own view-state code does, so this also checks the
 // link reads location rather than the stale page.url.
-setup('sign in returns to the page you were on', async ({ page }) => {
+setup('sign in returns to the page you were on', { tag: '@setup' }, async ({ page }) => {
   await gotoReady(page, '/coffees?status=all&view=list');
   const coffee = await page.locator('a[href^="/coffees/"]').first().getAttribute('href');
   await gotoReady(page, coffee!);
