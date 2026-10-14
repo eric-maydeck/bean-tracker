@@ -211,6 +211,8 @@ export function createDb(path: string): DatabaseSync {
   // node:sqlite's default for this pragma isn't guaranteed across versions;
   // slug_redirects' ON DELETE CASCADE needs it explicitly on.
   db.exec(`PRAGMA foreign_keys = ON`);
+  // Outside readers (test read(), external tools) can hold a lock; wait instead of SQLITE_BUSY.
+  db.exec(`PRAGMA busy_timeout = 5000`);
   applySchema(db);
   recordDeploy(db);
   return db;
