@@ -36,11 +36,10 @@
     clonePrefillData = prefill;
   }
 
-  async function cloneCreated() {
-    const slug = form && 'slug' in form ? form.slug : null;
+  // Add and Clone both stay here and show the Open/Close popup.
+  function cloneCreated() {
+    addedSlug = (form && 'slug' in form ? form.slug : null) ?? null;
     clonePrefillData = null;
-    if (adding) addedSlug = slug ?? null;
-    else if (slug) await goto(`/coffees/${slug}`);
   }
 
   let shareUrl = $state<string | null>(null);
