@@ -12,6 +12,6 @@ export type ProfileName = keyof typeof PROFILES;
 
 export function profileFor(name: string | undefined) {
   const key = name || 'balanced';
-  if (!(key in PROFILES)) throw new Error(`Unknown UI_PROFILE "${key}": use performance, balanced or background`);
+  if (!Object.hasOwn(PROFILES, key)) throw new Error(`Unknown UI_PROFILE "${key}": use performance, balanced or background`);
   return { name: key as ProfileName, ...PROFILES[key as ProfileName] };
 }

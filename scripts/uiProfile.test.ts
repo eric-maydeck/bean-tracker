@@ -13,5 +13,6 @@ describe('profileFor', () => {
   });
   it('rejects unknown names', () => {
     expect(() => profileFor('fast')).toThrow(/Unknown UI_PROFILE "fast"/);
+    expect(() => profileFor('constructor')).toThrow(/Unknown UI_PROFILE "constructor"/);
   });
 });
