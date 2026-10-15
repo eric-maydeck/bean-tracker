@@ -261,7 +261,7 @@
                 label: datasetLabel,
                 data: values,
                 backgroundColor: bgColors,
-                // Slices: a clear dark separator (--slice-line: dark ink at 70% in light, the page background at 80% in dark).
+                // Slices: a clear dark separator (--slice-line: a very dark brown, both themes).
                 borderWidth: type === 'doughnut' ? 1.5 : 1,
                 borderColor: type === 'doughnut' ? themeColor('--slice-line') : inkColors
               },
