@@ -1537,11 +1537,20 @@ export const STATES: State[] = [
   { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=min3',
     act: async (page) => {
       const note = page.locator('.sample-note').first();
-      await expect(note).toHaveText(/^(few bags|\d+ brews?)$/);
+      await expect(note).toHaveText('Low confidence');
+      // A caution label: solid amber chip, dark ink (4.5:1+), one line, never past the viewport or its row.
+      const chips = await page.locator('.sample-note .sample-chip').evaluateAll((els) => els.map((el) => {
+        const cs = getComputedStyle(el), r = el.getBoundingClientRect(), row = el.closest('.board-row')!.getBoundingClientRect();
+        const lum = (c: string) => { const [R, G, B] = c.match(/\d+/g)!.slice(0, 3).map((v) => { const x = +v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * R + 0.7152 * G + 0.0722 * B; };
+        const [hi, lo] = [lum(cs.color), lum(cs.backgroundColor)].sort((a, b) => b - a);
+        return { oneLine: r.height < 1.8 * parseFloat(cs.fontSize), inRow: r.right <= row.right + 1 && r.left >= row.left - 1, inView: r.right <= innerWidth, ratio: (hi + 0.05) / (lo + 0.05), icon: !!el.querySelector('svg.icon') };
+      }));
+      for (const c of chips) expect(c).toMatchObject({ oneLine: true, inRow: true, inView: true, icon: true });
+      for (const c of chips) expect(c.ratio).toBeGreaterThanOrEqual(4.5);
       await note.click();
       const tip = page.locator('[popover]:popover-open').filter({ hasText: 'Small sample' });
-      await expect(tip).toContainText(/Bags\s*\d+/);
-      await expect(tip).toContainText(/Brews\s*\d+/);
+      await expect(tip).toContainText('Low confidence');
+      await expect(tip).toContainText(/Rated brews\s*\d+/);
       // One look: a small row's name and value are the muted token's color (not faded by opacity).
       await page.mouse.move(0, 0); // off the row: hover turns its text ink
       const row = page.locator('.board-row.small-sample').first();
@@ -1563,7 +1572,11 @@ export const STATES: State[] = [
         const [bg, op] = await m.evaluate((el) => [getComputedStyle(el).backgroundImage, getComputedStyle(el).opacity]);
         expect(bg).toContain('gradient');
         expect(op).toBe('1');
+        // Stripes plus the amber corner fold (top right).
+        expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '100% 0%, 0px 0px']);
       }
+      // A clipped bar's cut end is an arrow tip, not a dark cap.
+      for (const c of await page.locator('.bar.clip').all()) expect(await c.evaluate((el) => getComputedStyle(el).clipPath)).toContain('polygon');
       await expect(page.locator('body')).not.toContainText(/Striped:|Few brews|few brews/i);
       await expect(page.locator('.pale, .faded, .few')).toHaveCount(0);
     } },
@@ -1572,7 +1585,16 @@ export const STATES: State[] = [
   { name: 'insights-sample-legend', path: () => '/insights?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
-      await expect(page.locator('.mode-tip:popover-open')).toContainText('Muted: few bags or brews');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Low confidence: a small sample');
+      await expect(page.locator('.mode-tip:popover-open .sample-chip')).toBeVisible();
+    } },
+  { name: 'insights-strength-badges', path: () => '/insights?tab=sweetspots',
+    act: async (page) => {
+      // The strength badges read Likely / Possible, never Solid / Hint; the legend explains both and "no badge".
+      for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible)$/);
+      await expect(page.locator('body')).not.toContainText(/\b(Solid|Hint)\b/);
+      await page.locator('[data-section="spots-cards"] .mode-tip-button').first().click();
+      await expect(page.locator('.mode-tip:popover-open')).toContainText(/Likely: gap at least 2× normal brew-to-brew noise.*Possible: 1\.5 to 2×.*below, none/);
     } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
@@ -2266,7 +2288,7 @@ export const STATES: State[] = [
       await page.locator('h1').click();
       // A small-sample cell is striped with its value and sample label; the old legend line is gone.
       const small = hm.locator('.heat-cell.small-sample-mark');
-      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \((few bags|\d+ brews?)\)$/);
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(Low confidence\)$/);
       await expect(hm.locator('.div-legend')).not.toContainText(/Striped:|few brews/i);
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
@@ -2618,7 +2640,7 @@ export const STATES: State[] = [
       // A small matrix cell is striped with its value; a cell tip names the pairing and its counts (tap and keyboard).
       const hm = page.locator('[data-section="gear-matrix"] .heatmap');
       const small = hm.locator('.heat-cell.small-sample-mark');
-      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \((few bags|\d+ brews?)\)$/);
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(Low confidence\)$/);
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
       await hm.locator('.heat-cell').first().focus();

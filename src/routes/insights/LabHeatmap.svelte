@@ -3,7 +3,7 @@
   import type { Tip } from '$lib/components/TipBody.svelte';
   import type { Breakdown } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
-  import { sampleLabel } from '$lib/sample';
+  import { SAMPLE_LABEL, sampleBody } from '$lib/sample';
   import { noMatch, plural, signed } from './DeltaBars.svelte';
 
   // A lab breakdown as a diverging heatmap of same-bag deltas (green better, red worse). A small-sample cell draws
@@ -15,7 +15,7 @@
 
   const text = (x: number | null, r: number, c: number) => {
     const cell = by.cells[r][c];
-    return x !== null ? `${signed(x)}${cell?.sample.small ? ` (${sampleLabel(cell.sample)})` : ''}` : !cell ? 'No brews' : 'no match';
+    return x !== null ? `${signed(x)}${cell?.sample.small ? ` (${SAMPLE_LABEL})` : ''}` : !cell ? 'No brews' : 'no match';
   };
   const label = (r: number, c: number) => {
     const cell = by.cells[r][c];
@@ -27,7 +27,7 @@
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
     if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
-    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...counts, ...(cell.sample.small ? [['Sample', sampleLabel(cell.sample)] as [string, string]] : [])] };
+    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...counts], ...sampleBody(cell.sample) };
   };
 </script>
 

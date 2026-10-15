@@ -16,9 +16,12 @@ describe('multiLine', () => {
     expect(Math.max(...ys)).toBeLessThanOrEqual(10);
     expect(d.endsWith('100,0')).toBe(true);
   });
-  it('categorical slots in order; Other muted', () =>
+  it('up to 3 colored series are the browns in order; Other muted', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4]], ['A', 'Other', 'B'])).map((l) => l.color)).toEqual(
-      ['var(--series-1)', 'var(--series-other)', 'var(--series-2)']));
+      ['var(--series-brown-1)', 'var(--series-other)', 'var(--series-brown-2)']));
+  it('4+ colored series take the categorical slots in order', () =>
+    expect(lines(m([[1, 2], [2, 3], [3, 4], [4, 5]], ['A', 'B', 'C', 'D'])).map((l) => l.color)).toEqual(
+      ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)']));
   it('all-null: no runs, no Infinity', () => {
     expect(lines(m([[null, null]]))[0].runs).toEqual([]);
   });
@@ -34,6 +37,9 @@ describe('nameColors', () => {
     expect(new Set(c.values()).size).toBe(7);
     expect(c.get('A')).toBe(SLOTS[0]);
     expect(c.has('Other')).toBe(false);
+  });
+  it('up to 3 names are the browns', () => {
+    expect([...nameColors(['A', 'B'], [{ a: 'A', b: 'C' }]).values()]).toEqual(['var(--series-brown-1)', 'var(--series-brown-2)', 'var(--series-brown-3)']);
   });
   it('past the palette, a name reuses only a slot none of its bar or pair partners use', () => {
     const lines = Array.from({ length: 14 }, (_, i) => `L${i}`);

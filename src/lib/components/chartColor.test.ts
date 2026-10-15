@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { mainColorToken } from './chartColor';
+import { seriesToken } from './chartColor';
 
-describe('mainColorToken', () => {
-  it('a lone series is brand brown; beside others it is series-1', () => {
-    expect(mainColorToken(0)).toBe('--chart-color-1');
-    expect(mainColorToken(2)).toBe('--series-1');
+describe('seriesToken', () => {
+  it('1-3 series are brown, tan, sand in order; 4+ take the palette by position', () => {
+    expect([0, 1, 2].map((i) => seriesToken(i, 3))).toEqual(['--series-brown-1', '--series-brown-2', '--series-brown-3']);
+    expect(seriesToken(0, 1)).toBe('--series-brown-1');
+    expect(seriesToken(1, 2)).toBe('--series-brown-2');
+    expect([0, 1, 3].map((i) => seriesToken(i, 4))).toEqual(['--series-1', '--series-2', '--series-4']);
   });
 });

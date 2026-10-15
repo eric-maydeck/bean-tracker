@@ -1,3 +1,3 @@
-// The main series' color token (ui-rules 42): a lone series stands for no category, so it stays brand brown;
-// beside other series it takes the categorical palette's first slot.
-export const mainColorToken = (otherSeries: number) => (otherSeries ? '--series-1' : '--chart-color-1');
+// A chart's series colors by position, the same on every chart (ui-rules 42): 1-3 series are the browns
+// (brown, tan, sand), 4+ the categorical palette. `total` counts every series on the chart.
+export const seriesToken = (i: number, total: number) => (total <= 3 ? `--series-brown-${i + 1}` : `--series-${i + 1}`);

@@ -15,11 +15,14 @@ export const SLOTS = Array.from({ length: 14 }, (_, i) => `var(--series-${i + 1}
 // A slot's text-safe variant (4.5:1 on the card): `var(--series-3)` -> `var(--series-3-ink)`.
 export const inkOf = (slot: string) => slot.replace(/\)$/, '-ink)');
 const OTHER = 'var(--series-other)';
+// 1-3 colored series take the browns (brown, tan, sand), 4+ the slots (ui-rules 42).
+export const slotsFor = (n: number) => (n <= 3 ? [1, 2, 3].map((i) => `var(--series-brown-${i})`) : SLOTS);
 
 // Categorical slots in line order; "Other" is muted.
 export function seriesColors(labels: string[]) {
   let slot = 0;
-  return labels.map((l) => (l === 'Other' ? OTHER : SLOTS[slot++ % SLOTS.length]));
+  const slots = slotsFor(labels.filter((l) => l !== 'Other').length);
+  return labels.map((l) => (l === 'Other' ? OTHER : slots[slot++ % slots.length]));
 }
 
 // A capped list in a tip: up to `max` items, then "+N more"; a single leftover item is shown rather than "+1 more"
@@ -41,10 +44,11 @@ export function nameColors(lines: string[], pairs: { a: string; b: string }[]): 
   for (const a of shown) for (const b of shown) link(a, b);
   for (const p of pairs) link(p.a, p.b);
   const c = new Map<string, string>();
-  const users = new Map(SLOTS.map((v) => [v, 0]));
+  const slots = slotsFor(names.length);
+  const users = new Map(slots.map((v) => [v, 0]));
   for (const n of names) {
     const taken = new Set([...near.get(n)!].map((m) => c.get(m)));
-    const slot = SLOTS.find((v) => !users.get(v)) ?? SLOTS.find((v) => !taken.has(v)) ?? SLOTS[c.size % SLOTS.length];
+    const slot = slots.find((v) => !users.get(v)) ?? slots.find((v) => !taken.has(v)) ?? slots[c.size % slots.length];
     c.set(n, slot);
     users.set(slot, users.get(slot)! + 1);
   }

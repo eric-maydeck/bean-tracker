@@ -1,8 +1,8 @@
 <script lang="ts">
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
-  import { mainColorToken } from './chartColor';
-  import { sampleLabel, type Sample } from '$lib/sample';
+  import { seriesToken } from './chartColor';
+  import { SAMPLE_LABEL, sampleTip, type Sample } from '$lib/sample';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { type Tip } from './TipBody.svelte';
 
@@ -126,7 +126,7 @@
   function paletteColors(count: number): string[] {
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
-      colors.push(themeColor(`--series-${(i % 14) + 1}`)); // the site's categorical palette (ui-rules 42)
+      colors.push(themeColor(seriesToken(i % 14, count))); // the site's palette by position (ui-rules 42)
     }
     return colors;
   }
@@ -212,7 +212,7 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    const lineColor = themeColor(mainColorToken(series.length)); // brand brown alone, the palette's first slot beside other series
+    const lineColor = themeColor(seriesToken(0, series.length + 1)); // brown up to 3 series, else the palette's first slot
     const bgColors = paletteColors(labels.length);
     const vbar = type === 'bar' && vertical;
 
@@ -277,7 +277,7 @@
           ...series.map((x, i) =>
             x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineColor, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(`--series-${((i + 1) % 14) + 1}`), borderWidth: 0 }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderWidth: 0 }
           )
         ]
       },
@@ -301,7 +301,7 @@
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
               const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
               const s = ctx.datasetIndex === 0 ? samples?.[ctx.dataIndex] : undefined;
-              return s?.small ? [line, `Sample: ${sampleLabel(s)}`] : line;
+              return s?.small ? [line, `${SAMPLE_LABEL}: ${sampleTip(s).rows.map((r) => r.join(' ')).join(' · ')}`] : line;
             } } }
             : trendValues
             ? {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { sampleBody } from '$lib/sample';
   import Chart from '$lib/components/Chart.svelte';
   import Heatmap from '$lib/components/Heatmap.svelte';
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
@@ -108,8 +109,8 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSmall ?? undefined} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
-      tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null), ...(h.heatSmall?.[r]?.[c] ? [['Sample', 'few bags or brews'] as [string, string]] : [])] })} />
+    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSample?.map((r) => r.map((x) => x.small))} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
+      tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)], ...(h.heatSample?.[r]?.[c] ? sampleBody(h.heatSample[r][c]) : {}) })} />
   {/if}
 </section>
 <section class="chart-panel">

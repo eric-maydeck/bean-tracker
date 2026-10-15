@@ -31,7 +31,7 @@ export interface Habits {
   compareHour: (number | null)[] | null;
   compareWeekday: (number | null)[] | null;
   heatmap: (number | null)[][]; // [weekday 0–6][hour 0–23]
-  heatSmall: boolean[][] | null; // rating measure: cells whose sample is small (muted)
+  heatSample: Sample[][] | null; // rating measure: each cell's sample (small ones are marked)
   calendar: { date: string; value: number | null }[]; // every tracked day
   backfilledLeftOut: number;
 }
@@ -187,7 +187,7 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
       Array.from({ length: 24 }, (_, h) =>
         cell(value(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c), w, d))
     ),
-    heatSmall: c.measure === 'rating' ? Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => sampleOf(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c).small)) : null,
+    heatSample: c.measure === 'rating' ? Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => sampleOf(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c))) : null,
     calendar: w.tracked.map((date) => ({ date, value: value(byDay.get(date) ?? [], c) })),
     backfilledLeftOut: w.inP.length - w.timed.length
   };

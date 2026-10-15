@@ -102,11 +102,11 @@ describe('habits', () => {
     expect(h.byHour[9]).toBeNull();
     expect(h.tiles.peakHour).toBeNull(); // only 2 ratings at 08
     expect(h.heatmap[0][8]).toBe(7);
-    expect(h.heatSmall![0][8]).toBe(true);
+    expect(h.heatSample![0][8].small).toBe(true);
   });
 
   it('rating heatmap: brews measures have no flags', () => {
-    expect(habits(brews, ctx()).heatSmall).toBeNull();
+    expect(habits(brews, ctx()).heatSample).toBeNull();
   });
 
   it('rating follows Current/All (Current drops brews before 2026-06-01)', () => {

@@ -2,7 +2,7 @@
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleLabel } from '$lib/sample';
+  import { SAMPLE_HELP, sampleBody } from '$lib/sample';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
@@ -85,7 +85,7 @@
                 <div class="fit-body">
                   <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
-                      tip: { title: d.label, rows: [['Bags', `${d.bags}`], ...(d.sample.small ? [['Sample', sampleLabel(d.sample)]] : [])] as [string, string][] } }))} />
+                      tip: { title: d.label, rows: [['Bags', `${d.bags}`]], ...sampleBody(d.sample) } }))} />
                 </div>
                 <p class="chart-note">Negative = finer. {grinderName}</p>
               </section>

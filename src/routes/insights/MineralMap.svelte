@@ -4,7 +4,7 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { MineralMap } from '$lib/server/insights/lab';
-  import { sampleLabel } from '$lib/sample';
+  import { sampleBody } from '$lib/sample';
   import { noMatch, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
 
@@ -25,8 +25,8 @@
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
     rows: [['Brews', `${r.brews}`], ['Bags', `${r.bags}`],
-      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—'],
-      ...(r.sample.small ? [['Sample', sampleLabel(r.sample)] as [string, string]] : [])],
+      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—']],
+    ...sampleBody(r.sample),
     note: r.delta === null ? noMatch('recipe') : undefined
   });
 
@@ -61,7 +61,7 @@
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
-          <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip"
+          <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip" class:small-sample-mark={r.sample.small}
             style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{signed(r.delta)}</span>{/if}</td>
           {#each map.cols as c, j (c.key)}<td style:background={shades[j](r.values[j])}>{fmt(r.values[j], c.unit)}</td>{/each}
         </tr>
@@ -136,9 +136,6 @@
   }
   .small-sample .delta {
     color: var(--color-text); /* the chip keeps its ink on its tint (ui-rules 29) */
-  }
-  .small-sample .delta-chip {
-    background-image: var(--thin-hatch);
   }
   @media (max-width: 640px) {
     tbody th,

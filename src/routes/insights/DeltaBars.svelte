@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { BandStat } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleLabel } from '$lib/sample';
+  import { SAMPLE_HELP, sampleBody } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
@@ -11,7 +11,7 @@
     'Only bags brewed 2+ ways (2+ brews each) count.',
     SAMPLE_HELP
   ];
-  export const STRENGTH_LINE = 'Solid: at least 2× its usual noise · Hint: 1.5 to 2×.';
+  export const STRENGTH_LINES = ['Likely: gap at least 2× normal brew-to-brew noise, probably real; Possible: 1.5 to 2×, could be chance; below, none.'];
   // The SD help, wherever SD shows (T2).
   export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', '', 'Small: consistent.', 'Big: hit or miss.'] };
   // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.
@@ -29,8 +29,7 @@
       ? { title: b.range ?? b.label, note: 'No brews in this band.' }
       : b.delta === null
       ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
-      : { title: b.range ?? b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)],
-          ...(b.sample.small ? [['Sample', sampleLabel(b.sample)]] : [])] }) as Tip
+      : { title: b.range ?? b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)]], ...sampleBody(b.sample) }) as Tip
   }));
 </script>
 
@@ -204,13 +203,13 @@
     left: 50%;
     border-radius: 0 4px 4px 0;
   }
-  /* Clipped at the axis edge (a muted row past the full rows' range): a cap marks the cut end. */
+  /* Clipped at the axis edge (a muted row past the full rows' range): the cut end is an arrow tip, "keeps going". */
   .bar.clip {
-    border-left: 2px solid var(--color-text);
+    border-radius: 0;
+    clip-path: polygon(9px -40%, 100% -40%, 100% 140%, 9px 140%, 0 50%);
   }
   .bar.up.clip {
-    border-left: 0;
-    border-right: 2px solid var(--color-text);
+    clip-path: polygon(0 -40%, calc(100% - 9px) -40%, 100% 50%, calc(100% - 9px) 140%, 0 140%);
   }
   .bar-value {
     display: inline-flex;

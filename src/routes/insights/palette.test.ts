@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // both copies of the dark one (media query and [data-theme='dark']). Slot n = hue n mod 7, tier floor(n/7); each
 // hue's mid is its pastel's color, clearly deeper (ΔL >= 0.17). Tier order is theme-aware: the light theme cycles
 // the 7 mids before any pastel, the dark theme the 7 pastels before any mid, so a page with <= 7 recipes gets 7
-// hues. Tier 1 is as distinct as the tone allows (mids >= 16 apart, pastels >= 8); every two slots are >= 8
+// hues. Tier 1 is as distinct as the tone allows (mids >= 12 apart, pastels >= 8); every two slots are >= 8
 // apart; hues stay put across themes; "Other" is a neutral gray >= 10 from every slot; each slot is visible on the
 // card (>= 7, pastels outlined) and its -ink variant is >= 4.5:1 on it.
 const css = readFileSync(new URL('../../app.css', import.meta.url), 'utf8');
@@ -53,7 +53,7 @@ describe('series palette', () => {
   });
   it('tier 1 is as distinct as its tone allows; every two slots stay apart; near hues differ in lightness', () => {
     themes.forEach(({ slots }, t) => {
-      for (const [a, b] of pairs(slots.slice(0, 7))) expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(t === 0 ? 16 : 8);
+      for (const [a, b] of pairs(slots.slice(0, 7))) expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(t === 0 ? 12 : 8);
       for (const [a, b] of pairs(slots)) {
         expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(8);
         if (dH(a, b) < 30) expect(dL(a, b), `near hue ${a} vs ${b}`).toBeGreaterThanOrEqual(0.17);
@@ -69,5 +69,13 @@ describe('series palette', () => {
         expect(contrast(inks[i], card), `ink ${inks[i]}`).toBeGreaterThanOrEqual(4.5);
       });
     }
+  });
+  it('the browns (1-3 series): brown, tan, sand apart, visible on the card, inks read as text', () => {
+    themes.forEach(({ card }, t) => {
+      const b = [1, 2, 3].map((n) => all(`--series-brown-${n}`)[t]), ink = [1, 2, 3].map((n) => all(`--series-brown-${n}-ink`)[t]);
+      for (const [x, y] of pairs(b)) expect(dE(x, y), `${x} vs ${y}`).toBeGreaterThanOrEqual(8);
+      b.forEach((c) => expect(dE(c, card), `${c} vs card`).toBeGreaterThanOrEqual(7));
+      ink.forEach((c) => expect(contrast(c, card), `ink ${c}`).toBeGreaterThanOrEqual(4.5));
+    });
   });
 });

@@ -2,7 +2,7 @@
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { GearTab } from '$lib/server/insights/lab';
   import { SAMPLE_HELP } from '$lib/sample';
-  import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
+  import { SAME_BAG_HELP, STRENGTH_LINES } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -19,7 +19,7 @@
   // The matrix fills the shorter board's column when both boards are there (ui-rules 40).
   let stack = $derived(!!t.matrix && t.drippers.length > 0 && t.filters.length > 0);
   let underDrippers = $derived(t.drippers.length < t.filters.length);
-  const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).',
+  const BOARD_HELP = [...SAME_BAG_HELP, ...STRENGTH_LINES, 'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).',
     'No match: never brewed on the same bag as anything else.'];
 </script>
 

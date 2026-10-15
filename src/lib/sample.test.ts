@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pooled, single, sampleLabel, sampleRows, SAMPLE_HELP } from './sample';
+import { pooled, single, sampleTip, SAMPLE_LABEL, SAMPLE_HELP } from './sample';
 
 describe('small-sample rule', () => {
   it('pooled: small under 3 bags or 10 brews (both edges)', () => {
@@ -10,17 +10,25 @@ describe('small-sample rule', () => {
     expect(pooled(3, 10)).toEqual({ bags: 3, brews: 10, small: false });
   });
   it('one bag: small under 4 rated brews', () => {
-    expect(single(3)).toEqual({ bags: 1, brews: 3, small: true });
+    expect(single(3)).toEqual({ bags: 1, brews: 3, small: true, one: true });
     expect(single(4).small).toBe(false);
   });
-  it('label: the brews when they are what is short (or one bag), else few bags', () => {
-    expect(sampleLabel(pooled(5, 7))).toBe('7 brews');
-    expect(sampleLabel(pooled(2, 40))).toBe('few bags');
-    expect(sampleLabel(single(3))).toBe('3 brews');
-    expect(sampleLabel(single(1))).toBe('1 brew');
+  it('tip: names bags when they are short, else brews; one coffee has its own threshold', () => {
+    expect(sampleTip(pooled(2, 14))).toEqual({
+      lines: ['Small sample: only 2 bags, so one bag can swing this. Needs 3+ bags and 10+ rated brews.'],
+      rows: [['Bags', '2'], ['Rated brews', '14']]
+    });
+    expect(sampleTip(pooled(5, 7)).lines[0]).toBe('Small sample: only 7 rated brews, so one brew can swing this. Needs 3+ bags and 10+ rated brews.');
+    expect(sampleTip(pooled(2, 7)).lines[0]).toContain('only 2 bags');
+    expect(sampleTip(single(3))).toEqual({
+      lines: ['Small sample: only 3 rated brews, so one brew can swing this. One coffee needs 4+.'],
+      rows: [['Rated brews', '3']]
+    });
+    expect(sampleTip(single(1)).lines[0]).toContain('only 1 rated brew,');
+    expect(sampleTip(pooled(2, 7), true).rows).toEqual([['Paired bags', '2'], ['Paired rated brews', '7']]);
   });
-  it('tip rows and the legend line', () => {
-    expect(sampleRows(pooled(2, 7))).toEqual([['Bags', '2'], ['Brews', '7']]);
-    expect(SAMPLE_HELP).toBe('Muted: few bags or brews (under 3 bags or 10 brews; one bag: under 4).');
+  it('label and legend line', () => {
+    expect(SAMPLE_LABEL).toBe('Low confidence');
+    expect(SAMPLE_HELP).toBe('Low confidence: a small sample (under 3 bags or 10 rated brews; one coffee: under 4), so one bag or brew can swing it.');
   });
 });

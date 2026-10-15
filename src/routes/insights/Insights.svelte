@@ -1,11 +1,11 @@
 <script lang="ts" module>
   import type { Tip } from '$lib/components/TipBody.svelte';
   // The strength badges' words and explanations, shared with Sweet spots.
-  export const STRENGTH = { solid: 'Solid', hint: 'Hint' } as const;
+  export const STRENGTH = { solid: 'Likely', hint: 'Possible' } as const;
   // Their help popovers (ui-rules 36: a title, one idea per line).
   export const STRENGTH_TIP: Record<keyof typeof STRENGTH, Tip> = {
-    solid: { title: 'Solid', lines: ['The difference is at least 2× its usual noise.', 'Chance is an unlikely explanation.'] },
-    hint: { title: 'Hint', lines: ['The difference is 1.5 to 2× its usual noise.', 'Worth watching; more data will tell.'] }
+    solid: { title: 'Likely', lines: ['The gap is at least 2× normal brew-to-brew noise, so probably real.'] },
+    hint: { title: 'Possible', lines: ['The gap is 1.5 to 2× normal brew-to-brew noise; could still be chance.', 'Under 1.5× gets no badge.'] }
   };
 </script>
 
@@ -578,10 +578,10 @@
     height: 2.5rem;
   }
   .bars rect {
-    fill: var(--series-1);
+    fill: var(--series-brown-1);
   }
   .bars rect.weekend {
-    fill: var(--series-2);
+    fill: var(--series-brown-2);
   }
   .bar-labels {
     display: grid;

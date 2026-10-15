@@ -9,10 +9,12 @@
 </script>
 
 <script lang="ts">
+  import Icon from './Icon.svelte';
+  import { SAMPLE_LABEL } from '$lib/sample';
   let { tip }: { tip: Tip } = $props();
 </script>
 
 {#if tip.title}<strong class="tip-title">{tip.title}</strong>{/if}
 {#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{l}</dt><dd class={ink}>{v}</dd>{/each}</dl>{/if}
-{#if tip.lines?.length}<ul class="tip-lines">{#each tip.lines as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{line}</li>{/each}</ul>{/if}
+{#if tip.lines?.length}<ul class="tip-lines">{#each tip.lines as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{#if line.startsWith(`${SAMPLE_LABEL}:`)}<span class="sample-chip"><Icon name="warning" />{SAMPLE_LABEL}</span>{line.slice(SAMPLE_LABEL.length)} <i class="sample-swatch small-sample-mark"></i>{:else}{line}{/if}</li>{/each}</ul>{/if}
 {#if tip.note}<span class="tip-note">{tip.note}</span>{/if}
