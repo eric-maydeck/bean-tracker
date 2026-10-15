@@ -452,6 +452,10 @@ async function expectBarHover(page: Page) {
     const before = await bar();
     await row.hover();
     await expect.poll(bar).not.toBe(before);
+    // The row's text turns ink over the deeper bar (accent link and muted subtext would fall under 4.5:1).
+    const ink = await page.evaluate(() => getComputedStyle(document.body).color);
+    await expect.poll(() => row.locator('.who > *').evaluateAll((els) => els.map((e) => getComputedStyle(e).color)))
+      .toEqual([ink, ink]);
     return;
   }
   const found = await page.evaluate(() => [...document.styleSheets].some((sh) => {
@@ -1539,6 +1543,9 @@ export const STATES: State[] = [
       const panel = page.locator('section.recent');
       await expect(panel.getByRole('heading', { name: 'Last 10 brews' })).toBeVisible();
       await expect(panel.getByRole('heading', { name: 'Last 10 coffees finished' })).toBeVisible();
+      await expect(panel.locator('.board-head .val')).toHaveText(['Rating', 'Days open']);
+      // Recent is the last panel on Overview.
+      await expect(page.locator('section.chart-panel').last()).toHaveClass(/recent/);
       const lists = panel.locator('.board-rows');
       await expect(lists).toHaveCount(2);
       // Both boards are one height (padded with placeholders).

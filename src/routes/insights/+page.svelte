@@ -1032,7 +1032,7 @@
   }
   /* Value bar behind a row (--share of the row's width: Leaderboards, Overview's Recent), inset inside
      the row so it never crosses the row borders; z-index -1 inside the row's own stacking context keeps
-     text on top. On hover it deepens toward accent, with the tiles' timing (.hl-card); reduced motion is global. */
+     text on top. On hover it deepens, with the tiles' timing (.hl-card); reduced motion is global. */
   :global(.board-row.bar) {
     isolation: isolate;
   }
@@ -1046,10 +1046,17 @@
     background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
     transition: background-color 150ms ease;
   }
+  :global(.board-row.bar .who > *) {
+    transition: color 150ms ease;
+  }
+  /* A hovered bar deepens (--bar-hover-alpha) and its row's text turns ink: the accent link and muted
+     subtext over a deeper accent bar fall under 4.5:1. */
   @media (hover: hover) {
-    /* --map-high is the accent itself in the light theme, so the hover deepens the bar (2× alpha). */
     :global(.board-row.bar:hover::before) {
-      background: color-mix(in oklab, var(--color-accent) calc(var(--bar-alpha) * 2), transparent);
+      background: color-mix(in oklab, var(--color-accent) var(--bar-hover-alpha), transparent);
+    }
+    :global(.board-row.bar:hover .who > *) {
+      color: var(--color-text);
     }
   }
   /* Thin rows (few bags / few brews): muted color, not opacity (dimmed text at 60% fell under 4.5:1). */

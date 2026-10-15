@@ -29,7 +29,7 @@
   <h2>Recent</h2>
   <div class="recent-pair">
     <div>
-      <h3>Last 10 brews</h3>
+      <div class="board-row board-head"><h3>Last 10 brews</h3><span class="val">Rating</span></div>
       {#if brews.length}
         <ol class="board-rows">
           {#each brews as b, i (b.id)}
@@ -44,7 +44,7 @@
       {:else}<p class="recent-note">No brews yet.</p>{/if}
     </div>
     <div>
-      <h3>Last 10 coffees finished</h3>
+      <div class="board-row board-head"><h3>Last 10 coffees finished</h3><span class="val">Days open</span></div>
       {#if bags.length}
         <ol class="board-rows">
           {#each bags as b, i (b.id)}
@@ -75,10 +75,26 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
-  h3 {
-    margin: 0 0 var(--space-1);
-    font-size: 0.85rem;
+  /* The board's title and its value column's label share one line over the rows (LabBoard's head). */
+  .board-head {
+    height: auto;
+    padding-bottom: var(--space-1);
+    border-top: 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.72rem;
     color: var(--color-text-muted);
+  }
+  .board-head + .board-rows > :global(.board-row:first-child) {
+    border-top: 0;
+  }
+  .board-head .val {
+    font-weight: normal;
+    white-space: nowrap;
+  }
+  h3 {
+    grid-column: 1 / 3;
+    margin: 0;
+    font-size: 0.85rem;
   }
   .recent-note {
     display: grid;

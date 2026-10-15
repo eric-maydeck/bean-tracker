@@ -37,6 +37,7 @@
   --map-low: #ead9c6;
   --map-high: #8a5a3b;
   --bar-alpha: 28%; /* leaderboard value bars: stronger on light */
+  --bar-hover-alpha: 40%; /* a hovered bar (accent); its row's text turns ink, 8.7:1 */
   --map-empty: #6b6b6b;
   /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: 7 hues x 2 tones = 14
      slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. Mids are the same hue as their
@@ -137,6 +138,7 @@
     --map-low: #4a3a2e;
     --map-high: #e8b48a;
     --bar-alpha: 13%;
+    --bar-hover-alpha: 32%; /* ink text 7.2:1 */
     --map-empty: #3a3a3a;
     --series-1: #c7d7fd;
     --series-1-ink: #c7d7fd;
@@ -215,6 +217,7 @@
   --map-low: #4a3a2e;
   --map-high: #e8b48a;
   --bar-alpha: 13%;
+  --bar-hover-alpha: 32%;
   --map-empty: #3a3a3a;
   --series-1: #c7d7fd;
   --series-1-ink: #c7d7fd;
