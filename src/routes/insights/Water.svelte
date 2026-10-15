@@ -171,7 +171,7 @@
           </div>
         {/each}
       </div>
-      {#if nameTip}<FloatTip anchor={nameTip.el}><TipBody tip={{ title: nameTip.name }} /></FloatTip>{/if}
+      {#if nameTip}<FloatTip anchor={nameTip.el} onclose={() => (nameTip = null)}><TipBody tip={{ title: nameTip.name }} /></FloatTip>{/if}
     </section>
   {/if}
 {/if}

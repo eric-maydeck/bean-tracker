@@ -84,7 +84,7 @@
     {#each m.lines as l, k (k)}<li><span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}</li>{/each}
   </ul>
   {#if tip && m.lines[tip.k]}
-    <FloatTip anchor={tip.el}><TipBody tip={tipOf(tip.k, tip.i)} /></FloatTip>
+    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={tipOf(tip.k, tip.i)} /></FloatTip>
   {/if}
 </div>
 

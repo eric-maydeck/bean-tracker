@@ -11,13 +11,15 @@
   // A chart tip in the top layer (round 2, C2): a manual popover, so no card overflow, scroll wrapper or
   // container clips it and it sits above the sticky bars; placed from its anchor's rect (tipPlace) and
   // re-placed on scroll and resize while open. Every tip is the structured one (TipBody), wrapping at 15rem.
-  let { anchor, children }: { anchor: Element; children: Snippet } = $props();
+  // `onclose`: called when another tip dismisses this one, so its owner resets its open state (a tap-only device
+  // never blurs, so the trigger would otherwise stay "open" and never show again).
+  let { anchor, children, onclose }: { anchor: Element; children: Snippet; onclose?: () => void } = $props();
 
   let el: HTMLDivElement | undefined = $state();
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
   // Escape (document-level) dismisses it until the tip moves to another anchor.
   let away = $state(false), dismissed = $state(false);
-  const me = { dismiss: () => (dismissed = true) };
+  const me = { dismiss: () => { dismissed = true; onclose?.(); } };
   onDestroy(() => current === me && (current = null));
   function place() {
     if (!el || !anchor.isConnected) return;

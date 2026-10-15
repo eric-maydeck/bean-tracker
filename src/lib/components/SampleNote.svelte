@@ -23,7 +23,7 @@
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = true)}
   onblur={() => (open = false)}
   onclick={() => (open = true)}><span class="sample-chip"><Icon name="warning" />{label ?? chipLabel(s)}</span></button>
-{#if open && anchor}<FloatTip {anchor}><TipBody {tip} /></FloatTip>{/if}
+{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
 
 <style>
   /* The chip look is global (.sample-chip, app.css); this is the button around it. */

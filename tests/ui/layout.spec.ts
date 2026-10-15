@@ -2424,6 +2424,18 @@ export const STATES: State[] = [
         expect(await page.evaluate(() => [...document.querySelectorAll('.cell-tip.float-tip:popover-open')].filter((t) => getComputedStyle(t).visibility !== 'hidden').length)).toBe(1);
         await page.mouse.move(0, 0);
       }
+      // Tips dismissed by another tip tell their owner: chip A, chip B, chip A again shows A (taps never blur).
+      const notes = page.locator('.sample-note');
+      if ((await notes.count()) >= 2) {
+        await notes.nth(0).click();
+        await notes.nth(1).click();
+        await notes.nth(0).click();
+        await page.waitForTimeout(200);
+        expect(await page.evaluate(() => [...document.querySelectorAll('.cell-tip.float-tip:popover-open')].filter((t) => getComputedStyle(t).visibility !== 'hidden').length)).toBe(1);
+        await expect(notes.nth(0)).toHaveAttribute('aria-expanded', 'true');
+        await page.mouse.move(0, 0);
+        await page.locator('h1').click();
+      }
       // The pinned name column is opaque and fills the cell gap beside it (ui-rules 43): no cell shows beside or under a name.
       const edge = await map.locator('tbody th').first().evaluate((th) => { const c = getComputedStyle(th); return { bg: c.backgroundColor, shadow: c.boxShadow }; });
       expect(edge.bg).not.toMatch(/rgba\(.*, 0\)|transparent/);

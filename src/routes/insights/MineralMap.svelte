@@ -71,7 +71,7 @@
     </tbody>
   </table>
   {#if tip && map.rows[tip.i]}
-    <FloatTip anchor={tip.el}><TipBody tip={tipOf(map.rows[tip.i])} /></FloatTip>
+    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={tipOf(map.rows[tip.i])} /></FloatTip>
   {/if}
 </div>
 
