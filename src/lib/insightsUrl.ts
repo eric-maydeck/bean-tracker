@@ -51,6 +51,13 @@ export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins:
 
 export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
 export type Tab = (typeof TABS)[number];
+// The desktop side rail's groups, in TABS order: a new tab joins one group here (a test checks every tab is in one).
+export const TAB_GROUPS: readonly { label: string; tabs: readonly Tab[] }[] = [
+  { label: 'Summary', tabs: ['overview', 'leaderboards'] },
+  { label: 'Habits', tabs: ['habits', 'consumption'] },
+  { label: 'Highlights', tabs: ['records', 'milestones', 'insights'] },
+  { label: 'Lab', tabs: LAB_TABS }
+];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
 // (absent = auto from the tracked span, time.ts autoBy).
 export const MEASURES = ['brews', 'grams', 'rating'] as const;

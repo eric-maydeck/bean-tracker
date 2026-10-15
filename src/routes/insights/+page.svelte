@@ -6,7 +6,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -162,6 +162,11 @@
   }
 
   const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
+  // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
+  function tabHref(tab: Tab) {
+    const qs = insightsParams({ ...data.explicit, tab }).toString();
+    return qs ? `?${qs}` : '/insights';
+  }
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
   const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -384,6 +389,26 @@
   <title>Bean Tracker - Insights</title>
 </svelte:head>
 
+<!-- Wide screens: a side rail of every view beside the whole page (the View dropdown stays). The links
+     navigate like choose({ tab }): replace the entry, keep the scroll and focus. -->
+<div class="rail-layout">
+<nav class="insights-rail" aria-label="Insights sections">
+  {#each TAB_GROUPS as g (g.label)}
+    <div class="rail-group" role="group" aria-labelledby="rail-{g.label}">
+      <span class="rail-caption" id="rail-{g.label}">{g.label}</span>
+      {#each g.tabs as t (t)}
+        <a
+          href={tabHref(t)}
+          aria-current={s.tab === t ? 'page' : undefined}
+          data-sveltekit-replacestate
+          data-sveltekit-noscroll
+          data-sveltekit-keepfocus>{TAB_LABEL[t]}</a
+        >
+      {/each}
+    </div>
+  {/each}
+</nav>
+<div class="rail-main">
 <div class="toolbar">
   <h1>Insights</h1>
   <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
@@ -610,8 +635,98 @@
   {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}
   {#if data.recent}<Recent {...data.recent} />{/if}
 {/if}
+</div>
+</div>
 
 <style>
+  /* Desktop side rail (docs/backlog/insights-side-bar.md), from 1000px wide and 500px tall (never a
+     phone: landscape is 333px tall). The container grows by rail + gap (10rem + 1rem = 176px), so the
+     content column at viewport W is today's column at W - 176px, and from 1416px (= --container-max
+     1240px + 176px) the full 1208px. The content's width breakpoints are container queries on
+     `insights` (viewport width - 2rem main padding), so it lays out exactly as the page did at W - 176. */
+  .rail-main {
+    container: insights / inline-size;
+  }
+  .insights-rail {
+    display: none;
+  }
+  @media (min-width: 1000px) and (min-height: 500px) {
+    :global(main.container:has(> .rail-layout)) {
+      --rail-w: 10rem;
+      --rail-gap: 1rem;
+      max-width: calc(var(--container-max) + var(--rail-w) + var(--rail-gap));
+    }
+    .rail-layout {
+      display: grid;
+      grid-template-columns: var(--rail-w) minmax(0, 1fr);
+      gap: var(--rail-gap);
+      align-items: start;
+    }
+    .insights-rail {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+      position: sticky;
+      top: 0;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding-block: var(--space-2);
+      font-size: 0.95rem;
+    }
+    .rail-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .rail-caption {
+      padding: 0 var(--space-3) var(--space-1);
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+    .insights-rail a {
+      display: flex;
+      align-items: center;
+      min-height: 2.25rem;
+      padding: 0 var(--space-3);
+      border-left: 3px solid transparent;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: var(--color-text);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .insights-rail a[aria-current='page'] {
+      border-left-color: var(--color-accent);
+      background: color-mix(in oklab, var(--color-accent) 14%, transparent);
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .insights-rail a:focus-visible {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
+    }
+    /* A touch screen this wide (a tablet): 44px targets (ui-rules 4). */
+    @media (pointer: coarse) {
+      .insights-rail a {
+        min-height: 44px;
+      }
+    }
+    @media (hover: hover) {
+      .insights-rail a:not([aria-current='page']):hover {
+        background: color-mix(in oklab, var(--color-accent) 7%, transparent);
+      }
+    }
+    /* Milestones: the rail takes the left edge, so the timeline ruler moves to the right of the feed. */
+    .rail-layout :global(.timeline:not(.no-ruler)) {
+      grid-template-columns: minmax(0, 1fr) 6.5rem;
+    }
+    .rail-layout :global(.timeline > .ruler) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+  }
   /* Labeled controls, left-packed, one column each on wider screens. */
   .insights-controls {
     display: flex;
@@ -1366,7 +1481,8 @@
       --q: var(--c);
     }
   }
-  @media (min-width: 1000px) {
+  /* viewport 1000px (no rail; the rail narrows it) */
+  @container insights (min-width: 968px) {
     .fit.n6 {
       --c: 6;
     }

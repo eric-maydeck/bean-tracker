@@ -1,4 +1,5 @@
 :root {
+  --container-max: 1240px; /* main.container; /insights' side rail adds its own width to it */
   --color-bg: #faf7f2;
   --color-surface: #ffffff;
   --color-text: #2b211b;
@@ -335,7 +336,7 @@ input:focus-visible {
 }
 
 .container {
-  max-width: 1240px;
+  max-width: var(--container-max);
   margin: 0 auto;
   padding: var(--space-4);
 }
@@ -2465,7 +2466,9 @@ td > .action-buttons.under-form {
   grid-template-columns: minmax(0, 1fr);
   margin-bottom: var(--space-5);
 }
-@media (min-width: 900px) {
+/* Container `insights` = /insights' content column (viewport - 2rem without its side rail). */
+/* viewport 900px (no rail; the rail narrows it) */
+@container insights (min-width: 868px) {
   .insights-charts {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }

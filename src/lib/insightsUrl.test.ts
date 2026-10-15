@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType, BREWER_TYPES, type LabValues
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -545,5 +545,11 @@ describe('brewing lab params', () => {
       bag: '2025-old-bag', roast: 'Light', process: 'Natural', origin: 'Kenya', roaster: 'Sey', grinder: 'zp6-1zpresso', temp: 'exact',
       tempBy: 'roast', ratioBy: 'process', doseBy: 'origin', timeBy: 'roaster', bloomBy: 'roast', grindBy: 'process'
     });
+  });
+});
+
+describe('TAB_GROUPS', () => {
+  it('lists every tab exactly once, in TABS order', () => {
+    expect(TAB_GROUPS.flatMap((g) => g.tabs)).toEqual([...TABS]);
   });
 });

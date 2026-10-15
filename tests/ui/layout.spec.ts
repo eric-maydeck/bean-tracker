@@ -1718,6 +1718,64 @@ export const STATES: State[] = [
       await page.locator('.record-ties').first().click(); // tie tip opens on tap
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
     } },
+  // Side rail (docs/backlog/insights-side-bar.md): from 1000px wide and 500px tall. It adds width (rail + gap
+  // = 176px), so with it at viewport W the content lays out exactly as the page without it at W - 176 (a
+  // (W - 176) x 499 viewport: too short for the rail), and from 1416px the content column is the full 1208px.
+  // At w1280 this state also runs the comparisons at other sizes, then ends back at 1280 x 800.
+  {
+    name: 'insights-rail',
+    path: () => '/insights?range=all',
+    act: async (page) => {
+      const rail = page.locator('nav.insights-rail');
+      const main = page.locator('.rail-main');
+      const vp = page.viewportSize()!;
+      if (vp.width < 1000 || vp.height < 500) return expect(rail).toBeHidden();
+      await expect(rail).toBeVisible();
+      if (vp.width !== 1280) return;
+      // The content column's width, every element's width in it, and each grid's column count (distinct child lefts).
+      const shape = () => main.evaluate((m) => ({
+        width: Math.round(m.getBoundingClientRect().width),
+        widths: [...m.querySelectorAll('*')].map((e) => Math.round(e.getBoundingClientRect().width)).filter((w) => w > 0),
+        cols: [...m.querySelectorAll('.stat-row, .fit, .hl-grid, .board-band, .insights-charts, .lab-grid')].map(
+          (g) => new Set([...g.children].map((c) => Math.round(c.getBoundingClientRect().left))).size)
+      }));
+      const at = async (width: number, height: number, url: string) => {
+        await page.setViewportSize({ width, height });
+        await gotoReady(page, url);
+        await expect(rail).toBeVisible({ visible: width >= 1000 && height >= 500 });
+      };
+      for (const w of [1100, 1280, 1436])
+        for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
+          const url = `/insights?range=all${q}`;
+          await at(w - 176, 499, url);
+          const today = await shape();
+          await at(w, 900, url);
+          expect(await shape(), `${w}px tab${q || '=overview'}: as without the rail at ${w - 176}px`).toEqual(today);
+        }
+      // Full width from 1416px: every tab's content column is 1240 - 2rem.
+      await at(1436, 900, '/insights?range=all');
+      for (const t of await rail.locator('a').all()) {
+        await gotoReady(page, (await t.getAttribute('href'))!.replace(/^\?/, '/insights?'));
+        expect(Math.round((await main.boundingBox())!.width), (await t.textContent()) ?? '').toBe(1208);
+      }
+      // Milestones: the ruler is left of the feed without the rail, right of it beside the rail.
+      const rulerX = async () => (await page.locator('nav.ruler').boundingBox())!.x - (await page.locator('.feed').boundingBox())!.x;
+      await at(999, 800, '/insights?tab=milestones&range=all');
+      expect(await rulerX()).toBeLessThan(0);
+      await at(1436, 900, '/insights?tab=milestones&range=all');
+      expect(await rulerX(), 'ruler right of the feed beside the rail').toBeGreaterThan(0);
+      // A rail link switches the tab, keeps the other params and marks itself current.
+      await gotoReady(page, '/insights?range=all&tab=habits');
+      await expect(rail.locator('[aria-current="page"]')).toHaveText('Habits');
+      await rail.getByRole('link', { name: 'Records', exact: true }).click();
+      await expect(rail.locator('[aria-current="page"]')).toHaveText('Records');
+      await expect(page.getByRole('combobox', { name: 'View' })).toHaveValue('records');
+      const u = new URL(page.url());
+      expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
+      await expect(rail.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Water', 'Gear']);
+      await at(1280, 800, '/insights?range=all');
+    }
+  },
   { name: 'insights-milestones', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
       await expect(page.locator('.milestone-feed li').first()).toBeVisible();
@@ -2218,11 +2276,13 @@ export const STATES: State[] = [
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
-      // The heatmaps pair up from 1150 px (neither scrolls), stacked below.
-      const w = page.viewportSize()?.width ?? 0;
+      // The heatmaps pair up from a 1118 px content column (a 1150 px viewport without the side rail; neither
+      // scrolls), stacked below.
+      const cw = (await page.locator('.rail-main').boundingBox())!.width; // content column
+      const wide = cw >= 1118;
       const tops = await page.locator('.heat-panel').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().top)));
-      expect(tops[0] === tops[1]).toBe(w >= 1150);
-      if (w >= 1150) {
+      expect(tops[0] === tops[1]).toBe(wide);
+      if (wide) {
         const scrolls = await page.locator('.heat-panel .scroll').evaluateAll((ss) => ss.filter((s) => s.scrollWidth > s.clientWidth + 1).length);
         expect(scrolls).toBe(0);
         const hs = await page.locator('.heat-panel').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().height)));
@@ -2244,8 +2304,8 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
       await page.locator('[data-section="water-gh"] .bar-row').nth(1).blur();
-      // Ratings by recipe beside GH vs rating from 900 px, one height, both filled (W3, ui-rules 37).
-      if (w >= 900) {
+      // Ratings by recipe beside GH vs rating from an 868 px column (900 px viewport), one height, both filled (W3, ui-rules 37).
+      if (cw >= 868) {
         const [a, b] = await Promise.all(['recipes', 'gh'].map((k) => page.locator(`[data-section="water-${k}"]`).boundingBox()));
         expect(Math.round(a!.y)).toBe(Math.round(b!.y));
       }

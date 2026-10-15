@@ -167,7 +167,8 @@
     position: absolute;
     inset: 0;
   }
-  @media (min-width: 900px) {
+  /* viewport 900px (no rail; the rail narrows it) */
+  @container insights (min-width: 868px) {
     .lab-grid {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
