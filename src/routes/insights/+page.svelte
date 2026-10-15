@@ -1447,6 +1447,9 @@
     aspect-ratio: auto;
     height: calc(var(--h) + var(--grow-compare, 0px));
     padding-inline: calc((var(--w) - var(--h)) / 2);
+    /* Not inline-size: when the row's container query changes only this padding (same outer width,
+       e.g. the full-row last tile at 360px), Firefox keeps the content's cqw from the first layout. */
+    container-type: size;
   }
   .fit.n5 .stat-item:nth-last-child(-n + 2) {
     --q: 2;
