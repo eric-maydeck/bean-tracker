@@ -1,3 +1,10 @@
+## [1.76.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.1...v1.76.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* **insights:** rated tile caption sits in place at 360/390 in firefox
+
 ## [1.76.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.0...v1.76.1) (2026-10-15)
 
 
