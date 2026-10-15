@@ -1,3 +1,16 @@
+# [1.76.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.75.0...v1.76.0) (2026-10-15)
+
+
+### Bug Fixes
+
+* **insights:** tile rows never orphan a tile at fractional widths
+
+
+### Features
+
+* **insights:** milestones ruler keeps its height and slides off with the feed
+* **insights:** side rail of every view on wide screens
+
 # [1.75.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.2...v1.75.0) (2026-10-15)
 
 
