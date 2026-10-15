@@ -3,6 +3,7 @@ import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
+import { settleAt } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { listHref } from './leaderboards';
@@ -125,9 +126,8 @@ const settlePositions = (c: GenCtx) => {
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
     if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
-    const rs = bs.map((b) => b.rating!);
-    const top = [...rs].sort((a, b) => b - a).slice(0, Math.ceil(rs.length / 2));
-    out.push({ id, pos: rs.findIndex((r) => r >= mean(top) - 0.5) + 1, month: bs[0].localDate.slice(0, 7) });
+    // Rated brews to reach the bag's settled rating (dialed.ts settleAt)
+    out.push({ id, pos: settleAt(bs.map((b) => b.rating!)), month: bs[0].localDate.slice(0, 7) });
   }
   return out;
 };
