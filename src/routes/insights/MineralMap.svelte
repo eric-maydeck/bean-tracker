@@ -134,8 +134,8 @@
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
   }
-  .small-sample > :not(.name-col, .delta) {
-    opacity: var(--faded);
+  .small-sample .delta {
+    color: var(--color-text); /* the chip keeps its ink on its tint (ui-rules 29) */
   }
   .small-sample .delta-chip {
     background-image: var(--thin-hatch);

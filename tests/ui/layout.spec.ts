@@ -454,9 +454,7 @@ async function expectBarHover(page: Page) {
     await expect.poll(bar).not.toBe(before);
     // The row's text turns ink over the deeper bar (accent link and muted subtext would fall under 4.5:1).
     const ink = await page.evaluate(() => getComputedStyle(document.body).color);
-    await expect.poll(() => row.locator('.who > *').evaluateAll((els) => els.map((e) => getComputedStyle(e).color)))
-      .toEqual(expect.arrayContaining([ink]));
-    await expect.poll(() => row.locator('.who > *').evaluateAll((els, c) => els.every((e) => getComputedStyle(e).color === c), ink)).toBe(true);
+    await expect.poll(() => row.locator('.who *').evaluateAll((els, c) => els.filter((e) => !e.closest('[popover]') && getComputedStyle(e).color !== c).map((e) => e.outerHTML.slice(0, 80)), ink)).toEqual([]);
     return;
   }
   const found = await page.evaluate(() => [...document.styleSheets].some((sh) => {

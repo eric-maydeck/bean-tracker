@@ -1168,7 +1168,8 @@
     background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
     transition: background-color 150ms ease;
   }
-  :global(.board-row.bar .who > *) {
+  :global(.board-row.bar .who > *),
+  :global(.board-row.bar .who .who-line > *) {
     transition: color 150ms ease;
   }
   /* A hovered bar deepens (--bar-hover-alpha) and its row's text turns ink: the accent link and muted
@@ -1177,7 +1178,8 @@
     :global(.board-row.bar:hover::before) {
       background: color-mix(in oklab, var(--color-accent) var(--bar-hover-alpha), transparent);
     }
-    :global(.board-row.bar:hover .who > *) {
+    :global(.board-row.bar:hover .who > *),
+    :global(.board-row.bar:hover .who .who-line > *) {
       color: var(--color-text);
     }
   }
