@@ -42,7 +42,8 @@
   --chip: #f2b84b; /* the Low confidence chip and corner fold; ink 9.4:1 on it */
   --chip-ink: #2b211b;
   --chip-text: #a06500; /* the chip's amber as text on the light tip (4.8:1) */
-  --slice-line: #2b211bb3; /* doughnut separators: the text color at 70% */
+  --color-possible: #2f6b78; /* the Possible badge and its tip block: slate teal, 6.0:1 on white */
+  --slice-line: #1c1712cc; /* doughnut separators: the dark page background at 80%, in both themes */
   --map-empty: #6b6b6b;
   /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: 7 hues x 2 tones = 14
      slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. The deeper tone is the same hue as
@@ -153,7 +154,8 @@
     --bar-hover-alpha: 32%; /* ink text 7.2:1 */
     --chip-ink: #1c1712; /* 9.6:1 on --chip, same amber */
     --chip-text: #f2b84b; /* 9.0:1 on the dark tip */
-    --slice-line: #1c1712cc; /* the page background at 80%: a dark separator, not a light line */
+    --color-possible: #86bcc6; /* 7.7:1 on the dark tip */
+    --slice-line: #1c1712cc;
     --map-empty: #3a3a3a;
     --series-1: #c7d7fd;
     --series-1-ink: #c7d7fd;
@@ -241,6 +243,7 @@
   --bar-hover-alpha: 32%;
   --chip-ink: #1c1712;
   --chip-text: #f2b84b;
+  --color-possible: #86bcc6;
   --slice-line: #1c1712cc;
   --map-empty: #3a3a3a;
   --series-1: #c7d7fd;
@@ -819,6 +822,11 @@ table.data-table tbody tr:hover {
    tablet widths); long text wraps at spaces, and a table wider than its card scrolls inside .table-scroll. */
 table.data-table.compact {
   font-size: 0.75rem;
+}
+
+/* The flag and the country stay on one line at every width (the table scrolls instead). */
+table.data-table.compact td.origin-cell {
+  white-space: nowrap;
 }
 
 table.data-table.compact th {
@@ -2470,7 +2478,7 @@ td > .action-buttons.under-form {
 }
 .tip-block.strength-hint .tip-title,
 .tip-block.strength-hint .tip-lines {
-  color: var(--color-text-muted);
+  color: var(--color-possible);
 }
 .tip-counts {
   margin-top: var(--space-2);

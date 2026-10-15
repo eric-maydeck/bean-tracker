@@ -1,5 +1,11 @@
+<script lang="ts" module>
+  // Only one tip is open app-wide: a tip that opens dismisses the one before it (its owner may still think it open).
+  let current: { dismiss: () => void } | null = null;
+</script>
+
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { onDestroy } from 'svelte';
   import { tipPlace, viewBand } from './floatTip';
 
   // A chart tip in the top layer (round 2, C2): a manual popover, so no card overflow, scroll wrapper or
@@ -11,6 +17,8 @@
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
   // Escape (document-level) dismisses it until the tip moves to another anchor.
   let away = $state(false), dismissed = $state(false);
+  const me = { dismiss: () => (dismissed = true) };
+  onDestroy(() => current === me && (current = null));
   function place() {
     if (!el || !anchor.isConnected) return;
     const t = el.getBoundingClientRect();
@@ -22,6 +30,8 @@
   }
   $effect(() => {
     void anchor;
+    if (current !== me) current?.dismiss();
+    current = me;
     dismissed = false;
     if (!el) return;
     if (!el.matches(':popover-open')) el.showPopover();

@@ -37,8 +37,8 @@
   const thinBags = (p: WaterTab['pairs'][number]) => p.bags.filter((b) => Math.min(b.na, b.nb) < BAG_MIN_BREWS).length;
   const thin = (p: WaterTab['pairs'][number]) => thinBags(p) * 2 > p.bags.length;
   const thinTip = (p: WaterTab['pairs'][number]): Tip => ({ title: '', caution: {
-    lines: [`Small sample: in ${thinBags(p)} of ${p.bags.length} bags one recipe has under ${BAG_MIN_BREWS} rated brews, so one brew can swing a bag's score. Each side needs ${BAG_MIN_BREWS}+.`],
-    rows: [['Bags with a thin side', `${thinBags(p)} of ${p.bags.length}`]] } });
+    lines: [`Small sample: in ${thinBags(p)} of ${p.bags.length} bags, one of the two waters has fewer than ${BAG_MIN_BREWS} rated brews, so a single brew can swing that bag's comparison.`],
+    rows: [['Bags compared', `${p.bags.length}`], [`Under ${BAG_MIN_BREWS} rated brews on one water`, `${thinBags(p)}`]] } });
   // W7: a pair shows its 5 biggest gaps (the server sorts by |a − b|); "Show all" puts its slug in `pairs`.
   const SHOWN = 5;
   // Pair blocks flow in balanced columns (ui-rules 40); only an expanded block (Show all, a long list) spans both.

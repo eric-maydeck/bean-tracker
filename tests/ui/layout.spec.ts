@@ -2415,6 +2415,15 @@ export const STATES: State[] = [
         await expect(chip).toHaveText(/^Only \d+ (bags?|brews?)$/);
         expect(await row.evaluate((tr) => { const c = tr.querySelector('th .sample-chip')!.getBoundingClientRect(), th = tr.querySelector('th')!.getBoundingClientRect(); return c.height < 24 && c.right <= th.right + 1; })).toBe(true);
       }
+      // The name and its chip are one tip target: hovering the name, then the chip, leaves exactly one visible tip (mouse only).
+      const small = map.locator('tbody tr.small-sample').first();
+      if ((await small.count()) && (await page.evaluate(() => matchMedia('(hover: hover)').matches))) {
+        await small.locator('th .map-name').hover();
+        await small.locator('th .map-chip').hover();
+        await page.waitForTimeout(200);
+        expect(await page.evaluate(() => [...document.querySelectorAll('.cell-tip.float-tip:popover-open')].filter((t) => getComputedStyle(t).visibility !== 'hidden').length)).toBe(1);
+        await page.mouse.move(0, 0);
+      }
       // The pinned name column is opaque and fills the cell gap beside it (ui-rules 43): no cell shows beside or under a name.
       const edge = await map.locator('tbody th').first().evaluate((th) => { const c = getComputedStyle(th); return { bg: c.backgroundColor, shadow: c.boxShadow }; });
       expect(edge.bg).not.toMatch(/rgba\(.*, 0\)|transparent/);

@@ -1066,7 +1066,7 @@
           <tr>
             <td>{coffee.roaster}</td>
             <td><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></td>
-            <td>{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
+            <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
             </td>
