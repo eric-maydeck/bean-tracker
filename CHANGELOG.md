@@ -1,3 +1,10 @@
+## [1.76.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.0...v1.76.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **insights:** milestones ruler spans the first header to the panel's bottom
+
 # [1.76.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.75.0...v1.76.0) (2026-10-15)
 
 
