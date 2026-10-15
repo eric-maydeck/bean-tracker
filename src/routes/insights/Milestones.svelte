@@ -73,7 +73,15 @@
   function update() {
     if (!feed || !nav || !ticks.length) return;
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
-    pos = feedToRuler(ticks, secs, top + 8); // a few px in: a header just under the bars counts as in view
+    const k = scale(secs, top), y = top + 8; // a few px in: a header just under the bars counts as in view
+    pos = feedToRuler(ticks, secs, k ? secs[0].top + (y - secs[0].top) / k : y);
+  }
+  // The ruler spans the scroll from the first month's header under the bars to the panel's bottom at
+  // the screen's bottom, so the feed's distance below that header is scaled by k (0: the panel fits).
+  function scale(secs: Section[], top: number) {
+    const full = secs[secs.length - 1].bottom - secs[0].top;
+    const span = feed!.closest('section')!.getBoundingClientRect().bottom - innerH - (secs[0].top - top);
+    return full > 0 ? Math.max(0, span) / full : 0;
   }
   // The ruler's height, never on scroll: the full height, capped to where the feed's content ends below
   // the ruler's own top in the (unstuck) timeline. The content's end, not the feed box: the grid stretches
@@ -115,10 +123,12 @@
   // section as the pointer is through the month's band, feedback M3) sits at the top of the feed's
   // visible part, under the sticky bars (and the phone strip, once stuck). Pointer capture keeps a
   // drag going off the ruler (M5); the tick buttons' clicks are the keyboard path.
+  // Scaled (see scale) so the ruler's ends are the scroll's: the first header at the top, the panel's
+  // bottom at the screen's bottom.
   function scrub(e: PointerEvent) {
-    const r = track!.getBoundingClientRect();
-    const y = rulerToFeed(ticks, sections(), vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width);
-    if (y !== null) scrollBy(0, y - (vertical ? barH : barH + nav!.offsetHeight));
+    const r = track!.getBoundingClientRect(), secs = sections(), top = vertical ? barH : barH + nav!.offsetHeight;
+    const y = rulerToFeed(ticks, secs, vertical ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width);
+    if (y !== null) scrollBy(0, secs[0].top - top + (y - secs[0].top) * scale(secs, top));
   }
   function grab(e: PointerEvent) {
     nav!.setPointerCapture(e.pointerId);

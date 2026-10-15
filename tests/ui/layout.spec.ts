@@ -1869,26 +1869,24 @@ export const STATES: State[] = [
         expect(Math.min(...seen.map((r) => r.y)), 'ruler slides up with the feed end').toBeLessThan(0);
         await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       }
-      // A press 60% through the newest month's band lands 60% down its section, at the top of the
-      // feed's visible part (under the filter bar, and the phone strip once stuck).
+      // A press on the ruler scrolls so the thumb lands under the pointer: the ruler's length is the
+      // scroll from the first month's header under the bars to the panel's bottom at the screen's bottom.
       const track = ruler.locator('.track');
       const at = async (f: number) => {
         const b = (await track.boundingBox())!, n = await ruler.locator('.tick').count();
         return b.height > b.width ? { x: b.x + 2, y: b.y + (f * b.height) / n } : { x: b.x + (f * b.width) / n, y: b.y + 2 };
       };
+      // The thumb's center along the ruler, against a pointer point.
+      const off = async (q: { x: number; y: number }) => {
+        const t = (await ruler.locator('.band').boundingBox())!, b = (await track.boundingBox())!;
+        return b.height > b.width ? t.y + t.height / 2 - q.y : t.x + t.width / 2 - q.x;
+      };
       await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView()); // the ruler stuck in view
       await settle();
       const p = await at(0.6);
       await page.mouse.click(p.x, p.y);
-      const through = await page.evaluate(() => {
-        const r = document.querySelector('nav.ruler')!.getBoundingClientRect();
-        const top = r.width > r.height ? r.bottom : (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
-        const hs = document.querySelectorAll('.feed .month');
-        const a = hs[0].getBoundingClientRect().top, z = hs[1]?.getBoundingClientRect().top ?? document.querySelector('.feed')!.getBoundingClientRect().bottom;
-        return (top - a) / (z - a);
-      });
-      expect(through).toBeGreaterThan(0.55);
-      expect(through).toBeLessThan(0.65);
+      await settle();
+      expect(Math.abs(await off(p)), 'thumb under the pointer').toBeLessThanOrEqual(2);
       await expect(ruler.locator('[aria-current]')).toHaveAttribute('aria-label', `Jump to ${await page.locator('.feed .month').first().textContent()}`);
       // Dragging along the ruler scrubs the feed: scrollY only grows going towards the oldest.
       const n = await ruler.locator('.tick').count();
@@ -1904,6 +1902,28 @@ export const STATES: State[] = [
       await page.mouse.up();
       expect(ys).toEqual([...ys].sort((x, y) => x - y));
       expect(ys[ys.length - 1]).toBeGreaterThan(ys[0]);
+      // Dragged to either end, the thumb reaches the ruler's end and the scroll ends with it: the
+      // panel's bottom at the screen's bottom, then the first month's header just under the bars.
+      const panel = page.locator('section.chart-panel', { has: page.locator('.feed') });
+      const end = await at(n - 0.001), first = await at(-0.05); // past the start: a drag that overshoots
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 4 });
+      await settle();
+      const pb = (await panel.boundingBox())!;
+      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2);
+      const tEnd = (await track.boundingBox())!; // the side ruler may have slid up a few px with the feed's end
+      expect(Math.abs(await off(tEnd.height > tEnd.width ? { x: 0, y: tEnd.y + tEnd.height } : { x: tEnd.x + tEnd.width, y: 0 })),
+        'thumb at the ruler end').toBeLessThanOrEqual(2);
+      await page.mouse.move(first.x, first.y, { steps: 4 });
+      await page.mouse.up();
+      await settle();
+      const head = await page.evaluate(() => {
+        const r = document.querySelector('nav.ruler')!.getBoundingClientRect();
+        const top = r.width > r.height ? r.bottom : (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
+        return document.querySelector('.feed .month')!.getBoundingClientRect().top - top;
+      });
+      expect(Math.abs(head), 'first month header under the bars').toBeLessThanOrEqual(2);
       // Phone strip, touch: a vertical swipe starting on it doesn't jump the feed; a tap does.
       if (page.viewportSize()!.width < 700) {
         await page.evaluate(() => document.querySelector('.feed .month')!.scrollIntoView());
