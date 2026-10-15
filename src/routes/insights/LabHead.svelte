@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import { SAMPLE_HELP } from '$lib/sample';
   import HeadingAnchor from './HeadingAnchor.svelte';
 
   // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27): the section's
@@ -11,7 +12,7 @@
 <div class="lab-head">
   <HeadingAnchor {id} {level}>{title}</HeadingAnchor>
   <button class="mode-tip-button" popovertarget="{id}-help" aria-label="About {title}" aria-describedby="{id}-help"><Icon name="question" /></button>
-  <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title, lines: help }} /></div>
+  <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title, lines: help.filter((l) => l !== SAMPLE_HELP), sampleLegend: help.includes(SAMPLE_HELP) }} /></div>
 </div>
 
 <style>

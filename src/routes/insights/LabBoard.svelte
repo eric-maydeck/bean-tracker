@@ -8,7 +8,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
-  // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Solid/Hint
+  // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Likely/Possible
   // badge and the same-bag delta. The sub line keeps non-numeric context only (a recipe's months). Narrow
   // boards drop SD, then bags. Thin rows muted (global .small-sample). `slots`: a side-by-side partner's length; the
   // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).

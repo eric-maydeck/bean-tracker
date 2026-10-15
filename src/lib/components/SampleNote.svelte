@@ -2,7 +2,7 @@
   import FloatTip from './FloatTip.svelte';
   import Icon from './Icon.svelte';
   import TipBody, { tipText } from './TipBody.svelte';
-  import { SAMPLE_LABEL, sampleTip, type Sample } from '$lib/sample';
+  import { chipLabel, type Sample } from '$lib/sample';
 
   // The one small-sample marker (spec 2026-10-15 Part 1): an amber "Low confidence" chip; the reason and exact
   // counts on hover, tap and keyboard focus, in the shared top-layer tip (ui-rules 36, 39). `paired`: the counts
@@ -10,7 +10,7 @@
   let { s, paired = false }: { s: Sample; paired?: boolean } = $props();
   let anchor: HTMLButtonElement | undefined = $state();
   let open = $state(false);
-  let tip = $derived({ title: SAMPLE_LABEL, ...sampleTip(s, paired) });
+  let tip = $derived({ title: '', sample: { s, paired } });
 </script>
 
 <button bind:this={anchor} type="button" class="sample-note" aria-expanded={open}
@@ -19,7 +19,7 @@
   onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = true)}
   onblur={() => (open = false)}
-  onclick={() => (open = true)}><span class="sample-chip"><Icon name="warning" />{SAMPLE_LABEL}</span></button>
+  onclick={() => (open = true)}><span class="sample-chip"><Icon name="warning" />{chipLabel(s)}</span></button>
 {#if open && anchor}<FloatTip {anchor}><TipBody {tip} /></FloatTip>{/if}
 
 <style>

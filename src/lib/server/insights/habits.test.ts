@@ -103,6 +103,7 @@ describe('habits', () => {
     expect(h.tiles.peakHour).toBeNull(); // only 2 ratings at 08
     expect(h.heatmap[0][8]).toBe(7);
     expect(h.heatSample![0][8].small).toBe(true);
+    expect(h.heatSample![0][9]).toMatchObject({ brews: 0, small: false }); // an empty cell is no data, not low confidence
   });
 
   it('rating heatmap: brews measures have no flags', () => {

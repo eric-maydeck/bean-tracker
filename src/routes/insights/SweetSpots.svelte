@@ -3,9 +3,9 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINES } from './DeltaBars.svelte';
+  import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { sampleBody } from '$lib/sample';
+  import { sampleField } from '$lib/sample';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -75,8 +75,8 @@
           ? { title: b.range ?? b.label, rows: [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]], note: noMatch('grind setting') }
           : {
               title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
-              rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`]],
-              ...sampleBody(b.sample),
+              rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ...(b.sample.small ? [] : [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]])],
+              ...sampleField(b.sample, p.tier === 1),
               note: b.label === p.usual.label ? 'Your usual setting.' : undefined
             }) as Tip
       }))
@@ -207,7 +207,7 @@
   <section class="chart-panel" data-section="spots-cards">
     <LabHead id="spots-cards" title="Sweet spots" {placeTip}
       help={['For each setting, the band your ratings favor for coffees like this.', 'First choice: the same bag brewed both ways.',
-        "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", ...STRENGTH_LINES]} />
+        "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", STRENGTH_LINE]} />
     <div class="hl-grid finding-grid spot-grid" use:tighten={sized}>
       {#each sized as { item: c, style } (c.key)}
         {@const p = c.spot}
@@ -448,6 +448,7 @@
   }
   .bar.clip.up {
     clip-path: polygon(0 9px, 50% 0, 100% 9px, 100% 100%, 0 100%);
+    background-position: right 0 top 9px, 0 0; /* a small bar's fold sits below the arrow taper */
   }
   .bar.pick {
     background: var(--chart-color-1);

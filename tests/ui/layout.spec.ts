@@ -97,6 +97,21 @@ async function expectNoEllipsis(page: Page) {
 
 // T4 (ui-rules 29): a signed vs-usual delta shown as text is green from +0.05, red from −0.05, ink between
 // (thin rows too; neutral is never green or red). Checks every board delta, polarity bar value and tagged delta (.delta-text) on the page.
+// Small-sample chips: one line, inside their row and the viewport, and the sub line they sit beside is never cut off.
+async function expectSampleChips(page: Page) {
+  const bad = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const chip of document.querySelectorAll('.sample-note .sample-chip')) {
+      const c = chip.getBoundingClientRect(), row = chip.closest('.board-row, tr, li')!.getBoundingClientRect();
+      if (c.height > 1.8 * parseFloat(getComputedStyle(chip).fontSize)) out.push('chip wraps');
+      if (c.right > row.right + 1 || c.right > innerWidth) out.push('chip overflows its row');
+      const sub = chip.closest('.who-line')?.querySelector('small');
+      if (sub && sub.scrollWidth > sub.clientWidth + 1) out.push(`sub line cut off: ${sub.textContent}`);
+    }
+    return out;
+  });
+  expect(bad).toEqual([]);
+}
 async function expectDeltaInk(page: Page) {
   const bad = await page.evaluate(() => {
     const probe = document.createElement('span');
@@ -1532,12 +1547,13 @@ export const STATES: State[] = [
       await expect(page.locator('.board')).toHaveCount(9);
       await expectEqualBoardHeights(page);
       await expectBarHover(page);
+      await expectSampleChips(page);
     }
   },
   { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=min3',
     act: async (page) => {
       const note = page.locator('.sample-note').first();
-      await expect(note).toHaveText('Low confidence');
+      await expect(note).toHaveText(/^Only \d+ (bags?|brews?)$/);
       // A caution label: solid amber chip, dark ink (4.5:1+), one line, never past the viewport or its row.
       const chips = await page.locator('.sample-note .sample-chip').evaluateAll((els) => els.map((el) => {
         const cs = getComputedStyle(el), r = el.getBoundingClientRect(), row = el.closest('.board-row')!.getBoundingClientRect();
@@ -1551,6 +1567,7 @@ export const STATES: State[] = [
       const tip = page.locator('[popover]:popover-open').filter({ hasText: 'Small sample' });
       await expect(tip).toContainText('Low confidence');
       await expect(tip).toContainText(/Rated brews\s*\d+/);
+      await expectSampleChips(page);
       // One look: a small row's name and value are the muted token's color (not faded by opacity).
       await page.mouse.move(0, 0); // off the row: hover turns its text ink
       const row = page.locator('.board-row.small-sample').first();
@@ -1573,7 +1590,7 @@ export const STATES: State[] = [
         expect(bg).toContain('gradient');
         expect(op).toBe('1');
         // Stripes plus the amber corner fold (top right).
-        expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '100% 0%, 0px 0px']);
+        if (!(await m.evaluate((el) => el.classList.contains('clip')))) expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '100% 0%, 0px 0px']);
       }
       // A clipped bar's cut end is an arrow tip, not a dark cap.
       for (const c of await page.locator('.bar.clip').all()) expect(await c.evaluate((el) => getComputedStyle(el).clipPath)).toContain('polygon');
@@ -1585,7 +1602,8 @@ export const STATES: State[] = [
   { name: 'insights-sample-legend', path: () => '/insights?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
-      await expect(page.locator('.mode-tip:popover-open')).toContainText('Low confidence: a small sample');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Only 2 bags');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('low confidence, under 3 bags or 10 rated brews');
       await expect(page.locator('.mode-tip:popover-open .sample-chip')).toBeVisible();
     } },
   { name: 'insights-strength-badges', path: () => '/insights?tab=sweetspots',
@@ -1594,7 +1612,7 @@ export const STATES: State[] = [
       for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible)$/);
       await expect(page.locator('body')).not.toContainText(/\b(Solid|Hint)\b/);
       await page.locator('[data-section="spots-cards"] .mode-tip-button').first().click();
-      await expect(page.locator('.mode-tip:popover-open')).toContainText(/Likely: gap at least 2× normal brew-to-brew noise.*Possible: 1\.5 to 2×.*below, none/);
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Likely / Possible: the gap is 2×+ / 1.5–2× normal brew-to-brew noise.');
     } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
@@ -2307,7 +2325,7 @@ export const STATES: State[] = [
       const grind = page.locator('[data-section="brewing-grind"]');
       await expect(grind.locator('.bar-label')).toHaveText(['5.0', '5.5', '6.0']);
       await grind.locator('.bar-row').first().click();
-      await expect(grind.locator('.cell-tip .tip-title')).toHaveText('5.0 – 5.4');
+      await expect(grind.locator('.cell-tip .tip-title').first()).toHaveText('5.0 – 5.4');
     } },
   { name: 'insights-brewing-tip', path: () => '/insights?tab=brewing',
     act: async (page) => {
@@ -2378,7 +2396,7 @@ export const STATES: State[] = [
       // Every small-sample row carries the Low confidence chip in its name cell, on one line, inside the cell.
       for (const row of await map.locator('tbody tr.small-sample').all()) {
         const chip = row.locator('th .sample-chip');
-        await expect(chip).toHaveText('Low confidence');
+        await expect(chip).toHaveText(/^Only \d+ (bags?|brews?)$/);
         expect(await row.evaluate((tr) => { const c = tr.querySelector('th .sample-chip')!.getBoundingClientRect(), th = tr.querySelector('th')!.getBoundingClientRect(); return c.height < 24 && c.right <= th.right + 1; })).toBe(true);
       }
       // The pinned name column is opaque and fills the cell gap beside it (ui-rules 43): no cell shows beside or under a name.

@@ -1303,7 +1303,7 @@
     color: var(--color-accent);
     font-size: 0.72rem;
   }
-  /* A Hint badge: the same pill, muted (Insights, Sweet spots and the lab charts and boards). */
+  /* A Possible badge: the same pill, muted (Insights, Sweet spots and the lab charts and boards). */
   :global(.hl-badge.hint) {
     background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
     color: var(--color-text-muted);

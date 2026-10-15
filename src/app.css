@@ -43,9 +43,9 @@
   --chip-ink: #2b211b;
   --map-empty: #6b6b6b;
   /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: 7 hues x 2 tones = 14
-     slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. Mids are the same hue as their
-     pastel, clearly deeper. Light theme: 7 mids first, then 7 pastels; dark theme: pastels, then mids.
-     -ink = the slot as text on the card (4.5:1); pale tones carry a swatch outline; "Other" is a neutral
+     slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. The deeper tone is the same hue as
+     its pastel. Both themes: 7 pastels first, then the 7 deeper tones.
+     -ink = the slot as text on the card (4.5:1) and as the 1px outline of its fill (pastels fail 3:1 alone); "Other" is a neutral
      gray, distinct from every slot (palette.test.ts). */
   --series-1: #a8bffd;
   --series-1-ink: #4d6eda;
@@ -62,19 +62,19 @@
   --series-7: #7fdcea;
   --series-7-ink: #06818c;
   --series-8: #698dfd;
-  --series-8-ink: #667393;
+  --series-8-ink: #4d6eda;
   --series-9: #ae57bb;
-  --series-9-ink: #93639b;
+  --series-9-ink: #a851b5;
   --series-10: #fc7184;
-  --series-10-ink: #876c6e;
+  --series-10-ink: #ca445b;
   --series-11: #c06408;
-  --series-11-ink: #996846;
+  --series-11-ink: #b45c00;
   --series-12: #abac11;
-  --series-12-ink: #777838;
+  --series-12-ink: #767704;
   --series-13: #069954;
-  --series-13-ink: #3a8155;
+  --series-13-ink: #048448;
   --series-14: #01baca;
-  --series-14-ink: #0a7f8c;
+  --series-14-ink: #06818c;
   --series-other: #a8a8a8;
   --series-other-ink: #6b6b6b;
   /* The chart browns (ui-rules 42): 1-3 series take these in order (brown, tan, sand); 4+ take --series-*. */
@@ -2451,6 +2451,10 @@ td > .action-buttons.under-form {
   padding: 0;
   list-style: none;
   font-size: 0.8rem;
+}
+.tip-sample {
+  display: block;
+  margin-top: var(--space-2);
 }
 .tip-lines li + li {
   margin-top: 0.25rem;

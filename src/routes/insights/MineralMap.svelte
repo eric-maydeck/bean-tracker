@@ -5,7 +5,7 @@
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { MineralMap } from '$lib/server/insights/lab';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { sampleBody } from '$lib/sample';
+  import { sampleField } from '$lib/sample';
   import { noMatch, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
 
@@ -25,9 +25,9 @@
   const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit ? `${+v.toFixed(1)}` : v.toFixed(2));
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
-    rows: [['Brews', `${r.brews}`], ['Bags', `${r.bags}`],
-      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—']],
-    ...sampleBody(r.sample),
+    rows: [...(r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]]),
+      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—']] as [string, string][],
+    ...sampleField(r.sample, r.delta !== null),
     note: r.delta === null ? noMatch('recipe') : undefined
   });
 

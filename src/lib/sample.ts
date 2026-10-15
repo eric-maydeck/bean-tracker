@@ -5,13 +5,17 @@ export const POOLED_MIN_BREWS = 10;
 export const BAG_MIN_BREWS = 4;
 export interface Sample { bags: number; brews: number; small: boolean; one?: boolean }
 // A result pooled over several bags: a roaster, origin, roast level, chart bar, heatmap cell, finding.
+// No brews at all is no data, not low confidence: never small (so no chip or fold on an empty cell or bar).
 export const pooled = (bags: number, brews: number): Sample =>
-  ({ bags, brews, small: bags < POOLED_MIN_BAGS || brews < POOLED_MIN_BREWS });
+  ({ bags, brews, small: brews > 0 && (bags < POOLED_MIN_BAGS || brews < POOLED_MIN_BREWS) });
 // A result about one bag or coffee.
-export const single = (brews: number): Sample => ({ bags: 1, brews, small: brews < BAG_MIN_BREWS, one: true });
-// The chip's label, wherever a small sample is marked (the count lives in the tip, never in the chip).
-export const SAMPLE_LABEL = 'Low confidence';
+export const single = (brews: number): Sample => ({ bags: 1, brews, small: brews > 0 && brews < BAG_MIN_BREWS, one: true });
+// The tip's title, wherever a small sample is marked; the chip itself reads chipLabel (a short count).
+export const TIP_TITLE = 'Low confidence';
 const n = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;
+// The chip's short count (2A): what is short, bags when they are, else brews; the tip says why and what is needed.
+export const chipLabel = (s: Sample) => `Only ${s.bags < POOLED_MIN_BAGS && !s.one ? n(s.bags, 'bag') : n(s.brews, 'brew')}`;
+export const CHIP_EXAMPLE = 'Only 2 bags'; // the legend's sample chip
 // The tip: the plain reason (bags when they are short, else brews) and the exact counts. `paired`: the counts
 // are of same-bag paired brews, so the rows say so beside plain columns.
 export const sampleTip = (s: Sample, paired = false): { lines: string[]; rows: [string, string][] } => {
@@ -25,8 +29,8 @@ export const sampleTip = (s: Sample, paired = false): { lines: string[]; rows: [
     rows: [[k('bags'), String(s.bags)], rated]
   };
 };
-// A data tip's reason line for a small sample (its own count rows stay); nothing when the sample is fine.
-export const sampleBody = (s: Sample) => (s.small ? { lines: sampleTip(s).lines } : {});
-// The one legend line, wherever a help popover explains the chip.
+// A tip's `sample` field: the one block every marker shows (TipBody): the title, the reason, the counts.
+export const sampleField = (s: Sample, paired = false) => (s.small ? { sample: { s, paired } } : {});
+// The one legend line, wherever a help popover explains the chip (TipBody renders the chip and the swatch).
 export const SAMPLE_HELP =
-  `${SAMPLE_LABEL}: a small sample (under ${POOLED_MIN_BAGS} bags or ${POOLED_MIN_BREWS} rated brews; one coffee: under ${BAG_MIN_BREWS}), so one bag or brew can swing it.`;
+  `${CHIP_EXAMPLE}: low confidence, under ${POOLED_MIN_BAGS} bags or ${POOLED_MIN_BREWS} rated brews (one coffee: under ${BAG_MIN_BREWS}), so one bag or brew can swing it.`;

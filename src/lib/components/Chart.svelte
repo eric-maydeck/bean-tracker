@@ -2,7 +2,7 @@
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { seriesToken } from './chartColor';
-  import { SAMPLE_LABEL, sampleTip, type Sample } from '$lib/sample';
+  import { sampleField, type Sample } from '$lib/sample';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { type Tip } from './TipBody.svelte';
 
@@ -112,7 +112,7 @@
   // label/value row (a line without a value stays a line).
   let tipAt = $state<{ x: number; y: number; tip: Tip } | null>(null);
   let tipAnchor: HTMLSpanElement | undefined = $state();
-  const external = ({ tooltip }: { tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[] } }) => {
+  const external = ({ tooltip }: { tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: { datasetIndex: number; dataIndex: number }[] } }) => {
     if (!tooltip.opacity) return (tipAt = null);
     const all = (tooltip.body ?? []).flatMap((b) => b.lines);
     const split = all.map((l) => [l, l.lastIndexOf(': ')] as const);
@@ -120,7 +120,9 @@
     const lines = split.filter(([, i]) => i <= 0).map(([l]) => l);
     const title = (tooltip.title ?? []).join(' ');
     // No title: one row's label is the title over its value; several rows keep all of them under no title.
-    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) } };
+    const dp = tooltip.dataPoints?.[0];
+    const sample = dp && dp.datasetIndex === 0 && samples?.[dp.dataIndex] ? sampleField(samples[dp.dataIndex]) : {};
+    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
   };
 
   // The site's palette by position (ui-rules 42); `ink`: the same slot's -ink token, which outlines pastel fills.
@@ -291,7 +293,7 @@
           const ctx = c.ctx, chip = themeColor('--chip');
           c.getDatasetMeta(0).data.forEach((bar, i) => {
             const { x, y, width } = bar.getProps(['x', 'y', 'width'], true) as { x: number; y: number; width: number };
-            if (!samples[i]?.small || !Number.isFinite(y)) return;
+            if (!samples[i]?.small || values[i] == null || !Number.isFinite(y)) return;
             const w = Math.min(9, width), r = x + width / 2;
             ctx.save();
             ctx.fillStyle = chip;
@@ -319,8 +321,7 @@
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
               const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
-              const s = ctx.datasetIndex === 0 ? samples?.[ctx.dataIndex] : undefined;
-              return s?.small ? [line, `${SAMPLE_LABEL}: ${sampleTip(s).rows.map((r) => r.join(' ')).join(' · ')}`] : line;
+              return line;
             } } }
             : trendValues
             ? {

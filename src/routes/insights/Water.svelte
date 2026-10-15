@@ -5,7 +5,7 @@
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
-  import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINES } from './DeltaBars.svelte';
+  import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
@@ -72,7 +72,7 @@
       {#if t.recipes.length}
         <section class="chart-panel" class:span={!t.gh.length} data-section="water-recipes" style:--row-h="3rem">
           <LabHead id="water-recipes" title="Ratings by recipe" {placeTip}
-            help={[...SAME_BAG_HELP, ...STRENGTH_LINES, 'Columns: rated brews, bags, average rating, SD; under the name, the months used.',
+            help={[...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD; under the name, the months used.',
               'No match: never brewed on the same bag as another recipe.']} />
           <div class="fit-body"><LabBoard rows={t.recipes} noun="recipe" {placeTip} /></div>
         </section>

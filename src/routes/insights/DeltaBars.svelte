@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { BandStat } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleBody } from '$lib/sample';
+  import { SAMPLE_HELP, sampleField } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
@@ -11,7 +11,7 @@
     'Only bags brewed 2+ ways (2+ brews each) count.',
     SAMPLE_HELP
   ];
-  export const STRENGTH_LINES = ['Likely: gap at least 2× normal brew-to-brew noise, probably real; Possible: 1.5 to 2×, could be chance; below, none.'];
+  export const STRENGTH_LINE = 'Likely / Possible: the gap is 2×+ / 1.5–2× normal brew-to-brew noise.';
   // The SD help, wherever SD shows (T2).
   export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', '', 'Small: consistent.', 'Big: hit or miss.'] };
   // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.
@@ -29,7 +29,7 @@
       ? { title: b.range ?? b.label, note: 'No brews in this band.' }
       : b.delta === null
       ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
-      : { title: b.range ?? b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)]], ...sampleBody(b.sample) }) as Tip
+      : { title: b.range ?? b.label, rows: [...(b.sample.small ? [] : [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`]]), ['Avg rating', b.adjusted.toFixed(2)]], ...sampleField(b.sample, true) }) as Tip
   }));
 </script>
 
@@ -116,7 +116,7 @@
           style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
       <span class="bar-value {colors === 'direction' ? '' : deltaInk(b.value)}">
-        {b.value === null ? b.text || 'few brews' : b.text}
+        {b.text}
         {#if b.strength === 'solid' || b.strength === 'hint'}<span class="badge hl-badge" class:hint={b.strength === 'hint'}>{STRENGTH[b.strength]}</span>{/if}
       </span>
     </div>
@@ -210,6 +210,7 @@
   }
   .bar.up.clip {
     clip-path: polygon(0 -40%, calc(100% - 9px) -40%, 100% 50%, calc(100% - 9px) 140%, 0 140%);
+    background-position: right 9px top 0, 0 0; /* a small bar's fold sits before the arrow taper */
   }
   .bar-value {
     display: inline-flex;

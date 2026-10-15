@@ -586,9 +586,9 @@ describe('sample rule in the lab', () => {
     const st = pairedDeltas([...many(3, 1, 92, 8), ...many(3, 2, 88, 8)], temp);
     expect(st.every((s) => s.delta === null && s.sample.brews === 3 && s.sample.bags === 1)).toBe(true);
   });
-  it('cells carry a sample; empty stats are small', () => {
+  it('cells carry a sample; empty stats are no data', () => {
     expect(cellOf({ delta: 0.2, solid: false, brews: 12, bags: 3 }).sample.small).toBe(false);
     expect(cellOf({ delta: 0.2, solid: false, brews: 9, bags: 3 }).sample.small).toBe(true);
-    expect(emptyStat({ label: 'x', order: 0 }).sample).toEqual({ bags: 0, brews: 0, small: true });
+    expect(emptyStat({ label: 'x', order: 0 }).sample).toEqual({ bags: 0, brews: 0, small: false });
   });
 });

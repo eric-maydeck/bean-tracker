@@ -2,7 +2,7 @@
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
-  import { SAMPLE_HELP, sampleBody } from '$lib/sample';
+  import { SAMPLE_HELP, sampleField } from '$lib/sample';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
@@ -42,7 +42,7 @@
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
         help={["A cell: the roast level's bags' average rating in that window (each bag once), minus its usual.",
-          'Green: better than usual.', 'Red: worse.', "Outlined: the row's best window (2+ solid cells).", SAMPLE_HELP,
+          'Green: better than usual.', 'Red: worse.', "Outlined: the row's best window (2+ well-sampled cells).", SAMPLE_HELP,
           'It compares bags, not brews of one bag, so it also moves with which coffees rested longer.']} />
       <LabHeatmap by={t.rest} best={t.rest.best} vs="usual" noun="rest window" scale={['Below the roast level\'s usual', 'Above']}
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />
@@ -85,7 +85,7 @@
                 <div class="fit-body">
                   <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
-                      tip: { title: d.label, rows: [['Bags', `${d.bags}`]], ...sampleBody(d.sample) } }))} />
+                      tip: { title: d.label, rows: d.sample.small ? [] : [['Bags', `${d.bags}`]], ...sampleField(d.sample) } }))} />
                 </div>
                 <p class="chart-note">Negative = finer. {grinderName}</p>
               </section>

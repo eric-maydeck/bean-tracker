@@ -111,7 +111,7 @@ export interface Spot {
 // value null: a no-match band (brews, never paired on the same bag): tier 1 of an ordered dial (grind) keeps it, so
 // the chart spans every setting brewed, lowest to highest (round 3, S-grind); bags/brews are then its plain counts.
 export interface SpotBand { label: string; range?: string; value: number | null; bags: number; brews: number; solid: boolean; sample: Sample }
-// The Insights tab's two badges: Solid wins, Hint leans (spec "Strong/Likely/Hint" mapped onto them).
+// The Insights tab's two badges: Likely wins (strength 'solid'), Possible leans (strength 'hint') (spec "Strong/Likely/Hint" mapped onto them).
 export const verdictOf = (s: Strength | null): Spot['verdict'] => (s === 'solid' ? 'win' : s === 'hint' ? 'leaning' : 'none');
 
 // Sweet spots grouping ladder (spec): same bag within the slice, else bag means within the narrowest
