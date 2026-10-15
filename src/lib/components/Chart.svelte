@@ -123,10 +123,11 @@
     tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) } };
   };
 
-  function paletteColors(count: number): string[] {
+  // The site's palette by position (ui-rules 42); `ink`: the same slot's -ink token, which outlines pastel fills.
+  function paletteColors(count: number, ink = ''): string[] {
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
-      colors.push(themeColor(seriesToken(i % 14, count))); // the site's palette by position (ui-rules 42)
+      colors.push(themeColor(seriesToken(i % 14, count) + ink));
     }
     return colors;
   }
@@ -213,7 +214,9 @@
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
     const lineColor = themeColor(seriesToken(0, series.length + 1)); // brown up to 3 series, else the palette's first slot
+    const lineInk = themeColor(`${seriesToken(0, series.length + 1)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
     const bgColors = paletteColors(labels.length);
+    const inkColors = paletteColors(labels.length, '-ink');
     const vbar = type === 'bar' && vertical;
 
     chart?.destroy();
@@ -233,7 +236,7 @@
                 data: values,
                 // ponytail: assumes the color is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
-                backgroundColor: `${lineColor}4d`,
+                backgroundColor: `${lineInk}4d`,
                 barPercentage: 1,
                 categoryPercentage: 1
               }
@@ -241,9 +244,9 @@
             ? {
                 label: datasetLabel,
                 data: values,
-                borderColor: lineColor,
-                backgroundColor: lineColor,
-                pointBackgroundColor: lineColor,
+                borderColor: lineInk,
+                backgroundColor: lineInk,
+                pointBackgroundColor: lineInk,
                 borderWidth: 2,
                 pointRadius: dots ? 3 : 0,
                 tension: 0.25,
@@ -251,21 +254,21 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : lineColor, borderWidth: 0 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : lineColor, borderColor: lineInk, borderWidth: 1 }
             : {
                 label: datasetLabel,
                 data: values,
                 backgroundColor: bgColors,
-                borderWidth: type === 'doughnut' ? 2 : 0,
-                borderColor: surfaceColor
+                borderWidth: 1,
+                borderColor: inkColors
               },
           ...(type === 'line' && trendValues
             ? [
                 {
                   label: trendLabel,
                   data: trendValues,
-                  borderColor: lineColor,
-                  backgroundColor: lineColor,
+                  borderColor: lineInk,
+                  backgroundColor: lineInk,
                   borderWidth: 2.5,
                   pointRadius: 0,
                   pointHoverRadius: 4,
@@ -276,11 +279,27 @@
             : []),
           ...series.map((x, i) =>
             x.dashed
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineColor, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineColor}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderWidth: 0 }
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), borderWidth: 1 }
           )
         ]
       },
+      // The amber corner fold of a small-sample bar (top right, 9px like the HTML .small-sample-mark; ui-rules 29).
+      plugins: samples && vbar ? [{
+        id: 'sampleFold',
+        afterDatasetsDraw(c) {
+          const ctx = c.ctx, chip = themeColor('--chip');
+          c.getDatasetMeta(0).data.forEach((bar, i) => {
+            const { x, y, width } = bar.getProps(['x', 'y', 'width'], true) as { x: number; y: number; width: number };
+            if (!samples[i]?.small || !Number.isFinite(y)) return;
+            const w = Math.min(9, width), r = x + width / 2;
+            ctx.save();
+            ctx.fillStyle = chip;
+            ctx.beginPath(); ctx.moveTo(r - w, y); ctx.lineTo(r, y); ctx.lineTo(r, y + w); ctx.closePath(); ctx.fill();
+            ctx.restore();
+          });
+        }
+      }] : [],
       options: {
         indexAxis: type === 'bar' && !vertical ? 'y' : undefined,
         responsive: true,

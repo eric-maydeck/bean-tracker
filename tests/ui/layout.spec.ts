@@ -2375,6 +2375,12 @@ export const STATES: State[] = [
         return ok;
       });
       expect(pinned).toBe(true);
+      // Every small-sample row carries the Low confidence chip in its name cell, on one line, inside the cell.
+      for (const row of await map.locator('tbody tr.small-sample').all()) {
+        const chip = row.locator('th .sample-chip');
+        await expect(chip).toHaveText('Low confidence');
+        expect(await row.evaluate((tr) => { const c = tr.querySelector('th .sample-chip')!.getBoundingClientRect(), th = tr.querySelector('th')!.getBoundingClientRect(); return c.height < 24 && c.right <= th.right + 1; })).toBe(true);
+      }
       // The pinned name column is opaque and fills the cell gap beside it (ui-rules 43): no cell shows beside or under a name.
       const edge = await map.locator('tbody th').first().evaluate((th) => { const c = getComputedStyle(th); return { bg: c.backgroundColor, shadow: c.boxShadow }; });
       expect(edge.bg).not.toMatch(/rgba\(.*, 0\)|transparent/);

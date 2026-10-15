@@ -47,33 +47,33 @@
      pastel, clearly deeper. Light theme: 7 mids first, then 7 pastels; dark theme: pastels, then mids.
      -ink = the slot as text on the card (4.5:1); pale tones carry a swatch outline; "Other" is a neutral
      gray, distinct from every slot (palette.test.ts). */
-  --series-1: #7b9bfd;
+  --series-1: #a8bffd;
   --series-1-ink: #4d6eda;
-  --series-2: #b15ebe;
+  --series-2: #d9a6e3;
   --series-2-ink: #a851b5;
-  --series-3: #fc8696;
+  --series-3: #ffb7c1;
   --series-3-ink: #ca445b;
-  --series-4: #c97b2d;
+  --series-4: #fdc58b;
   --series-4-ink: #b45c00;
-  --series-5: #b3b429;
+  --series-5: #d8db80;
   --series-5-ink: #767704;
-  --series-6: #2ba86e;
+  --series-6: #92dba9;
   --series-6-ink: #048448;
-  --series-7: #13bfce;
+  --series-7: #7fdcea;
   --series-7-ink: #06818c;
-  --series-8: #cad9fd;
+  --series-8: #698dfd;
   --series-8-ink: #667393;
-  --series-9: #f4bffc;
+  --series-9: #ae57bb;
   --series-9-ink: #93639b;
-  --series-10: #fedfe1;
+  --series-10: #fc7184;
   --series-10-ink: #876c6e;
-  --series-11: #ffc7a3;
+  --series-11: #c06408;
   --series-11-ink: #996846;
-  --series-12: #eaeda9;
+  --series-12: #abac11;
   --series-12-ink: #777838;
-  --series-13: #a4edbb;
+  --series-13: #069954;
   --series-13-ink: #3a8155;
-  --series-14: #93f2ff;
+  --series-14: #01baca;
   --series-14-ink: #0a7f8c;
   --series-other: #a8a8a8;
   --series-other-ink: #6b6b6b;

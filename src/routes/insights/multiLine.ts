@@ -82,6 +82,6 @@ export function lines(m: Multi) {
       if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push([px(i, n) + 0.8, py(v)]); // a lone point: a dash
     });
     if (run.length) runs.push(smooth(run));
-    return { label: l.label, runs, color: colors[k] };
+    return { label: l.label, runs, color: inkOf(colors[k]) }; // strokes use the -ink token: a pastel line alone fails 3:1
   });
 }

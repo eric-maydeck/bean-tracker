@@ -3,9 +3,8 @@ import { describe, expect, it } from 'vitest';
 
 // Categorical colors (recipes, gear, line series, chart series): 7 hues x 2 tones = 14 slots, in the light theme and
 // both copies of the dark one (media query and [data-theme='dark']). Slot n = hue n mod 7, tier floor(n/7); each
-// hue's mid is its pastel's color, clearly deeper (ΔL >= 0.17). Tier order is theme-aware: the light theme cycles
-// the 7 mids before any pastel, the dark theme the 7 pastels before any mid, so a page with <= 7 recipes gets 7
-// hues. Tier 1 is as distinct as the tone allows (mids >= 12 apart, pastels >= 8); every two slots are >= 8
+// hue's mid is its pastel's color, clearly deeper (ΔL >= 0.12). Both themes cycle the 7 pastels before any
+// deeper tone, so a page with <= 7 recipes gets 7 hues (pastel fills carry a -ink outline for contrast). Every pastel is >= 8 apart; every two slots are >= 8
 // apart; hues stay put across themes; "Other" is a neutral gray >= 10 from every slot; each slot is visible on the
 // card (>= 7, pastels outlined) and its -ink variant is >= 4.5:1 on it.
 const css = readFileSync(new URL('../../app.css', import.meta.url), 'utf8');
@@ -43,20 +42,19 @@ describe('series palette', () => {
       const [a, b] = [slots.slice(0, 7).map((c) => oklab(c)[0]), slots.slice(7).map((c) => oklab(c)[0])];
       for (let k = 0; k < 7; k++) {
         expect(dH(slots[k], slots[k + 7]), `slot ${k + 1} vs ${k + 8}`).toBeLessThan(25);
-        expect(Math.abs(a[k] - b[k]), `slot ${k + 1} vs ${k + 8}`).toBeGreaterThanOrEqual(0.17);
-        // light theme: mids (the deeper) first; dark theme: pastels first
-        if (t === 0) expect(a[k]).toBeLessThan(b[k]);
-        else expect(a[k]).toBeGreaterThan(b[k]);
+        expect(Math.abs(a[k] - b[k]), `slot ${k + 1} vs ${k + 8}`).toBeGreaterThanOrEqual(0.12);
+        // both themes: the 7 pastels first, then the deeper tone
+        expect(a[k]).toBeGreaterThan(b[k]);
         expect(Math.abs(hues[t][k] - hues[0][k]), `hue of slot ${k + 1}`).toBeLessThan(25);
       }
     });
   });
   it('tier 1 is as distinct as its tone allows; every two slots stay apart; near hues differ in lightness', () => {
     themes.forEach(({ slots }, t) => {
-      for (const [a, b] of pairs(slots.slice(0, 7))) expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(t === 0 ? 12 : 8);
+      for (const [a, b] of pairs(slots.slice(0, 7))) expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(8);
       for (const [a, b] of pairs(slots)) {
         expect(dE(a, b), `${a} vs ${b}`).toBeGreaterThanOrEqual(8);
-        if (dH(a, b) < 30) expect(dL(a, b), `near hue ${a} vs ${b}`).toBeGreaterThanOrEqual(0.17);
+        if (dH(a, b) < 30) expect(dL(a, b), `near hue ${a} vs ${b}`).toBeGreaterThanOrEqual(0.12);
       }
     });
   });

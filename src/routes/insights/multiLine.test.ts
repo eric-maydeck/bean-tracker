@@ -18,10 +18,10 @@ describe('multiLine', () => {
   });
   it('up to 3 colored series are the browns in order; Other muted', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4]], ['A', 'Other', 'B'])).map((l) => l.color)).toEqual(
-      ['var(--series-brown-1)', 'var(--series-other)', 'var(--series-brown-2)']));
+      ['var(--series-brown-1-ink)', 'var(--series-other-ink)', 'var(--series-brown-2-ink)']));
   it('4+ colored series take the categorical slots in order', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4], [4, 5]], ['A', 'B', 'C', 'D'])).map((l) => l.color)).toEqual(
-      ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)']));
+      ['var(--series-1-ink)', 'var(--series-2-ink)', 'var(--series-3-ink)', 'var(--series-4-ink)']));
   it('all-null: no runs, no Infinity', () => {
     expect(lines(m([[null, null]]))[0].runs).toEqual([]);
   });

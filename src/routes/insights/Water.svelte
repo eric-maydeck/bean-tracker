@@ -271,10 +271,11 @@
     flex: none;
     margin-right: 0.3rem;
     border-radius: 2px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent);
+    box-shadow: inset 0 0 0 1px var(--ia);
     background: var(--ca);
   }
   .pair-col.b .swatch {
+    box-shadow: inset 0 0 0 1px var(--ib);
     background: var(--cb);
   }
   .pair-bags {

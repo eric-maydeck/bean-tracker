@@ -3,7 +3,7 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { Multi } from '$lib/server/insights/insightGenerators';
-  import { capList, seriesColors } from './multiLine';
+  import { capList, inkOf, seriesColors } from './multiLine';
 
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.
@@ -69,7 +69,7 @@
           {#each m.lines as l, k (k)}
             {@const v = l.values[i] ?? 0}
             {#if v > 0}
-              <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]}
+              <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]} style:--ink={inkOf(colors[k])}
                 aria-label={tipText(tipOf(k, i, Infinity))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
             {/if}
           {/each}
@@ -81,7 +81,7 @@
     </div>
   </div>
   <ul class="legend" aria-hidden="true">
-    {#each m.lines as l, k (k)}<li><span class="swatch" style:background={colors[k]}></span>{l.label}</li>{/each}
+    {#each m.lines as l, k (k)}<li><span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}</li>{/each}
   </ul>
   {#if tip && m.lines[tip.k]}
     <FloatTip anchor={tip.el}><TipBody tip={tipOf(tip.k, tip.i)} /></FloatTip>
@@ -147,6 +147,7 @@
     flex-basis: 0;
     box-sizing: border-box;
     cursor: pointer;
+    box-shadow: inset 0 0 0 1px var(--ink); /* pastel fills: the outline carries the 3:1 (ui-rules 42) */
   }
   .seg:not(:last-child) {
     border-top: 2px solid var(--color-surface);
@@ -205,6 +206,6 @@
     width: 0.6rem;
     height: 0.6rem;
     border-radius: 2px;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-text) 30%, transparent); /* light tiers stay visible on the card */
+    box-shadow: inset 0 0 0 1px var(--ink); /* pastel fills: the outline carries the 3:1 (ui-rules 42) */
   }
 </style>
