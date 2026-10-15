@@ -4,6 +4,7 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { MineralMap } from '$lib/server/insights/lab';
+  import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleBody } from '$lib/sample';
   import { noMatch, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
@@ -59,7 +60,7 @@
       {#each map.rows as r, i (i)}
         <tr class:small-sample={r.sample.small}>
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
-            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>
+            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span>{#if r.sample.small}<span class="map-note"><SampleNote s={r.sample} paired={r.delta !== null} /></span>{/if}</th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
           <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip" class:small-sample-mark={r.sample.small}
             style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{signed(r.delta)}</span>{/if}</td>
@@ -114,6 +115,11 @@
     font-weight: 500;
     cursor: pointer;
     border-radius: 2px;
+  }
+  /* The Low confidence chip sits under a small row's name (the column is 8-14rem wide). */
+  .map-note {
+    display: block;
+    margin-top: 0.15rem;
   }
   .map-name:focus-visible {
     outline: 2px solid var(--color-accent);
