@@ -19,10 +19,6 @@
   import Water from './Water.svelte';
   import Gear from './Gear.svelte';
   import Recent from './Recent.svelte';
-  import { page } from '$app/state'; // PREVIEW-TEMP
-  // PREVIEW-TEMP: ?v=a|b|c bar hover variant, ?place=first|last Recent panel position.
-  const previewV = $derived(page.url.searchParams.get('v') ?? 'a'); // PREVIEW-TEMP
-  const recentFirst = $derived(page.url.searchParams.get('place') === 'first'); // PREVIEW-TEMP
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
 
@@ -551,8 +547,6 @@
   </section>
 {/snippet}
 
-<!-- PREVIEW-TEMP: wrapper carries the hover variant; display: contents keeps layout unchanged. -->
-<div style="display: contents" data-hover-variant={previewV}>
 {#if data.boards}
   <Leaderboards
     boards={data.boards}
@@ -610,14 +604,12 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
 {:else}
-  {#if recentFirst && data.recent}<Recent {...data.recent} />{/if}<!-- PREVIEW-TEMP -->
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
   {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}
-  {#if !recentFirst && data.recent}<Recent {...data.recent} />{/if}
+  {#if data.recent}<Recent {...data.recent} />{/if}
 {/if}
-</div><!-- PREVIEW-TEMP -->
 
 <style>
   /* Labeled controls, left-packed, one column each on wider screens. */
@@ -1043,7 +1035,6 @@
      text on top. On hover it deepens toward accent, with the tiles' timing (.hl-card); reduced motion is global. */
   :global(.board-row.bar) {
     isolation: isolate;
-    transition: background-color 150ms ease; /* PREVIEW-TEMP: variant C tints the row */
   }
   :global(.board-row.bar::before) {
     content: '';
@@ -1059,13 +1050,6 @@
     /* --map-high is the accent itself in the light theme, so the hover deepens the bar (2× alpha). */
     :global(.board-row.bar:hover::before) {
       background: color-mix(in oklab, var(--color-accent) calc(var(--bar-alpha) * 2), transparent);
-    }
-    /* PREVIEW-TEMP: variants B (stronger bar) and C (A + row tint). */
-    :global([data-hover-variant='b'] .board-row.bar:hover::before) {
-      background: var(--map-high);
-    }
-    :global([data-hover-variant='c'] .board-row.bar:hover) {
-      background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
     }
   }
   /* Thin rows (few bags / few brews): muted color, not opacity (dimmed text at 60% fell under 4.5:1). */
