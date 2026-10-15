@@ -1776,6 +1776,21 @@ export const STATES: State[] = [
       await at(1280, 800, '/insights?range=all');
     }
   },
+  // A feed shorter than the full side ruler caps it to the feed: it never sticks out below (M10). A window
+  // taller than the week's feed makes it short whatever the data; checked at w1280 (the side ruler).
+  { name: 'insights-milestones-short', path: () => '/insights?tab=milestones&range=1w',
+    act: async (page) => {
+      if (page.viewportSize()!.width !== 1280) return;
+      const feed = page.locator('.feed'), ruler = page.locator('nav.ruler');
+      await page.setViewportSize({ width: 1280, height: Math.round((await feed.boundingBox())!.height) + 600 });
+      await reloadReady(page);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+      // The feed's content end (the grid stretches the feed's own box to the ruler).
+      const r = (await ruler.boundingBox())!, end = await feed.evaluate((e) => e.lastElementChild!.getBoundingClientRect().bottom);
+      expect(Math.abs(r.y + r.height - end), 'ruler ends with the feed').toBeLessThanOrEqual(1);
+      await page.setViewportSize({ width: 1280, height: 800 });
+    }
+  },
   { name: 'insights-milestones', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
       await expect(page.locator('.milestone-feed li').first()).toBeVisible();
@@ -1815,6 +1830,21 @@ export const STATES: State[] = [
         expect((await page.locator('.feed').boundingBox())!.width).toBeGreaterThan(feedW);
         await page.setViewportSize(size);
         await expect(ruler).toBeVisible();
+        // Top to bottom in steps: the side ruler keeps one height while on screen, and at the feed's
+        // end it slides up and off with it (native sticky) instead of shrinking (M10).
+        await page.evaluate(() => document.querySelector('.timeline')!.scrollIntoView());
+        await settle();
+        const full = (await ruler.boundingBox())!.height;
+        const seen: { y: number; h: number }[] = [];
+        for (let i = 0; i < 400 && (await page.locator('.feed').boundingBox())!.y + (await page.locator('.feed').boundingBox())!.height > 0; i++) {
+          await page.evaluate(() => scrollBy(0, 250));
+          await settle();
+          const b = (await ruler.boundingBox())!;
+          if (b.y + b.height > 0) seen.push({ y: b.y, h: b.height });
+        }
+        expect(seen.length).toBeGreaterThan(2);
+        for (const r of seen) expect(Math.abs(r.h - full), `ruler height ${r.h} vs ${full}`).toBeLessThanOrEqual(1);
+        expect(Math.min(...seen.map((r) => r.y)), 'ruler slides up with the feed end').toBeLessThan(0);
         await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       }
       // A press 60% through the newest month's band lands 60% down its section, at the top of the

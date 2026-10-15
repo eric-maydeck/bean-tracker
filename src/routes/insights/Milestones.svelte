@@ -44,7 +44,7 @@
   // The side bar's full height: the viewport under the filter bar, less its 0.75rem margins.
   let innerH = $state(0);
   let fullH = $derived(innerH - barH - 24);
-  // Labels are thinned for the full length, so a ruler shrinking at the feed's end keeps them.
+  // Labels are thinned for the full length (a short feed's capped ruler keeps them).
   let ticks = $derived(rulerTicks(m.months.map((g) => g.month), vertical ? fullH : tw, vertical ? 22 : 72));
   let feed: HTMLElement | undefined = $state();
   let nav: HTMLElement | undefined = $state();
@@ -56,7 +56,8 @@
   // Where the feed's visible top is along the ruler (0..1): a small fixed-size thumb (feedback M8).
   let pos: number | null = $state(null);
   let current = $derived(pos === null ? null : tickAt(ticks, pos).ym);
-  // The side bar shrinks to end with the feed, so it never runs out of sticky track (M10).
+  // The side bar keeps one height while scrolling and slides off with the feed's end (native sticky);
+  // only a feed shorter than the full height caps it, so it never sticks out below the feed (M10).
   let rulerH: number | null = $state(null);
   // A screen too short for a usable side ruler (under 200px under the bars) drops it, and the feed
   // takes its column (M11). Viewport only, so it changes on resize, never mid-scroll.
@@ -73,10 +74,25 @@
     if (!feed || !nav || !ticks.length) return;
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
     pos = feedToRuler(ticks, secs, top + 8); // a few px in: a header just under the bars counts as in view
-    // Not mid-drag: a ruler resizing under the pointer would feed back into the scrub.
-    // Shrinks to end with the feed (down to MIN_RULER, then slides off with it); not mid-drag.
-    if (!dragging) rulerH = vertical && !hideRuler ? Math.max(MIN_RULER, Math.min(fullH, feed.getBoundingClientRect().bottom - (barH + 12))) : null;
   }
+  // The ruler's height, never on scroll: the full height, capped to where the feed's content ends below
+  // the ruler's own top in the (unstuck) timeline. The content's end, not the feed box: the grid stretches
+  // that to the ruler. Rects relative to the timeline don't move with the scroll.
+  function size() {
+    const end = feed?.lastElementChild;
+    if (!end || !nav || !vertical || hideRuler) return void (rulerH = null);
+    const tl = nav.parentElement!.getBoundingClientRect().top;
+    rulerH = Math.min(fullH, end.getBoundingClientRect().bottom - tl - parseFloat(getComputedStyle(nav).marginTop));
+  }
+  // On load, resize and a new feed (period, kinds): the feed's box can't tell, as the grid may stretch it.
+  $effect(() => {
+    void m.months;
+    if (!feed) return;
+    size();
+    const ro = new ResizeObserver(size);
+    ro.observe(feed);
+    return () => ro.disconnect();
+  });
   $effect(() => {
     void ticks;
     void barH;
