@@ -33,11 +33,6 @@ describe('ratedGroups', () => {
     const thin = ratedGroups([b('D', 1, 8), b('D', 2, 8), b('D', 3, 8)], key, 'all', 'raw')[0];
     expect(thin.sample).toEqual({ bags: 3, brews: 3, small: true }); // 3 bags, but under 10 brews
   });
-  it('min3 ranks small samples after the rest', () => {
-    const g = ratedGroups([...brews, b('E', 40, 9.9)], key, 'all', 'min3');
-    expect(g.at(-1)!.label).toBe('A');
-    expect(g.findIndex((x) => x.label === 'E')).toBeGreaterThan(g.findIndex((x) => x.label === 'C'));
-  });
 
   it('adjusted shrinks small groups toward the overall bag mean (K = 5)', () => {
     // overall = (9 + 85 + 50) / 21 = 6.857
@@ -50,7 +45,6 @@ describe('ratedGroups', () => {
   it('adjusted ranks the ten-bag group over the one lucky bag; raw does not', () => {
     expect(ratedGroups(brews, key, 'all', 'adjusted').map((g) => g.label)).toEqual(['B', 'A', 'C']);
     expect(ratedGroups(brews, key, 'all', 'raw').map((g) => g.label)).toEqual(['A', 'B', 'C']); // no minimum
-    expect(ratedGroups(brews, key, 'all', 'min3').map((g) => g.label)).toEqual(['B', 'C', 'A']); // A has 1 bag: last
   });
 
   it('Current leaves early ratings out', () => {
@@ -63,11 +57,6 @@ describe('ratedGroups', () => {
     const odd = [b('A', 1, null), { ...b('A', 1, 7), coffeeId: null }];
     expect(ratedGroups(odd, key, 'all', 'raw')).toEqual([]);
     expect(ratedGroups([b('A', 1, 7)], () => null, 'all', 'raw')).toEqual([]);
-  });
-  it('min3 ranks 3+ bag groups first even when a small group has the higher mean', () => {
-    const small = [b('S', 1, 10), b('T', 2, 10), ...[3, 4, 5].flatMap((i) => [0, 1, 2, 3].map(() => b('L', i, 6))), ...[6, 7, 8].flatMap((i) => [0, 1, 2, 3].map(() => b('M', i, 5)))];
-    expect(ratedGroups(small, key, 'all', 'min3').map((g) => g.label)).toEqual(['L', 'M', 'S', 'T']);
-    expect(ratedGroups(small, key, 'all', 'k2').map((g) => g.label)[0]).not.toBe('L'); // shrinking only, no minimum
   });
   it('k2 shrinks less than adjusted (K = 2 vs 5)', () => {
     const o = 144 / 21;

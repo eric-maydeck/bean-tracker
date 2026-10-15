@@ -60,14 +60,14 @@ describe('leaderboard', () => {
     expect(leaderboard([brew({ filter: '155 (mixed)' })], [], SEPT, 'filter', 'brews', 'all', 'raw')).toEqual([]));
   it('coffees: name, roaster, link, one-bag sample', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'rating', 'all', 'raw')[0]).toEqual({
-      key: '1', label: 'Kiambu', sub: 'Sey', href: '/coffees/sey-kiambu', value: 8.5, bags: 1, brews: 2, sample: { bags: 1, brews: 2, small: true }
+      key: '1', label: 'Kiambu', sub: 'Sey', href: '/coffees/sey-kiambu', value: 8.5, bags: 1, brews: 2, sample: { bags: 1, brews: 2, small: true, one: true }
     }));
-  it('min3: 3+ bag groups before smaller ones; coffees board has no minimum', () => {
+  it('min3: groups under 3 bags are left out; coffees board has no minimum', () => {
     const brews = [
       brew({ coffeeId: 1, roaster: 'Few', rating: 10 }),
       ...[2, 3, 4].flatMap((i) => [0, 1, 2, 3].map(() => brew({ coffeeId: i, roaster: 'Many', rating: 6 })))
     ];
-    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'min3').map((r) => r.label)).toEqual(['Many', 'Few']);
+    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'min3').map((r) => r.label)).toEqual(['Many']);
     expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'raw').map((r) => r.label)).toEqual(['Few', 'Many']);
     expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'k2').map((r) => r.label)).toEqual(['Few', 'Many']);
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'min3').map((r) => r.value)).toEqual([10, 6, 6, 6]);
@@ -89,7 +89,7 @@ describe('leaderboard', () => {
     const roasters = leaderboard(bs, [], SEPT, 'roasters', 'rating', 'all', 'raw');
     expect(roasters[0].sample).toEqual({ bags: 2, brews: 7, small: true });
     const coffees = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw');
-    expect(coffees.map((r) => r.sample)).toEqual([{ bags: 1, brews: 4, small: false }, { bags: 1, brews: 3, small: true }]);
+    expect(coffees.map((r) => r.sample)).toEqual([{ bags: 1, brews: 4, small: false, one: true }, { bags: 1, brews: 3, small: true, one: true }]);
     expect(leaderboard(bs, [], SEPT, 'roasters', 'brews', 'all', 'raw')[0].sample).toBeUndefined();
   });
   it('roast level link includes alias labels', () => {

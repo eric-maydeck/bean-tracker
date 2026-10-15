@@ -63,7 +63,7 @@
   };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Plain average of each bag's rating, all groups ranked together.",
-    min3: 'Plain average; groups with fewer than 3 bags rank after the rest.',
+    min3: 'Plain average; groups with fewer than 3 bags are left out (the Coffees board lists every coffee).',
     k2: "Pulled slightly toward your overall average, so 1–2 bag groups can't top the board (K = 2).",
     adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).',
     best: 'The highest single brew rating in the group.',
@@ -76,7 +76,7 @@
   const HOW: { group: string; items: { id: Avg; text: string; eg: string }[] }[] = [
     { group: 'Average', items: [
       { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews).", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
-      { id: 'min3', text: 'The same average, but groups with fewer than 3 bags rank after the rest.', eg: 'A one-bag roaster at 9.5 ranks below a 3-bag roaster at 8.' },
+      { id: 'min3', text: 'The same average, but groups with fewer than 3 bags are left out.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag roaster at 8 is.' },
       { id: 'k2', text: 'The average pulled toward your overall average, as if every group had 2 extra bags at that average.', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
       { id: 'adjusted', text: 'The same, with 5 extra bags: small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
     ] },

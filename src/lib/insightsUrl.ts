@@ -15,7 +15,7 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 };
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
-// Rating boards' score: raw mean of bag means; min3 (the same, groups under 3 bags last); k2 / adjusted
+// Rating boards' score: raw mean of bag means; min3 (the same, groups under 3 bags left out); k2 / adjusted
 // (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
 // (best pulled toward the overall mean, K = 2 / 5 brews at that score); dial-k2 / dial-k5 (each bag's
 // best half of brews, averaged across bags and shrunk, K = 2 / 5 bags).

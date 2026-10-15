@@ -27,7 +27,7 @@ export interface RatedGroup {
 
 // Bag-weighted: each bag's mean rating is one point, so 40 brews of one bag
 // don't outvote five bags. adjusted = (bags × groupMean + K × overallMean) / (bags + K).
-// Rows come back best first for the mode; min3 ranks small samples (sample.ts) after the rest.
+// Rows come back best first for the mode.
 // best-k*: (hits × best + K × overall) / (hits + K), hits = brews at the group's best score,
 // overall = mean of every counted brew rating on the board (hits are brews, so the prior is too).
 // ponytail: brews with no linked coffee are skipped (every prod bean is linked).
@@ -86,7 +86,6 @@ export function ratedGroups<T extends Rated>(
       return { label, mean: g.sum / g.bags, adjusted, value, dialed: g.dial / g.bags, bags: g.bags, brews: g.brews, sample: pooled(g.bags, g.brews), ...t };
     })
     .sort((a, b) =>
-      (avg === 'min3' ? Number(a.sample.small) - Number(b.sample.small) : 0) ||
       b.value - a.value || (avg.startsWith('best') ? b.atBest - a.atBest : avg.startsWith('dial') ? b.bags - a.bags : 0) || b.mean - a.mean
     );
 }
