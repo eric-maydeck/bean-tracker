@@ -472,6 +472,7 @@ describe('once dialed', () => {
     seed(days(5));
     rate([5, 6, 8, 8, 8]);
     const b = run('?tab=brewing&range=all').brewing;
-    expect(b.dialIn.find((x: { label: string }) => x.label === '#1')).toBeDefined();
+    // Whole-history brews #1 and #2 are dial-in (unrated when scored): the chart still has them.
+    expect(b.dialIn.map((x: { label: string }) => x.label)).toEqual(expect.arrayContaining(['#1', '#2']));
   });
 });

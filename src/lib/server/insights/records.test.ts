@@ -325,3 +325,15 @@ it('every record detail reads as a sentence: no lowercase first letter', () => {
   });
   expect(lower).toEqual([]);
 });
+
+describe('once dialed (F4)', () => {
+  it('dial-in records read the unscored brews; the others the scored ones', () => {
+    const raw = rated(1, [5, 6, 8, 8, 8, 8]);
+    const scored = raw.map((b, i) => (i < 2 ? { ...b, rating: null } : b));
+    const t = recordsTab(scored, BAGS, { ...CTX, unscored: raw });
+    expect(tileOf(t, 'climb')?.value).toBe(3);
+    expect(tileOf(t, 'dialJump')?.value).toBe(2);
+    expect(tileOf(t, 'bestBag')?.value).toBe(8); // scored: the dial-in 5 and 6 are gone
+    expect(tileOf(recordsTab(scored, BAGS, CTX), 'climb')).toBeUndefined();
+  });
+});
