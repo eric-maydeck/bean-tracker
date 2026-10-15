@@ -86,7 +86,7 @@
     {#if empty}
       <p class="empty">No brews in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} datasetLabel={periodLabel}
+      <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
       <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     {/if}
@@ -96,7 +96,7 @@
     {#if empty}
       <p class="empty">No brews in this period</p>
     {:else}
-      <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} datasetLabel={periodLabel}
+      <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
       <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
@@ -108,8 +108,8 @@
   {#if empty}
     <p class="empty">No brews in this period</p>
   {:else}
-    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
-      tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)] })} />
+    <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSmall ?? undefined} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
+      tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null), ...(h.heatSmall?.[r]?.[c] ? [['Sample', 'few bags or brews'] as [string, string]] : [])] })} />
   {/if}
 </section>
 <section class="chart-panel">

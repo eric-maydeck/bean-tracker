@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { BandStat } from '$lib/server/insights/lab';
+  import { SAMPLE_HELP, sampleLabel } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   // The lab's number formats: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
   export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
@@ -8,7 +9,7 @@
   export const SAME_BAG_HELP = [
     "vs bag: each brew's rating minus its bag's average this period, averaged over the row's brews.",
     'Only bags brewed 2+ ways (2+ brews each) count.',
-    'Striped: under 3 bags or 30 brews.'
+    SAMPLE_HELP
   ];
   export const STRENGTH_LINE = 'Solid: at least 2× its usual noise · Hint: 1.5 to 2×.';
   // The SD help, wherever SD shows (T2).
@@ -19,9 +20,9 @@
   // A band, recipe or piece of gear with no same-bag partner (W1): shown as "no match".
   export const noMatch = (what: string) => `Never brewed on the same bag as another ${what}, so there's nothing to compare.`;
   // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
-  // The tip (ui-rules 36) adds what the bar doesn't show: the counts behind it, the plain average, few brews.
+  // The tip (ui-rules 36) adds what the bar doesn't show: the counts behind it, the plain average, a small sample.
   export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false, what = 'band') => bands.map((b) => ({
-    label: b.label, value: b.delta, text: !b.plainBrews ? 'no brews' : b.delta === null ? 'no match' : signed(b.delta), pale: !b.solid, strength: b.strength,
+    label: b.label, value: b.delta, text: !b.plainBrews ? 'no brews' : b.delta === null ? 'no match' : signed(b.delta), small: b.sample.small, strength: b.strength,
     bold: bold(b.label),
     // A grind band's label is its first setting: the tip's title is its range ("0.9.0 – 0.9.9").
     tip: (!b.plainBrews
@@ -29,7 +30,7 @@
       : b.delta === null
       ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
       : { title: b.range ?? b.label, rows: [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`], ['Avg rating', b.adjusted.toFixed(2)],
-          ...(b.solid ? [] : [['Strength', 'Few brews']])] }) as Tip
+          ...(b.sample.small ? [['Sample', sampleLabel(b.sample)]] : [])] }) as Tip
   }));
 </script>
 
@@ -41,13 +42,13 @@
   import type { Strength } from '$lib/server/insights/stats';
   import { STRENGTH } from './Insights.svelte';
 
-  type Row = { label: string; value: number | null; text: string; tip: Tip; pale: boolean; bold?: boolean; strength?: Strength | null };
+  type Row = { label: string; value: number | null; text: string; tip: Tip; small: boolean; bold?: boolean; strength?: Strength | null };
   let { rows, ariaLabel, colors = 'polarity' }: { rows: Row[]; ariaLabel: string; colors?: 'polarity' | 'direction' } = $props();
 
-  // Zero-centred: the axis fits the solid rows when there are any, so a pale row past it is clipped at the
+  // Zero-centred: the axis fits the solid rows when there are any, so a muted row past it is clipped at the
   // edge with a cap (its real value stays in the text and tip); never under 0.05, so tiny deltas show a stub.
   let bars = $derived.by(() => {
-    const fit = rows.some((r) => !r.pale && r.value !== null) ? rows.filter((r) => !r.pale) : rows;
+    const fit = rows.some((r) => !r.small && r.value !== null) ? rows.filter((r) => !r.small) : rows;
     const max = Math.max(0.05, ...fit.map((r) => Math.abs(r.value ?? 0)));
     return rows.map((r) => {
       const v = r.value ?? 0;
@@ -102,7 +103,7 @@
   {#each bars as b, i (i)}
     <div
       class="bar-row"
-      class:pale={b.pale}
+      class:small={b.small}
       role="button"
       tabindex={i ? -1 : 0}
       data-i={i}
@@ -112,7 +113,7 @@
     >
       <span class="bar-label" class:bold={b.bold}>{b.label}</span>
       <span class="track" aria-hidden="true">
-        {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} style:width="{b.w}%"
+        {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} class:small-sample-mark={b.small} style:width="{b.w}%"
           style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
       <span class="bar-value {colors === 'direction' ? '' : deltaInk(b.value)}">
@@ -203,16 +204,13 @@
     left: 50%;
     border-radius: 0 4px 4px 0;
   }
-  /* Clipped at the axis edge (a pale row past the solid rows' range): a cap marks the cut end. */
+  /* Clipped at the axis edge (a muted row past the full rows' range): a cap marks the cut end. */
   .bar.clip {
     border-left: 2px solid var(--color-text);
   }
   .bar.up.clip {
     border-left: 0;
     border-right: 2px solid var(--color-text);
-  }
-  .pale .bar {
-    background-image: var(--thin-hatch);
   }
   .bar-value {
     display: inline-flex;
@@ -222,14 +220,14 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }
-  .pale .bar-value {
+  .small .bar-value {
     color: var(--color-text-muted);
   }
-  /* A delta's color (T4) holds on thin rows too; the stripes carry the few-brews cue. */
-  .pale .bar-value:global(.ink-better) {
+  /* A delta's color (T4) holds on small rows too; the stripes carry the sample cue. */
+  .small .bar-value:global(.ink-better) {
     color: var(--div-high-ink);
   }
-  .pale .bar-value:global(.ink-worse) {
+  .small .bar-value:global(.ink-worse) {
     color: var(--div-low-ink);
   }
 </style>

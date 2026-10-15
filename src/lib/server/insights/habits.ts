@@ -2,7 +2,7 @@ import type { Agg, Measure, Ratings } from '$lib/insightsUrl';
 import type { BrewFact } from './facts';
 import { addDays, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating } from './ratings';
-import { pooled } from '$lib/sample';
+import { pooled, type Sample } from '$lib/sample';
 import { tileDelta, type Delta } from './overview';
 
 export type HabitTiles = {
@@ -26,6 +26,8 @@ export interface Habits {
   longestTo: string | null;
   byHour: (number | null)[]; // 24
   byWeekday: (number | null)[]; // 7
+  bySampleHour: Sample[] | null; // rating measure: the sample behind each hour / weekday bar
+  bySampleWeekday: Sample[] | null;
   compareHour: (number | null)[] | null;
   compareWeekday: (number | null)[] | null;
   heatmap: (number | null)[][]; // [weekday 0–6][hour 0–23]
@@ -124,7 +126,7 @@ function windowStats(brews: readonly BrewFact[], p: Period, c: HabitsCtx) {
   const byWeekday = perDay || c.measure === 'rating' ? weekdayAvg : days.map((g, i) => (occurrences[i] ? value(g, c) : null));
   const brewDays = [...new Set(inP.map((b) => b.localDate))].sort();
   return {
-    inP, timed, tracked, byHour, byWeekday, weekdayAvg, occurrences, perDay, brewDays,
+    inP, timed, tracked, hours, days, byHour, byWeekday, weekdayAvg, occurrences, perDay, brewDays,
     activeDays: tracked.length ? brewDays.length / tracked.length : null,
     brewsPerBrewDay: brewDays.length ? inP.length / brewDays.length / c.size : null,
     peakHour: peak(byHour, hours, c), busiestWeekday: peak(weekdayAvg, days, c)
@@ -176,7 +178,10 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
     busiestAvg: w.busiestWeekday === null ? null : w.weekdayAvg[w.busiestWeekday],
     streakAtEnd: c.period.end < c.today,
     longestFrom: long.from, longestTo: long.to,
-    byHour: w.byHour, byWeekday: w.byWeekday, compareHour, compareWeekday,
+    byHour: w.byHour, byWeekday: w.byWeekday,
+    bySampleHour: c.measure === 'rating' ? w.hours.map((g) => sampleOf(g, c)) : null,
+    bySampleWeekday: c.measure === 'rating' ? w.days.map((g) => sampleOf(g, c)) : null,
+    compareHour, compareWeekday,
     // ponytail: filters w.timed once per cell (168 passes); group by weekday * 24 + hour if it ever shows
     heatmap: Array.from({ length: 7 }, (_, d) =>
       Array.from({ length: 24 }, (_, h) =>

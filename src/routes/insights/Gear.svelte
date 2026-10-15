@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { GearTab } from '$lib/server/insights/lab';
+  import { SAMPLE_HELP } from '$lib/sample';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
@@ -26,7 +27,7 @@
   <section class="chart-panel" data-section="gear-matrix">
     <LabHead id="gear-matrix" title="Filters within each dripper" {placeTip}
       help={['Rows: drippers you used with 2+ filters.', "A cell: that filter's same-bag delta vs the dripper's other filters.", 'Counts only brews on that dripper.',
-        'Striped: few brews · blank: no match, or never used together.']} />
+        SAMPLE_HELP, 'Blank: no match, or never used together.']} />
     <div class="fit-body"><LabHeatmap by={t.matrix!} noun="filter on this dripper" scale={['Worse than its other filters', 'Better']} ariaLabel="Filters within each dripper" /></div>
   </section>
 {/snippet}

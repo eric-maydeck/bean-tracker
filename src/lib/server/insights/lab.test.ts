@@ -381,7 +381,7 @@ describe('brewingTab', () => {
   });
   it('grind drift: change vs the bag\'s first setting, negative = finer', () => {
     const d = tab().drift;
-    expect(d[0]).toMatchObject({ label: '#1', value: 0, bags: 6, solid: true });
+    expect(d[0]).toMatchObject({ label: '#1', value: 0, bags: 6 });
     expect(d.at(-1)!.value).toBeLessThan(0);
     expect(tab({ grinder: 'ZP6' }).drift).toEqual([]);
   });
@@ -421,9 +421,9 @@ describe('brewingTab', () => {
     expect(b.reduce((s, x) => s + x.bags, 0)).toBe(1);
     expect(b.find((x) => x.label === '#4')!.bags).toBe(0);
   });
-  it('drift: solid needs ≥ 3 bags; a single brew number is no curve', () => {
-    expect(brewingTab(bag1([7, 8, 8], [1, 2]), c1).drift.map((d) => d.solid)).toEqual([false, false, false]);
-    expect(brewingTab(bag1([7, 8, 8], [1, 2, 3]), c1).drift.map((d) => d.solid)).toEqual([true, true, true]);
+  it('drift: a sample under 3 bags or 10 brews is small; a single brew number is no curve', () => {
+    expect(brewingTab(bag1([7, 8, 8], [1, 2]), c1).drift.map((d) => d.sample.small)).toEqual([true, true, true]);
+    expect(brewingTab(bag1([7, 8, 8], [1, 2, 3]), c1).drift.map((d) => d.sample.small)).toEqual([true, true, true]);
     expect(brewingTab(bag1([7]), c1).drift).toEqual([]);
   });
   it('drift baseline: the first in-period brew on the chosen grinder', () => {

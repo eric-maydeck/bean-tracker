@@ -2,6 +2,7 @@
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
+  import { SAMPLE_HELP, sampleLabel } from '$lib/sample';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
@@ -41,7 +42,7 @@
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
         help={["A cell: the roast level's bags' average rating in that window (each bag once), minus its usual.",
-          'Green: better than usual.', 'Red: worse.', "Outlined: the row's best window (2+ solid cells).", 'Striped: under 3 bags or 30 brews.',
+          'Green: better than usual.', 'Red: worse.', "Outlined: the row's best window (2+ solid cells).", SAMPLE_HELP,
           'It compares bags, not brews of one bag, so it also moves with which coffees rested longer.']} />
       <LabHeatmap by={t.rest} best={t.rest.best} vs="usual" noun="rest window" scale={['Below the roast level\'s usual', 'Above']}
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />
@@ -80,11 +81,11 @@
             {#if k === 'drift'}
               <section class="chart-panel lab-chart" class:span={row.length === 1} data-section="brewing-drift">
                 <LabHead id="brewing-drift" title="Grind drift" level={3} {placeTip}
-                  help={["Mean change in grind setting vs each bag's first brew this period, on this grinder.", 'One row per brew number in the bag.', 'Striped: under 3 bags.']} />
+                  help={["Mean change in grind setting vs each bag's first brew this period, on this grinder.", 'One row per brew number in the bag.', SAMPLE_HELP]} />
                 <div class="fit-body">
                   <DeltaBars colors="direction" ariaLabel="Grind drift by brew number"
-                    rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), pale: !d.solid,
-                      tip: { title: d.label, rows: [['Bags', `${d.bags}`], ...(d.solid ? [] : [['Strength', 'Few bags']])] as [string, string][] } }))} />
+                    rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
+                      tip: { title: d.label, rows: [['Bags', `${d.bags}`], ...(d.sample.small ? [['Sample', sampleLabel(d.sample)]] : [])] as [string, string][] } }))} />
                 </div>
                 <p class="chart-note">Negative = finer. {grinderName}</p>
               </section>

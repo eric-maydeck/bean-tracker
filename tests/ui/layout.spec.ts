@@ -1555,6 +1555,25 @@ export const STATES: State[] = [
         return [c(el.querySelector('.name, .who a')), c(el.querySelector('.val'))].every((x) => x === muted);
       })).toBe(true); // polled: the hover color transition (150ms) settles
     } },
+  { name: 'insights-sample-marks', path: () => '/insights?tab=brewing&grinder=zp6-special',
+    act: async (page) => {
+      const marks = page.locator('.small-sample-mark');
+      expect(await marks.count()).toBeGreaterThan(0);
+      for (const m of await marks.all()) {
+        const [bg, op] = await m.evaluate((el) => [getComputedStyle(el).backgroundImage, getComputedStyle(el).opacity]);
+        expect(bg).toContain('gradient');
+        expect(op).toBe('1');
+      }
+      await expect(page.locator('body')).not.toContainText(/Striped:|Few brews|few brews/i);
+      await expect(page.locator('.pale, .faded, .few')).toHaveCount(0);
+    } },
+  { name: 'insights-sample-habits', path: () => '/insights?tab=habits&measure=rating&range=all',
+    act: async (page) => expect(page.locator('.heat-cell.small-sample-mark').first()).toBeVisible() },
+  { name: 'insights-sample-legend', path: () => '/insights?tab=brewing',
+    act: async (page) => {
+      await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Muted: few bags or brews');
+    } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
     name: 'insights-recent',
@@ -2153,8 +2172,8 @@ export const STATES: State[] = [
           const v = num(cell.getAttribute('aria-label')!.split(' · ').at(-1)!);
           if (!near(getComputedStyle(cell).backgroundColor, v)) out.push(`cell ${v}`);
         }
-        // Thin data is striped over its full color, never faded with opacity (the hue must not wash to gray).
-        for (const el of document.querySelectorAll('.heat-cell.faded, .bar-row.pale .bar')) {
+        // Small samples are striped over its full color, never faded with opacity (the hue must not wash to gray).
+        for (const el of document.querySelectorAll('.small-sample-mark')) {
           const cs = getComputedStyle(el);
           if (cs.opacity !== '1' || !cs.backgroundImage.includes('gradient')) out.push(`thin mark ${cs.opacity} ${cs.backgroundImage.slice(0, 20)}`);
         }
@@ -2245,12 +2264,10 @@ export const STATES: State[] = [
       await edge.click();
       await expectTipInView(page, hm.locator('.cell-tip'));
       await page.locator('h1').click();
-      // A thin cell draws faded with its value; the legend names it.
-      const faded = hm.locator('.heat-cell.faded');
-      if (await faded.count()) {
-        await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
-        await expect(hm.locator('.div-legend')).toContainText('Striped: few brews');
-      }
+      // A small-sample cell is striped with its value and sample label; the old legend line is gone.
+      const small = hm.locator('.heat-cell.small-sample-mark');
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \((few bags|\d+ brews?)\)$/);
+      await expect(hm.locator('.div-legend')).not.toContainText(/Striped:|few brews/i);
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
     act: async (page) => {
@@ -2263,7 +2280,7 @@ export const STATES: State[] = [
   { name: 'insights-brewing-zp6', path: () => '/insights?tab=brewing&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
-      await expect(page.locator('[data-section="brewing-grind"] .bar-row.pale').first()).toBeVisible();
+      await expect(page.locator('[data-section="brewing-grind"] .bar-row.small').first()).toBeVisible();
       // ZP6 half-number bands are labeled by their first setting, the tip gives the range (no-match bands: vitest).
       const grind = page.locator('[data-section="brewing-grind"]');
       await expect(grind.locator('.bar-label')).toHaveText(['5.0', '5.5', '6.0']);
@@ -2598,10 +2615,10 @@ export const STATES: State[] = [
       const slot = await page.locator('[data-section="gear-eras"] .col').first().evaluate((c) => c.querySelector('.stack')!.getBoundingClientRect().width / c.getBoundingClientRect().width);
       expect(slot).toBeGreaterThan(0.6);
       expect(slot).toBeLessThan(0.85);
-      // A thin matrix cell draws faded with its value; a cell tip names the pairing and its counts (tap and keyboard).
+      // A small matrix cell is striped with its value; a cell tip names the pairing and its counts (tap and keyboard).
       const hm = page.locator('[data-section="gear-matrix"] .heatmap');
-      const faded = hm.locator('.heat-cell.faded');
-      if (await faded.count()) await expect(faded.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(few brews\)$/);
+      const small = hm.locator('.heat-cell.small-sample-mark');
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \((few bags|\d+ brews?)\)$/);
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
       await hm.locator('.heat-cell').first().focus();

@@ -3,10 +3,11 @@
   import type { Tip } from '$lib/components/TipBody.svelte';
   import type { Breakdown } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
+  import { sampleLabel } from '$lib/sample';
   import { noMatch, plural, signed } from './DeltaBars.svelte';
 
-  // A lab breakdown as a diverging heatmap of same-bag deltas (green better, red worse). A thin cell draws
-  // faded with its value; a blank one says why: no brews at all, or no match (nothing to compare).
+  // A lab breakdown as a diverging heatmap of same-bag deltas (green better, red worse). A small-sample cell draws
+  // striped with its value; a blank one says why: no brews at all, or no match (nothing to compare).
   // `best`: per row, the column to outline. `vs`: what the delta is measured against. `noun`: a column.
   let { by, ariaLabel, best, vs = 'same bag', scale, noun = 'band' }: {
     by: Breakdown; ariaLabel: string; best?: (number | null)[]; vs?: string; scale?: [string, string]; noun?: string;
@@ -14,7 +15,7 @@
 
   const text = (x: number | null, r: number, c: number) => {
     const cell = by.cells[r][c];
-    return x !== null ? `${signed(x)}${cell?.solid ? '' : ' (few brews)'}` : !cell ? 'No brews' : 'no match';
+    return x !== null ? `${signed(x)}${cell?.sample.small ? ` (${sampleLabel(cell.sample)})` : ''}` : !cell ? 'No brews' : 'no match';
   };
   const label = (r: number, c: number) => {
     const cell = by.cells[r][c];
@@ -26,10 +27,10 @@
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
     if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
-    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...counts, ...(cell.solid ? [] : [['Strength', 'Few brews'] as [string, string]])] };
+    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...counts, ...(cell.sample.small ? [['Sample', sampleLabel(cell.sample)] as [string, string]] : [])] };
   };
 </script>
 
 <Heatmap diverging rows={by.rows} cols={by.cols} cells={by.cells.map((r) => r.map((c) => c?.delta ?? null))}
-  faded={by.cells.map((r) => r.map((c) => !!c && c.delta !== null && !c.solid))}
+  small={by.cells.map((r) => r.map((c) => !!c && c.delta !== null && c.sample.small))}
   marked={best && by.rows.map((_, i) => by.cols.map((_, j) => best[i] === j))} {text} {label} {tip} {ariaLabel} {scale} />

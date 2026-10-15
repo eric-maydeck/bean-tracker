@@ -56,7 +56,7 @@
     label,
     ariaLabel,
     diverging = false,
-    faded,
+    small,
     marked,
     tip: tipOf,
     scale = ["Below the bag's average", 'Above']
@@ -68,7 +68,7 @@
     label: (r: number, c: number) => string;
     ariaLabel: string;
     diverging?: boolean;
-    faded?: boolean[][]; // diverging: thin cells, striped over their color (T3)
+    small?: boolean[][]; // small-sample cells (sample.ts): stripes over their color
     marked?: boolean[][]; // outlined cells (the lab's rest heatmap: each row's best)
     tip?: (r: number, c: number) => Tip; // a structured tip (ui-rules 36); else the cell's label as the title, its text under it
     scale?: [string, string]; // diverging legend: the low and high ends
@@ -77,7 +77,6 @@
   let wrap: HTMLDivElement | undefined = $state();
   // The open tip: its cell (the anchor) and indexes; `hover`: opened by the mouse, so leaving closes it.
   let tip = $state<{ el: Element; r: number; c: number; hover: boolean } | null>(null);
-  let fade = $derived(faded?.flat().some(Boolean) ?? false);
   // Diverging: one fixed scale for every lab chart (deltaColor, C1); else the sequential ramp over the values.
   let shade = $derived(diverging ? deltaColor : shader(cells.flat()));
   let blanks = $derived(cells.flat().some((v) => v === null));
@@ -126,7 +125,7 @@
       style:--r={i + 2}
       style:--c={j + c0}
       class:none={v === null}
-      class:faded={!!faded?.[i]?.[j]}
+      class:small-sample-mark={!!small?.[i]?.[j]}
       class:marked={!!marked?.[i]?.[j]}
       style:background-color={shade(v)}
       onfocus={(e) => (takeFocus(e), show(e))}
@@ -159,7 +158,6 @@
   {#if diverging}
     <p class="div-legend">
       <span>{scale[0]}</span><span class="div-swatch" aria-hidden="true"></span><span>{scale[1]}</span>
-      {#if fade}<span>· Striped: few brews</span>{/if}
       {#if marked?.flat().some(Boolean)}<span>· Outlined: best in its row</span>{/if}
       {#if blanks}<span>· Blank: no match (or no brews)</span>{/if}
     </p>
@@ -265,9 +263,6 @@
   .heat-cell {
     border-radius: 2px;
     cursor: pointer;
-  }
-  .heat-cell.faded {
-    background-image: var(--thin-hatch);
   }
   .heat-cell.marked {
     outline: 2px solid var(--color-text);

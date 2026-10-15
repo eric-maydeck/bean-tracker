@@ -5,6 +5,7 @@
   import { sizedGrid } from './rows';
   import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
+  import { sampleLabel } from '$lib/sample';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -49,7 +50,7 @@
 
   // The card's mini chart: every band of the evidence it used, zero-centred. Tier 1 bars are same-bag
   // deltas; tier 2/3 bars are bag means less their bag-weighted average, so above/below reads the same
-  // way. Winner (or lean) in the accent, other solid bands neutral, thin bands pale; the usual band dotted.
+  // way. Winner (or lean) in the accent, other solid bands neutral, small bands striped; the usual band dotted.
   // A no-match band (grind, value null) keeps its column with a dotted mark at 0, so the axis runs from the
   // lowest setting brewed to the highest (S-grind).
   function chart(p: Spot) {
@@ -75,7 +76,7 @@
           : {
               title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
               rows: [p.tier === 1 ? ['vs same bag', signed(b.value), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ['Bags', `${b.bags}`], ['Brews', `${b.brews}`],
-                ...(b.solid ? [] : [['Strength', 'Few brews']])],
+                ...(b.sample.small ? [['Sample', sampleLabel(b.sample)]] : [])],
               note: b.label === p.usual.label ? 'Your usual setting.' : undefined
             }) as Tip
       }))
@@ -238,7 +239,7 @@
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
-                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:pale={!b.solid} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:small-sample-mark={b.sample.small} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
                       style:top="{b.top}%" style:height="{b.h}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
@@ -428,9 +429,6 @@
   }
   .bar.up {
     border-radius: 3px 3px 0 0;
-  }
-  .bar.pale {
-    background-color: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
   }
   /* No match (grind brewed there, never paired): a dotted mark on the zero line keeps the setting in range. */
   .bar.none {

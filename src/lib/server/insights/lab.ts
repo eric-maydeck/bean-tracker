@@ -294,7 +294,7 @@ export interface BrewingTab {
   rest: (Breakdown & { best: (number | null)[] }) | null;
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
-  drift: { label: string; value: number; bags: number; solid: boolean; sample: Sample }[]; // mean setting change vs the bag's first brew
+  drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
   vars: VarChart[];
 }
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -332,7 +332,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   const drifted = brews.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
   const drift = [...groupBy(drifted, (b) => bandOf('brewNo', b)!.label)].map(([label, g]) => {
     const bags = new Set(g.map((b) => b.coffeeId)).size;
-    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS, sample: pooled(bags, g.length) }; // solid counts bags only: the bag is the unit, brews within it aren't independent
+    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, sample: pooled(bags, g.length) };
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
   return {

@@ -2,6 +2,7 @@
   import { Chart as ChartJS, registerables, type Plugin } from 'chart.js';
   import ChartDataLabels from 'chartjs-plugin-datalabels';
   import { mainColorToken } from './chartColor';
+  import { sampleLabel, type Sample } from '$lib/sample';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { type Tip } from './TipBody.svelte';
 
@@ -50,6 +51,7 @@
     vertical = false,
     series = [],
     yMin,
+    samples,
     format,
     titles,
     dots = true,
@@ -92,6 +94,8 @@
     monotone?: boolean;
     // Value axis: whole-number ticks (counts), never 0.1 steps.
     integer?: boolean;
+    // Vertical bars: per-bar samples (sample.ts); a small one is striped over its color, its tip adds a Sample row.
+    samples?: Sample[];
     // Always show the legend, so paired charts' plot areas line up.
     legend?: boolean;
   } = $props();
@@ -183,6 +187,21 @@
     return hslToHex(h, s, l > 0.5 ? 0.22 : 0.82);
   }
 
+  // The canvas twin of --thin-hatch: surface stripes over the bar's full color (ui-rules 29).
+  function hatch(color: string, stripe: string): CanvasPattern | string {
+    const t = document.createElement('canvas');
+    t.width = t.height = 8;
+    const g = t.getContext('2d');
+    if (!g) return color;
+    g.fillStyle = color;
+    g.fillRect(0, 0, 8, 8);
+    g.strokeStyle = stripe;
+    g.globalAlpha = 0.7;
+    g.lineWidth = 3;
+    for (const k of [0, 8, 16]) { g.beginPath(); g.moveTo(k, 0); g.lineTo(0, k); g.stroke(); }
+    return g.createPattern(t, 'repeat') ?? color;
+  }
+
   function render() {
     const textColor = themeColor('--color-text');
     const gridColor = themeColor('--color-border');
@@ -232,7 +251,7 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: lineColor, borderWidth: 0 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : lineColor, borderWidth: 0 }
             : {
                 label: datasetLabel,
                 data: values,
@@ -280,7 +299,9 @@
           tooltip: { enabled: false, external, ...(format && !trendValues
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
-              return `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
+              const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
+              const s = ctx.datasetIndex === 0 ? samples?.[ctx.dataIndex] : undefined;
+              return s?.small ? [line, `Sample: ${sampleLabel(s)}`] : line;
             } } }
             : trendValues
             ? {
@@ -381,6 +402,7 @@
     void vertical;
     void series;
     void yMin;
+    void samples;
     void format;
     void dots;
     void monotone;
