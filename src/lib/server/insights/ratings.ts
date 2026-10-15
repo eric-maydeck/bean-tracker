@@ -1,11 +1,11 @@
 import type { Ratings, Avg } from '$lib/insightsUrl';
+import { pooled, type Sample } from '$lib/sample';
 
 // Ratings before this date were ~3× as scattered (calibration period), so
 // "Settled" (the default) leaves them out of every rating-based stat.
 export const RATINGS_SETTLED_FROM = '2026-06-01';
 // Shrinkage strength for adjusted means, in bags, per Avg mode (0 = none; the best-k* modes shrink in brews).
 export const ADJUSTED_K: Record<Avg, number> = { raw: 0, min3: 0, k2: 2, adjusted: 5, best: 0, 'best-k2': 2, 'best-k5': 5, 'dial-k2': 2, 'dial-k5': 5 };
-export const FEW_BAGS = 3;
 
 export type Rated = { coffeeId: number | null; rating: number | null; localDate: string };
 
@@ -20,14 +20,14 @@ export interface RatedGroup {
   value: number; // what the mode ranks by
   bags: number;
   brews: number;
-  fewBags: boolean;
+  sample: Sample; // pooled rule over the group's bags and brews
   best: number; // highest single brew rating
   atBest: number; // brews at that rating
 }
 
 // Bag-weighted: each bag's mean rating is one point, so 40 brews of one bag
 // don't outvote five bags. adjusted = (bags × groupMean + K × overallMean) / (bags + K).
-// Rows come back best first for the mode; min3 ranks groups under FEW_BAGS bags after the rest.
+// Rows come back best first for the mode; min3 ranks small samples (sample.ts) after the rest.
 // best-k*: (hits × best + K × overall) / (hits + K), hits = brews at the group's best score,
 // overall = mean of every counted brew rating on the board (hits are brews, so the prior is too).
 // ponytail: brews with no linked coffee are skipped (every prod bean is linked).
@@ -83,10 +83,10 @@ export function ratedGroups<T extends Rated>(
         : avg.startsWith('dial') ? (g.dial + K * dialOverall) / (g.bags + K)
         : avg.startsWith('best') ? (t.atBest * t.best + K * brewMean) / (t.atBest + K)
         : adjusted;
-      return { label, mean: g.sum / g.bags, adjusted, value, dialed: g.dial / g.bags, bags: g.bags, brews: g.brews, fewBags: g.bags < FEW_BAGS, ...t };
+      return { label, mean: g.sum / g.bags, adjusted, value, dialed: g.dial / g.bags, bags: g.bags, brews: g.brews, sample: pooled(g.bags, g.brews), ...t };
     })
     .sort((a, b) =>
-      (avg === 'min3' ? Number(a.fewBags) - Number(b.fewBags) : 0) ||
+      (avg === 'min3' ? Number(a.sample.small) - Number(b.sample.small) : 0) ||
       b.value - a.value || (avg.startsWith('best') ? b.atBest - a.atBest : avg.startsWith('dial') ? b.bags - a.bags : 0) || b.mean - a.mean
     );
 }

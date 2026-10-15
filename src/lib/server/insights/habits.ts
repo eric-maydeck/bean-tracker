@@ -2,6 +2,7 @@ import type { Agg, Measure, Ratings } from '$lib/insightsUrl';
 import type { BrewFact } from './facts';
 import { addDays, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating } from './ratings';
+import { pooled } from '$lib/sample';
 import { tileDelta, type Delta } from './overview';
 
 export type HabitTiles = {
@@ -28,6 +29,7 @@ export interface Habits {
   compareHour: (number | null)[] | null;
   compareWeekday: (number | null)[] | null;
   heatmap: (number | null)[][]; // [weekday 0–6][hour 0–23]
+  heatSmall: boolean[][] | null; // rating measure: cells whose sample is small (muted)
   calendar: { date: string; value: number | null }[]; // every tracked day
   backfilledLeftOut: number;
 }
@@ -43,8 +45,12 @@ export interface HabitsCtx {
   pace: boolean;
 }
 
-export const PEAK_MIN_RATED = 5; // a rating peak needs this many ratings in its bucket
-export const CELL_MIN_RATED = 3; // a rating heatmap cell needs this many
+// A bucket's counted ratings as a pooled sample (sample.ts): a rating peak needs one that isn't small,
+// and the rating heatmap mutes small cells instead of hiding them.
+const sampleOf = (bs: readonly BrewFact[], c: HabitsCtx) => {
+  const r = bs.filter((b) => countsForRating(b, c.ratings));
+  return pooled(new Set(r.flatMap((b) => (b.coffeeId === null ? [] : [b.coffeeId]))).size, r.length);
+};
 
 const hourOf = (b: BrewFact) => Number(b.localTime.slice(11, 13));
 
@@ -66,12 +72,12 @@ export function longestStreak(sortedDays: readonly string[]): { length: number; 
 }
 
 // One bucket's value under the measure: count or grams (÷ size), or the mean of counted
-// ratings (null under `minRated`).
-function value(bs: readonly BrewFact[], c: HabitsCtx, minRated = 1): number | null {
+// ratings (null when there are none).
+function value(bs: readonly BrewFact[], c: HabitsCtx): number | null {
   if (c.measure === 'brews') return bs.length / c.size;
   if (c.measure === 'grams') return bs.reduce((s, b) => s + (b.dose ?? 0), 0) / c.size;
   const r = bs.filter((b) => countsForRating(b, c.ratings)).map((b) => b.rating!);
-  return r.length >= minRated ? r.reduce((a, b) => a + b, 0) / r.length : null;
+  return r.length ? r.reduce((a, b) => a + b, 0) / r.length : null;
 }
 
 const group = (bs: readonly BrewFact[], n: number, key: (b: BrewFact) => number): BrewFact[][] => {
@@ -80,13 +86,13 @@ const group = (bs: readonly BrewFact[], n: number, key: (b: BrewFact) => number)
   return g;
 };
 
-// Index of the tallest bar (earliest on ties); a rating bar needs PEAK_MIN_RATED ratings.
+// Index of the tallest bar (earliest on ties); a rating bar needs a sample that isn't small.
 function peak(values: readonly (number | null)[], groups: readonly BrewFact[][], c: HabitsCtx): number | null {
   let at: number | null = null;
   let top = 0;
   values.forEach((v, i) => {
     if (v === null || v <= top) return;
-    if (c.measure === 'rating' && groups[i].filter((b) => countsForRating(b, c.ratings)).length < PEAK_MIN_RATED) return;
+    if (c.measure === 'rating' && sampleOf(groups[i], c).small) return;
     [at, top] = [i, v];
   });
   return at;
@@ -174,8 +180,9 @@ export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
     // ponytail: filters w.timed once per cell (168 passes); group by weekday * 24 + hour if it ever shows
     heatmap: Array.from({ length: 7 }, (_, d) =>
       Array.from({ length: 24 }, (_, h) =>
-        cell(value(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c, c.measure === 'rating' ? CELL_MIN_RATED : 1), w, d))
+        cell(value(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c), w, d))
     ),
+    heatSmall: c.measure === 'rating' ? Array.from({ length: 7 }, (_, d) => Array.from({ length: 24 }, (_, h) => sampleOf(w.timed.filter((b) => weekday(b.localDate) === d && hourOf(b) === h), c).small)) : null,
     calendar: w.tracked.map((date) => ({ date, value: value(byDay.get(date) ?? [], c) })),
     backfilledLeftOut: w.inP.length - w.timed.length
   };

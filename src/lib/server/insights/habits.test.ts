@@ -96,12 +96,17 @@ describe('habits', () => {
 
   it('grams measure sums doses', () => expect(habits(brews, ctx({ measure: 'grams' })).byHour[8]).toBe(50));
 
-  it('rating: means; peaks need 5 ratings, heatmap cells 3', () => {
+  it('rating: means; small samples: no peak, heatmap cell shows but flagged', () => {
     const h = habits(brews, ctx({ measure: 'rating' }));
     expect(h.byHour[8]).toBe(7);
     expect(h.byHour[9]).toBeNull();
     expect(h.tiles.peakHour).toBeNull(); // only 2 ratings at 08
-    expect(h.heatmap[0][8]).toBeNull();
+    expect(h.heatmap[0][8]).toBe(7);
+    expect(h.heatSmall![0][8]).toBe(true);
+  });
+
+  it('rating heatmap: brews measures have no flags', () => {
+    expect(habits(brews, ctx()).heatSmall).toBeNull();
   });
 
   it('rating follows Current/All (Current drops brews before 2026-06-01)', () => {

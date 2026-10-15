@@ -41,21 +41,22 @@ describe('pick', () => {
 });
 
 describe('taste', () => {
-  it('best bag needs ≥3 counted rated brews', () => {
-    const brews = [...rated(1, [9, 9]), ...rated(2, [8, 8, 8])];
+  it('best bag needs ≥4 counted rated brews (one-bag rule)', () => {
+    // Bag 1: three 9.5s. Bag 2: four 8s. Best bag goes to bag 2.
+    const brews = [...rated(1, [9.5, 9.5, 9.5]), ...rated(2, [8, 8, 8, 8])];
     expect(run('bestBag', brews)?.holder.label).toBe('Bag 2');
   });
   it('dialed in = mean of the top ⌈n/2⌉', () =>
-    expect(run('bestBagDialed', rated(1, [5, 9, 10]))?.value).toBe(9.5));
+    expect(run('bestBagDialed', rated(1, [5, 9, 9, 10]))?.value).toBe(9.5));
   it('biggest dial-in jump between consecutive rated brews', () => {
     const p = run('dialJump', rated(1, [1, 8.5, 7]));
     expect(p).toMatchObject({ value: 7.5, detail: '1 → 8.5' });
   });
   it('biggest climb: first → best', () =>
     expect(run('climb', rated(1, [2.5, 4, 9, 6]))).toMatchObject({ value: 6.5, detail: 'First 2.5 → Best 9 (brew 3 of 4)' }));
-  it('hole-in-one counts bags (≥3 rated brews) best on their first brew; holder = highest', () => {
-    const p = run('holeInOne', [...rated(1, [9, 8, 8]), ...rated(2, [7, 6, 7]), ...rated(3, [5, 8, 8]), ...rated(4, [9, 1])]);
-    expect(p).toMatchObject({ value: 2, detail: 'Of 3 bags with 3+ ratings', holder: { label: 'Bag 1' } });
+  it('hole-in-one counts bags (≥4 rated brews) best on their first brew; holder = highest', () => {
+    const p = run('holeInOne', [...rated(1, [9, 8, 8, 8]), ...rated(2, [7, 6, 7, 7]), ...rated(3, [5, 8, 8, 8]), ...rated(4, [9, 1])]);
+    expect(p).toMatchObject({ value: 2, detail: 'Of 3 bags with 4+ ratings', holder: { label: 'Bag 1' } });
   });
   it('most consistent needs ≥5 rated brews, lowest SD; detail names the mean', () =>
     expect(run('consistent', [...rated(1, [8.5, 8.5, 8.5, 8.5, 8.5]), ...rated(2, [8, 8, 8, 8])]))
@@ -143,7 +144,7 @@ describe('freshness and money', () => {
   });
   it('best value = mean / $ per 100 g, detail names both', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 20, amountG: 200 }), bag({ id: 2, name: 'Bag 2', cost: 10, amountG: 100 })];
-    const brews = [...rated(1, [8, 8, 8]), ...rated(2, [9, 9, 9])];
+    const brews = [...rated(1, [8, 8, 8, 8]), ...rated(2, [9, 9, 9, 9])];
     expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, per100: 10, detail: '9.00 at $10.00/100\u00a0g' });
     expect(run('toughValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 1' }, value: 0.8 });
   });
@@ -209,7 +210,7 @@ describe('gentle', () => {
       .toBe('2026-08-19');
   });
   it('least favorite roaster needs 3+ bags', () => {
-    const mk = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => rated(id, [r, r, r]).map((b) => ({ ...b, roaster })));
+    const mk = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => rated(id, [r, r, r, r]).map((b) => ({ ...b, roaster })));
     const brews = [...mk('A', [1, 2, 3], 5), ...mk('B', [4, 5], 3), ...mk('C', [6, 7, 8], 9)];
     const bags = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => bag({ id, name: `Bag ${id}` }));
     // Your average = mean of bag means, 6; A adjusted (3×5 + 5×6) / 8 = 5.625 → −0.375 (ranked), raw 5 → −1 (shown).
@@ -220,7 +221,7 @@ describe('gentle', () => {
 
 describe('recordsTab', () => {
   const at = (id: number, date: string, ratings: number[]) => rated(id, ratings, date);
-  const history = [...at(3, '2026-01-10', [10, 10, 10]), ...at(2, '2026-02-10', [8, 8, 8]), ...at(1, '2026-03-05', [9, 9, 9])];
+  const history = [...at(3, '2026-01-10', [10, 10, 10, 10]), ...at(2, '2026-02-10', [8, 8, 8, 8]), ...at(1, '2026-03-05', [9, 9, 9, 9])];
   const march = { start: '2026-03-01', end: '2026-03-31' };
   it('allTime is null when the period holder is the all-time record', () => {
     const t = recordsTab(history, BAGS, CTX);
@@ -276,9 +277,9 @@ describe('recordsTab', () => {
     expect(t.brewerTypes).toEqual(['pourover', 'soup']);
     expect(t.sections.map((s) => s.key)).toEqual(['volume', 'extremes']);
   });
-  it('topCoffees: bags with 3+ rated brews by mean, best first', () => {
-    const t = recordsTab([...rated(1, [8, 8, 8]), ...rated(2, [9, 9, 9, 9]), ...rated(3, [10, 10])], BAGS, CTX);
-    expect(t.topCoffees).toMatchObject([{ mean: 9, brews: 4, holder: { label: 'Bag 2' } }, { mean: 8, brews: 3, holder: { label: 'Bag 1' } }]);
+  it('topCoffees: bags with 4+ rated brews by mean, best first', () => {
+    const t = recordsTab([...rated(1, [8, 8, 8, 8]), ...rated(2, [9, 9, 9, 9, 9]), ...rated(3, [10, 10, 10])], BAGS, CTX);
+    expect(t.topCoffees).toMatchObject([{ mean: 9, brews: 5, holder: { label: 'Bag 2' } }, { mean: 8, brews: 4, holder: { label: 'Bag 1' } }]);
   });
   it('caffeine filters brews and bags; brewer types stay all-time', () => {
     const bags = [bag({ id: 1, name: 'Caf', cost: 30, amountG: 250, purchaseDate: '2026-03-01' }),

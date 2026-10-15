@@ -4,6 +4,7 @@ import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { ratedGroups } from './ratings';
+import { single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
   key: string;
@@ -13,7 +14,7 @@ export interface BoardRow {
   value: number;
   bags: number;
   brews: number;
-  fewBags?: boolean;
+  sample?: Sample; // rating ranks: the small-sample marker
   best?: number; // peak modes: the group's top brew rating
   atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
   mean?: number; // peak modes: raw mean of bag means (second tie-break)
@@ -57,9 +58,9 @@ export const listHref = (column: ColumnKey, values: (string | null)[]) =>
 function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow {
   if (board === 'coffees') {
     const bag = bags.find((b) => b.id === Number(r.key));
-    // The coffees board carries no few-bags marker.
+    // One bag each: the one-bag rule.
     return {
-      ...r, fewBags: undefined, label: bag?.name ?? r.label, sub: bag?.roaster,
+      ...r, sample: r.sample && single(r.brews), label: bag?.name ?? r.label, sub: bag?.roaster,
       ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {})
     };
   }
@@ -100,7 +101,7 @@ export function leaderboard(
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
-        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean } : { value: board === 'coffees' && avg.startsWith('dial') ? r.dialed : r.value, fewBags: r.fewBags })
+        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: board === 'coffees' && avg.startsWith('dial') ? r.dialed : r.value, sample: r.sample })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -116,8 +117,8 @@ export function leaderboard(
       rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'brews' ? x.brews : x.grams, bags: x.bags.size, brews: x.brews }));
     }
   }
-  // Raw ranks few-bag groups after the rest (the coffees board drops the marker: one bag each).
-  const few = rank === 'rating' && avg === 'min3' ? (r: BoardRow) => Number(!!r.fewBags) : () => 0;
+  // Raw ranks small samples after the rest (not the coffees board: no minimum there).
+  const few = rank === 'rating' && avg === 'min3' && board !== 'coffees' ? (r: BoardRow) => Number(!!r.sample?.small) : () => 0;
   return rows.map((r) => decorate(r, board, bags)).sort((a, b) => few(a) - few(b) || byRank(a, b));
 }
 

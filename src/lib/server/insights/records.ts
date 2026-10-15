@@ -3,6 +3,7 @@ import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { isFinished } from './overview';
 import { countsForRating } from './ratings';
+import { BAG_MIN_BREWS, single } from '$lib/sample';
 import { daysBetween, inPeriod, type Period } from './time';
 
 export interface Holder { label: string; sub?: string; href?: string; date: string }
@@ -161,7 +162,7 @@ const dayMean = (c: RecCtx) => perDay(c, (bs) => {
 });
 
 const bestBag = (only?: (b: BrewFact) => boolean) => (c: RecCtx) =>
-  perBag(c, 3, (s) => ({ value: s.mean!, detail: plural(s.rated.length, 'rated brew') }), only);
+  perBag(c, BAG_MIN_BREWS, (s) => ({ value: s.mean!, detail: plural(s.rated.length, 'rated brew') }), only);
 
 // Pour-over floors: a 1:6.7 "ratio" or a 30 s "brew" is a typo or a different drink.
 export const FLOORS: Partial<Record<BrewerType, { ratio: number; seconds: number }>> = { pourover: { ratio: 12, seconds: 60 } };
@@ -191,9 +192,9 @@ const cups = (c: RecCtx): Candidate[] =>
     const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100\u00a0g` : null;
     return { value: b.costPerBrew!, ...(per100 && b.dose ? { detail: `${g(b.dose)} at ${per100}` } : {}), holder: brewHolder(c, b) };
   });
-// Mean rating ÷ $ per 100 g, for bags with ≥3 counted rated brews and a known price.
+// Mean rating ÷ $ per 100 g, for bags with ≥4 counted rated brews and a known price.
 const value = (c: RecCtx): Candidate[] =>
-  perBag(c, 3, (s, id) => {
+  perBag(c, BAG_MIN_BREWS, (s, id) => {
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
     const p = (bag.cost / bag.amountG) * 100;
@@ -219,7 +220,7 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
   const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
   const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
   const rawMean = new Map(raw.map((r) => [r.key, r.value]));
-  const rows = lb('adjusted').filter((r) => r.bags >= 3);
+  const rows = lb('adjusted').filter((r) => !r.sample!.small);
   // One group is the average itself: nothing to be lowest against.
   return rows.length < 2 ? [] : rows
     .map((r) => ({
@@ -234,7 +235,7 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
 export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
   taste('bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) =>
-    perBag(c, 3, (s) => ({ value: dialed(s.rated), detail: `Best ${Math.ceil(s.rated.length / 2)} of ${s.rated.length} brews` }))),
+    perBag(c, BAG_MIN_BREWS, (s) => ({ value: dialed(s.rated), detail: `Best ${Math.ceil(s.rated.length / 2)} of ${s.rated.length} brews` }))),
   taste('dialJump', 'Biggest dial-in jump', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
@@ -248,9 +249,9 @@ export const RECORDS: RecordDef[] = [
     return top > s.rated[0] ? { value: top - s.rated[0], detail: `First ${s.rated[0]} → Best ${top} (brew ${s.rated.indexOf(top) + 1} of ${s.rated.length})` } : null;
   })),
   taste('holeInOne', 'Best on first brew', 'max', 'count', (c) => {
-    const firsts = perBag(c, 3, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
+    const firsts = perBag(c, BAG_MIN_BREWS, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
     const top = pick(firsts, 'max');
-    return top ? [{ value: firsts.length, detail: `Of ${perBag(c, 3, () => ({ value: 0 })).length} bags with 3+ ratings`, holder: top.holder }] : [];
+    return top ? [{ value: firsts.length, detail: `Of ${perBag(c, BAG_MIN_BREWS, () => ({ value: 0 })).length} bags with 4+ ratings`, holder: top.holder }] : [];
   }),
   taste('consistent', 'Most consistent bag', 'min', 'sd', (c) =>
     perBag(c, 5, (s) => ({ value: s.sd!, detail: `${s.rated.length} brews at ${s.mean!.toFixed(2)}` }))),
@@ -405,8 +406,8 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
-    // Bags with 3+ counted rated brews (Best bag's rule), best mean first.
-    topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length >= 3)
+    // Bags past the one-bag small-sample rule (Best bag's rule), best mean first.
+    topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => !single(s.rated.length).small)
       .map((s) => ({ mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
       .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))

@@ -24,7 +24,19 @@ describe('ratedGroups', () => {
 
   it('counts a bag once, however many brews', () => {
     const a = ratedGroups(brews, key, 'all', 'raw').find((g) => g.label === 'A')!;
-    expect(a).toMatchObject({ mean: 9, bags: 1, brews: 2, fewBags: true });
+    expect(a).toMatchObject({ mean: 9, bags: 1, brews: 2, sample: { bags: 1, brews: 2, small: true } });
+  });
+
+  it('sample: pooled rule over the group (3 bags and 10 brews)', () => {
+    const g = ratedGroups(brews, key, 'all', 'raw');
+    expect(g.find((x) => x.label === 'B')!.sample).toEqual({ bags: 10, brews: 10, small: false });
+    const thin = ratedGroups([b('D', 1, 8), b('D', 2, 8), b('D', 3, 8)], key, 'all', 'raw')[0];
+    expect(thin.sample).toEqual({ bags: 3, brews: 3, small: true }); // 3 bags, but under 10 brews
+  });
+  it('min3 ranks small samples after the rest', () => {
+    const g = ratedGroups([...brews, b('E', 40, 9.9)], key, 'all', 'min3');
+    expect(g.at(-1)!.label).toBe('A');
+    expect(g.findIndex((x) => x.label === 'E')).toBeGreaterThan(g.findIndex((x) => x.label === 'C'));
   });
 
   it('adjusted shrinks small groups toward the overall bag mean (K = 5)', () => {
@@ -32,7 +44,7 @@ describe('ratedGroups', () => {
     const g = Object.fromEntries(ratedGroups(brews, key, 'all', 'adjusted').map((x) => [x.label, x]));
     expect(g.A.adjusted).toBeCloseTo((9 + 5 * (144 / 21)) / 6, 6);
     expect(g.B.adjusted).toBeCloseTo((85 + 5 * (144 / 21)) / 15, 6);
-    expect(g.B.fewBags).toBe(false);
+    expect(g.B.sample.small).toBe(false);
   });
 
   it('adjusted ranks the ten-bag group over the one lucky bag; raw does not', () => {
@@ -53,7 +65,7 @@ describe('ratedGroups', () => {
     expect(ratedGroups([b('A', 1, 7)], () => null, 'all', 'raw')).toEqual([]);
   });
   it('min3 ranks 3+ bag groups first even when a small group has the higher mean', () => {
-    const small = [b('S', 1, 10), b('T', 2, 10), ...[3, 4, 5].map((i) => b('L', i, 6)), ...[6, 7, 8].map((i) => b('M', i, 5))];
+    const small = [b('S', 1, 10), b('T', 2, 10), ...[3, 4, 5].flatMap((i) => [0, 1, 2, 3].map(() => b('L', i, 6))), ...[6, 7, 8].flatMap((i) => [0, 1, 2, 3].map(() => b('M', i, 5)))];
     expect(ratedGroups(small, key, 'all', 'min3').map((g) => g.label)).toEqual(['L', 'M', 'S', 'T']);
     expect(ratedGroups(small, key, 'all', 'k2').map((g) => g.label)[0]).not.toBe('L'); // shrinking only, no minimum
   });
