@@ -3323,24 +3323,12 @@ export const STATES: State[] = [
   })),
 ];
 
-// Known failures: the list view's table is crushed at tablet width and needs a
-// redesign (docs/backlog/list-view-tablet-width.md). test.fail() makes a fix
-// show up as "unexpectedly passed", so these entries flag themselves. Nothing
-// else gets listed here.
-const KNOWN_FAILURES = new Set([
-  ...['w768', 'phone-landscape'].flatMap((w) => [`coffees-list-${w}`, `coffees-inline-edit-pending-${w}`, `coffees-list-inline-edit-actions-${w}`, `coffees-list-inline-edit-action-row-${w}`, `coffees-list-inline-edit-two-open-${w}`, `coffees-bc-yes-${w}`])
-]);
-
 // Route tag for test:changed (scripts/testScope.ts): the path's first segment, read with a stub seed.
 const stubSeed = new Proxy({}, { get: () => new Proxy({}, { get: () => 'x' }) }) as unknown as Seed;
 const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
 
 for (const state of STATES) {
   test(state.name, { tag: routeTag(state) }, async ({ page }, info) => {
-    test.fail(
-      KNOWN_FAILURES.has(`${state.name}-${info.project.name}`),
-      'list view breaks at tablet widths: docs/backlog/list-view-tablet-width.md'
-    );
     const s = seed();
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);

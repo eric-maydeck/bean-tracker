@@ -815,13 +815,10 @@ table.data-table tbody tr:hover {
   background: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
+/* Auto layout: a column is never narrower than its longest word (fixed percent columns split words mid-word at
+   tablet widths); long text wraps at spaces, and a table wider than its card scrolls inside .table-scroll. */
 table.data-table.compact {
   font-size: 0.75rem;
-  table-layout: fixed;
-}
-
-table.data-table.compact td {
-  overflow-wrap: break-word;
 }
 
 table.data-table.compact th {
