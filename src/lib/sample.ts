@@ -19,15 +19,18 @@ export const CHIP_EXAMPLE = 'Only 2 bags'; // the legend's sample chip
 // The tip: the plain reason (bags when they are short, else brews) and the exact counts. `paired`: the counts
 // are of same-bag paired brews, so the rows say so beside plain columns.
 export const sampleTip = (s: Sample, paired = false): { lines: string[]; rows: [string, string][] } => {
-  const k = (w: string) => (paired ? `Paired ${w}` : w[0].toUpperCase() + w.slice(1));
-  const rated: [string, string] = [k('rated brews'), String(s.brews)];
-  if (s.one) return { lines: [`Small sample: only ${n(s.brews, 'rated brew')}, so one brew can swing this. One coffee needs ${BAG_MIN_BREWS}+.`], rows: [rated] };
+  const cap = (w: string) => w[0].toUpperCase() + w.slice(1);
+  if (s.one) return { lines: [`Small sample: only ${n(s.brews, 'rated brew')}, so one brew can swing this. One coffee needs ${BAG_MIN_BREWS}+.`], rows: [['Rated brews', String(s.brews)]] };
   const bagsShort = s.bags < POOLED_MIN_BAGS;
-  const what = bagsShort ? ['bag', s.bags] as const : ['rated brew', s.brews] as const;
-  return {
-    lines: [`Small sample: only ${n(what[1], what[0])}, so one ${bagsShort ? 'bag' : 'brew'} can swing this. Needs ${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews.`],
-    rows: [[k('bags'), String(s.bags)], rated]
-  };
+  // A same-bag comparison counts only the bags brewed both ways (this recipe, grind, dripper ... and another).
+  const rows: [string, string][] = paired
+    ? [['Bags brewed both ways', String(s.bags)], ['Rated brews in them', String(s.brews)]]
+    : [[cap('bags'), String(s.bags)], ['Rated brews', String(s.brews)]];
+  const need = `Needs ${POOLED_MIN_BAGS}+ ${paired ? 'such ' : ''}bags and ${POOLED_MIN_BREWS}+ rated brews${paired ? ' in them' : ''}.`;
+  const only = paired
+    ? (bagsShort ? `${n(s.bags, 'bag')} ${s.bags === 1 ? 'was' : 'were'} brewed both this way and another way` : `${n(s.brews, 'rated brew')} in bags brewed both this way and another way`)
+    : (bagsShort ? n(s.bags, 'bag') : n(s.brews, 'rated brew'));
+  return { lines: [`Small sample: only ${only}, so one ${bagsShort ? 'bag' : 'brew'} can swing this. ${need}`], rows };
 };
 // A tip's `sample` field: the one block every marker shows (TipBody): the title, the reason, the counts.
 export const sampleField = (s: Sample, paired = false) => (s.small ? { sample: { s, paired } } : {});

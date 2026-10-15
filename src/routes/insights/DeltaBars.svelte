@@ -29,7 +29,7 @@
       ? { title: b.range ?? b.label, note: 'No brews in this band.' }
       : b.delta === null
       ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
-      : { title: b.range ?? b.label, rows: [...(b.sample.small ? [] : [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`]]), ['Avg rating', b.adjusted.toFixed(2)]], ...sampleField(b.sample, true) }) as Tip
+      : { title: b.range ?? b.label, rows: [...(b.sample.small ? [] : [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`]]), ['Avg rating', b.adjusted.toFixed(2)]], ...sampleField(b.sample, true), ...(b.strength === 'solid' || b.strength === 'hint' ? { strength: b.strength } : {}) }) as Tip
   }));
 </script>
 
@@ -204,13 +204,20 @@
     border-radius: 0 4px 4px 0;
   }
   /* Clipped at the axis edge (a muted row past the full rows' range): the cut end is an arrow tip, "keeps going". */
+  /* A small bar's amber fold sits at the top left (horizontal bars; vertical bars and cells keep top right). */
+  .bar.small-sample-mark {
+    background-image: linear-gradient(to bottom right, var(--chip) 50%, transparent 50%), var(--thin-hatch);
+    background-position: left top, 0 0;
+  }
+  .bar.clip:not(.up).small-sample-mark {
+    background-position: left 9px top, 0 0; /* past the left arrow taper */
+  }
   .bar.clip {
     border-radius: 0;
     clip-path: polygon(9px -40%, 100% -40%, 100% 140%, 9px 140%, 0 50%);
   }
   .bar.up.clip {
     clip-path: polygon(0 -40%, calc(100% - 9px) -40%, 100% 50%, calc(100% - 9px) 140%, 0 140%);
-    background-position: right 9px top 0, 0 0; /* a small bar's fold sits before the arrow taper */
   }
   .bar-value {
     display: inline-flex;

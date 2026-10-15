@@ -485,6 +485,12 @@ describe('waterTab', () => {
     expect(p.bags[0].a).toBeCloseTo(8, 1);
     expect(p.bags[0].b).toBeCloseTo(7.5, 1);
   });
+  it('pairs: each bag carries the rated brews behind a and b (the winner side may flip)', () => {
+    const r = [...many(2, 1, 92, 7, { water: 'A' }), ...many(5, 1, 92, 8, { water: 'B' })];
+    const [p] = waterTab(r, [bag({ id: 1, name: 'Bag 1' })], { period: P, ratings: 'all' }).pairs;
+    expect([p.a, p.b]).toEqual(['B', 'A']); // B wins, so it is side a
+    expect([p.bags[0].na, p.bags[0].nb]).toEqual([5, 2]);
+  });
   it('pairs: A is the side that won more bags; ties counted; a 3-recipe bag joins 3 pairs; most bags first', () => {
     const ids = [1, 2, 3, 4];
     const r = [

@@ -1,11 +1,12 @@
 <script lang="ts" module>
   import type { Tip } from '$lib/components/TipBody.svelte';
+  import { STRENGTH, STRENGTH_WHY, type Badge } from '$lib/strength';
   // The strength badges' words and explanations, shared with Sweet spots.
-  export const STRENGTH = { solid: 'Likely', hint: 'Possible' } as const;
+  export { STRENGTH };
   // Their help popovers (ui-rules 36: a title, one idea per line).
-  export const STRENGTH_TIP: Record<keyof typeof STRENGTH, Tip> = {
-    solid: { title: 'Likely', lines: ['The gap is at least 2× normal brew-to-brew noise, so probably real.'] },
-    hint: { title: 'Possible', lines: ['The gap is 1.5 to 2× normal brew-to-brew noise; could still be chance.', 'Under 1.5× gets no badge.'] }
+  export const STRENGTH_TIP: Record<Badge, Tip> = {
+    solid: { title: STRENGTH.solid, lines: [STRENGTH_WHY.solid] },
+    hint: { title: STRENGTH.hint, lines: [STRENGTH_WHY.hint, 'Under 1.5× gets no badge.'] }
   };
 </script>
 

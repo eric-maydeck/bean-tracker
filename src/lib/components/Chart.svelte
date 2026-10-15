@@ -261,8 +261,9 @@
                 label: datasetLabel,
                 data: values,
                 backgroundColor: bgColors,
-                borderWidth: 1,
-                borderColor: inkColors
+                // Slices: a clearly darker line than the ink outline (a neutral at 70%, readable in both themes).
+                borderWidth: type === 'doughnut' ? 1.5 : 1,
+                borderColor: type === 'doughnut' ? `${textColor}b3` : inkColors
               },
           ...(type === 'line' && trendValues
             ? [

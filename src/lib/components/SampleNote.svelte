@@ -3,14 +3,15 @@
   import Icon from './Icon.svelte';
   import TipBody, { tipText } from './TipBody.svelte';
   import { chipLabel, type Sample } from '$lib/sample';
+  import type { Badge } from '$lib/strength';
 
   // The one small-sample marker (spec 2026-10-15 Part 1): an amber "Low confidence" chip; the reason and exact
   // counts on hover, tap and keyboard focus, in the shared top-layer tip (ui-rules 36, 39). `paired`: the counts
   // are of same-bag paired brews (a lab row's delta), so the rows say so beside plain columns.
-  let { s, paired = false }: { s: Sample; paired?: boolean } = $props();
+  let { s, paired = false, strength }: { s: Sample; paired?: boolean; strength?: Badge } = $props();
   let anchor: HTMLButtonElement | undefined = $state();
   let open = $state(false);
-  let tip = $derived({ title: '', sample: { s, paired } });
+  let tip = $derived({ title: '', ...(strength ? { strength } : {}), sample: { s, paired } });
 </script>
 
 <button bind:this={anchor} type="button" class="sample-note" aria-expanded={open}

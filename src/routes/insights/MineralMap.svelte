@@ -7,7 +7,6 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleField } from '$lib/sample';
   import { noMatch, signed } from './DeltaBars.svelte';
-  import { STRENGTH } from './Insights.svelte';
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the
   // lab's fixed green/gray/red scale, then each mineral's amount shaded within its column (one neutral hue:
@@ -25,8 +24,8 @@
   const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit ? `${+v.toFixed(1)}` : v.toFixed(2));
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
-    rows: [...(r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]]),
-      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—']] as [string, string][],
+    rows: (r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]]) as [string, string][],
+    ...(r.strength === 'solid' || r.strength === 'hint' ? { strength: r.strength } : {}),
     ...sampleField(r.sample, r.delta !== null),
     note: r.delta === null ? noMatch('recipe') : undefined
   });

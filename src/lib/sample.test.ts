@@ -25,7 +25,11 @@ describe('small-sample rule', () => {
       rows: [['Rated brews', '3']]
     });
     expect(sampleTip(single(1)).lines[0]).toContain('only 1 rated brew,');
-    expect(sampleTip(pooled(2, 7), true).rows).toEqual([['Paired bags', '2'], ['Paired rated brews', '7']]);
+    expect(sampleTip(pooled(1, 5), true)).toEqual({
+      lines: ['Small sample: only 1 bag was brewed both this way and another way, so one bag can swing this. Needs 3+ such bags and 10+ rated brews in them.'],
+      rows: [['Bags brewed both ways', '1'], ['Rated brews in them', '5']]
+    });
+    expect(sampleTip(pooled(5, 7), true).lines[0]).toContain('only 7 rated brews in bags brewed both this way and another way, so one brew can swing this');
   });
   it('no brews is no data, never a small sample', () => {
     expect(pooled(0, 0).small).toBe(false);

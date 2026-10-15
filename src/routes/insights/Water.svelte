@@ -11,6 +11,8 @@
   import LabHeatmap from './LabHeatmap.svelte';
   import MineralMap from './MineralMap.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
+  import SampleNote from '$lib/components/SampleNote.svelte';
+  import { BAG_MIN_BREWS, single } from '$lib/sample';
   import StackedBars from './StackedBars.svelte';
   import { inkOf, nameColors } from './multiLine';
   import { fitPairs } from './fitPairs';
@@ -148,7 +150,7 @@
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
                 <li class="pair-row">
-                  <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
+                  <span class="bag"><span class="bag-name">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>{#if Math.min(b.na, b.nb) < BAG_MIN_BREWS}<span class="bag-note"><SampleNote s={single(Math.min(b.na, b.nb))} /></span>{/if}</span>
                   <span class="score a" class:win={b.win === 'a'}>{b.a.toFixed(2)}</span>
                   <span class="score b" class:win={b.win === 'b'}>{b.b.toFixed(2)}</span>
                 </li>
@@ -299,9 +301,19 @@
     }
   }
   .bag {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+  }
+  .bag-name {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .bag-note {
+    margin-top: 0.1rem;
   }
   .bag a {
     color: inherit;

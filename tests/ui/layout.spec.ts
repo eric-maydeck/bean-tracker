@@ -1568,6 +1568,15 @@ export const STATES: State[] = [
       await expect(tip).toContainText('Low confidence');
       await expect(tip).toContainText(/Rated brews\s*\d+/);
       await expectSampleChips(page);
+      // The Low confidence block is last in the tip, its title and reason in the chip's amber (4.5:1+ on the tip).
+      const block = await tip.evaluate((el) => {
+        const last = el.lastElementChild!, t = last.querySelector('.tip-title')!, bg = getComputedStyle(el).backgroundColor;
+        const lum = (c: string) => { const [R, G, B] = c.match(/\d+/g)!.slice(0, 3).map((v) => { const x = +v / 255; return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * R + 0.7152 * G + 0.0722 * B; };
+        const [hi, lo] = [lum(getComputedStyle(t).color), lum(bg)].sort((a, b) => b - a);
+        return { last: last.className, title: t.textContent, ratio: (hi + 0.05) / (lo + 0.05) };
+      });
+      expect(block).toMatchObject({ last: 'tip-block caution', title: 'Low confidence' });
+      expect(block.ratio).toBeGreaterThanOrEqual(4.5);
       // One look: a small row's name and value are the muted token's color (not faded by opacity).
       await page.mouse.move(0, 0); // off the row: hover turns its text ink
       const row = page.locator('.board-row.small-sample').first();
@@ -1590,7 +1599,11 @@ export const STATES: State[] = [
         expect(bg).toContain('gradient');
         expect(op).toBe('1');
         // Stripes plus the amber corner fold (top right).
-        if (!(await m.evaluate((el) => el.classList.contains('clip')))) expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '100% 0%, 0px 0px']);
+        if (!(await m.evaluate((el) => el.classList.contains('clip')))) {
+          // Horizontal bars (in a .track) carry the fold at the top left, vertical bars and cells at the top right.
+          const [size, pos, horizontal] = await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition, !!el.closest('.track')] as const);
+          expect([size, pos]).toEqual(['9px 9px, auto', horizontal ? '0% 0%, 0px 0px' : '100% 0%, 0px 0px']);
+        }
       }
       // A clipped bar's cut end is an arrow tip, not a dark cap.
       for (const c of await page.locator('.bar.clip').all()) expect(await c.evaluate((el) => getComputedStyle(el).clipPath)).toContain('polygon');
@@ -2101,7 +2114,7 @@ export const STATES: State[] = [
       // A tap on a chart shows its themed tip; a tap elsewhere closes it.
       await page.locator('#spot-temp .spot-chart').click();
       // A short structured tip (ui-rules 36): the band as its title, then label/value rows.
-      await expect(page.locator('#spot-temp .cell-tip .tip-title')).not.toBeEmpty();
+      await expect(page.locator('#spot-temp .cell-tip .tip-title').first()).not.toBeEmpty();
       await expect(page.locator('#spot-temp .cell-tip .tip-rows')).toContainText(/Bags\s*\d+\s*Brews\s*\d+/);
       await page.locator('.insights-period').last().click();
       await expect(page.locator('.cell-tip')).toHaveCount(0);
@@ -2135,7 +2148,7 @@ export const STATES: State[] = [
       const titles: string[] = [];
       for (const row of await page.locator('[data-section="brewing-grind"] .bar-row').all()) {
         await row.click();
-        titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').textContent())!.trim());
+        titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').first().textContent())!.trim());
       }
       expect(spotBands).toEqual(titles);
       await gotoReady(page, '/insights?tab=sweetspots');
@@ -2168,7 +2181,7 @@ export const STATES: State[] = [
       // The rest heatmap: a cell tip is a title and label/value rows (ui-rules 36).
       const rest = page.locator('[data-section="brewing-rest"] .heatmap.diverging');
       await rest.locator('.heat-cell:not(.none)').first().click();
-      await expect(rest.locator('.cell-tip .tip-title')).toContainText(' · ');
+      await expect(rest.locator('.cell-tip .tip-title').first()).toContainText(' · ');
       await expect(rest.locator('.cell-tip .tip-rows')).toContainText('vs usual');
       await page.locator('.insights-period, h1').first().click();
       await expect(page.getByLabel('Compare')).toHaveCount(0);
@@ -2180,7 +2193,7 @@ export const STATES: State[] = [
       const grindRow = page.locator('[data-section="brewing-grind"] .bar-row').first();
       await expect(grindRow.locator('.bar-label')).toHaveText(/^\d+\.\d+\.0$/);
       await grindRow.click();
-      await expect(page.locator('[data-section="brewing-grind"] .cell-tip .tip-title')).toHaveText(/^(\d+\.\d+)\.0 – \1\.9$/);
+      await expect(page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').first()).toHaveText(/^(\d+\.\d+)\.0 – \1\.9$/);
       await page.locator('h1').click();
       // A pair of charts is one height; the shorter fills it, the taller scrolls inside past 2× (ui-rules 37).
       await expectPairsFilled(page, '.lab-grid');
@@ -2295,7 +2308,7 @@ export const STATES: State[] = [
       }
       // A cell tip: its row · column as the title, then the delta and counts as rows.
       await hm.locator('.heat-cell').first().click();
-      await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
+      await expect(hm.locator('.cell-tip .tip-title').first()).toContainText(' · ');
       await expect(hm.locator('.cell-tip')).toContainText(/Brews|No brews/);
       await expectTipInView(page, hm.locator('.cell-tip'));
       // C2: the rightmost column (scrolled into view inside the card) keeps its tip on screen too.
@@ -2420,11 +2433,11 @@ export const STATES: State[] = [
         await expect(map.locator('.cell-tip')).toHaveCount(0);
       // A row's tip: brews, bags, strength; keyboard ↓ moves to the next recipe.
       await map.locator('.map-name').first().focus();
-      await expect(map.locator('.cell-tip .tip-rows')).toContainText(/Brews\s*\d+\s*Bags\s*\d+\s*Strength/);
+      await expect(map.locator('.cell-tip .tip-rows')).toContainText(/Brews\s*\d+\s*Bags\s*\d+/);
       await expectTipInView(page, map.locator('.cell-tip'));
-      const firstTip = await map.locator('.cell-tip .tip-title').textContent();
+      const firstTip = await map.locator('.cell-tip .tip-title').first().textContent();
       await page.keyboard.press('ArrowDown');
-      await expect(map.locator('.cell-tip .tip-title')).not.toHaveText(firstTip!);
+      await expect(map.locator('.cell-tip .tip-title').first()).not.toHaveText(firstTip!);
       await page.keyboard.press('Escape');
       await map.locator('.map-name:focus').blur();
       await expectDeltaInk(page);
@@ -2543,7 +2556,7 @@ export const STATES: State[] = [
       // Usage over time: 100% stacked bars; a segment's tip: the month, then the recipe and its share in one row.
       const eras = page.locator('[data-section="water-eras"]');
       await eras.locator('.seg').first().click();
-      await expect(eras.locator('.cell-tip .tip-title')).toHaveText(/^[A-Z][a-z]{2} \d{2}$/);
+      await expect(eras.locator('.cell-tip .tip-title').first()).toHaveText(/^[A-Z][a-z]{2} \d{2}$/);
       await expect(eras.locator('.cell-tip .tip-rows dt').first()).not.toHaveText('Share');
       await expect(eras.locator('.cell-tip .tip-rows dd').first()).toHaveText(/^\d+%$/);
       // Keyboard: one tab stop on a drawn segment; arrows move through segments and months.
@@ -2553,9 +2566,9 @@ export const STATES: State[] = [
       const at = await eras.locator('.cell-tip').textContent();
       await page.keyboard.press('ArrowUp');
       await expect(eras.locator('.cell-tip')).not.toHaveText(at!);
-      const up = await eras.locator('.cell-tip .tip-title').textContent();
+      const up = await eras.locator('.cell-tip .tip-title').first().textContent();
       await page.keyboard.press('ArrowRight');
-      await expect(eras.locator('.cell-tip .tip-title')).not.toHaveText(up!);
+      await expect(eras.locator('.cell-tip .tip-title').first()).not.toHaveText(up!);
       await page.keyboard.press('Escape');
       await expect(eras.locator('.cell-tip')).toHaveCount(0);
       await eras.locator('.seg:focus').blur();
@@ -2666,7 +2679,7 @@ export const STATES: State[] = [
       const small = hm.locator('.heat-cell.small-sample-mark');
       if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(Low confidence\)$/);
       await hm.locator('.heat-cell').first().click();
-      await expect(hm.locator('.cell-tip .tip-title')).toContainText(' · ');
+      await expect(hm.locator('.cell-tip .tip-title').first()).toContainText(' · ');
       await hm.locator('.heat-cell').first().focus();
       await page.keyboard.press('ArrowRight');
       await expect(hm.locator('.heat-cell').nth(1)).toBeFocused();

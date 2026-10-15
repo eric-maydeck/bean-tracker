@@ -31,7 +31,7 @@
         <span class="rank">{i + 1}</span>
         <span class="who">
           <span class="name">{r.label}</span>
-          {#if r.months || r.sample.small}<span class="who-line">{#if r.months}<small>{r.months}</small>{/if}{#if r.sample.small}<SampleNote s={r.sample} paired={r.delta !== null} />{/if}</span>{/if}
+          {#if r.months || r.sample.small}<span class="who-line">{#if r.months}<small>{r.months}</small>{/if}{#if r.sample.small}<SampleNote s={r.sample} paired={r.delta !== null} strength={r.strength === 'solid' || r.strength === 'hint' ? r.strength : undefined} />{/if}</span>{/if}
         </span>
         <span class="num">{r.plainBrews}</span>
         <span class="num bags">{r.plainBags}</span>

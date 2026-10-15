@@ -394,7 +394,7 @@ export interface WaterPair {
   slug: string; // "a--b" (slugified, sorted: independent of which recipe wins): the URL's `pairs` names the expanded pairs by it
   won: number; lost: number; tied: number; // bags, from A's side; tied = bag means within 0.005
   delta: number; // mean over the bags of A's bag mean minus B's
-  bags: { label: string; tag: string | null; href: string | null; a: number; b: number; win: 'a' | 'b' | null }[]; // win: the higher side, null = a tie; biggest |a − b| first
+  bags: { label: string; tag: string | null; href: string | null; a: number; b: number; na: number; nb: number; win: 'a' | 'b' | null }[]; // na / nb: rated brews behind a / b; win: the higher side, null = a tie; biggest |a − b| first
 }
 export interface WaterTab {
   recipes: LeaderRow[];
@@ -443,24 +443,24 @@ export function waterTab(brews: readonly BrewFact[], bags: readonly BagFact[], c
 // Same bag, different water (W7): every two recipes a bag was brewed with (≥ 2 rated brews each), grouped by
 // recipe pair. A bag with three recipes joins three pairs.
 function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): WaterPair[] {
-  const pairs = new Map<string, { x: string; y: string; bags: { id: number; x: number; y: number }[] }>();
+  const pairs = new Map<string, { x: string; y: string; bags: { id: number; x: number; y: number; nx: number; ny: number }[] }>();
   for (const [id, g] of groupBy(rows.filter((b) => b.water), (b) => b.coffeeId)) {
     const ws = [...groupBy(g, (b) => b.water)].filter(([, x]) => x.length >= 2)
-      .map(([w, x]) => ({ w: w!, m: mean(x.map((b) => b.rating!)) })).sort((a, b) => a.w.localeCompare(b.w));
+      .map(([w, x]) => ({ w: w!, m: mean(x.map((b) => b.rating!)), n: x.length })).sort((a, b) => a.w.localeCompare(b.w));
     for (let i = 0; i < ws.length; i++)
       for (let j = i + 1; j < ws.length; j++) {
         const k = `${ws[i].w}\u0000${ws[j].w}`;
-        (pairs.get(k) ?? pairs.set(k, { x: ws[i].w, y: ws[j].w, bags: [] }).get(k)!).bags.push({ id: id!, x: ws[i].m, y: ws[j].m });
+        (pairs.get(k) ?? pairs.set(k, { x: ws[i].w, y: ws[j].w, bags: [] }).get(k)!).bags.push({ id: id!, x: ws[i].m, y: ws[j].m, nx: ws[i].n, ny: ws[j].n });
       }
   }
   return [...pairs.values()].map((p) => {
     const d = p.bags.map((b) => b.x - b.y);
     const xw = d.filter((x) => x >= TIE).length, yw = d.filter((x) => x <= -TIE).length;
     const flip = yw > xw || (yw === xw && mean(d) < 0);
-    const bags = p.bags.map(({ id, x, y }) => {
+    const bags = p.bags.map(({ id, x, y, nx, ny }) => {
       const bag = byId.get(id);
       return { label: bag ? `${bag.roaster} · ${bag.name}` : `Bag ${id}`, href: bag?.slug ? `/coffees/${bag.slug}` : null,
-        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y, win: Math.abs(x - y) < TIE ? null : (x > y) !== flip ? 'a' as const : 'b' as const };
+        roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null, a: flip ? y : x, b: flip ? x : y, na: flip ? ny : nx, nb: flip ? nx : ny, win: Math.abs(x - y) < TIE ? null : (x > y) !== flip ? 'a' as const : 'b' as const };
     }).sort((u, v) => Math.abs(v.a - v.b) - Math.abs(u.a - u.b) || u.label.localeCompare(v.label)); // biggest gap first (the UI shows 5)
     const [a, b] = flip ? [p.y, p.x] : [p.x, p.y];
     return { a, b, slug: [slugify(a) || 'x', slugify(b) || 'x'].sort().join('--'), won: flip ? yw : xw, lost: flip ? xw : yw, tied: d.length - xw - yw,

@@ -41,6 +41,7 @@
   --bar-hover-alpha: 40%; /* a hovered bar (accent); its row's text turns ink, 8.7:1 */
   --chip: #f2b84b; /* the Low confidence chip and corner fold; ink 9.4:1 on it */
   --chip-ink: #2b211b;
+  --chip-text: #a06500; /* the chip's amber as text on the light tip (4.8:1) */
   --map-empty: #6b6b6b;
   /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: 7 hues x 2 tones = 14
      slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. The deeper tone is the same hue as
@@ -150,6 +151,7 @@
     --bar-alpha: 13%;
     --bar-hover-alpha: 32%; /* ink text 7.2:1 */
     --chip-ink: #1c1712; /* 9.6:1 on --chip, same amber */
+    --chip-text: #f2b84b; /* 9.0:1 on the dark tip */
     --map-empty: #3a3a3a;
     --series-1: #c7d7fd;
     --series-1-ink: #c7d7fd;
@@ -236,6 +238,7 @@
   --bar-alpha: 13%;
   --bar-hover-alpha: 32%;
   --chip-ink: #1c1712;
+  --chip-text: #f2b84b;
   --map-empty: #3a3a3a;
   --series-1: #c7d7fd;
   --series-1-ink: #c7d7fd;
@@ -2452,9 +2455,12 @@ td > .action-buttons.under-form {
   list-style: none;
   font-size: 0.8rem;
 }
-.tip-sample {
-  display: block;
-  margin-top: var(--space-2);
+.tip-block {
+  margin-top: var(--space-2); /* a caveat block: last in the tip, below the data (ui-rules 36) */
+}
+.tip-block.caution .tip-title,
+.tip-block.caution .tip-lines {
+  color: var(--chip-text); /* the chip's amber, darkened where the tip is light (4.5:1) */
 }
 .tip-lines li + li {
   margin-top: 0.25rem;
