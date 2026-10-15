@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody from '$lib/components/TipBody.svelte';
+  import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
   import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
@@ -33,6 +33,12 @@
 
   // W7: the pair's average gap, from A's side; "even" when it rounds to 0.
   const gap = (d: number) => (Math.abs(d) < 0.005 ? 'even' : `${signed(d)} on average`);
+  // A pair is low confidence when over half its bags have a side under 4 rated brews (the single rule, the thinner side).
+  const thinBags = (p: WaterTab['pairs'][number]) => p.bags.filter((b) => Math.min(b.na, b.nb) < BAG_MIN_BREWS).length;
+  const thin = (p: WaterTab['pairs'][number]) => thinBags(p) * 2 > p.bags.length;
+  const thinTip = (p: WaterTab['pairs'][number]): Tip => ({ title: '', caution: {
+    lines: [`Small sample: in ${thinBags(p)} of ${p.bags.length} bags one recipe has under ${BAG_MIN_BREWS} rated brews, so one brew can swing a bag's score. Each side needs ${BAG_MIN_BREWS}+.`],
+    rows: [['Bags with a thin side', `${thinBags(p)} of ${p.bags.length}`]] } });
   // W7: a pair shows its 5 biggest gaps (the server sorts by |a − b|); "Show all" puts its slug in `pairs`.
   const SHOWN = 5;
   // Pair blocks flow in balanced columns (ui-rules 40); only an expanded block (Show all, a long list) spans both.
@@ -134,6 +140,7 @@
                usage-over-time colors, then each bag's two plain ratings, the winner's bold and green. -->
           <div class="pair" class:span={spans[i]} style:--ca={colorOf(p.a)} style:--cb={colorOf(p.b)} style:--ia={inkOf(colorOf(p.a))} style:--ib={inkOf(colorOf(p.b))}>
             <h4 class="pair-title"><span class="pair-a">{p.a}</span> vs <span class="pair-b">{p.b}</span></h4>
+            {#if thin(p)}<p class="pair-note"><SampleNote s={single(1)} label="Small samples" tip={thinTip(p)} /></p>{/if}
             <p class="pair-sum"
               >{p.a} won {p.won} of {p.bags.length} bag{p.bags.length === 1 ? '' : 's'}{p.tied ? ` (${p.tied} tied)` : ''} · <span
                 class="delta-text {deltaInk(p.delta)}">{gap(p.delta)}</span
@@ -150,7 +157,7 @@
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
                 <li class="pair-row">
-                  <span class="bag"><span class="bag-name">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>{#if Math.min(b.na, b.nb) < BAG_MIN_BREWS}<span class="bag-note"><SampleNote s={single(Math.min(b.na, b.nb))} /></span>{/if}</span>
+                  <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
                   <span class="score a" class:win={b.win === 'a'}>{b.a.toFixed(2)}</span>
                   <span class="score b" class:win={b.win === 'b'}>{b.b.toFixed(2)}</span>
                 </li>
@@ -227,6 +234,9 @@
   .pair-b {
     color: var(--ib);
   }
+  .pair-note {
+    margin: 0.15rem 0 0;
+  }
   .pair-sum {
     margin: 0 0 var(--space-2);
     font-size: 0.85rem;
@@ -301,19 +311,9 @@
     }
   }
   .bag {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 0;
-  }
-  .bag-name {
-    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .bag-note {
-    margin-top: 0.1rem;
   }
   .bag a {
     color: inherit;

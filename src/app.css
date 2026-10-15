@@ -42,6 +42,7 @@
   --chip: #f2b84b; /* the Low confidence chip and corner fold; ink 9.4:1 on it */
   --chip-ink: #2b211b;
   --chip-text: #a06500; /* the chip's amber as text on the light tip (4.8:1) */
+  --slice-line: #2b211bb3; /* doughnut separators: the text color at 70% */
   --map-empty: #6b6b6b;
   /* Insights line charts and the lab's recipe/gear colors: categorical slots in fixed order: 7 hues x 2 tones = 14
      slots; slot n = hue n mod 7, tier floor(n/7), the same hue in both themes. The deeper tone is the same hue as
@@ -152,6 +153,7 @@
     --bar-hover-alpha: 32%; /* ink text 7.2:1 */
     --chip-ink: #1c1712; /* 9.6:1 on --chip, same amber */
     --chip-text: #f2b84b; /* 9.0:1 on the dark tip */
+    --slice-line: #1c1712cc; /* the page background at 80%: a dark separator, not a light line */
     --map-empty: #3a3a3a;
     --series-1: #c7d7fd;
     --series-1-ink: #c7d7fd;
@@ -239,6 +241,7 @@
   --bar-hover-alpha: 32%;
   --chip-ink: #1c1712;
   --chip-text: #f2b84b;
+  --slice-line: #1c1712cc;
   --map-empty: #3a3a3a;
   --series-1: #c7d7fd;
   --series-1-ink: #c7d7fd;
@@ -2401,6 +2404,7 @@ td > .action-buttons.under-form {
 .cell-tip {
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
+  font-weight: 400; /* a tip opened from a chip in a bold table cell is not bold */
   line-height: 1.35;
   white-space: nowrap;
   pointer-events: none;
@@ -2461,6 +2465,18 @@ td > .action-buttons.under-form {
 .tip-block.caution .tip-title,
 .tip-block.caution .tip-lines {
   color: var(--chip-text); /* the chip's amber, darkened where the tip is light (4.5:1) */
+}
+/* A strength block takes its badge's own colors (.hl-badge, .hl-badge.hint). */
+.tip-block.strength-solid .tip-title,
+.tip-block.strength-solid .tip-lines {
+  color: var(--color-accent);
+}
+.tip-block.strength-hint .tip-title,
+.tip-block.strength-hint .tip-lines {
+  color: var(--color-text-muted);
+}
+.tip-counts {
+  margin-top: var(--space-2);
 }
 .tip-lines li + li {
   margin-top: 0.25rem;
@@ -2565,9 +2581,9 @@ button .sample-chip {
   color: var(--color-text-muted);
 }
 .small-sample-mark {
-  /* stripes plus an amber corner fold (top right): the mark's Low confidence cue on a colored shape */
-  background-image: linear-gradient(to bottom left, var(--chip) 50%, transparent 50%), var(--thin-hatch);
+  /* stripes plus an amber corner fold (top left): the mark's Low confidence cue on a colored shape */
+  background-image: linear-gradient(to bottom right, var(--chip) 50%, transparent 50%), var(--thin-hatch);
   background-size: 9px 9px, auto;
-  background-position: top right, 0 0;
+  background-position: left top, 0 0;
   background-repeat: no-repeat, repeat;
 }

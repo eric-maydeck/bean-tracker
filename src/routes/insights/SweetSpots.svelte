@@ -448,7 +448,7 @@
   }
   .bar.clip.up {
     clip-path: polygon(0 9px, 50% 0, 100% 9px, 100% 100%, 0 100%);
-    background-position: right 0 top 9px, 0 0; /* a small bar's fold sits below the arrow taper */
+    background-position: left 0 top 9px, 0 0; /* a small bar's fold sits below the arrow taper */
   }
   .bar.pick {
     background: var(--chart-color-1);

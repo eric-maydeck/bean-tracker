@@ -6,6 +6,7 @@
   import type { MineralMap } from '$lib/server/insights/lab';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleField } from '$lib/sample';
+  import { deltaInk } from '$lib/components/deltaColor';
   import { noMatch, signed } from './DeltaBars.svelte';
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the
@@ -24,7 +25,7 @@
   const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit ? `${+v.toFixed(1)}` : v.toFixed(2));
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
-    rows: (r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]]) as [string, string][],
+    rows: [...(r.delta === null ? [] : [['vs usual', signed(r.delta), deltaInk(r.delta)]]), ...(r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]])] as Tip['rows'],
     ...(r.strength === 'solid' || r.strength === 'hint' ? { strength: r.strength } : {}),
     ...sampleField(r.sample, r.delta !== null),
     note: r.delta === null ? noMatch('recipe') : undefined
@@ -59,7 +60,7 @@
       {#each map.rows as r, i (i)}
         <tr class:small-sample={r.sample.small}>
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
-            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span>{#if r.sample.small}<span class="map-note"><SampleNote s={r.sample} paired={r.delta !== null} /></span>{/if}</th>
+            onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span>{#if r.sample.small}<span class="map-note"><SampleNote s={r.sample} tip={tipOf(r)} /></span>{/if}</th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
           <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip" class:small-sample-mark={r.sample.small}
             style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{signed(r.delta)}</span>{/if}</td>

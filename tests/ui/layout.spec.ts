@@ -1568,6 +1568,8 @@ export const STATES: State[] = [
       await expect(tip).toContainText('Low confidence');
       await expect(tip).toContainText(/Rated brews\s*\d+/);
       await expectSampleChips(page);
+      // The aria-label lists the same order: counts, then (strength,) then the Low confidence title and message.
+      expect(await note.getAttribute('aria-label')).toMatch(/Rated brews \d+ · (Likely|Possible · )?.*Low confidence · Small sample: only/);
       // The Low confidence block is last in the tip, its title and reason in the chip's amber (4.5:1+ on the tip).
       const block = await tip.evaluate((el) => {
         const last = el.lastElementChild!, t = last.querySelector('.tip-title')!, bg = getComputedStyle(el).backgroundColor;
@@ -1576,6 +1578,8 @@ export const STATES: State[] = [
         return { last: last.className, title: t.textContent, ratio: (hi + 0.05) / (lo + 0.05) };
       });
       expect(block).toMatchObject({ last: 'tip-block caution', title: 'Low confidence' });
+      // Caveats end the tip: the count rows, then (a strength block, then) the Low confidence title and message.
+      expect(await tip.evaluate((el) => { const k = [...el.children].map((c) => c.className); return k.slice(k.indexOf('tip-rows tip-counts'))[0] + '|' + k.at(-1); })).toBe('tip-rows tip-counts|tip-block caution');
       expect(block.ratio).toBeGreaterThanOrEqual(4.5);
       // One look: a small row's name and value are the muted token's color (not faded by opacity).
       await page.mouse.move(0, 0); // off the row: hover turns its text ink
@@ -1600,9 +1604,8 @@ export const STATES: State[] = [
         expect(op).toBe('1');
         // Stripes plus the amber corner fold (top right).
         if (!(await m.evaluate((el) => el.classList.contains('clip')))) {
-          // Horizontal bars (in a .track) carry the fold at the top left, vertical bars and cells at the top right.
-          const [size, pos, horizontal] = await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition, !!el.closest('.track')] as const);
-          expect([size, pos]).toEqual(['9px 9px, auto', horizontal ? '0% 0%, 0px 0px' : '100% 0%, 0px 0px']);
+          // The fold is at the top left everywhere.
+          expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '0% 0%, 0px 0px']);
         }
       }
       // A clipped bar's cut end is an arrow tip, not a dark cap.

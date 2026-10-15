@@ -204,11 +204,7 @@
     border-radius: 0 4px 4px 0;
   }
   /* Clipped at the axis edge (a muted row past the full rows' range): the cut end is an arrow tip, "keeps going". */
-  /* A small bar's amber fold sits at the top left (horizontal bars; vertical bars and cells keep top right). */
-  .bar.small-sample-mark {
-    background-image: linear-gradient(to bottom right, var(--chip) 50%, transparent 50%), var(--thin-hatch);
-    background-position: left top, 0 0;
-  }
+  /* A small bar's amber fold is at the top left (global .small-sample-mark); past a left arrow taper: */
   .bar.clip:not(.up).small-sample-mark {
     background-position: left 9px top, 0 0; /* past the left arrow taper */
   }
