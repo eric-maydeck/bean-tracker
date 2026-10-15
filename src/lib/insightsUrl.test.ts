@@ -129,13 +129,14 @@ describe('withDefaults', () => {
       rank: 'rating',
       measure: 'brews',
       unit: 'grams',
-      agg: 'average'
+      agg: 'average',
+      dial: 'dialed'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
       range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating',
-      measure: 'brews', unit: 'grams', agg: 'average'
+      measure: 'brews', unit: 'grams', agg: 'average', dial: 'dialed'
     }));
 });
 
@@ -551,5 +552,17 @@ describe('brewing lab params', () => {
 describe('TAB_GROUPS', () => {
   it('lists every tab exactly once, in TABS order', () => {
     expect(TAB_GROUPS.flatMap((g) => g.tabs)).toEqual([...TABS]);
+  });
+});
+
+describe('dial', () => {
+  it('dial: only all (absent = Once dialed); junk and the default are dropped', () => {
+    expect(parse('dial=ALL').dial).toBe('all');
+    expect(parse('dial=dialed').dial).toBeUndefined();
+    expect(parse('dial=yes').dial).toBeUndefined();
+    expect(withDefaults(parse('')).dial).toBe('dialed');
+  });
+  it('round-trips after ratings, sticky across tabs', () => {
+    expect(insightsParams(parse('ratings=all&dial=all&tab=habits')).toString()).toBe('ratings=all&dial=all&tab=habits');
   });
 });

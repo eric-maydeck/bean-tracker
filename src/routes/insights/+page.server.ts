@@ -11,6 +11,7 @@ import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
+import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
@@ -39,18 +40,22 @@ export const load: PageServerLoad = ({ url }) => {
   const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;
   const grinder = lab ? (lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? null : null;
   const period = periodBounds(s.range, today);
+  // Once dialed (dialed.ts): rating views get the brews with each bag's dial-in ratings nulled; positions are
+  // over the whole history, so this runs before any Period. Dial-in views, Milestones and counts use `brews`.
+  const dialIn = dialInIds(brews);
+  const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
-  const tiles = perPerson(overviewTiles(brews, bags, period, s.ratings, today, dataStart), size);
+  const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
   // windows differ by a day or two, which isn't worth a "vs … at that pace" on every total.
   const untracked = (w: Period) => days(w) < daysBetween(w.start!, w.end) + 1;
   const pace = typeof s.compare !== 'number' || (!!prev && (untracked(period) || untracked(prev)));
   const cmp = prev && compareTiles(
-    tiles, perPerson(overviewTiles(brews, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
+    tiles, perPerson(overviewTiles(scored, bags, prev, s.ratings, prev.end, dataStart), size), days(period), days(prev), pace
   );
   const now = rightNow(bags, brews, period, size);
   const nowPrev = prev && rightNow(bags, brews, prev, size);
@@ -88,22 +93,24 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     // Leaderboards only on its tab; the overview tiles are cheap and always computed.
-    boards: s.tab === 'leaderboards' ? leaderboards(brews, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
-    habits: s.tab === 'habits' ? habits(brews, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
+    boards: s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
+    habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
         : null,
-    records: s.tab === 'records' ? recordsTab(brews, bags, { period, prev, ratings: s.ratings, brewer: s.brewer, caffeine: s.caffeine, size, today }) : null,
+    records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, period, prev, ratings: s.ratings, brewer: s.brewer, caffeine: s.caffeine, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
     insights:
       s.tab === 'insights'
         ? insightsTab(
             {
-              brews: brews.filter((b) => inPeriod(b.localDate, period)),
+              brews: scored.filter((b) => inPeriod(b.localDate, period)),
+              allBrews: brews.filter((b) => inPeriod(b.localDate, period)),
+              dialIn,
               bags,
-              prevBrews: before && brews.filter((b) => inPeriod(b.localDate, before)),
+              prevBrews: before && scored.filter((b) => inPeriod(b.localDate, before)),
               ratings: s.ratings,
               today,
               householdSize,
@@ -118,14 +125,14 @@ export const load: PageServerLoad = ({ url }) => {
     lab,
     grinder,
     sweetSpots: s.tab === 'sweetspots'
-      ? sweetSpotsTab(brews, bags, { ...labCtx, grinder, filters: { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster } })
+      ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster } })
       : null,
     brewing: s.tab === 'brewing'
-      ? brewingTab(brews, { ...labCtx, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
+      ? brewingTab(scored, { ...labCtx, all: brews, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
           by: { temp: s.tempBy, ratio: s.ratioBy, dose: s.doseBy, time: s.timeBy, bloom: s.bloomBy, grind: s.grindBy } })
       : null,
-    water: s.tab === 'water' ? waterTab(brews, bags, labCtx) : null,
-    gear: s.tab === 'gear' ? gearTab(brews, labCtx) : null,
+    water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
+    gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
     recent: s.tab === 'overview' ? recent(brews, bags) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {

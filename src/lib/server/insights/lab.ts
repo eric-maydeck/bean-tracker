@@ -304,8 +304,11 @@ const dial = (g: string | null) => grindKey(g)?.reduce((s, n, i) => s + n / 10 *
 
 export function brewingTab(brews: readonly BrewFact[], c: {
   period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: Partial<Record<BrewVar, boolean>>;
+  all: readonly BrewFact[]; // every rating: the dial-in views (Once dialed exempts them)
 }): BrewingTab {
+  // Dial-in views (spec Part 2 exemptions) read every brew; the rest curve and variables follow Once dialed.
   const rows = ratedIn(brews, c.period, c.ratings);
+  const every = ratedIn(c.all, c.period, c.ratings);
   // Rest is mostly a bag-level property (a bag spans about one rest band), so same-bag deltas barely exist:
   // compare bags instead (Sweet spots tier 2), each row centered on its roast level's mean bag rating.
   const rest = labFn('rest');
@@ -323,13 +326,13 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     const solid = row.flatMap((x, i) => (x?.solid ? [{ i, d: x.delta! }] : []));
     return solid.length >= 2 ? solid.reduce((x, y) => (y.d > x.d ? y : x)).i : null;
   };
-  const best = [...groupBy(rows.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
+  const best = [...groupBy(every.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
     .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
   // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
   // about settings, not ratings (controller ruling).
   const first = new Map<number, number>();
-  for (const b of brews) if (b.coffeeId !== null && inPeriod(b.localDate, c.period) && b.grinder === c.grinder && !first.has(b.coffeeId) && dial(b.grind) !== null) first.set(b.coffeeId, dial(b.grind)!);
-  const drifted = brews.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
+  for (const b of c.all) if (b.coffeeId !== null && inPeriod(b.localDate, c.period) && b.grinder === c.grinder && !first.has(b.coffeeId) && dial(b.grind) !== null) first.set(b.coffeeId, dial(b.grind)!);
+  const drifted = c.all.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
   const drift = [...groupBy(drifted, (b) => bandOf('brewNo', b)!.label)].map(([label, g]) => {
     const bags = new Set(g.map((b) => b.coffeeId)).size;
     return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, sample: pooled(bags, g.length) };
@@ -337,7 +340,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
   return {
     rest: restMap && { ...restMap, best: restMap.cells.map(bestOf) },
-    dialIn: pairedDeltas(rows, labFn('brewNo'), 1),
+    dialIn: pairedDeltas(every, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],
     vars: VARS.flatMap((key) => {

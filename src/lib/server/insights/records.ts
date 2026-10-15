@@ -21,6 +21,7 @@ export interface RecordDef {
   perDay?: true; // divided by household size under people=person
   scope?: 'alltime' | 'now'; // ignores Period (badge "All-time" / "Now")
   extremes?: true; // follows the brewer switch
+  dialIn?: true; // about dial-in: reads the unscored brews (Once dialed exempts it)
   bought?: true; // bag-level money: only bags purchased in the window
   run: (c: RecCtx) => Candidate[];
 }
@@ -156,6 +157,9 @@ const taste = (key: string, label: string, dir: 'max' | 'min', fmt: Fmt, run: Re
 const volume = (key: string, label: string, dir: 'max' | 'min', fmt: Fmt, run: RecordDef['run'], extra: Partial<RecordDef> = {}): RecordDef =>
   ({ key, section: 'volume', label, fmt, dir, run, ...extra });
 
+// Records about dial-in read the unscored brews (RecordsCtx.unscored), like the dial-in findings.
+const dial = (mk: typeof taste, ...a: Parameters<typeof taste>): RecordDef => ({ ...mk(...a), dialIn: true });
+
 const dayMean = (c: RecCtx) => perDay(c, (bs) => {
   const r = bs.filter((b) => countsForRating(b, c.ratings)).map((b) => b.rating!);
   return r.length >= 3 ? { value: mean(r), detail: plural(r.length, 'rated brew') } : null;
@@ -236,7 +240,7 @@ export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
   taste('bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) =>
     perBag(c, BAG_MIN_BREWS, (s) => ({ value: dialed(s.rated), detail: `Best ${Math.ceil(s.rated.length / 2)} of ${s.rated.length} brews` }))),
-  taste('dialJump', 'Biggest dial-in jump', 'max', 'rating', (c) => perBag(c, 2, (s) => {
+  dial(taste, 'dialJump', 'Biggest dial-in jump', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
       const d = s.rated[i] - s.rated[i - 1];
@@ -244,11 +248,11 @@ export const RECORDS: RecordDef[] = [
     }
     return best;
   })),
-  taste('climb', 'Biggest rating climb', 'max', 'rating', (c) => perBag(c, 2, (s) => {
+  dial(taste, 'climb', 'Biggest rating climb', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     const top = Math.max(...s.rated);
     return top > s.rated[0] ? { value: top - s.rated[0], detail: `First ${s.rated[0]} → Best ${top} (brew ${s.rated.indexOf(top) + 1} of ${s.rated.length})` } : null;
   })),
-  taste('holeInOne', 'Best on first brew', 'max', 'count', (c) => {
+  dial(taste, 'holeInOne', 'Best on first brew', 'max', 'count', (c) => {
     const firsts = perBag(c, BAG_MIN_BREWS, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
     const top = pick(firsts, 'max');
     return top ? [{ value: firsts.length, detail: `Of ${perBag(c, BAG_MIN_BREWS, () => ({ value: 0 })).length} bags with 4+ ratings`, holder: top.holder }] : [];
@@ -325,7 +329,7 @@ export const RECORDS: RecordDef[] = [
   extreme('waterMost', 'Most water in one brew', 'max', 'ml', (c) => brewMetric(c, (b) => b.waterG)),
 
   gentle('lowestBag', 'Lowest-rated bag', 'min', 'rating', bestBag()),
-  gentle('biggestDip', 'Biggest rating drop', 'max', 'rating', (c) => perBag(c, 2, (s) => {
+  dial(gentle, 'biggestDip', 'Biggest rating drop', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
       const d = s.rated[i - 1] - s.rated[i];
@@ -335,7 +339,7 @@ export const RECORDS: RecordDef[] = [
   })),
   gentle('wildest', 'Least consistent bag', 'max', 'sd', (c) =>
     perBag(c, 5, (s) => ({ value: s.sd!, detail: `Ratings ranged ${rangeOf(s.rated)} over ${s.rated.length} brews` }))),
-  gentle('slowestPeak', 'Slowest to peak', 'max', 'count', (c) => perBag(c, 5, (s) => {
+  dial(gentle, 'slowestPeak', 'Slowest to peak', 'max', 'count', (c) => perBag(c, 5, (s) => {
     const i = s.rated.indexOf(Math.max(...s.rated));
     return { value: i + 1, detail: `Best brew was #${i + 1} of ${s.rated.length}` };
   })),
@@ -360,6 +364,7 @@ const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
 
 export interface RecordsCtx {
   period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; caffeine?: Caffeine; size: number; today: string;
+  unscored?: readonly BrewFact[]; // every rating (before Once dialed); defaults to the brews given
 }
 
 const SECTIONS: Section[] = ['taste', 'volume', 'freshness', 'money', 'extremes', 'gentle'];
@@ -369,9 +374,9 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   const all: Period = { start: null, end: c.today };
   // Caffeine filters every record's brews and bags; the brewer switch still offers every type.
   const caf = <T extends { decaf: boolean }>(x: T) => !c.caffeine || x.decaf === (c.caffeine === 'decaf');
-  const brews = allBrews.filter(caf), bags = allBags.filter(caf);
+  const brews = allBrews.filter(caf), raw = (c.unscored ?? allBrews).filter(caf), bags = allBags.filter(caf);
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => ({
-    brews: w ? brews.filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
+    brews: w ? (def?.dialIn ? raw : brews).filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
     bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today
   });
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.

@@ -68,6 +68,15 @@ export type Unit = (typeof UNITS)[number];
 export const AGGS = ['average', 'total'] as const;
 export type Agg = (typeof AGGS)[number];
 export const AGG_LABEL: Record<Agg, string> = { average: 'Avg per day', total: 'Total' };
+// Once dialed (spec 2026-10-15 Part 2): rating views skip each bag's dial-in brews (dialed.ts). Only `all`
+// is ever in the URL (dial=all); absent = Once dialed.
+export const DIALS = ['dialed', 'all'] as const;
+export type Dial = (typeof DIALS)[number];
+export const DIAL_LABEL: Record<Dial, string> = { all: 'All', dialed: 'Once dialed' };
+export const DIAL_HELP: Record<Dial, string> = {
+  dialed: "Leaves out each bag's dial-in brews (the first 2, or until it settled).",
+  all: 'Every rated brew, dial-in included.'
+};
 export const BYS = ['day', 'week', 'month'] as const;
 export type By = (typeof BYS)[number];
 // Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).
@@ -190,18 +199,19 @@ export interface InsightsUrlState {
   grind?: 'exact';
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // only 'total' is ever explicit: average is the default
+  dial?: Dial; // only 'all' is ever explicit
 }
 
-type Optional = 'open' | 'by' | 'agg' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  open?: Board; by?: By; agg: Agg; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
+  open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
 } & Partial<Record<ExactParam, 'exact'>>;
 
-export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg } = {
+export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
   range: '12m',
   compare: 0,
   ratings: 'current',
@@ -211,7 +221,8 @@ export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg }
   rank: 'rating',
   measure: 'brews',
   unit: 'grams',
-  agg: 'average'
+  agg: 'average',
+  dial: 'dialed'
 };
 
 // Same-length windows to compare a range with, n periods back. Rolling ranges
@@ -300,6 +311,7 @@ export function parseInsightsUrl(
     compare,
     // `settled` was the old name for `current`; old links keep working.
     ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
+    dial: pickOne(p, 'dial', DIALS) === 'all' ? 'all' : undefined,
     avg: pickOne(p, 'avg', AVGS),
     people: parsePeople(p, householdSize),
     tab,
@@ -352,6 +364,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.range) p.set('range', s.range);
   if (s.compare !== undefined) p.set('compare', String(s.compare));
   if (s.ratings) p.set('ratings', s.ratings);
+  if (s.dial === 'all') p.set('dial', 'all');
   if (s.avg) p.set('avg', s.avg);
   if (s.people) p.set('people', s.people);
   if (s.tab) p.set('tab', s.tab);
@@ -391,6 +404,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     unit: s.unit ?? DEFAULTS.unit,
     by: s.by,
     agg: s.agg ?? DEFAULTS.agg,
+    dial: s.dial ?? DEFAULTS.dial,
     brewer: s.brewer,
     kinds: s.kinds,
     caffeine: s.caffeine,

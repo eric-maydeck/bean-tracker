@@ -16,7 +16,7 @@ const bag = (o: Partial<BagFact>): BagFact => ({
 });
 const ctx = (brews: BrewFact[], bags: BagFact[] = [], o: Partial<GenCtx> = {}): GenCtx => ({
   brews, bags, prevBrews: null, ratings: 'all', today: '2026-10-11', householdSize: 2, onHandG: 0, logged: loggedGrams(brews),
-  period: { from: '2026-09-01', to: '2026-09-30' }, dataStart: '2026-01-01', ...o
+  period: { from: '2026-09-01', to: '2026-09-30' }, dataStart: '2026-01-01', allBrews: brews, dialIn: new Set<number>(), ...o
 });
 const all = (c: GenCtx) => GENERATORS.flatMap((g) => [g(c)].flat().filter((f) => f !== null));
 const gen = (key: string, brews: BrewFact[], bags: BagFact[] = [], o: Partial<GenCtx> = {}) =>
@@ -730,5 +730,15 @@ describe('insightsTab', () => {
     expect(t.whatIf.defaults).toEqual({ drinkers: 0, gpp: 0, inflow: 0, bpd: 0, dose: 0 });
     expect(t.whatIf.avgPricePerG).toBeNull();
     expect(finite(t)).toBe(true);
+  });
+  it('dial-in findings read every brew; the others the scored ones', () => {
+    // Bags 1–3 settle at brew 3, bag 4 at brew 1: Dial-in speed has a spread on every brew. Scored, each bag
+    // keeps 4 rated brews, under settlePositions' 5, so the finding exists only if it reads allBrews.
+    const raw = [1, 2, 3, 4].flatMap((id) => (id < 4 ? [5, 5, 9, 9, 9, 9] : [9, 9, 9, 9, 9, 9])
+      .map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 })));
+    const scored = raw.map((b) => (b.brewIndex <= 2 ? { ...b, rating: null } : b));
+    const keys = (c: GenCtx) => { const t = insightsTab(c, undefined); return [...t.grid, ...t.stories, ...t.myths, ...t.tooEarly].map((f) => f.key); };
+    expect(keys(ctx(scored, [], { allBrews: raw }))).toContain('dialinSpeed');
+    expect(keys(ctx(scored, [], { allBrews: scored }))).not.toContain('dialinSpeed');
   });
 });

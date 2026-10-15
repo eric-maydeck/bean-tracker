@@ -37,6 +37,8 @@ export interface GenCtx {
   ratings: Ratings; today: string; householdSize: number; onHandG: number;
   logged: Map<number, number>; // all-history doses per bag (loggedGrams), so on-hand amounts match onHandG
   period: { from: string; to: string }; dataStart: string; // What-if defaults (Task 14)
+  allBrews: readonly BrewFact[]; // in-period, every rating: the dial-in findings (Once dialed exempts them)
+  dialIn: ReadonlySet<number>; // dialed.ts dialInIds over the whole history
 }
 export type Generator = (c: GenCtx) => Finding | Finding[] | null;
 
@@ -741,6 +743,8 @@ const calibration: Generator = (c) => {
   });
 };
 
+export const DIAL_IN_GENERATORS: ReadonlySet<Generator> = new Set([dialinCurve, dialinSpeed, firstVsLater, settleTrend]);
+
 export const GENERATORS: Generator[] = [
   dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
   morningDrift, weekendVsWeekday, earlyBrews, weekdayRatings, periodVsPrevious, gearEras, sameBagVersus, wildcardBrewer,
@@ -760,7 +764,7 @@ const negligible = (f: Finding) => /^[-+]\d/.test(f.value ?? '') && Math.abs(par
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
-  const fs = GENERATORS.flatMap((g) => [g(c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early';
 
   const p = { start: c.period.from, end: c.period.to };

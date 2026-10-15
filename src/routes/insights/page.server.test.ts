@@ -409,7 +409,7 @@ describe('brewing lab tabs', () => {
   });
   it('each Band/Exact toggle reaches its own Brewing chart (dosing=exact → dose exact)', () => {
     seed([[today, 15], [today, 15], [today, 17], [today, 17]]);
-    const dose = (q: string) => run(`?tab=brewing${q}`).brewing.vars.find((v: { key: string }) => v.key === 'dose').bands.map((b: { label: string }) => b.label);
+    const dose = (q: string) => run(`?tab=brewing&dial=all${q}`).brewing.vars.find((v: { key: string }) => v.key === 'dose').bands.map((b: { label: string }) => b.label);
     expect(dose('')).toEqual(['< 16 g', '16–18 g']);
     expect(dose('&dosing=exact')).toEqual(['15 g', '17 g']);
     expect(dose('&temp=exact&ratio=exact')).toEqual(['< 16 g', '16–18 g']);
@@ -437,5 +437,41 @@ describe('brewing lab tabs', () => {
     const d = run(`?tab=insights&bag=${slug}&roast=Light&grinder=a4z`);
     expect(d.explicit).toMatchObject({ tab: 'insights', bag: slug, roast: 'Light', grinder: 'a4z' });
     expect(d.lab).toBeNull();
+  });
+});
+
+describe('once dialed', () => {
+  const rate = (rs: number[]) => {
+    const db = getDb();
+    const ids = db.prepare('SELECT id FROM beanconqueror_brews ORDER BY bc_created_at').all() as { id: number }[];
+    ids.forEach(({ id }, i) => db.prepare('UPDATE beanconqueror_brews SET rating = ? WHERE id = ?').run(rs[i], id));
+  };
+  const days = (k: number) => Array.from({ length: k }, (_, i) => [addDays(today, i - k + 1), 15] as [string, number]);
+  it('default skips the dial-in brews; dial=all keeps them', () => {
+    seed(days(5));
+    rate([5, 6, 8, 8, 8]); // 5 rated → skip the first 2
+    expect(run('?range=all').tiles.avgRating).toBe(8);
+    expect(run('?range=all&dial=all').tiles.avgRating).toBe(7);
+    expect(run('?range=all').tiles.brews).toBe(5); // counts stay whole
+  });
+  it('position is bag-intrinsic: a period starting mid-bag still skips by whole-history position', () => {
+    seed(days(5));
+    rate([5, 6, 8, 8, 8]);
+    const mid = `?range=${addDays(today, -3)}..${today}`; // brews 2–5
+    expect(run(mid).tiles.avgRating).toBe(8);
+    expect(run(`${mid}&dial=all`).tiles.avgRating).toBe(7.5);
+  });
+  it('only dial-in brews in the period: no rating, no NaN', () => {
+    seed(days(5));
+    rate([5, 6, 8, 8, 8]);
+    const d = run(`?range=${addDays(today, -4)}..${addDays(today, -3)}`);
+    expect(d.tiles).toMatchObject({ avgRating: null, rated: 0, brews: 2 });
+    expect(JSON.stringify(d)).not.toMatch(/NaN/);
+  });
+  it('dial-in views keep every brew', () => {
+    seed(days(5));
+    rate([5, 6, 8, 8, 8]);
+    const b = run('?tab=brewing&range=all').brewing;
+    expect(b.dialIn.find((x: { label: string }) => x.label === '#1')).toBeDefined();
   });
 });
