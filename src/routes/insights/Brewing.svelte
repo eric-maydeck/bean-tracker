@@ -142,7 +142,7 @@
   /* Fixed label and value columns: the 0 lines of side-by-side (and stacked) charts line up. */
   .lab-grid {
     --bar-label-w: 5.25rem;
-    --bar-value-w: 5.75rem;
+    --bar-value-w: 7.25rem; /* fits "-0.18" plus the Possible pill */
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
