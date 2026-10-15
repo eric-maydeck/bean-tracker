@@ -245,10 +245,12 @@ describe('recent', () => {
     expect(r[2].rating).toBe(8);
   });
 
-  it('lists finished bags newest first: days from opened, else first brew; skips undated; caps at 10', () => {
+  it('lists finished bags newest first: days open from the earlier of opened and first brew; skips undated; caps at 10', () => {
     const done = (id: number, o: Partial<BagFact>) => bag({ id, status: 'archive', firstBrew: '2026-09-01', lastBrew: '2026-09-10', ...o });
     const bags = [
-      done(1, { openedDate: '2026-09-03', bagRating: 9 }),
+      done(1, { openedDate: '2026-08-28', bagRating: 9 }), // opened before the first brew
+      done(5, { openedDate: '2026-09-05', lastBrew: '2026-09-10' }), // marked Open after the first brew: first brew wins
+      done(6, { firstBrew: '2026-09-10', lastBrew: '2026-09-10' }), // one day: 1, not 0
       done(2, { lastBrew: '2026-09-20' }), // no opened date: from first brew
       done(3, { firstBrew: null }), // no start date: skipped
       bag({ id: 4, status: 'open', firstBrew: '2026-09-01', lastBrew: '2026-09-30' }), // not finished
@@ -256,9 +258,9 @@ describe('recent', () => {
     ];
     const r = recent([], bags).bags;
     expect(r).toHaveLength(10);
-    expect(r[0]).toMatchObject({ id: 2, finished: '2026-09-20', days: 19 });
-    expect(r[1]).toMatchObject({ id: 1, days: 7, rating: 9 });
+    expect(r[0]).toMatchObject({ id: 2, finished: '2026-09-20', days: 20 });
+    expect(r.slice(1, 4)).toMatchObject([{ id: 6, days: 1 }, { id: 5, days: 10 }, { id: 1, days: 14, rating: 9 }]);
     expect(r.map((b) => b.id)).not.toContain(3);
-    expect(r[2]).toMatchObject({ id: 19, days: 14 });
+    expect(r[4]).toMatchObject({ id: 19, days: 15 });
   });
 });

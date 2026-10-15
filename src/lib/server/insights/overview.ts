@@ -181,8 +181,10 @@ export type RecentBrew = { id: number; name: string | null; slug: string | null;
 export type RecentBag = { id: number; name: string; slug: string | null; finished: string; days: number; rating: number | null };
 
 // Overview's Recent panel: the household's last 10 brews and last 10 bags finished, newest first,
-// regardless of period or people. A bag's days run from opened (else its first brew) to its last brew;
-// a bag with neither date is skipped.
+// regardless of period or people. A bag's days open count calendar days from its start to its last
+// brew, both included (opened and finished the same day = 1). The start is the earlier of opened_date
+// and the first brew: opened_date is when the bag was marked Open in the app, which is often days
+// after its first brew. A bag with neither date is skipped.
 export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n = 10): { brews: RecentBrew[]; bags: RecentBag[] } {
   const byId = new Map(bags.map((b) => [b.id, b]));
   return {
@@ -192,9 +194,9 @@ export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n =
     }),
     bags: bags
       .flatMap((g) => {
-        const from = g.openedDate ?? g.firstBrew;
+        const from = [g.openedDate, g.firstBrew].filter((d): d is string => !!d).sort()[0];
         return isFinished(g) && from
-          ? [{ id: g.id, name: g.name, slug: g.slug, finished: g.lastBrew!, days: Math.max(0, daysBetween(from, g.lastBrew!)), rating: g.bagRating }]
+          ? [{ id: g.id, name: g.name, slug: g.slug, finished: g.lastBrew!, days: Math.max(1, daysBetween(from, g.lastBrew!) + 1), rating: g.bagRating }]
           : [];
       })
       .sort((a, b) => b.finished.localeCompare(a.finished) || b.id - a.id)
