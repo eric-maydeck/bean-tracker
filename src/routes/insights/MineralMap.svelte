@@ -4,6 +4,7 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { MineralMap } from '$lib/server/insights/lab';
+  import { sampleLabel } from '$lib/sample';
   import { noMatch, signed } from './DeltaBars.svelte';
   import { STRENGTH } from './Insights.svelte';
 
@@ -24,7 +25,8 @@
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
     rows: [['Brews', `${r.brews}`], ['Bags', `${r.bags}`],
-      ['Strength', !r.solid ? 'Few brews' : r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—']],
+      ['Strength', r.strength === 'solid' || r.strength === 'hint' ? STRENGTH[r.strength] : '—'],
+      ...(r.sample.small ? [['Sample', sampleLabel(r.sample)] as [string, string]] : [])],
     note: r.delta === null ? noMatch('recipe') : undefined
   });
 
@@ -55,7 +57,7 @@
     </thead>
     <tbody>
       {#each map.rows as r, i (i)}
-        <tr class:few={!r.solid}>
+        <tr class:small-sample={r.sample.small}>
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span></th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
@@ -132,14 +134,11 @@
     padding: 0.1rem 0.4rem;
     border-radius: 4px;
   }
-  .few > :not(.name-col, .delta) {
+  .small-sample > :not(.name-col, .delta) {
     opacity: var(--faded);
   }
-  .few .delta-chip {
+  .small-sample .delta-chip {
     background-image: var(--thin-hatch);
-  }
-  .few .map-name {
-    color: var(--color-text-muted);
   }
   @media (max-width: 640px) {
     tbody th,

@@ -142,7 +142,7 @@
   /* Bars color by size on the lab's fixed scale (deltaColor, C1), inline; grind drift and the like have no good
      side, so one neutral ink and the side of zero shows the direction (ui-rules 29). */
   .direction .bar {
-    background: var(--color-text-muted);
+    background-color: var(--color-text-muted);
   }
   @media (max-width: 480px) {
     .delta-bars {

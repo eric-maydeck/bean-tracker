@@ -4,6 +4,7 @@
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
   import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
+  import SampleNote from '$lib/components/SampleNote.svelte';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -273,12 +274,12 @@
       <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
       <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
-          <li class="board-row">
+          <li class="board-row" class:small-sample={r.sample.small}>
             <span class="rank">{i + 1}</span>
             <span class="who">
               {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
               <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
-              <small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>
+              <span class="who-line"><small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>{#if r.sample.small}<SampleNote s={r.sample} />{/if}</span>
             </span>
             <span class="num">{r.brews}</span>
             <span class="num">{r.sd?.toFixed(2) ?? '—'}</span>
@@ -422,14 +423,14 @@
     left: 12%;
     right: 12%;
     min-height: 2px;
-    background: color-mix(in oklab, var(--color-text-muted) 55%, transparent);
+    background-color: color-mix(in oklab, var(--color-text-muted) 55%, transparent);
     border-radius: 0 0 3px 3px;
   }
   .bar.up {
     border-radius: 3px 3px 0 0;
   }
   .bar.pale {
-    background: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
+    background-color: color-mix(in oklab, var(--color-text-muted) 22%, transparent);
   }
   /* No match (grind brewed there, never paired): a dotted mark on the zero line keeps the setting in range. */
   .bar.none {

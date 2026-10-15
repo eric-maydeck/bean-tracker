@@ -5,11 +5,12 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { deltaInk } from '$lib/components/deltaColor';
   import { STRENGTH } from './Insights.svelte';
+  import SampleNote from '$lib/components/SampleNote.svelte';
 
   // A lab leaderboard (Water's recipes, Gear's drippers and filters): Leaderboards-style rows with the numbers
   // in aligned columns under one header (ui-rules G4): brews · bags · avg rating · SD, then the Solid/Hint
   // badge and the same-bag delta. The sub line keeps non-numeric context only (a recipe's months). Narrow
-  // boards drop SD, then bags. Thin rows muted (global .few). `slots`: a side-by-side partner's length; the
+  // boards drop SD, then bags. Thin rows muted (global .small-sample). `slots`: a side-by-side partner's length; the
   // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).
   let { rows, slots = 0, noun, placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; placeTip: (e: ToggleEvent) => void } = $props();
   const uid = $props.id();
@@ -26,11 +27,11 @@
   </div>
   <ol class="board-rows lab-rows">
     {#each rows as r, i (i)}
-      <li class="board-row" class:few={!r.solid}>
+      <li class="board-row" class:small-sample={r.sample.small}>
         <span class="rank">{i + 1}</span>
         <span class="who">
           <span class="name">{r.label}</span>
-          {#if r.months}<small>{r.months}</small>{/if}
+          {#if r.months || r.sample.small}<span class="who-line">{#if r.months}<small>{r.months}</small>{/if}{#if r.sample.small}<SampleNote s={r.sample} paired={r.delta !== null} />{/if}</span>{/if}
         </span>
         <span class="num">{r.plainBrews}</span>
         <span class="num bags">{r.plainBags}</span>
@@ -91,9 +92,6 @@
   }
   .board-head .num {
     font-size: inherit;
-  }
-  .few .num {
-    color: var(--color-text-muted);
   }
   /* Narrow boards (a phone, or a half-width card): SD goes first, then bags; delta and brews stay. */
   @container (width < 27rem) {

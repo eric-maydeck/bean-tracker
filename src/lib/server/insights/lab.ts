@@ -1,4 +1,4 @@
-import { pooled, type Sample } from '$lib/sample';
+import { pooled, single, type Sample } from '$lib/sample';
 import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import { grindKey, type BagFact, type BrewFact } from './facts';
@@ -237,7 +237,7 @@ export interface SweetSpotsTab {
   matching: { bags: number; brews: number };
   cards: { key: SpotVar; name: string; spot: Spot }[];
   // `tag`: what tells apart listed bags sharing a name ("roasted May 5" / "opened Jul 30"), else null.
-  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; sd: number | null; usual: string }[];
+  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; sd: number | null; usual: string; sample: Sample }[];
 }
 const TOP_N = 5; // bags listed
 const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
@@ -277,7 +277,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
       label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
       roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
-      sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null,
+      sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null, sample: single(bs.length),
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);
@@ -408,7 +408,7 @@ const MINERAL_UNIT: Partial<Record<Mineral, string>> = { gh: 'ppm', kh: 'ppm', m
 // `unit`: mg/L, ppm (GH, KH), '' for the ratios.
 export interface MineralMap {
   cols: { key: Mineral; name: string; unit: string }[];
-  rows: { label: string; delta: number | null; solid: boolean; strength: Strength | null; brews: number; bags: number; values: (number | null)[] }[];
+  rows: { label: string; delta: number | null; solid: boolean; sample: Sample; strength: Strength | null; brews: number; bags: number; values: (number | null)[] }[];
 }
 const MAP_COLS = MINERALS.filter(([k]) => k !== 'chloride' && k !== 'sulfate');
 function mineralMap(rows: readonly BrewFact[], recipes: LeaderRow[]): MineralMap | null {
@@ -416,7 +416,7 @@ function mineralMap(rows: readonly BrewFact[], recipes: LeaderRow[]): MineralMap
   const profiled = new Map(rows.filter((b) => b.water && MAP_COLS.some(([k]) => mineralOf(k, b) !== null)).map((b) => [b.water!, b]));
   const out = recipes.flatMap((r) => {
     const b = profiled.get(r.label);
-    return b ? [{ label: r.label, delta: r.delta, solid: r.solid, strength: r.strength, brews: r.plainBrews, bags: r.plainBags,
+    return b ? [{ label: r.label, delta: r.delta, solid: r.solid, sample: r.sample, strength: r.strength, brews: r.plainBrews, bags: r.plainBags,
       values: MAP_COLS.map(([k]) => mineralOf(k, b)) }] : [];
   });
   return out.length ? { cols: MAP_COLS.map(([key, name]) => ({ key, name, unit: MINERAL_UNIT[key] ?? 'mg/L' })), rows: out } : null;

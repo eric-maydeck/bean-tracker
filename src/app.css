@@ -2488,3 +2488,15 @@ td > .action-buttons.under-form {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+
+/* Small samples (src/lib/sample.ts), one look everywhere (ui-rules 29): text muted (not opacity: dimmed
+   text fell under 4.5:1), links and values included; a colored mark keeps its full hue under stripes. */
+.small-sample,
+.small-sample .who a,
+.small-sample .name,
+.small-sample .val {
+  color: var(--color-text-muted);
+}
+.small-sample-mark {
+  background-image: var(--thin-hatch);
+}

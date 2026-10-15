@@ -1141,6 +1141,13 @@
     color: var(--color-text-muted);
     font-size: 0.75rem;
   }
+  /* The sub line with a small-sample note after it: the text ellipsizes, the note stays whole. */
+  :global(.board-row .who .who-line) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4em;
+    min-width: 0;
+  }
   :global(.board-row .val) {
     font-weight: 600;
     font-variant-numeric: tabular-nums;
@@ -1173,12 +1180,6 @@
     :global(.board-row.bar:hover .who > *) {
       color: var(--color-text);
     }
-  }
-  /* Thin rows (few bags / few brews): muted color, not opacity (dimmed text at 60% fell under 4.5:1). */
-  :global(.board-row.few .who a),
-  :global(.board-row.few .name),
-  :global(.board-row.few .val) {
-    color: var(--color-text-muted);
   }
   /* The stat tile's language in flow layout: value largest, muted context, caption at the foot.
      Cards in a row share its height, so captions line up. */

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SampleNote from '$lib/components/SampleNote.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
@@ -40,7 +41,7 @@
         ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
         : rank === 'ppg' && r.cost !== undefined
           ? [plural(r.bags, 'bag'), usd.format(r.cost), formatGrams(r.grams!)]
-          : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null, r.sample?.small ? 'few bags' : null])
+          : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null])
     ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>
     m === undefined ? null
@@ -185,11 +186,11 @@
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row bar" class:few={avg === 'min3' && r.sample?.small} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            <li class="board-row bar" class:small-sample={r.sample?.small} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
-                <small>{detail(r)}</small>
+                <span class="who-line"><small>{detail(r)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
               </span>
               <span class="val">{fmt(r.value)}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
@@ -273,7 +274,7 @@
   .board {
     margin: 0;
   }
-  /* The row rules (.board-rows, .board-row, .rank, .who, .val, .few) are :global() in +page.svelte,
+  /* The row rules (.board-rows, .board-row, .rank, .who, .val) are :global() in +page.svelte,
      shared with the lab tabs. */
   .board-note {
     min-height: calc(var(--rows) * var(--row-h));

@@ -455,7 +455,8 @@ async function expectBarHover(page: Page) {
     // The row's text turns ink over the deeper bar (accent link and muted subtext would fall under 4.5:1).
     const ink = await page.evaluate(() => getComputedStyle(document.body).color);
     await expect.poll(() => row.locator('.who > *').evaluateAll((els) => els.map((e) => getComputedStyle(e).color)))
-      .toEqual([ink, ink]);
+      .toEqual(expect.arrayContaining([ink]));
+    await expect.poll(() => row.locator('.who > *').evaluateAll((els, c) => els.every((e) => getComputedStyle(e).color === c), ink)).toBe(true);
     return;
   }
   const found = await page.evaluate(() => [...document.styleSheets].some((sh) => {
@@ -1535,6 +1536,27 @@ export const STATES: State[] = [
       await expectBarHover(page);
     }
   },
+  { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=min3',
+    act: async (page) => {
+      const note = page.locator('.sample-note').first();
+      await expect(note).toHaveText(/^(few bags|\d+ brews?)$/);
+      await note.click();
+      const tip = page.locator('[popover]:popover-open').filter({ hasText: 'Small sample' });
+      await expect(tip).toContainText(/Bags\s*\d+/);
+      await expect(tip).toContainText(/Brews\s*\d+/);
+      // One look: a small row's name and value are the muted token's color (not faded by opacity).
+      await page.mouse.move(0, 0); // off the row: hover turns its text ink
+      const row = page.locator('.board-row.small-sample').first();
+      await expect.poll(() => row.evaluate((el) => {
+        const c = (e: Element | null) => (e ? getComputedStyle(e).color : null);
+        const probe = document.createElement('i');
+        probe.style.color = 'var(--color-text-muted)';
+        el.append(probe);
+        const muted = c(probe);
+        probe.remove();
+        return [c(el.querySelector('.name, .who a')), c(el.querySelector('.val'))].every((x) => x === muted);
+      })).toBe(true); // polled: the hover color transition (150ms) settles
+    } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
     name: 'insights-recent',
