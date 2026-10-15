@@ -231,19 +231,19 @@ describe('breakdown', () => {
   });
   it('cellOf: counts are the paired brews and bags behind the delta', () => {
     const [a] = pairedDeltas([...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(3, 2, 91, 6)], temp);
-    expect(cellOf(a)).toEqual({ delta: a.delta, solid: false, brews: 2, bags: 1 }); // thin: faded, counts match the pairs
+    expect(cellOf(a)).toEqual({ delta: a.delta, solid: false, sample: { bags: 1, brews: 2, small: true }, brews: 2, bags: 1 }); // thin: faded, counts match the pairs
     expect(a.delta).not.toBeNull();
     expect(cellOf({ ...a, solid: true })).toMatchObject({ delta: a.delta, solid: true, brews: 2, bags: 1 });
     expect(cellOf({ ...a, delta: null, brews: 0, bags: 0 })).toMatchObject({ delta: null, solid: false }); // no paired brews: blank
   });
   it('trimBlank: rows, then columns, with no delta are dropped; nothing left → null', () => {
-    const c = (delta: number | null) => ({ delta, solid: true, brews: 4, bags: 2 });
+    const c = (delta: number | null) => ({ delta, solid: true, sample: { bags: 2, brews: 4, small: true }, brews: 4, bags: 2 });
     expect(trimBlank({ rows: ['a', 'b', 'c'], cols: ['x', 'y', 'z'], cells: [[c(1), null, c(null)], [null, c(null), null], [c(-1), c(null), null]] }))
       .toEqual({ rows: ['a', 'c'], cols: ['x'], cells: [[c(1)], [c(-1)]] });
     expect(trimBlank({ rows: ['a'], cols: ['x'], cells: [[c(null)]] })).toBeNull();
   });
   it('trimBlank ordered: interior blank columns stay, leading/trailing ones go', () => {
-    const c = (delta: number | null) => ({ delta, solid: true, brews: 4, bags: 2 });
+    const c = (delta: number | null) => ({ delta, solid: true, sample: { bags: 2, brews: 4, small: true }, brews: 4, bags: 2 });
     expect(trimBlank({ rows: ['a'], cols: ['w', 'x', 'y', 'z'], cells: [[null, c(1), null, c(2)]] }, true))
       .toEqual({ rows: ['a'], cols: ['x', 'y', 'z'], cells: [[c(1), null, c(2)]] });
     expect(trimBlank({ rows: ['a'], cols: ['x'], cells: [[c(null)]] }, true)).toBeNull();
@@ -341,7 +341,7 @@ describe('brewingTab', () => {
     // 6 Light bags, 10 brews each, all at one rest: 3 at 10 d rated 7, 3 at 25 d rated 8.
     const one = [1, 2, 3, 4, 5, 6].flatMap((id) => Array.from({ length: 10 }, () => brew({ coffeeId: id, roastLevel: 'Light', restDays: id < 4 ? 10 : 25, rating: id < 4 ? 7 : 8 })));
     expect(brewingTab(one, c0).rest).toEqual({ rows: ['Light'], cols: ['0–21 d', '22–30 d'], best: [1],
-      cells: [[{ delta: -0.5, solid: true, brews: 30, bags: 3 }, { delta: 0.5, solid: true, brews: 30, bags: 3 }]] });
+      cells: [[{ delta: -0.5, solid: true, sample: { bags: 3, brews: 30, small: false }, brews: 30, bags: 3 }, { delta: 0.5, solid: true, sample: { bags: 3, brews: 30, small: false }, brews: 30, bags: 3 }]] });
     const gap = one.map((b) => ({ ...b, restDays: b.restDays === 10 ? 25 : 50 }));
     const g = brewingTab(gap, c0).rest!;
     expect(g.cols).toEqual(['22–30 d', '31–45 d', '46–60 d']); // an interior blank window stays (ui-rules 35)
@@ -571,5 +571,24 @@ describe('gearTab', () => {
   it('no filters at all: no matrix', () => {
     const r = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8, { dripper: 'V60' }), ...many(4, id, 92, 7, { dripper: 'Origami' })]);
     expect(gearTab(r, { period: P, ratings: 'all' }).matrix).toBeNull();
+  });
+});
+
+describe('sample rule in the lab', () => {
+  it('a band is small under 3 bags or 10 paired brews, solid stays the 3/30 strength bar', () => {
+    const rows = [1, 2, 3].flatMap((id) => [...many(2, id, 92, 8.4), ...many(2, id, 88, 8)]);
+    const st = pairedDeltas(rows, temp);
+    expect(st.map((s) => s.sample)).toEqual([{ bags: 3, brews: 6, small: true }, { bags: 3, brews: 6, small: true }]);
+    const more = [1, 2, 3].flatMap((id) => [...many(4, id, 92, 8.4), ...many(4, id, 88, 8)]);
+    expect(pairedDeltas(more, temp).map((s) => [s.sample.small, s.solid])).toEqual([[false, false], [false, false]]);
+  });
+  it('a no-match band reports its plain counts', () => {
+    const st = pairedDeltas([...many(3, 1, 92, 8), ...many(3, 2, 88, 8)], temp);
+    expect(st.every((s) => s.delta === null && s.sample.brews === 3 && s.sample.bags === 1)).toBe(true);
+  });
+  it('cells carry a sample; empty stats are small', () => {
+    expect(cellOf({ delta: 0.2, solid: false, brews: 12, bags: 3 }).sample.small).toBe(false);
+    expect(cellOf({ delta: 0.2, solid: false, brews: 9, bags: 3 }).sample.small).toBe(true);
+    expect(emptyStat({ label: 'x', order: 0 }).sample).toEqual({ bags: 0, brews: 0, small: true });
   });
 });

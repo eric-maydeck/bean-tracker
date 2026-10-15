@@ -1,3 +1,4 @@
+import { pooled, type Sample } from '$lib/sample';
 import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import { grindKey, type BagFact, type BrewFact } from './facts';
@@ -20,6 +21,7 @@ export interface BandStat {
   delta: number | null; // mean same-bag delta of the paired brews; null = no paired bag
   brews: number; bags: number; // paired brews / bags behind `delta`
   solid: boolean; // ≥ MIN_BAGS paired bags and ≥ MIN_BREWS paired brews
+  sample: Sample; // the small-sample marker (sample.ts): paired counts, or plain ones for "no match"
   strength: Strength | null; // vs the other bands' deltas, Bonferroni over every band of the variable in the period's data; null = nothing to compare
   adjusted: number; plainBrews: number; plainBags: number; // bag-weighted adjusted mean (K = 5) over every rated brew in the band
   spread: number | null; // sample SD of the paired brews' same-bag deltas (consistency); null under 2 paired brews
@@ -52,6 +54,7 @@ export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand
     const g = plain.get(label)!;
     return {
       label, order: s.order, ...(s.range ? { range: s.range } : {}), delta: s.paired.length ? mean(s.paired) : null, brews: s.paired.length, bags: s.bags.size, solid,
+      sample: s.paired.length ? pooled(s.bags.size, s.paired.length) : pooled(g.bags, g.brews),
       strength: z === null ? null : strengthOf(z, solid, tests),
       adjusted: g.adjusted, plainBrews: g.brews, plainBags: g.bags, spread: pairedSd.get(label)!, sd: ratingSd.get(label)!
     };
@@ -68,9 +71,9 @@ export function fillGrind<T extends { label: string }>(bands: T[], empty: (b: Ba
 }
 export const emptyStat = (b: Band): BandStat => ({
   label: b.label, order: b.order, ...(b.range ? { range: b.range } : {}), delta: null, brews: 0, bags: 0, solid: false, strength: null,
-  adjusted: 0, plainBrews: 0, plainBags: 0, spread: null, sd: null
+  adjusted: 0, plainBrews: 0, plainBags: 0, spread: null, sd: null, sample: pooled(0, 0)
 });
-const emptySpot = (b: Band): SpotBand => ({ label: b.label, ...(b.range ? { range: b.range } : {}), value: null, bags: 0, brews: 0, solid: false });
+const emptySpot = (b: Band): SpotBand => ({ label: b.label, ...(b.range ? { range: b.range } : {}), value: null, bags: 0, brews: 0, solid: false, sample: pooled(0, 0) });
 
 // Tier 2: per band, each bag's mean rating within the band (the bag is the unit, no pseudo-replication).
 function bagBandMeans(rows: readonly BrewFact[], band: BandFn) {
@@ -88,7 +91,7 @@ function bagBandMeans(rows: readonly BrewFact[], band: BandFn) {
 const isSolid = (s: { means: number[]; brews: number }) => s.means.length >= MIN_BAGS && s.brews >= MIN_BREWS;
 const meanBands = (all: ReturnType<typeof bagBandMeans>): SpotBand[] =>
   [...all].sort((a, b) => a[1].order - b[1].order || a[0].localeCompare(b[0]))
-    .map(([label, s]) => ({ label, ...(s.range ? { range: s.range } : {}), value: mean(s.means), bags: s.means.length, brews: s.brews, solid: isSolid(s) }));
+    .map(([label, s]) => ({ label, ...(s.range ? { range: s.range } : {}), value: mean(s.means), bags: s.means.length, brews: s.brews, solid: isSolid(s), sample: pooled(s.means.length, s.brews) }));
 
 export interface Group { name: string; brews: BrewFact[] } // narrowest first
 export interface Spot {
@@ -107,7 +110,7 @@ export interface Spot {
 }
 // value null: a no-match band (brews, never paired on the same bag): tier 1 of an ordered dial (grind) keeps it, so
 // the chart spans every setting brewed, lowest to highest (round 3, S-grind); bags/brews are then its plain counts.
-export interface SpotBand { label: string; range?: string; value: number | null; bags: number; brews: number; solid: boolean }
+export interface SpotBand { label: string; range?: string; value: number | null; bags: number; brews: number; solid: boolean; sample: Sample }
 // The Insights tab's two badges: Solid wins, Hint leans (spec "Strong/Likely/Hint" mapped onto them).
 export const verdictOf = (s: Strength | null): Spot['verdict'] => (s === 'solid' ? 'win' : s === 'hint' ? 'leaning' : 'none');
 
@@ -124,8 +127,10 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
     const st = pairedDeltas(slice, f), solid = st.filter((s) => s.solid);
     if (solid.length < 2) continue;
     const b = solid.reduce((x, y) => (y.delta! > x.delta! ? y : x));
-    const shown = st.filter((s) => s.delta !== null || keepUnpaired).map((s) => ({ label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta,
-      bags: s.delta === null ? s.plainBags : s.bags, brews: s.delta === null ? s.plainBrews : s.brews, solid: s.solid }));
+    const shown = st.filter((s) => s.delta !== null || keepUnpaired).map((s) => {
+      const bags = s.delta === null ? s.plainBags : s.bags, brews = s.delta === null ? s.plainBrews : s.brews;
+      return { label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta, bags, brews, solid: s.solid, sample: pooled(bags, brews) };
+    });
     return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
@@ -151,10 +156,10 @@ export const SLICE_OF: Record<Slice, (b: BrewFact) => string | null> = {
   roast: (b) => b.roastLevel, process: (b) => b.processGroup, origin: (b) => b.origin, roaster: (b) => b.roaster
 };
 // delta null = no paired brews (blank); a thin cell (not solid) keeps its delta and draws faded; counts for the tip.
-export interface Cell { delta: number | null; solid: boolean; brews: number; bags: number }
+export interface Cell { delta: number | null; solid: boolean; sample: Sample; brews: number; bags: number }
 // One mapping for every heatmap (breakdown, gearTab's matrix): counts are the paired brews and bags
 // behind the delta, so a tip never reads "6 brews, 0 bags".
-export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'>): Cell => ({ delta: s.delta, solid: s.solid, brews: s.brews, bags: s.bags });
+export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'>): Cell => ({ delta: s.delta, solid: s.solid, sample: pooled(s.bags, s.brews), brews: s.brews, bags: s.bags });
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
 // Drop rows, then columns, with no cell that has a delta (all blank: nothing to show, round 1 I8); null when none is left.
 const live = (c: Cell | null) => c !== null && c.delta !== null;
@@ -289,7 +294,7 @@ export interface BrewingTab {
   rest: (Breakdown & { best: (number | null)[] }) | null;
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
-  drift: { label: string; value: number; bags: number; solid: boolean }[]; // mean setting change vs the bag's first brew
+  drift: { label: string; value: number; bags: number; solid: boolean; sample: Sample }[]; // mean setting change vs the bag's first brew
   vars: VarChart[];
 }
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -327,7 +332,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   const drifted = brews.filter((b) => inPeriod(b.localDate, c.period) && b.grinder === c.grinder && first.has(b.coffeeId!) && dial(b.grind) !== null && b.brewIndex > 0);
   const drift = [...groupBy(drifted, (b) => bandOf('brewNo', b)!.label)].map(([label, g]) => {
     const bags = new Set(g.map((b) => b.coffeeId)).size;
-    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS }; // solid counts bags only: the bag is the unit, brews within it aren't independent
+    return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, solid: bags >= MIN_BAGS, sample: pooled(bags, g.length) }; // solid counts bags only: the bag is the unit, brews within it aren't independent
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
   return {
