@@ -1,3 +1,18 @@
+# [1.75.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.2...v1.75.0) (2026-10-15)
+
+
+### Bug Fixes
+
+* **coffees:** clone from a coffee page shows the added popup
+* **insights:** days open start at the earlier of opened and first brew
+
+
+### Features
+
+* **insights:** bar hover and a recent panel on overview (preview variants)
+* **insights:** readable bar hover and value column labels on recent
+* **insights:** recent brews and finished coffees data for overview
+
 ## [1.74.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.74.1...v1.74.2) (2026-10-14)
 
 
