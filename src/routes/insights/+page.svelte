@@ -1440,7 +1440,9 @@
     --q: var(--c);
     --w: calc((100cqw - (var(--q) - 1) * var(--gap)) / var(--q));
     --h: calc((100cqw - (var(--c) - 1) * var(--gap)) / var(--c));
-    flex: 0 0 var(--w);
+    /* Basis 0.5px under the exact share, grown back to fill: at a fractional row width (Windows at 150%
+       scaling) each tile rounds up to the layout grid, and six exact shares overflowed into a 5+1 row. */
+    flex: 1 0 calc(var(--w) - 0.5px);
     box-sizing: border-box;
     aspect-ratio: auto;
     height: calc(var(--h) + var(--grow-compare, 0px));

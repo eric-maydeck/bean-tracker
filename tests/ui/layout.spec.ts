@@ -1718,6 +1718,28 @@ export const STATES: State[] = [
       await page.locator('.record-ties').first().click(); // tie tip opens on tap
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
     } },
+  // Tile rows at a fractional width (Windows Firefox at 150% scaling gave a 1174.67px row) keep their columns: six
+  // exact shares rounded up once overflowed into 5+1. A fractional main padding makes the row fractional.
+  {
+    name: 'insights-fit-fractional',
+    path: () => '/insights?range=all',
+    act: async (page) => {
+      const rows = () => page.locator('.fit').evaluateAll((fs) => fs.map((f) => {
+        const tops = new Map<number, number>();
+        for (const c of f.children) { const t = Math.round(c.getBoundingClientRect().top); tops.set(t, (tops.get(t) ?? 0) + 1); }
+        return [...tops.values()].join('+');
+      }));
+      const whole = await rows();
+      for (const x of [-0.33, 0.1, 0.33, 0.5, 0.67, 0.9]) { // -0.33: the reported 1174.67px row at w1280
+        await page.evaluate((x) => {
+          const s = document.getElementById('frac') ?? document.head.appendChild(Object.assign(document.createElement('style'), { id: 'frac' }));
+          s.textContent = `main.container { padding-right: calc(var(--space-4) + ${x}px) }`;
+        }, x);
+        expect(await rows(), `row width + ${x}px`).toEqual(whole);
+      }
+      await page.evaluate(() => document.getElementById('frac')!.remove());
+    }
+  },
   // Side rail (docs/backlog/insights-side-bar.md): from 1000px wide and 500px tall. It adds width (rail + gap
   // = 176px), so with it at viewport W the content lays out exactly as the page without it at W - 176 (a
   // (W - 176) x 499 viewport: too short for the rail), and from 1416px the content column is the full 1208px.
