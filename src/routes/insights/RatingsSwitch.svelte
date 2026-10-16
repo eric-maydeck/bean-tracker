@@ -3,8 +3,8 @@
 
   // A tab bar's labeled Ratings (Current | All) and Brews (All brews | Once dialed) switches (ui-rules 26–27: title +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
-  let { ratings, dial, ratingsHelp, choose }: {
-    ratings: Ratings; dial: Dial; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
+  let { ratings, dial, dialApplies = true, ratingsHelp, choose }: {
+    ratings: Ratings; dial: Dial; dialApplies?: boolean; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
   } = $props();
 </script>
 
@@ -17,6 +17,7 @@
     {/each}
   </div>
 </div>
+{#if dialApplies}
 <div class="form-field group-field brews-field">
   <span>Brews</span>
   <div class="tab-group" role="group" aria-label="Brews">
@@ -26,3 +27,4 @@
     {/each}
   </div>
 </div>
+{/if}

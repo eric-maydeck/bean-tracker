@@ -463,6 +463,18 @@
     <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {/if}
+  <!-- Records: one Brews switch for the whole tab, here in the sticky bar (ui-rules 26/30), not on each tile. -->
+  {#if s.tab === 'records'}
+    <div class="form-field group-field">
+      <span>Brews</span>
+      <div class="tab-group" role="group" aria-label="Brews">
+        {#each ['all', 'dialed'] as const as m (m)}
+          <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
+            onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
+        {/each}
+      </div>
+    </div>
+  {/if}
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
     <div class="form-field group-field people-field">
@@ -569,9 +581,9 @@
             <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
-            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
+            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || (t.ratingSwitch && s.dial === 'all')} class:dial-all={t.ratingSwitch && s.dial === 'all'}
               ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}{s.dial === 'all' ? ', all brews' : ''}</span><Icon name="question" /></button
+                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}{#if s.dial === 'all'}<span class="dial-part">, all brews</span>{/if}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}</span
@@ -913,6 +925,19 @@
     display: block;
     overflow: visible;
     white-space: nowrap;
+  }
+  /* ", all brews" wraps as one piece: a 3-up tile's caption stays within its two lines. */
+  /* Three short lines in a 3-up tile: start the caption a touch higher so they end inside it. */
+  .stat-caption:has(.dial-all) {
+    top: calc(73.98cqw - 0.3rem);
+  }
+  @media (max-width: 640px) {
+    .comparing .stat-caption:has(.dial-all) {
+      top: calc(73.98cqw + 0.45rem);
+    }
+  }
+  .dial-part {
+    display: inline-block;
   }
   /* Every caption with a tip button lets the button's 44px tap area overflow. */
   .stat-caption:has(.mode-tip-button) {

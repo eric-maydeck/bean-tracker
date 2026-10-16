@@ -129,7 +129,8 @@
         </optgroup>
       </select>
     </div>
-    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
+    <!-- The dial-k scores already take each bag's best half: the Brews switch doesn't apply, so it's hidden. -->
+    <RatingsSwitch {ratings} {dial} dialApplies={!avg.startsWith('dial')} {ratingsHelp} {choose} />
   {/if}
 </div>
 

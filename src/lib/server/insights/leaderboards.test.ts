@@ -84,6 +84,13 @@ describe('leaderboard', () => {
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'dial-k5')[0].value).toBe(9);
     expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'dial-k5')[0]).toMatchObject({ value: 9, sample: { small: true } }); // one bag: overall = itself
   });
+  it('dial-k scores ignore Once dialed: same value scored or not; other scores follow the scored brews', () => {
+    const raw = [5, 6, 8, 9, 9, 9].map((r, i) => brew({ id: i + 1, coffeeId: 1, rating: r }));
+    const scored = raw.map((b, i) => (i < 2 ? { ...b, rating: null } : b));
+    const dialK = (bs: BrewFact[]) => leaderboards(bs, [], SEPT, null, 'rating', 'all', 'dial-k2', 1, raw).coffees[0].value;
+    expect(dialK(scored)).toBe(dialK(raw));
+    expect(leaderboards(scored, [], SEPT, null, 'rating', 'all', 'raw', 1, raw).coffees[0].value).toBe(8.75);
+  });
   it('rating rows carry a sample; the coffees board uses the one-bag rule', () => {
     const bs = [1, 1, 1, 2, 2, 2, 2].map((coffeeId, i) => brew({ coffeeId, roaster: 'R', rating: 8, id: i + 1 }));
     const roasters = leaderboard(bs, [], SEPT, 'roasters', 'rating', 'all', 'raw');

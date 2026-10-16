@@ -238,7 +238,8 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
 
 export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
-  taste('bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) =>
+  // Already takes each bag's best half, so it reads every brew and ignores the Brews switch (no double discount).
+  dial(taste, 'bestBagDialed', 'Best bag, dialed in', 'max', 'rating', (c) =>
     perBag(c, BAG_MIN_BREWS, (s) => ({ value: dialed(s.rated), detail: `Best ${Math.ceil(s.rated.length / 2)} of ${s.rated.length} brews` }))),
   dial(taste, 'dialJump', 'Biggest dial-in jump', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     let best: Omit<Candidate, 'holder'> | null = null;

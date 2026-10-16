@@ -1305,6 +1305,28 @@ export const STATES: State[] = [
       await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
     } })),
   { name: 'insights-dial-all', path: () => '/insights?tab=leaderboards&dial=all' },
+  // Captions stay inside their tiles in both dial states (checkLayout); the dial-k scores hide the Brews switch.
+  { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
+  { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
+  {
+    name: 'insights-dial-k-no-switch', path: () => '/insights?tab=leaderboards&avg=dial-k2',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: 'Ratings' })).toHaveCount(1);
+      await expect(page.getByRole('group', { name: 'Brews' })).toHaveCount(0);
+    }
+  },
+  {
+    // Records: one Brews switch, in the sticky bar; it stays in view halfway down the tab.
+    name: 'insights-dial-records-sticky', path: () => '/insights?tab=records',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: 'Brews' })).toHaveCount(1);
+      await page.evaluate(() => scrollTo(0, document.body.scrollHeight / 2));
+      const g = page.getByRole('group', { name: 'Brews' });
+      await expect(g).toBeInViewport();
+      await g.getByRole('button', { name: 'All brews', exact: true }).click();
+      await expect(page).toHaveURL(/dial=all/);
+    }
+  },
   {
     // Reset clears every choice but a non-default tab; tab choices survive a tab switch.
     name: 'insights-reset',

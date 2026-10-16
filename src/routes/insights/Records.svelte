@@ -3,7 +3,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, DIAL_LABEL, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -121,13 +121,6 @@
     {#each ['current', 'all'] as const as m (m)}
       <button aria-pressed={ratings === m} title={ratingsHelp[m]} aria-describedby="ratings-help-{m}" onclick={() => choose({ ratings: m })}
         ><span>{m === 'all' ? 'All' : 'Current'}</span></button
-      >
-    {/each}
-  </div>
-  <div class="tab-group hl-switch" role="group" aria-label="Brews">
-    {#each ['all', 'dialed'] as const as m (m)}
-      <button aria-pressed={dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}" onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}
-        ><span>{DIAL_LABEL[m]}</span></button
       >
     {/each}
   </div>
@@ -315,12 +308,9 @@
   }
   /* Every card keeps the switch band, switch or not, so values line up across sections (A15). */
   .hl-top {
-    height: 3rem;
+    height: 1.4rem;
     display: flex;
-    flex-direction: column;
-    justify-content: center;
     align-items: center;
-    gap: 0.2rem;
   }
   /* The badge sits at the foot, just above the caption, on every card. */
   /* Flex: the badge's tip button is its own row (checkLayout rule 5), apart from "+N tied". */

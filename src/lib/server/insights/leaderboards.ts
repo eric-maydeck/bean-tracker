@@ -132,8 +132,10 @@ export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
 // the overview); rating and $/g don't change (its spend and grams do), and no order changes.
 export function leaderboards(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, prev: Period | null, rank: Rank, ratings: Ratings,
-  avg: Avg, size = 1
+  avg: Avg, size = 1, unscored: readonly BrewFact[] = brews
 ): Record<Board, BoardRow[]> {
+  // The dial-k2 / dial-k5 scores already take each bag's best half: they read every brew, whatever the Brews switch says.
+  if (avg.startsWith('dial')) brews = unscored;
   const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend');
   return Object.fromEntries(
     BOARDS.map((board) => {

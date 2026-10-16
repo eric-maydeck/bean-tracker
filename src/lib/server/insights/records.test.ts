@@ -335,5 +335,7 @@ describe('once dialed (F4)', () => {
     expect(tileOf(t, 'dialJump')?.value).toBe(2);
     expect(tileOf(t, 'bestBag')?.value).toBe(8); // scored: the dial-in 5 and 6 are gone
     expect(tileOf(recordsTab(scored, BAGS, CTX), 'climb')).toBeUndefined();
+    expect(tileOf(t, 'bestBagDialed')?.value).toBe(8); // best half of every brew: [8,8,8] either way
+    expect(tileOf(recordsTab(scored, BAGS, { ...CTX, unscored: raw }), 'bestBagDialed')?.value).toBe(tileOf(recordsTab(raw, BAGS, CTX), 'bestBagDialed')?.value);
   });
 });
