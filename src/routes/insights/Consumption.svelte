@@ -72,34 +72,27 @@
 
 {@render tiles()}
 
-<div class="insights-charts">
-  <section class="chart-panel">
-    <h2>Brewed over time</h2>
-    {#if empty}
-      <p class="empty">{emptyLine('No data in this period')}</p>
-    {:else}
+<!-- Nothing in the period: one short panel, not three tall blank charts (rule 28). -->
+{#if empty}
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No data in this period.')}</p></section>
+{:else}
+  <div class="insights-charts">
+    <section class="chart-panel">
+      <h2>Brewed over time</h2>
       <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g && !avg}
         format={fmt(k1)} unit={axis(k1)} height={260} />
       <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} {unitNote}{note}</p>
-    {/if}
-  </section>
-  <section class="chart-panel">
-    <h2>Bought vs brewed</h2>
-    {#if empty}
-      <p class="empty">{emptyLine('No data in this period')}</p>
-    {:else}
+    </section>
+    <section class="chart-panel">
+      <h2>Bought vs brewed</h2>
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
         series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
       <p class="chart-note">{g ? 'Grams' : 'Bags'} {unitNote}{note}</p>
-    {/if}
-  </section>
-</div>
-<section class="chart-panel">
-  <h2>On hand over time</h2>
-  {#if empty}
-    <p class="empty">{emptyLine('No data in this period')}</p>
-  {:else}
+    </section>
+  </div>
+  <section class="chart-panel">
+    <h2>On hand over time</h2>
     <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
-  {/if}
-</section>
+  </section>
+{/if}

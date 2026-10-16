@@ -261,10 +261,18 @@
   }
   /* The row rules (.board-rows, .board-row, .rank, .who, .val) are :global() in +page.svelte,
      shared with the lab tabs. */
+  /* The per-bag note keeps the band's row height; an empty board is one short line (gate 3), its panel
+     top-aligned so the band's taller boards don't stretch it. */
   .board-note {
-    min-height: calc(var(--rows) * var(--row-h));
     margin: 0;
+    padding: var(--space-4) 0;
+  }
+  .board-note.bag-only {
+    min-height: calc(var(--rows) * var(--row-h));
     padding: 0;
+  }
+  .board:has(.board-note:not(.bag-only)) {
+    align-self: start;
   }
   .board-note {
     display: grid;

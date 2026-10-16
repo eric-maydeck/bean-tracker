@@ -496,6 +496,18 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString
 // Every page and state the layout rules apply to. Every UI change adds its
 // states here (docs/ui-rules.md). Actions must not save anything: the
 // workers share one DB.
+// Gate 3: a panel holding only an empty line (whole-tab .hl-empty, a board's empty note) is short: its blank
+// area is the line's own padding, not a chart's or a band's height (text may wrap to 3 lines at 360).
+async function expectShortEmpty(page: Page) {
+  const tall = await page.locator('section.chart-panel:has(> .hl-empty), .board:has(.board-note:not(.bag-only))').evaluateAll((ps) =>
+    ps.filter((p) => {
+      const note = p.querySelector('.hl-empty, .board-note')!;
+      const lines = note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight);
+      return lines > 5 || p.getBoundingClientRect().height > 200;
+    }).map((p) => `${p.className} ${Math.round(p.getBoundingClientRect().height)}px`));
+  expect(tall, 'empty panels one short line').toEqual([]);
+}
+
 export const STATES: State[] = [
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
@@ -2451,6 +2463,14 @@ export const STATES: State[] = [
     act: async (page: Page) => {
       await expect(page.getByText(/^No rated brews (with [a-z ]+ )?in this period\.$/)).toHaveCount(1);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+      await expectShortEmpty(page);
+    } })),
+  // Gate 3: a truly empty tab's panels are one short line each (no tall blank chart areas).
+  ...(['consumption', 'leaderboards', 'habits'] as const).map((tab) => ({
+    name: `insights-empty-${tab}`, path: () => `/insights?tab=${tab}&range=2000-01-01..2000-01-31`,
+    act: async (page: Page) => {
+      await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
+      await expectShortEmpty(page);
     } })),
   { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&compare=1&people=person&grinder=zp6-special',
     act: async (page) => {
@@ -2590,6 +2610,7 @@ export const STATES: State[] = [
       await expect(page.locator('[data-board="roasters"] .board-note'))
         .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
       await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
+      await expectShortEmpty(page);
     } },
   // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
   // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
