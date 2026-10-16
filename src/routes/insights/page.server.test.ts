@@ -531,6 +531,15 @@ describe('page-wide coffees filter', () => {
     expect(boards('&caffeine=decaf')).toHaveLength(1);
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
   });
+  it('Leaderboards: boards the confident cutoff emptied are named; truly empty ones are not', () => {
+    seedTwo();
+    const d = run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed');
+    expect(d.boards.roasters).toEqual([]);
+    expect(d.boardsCut).toEqual(expect.arrayContaining(['roasters', 'coffees', 'origins']));
+    expect(d.boardsCut).not.toContain('dripper'); // no dripper recorded: no rated group at all
+    expect(run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed&avg=raw').boardsCut).toEqual([]);
+    expect(run('?tab=leaderboards&roaster=R0&range=' + addDays(today, -30) + '..' + addDays(today, -20)).boardsCut).toEqual([]);
+  });
   it('Records with caffeine=decaf sees only the decaf bag', () => {
     seedTwo(true);
     const top = (q: string) => run(`?range=all&ratings=all&dial=all&tab=records${q}`).records.topBrews;

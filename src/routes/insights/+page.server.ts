@@ -6,7 +6,7 @@ import {
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { leaderboards } from '$lib/server/insights/leaderboards';
+import { cutBoards, leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
@@ -58,6 +58,8 @@ export const load: PageServerLoad = ({ url }) => {
   const size = s.people === 'person' ? householdSize : 1;
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
+  // Leaderboards only on its tab; the overview tiles are cheap and always computed.
+  const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
@@ -102,8 +104,8 @@ export const load: PageServerLoad = ({ url }) => {
     period,
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
-    // Leaderboards only on its tab; the overview tiles are cheap and always computed.
-    boards: s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null,
+    boards,
+    boardsCut: boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, s.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'

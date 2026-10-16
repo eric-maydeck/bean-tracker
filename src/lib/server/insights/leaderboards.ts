@@ -144,3 +144,12 @@ export function leaderboards(
     })
   ) as Record<Board, BoardRow[]>;
 }
+
+// The boards min3's confident cutoff emptied: rated groups exist, every one under the small-sample rule. Their
+// line says what is missing ("No roasters with 3+ bags and 10+ rated brews ..."), not "No brews".
+export function cutBoards(
+  boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
+): Board[] {
+  if (rank !== 'rating' || avg !== 'min3') return [];
+  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw').length);
+}

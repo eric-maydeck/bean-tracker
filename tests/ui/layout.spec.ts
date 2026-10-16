@@ -2559,6 +2559,13 @@ export const STATES: State[] = [
     } })),
   ...(['overview', 'records', 'insights', 'sweetspots', 'water', 'gear'] as const).map((t) => ({
     name: `insights-coffees-${t}`, path: () => `/insights?tab=${t}&process=Natural&range=all` })),
+  // A board the confident cutoff (min3) emptied says what its rows lacked; "No brews" stays for truly empty boards.
+  { name: 'insights-leaderboards-cut', path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
+    act: async (page) => {
+      await expect(page.locator('[data-board="roasters"] .board-note'))
+        .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
+      await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
+    } },
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',

@@ -5,14 +5,15 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
+  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
   import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, rank, avg, open, comparing, perPerson, placeTip, choose
+    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose
   }: {
-    boards: Rows; rank: Rank; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    boards: Rows; cut: Board[]; rank: Rank; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -87,6 +88,15 @@
   let help = $state<HTMLDialogElement>();
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
+  // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews".
+  const NOUN: Record<Board, string> = {
+    roasters: 'roasters', coffees: 'coffees', origins: 'origins', process: 'process groups', roast: 'roast levels',
+    water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders'
+  };
+  const boardEmpty = (b: Board) =>
+    cut.includes(b)
+      ? `No ${NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+`} rated brews in this period.`
+      : emptyText();
   const emptyLine = useEmptyLine();
 </script>
 
@@ -160,7 +170,7 @@
       {#if bagOnly(b)}
         <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
-        <p class="board-note">{emptyLine(emptyText())}</p>
+        <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
@@ -192,7 +202,7 @@
 {/snippet}
 
 <!-- A whole tab with nothing to rank is one empty panel, not ten empty boards (rule 28). -->
-{#if BANDS.flat().every((b) => !boards[b].length)}
+{#if !cut.length && BANDS.flat().every((b) => !boards[b].length)}
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
 {:else}
   {#each BANDS as band, i (i)}

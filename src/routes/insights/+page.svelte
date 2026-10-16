@@ -669,6 +669,7 @@
 {#if data.boards}
   <Leaderboards
     boards={data.boards}
+    cut={data.boardsCut}
     rank={s.rank}
     avg={s.avg}
     open={s.open}
