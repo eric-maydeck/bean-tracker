@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
+  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
@@ -103,9 +104,28 @@
     else if (tip === hoverTip && tip.matches(':popover-open')) e.preventDefault();
   }
 
-  // Reset: every toggle and dropdown back to default (bare URL), keeping only a non-default tab.
+  // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL
+  // (Share keeps working). Any in-page navigation saves its own state, and a bare one removes it (bare is the
+  // state), so a link with params wins and becomes the remembered state.
+  afterNavigate(({ from }) => {
+    const qs = insightsParams(data.explicit).toString();
+    try {
+      if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
+        const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
+        if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+      }
+      if (qs) localStorage.setItem(INSIGHTS_STORAGE_KEY, serializeInsightsState(qs, Date.now()));
+      else localStorage.removeItem(INSIGHTS_STORAGE_KEY);
+    } catch {
+      // localStorage unavailable (private window): the page works, it just isn't remembered.
+    }
+  });
+
+  // Reset: a hard reset of the filters (spec Part 3): every param but a non-default tab; the remembered state is
+  // cleared, then afterNavigate saves the tab-only query (or nothing, on Overview).
   function reset() {
     draft = null;
+    try { localStorage.removeItem(INSIGHTS_STORAGE_KEY); } catch { /* nothing remembered to clear */ }
     const qs = insightsParams(resetInsights(data.explicit)).toString();
     goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
   }

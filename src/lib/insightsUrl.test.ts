@@ -429,6 +429,8 @@ describe('highlights params', () => {
     expect(insightsParams(s).toString()).toBe('tab=records&brewer=soup&kinds=firsts%2Cbests');
     expect(insightsParams(parse('')).toString()).toBe('');
   });
+  it('reset clears dial and the coffees filter (caffeine too), keeps a non-default tab', () =>
+    expect(resetInsights(parse('tab=brewing&dial=all&range=1w&caffeine=all&roast=light'))).toEqual({ tab: 'brewing' }));
   it('reset keeps the tab only', () =>
     expect(resetInsights(parse('tab=records&brewer=soup&caffeine=decaf&top=20'))).toEqual({ tab: 'records' }));
   it('caffeine: absent = Caffeinated; decaf and all explicit, old caf and junk drop, sticky across tabs', () => {

@@ -2457,6 +2457,33 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Reset', exact: true }).click();
       await expect(page).toHaveURL(/\/insights\?tab=brewing$/);
     } },
+  { name: 'insights-remembered', path: () => '/insights?tab=habits&range=1w',
+    act: async (page) => {
+      await gotoReady(page, '/coffees');
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights\?range=1w&tab=habits$/); // restored into the URL
+      await page.getByRole('button', { name: 'Reset', exact: true }).click();
+      await expect(page).toHaveURL(/\/insights\?tab=habits$/); // filters cleared, tab kept
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights\?tab=habits$/); // remembered: the tab, bare filters
+      await gotoReady(page, '/insights?tab=leaderboards'); // no filters: the tab alone is remembered
+      await gotoReady(page, '/coffees');
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights\?tab=leaderboards$/);
+      await gotoReady(page, '/insights?range=3m'); // a link with params wins and is remembered
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights\?range=3m$/);
+    } },
+  // An in-page nav back to the bare URL removes the remembered state: a later bare visit stays bare.
+  { name: 'insights-remembered-bare', path: () => '/insights?dial=all',
+    act: async (page) => {
+      await openSwitches(page);
+      await page.getByRole('group', { name: 'Brews' }).first().getByRole('button', { name: 'Once dialed', exact: true }).click();
+      await expect(page).toHaveURL(/\/insights$/);
+      await gotoReady(page, '/coffees');
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights$/);
+    } },
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',
