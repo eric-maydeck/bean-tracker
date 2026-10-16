@@ -48,6 +48,8 @@
   let barHeight = $state(0);
   // A #anchor on load (a tile or section link) scrolls once the bar's height is known: the browser's
   // own jump ran before scroll-padding-top was set, leaving the target under the sticky bar.
+  // ponytail: the hash scroll uses the first-measured bar height and never re-scrolls; if the bar's spare width
+  // shrinks enough that it wraps while loading, re-measure (scroll again when barHeight changes) instead.
   let hashDone = false;
   $effect(() => {
     document.documentElement.style.scrollPaddingTop = `${barHeight}px`;

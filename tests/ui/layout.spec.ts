@@ -2544,7 +2544,10 @@ export const STATES: State[] = [
   ...(['brewing', 'leaderboards', 'habits'] as const).map((t) => ({
     name: `insights-coffees-empty-${t}`, path: () => `/insights?tab=${t}&roaster=Lab%20Roasters&range=1w`,
     act: async (page: Page) => {
-      await expect(page.getByText(/^No (rated )?brews matching Lab Roasters in this period\.$/).first()).toBeVisible();
+      await expect(page.getByText(/^No (rated )?brews matching Lab Roasters in this period\.$/)).toHaveCount(1);
+      // A whole empty tab is one empty panel, not a stack of empty boards or charts (rule 28).
+      await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
+      await expect(page.locator('.board, .insights-charts, .board-map')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     } })),
   ...(['overview', 'records', 'insights', 'sweetspots', 'water', 'gear'] as const).map((t) => ({

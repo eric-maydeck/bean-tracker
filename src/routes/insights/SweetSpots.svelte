@@ -261,7 +261,7 @@
 {/if}
 
 <style>
-  /* The picker: one wrapping row of labeled selects, Ratings and Reset on the same baseline. */
+  /* The picker: Bag (and Grinder) as labeled selects on one baseline; the Coffees fields live in the bar's panel. */
   .spot-picker {
     align-items: end;
   }

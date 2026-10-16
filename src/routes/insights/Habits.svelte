@@ -69,43 +69,32 @@
 
 {@render tiles()}
 
-<div class="insights-charts">
-  <section class="chart-panel">
-    <h2>By hour of day</h2>
-    {#if empty}
-      <p class="empty">{emptyLine('No brews in this period')}</p>
-    {:else}
+<!-- A period with no brews is one empty panel, not four empty charts (rule 28). -->
+{#if empty}
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No brews in this period.')}</p></section>
+{:else}
+  <div class="insights-charts">
+    <section class="chart-panel">
+      <h2>By hour of day</h2>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
       <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
-    {/if}
-  </section>
-  <section class="chart-panel">
-    <h2>By day of week</h2>
-    {#if empty}
-      <p class="empty">{emptyLine('No brews in this period')}</p>
-    {:else}
+    </section>
+    <section class="chart-panel">
+      <h2>By day of week</h2>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
       <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
-    {/if}
-  </section>
-</div>
-<section class="chart-panel">
-  <h2>Hour × weekday</h2>
-  {#if empty}
-    <p class="empty">{emptyLine('No brews in this period')}</p>
-  {:else}
+    </section>
+  </div>
+  <section class="chart-panel">
+    <h2>Hour × weekday</h2>
     <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSample?.map((r) => r.map((x) => x.small))} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
       tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)], ...(h.heatSample?.[r]?.[c] ? sampleField(h.heatSample[r][c]) : {}) })} />
-  {/if}
-</section>
-<section class="chart-panel">
-  <h2>Brew calendar</h2>
-  {#if empty}
-    <p class="empty">{emptyLine('No brews in this period')}</p>
-  {:else}
+  </section>
+  <section class="chart-panel">
+    <h2>Brew calendar</h2>
     <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
-  {/if}
-</section>
+  </section>
+{/if}

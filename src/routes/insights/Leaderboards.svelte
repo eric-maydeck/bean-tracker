@@ -191,11 +191,16 @@
   </section>
 {/snippet}
 
-{#each BANDS as band, i (i)}
-  <div class="board-band band-{band.length}">
-    {#each band as b (b)}{@render board(b)}{/each}
-  </div>
-{/each}
+<!-- A whole tab with nothing to rank is one empty panel, not ten empty boards (rule 28). -->
+{#if BANDS.flat().every((b) => !boards[b].length)}
+  <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
+{:else}
+  {#each BANDS as band, i (i)}
+    <div class="board-band band-{band.length}">
+      {#each band as b (b)}{@render board(b)}{/each}
+    </div>
+  {/each}
+{/if}
 
 <style>
   /* .mode-tip / .mode-tip-button base styles are :global() in +page.svelte. */
