@@ -4,7 +4,7 @@ import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { ratedGroups } from './ratings';
-import { POOLED_MIN_BAGS, single, type Sample } from '$lib/sample';
+import { single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
   key: string;
@@ -117,9 +117,9 @@ export function leaderboard(
       rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'brews' ? x.brews : x.grams, bags: x.bags.size, brews: x.brews }));
     }
   }
-  // min3 leaves out groups under 3 bags (not the coffees board: every coffee is one bag).
-  if (rank === 'rating' && avg === 'min3' && board !== 'coffees') rows = rows.filter((r) => r.bags >= POOLED_MIN_BAGS);
-  return rows.map((r) => decorate(r, board, bags)).sort(byRank);
+  const out = rows.map((r) => decorate(r, board, bags));
+  // min3 (Raw average, confident) leaves out every row the Low confidence chip would mark.
+  return (rank === 'rating' && avg === 'min3' ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 
 // move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.

@@ -305,8 +305,8 @@ describe('/insights load', () => {
 
   it('movement against the compare window', () => {
     seed([[today, 15]]);
-    expect(run('?tab=leaderboards&compare=1').boards.roasters[0].move).toBe('new');
-    expect(run('?tab=leaderboards').boards.roasters[0].move).toBeUndefined();
+    expect(run('?tab=leaderboards&avg=raw&compare=1').boards.roasters[0].move).toBe('new');
+    expect(run('?tab=leaderboards&avg=raw').boards.roasters[0].move).toBeUndefined();
   });
 });
 

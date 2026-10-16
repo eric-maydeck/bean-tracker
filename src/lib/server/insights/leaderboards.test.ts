@@ -62,15 +62,21 @@ describe('leaderboard', () => {
     expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'rating', 'all', 'raw')[0]).toEqual({
       key: '1', label: 'Kiambu', sub: 'Sey', href: '/coffees/sey-kiambu', value: 8.5, bags: 1, brews: 2, sample: { bags: 1, brews: 2, small: true, one: true }
     }));
-  it('min3: groups under 3 bags are left out; coffees board has no minimum', () => {
+  it('min3 (Raw average, confident): leaves out the rows the Low confidence chip marks', () => {
+    const many = (n: number) => (i: number) => Array.from({ length: n }, () => brew({ coffeeId: i, roaster: 'Many', rating: 6 }));
+    // Many: 3 bags, 12 brews (kept). Thin: 3 bags but 9 brews. Few: 1 bag.
     const brews = [
-      brew({ coffeeId: 1, roaster: 'Few', rating: 10 }),
-      ...[2, 3, 4].flatMap((i) => [0, 1, 2, 3].map(() => brew({ coffeeId: i, roaster: 'Many', rating: 6 })))
+      ...[2, 3, 4].flatMap(many(4)),
+      ...[5, 6, 7].flatMap((i) => Array.from({ length: 3 }, () => brew({ coffeeId: i, roaster: 'Thin', rating: 7 }))),
+      brew({ coffeeId: 1, roaster: 'Few', rating: 10 })
     ];
-    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'min3').map((r) => r.label)).toEqual(['Many']);
-    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'raw').map((r) => r.label)).toEqual(['Few', 'Many']);
-    expect(leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'k2').map((r) => r.label)).toEqual(['Few', 'Many']);
-    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'min3').map((r) => r.value)).toEqual([10, 6, 6, 6]);
+    const names = (b: 'roasters' | 'coffees', avg: 'min3' | 'raw' | 'k2') => leaderboard(brews, [], SEPT, b, 'rating', 'all', avg).map((r) => r.label);
+    expect(names('roasters', 'min3')).toEqual(['Many']);
+    expect(names('roasters', 'raw')).toEqual(['Few', 'Thin', 'Many']);
+    expect(names('roasters', 'k2')).toHaveLength(3);
+    // Coffees: 4 rated brews stay, 3 go (single rule, edge at 4).
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'min3').map((r) => r.value)).toEqual([6, 6, 6]);
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'raw')).toHaveLength(7);
   });
   it('best: value is the top brew; coffees board is that bag\'s top brew', () => {
     const brews = [brew({ coffeeId: 1, rating: 6 }), brew({ coffeeId: 1, rating: 9 }), brew({ coffeeId: 2, rating: 9 })];

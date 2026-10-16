@@ -15,13 +15,13 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 };
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
-// Rating boards' score: raw mean of bag means; min3 (the same, groups under 3 bags left out); k2 / adjusted
+// Rating boards' score: raw mean of bag means; min3 (the same, rows marked Low confidence left out); k2 / adjusted
 // (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
 // (best pulled toward the overall mean, K = 2 / 5 brews at that score).
 export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
 export type Avg = (typeof AVGS)[number];
 // One line to change the Score default.
-export const DEFAULT_AVG: Avg = 'raw';
+export const DEFAULT_AVG: Avg = 'min3';
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;

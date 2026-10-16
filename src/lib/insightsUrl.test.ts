@@ -111,9 +111,9 @@ describe('insightsParams', () => {
     const q = 'range=1w&compare=1&ratings=all&avg=raw';
     expect(insightsParams(parse('avg=raw&ratings=all&compare=1&range=1w')).toString()).toBe(q);
   });
-  it('omits the default Score (raw) but keeps an explicit min3', () => {
+  it('omits the default Score (min3) but keeps an explicit raw', () => {
     expect(insightsParams({}).toString()).toBe('');
-    expect(insightsParams({ avg: 'min3' }).toString()).toBe('avg=min3');
+    expect(insightsParams({ avg: 'raw' }).toString()).toBe('avg=raw');
     expect(parse('avg=MIN3').avg).toBe('min3');
   });
   it('writes compare=0 when explicitly off', () =>
@@ -127,7 +127,7 @@ describe('withDefaults', () => {
       range: '12m',
       compare: 0,
       ratings: 'current',
-      avg: 'raw',
+      avg: 'min3',
       people: 'household',
       tab: 'overview',
       rank: 'rating',
@@ -139,7 +139,7 @@ describe('withDefaults', () => {
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'raw', people: 'household', tab: 'overview', rank: 'rating',
+      range: '12m', compare: 0, ratings: 'current', avg: 'min3', people: 'household', tab: 'overview', rank: 'rating',
       measure: 'brews', unit: 'grams', agg: 'average', dial: 'dialed'
     }));
 });
