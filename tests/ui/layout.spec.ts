@@ -1336,7 +1336,7 @@ export const STATES: State[] = [
         if (!/^(sweetspots|water|gear|brewing|milestones)$/.test(t)) await expect(bar.getByRole('group', { name: 'People' })).toBeVisible(); // household > 1 in the seed
         expect(h).toBeLessThanOrEqual(50);
       }
-      // Where Compare and the menu both show, the Coffees button takes its own row (one more, not a lone half cell).
+      // Where Compare and the menu both show, the Filters button takes its own row (one more, not a lone half cell).
       else if (width > 420 && width <= 640 && t !== 'brewing') expect(h).toBeLessThanOrEqual(on && !/^(sweetspots|water|gear)$/.test(t) ? 313 : 236);
       if (!on) return;
       await openSwitches(page);
@@ -1853,8 +1853,8 @@ export const STATES: State[] = [
         document.getElementById('record-nightOwl')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
-      await page.getByRole('button', { name: /^Coffees/ }).click();
-      await page.getByRole('dialog', { name: 'Coffees' }).getByLabel('Caffeine').selectOption('decaf');
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      await page.getByRole('dialog', { name: 'Filters' }).getByLabel('Caffeine').selectOption('decaf');
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
   { name: 'insights-overview-anchor', path: () => '/insights?tab=overview#overview-avg-brew-time',
@@ -2085,7 +2085,8 @@ export const STATES: State[] = [
       await page.mouse.move(end.x, end.y, { steps: 4 });
       await settle();
       const pb = (await panel.boundingBox())!;
-      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2);
+      // 2.5: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off.
+      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2.5);
       const tEnd = (await track.boundingBox())!; // the side ruler may have slid up a few px with the feed's end
       expect(Math.abs(await off(tEnd.height > tEnd.width ? { x: 0, y: tEnd.y + tEnd.height } : { x: tEnd.x + tEnd.width, y: 0 })),
         'thumb at the ruler end').toBeLessThanOrEqual(2);
@@ -2496,8 +2497,9 @@ export const STATES: State[] = [
     } },
   { name: 'insights-coffees-panel', path: () => '/insights',
     act: async (page) => {
-      await page.getByRole('button', { name: /^Coffees/ }).click();
-      const dlg = page.getByRole('dialog', { name: 'Coffees' });
+      await expect(page.locator('.filters-field > span')).toHaveText('Show'); // its small label, like the bar's others
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT'); // no keyboard pop
       await dlg.getByLabel('Process').selectOption('Washed');
@@ -2510,7 +2512,7 @@ export const STATES: State[] = [
       expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
       expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
       await dlg.getByRole('button', { name: 'Done' }).click();
-      await expect(page.getByRole('button', { name: /^Coffees/ })).toContainText('2');
+      await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
   { name: 'insights-coffees-chips', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
@@ -2524,7 +2526,7 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/process=|caffeine=/);
       await expect(page.locator('.coffee-chips')).toHaveCount(0);
     } },
-  // The bar stays one short row with the Coffees button in it; the chips sit under it, not in it.
+  // The bar stays one short row with the Filters button in it; the chips sit under it, not in it.
   { name: 'insights-coffees-sticky', path: () => '/insights?tab=records&range=all&compare=1&process=Washed&caffeine=decaf',
     act: async (page) => {
       await expect(page.locator('.coffee-chips')).toBeVisible();

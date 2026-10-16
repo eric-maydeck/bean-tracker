@@ -31,6 +31,8 @@
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
   let coffeesDialog: HTMLDialogElement | undefined = $state();
+  // The small label above the Filters button, like the bar's other controls (the user's pick; one place to change).
+  const FILTERS_LABEL = 'Show';
   const COFFEE_FIELDS = $derived([
     ['roast', 'Roast level', data.coffeeOptions.roasts], ['process', 'Process', data.coffeeOptions.processes],
     ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
@@ -510,10 +512,13 @@
     <RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
   {/if}
   <!-- Phones: a half cell beside Compare or the menu; its own row when both show (no lone half cell). -->
-  <button class="button button-secondary coffees-button" class:wide={!labTab && ratingsMenu} type="button" aria-haspopup="dialog"
-    onclick={() => coffeesDialog?.showModal()}
-    >Coffees{#if coffeeChips.length}<span class="badge">{coffeeChips.length}</span>{/if}</button
-  >
+  <div class="form-field group-field filters-field" class:wide={!labTab && ratingsMenu}>
+    <span>{FILTERS_LABEL}</span>
+    <button class="button button-secondary filters-button" type="button" aria-haspopup="dialog"
+      onclick={() => coffeesDialog?.showModal()}
+      >Filters{#if coffeeChips.length}<span class="badge">{coffeeChips.length}</span>{/if}</button
+    >
+  </div>
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
     <div class="form-field group-field people-field">
@@ -535,7 +540,7 @@
   <div class="filter-chips coffee-chips">
     {#each coffeeChips as [key, value] (key)}
       <span class="filter-chip"
-        ><button type="button" class="filter-chip-label" title="Edit in Coffees" onclick={() => coffeesDialog?.showModal()}>{value}</button
+        ><button type="button" class="filter-chip-label" title="Edit in Filters" onclick={() => coffeesDialog?.showModal()}>{value}</button
         ><button type="button" class="filter-chip-remove" title="Remove filter"
           aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined })}>✕</button
         ></span
@@ -574,7 +579,7 @@
   <!-- Focus lands on the dialog, never a select (no keyboard pop). -->
   <!-- svelte-ignore a11y_autofocus -->
   <dialog bind:this={coffeesDialog} autofocus class="range-dialog coffees-dialog" aria-labelledby="coffees-title">
-    <h2 id="coffees-title">Coffees</h2>
+    <h2 id="coffees-title">Filters</h2>
     <div class="coffees-fields">
       {#each COFFEE_FIELDS as [key, label, values] (key)}
         <label class="form-field">
@@ -871,15 +876,28 @@
     background: var(--color-surface);
     color: inherit;
   }
+  /* The Filters button: the bar's control height, like the selects beside it (44px on phones). */
+  .filters-button {
+    box-sizing: border-box;
+    min-height: 2.25rem;
+    margin: 0;
+    white-space: nowrap;
+  }
+  @media (max-width: 640px) {
+    .filters-button {
+      width: 100%;
+      min-height: 44px;
+    }
+  }
   /* Phone landscape: tighter, so the bar stays one row (ui-rules 30). */
   @media (max-height: 450px) {
-    .coffees-button {
+    .filters-button {
       padding-inline: 0.6rem;
       font-size: 0.85rem;
     }
   }
-  /* The Coffees button's count: a small pill in the button's own hue. */
-  .coffees-button .badge {
+  /* The Filters button's count: a small pill in the button's own hue. */
+  .filters-button .badge {
     margin-left: var(--space-2);
     padding: 0 0.45rem;
     background: color-mix(in oklab, currentColor 18%, transparent);
@@ -945,8 +963,8 @@
       min-height: 44px;
     }
     /* Its own full-width row under the selects, not half a row. */
-    .insights-controls > button:not(.coffees-button),
-    .coffees-button.wide,
+    .insights-controls > button,
+    .filters-field.wide,
     .people-field {
       grid-column: 1 / -1;
     }
