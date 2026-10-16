@@ -52,3 +52,5 @@ jobs:
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # The bot's release-commit push must not run the local husky pre-push gate (full test:ui).
+          HUSKY: '0'
