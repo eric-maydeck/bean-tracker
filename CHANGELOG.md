@@ -1,3 +1,31 @@
+# [1.77.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.2...v1.77.0) (2026-10-16)
+
+
+### Bug Fixes
+
+* **coffees:** list table words no longer break mid-word
+* **insights:** a dismissed tip tells its owner
+* **insights:** hover ink reaches the sub line note, mineral map uses the muted look
+* **insights:** label the overview brews switches
+* **insights:** old score links no longer read object prototype names
+* **insights:** view menu button reports aria-expanded
+* **insights:** view menu label fits narrow phone columns
+
+
+### Features
+
+* **insights:** brews switch beside every ratings switch
+* **insights:** default Score is the raw average, confident
+* **insights:** once dialed by default, dial=all keeps every brew
+* **insights:** once-dialed tiers and the settle helper in dialed.ts
+* **insights:** one small-sample look on charts, heatmaps and legends
+* **insights:** one small-sample marker on board rows
+* **insights:** one small-sample rule
+* **insights:** ratings and brews become one sticky-bar menu, toggles keep the scroll
+* **insights:** ratings and brews switches live in the sticky bar
+* **insights:** records brews switch in the sticky bar, dial scores read all brews
+* **insights:** retire the best-half scores, default Score is the raw average
+
 ## [1.76.2](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.1...v1.76.2) (2026-10-15)
 
 
