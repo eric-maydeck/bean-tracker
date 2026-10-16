@@ -129,7 +129,7 @@
 {#snippet caption(id: string, label: string, rating: boolean, pp: boolean, href: string)}
   <TileCaption {href} {label}
     >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
-        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}{dial === 'all' ? ', all brews' : ''}</span><Icon name="question" /></button
+        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
       >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
@@ -311,6 +311,16 @@
     height: 1.4rem;
     display: flex;
     align-items: center;
+  }
+  /* Captions keep their lines (ui-rules 44): two, three on the narrowest cards (360 px), top aligned, so the first
+     lines sit level across a row however many a caption wraps to. */
+  :global(.record-grid .hl-caption .stat-label) {
+    min-height: 2lh;
+  }
+  @container (max-width: 399px) {
+    :global(.record-grid .hl-caption .stat-label) {
+      min-height: 3lh;
+    }
   }
   /* The badge sits at the foot, just above the caption, on every card. */
   /* Flex: the badge's tip button is its own row (checkLayout rule 5), apart from "+N tied". */

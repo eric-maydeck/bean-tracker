@@ -581,7 +581,7 @@
             <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
-            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || (t.ratingSwitch && s.dial === 'all')} class:dial-all={t.ratingSwitch && s.dial === 'all'}
+            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || (t.ratingSwitch && s.dial === 'all')}
               ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}{#if s.dial === 'all'}<span class="dial-part">, all brews</span>{/if}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
@@ -926,16 +926,7 @@
     overflow: visible;
     white-space: nowrap;
   }
-  /* ", all brews" wraps as one piece: a 3-up tile's caption stays within its two lines. */
-  /* Three short lines in a 3-up tile: start the caption a touch higher so they end inside it. */
-  .stat-caption:has(.dial-all) {
-    top: calc(73.98cqw - 0.3rem);
-  }
-  @media (max-width: 640px) {
-    .comparing .stat-caption:has(.dial-all) {
-      top: calc(73.98cqw + 0.45rem);
-    }
-  }
+  /* ", all brews" wraps as one piece, not mid-phrase. */
   .dial-part {
     display: inline-block;
   }
@@ -1416,6 +1407,8 @@
   .compare .part {
     display: inline-block;
   }
+  /* A row with a stacked tile puts every caption where the stack's goes, so the first lines stay level (ui-rules 44). */
+  .stat-row:has(.stack) .stat-caption,
   .stat-item.stack .stat-caption {
     top: calc(54.02cqw + max(0.7rem, 6.88cqw) + 2cqw + 2.2 * max(0.6rem, 5.4cqw) + var(--grow-compare, 0px));
   }
@@ -1483,6 +1476,11 @@
       border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
     }
   }
+  /* A caption may wrap to a third line ("Avg rating · Current, all brews" in a 3-up tile): every overview tile
+     is one line taller (ui-rules 44), the first line stays at its fixed top and the rest flow down. */
+  .fit {
+    --grow-caption: 1rem;
+  }
   .fit .stat-item {
     --q: var(--c);
     --w: calc((100cqw - (var(--q) - 1) * var(--gap)) / var(--q));
@@ -1492,7 +1490,7 @@
     flex: 1 0 calc(var(--w) - 0.5px);
     box-sizing: border-box;
     aspect-ratio: auto;
-    height: calc(var(--h) + var(--grow-compare, 0px));
+    height: calc(var(--h) + var(--grow-compare, 0px) + var(--grow-caption));
     padding-inline: calc((var(--w) - var(--h)) / 2);
     /* Not inline-size: when the row's container query changes only this padding (same outer width,
        e.g. the full-row last tile at 360px), Firefox keeps the content's cqw from the first layout. */

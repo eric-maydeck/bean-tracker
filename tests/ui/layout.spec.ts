@@ -1307,6 +1307,7 @@ export const STATES: State[] = [
   { name: 'insights-dial-all', path: () => '/insights?tab=leaderboards&dial=all' },
   // Captions stay inside their tiles in both dial states (checkLayout); the dial-k scores hide the Brews switch.
   { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
+  { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
   { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
   {
     name: 'insights-dial-k-no-switch', path: () => '/insights?tab=leaderboards&avg=dial-k2',

@@ -166,6 +166,7 @@ export async function checkLayout(page: Page): Promise<void> {
     return out;
   });
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
+  await expectCaptionsLevel(page);
 }
 
 // Card grids: every row of cards runs edge to edge (no empty cell, no ragged last row; ui-rules 28, 33),
@@ -259,6 +260,33 @@ export async function expectTipInView(page: Page, tip: Locator) {
     if (!el.matches(':popover-open')) out.push('not in the top layer (an open popover)');
     if (r.left < 0 || r.top < 0 || r.right > document.documentElement.clientWidth || r.bottom > innerHeight) out.push(`outside the viewport: ${JSON.stringify(r)}`);
     if (bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
+    return out;
+  });
+  expect(bad).toEqual([]);
+}
+
+// Tile captions (ui-rules 44): in a row of tiles, each caption's FIRST line sits at the same top and each value at
+// the same place (±1px), whatever the caption's line count. Stat tiles and Records cards.
+export async function expectCaptionsLevel(page: Page) {
+  const bad = await page.evaluate(() => {
+    const out: string[] = [];
+    const tiles = [...document.querySelectorAll('.stat-row > .stat-item, .hl-card:has(.hl-top):not(.finding):not(.myth):not(.calc)')] as HTMLElement[];
+    const rows = new Map<string, HTMLElement[]>();
+    for (const t of tiles) {
+      const r = t.getBoundingClientRect();
+      if (!r.width) continue;
+      const key = `${[...document.querySelectorAll('*')].indexOf(t.parentElement!)}:${Math.round(r.top / 4)}`;
+      rows.set(key, [...(rows.get(key) ?? []), t]);
+    }
+    for (const row of rows.values()) {
+      const tops = row.flatMap((t) => { const l = t.querySelector('.stat-caption .stat-label, .hl-caption .stat-label'); return l ? [[t, l.getBoundingClientRect().top - t.getBoundingClientRect().top] as const] : []; });
+      const vals = row.flatMap((t) => { const v = t.querySelector('.stat-value, .hl-value'); return v ? [[t, v.getBoundingClientRect().top - t.getBoundingClientRect().top] as const] : []; });
+      for (const [what, xs] of [['caption', tops], ['value', vals]] as const) {
+        if (!xs.length) continue;
+        const lo = Math.min(...xs.map((x) => x[1])), hi = Math.max(...xs.map((x) => x[1]));
+        if (hi - lo > 1) out.push(`${what} offsets differ by ${Math.round(hi - lo)}px in a row: ${xs.map((x) => `${(x[0].textContent ?? '').trim().slice(0, 14)}@${Math.round(x[1])}`).join(' | ')}`);
+      }
+    }
     return out;
   });
   expect(bad).toEqual([]);
