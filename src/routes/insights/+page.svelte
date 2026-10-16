@@ -368,6 +368,7 @@
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
+  let ratingsMenu = $derived(ratingsMenuOn(s));
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
   const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
@@ -379,7 +380,6 @@
   let span2 = $derived(barCells(2));
   let span3 = $derived(barCells(3));
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
-  let ratingsMenu = $derived(ratingsMenuOn(s));
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
   // A popover sits in the top layer; put it under its caption button (above
@@ -898,16 +898,19 @@
     background: var(--color-surface);
     color: inherit;
   }
-  /* The Filters button: the bar's control height, like the selects beside it (44px on phones). */
+  /* The Filters button: exactly the selects' height beside it, so its "Show" label sits level with theirs
+     (a taller button lifts its label: the bar aligns controls at the end); 44px on phones. */
   .filters-button {
     box-sizing: border-box;
-    min-height: 2.25rem;
+    height: 2.25rem;
+    padding-block: 0;
     margin: 0;
     white-space: nowrap;
   }
   @media (max-width: 640px) {
     .filters-button {
       width: 100%;
+      height: auto;
       min-height: 44px;
     }
   }
@@ -992,8 +995,7 @@
       grid-template-columns: 1fr 1fr;
     }
     /* Each control's span comes from packSpans (--s2 / --s3 on it), so every row is full. */
-    .insights-controls > *,
-    .cell-contents > :global(*) {
+    .insights-controls > * {
       grid-column: span var(--s2, 1);
       min-width: 0;
     }
@@ -1015,8 +1017,7 @@
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: var(--space-2);
     }
-    .insights-controls > *,
-    .cell-contents > :global(*) {
+    .insights-controls > * {
       grid-column: span var(--s3, 1);
     }
     .insights-controls :global(.form-field > span) {

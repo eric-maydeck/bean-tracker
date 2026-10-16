@@ -1353,6 +1353,20 @@ export const STATES: State[] = [
       // Phones (gate r2 A3): three controls per row, so at most three rows (View Period Compare / menu Filters /
       // People): 220px measured on Records, Leaderboards and Habits by rating; was 236 (466 at 360-420, one column).
       else if (width <= 480) expect(h).toBeLessThanOrEqual(230);
+      // Every bar label's top and every control's top are level within 1px per row (a taller Filters button
+      // lifted its "Show" label 3px at 768/1280/landscape). Rows: tops clustered within 20px.
+      const spreads = await bar.evaluate((c) => {
+        const tops = (sel: string) => [...c.querySelectorAll(sel)].map((e) => e.getBoundingClientRect())
+          .filter((r) => r.height > 2).map((r) => r.top).sort((a, b) => a - b);
+        const rows = (ts: number[]) => ts.reduce<number[][]>((rs, t) => {
+          const last = rs.at(-1);
+          if (last && t - last[0] < 20) last.push(t); else rs.push([t]);
+          return rs;
+        }, []).map((r) => Math.max(...r) - Math.min(...r));
+        return { labels: rows(tops('.form-field > span')),
+          controls: rows(tops('select, .menu-button, .filters-button, .people-switch button')) };
+      });
+      for (const [k, v] of Object.entries(spreads)) expect(Math.max(...v), `${k} level per row`).toBeLessThanOrEqual(1);
       if (!on) return;
       await openSwitches(page);
       for (const name of ['Ratings', 'Brews']) {
