@@ -4,16 +4,15 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings, type Dial } from '$lib/insightsUrl';
-  import RatingsSwitch from './RatingsSwitch.svelte';
+  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, rank, ratings, dial, avg, open, comparing, perPerson, ratingsHelp, placeTip, choose
+    boards, rank, avg, open, comparing, perPerson, placeTip, choose
   }: {
-    boards: Rows; rank: Rank; ratings: Ratings; dial: Dial; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
-    ratingsHelp: Record<Ratings, string>; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+    boards: Rows; rank: Rank; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
   const TITLE: Record<Board, string> = {
@@ -58,12 +57,12 @@
     ppg: 'Price per gram of bags bought in the period.'
   };
   const AVG_LABEL: Record<Avg, string> = {
-    raw: 'Raw average', min3: 'Raw average (3+ bags)', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
+    raw: 'Raw average', min3: 'Raw average, confident', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
     best: 'Best brew', 'best-k2': 'Best, conf. adj. (light)', 'best-k5': 'Best, conf. adj. (strong)'
   };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Plain average of each bag's rating, all groups ranked together.",
-    min3: 'Plain average; groups with fewer than 3 bags are left out (the Coffees board lists every coffee).',
+    min3: 'Leaves out coffees with under 4 rated brews and groups under 3 bags or 10 rated brews.',
     k2: "Adjusted for confidence: pulled toward your overall average until a group has about 2 bags, so 1–2 bag groups can't top the board (light).",
     adjusted: 'Adjusted for confidence: pulled strongly toward your overall average until a group has about 5 bags (strong).',
     best: 'The highest single brew rating in the group.',
@@ -74,7 +73,7 @@
   const HOW: { group: string; items: { id: Avg; text: string; eg: string }[] }[] = [
     { group: 'Average', items: [
       { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews).", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
-      { id: 'min3', text: 'The same average, but groups with fewer than 3 bags are left out.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag roaster at 8 is.' },
+      { id: 'min3', text: 'The same average, but rows marked Low confidence are left out: coffees with under 4 rated brews, groups under 3 bags or 10 rated brews.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag, 12-brew roaster at 8 is.' },
       { id: 'k2', text: 'Adjusted for confidence: the average pulled toward your overall average, as if every group had 2 extra bags at that average (light).', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
       { id: 'adjusted', text: 'The same, with 5 extra bags (strong): small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
     ] },
@@ -119,7 +118,6 @@
         </optgroup>
       </select>
     </div>
-    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
   {/if}
 </div>
 
@@ -223,11 +221,6 @@
     margin: 0;
     font-size: 0.85rem;
   }
-  .rank-bar .tab-group button {
-    min-height: 2.25rem;
-    margin: 0;
-    font-size: 0.85rem;
-  }
   /* Cards in a band share one height: fixed rows, placeholders for empty slots, a fixed
      footer. Only an expanded card grows (align-items: start keeps its neighbors put). */
   .board-band {
@@ -294,14 +287,8 @@
     margin: 0;
   }
   @media (max-width: 640px) {
-    .board-foot button,
-    .rank-bar .tab-group button {
+    .board-foot button {
       min-height: 44px;
-    }
-    .rank-bar .tab-group button {
-      flex: 1;
-      padding-inline: 0.4rem;
-      white-space: nowrap;
     }
     .rank-bar .form-field {
       flex: 1 1 100%;

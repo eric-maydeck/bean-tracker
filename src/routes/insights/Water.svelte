@@ -2,7 +2,7 @@
   import { tick } from 'svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
-  import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
+  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
   import { deltaInk } from '$lib/components/deltaColor';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
@@ -10,15 +10,14 @@
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import MineralMap from './MineralMap.svelte';
-  import RatingsSwitch from './RatingsSwitch.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { BAG_MIN_BREWS, single } from '$lib/sample';
   import StackedBars from './StackedBars.svelte';
   import { inkOf, nameColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
-  let { t, s, ratingsHelp, placeTip, choose }: {
-    t: WaterTab; s: InsightsView; ratingsHelp: Record<Ratings, string>;
+  let { t, s, placeTip, choose }: {
+    t: WaterTab; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -66,10 +65,6 @@
     if (open) { await tick(); block?.scrollIntoView({ block: 'nearest' }); } // collapsing: keep the pair in view
   }
 </script>
-
-<div class="insights-bar">
-  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
-</div>
 
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">No rated brews with a water recipe in this period.</p></section>

@@ -6,15 +6,14 @@
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
-  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure, type Ratings, type Dial } from '$lib/insightsUrl';
-  import RatingsSwitch from './RatingsSwitch.svelte';
+  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure } from '$lib/insightsUrl';
   import type { Habits } from '$lib/server/insights/habits';
 
   let {
-    h, measure, ratings, dial, agg, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
+    h, measure, agg, comparing, periodLabel, compareLabel, choose, tiles
   }: {
-    h: Habits; measure: Measure; ratings: Ratings; dial: Dial; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
-    ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; tiles: Snippet;
+    h: Habits; measure: Measure; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
+    choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
   const LABEL: Record<Measure, string> = { brews: 'Brews', grams: 'Grams', rating: 'Rating' };
@@ -63,8 +62,6 @@
         {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
       </div>
     </div>
-  {:else}
-    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
   {/if}
 </div>
 

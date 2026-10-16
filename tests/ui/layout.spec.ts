@@ -1277,10 +1277,12 @@ export const STATES: State[] = [
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
   {
-    // Every rating tile carries the Ratings and Brews switches; one URL param each keeps them in sync.
+    // Overview: Totals and Averages each carry the Ratings and Brews switches in their header (no in-tile pills);
+    // one URL param each keeps them in sync.
     name: 'insights-ratings-switch-sync',
     path: () => '/insights',
     act: async (page) => {
+      await expect(page.locator('.stat-item [role="group"]')).toHaveCount(0);
       const switches = page.getByRole('group', { name: 'Ratings' });
       await expect(switches).toHaveCount(2);
       await switches.first().getByRole('button', { name: 'All', exact: true }).click();
@@ -1309,16 +1311,34 @@ export const STATES: State[] = [
   { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
   { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
   { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
+  // ui-rules 26: Ratings and Brews are one pair in the sticky bar, only where they apply (and none in tiles or panels).
+  ...(['sweetspots', 'water', 'gear', 'brewing', 'records', 'leaderboards', 'habits&measure=rating',
+    'leaderboards&rank=brews', 'habits', 'consumption', 'milestones', 'insights'] as const).map((t) => ({
+    name: `insights-switch-placement-${t.replace(/\W+/g, '-')}`, path: () => `/insights?tab=${t}`,
+    act: async (page: Page) => {
+      const on = !/rank=|^(habits|consumption|milestones|insights)$/.test(t);
+      // Phone landscape keeps the one short row (ui-rules 30), switches included.
+      if (page.viewportSize()!.height <= 450) expect((await page.locator('.filter-bar').boundingBox())!.height).toBeLessThanOrEqual(60);
+      for (const name of ['Ratings', 'Brews']) {
+        const g = page.getByRole('group', { name, exact: true });
+        await expect(g).toHaveCount(on ? 1 : 0);
+        if (on) expect(await g.evaluate((e) => !!e.closest('.filter-bar'))).toBe(true);
+      }
+    } })),
   {
-    // Records: one Brews switch, in the sticky bar; it stays in view halfway down the tab.
+    // Records: the pair stays in view halfway down the tab; toggling either keeps the scroll position.
     name: 'insights-dial-records-sticky', path: () => '/insights?tab=records',
     act: async (page) => {
-      await expect(page.getByRole('group', { name: 'Brews' })).toHaveCount(1);
       await page.evaluate(() => scrollTo(0, document.body.scrollHeight / 2));
-      const g = page.getByRole('group', { name: 'Brews' });
-      await expect(g).toBeInViewport();
-      await g.getByRole('button', { name: 'All brews', exact: true }).click();
-      await expect(page).toHaveURL(/dial=all/);
+      const y = await page.evaluate(() => scrollY);
+      for (const [name, button, url] of [['Brews', 'All brews', /dial=all/], ['Ratings', 'All', /ratings=all/]] as const) {
+        const g = page.getByRole('group', { name });
+        await expect(g).toBeInViewport();
+        await g.getByRole('button', { name: button, exact: true }).click();
+        await expect(page).toHaveURL(url);
+        await expect(g.getByRole('button', { name: button, exact: true })).toHaveAttribute('aria-pressed', 'true');
+        expect(Math.abs((await page.evaluate(() => scrollY)) - y)).toBeLessThanOrEqual(2);
+      }
     }
   },
   {
@@ -1580,7 +1600,7 @@ export const STATES: State[] = [
       await expectSampleChips(page);
     }
   },
-  { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=min3',
+  { name: 'insights-sample-note', path: () => '/insights?tab=leaderboards&avg=raw',
     act: async (page) => {
       const note = page.locator('.sample-note').first();
       await expect(note).toHaveText(/^Only \d+ (bags?|brews?)$/);
@@ -1695,7 +1715,7 @@ export const STATES: State[] = [
           return { lt: l.top, ct: c.top, cb: c.bottom };
         })
       );
-      expect(f).toHaveLength(4);
+      expect(f).toHaveLength(2);
       for (const x of f) for (const y of f) {
         if (Math.abs(x.ct - y.ct) > 20) continue; // wrapped to another row
         expect(Math.abs(x.lt - y.lt), 'label top').toBeLessThanOrEqual(1);
@@ -1717,7 +1737,7 @@ export const STATES: State[] = [
       const dlg = page.getByRole('dialog', { name: 'How scores work' });
       await expect(dlg).toBeVisible();
       await expect(dlg).toContainText('Confidence adj. (strong)');
-      await expect(dlg).toContainText('Raw average (default)');
+      await expect(dlg).toContainText('Raw average, confident (default)');
       await expectDialogInViewport(page);
       await expect(dlg.getByRole('button', { name: 'Close', exact: true }).last()).toBeInViewport();
       expect(page.url()).not.toContain('how');
@@ -1761,12 +1781,11 @@ export const STATES: State[] = [
       for (const h of ['Taste', 'Volume', 'Freshness & lifetime', 'Money', 'Brew extremes', 'Not quite your cup'])
         await expect(page.getByRole('heading', { name: h })).toBeVisible();
       await expectGridRowsFull(page, '.record-grid');
-      // Every card keeps the switch band; a badge sits right above its caption.
+      // A badge sits right above its caption.
       const off = await page.locator('.record-grid .hl-card').evaluateAll((cards) => cards.flatMap((c) => {
-        const top = c.querySelector('.hl-top')!.getBoundingClientRect().height;
         const badge = c.querySelector('.hl-badge')?.getBoundingClientRect();
         const cap = c.querySelector('.hl-caption')!.getBoundingClientRect();
-        return [...(top < 15 ? [`band ${top}px`] : []), ...(badge && cap.top - badge.bottom > 6 ? [`badge ${cap.top - badge.bottom}px above caption`] : [])];
+        return [...(badge && cap.top - badge.bottom > 6 ? [`badge ${cap.top - badge.bottom}px above caption`] : [])];
       }));
       expect(off).toEqual([]);
     } },

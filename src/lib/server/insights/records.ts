@@ -17,7 +17,7 @@ export type Fmt = 'rating' | 'count' | 'grams' | 'days' | 'gpd' | 'money' | 'per
 export interface RecordDef {
   key: string; section: Section; label: string; fmt: Fmt;
   dir: 'max' | 'min';
-  rating?: true; // follows Current/All (tile carries the switch)
+  rating?: true; // follows Current/All
   perDay?: true; // divided by household size under people=person
   scope?: 'alltime' | 'now'; // ignores Period (badge "All-time" / "Now")
   extremes?: true; // follows the brewer switch
@@ -32,7 +32,7 @@ export interface RecCtx {
   today: string;
 }
 export interface RecordTile extends RecordPick {
-  key: string; section: Section; label: string; fmt: Fmt; rating: boolean; perDay: boolean;
+  key: string; section: Section; label: string; fmt: Fmt; rating: boolean; dialIn: boolean; perDay: boolean;
   scope?: 'alltime' | 'now';
   allTime: RecordPick | null; // null = the period holder IS the all-time record (show the badge)
   was: RecordPick | null; // compare window's holder (null without Compare or when it had none)
@@ -401,7 +401,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     const split = (x: RecordPick | null) => (x && def.perDay && c.size > 1 ? { ...x, value: x.value / c.size } : x);
     const same = ever && Math.abs(ever.value - cur.value) < 1e-9 && ever.holder.label === cur.holder.label && ever.holder.date === cur.holder.date;
     tiles.push({
-      key: def.key, section: def.section, label: def.label, fmt: def.fmt, rating: !!def.rating, perDay: !!def.perDay,
+      key: def.key, section: def.section, label: def.label, fmt: def.fmt, rating: !!def.rating, dialIn: !!def.dialIn, perDay: !!def.perDay,
       ...(def.scope ? { scope: def.scope } : {}), ...split(cur)!, allTime: same ? null : split(ever), was: split(was)
     });
   }

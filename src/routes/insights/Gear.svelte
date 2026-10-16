@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
+  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { GearTab } from '$lib/server/insights/lab';
   import { SAMPLE_HELP } from '$lib/sample';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
@@ -7,11 +7,10 @@
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import StackedBars from './StackedBars.svelte';
-  import RatingsSwitch from './RatingsSwitch.svelte';
   import { fitPairs } from './fitPairs';
 
-  let { t, s, ratingsHelp, placeTip, choose }: {
-    t: GearTab; s: InsightsView; ratingsHelp: Record<Ratings, string>;
+  let { t, s, placeTip, choose }: {
+    t: GearTab; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -39,10 +38,6 @@
     <div class="fit-body"><LabBoard {rows} slots={stack ? 0 : other.length} {noun} {placeTip} /></div>
   </section>
 {/snippet}
-
-<div class="insights-bar">
-  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
-</div>
 
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">No rated brews with gear recorded in this period.</p></section>

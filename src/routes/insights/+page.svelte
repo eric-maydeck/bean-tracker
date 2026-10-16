@@ -6,8 +6,9 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP
   } from '$lib/insightsUrl';
+  import RatingsSwitch from './RatingsSwitch.svelte';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
   import Consumption from './Consumption.svelte';
@@ -463,17 +464,9 @@
     <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {/if}
-  <!-- Records: one Brews switch for the whole tab, here in the sticky bar (ui-rules 26/30), not on each tile. -->
-  {#if s.tab === 'records'}
-    <div class="form-field group-field">
-      <span>Brews</span>
-      <div class="tab-group" role="group" aria-label="Brews">
-        {#each ['all', 'dialed'] as const as m (m)}
-          <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
-            onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
-        {/each}
-      </div>
-    </div>
+  <!-- Ratings and Brews, one pair for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
+  {#if ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating')}
+    <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
   {/if}
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
@@ -527,15 +520,7 @@
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
         <h2>{title}</h2>
-        <div class="form-field group-field">
-          <span>Brews</span>
-          <div class="tab-group" role="group" aria-label="Brews">
-            {#each ['all', 'dialed'] as const as m (m)}
-              <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
-                onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
-            {/each}
-          </div>
-        </div>
+        <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
       </div>
     {:else}
       <h2>{title}</h2>
@@ -546,18 +531,6 @@
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
         <div class="stat-item" id={tileId(t.key)} class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
-          {#if t.ratingSwitch}
-            <div class="tab-group tab-group-compact rating-switch" role="group" aria-label="Ratings">
-              {#each ['current', 'all'] as const as m (m)}
-                <button
-                  aria-pressed={s.ratings === m}
-                  title={RATINGS_HELP[m]}
-                  aria-describedby="ratings-help-{m}"
-                  onclick={() => choose({ ratings: m })}><span>{m === 'all' ? 'All' : 'Current'}</span></button
-                >
-              {/each}
-            </div>
-          {/if}
           <span class="stat-value"
             >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
@@ -605,18 +578,15 @@
   <Leaderboards
     boards={data.boards}
     rank={s.rank}
-    ratings={s.ratings}
-    dial={s.dial}
     avg={s.avg}
     open={s.open}
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}
-    ratingsHelp={RATINGS_HELP}
     {placeTip}
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} dial={s.dial} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
+  <Habits h={data.habits} measure={s.measure} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} {choose}>
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
@@ -652,13 +622,13 @@
     {choose}
   />
 {:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
-  <SweetSpots t={data.sweetSpots} lab={data.lab} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
+  <SweetSpots t={data.sweetSpots} lab={data.lab} {s} {placeTip} {choose} />
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
-  <Brewing t={data.brewing} lab={data.lab} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
+  <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
 {:else if s.tab === 'water' && data.water}
-  <Water t={data.water} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
+  <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
-  <Gear t={data.gear} {s} ratingsHelp={RATINGS_HELP} {placeTip} {choose} />
+  <Gear t={data.gear} {s} {placeTip} {choose} />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
@@ -774,6 +744,12 @@
     margin: 0;
     font-size: 0.85rem;
   }
+  /* Phone landscape: tighter buttons so View, Period, Compare, both switches and People share one row. */
+  @media (max-height: 450px) {
+    .people-switch button {
+      padding-inline: 0.6rem;
+    }
+  }
   /* Custom range form, inside the dialog. */
   .custom-range {
     display: grid;
@@ -831,7 +807,8 @@
     }
     /* Its own full-width row under the selects, not half a row. */
     .insights-controls > button,
-    .people-field {
+    .people-field,
+    .insights-controls > :global(.switch-pair) {
       grid-column: 1 / -1;
     }
   }
@@ -840,81 +817,6 @@
     .insights-controls {
       grid-template-columns: 1fr;
     }
-  }
-
-  /* Current/All on the Avg rating tile, in the free band above the value.
-     The pill is cqw-sized like the rest of the tile; the button around it is
-     the tap target (44px on phones via app.css) and stays transparent, so on
-     a small tile it reaches over the value's top edge without hiding it. */
-  .rating-switch {
-    position: absolute;
-    /* Centered between the tile's top edge and the top of the value's digits
-       (box top 24.09cqw + ~0.18em of blank line box above the glyphs ≈ 28.7cqw):
-       half of what's left after the pill (1.2 line × font + 3cqw padding + 2px border). */
-    top: calc((28.7cqw - 1.2 * max(0.7rem, 6.2cqw) - 3cqw - 2px) / 2);
-    left: 0;
-    right: 0;
-    justify-content: center;
-    flex-wrap: nowrap;
-    gap: 0;
-    z-index: 1;
-  }
-  .rating-switch button,
-  .rating-switch button[aria-pressed='true'] {
-    align-items: flex-start;
-    padding: 0;
-    background: none;
-    border: 0;
-    color: var(--color-text);
-  }
-  @media (max-width: 640px) {
-    .rating-switch button {
-      min-width: 44px;
-    }
-    /* A 44px button is wider than its half of the pill: push each half
-       against the seam so the pill stays joined. */
-    .rating-switch button:first-child {
-      justify-content: flex-end;
-    }
-    .rating-switch button:last-child {
-      justify-content: flex-start;
-    }
-  }
-  .rating-switch span {
-    display: block;
-    padding: 1.5cqw 4cqw;
-    font-size: max(0.7rem, 6.2cqw);
-    line-height: 1.2;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-  .rating-switch button:first-child span {
-    border-radius: var(--radius) 0 0 var(--radius);
-  }
-  .rating-switch button:last-child span {
-    border-left: 0;
-    border-radius: 0 var(--radius) var(--radius) 0;
-  }
-  .rating-switch button[aria-pressed='true'] span {
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-    border-color: var(--color-accent);
-  }
-  @media (hover: hover) {
-    .rating-switch button:not([aria-pressed='true']):hover {
-      background: none;
-    }
-    .rating-switch button:not([aria-pressed='true']):hover span {
-      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-      border-color: var(--color-accent);
-    }
-  }
-  .rating-switch button:focus-visible {
-    outline: none;
-  }
-  .rating-switch button:focus-visible span {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
   }
 
   /* The mode word in a rating tile's caption opens its explanation: the way
@@ -1233,71 +1135,6 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     transition: background-color 150ms ease, border-color 150ms ease;
-  }
-  /* The Current/All switch (in Records' .hl-top band). Like the overview's rating switch, the pill is
-     small and the button around it is the (transparent) 44px phone tap target, reaching past the band. */
-  :global(.hl-switch) {
-    flex-wrap: nowrap;
-    gap: 0;
-  }
-  :global(.hl-switch button),
-  :global(.hl-switch button[aria-pressed='true']) {
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-    margin: 0;
-    padding: 0;
-    background: none;
-    border: 0;
-    color: var(--color-text);
-  }
-  :global(.hl-switch span) {
-    display: block;
-    padding: 0.1rem 0.55rem;
-    font-size: 0.75rem;
-    line-height: 1.2;
-    border: 1px solid var(--color-border);
-    background: var(--color-surface);
-  }
-  :global(.hl-switch button:first-child span) {
-    border-radius: var(--radius) 0 0 var(--radius);
-  }
-  :global(.hl-switch button:last-child span) {
-    border-left: 0;
-    border-radius: 0 var(--radius) var(--radius) 0;
-  }
-  :global(.hl-switch button[aria-pressed='true'] span) {
-    background: var(--color-accent);
-    color: var(--color-accent-contrast);
-    border-color: var(--color-accent);
-  }
-  @media (hover: hover) {
-    :global(.hl-switch button:not([aria-pressed='true']):hover) {
-      background: none;
-    }
-    :global(.hl-switch button:not([aria-pressed='true']):hover span) {
-      background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
-      border-color: var(--color-accent);
-    }
-  }
-  :global(.hl-switch button:focus-visible) {
-    outline: none;
-  }
-  :global(.hl-switch button:focus-visible span) {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-  @media (max-width: 640px) {
-    :global(.hl-switch button) {
-      min-width: 44px;
-    }
-    /* A 44px button is wider than its half of the pill: push each half against the seam. */
-    :global(.hl-switch button:first-child) {
-      justify-content: flex-end;
-    }
-    :global(.hl-switch button:last-child) {
-      justify-content: flex-start;
-    }
   }
   /* Sized by the card's share of the grid (its container): 2-up phone cards fit "11:42 PM", and a
      phone row of 3 (rows.ts) shrinks to fit. */

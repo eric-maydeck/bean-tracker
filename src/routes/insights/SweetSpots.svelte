@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { InsightsUrlState, InsightsView, Ratings } from '$lib/insightsUrl';
+  import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
@@ -8,14 +8,13 @@
   import { sampleField } from '$lib/sample';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
-  import RatingsSwitch from './RatingsSwitch.svelte';
   import TileCaption from './TileCaption.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { deltaInk } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
-  let { t, lab, s, ratingsHelp, placeTip, choose }: {
-    t: SweetSpotsTab; lab: LabOptions; s: InsightsView; ratingsHelp: Record<Ratings, string>;
+  let { t, lab, s, placeTip, choose }: {
+    t: SweetSpotsTab; lab: LabOptions; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -192,7 +191,6 @@
     </select>
   </label>
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
   <button class="button button-ghost reset-picker" type="button" disabled={!filtered}
     onclick={() => choose({ bag: undefined, roast: undefined, process: undefined, origin: undefined, roaster: undefined })}>Reset picker</button>
 </div>
@@ -320,7 +318,6 @@
       max-width: none;
     }
     .bag-field,
-    .spot-picker :global(.brews-field),
     .even .reset-picker {
       grid-column: 1 / -1;
     }

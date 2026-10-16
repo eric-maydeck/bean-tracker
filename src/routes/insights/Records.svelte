@@ -116,25 +116,15 @@
   });
 </script>
 
-{#snippet ratingSwitch()}
-  <div class="tab-group hl-switch" role="group" aria-label="Ratings">
-    {#each ['current', 'all'] as const as m (m)}
-      <button aria-pressed={ratings === m} title={ratingsHelp[m]} aria-describedby="ratings-help-{m}" onclick={() => choose({ ratings: m })}
-        ><span>{m === 'all' ? 'All' : 'Current'}</span></button
-      >
-    {/each}
-  </div>
-{/snippet}
-
-{#snippet caption(id: string, label: string, rating: boolean, pp: boolean, href: string)}
+{#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, href: string)}
   <TileCaption {href} {label}
     >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
-        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
+        ><span class="tip-text">{every ? 'every brew' : ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
       >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
   >
-  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings], DIAL_HELP[dial]] }} /></div>{/if}
+  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings], every ? 'Every rated brew: this record is about dial-in.' : DIAL_HELP[dial]] }} /></div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 
@@ -159,7 +149,6 @@
   <!-- Lines come in groups (holder + its sub; inputs + date; All-time + Was), tight inside, a little
        apart between. -->
   <div class="hl-card" id={anchor(r.key)} {style}>
-    <div class="hl-top">{#if r.rating}{@render ratingSwitch()}{/if}</div>
     <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
     <div class="grp">
       <span class="hl-holder" use:full>{@render link(r.holder)}</span>
@@ -197,7 +186,7 @@
         <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: b, lines: [BADGE_HELP[r.scope ?? 'record']] }} /></div>
       </div>
     {/if}
-    {@render caption(id, r.label, r.rating, r.perDay && perPerson, `#${anchor(r.key)}`)}
+    {@render caption(id, r.label, r.rating, r.dialIn, r.perDay && perPerson, `#${anchor(r.key)}`)}
   </div>
 {/snippet}
 
@@ -305,12 +294,6 @@
   }
   .chart-panel-header :global(h2) {
     margin: 0;
-  }
-  /* Every card keeps the switch band, switch or not, so values line up across sections (A15). */
-  .hl-top {
-    height: 1.4rem;
-    display: flex;
-    align-items: center;
   }
   /* Captions keep their lines (ui-rules 44): two, three on the narrowest cards (360 px), top aligned, so the first
      lines sit level across a row however many a caption wraps to. */

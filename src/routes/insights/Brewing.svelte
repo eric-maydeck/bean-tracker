@@ -1,6 +1,6 @@
 <script lang="ts">
   import Chart from '$lib/components/Chart.svelte';
-  import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Ratings, type Slice } from '$lib/insightsUrl';
+  import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
   import { SAMPLE_HELP, sampleField } from '$lib/sample';
   import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
@@ -9,10 +9,9 @@
   import LabHeatmap from './LabHeatmap.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import { fitPairs } from './fitPairs';
-  import RatingsSwitch from './RatingsSwitch.svelte';
 
-  let { t, lab, s, ratingsHelp, placeTip, choose }: {
-    t: BrewingTab; lab: LabOptions; s: InsightsView; ratingsHelp: Record<Ratings, string>;
+  let { t, lab, s, placeTip, choose }: {
+    t: BrewingTab; lab: LabOptions; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -32,7 +31,6 @@
 <div class="insights-bar brewing-bar">
   <!-- One Grinder for the tab: it drives Grind drift and the Grind chart. -->
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
 </div>
 
 {#if empty}
@@ -55,6 +53,7 @@
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
           <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
           <div class="fit-body"><DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" /></div>
+          <p class="chart-note">Counts every brew, dial-in included</p>
         </section>
       {/if}
       {#if t.bestAt.length}
@@ -64,7 +63,7 @@
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
           </div>
-          <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews)</p>
+          <p class="chart-note">Brew number of each bag's best brew, counting every brew (bags with 5+ rated brews)</p>
         </section>
       {/if}
     </div>
@@ -87,7 +86,7 @@
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
                       tip: { title: d.label, rows: d.sample.small ? [] : [['Bags', `${d.bags}`]], ...sampleField(d.sample) } }))} />
                 </div>
-                <p class="chart-note">Negative = finer. {grinderName}</p>
+                <p class="chart-note">Negative = finer. {grinderName} · every brew</p>
               </section>
             {:else}
               {@const v = chartOf(k)}

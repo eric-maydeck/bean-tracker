@@ -270,7 +270,7 @@ export async function expectTipInView(page: Page, tip: Locator) {
 export async function expectCaptionsLevel(page: Page) {
   const bad = await page.evaluate(() => {
     const out: string[] = [];
-    const tiles = [...document.querySelectorAll('.stat-row > .stat-item, .hl-card:has(.hl-top):not(.finding):not(.myth):not(.calc)')] as HTMLElement[];
+    const tiles = [...document.querySelectorAll('.stat-row > .stat-item, .record-grid .hl-card, .hl-card:has(.hl-top):not(.finding):not(.myth):not(.calc)')] as HTMLElement[];
     const rows = new Map<string, HTMLElement[]>();
     for (const t of tiles) {
       const r = t.getBoundingClientRect();
