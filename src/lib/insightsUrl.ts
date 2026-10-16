@@ -17,12 +17,11 @@ export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Rating boards' score: raw mean of bag means; min3 (the same, groups under 3 bags left out); k2 / adjusted
 // (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
-// (best pulled toward the overall mean, K = 2 / 5 brews at that score); dial-k2 / dial-k5 (each bag's
-// best half of brews, averaged across bags and shrunk, K = 2 / 5 bags).
-export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5', 'dial-k2', 'dial-k5'] as const;
+// (best pulled toward the overall mean, K = 2 / 5 brews at that score).
+export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
 export type Avg = (typeof AVGS)[number];
 // One line to change the Score default.
-export const DEFAULT_AVG: Avg = 'best-k2';
+export const DEFAULT_AVG: Avg = 'raw';
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;
@@ -312,7 +311,8 @@ export function parseInsightsUrl(
     // `settled` was the old name for `current`; old links keep working.
     ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
     dial: pickOne(p, 'dial', DIALS) === 'all' ? 'all' : undefined,
-    avg: pickOne(p, 'avg', AVGS),
+    // The retired best-half scores (dial-k2 / dial-k5) parse to their nearest remaining ones.
+    avg: pickOne(p, 'avg', AVGS) ?? ({ 'dial-k2': 'k2', 'dial-k5': 'adjusted' } as const)[p.get('avg')?.toLowerCase() as 'dial-k2'],
     people: parsePeople(p, householdSize),
     tab,
     // Tab-specific choices are kept on every tab so they survive a tab switch (each is only

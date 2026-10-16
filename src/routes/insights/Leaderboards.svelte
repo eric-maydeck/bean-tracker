@@ -58,37 +58,30 @@
     ppg: 'Price per gram of bags bought in the period.'
   };
   const AVG_LABEL: Record<Avg, string> = {
-    raw: 'Raw average', min3: 'Raw average (3+ bags)', k2: 'Adjusted (light)', adjusted: 'Adjusted (strong)',
-    best: 'Best brew', 'best-k2': 'Best adjusted (light)', 'best-k5': 'Best adjusted (strong)',
-    'dial-k2': 'Dialed in (light)', 'dial-k5': 'Dialed in (strong)'
+    raw: 'Raw average', min3: 'Raw average (3+ bags)', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
+    best: 'Best brew', 'best-k2': 'Best, conf. adj. (light)', 'best-k5': 'Best, conf. adj. (strong)'
   };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Plain average of each bag's rating, all groups ranked together.",
     min3: 'Plain average; groups with fewer than 3 bags are left out (the Coffees board lists every coffee).',
-    k2: "Pulled slightly toward your overall average, so 1–2 bag groups can't top the board (K = 2).",
-    adjusted: 'Pulled strongly toward your overall average until a group has about 5 bags (K = 5).',
+    k2: "Adjusted for confidence: pulled toward your overall average until a group has about 2 bags, so 1–2 bag groups can't top the board (light).",
+    adjusted: 'Adjusted for confidence: pulled strongly toward your overall average until a group has about 5 bags (strong).',
     best: 'The highest single brew rating in the group.',
-    'best-k2': 'Best single brew, pulled toward your overall average until the group has hit that score about 2 times.',
-    'best-k5': 'Best single brew, pulled toward your overall average until the group has hit that score about 5 times.',
-    'dial-k2': "Each bag's best half of brews, averaged across bags; pulled toward your average until a group has about 2 bags.",
-    'dial-k5': "Each bag's best half of brews, averaged across bags; pulled toward your average until a group has about 5 bags."
+    'best-k2': 'Best single brew, adjusted for confidence: pulled toward your overall average until the group has hit that score about 2 times (light).',
+    'best-k5': 'Best single brew, adjusted for confidence: pulled toward your overall average until the group has hit that score about 5 times (strong).'
   };
   // How scores work dialog: examples assume an overall average of 7.0 and use the real formulas.
   const HOW: { group: string; items: { id: Avg; text: string; eg: string }[] }[] = [
     { group: 'Average', items: [
       { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews).", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
       { id: 'min3', text: 'The same average, but groups with fewer than 3 bags are left out.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag roaster at 8 is.' },
-      { id: 'k2', text: 'The average pulled toward your overall average, as if every group had 2 extra bags at that average.', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
-      { id: 'adjusted', text: 'The same, with 5 extra bags: small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
+      { id: 'k2', text: 'Adjusted for confidence: the average pulled toward your overall average, as if every group had 2 extra bags at that average (light).', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
+      { id: 'adjusted', text: 'The same, with 5 extra bags (strong): small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
     ] },
     { group: 'Peak', items: [
       { id: 'best', text: 'The highest single brew rating in the group.', eg: 'Brews of 8, 9 and 10 → 10.' },
       { id: 'best-k2', text: 'The best brew, pulled toward your overall average as if you had 2 extra brews at that average. A score hit repeatedly counts for more than a single lucky one.', eg: 'One 10 → 8.0. Four 9.5s → 8.7.' },
       { id: 'best-k5', text: 'The same, with 5 extra brews.', eg: 'One 10 → 7.5. Four 9.5s → 8.1.' }
-    ] },
-    { group: 'Dialed in', items: [
-      { id: 'dial-k2', text: "Each bag counts as the average of its best half of brews (so early misses while dialing in don't count against it). A group's score averages its bags, pulled toward your average as if it had 2 extra bags.", eg: 'A bag rated 6, 6, 7, 9, 9.5, 9.5 counts as 9.3. One such bag → 7.8. Four such bags → 8.6.' },
-      { id: 'dial-k5', text: 'The same, with 5 extra bags.', eg: 'One such bag → 7.4. Four such bags → 8.0.' }
     ] }
   ];
   let help = $state<HTMLDialogElement>();
@@ -124,13 +117,9 @@
         <optgroup label="Peak">
           {#each ['best', 'best-k2', 'best-k5'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
         </optgroup>
-        <optgroup label="Dialed in">
-          {#each ['dial-k2', 'dial-k5'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
-        </optgroup>
       </select>
     </div>
-    <!-- The dial-k scores already take each bag's best half: the Brews switch doesn't apply, so it's hidden. -->
-    <RatingsSwitch {ratings} {dial} dialApplies={!avg.startsWith('dial')} {ratingsHelp} {choose} />
+    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
   {/if}
 </div>
 

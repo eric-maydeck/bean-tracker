@@ -92,21 +92,4 @@ describe('ratedGroups', () => {
     // equal best and hits: P's mean (9) beats Q's (6.33)
     expect(ratedGroups(t, key, 'all', 'best-k5').map((x) => x.label)).toEqual(['P', 'Q']);
   });
-  it('dialed in: a bag averages its best half of brews (ceil(n/2))', () => {
-    const one = (rs: number[]) => ratedGroups(rs.map((r) => b('D', 1, r)), key, 'all', 'dial-k2')[0].dialed;
-    expect(one([6, 6, 7, 9, 9.5, 9.5])).toBeCloseTo(28 / 3, 6); // late bloomer: best 3 = 9.33
-    expect(one([9])).toBe(9); // instant
-    expect(one([9, 6])).toBe(9);
-    expect(one([5, 7, 9])).toBe(8);
-    expect(one([1, 2, 3, 4, 10])).toBeCloseTo(17 / 3, 6);
-  });
-  it('dialed in: bag-level shrinkage, K = 2 vs 5 bags', () => {
-    const t = [b('G', 1, 9), b('H', 2, 8), b('H', 3, 8)];
-    const o = 25 / 3;
-    const g = (avg: 'dial-k2' | 'dial-k5') => Object.fromEntries(ratedGroups(t, key, 'all', avg).map((x) => [x.label, x.value]));
-    expect(g('dial-k2').G).toBeCloseTo((9 + 2 * o) / 3, 6);
-    expect(g('dial-k2').H).toBeCloseTo((16 + 2 * o) / 4, 6);
-    expect(g('dial-k5').G).toBeCloseTo((9 + 5 * o) / 6, 6);
-    expect(g('dial-k5').H).toBeCloseTo((16 + 5 * o) / 7, 6);
-  });
 });

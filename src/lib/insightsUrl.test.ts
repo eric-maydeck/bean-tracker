@@ -27,8 +27,12 @@ describe('parseInsightsUrl', () => {
   it('ignores a year outside the offered ones', () =>
     expect(parse('range=2019').range).toBeUndefined());
   it('reads every avg mode, old avg=adjusted links included', () => {
-    for (const a of ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5', 'dial-k2', 'dial-k5']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
+    for (const a of ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
     expect(insightsParams({ avg: 'raw' }).toString()).toBe('avg=raw'); // explicit default kept
+  });
+  it('maps the retired best-half scores to their nearest', () => {
+    expect(parse('avg=dial-k2').avg).toBe('k2');
+    expect(parse('avg=DIAL-K5').avg).toBe('adjusted');
   });
   it('reads the old ratings=settled as current', () => expect(parse('ratings=Settled').ratings).toBe('current'));
   it('ignores bad values', () =>
@@ -107,7 +111,7 @@ describe('insightsParams', () => {
     const q = 'range=1w&compare=1&ratings=all&avg=raw';
     expect(insightsParams(parse('avg=raw&ratings=all&compare=1&range=1w')).toString()).toBe(q);
   });
-  it('omits the default Score (best-k2) but keeps an explicit min3', () => {
+  it('omits the default Score (raw) but keeps an explicit min3', () => {
     expect(insightsParams({}).toString()).toBe('');
     expect(insightsParams({ avg: 'min3' }).toString()).toBe('avg=min3');
     expect(parse('avg=MIN3').avg).toBe('min3');
@@ -123,7 +127,7 @@ describe('withDefaults', () => {
       range: '12m',
       compare: 0,
       ratings: 'current',
-      avg: 'best-k2',
+      avg: 'raw',
       people: 'household',
       tab: 'overview',
       rank: 'rating',
@@ -135,7 +139,7 @@ describe('withDefaults', () => {
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'best-k2', people: 'household', tab: 'overview', rank: 'rating',
+      range: '12m', compare: 0, ratings: 'current', avg: 'raw', people: 'household', tab: 'overview', rank: 'rating',
       measure: 'brews', unit: 'grams', agg: 'average', dial: 'dialed'
     }));
 });

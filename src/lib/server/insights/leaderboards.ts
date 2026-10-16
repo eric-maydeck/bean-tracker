@@ -101,7 +101,7 @@ export function leaderboard(
     if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
-        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: board === 'coffees' && avg.startsWith('dial') ? r.dialed : r.value, sample: r.sample })
+        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: r.value, sample: r.sample })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -132,10 +132,8 @@ export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
 // the overview); rating and $/g don't change (its spend and grams do), and no order changes.
 export function leaderboards(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, prev: Period | null, rank: Rank, ratings: Ratings,
-  avg: Avg, size = 1, unscored: readonly BrewFact[] = brews
+  avg: Avg, size = 1
 ): Record<Board, BoardRow[]> {
-  // The dial-k2 / dial-k5 scores already take each bag's best half: they read every brew, whatever the Brews switch says.
-  if (avg.startsWith('dial')) brews = unscored;
   const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend');
   return Object.fromEntries(
     BOARDS.map((board) => {

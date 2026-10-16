@@ -1305,17 +1305,10 @@ export const STATES: State[] = [
       await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
     } })),
   { name: 'insights-dial-all', path: () => '/insights?tab=leaderboards&dial=all' },
-  // Captions stay inside their tiles in both dial states (checkLayout); the dial-k scores hide the Brews switch.
+  // Captions stay inside their tiles in both dial states (checkLayout).
   { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
   { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
   { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
-  {
-    name: 'insights-dial-k-no-switch', path: () => '/insights?tab=leaderboards&avg=dial-k2',
-    act: async (page) => {
-      await expect(page.getByRole('group', { name: 'Ratings' })).toHaveCount(1);
-      await expect(page.getByRole('group', { name: 'Brews' })).toHaveCount(0);
-    }
-  },
   {
     // Records: one Brews switch, in the sticky bar; it stays in view halfway down the tab.
     name: 'insights-dial-records-sticky', path: () => '/insights?tab=records',
@@ -1723,8 +1716,8 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Score', exact: true }).click();
       const dlg = page.getByRole('dialog', { name: 'How scores work' });
       await expect(dlg).toBeVisible();
-      await expect(dlg).toContainText('Dialed in (strong)');
-      await expect(dlg).toContainText('Best adjusted (light) (default)');
+      await expect(dlg).toContainText('Confidence adj. (strong)');
+      await expect(dlg).toContainText('Raw average (default)');
       await expectDialogInViewport(page);
       await expect(dlg.getByRole('button', { name: 'Close', exact: true }).last()).toBeInViewport();
       expect(page.url()).not.toContain('how');
