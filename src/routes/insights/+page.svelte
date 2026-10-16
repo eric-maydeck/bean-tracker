@@ -323,7 +323,7 @@
   // One explanation per ratings mode, shared by the switches (hover title,
   // aria-describedby) and the caption's tap-to-open popover.
   let RATINGS_HELP = $derived({
-    current: `Rated brews since ${day(data.settledFrom)}, once the scale settled.`,
+    current: `Calibrated ratings leaves out ratings before ${new Date(`${data.settledFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}, while the rating scale was still settling.`,
     all: 'Every rated brew, including earlier ones.'
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
@@ -840,7 +840,7 @@
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
   .stat-label.wrap.mode-caption {
-    letter-spacing: 0; /* Rated · Latest ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
+    letter-spacing: 0; /* Rated · Calibrated ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
   }
   .stat-label.wrap {
     white-space: normal;
@@ -1315,7 +1315,7 @@
       border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
     }
   }
-  /* A caption may wrap to a third line ("Avg rating · Latest ratings, All brews" in a 3-up tile): every overview tile
+  /* A caption may wrap to a third line ("Avg rating · Calibrated ratings, All brews" in a 3-up tile): every overview tile
      is one line taller (ui-rules 44), the first line stays at its fixed top and the rest flow down. */
   .fit {
     --grow-caption: 1rem;

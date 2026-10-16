@@ -1,7 +1,7 @@
 <script lang="ts">
   import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
 
-  // Labeled Ratings (Latest ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: title +
+  // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: title +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
   // `menu`: one compact filter-bar button showing the state, the switches in a popover under it.
   let { ratings, dial, ratingsHelp, choose, menu = false }: {

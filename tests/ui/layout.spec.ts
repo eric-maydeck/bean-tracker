@@ -1357,7 +1357,7 @@ export const STATES: State[] = [
       const y = await page.evaluate(() => scrollY);
       const menu = page.locator('.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
       await expect(menu).toBeInViewport();
-      for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Latest ratings · All brews/], ['Ratings', 'All ratings', /ratings=all/, /All ratings · All brews/]] as const) {
+      for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Calibrated ratings · All brews/], ['Ratings', 'All ratings', /ratings=all/, /All ratings · All brews/]] as const) {
         await menu.click();
         await page.getByRole('group', { name, exact: true }).getByRole('button', { name: button, exact: true }).click();
         await expect(page).toHaveURL(url);
@@ -1534,7 +1534,7 @@ export const STATES: State[] = [
       await expect(people.getByRole('button', { name: 'Per person', exact: true })).toHaveAttribute('aria-pressed', 'true');
       const tile = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) });
       await expect(tile(/^Brews · per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
-      await expect(tile(/^Rated · (Latest|All) ratings · per person$/)).toHaveCount(1);
+      await expect(tile(/^Rated · (Calibrated|All) ratings · per person$/)).toHaveCount(1);
       await expect(tile(/^Avg dose$/)).toHaveCount(1);
       await tile(/^Grams · per person$/).getByRole('button', { name: 'per person' }).click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('even split');
@@ -1607,10 +1607,10 @@ export const STATES: State[] = [
       await page.locator('.mode-tip-button').first().click();
       const tip = page.locator('#tip-rated');
       await expect(tip).toBeVisible();
-      await expect(tip.locator('.tip-title')).toHaveText('Latest ratings');
-      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
+      await expect(tip.locator('.tip-title')).toHaveText('Calibrated ratings');
+      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Calibrated ratings leaves out ratings before \w+ \d{4}, while the rating scale was still settling\.$/);
       await expect(tip.locator('.tip-lines li').nth(1)).toContainText('dial-in brews');
-      await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/once the scale settled/);
+      await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/still settling/);
       const r = (await tip.boundingBox())!;
       const vw = page.viewportSize()!.width;
       expect(r.x).toBeGreaterThanOrEqual(0);

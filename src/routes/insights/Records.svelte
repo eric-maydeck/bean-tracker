@@ -295,14 +295,14 @@
   .chart-panel-header :global(h2) {
     margin: 0;
   }
-  /* Captions keep their lines (ui-rules 44): two, three on the narrowest cards (360 px), top aligned, so the first
+  /* Captions keep their lines (ui-rules 44): two, four on the narrowest cards (360 px), top aligned, so the first
      lines sit level across a row however many a caption wraps to. */
   :global(.record-grid .hl-caption .stat-label) {
     min-height: 2lh;
   }
   @container (max-width: 399px) {
     :global(.record-grid .hl-caption .stat-label) {
-      min-height: 3lh;
+      min-height: 4lh;
     }
   }
   /* The badge sits at the foot, just above the caption, on every card. */

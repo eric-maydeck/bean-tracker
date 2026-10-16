@@ -16,7 +16,7 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Option names, used verbatim wherever a setting is shown (the URL values stay current / all).
-export const RATINGS_LABEL: Record<Ratings, string> = { current: 'Latest ratings', all: 'All ratings' };
+export const RATINGS_LABEL: Record<Ratings, string> = { current: 'Calibrated ratings', all: 'All ratings' };
 // Rating boards' score: raw mean of bag means; min3 (the same, rows marked Low confidence left out); k2 / adjusted
 // (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
 // (best pulled toward the overall mean, K = 2 / 5 brews at that score).
