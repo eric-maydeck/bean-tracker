@@ -9,6 +9,7 @@
   } = $props();
   let pop = $state<HTMLElement>();
   let button = $state<HTMLElement>();
+  let open = $state(false);
   const summary = $derived(`${ratings === 'all' ? 'All ratings' : 'Current'} · ${dial === 'all' ? 'All brews' : 'Dialed'}`);
 
   function place(e: ToggleEvent) {
@@ -43,9 +44,9 @@
 {#if menu}
   <div class="form-field group-field">
     <span>Ratings and brews</span>
-    <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-label="Ratings and brews: {summary}">{summary}</button>
+    <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="Ratings and brews: {summary}">{summary}</button>
   </div>
-  <div bind:this={pop} id="switch-menu" class="switch-menu" popover onbeforetoggle={place}>{@render pair()}</div>
+  <div bind:this={pop} id="switch-menu" class="switch-menu" popover onbeforetoggle={place} ontoggle={(e) => (open = e.newState === 'open')}>{@render pair()}</div>
 {:else}
   <div class="switch-pair">{@render pair()}</div>
 {/if}
