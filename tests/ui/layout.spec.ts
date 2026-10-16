@@ -2531,6 +2531,13 @@ export const STATES: State[] = [
       await expect(page.locator('.filter-bar .coffee-chips')).toHaveCount(0);
       await expectStickyBar(page, page.locator('.filter-bar'));
     } },
+  // The mixed-roast nudge: never with a Roast filter set (one level left). The thin seed's two levels
+  // rate alike, so it never shows here; prod copy shows it on /insights?tab=brewing&range=3m (T13b report).
+  { name: 'insights-roast-nudge-roast-set', path: () => '/insights?tab=brewing&range=all&roast=Light',
+    act: async (page) => {
+      await expect(page.locator('.coffee-chips')).toBeVisible();
+      await expect(page.locator('.roast-nudge')).toHaveCount(0);
+    } },
   // F1: Clear all on the sole chip leaves the URL bare and forgets it; a later bare visit stays bare.
   { name: 'insights-coffees-clear-bare', path: () => '/insights?process=Washed',
     act: async (page) => {

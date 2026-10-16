@@ -1,5 +1,6 @@
 import type { Ratings, Avg } from '$lib/insightsUrl';
 import { pooled, type Sample } from '$lib/sample';
+import { sd, strengthOf } from './stats';
 
 // Ratings before this date were ~3× as scattered (calibration period), so
 // "Settled" (the default) leaves them out of every rating-based stat.
@@ -79,4 +80,22 @@ export function ratedGroups<T extends Rated>(
     .sort((a, b) =>
       b.value - a.value || (avg.startsWith('best') ? b.atBest - a.atBest : 0) || b.mean - a.mean
     );
+}
+
+// The mixed-roast nudge (spec Part 3): roast levels passing the pooled rule, best first, when the highest and
+// lowest bag-weighted means differ at Likely (groupZ-style SE over the qualifying bag means, Bonferroni over
+// level pairs); else null. `brews`: the rating views' source in the Period.
+export function roastMix<T extends Rated & { roastLevel: string | null }>(
+  brews: readonly T[],
+  ratings: Ratings
+): { roast: string; mean: number }[] | null {
+  const levels = ratedGroups(brews, (b) => b.roastLevel, ratings, 'raw').filter((g) => !g.sample.small)
+    .sort((a, b) => b.mean - a.mean);
+  if (levels.length < 2) return null;
+  const keep = new Set(levels.map((g) => g.label));
+  const bagMeans = ratedGroups(brews, (b) => (keep.has(b.roastLevel!) ? String(b.coffeeId) : null), ratings, 'raw').map((g) => g.mean);
+  const [hi, lo] = [levels[0], levels.at(-1)!];
+  const z = (hi.mean - lo.mean) / (sd(bagMeans) * Math.sqrt(1 / hi.bags + 1 / lo.bags));
+  const k = levels.length;
+  return strengthOf(z, true, (k * (k - 1)) / 2) === 'solid' ? levels.map((g) => ({ roast: g.label, mean: g.mean })) : null;
 }

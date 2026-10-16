@@ -7,7 +7,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -365,9 +365,7 @@
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
-  let ratingsMenu = $derived(
-    ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating')
-  );
+  let ratingsMenu = $derived(ratingsMenuOn(s));
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
   // A popover sits in the top layer; put it under its caption button (above
@@ -546,6 +544,11 @@
     <button type="button" class="filter-clear-all"
       onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined })}>Clear all</button>
   </div>
+{/if}
+{#if data.roastMix}
+  {@const [first, ...rest] = data.roastMix}
+  <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
+    <button type="button" class="filter-clear-all" onclick={() => coffeesDialog?.showModal()}>filter by roast</button></p>
 {/if}
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
@@ -883,6 +886,15 @@
   /* The Coffees chips: their own line under the sticky bar, never in it. */
   .coffee-chips {
     margin-bottom: var(--space-3);
+  }
+  .roast-nudge {
+    margin: 0 0 var(--space-3);
+  }
+  /* A 44px tap target that doesn't open a gap in the line: padding out, margin back in. */
+  .roast-nudge .filter-clear-all {
+    min-height: 0;
+    padding: 0.75rem 0;
+    margin: -0.75rem 0;
   }
   .coffees-fields {
     display: grid;

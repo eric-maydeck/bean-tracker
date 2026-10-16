@@ -4,7 +4,7 @@ import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM } from '$lib/server/insights/ratings';
+import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
 import { leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
@@ -14,7 +14,7 @@ import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, matchesCoffee, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
-import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -132,6 +132,8 @@ export const load: PageServerLoad = ({ url }) => {
             s.theme
           )
         : null,
+    // The mixed-roast nudge, where the Ratings menu shows (a Roast filter leaves one level: null).
+    roastMix: ratingsMenuOn(s) ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,
     lab,
     coffeeOptions: { roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters },
     grinder,

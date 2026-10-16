@@ -402,6 +402,10 @@ export const emptyLine = (text: string, note: string): string =>
 export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
   s.tab && s.tab !== DEFAULTS.tab ? { tab: s.tab } : {};
 
+// The tabs and modes whose views read ratings: the Ratings/Brews menu shows there, and so does the roast nudge.
+export const ratingsMenuOn = (s: Pick<InsightsView, 'tab' | 'rank' | 'measure'>): boolean =>
+  ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating');
+
 export function withDefaults(s: InsightsUrlState): InsightsView {
   return {
     range: s.range ?? DEFAULTS.range,

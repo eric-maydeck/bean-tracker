@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -593,5 +593,15 @@ describe('coffees filter note', () => {
     expect(emptyLine('No brews in this period', 'Kenya')).toBe('No brews matching Kenya in this period.');
     expect(emptyLine('No findings in this period beyond the top stories.', 'Sey')).toBe('No findings matching Sey in this period beyond the top stories.');
     expect(emptyLine('No brews in this period.', '')).toBe('No brews in this period.');
+  });
+});
+
+describe('ratingsMenuOn', () => {
+  const on = (q: string) => ratingsMenuOn(withDefaults(parse(q)));
+  it('the lab tabs and Records; Leaderboards by rating; Habits measuring rating', () => {
+    expect(['tab=sweetspots', 'tab=brewing', 'tab=water', 'tab=gear', 'tab=records'].map(on)).toEqual([true, true, true, true, true]);
+    expect(['tab=leaderboards&rank=rating', 'tab=habits&measure=rating'].map(on)).toEqual([true, true]);
+    expect(['', 'tab=leaderboards&rank=brews', 'tab=habits&measure=brews', 'tab=consumption', 'tab=milestones'].map(on))
+      .toEqual([false, false, false, false, false]);
   });
 });
