@@ -68,7 +68,7 @@ async function expectChipsFit(page: Page, scope = 'main') {
   );
   expect(bad).toEqual([]);
 }
-// Every toggle group names itself with a small label and is a named role=group (the in-tile Current/All switch is named by its caption).
+// Every toggle group names itself with a small label and is a named role=group (the in-tile switch is named by its caption).
 async function expectGroupsLabelled(page: Page) {
   const unnamed = await page.locator('.tab-group:not(.rating-switch):not(.filter-columns)').evaluateAll((gs) =>
     gs.filter((g) => !g.closest('dialog,.filter-editor') && !g.parentElement?.matches('.form-field') ||
@@ -1293,16 +1293,16 @@ export const STATES: State[] = [
       await expect(page.locator('.stat-item [role="group"]')).toHaveCount(0);
       const switches = page.getByRole('group', { name: 'Ratings' });
       await expect(switches).toHaveCount(2);
-      await switches.first().getByRole('button', { name: 'All', exact: true }).click();
+      await switches.first().getByRole('button', { name: 'All ratings', exact: true }).click();
       await expect(page).toHaveURL(/ratings=all/);
-      for (const g of await switches.all()) await expect(g.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All', 'All']);
+      for (const g of await switches.all()) await expect(g.getByRole('button', { name: 'All ratings', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings', 'All ratings']);
       const brews = page.getByRole('group', { name: 'Brews' });
       await expect(brews).toHaveCount(2);
       await brews.last().getByRole('button', { name: 'All brews', exact: true }).click();
       await expect(page).toHaveURL(/dial=all/);
       for (const g of await brews.all()) await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All, all brews', 'All, all brews']);
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings, All brews', 'All ratings, All brews']);
     }
   },
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
@@ -1357,7 +1357,7 @@ export const STATES: State[] = [
       const y = await page.evaluate(() => scrollY);
       const menu = page.locator('.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
       await expect(menu).toBeInViewport();
-      for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Current · All brews/], ['Ratings', 'All', /ratings=all/, /All ratings · All brews/]] as const) {
+      for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Latest ratings · All brews/], ['Ratings', 'All ratings', /ratings=all/, /All ratings · All brews/]] as const) {
         await menu.click();
         await page.getByRole('group', { name, exact: true }).getByRole('button', { name: button, exact: true }).click();
         await expect(page).toHaveURL(url);
@@ -1534,7 +1534,7 @@ export const STATES: State[] = [
       await expect(people.getByRole('button', { name: 'Per person', exact: true })).toHaveAttribute('aria-pressed', 'true');
       const tile = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) });
       await expect(tile(/^Brews · per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
-      await expect(tile(/^Rated · (Current|All) · per person$/)).toHaveCount(1);
+      await expect(tile(/^Rated · (Latest|All) ratings · per person$/)).toHaveCount(1);
       await expect(tile(/^Avg dose$/)).toHaveCount(1);
       await tile(/^Grams · per person$/).getByRole('button', { name: 'per person' }).click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('even split');
@@ -1607,7 +1607,7 @@ export const STATES: State[] = [
       await page.locator('.mode-tip-button').first().click();
       const tip = page.locator('#tip-rated');
       await expect(tip).toBeVisible();
-      await expect(tip.locator('.tip-title')).toHaveText('Current ratings');
+      await expect(tip.locator('.tip-title')).toHaveText('Latest ratings');
       await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
       await expect(tip.locator('.tip-lines li').nth(1)).toContainText('dial-in brews');
       await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/once the scale settled/);

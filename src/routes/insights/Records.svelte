@@ -3,7 +3,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -119,12 +119,12 @@
 {#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, href: string)}
   <TileCaption {href} {label}
     >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
-        ><span class="tip-text">{every ? 'every brew' : ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
+        ><span class="tip-text">{every && dial === 'dialed' ? 'Always all brews' : RATINGS_LABEL[ratings]}</span><Icon name="question" /></button
       >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
   >
-  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings], every ? 'Every rated brew: this record is about dial-in.' : DIAL_HELP[dial]] }} /></div>{/if}
+  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[ratings], lines: [ratingsHelp[ratings], every ? 'Always all brews: this record is about dial-in.' : DIAL_HELP[dial]] }} /></div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 

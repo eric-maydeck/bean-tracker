@@ -53,7 +53,7 @@
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
           <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
           <div class="fit-body"><DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" /></div>
-          <p class="chart-note">Counts every brew, dial-in included</p>
+          {#if s.dial === 'dialed'}<p class="chart-note">Always all brews</p>{/if}
         </section>
       {/if}
       {#if t.bestAt.length}
@@ -63,7 +63,7 @@
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
           </div>
-          <p class="chart-note">Brew number of each bag's best brew, counting every brew (bags with 5+ rated brews)</p>
+          <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews){s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
         </section>
       {/if}
     </div>
@@ -86,7 +86,7 @@
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
                       tip: { title: d.label, rows: d.sample.small ? [] : [['Bags', `${d.bags}`]], ...sampleField(d.sample) } }))} />
                 </div>
-                <p class="chart-note">Negative = finer. {grinderName} · every brew</p>
+                <p class="chart-note">Negative = finer. {grinderName}{s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
               </section>
             {:else}
               {@const v = chartOf(k)}

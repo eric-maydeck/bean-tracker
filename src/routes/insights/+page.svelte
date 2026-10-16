@@ -6,7 +6,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL
   } from '$lib/insightsUrl';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import Leaderboards from './Leaderboards.svelte';
@@ -559,14 +559,14 @@
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || (t.ratingSwitch && s.dial === 'all')}
               ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}{#if s.dial === 'all'}<span class="dial-part">, all brews</span>{/if}</span><Icon name="question" /></button
+                  ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<span class="dial-part">, {DIAL_LABEL.all}</span>{/if}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}</span
             >
           </div>
           {#if t.ratingSwitch}
-            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: s.ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
+            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[s.ratings], lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
           {/if}
           {#if pp}
             <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></div>
@@ -840,7 +840,7 @@
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
   .stat-label.wrap.mode-caption {
-    letter-spacing: 0; /* Rated · Current ⓘ · per person ⓘ must stay on one line in a 3-up tile */
+    letter-spacing: 0; /* Rated · Latest ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
   }
   .stat-label.wrap {
     white-space: normal;
@@ -1315,7 +1315,7 @@
       border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
     }
   }
-  /* A caption may wrap to a third line ("Avg rating · Current, all brews" in a 3-up tile): every overview tile
+  /* A caption may wrap to a third line ("Avg rating · Latest ratings, All brews" in a 3-up tile): every overview tile
      is one line taller (ui-rules 44), the first line stays at its fixed top and the rest flow down. */
   .fit {
     --grow-caption: 1rem;
@@ -1342,7 +1342,7 @@
     --q: 1;
   }
   /* Rows this narrow (360-390px phones): 3 columns leave ~88px tiles, too small for the
-     Current/All switch and two-line labels. 2 columns; Totals' 5th tile takes the last row. */
+     Ratings/Brews switch and two-line labels. 2 columns; Totals' 5th tile takes the last row. */
   @container (max-width: 380px) {
     .fit .stat-item {
       --c: 2;

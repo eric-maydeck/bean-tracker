@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { DIAL_HELP, DIAL_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
+  import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
 
-  // Labeled Ratings (Current | All) and Brews (All brews | Once dialed) switches (ui-rules 26–27: title +
+  // Labeled Ratings (Latest ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: title +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
   // `menu`: one compact filter-bar button showing the state, the switches in a popover under it.
   let { ratings, dial, ratingsHelp, choose, menu = false }: {
@@ -10,13 +10,13 @@
   let pop = $state<HTMLElement>();
   let button = $state<HTMLElement>();
   let open = $state(false);
-  const summary = $derived(`${ratings === 'all' ? 'All ratings' : 'Current'} · ${dial === 'all' ? 'All brews' : 'Dialed'}`);
+  const summary = $derived(`${RATINGS_LABEL[ratings]} · ${DIAL_LABEL[dial]}`);
 
   function place(e: ToggleEvent) {
     if (e.newState !== 'open' || !pop || !button) return;
     const r = button.getBoundingClientRect();
     pop.style.top = `${r.bottom + 4}px`;
-    pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+    pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 300))}px`;
   }
 </script>
 
@@ -26,14 +26,14 @@
     <div class="tab-group" role="group" aria-label="Ratings">
       {#each ['current', 'all'] as const as m (m)}
         <button aria-pressed={ratings === m} title={ratingsHelp[m]} aria-describedby="ratings-help-{m}"
-          onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button>
+          onclick={() => choose({ ratings: m })}>{RATINGS_LABEL[m]}</button>
       {/each}
     </div>
   </div>
   <div class="form-field group-field">
     <span>Brews</span>
     <div class="tab-group" role="group" aria-label="Brews">
-      {#each ['all', 'dialed'] as const as m (m)}
+      {#each ['dialed', 'all'] as const as m (m)}
         <button aria-pressed={dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
           onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
       {/each}
@@ -94,6 +94,9 @@
   }
   .switch-menu :global(.form-field) {
     margin-bottom: 0;
+  }
+  .switch-menu :global(.tab-group) {
+    flex-wrap: nowrap;
   }
   /* The bar hides field labels in phone landscape; inside the menu they stay. */
   .switch-menu :global(.form-field > span) {
