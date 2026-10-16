@@ -2626,6 +2626,13 @@ export const STATES: State[] = [
       await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
       await expectShortEmpty(page);
     } },
+  // Phones (≤480) read "Last 12 mo." in the closed Period select (unclipped); wider widths keep "Last 12 months".
+  { name: 'insights-period-short', path: () => '/insights?tab=records&range=12m',
+    act: async (page) => {
+      const want = page.viewportSize()!.width <= 480 ? 'Last 12 mo.' : 'Last 12 months';
+      await expect(page.getByLabel('Period').locator('option:checked')).toHaveText(want);
+      await expect(page.getByLabel('Period').locator('option[value="1m"]')).toHaveText('Last month');
+    } },
   // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
   // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
   ...(['note', 'see-all', 'back'] as const).map((step) => ({

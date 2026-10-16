@@ -1,5 +1,6 @@
 <script lang="ts">
   import { afterNavigate, goto } from '$app/navigation';
+  import { MediaQuery } from 'svelte/reactivity';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -369,6 +370,9 @@
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
   let ratingsMenu = $derived(ratingsMenuOn(s));
+  // Phones (≤480): the narrow Period select reads "Last 12 mo." instead of clipping "Last 12 months" (user, gate 3).
+  const phone = new MediaQuery('max-width: 480px');
+  const rangeLabel = (r: (typeof ROLLING)[number]) => (phone.current ? RANGE_LABELS[r].replace(/ months$/, ' mo.') : RANGE_LABELS[r]);
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
   const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
@@ -482,7 +486,7 @@
     <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
-        {#each ROLLING as r (r)}<option value={r}>{RANGE_LABELS[r]}</option>{/each}
+        {#each ROLLING as r (r)}<option value={r}>{rangeLabel(r)}</option>{/each}
       </optgroup>
       <optgroup label="Calendar">
         <option value="ytd">{RANGE_LABELS.ytd}</option>
