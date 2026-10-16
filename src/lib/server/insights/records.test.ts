@@ -281,16 +281,6 @@ describe('recordsTab', () => {
     const t = recordsTab([...rated(1, [8, 8, 8, 8]), ...rated(2, [9, 9, 9, 9, 9]), ...rated(3, [10, 10, 10])], BAGS, CTX);
     expect(t.topCoffees).toMatchObject([{ mean: 9, brews: 5, holder: { label: 'Bag 2' } }, { mean: 8, brews: 4, holder: { label: 'Bag 1' } }]);
   });
-  it('caffeine filters brews and bags; brewer types stay all-time', () => {
-    const bags = [bag({ id: 1, name: 'Caf', cost: 30, amountG: 250, purchaseDate: '2026-03-01' }),
-      bag({ id: 2, name: 'Dec', decaf: true, cost: 10, amountG: 250, purchaseDate: '2026-03-01' })];
-    const b = [brew({ coffeeId: 1, dose: 20, brewerType: 'soup' }), brew({ coffeeId: 2, dose: 12, decaf: true })];
-    const t = recordsTab(b, bags, { ...CTX, caffeine: 'decaf' });
-    expect(tileOf(t, 'doseHeavy')!.value).toBe(12);
-    expect(tileOf(t, 'priciestBag')!.holder.label).toBe('Dec');
-    expect(t.brewerTypes).toEqual(['pourover', 'soup']);
-    expect(tileOf(recordsTab(b, bags, { ...CTX, caffeine: 'caf' }), 'doseLight')!.value).toBe(20);
-  });
   it('coversAll when the period spans the first to the last brew', () => {
     const b = [brew({ localDate: '2026-09-01', dose: 10 })];
     expect(recordsTab(b, BAGS, { ...CTX, period: { start: '2026-08-01', end: '2026-10-11' } }).coversAll).toBe(true);

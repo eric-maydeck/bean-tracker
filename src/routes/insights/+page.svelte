@@ -602,7 +602,6 @@
     ratings={s.ratings}
     dial={s.dial}
     brewer={s.brewer}
-    caffeine={s.caffeine}
     top={s.top}
     topc={s.topc}
     perPerson={perPersonOn}

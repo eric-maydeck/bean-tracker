@@ -476,3 +476,59 @@ describe('once dialed', () => {
     expect(b.dialIn.map((x: { label: string }) => x.label)).toEqual(expect.arrayContaining(['#1', '#2']));
   });
 });
+
+describe('page-wide coffees filter', () => {
+  // Two bags: Washed (2 brews) and Natural (3 brews), both rated 8; `decaf` makes the second a decaf bag.
+  function seedTwo(decaf = false) {
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
+    const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, 8, ?)`);
+    (['Washed', 'Natural'] as const).forEach((processing, k) => {
+      const { id } = createCoffee(db, {
+        roaster: `R${k}`, coffee_name: processing, origin: k ? 'Kenya' : 'Ethiopia', roast_level: 'Light', processing, amount_g: 250, cost: 25,
+        roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
+      });
+      if (decaf && k) db.prepare('UPDATE coffees SET decaf = 1 WHERE id = ?').run(id);
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(`b${k}`, processing, today, id);
+      for (let i = 0; i < 2 + k; i++) ins.run(`${today}T1${k}:00:0${i}.000Z`, `b${k}`, today);
+    });
+  }
+  it('every tab loader sees only the matching coffees', () => {
+    seedTwo();
+    const q = '?range=all&process=washed';
+    expect(run(q).explicit.process).toBe('Washed');
+    expect(run(q).tiles.brews).toBe(2);
+    expect(run(`${q}&tab=leaderboards&rank=brews`).boards.coffees).toHaveLength(1);
+    expect(run(`${q}&tab=habits`).habits.tiles.brewDays).toBe(1);
+    expect(run(`${q}&tab=records`).records).not.toBeNull();
+    expect(run(`${q}&tab=sweetspots`).sweetSpots.matching).toEqual({ bags: 1, brews: 2 });
+    for (const t of ['brewing', 'water', 'gear', 'consumption', 'milestones', 'insights']) expect(run(`${q}&tab=${t}`)).toBeTruthy();
+    expect(run(`${q}&tab=consumption`).consumptionTab).not.toBeNull();
+  });
+  it('picker options come from the unfiltered data', () => {
+    seedTwo();
+    expect(run('?process=Washed').coffeeOptions.processes).toEqual(['Natural', 'Washed']);
+  });
+  it('unknown coffee values drop', () => {
+    seedTwo();
+    expect(run('?origin=Mars&roaster=Nobody').explicit).toMatchObject({ origin: undefined, roaster: undefined });
+  });
+  it('filter that empties the period: zeros and nulls, no NaN', () => {
+    seedTwo();
+    const d = run('?roaster=R0&range=1w&tab=leaderboards');
+    const e = run(`?roaster=R0&range=${addDays(today, -30)}..${addDays(today, -20)}`);
+    expect(e.tiles).toMatchObject({ brews: 0, avgRating: null });
+    expect(JSON.stringify([d, e])).not.toMatch(/NaN/);
+  });
+  it('caffeine: default counts decaf but skips its ratings; decaf keeps only it; all rates both', () => {
+    seedTwo(true);
+    const t = (q: string) => run(`?range=all&ratings=all${q}`).tiles;
+    expect(t('')).toMatchObject({ brews: 5, rated: 2, avgRating: 8 });
+    expect(t('&caffeine=decaf')).toMatchObject({ brews: 3, rated: 3, avgRating: 8 });
+    expect(t('&caffeine=all')).toMatchObject({ brews: 5, rated: 5 });
+    const boards = (q: string) => run(`?range=all&tab=leaderboards&rank=brews${q}`).boards.coffees;
+    expect(boards('')).toHaveLength(2); // counts keep the decaf bag
+    expect(boards('&caffeine=decaf')).toHaveLength(1);
+    expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
+  });
+});

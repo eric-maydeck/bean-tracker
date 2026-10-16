@@ -3,16 +3,16 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
 
   let {
-    t, ratings, dial, brewer, caffeine, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
+    t, ratings, dial, brewer, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
   }: {
-    t: RecordsTab; ratings: Ratings; dial: Dial; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
+    t: RecordsTab; ratings: Ratings; dial: Dial; brewer: BrewerType | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
     allRange: boolean; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
@@ -23,8 +23,7 @@
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
   const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
-  const CAFFEINE: Record<Caffeine | 'all', string> = { all: 'All', caf: 'Caffeinated', decaf: 'Decaf' };
-  // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
+    // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
   const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
   // Day and month records are held by the date itself.
   const isDate = (h: Holder) => /^\d{4}-\d{2}(-\d{2})?$/.test(h.label);
@@ -215,19 +214,8 @@
   {/if}
 {/snippet}
 
-<div class="insights-bar">
-  <div class="form-field group-field">
-    <span>Caffeine</span>
-    <div class="tab-group" role="group" aria-label="Caffeine">
-      {#each [undefined, 'caf', 'decaf'] as const as c (c ?? 'all')}
-        <button aria-pressed={caffeine === c} onclick={() => choose({ caffeine: c })}>{CAFFEINE[c ?? 'all']}</button>
-      {/each}
-    </div>
-  </div>
-</div>
-
 {#if !sections.length}
-  <section class="chart-panel"><p class="hl-empty">No {caffeine === 'decaf' ? 'decaf ' : caffeine ? 'caffeinated ' : ''}brews in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">No brews in this period.</p></section>
 {/if}
 {#each sections as s (s.key)}
   {@const vars = rowVars(s.tiles.length)}

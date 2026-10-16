@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
-import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
+import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
 
@@ -144,7 +144,7 @@ describe('ladder', () => {
     const grindOf = (exact: boolean) => brewingTab(rows, { all: rows, period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: { grind: exact } }).vars.find((v) => v.key === 'grind')!.bands;
     expect(grindOf(false).map((b) => [b.label, b.plainBrews])).toEqual([['1.3.0', 30], ['1.4.0', 0], ['1.5.0', 0], ['1.6.0', 30]]);
     expect(grindOf(true).map((b) => b.label)).toEqual(['1.3.4', '1.6.1']);
-    const spot = sweetSpotsTab(rows, [], { period: P, ratings: 'all', grinder: 'A4Z', filters: {} }).cards.find((c) => c.key === 'grind')!.spot;
+    const spot = sweetSpotsTab(rows, [], { period: P, ratings: 'all', grinder: 'A4Z', filters: {}, all: rows }).cards.find((c) => c.key === 'grind')!.spot;
     expect(spot.bands.map((b) => [b.label, b.brews])).toEqual([['1.3.0', 30], ['1.4.0', 0], ['1.5.0', 0], ['1.6.0', 30]]);
   });
   it('falls back to bands when no exact temp is solid', () => {
@@ -273,7 +273,7 @@ describe('sweetSpotsTab', () => {
   const rows = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8, { roastLevel: 'Light', water: 'A', dripper: 'V60' }),
     ...many(10, id, 94, 7, { roastLevel: 'Light', water: 'B', dripper: 'V60' })]);
   const bags = [1, 2, 3].map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` }));
-  const tab = (filters = {}) => sweetSpotsTab(rows, bags, { period: P, ratings: 'all', grinder: null, filters });
+  const tab = (filters = {}) => sweetSpotsTab(rows.filter(matchesCoffee(filters)), bags, { period: P, ratings: 'all', grinder: null, filters, all: rows });
   it('matching line counts the slice', () => expect(tab().matching).toEqual({ bags: 3, brews: 60 }));
   it('cards: only variables with data, in spec order', () =>
     expect(tab().cards.map((c) => c.key)).toEqual(['temp', 'water', 'dripper']));
@@ -288,22 +288,22 @@ describe('sweetSpotsTab', () => {
   it('top bags tie order: by score, then label', () => expect(tab().topBags.map((b) => b.label)).toEqual(['Bag 1', 'Bag 2', 'Bag 3']));
   it('top bags: shrinkage ranks 10 brews at 8.5 above one 10-rated brew', () => {
     const r = (id: number, k: number, v: number) => Array.from({ length: k }, () => brew({ coffeeId: id, rating: v }));
-    const t = sweetSpotsTab([...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)], bags, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags;
+    const t = (() => { const x = [...r(1, 1, 10), ...r(2, 10, 8.5), ...r(3, 10, 6)]; return sweetSpotsTab(x, bags, { period: P, ratings: 'all', grinder: null, filters: {}, all: x }); })().topBags;
     expect(t.map((b) => b.label)).toEqual(['Bag 2', 'Bag 1', 'Bag 3']);
     expect(t.map((b) => b.sd)).toEqual([0, null, 0]); // sample SD of the bag's ratings; null under 2 brews
   });
   it('top bags: listed bags sharing a name get their roast dates as a tag', () => {
     const twins = [bag({ id: 1, name: 'Gesha', purchaseDate: '2026-03-04' }), bag({ id: 2, name: 'Gesha', purchaseDate: '2026-08-15' }), bag({ id: 3, name: 'Other', purchaseDate: '2026-05-01' })];
     const r = [1, 2, 3].map((id) => brew({ coffeeId: id, rating: 9 - id }));
-    expect(sweetSpotsTab(r, twins, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => [b.label, b.tag]))
+    expect(sweetSpotsTab(r, twins, { period: P, ratings: 'all', grinder: null, filters: {}, all: r }).topBags.map((b) => [b.label, b.tag]))
       .toEqual([['Gesha', 'roasted Mar 4'], ['Gesha', 'roasted Aug 15'], ['Other', null]]);
     const sameDay = twins.map((b) => ({ ...b, purchaseDate: '2026-05-05', firstBrew: `2026-0${5 + b.id}-02` }));
-    expect(sweetSpotsTab(r, sameDay, { period: P, ratings: 'all', grinder: null, filters: {} }).topBags.map((b) => [b.label, b.tag]))
+    expect(sweetSpotsTab(r, sameDay, { period: P, ratings: 'all', grinder: null, filters: {}, all: r }).topBags.map((b) => [b.label, b.tag]))
       .toEqual([['Gesha', 'opened Jun 2'], ['Gesha', 'opened Jul 2'], ['Other', null]]);
   });
   it('top bags: at most 5 of 6', () => {
     const six = [1, 2, 3, 4, 5, 6].map((id) => brew({ coffeeId: id, rating: 8 }));
-    expect(sweetSpotsTab(six, [], { period: P, ratings: 'all', grinder: null, filters: {} }).topBags).toHaveLength(5);
+    expect(sweetSpotsTab(six, [], { period: P, ratings: 'all', grinder: null, filters: {}, all: six }).topBags).toHaveLength(5);
   });
   it('groups with partial filters', () => {
     expect(groupsFor(rows, { roast: 'Light', origin: 'Kenya' }).map((g) => g.name)).toEqual(['Light coffees from Kenya', 'Light coffees']);

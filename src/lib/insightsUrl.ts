@@ -30,8 +30,8 @@ export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;
 export type BrewerType = (typeof BREWER_TYPES)[number];
-// Records: caffeinated or decaf brews and bags only (absent = all).
-export const CAFFEINES = ['caf', 'decaf'] as const;
+// The Coffees filter's Caffeine: absent = Caffeinated (decaf brews skip rating views), Decaf only, or All.
+export const CAFFEINES = ['decaf', 'all'] as const;
 export type Caffeine = (typeof CAFFEINES)[number];
 // Records: how many top brews show (absent = 10).
 export const TOPS = [20, 50] as const;
@@ -172,7 +172,7 @@ export interface InsightsUrlState {
   unit?: Unit;
   by?: By;
   brewer?: BrewerType; // Records: one brewer type (absent = all)
-  caffeine?: Caffeine; // Records: absent = all
+  caffeine?: Caffeine; // absent = Caffeinated; an old caffeine=caf parses to it
   top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
   topc?: Top; // Records: the top-coffees list, likewise
   kinds?: Kind[]; // Milestones: absent = all kinds
@@ -389,6 +389,14 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   return p;
 }
+
+// The Coffees filter as one phrase for empty lines and chips ("Washed · Light"), '' when none is set.
+export const coffeeNote = (s: Pick<InsightsUrlState, 'roast' | 'process' | 'origin' | 'roaster' | 'caffeine'>): string =>
+  [s.caffeine === 'decaf' && 'Decaf', s.process, s.roast, s.origin, s.roaster].filter(Boolean).join(' · ');
+// A tab's empty line naming the Coffees filter (spec Part 3): "No rated brews matching Washed · Light in this period."
+// Every tab's empty line says "... in this period"; the phrase goes right before it.
+export const emptyLine = (text: string, note: string): string =>
+  note ? text.replace(/ in this period(.*?)\.?$/, ` matching ${note} in this period$1.`) : text;
 
 // Reset: every choice back to default (bare URL), keeping only a non-default tab.
 export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>

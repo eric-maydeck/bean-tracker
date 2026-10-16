@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -431,11 +431,19 @@ describe('highlights params', () => {
   });
   it('reset keeps the tab only', () =>
     expect(resetInsights(parse('tab=records&brewer=soup&caffeine=decaf&top=20'))).toEqual({ tab: 'records' }));
-  it('caffeine: caf or decaf, junk dropped, round-trips', () => {
+  it('caffeine: absent = Caffeinated; decaf and all explicit, old caf and junk drop, sticky across tabs', () => {
+    expect(parse('').caffeine).toBeUndefined();
     expect(parse('caffeine=Decaf').caffeine).toBe('decaf');
-    expect(parse('caffeine=caf').caffeine).toBe('caf');
-    expect(parse('caffeine=all').caffeine).toBeUndefined();
-    expect(insightsParams(parse('tab=records&caffeine=caf')).toString()).toBe('tab=records&caffeine=caf');
+    expect(parse('caffeine=ALL').caffeine).toBe('all');
+    expect(parse('caffeine=CAF').caffeine).toBeUndefined();
+    expect(parse('caffeine=bogus').caffeine).toBeUndefined();
+    expect(parse('tab=habits&caffeine=decaf').caffeine).toBe('decaf');
+    expect(insightsParams(parse('tab=records&caffeine=decaf')).toString()).toBe('tab=records&caffeine=decaf');
+    expect(insightsParams(parse('caffeine=caf')).toString()).toBe('');
+  });
+  it('coffeeNote names Decaf (not all) first, then the coffee fields', () => {
+    expect(coffeeNote({ caffeine: 'decaf', process: 'Washed' })).toBe('Decaf · Washed');
+    expect(coffeeNote({ caffeine: 'all' })).toBe('');
   });
   it('top: 20 or 50 expand the top brews; 10 is the bare URL', () => {
     expect(parse('top=20').top).toBe(20);
@@ -569,5 +577,19 @@ describe('dial', () => {
   });
   it('round-trips after ratings, sticky across tabs', () => {
     expect(insightsParams(parse('ratings=all&dial=all&tab=habits')).toString()).toBe('ratings=all&dial=all&tab=habits');
+  });
+});
+
+describe('coffees filter note', () => {
+  it('names the set fields in process · roast · origin · roaster order', () => {
+    expect(coffeeNote({ roast: 'Light', process: 'Washed' })).toBe('Washed · Light');
+    expect(coffeeNote({})).toBe('');
+  });
+  it('emptyLine names the filter in each tab’s empty line', () => {
+    expect(emptyLine('No rated brews in this period.', 'Washed · Light')).toBe('No rated brews matching Washed · Light in this period.');
+    expect(emptyLine('No rated brews with gear recorded in this period.', 'Washed')).toBe('No rated brews with gear recorded matching Washed in this period.');
+    expect(emptyLine('No brews in this period', 'Kenya')).toBe('No brews matching Kenya in this period.');
+    expect(emptyLine('No findings in this period beyond the top stories.', 'Sey')).toBe('No findings matching Sey in this period beyond the top stories.');
+    expect(emptyLine('No brews in this period.', '')).toBe('No brews in this period.');
   });
 });

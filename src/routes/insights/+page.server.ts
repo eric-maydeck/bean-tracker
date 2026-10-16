@@ -13,25 +13,25 @@ import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
-import { labOptions, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
+import { labOptions, matchesCoffee, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
 export const load: PageServerLoad = ({ url }) => {
   const db = getDb();
-  const { brews, bags } = loadFacts(db);
+  const { brews: everyBrew, bags: everyBag } = loadFacts(db);
   const householdSize = getHouseholdSize(db);
   const today = localToday();
-  const dataStart = brews[0]?.localDate ?? null;
+  const dataStart = everyBrew[0]?.localDate ?? null;
   const years = yearsSince(dataStart, today);
-  const brewYears = [...new Set(brews.map((b) => Number(b.localDate.slice(0, 4))))];
+  const brewYears = [...new Set(everyBrew.map((b) => Number(b.localDate.slice(0, 4))))];
   const fits = compareFits(dataStart, today);
   const fitsBy = byFits(dataStart, today);
-  const brewerTypes = BREWER_TYPES.filter((t) => brews.some((b) => b.brewerType === t));
+  const brewerTypes = BREWER_TYPES.filter((t) => everyBrew.some((b) => b.brewerType === t));
   // The lab's picker values come from the data. Parsed with them on every tab (O(n)), so a non-lab tab
   // keeps the lab picks in `explicit` and switching back restores them.
-  const opts = labOptions(brews, bags);
+  const opts = labOptions(everyBrew, everyBag);
   const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes, {
     bags: opts.bags.map((b) => b.slug), roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters,
     grinders: opts.grinders.map((g) => g.slug)
@@ -42,7 +42,16 @@ export const load: PageServerLoad = ({ url }) => {
   const period = periodBounds(s.range, today);
   // Once dialed (dialed.ts): rating views get the brews with each bag's dial-in ratings nulled; positions are
   // over the whole history, so this runs before any Period. Dial-in views, Milestones and counts use `brews`.
-  const dialIn = dialInIds(brews);
+  const dialIn = dialInIds(everyBrew);
+  // The Coffees filter (spec Part 3): brews and bags filtered once, before every tab loader (compare windows
+  // too, since they read the same arrays). Picker options above come from the unfiltered data. Caffeine:
+  // Decaf keeps only decaf; the default nulls decaf brews' ratings (like onceDialed) so rating views skip
+  // them while counts, grams and cost keep them; All filters nothing.
+  const coffees = { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster };
+  const pool = s.caffeine === 'decaf' ? everyBrew.filter((b) => b.decaf)
+    : s.caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
+  const brews = pool.filter(matchesCoffee(coffees));
+  const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matchesCoffee(coffees)(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;
@@ -99,7 +108,7 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
         : null,
-    records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, period, prev, ratings: s.ratings, brewer: s.brewer, caffeine: s.caffeine, size, today }) : null,
+    records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
     insights:
@@ -123,9 +132,10 @@ export const load: PageServerLoad = ({ url }) => {
           )
         : null,
     lab,
+    coffeeOptions: { roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters },
     grinder,
     sweetSpots: s.tab === 'sweetspots'
-      ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster } })
+      ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: coffees, all: s.dial === 'all' ? pool : onceDialed(pool, dialIn) })
       : null,
     brewing: s.tab === 'brewing'
       ? brewingTab(scored, { ...labCtx, all: brews, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),

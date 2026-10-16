@@ -1,4 +1,4 @@
-import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Caffeine, type Ratings } from '$lib/insightsUrl';
+import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { isFinished } from './overview';
@@ -364,7 +364,7 @@ const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
   });
 
 export interface RecordsCtx {
-  period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; caffeine?: Caffeine; size: number; today: string;
+  period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; size: number; today: string;
   unscored?: readonly BrewFact[]; // every rating (before Once dialed); defaults to the brews given
 }
 
@@ -373,9 +373,7 @@ const bagsIn = (bags: readonly BagFact[], w: Period | null) => (w ? bags.filter(
 
 export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagFact[], c: RecordsCtx): RecordsTab {
   const all: Period = { start: null, end: c.today };
-  // Caffeine filters every record's brews and bags; the brewer switch still offers every type.
-  const caf = <T extends { decaf: boolean }>(x: T) => !c.caffeine || x.decaf === (c.caffeine === 'decaf');
-  const brews = allBrews.filter(caf), raw = (c.unscored ?? allBrews).filter(caf), bags = allBags.filter(caf);
+  const brews = allBrews, raw = c.unscored ?? allBrews, bags = allBags;
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => ({
     brews: w ? (def?.dialIn ? raw : brews).filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
     bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today

@@ -211,7 +211,9 @@ export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[])
 }
 
 export interface LabFilters { roast?: string; process?: string; origin?: string; roaster?: string }
-const matches = (f: LabFilters) => (b: BrewFact) =>
+type CoffeeFields = Pick<BrewFact, 'roastLevel' | 'processGroup' | 'origin' | 'roaster'>;
+// The Coffees filter (spec 2026-10-15 Part 3), page-wide: a brew or a bag (same field names) matches every set field.
+export const matchesCoffee = (f: LabFilters) => (b: CoffeeFields) =>
   (!f.roast || b.roastLevel === f.roast) && (!f.process || b.processGroup === f.process) && (!f.origin || b.origin === f.origin) && (!f.roaster || b.roaster === f.roaster);
 // Tier 2 groups, narrowest first: roast + process + roaster + origin → roast + process + roaster → roast +
 // process → roast level (spec; levels with an Any filter are skipped or deduped by name). With no Roast
@@ -226,7 +228,7 @@ export function groupsFor(rows: readonly BrewFact[], f: LabFilters): Group[] {
     const name = groupName(g);
     if (seen.has(name)) return [];
     seen.add(name);
-    return [{ name, brews: rows.filter(matches(g)) }];
+    return [{ name, brews: rows.filter(matchesCoffee(g)) }];
   });
 }
 
@@ -259,11 +261,11 @@ function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'
   });
 }
 
-export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; grinder: string | null; filters: LabFilters }): SweetSpotsTab {
-  const rows = ratedIn(brews, c.period, c.ratings);
-  const slice = rows.filter(matches(c.filters));
+export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; ratings: Ratings; grinder: string | null; filters: LabFilters; all: readonly BrewFact[] }): SweetSpotsTab {
+  // `brews` is already Coffees-filtered; the ladder widens past the filter, so it reads `all`.
+  const slice = ratedIn(brews, c.period, c.ratings);
   const perBag = groupBy(slice, (b) => b.coffeeId);
-  const groups = groupsFor(rows, c.filters);
+  const groups = groupsFor(ratedIn(c.all, c.period, c.ratings), c.filters);
   const cards = (Object.keys(SPOT_VARS) as SpotVar[]).flatMap((key) => {
     const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)), key === 'grind');
     if (spot && key === 'grind') spot.bands = fillGrind(spot.bands, emptySpot);
