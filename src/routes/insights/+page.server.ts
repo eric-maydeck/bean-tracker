@@ -48,10 +48,11 @@ export const load: PageServerLoad = ({ url }) => {
   // Decaf keeps only decaf; the default nulls decaf brews' ratings (like onceDialed) so rating views skip
   // them while counts, grams and cost keep them; All filters nothing.
   const coffees = { roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster };
+  const matches = matchesCoffee(coffees);
   const pool = s.caffeine === 'decaf' ? everyBrew.filter((b) => b.decaf)
     : s.caffeine === 'all' ? everyBrew : everyBrew.map((b) => (b.decaf ? { ...b, rating: null } : b));
-  const brews = pool.filter(matchesCoffee(coffees));
-  const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matchesCoffee(coffees)(b));
+  const brews = pool.filter(matches);
+  const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matches(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;

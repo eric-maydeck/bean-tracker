@@ -7,8 +7,9 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, type Caffeine
   } from '$lib/insightsUrl';
+  import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -26,6 +27,20 @@
 
   let { data }: { data: PageData } = $props();
   let s = $derived(withDefaults(data.explicit));
+  provideCoffeeNote(() => coffeeNote(s));
+
+  // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
+  let coffeesDialog: HTMLDialogElement | undefined = $state();
+  const COFFEE_FIELDS = $derived([
+    ['roast', 'Roast level', data.coffeeOptions.roasts], ['process', 'Process', data.coffeeOptions.processes],
+    ['origin', 'Origin', data.coffeeOptions.origins], ['roaster', 'Roaster', data.coffeeOptions.roasters]
+  ] as const);
+  // Caffeine's chip shows only when explicit (absent = Caffeinated, the default).
+  const CAFFEINE_CHIP: Record<Caffeine, string> = { decaf: 'Decaf', all: 'Caf + decaf' };
+  let coffeeChips = $derived([
+    ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
+    ...(s.caffeine ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const] : [])
+  ]);
 
   // The Custom range dialog; its draft is `draft` below.
   let rangeDialog: HTMLDialogElement | undefined = $state();
@@ -348,6 +363,9 @@
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
+  let ratingsMenu = $derived(
+    ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating')
+  );
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
   // A popover sits in the top layer; put it under its caption button (above
@@ -488,9 +506,14 @@
   {/if}
   {/if}
   <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
-  {#if ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating')}
+  {#if ratingsMenu}
     <RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
   {/if}
+  <!-- Phones: a half cell beside Compare or the menu; its own row when both show (no lone half cell). -->
+  <button class="button button-secondary coffees-button" class:wide={!labTab && ratingsMenu} type="button" aria-haspopup="dialog"
+    onclick={() => coffeesDialog?.showModal()}
+    >Coffees{#if coffeeChips.length}<span class="badge">{coffeeChips.length}</span>{/if}</button
+  >
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
     <div class="form-field group-field people-field">
@@ -508,6 +531,20 @@
     </div>
   {/if}
 </div>
+{#if coffeeChips.length}
+  <div class="filter-chips coffee-chips">
+    {#each coffeeChips as [key, value] (key)}
+      <span class="filter-chip"
+        ><button type="button" class="filter-chip-label" title="Edit in Coffees" onclick={() => coffeesDialog?.showModal()}>{value}</button
+        ><button type="button" class="filter-chip-remove" title="Remove filter"
+          aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined })}>✕</button
+        ></span
+      >
+    {/each}
+    <button type="button" class="filter-clear-all"
+      onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined })}>Clear all</button>
+  </div>
+{/if}
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
   <dialog bind:this={rangeDialog} autofocus class="range-dialog" aria-labelledby="range-title" onclose={() => (draft = null)}>
@@ -528,6 +565,33 @@
         </footer>
       </form>
     {/if}
+  </dialog>
+  <!-- Focus lands on the dialog, never a select (no keyboard pop). -->
+  <!-- svelte-ignore a11y_autofocus -->
+  <dialog bind:this={coffeesDialog} autofocus class="range-dialog coffees-dialog" aria-labelledby="coffees-title">
+    <h2 id="coffees-title">Coffees</h2>
+    <div class="coffees-fields">
+      {#each COFFEE_FIELDS as [key, label, values] (key)}
+        <label class="form-field">
+          <span>{label}</span>
+          <select class="ctl-select" aria-label={label} value={s[key] ?? ''}
+            onchange={(e) => choose({ [key]: e.currentTarget.value || undefined })}>
+            <option value="">Any</option>
+            {#each values as v (v)}<option value={v}>{v}</option>{/each}
+          </select>
+        </label>
+      {/each}
+      <label class="form-field">
+        <span>Caffeine</span>
+        <select class="ctl-select" aria-label="Caffeine" value={s.caffeine ?? ''}
+          onchange={(e) => choose({ caffeine: (e.currentTarget.value || undefined) as Caffeine | undefined })}>
+          <option value="">Caffeinated</option>
+          <option value="decaf">Decaf</option>
+          <option value="all">All</option>
+        </select>
+      </label>
+    </div>
+    <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
 
 <p class="insights-period">{periodText}</p>
@@ -768,8 +832,11 @@
   }
   /* Phone landscape: tighter buttons so View, Period, Compare, both switches and People share one row. */
   @media (max-height: 450px) {
+    .insights-controls {
+      gap: var(--space-2);
+    }
     .people-switch button {
-      padding-inline: 0.6rem;
+      padding-inline: 0.5rem;
     }
   }
   /* Custom range form, inside the dialog. */
@@ -798,6 +865,40 @@
     background: var(--color-surface);
     color: inherit;
   }
+  /* Phone landscape: tighter, so the bar stays one row (ui-rules 30). */
+  @media (max-height: 450px) {
+    .coffees-button {
+      padding-inline: 0.6rem;
+      font-size: 0.85rem;
+    }
+  }
+  /* The Coffees button's count: a small pill in the button's own hue. */
+  .coffees-button .badge {
+    margin-left: var(--space-2);
+    padding: 0 0.45rem;
+    background: color-mix(in oklab, currentColor 18%, transparent);
+  }
+  /* The Coffees chips: their own line under the sticky bar, never in it. */
+  .coffee-chips {
+    margin-bottom: var(--space-3);
+  }
+  .coffees-fields {
+    display: grid;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .coffees-fields .form-field {
+    margin-bottom: 0;
+  }
+  /* Phone landscape (333px tall): the fields in three columns so the panel fits without scrolling. */
+  @media (max-height: 450px) {
+    .coffees-dialog {
+      width: min(40rem, 100% - 2rem);
+    }
+    .coffees-fields {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
   .range-dialog::backdrop {
     background: rgb(0 0 0 / 0.45);
   }
@@ -815,6 +916,7 @@
     .insights-controls {
       display: grid;
       grid-template-columns: 1fr 1fr;
+      grid-auto-flow: row dense; /* a half cell fills the gap a full-width Dates… row leaves */
     }
     .people-switch button {
       flex: 1;
@@ -828,7 +930,8 @@
       min-height: 44px;
     }
     /* Its own full-width row under the selects, not half a row. */
-    .insights-controls > button,
+    .insights-controls > button:not(.coffees-button),
+    .coffees-button.wide,
     .people-field {
       grid-column: 1 / -1;
     }

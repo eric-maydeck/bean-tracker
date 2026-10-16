@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import { tick } from 'svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
@@ -64,10 +65,11 @@
     choose({ pairs: next.length ? next : undefined });
     if (open) { await tick(); block?.scrollIntoView({ block: 'nearest' }); } // collapsing: keep the pair in view
   }
+  const emptyLine = useEmptyLine();
 </script>
 
 {#if empty}
-  <section class="chart-panel"><p class="hl-empty">No rated brews with a water recipe in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with a water recipe in this period.')}</p></section>
 {:else}
   {#if t.recipes.length || t.gh.length}
     <!-- Ratings by recipe beside GH vs rating (W3): half slots, one height. -->

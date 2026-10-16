@@ -1336,7 +1336,8 @@ export const STATES: State[] = [
         if (!/^(sweetspots|water|gear|brewing|milestones)$/.test(t)) await expect(bar.getByRole('group', { name: 'People' })).toBeVisible(); // household > 1 in the seed
         expect(h).toBeLessThanOrEqual(50);
       }
-      else if (width > 420 && width <= 640 && t !== 'brewing') expect(h).toBeLessThanOrEqual(236);
+      // Where Compare and the menu both show, the Coffees button takes its own row (one more, not a lone half cell).
+      else if (width > 420 && width <= 640 && t !== 'brewing') expect(h).toBeLessThanOrEqual(on && !/^(sweetspots|water|gear)$/.test(t) ? 313 : 236);
       if (!on) return;
       await openSwitches(page);
       for (const name of ['Ratings', 'Brews']) {
@@ -1818,7 +1819,8 @@ export const STATES: State[] = [
     } },
   { name: 'insights-records-decaf', path: () => '/insights?tab=records&range=all&caffeine=decaf',
     act: async (page) => {
-      await expect(page.getByRole('button', { name: 'Decaf', pressed: true })).toBeVisible();
+      // Caffeine is page-wide now (the Coffees panel): an explicit Decaf shows as a chip.
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/^Decaf/]);
       await expectGridRowsFull(page, '.record-grid');
     } },
   { name: 'insights-records-top20', path: () => '/insights?tab=records&range=all&top=20',
@@ -1851,7 +1853,8 @@ export const STATES: State[] = [
         document.getElementById('record-nightOwl')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
-      await page.getByRole('button', { name: 'Decaf' }).click();
+      await page.getByRole('button', { name: /^Coffees/ }).click();
+      await page.getByRole('dialog', { name: 'Coffees' }).getByLabel('Caffeine').selectOption('decaf');
       await expect(page).toHaveURL(/caffeine=decaf#record-nightOwl$/);
     } },
   { name: 'insights-overview-anchor', path: () => '/insights?tab=overview#overview-avg-brew-time',
@@ -2234,7 +2237,8 @@ export const STATES: State[] = [
     } },
   { name: 'insights-sweetspots-bag', path: (s) => `/insights?tab=sweetspots&bag=${s.slugs.linked}&roast=Light&process=Washed`,
     act: async (page) => {
-      await expect(page.getByLabel('Roast level')).toHaveValue('Light');
+      // The bag's Roast level and Process are page-wide filters now: chips under the bar.
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Light/, /Washed/]);
       await expect(page.locator('.top-bags li').first()).toBeVisible();
       // Value columns line up under their header (G4).
       const cols = await page.locator('[data-section="spots-top"]').evaluate((sec) => {
@@ -2244,7 +2248,13 @@ export const STATES: State[] = [
       });
       expect(cols).toBe(true);
     } },
-  { name: 'insights-sweetspots-filters', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters' },
+  { name: 'insights-sweetspots-filters', path: () => '/insights?tab=sweetspots&roast=Ultralight&process=Natural&origin=Ethiopia&roaster=Lab%20Roasters',
+    act: async (page) => {
+      // The Coffees fields live only in the Coffees panel (ui-rules 6): Sweet spots keeps Bag (and Grinder).
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Ultralight/, /Natural/, /Ethiopia/, /Lab Roasters/]);
+      await expect(page.locator('.spot-picker').getByLabel('Process')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Reset picker' })).toHaveCount(0);
+    } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
@@ -2484,6 +2494,61 @@ export const STATES: State[] = [
       await gotoReady(page, '/insights');
       await expect(page).toHaveURL(/\/insights$/);
     } },
+  { name: 'insights-coffees-panel', path: () => '/insights',
+    act: async (page) => {
+      await page.getByRole('button', { name: /^Coffees/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Coffees' });
+      await expect(dlg).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT'); // no keyboard pop
+      await dlg.getByLabel('Process').selectOption('Washed');
+      await expect(page).toHaveURL(/process=Washed/);
+      await dlg.getByLabel('Caffeine').selectOption('decaf');
+      await expect(page).toHaveURL(/caffeine=decaf/);
+      // The whole panel fits the viewport (phone landscape is 333px tall).
+      const box = (await dlg.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+      expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
+      await dlg.getByRole('button', { name: 'Done' }).click();
+      await expect(page.getByRole('button', { name: /^Coffees/ })).toContainText('2');
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
+    } },
+  { name: 'insights-coffees-chips', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
+    act: async (page) => {
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(3);
+      await expect(page.locator('.coffee-chips .filter-chip').last()).toHaveText(/Caf \+ decaf/);
+      await page.getByRole('button', { name: 'Remove filter: Ethiopia' }).click();
+      await expect(page).not.toHaveURL(/origin=/);
+      await expect(page).toHaveURL(/process=Washed/);
+      await page.getByRole('button', { name: 'Clear all' }).click();
+      await expect(page).not.toHaveURL(/process=|caffeine=/);
+      await expect(page.locator('.coffee-chips')).toHaveCount(0);
+    } },
+  // The bar stays one short row with the Coffees button in it; the chips sit under it, not in it.
+  { name: 'insights-coffees-sticky', path: () => '/insights?tab=records&range=all&compare=1&process=Washed&caffeine=decaf',
+    act: async (page) => {
+      await expect(page.locator('.coffee-chips')).toBeVisible();
+      await expect(page.locator('.filter-bar .coffee-chips')).toHaveCount(0);
+      await expectStickyBar(page, page.locator('.filter-bar'));
+    } },
+  // F1: Clear all on the sole chip leaves the URL bare and forgets it; a later bare visit stays bare.
+  { name: 'insights-coffees-clear-bare', path: () => '/insights?process=Washed',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Clear all' }).click();
+      await expect(page).toHaveURL(/\/insights$/);
+      await gotoReady(page, '/coffees');
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/\/insights$/);
+      await expect(page.locator('.coffee-chips')).toHaveCount(0);
+    } },
+  ...(['brewing', 'leaderboards', 'habits'] as const).map((t) => ({
+    name: `insights-coffees-empty-${t}`, path: () => `/insights?tab=${t}&roaster=Lab%20Roasters&range=1w`,
+    act: async (page: Page) => {
+      await expect(page.getByText(/^No (rated )?brews matching Lab Roasters in this period\.$/).first()).toBeVisible();
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    } })),
+  ...(['overview', 'records', 'insights', 'sweetspots', 'water', 'gear'] as const).map((t) => ({
+    name: `insights-coffees-${t}`, path: () => `/insights?tab=${t}&process=Natural&range=all` })),
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',

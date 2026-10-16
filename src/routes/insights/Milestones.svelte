@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { KINDS, MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
   import type { MilestonesTab } from '$lib/server/insights/milestones';
@@ -173,6 +174,7 @@
     ro.observe(bar);
     return () => ro.disconnect();
   });
+  const emptyLine = useEmptyLine();
 </script>
 
 {#snippet caption(id: string, label: string)}
@@ -237,7 +239,7 @@
   {/if}
 
   {#if !m.months.length}
-    <p class="hl-empty">No milestones in this period.</p>
+    <p class="hl-empty">{emptyLine('No milestones in this period.')}</p>
   {/if}
   {#if m.months.length}
     <div class="timeline" class:no-ruler={hideRuler} style:--bar-h="{barH}px">

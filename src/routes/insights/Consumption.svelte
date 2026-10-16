@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
@@ -38,6 +39,7 @@
   // Average: every bar is a per-day rate, whatever the bucket.
   const unitNote = $derived(avg ? `per day${t.by === 'day' ? '' : `, averaged by ${t.by}`}` : `per ${t.by}`);
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
+  const emptyLine = useEmptyLine();
 </script>
 
 <div class="insights-bar">
@@ -74,7 +76,7 @@
   <section class="chart-panel">
     <h2>Brewed over time</h2>
     {#if empty}
-      <p class="empty">No data in this period</p>
+      <p class="empty">{emptyLine('No data in this period')}</p>
     {:else}
       <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g && !avg}
         format={fmt(k1)} unit={axis(k1)} height={260} />
@@ -84,7 +86,7 @@
   <section class="chart-panel">
     <h2>Bought vs brewed</h2>
     {#if empty}
-      <p class="empty">No data in this period</p>
+      <p class="empty">{emptyLine('No data in this period')}</p>
     {:else}
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
         series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
@@ -95,7 +97,7 @@
 <section class="chart-panel">
   <h2>On hand over time</h2>
   {#if empty}
-    <p class="empty">No data in this period</p>
+    <p class="empty">{emptyLine('No data in this period')}</p>
   {:else}
     <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>

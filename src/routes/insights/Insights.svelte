@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
@@ -176,6 +177,7 @@
       zero: lo < 0 && hi > 0 ? y(0) : null
     };
   }
+  const emptyLine = useEmptyLine();
 </script>
 
 {#snippet badge(f: Finding, id: string)}
@@ -264,7 +266,7 @@
     {/each}
   </div>
   {#if !grid.length}
-    <p class="hl-empty">No {theme ? `${THEME_LABEL[theme].toLowerCase()} ` : ''}findings in this period{deck.length ? ' beyond the top stories' : ''}.</p>
+    <p class="hl-empty">{emptyLine(`No ${theme ? `${THEME_LABEL[theme].toLowerCase()} ` : ''}findings in this period${deck.length ? ' beyond the top stories' : ''}.`)}</p>
   {:else}
     <div class="hl-grid finding-grid" use:filler={sized}>
       {#each sized as { item: f, size, style }, i (f.key)}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
@@ -23,7 +24,7 @@
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
   const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
-    // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
+  // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
   const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
   // Day and month records are held by the date itself.
   const isDate = (h: Holder) => /^\d{4}-\d{2}(-\d{2})?$/.test(h.label);
@@ -113,6 +114,7 @@
     }
     return out;
   });
+  const emptyLine = useEmptyLine();
 </script>
 
 {#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, href: string)}
@@ -215,7 +217,7 @@
 {/snippet}
 
 {#if !sections.length}
-  <section class="chart-panel"><p class="hl-empty">No brews in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No brews in this period.')}</p></section>
 {/if}
 {#each sections as s (s.key)}
   {@const vars = rowVars(s.tiles.length)}
@@ -233,7 +235,7 @@
       <HeadingAnchor id="records-{s.key}">{s.title}</HeadingAnchor>
     {/if}
     {#if !s.tiles.length}
-      <p class="hl-empty">No {brewer ? `${BREWER[brewer].toLowerCase()} ` : ''}brews in this period.</p>
+      <p class="hl-empty">{emptyLine(`No ${brewer ? `${BREWER[brewer].toLowerCase()} ` : ''}brews in this period.`)}</p>
     {:else}
       <div class="hl-grid record-grid">
         {#each s.tiles as r, i (r.key)}{@render tile(r, `${s.key}-${i}`, vars[i])}{/each}

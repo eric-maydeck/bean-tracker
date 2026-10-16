@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { GearTab } from '$lib/server/insights/lab';
   import { SAMPLE_HELP } from '$lib/sample';
@@ -20,6 +21,7 @@
   let underDrippers = $derived(t.drippers.length < t.filters.length);
   const BOARD_HELP = [...SAME_BAG_HELP, STRENGTH_LINE, 'Columns: rated brews, bags, average rating, SD (narrow screens drop SD, then bags).',
     'No match: never brewed on the same bag as anything else.'];
+  const emptyLine = useEmptyLine();
 </script>
 
 {#snippet matrix()}
@@ -40,7 +42,7 @@
 {/snippet}
 
 {#if empty}
-  <section class="chart-panel"><p class="hl-empty">No rated brews with gear recorded in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with gear recorded in this period.')}</p></section>
 {:else}
   {#if t.drippers.length || t.filters.length}
     <!-- Side by side from 768 px, one height (fitPairs, ui-rules 37/40). With both boards and the matrix, the matrix

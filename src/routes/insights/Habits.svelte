@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
   import Chart from '$lib/components/Chart.svelte';
@@ -46,6 +47,7 @@
     const lo = Math.min(...vs.flatMap((v) => v ?? []).filter((v): v is number => v !== null));
     return Number.isFinite(lo) ? Math.max(0, Math.floor(lo) - 1) : undefined;
   };
+  const emptyLine = useEmptyLine();
 </script>
 
 <div class="insights-bar">
@@ -71,7 +73,7 @@
   <section class="chart-panel">
     <h2>By hour of day</h2>
     {#if empty}
-      <p class="empty">No brews in this period</p>
+      <p class="empty">{emptyLine('No brews in this period')}</p>
     {:else}
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
@@ -81,7 +83,7 @@
   <section class="chart-panel">
     <h2>By day of week</h2>
     {#if empty}
-      <p class="empty">No brews in this period</p>
+      <p class="empty">{emptyLine('No brews in this period')}</p>
     {:else}
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
@@ -93,7 +95,7 @@
 <section class="chart-panel">
   <h2>Hour × weekday</h2>
   {#if empty}
-    <p class="empty">No brews in this period</p>
+    <p class="empty">{emptyLine('No brews in this period')}</p>
   {:else}
     <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSample?.map((r) => r.map((x) => x.small))} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
       tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)], ...(h.heatSample?.[r]?.[c] ? sampleField(h.heatSample[r][c]) : {}) })} />
@@ -102,7 +104,7 @@
 <section class="chart-panel">
   <h2>Brew calendar</h2>
   {#if empty}
-    <p class="empty">No brews in this period</p>
+    <p class="empty">{emptyLine('No brews in this period')}</p>
   {:else}
     <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
   {/if}

@@ -531,4 +531,11 @@ describe('page-wide coffees filter', () => {
     expect(boards('&caffeine=decaf')).toHaveLength(1);
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
   });
+  it('Records with caffeine=decaf sees only the decaf bag', () => {
+    seedTwo(true);
+    const top = (q: string) => run(`?range=all&ratings=all&dial=all&tab=records${q}`).records.topBrews;
+    expect(top('&caffeine=decaf')).toHaveLength(3);
+    expect(top('&caffeine=decaf').map((b: { holder: { label: string } }) => b.holder.label)).not.toContain('Washed');
+    expect(top('')).toHaveLength(2); // the default skips decaf ratings
+  });
 });

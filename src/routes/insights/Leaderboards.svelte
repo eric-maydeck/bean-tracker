@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -86,6 +87,7 @@
   let help = $state<HTMLDialogElement>();
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
+  const emptyLine = useEmptyLine();
 </script>
 
 <div class="rank-bar">
@@ -158,7 +160,7 @@
       {#if bagOnly(b)}
         <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
-        <p class="board-note">{emptyText()}</p>
+        <p class="board-note">{emptyLine(emptyText())}</p>
       {:else}
         <ol class="board-rows">
           {#each shown as r, i (r.key)}

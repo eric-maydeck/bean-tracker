@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
@@ -24,11 +25,10 @@
   );
   function pickBag(slug: string) {
     const b = lab.bags.find((x) => x.slug === slug);
-    // A bag fills Roast level and Process from itself; Origin and Roaster stay as set.
+    // A bag fills the page-wide Roast level and Process (Coffees panel) from itself; Origin and Roaster stay as set.
     choose(b ? { bag: b.slug, roast: b.roast && lab.roasts.includes(b.roast) ? b.roast : undefined, process: lab.processes.includes(b.process) ? b.process : undefined } : { bag: undefined });
   }
-  const any = (v: string) => v || undefined;
-  let filtered = $derived(!!(s.bag || s.roast || s.process || s.origin || s.roaster));
+  const emptyLine = useEmptyLine();
 
   // The card's number (largest): the winner, a lean, the one setting ever used, or no winner.
   const value = (p: Spot) =>
@@ -154,50 +154,20 @@
 <!-- A tap outside a chart closes its tip. -->
 <svelte:document onclick={(e) => tip && !(e.target as Element).closest?.('.spot-chart') && (tip = null)} />
 
-<div class="insights-bar spot-picker" class:even={lab.grinders.length > 1}>
-  <label class="form-field group-field bag-field">
+<div class="insights-bar spot-picker">
+  <label class="form-field group-field">
     <span>Bag</span>
     <select class="ctl-select" aria-label="Bag" value={s.bag ?? ''} onchange={(e) => pickBag(e.currentTarget.value)}>
       <option value="">Any</option>
       {#each bagOptions as b (b.slug)}<option value={b.slug}>{b.label}</option>{/each}
     </select>
   </label>
-  <label class="form-field group-field">
-    <span>Roast level</span>
-    <select class="ctl-select" aria-label="Roast level" value={s.roast ?? ''} onchange={(e) => choose({ roast: any(e.currentTarget.value) })}>
-      <option value="">Any</option>
-      {#each lab.roasts as v (v)}<option value={v}>{v}</option>{/each}
-    </select>
-  </label>
-  <label class="form-field group-field">
-    <span>Process</span>
-    <select class="ctl-select" aria-label="Process" value={s.process ?? ''} onchange={(e) => choose({ process: any(e.currentTarget.value) })}>
-      <option value="">Any</option>
-      {#each lab.processes as v (v)}<option value={v}>{v}</option>{/each}
-    </select>
-  </label>
-  <label class="form-field group-field">
-    <span>Origin</span>
-    <select class="ctl-select" aria-label="Origin" value={s.origin ?? ''} onchange={(e) => choose({ origin: any(e.currentTarget.value) })}>
-      <option value="">Any</option>
-      {#each lab.origins as v (v)}<option value={v}>{v}</option>{/each}
-    </select>
-  </label>
-  <label class="form-field group-field">
-    <span>Roaster</span>
-    <select class="ctl-select" aria-label="Roaster" value={s.roaster ?? ''} onchange={(e) => choose({ roaster: any(e.currentTarget.value) })}>
-      <option value="">Any</option>
-      {#each lab.roasters as v (v)}<option value={v}>{v}</option>{/each}
-    </select>
-  </label>
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-  <button class="button button-ghost reset-picker" type="button" disabled={!filtered}
-    onclick={() => choose({ bag: undefined, roast: undefined, process: undefined, origin: undefined, roaster: undefined })}>Reset picker</button>
 </div>
 
 {#if !t.matching.brews}
   <section class="chart-panel">
-    <p class="hl-empty">{filtered ? 'No rated brews match these filters in this period.' : 'No rated brews in this period.'}</p>
+    <p class="hl-empty">{emptyLine('No rated brews in this period.')}</p>
   </section>
 {:else}
   <p class="insights-period">Matching: {plural(t.matching.bags, 'bag')}, {plural(t.matching.brews, 'brew')}</p>
@@ -301,34 +271,15 @@
   .spot-picker select {
     max-width: 16rem;
   }
-  .spot-picker :global(.tab-group button),
-  .reset-picker {
-    min-height: 2.25rem;
-    margin: 0;
-    font-size: 0.85rem;
-  }
-  /* Phones: two even columns; the long Bag select takes a full row (Reset too when the Grinder makes the count even). */
+  /* Phones: Bag (and Grinder) each take a full row. */
   @media (max-width: 640px) {
     .spot-picker {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
     }
     .spot-picker select {
       width: 100%;
       max-width: none;
-    }
-    .bag-field,
-    .even .reset-picker {
-      grid-column: 1 / -1;
-    }
-    .spot-picker :global(.tab-group) {
-      flex-wrap: nowrap;
-    }
-    .spot-picker :global(.tab-group button),
-    .reset-picker {
-      flex: 1;
-      min-height: 44px;
-      padding-inline: 0.4rem;
     }
   }
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useEmptyLine } from './coffeeNote';
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
@@ -26,6 +27,7 @@
   const NOTABLE = ['85 °C', '88 °C', '91 °C', '92 °C', '94 °C']; // the user's notable temps, bold in Exact (spec)
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
+  const emptyLine = useEmptyLine();
 </script>
 
 <div class="insights-bar brewing-bar">
@@ -34,7 +36,7 @@
 </div>
 
 {#if empty}
-  <section class="chart-panel"><p class="hl-empty">No rated brews in this period.</p></section>
+  <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews in this period.')}</p></section>
 {:else}
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
