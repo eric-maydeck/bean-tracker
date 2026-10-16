@@ -148,7 +148,9 @@ async function expectStickyBar(page: Page, bar: Locator) {
   await page.waitForTimeout(100);
   const b = (await bar.boundingBox())!;
   expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
-  if (page.viewportSize()!.height <= 450) expect(b.height).toBeLessThanOrEqual(60);
+  // Phone landscape: one short controls row, plus (when filters are set) the one-line chips row (gate r2 A3), at most
+  // 44px (a phone tap target's height).
+  if (page.viewportSize()!.height <= 450) expect(b.height).toBeLessThanOrEqual(60 + ((await bar.locator('.coffee-chips').count()) ? 44 : 0));
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
 }
 
@@ -1331,13 +1333,14 @@ export const STATES: State[] = [
       await expect(page.getByRole('group', { name: 'Ratings', exact: true })).toHaveCount(0); // closed: not rendered
       const { width, height } = page.viewportSize()!;
       const h = (await bar.boundingBox())!.height;
-      // Phone landscape: one short row with People shown; phone portrait: no taller than the bar without the menu.
+      // Phone landscape: one short row with People shown; phones: at most three rows of controls.
       if (height <= 450) {
         if (!/^(sweetspots|water|gear|brewing|milestones)$/.test(t)) await expect(bar.getByRole('group', { name: 'People' })).toBeVisible(); // household > 1 in the seed
         expect(h).toBeLessThanOrEqual(50);
       }
-      // Where Compare and the menu both show, the Filters button takes its own row (one more, not a lone half cell).
-      else if (width > 420 && width <= 640 && t !== 'brewing') expect(h).toBeLessThanOrEqual(on && !/^(sweetspots|water|gear)$/.test(t) ? 313 : 236);
+      // Phones (gate r2 A3): three controls per row, so at most three rows (View Period Compare / menu Filters /
+      // People): 220px measured on Records, Leaderboards and Habits by rating; was 236 (466 at 360-420, one column).
+      else if (width <= 480) expect(h).toBeLessThanOrEqual(230);
       if (!on) return;
       await openSwitches(page);
       for (const name of ['Ratings', 'Brews']) {
@@ -2526,12 +2529,13 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/process=|caffeine=/);
       await expect(page.locator('.coffee-chips')).toHaveCount(0);
     } },
-  // The bar stays one short row with the Filters button in it; the chips sit under it, not in it.
+  // The bar stays one short controls row with the Filters button in it; the chips are its last row.
   { name: 'insights-coffees-sticky', path: () => '/insights?tab=records&range=all&compare=1&process=Washed&caffeine=decaf',
     act: async (page) => {
-      await expect(page.locator('.coffee-chips')).toBeVisible();
-      await expect(page.locator('.filter-bar .coffee-chips')).toHaveCount(0);
+      // The chips are the bar's last row (gate r2 A3): still in view after scrolling.
+      await expect(page.locator('.filter-bar .coffee-chips')).toBeVisible();
       await expectStickyBar(page, page.locator('.filter-bar'));
+      await expect(page.locator('.filter-bar .coffee-chips')).toBeInViewport();
     } },
   // The mixed-roast nudge: never with a Roast filter set (one level left). The thin seed's two levels
   // rate alike, so it never shows here; prod copy shows it on /insights?tab=brewing&range=3m (T13b report).
@@ -2540,6 +2544,25 @@ export const STATES: State[] = [
       await expect(page.locator('.coffee-chips')).toBeVisible();
       await expect(page.locator('.roast-nudge')).toHaveCount(0);
     } },
+  // Chips row with 0, 1 and 5 chips (a long roaster name): one line that scrolls sideways, never wraps; Clear all last.
+  ...([['0', ''], ['1', '&process=Washed'],
+    ['5', '&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all']] as const)
+    .map(([n, q]) => ({
+      name: `insights-chips-${n}`, path: () => `/insights?tab=records&range=all${q}`,
+      act: async (page: Page) => {
+        const row = page.locator('.filter-bar .coffee-chips');
+        if (n === '0') return expect(row).toHaveCount(0);
+        await expect(row.locator('.filter-chip')).toHaveCount(Number(n));
+        await expect(row.locator(':scope > :last-child')).toHaveText('Clear all');
+        // Data-agnostic: a far longer roaster name (no seed roaster with brews has one) still stays on the one line.
+        if (n === '5') await row.locator('.filter-chip-label', { hasText: 'The Picky Chemist' })
+          .evaluate((e) => (e.textContent = 'The Extraordinarily Long-Named Specialty Roasting Collective of Portland'));
+        const mids = await row.locator(':scope > *').evaluateAll((es) => es.map((e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; }));
+        expect(Math.max(...mids) - Math.min(...mids), 'chips on one line').toBeLessThanOrEqual(1);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways page scroll').toBe(true);
+        expect(await row.evaluate((e) => getComputedStyle(e).overflowX)).toBe('auto');
+        await expectStickyBar(page, page.locator('.filter-bar'));
+      } })),
   // F1: Clear all on the sole chip leaves the URL bare and forgets it; a later bare visit stays bare.
   { name: 'insights-coffees-clear-bare', path: () => '/insights?process=Washed',
     act: async (page) => {

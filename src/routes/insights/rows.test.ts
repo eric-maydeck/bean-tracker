@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rowSizes, rowVars, sizedGrid } from './rows';
+import { rowSizes, rowVars, sizedGrid, packSpans } from './rows';
 
 describe('rowSizes', () => {
   it('spreads cards evenly over the fewest rows, fuller rows first', () => {
@@ -44,5 +44,22 @@ describe('sizedGrid', () => {
   });
   it('five of a class make one row of 5 on a very wide grid, sized like a row of 4', () => {
     expect(sizedGrid(['L1', 'L2', 'L3', 'L4', 'L5'], big)[0].style).toContain('--h5:var(--fs-l4);--h4:var(--fs-3)');
+  });
+});
+
+describe('packSpans', () => {
+  it('fills every row: a control that does not fit widens the one before; the last widens to the row end', () => {
+    // Records on a phone: View Period Compare / Menu(2) Filters / People(2) → People widens to 3.
+    expect(packSpans([['view', 1], ['period', 1], ['compare', 1], ['menu', 2], ['filters', 1], ['people', 2]], 3))
+      .toEqual({ view: 1, period: 1, compare: 1, menu: 2, filters: 1, people: 3 });
+    // A lab tab: View Period / Menu(2) does not fit → Period widens; Menu Filters.
+    expect(packSpans([['view', 1], ['period', 1], ['menu', 2], ['filters', 1]], 3))
+      .toEqual({ view: 1, period: 2, menu: 2, filters: 1 });
+    // Overview: View Period Compare / Filters People(2).
+    expect(packSpans([['view', 1], ['period', 1], ['compare', 1], ['filters', 1], ['people', 2]], 3))
+      .toEqual({ view: 1, period: 1, compare: 1, filters: 1, people: 2 });
+    expect(packSpans([['a', 1], ['b', 1], ['c', 1]], 2)).toEqual({ a: 1, b: 1, c: 2 });
+    expect(packSpans([['a', 3]], 2)).toEqual({ a: 2 });
+    expect(packSpans([], 3)).toEqual({});
   });
 });

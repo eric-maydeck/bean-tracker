@@ -38,3 +38,19 @@ export function sizedGrid<T>(items: T[], large: (x: T) => boolean) {
     });
   });
 }
+
+// The /insights filter bar's phone grid (gate r2 A3): controls in order, each `w` cells wide, packed `cols` per row.
+// A control that doesn't fit what's left of its row starts the next one and the control before it widens to the
+// row end, and the last widens to its row end: every row is full, no hole. Returns each control's span.
+export function packSpans(items: readonly (readonly [string, number])[], cols: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  let col = 0, prev = '';
+  for (const [k, w] of items) {
+    if (col && col + w > cols) { out[prev] += cols - col; col = 0; }
+    out[k] = Math.min(w, cols);
+    col = (col + out[k]) % cols;
+    prev = k;
+  }
+  if (col && prev) out[prev] += cols - col;
+  return out;
+}

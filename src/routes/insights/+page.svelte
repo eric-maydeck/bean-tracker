@@ -11,6 +11,7 @@
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
+  import { packSpans } from './rows';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
   import Consumption from './Consumption.svelte';
@@ -367,6 +368,17 @@
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
+  // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
+  // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
+  const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
+  const barCells = (cols: 2 | 3) => packSpans([
+    ['view', 1], ['period', 1], ...(isCustom(s.range) ? [['range-dates', 4 - cols]] : []),
+    ...(labTab ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
+    ...(ratingsMenu ? [['menu', cols - 1]] : []), ['filters', 1], ...(peopleOn ? [['people', 2]] : [])
+  ] as [string, number][], cols);
+  let span2 = $derived(barCells(2));
+  let span3 = $derived(barCells(3));
+  const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
   let ratingsMenu = $derived(ratingsMenuOn(s));
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
@@ -460,13 +472,13 @@
 </div>
 
 <div class="insights-controls filter-bar" bind:offsetHeight={barHeight}>
-  <label class="form-field group-field">
+  <label class="form-field group-field" style={cell('view')}>
     <span>View</span>
     <select class="ctl-select" aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
       {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
     </select>
   </label>
-  <label class="form-field group-field">
+  <label class="form-field group-field" style={cell('period')}>
     <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
@@ -483,10 +495,10 @@
     </select>
   </label>
   {#if isCustom(s.range)}
-    <button class="button button-ghost" aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
+    <button class="button button-ghost" style={cell('range-dates')} aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
   {/if}
   {#if !labTab}
-  <label class="form-field group-field">
+  <label class="form-field group-field" style={cell('compare')}>
     <span>Compare</span>
     <select
       class="ctl-select"
@@ -504,15 +516,14 @@
     </select>
   </label>
   {#if isCustom(s.compare)}
-    <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
+    <button class="button button-ghost" style={cell('compare-dates')} aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {/if}
   <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
   {#if ratingsMenu}
-    <RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
+    <div class="cell-contents" style={cell('menu')}><RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
   {/if}
-  <!-- Phones: a half cell beside Compare or the menu; its own row when both show (no lone half cell). -->
-  <div class="form-field group-field filters-field" class:wide={!labTab && ratingsMenu}>
+  <div class="form-field group-field filters-field" style={cell('filters')}>
     <span>{FILTERS_LABEL}</span>
     <button class="button button-secondary filters-button" type="button" aria-haspopup="dialog"
       onclick={() => coffeesDialog?.showModal()}
@@ -520,8 +531,8 @@
     >
   </div>
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
-  {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
-    <div class="form-field group-field people-field">
+  {#if peopleOn}
+    <div class="form-field group-field people-field" style={cell('people')}>
       <span>People</span>
       <div class="tab-group people-switch" role="group" aria-label="People">
         {#each PEOPLE as m (m)}
@@ -535,21 +546,22 @@
       </div>
     </div>
   {/if}
+  <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. -->
+  {#if coffeeChips.length}
+    <div class="filter-chips coffee-chips">
+      {#each coffeeChips as [key, value] (key)}
+        <span class="filter-chip"
+          ><button type="button" class="filter-chip-label" title="Edit in Filters" onclick={() => coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-remove" title="Remove filter"
+            aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined })}>✕</button
+          ></span
+        >
+      {/each}
+      <button type="button" class="filter-clear-all"
+        onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined })}>Clear all</button>
+    </div>
+  {/if}
 </div>
-{#if coffeeChips.length}
-  <div class="filter-chips coffee-chips">
-    {#each coffeeChips as [key, value] (key)}
-      <span class="filter-chip"
-        ><button type="button" class="filter-chip-label" title="Edit in Filters" onclick={() => coffeesDialog?.showModal()}>{value}</button
-        ><button type="button" class="filter-chip-remove" title="Remove filter"
-          aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined })}>✕</button
-        ></span
-      >
-    {/each}
-    <button type="button" class="filter-clear-all"
-      onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined })}>Clear all</button>
-  </div>
-{/if}
 {#if data.roastMix}
   {@const [first, ...rest] = data.roastMix}
   <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
@@ -902,9 +914,25 @@
     padding: 0 0.45rem;
     background: color-mix(in oklab, currentColor 18%, transparent);
   }
-  /* The Coffees chips: their own line under the sticky bar, never in it. */
-  .coffee-chips {
-    margin-bottom: var(--space-3);
+  /* The chips: the sticky bar's last row, one line everywhere; more chips scroll sideways (touch or trackpad),
+     with no scrollbar showing. Clear all is the row's last item. */
+  .insights-controls > .coffee-chips {
+    grid-column: 1 / -1;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+  .coffee-chips::-webkit-scrollbar {
+    display: none;
+  }
+  .coffee-chips > * {
+    flex-shrink: 0;
+  }
+  /* The row scrolls, so a long name shows in full (no ellipsis, ui-rules 3). */
+  .coffee-chips :global(.filter-chip),
+  .coffee-chips :global(.filter-chip-label) {
+    max-width: none;
   }
   .roast-nudge {
     margin: 0 0 var(--space-3);
@@ -949,7 +977,12 @@
     .insights-controls {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      grid-auto-flow: row dense; /* a half cell fills the gap a full-width Dates… row leaves */
+    }
+    /* Each control's span comes from packSpans (--s2 / --s3 on it), so every row is full. */
+    .insights-controls > *,
+    .cell-contents > :global(*) {
+      grid-column: span var(--s2, 1);
+      min-width: 0;
     }
     .people-switch button {
       flex: 1;
@@ -962,17 +995,34 @@
     .insights-controls > button {
       min-height: 44px;
     }
-    /* Its own full-width row under the selects, not half a row. */
-    .insights-controls > button,
-    .filters-field.wide,
-    .people-field {
-      grid-column: 1 / -1;
-    }
   }
-  /* "Previous 12 months" doesn't fit half of a 360px row. */
-  @media (max-width: 420px) {
+  /* Phones: three controls per row, smaller type and padding (taps stay 44px), so the bar stays short. */
+  @media (max-width: 480px) {
     .insights-controls {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+    .insights-controls > *,
+    .cell-contents > :global(*) {
+      grid-column: span var(--s3, 1);
+    }
+    .insights-controls :global(.form-field > span) {
+      font-size: 0.75rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .insights-controls .ctl-select {
+      width: 100%;
+      padding-inline: 0.35rem;
+      font-size: 14px;
+    }
+    .insights-controls :global(.menu-button),
+    .insights-controls > button,
+    .filters-button,
+    .people-switch button {
+      padding-inline: 0.35rem;
+      font-size: 0.8rem;
     }
   }
 
