@@ -33,6 +33,7 @@ describe('parseInsightsUrl', () => {
   it('maps the retired best-half scores to their nearest', () => {
     expect(parse('avg=dial-k2').avg).toBe('k2');
     expect(parse('avg=DIAL-K5').avg).toBe('adjusted');
+    for (const v of ['constructor', '__proto__', 'toString']) expect(parse(`avg=${v}`).avg).toBeUndefined();
   });
   it('reads the old ratings=settled as current', () => expect(parse('ratings=Settled').ratings).toBe('current'));
   it('ignores bad values', () =>

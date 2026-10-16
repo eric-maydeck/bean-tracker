@@ -20,6 +20,8 @@ export type Ratings = (typeof RATINGS)[number];
 // (best pulled toward the overall mean, K = 2 / 5 brews at that score).
 export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
 export type Avg = (typeof AVGS)[number];
+// Old links to the retired best-half scores.
+const RETIRED_AVGS = new Map<string, Avg>([['dial-k2', 'k2'], ['dial-k5', 'adjusted']]);
 // One line to change the Score default.
 export const DEFAULT_AVG: Avg = 'min3';
 export const PEOPLE = ['household', 'person'] as const;
@@ -312,7 +314,7 @@ export function parseInsightsUrl(
     ratings: p.get('ratings')?.toLowerCase() === 'settled' ? 'current' : pickOne(p, 'ratings', RATINGS),
     dial: pickOne(p, 'dial', DIALS) === 'all' ? 'all' : undefined,
     // The retired best-half scores (dial-k2 / dial-k5) parse to their nearest remaining ones.
-    avg: pickOne(p, 'avg', AVGS) ?? ({ 'dial-k2': 'k2', 'dial-k5': 'adjusted' } as const)[p.get('avg')?.toLowerCase() as 'dial-k2'],
+    avg: pickOne(p, 'avg', AVGS) ?? RETIRED_AVGS.get(p.get('avg')?.toLowerCase() ?? ''),
     people: parsePeople(p, householdSize),
     tab,
     // Tab-specific choices are kept on every tab so they survive a tab switch (each is only
