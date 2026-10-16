@@ -82,9 +82,12 @@ export function ratedGroups<T extends Rated>(
     );
 }
 
-// The mixed-roast nudge (spec Part 3): roast levels passing the pooled rule, best first, when the highest and
-// lowest bag-weighted means differ at Likely (groupZ-style SE over the qualifying bag means, Bonferroni over
-// level pairs); else null. `brews`: the rating views' source in the Period.
+// The roast nudge's smallest gap worth naming (user ruling, gate 3): a z ≥ 2 alone fires on a big sample's tiny gap.
+export const ROAST_GAP = 0.5;
+
+// The mixed-roast nudge (spec Part 3, gate-3 rule): roast levels passing the pooled rule, best first, when the
+// highest and lowest bag-weighted means differ at strengthOf 'solid' (groupZ-style SE over the qualifying bag
+// means, one test) and by ROAST_GAP or more; else null. `brews`: the rating views' source in the Period.
 export function roastMix<T extends Rated & { roastLevel: string | null }>(
   brews: readonly T[],
   ratings: Ratings
@@ -96,6 +99,6 @@ export function roastMix<T extends Rated & { roastLevel: string | null }>(
   const bagMeans = ratedGroups(brews, (b) => (keep.has(b.roastLevel!) ? String(b.coffeeId) : null), ratings, 'raw').map((g) => g.mean);
   const [hi, lo] = [levels[0], levels.at(-1)!];
   const z = (hi.mean - lo.mean) / (sd(bagMeans) * Math.sqrt(1 / hi.bags + 1 / lo.bags));
-  const k = levels.length;
-  return strengthOf(z, true, (k * (k - 1)) / 2) === 'solid' ? levels.map((g) => ({ roast: g.label, mean: g.mean })) : null;
+  // 1e-9: bag means are float sums, a 0.5 gap can land at 0.49999….
+  return strengthOf(z, true, 1) === 'solid' && hi.mean - lo.mean >= ROAST_GAP - 1e-9 ? levels.map((g) => ({ roast: g.label, mean: g.mean })) : null;
 }

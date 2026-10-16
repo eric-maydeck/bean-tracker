@@ -95,32 +95,38 @@ describe('ratedGroups', () => {
 });
 
 describe('roastMix', () => {
-  // Each bag: two brews at one rating, so its bag mean is that rating; five bags per level, spread ±0.5.
+  // Each bag: two brews at one rating, so its bag mean is that rating; `bags` bags per level spread evenly ±spread.
   let id = 0;
-  const level = (roastLevel: string, at: number, bags = 5) =>
-    [-0.5, -0.25, 0, 0.25, 0.5].slice(0, bags).flatMap((o) => {
+  const level = (roastLevel: string, at: number, spread = 0.5, bags = 5) =>
+    Array.from({ length: bags }, (_, i) => spread * (-1 + (2 * i) / (bags - 1))).flatMap((o) => {
       const coffeeId = ++id;
       return [0, 1].map(() => ({ coffeeId, rating: at + o, localDate: '2026-07-01', roastLevel }));
     });
+  const pair = (gap: number, spread = 0.5, bags = 5) => [...level('Medium', 7, spread, bags), ...level('Light', 7 + gap, spread, bags)];
 
-  it('names every qualifying level, best first, when the gap is Likely', () => {
-    expect(roastMix([...level('Medium', 7), ...level('Light', 7.7)], 'all')).toEqual([
-      { roast: 'Light', mean: expect.closeTo(7.7) }, { roast: 'Medium', mean: expect.closeTo(7) }
-    ]);
+  it('names every qualifying level, best first, when z ≥ 2 and the gap ≥ 0.5', () => {
+    expect(roastMix(pair(0.7), 'all')).toEqual([{ roast: 'Light', mean: expect.closeTo(7.7) }, { roast: 'Medium', mean: expect.closeTo(7) }]);
   });
-  it('null just under the bar (z ≈ 1.8)', () => expect(roastMix([...level('Medium', 7), ...level('Light', 7.5)], 'all')).toBeNull());
-  it('three levels: Bonferroni over 3 pairs (z ≈ 2.2 is not enough; 2.9 is)', () => {
-    expect(roastMix([...level('Light', 7.6), ...level('Medium', 7.3), ...level('Dark', 7)], 'all')).toBeNull();
-    expect(roastMix([...level('Light', 8), ...level('Medium', 7.5), ...level('Dark', 7)], 'all')?.map((r) => r.roast))
+  it('z threshold: 2.05 shows, 1.94 (gap 0.55) does not', () => {
+    expect(roastMix(pair(0.6), 'all')).not.toBeNull();
+    expect(roastMix(pair(0.55), 'all')).toBeNull();
+  });
+  it('gap threshold: 0.5 shows (z 2.4), 0.49 does not (z 2.39)', () => {
+    expect(roastMix(pair(0.5, 0.3), 'all')).not.toBeNull();
+    expect(roastMix(pair(0.49, 0.3), 'all')).toBeNull();
+  });
+  it('a big sample with a tiny gap stays hidden (40 bags each, gap 0.4, z ≈ 5)', () =>
+    expect(roastMix(pair(0.4, 0.5, 40), 'all')).toBeNull());
+  it('three levels: highest vs lowest, one test; every qualifying level listed', () => {
+    expect(roastMix([...level('Light', 7.8), ...level('Medium', 7.5), ...level('Dark', 7)], 'all')?.map((r) => r.roast))
       .toEqual(['Light', 'Medium', 'Dark']);
   });
   it('a small level is left out (and of the SD)', () => {
-    expect(roastMix([...level('Medium', 7), ...level('Light', 7.7), ...level('Dark', 3, 2)], 'all')?.map((r) => r.roast))
-      .toEqual(['Light', 'Medium']);
+    expect(roastMix([...pair(0.7), ...level('Dark', 3, 0.5, 2)], 'all')?.map((r) => r.roast)).toEqual(['Light', 'Medium']);
   });
   it('one level (a Roast filter set) → null', () => expect(roastMix(level('Light', 8), 'all')).toBeNull());
   it('Calibrated ratings leave out early brews; unlinked brews are skipped', () => {
-    const early = [...level('Medium', 7), ...level('Light', 7.7)].map((b) => ({ ...b, localDate: '2026-05-01' }));
+    const early = pair(0.7).map((b) => ({ ...b, localDate: '2026-05-01' }));
     expect(roastMix(early, 'current')).toBeNull();
     expect(roastMix(early.map((b) => ({ ...b, coffeeId: null })), 'all')).toBeNull();
   });
