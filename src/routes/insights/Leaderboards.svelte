@@ -4,14 +4,15 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings } from '$lib/insightsUrl';
+  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank, type Ratings, type Dial } from '$lib/insightsUrl';
+  import RatingsSwitch from './RatingsSwitch.svelte';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, rank, ratings, avg, open, comparing, perPerson, ratingsHelp, placeTip, choose
+    boards, rank, ratings, dial, avg, open, comparing, perPerson, ratingsHelp, placeTip, choose
   }: {
-    boards: Rows; rank: Rank; ratings: Ratings; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    boards: Rows; rank: Rank; ratings: Ratings; dial: Dial; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
     ratingsHelp: Record<Ratings, string>; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -128,19 +129,7 @@
         </optgroup>
       </select>
     </div>
-    <div class="form-field">
-      <span>Ratings</span>
-      <div class="tab-group" role="group" aria-label="Ratings">
-        {#each ['current', 'all'] as const as m (m)}
-          <button
-            aria-pressed={ratings === m}
-            title={ratingsHelp[m]}
-            aria-describedby="ratings-help-{m}"
-            onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button
-          >
-        {/each}
-      </div>
-    </div>
+    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
   {/if}
 </div>
 

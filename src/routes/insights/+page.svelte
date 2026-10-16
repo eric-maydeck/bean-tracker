@@ -6,7 +6,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL
   } from '$lib/insightsUrl';
   import Leaderboards from './Leaderboards.svelte';
   import Habits from './Habits.svelte';
@@ -505,12 +505,26 @@
 <p class="insights-period">{periodText}</p>
 <span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
+<span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
+<span id="dial-help-all" hidden>{DIAL_HELP.all}</span>
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
 {#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, hero = false)}
   <section class="chart-panel">
-    <h2>{title}</h2>
+    {#if tiles.some((t) => t.ratingSwitch)}
+      <div class="chart-panel-header">
+        <h2>{title}</h2>
+        <div class="tab-group" role="group" aria-label="Brews">
+          {#each ['all', 'dialed'] as const as m (m)}
+            <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
+              onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
+          {/each}
+        </div>
+      </div>
+    {:else}
+      <h2>{title}</h2>
+    {/if}
     <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}">
       {#each tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
@@ -554,14 +568,14 @@
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp}
               ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
+                  ><span class="tip-text">{s.ratings === 'all' ? 'All' : 'Current'}{s.dial === 'all' ? ', all brews' : ''}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}</span
             >
           </div>
           {#if t.ratingSwitch}
-            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: s.ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [RATINGS_HELP[s.ratings]] }} /></div>
+            <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: s.ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
           {/if}
           {#if pp}
             <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></div>
@@ -577,6 +591,7 @@
     boards={data.boards}
     rank={s.rank}
     ratings={s.ratings}
+    dial={s.dial}
     avg={s.avg}
     open={s.open}
     comparing={!!data.previousPeriod}
@@ -586,7 +601,7 @@
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
+  <Habits h={data.habits} measure={s.measure} ratings={s.ratings} dial={s.dial} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} ratingsHelp={RATINGS_HELP} {choose}>
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
@@ -597,6 +612,7 @@
   <Records
     t={data.records}
     ratings={s.ratings}
+    dial={s.dial}
     brewer={s.brewer}
     caffeine={s.caffeine}
     top={s.top}

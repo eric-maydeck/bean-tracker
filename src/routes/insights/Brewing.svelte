@@ -32,7 +32,7 @@
 <div class="insights-bar brewing-bar">
   <!-- One Grinder for the tab: it drives Grind drift and the Grind chart. -->
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-  <RatingsSwitch ratings={s.ratings} {ratingsHelp} {choose} />
+  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
 </div>
 
 {#if empty}

@@ -6,13 +6,14 @@
   import BrewCalendar from '$lib/components/BrewCalendar.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
-  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure, type Ratings } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure, type Ratings, type Dial } from '$lib/insightsUrl';
+  import RatingsSwitch from './RatingsSwitch.svelte';
   import type { Habits } from '$lib/server/insights/habits';
 
   let {
-    h, measure, ratings, agg, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
+    h, measure, ratings, dial, agg, comparing, periodLabel, compareLabel, ratingsHelp, choose, tiles
   }: {
-    h: Habits; measure: Measure; ratings: Ratings; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
+    h: Habits; measure: Measure; ratings: Ratings; dial: Dial; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -63,19 +64,7 @@
       </div>
     </div>
   {:else}
-    <div class="form-field group-field">
-      <span>Ratings</span>
-      <div class="tab-group" role="group" aria-label="Ratings">
-        {#each ['current', 'all'] as const as m (m)}
-          <button
-            aria-pressed={ratings === m}
-            title={ratingsHelp[m]}
-            aria-describedby="ratings-help-{m}"
-            onclick={() => choose({ ratings: m })}>{m === 'all' ? 'All' : 'Current'}</button
-          >
-        {/each}
-      </div>
-    </div>
+    <RatingsSwitch {ratings} {dial} {ratingsHelp} {choose} />
   {/if}
 </div>
 

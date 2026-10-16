@@ -1277,8 +1277,7 @@ export const STATES: State[] = [
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
   {
-    // Every rating tile carries the Current/All switch; one URL param keeps
-    // them in sync. Navigation only, nothing saved.
+    // Every rating tile carries the Ratings and Brews switches; one URL param each keeps them in sync.
     name: 'insights-ratings-switch-sync',
     path: () => '/insights',
     act: async (page) => {
@@ -1286,12 +1285,26 @@ export const STATES: State[] = [
       await expect(switches).toHaveCount(2);
       await switches.first().getByRole('button', { name: 'All', exact: true }).click();
       await expect(page).toHaveURL(/ratings=all/);
-      for (const g of await switches.all()) {
-        await expect(g.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      }
+      for (const g of await switches.all()) await expect(g.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.locator('.mode-tip-button')).toHaveText(['All', 'All']);
+      const brews = page.getByRole('group', { name: 'Brews' });
+      await expect(brews).toHaveCount(2);
+      await brews.last().getByRole('button', { name: 'All brews', exact: true }).click();
+      await expect(page).toHaveURL(/dial=all/);
+      for (const g of await brews.all()) await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All, all brews', 'All, all brews']);
     }
   },
+  ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
+    name: `insights-dial-${t.split('&')[0]}`, path: () => `/insights?tab=${t}`,
+    act: async (page: Page) => {
+      const g = page.getByRole('group', { name: 'Brews' }).first();
+      await expect(g.getByRole('button', { name: 'Once dialed' })).toHaveAttribute('aria-pressed', 'true');
+      await g.getByRole('button', { name: 'All brews', exact: true }).click();
+      await expect(page).toHaveURL(/dial=all/);
+      await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    } })),
+  { name: 'insights-dial-all', path: () => '/insights?tab=leaderboards&dial=all' },
   {
     // Reset clears every choice but a non-default tab; tab choices survive a tab switch.
     name: 'insights-reset',
@@ -1532,7 +1545,8 @@ export const STATES: State[] = [
       const tip = page.locator('#tip-rated');
       await expect(tip).toBeVisible();
       await expect(tip.locator('.tip-title')).toHaveText('Current ratings');
-      await expect(tip.locator('.tip-lines')).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
+      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Rated brews since \w{3} \d+, \d{4}, once the scale settled\.$/);
+      await expect(tip.locator('.tip-lines li').nth(1)).toContainText('dial-in brews');
       await expect(page.locator('.mode-tip-button').first()).toHaveAccessibleDescription(/once the scale settled/);
       const r = (await tip.boundingBox())!;
       const vw = page.viewportSize()!.width;
@@ -1665,7 +1679,7 @@ export const STATES: State[] = [
           return { lt: l.top, ct: c.top, cb: c.bottom };
         })
       );
-      expect(f).toHaveLength(3);
+      expect(f).toHaveLength(4);
       for (const x of f) for (const y of f) {
         if (Math.abs(x.ct - y.ct) > 20) continue; // wrapped to another row
         expect(Math.abs(x.lt - y.lt), 'label top').toBeLessThanOrEqual(1);

@@ -72,7 +72,7 @@ export const AGG_LABEL: Record<Agg, string> = { average: 'Avg per day', total: '
 // is ever in the URL (dial=all); absent = Once dialed.
 export const DIALS = ['dialed', 'all'] as const;
 export type Dial = (typeof DIALS)[number];
-export const DIAL_LABEL: Record<Dial, string> = { all: 'All', dialed: 'Once dialed' };
+export const DIAL_LABEL: Record<Dial, string> = { all: 'All brews', dialed: 'Once dialed' };
 export const DIAL_HELP: Record<Dial, string> = {
   dialed: "Leaves out each bag's dial-in brews (the first 2, or until it settled).",
   all: 'Every rated brew, dial-in included.'

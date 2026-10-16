@@ -192,7 +192,7 @@
     </select>
   </label>
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-  <RatingsSwitch ratings={s.ratings} {ratingsHelp} {choose} />
+  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
   <button class="button button-ghost reset-picker" type="button" disabled={!filtered}
     onclick={() => choose({ bag: undefined, roast: undefined, process: undefined, origin: undefined, roaster: undefined })}>Reset picker</button>
 </div>
@@ -320,6 +320,7 @@
       max-width: none;
     }
     .bag-field,
+    .spot-picker :global(.brews-field),
     .even .reset-picker {
       grid-column: 1 / -1;
     }

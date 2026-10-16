@@ -41,7 +41,7 @@
 {/snippet}
 
 <div class="insights-bar">
-  <RatingsSwitch ratings={s.ratings} {ratingsHelp} {choose} />
+  <RatingsSwitch ratings={s.ratings} dial={s.dial} {ratingsHelp} {choose} />
 </div>
 
 {#if empty}

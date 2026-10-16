@@ -3,16 +3,16 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, DIAL_LABEL, MON, type BrewerType, type Caffeine, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
 
   let {
-    t, ratings, brewer, caffeine, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
+    t, ratings, dial, brewer, caffeine, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
   }: {
-    t: RecordsTab; ratings: Ratings; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
+    t: RecordsTab; ratings: Ratings; dial: Dial; brewer: BrewerType | undefined; caffeine: Caffeine | undefined; top: Top | undefined; topc: Top | undefined; perPerson: boolean;
     allRange: boolean; compareLabel: string;
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
@@ -124,17 +124,24 @@
       >
     {/each}
   </div>
+  <div class="tab-group hl-switch" role="group" aria-label="Brews">
+    {#each ['all', 'dialed'] as const as m (m)}
+      <button aria-pressed={dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}" onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}
+        ><span>{DIAL_LABEL[m]}</span></button
+      >
+    {/each}
+  </div>
 {/snippet}
 
 {#snippet caption(id: string, label: string, rating: boolean, pp: boolean, href: string)}
   <TileCaption {href} {label}
     >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
-        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}</span><Icon name="question" /></button
+        ><span class="tip-text">{ratings === 'all' ? 'All' : 'Current'}{dial === 'all' ? ', all brews' : ''}</span><Icon name="question" /></button
       >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
   >
-  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings]] }} /></div>{/if}
+  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: ratings === 'all' ? 'All ratings' : 'Current ratings', lines: [ratingsHelp[ratings], DIAL_HELP[dial]] }} /></div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 
@@ -308,9 +315,12 @@
   }
   /* Every card keeps the switch band, switch or not, so values line up across sections (A15). */
   .hl-top {
-    height: 1.4rem;
+    height: 3rem;
     display: flex;
+    flex-direction: column;
+    justify-content: center;
     align-items: center;
+    gap: 0.2rem;
   }
   /* The badge sits at the foot, just above the caption, on every card. */
   /* Flex: the badge's tip button is its own row (checkLayout rule 5), apart from "+N tied". */
