@@ -962,10 +962,12 @@
      to it on touch, where the switch's hover title never shows. Dotted
      underline marks it as more info. Padding grows the tap target to 44px;
      the matching negative margin keeps the caption's layout unchanged. */
+  /* It wraps within the tile (ui-rules 44): the first line stays at the caption's fixed top, the rest flow down. */
   .mode-caption {
     display: block;
     overflow: visible;
-    white-space: nowrap;
+    white-space: normal;
+    line-height: 1.1;
   }
   /* ", all brews" wraps as one piece, not mid-phrase. */
   .dial-part {

@@ -165,6 +165,32 @@ export async function checkLayout(page: Page): Promise<void> {
         out.push(`contained image has no fill color behind it: ${describe(img)}`);
       }
     }
+    // 10. (ui-rules 44) Tile text never spills past its tile: every text line box, as far as it is visible (clipped
+    // by any overflow-hiding ancestor inside the tile, e.g. an ellipsis or a line clamp), sits inside the tile's box.
+    // Popover tips (top layer) and screen-reader text are not tile text. (A tip button's 44px tap padding may
+    // overflow on purpose, so the tile's scrollWidth is not the measure.)
+    for (const tile of all('.stat-item, .hl-card')) {
+      const t = tile.getBoundingClientRect();
+      const walker = document.createTreeWalker(tile, NodeFilter.SHOW_TEXT);
+      for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+        const p = n.parentElement!;
+        if (!n.textContent?.trim() || p.closest('[popover], .sr-only') || !shown(p)) continue;
+        let [l, tp, rt, bt] = [-Infinity, -Infinity, Infinity, Infinity];
+        for (let a: Element | null = p; a && a !== tile; a = a.parentElement) {
+          const s = getComputedStyle(a);
+          if (s.overflowX === 'visible' && s.overflowY === 'visible') continue;
+          const c = a.getBoundingClientRect();
+          [l, tp, rt, bt] = [Math.max(l, c.left), Math.max(tp, c.top), Math.min(rt, c.right), Math.min(bt, c.bottom)];
+        }
+        const range = document.createRange();
+        range.selectNodeContents(n);
+        const spill = [...range.getClientRects()].some((r) => {
+          const [x0, y0, x1, y1] = [Math.max(r.left, l), Math.max(r.top, tp), Math.min(r.right, rt), Math.min(r.bottom, bt)];
+          return x1 - x0 > 0 && y1 - y0 > 0 && (x0 < t.left - 1 || x1 > t.right + 1 || y0 < t.top - 1 || y1 > t.bottom + 1);
+        });
+        if (spill) { out.push(`tile text spills past its tile: "${n.textContent.trim().slice(0, 30)}" in ${describe(tile)}`); break; }
+      }
+    }
     return out;
   });
   expect(problems, `layout problems on ${page.url()}:\n${problems.join('\n')}`).toEqual([]);
