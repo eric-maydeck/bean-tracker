@@ -540,6 +540,18 @@ describe('page-wide coffees filter', () => {
     expect(run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed&avg=raw').boardsCut).toEqual([]);
     expect(run('?tab=leaderboards&roaster=R0&range=' + addDays(today, -30) + '..' + addDays(today, -20)).boardsCut).toEqual([]);
   });
+  it('See all: rows the boards gain and rated brews left out, vs avg=raw, ratings=all, dial=all', () => {
+    seedTwo();
+    // One calibration-period brew on the Washed bag: left out by Calibrated ratings.
+    getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'b0', 15, 6, ?)`)
+      .run('2026-05-01T10:00:00.000Z', today);
+    const h = (q: string) => run(`?range=all${q}`).hidden;
+    expect(h('&tab=leaderboards&process=Washed')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1 });
+    expect(h('&tab=leaderboards&process=Washed&avg=raw')).toEqual({ rows: {}, brews: 1 });
+    expect(h('&tab=records&ratings=all')).toEqual({ rows: {}, brews: 0 });
+    expect(h('&tab=leaderboards&avg=raw&ratings=all&dial=all')).toEqual({ rows: {}, brews: 0 });
+    expect(h('&tab=consumption')).toBeNull();
+  });
   it('Records with caffeine=decaf sees only the decaf bag', () => {
     seedTwo(true);
     const top = (q: string) => run(`?range=all&ratings=all&dial=all&tab=records${q}`).records.topBrews;

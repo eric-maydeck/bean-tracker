@@ -153,3 +153,14 @@ export function cutBoards(
   if (rank !== 'rating' || avg !== 'min3') return [];
   return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw').length);
 }
+
+// The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all. `all`: the brews before
+// Once dialed. Boards that gain none are left out.
+export function hiddenRows(
+  boards: Record<Board, BoardRow[]>, all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank
+): Partial<Record<Board, number>> {
+  if (rank !== 'rating') return {};
+  return Object.fromEntries(
+    BOARDS.map((b) => [b, leaderboard(all, bags, p, b, rank, 'all', 'raw').length - boards[b].length]).filter(([, n]) => (n as number) > 0)
+  );
+}

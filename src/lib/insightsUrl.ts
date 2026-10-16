@@ -402,6 +402,27 @@ export const emptyLine = (text: string, note: string): string =>
 export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
   s.tab && s.tab !== DEFAULTS.tab ? { tab: s.tab } : {};
 
+// A board's rows, plural (the singular drops the s).
+export const BOARD_NOUN: Record<Board, string> = {
+  roasters: 'roasters', coffees: 'coffees', origins: 'origins', process: 'process groups', roast: 'roast levels',
+  water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders'
+};
+const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -1) : plural}`;
+// The See all note (gate 3): what the Score/Ratings/Brews settings hide on this tab ('' = nothing). Rows the
+// boards would gain (up to two boards named, else a total) and in-period rated brews left out.
+export function hiddenNote(
+  h: { rows: Partial<Record<Board, number>>; brews: number }, s: Pick<InsightsView, 'avg' | 'ratings' | 'dial'>
+): string {
+  const rows = Object.entries(h.rows) as [Board, number][];
+  const named = rows.length <= 2 ? rows.map(([b, n]) => count(n, BOARD_NOUN[b])).join(' and ')
+    : `${rows.reduce((t, [, n]) => t + n, 0)} rows on ${rows.length} boards`;
+  const why = [s.ratings === 'current' && 'before calibration', s.dial === 'dialed' && 'while dialing in'].filter(Boolean).join(' or ');
+  return [
+    rows.length ? `${named} hidden${s.avg === 'min3' ? ': too few bags or brews' : ''}.` : '',
+    h.brews ? `${count(h.brews, 'rated brews')} left out: ${why}.` : ''
+  ].filter(Boolean).join(' ');
+}
+
 // The tabs and modes whose views read ratings: the Ratings/Brews menu shows there, and so does the roast nudge.
 export const ratingsMenuOn = (s: Pick<InsightsView, 'tab' | 'rank' | 'measure'>): boolean =>
   ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating');

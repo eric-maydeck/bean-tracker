@@ -4,9 +4,9 @@ import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
+import { RATINGS_SETTLED_FROM, countsForRating, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { cutBoards, leaderboards } from '$lib/server/insights/leaderboards';
+import { cutBoards, hiddenRows, leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
@@ -60,6 +60,7 @@ export const load: PageServerLoad = ({ url }) => {
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
+  const ratedIn = (xs: typeof brews, r: typeof s.ratings) => xs.filter((b) => inPeriod(b.localDate, period) && countsForRating(b, r)).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
@@ -135,6 +136,14 @@ export const load: PageServerLoad = ({ url }) => {
           )
         : null,
     // The mixed-roast nudge, where the Ratings menu shows (a Roast filter leaves one level: null).
+    // The See all note, where the Ratings menu shows: what avg=raw, ratings=all, dial=all would add on this tab.
+    // brews: in-period rated brews the Ratings/Brews settings leave out (decaf's nulled ratings aren't counted).
+    hidden: ratingsMenuOn(s)
+      ? {
+          rows: boards ? hiddenRows(boards, brews, bags, period, s.rank) : {},
+          brews: ratedIn(brews, 'all') - ratedIn(scored, s.ratings)
+        }
+      : null,
     roastMix: ratingsMenuOn(s) ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,
     lab,
     coffeeOptions: { roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters },

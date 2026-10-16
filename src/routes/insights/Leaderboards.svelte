@@ -6,7 +6,7 @@
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
-  import { BAG_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
@@ -89,13 +89,9 @@
   const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
   // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews".
-  const NOUN: Record<Board, string> = {
-    roasters: 'roasters', coffees: 'coffees', origins: 'origins', process: 'process groups', roast: 'roast levels',
-    water: 'waters', dripper: 'drippers', filter: 'filters', grinder: 'grinders'
-  };
   const boardEmpty = (b: Board) =>
     cut.includes(b)
-      ? `No ${NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+`} rated brews in this period.`
+      ? `No ${BOARD_NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+`} rated brews in this period.`
       : emptyText();
   const emptyLine = useEmptyLine();
 </script>

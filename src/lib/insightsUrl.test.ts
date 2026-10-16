@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -603,5 +603,22 @@ describe('ratingsMenuOn', () => {
     expect(['tab=leaderboards&rank=rating', 'tab=habits&measure=rating'].map(on)).toEqual([true, true]);
     expect(['', 'tab=leaderboards&rank=brews', 'tab=habits&measure=brews', 'tab=consumption', 'tab=milestones'].map(on))
       .toEqual([false, false, false, false, false]);
+  });
+});
+
+describe('hiddenNote', () => {
+  const at = { avg: 'min3', ratings: 'current', dial: 'dialed' } as const;
+  it('names up to two boards (singular for one row), else a total; brews with the reasons that apply', () => {
+    expect(hiddenNote({ rows: { roasters: 4 }, brews: 12 }, at))
+      .toBe('4 roasters hidden: too few bags or brews. 12 rated brews left out: before calibration or while dialing in.');
+    expect(hiddenNote({ rows: { roasters: 1, roast: 2 }, brews: 0 }, at)).toBe('1 roaster and 2 roast levels hidden: too few bags or brews.');
+    expect(hiddenNote({ rows: { roasters: 1, roast: 2, water: 3 }, brews: 1 }, at))
+      .toBe('6 rows on 3 boards hidden: too few bags or brews. 1 rated brew left out: before calibration or while dialing in.');
+  });
+  it('the reasons follow the settings; nothing hidden → empty', () => {
+    expect(hiddenNote({ rows: { origins: 2 }, brews: 3 }, { avg: 'raw', ratings: 'all', dial: 'dialed' }))
+      .toBe('2 origins hidden. 3 rated brews left out: while dialing in.');
+    expect(hiddenNote({ rows: {}, brews: 3 }, { ...at, dial: 'all' })).toBe('3 rated brews left out: before calibration.');
+    expect(hiddenNote({ rows: {}, brews: 0 }, at)).toBe('');
   });
 });

@@ -2591,6 +2591,30 @@ export const STATES: State[] = [
         .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
       await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
     } },
+  // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
+  // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
+  ...(['note', 'see-all', 'back'] as const).map((step) => ({
+    name: `insights-see-all-${step}`, path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
+    act: async (page: Page) => {
+      const note = page.locator('.see-all');
+      await expect(note).toHaveText(/hidden: too few bags or brews\..* See all$/);
+      if (step !== 'note') {
+        await note.getByRole('button', { name: 'See all' }).click();
+        await expect(page).toHaveURL(/[?&]avg=raw/);
+        for (const p of ['ratings=all', 'dial=all', 'process=Washed', 'roast=Light', 'range=all', 'tab=leaderboards'])
+          expect(page.url()).toContain(p);
+        await expect(note).toHaveText('Showing everything, including low-confidence rows. Back to defaults');
+      }
+      if (step === 'back') {
+        await note.getByRole('button', { name: 'Back to defaults' }).click();
+        await expect(page).not.toHaveURL(/avg=|ratings=|dial=/);
+        for (const p of ['process=Washed', 'roast=Light', 'range=all', 'tab=leaderboards']) expect(page.url()).toContain(p);
+        await expect(note).toHaveText(/See all$/);
+      }
+      if (page.viewportSize()!.width >= 1280)
+        expect(await note.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), 'one line')
+          .toBeLessThan(1.5);
+    } })),
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',

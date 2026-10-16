@@ -7,7 +7,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -567,6 +567,16 @@
   <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
     <button type="button" class="filter-clear-all" onclick={() => coffeesDialog?.showModal()}>filter by roast</button></p>
 {/if}
+<!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back. -->
+{#if data.hidden}
+  {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
+    <p class="chart-note see-all">Showing everything, including low-confidence rows.
+      <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
+  {:else if hiddenNote(data.hidden, s)}
+    <p class="chart-note see-all">{hiddenNote(data.hidden, s)}
+      <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
+  {/if}
+{/if}
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
   <dialog bind:this={rangeDialog} autofocus class="range-dialog" aria-labelledby="range-title" onclose={() => (draft = null)}>
@@ -934,12 +944,15 @@
   .coffee-chips :global(.filter-chip-label) {
     max-width: none;
   }
-  .roast-nudge {
+  .roast-nudge,
+  .see-all {
     margin: 0 0 var(--space-3);
   }
   /* A 44px tap target that doesn't open a gap in the line: padding out, margin back in. */
-  .roast-nudge .filter-clear-all {
+  .roast-nudge .filter-clear-all,
+  .see-all .filter-clear-all {
     min-height: 0;
+    min-width: 44px;
     padding: 0.75rem 0;
     margin: -0.75rem 0;
   }
