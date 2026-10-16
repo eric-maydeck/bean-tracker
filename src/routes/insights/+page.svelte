@@ -515,11 +515,14 @@
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
         <h2>{title}</h2>
-        <div class="tab-group" role="group" aria-label="Brews">
-          {#each ['all', 'dialed'] as const as m (m)}
-            <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
-              onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
-          {/each}
+        <div class="form-field group-field">
+          <span>Brews</span>
+          <div class="tab-group" role="group" aria-label="Brews">
+            {#each ['all', 'dialed'] as const as m (m)}
+              <button aria-pressed={s.dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
+                onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
+            {/each}
+          </div>
         </div>
       </div>
     {:else}
