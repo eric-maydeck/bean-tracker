@@ -1,14 +1,25 @@
 <script lang="ts">
   import { DIAL_HELP, DIAL_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
 
-  // A tab bar's labeled Ratings (Current | All) and Brews (All brews | Once dialed) switches (ui-rules 26–27: title +
+  // Labeled Ratings (Current | All) and Brews (All brews | Once dialed) switches (ui-rules 26–27: title +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
-  let { ratings, dial, ratingsHelp, choose }: {
-    ratings: Ratings; dial: Dial; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void;
+  // `menu`: one compact filter-bar button showing the state, the switches in a popover under it.
+  let { ratings, dial, ratingsHelp, choose, menu = false }: {
+    ratings: Ratings; dial: Dial; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; menu?: boolean;
   } = $props();
+  let pop = $state<HTMLElement>();
+  let button = $state<HTMLElement>();
+  const summary = $derived(`${ratings === 'all' ? 'All ratings' : 'Current'} · ${dial === 'all' ? 'All brews' : 'Dialed'}`);
+
+  function place(e: ToggleEvent) {
+    if (e.newState !== 'open' || !pop || !button) return;
+    const r = button.getBoundingClientRect();
+    pop.style.top = `${r.bottom + 4}px`;
+    pop.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 248))}px`;
+  }
 </script>
 
-<div class="switch-pair">
+{#snippet pair()}
   <div class="form-field group-field">
     <span>Ratings</span>
     <div class="tab-group" role="group" aria-label="Ratings">
@@ -27,10 +38,19 @@
       {/each}
     </div>
   </div>
-</div>
+{/snippet}
+
+{#if menu}
+  <div class="form-field group-field">
+    <span>Ratings and brews</span>
+    <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-label="Ratings and brews: {summary}">{summary}</button>
+  </div>
+  <div bind:this={pop} id="switch-menu" class="switch-menu" popover onbeforetoggle={place}>{@render pair()}</div>
+{:else}
+  <div class="switch-pair">{@render pair()}</div>
+{/if}
 
 <style>
-  /* The pair wraps as one unit in the page's control grids and stays together beside a panel title. */
   .switch-pair {
     display: flex;
     flex-wrap: wrap;
@@ -40,19 +60,68 @@
   .switch-pair :global(.form-field) {
     margin-bottom: 0;
   }
-  /* Same compact buttons as the People switch beside it, so the bar stays one row where it can. */
-  .switch-pair :global(.tab-group button) {
+  /* The menu: a select-like button (same height as the bar's selects) and the pair stacked under it. */
+  .menu-button {
+    box-sizing: border-box;
+    min-height: 2.25rem;
+    margin: 0;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .switch-menu {
+    inset: auto;
+    margin: 0;
+    flex-direction: column;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+    max-width: calc(100vw - 1rem);
+  }
+  .switch-menu:popover-open {
+    display: flex;
+    gap: var(--space-3);
+  }
+  .switch-menu :global(.form-field) {
+    margin-bottom: 0;
+  }
+  /* The bar hides field labels in phone landscape; inside the menu they stay. */
+  .switch-menu :global(.form-field > span) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+  /* Same compact buttons as the People switch beside it. */
+  .switch-pair :global(.tab-group button),
+  .switch-menu :global(.tab-group button) {
     min-height: 2.25rem;
     margin: 0;
     font-size: 0.85rem;
   }
   @media (max-width: 640px) {
-    .switch-pair :global(.tab-group button) {
+    .menu-button {
+      width: 100%;
+      min-height: 44px;
+      font-size: 16px;
+    }
+    .switch-pair :global(.tab-group button),
+    .switch-menu :global(.tab-group button) {
       min-height: 44px;
       min-width: 44px;
     }
   }
-  @media (max-height: 450px), (max-width: 420px) {
+  @media (max-height: 450px) {
     .switch-pair :global(.tab-group button) {
       padding-inline: 0.6rem;
     }

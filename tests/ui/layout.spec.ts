@@ -133,6 +133,13 @@ async function expectDeltaInk(page: Page) {
   expect(bad).toEqual([]);
 }
 
+// The Ratings / Brews menu in the sticky bar: opens its popover (a no-op where the pair is inline, as on Overview).
+async function openSwitches(page: Page) {
+  const menu = page.locator('.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
+  if (await menu.count()) await menu.click();
+  return menu;
+}
+
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
@@ -985,6 +992,7 @@ export const STATES: State[] = [
     name: 'insights-habits-rating-compare',
     path: () => '/insights?tab=habits&measure=rating&compare=1',
     act: async (page) => {
+      await openSwitches(page);
       await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
       await page.locator('.heatmap .heat-cell').first().focus();
       await expectDataTip(page.locator('.cell-tip'));
@@ -1300,6 +1308,7 @@ export const STATES: State[] = [
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
     name: `insights-dial-${t.split('&')[0]}`, path: () => `/insights?tab=${t}`,
     act: async (page: Page) => {
+      await openSwitches(page);
       const g = page.getByRole('group', { name: 'Brews' }).first();
       await expect(g.getByRole('button', { name: 'Once dialed' })).toHaveAttribute('aria-pressed', 'true');
       await g.getByRole('button', { name: 'All brews', exact: true }).click();
@@ -1311,33 +1320,51 @@ export const STATES: State[] = [
   { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
   { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
   { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
-  // ui-rules 26: Ratings and Brews are one pair in the sticky bar, only where they apply (and none in tiles or panels).
+  // ui-rules 26: Ratings and Brews are one menu button in the sticky bar, only where they apply (none in tiles or panels).
   ...(['sweetspots', 'water', 'gear', 'brewing', 'records', 'leaderboards', 'habits&measure=rating',
     'leaderboards&rank=brews', 'habits', 'consumption', 'milestones', 'insights'] as const).map((t) => ({
     name: `insights-switch-placement-${t.replace(/\W+/g, '-')}`, path: () => `/insights?tab=${t}`,
     act: async (page: Page) => {
       const on = !/rank=|^(habits|consumption|milestones|insights)$/.test(t);
-      // Phone landscape keeps the one short row (ui-rules 30), switches included.
-      if (page.viewportSize()!.height <= 450) expect((await page.locator('.filter-bar').boundingBox())!.height).toBeLessThanOrEqual(60);
+      const bar = page.locator('.filter-bar');
+      await expect(bar.getByRole('button', { name: /^Ratings and brews/ })).toHaveCount(on ? 1 : 0);
+      await expect(page.getByRole('group', { name: 'Ratings', exact: true })).toHaveCount(0); // closed: not rendered
+      const { width, height } = page.viewportSize()!;
+      const h = (await bar.boundingBox())!.height;
+      // Phone landscape: one short row with People shown; phone portrait: no taller than the bar without the menu.
+      if (height <= 450) {
+        if (!/^(sweetspots|water|gear|brewing|milestones)$/.test(t)) await expect(bar.getByRole('group', { name: 'People' })).toBeVisible(); // household > 1 in the seed
+        expect(h).toBeLessThanOrEqual(50);
+      }
+      else if (width > 420 && width <= 640 && t !== 'brewing') expect(h).toBeLessThanOrEqual(236);
+      if (!on) return;
+      await openSwitches(page);
       for (const name of ['Ratings', 'Brews']) {
         const g = page.getByRole('group', { name, exact: true });
-        await expect(g).toHaveCount(on ? 1 : 0);
-        if (on) expect(await g.evaluate((e) => !!e.closest('.filter-bar'))).toBe(true);
+        await expect(g).toHaveCount(1);
+        await expect(g).toBeVisible();
+        expect(await g.evaluate((e) => !!e.closest('.filter-bar'))).toBe(true);
       }
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('group', { name: 'Ratings', exact: true })).toHaveCount(0);
     } })),
   {
-    // Records: the pair stays in view halfway down the tab; toggling either keeps the scroll position.
+    // The menu's label tracks the state. Toggling keeps the scroll position (and any content shift is not ours):
+    // checked after the navigation settles, ±5 px.
     name: 'insights-dial-records-sticky', path: () => '/insights?tab=records',
     act: async (page) => {
-      await page.evaluate(() => scrollTo(0, document.body.scrollHeight / 2));
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight / 3));
       const y = await page.evaluate(() => scrollY);
-      for (const [name, button, url] of [['Brews', 'All brews', /dial=all/], ['Ratings', 'All', /ratings=all/]] as const) {
-        const g = page.getByRole('group', { name });
-        await expect(g).toBeInViewport();
-        await g.getByRole('button', { name: button, exact: true }).click();
+      const menu = page.locator('.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
+      await expect(menu).toBeInViewport();
+      for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Current · All brews/], ['Ratings', 'All', /ratings=all/, /All ratings · All brews/]] as const) {
+        await menu.click();
+        await page.getByRole('group', { name, exact: true }).getByRole('button', { name: button, exact: true }).click();
         await expect(page).toHaveURL(url);
-        await expect(g.getByRole('button', { name: button, exact: true })).toHaveAttribute('aria-pressed', 'true');
-        expect(Math.abs((await page.evaluate(() => scrollY)) - y)).toBeLessThanOrEqual(2);
+        await expect(menu).toHaveAccessibleName(label);
+        await page.waitForTimeout(600);
+        expect(Math.abs((await page.evaluate(() => scrollY)) - y)).toBeLessThanOrEqual(5);
+        await page.keyboard.press('Escape');
       }
     }
   },

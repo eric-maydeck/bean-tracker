@@ -44,6 +44,9 @@
 
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
+    // Keep the scroll position through the swap: the content can collapse while the new data loads.
+    const y = scrollY;
+    const keep = () => { if (!change.tab) scrollTo(0, y); };
     const next = { ...data.explicit, ...change };
     // A compare the new range doesn't offer would be dropped by the parser.
     // A new custom Period has no menu yet: keep what could apply and let the parser drop what doesn't fit.
@@ -53,7 +56,7 @@
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
     // A tab switch drops the old tab's #anchor: it names nothing on the new one.
-    goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
+    goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
   }
 
   // Click-for-explanation triggers also open on mouse hover (mouse only: touch and keyboard keep
@@ -464,9 +467,9 @@
     <button class="button button-ghost" aria-label="Compare dates" onclick={() => openDates('compare')}>Dates…</button>
   {/if}
   {/if}
-  <!-- Ratings and Brews, one pair for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
+  <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
   {#if ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating')}
-    <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
+    <RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
   {/if}
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
   {#if data.householdSize > 1 && s.tab !== 'milestones' && !labTab}
@@ -807,8 +810,7 @@
     }
     /* Its own full-width row under the selects, not half a row. */
     .insights-controls > button,
-    .people-field,
-    .insights-controls > :global(.switch-pair) {
+    .people-field {
       grid-column: 1 / -1;
     }
   }
