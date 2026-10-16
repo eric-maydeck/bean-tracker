@@ -42,7 +42,7 @@
 {/snippet}
 
 {#if menu}
-  <div class="form-field group-field">
+  <div class="form-field group-field menu-field">
     <span>Ratings and brews</span>
     <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="Ratings and brews: {summary}">{summary}</button>
   </div>
@@ -62,8 +62,14 @@
     margin-bottom: 0;
   }
   /* The menu: a select-like button (same height as the bar's selects) and the pair stacked under it. */
+  .menu-field {
+    min-width: 0;
+  }
   .menu-button {
     box-sizing: border-box;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
     min-height: 2.25rem;
     margin: 0;
     padding: 0 var(--space-3);
@@ -117,7 +123,7 @@
     .menu-button {
       width: 100%;
       min-height: 44px;
-      font-size: 16px;
+      padding-inline: var(--space-2);
     }
     .switch-pair :global(.tab-group button),
     .switch-menu :global(.tab-group button) {
