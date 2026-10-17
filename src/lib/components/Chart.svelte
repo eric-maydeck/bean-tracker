@@ -13,7 +13,7 @@
   // does, so both live here for their own chart type.
   const valueLabelsPlugin: Plugin = {
     id: 'valueLabels',
-    afterDatasetsDraw(chart) {
+    afterDatasetsDraw(chart, _args, opts: { format?: (v: number) => string }) {
       if (chart.config.type !== 'bar' || chart.options.indexAxis !== 'y') return;
       const { ctx } = chart;
       const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
@@ -29,7 +29,8 @@
           ctx.font = '12px sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
-          ctx.fillText(Number(value).toLocaleString('en-US'), x + 6, y);
+          // `format` (the chart's prop, carried on its options) when set: money as usd (ui-rules 46).
+          ctx.fillText(opts?.format ? opts.format(Number(value)) : Number(value).toLocaleString('en-US'), x + 6, y);
           ctx.restore();
         });
       });
@@ -53,6 +54,7 @@
     yMin,
     samples,
     format,
+    tipFormat,
     titles,
     dots = true,
     monotone = false,
@@ -84,8 +86,10 @@
     series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[] }[];
     // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
-    // Vertical bars and plain lines: the tooltip's value text.
+    // The tooltip's value text, and horizontal bars' value labels.
     format?: (v: number) => string;
+    // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents).
+    tipFormat?: (v: number) => string;
     // Vertical bars: tooltip titles, when the axis labels are abbreviated.
     titles?: string[];
     // Plain lines: point markers (off for dense series, where they merge into a blob).
@@ -317,12 +321,14 @@
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
         plugins: {
           legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
+          ...({ valueLabels: { format } } as object), // the horizontal-bar value labels' text (valueLabelsPlugin)
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
           tooltip: { enabled: false, external, ...(format && !trendValues
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
-              const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${format(ctx.parsed.y ?? 0)}`;
+              const v = (ctx.chart.options.indexAxis === 'y' ? ctx.parsed.x : ctx.parsed.y) ?? 0; // horizontal bars: x is the value
+              const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${(tipFormat ?? format)(v)}`;
               return line;
             } } }
             : trendValues
@@ -364,7 +370,7 @@
             }
           : type === 'bar'
             ? {
-                x: { suggestedMax: valueAxisMax, ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { suggestedMax: valueAxisMax, ticks: { color: textColor, ...(format && { callback: (v: string | number) => format(Number(v)) }) }, grid: { color: gridColor } }, // money ticks as usd too
                 y: {
                   ticks: {
                     color: textColor,
@@ -426,6 +432,7 @@
     void yMin;
     void samples;
     void format;
+    void tipFormat;
     void dots;
     void monotone;
     void integer;

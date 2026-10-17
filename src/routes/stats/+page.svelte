@@ -1,5 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import { usd, usdPrecise, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
@@ -283,6 +284,8 @@
   let bcVisibleCostByRoaster = $derived(
     bc.costPerGramByRoaster.slice(0, BEANCONQUEROR_BAR_LIMIT)
   );
+  // One money format for the chart (ui-rules 46): its labels round, its tips keep the cents.
+  let costWhole = $derived(wholeUsd(bcVisibleCostByRoaster.map((g) => g.averageCostPerGram)));
   let bcCostChartHeight = $derived(Math.max(220, bcVisibleCostByRoaster.length * 34 + 40));
 
   // The "top N of M" cap on the not-yet-tracked candidate list is now
@@ -1177,7 +1180,9 @@
           type="bar"
           labels={bcVisibleCostByRoaster.map((g) => g.label)}
           values={bcVisibleCostByRoaster.map((g) => g.averageCostPerGram)}
-          datasetLabel="Cost per gram ($)"
+          format={(v) => `${usd(v, costWhole)}/g`}
+          tipFormat={(v) => `${usdPrecise(v, costWhole) ?? usd(v, costWhole)}/g`}
+          datasetLabel="Cost per gram"
           height={bcCostChartHeight}
         />
       {/if}

@@ -1057,6 +1057,25 @@ export const STATES: State[] = [
     name: `stats-${tab}`,
     path: () => `/stats?tab=bq&bc=${tab}`
   })),
+  {
+    // ui-rules 46: the cost-per-roaster chart's bar labels are usd ("$0.05/g"), never Chart's plain-number fallback.
+    name: 'stats-bc-economics-usd',
+    path: () => '/stats?tab=bq&bc=economics',
+    act: async (page) => {
+      await page.addInitScript(() => {
+        const w = window as unknown as { drawn: string[] };
+        w.drawn = [];
+        const fill = CanvasRenderingContext2D.prototype.fillText;
+        CanvasRenderingContext2D.prototype.fillText = function (t, ...rest) { w.drawn.push(String(t)); return fill.call(this, t, ...rest); };
+      });
+      await gotoReady(page, '/stats?tab=bq&bc=economics');
+      await expect(page.locator('canvas').first()).toBeVisible();
+      await expect.poll(() => page.evaluate(() => (window as unknown as { drawn: string[] }).drawn.filter((t) => /\/g$/.test(t)).length)).toBeGreaterThan(0);
+      const drawn = await page.evaluate(() => (window as unknown as { drawn: string[] }).drawn);
+      expect(drawn.filter((t) => /^\d*\.\d+$/.test(t))).toEqual([]); // no raw "0.047" labels or "0.02" ticks
+      for (const t of drawn.filter((t) => /\/g$/.test(t))) expect(t).toMatch(/^\$[\d,]+(\.\d{2})?\/g$/);
+    }
+  },
   { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

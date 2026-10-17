@@ -1,6 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
-  import { usd } from '$lib/money';
+  import { usd, wholeUsd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -34,22 +34,23 @@
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
-  function fmt(v: number): string {
+  // `whole`: the board's money format (ui-rules 46: one per list).
+  function fmt(v: number, whole?: boolean): string {
     if (rank === 'like') return likeGap(v);
     if (rank === 'rating') return v.toFixed(1);
     if (rank === 'grams') return formatGrams(v);
-    if (rank === 'spend') return usd(v);
-    if (rank === 'ppg') return `${usd(v)}/g`;
+    if (rank === 'spend') return usd(v, whole);
+    if (rank === 'ppg') return `${usd(v, whole)}/g`;
     return perPerson && v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('en-US');
   }
   type Row = Rows[Board][number];
-  const detail = (r: Row) =>
+  const detail = (r: Row, costWhole?: boolean) =>
     [
       r.sub,
       ...(avg?.startsWith('best') && rank === 'rating' && r.atBest
         ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
         : rank === 'ppg' && r.cost !== undefined
-          ? [plural(r.bags, 'bag'), usd(r.cost), formatGrams(r.grams!)]
+          ? [plural(r.bags, 'bag'), usd(r.cost, costWhole), formatGrams(r.grams!)]
           : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null])
     ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>
@@ -199,13 +200,16 @@
   {@const rows = boards[b]}
   {@const size = SIZE(b)}
   {@const isOpen = open === b}
+  <!-- One money format per board (ui-rules 46): whole dollars for all when any amount is $1,000+. -->
+  {@const whole = (rank === 'spend' || rank === 'ppg') && wholeUsd(rows.map((r) => r.value))}
+  {@const costWhole = rank === 'ppg' && wholeUsd(rows.map((r) => r.cost))}
   {@const shown = isOpen ? rows : rows.slice(0, size)}
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
   <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
     <h2>{TITLE[b]}</h2>
     <div class="board-body">
-      {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
+      {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={(v) => fmt(v, whole)} /></div>{/if}
       {#if unranked(b)}
         <p class="board-note bag-only"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
@@ -222,12 +226,12 @@
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
-                <span class="who-line"><small>{detail(r)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
+                <span class="who-line"><small>{detail(r, costWhole)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
                 <!-- Under rank=like the value already is this gap. -->
                 {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
               <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}
-                >{#if valueTip(b, r)}<TextTip label={fmt(r.value)} tip={valueTip(b, r)!} />{:else if rank === 'spend' || rank === 'ppg'}<Usd n={r.value} suffix={rank === 'ppg' ? '/g' : ''} />{:else}{fmt(r.value)}{/if}</span>
+                >{#if valueTip(b, r)}<TextTip label={fmt(r.value)} tip={valueTip(b, r)!} />{:else if rank === 'spend' || rank === 'ppg'}<Usd n={r.value} {whole} suffix={rank === 'ppg' ? '/g' : ''} />{:else}{fmt(r.value)}{/if}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
             </li>
           {/each}

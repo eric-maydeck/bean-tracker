@@ -1,6 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
-  import { usd } from '$lib/money';
+  import { usd, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
   import { page } from '$app/state';
@@ -300,6 +300,8 @@
   });
 
   let totals = $derived(subscriptionTotals(data.subscriptions));
+  // One money format for the price column and its total (ui-rules 46).
+  let priceWhole = $derived(wholeUsd([...data.subscriptions.map((s) => s.price), totals.price]));
 </script>
 
 <svelte:head>
@@ -440,7 +442,7 @@
             {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
             {:else}
-              {#if sub.price != null}<Usd n={sub.price} />{:else}—{/if}
+              {#if sub.price != null}<Usd n={sub.price} whole={priceWhole} />{:else}—{/if}
             {/if}
           </td>
           {#if !canEdit}
@@ -553,7 +555,7 @@
     <tfoot>
       <tr>
         <td colspan="2"><strong>Totals</strong></td>
-        <td><strong>{#if totals.price != null}<Usd n={totals.price} />{:else}—{/if}</strong></td>
+        <td><strong>{#if totals.price != null}<Usd n={totals.price} whole={priceWhole} />{:else}—{/if}</strong></td>
         {#if canEdit}
           <td colspan="2"><strong>{totals.grams != null ? `${totals.grams} g` : '—'}</strong></td>
           <td></td>
@@ -703,7 +705,7 @@
               <span class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</span>
             </span>
             <span class="compact-row-trailing">
-              {sub.price != null ? usd(sub.price) : '—'}
+              {sub.price != null ? usd(sub.price, priceWhole) : '—'}
             </span>
           </button>
           {#if expandedId === sub.id}
@@ -727,7 +729,7 @@
     {/each}
   </div>
   <div class="compact-row-detail" style="border-top: 1px solid var(--color-border); padding-top: var(--space-3); margin-top: var(--space-2);">
-    <strong>Totals:</strong> {#if totals.price != null}<Usd n={totals.price} />{:else}—{/if} · {totals.grams ?? '—'}g
+    <strong>Totals:</strong> {#if totals.price != null}<Usd n={totals.price} whole={priceWhole} />{:else}—{/if} · {totals.grams ?? '—'}g
   </div>
 {/if}
 
