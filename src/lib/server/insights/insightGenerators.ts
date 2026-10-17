@@ -930,6 +930,8 @@ export const GENERATORS: Generator[] = [
 // ---- Insights tab: bucketing and What-if ----
 export interface InsightsTab {
   grid: Finding[]; stories: Finding[]; myths: Finding[]; tooEarly: Finding[];
+  // Every badgeable test run for the page (stats review 2026-10-17): shown or not, under any theme.
+  tested: number;
   whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null }; // the client computes runway and spend
 }
 const DECK = 5;
@@ -976,6 +978,7 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
     tooEarly: fs.filter((f) => f.strength === 'early' && (PINNED(f) || (!negligible(f) && early++ < EARLY_CAP))),
+    tested: fs.filter((f) => f.z !== null && f.kind !== 'story').length,
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }

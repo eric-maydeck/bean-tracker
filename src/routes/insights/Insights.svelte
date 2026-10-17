@@ -168,10 +168,10 @@
   const r1 = (n: number) => +n.toFixed(1);
   const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
-  // Page-wide multiple comparisons (stats audit 2026-10-17): every badged test shown, and how many Likely badges a
-  // page of them earns by chance (about 1 in 20 tests of a zero gap). Picks from a set (weekdays…) are already
-  // Bonferroni-held, so this is an upper bound.
-  let tested = $derived([...t.grid, ...t.stories, ...t.tooEarly].filter((f) => f.z !== null && f.kind !== 'story').length);
+  // Page-wide multiple comparisons (stats audit 2026-10-17): every badgeable test the server ran (shown or not,
+  // under any theme), and how many Likely badges a page of them earns by chance (about 1 in 20 tests of a zero gap).
+  // Picks from a set (weekdays…) are already Bonferroni-held, so this is an upper bound.
+  let tested = $derived(t.tested);
   const MANY_TIP: Tip = { title: 'Many findings at once', lines: [
     'Each badge is about 95% (Likely) or 87% (Possible) sure on its own.',
     'Over 20 tests of gaps that are really zero, about 1 still earns Likely by chance.',

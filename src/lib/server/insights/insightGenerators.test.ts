@@ -732,6 +732,9 @@ describe('insightsTab', () => {
     const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
     try {
       expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual(Array.from({ length: 6 }, (_, i) => `real-${i}`));
+      // The multiple-comparisons count is every test run, the 11 left out of Too early included, under any theme.
+      expect(insightsTab(ctx([]), undefined).tested).toBe(17);
+      expect(insightsTab(ctx([]), 'gear').tested).toBe(17);
     } finally {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }

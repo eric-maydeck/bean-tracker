@@ -3264,6 +3264,14 @@ export const STATES: State[] = [
       }));
       expect(off).toEqual([]);
       await expect(page.locator('main')).not.toContainText(/NaN|undefined/);
+      // The multiple-comparisons line's tip opens from its text and stays whole in view (ui-rules 36, 39).
+      const many = page.locator('.chart-note.many .text-tip');
+      await expect(many).toHaveText(/^\d+ findings$/);
+      await many.click();
+      const manyTip = page.locator('.float-tip');
+      await expect(manyTip).toContainText('Many findings at once');
+      await expectTipInView(page, manyTip);
+      await page.keyboard.press('Escape');
       // Long text stays inside its card at every width (B1/B3), and a versus side never runs into "vs".
       const spills = await page.locator('.finding-grid .hl-card, .myth-grid .hl-card').evaluateAll((cards) => cards.flatMap((c) => {
         const o = c.getBoundingClientRect();
