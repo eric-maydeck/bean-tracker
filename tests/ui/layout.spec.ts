@@ -510,6 +510,19 @@ async function expectShortEmpty(page: Page) {
   expect(tall, 'empty panels one short line').toEqual([]);
 }
 
+// Control-bar row gaps by visible ink (U2); source of the in-page function evaluated by insights-bar-gaps.
+const BAR_GAPS = `() => { const cx=document.createElement('canvas').getContext('2d'); const bar=document.querySelector('.insights-controls'); const rows=[];
+ const vis = (el) => { // visible extent: label text range top; controls (select/button/chip) border box
+  let top=Infinity,bottom=-Infinity;
+  for (const n of el.querySelectorAll('span:not(.badge), select, button, .filter-chip')) {
+   if (n.closest('button') && n.tagName==='SPAN') continue;
+   let r; if (n.tagName==='SPAN') { const g=document.createRange(); g.selectNodeContents(n); r=g.getBoundingClientRect(); if(r.height){ const cs=getComputedStyle(n); cx.font=cs.font; const m=cx.measureText(n.textContent.trim()); const content=m.fontBoundingBoxAscent+m.fontBoundingBoxDescent; const base=r.top+(r.height-content)/2+m.fontBoundingBoxAscent; top=Math.min(top,base-m.actualBoundingBoxAscent);} continue; }
+   r=n.getBoundingClientRect(); if(!r.height) continue; top=Math.min(top,r.top); bottom=Math.max(bottom,r.bottom); }
+  return {top,bottom}; };
+ for (const el of bar.children) { const r=el.getBoundingClientRect(); if(!r.height) continue; const v=vis(el); const k=rows.find(x=>Math.abs(x.bt-r.top)<4);
+  if(k){k.top=Math.min(k.top,v.top);k.bottom=Math.max(k.bottom,v.bottom)} else rows.push({bt:r.top,top:v.top,bottom:v.bottom}); }
+ return rows.slice(1).map((r,i)=>Math.round((r.top-rows[i].bottom)*10)/10); }`;
+
 export const STATES: State[] = [
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
@@ -2634,6 +2647,19 @@ export const STATES: State[] = [
       const want = page.viewportSize()!.width <= 480 ? 'Last 12 mo.' : 'Last 12 months';
       await expect(page.getByLabel('Period').locator('option:checked')).toHaveText(want);
       await expect(page.getByLabel('Period').locator('option[value="1m"]')).toHaveText('Last month');
+    } },
+  // U2: on phones the control bar's row-to-row gaps are equal, measured to what you see (a label's ink top, a
+  // control's or chip's edge), on every tab; within 1px.
+  { name: 'insights-bar-gaps', path: () => '/insights?tab=overview&range=12m&roast=Light&process=Washed',
+    act: async (page) => {
+      if (page.viewportSize()!.width > 640) return;
+      for (const tab of ['overview', 'leaderboards', 'records', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing', 'water', 'insights']) {
+        await page.goto(`/insights?tab=${tab}&range=12m&roast=Light&process=Washed`);
+        await expect(page.locator('.insights-controls')).toBeVisible();
+        const gaps: number[] = await page.evaluate(`(${BAR_GAPS})()`);
+        expect(gaps.length, tab).toBeGreaterThanOrEqual(2);
+        expect(Math.max(...gaps) - Math.min(...gaps), `${tab} gaps ${gaps}`).toBeLessThanOrEqual(1);
+      }
     } },
   // M7: phones (≤480) abbreviate months/years/Previous in the Period and Compare selects (also before hydration,
   // app.html's script); whatever still overflows a closed select ends in an ellipsis. Runs at 360 and 480.

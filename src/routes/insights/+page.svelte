@@ -1011,6 +1011,11 @@
       flex: 1;
       min-height: 44px;
     }
+    /* Row gaps by what you see: a labeled row's gap runs to the label's ink (~3px under its box), the chips
+       row has no label, so it sits 2px lower to match (checked in test:ui). */
+    .insights-controls > .coffee-chips {
+      margin-top: 2px;
+    }
     .range-dialog footer button {
       flex: 1;
     }
