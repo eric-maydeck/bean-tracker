@@ -13,9 +13,10 @@
     by: Breakdown; ariaLabel: string; best?: (number | null)[]; vs?: string; scale?: [string, string]; noun?: string;
   } = $props();
 
+  let ses = $derived(by.cells.flat().flatMap((c) => (c && c.delta !== null ? [c.se] : [])));
   const text = (x: number | null, r: number, c: number) => {
     const cell = by.cells[r][c];
-    return x !== null ? `${labDelta(x, cell?.se)}${cell?.sample.small ? ` (${TIP_TITLE})` : ''}` : !cell ? 'No brews' : 'no match';
+    return x !== null ? `${labDelta(x, ses)}${cell?.sample.small ? ` (${TIP_TITLE})` : ''}` : !cell ? 'No brews' : 'no match';
   };
   const label = (r: number, c: number) => {
     const cell = by.cells[r][c];
@@ -27,7 +28,7 @@
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
     if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
-    return { title, rows: [[`vs ${vs}`, labDelta(cell.delta, cell.se), deltaInk(cell.delta)], ...(cell.sample.small ? [] : counts)], ...sampleField(cell.sample, true) };
+    return { title, rows: [[`vs ${vs}`, labDelta(cell.delta, ses), deltaInk(cell.delta)], ...(cell.sample.small ? [] : counts)], ...sampleField(cell.sample, true) };
   };
 </script>
 

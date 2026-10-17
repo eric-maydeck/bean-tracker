@@ -15,6 +15,7 @@
   // name text (not its cell's empty space) is its tip target (brews, bags, strength); ↑/↓ move between rows.
   // The vs usual chip is sized to its value. Scrolls inside its card with the name column pinned.
   let { map }: { map: MineralMap } = $props();
+  let ses = $derived(map.rows.filter((r) => r.delta !== null).map((r) => r.se));
 
   let shades = $derived(map.cols.map((_, j) => {
     const vs = map.rows.map((r) => r.values[j]).filter((v): v is number => v !== null);
@@ -25,7 +26,7 @@
   const fmt = (v: number | null, unit: string) => (v === null ? '—' : unit ? `${+v.toFixed(1)}` : v.toFixed(2));
   const tipOf = (r: MineralMap['rows'][number]): Tip => ({
     title: r.label,
-    rows: [...(r.delta === null ? [] : [['vs usual', labDelta(r.delta, r.se), deltaInk(r.delta)]]), ...(r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]])] as Tip['rows'],
+    rows: [...(r.delta === null ? [] : [['vs usual', labDelta(r.delta, ses), deltaInk(r.delta)]]), ...(r.sample.small ? [] : [['Brews', `${r.brews}`], ['Bags', `${r.bags}`]])] as Tip['rows'],
     ...(r.strength === 'solid' || r.strength === 'hint' ? { strength: r.strength } : {}),
     ...sampleField(r.sample, r.delta !== null),
     note: r.delta === null ? noMatch('recipe') : undefined
@@ -64,7 +65,7 @@
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span>{#if r.sample.small}<span class="map-note"><span class="sample-chip map-chip" data-i={i} aria-hidden="true"><Icon name="warning" />{chipLabel(r.sample)}</span></span>{/if}</th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
           <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip"
-            style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{labDelta(r.delta, r.se)}</span>{/if}</td>
+            style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{labDelta(r.delta, ses)}</span>{/if}</td>
           {#each map.cols as c, j (c.key)}<td style:background={shades[j](r.values[j])}>{fmt(r.values[j], c.unit)}</td>{/each}
         </tr>
       {/each}

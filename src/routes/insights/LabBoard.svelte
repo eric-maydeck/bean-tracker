@@ -14,6 +14,7 @@
   // empty slots are faint placeholders (as on Leaderboards). `noun`: what a row is ("no match" tip).
   let { rows, slots = 0, noun, placeTip }: { rows: LeaderRow[]; slots?: number; noun: string; placeTip: (e: ToggleEvent) => void } = $props();
   const uid = $props.id();
+  let ses = $derived(rows.filter((r) => r.delta !== null).map((r) => r.se));
 </script>
 
 <div class="lab-board">
@@ -44,7 +45,7 @@
           <span class="val"><button class="mode-tip-button no-match" popovertarget="{uid}-nm-{i}">no match</button></span>
           <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'No match', lines: [noMatch(noun)] }} /></div>
         {:else}
-          <span class="val {deltaInk(r.delta)}">{labDelta(r.delta, r.se)}</span>
+          <span class="val {deltaInk(r.delta)}">{labDelta(r.delta, ses)}</span>
         {/if}
       </li>
     {/each}

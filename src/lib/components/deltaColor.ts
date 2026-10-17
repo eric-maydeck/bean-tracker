@@ -26,5 +26,7 @@ export const deltaInk = (v: number | null): 'ink-better' | 'ink-worse' | '' =>
 export const signed = (x: number, d = 2) => (+Math.abs(x).toFixed(d) === 0 ? (0).toFixed(d) : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(d));
 // A coffee's gap to its like coffees: means of a few brews, so 1 decimal (stats audit 2026-10-17: precision).
 export const likeGap = (x: number) => signed(x, 1);
-// A lab same-bag delta (stats re-review D): 1 decimal unless its bag-level SE is under 0.05 (no SE: 1).
-export const labDelta = (x: number, se: number | null = null) => signed(x, se !== null && se < 0.05 ? 2 : 1);
+// A lab chart's same-bag delta (stats re-review D): 2 decimals only when every shown row's bag-level SE (`ses`) is
+// under 0.05, else 1 (a missing SE counts as over). Per chart, not per row: one chart never mixes decimals.
+export const labDelta = (x: number, ses: readonly (number | null | undefined)[]) =>
+  signed(x, ses.length && ses.every((s) => s != null && s < 0.05) ? 2 : 1);

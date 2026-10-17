@@ -111,7 +111,7 @@ export interface Group { name: string; brews: BrewFact[] } // narrowest first
 export interface Spot {
   tier: 1 | 2 | 3;
   verdict: 'win' | 'leaning' | 'none';
-  best: { label: string; value: number; strength: Strength | null; se?: number | null } | null; // tier 1: delta; tier 2: mean of bag means
+  best: { label: string; value: number; strength: Strength | null } | null; // tier 1: delta; tier 2: mean of bag means
   next: { label: string; value: number } | null; // tier 2: the runner-up band
   group: string | null; // tier 2: the group's name
   bags: number; // tier 1: paired bags behind `best`; tier 2: bags in `best`
@@ -145,7 +145,7 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       const bags = s.delta === null ? s.plainBags : s.bags, brews = s.delta === null ? s.plainBrews : s.brews;
       return { label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta, se: s.se, bags, brews, solid: s.solid, sample: pooled(bags, brews) };
     });
-    return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength, se: b.se }, bags: b.bags, bands: shown };
+    return { ...base, tier: 1, verdict: verdictOf(b.strength), best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
     for (const f of bands) {

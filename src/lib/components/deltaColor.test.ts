@@ -28,11 +28,12 @@ describe('deltaInk (T4)', () => {
   });
 });
 
-describe('labDelta (stats re-review D)', () => {
-  it('1 decimal unless the bag-level SE is under 0.05', () => {
-    expect(labDelta(0.234)).toBe('+0.2');
-    expect(labDelta(-0.234, 0.08)).toBe('−0.2');
-    expect(labDelta(0.234, 0.04)).toBe('+0.23');
-    expect(labDelta(0.04, 0.2)).toBe('0.0');
+describe('labDelta (stats re-review D, per chart)', () => {
+  it('2 decimals only when every shown row’s SE is under 0.05', () => {
+    expect(labDelta(0.234, [0.04, 0.03])).toBe('+0.23');
+    expect(labDelta(0.234, [0.04, 0.08])).toBe('+0.2'); // one wide row: the whole chart at 1
+    expect(labDelta(-0.234, [0.04, null])).toBe('−0.2'); // a row with no test counts as wide
+    expect(labDelta(0.234, [])).toBe('+0.2');
+    expect(labDelta(0.04, [0.2])).toBe('0.0');
   });
 });
