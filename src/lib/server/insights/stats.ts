@@ -77,3 +77,7 @@ export const groupZ = (groupBagMeans: number[], allBagMeans: number[]): number =
 // Difference of two demeaned-rating means, SE = residualSd * sqrt(1/n1 + 1/n2).
 export const brewZ = (a: number[], b: number[], residualSd: number): number =>
   (mean(a) - mean(b)) / (residualSd * Math.sqrt(1 / a.length + 1 / b.length));
+
+// A group vs the rest of the pool, not vs a pool that holds it (stats audit 2026-10-17: Washed, 81 of ~100 bags,
+// had its delta shrunk ~5×). SE from the whole pool's spread. NaN when there is no rest.
+export const restZ = (group: number[], rest: number[]): number => brewZ(group, rest, sd([...group, ...rest]));

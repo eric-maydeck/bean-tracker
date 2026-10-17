@@ -170,10 +170,10 @@ describe('group effects', () => {
   const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed' }));
   const rate = (i: number) => (i < 4 ? 6 : 8 + (i % 2 ? 0.2 : -0.2));
   const brews = bs.flatMap((x, i) => seq(x.id, dup([rate(i), rate(i), rate(i)])));
-  it('Light roasts rate lower (delta vs all bag means)', () => {
+  it('Light roasts rate lower (delta vs the other bags, not a pool holding them)', () => {
     const f = gen('groupDelta:roastLevel:Light', brews, bs)!;
-    const allMean = (4 * 6 + 8 * 8) / 12;
-    expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: `-${(allMean - 6).toFixed(1)}`, headline: 'Light roasts rate 1.3 lower', sample: '4 bags' });
+    // Light 6 vs the 8 other bags' 8: 2.0 (vs all 12, itself included, it read 1.3).
+    expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: '-2.0', headline: 'Light roasts rate 2.0 lower', sample: '4 bags' });
     expect(f.href).toBe('/insights?tab=leaderboards&open=roast');
   });
   it('a group under 3 bags is skipped', () => expect(gen('groupDelta:roastLevel:Light', brews.slice(0, 18), bs.slice(0, 6).map((x, i) => ({ ...x, roastLevel: i < 2 ? 'Light' : 'Medium' })))).toBeNull());

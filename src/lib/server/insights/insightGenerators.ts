@@ -5,7 +5,7 @@ import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
-import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
+import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, restZ, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, type Like } from './likeGroup';
 import { BAG_MIN_BREWS, POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
@@ -239,15 +239,16 @@ const groupDelta: Generator = (c) => {
     const groups = groupBy(rated, (b) => (b[dim] && b[dim] !== 'Other / Unknown' ? b[dim] : null));
     const big = [...groups].filter(([, bs]) => bs.length >= MIN_BAGS);
     return big.flatMap(([label, bs]) => {
-      const ms = bs.map((b) => means.get(b.id)!);
-      const delta = mean(ms) - mean(all);
+      const ms = bs.map((b) => means.get(b.id)!), rest = rated.filter((b) => !bs.includes(b)).map((b) => means.get(b.id)!);
+      if (!rest.length) return [];
+      const delta = mean(ms) - mean(rest); // vs your other bags
       const ranked = [...bs].sort((x, y) => (delta >= 0 ? means.get(y.id)! - means.get(x.id)! : means.get(x.id)! - means.get(y.id)!) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(1)} ${delta < 0 ? 'lower' : 'higher'}`,
         value: signed(delta, 1), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
         ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(1), coffeeHref(b)))])
-      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, all.length);
+      }, restZ(ms, rest), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, all.length);
       return f ? [f] : [];
     });
   });
@@ -790,7 +791,7 @@ const likeStandouts: Generator = (c) => {
     key: 'likeRoaster', theme: 'taste', kind: 'number',
     headline: `${best.r} rates ${Math.abs(best.gap).toFixed(1)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
     value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
-  }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
+  }, restZ(best.gaps, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.gaps)), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
 
@@ -810,7 +811,7 @@ const dialinByGroup: Generator = (c) => {
     const [fast, slow] = [[...groups].sort(by(1))[0], [...groups].sort(by(-1))[0]];
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
-    const z = groupZ(slow.ps, allPos);
+    const z = restZ(slow.ps, pos.filter((x) => x[dim] !== slow.label).map((x) => x.pos));
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
@@ -832,10 +833,9 @@ const dialinByGroup: Generator = (c) => {
 const RESCUE = 1; // ponytail: a fixed 1-point climb; tune at the Part 4 preview
 const rescued = (start: number, end: number, m: number) => start < m && end >= m && end - start >= RESCUE;
 const dropped = (start: number, end: number, m: number) => start >= m && end < m && start - end >= RESCUE;
-function* combos(n: number, k: number, from = 0): Generator<number[]> {
-  if (k === 0) { yield []; return; }
-  for (let i = from; i <= n - k; i++) for (const c of combos(n, k - 1, i + 1)) yield [i, ...c];
-}
+// Every k-subset of 0..n−1, as sorted index lists.
+const combos = (n: number, k: number, from = 0): number[][] =>
+  k === 0 ? [[]] : Array.from({ length: Math.max(0, n - k - from + 1) }, (_, j) => from + j).flatMap((i) => combos(n, k - 1, i + 1).map((c) => [i, ...c]));
 // The chance a bag looks rescued if its ratings came in random order: every pick of its 2 start brews and of its
 // other `skip` − 2 dial-in brews, the rest once dialed. Exact; ponytail: C(n,2)·C(n−2,skip−2), ~2,400 orderings
 // at 20 brews; sample orderings if bags ever run to 40+.
