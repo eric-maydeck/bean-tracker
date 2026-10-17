@@ -447,7 +447,9 @@
   <canvas bind:this={canvasEl}></canvas>
   <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px"></span>
   {#if tipAt && tipAnchor}
-    {#key `${tipAt.x},${tipAt.y}`}<FloatTip anchor={tipAnchor}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
+    <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
+         left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
+    {#key `${tipAt.x},${tipAt.y}`}<FloatTip anchor={tipAnchor} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
   {/if}
 </div>
 

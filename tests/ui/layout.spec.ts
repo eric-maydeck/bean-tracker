@@ -1079,6 +1079,17 @@ export const STATES: State[] = [
     act: async (page) => {
       await openSwitches(page);
       await expect(page.getByRole('group', { name: 'Ratings' }).first()).toBeVisible();
+      // Open a chart's tip under the pointer first: a heat cell's tip then replaces it, and the dismissed chart tip
+      // unmounts (it used to stay hidden in the page, a 2nd .cell-tip, whenever the pointer happened to sit on a chart).
+      chart: for (const c of await page.locator('canvas').all()) {
+        await c.scrollIntoViewIfNeeded();
+        const b = (await c.boundingBox())!;
+        for (let y = 0.1; y < 1; y += 0.1) for (let x = 0.1; x < 1; x += 0.1) {
+          await page.mouse.move(b.x + b.width * x, b.y + b.height * y);
+          if (await page.locator('.cell-tip').count()) break chart;
+        }
+      }
+      await expect(page.locator('.cell-tip')).toHaveCount(1);
       await page.locator('.heatmap .heat-cell').first().focus();
       await expectDataTip(page.locator('.cell-tip'));
       // Roving tabindex: one tab stop per grid; arrow keys move focus (and the tip).
