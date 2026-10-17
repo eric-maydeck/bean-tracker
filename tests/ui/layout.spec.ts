@@ -2486,8 +2486,18 @@ export const STATES: State[] = [
       for (const c of cards) {
         expect(c.value).not.toMatch(/Leaning\S/);
         expect(c.small).toBe(false);
-        if (c.value === 'No clear winner' && c.ev.includes('vs same bag')) expect(c.ev).toMatch(/^Best so far: \S/);
+        // "Best so far: <answer>" alone: the delta and bags sit in its tip (user, 2026-10-17).
+        if (c.ev.startsWith('Best so far')) expect(c.ev).toMatch(/^Best so far: [^·]+$/);
       }
+      const best = page.locator('.spot-card .evidence .text-tip').first(); // the seed has one at every width
+      await best.click();
+      const tip = page.locator('.float-tip');
+      await expect(tip).toContainText('vs same bag');
+      await expectTipInView(page, tip);
+      // One line at any width: a long answer ends in an ellipsis; the tip's title has it whole.
+      await expect(tip).toContainText(/^Best so far: /);
+      const lines = page.locator('.spot-card .evidence .text-tip');
+      for (const n of await lines.evaluateAll((ts) => ts.map((t) => t.getClientRects().length))) expect(n).toBe(1);
     } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {

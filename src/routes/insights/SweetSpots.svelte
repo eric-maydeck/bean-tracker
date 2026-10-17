@@ -14,6 +14,7 @@
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { deltaInk, labDelta } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: SweetSpotsTab; lab: LabOptions; s: InsightsView;
@@ -226,7 +227,10 @@
             </div>
           {/if}
           <!-- A same-bag delta reads green or red (T4); the rest of the line stays muted. -->
-          <span class="hl-line evidence">{#if p.tier === 1 && p.best}{@const d = labDelta(p.best.value, ses(p))}{lead(p)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(lead(p).length + d.length)}{:else}{evidence(p)}{/if}</span>
+          <!-- "Best so far: 20+ g" alone; its numbers move into a tip on that text (user, 2026-10-17), so the line never wraps
+               and squeezes the chart above it. -->
+          <span class="hl-line evidence">{#if p.tier === 1 && p.best && lead(p)}{@const d = labDelta(p.best.value, ses(p))}<TextTip label={lead(p).trim()}
+            tip={{ title: lead(p).trim(), rows: [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]] }} />{:else if p.tier === 1 && p.best}{@const d = labDelta(p.best.value, ses(p))}{lead(p)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(lead(p).length + d.length)}{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
@@ -328,6 +332,13 @@
     line-clamp: 2;
     white-space: normal;
     line-height: 1.3;
+  }
+  /* "Best so far: <answer>" is one line at any width: a long answer (a recipe name) ends in an ellipsis, and the tip's
+     title has it whole (the card's overflow already clips the text's tap padding to the line). */
+  .evidence:has(:global(.text-tip)) {
+    display: block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   .usually {
     font-size: 0.75rem;
