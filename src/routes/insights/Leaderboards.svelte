@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd, wholeUsd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
@@ -109,9 +110,9 @@
     rank !== 'rating' ? null
     : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
       ? r.value.toFixed(2) === r.mean.toFixed(2) ? null // it would only repeat the row
-      : { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
+      : { title: r.label, rows: [[setting(AVG_LABEL[boardAvg(b, avg)]), r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
     : r.se !== undefined
-      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '± is the standard error, how sure this average is. The true one is usually within it.' }
+      ? { title: r.label, rows: [[setting(AVG_LABEL[boardAvg(b, avg)]), `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '± is the standard error, how sure this average is. The true one is usually within it.' }
     : null;
   // Rating boards whose rows differ by less than their noise (withinNoise), named in one line under the boards.
   const noisy = $derived(rank === 'rating' ? BANDS.flat().filter((b) => withinNoise(boards[b])) : []);
@@ -150,7 +151,7 @@
     </select>
   </div>
   <div class="mode-tip" id="tip-rank" popover onbeforetoggle={placeTip}>
-    <TipBody tip={{ title: 'Rank by', lines: RANKS.map((r) => `${RANK_LABEL[r]}: ${RANK_HELP[r][0].toLowerCase()}${RANK_HELP[r].slice(1)}`) }} />
+    <TipBody tip={{ title: 'Rank by', lines: RANKS.map((r) => `${setting(RANK_LABEL[r])}: ${RANK_HELP[r][0].toLowerCase()}${RANK_HELP[r].slice(1)}`) }} />
   </div>
   {#if rank === 'rating'}
     <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Score', lines: ['How each score is worked out.', 'Click for the full explanation.'] }} /></div>

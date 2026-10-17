@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setting, plainText } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import TextTip from '$lib/components/TextTip.svelte';
@@ -365,7 +366,7 @@
   // One explanation per ratings mode, shared by the switches (hover title,
   // aria-describedby) and the caption's tap-to-open popover.
   let RATINGS_HELP = $derived({
-    current: `Calibrated ratings leaves out ratings before ${new Date(`${data.settledFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}, while the rating scale was still settling.`,
+    current: `${setting('Calibrated ratings')} leaves out ratings before ${new Date(`${data.settledFrom}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })}, while the rating scale was still settling.`,
     all: 'Every rated brew, including earlier ones.'
   });
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
@@ -634,7 +635,7 @@
   </dialog>
 
 <p class="insights-period">{periodText}</p>
-<span id="ratings-help-current" hidden>{RATINGS_HELP.current}</span>
+<span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
 <span id="dial-help-all" hidden>{DIAL_HELP.all}</span>

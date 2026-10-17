@@ -30,6 +30,8 @@
   const SLOTS: (BrewVar | 'drift')[][] = [['temp', 'ratio'], ['dose', 'bloom'], ['time'], ['grind', 'drift']];
   let slots = $derived(SLOTS.map((row) => row.filter((k) => (k === 'drift' ? t.drift.length : t.vars.some((v) => v.key === k)))).filter((r) => r.length));
   const chartOf = (k: BrewVar) => t.vars.find((v) => v.key === k)!;
+  // Brews until dialed's window (lab.ts BEST_WINDOW, server-only): one bar per brew number in it.
+  let win = $derived(t.bestAt.length);
 
   const NOTABLE = ['85 °C', '88 °C', '91 °C', '92 °C', '94 °C']; // the user's notable temps, bold in Exact (spec)
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
@@ -64,20 +66,20 @@
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
           <LabHead id="brewing-dialin" title="Dial-in" help={SAME_BAG_HELP} {placeTip} />
           <div class="fit-body"><DeltaBars rows={bandRows(t.dialIn, undefined, 'brew number')} ariaLabel="Dial-in: same-bag delta by brew number in the bag" /></div>
-          {#if s.dial === 'dialed'}<p class="chart-note">Always all brews</p>{/if}
+          {#if s.dial === 'dialed'}<p class="chart-note"><span class="setting-name">Always all brews</span></p>{/if}
         </section>
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
-          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews among its first 7 this period: the brew number of its best-rated brew.', 'Only the first 7 count, so a bag brewed longer gets no extra chances at a late best.', 'A tie: the earliest.']} {placeTip}
-            cut={{ lead: `Only the first 7 brews are shown.`, tip: t.bestLater.length
-              ? { title: `Best brew after #7`, rows: t.bestLater.map((x) => [x.label, `${x.bags} bag${x.bags === 1 ? '' : 's'}`]), note: `Bags whose best brew came later, beating their first 7.` }
-              : { title: `Best brew after #7`, note: `No bag's best brew came after its first 7.` } }} />
+          <LabHead id="brewing-best" title="Brews until dialed" help={[`Each bag with 5+ rated brews among its first ${win} this period: the brew number of its best-rated brew.`, `Only the first ${win} count, so a bag brewed longer gets no extra chances at a late best.`, 'A tie: the earliest.']} {placeTip}
+            cut={{ lead: `Only the first ${win} brews are shown.`, tip: t.bestLater.length
+              ? { title: `Best brew after #${win}`, rows: t.bestLater.map((x) => [x.label, `${x.bags} bag${x.bags === 1 ? '' : 's'}`]), note: `Bags whose best brew came later, beating their first ${win}.` }
+              : { title: `Best brew after #${win}`, note: `No bag's best brew came after its first ${win}.` } }} />
           <div class="fit-body">
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
           </div>
-          <p class="chart-note">Brew number of each bag's best brew, within its first 7 (bags with 5+ rated there){s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
+          <p class="chart-note">Brew number of each bag's best brew, within its first {win} (bags with 5+ rated there){#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
         </section>
       {/if}
       {#each SETTLE as [k, by] (k)}
@@ -102,7 +104,7 @@
                 <BarLabels series={rows} full />
               </div>
             </div>
-            <p class="chart-note">Median settle brew per {by}{s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
+            <p class="chart-note">Median settle brew per {by}{#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
           </section>
         {/if}
       {/each}
@@ -127,7 +129,7 @@
                     rows={t.drift.map((d) => ({ label: d.label, value: d.value, text: signed(d.value), small: d.sample.small,
                       tip: { title: d.label, rows: d.sample.small ? [] : [['Bags', `${d.bags}`]], ...sampleField(d.sample) } }))} />
                 </div>
-                <p class="chart-note">Negative = finer. {grinderName}{s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
+                <p class="chart-note">Negative = finer. {grinderName}{#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
               </section>
             {:else}
               {@const v = chartOf(k)}

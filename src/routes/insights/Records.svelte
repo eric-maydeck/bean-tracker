@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
@@ -127,7 +128,7 @@
         ><span class="tip-text">per person</span><Icon name="question" /></button
       >{/if}</TileCaption
   >
-  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[ratings], lines: [ratingsHelp[ratings], every ? 'Always all brews: this record is about dial-in.' : DIAL_HELP[dial]] }} /></div>{/if}
+  {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[ratings], lines: [ratingsHelp[ratings], every ? `${setting('Always all brews')}: this record is about dial-in.` : DIAL_HELP[dial]] }} /></div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 

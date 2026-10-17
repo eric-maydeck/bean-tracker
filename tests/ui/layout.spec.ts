@@ -1982,6 +1982,8 @@ export const STATES: State[] = [
       await val.click();
       const tip = page.locator('.float-tip');
       await expect(tip.locator('dd').first()).toHaveText(/^\d+\.\d ± \d+\.\d$/);
+      await expect(tip.locator('dt .setting-name').first()).toHaveText('Raw average'); // a setting name in a tip (ui-rules 48)
+      await expect(tip.locator('.setting-name', { hasText: 'once dialed' })).toHaveCount(1);
       await expect(tip.locator('.tip-note')).toHaveText(/standard error/);
       await expectTipInView(page, tip);
       await expect(page.locator('.noise-note')).toHaveText(/differ by less than their noise/);
@@ -2656,6 +2658,10 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
         await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
+      // ui-rules 48: a chart note's "Always all brews" is a setting name: bold brown.
+      const notes = await page.locator('.chart-note').evaluateAll((ns) => ns.filter((n) => n.textContent!.includes('Always all brews')).map((n) => [...n.querySelectorAll('.setting-name')].some((e) => e.textContent === 'Always all brews')));
+      expect(notes.length).toBeGreaterThan(0);
+      expect(notes.every(Boolean)).toBe(true);
       // ui-rules 47: a chart that drops data says so top right, and See all opens a tip with what it dropped.
       const best = page.locator('[data-section="brewing-best"]');
       const note = best.locator('.cut-note');

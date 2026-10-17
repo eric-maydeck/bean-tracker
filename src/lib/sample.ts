@@ -1,3 +1,4 @@
+import { setting } from './settingName';
 // One small-sample rule for every insights view (spec 2026-10-15 Part 1). Client-safe: the markers and
 // legends import it too. A small result still shows, with SampleNote's "Low confidence" chip and tip.
 export const POOLED_MIN_BAGS = 3;
@@ -37,7 +38,7 @@ const countRows = (s: Sample, rated = 'Rated brews'): [string, string][] =>
   s.scored === undefined ? [[rated, String(s.brews)]] : [[rated, String(s.brews)], ['Scored once dialed', String(s.scored)]];
 // "12 rated brews, 9 scored once dialed": a row tip's line when the two differ; else null.
 export const scoredLine = (s: Sample | undefined): string | null =>
-  s?.scored === undefined ? null : `${n(s.brews, 'rated brew')}, ${s.scored} scored once dialed`;
+  s?.scored === undefined ? null : `${n(s.brews, 'rated brew')}, ${s.scored} scored ${setting('once dialed')}`;
 export const CHIP_EXAMPLE = 'Only 2 bags'; // the legend's sample chip
 // The tip: the plain reason (bags when they are short, else brews) and the exact counts. `paired`: the counts
 // are of same-bag paired brews, so the rows say so beside plain columns.

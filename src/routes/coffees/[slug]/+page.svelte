@@ -470,7 +470,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="text-muted">Compared with {l.label}: all time, {lower(DIAL_LABEL[v.dial ?? 'dialed'])}, {lower(RATINGS_LABEL[v.ratings ?? 'current'])}{v.caffeine ? ', decaf included' : ''}.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
+          <p class="text-muted">Compared with {l.label}: all time, <span class="setting-name">{lower(DIAL_LABEL[v.dial ?? 'dialed'])}</span>, <span class="setting-name">{lower(RATINGS_LABEL[v.ratings ?? 'current'])}</span>{v.caffeine ? ', decaf included' : ''}.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>

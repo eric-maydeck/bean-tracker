@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine } from './sample';
+import { plainText } from './settingName';
 
 describe('withinNoise', () => {
   it('rows whose spread is at most their mean SE\u00b2 are noise; a wider spread is not', () => {
@@ -62,7 +63,7 @@ describe('small-sample rule', () => {
 
 describe('scoredLine', () => {
   it('says both counts only when they differ', () => {
-    expect(scoredLine(pooled(3, 12, 9))).toBe('12 rated brews, 9 scored once dialed');
+    expect(plainText(scoredLine(pooled(3, 12, 9))!)).toBe('12 rated brews, 9 scored once dialed'); // "once dialed" marked as a setting name
     expect(scoredLine(pooled(3, 12))).toBeNull();
     expect(scoredLine(undefined)).toBeNull();
   });

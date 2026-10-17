@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { plainText } from '$lib/settingName';
   import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
 
   // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: title +
@@ -25,7 +26,7 @@
     <span>Ratings</span>
     <div class="tab-group" role="group" aria-label="Ratings">
       {#each ['current', 'all'] as const as m (m)}
-        <button aria-pressed={ratings === m} title={ratingsHelp[m]} aria-describedby="ratings-help-{m}"
+        <button aria-pressed={ratings === m} title={plainText(ratingsHelp[m])} aria-describedby="ratings-help-{m}"
           onclick={() => choose({ ratings: m })}>{RATINGS_LABEL[m]}</button>
       {/each}
     </div>
