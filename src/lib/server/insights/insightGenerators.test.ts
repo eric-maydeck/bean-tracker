@@ -114,9 +114,11 @@ describe('second cup', () => {
   const around = (m: number) => Array.from({ length: 30 }, (_, i) => seq(1, [7, 7 + m + (i % 2 ? 1 : -1)], addDays('2026-07-01', i))).flat();
   it('a delta that rounds to 0.00 is no finding', () => expect(gen('secondCup', around(0.002))).toBeNull());
   it('too early: how many more would settle it', () =>
-    expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 74 more pairs would settle it\.$/) }));
+    expect(gen('secondCup', around(0.25))).toMatchObject({ strength: 'early', settle: expect.stringMatching(/^About 37 more pairs would settle it\.$/) }));
+  it('too early, needing over twice the data: no count (the guess is mostly noise that far out)', () =>
+    expect(gen('secondCup', around(0.2))).toMatchObject({ strength: 'early', settle: 'Too small a difference to settle with your data.' }));
   it('too early carries progress = n / (n + more)', () => {
-    const f = gen('secondCup', around(0.2))!;
+    const f = gen('secondCup', around(0.25))!;
     const more = +f.settle!.match(/\d+/)![0];
     expect(f.progress).toBeCloseTo(30 / (30 + more), 10);
     expect(gen('secondCup', around(0.04))!.progress).toBeLessThan(0.1);
@@ -711,16 +713,16 @@ describe('insightsTab', () => {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }
   });
-  it('too early to tell: no negligible deltas (|Δ| < 0.10), the strongest 12 only', () => {
+  it('too early to tell: no negligible deltas (|Δ| < 0.10 or |z| < 1), the strongest 6 only', () => {
     const f = (key: string, value: string | undefined, z: number): Finding =>
       ({ key, theme: 'taste', kind: 'number', headline: key, value, sample: 's', z, strength: 'early' });
     const fake: Generator[] = [() => [
       f('tiny', '+0.01', 1.4), f('tinyNeg', '-0.09', 1.3), f('noValue', undefined, 0.2),
-      ...Array.from({ length: 14 }, (_, i) => f(`real-${i}`, '-0.25', 1.2 - i / 20))
+      ...Array.from({ length: 14 }, (_, i) => f(`real-${i}`, '-0.25', 1.9 - i / 20))
     ]];
     const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
     try {
-      expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual(Array.from({ length: 12 }, (_, i) => `real-${i}`));
+      expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual(Array.from({ length: 6 }, (_, i) => `real-${i}`));
     } finally {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }
@@ -730,7 +732,8 @@ describe('insightsTab', () => {
     const fake: Generator[] = [() => [...Array.from({ length: 14 }, (_, i) => f(`real-${i}`, 1.2 - i / 20)), f('dialinBy:processGroup', 0.1)]];
     const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
     try {
-      expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual([...Array.from({ length: 12 }, (_, i) => `real-${i}`), 'dialinBy:processGroup']);
+      // real-0..4 are |z| ≥ 1; the pinned dialinBy lists anyway, at z 0.1.
+      expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual([...Array.from({ length: 5 }, (_, i) => `real-${i}`), 'dialinBy:processGroup']);
     } finally {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }

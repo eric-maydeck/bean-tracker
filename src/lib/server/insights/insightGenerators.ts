@@ -72,11 +72,13 @@ const bagById = (c: GenCtx) => bagMaps.get(c.bags) ?? (bagMaps.set(c.bags, new M
 // Mean paired difference with z = mean / (sample sd / sqrt(n)); non-finite z when the data can't support one.
 const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / ((sd(d) * Math.sqrt(d.length / (d.length - 1))) / Math.sqrt(d.length)) });
 
-// ponytail: "about N more would settle it" assumes the effect and spread stay as seen.
+// ponytail: "about N more would settle it" assumes the effect and spread stay as seen, so it is only offered up to
+// SETTLE_MAX × the sample (stats audit 2026-10-17: past double the data the guess is mostly noise).
 // progress = n / (n + more): how far the sample is toward settling it (0 when it never would).
+const SETTLE_MAX = 2;
 const settleText = (z: number, n: number, unit: string, bar = 2): { settle?: string; progress: number } => {
   const more = Math.ceil(n * ((bar / z) ** 2 - 1));
-  if (!Number.isFinite(more) || more > 10 * n) return { settle: 'Too small a difference to settle with your data.', progress: Number.isFinite(more) ? n / (n + more) : 0 };
+  if (!Number.isFinite(more) || more > SETTLE_MAX * n) return { settle: 'Too small a difference to settle with your data.', progress: Number.isFinite(more) ? n / (n + more) : 0 };
   return more > 0 ? { settle: `About ${more} more ${unit} would settle it.`, progress: n / (n + more) } : { progress: 1 };
 };
 
@@ -895,12 +897,13 @@ export interface InsightsTab {
   whatIf: { defaults: WhatIf; onHandG: number; avgPricePerG: number | null }; // the client computes runway and spend
 }
 const DECK = 5;
-// Too early to tell: a rating delta under EARLY_FLOOR is noise, not a lead ("rate 0.01 higher");
-// the list keeps the EARLY_CAP strongest. Not in the spec: set 2026-10-12 against prod data.
-const EARLY_FLOOR = 0.1, EARLY_CAP = 12;
+// Too early to tell: a rating delta under EARLY_FLOOR is noise, not a lead ("rate 0.01 higher"), and so is a gap
+// under EARLY_Z of its margin of error; the list keeps the EARLY_CAP strongest. Set 2026-10-12 against prod data;
+// EARLY_Z and the cap of 6 (was 12) from the stats audit 2026-10-17 (half the cards were |z| < 1).
+const EARLY_FLOOR = 0.1, EARLY_Z = 1, EARLY_CAP = 6;
 // Always listed (user, gate P4): the dialinBy findings show in the grid when graded, else in Too early outside the cap.
 const PINNED = (f: Finding) => f.key.startsWith('dialinBy:');
-const negligible = (f: Finding) => /^[-+]\d/.test(f.value ?? '') && Math.abs(parseFloat(f.value!)) < EARLY_FLOOR;
+const negligible = (f: Finding) => (/^[-+]\d/.test(f.value ?? '') && Math.abs(parseFloat(f.value!)) < EARLY_FLOOR) || Math.abs(f.z ?? 0) < EARLY_Z;
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
@@ -931,11 +934,12 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
   const told = fs.filter((f) => f.kind === 'story' && graded(f)).slice(0, DECK);
   const stories = [...told, ...fs.filter((f) => inGrid(f) && graded(f) && f.body)].slice(0, DECK);
   const out = new Set(stories.flatMap((f) => (f.of ? [f.key, f.of] : [f.key])));
+  let early = 0; // Too early's count toward EARLY_CAP
   return {
     grid: fs.filter((f) => inGrid(f) && !out.has(f.key) && (!theme || f.theme === theme)),
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
-    tooEarly: ((k) => fs.filter((f) => f.strength === 'early' && !negligible(f) && (PINNED(f) || k++ < EARLY_CAP)))(0),
+    tooEarly: fs.filter((f) => f.strength === 'early' && (PINNED(f) || (!negligible(f) && early++ < EARLY_CAP))),
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }
