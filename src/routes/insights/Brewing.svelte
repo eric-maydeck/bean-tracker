@@ -69,7 +69,10 @@
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
-          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews among its first 7 this period: the brew number of its best-rated brew.', 'Only the first 7 count, so a bag brewed longer gets no extra chances at a late best.', 'A tie: the earliest.']} {placeTip} />
+          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews among its first 7 this period: the brew number of its best-rated brew.', 'Only the first 7 count, so a bag brewed longer gets no extra chances at a late best.', 'A tie: the earliest.']} {placeTip}
+            cut={{ lead: `Only the first 7 brews are shown.`, tip: t.bestLater.length
+              ? { title: `Best brew after #7`, rows: t.bestLater.map((x) => [x.label, `${x.bags} bag${x.bags === 1 ? '' : 's'}`]), note: `Bags whose best brew came later, beating their first 7.` }
+              : { title: `Best brew after #7`, note: `No bag's best brew came after its first 7.` } }} />
           <div class="fit-body">
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />

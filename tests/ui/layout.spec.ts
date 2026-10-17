@@ -2632,6 +2632,18 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
         await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
+      // ui-rules 47: a chart that drops data says so top right, and See all opens a tip with what it dropped.
+      const best = page.locator('[data-section="brewing-best"]');
+      const note = best.locator('.cut-note');
+      await expect(note).toHaveText(/^Only the first 7 brews are shown\. See all\.$/);
+      const [nb, hb, sb] = await Promise.all([note.boundingBox(), best.locator('.lab-head').boundingBox(), best.boundingBox()]);
+      expect(nb!.x + nb!.width).toBeGreaterThan(sb!.x + sb!.width - 40); // right-aligned in the card
+      expect(nb!.y + nb!.height).toBeLessThanOrEqual(hb!.y + hb!.height + 1); // in the heading row(s), above the chart
+      await note.getByRole('button', { name: /^See all/ }).click();
+      const seeAll = page.locator('.float-tip');
+      await expect(seeAll.locator('.tip-title')).toHaveText('Best brew after #7');
+      await expectTipInView(page, seeAll);
+      await page.keyboard.press('Escape');
       // Fixed slots (G9/B5): Temp | Ratio, Dose | Bloom, Brew time full width, Grind | Grind drift.
       const order = await page.locator('.brewing-vars .lab-chart').evaluateAll((ps) => ps.map((p) => (p as HTMLElement).dataset.section));
       expect(order).toEqual(['temp', 'ratio', 'dose', 'bloom', 'time', 'grind', 'drift'].map((k) => `brewing-${k}`));

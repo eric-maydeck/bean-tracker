@@ -449,7 +449,7 @@ describe('brewingTab', () => {
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { all: rows, period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
-    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], settle: { roast: [], process: [] }, vars: [] });
+    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], bestLater: [], drift: [], settle: { roast: [], process: [] }, vars: [] });
   });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };
@@ -460,6 +460,10 @@ describe('brewingTab', () => {
     // A late 10 at brew 9 is past the window: the best is the 8 at #2; 5 rated brews are needed inside it.
     const long = bag1([7, 8, 7, 7, 7, 7, 7, 7, 10]);
     expect(brewingTab(long, { ...c1, all: long }).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+    // The hidden part (the See all tip): that bag's later, better best, by its brew number.
+    expect(brewingTab(long, { ...c1, all: long }).bestLater).toEqual([{ label: '#9', bags: 1 }]);
+    const tied = bag1([7, 8, 7, 7, 7, 7, 7, 7, 8]); // only a tie after #7: nothing hidden
+    expect(brewingTab(tied, { ...c1, all: tied }).bestLater).toEqual([]);
     const late = bag1([7, 8, 7, 7, 7, 7, 7, 7, 10]).filter((b) => b.brewIndex <= 3 || b.brewIndex >= 8); // 3 rated in #1–#7
     expect(brewingTab(late, { ...c1, all: late }).bestAt).toEqual([]);
   });

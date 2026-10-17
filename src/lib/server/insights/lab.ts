@@ -317,6 +317,7 @@ export interface BrewingTab {
   rest: (Breakdown & { best: (number | null)[] }) | null;
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew within its first 7 (bags with ≥ 5 rated there)
+  bestLater: { label: string; bags: number }[]; // of those bags, the ones whose best brew came after #7, by its number (#8, #9, #10+)
   drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
   // Brews until dialed in (gate P4): per roast level / process group, the median brew its bags settle at (the dialinBy
   // findings' measure), fastest first; empty under 2 groups.
@@ -354,8 +355,12 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   };
   // Each bag's first BEST_WINDOW brews only, so a bag brewed 20 times has no more chances at a late best than one
   // brewed 7 (user, 2026-10-17: the bag-length bias).
-  const best = [...groupBy(every.filter((b) => b.brewIndex > 0 && b.brewIndex <= BEST_WINDOW), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
-    .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
+  const top = (g: BrewFact[]) => g.reduce((x, y) => (y.rating! > x.rating! ? y : x)); // rows are in time order: earliest best wins
+  const windows = [...groupBy(every.filter((b) => b.brewIndex > 0 && b.brewIndex <= BEST_WINDOW), (b) => b.coffeeId).values()].filter((g) => g.length >= 5);
+  const best = windows.map((g) => bandOf('brewNo', top(g))!.label);
+  // What the window hides (ui-rules 47): those bags whose best brew came after #7, by that brew's number.
+  const after = groupBy(every.filter((b) => b.brewIndex > BEST_WINDOW), (b) => b.coffeeId);
+  const later = windows.flatMap((g) => { const l = after.get(g[0].coffeeId!); return l && top(l).rating! > top(g).rating! ? [bandOf('brewNo', top(l))!.label] : []; });
   // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
   // about settings, not ratings (controller ruling).
   const first = new Map<number, number>();
@@ -370,6 +375,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     rest: restMap && { ...restMap, best: restMap.cells.map(bestOf) },
     dialIn: pairedDeltas(every, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.slice(0, BEST_WINDOW).map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
+    bestLater: BREW_NO_LABELS.slice(BEST_WINDOW).flatMap((label) => { const bags = later.filter((l) => l === label).length; return bags ? [{ label, bags }] : []; }),
     drift: drift.length >= 2 ? drift : [],
     settle: Object.fromEntries((['roast', 'process'] as const).map((k) => {
       const g = settleGroups({ brews: c.all.filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
