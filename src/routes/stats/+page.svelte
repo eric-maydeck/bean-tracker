@@ -12,7 +12,7 @@
   import { defaultViewForWidth } from '$lib/defaultView';
   import { currentParams, pickOne, pickMany } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
-  import { parseRange, parsePeople, peopleHelp, PEOPLE, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
+  import { parseRange, parsePeople, peopleHelp, DEFAULTS, PEOPLE, RANGES, RANGE_LABELS } from '$lib/insightsUrl';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { parseStatsTab, parseBcAverage } from './statsTab';
   import type { UnmatchedBean } from '$lib/server/beanconqueror';
@@ -87,7 +87,7 @@
   // Time to Clear's own Period (temporary panel) and the people mode (every tab).
   let explicitRange = $state(parseRange(currentParams(page.url), data.years));
   let explicitPeople = $state(parsePeople(currentParams(page.url), data.householdSize));
-  let range = $derived(explicitRange ?? '12m');
+  let range = $derived(explicitRange ?? DEFAULTS.range);
   // A household of one has no split, even right after saving size 1 with ?people=person still held.
   let people = $derived(data.householdSize > 1 ? (explicitPeople ?? 'household') : 'household');
   let bc = $derived(people === 'person' ? bcPerPerson(data.beanConquerorStats, data.householdSize) : data.beanConquerorStats);

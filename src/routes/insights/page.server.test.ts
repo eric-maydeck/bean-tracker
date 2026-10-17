@@ -305,7 +305,8 @@ describe('/insights load', () => {
 
   it('movement against the compare window', () => {
     seed([[today, 15]]);
-    expect(run('?tab=leaderboards&rank=brews&compare=1').boards.roasters[0].move).toBe('new');
+    expect(run('?tab=leaderboards&rank=brews&range=12m&compare=1').boards.roasters[0].move).toBe('new');
+    expect(run('?tab=leaderboards&rank=brews&compare=1').previousPeriod).toBeNull(); // All time: no compare
     expect(run('?tab=leaderboards&rank=brews').boards.roasters[0].move).toBeUndefined();
   });
 });

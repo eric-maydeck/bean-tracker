@@ -224,7 +224,7 @@ export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
 } & Partial<Record<ExactParam, 'exact'>>;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
-  range: '12m',
+  range: 'all', // All time (user ruling 2026-10-17; /stats' Time to Clear shares it)
   compare: 0,
   ratings: 'current',
   avg: DEFAULT_AVG,

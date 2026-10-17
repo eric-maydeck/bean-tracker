@@ -56,8 +56,9 @@ describe('parseInsightsUrl', () => {
     }));
   it('compare=0 is an explicit off', () => expect(parse('compare=0').compare).toBe(0));
   it('compare=N reads N periods back within the range limit', () => {
-    expect(parse('compare=2').compare).toBe(2); // 12m: up to 2
-    expect(parse('compare=3').compare).toBeUndefined();
+    expect(parse('range=12m&compare=2').compare).toBe(2); // 12m: up to 2
+    expect(parse('range=12m&compare=3').compare).toBeUndefined();
+    expect(parse('compare=1').compare).toBeUndefined(); // bare range = All time: nothing to compare with
     expect(parse('range=1w&compare=4').compare).toBe(4);
     expect(parse('range=1w&compare=5').compare).toBeUndefined();
     expect(parse('range=1m&compare=6').compare).toBe(6);
@@ -136,7 +137,7 @@ describe('insightsParams', () => {
 describe('withDefaults', () => {
   it('fills the defaults', () =>
     expect(withDefaults({})).toEqual({
-      range: '12m',
+      range: 'all', // bare URL = All time (user ruling 2026-10-17)
       compare: 0,
       ratings: 'current',
       avg: 'min3',
@@ -149,9 +150,14 @@ describe('withDefaults', () => {
       dial: 'dialed'
     }));
   it('keeps explicit values', () => expect(withDefaults({ range: 'all' }).range).toBe('all'));
+  it('bare URL = All time; an explicit 12m stays in the URL', () => {
+    expect(parse('').range).toBeUndefined();
+    expect(withDefaults(parse('')).range).toBe('all');
+    expect(insightsParams(parse('range=12M')).toString()).toBe('range=12m');
+  });
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: '12m', compare: 0, ratings: 'current', avg: 'min3', people: 'household', tab: 'overview', rank: 'rating',
+      range: 'all', compare: 0, ratings: 'current', avg: 'min3', people: 'household', tab: 'overview', rank: 'rating',
       measure: 'brews', unit: 'grams', agg: 'average', dial: 'dialed'
     }));
 });
@@ -184,7 +190,8 @@ describe('longer and custom compare', () => {
   it('reads an offered longer window, case-insensitively', () => {
     expect(p('range=1w&compare=3M')).toBe('3m');
     expect(p('range=1w&compare=Before')).toBe('before');
-    expect(p('compare=before')).toBe('before'); // default range 12m
+    expect(p('range=12m&compare=before')).toBe('before');
+    expect(p('compare=before')).toBeUndefined(); // default range All time
   });
   it('ignores a longer window the range does not offer', () => {
     expect(p('range=1w&compare=3y')).toBeUndefined(); // starts before the first brew
