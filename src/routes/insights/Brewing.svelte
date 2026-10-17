@@ -12,6 +12,8 @@
   import GrinderSelect from './GrinderSelect.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
+  import FloatTip from '$lib/components/FloatTip.svelte';
+  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: BrewingTab; lab: LabOptions; s: InsightsView;
@@ -32,6 +34,14 @@
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
   const emptyLine = useEmptyLine();
+  // A settle column's tip (ui-rules 29, 36): the group, its median settle brew and counts, the Low confidence caveat
+  // last (a small group's counts are in the caveat). Opens on hover, tap and keyboard focus; transient, not URL state.
+  type SettleRow = BrewingTab['settle']['roast'][number];
+  const settleTip = (g: SettleRow): Tip => ({
+    title: g.label, rows: [['Median settle brew', `${g.value}`], ...(g.sample.small ? [] : [['Bags', `${g.bags}`], ['Rated brews', `${g.brews}`]] as [string, string][])],
+    ...sampleField(g.sample)
+  });
+  let settleOpen = $state<{ el: HTMLElement; g: SettleRow; hover: boolean } | null>(null);
 </script>
 
 <div class="insights-bar brewing-bar">
@@ -74,16 +84,22 @@
       {/if}
       {#each SETTLE as [k, by] (k)}
         {@const rows = t.settle[k]}
-        {@const max = Math.max(...rows.map((g) => g.value))}
         {#if rows.length}
+          {@const max = Math.max(...rows.map((g) => g.value))}
           <section class="chart-panel lab-chart" class:span={!t.settle[k === 'roast' ? 'process' : 'roast'].length} data-section="brewing-settle-{k}">
             <LabHead id="brewing-settle-{k}" title="Brews until dialed in, by {by}" {placeTip}
               help={["Each bag's settle brew: within its first 6 rated brews, the first within 0.5 of their best half's average.", `Per ${by}: the middle bag's, in whole brews.`,
                 'Bags with 6+ rated brews that started this period.', SAMPLE_HELP]} />
             <div class="fit-body">
               <div class="settle">
-                <div class="settle-cols" role="img" aria-label="Brews until dialed in by {by}: {rows.map((g) => `${g.label} ${g.value} (${g.bags} bags)`).join(', ')}">
-                  {#each rows as g (g.label)}<span class="col"><span class="bar" class:small-sample-mark={g.sample.small} style:height="{(g.value / max) * 100}%"></span></span>{/each}
+                <div class="settle-cols" role="group" aria-label="Brews until dialed in by {by}">
+                  {#each rows as g (g.label)}<button type="button" class="col" aria-label={tipText(settleTip(g))}
+                    onpointerenter={(e) => e.pointerType === 'mouse' && (settleOpen = { el: e.currentTarget.firstElementChild as HTMLElement, g, hover: true })}
+                    onpointerleave={(e) => e.pointerType === 'mouse' && settleOpen?.hover && (settleOpen = null)}
+                    onfocus={(e) => e.currentTarget.matches(':focus-visible') && (settleOpen = { el: e.currentTarget.firstElementChild as HTMLElement, g, hover: false })}
+                    onblur={() => (settleOpen = null)}
+                    onclick={(e) => (settleOpen = { el: e.currentTarget.firstElementChild as HTMLElement, g, hover: false })}
+                    ><span class="bar" class:small-sample-mark={g.sample.small} style:height="{(g.value / max) * 100}%"></span></button>{/each}
                 </div>
                 <BarLabels series={rows} full />
               </div>
@@ -92,6 +108,7 @@
           </section>
         {/if}
       {/each}
+      {#if settleOpen}<FloatTip anchor={settleOpen.el} onclose={() => (settleOpen = null)}><TipBody tip={settleTip(settleOpen.g)} /></FloatTip>{/if}
     </div>
   {/if}
 
@@ -213,11 +230,20 @@
     display: flex;
     align-items: flex-end;
     justify-content: center;
+    border: 0;
+    padding: 0;
+    background: none;
+    cursor: help;
   }
+  .settle-cols .col:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+  /* One series, no categories: the lone-highlight brown (ui-rules 42). */
   .settle-cols .bar {
     width: min(100%, 3rem);
     border-radius: 3px 3px 0 0;
-    background-color: var(--series-brown-1);
+    background-color: var(--chart-color-1);
   }
   /* A panel has room for whole names: they wrap under their column instead of an ellipsis. */
   .settle :global(.bar-labels.full span) {

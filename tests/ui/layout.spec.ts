@@ -2421,6 +2421,18 @@ export const STATES: State[] = [
         expect(cut).toBe(0);
       }
       await expectPairsFilled(page, '.lab-grid');
+      // A tap on a bar opens its tip (ui-rules 29, 36): group name and median, then counts; a small group's caveat last.
+      const col = page.locator('.settle-cols .col').first();
+      await col.click();
+      const tip = page.locator('.float-tip');
+      await expect(tip).toBeVisible();
+      await expect(tip).toContainText('Median settle brew');
+      await expectTipInView(page, tip);
+      const small = page.locator('.settle-cols .col:has(.small-sample-mark)').first();
+      if (await small.count()) {
+        await small.click();
+        expect(await tip.evaluate((el) => el.lastElementChild!.className)).toBe('tip-block caution');
+      }
     } },
   // Gate P4: "Leaning 20+ g" reads as one phrase in one size; under "No clear winner" a same-bag delta names its setting.
   { name: 'insights-sweetspots-words', path: () => '/insights?tab=sweetspots&range=all',
