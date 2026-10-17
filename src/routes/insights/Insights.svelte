@@ -15,7 +15,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { MON, THEMES, WHATIF_LIMITS as L, withPageWide, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
@@ -23,10 +23,12 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
 
-  let { t, theme, inputs, today, placeTip, choose }: {
-    t: InsightsTab; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string;
+  let { t, theme, inputs, today, explicit, placeTip, choose }: {
+    t: InsightsTab; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
+  // Finding links keep the page's Period, Ratings, Caffeine and Coffees filter (insightsUrl withPageWide).
+  const link = (href: string) => withPageWide(href, explicit);
 
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
@@ -252,7 +254,7 @@
           <span class="dlabel">{g.label}</span>
           <ol>
             {#each g.items as it, k (k)}
-              <li><span class="dname">{#if it.href}<a href={it.href}>{it.name}</a>{:else}{it.name}{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
+              <li><span class="dname">{#if it.href}<a href={link(it.href)}>{it.name}</a>{:else}{it.name}{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
             {/each}
           </ol>
         </div>
@@ -279,7 +281,7 @@
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
-          <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
+          <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
           <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
         </div>
@@ -315,7 +317,7 @@
             {#if f.caveat}<p class="muted">{f.caveat}</p>{/if}
             <div class="story-foot">
               <span class="muted">{f.sample}</span>
-              {#if f.href}<a href={f.href}>See the data →</a>{/if}
+              {#if f.href}<a href={link(f.href)}>See the data →</a>{/if}
             </div>
           </article>
         {/each}
@@ -343,7 +345,7 @@
           <h3>{f.headline}</h3>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
-          <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={f.href}>Data</a>{/if}</span>
+          <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
         </div>
       {/each}
     </div>

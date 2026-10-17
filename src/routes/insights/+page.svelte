@@ -745,6 +745,7 @@
     theme={s.theme}
     inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
     today={data.today}
+    explicit={data.explicit}
     {placeTip}
     {choose}
   />

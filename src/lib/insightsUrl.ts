@@ -395,6 +395,19 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   return p;
 }
 
+// A finding's in-page link keeps the page-wide view it was computed on (Period, Compare, People, Ratings,
+// Brews, Caffeine, Coffees filter), so the board shows the same figure and the remembered view survives the click.
+// The link's own params win; links off /insights are left alone.
+const PAGE_WIDE = ['range', 'compare', 'people', 'ratings', 'dial', 'caffeine', 'roast', 'process', 'origin', 'roaster'] as const;
+export function withPageWide(href: string, s: InsightsUrlState): string {
+  const u = new URL(href, 'http://x');
+  if (u.origin !== 'http://x' || u.pathname !== '/insights') return href;
+  const p = insightsParams(s), out = new URLSearchParams();
+  for (const k of PAGE_WIDE) if (p.has(k)) out.set(k, p.get(k)!);
+  for (const [k, v] of u.searchParams) out.set(k, v);
+  return `/insights?${out}${u.hash}`;
+}
+
 // The Coffees filter as one phrase for empty lines and chips ("Washed · Light"), '' when none is set.
 export const coffeeNote = (s: Pick<InsightsUrlState, 'roast' | 'process' | 'origin' | 'roaster' | 'caffeine'>): string =>
   [s.caffeine === 'decaf' && 'Decaf', s.process, s.roast, s.origin, s.roaster].filter(Boolean).join(' · ');

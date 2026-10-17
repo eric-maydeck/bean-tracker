@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, withPageWide
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -646,5 +646,23 @@ describe('phoneWords', () => {
     expect(phoneWords('Previous 3 years')).toBe('Prev. 3 yr.');
     expect(phoneWords('Last month')).toBe('Last month');
     expect(phoneWords('Year to date')).toBe('Year to date');
+  });
+});
+
+describe('withPageWide (finding links)', () => {
+  const s = { range: 'all', compare: 1, ratings: 'all', dial: 'all', caffeine: 'decaf', roast: 'Light', roaster: 'Sey', tab: 'insights', theme: 'taste', avg: 'raw' } as const;
+  it('carries the page-wide view under the link; its own params win; tab-local state stays behind', () => {
+    const href = withPageWide('/insights?tab=leaderboards&rank=like&open=coffees&ratings=current', s);
+    expect(Object.fromEntries(new URL(href, 'http://x').searchParams)).toEqual({
+      range: 'all', compare: '1', ratings: 'current', dial: 'all', caffeine: 'decaf', roast: 'Light', roaster: 'Sey',
+      tab: 'leaderboards', rank: 'like', open: 'coffees'
+    });
+    // The merged link parses back to the same view.
+    expect(parseInsightsUrl(new URL(href, 'http://x').searchParams, YEARS)).toMatchObject({ range: 'all', caffeine: 'decaf', dial: 'all', tab: 'leaderboards', rank: 'like' });
+  });
+  it('defaults stay bare; other paths and #anchors are untouched', () => {
+    expect(withPageWide('/insights?tab=consumption', {})).toBe('/insights?tab=consumption');
+    expect(withPageWide('/coffees/x', s)).toBe('/coffees/x');
+    expect(withPageWide('#insight-a', s)).toBe('#insight-a');
   });
 });
