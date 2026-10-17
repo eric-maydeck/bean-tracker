@@ -2636,9 +2636,11 @@ export const STATES: State[] = [
         e.append(probe);
         const want = getComputedStyle(probe).color;
         probe.remove();
-        return { ink: getComputedStyle(e).color === want, lines: e.querySelector('.text-tip')!.getClientRects().length, text: e.textContent };
+        return { ink: getComputedStyle(e).color === want, lines: e.querySelector('.text-tip')?.getClientRects().length ?? 1, text: e.textContent };
       }));
       expect(results.length).toBeGreaterThan(0);
+      // No all-gray card: every "No clear winner" card's line is in the accent ink too (user, 2026-10-17).
+      expect(await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.querySelector('.hl-value')!.textContent!.trim() === 'No clear winner' && !c.querySelector('.evidence.result')).map((c) => c.id))).toEqual([]);
       for (const r of results) expect(r, r.text!).toMatchObject({ ink: true, lines: 1 });
       const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^Best so far/ }).first(); // the seed has one at every width
       await best.click();

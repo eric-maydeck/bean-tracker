@@ -361,8 +361,8 @@ a {
 }
 
 /* A setting's name inside prose ("vs like coffees ranks ...", the Score help's "Average (3+ bags)"): bold, in the link
-   brown; its qualifier ("(default for other boards)") in green. Text color only (5.4:1 / 4.6:1 on the light page,
-   6.8:1 / 7.0:1 dark) (user, 2026-10-17). */
+   brown; its qualifier ("(default for other boards)") in green. Text color only (light: 5.8:1 / 4.9:1 on the dialog's
+   surface, 5.45:1 / 4.55:1 on the page; dark: 6.8:1 / 7.0:1 or more) (user, 2026-10-17). */
 .setting-name {
   font-weight: 700;
   color: var(--color-accent);

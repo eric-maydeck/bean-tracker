@@ -36,13 +36,13 @@
   const value = (p: Spot) =>
     p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
+  const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
   // Under "No clear winner" the same-bag delta names its setting, so it never reads as the card's value (gate P4).
-  const lead = (p: Spot) => (p.best && p.verdict === 'none' ? `Best so far: ${p.best.label.replace(/(\d) /g, '$1\u00a0')} ` : '');
+  const lead = (p: Spot) => (p.best && p.verdict === 'none' ? `Best so far: ${nb(p.best.label)} ` : '');
   // A tier-1 card's shown deltas' SEs: its line, tips and chart share one decimal count.
   const ses = (p: Spot) => p.bands.filter((b) => b.value !== null).map((b) => b.se);
   // The evidence behind it, one muted line (clamped; the card's title and popover have it in full).
   function evidence(p: Spot): string {
-    const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
     if (p.tier === 1 && p.best) return `${lead(p)}${labDelta(p.best.value, ses(p))} vs same bag · ${plural(p.bags, 'bag')}`;
     if (p.tier === 2 && p.best && p.next)
       return `Across ${p.group}: ${nb(p.best.label)} ${p.best.value.toFixed(1)} vs ${nb(p.next.label)} ${p.next.value.toFixed(1)} · ${plural(p.bags, 'bag')}`;
@@ -51,7 +51,6 @@
   // The card's line, short (user, 2026-10-17): its label, the numbers behind it in `tip`. A same-bag winner leads with
   // its delta (`delta`, outside the tip text so it keeps its ink). null: a plain line (evidence), nothing to tip.
   function result(p: Spot): { label: string; tip: Tip; delta?: string; result: boolean } | null {
-    const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0');
     if (p.tier === 1 && p.best) {
       const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]];
       return lead(p) ? { label: lead(p).trim(), tip: { title: lead(p).trim(), rows }, result: true }
@@ -248,7 +247,7 @@
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17: as
                "Best so far"), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
-          <span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
+          <span class="hl-line evidence" class:result={!!r?.result || v === 'No clear winner'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
@@ -358,8 +357,8 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* A result line stands out from the muted lines (accent ink: 5.8:1 on the light card, 6.8:1 dark), so a "No clear
-     winner" card isn't all gray (user, 2026-10-17). */
+  /* A result line, and any "No clear winner" card's line, stands out from the muted lines (accent ink on the card's
+     --color-bg: 5.45:1 light, 7.4:1 dark), so no card is all gray (user, 2026-10-17). */
   .evidence.result {
     color: var(--color-accent);
   }
