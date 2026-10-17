@@ -1957,15 +1957,20 @@ export const STATES: State[] = [
       const tip = page.locator('.float-tip');
       for (const i of [0, 1]) await lines.nth(i).evaluate((e) => (e.style.maxWidth = '4rem'));
       const text = (i: number) => lines.nth(i).evaluate((e) => e.textContent!);
-      await lines.first().click();
-      await expect(tip).toHaveCount(1);
-      await expect(tip).toHaveText(await text(0));
-      await expect(page).toHaveURL(/tab=leaderboards/); // the tap opened the tip, not the row's link
+      // Mouse hover and keyboard focus show a cut line's full text; a tap or click follows the row's link (user, 2026-10-17).
+      if (page.viewportSize()!.width >= 1280) {
+        await lines.first().hover();
+        await expect(tip).toHaveText(await text(0));
+        await page.mouse.move(0, 0);
+        await expect(tip).toHaveCount(0);
+      }
       await lines.nth(1).focus();
-      await page.keyboard.press('Enter');
       await expect(tip).toHaveCount(1);
       await expect(tip).toHaveText(await text(1));
       await expectTipInView(page, tip);
+      await lines.nth(1).blur();
+      await lines.first().click();
+      await expect(page).toHaveURL(/\/coffees\//);
     } },
   // Gate P4: zero-centred bars: a positive gap grows right of the middle, a negative one left, in its delta color.
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',

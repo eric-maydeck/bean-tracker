@@ -5,9 +5,10 @@
   let { like }: { like: { gap: number; label: string } } = $props();
   let anchor: HTMLElement | undefined = $state();
   let open = $state(false);
-  // A cut line's full text (ui-rules 36: a clamped line's tip is its title only) in the shared top-layer tip (39),
-  // opened from the text itself (41) on hover, tap and keyboard focus; Enter opens it too. A whole line needs no tip,
-  // and it sits over the row's stretched link, so a tap on it goes on to that link.
+  // A tap, click or Enter on the line follows the row's link, like the rest of the row (user, 2026-10-17: no
+  // tap-to-expand). A cut line's full text (ui-rules 36: a clamped line's tip is its title only) shows in the shared
+  // top-layer tip (39) on mouse hover and keyboard focus only, so it never stands between a tap and the link.
+  const follow = () => anchor?.parentElement?.querySelector('a')?.click();
   const cut = () => !!anchor && anchor.scrollWidth > anchor.clientWidth + 1;
   // Only a cut line is a tab stop: a whole one has nothing to open (measured on mount and on every resize).
   let isCut = $state(false);
@@ -26,8 +27,8 @@
   onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && cut() && (open = true)}
   onblur={() => (open = false)}
-  onkeydown={(e) => e.key === 'Enter' && cut() && (open = true)}
-  onclick={() => (cut() ? (open = true) : anchor?.parentElement?.querySelector('a')?.click())}
+  onkeydown={(e) => e.key === 'Enter' && follow()}
+  onclick={follow}
   ><span class={deltaInk(like.gap)}>{likeGap(like.gap)}</span> vs {like.label}</small
 >{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${likeGap(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
 
