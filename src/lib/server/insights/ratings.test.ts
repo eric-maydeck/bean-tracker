@@ -94,6 +94,30 @@ describe('ratedGroups', () => {
   });
 });
 
+describe('ratedGroups: SE and the 10-brew rule', () => {
+  it('± is the pooled weighted within-group SD of bag means over √Σw (hand-computed)', () => {
+    // X: bags 8 (2 brews, w ½) and 6 (6 brews, w ¾): mean 6.8, Σw 1.25, w·dev² 0.72 + 0.48.
+    // Y: bags 7 (1 brew, w ⅓) and 9 (2 brews, w ½): mean 8.2, Σw ⅚, w·dev² 0.48 + 0.32.
+    // Pooled: (1.2 + 0.8) / (4 points − 2 groups) = 1 → SE 1/√1.25 and 1/√⅚.
+    const rows = [
+      b('X', 1, 8), b('X', 1, 8), ...Array.from({ length: 6 }, () => b('X', 2, 6)),
+      b('Y', 3, 7), b('Y', 4, 9), b('Y', 4, 9)
+    ];
+    const g = new Map(ratedGroups(rows, (x) => x.g, 'all', 'raw').map((r) => [r.label, r]));
+    expect(g.get('X')!.mean).toBeCloseTo(6.8, 9);
+    expect(g.get('Y')!.mean).toBeCloseTo(8.2, 9);
+    expect(g.get('X')!.se).toBeCloseTo(1 / Math.sqrt(1.25), 9);
+    expect(g.get('Y')!.se).toBeCloseTo(1 / Math.sqrt(5 / 6), 9);
+  });
+  it('counts a group\'s brews before the dial-in skip for the 10-brew rule', () => {
+    // Three 4-brew bags, each first brew skipped as dial-in (kept as dialRating): 9 scored, 12 rated.
+    const rows = [1, 2, 3].flatMap((id) => [{ ...b('R', id, null), dialRating: 6 }, b('R', id, 8), b('R', id, 8), b('R', id, 8)]);
+    const [r] = ratedGroups(rows, (x) => x.g, 'all', 'min3');
+    expect(r.brews).toBe(9);
+    expect(r.sample).toMatchObject({ bags: 3, brews: 12, small: false });
+  });
+});
+
 describe('roastMix', () => {
   // Each bag: four brews at one rating (a full bag), so its bag mean is that rating; `bags` bags per level spread evenly ±spread.
   let id = 0;

@@ -84,7 +84,7 @@ export const DIALS = ['dialed', 'all'] as const;
 export type Dial = (typeof DIALS)[number];
 export const DIAL_LABEL: Record<Dial, string> = { all: 'All brews', dialed: 'Once dialed' };
 export const DIAL_HELP: Record<Dial, string> = {
-  dialed: "Leaves out each bag's dial-in brews (the first, or 2 for a bag of 8+ rated brews).",
+  dialed: "Leaves out each bag's dial-in brews (the first, or 2 for an 8+ brew bag). Sample minimums still count them.",
   all: 'Every rated brew, dial-in included.'
 };
 export const BYS = ['day', 'week', 'month'] as const;
@@ -214,10 +214,11 @@ export interface InsightsUrlState {
   dial?: Dial; // only 'all' is ever explicit
 }
 
-type Optional = 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+// avg: absent = each board's default (boardAvg), so there is no one default to fill in.
+type Optional = 'avg' | 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
+  avg?: Avg; open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
@@ -227,7 +228,6 @@ export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; 
   range: 'all', // All time (user ruling 2026-10-17; /stats' Time to Clear shares it)
   compare: 0,
   ratings: 'current',
-  avg: DEFAULT_AVG,
   people: 'household',
   tab: 'overview',
   rank: 'rating',
@@ -481,7 +481,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     range: s.range ?? DEFAULTS.range,
     compare: s.compare ?? DEFAULTS.compare,
     ratings: s.ratings ?? DEFAULTS.ratings,
-    avg: s.avg ?? DEFAULTS.avg,
+    avg: s.avg,
     people: s.people ?? DEFAULTS.people,
     tab: s.tab ?? DEFAULTS.tab,
     rank: s.rank ?? DEFAULTS.rank,

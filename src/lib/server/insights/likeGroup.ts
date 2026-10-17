@@ -29,7 +29,8 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 // pooled small-sample rule. Every bag of the group counts, weighted by its brews (bagWeight: a 1-brew bag a third, user
 // ruling 2026-10-17); the bag itself may be small (its own sample says so). `rows`: rated, linked brews already cut to the
 // view (Coffees filter, Period, Current/All, Once dialed). No qualifying step: no entry.
-// `sizes` (bagSizes): each bag's size for its own sample, dial-in brews included; absent = its rows.
+// `sizes` (bagSizes): each bag's size, dial-in brews included, for its own sample and the group step's 10-brew rule
+// (coordinator ruling 2026-10-17, following item A); absent = its rows.
 // ponytail: O(bags × same-roast brews) per call; every step has the bag's roast level, so rows are pre-split by it.
 // `outside`: for roaster-level comparisons. The group leaves out every bag of the bag's own roaster and the
 // ladder skips its roaster step, so a roaster is never compared against itself.
@@ -51,7 +52,10 @@ export function likeGaps(
     const twin = twins?.get(id!);
     const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.coffeeId !== id && !(twin && twins!.get(b.coffeeId!) === twin) && !(outside && r && b.roaster === r)), f)
       // pooled() calls an empty group "no data", not small, so an empty step must be rejected here.
-      .find((x) => x.brews.length > 0 && !pooled(new Set(x.brews.map((b) => b.coffeeId)).size, x.brews.length).small);
+      .find((x) => {
+        const ids = new Set(x.brews.map((b) => b.coffeeId!));
+        return x.brews.length > 0 && !pooled(ids.size, sizes ? [...ids].reduce((n, i) => n + (sizes.get(i) ?? 0), 0) : x.brews.length).small;
+      });
     if (!g) continue;
     const ids = [...new Set(g.brews.map((b) => b.coffeeId!))];
     const mine = score.get(id)!, groupMean = wmean(ids.map((x) => score.get(x)!), ids.map((x) => weight.get(x)!));
@@ -71,11 +75,14 @@ export interface RoasterLike { gap: number; gaps: number[]; ws: number[]; bags: 
 // Each roaster's mean gap against like coffees from other roasters (likeGaps `outside`), every bag's gap weighted
 // bagWeight (a 1-brew bag counts a third; user ruling 2026-10-17). The one computation behind the Leaderboards
 // roaster row and the likeRoaster finding. `ws`: the gaps' weights, for the finding's test.
-export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<number, string>): Map<string, RoasterLike> {
+// `sizes` (bagSizes): `brews` counts each bag's rated brews before the dial-in skip, for the 10-brew rule (and so do
+// the like groups); the weights stay on the brews scored.
+export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<number, string>, sizes?: ReadonlyMap<number, number>): Map<string, RoasterLike> {
   const roasterOf = new Map(rows.map((b) => [b.coffeeId, b.roaster]));
   const out = new Map<string, RoasterLike>();
-  for (const [r, g] of groupBy([...likeGaps(rows, true, twins)].filter(([id]) => roasterOf.get(id)), ([id]) => roasterOf.get(id)!)) {
-    const gaps = g.map(([, l]) => l.gap), ws = g.map(([, l]) => bagWeight(l.sample.brews));
+  const scored = groupBy(rows, (b) => b.coffeeId);
+  for (const [r, g] of groupBy([...likeGaps(rows, true, twins, sizes)].filter(([id]) => roasterOf.get(id)), ([id]) => roasterOf.get(id)!)) {
+    const gaps = g.map(([, l]) => l.gap), ws = g.map(([id]) => bagWeight(scored.get(id)!.length));
     out.set(r, { gap: wmean(gaps, ws), gaps, ws, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
   }
   return out;
@@ -127,6 +134,6 @@ export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { li
   // The nearest view with a comparison: Caffeine first for a decaf coffee, then Ratings, Brews, both.
   const base: LikeView = decaf ? { ...v, caffeine: 'all' } : v;
   const fix = ([base, { ...base, ratings: 'all' }, { ...base, dial: 'all' }, { ...base, ratings: 'all', dial: 'all' }] as LikeView[])
-    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x), false, twins).has(id));
+    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x), false, twins, bagSizes(viewPool(brews, dialIn, x), x.ratings ?? DEFAULTS.ratings)).has(id));
   return { why, rows, fix: fix ?? null };
 }

@@ -3,7 +3,7 @@ import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
-import { bagSizes, countsForRating, ratedGroups } from './ratings';
+import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -92,7 +92,8 @@ export function leaderboard(
   // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
   // Coffees rows carry the line under every rank (gate P4: under like the value already is it).
   const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
-  const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows(), false, twinKeys(bags)) : null;
+  const sizes = bagSizes(inP, ratings);
+  const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows(), false, twinKeys(bags), sizes) : null;
   if (rank === 'spend' || rank === 'ppg') {
     const key = BAG_KEY[board];
     if (!key) return [];
@@ -117,14 +118,14 @@ export function leaderboard(
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows(), twinKeys(bags))].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        : [...roasterLikes(likeRows(), twinKeys(bags), sizes)].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
       // Every bag counts, weighted by its brews (ratedGroups); Coffees rows are single bags, shrunk by brews.
       const coffees = board === 'coffees';
       rows = ratedGroups(inP, key, ratings, avg, coffees).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
         ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample }
-          : { value: r.value, sample: r.sample, ...(coffees ? (r.value !== r.mean ? { mean: r.mean } : {}) : r.se !== undefined ? { se: r.se } : {}) })
+          : { value: r.value, sample: r.sample, ...(coffees ? (ADJUSTED_K[avg] > 0 ? { mean: r.mean } : {}) : r.se !== undefined && !ADJUSTED_K[avg] ? { se: r.se } : {}) })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -141,7 +142,6 @@ export function leaderboard(
     }
   }
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
-  const sizes = bagSizes(inP, ratings);
   const out = rows.map((r) => decorate(r, board, bags, sizes));
   return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }

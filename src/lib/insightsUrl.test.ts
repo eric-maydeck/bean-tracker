@@ -34,6 +34,7 @@ describe('parseInsightsUrl', () => {
     expect(parse('').avg).toBeUndefined();
     expect(insightsParams(parse('')).toString()).toBe('');
     expect(boardAvg('coffees', parse('').avg)).toBe('k2');
+    expect(withDefaults(parse('')).avg).toBeUndefined(); // no one default to stand in for the per-board ones
     expect(boardAvg('roasters', parse('').avg)).toBe('min3');
     expect(insightsParams(parse('avg=min3')).toString()).toBe('avg=min3'); // explicit min3 stays: it changes Coffees
     for (const b of ['coffees', 'roasters'] as const) {
@@ -140,7 +141,6 @@ describe('withDefaults', () => {
       range: 'all', // bare URL = All time (user ruling 2026-10-17)
       compare: 0,
       ratings: 'current',
-      avg: 'min3',
       people: 'household',
       tab: 'overview',
       rank: 'rating',
@@ -157,7 +157,7 @@ describe('withDefaults', () => {
   });
   it('DEFAULTS match the spec', () =>
     expect(DEFAULTS).toEqual({
-      range: 'all', compare: 0, ratings: 'current', avg: 'min3', people: 'household', tab: 'overview', rank: 'rating',
+      range: 'all', compare: 0, ratings: 'current', people: 'household', tab: 'overview', rank: 'rating',
       measure: 'brews', unit: 'grams', agg: 'average', dial: 'dialed'
     }));
 });
@@ -289,6 +289,7 @@ describe('shared readers (/insights and /stats)', () => {
     expect(parseRange(q('range=2024'), [2025, 2026])).toBeUndefined();
     expect(parseRange(q('range=5y'), [2026])).toBeUndefined();
     expect(parseRange(q(''), [2026])).toBeUndefined();
+    expect(parseRange(q(''), [2026]) ?? DEFAULTS.range).toBe('all'); // /stats' bare URL: All time
   });
 });
 

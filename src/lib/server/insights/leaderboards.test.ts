@@ -157,6 +157,14 @@ describe('coffees under k2 / adjusted: shrunk by brews', () => {
     expect(leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'adjusted')[0].value).toBeCloseTo((54 + 5 * o) / 11);
     expect(leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').map((r) => r.key)).toEqual(['1', '2', '3']); // Raw: no shrink
   });
+  it('the plain average rides along under k2/adjusted only, never under Raw or min3 (by mode, not float equality)', () => {
+    // 1/3-point ratings: a weighted mean of one bag isn't bit-equal to its plain one.
+    const odd = [brew({ coffeeId: 9, rating: 7.1 }), brew({ coffeeId: 9, rating: 8.3 }), brew({ coffeeId: 9, rating: 7.7 }), brew({ coffeeId: 9, rating: 8.9 })];
+    for (const avg of ['raw', 'min3'] as const)
+      expect(leaderboard([...bs, ...odd], [], SEPT, 'coffees', 'rating', 'all', avg).every((r) => r.mean === undefined), avg).toBe(true);
+    for (const avg of ['k2', 'adjusted'] as const)
+      expect(leaderboard([...bs, ...odd], [], SEPT, 'coffees', 'rating', 'all', avg).every((r) => r.mean !== undefined), avg).toBe(true);
+  });
   it('no avg param: Coffees k2, every other board min3; an explicit avg is every board\u2019s', () => {
     const def = leaderboards(bs, [], SEPT, null, 'rating', 'all', undefined);
     expect(def.coffees.map((r) => r.key)).toEqual(['2', '1', '3']); // k2: the 1-brew bag shows, below
@@ -246,6 +254,11 @@ describe('vs like coffees', () => {
     // A roaster is compared with the other roaster's coffees only: A's 9/8/7 vs B's mean 7, B's 8/7/6 vs A's mean 8.
     const r = leaderboard(bs, [], SEPT, 'roasters', 'like', 'all', 'raw');
     expect(r.map((x) => [x.key, +x.value.toFixed(2), x.sample])).toEqual([['A', 1, { bags: 3, brews: 12, small: false }], ['B', -1, { bags: 3, brews: 12, small: false }]]);
+  });
+  it('a roaster\'s 10-brew rule counts dial-in brews (sample 12, though 9 are scored)', () => {
+    const dialed = bs.map((b) => (b.id % 10 === 0 ? { ...b, rating: null, dialRating: b.rating } : b));
+    const r = leaderboard(dialed, [], SEPT, 'roasters', 'like', 'all', 'min3');
+    expect(r.map((x) => [x.key, x.sample])).toEqual([['A', { bags: 3, brews: 12, small: false }], ['B', { bags: 3, brews: 12, small: false }]]);
   });
   it('the See all note counts like rows that Once dialed hid', () => {
     const dialed = bs.map((b) => ({ ...b, rating: null }));

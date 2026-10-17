@@ -829,7 +829,7 @@ const likeStandouts: Generator = (c) => {
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
   // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
-  const rl = roasterLikes(counted(c), twins), allGaps = [...rl.values()].flatMap((x) => x.gaps);
+  const rl = roasterLikes(counted(c), twins, bagSizes(c.brews, c.ratings)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
   const roasters = [...rl].filter(([, x]) => !pooled(x.bags, x.brews).small); // the board's small-sample rule
   const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
   const roaster = best ? graded({

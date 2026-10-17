@@ -41,7 +41,7 @@ export interface RatedGroup {
   brews: number;
   eff: number; // effective bags (Kish: (Σw)² / Σw²): the bag count a weighted mean's spread is read against
   se?: number; // 1 SE of `mean`: the board's pooled within-group spread of bag means ÷ √Σw (none without 2+ bags in a group)
-  sample: Sample; // pooled rule over the group's bags and brews
+  sample: Sample; // pooled rule over the group's bags and its rated brews before the dial-in skip
   best: number; // highest single brew rating
   atBest: number; // brews at that rating
 }
@@ -66,9 +66,14 @@ export function ratedGroups<T extends Rated>(
   let nAll = 0;
   const peak = new Map<string, { best: number; atBest: number }>();
   const perBag = new Map<string, { label: string; sum: number; n: number }>();
+  // The group's rated brews before the dial-in skip (as bagSizes): the 10-brew rule counts them (coordinator ruling
+  // 2026-10-17, following the user's item A), so the skip never knocks a group under it.
+  const size = new Map<string, number>();
   for (const b of brews) {
     const label = key(b);
-    if (label === null || b.coffeeId === null || !countsForRating(b, ratings)) continue;
+    if (label === null || b.coffeeId === null) continue;
+    if (countsForRating({ ...b, rating: b.rating ?? b.dialRating ?? null }, ratings)) size.set(label, (size.get(label) ?? 0) + 1);
+    if (!countsForRating(b, ratings)) continue;
     const k = `${label}\u0000${b.coffeeId}`;
     const p = perBag.get(k) ?? { label, sum: 0, n: 0 };
     p.sum += b.rating!;
@@ -113,7 +118,7 @@ export function ratedGroups<T extends Rated>(
         : adjusted;
       return {
         label, mean, adjusted, value, bags: g.bags, brews: g.brews, eff: (g.w * g.w) / g.w2,
-        ...(within !== null ? { se: within / Math.sqrt(g.w) } : {}), sample: pooled(g.bags, g.brews), ...t
+        ...(within !== null ? { se: within / Math.sqrt(g.w) } : {}), sample: pooled(g.bags, size.get(label)!), ...t
       };
     })
     .sort((a, b) =>

@@ -292,7 +292,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   });
   const overall = mean(slice.map((b) => b.rating!));
   const byId = new Map(bags.map((b) => [b.id, b]));
-  const likes = likeGaps(slice, false, twinKeys(bags));
+  const likes = likeGaps(slice, false, twinKeys(bags), sizes);
   const topBags = [...perBag].map(([id, bs]) => {
     const bag = byId.get(id!), like = likes.get(id!);
     return {

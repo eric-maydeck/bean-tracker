@@ -4,7 +4,7 @@ import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
-import { bagSizes, countsForRating } from './ratings';
+import { bagSizes, countsForRating, ratedGroups } from './ratings';
 import { BAG_MIN_BREWS, single } from '$lib/sample';
 import { daysBetween, inPeriod, type Period } from './time';
 
@@ -220,12 +220,14 @@ const brewMetric = (c: RecCtx, get: (b: BrewFact) => number | null, ok: (b: Brew
   });
 // A ratio's inputs: dose to water.
 const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.waterG)}` : null);
-// Rated board groups with ≥3 bags, lowest adjusted rating, vs your average (the mean of the board's
-// bag means, which the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen
-// −2.51). The group's latest brew is its date.
+// Rated board groups with ≥3 bags, lowest adjusted rating, vs your average (the board's bag means, weighted by
+// bagWeight: what the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen −2.51). The
+// group's latest brew is its date.
 const least = (board: Board) => (c: RecCtx): Candidate[] => {
   const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
-  const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
+  const raw = lb('raw'), key = BREW_KEY[board];
+  // ratedGroups' `overall`: every keyed bag in one group.
+  const avg = ratedGroups(c.brews.filter((b) => b.localDate <= c.today), (b) => (key(b) === null ? null : ''), c.ratings, 'raw')[0]?.mean ?? NaN;
   const rawMean = new Map(raw.map((r) => [r.key, r.value]));
   const rows = lb('adjusted').filter((r) => !r.sample!.small);
   // One group is the average itself: nothing to be lowest against.
@@ -408,7 +410,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   }
   const inP = ctx(c.period);
   const rated = held(inP).filter((b) => b.rating !== null && countsForRating(b, c.ratings));
-  const likes = likeGaps(rated.filter((b) => b.rating! > 0), false, twinKeys(bags));
+  const likes = likeGaps(rated.filter((b) => b.rating! > 0), false, twinKeys(bags), bagSizes(held(inP), c.ratings));
   // Only what the like line renders goes to the client.
   const likeLine = (l: Like | undefined) => l && { gap: l.gap, label: l.label };
   const top = [...rated].sort((a, b) => b.rating! - a.rating! || a.localDate.localeCompare(b.localDate));
