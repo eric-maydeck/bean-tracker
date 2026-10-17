@@ -10,7 +10,7 @@
     'Only bags brewed 2+ ways (2+ brews each) count.',
     SAMPLE_HELP
   ];
-  export const STRENGTH_LINE = 'Likely / Possible: the gap is 2×+ / 1.5–2× normal brew-to-brew noise.';
+  export const STRENGTH_LINE = 'Likely / Possible: the gap is 2×+ / 1.5–2× its margin of error (about 95% / 87% sure).';
   // The SD help, wherever SD shows (T2).
   export const SD_TIP: Tip = { title: 'SD · standard deviation', lines: ['How much ratings vary from brew to brew.', '', 'Small: consistent.', 'Big: hit or miss.'] };
   // Keyboard focus (not a mouse click, which toggles) opens an SD tip; blur closes it.

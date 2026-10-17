@@ -1,7 +1,8 @@
-// The strength badges' words and their one-line explanations (stats.ts: solid = |z| >= 2, hint = |z| >= 1.5).
+// The strength badges' words and their one-line explanations (stats.ts: solid = |z| >= 2, hint = |z| >= 1.5, where
+// z = gap ÷ its standard error, the "margin of error" here; not gap ÷ brew-to-brew spread: stats audit 2026-10-17).
 export type Badge = 'solid' | 'hint';
 export const STRENGTH: Record<Badge, string> = { solid: 'Likely', hint: 'Possible' };
 export const STRENGTH_WHY: Record<Badge, string> = {
-  solid: 'The gap is at least 2× normal brew-to-brew noise, so probably real.',
-  hint: 'The gap is 1.5 to 2× normal brew-to-brew noise; could still be chance.'
+  solid: "The gap is at least twice its margin of error: about 95% sure it isn't chance.",
+  hint: 'The gap is 1.5 to 2 times its margin of error: about 87% sure, so it could still be chance.'
 };

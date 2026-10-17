@@ -1780,7 +1780,7 @@ export const STATES: State[] = [
       for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible)$/);
       await expect(page.locator('body')).not.toContainText(/\b(Solid|Hint)\b/);
       await page.locator('[data-section="spots-cards"] .mode-tip-button').first().click();
-      await expect(page.locator('.mode-tip:popover-open')).toContainText('Likely / Possible: the gap is 2×+ / 1.5–2× normal brew-to-brew noise.');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Likely / Possible: the gap is 2×+ / 1.5–2× its margin of error (about 95% / 87% sure).');
     } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
