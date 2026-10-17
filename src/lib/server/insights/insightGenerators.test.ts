@@ -1,7 +1,7 @@
 import { signed } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
-import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
+import { GENERATORS, insightsTab, rescueOdds, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
@@ -817,6 +817,31 @@ describe('like-with-like findings', () => {
     const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, processGroup: b.processGroup }));
     const f = gen('dialinBy:processGroup', all, gb, { allBrews: all });
     expect(f?.series?.map((x) => x.label)).toEqual(['Washed', 'Natural']);
+  });
+  it('rescueOdds: the share of orderings that look rescued, exact', () => {
+    // 4 ratings, skip 2: 6 start pairs. Mean 6: only start {4, 4} → later {8, 8} (+4) passes; {4, 8} pairs start at 6.
+    expect(rescueOdds([4, 4, 8, 8], 2, 6)).toBeCloseTo(1 / 6, 9);
+    expect(rescueOdds([7, 7, 7, 7], 2, 6)).toBe(0); // never below your mean
+    // skip 3 of 5: 10 start pairs × 3 left-out picks; start {4, 4} with later of the remaining {8, 8, 8} minus one.
+    expect(rescueOdds([4, 4, 8, 8, 8], 3, 6)).toBeCloseTo(3 / 30, 9);
+  });
+  it('rescued bags: the chance baseline and the reverse count; a badge only when the count beats chance', () => {
+    const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 100 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));
+    // 10 bags climb 5 → 9 (rescued; by chance 1/6 each), 10 flat at 7.5, 2 fall 9 → 5.
+    const raw = [...Array.from({ length: 10 }, (_, k) => mk(k + 1, [5, 5, 9, 9])).flat(), ...Array.from({ length: 10 }, (_, k) => mk(k + 11, [7.5, 7.5, 7.5, 7.5])).flat(),
+      ...[21, 22].flatMap((id) => mk(id, [9, 9, 5, 5]))];
+    const dialIn = new Set(raw.filter((b) => b.brewIndex <= 2).map((b) => b.id));
+    const ids = Array.from({ length: 22 }, (_, k) => bag({ id: k + 1 }));
+    const f = gen('rescuedBags', raw, ids, { allBrews: raw, dialIn })!;
+    expect(f.headline).toBe('10 bags rescued after a rough start');
+    expect(f.body).toBe('Their first two brews averaged 5.0; once dialed, 9.0. About 2 would look rescued by chance alone. 2 started well then dropped.');
+    expect(f.strength).toBe('solid'); // 10 vs about 2
+    // 12 bags of 5, 5, 9, 9 in shuffled orders, 2 in the rescued one: chance says 2 (1/6 each), so no badge.
+    const orders = [[5, 5, 9, 9], [5, 5, 9, 9], ...Array.from({ length: 10 }, (_, k) => (k % 2 ? [9, 5, 5, 9] : [5, 9, 9, 5]))];
+    const mixed = orders.flatMap((rs, k) => mk(k + 1, rs));
+    const d2 = new Set(mixed.filter((b) => b.brewIndex <= 2).map((b) => b.id));
+    expect(gen('rescuedBags', mixed, ids, { allBrews: mixed, dialIn: d2 })).toMatchObject({ value: '2 of 12', strength: null, z: null,
+      body: expect.stringContaining('About 2 would look rescued by chance alone.') });
   });
   it('rescued bags: needs a start below your mean, an end at or above it, and a 1 point lift', () => {
     const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));

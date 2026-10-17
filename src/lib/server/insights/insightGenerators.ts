@@ -825,8 +825,33 @@ const dialinByGroup: Generator = (c) => {
 };
 
 // Rescued bags (spec Part 4): the first two rated brews (both dial-in) average below your own mean, the
-// once-dialed brews at or above it, and at least RESCUE higher. Descriptive.
+// once-dialed brews at or above it, and at least RESCUE higher. Dropped bags are the reverse (started at or above,
+// ended below, RESCUE lower). Any bag with a low start averages higher later by chance alone (regression to the
+// mean; stats audit 2026-10-17 must-fix 7), so the card says how many would look rescued with each bag's ratings in
+// random order (exact over every ordering, rescueOdds), and earns a badge only when the count clearly beats that.
 const RESCUE = 1; // ponytail: a fixed 1-point climb; tune at the Part 4 preview
+const rescued = (start: number, end: number, m: number) => start < m && end >= m && end - start >= RESCUE;
+const dropped = (start: number, end: number, m: number) => start >= m && end < m && start - end >= RESCUE;
+function* combos(n: number, k: number, from = 0): Generator<number[]> {
+  if (k === 0) { yield []; return; }
+  for (let i = from; i <= n - k; i++) for (const c of combos(n, k - 1, i + 1)) yield [i, ...c];
+}
+// The chance a bag looks rescued if its ratings came in random order: every pick of its 2 start brews and of its
+// other `skip` − 2 dial-in brews, the rest once dialed. Exact; ponytail: C(n,2)·C(n−2,skip−2), ~2,400 orderings
+// at 20 brews; sample orderings if bags ever run to 40+.
+export function rescueOdds(rs: readonly number[], skip: number, m: number): number {
+  let hit = 0, all = 0;
+  for (const st of combos(rs.length, 2)) {
+    const rest = rs.map((_, i) => i).filter((i) => !st.includes(i));
+    for (const out of combos(rest.length, skip - 2)) {
+      const later = rest.filter((_, j) => !out.includes(j));
+      if (!later.length) continue;
+      all++;
+      if (rescued(mean(st.map((i) => rs[i])), mean(later.map((i) => rs[i])), m)) hit++;
+    }
+  }
+  return all ? hit / all : 0;
+}
 const rescuedBags: Generator = (c) => {
   const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
   const userMean = mean(raw.map((b) => b.rating!)), byId = bagById(c);
@@ -834,16 +859,23 @@ const rescuedBags: Generator = (c) => {
     const later = bs.filter((b) => !c.dialIn.has(b.id));
     if (single(bs.length).small || !c.dialIn.has(bs[0].id) || !c.dialIn.has(bs[1].id) || !later.length) return [];
     const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(later.map((b) => b.rating!));
-    return [{ id: id!, start, end }];
+    return [{ id: id!, start, end, odds: rescueOdds(bs.map((b) => b.rating!), bs.length - later.length, userMean) }];
   });
-  const saved = bags.filter((x) => x.start < userMean && x.end >= userMean && x.end - x.start >= RESCUE)
+  const saved = bags.filter((x) => rescued(x.start, x.end, userMean))
     .sort((a, b) => b.end - b.start - (a.end - a.start) || bagLabel(c, a.id).localeCompare(bagLabel(c, b.id)));
   if (bags.length < POOLED_MIN_BAGS || !saved.length) return null;
+  const fell = bags.filter((x) => dropped(x.start, x.end, userMean)).length;
+  // The chance count is a sum of independent bags' coin flips: its mean and SD.
+  const chance = sum(bags.map((x) => x.odds)), spread = Math.sqrt(sum(bags.map((x) => x.odds * (1 - x.odds))));
+  const z = spread > 0 ? (saved.length - chance) / spread : 0;
+  const strength = strengthOf(z, true, 1, bags.length);
+  const badge = strength === 'solid' || strength === 'hint';
   return {
     key: 'rescuedBags', theme: 'dialin', kind: 'number', headline: `${plural(saved.length, 'bag')} rescued after a rough start`,
     value: `${saved.length} of ${bags.length}`,
-    body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}.`,
-    sample: plural(bags.length, 'bag'), href: DIAL_IN, z: null, strength: null,
+    body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}. ` +
+      `${Math.round(chance) ? `About ${Math.round(chance)}` : 'Almost none'} would look rescued by chance alone. ${fell || 'None'} started well then dropped.`,
+    sample: plural(bags.length, 'bag'), href: DIAL_IN, z: badge ? z : null, strength: badge ? strength : null,
     ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(byId.get(x.id))))])
   };
 };
