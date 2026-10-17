@@ -503,7 +503,9 @@ async function expectShortEmpty(page: Page) {
     ps.filter((p) => {
       const note = p.querySelector('.hl-empty, .board-note')!;
       const lines = note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight);
-      return lines > 5 || p.getBoundingClientRect().height > 200;
+      // Nothing blank below the note: the panel ends within its padding of the note's bottom (M4).
+      const slack = p.getBoundingClientRect().bottom - note.getBoundingClientRect().bottom - parseFloat(getComputedStyle(p).paddingBottom);
+      return lines > 5 || p.getBoundingClientRect().height > 200 || slack > 2;
     }).map((p) => `${p.className} ${Math.round(p.getBoundingClientRect().height)}px`));
   expect(tall, 'empty panels one short line').toEqual([]);
 }

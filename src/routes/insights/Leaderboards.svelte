@@ -162,7 +162,7 @@
   <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
     <h2>{TITLE[b]}</h2>
     <div class="board-body">
-      {#if b === 'origins'}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
+      {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
       {#if bagOnly(b)}
         <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
@@ -187,13 +187,16 @@
         </ol>
       {/if}
     </div>
-    <footer class="board-foot">
-      {#if rows.length > size && !bagOnly(b)}
-        <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
-          >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
-        >
-      {/if}
-    </footer>
+    <!-- No footer under an empty board's note (nothing to expand); boards with rows keep it so a band stays level. -->
+    {#if rows.length || bagOnly(b)}
+      <footer class="board-foot">
+        {#if rows.length > size && !bagOnly(b)}
+          <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
+            >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
+          >
+        {/if}
+      </footer>
+    {/if}
   </section>
 {/snippet}
 
