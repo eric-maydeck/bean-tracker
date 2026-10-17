@@ -612,9 +612,35 @@ export const STATES: State[] = [
     act: async (page) => {
       const line = page.locator('[data-section="like"] .like-none');
       await expect(line).toContainText('No comparison: decaf coffees are left out by default.');
-      await line.locator('.text-tip').click();
-      await expect(page.locator('.float-tip')).toContainText('Why no comparison');
-      await expect(page.locator('.float-tip')).toContainText('Rated brews');
+      const tt = line.locator('.text-tip'), tip = page.locator('.float-tip');
+      if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes
+        await tt.hover();
+        await expect(tip).toContainText('Why no comparison');
+        await page.mouse.move(0, 0);
+        await expect(tip).toHaveCount(0);
+      }
+      // The tip opens from the text only (ui-rules 41): the label is inline, so a wrapped sentence's lines are its
+      // boxes (left-aligned with the paragraph), and the empty end of its last line opens nothing.
+      const boxes = await tt.evaluate((e) => [...e.getClientRects()].map((r) => ({ l: r.left, r: r.right, b: r.bottom })));
+      const p = (await line.boundingBox())!;
+      expect(Math.abs(boxes[0].l - p.x), 'label starts at the paragraph edge').toBeLessThanOrEqual(1);
+      // At 360 the sentence wraps (I2), and line 2 starts where line 1 does: left-aligned, not centered.
+      if (page.viewportSize()!.width <= 360) expect(boxes.length, 'the sentence wraps at 360').toBeGreaterThanOrEqual(2);
+      for (const r of boxes) expect(Math.abs(r.l - boxes[0].l)).toBeLessThanOrEqual(1);
+      const last = boxes.at(-1)!;
+      if (last.r < p.x + p.width - 40) {
+        await page.mouse.click(p.x + p.width - 10, last.b - 8);
+        await expect(tip).toHaveCount(0);
+      }
+      await tt.click();
+      await expect(tip).toContainText('Why no comparison');
+      await expect(tip).toContainText('Rated brews');
+      await expectTipInView(page, tip);
+      await page.keyboard.press('Escape');
+      await tt.focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab'); // keyboard focus (focus-visible) opens it
+      await expect(tip).toBeVisible();
     } },
   { name: 'coffee-detail-like-all', path: (s) => `/coffees/${s.slugs.lab}?ratings=all&dial=all`,
     act: async (page) => {
