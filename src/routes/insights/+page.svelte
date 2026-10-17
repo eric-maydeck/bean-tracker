@@ -656,12 +656,12 @@
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
         <div class="stat-item" id={tileId(t.key)} class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
-          <span class="stat-value"
+          <span class="stat-value" style:--len={valueText(t, v).length}
             >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and hover. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={t.from && !d.paced} title={deltaTitle(d, t)}
+            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd) && !d.paced} title={deltaTitle(d, t)}
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
@@ -1452,6 +1452,11 @@
   .reset {
     margin-left: auto;
   }
+  /* A long value ("$1,234.56": costs keep 2 decimals) shrinks to fit its tile; 6 characters or fewer keep the
+     shared size (app.css). */
+  .stat-item .stat-value {
+    font-size: min(25.81cqw, calc(160cqw / var(--len, 1))); /* same top as its row (the value-offset check) */
+  }
   .stat-value small {
     font-size: 0.4em;
     font-weight: 600;
@@ -1461,7 +1466,8 @@
     text-transform: none;
   }
   /* "▼ 14% from 7 days (100%)" is longer than a phone tile is wide: it wraps to a second line
-     (the pace slot below it, free because ratio tiles are never paced), at the usual size. */
+     (the pace slot below it, free because ratio tiles are never paced), at the usual size. Money tiles' "▼ $88.00
+     from $110.00" (2 decimals) wraps the same way when unpaced. */
   .stat-item .insights-delta.ratio {
     white-space: normal;
     line-height: 1.1;
