@@ -414,8 +414,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
     // Bags past the one-bag small-sample rule (Best bag's rule), best mean first.
     topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length > 0 && !single(s.rated.length).small)
-      .map((s) => ({ mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)),
-        ...(likes.get(s.coffeeId) ? { like: { gap: likes.get(s.coffeeId)!.gap, label: likes.get(s.coffeeId)!.label } } : {}) }))
+      .map((s) => ({ like: likes.get(s.coffeeId), mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
       .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),

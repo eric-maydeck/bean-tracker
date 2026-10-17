@@ -179,7 +179,7 @@
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row bar" class:small-sample={r.sample?.small} style:--share={rank !== 'like' && rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            <li class="board-row bar" class:liked={r.like && rank !== 'like'} class:small-sample={r.sample?.small} style:--share={rank !== 'like' && rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
@@ -261,9 +261,12 @@
     gap: var(--space-3);
     margin-bottom: var(--space-3);
   }
-  /* A third line (vs like coffees) per row. */
-  .board-band.has-like {
-    --row-h: 3.75rem;
+  /* A row with a vs-like line is taller (.liked, --row-h-like). Side by side, the whole band takes that height so the
+     cards stay level; stacked, only rows with a line grow. */
+  @media (min-width: 641px) {
+    .board-band.has-like {
+      --row-h: var(--row-h-like);
+    }
   }
   /* An expanded card alone grows; its neighbors keep their own height. */
   .board-band:has(.board.open) {

@@ -1276,6 +1276,12 @@
     height: var(--row-h);
     border-top: 1px solid var(--color-border);
   }
+  :global(:root) {
+    --row-h-like: 3.75rem; /* a row with a vs-like line */
+  }
+  :global(.board-row.liked) {
+    height: var(--row-h-like);
+  }
   :global(.board-row:first-child) {
     border-top: 0;
   }

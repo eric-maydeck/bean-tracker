@@ -242,9 +242,9 @@
         ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
       ><span class="num">Score</span></div>
       <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
-      <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h={t.topBags.some((r) => r.like) ? '3.75rem' : '3rem'}>
+      <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
         {#each t.topBags as r, i (i)}
-          <li class="board-row" class:small-sample={r.sample.small}>
+          <li class="board-row" class:liked={r.like} class:small-sample={r.sample.small}>
             <span class="rank">{i + 1}</span>
             <span class="who">
               {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}

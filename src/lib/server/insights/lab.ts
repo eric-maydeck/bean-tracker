@@ -274,12 +274,12 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   });
   const overall = mean(slice.map((b) => b.rating!));
   const byId = new Map(bags.map((b) => [b.id, b]));
-  const likes = likeGaps(slice.filter((b) => b.coffeeId !== null && b.rating! > 0));
+  const likes = likeGaps(slice);
   const topBags = [...perBag].map(([id, bs]) => {
-    const bag = byId.get(id!);
+    const bag = byId.get(id!), like = likes.get(id!);
     return {
       label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
-      ...(likes.get(id!) ? { like: { gap: likes.get(id!)!.gap, label: likes.get(id!)!.label } } : {}),
+      ...(like ? { like: { gap: like.gap, label: like.label } } : {}),
       roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
       sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null, sample: single(bs.length),

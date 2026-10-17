@@ -119,7 +119,7 @@ async function expectDeltaInk(page: Page) {
     const ink = (v: string) => ((probe.style.color = v), getComputedStyle(probe).color);
     const [better, worse] = [ink('var(--div-high-ink)'), ink('var(--div-low-ink)')];
     probe.remove();
-    const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row .val, .delta-bars:not(.direction) .bar-row .bar-value, .delta-text')];
+    const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row .val, .delta-bars:not(.direction) .bar-row .bar-value, .delta-text, .like-line > span')];
     return els.flatMap((e) => {
       const m = /^([+−])(\d+\.\d+)/.exec(e.textContent!.trim());
       if (!m) return [];
@@ -1864,10 +1864,19 @@ export const STATES: State[] = [
     act: async (page) => {
       const line = page.locator('[data-board="coffees"] .like-line').first();
       await expect(line).toHaveText(/^([+−]\d\.\d\d|0\.00) vs .+ coffees/);
+      await expectDeltaInk(page);
+      // Stacked (phone), only rows with a line grow: Roasters keeps the plain 3rem row; side by side the band stays level.
+      const h = (sel: string) => page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().height);
+      const plain = await h('[data-board="roasters"] .board-row:not(.placeholder)');
+      const liked = await h('[data-board="coffees"] .board-row.liked');
+      if ((page.viewportSize()?.width ?? 0) <= 640) { expect(plain).toBeCloseTo(48, 0); expect(liked).toBeGreaterThan(plain + 8); }
+      else expect(Math.abs(plain - liked)).toBeLessThanOrEqual(1);
       await page.getByLabel('View').selectOption('records');
       await expect(page.locator('.like-line').first()).toBeVisible();
+      await expectDeltaInk(page);
       await page.getByLabel('View').selectOption('sweetspots');
       await expect(page.locator('.like-line').first()).toBeVisible();
+      await expectDeltaInk(page);
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {
