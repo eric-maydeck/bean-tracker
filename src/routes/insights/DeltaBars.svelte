@@ -206,9 +206,11 @@
     border-radius: 0 4px 4px 0;
   }
   /* Clipped at the axis edge (a muted row past the full rows' range): the cut end is an arrow tip, "keeps going". */
-  /* A small bar's amber fold is at the top left (global .small-sample-mark); past a left arrow taper: */
-  .bar.clip:not(.up).small-sample-mark {
-    background-position: left 9px top, 0 0; /* past the left arrow taper */
+  /* A small bar's amber fold (global .small-sample-mark): top left, except on a bar pointing left, where it sits at the
+     top right, the bar's flat axis end, clear of a "keeps going" arrow tip (user, 2026-10-17). */
+  .bar:not(.up).small-sample-mark {
+    background-image: linear-gradient(to bottom left, var(--chip) 50%, transparent 50%), var(--thin-hatch);
+    background-position: right top, 0 0;
   }
   .bar.clip {
     border-radius: 0;

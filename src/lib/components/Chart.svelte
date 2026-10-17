@@ -287,18 +287,19 @@
           )
         ]
       },
-      // The amber corner fold of a small-sample bar (top left, 9px like the HTML .small-sample-mark; ui-rules 29).
+      // The amber corner fold of a small-sample bar (top left, 9px like the HTML .small-sample-mark; ui-rules 29): the
+      // bar's top edge, its base for a bar below 0.
       plugins: samples && vbar ? [{
         id: 'sampleFold',
         afterDatasetsDraw(c) {
           const ctx = c.ctx, chip = themeColor('--chip');
           c.getDatasetMeta(0).data.forEach((bar, i) => {
-            const { x, y, width } = bar.getProps(['x', 'y', 'width'], true) as { x: number; y: number; width: number };
+            const { x, y, base, width } = bar.getProps(['x', 'y', 'base', 'width'], true) as { x: number; y: number; base: number; width: number };
             if (!samples[i]?.small || values[i] == null || !Number.isFinite(y)) return;
-            const w = Math.min(9, width), l = x - width / 2;
+            const w = Math.min(9, width), l = x - width / 2, top = Math.min(y, base);
             ctx.save();
             ctx.fillStyle = chip;
-            ctx.beginPath(); ctx.moveTo(l, y); ctx.lineTo(l + w, y); ctx.lineTo(l, y + w); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(l, top); ctx.lineTo(l + w, top); ctx.lineTo(l, top + w); ctx.closePath(); ctx.fill();
             ctx.restore();
           });
         }

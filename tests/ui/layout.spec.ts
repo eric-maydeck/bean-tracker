@@ -140,6 +140,18 @@ async function openSwitches(page: Page) {
   return menu;
 }
 
+// A small bar's amber corner fold: top right on a horizontal bar pointing left (its flat axis end, clear of a
+// "keeps going" tip), top left everywhere else (user, 2026-10-17). Read from the fold layer's position and direction.
+async function expectFoldCorners(page: Page) {
+  const bad = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('main .bar.small-sample-mark')].flatMap((e) => {
+    const cs = getComputedStyle(e), track = e.parentElement!.getBoundingClientRect(), r = e.getBoundingClientRect();
+    const horizontal = !!e.closest('.delta-bars');
+    const left = horizontal && Math.abs(r.right - (track.left + track.width / 2)) < 1.5 && r.width > 2; // ends at the 0 line
+    const atRight = /^(100%|right)/.test(cs.backgroundPositionX.split(',')[0].trim()) && /to left bottom|to bottom left/.test(cs.backgroundImage);
+    return left === atRight ? [] : [`${e.closest('[data-section]')?.getAttribute('data-section')}: fold at ${atRight ? 'right' : 'left'}, bar points ${left ? 'left' : 'right/up'}`];
+  }));
+  expect(bad).toEqual([]);
+}
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
@@ -1929,6 +1941,7 @@ export const STATES: State[] = [
       const line = page.locator('[data-board="coffees"] .like-line').first();
       await expect(line).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       // Stacked (phone), only rows with a line grow: Roasters keeps the plain 3rem row; side by side the band stays level.
       const h = (sel: string) => page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().height);
       const plain = await h('[data-board="roasters"] .board-row:not(.placeholder)');
@@ -1938,9 +1951,11 @@ export const STATES: State[] = [
       await page.getByLabel('View').selectOption('records');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       await page.getByLabel('View').selectOption('sweetspots');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
     } },
   // Gate P4: the line shows under every rank but like; spend ranks bags, so it shows there too.
   { name: 'insights-like-lines-brews', path: () => '/insights?tab=leaderboards&rank=brews&range=all',
@@ -2377,6 +2392,7 @@ export const STATES: State[] = [
       const over = await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.scrollHeight > c.clientHeight + 1).map((c) => c.id));
       expect(over).toEqual([]);
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       // Every card's mini chart takes spare height (≥ 1.5rem of columns), under a value that stays the largest text.
       const charts = await page.locator('.spot-card').evaluateAll((cs) => cs.flatMap((c) => {
         const cols = c.querySelector('.cols')?.getBoundingClientRect();
@@ -2571,6 +2587,7 @@ export const STATES: State[] = [
       expect(colors.out).toEqual([]);
       expect(colors.drift).toBe(colors.muted);
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       // C2: a tip never clips: the Bloom chart's last row and a top-row heat cell, scrolled just under the sticky bar.
       for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
         const el = page.locator(target);
@@ -3030,6 +3047,7 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await map.locator('.map-name:focus').blur();
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
@@ -3248,6 +3266,7 @@ export const STATES: State[] = [
         expect(cols).toBe(true);
       }
       await expectDeltaInk(page);
+      await expectFoldCorners(page);
       // Narrow boards drop SD first; brews and the delta always show.
       const sdShown = await page.locator('[data-section="gear-drippers"] .board-head .sd').evaluate((e) => e.getBoundingClientRect().width > 0);
       const boardW = (await page.locator('[data-section="gear-drippers"] .lab-board').boundingBox())!.width;
