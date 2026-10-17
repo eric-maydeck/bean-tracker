@@ -2165,15 +2165,14 @@ export const STATES: State[] = [
       // Dragged to either end, the thumb reaches the ruler's end and the scroll ends with it: the
       // panel's bottom at the screen's bottom, then the first month's header just under the bars.
       const panel = page.locator('section.chart-panel', { has: page.locator('.feed') });
-      const end = await at(n - 0.001), first = await at(-0.05); // past the start: a drag that overshoots
+      const end = await at(n + 0.05), first = await at(-0.05); // past the start: a drag that overshoots
       await page.mouse.move(start.x, start.y);
       await page.mouse.down();
       await page.mouse.move(end.x, end.y, { steps: 4 });
       await settle();
       const pb = (await panel.boundingBox())!;
-      // 3: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off
-      // (2.65 with the Part 4 seed bags in the feed).
-      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(3);
+      // 2: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off.
+      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2);
       const tEnd = (await track.boundingBox())!; // the side ruler may have slid up a few px with the feed's end
       expect(Math.abs(await off(tEnd.height > tEnd.width ? { x: 0, y: tEnd.y + tEnd.height } : { x: tEnd.x + tEnd.width, y: 0 })),
         'thumb at the ruler end').toBeLessThanOrEqual(2);
@@ -3241,7 +3240,28 @@ export const STATES: State[] = [
         });
         expect(spill).toBe(0);
       }
-      for (const id of ['rescuedBags', 'likeRoaster']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
+      for (const id of ['rescuedBags', 'likeRoaster', 'likeStandout']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
+      // Crowded bars (prod has 4-5 groups with long names): five long labels stay whole on a phone and never spill.
+      const crowded = await page.locator('#insight-dialinBy-roastLevel').evaluate((card) => {
+        const row = card.querySelector('.bar-labels.full') as HTMLElement, saved = row.innerHTML, n0 = row.style.getPropertyValue('--n');
+        const names = ['Nordic Light', 'Nordic', 'Ultralight', 'Extended Ferment Washed', 'Anaerobic Washed'];
+        row.innerHTML = names.map((n, i) => `<span><b>${i + 1}</b>${n}</span>`).join('');
+        row.style.setProperty('--n', '5');
+        const r = card.getBoundingClientRect();
+        const spans = [...row.querySelectorAll('span')];
+        const out = {
+          phone: innerWidth <= 480,
+          cut: spans.filter((e) => e.scrollWidth > e.clientWidth + 1).length,
+          outside: spans.filter((e) => { const b = e.getBoundingClientRect(); return b.left < r.left - 1 || b.right > r.right + 1; }).length,
+          overflow: card.scrollHeight - card.clientHeight
+        };
+        row.innerHTML = saved;
+        row.style.setProperty('--n', n0);
+        return out;
+      });
+      if (crowded.phone) expect(crowded.cut, 'labels cut at phone width').toBe(0);
+      expect(crowded.outside).toBe(0);
+      expect(crowded.overflow, 'card overflow with crowded labels').toBeLessThanOrEqual(1);
       // A badge explains itself on tap.
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();

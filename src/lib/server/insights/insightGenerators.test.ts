@@ -811,4 +811,30 @@ describe('like-with-like findings', () => {
     expect(f?.headline).toBe('3 bags rescued after a rough start');
     expect(f?.value).toBe('3 of 5');
   });
+  it('likeRoaster: a roaster of 3 one-brew bags does not render, whatever the gap', () => {
+    const rs = (roaster: string, ids: number[], r: number, n: number) => ids.flatMap((id) => Array.from({ length: n }, (_, i) => brew({ id: id * 10 + i, coffeeId: id, roaster, ...LW, rating: r, brewIndex: i + 1 })));
+    const all = [...rs('Tiny', [1, 2, 3], 2, 1), ...rs('Big', [4, 5, 6, 7, 8, 9], 8, 5), ...rs('Mid', [10, 11, 12, 13, 14, 15], 7, 5)];
+    const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, roaster: b.roaster!, ...LW }));
+    const f = gen('likeRoaster', all, gb);
+    expect(f === null || !f.headline.startsWith('Tiny')).toBe(true);
+  });
+  it('rescued bags: a one-brew skip (bag with one dial-in brew) and fewer than 3 bags give nothing', () => {
+    const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));
+    const raw = [...[1, 2, 3].flatMap((id) => mk(id, [5, 9, 9, 9, 9])), ...mk(4, [9, 9, 9, 9, 9])]; // only brew 1 is dial-in
+    const dialIn = new Set(raw.filter((b) => b.brewIndex <= 1).map((b) => b.id));
+    expect(gen('rescuedBags', raw, [1, 2, 3, 4].map((id) => bag({ id })), { allBrews: raw, dialIn })).toBeNull();
+    const two = [1, 2].flatMap((id) => mk(id, [5, 5.5, 8.5, 9, 9]));
+    const d2 = new Set(two.filter((b) => b.brewIndex <= 2).map((b) => b.id));
+    expect(gen('rescuedBags', two, [1, 2].map((id) => bag({ id })), { allBrews: two, dialIn: d2 })).toBeNull();
+  });
+  it('standout: a repurchase of the headline coffee is told apart in the list', () => {
+    const twinBags = bags.map((b) => ({ ...b }));
+    twinBags[1] = { ...twinBags[1], name: 'Bag 1', purchaseDate: '2026-05-05' };
+    twinBags[0] = { ...twinBags[0], purchaseDate: '2026-04-01' };
+    const peers2 = peers.map((b) => (b.coffeeId === 2 ? { ...b, rating: 9.0 } : b));
+    const f = gen('likeStandout', peers2, twinBags);
+    expect(f!.headline).toMatch(/\(roasted /);
+    const names = [f!.headline, ...(f!.details?.flatMap((d) => d.items.map((i) => i.name)) ?? [])];
+    expect(new Set(names.map((n) => n.replace(/ (beats|trails) .*/, ''))).size).toBe(names.length);
+  });
 });

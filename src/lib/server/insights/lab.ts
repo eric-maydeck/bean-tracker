@@ -250,7 +250,7 @@ const mode = (bs: readonly BrewFact[], f: (b: BrewFact) => string | null | undef
 // Listed bags sharing a name (a repurchase) each get their roast date, so the rows tell apart; twins
 // roasted the same day get their opened date instead.
 type Dated = { label: string; roastedOn: string | null; openedOn: string | null };
-function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'> & { tag: string | null })[] {
+export function tagTwins<T extends Dated>(rows: T[]): (Omit<T, 'roastedOn' | 'openedOn'> & { tag: string | null })[] {
   const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8, 10)}`;
   const key = (b: { label: string; tag: string | null }) => `${b.label}|${b.tag}`;
   const twins = <U extends { label: string; tag: string | null }>(xs: U[], b: U) => xs.filter((x) => key(x) === key(b)).length > 1;

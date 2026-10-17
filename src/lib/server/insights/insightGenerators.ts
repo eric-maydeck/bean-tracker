@@ -7,7 +7,8 @@ import { settleAt } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, type Like } from './likeGroup';
-import { POOLED_MIN_BAGS, single } from '$lib/sample';
+import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
+import { tagTwins } from './lab';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
@@ -50,7 +51,7 @@ const signed = (x: number, d = 2) => `${+x.toFixed(d) < 0 ? '-' : '+'}${Math.abs
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not entered
 const counted = (c: GenCtx) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
-const bagLabel = (c: GenCtx, id: number) => { const b = c.bags.find((x) => x.id === id); return b ? `${b.roaster} ${b.name}` : `Bag ${id}`; };
+const bagLabel = (c: GenCtx, id: number, b = bagById(c).get(id)) => (b ? `${b.roaster} ${b.name}` : `Bag ${id}`);
 // Mean rating per bag, for bags with at least MIN_BAGS rated brews.
 const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
   new Map([...perBag(rows)].filter(([, bs]) => bs.length >= MIN_BAGS).map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
@@ -64,7 +65,9 @@ function details(...groups: [string, DetailItem[]][]): Pick<Finding, 'details'> 
   const out = groups.map(([label, items]) => ({ label, items: items.filter((x, i) => items.findIndex((y) => y.name === x.name) === i).slice(0, DETAIL_ITEMS) })).filter((g) => g.items.length);
   return out.length ? { details: out } : {};
 }
-const bagById = (c: GenCtx) => new Map(c.bags.map((b) => [b.id, b]));
+// Cached per bags array: bagLabel and the generators call it inside loops.
+const bagMaps = new WeakMap<readonly BagFact[], Map<number, BagFact>>();
+const bagById = (c: GenCtx) => bagMaps.get(c.bags) ?? (bagMaps.set(c.bags, new Map(c.bags.map((b) => [b.id, b]))), bagMaps.get(c.bags)!);
 // Mean paired difference with z = mean / (sample sd / sqrt(n)); non-finite z when the data can't support one.
 const paired = (d: number[]) => ({ m: mean(d), z: mean(d) / ((sd(d) * Math.sqrt(d.length / (d.length - 1))) / Math.sqrt(d.length)) });
 
@@ -755,15 +758,18 @@ const likeStandouts: Generator = (c) => {
   const byGap = (a: [number, Like], b: [number, Like]) => Math.abs(b[1].gap) - Math.abs(a[1].gap) || bagLabel(c, a[0]).localeCompare(bagLabel(c, b[0]));
   const ranked = [...likes].sort(byGap), byId = bagById(c), [id, top] = ranked[0] ?? [];
   const up = (top?.gap ?? 0) >= 0;
+  // Repurchases of one coffee share a name: tag the headline's and the listed ones with their roast date.
+  const same = ranked.slice(1).filter(([, l]) => (l.gap >= 0) === up).slice(0, DETAIL_ITEMS);
+  const named = new Map(tagTwins([[id], ...same].map(([x]) => { const b = byId.get(x as number); return { x, label: bagLabel(c, x as number, b), roastedOn: b?.purchaseDate ?? null, openedOn: b?.firstBrew ?? null }; }))
+    .map((t) => [t.x, t.tag ? `${t.label} (${t.tag})` : t.label]));
   const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
-    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${bagLabel(c, id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
+    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
     value: signed(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
-    ...details([up ? 'Also above their peers' : 'Also below their peers', ranked.slice(1).filter(([, l]) => (l.gap >= 0) === up)
-      .map(([x, l]) => detail(bagLabel(c, x), signed(l.gap), coffeeHref(byId.get(x))))])
+    ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, signed(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
   // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
   const rl = roasterLikes(counted(c)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
-  const roasters = [...rl].filter(([, x]) => x.bags >= POOLED_MIN_BAGS);
+  const roasters = [...rl].filter(([, x]) => !pooled(x.bags, x.brews).small); // the board's small-sample rule
   const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
   const roaster = best ? graded({
     key: 'likeRoaster', theme: 'taste', kind: 'number',
@@ -804,7 +810,7 @@ const dialinByGroup: Generator = (c) => {
 const RESCUE = 1; // ponytail: a fixed 1-point climb; tune at the Part 4 preview
 const rescuedBags: Generator = (c) => {
   const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
-  const userMean = mean(raw.map((b) => b.rating!));
+  const userMean = mean(raw.map((b) => b.rating!)), byId = bagById(c);
   const bags = [...perBag(raw)].flatMap(([id, bs]) => {
     const later = bs.filter((b) => !c.dialIn.has(b.id));
     if (single(bs.length).small || !c.dialIn.has(bs[0].id) || !c.dialIn.has(bs[1].id) || !later.length) return [];
@@ -819,7 +825,7 @@ const rescuedBags: Generator = (c) => {
     value: `${saved.length} of ${bags.length}`,
     body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}.`,
     sample: plural(bags.length, 'bag'), href: `${LB}&open=coffees`, z: null, strength: null,
-    ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(bagById(c).get(x.id))))])
+    ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(byId.get(x.id))))])
   };
 };
 
