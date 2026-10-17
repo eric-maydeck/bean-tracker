@@ -87,6 +87,7 @@ export function leaderboard(
   // Pooled rating boards count full bags only (fullBags, stats audit must-fix 1), except under Raw (See all: every bag
   // shows, so "Showing everything" holds; user, 2026-10-17) and the peak modes (a best brew isn't dragged down by
   // dial-in brews the way a mean is). Records pass true for their mean-vs-average comparisons; so do the cutoff checks.
+  // Rank like follows Raw: its roaster figure counts every bag too (See all shows every coffee; user, 2026-10-17).
   full = avg !== 'raw' && !avg.startsWith('best')
 ): BoardRow[] {
   let rows: BoardRow[] = [];
@@ -120,7 +121,7 @@ export function leaderboard(
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows(), twinKeys(bags))].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        : [...roasterLikes(likeRows(), twinKeys(bags), avg !== 'raw')].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
       // Coffees rows are single bags: the one-bag rule marks them instead.
       rows = ratedGroups(board === 'coffees' || !full ? inP : fullBags(inP, ratings), key, ratings, avg).map((r) => ({

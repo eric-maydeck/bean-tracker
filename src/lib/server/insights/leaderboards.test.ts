@@ -231,11 +231,19 @@ describe('vs like coffees', () => {
     const c = leaderboard([...bs, tiny], [], SEPT, 'coffees', 'like', 'all', 'min3');
     expect(c.map((r) => r.key)).not.toContain('7');
     expect(leaderboard([...bs, tiny], [], SEPT, 'coffees', 'like', 'all', 'raw').map((r) => r.key)).toContain('7');
-    // A's figure stays 1: the tiny bag's +3 gap is no point in it (raw too: roasterLikes leaves it out).
-    expect(+leaderboard([...bs, tiny], [], SEPT, 'roasters', 'like', 'all', 'raw')[0].value.toFixed(2)).toBe(1);
+    // A's figure: k2 keeps the 4-brew rule, so the tiny bag's +3 gap is no point in it; raw counts every bag.
+    expect(+leaderboard([...bs, tiny], [], SEPT, 'roasters', 'like', 'all', 'k2')[0].value.toFixed(2)).toBe(1);
+    expect(+leaderboard([...bs, tiny], [], SEPT, 'roasters', 'like', 'all', 'raw')[0].value.toFixed(2)).toBe(1.5);
     const h = hiddenRows(leaderboards([...bs, tiny], [], SEPT, null, 'like', 'all', 'min3'), [...bs, tiny], [...bs, tiny], [], SEPT, 'like', 'all');
     expect(h).toMatchObject({ rows: { coffees: 1 } });
     expect(why(h)).toEqual(['avg']);
+  });
+  it('See all (raw) puts a roaster of only 1–3-brew bags on the like board, and the note counts it', () => {
+    const small = brew({ id: 999, coffeeId: 7, rating: 9, roaster: 'C', ...LW });
+    expect(leaderboard([...bs, small], [], SEPT, 'roasters', 'like', 'all', 'raw').map((r) => r.key)).toContain('C');
+    expect(leaderboard([...bs, small], [], SEPT, 'roasters', 'like', 'all', 'k2').map((r) => r.key)).not.toContain('C');
+    const h = hiddenRows(leaderboards([...bs, small], [], SEPT, null, 'like', 'all', 'min3'), [...bs, small], [...bs, small], [], SEPT, 'like', 'all');
+    expect(h.rows.roasters).toBe(1); // C: min3 already shows A and B
   });
   it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
   it('the coffees board carries the like line under rating', () => {
