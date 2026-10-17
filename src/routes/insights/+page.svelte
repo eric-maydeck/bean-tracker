@@ -1453,7 +1453,7 @@
   .reset {
     margin-left: auto;
   }
-  /* A long value ("$1,234.56": costs keep 2 decimals) shrinks to fit its tile; 6 characters or fewer keep the
+  /* A long value ("$999.50", "12.3 kg") shrinks to fit its tile; 6 characters or fewer keep the
      shared size (app.css). */
   .stat-item .stat-value {
     font-size: min(25.81cqw, calc(160cqw / var(--len, 1))); /* same top as its row (the value-offset check) */
