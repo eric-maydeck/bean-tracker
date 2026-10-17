@@ -721,6 +721,16 @@ describe('insightsTab', () => {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }
   });
+  it('too early to tell: the dialinBy findings always list, outside the cap (gate P4)', () => {
+    const f = (key: string, z: number): Finding => ({ key, theme: 'dialin', kind: 'pattern', headline: key, value: '-0.25', sample: 's', z, strength: 'early' });
+    const fake: Generator[] = [() => [...Array.from({ length: 14 }, (_, i) => f(`real-${i}`, 1.2 - i / 20)), f('dialinBy:processGroup', 0.1)]];
+    const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
+    try {
+      expect(insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key)).toEqual([...Array.from({ length: 12 }, (_, i) => `real-${i}`), 'dialinBy:processGroup']);
+    } finally {
+      GENERATORS.splice(0, GENERATORS.length, ...saved);
+    }
+  });
   it('defaults come from the data: drinkers = household size, gpp = measured g/day ÷ size', () => {
     // 180 brews × 20 g over Sep 1-30 (30 tracked days): 120 g/day, 2 drinkers → 60 g each; 6 brews/day.
     const t = insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined);

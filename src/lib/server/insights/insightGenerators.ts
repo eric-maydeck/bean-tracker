@@ -810,7 +810,7 @@ const dialinByGroup: Generator = (c) => {
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
       href: SETTLE[dim]
-    }, groupZ(slow.ps, allPos), true, 'bags', slow.bags, undefined, groups.length);
+    }, ((z) => (Number.isFinite(z) ? z : 0))(groupZ(slow.ps, allPos)), true, 'bags', slow.bags, undefined, groups.length);
     return f ? [f] : [];
   });
 };
@@ -857,6 +857,8 @@ const DECK = 5;
 // Too early to tell: a rating delta under EARLY_FLOOR is noise, not a lead ("rate 0.01 higher");
 // the list keeps the EARLY_CAP strongest. Not in the spec: set 2026-10-12 against prod data.
 const EARLY_FLOOR = 0.1, EARLY_CAP = 12;
+// Always listed (user, gate P4): the dialinBy findings show in the grid when graded, else in Too early outside the cap.
+const PINNED = (f: Finding) => f.key.startsWith('dialinBy:');
 const negligible = (f: Finding) => /^[-+]\d/.test(f.value ?? '') && Math.abs(parseFloat(f.value!)) < EARLY_FLOOR;
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
@@ -892,7 +894,7 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
     grid: fs.filter((f) => inGrid(f) && !out.has(f.key) && (!theme || f.theme === theme)),
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
-    tooEarly: fs.filter((f) => f.strength === 'early' && !negligible(f)).slice(0, EARLY_CAP),
+    tooEarly: ((k) => fs.filter((f) => f.strength === 'early' && !negligible(f) && (PINNED(f) || k++ < EARLY_CAP)))(0),
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }
