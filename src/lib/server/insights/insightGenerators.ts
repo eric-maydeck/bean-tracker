@@ -4,9 +4,9 @@ import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps re
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
-import { countsForRating, fullBags } from './ratings';
+import { bagSizes, countsForRating, fullBags } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
-import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
+import { bagWeight, brewZ, demeaned, effN, mean, wmean, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
@@ -57,9 +57,14 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not entered
 const counted = (c: Pick<GenCtx, 'brews' | 'ratings'>) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
 const bagLabel = (c: GenCtx, id: number, b = bagById(c).get(id)) => (b ? `${b.roaster} ${b.name}` : `Bag ${id}`);
-// Mean rating per bag, for bags with BAG_MIN_BREWS+ rated brews: the page's one bag rule (sample.ts, fullBags).
-const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
-  new Map([...perBag(fullBags(rows, 'all'))].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
+// Mean rating per bag, for bags of BAG_MIN_BREWS+ rated brews (fullBags: dial-in brews count toward the size): the
+// one-bag rule, for findings about each bag's own figure.
+const bagMeans = (c: Pick<GenCtx, 'brews' | 'ratings'>): Map<number, number> =>
+  new Map([...perBag(counted({ ...c, brews: fullBags(c.brews, c.ratings) }))].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
+// Every bag's mean and weight (bagWeight, n/(n+2)): pooled findings weight bags instead of dropping small ones
+// (user ruling 2026-10-17).
+const bagPoints = (c: Pick<GenCtx, 'brews' | 'ratings'>): Map<number, { m: number; w: number }> =>
+  new Map([...perBag(counted(c))].map(([id, bs]) => [id!, { m: mean(bs.map((b) => b.rating!)), w: bagWeight(bs.length) }]));
 // Rated brews of each bag, in time order.
 const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => groupBy(rows, (b) => b.coffeeId);
 // Supporting lists: `details(['Label', items], …)` keeps non-empty groups, DETAIL_ITEMS each, unique names.
@@ -200,7 +205,7 @@ const secondCup: Generator = (c) => {
 };
 
 const fondMemory: Generator = (c) => {
-  const by = perBag(fullBags(counted(c), 'all'));
+  const by = perBag(counted({ ...c, brews: fullBags(c.brews, c.ratings) }));
   const gaps = c.bags.flatMap((b) => {
     const bs = by.get(b.id);
     return b.bagRating !== null && bs ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
@@ -218,7 +223,7 @@ const fondMemory: Generator = (c) => {
 };
 
 const repeatBuys: Generator = (c) => {
-  const means = bagMeans(counted(c));
+  const means = bagMeans(c);
   const groups = groupBy(c.bags.filter((b) => means.has(b.id)), (b) => `${b.name.toLowerCase()}|${b.roaster.toLowerCase()}`);
   const pairs = [...groups.values()].filter((g) => g.length >= 2)
     .map((g) => g.sort((a, b) => (a.purchaseDate ?? '').localeCompare(b.purchaseDate ?? '') || a.id - b.id))
@@ -241,23 +246,23 @@ const DIMS = [
   ['processGroup', 'process', 'coffees', 'process'], ['roastLevel', 'roast', 'roasts', 'roast level']
 ] as const;
 const groupDelta: Generator = (c) => {
-  const means = bagMeans(counted(c));
-  const rated = c.bags.filter((b) => means.has(b.id));
-  const all = rated.map((b) => means.get(b.id)!);
+  const pts = bagPoints(c);
+  const rated = c.bags.filter((b) => pts.has(b.id));
+  const m = (b: BagFact) => pts.get(b.id)!.m, w = (b: BagFact) => pts.get(b.id)!.w;
   return DIMS.flatMap(([dim, board, noun, dimName]) => {
     const groups = groupBy(rated, (b) => (b[dim] && b[dim] !== 'Other / Unknown' ? b[dim] : null));
     const big = [...groups].filter(([, bs]) => bs.length >= MIN_BAGS);
     return big.flatMap(([label, bs]) => {
-      const ms = bs.map((b) => means.get(b.id)!), rest = rated.filter((b) => !bs.includes(b)).map((b) => means.get(b.id)!);
+      const rest = rated.filter((b) => !bs.includes(b));
       if (!rest.length) return [];
-      const delta = mean(ms) - mean(rest); // vs your other bags
-      const ranked = [...bs].sort((x, y) => (delta >= 0 ? means.get(y.id)! - means.get(x.id)! : means.get(x.id)! - means.get(y.id)!) || x.name.localeCompare(y.name));
+      const delta = wmean(bs.map(m), bs.map(w)) - wmean(rest.map(m), rest.map(w)); // vs your other bags, weighted
+      const ranked = [...bs].sort((x, y) => (delta >= 0 ? m(y) - m(x) : m(x) - m(y)) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(1)} ${delta < 0 ? 'lower' : 'higher'}`,
-        value: signed(delta, 1), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
-        ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(1), coffeeHref(b)))])
-      }, restZ(ms, rest), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, all.length);
+        value: signed(delta, 1), sample: `${plural(bs.length, 'bag')}`, href: `${LB}&open=${board}`,
+        ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, m(b).toFixed(1), coffeeHref(b)))])
+      }, restZ(bs.map(m), rest.map(m), bs.map(w), rest.map(w)), true, 'bags', bs.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, rated.length);
       return f ? [f] : [];
     });
   });
@@ -609,7 +614,7 @@ const wildcardBrewer: Generator = (c) => {
 
 // ---- Money ----
 const priceVsRating: Generator = (c) => {
-  const means = bagMeans(counted(c));
+  const means = bagMeans(c);
   const pts = c.bags.flatMap((b) => { const p = per100(b); return p !== null && means.has(b.id) ? [[p, means.get(b.id)!]] : []; });
   // Rank correlation: one pricey outlier bag can't make or break it.
   const r = pts.length >= MIN_BREWS ? spearman(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
@@ -717,14 +722,15 @@ const restWindowMyth: Generator = (c) => {
 // margin of error (2 SE) inside ±0.5, else "no origin stands out yet" (stats audit 2026-10-17: an equivalence claim).
 const ORIGIN_EVEN = 0.5;
 const originMyth: Generator = (c) => {
-  const means = bagMeans(counted(c));
-  const bs = c.bags.filter((b) => means.has(b.id));
-  const spread = sd(bs.map((b) => means.get(b.id)!));
+  const pts = bagPoints(c);
+  const bs = c.bags.filter((b) => pts.has(b.id));
+  const m = (b: BagFact) => pts.get(b.id)!.m, w = (b: BagFact) => pts.get(b.id)!.w;
+  const spread = sd(bs.map(m));
   const gs = [...groupBy(bs, (b) => (b.origin && b.origin !== 'Other / Unknown' ? b.origin : null)).values()].filter((g) => g.length >= MIN_BAGS);
   if (gs.length < 3) return null;
   const gaps = gs.map((g) => {
-    const rest = bs.filter((b) => !g.includes(b)).map((b) => means.get(b.id)!);
-    return { d: Math.abs(mean(g.map((b) => means.get(b.id)!)) - mean(rest)), se: spread * Math.sqrt(1 / g.length + 1 / rest.length) };
+    const rest = bs.filter((b) => !g.includes(b));
+    return { d: Math.abs(wmean(g.map(m), g.map(w)) - wmean(rest.map(m), rest.map(w))), se: spread * Math.sqrt(1 / effN(g.map(w)) + 1 / effN(rest.map(w))) };
   });
   const max = Math.max(...gaps.map((x) => x.d)), band = Math.max(...gaps.map((x) => x.d + 2 * x.se));
   if (max > ORIGIN_EVEN) return null;
@@ -739,7 +745,7 @@ const originMyth: Generator = (c) => {
 
 // Days from roast to first brew (freezer time left out) vs the bag's mean rating.
 const backlogWaitMyth: Generator = (c) => {
-  const means = bagMeans(counted(c));
+  const means = bagMeans(c);
   const pts = c.bags.flatMap((b) => {
     const w = b.firstBrew ? restDays(b.purchaseDate, b.frozenStart ?? null, b.frozenEnd ?? null, b.firstBrew) : null;
     return w !== null && means.has(b.id) ? [[w, means.get(b.id)!]] : [];
@@ -808,7 +814,7 @@ const calibration: Generator = (c) => {
 // Coffee z: its gap over the spread of every bag's gap, Bonferroni over the bags compared.
 const likeStandouts: Generator = (c) => {
   const twins = twinKeys(c.bags);
-  const likes = [...likeGaps(counted(c), false, twins)].filter(([, l]) => !l.sample.small);
+  const likes = [...likeGaps(counted(c), false, twins, bagSizes(c.brews, c.ratings))].filter(([, l]) => !l.sample.small);
   const gaps = likes.map(([, l]) => l.gap), spread = sd(gaps);
   const byGap = (a: [number, Like], b: [number, Like]) => Math.abs(b[1].gap) - Math.abs(a[1].gap) || bagLabel(c, a[0]).localeCompare(bagLabel(c, b[0]));
   const ranked = [...likes].sort(byGap), byId = bagById(c), [id, top] = ranked[0] ?? [];
@@ -830,7 +836,7 @@ const likeStandouts: Generator = (c) => {
     key: 'likeRoaster', theme: 'taste', kind: 'number',
     headline: `${best.r} rates ${Math.abs(best.gap).toFixed(1)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
     value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
-  }, restZ(best.gaps, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.gaps)), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
+  }, restZ(best.gaps, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.gaps), best.ws, [...rl].filter(([r]) => r !== best.r).flatMap(([, x]) => x.ws)), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
 

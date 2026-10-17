@@ -198,9 +198,9 @@ describe('ladder', () => {
     expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
     expect(ladder(bagGaps([0.3, 0, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'none', best: { strength: 'early' } });
   });
-  it('usual.mean is bag-weighted: a 40-brew bag does not outvote a 2-brew one', () => {
+  it('usual.mean is bag-weighted n/(n+2): a 39-brew bag (0.95) does not outvote a 2-brew one (0.5) 39 to 2', () => {
     const rows = [...many(39, 1, 91, 8), ...many(2, 2, 91, 6)];
-    expect(ladder(rows, [], [temp])!.usual.mean).toBeCloseTo(7, 1);
+    expect(ladder(rows, [], [temp])!.usual.mean).toBeCloseTo(((39 / 41) * 8 + 0.5 * 5.95) / (39 / 41 + 0.5), 6); // the 2-brew bag rates 5.9, 6.0
   });
   it('tier 2 counts bags, not brews: one big bag is not solid', () => {
     const rows = [...many(40, 1, 91, 8), ...[4, 5, 6].flatMap((id) => many(10, id, 94, 7))];

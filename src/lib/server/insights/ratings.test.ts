@@ -34,11 +34,12 @@ describe('ratedGroups', () => {
     expect(thin.sample).toEqual({ bags: 3, brews: 3, small: true }); // 3 bags, but under 10 brews
   });
 
-  it('adjusted shrinks small groups toward the overall bag mean (K = 5)', () => {
-    // overall = (9 + 85 + 50) / 21 = 6.857
+  // Weights n/(n+2): A's 2-brew bag 1/2, every 1-brew bag 1/3. overall = weighted mean of the bag means.
+  const o = (0.5 * 9 + (10 / 3) * 8.5 + (10 / 3) * 5) / (0.5 + 20 / 3);
+  it('adjusted shrinks small groups toward the overall bag mean (K = 5 bags, in weight)', () => {
     const g = Object.fromEntries(ratedGroups(brews, key, 'all', 'adjusted').map((x) => [x.label, x]));
-    expect(g.A.adjusted).toBeCloseTo((9 + 5 * (144 / 21)) / 6, 6);
-    expect(g.B.adjusted).toBeCloseTo((85 + 5 * (144 / 21)) / 15, 6);
+    expect(g.A.adjusted).toBeCloseTo((0.5 * 9 + 5 * o) / 5.5, 6);
+    expect(g.B.adjusted).toBeCloseTo(((10 / 3) * 8.5 + 5 * o) / (10 / 3 + 5), 6);
     expect(g.B.sample.small).toBe(false);
   });
 
@@ -59,9 +60,8 @@ describe('ratedGroups', () => {
     expect(ratedGroups([b('A', 1, 7)], () => null, 'all', 'raw')).toEqual([]);
   });
   it('k2 shrinks less than adjusted (K = 2 vs 5)', () => {
-    const o = 144 / 21;
     const get = (avg: 'raw' | 'k2' | 'adjusted') => ratedGroups(brews, key, 'all', avg).find((g) => g.label === 'A')!.adjusted;
-    expect(get('k2')).toBeCloseTo((9 + 2 * o) / 3, 6);
+    expect(get('k2')).toBeCloseTo((0.5 * 9 + 2 * o) / 2.5, 6);
     expect(get('raw')).toBe(9);
     expect(get('k2')).toBeGreaterThan(get('adjusted'));
   });
@@ -124,9 +124,10 @@ describe('roastMix', () => {
   it('a small level is left out (and of the SD)', () => {
     expect(roastMix([...pair(0.7), ...level('Dark', 3, 0.5, 2)], 'all')?.map((r) => r.roast)).toEqual(['Light', 'Medium']);
   });
-  it('bags under 4 rated brews are left out: a 1-brew Light bag at 2 does not drag Light down', () => {
-    const tiny = { coffeeId: 999, rating: 2, localDate: '2026-07-01', roastLevel: 'Light' };
-    expect(roastMix([...pair(0.7), tiny], 'all')?.[0]).toEqual({ roast: 'Light', mean: expect.closeTo(7.7) });
+  it('every bag counts, weighted n/(n+2): a 1-brew Light bag at 6 (1/3) weighs half a 4-brew bag (2/3)', () => {
+    const tiny = { coffeeId: 999, rating: 6, localDate: '2026-07-01', roastLevel: 'Light' };
+    const light = ((10 / 3) * 9 + (1 / 3) * 6) / (10 / 3 + 1 / 3);
+    expect(roastMix([...pair(2), tiny], 'all')?.[0]).toEqual({ roast: 'Light', mean: expect.closeTo(light) });
   });
   it('one level (a Roast filter set) → null', () => expect(roastMix(level('Light', 8), 'all')).toBeNull());
   it('Calibrated ratings leave out early brews; unlinked brews are skipped', () => {

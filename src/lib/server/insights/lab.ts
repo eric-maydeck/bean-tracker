@@ -4,7 +4,7 @@ import { slugify } from '$lib/server/slug';
 import { grindKey, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
-import { countsForRating, ratedGroups } from './ratings';
+import { bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { demeaned, mean, MIN_BAGS, MIN_BREWS, restZ, sd, strengthOf, type Strength } from './stats';
@@ -283,6 +283,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   // `brews` is already Coffees-filtered; the ladder widens past the filter, so it reads `all`.
   const slice = ratedIn(brews, c.period, c.ratings);
   const perBag = groupBy(slice, (b) => b.coffeeId);
+  const sizes = bagSizes(brews.filter((b) => inPeriod(b.localDate, c.period)), c.ratings); // one-bag rule: dial-in brews count
   const groups = groupsFor(ratedIn(c.all, c.period, c.ratings), c.filters);
   const cards = (Object.keys(SPOT_VARS) as SpotVar[]).flatMap((key) => {
     const spot = ladder(slice, groups, SPOT_VARS[key].map((v) => labFn(v, c.grinder)), key === 'grind');
@@ -299,7 +300,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
       ...(like ? { like: { gap: like.gap, label: like.label } } : {}),
       roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
-      sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null, sample: single(bs.length),
+      sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null, sample: single(sizes.get(id!) ?? bs.length),
       usual: [mode(bs, (b) => bandOf('tempExact', b)?.label), mode(bs, (b) => b.water), mode(bs, (b) => b.dripper)].filter(Boolean).join(' · ')
     };
   }).sort((a, b) => b.score - a.score || a.label.localeCompare(b.label)).slice(0, TOP_N);

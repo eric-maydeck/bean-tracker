@@ -3,7 +3,7 @@ import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
-import { countsForRating, fullBags, ratedGroups } from './ratings';
+import { bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -21,7 +21,8 @@ export interface BoardRow {
   sample?: Sample; // rating ranks: the small-sample marker
   best?: number; // peak modes: the group's top brew rating
   atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
-  mean?: number; // peak modes: raw mean of bag means (second tie-break)
+  mean?: number; // peak modes: mean of bag means (second tie-break); Coffees under k2/adjusted: the unshrunk average
+  se?: number; // group boards' mean modes: 1 SE of the row's mean (ratedGroups), the tip's "± x"
   cost?: number; // $/g: the spend and grams behind it (detail line)
   grams?: number;
   move?: number | 'new';
@@ -63,12 +64,12 @@ const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3'
 export const listHref = (column: ColumnKey, values: (string | null)[]) =>
   `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
 
-function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow {
+function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: ReadonlyMap<number, number>): BoardRow {
   if (board === 'coffees') {
     const bag = bags.find((b) => b.id === Number(r.key));
-    // One bag each: the one-bag rule.
+    // One bag each: the one-bag rule, on the bag's size (bagSizes: dial-in brews included).
     return {
-      ...r, sample: r.sample && single(r.brews), label: bag?.name ?? r.label, sub: bag?.roaster,
+      ...r, sample: r.sample && single(sizes.get(Number(r.key)) ?? r.brews), label: bag?.name ?? r.label, sub: bag?.roaster,
       ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {})
     };
   }
@@ -83,12 +84,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
 
 export function leaderboard(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg,
-  like = true, // false: callers that only count rows or read keys skip the like lines
-  // Pooled rating boards count full bags only (fullBags, stats audit must-fix 1), except under Raw (See all: every bag
-  // shows, so "Showing everything" holds; user, 2026-10-17) and the peak modes (a best brew isn't dragged down by
-  // dial-in brews the way a mean is). Records pass true for their mean-vs-average comparisons; so do the cutoff checks.
-  // Rank like follows Raw: its roaster figure counts every bag too (See all shows every coffee; user, 2026-10-17).
-  full = avg !== 'raw' && !avg.startsWith('best')
+  like = true // false: callers that only count rows or read keys skip the like lines
 ): BoardRow[] {
   let rows: BoardRow[] = [];
   const inP = brews.filter((b) => inPeriod(b.localDate, p));
@@ -121,12 +117,14 @@ export function leaderboard(
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows(), twinKeys(bags), avg !== 'raw')].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        : [...roasterLikes(likeRows(), twinKeys(bags))].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
-      // Coffees rows are single bags: the one-bag rule marks them instead.
-      rows = ratedGroups(board === 'coffees' || !full ? inP : fullBags(inP, ratings), key, ratings, avg).map((r) => ({
+      // Every bag counts, weighted by its brews (ratedGroups); Coffees rows are single bags, shrunk by brews.
+      const coffees = board === 'coffees';
+      rows = ratedGroups(inP, key, ratings, avg, coffees).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
-        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: r.value, sample: r.sample })
+        ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample }
+          : { value: r.value, sample: r.sample, ...(coffees ? (r.value !== r.mean ? { mean: r.mean } : {}) : r.se !== undefined ? { se: r.se } : {}) })
       }));
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
@@ -143,7 +141,8 @@ export function leaderboard(
     }
   }
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
-  const out = rows.map((r) => decorate(r, board, bags));
+  const sizes = bagSizes(inP, ratings);
+  const out = rows.map((r) => decorate(r, board, bags, sizes));
   return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 
@@ -170,20 +169,20 @@ export function leaderboards(
   ) as Record<Board, BoardRow[]>;
 }
 
-// The boards min3's confident cutoff emptied: rated groups exist, every one under the small-sample rule. Their
+// The boards the confident cutoff emptied: rated groups exist, every one under the small-sample rule. Their
 // line says what is missing ("No roasters with 3+ bags and 10+ rated brews ..."), not "No brews".
 // Where the See all note runs, hiddenRows' `cut` is the same list without the extra calls; this is the fallback.
 export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
 ): Board[] {
   if (!confident(rank, avg)) return [];
-  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false, true).length);
+  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
 // them (each step relaxes one: Score, then Ratings, then Brews). `scored`: the brews the boards were built from;
-// `all`: the brews before Once dialed. Boards that gain none are left out. `cut`: cutBoards' list (only min3
-// drops rows; n1 alone counts 1–3-brew bags, so `cut` re-checks with full bags).
+// `all`: the brews before Once dialed. Boards that gain none are left out. `cut`: cutBoards' list (only the confident
+// cutoff drops rows: every other Score shows every rated group).
 // ponytail: up to 27 leaderboard() calls (3 per board; 18 under like), no like lines; memoize if a board gets slow.
 export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
@@ -196,9 +195,7 @@ export function hiddenRows(
     const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
     const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw', false).length;
     const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw', false).length;
-    // The cutoff emptied it only if full bags would fill it (cutBoards' rule): Raw's every-bag n1 would also name a
-    // board of 1–3-brew bags, which k2/adjusted leave empty for the full-bag rule, not a cutoff.
-    if (!n0 && n1 && leaderboard(scored, bags, p, b, rank, ratings, 'raw', false, true).length) cut.push(b);
+    if (!n0 && n1) cut.push(b);
     if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
   }
   return { rows, by, cut };

@@ -4,7 +4,7 @@ import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
 import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
-import { countsForRating } from './ratings';
+import { bagSizes, countsForRating } from './ratings';
 import { BAG_MIN_BREWS, single } from '$lib/sample';
 import { daysBetween, inPeriod, type Period } from './time';
 
@@ -49,6 +49,7 @@ export interface RecordsTab {
 }
 export interface BagStat {
   coffeeId: number; rated: number[]; brews: BrewFact[]; // in brew order
+  size: number; // bagSizes: rated brews, dial-in ones included (the one-bag rule's count)
   mean: number | null; sd: number | null; grams: number; first: string; last: string;
 }
 
@@ -87,10 +88,11 @@ const distinct = (xs: (string | null)[]) => new Set(xs.filter((x) => x !== null)
 
 export function bagStats(brews: readonly BrewFact[], ratings: Ratings): Map<number, BagStat> {
   const out = new Map<number, BagStat>();
+  const sizes = bagSizes(brews, ratings);
   for (const [id, bs] of groupBy(brews, (b) => b.coffeeId)) {
     const rated = bs.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
     out.set(id as number, {
-      coffeeId: id as number, rated, brews: bs,
+      coffeeId: id as number, rated, size: sizes.get(id as number) ?? 0, brews: bs,
       mean: rated.length ? mean(rated) : null, sd: rated.length ? sd(rated) : null,
       grams: bs.reduce((s, b) => s + (b.dose && b.dose > 0 ? b.dose : 0), 0),
       first: bs[0].localDate, last: bs[bs.length - 1].localDate
@@ -106,7 +108,7 @@ const lastRatedDate = (s: BagStat, ratings: Ratings) =>
 // One candidate per bag with at least `min` counted rated brews.
 const perBag = (c: RecCtx, min: number, f: (s: BagStat, id: number) => Omit<Candidate, 'holder'> | null, only: (b: BrewFact) => boolean = () => true): Candidate[] =>
   [...bagStats(c.brews.filter(only), c.ratings).values()].flatMap((s) => {
-    if (s.rated.length < min) return [];
+    if (s.size < min || !s.rated.length) return [];
     const r = f(s, s.coffeeId);
     return r ? [{ ...r, holder: bagHolder(c.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }] : [];
   });
@@ -222,7 +224,7 @@ const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.wa
 // bag means, which the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen
 // −2.51). The group's latest brew is its date.
 const least = (board: Board) => (c: RecCtx): Candidate[] => {
-  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg, true, true);
+  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
   const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
   const rawMean = new Map(raw.map((r) => [r.key, r.value]));
   const rows = lb('adjusted').filter((r) => !r.sample!.small);
@@ -382,7 +384,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
   // Bag holders carry their roaster as sub; day holders have none and fall through to a–z.
   const tasteTie = (x: RecCtx) => {
-    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw', true, true).map((r) => [r.key, r.value]));
+    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw').map((r) => [r.key, r.value]));
     const r = (h: Holder) => (h.sub ? m.get(h.sub) : undefined) ?? -Infinity;
     return (a: Holder, b: Holder) => r(b) - r(a) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
   };
@@ -415,7 +417,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
     // Bags past the one-bag small-sample rule (Best bag's rule), best mean first.
-    topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length > 0 && !single(s.rated.length).small)
+    topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length > 0 && !single(s.size).small)
       .map((s) => ({ like: likeLine(likes.get(s.coffeeId)), mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
       .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))

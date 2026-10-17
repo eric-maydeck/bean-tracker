@@ -44,10 +44,14 @@ describe('likeGaps', () => {
     expect([l.get(1)!.rank, l.get(2)!.rank, l.get(3)!.rank]).toEqual([2, 2, 1]);
     expect(l.get(1)!.sample).toEqual({ bags: 1, brews: 3, small: true, one: true });
   });
-  it('a bag under 4 brews is in no other bag\u2019s group (its dial-in brews would drag the baseline)', () => {
+  it('every bag is in the group, weighted n/(n+2): a 1-brew bag counts a third, a 4-brew one two thirds', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 8, LWKS), ...bag(3, 8, LWKS), ...bag(4, 8, LWKS), ...bag(5, 2, LWKS, 1)];
-    expect(likeGaps(rows).get(1)).toMatchObject({ groupMean: 8, of: 4 });
+    expect(likeGaps(rows).get(1)).toMatchObject({ groupMean: expect.closeTo((2 * 8 + 2 / 3) / (2 + 1 / 3)), of: 5 });
     expect(likeGaps(rows).get(5)).toMatchObject({ groupMean: 8.25, sample: { small: true } }); // still compared itself
+  });
+  it('sizes: the bag\u2019s own sample counts its dial-in brews (bagSizes)', () => {
+    const rows = [...bag(1, 9, LWKS, 3), ...[2, 3, 4].flatMap((id) => bag(id, 8, LWKS))];
+    expect(likeGaps(rows, false, undefined, new Map([[1, 4]])).get(1)!.sample).toEqual({ bags: 1, brews: 4, small: false, one: true });
   });
   it('twins: a repurchase of the same coffee is not in its twin\u2019s group', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 5, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, LWKS))];

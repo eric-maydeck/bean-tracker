@@ -36,6 +36,6 @@ export function dialInIds(brews: readonly BrewFact[]): Set<number> {
 }
 
 // Once dialed: dial-in brews lose only their rating, so every rating aggregation skips them while brew
-// counts and grams stay whole.
+// counts and grams stay whole. The rating moves to `dialRating`, so a bag's size (bagSizes) still counts it.
 export const onceDialed = (brews: readonly BrewFact[], ids: ReadonlySet<number>): BrewFact[] =>
-  brews.map((b) => (ids.has(b.id) ? { ...b, rating: null } : b));
+  brews.map((b) => (ids.has(b.id) ? { ...b, rating: null, dialRating: b.rating } : b));

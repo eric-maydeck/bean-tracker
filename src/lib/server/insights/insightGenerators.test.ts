@@ -196,8 +196,11 @@ describe('group effects', () => {
     expect(f.strength).toBe('early');
     expect(f.caveat).toBe('With 8 roaster groups compared, one usually stands out by chance.');
   });
-  it('bags with under 3 rated brews are ignored', () =>
-    expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i)])), bs)).toBeNull());
+  it('every bag counts, its mean weighted n/(n+2): a 1-brew Light bag at 2 weighs 1/3 against 6-brew bags\u2019 3/4', () => {
+    const one = bs.flatMap((x, i) => (i === 0 ? seq(x.id, [2]) : seq(x.id, dup([rate(i), rate(i), rate(i)]))));
+    const light = (3 * 0.75 * 6 + (1 / 3) * 2) / (3 * 0.75 + 1 / 3);
+    expect(gen('groupDelta:roastLevel:Light', one, bs)!.value).toBe((light - 8).toFixed(1));
+  });
   it('null with too few bags', () => expect(all(ctx(brews.slice(0, 6), bs.slice(0, 2))).filter((f) => f!.key.startsWith('groupDelta'))).toEqual([]));
 });
 
@@ -802,7 +805,8 @@ describe('like-with-like findings', () => {
   });
   it('likeRoaster: the same figure as the Leaderboards roaster row', () => {
     const rs = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => [0, 1, 2, 3, 4].map((i) => brew({ id: id * 10 + i, coffeeId: id, roaster, ...LW, rating: r + (i % 2) * 0.2, brewIndex: i + 1 })));
-    const all = [...rs('Sey', [1, 2, 3, 4, 5, 6], 9), ...rs('Other', [7, 8, 9, 10, 11, 12], 6)];
+    // Mid keeps the two gaps apart (with two roasters they mirror: +3 / −3).
+    const all = [...rs('Sey', [1, 2, 3, 4, 5, 6], 9), ...rs('Other', [7, 8, 9, 10, 11, 12], 6), ...rs('Mid', [13, 14, 15, 16, 17, 18], 7)];
     const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, roaster: b.roaster!, ...LW }));
     const f = gen('likeRoaster', all, gb)!;
     const row = leaderboard(all, gb, { start: '2026-09-01', end: '2026-09-30' }, 'roasters', 'like', 'all', 'raw').find((r) => r.key === 'Sey')!;

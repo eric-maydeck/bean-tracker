@@ -76,6 +76,7 @@ export interface BrewFact {
   backfilled: boolean; // stored on a whole hour (mm:ss 00:00): typed in later; hour charts skip it
   dose: number | null;
   rating: number | null;
+  dialRating?: number | null; // Once dialed (onceDialed): a dial-in brew's rating, its `rating` nulled; bagSizes counts it
   roaster: string | null;
   origin: string | null;
   processGroup: ProcessGroup;

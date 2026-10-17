@@ -213,8 +213,9 @@ describe('gentle', () => {
     const mk = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => rated(id, [r, r, r, r]).map((b) => ({ ...b, roaster })));
     const brews = [...mk('A', [1, 2, 3], 5), ...mk('B', [4, 5], 3), ...mk('C', [6, 7, 8], 9)];
     const bags = [1, 2, 3, 4, 5, 6, 7, 8].map((id) => bag({ id, name: `Bag ${id}` }));
-    // Your average = mean of bag means, 6; A adjusted (3×5 + 5×6) / 8 = 5.625 → −0.375 (ranked), raw 5 → −1 (shown).
-    expect(run('leastRoaster', brews, bags)).toMatchObject({ value: -0.375, mean: -1, holder: { label: 'A' } });
+    // Your average = mean of bag means, 6; every bag 4 brews, weight 4/6, so A's 3 bags weigh 2: adjusted
+    // (2×5 + 5×6) / (2 + 5) = 5.714 → −0.286 (ranked), raw 5 → −1 (shown).
+    expect(run('leastRoaster', brews, bags)).toMatchObject({ value: expect.closeTo(-2 / 7), mean: -1, holder: { label: 'A' } });
     expect(run('leastRoaster', mk('A', [1, 2, 3], 5), bags)).toBeNull(); // one group is the average
   });
 });

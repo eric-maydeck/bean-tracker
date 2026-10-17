@@ -3,6 +3,13 @@ export const MIN_BAGS = 3;
 export const MIN_BREWS = 30;
 
 export const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length; // NaN on empty
+// A bag mean's precision weight (user ruling 2026-10-17, threshold audit): n/(n+2) for n rated brews, 2 ≈ the
+// within-bag ÷ between-bag rating variance (0.77² ÷ 0.60² ≈ 1.6), so a 1-brew bag counts a third, a 12-brew one 0.86.
+export const bagWeight = (n: number): number => n / (n + 2);
+export const wmean = (xs: readonly number[], ws: readonly number[]): number =>
+  xs.reduce((s, x, i) => s + x * ws[i], 0) / ws.reduce((a, b) => a + b, 0);
+// Kish's effective sample size of a weighted mean: (Σw)² / Σw² (= the count for equal weights).
+export const effN = (ws: readonly number[]): number => ws.reduce((a, b) => a + b, 0) ** 2 / ws.reduce((a, w) => a + w * w, 0);
 export const sd = (xs: readonly number[]): number => {
   const m = mean(xs);
   return Math.sqrt(mean(xs.map((x) => (x - m) ** 2))); // population SD
@@ -89,5 +96,7 @@ export const brewZ = (a: number[], b: number[], residualSd: number): number =>
   (mean(a) - mean(b)) / (residualSd * Math.sqrt(1 / a.length + 1 / b.length));
 
 // A group vs the rest of the pool, not vs a pool that holds it (stats audit 2026-10-17: Washed, 81 of ~100 bags,
-// had its delta shrunk ~5×). SE from the whole pool's spread. NaN when there is no rest.
-export const restZ = (group: number[], rest: number[]): number => brewZ(group, rest, sd([...group, ...rest]));
+// had its delta shrunk ~5×). SE from the whole pool's spread. NaN when there is no rest. Weights (bagWeight): weighted
+// means over each side's effective count (effN); none = plain means.
+export const restZ = (group: number[], rest: number[], gw = group.map(() => 1), rw = rest.map(() => 1)): number =>
+  (wmean(group, gw) - wmean(rest, rw)) / (sd([...group, ...rest]) * Math.sqrt(1 / effN(gw) + 1 / effN(rw)));
