@@ -2126,15 +2126,16 @@ export const STATES: State[] = [
         await page.evaluate(() => document.querySelector('.timeline')!.scrollIntoView());
         await settle();
         const full = (await ruler.boundingBox())!.height;
-        const seen: { y: number; h: number }[] = [];
+        const seen: { y: number; h: number; why: string }[] = [];
         for (let i = 0; i < 400 && (await page.locator('.feed').boundingBox())!.y + (await page.locator('.feed').boundingBox())!.height > 0; i++) {
           await page.evaluate(() => scrollBy(0, 250));
           await settle();
           const b = (await ruler.boundingBox())!;
-          if (b.y + b.height > 0) seen.push({ y: b.y, h: b.height });
+          // What the height was computed from, so a failure says which input moved.
+          if (b.y + b.height > 0) seen.push({ y: b.y, h: b.height, why: await ruler.evaluate((e) => `inline ${(e as HTMLElement).style.height || 'none'}, innerHeight ${innerHeight}, bar ${document.querySelector<HTMLElement>('.filter-bar')!.offsetHeight}, scrollY ${scrollY}`) });
         }
         expect(seen.length).toBeGreaterThan(2);
-        for (const r of seen) expect(Math.abs(r.h - full), `ruler height ${r.h} vs ${full}`).toBeLessThanOrEqual(1);
+        for (const r of seen) expect(Math.abs(r.h - full), `ruler height ${r.h} vs ${full} (${r.why})`).toBeLessThanOrEqual(1);
         expect(Math.min(...seen.map((r) => r.y)), 'ruler slides up with the feed end').toBeLessThan(0);
         await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
       }

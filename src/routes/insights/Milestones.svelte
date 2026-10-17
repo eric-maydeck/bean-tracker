@@ -94,8 +94,12 @@
     rulerH = Math.min(fullH, end.getBoundingClientRect().bottom - tl - parseFloat(getComputedStyle(nav).marginTop));
   }
   // On load, resize and a new feed (period, kinds): the feed's box can't tell, as the grid may stretch it.
+  // fullH and hideRuler too: the filter bar's height changes with the viewport's (max-height: 450px), and its
+  // ResizeObserver may run after the feed's, which would leave rulerH sized to the old bar.
   $effect(() => {
     void m.months;
+    void fullH;
+    void hideRuler;
     if (!feed) return;
     size();
     const ro = new ResizeObserver(size);
