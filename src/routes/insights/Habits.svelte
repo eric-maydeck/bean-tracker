@@ -78,14 +78,14 @@
       <h2>By hour of day</h2>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
+      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
       <h2>By day of week</h2>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Mean rating' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
+      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
     </section>
   </div>
   <section class="chart-panel">
