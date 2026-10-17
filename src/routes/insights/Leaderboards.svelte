@@ -228,7 +228,7 @@
       </div>
     {/if}
   {/each}
-  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare are left out.</p>{/if}
+  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
 {/if}
 
 <style>

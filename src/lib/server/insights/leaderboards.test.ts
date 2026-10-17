@@ -198,6 +198,16 @@ describe('vs like coffees', () => {
     const h = hiddenRows(leaderboards(dialed, [], SEPT, null, 'like', 'all', 'raw'), dialed, bs, [], SEPT, 'like', 'all');
     expect(h).toMatchObject({ rows: { coffees: 6, roasters: 2 }, why: ['dial'] });
   });
+  it('the confident cutoff: a 1-brew bag is no like row under the default, nor in its roaster figure; raw keeps the row', () => {
+    const tiny = brew({ id: 999, coffeeId: 7, rating: 10, roaster: 'A', ...LW });
+    const c = leaderboard([...bs, tiny], [], SEPT, 'coffees', 'like', 'all', 'min3');
+    expect(c.map((r) => r.key)).not.toContain('7');
+    expect(leaderboard([...bs, tiny], [], SEPT, 'coffees', 'like', 'all', 'raw').map((r) => r.key)).toContain('7');
+    // A's figure stays 1: the tiny bag's +3 gap is no point in it (raw too: roasterLikes leaves it out).
+    expect(+leaderboard([...bs, tiny], [], SEPT, 'roasters', 'like', 'all', 'raw')[0].value.toFixed(2)).toBe(1);
+    const h = hiddenRows(leaderboards([...bs, tiny], [], SEPT, null, 'like', 'all', 'min3'), [...bs, tiny], [...bs, tiny], [], SEPT, 'like', 'all');
+    expect(h).toMatchObject({ rows: { coffees: 1 }, why: ['avg'] });
+  });
   it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
   it('the coffees board carries the like line under rating', () => {
     const like = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').find((r) => r.key === '1')!.like!;

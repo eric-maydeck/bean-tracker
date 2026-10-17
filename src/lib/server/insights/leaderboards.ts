@@ -56,6 +56,10 @@ const FILTER_COLUMN: Partial<Record<Board, ColumnKey>> = { roasters: 'roaster', 
 const byRank = (a: BoardRow, b: BoardRow) =>
   b.value - a.value || (b.atBest ?? 0) - (a.atBest ?? 0) || (b.mean ?? 0) - (a.mean ?? 0) || b.bags - a.bags || b.brews - a.brews || a.label.localeCompare(b.label);
 
+// The confident cutoff: rows the Low confidence chip would mark are left out under min3 (Raw average, confident)
+// and under like unless See all set avg=raw (stats audit 2026-10-17: a 1-brew bag topped the like board).
+const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3') || (rank === 'like' && avg !== 'raw');
+
 export const listHref = (column: ColumnKey, values: (string | null)[]) =>
   `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
 
@@ -135,8 +139,7 @@ export function leaderboard(
   }
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
   const out = rows.map((r) => decorate(r, board, bags));
-  // min3 (Raw average, confident) leaves out every row the Low confidence chip would mark.
-  return (rank === 'rating' && avg === 'min3' ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
+  return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 
 // move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.
@@ -168,7 +171,7 @@ export function leaderboards(
 export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
 ): Board[] {
-  if (rank !== 'rating' || avg !== 'min3') return [];
+  if (!confident(rank, avg)) return [];
   return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
@@ -181,13 +184,12 @@ export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
   ratings: Ratings
 ): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>>; cut: Board[] } {
-  // The Score step adds nothing under like (avg is ignored), so only Ratings and Brews are named.
   if (rank !== 'rating' && rank !== 'like') return { rows: {}, why: [], by: {}, cut: [] };
   const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {}, cut: Board[] = [];
   const hit = { avg: false, ratings: false, dial: false };
   for (const b of BOARDS) {
     const n0 = boards[b].length;
-    const n1 = rank === 'like' ? n0 : leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
+    const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
     const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw', false).length;
     const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw', false).length;
     if (!n0 && n1) cut.push(b);

@@ -57,12 +57,13 @@ export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number
 }
 
 export interface RoasterLike { gap: number; gaps: number[]; bags: number; brews: number }
-// Each roaster's bag-weighted mean gap against like coffees from other roasters (likeGaps `outside`). The one
-// computation behind the Leaderboards roaster row and the likeRoaster finding.
+// Each roaster's bag-weighted mean gap against like coffees from other roasters (likeGaps `outside`), over its bags
+// past the one-bag rule (a 1-brew bag's gap is a full point otherwise). The one computation behind the Leaderboards
+// roaster row and the likeRoaster finding.
 export function roasterLikes(rows: readonly BrewFact[]): Map<string, RoasterLike> {
   const roasterOf = new Map(rows.map((b) => [b.coffeeId, b.roaster]));
   const out = new Map<string, RoasterLike>();
-  for (const [r, g] of groupBy([...likeGaps(rows, true)].filter(([id]) => roasterOf.get(id)), ([id]) => roasterOf.get(id)!)) {
+  for (const [r, g] of groupBy([...likeGaps(rows, true)].filter(([id, l]) => roasterOf.get(id) && !l.sample.small), ([id]) => roasterOf.get(id)!)) {
     const gaps = g.map(([, l]) => l.gap);
     out.set(r, { gap: mean(gaps), gaps, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
   }

@@ -1870,7 +1870,7 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-like', path: () => '/insights?tab=leaderboards&rank=like&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="coffees"] .board-row:not(.placeholder)').first()).toBeVisible();
-      await expect(page.locator('.like-note')).toHaveText("vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare are left out.");
+      await expect(page.locator('.like-note')).toHaveText("vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.");
       // Boards that can't rank are left out, not shown empty.
       await expect(page.locator('.board')).toHaveCount(2);
       await expect(page.locator('[data-board="origins"], [data-board="water"]')).toHaveCount(0);
