@@ -343,7 +343,6 @@
   // "$1860.41" -> "$1.9K": a hero-adjacent tile doesn't need exact cents,
   // and the shorter string leaves far more room for a larger value font
   // before it overflows the tile.
-  const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
   function formatCurrencyCompact(amount: number): string {
     return currencyCompactFormatter.format(amount);
@@ -477,7 +476,7 @@
     </div>
     <div class="stat-item stat-item-hero">
       <span class="stat-value"
-        >{data.stats.averageBagCost === null ? '—' : currencyFormatter.format(data.stats.averageBagCost)}</span
+        >{#if data.stats.averageBagCost === null}—{:else}<Usd n={data.stats.averageBagCost} />{/if}</span
       >
       <div class="stat-caption">
         <span class="stat-label">Average bag cost</span>

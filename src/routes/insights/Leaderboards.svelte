@@ -102,7 +102,7 @@
     : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
       ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
     : r.se !== undefined
-      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '±: one standard error, about how far the next few bags could move it.' }
+      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '± is the standard error, how sure this average is. The true one is usually within it.' }
     : null;
   // Rating boards whose rows differ by less than their noise (withinNoise), named in one line under the boards.
   const noisy = $derived(rank === 'rating' ? BANDS.flat().filter((b) => withinNoise(boards[b])) : []);

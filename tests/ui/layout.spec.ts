@@ -143,6 +143,7 @@ async function openSwitches(page: Page) {
 // A small bar's amber corner fold: top right on a horizontal bar pointing left (its flat axis end, clear of a
 // "keeps going" tip), top left everywhere else (user, 2026-10-17). Read from the fold layer's position and direction.
 async function expectFoldCorners(page: Page) {
+  expect(await page.locator('main .bar.small-sample-mark').count(), 'no small-sample bar to check').toBeGreaterThan(0);
   const bad = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('main .bar.small-sample-mark')].flatMap((e) => {
     const cs = getComputedStyle(e), track = e.parentElement!.getBoundingClientRect(), r = e.getBoundingClientRect();
     const horizontal = !!e.closest('.delta-bars');
@@ -993,7 +994,12 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Unlink', exact: true })).toBeVisible();
     }
   },
-  { name: 'stats-general', path: () => '/stats' },
+  // A bare /stats URL is All time (DEFAULTS.range, user ruling 2026-10-17) and stays bare.
+  { name: 'stats-general', path: () => '/stats',
+    act: async (page) => {
+      await expect(page.getByLabel('Period')).toHaveValue('all');
+      expect(new URL(page.url()).search).toBe('');
+    } },
   {
     // The /stats people switch drives both tabs: At a Glance on General, totals on Bean Conqueror.
     name: 'stats-people-person',
@@ -1901,6 +1907,17 @@ export const STATES: State[] = [
     }
   },
   {
+    // The Overview's Cost per brew (an average, rarely whole cents) carries the same tip.
+    name: 'insights-overview-usd-tip',
+    path: () => '/insights',
+    act: async (page) => {
+      await page.locator('#overview-cost-per-brew .stat-value .text-tip').click();
+      const tip = page.locator('.float-tip');
+      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
+      await expectTipInView(page, tip);
+    }
+  },
+  {
     // A dollar amount rounded to cents carries the value to 4 decimals in the shared tip (Usd; user, 2026-10-17).
     name: 'insights-leaderboards-usd-tip',
     path: () => '/insights?tab=leaderboards&rank=ppg',
@@ -1939,8 +1956,7 @@ export const STATES: State[] = [
       await expect(tip.locator('dd').first()).toHaveText(/^\d+\.\d ± \d+\.\d$/);
       await expect(tip.locator('.tip-note')).toHaveText(/standard error/);
       await expectTipInView(page, tip);
-      const note = page.locator('.noise-note');
-      if (await note.count()) await expect(note).toHaveText(/differ by less than their noise/);
+      await expect(page.locator('.noise-note')).toHaveText(/differ by less than their noise/);
       await expectEqualBoardHeights(page);
     }
   },
@@ -1989,7 +2005,6 @@ export const STATES: State[] = [
       const line = page.locator('[data-board="coffees"] .like-line').first();
       await expect(line).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
       await expectDeltaInk(page);
-      await expectFoldCorners(page);
       // Stacked (phone), only rows with a line grow: Roasters keeps the plain 3rem row; side by side the band stays level.
       const h = (sel: string) => page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().height);
       const plain = await h('[data-board="roasters"] .board-row:not(.placeholder)');
@@ -1999,11 +2014,9 @@ export const STATES: State[] = [
       await page.getByLabel('View').selectOption('records');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
-      await expectFoldCorners(page);
       await page.getByLabel('View').selectOption('sweetspots');
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
-      await expectFoldCorners(page);
     } },
   // Gate P4: the line shows under every rank but like; spend ranks bags, so it shows there too.
   { name: 'insights-like-lines-brews', path: () => '/insights?tab=leaderboards&rank=brews&range=all',
@@ -3097,7 +3110,6 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await map.locator('.map-name:focus').blur();
       await expectDeltaInk(page);
-      await expectFoldCorners(page);
       // Recipe deltas line up down the list.
       const rights = await page.locator('[data-section="water-recipes"] .val').evaluateAll((vs) => vs.map((v) => Math.round(v.getBoundingClientRect().right)));
       expect(new Set(rights).size).toBe(1);
@@ -3316,7 +3328,6 @@ export const STATES: State[] = [
         expect(cols).toBe(true);
       }
       await expectDeltaInk(page);
-      await expectFoldCorners(page);
       // Narrow boards drop SD first; brews and the delta always show.
       const sdShown = await page.locator('[data-section="gear-drippers"] .board-head .sd').evaluate((e) => e.getBoundingClientRect().width > 0);
       const boardW = (await page.locator('[data-section="gear-drippers"] .lab-board').boundingBox())!.width;

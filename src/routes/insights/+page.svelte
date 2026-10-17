@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import TextTip from '$lib/components/TextTip.svelte';
   import { afterNavigate, goto } from '$app/navigation';
@@ -657,7 +658,7 @@
         {@const pp = t.split && perPersonOn}
         <div class="stat-item" id={tileId(t.key)} class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
           <span class="stat-value" style:--len={valueText(t, v).length}
-            >{valueText(t, v)}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
+            >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and hover. -->
