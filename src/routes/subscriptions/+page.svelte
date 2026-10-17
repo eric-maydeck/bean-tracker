@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
@@ -439,7 +440,7 @@
             {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
             {:else}
-              {sub.price != null ? usd(sub.price) : '—'}
+              {#if sub.price != null}<Usd n={sub.price} />{:else}—{/if}
             {/if}
           </td>
           {#if !canEdit}
@@ -552,7 +553,7 @@
     <tfoot>
       <tr>
         <td colspan="2"><strong>Totals</strong></td>
-        <td><strong>{totals.price != null ? usd(totals.price) : '—'}</strong></td>
+        <td><strong>{#if totals.price != null}<Usd n={totals.price} />{:else}—{/if}</strong></td>
         {#if canEdit}
           <td colspan="2"><strong>{totals.grams != null ? `${totals.grams} g` : '—'}</strong></td>
           <td></td>
@@ -726,7 +727,7 @@
     {/each}
   </div>
   <div class="compact-row-detail" style="border-top: 1px solid var(--color-border); padding-top: var(--space-3); margin-top: var(--space-2);">
-    <strong>Totals:</strong> {totals.price != null ? usd(totals.price) : '—'} · {totals.grams ?? '—'}g
+    <strong>Totals:</strong> {#if totals.price != null}<Usd n={totals.price} />{:else}—{/if} · {totals.grams ?? '—'}g
   </div>
 {/if}
 

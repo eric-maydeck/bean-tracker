@@ -1901,6 +1901,18 @@ export const STATES: State[] = [
     }
   },
   {
+    // A dollar amount rounded to cents carries the value to 4 decimals in the shared tip (Usd; user, 2026-10-17).
+    name: 'insights-leaderboards-usd-tip',
+    path: () => '/insights?tab=leaderboards&rank=ppg',
+    act: async (page) => {
+      await page.locator('[data-board="coffees"] .val .text-tip').first().click();
+      const tip = page.locator('.float-tip');
+      await expect(tip.locator('dt')).toHaveText(['To 4 decimals']);
+      await expect(tip.locator('dd')).toHaveText(/^\$\d+\.\d{3,4}\/g$/);
+      await expectTipInView(page, tip);
+    }
+  },
+  {
     // Coffees default to k2 (shrunk by brews): a row's value tip shows the shrunk score beside the plain average
     // (user ruling 2026-10-17), opening from the value text over the row's stretched link.
     name: 'insights-leaderboards-coffee-tip',

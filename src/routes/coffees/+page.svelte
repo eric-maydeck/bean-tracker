@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import { tick } from 'svelte';
   import { browser } from '$app/environment';
@@ -758,7 +759,7 @@
                 <p class="text-muted">{coffee.processing}</p>
               {/if}
               <p class="text-muted">
-                {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : 'Cost unknown'}
+                {#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} suffix="/g" />{:else}Cost unknown{/if}
                 {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
               </p>
               {#if coffee.roast_date}
@@ -894,7 +895,7 @@
                 <div><span class="eyebrow">Processing</span>{coffee.processing ?? '—'}</div>
                 <div>
                   <span class="eyebrow">Cost/g · amount</span>
-                  {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : '—'}{#if coffee.amount_g != null}
+                  {#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} suffix="/g" />{:else}—{/if}{#if coffee.amount_g != null}
                     · <span class="nowrap">{formatBag(coffee.amount_g, coffee.grams_left)}</span>{/if}
                 </div>
                 <div>
@@ -1073,7 +1074,7 @@
             </td>
             <td>{coffee.decaf ? 'Yes' : 'No'}</td>
             <td>{coffee.processing ?? '—'}</td>
-            <td>{coffee.cost_per_gram != null ? usd(coffee.cost_per_gram) : '—'}</td>
+            <td>{#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} />{:else}—{/if}</td>
             <td class="nowrap">{coffee.amount_g != null ? formatBag(coffee.amount_g, coffee.grams_left) : '—'}</td>
             <td>
               {coffee.roast_date ?? '—'}

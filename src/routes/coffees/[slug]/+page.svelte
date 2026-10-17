@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { usd } from '$lib/money';
+  import Usd from '$lib/components/Usd.svelte';
   import { untrack } from 'svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
@@ -285,7 +285,7 @@
       half-step roast degrees or cents, so it may show something slightly off:
       <ul>
         <li>Roast level should be <strong>{shareRoastDegrees ?? '—'} beans</strong> ({data.coffee.roast_level ?? 'not set'})</li>
-        <li>Cost should be <strong>{data.coffee.cost != null ? usd(data.coffee.cost) : '—'}</strong></li>
+        <li>Cost should be <strong>{#if data.coffee.cost != null}<Usd n={data.coffee.cost} />{:else}—{/if}</strong></li>
       </ul>
     </div>
   </div>
@@ -397,12 +397,12 @@
         </div>
         <div class="stat">
           <span class="stat-label">Cost</span>
-          <span class="stat-value">{data.coffee.cost != null ? usd(data.coffee.cost) : '—'}</span>
+          <span class="stat-value">{#if data.coffee.cost != null}<Usd n={data.coffee.cost} />{:else}—{/if}</span>
         </div>
         <div class="stat">
           <span class="stat-label">Cost/gram</span>
           <span class="stat-value">
-            {data.coffee.cost_per_gram != null ? usd(data.coffee.cost_per_gram) : '—'}
+            {#if data.coffee.cost_per_gram != null}<Usd n={data.coffee.cost_per_gram} />{:else}—{/if}
           </span>
         </div>
         <div class="stat">

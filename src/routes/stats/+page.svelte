@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { usd } from '$lib/money';
+  import Usd from '$lib/components/Usd.svelte';
   import { enhance } from '$app/forms';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
@@ -296,10 +296,6 @@
 
   function formatRating(value: number | null): string {
     return value === null ? '—' : value.toFixed(1);
-  }
-
-  function formatCostPerGram(value: number | null): string {
-    return value === null ? '—' : usd(value);
   }
 
   function formatTemperature(value: number | null): string {
@@ -1166,7 +1162,7 @@
     {:else if bcTab === 'economics'}
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-value">{formatCostPerGram(bc.averageCostPerGram)}</span>
+          <span class="stat-value">{#if bc.averageCostPerGram !== null}<Usd n={bc.averageCostPerGram} />{:else}—{/if}</span>
           <div class="stat-caption">
             <span class="stat-label">Average cost per gram</span>
           </div>

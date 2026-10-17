@@ -11,7 +11,7 @@
 </script>
 
 <script lang="ts">
-  import { usd } from '$lib/money';
+  import Usd from '$lib/components/Usd.svelte';
   import { useEmptyLine } from './coffeeNote';
   import BarLabels from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -419,17 +419,17 @@
               <div class="month-parts">
                 <span><b>{Math.round(w.bpd * DAYS_PER_MONTH)}</b> brews</span>
                 <span><b>{formatGrams(w.bpd * w.dose * DAYS_PER_MONTH)}</b></span>
-                <span><b>{usd(w.dose * t.whatIf.avgPricePerG!)}</b> a cup</span>
+                <span><b><Usd n={w.dose * t.whatIf.avgPricePerG!} /></b> a cup</span>
               </div>
             </div>
           </div>
           {#if w.bpd * w.dose > 0}
-            <span class="hl-value result">{usd(perMonth)}<small>{' a month'}</small></span>
+            <span class="hl-value result"><Usd n={perMonth} /><small>{' a month'}</small></span>
           {:else}
             <span class="hl-line wrap result">Not enough brews to measure your spend yet</span>
           {/if}
-          <span class="hl-line wrap">At {usd(t.whatIf.avgPricePerG! * 100)} / 100&nbsp;g, your last 12 months' average</span>
-          {#if w.bpd * w.dose > 0}<span class="hl-line">{usd(perMonth * 12)} a year</span>{/if}
+          <span class="hl-line wrap">At <Usd n={t.whatIf.avgPricePerG! * 100} /> / 100&nbsp;g, your last 12 months' average</span>
+          {#if w.bpd * w.dose > 0}<span class="hl-line"><Usd n={perMonth * 12} /> a year</span>{/if}
           <TileCaption href="#insights-spend" label="Monthly spend" />
         </div>
       {/if}

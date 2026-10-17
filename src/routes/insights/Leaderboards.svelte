@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import SampleNote from '$lib/components/SampleNote.svelte';
@@ -218,7 +219,7 @@
                 {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
               <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}
-                >{#if valueTip(b, r)}<TextTip label={fmt(r.value)} tip={valueTip(b, r)!} />{:else}{fmt(r.value)}{/if}</span>
+                >{#if valueTip(b, r)}<TextTip label={fmt(r.value)} tip={valueTip(b, r)!} />{:else if rank === 'spend' || rank === 'ppg'}<Usd n={r.value} suffix={rank === 'ppg' ? '/g' : ''} />{:else}{fmt(r.value)}{/if}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
             </li>
           {/each}
