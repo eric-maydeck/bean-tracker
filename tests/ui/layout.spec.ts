@@ -154,13 +154,16 @@ async function expectStickyBar(page: Page, bar: Locator) {
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
 }
 
-// Leaderboard cards in one band are the same height (an expanded one is exempt).
+// Leaderboard cards on one grid row (same top) are the same height (an expanded one is exempt). A stacked card
+// has its own row: it only keeps the Show all footer's space when it has the button (no blank footer, I2).
 async function expectEqualBoardHeights(page: Page) {
   const bands = await page.locator('.board-band').evaluateAll((bands) =>
-    bands.map((band) => [...band.querySelectorAll(':scope > .board:not(.open)')].map((b) => b.getBoundingClientRect().height))
+    bands.map((band) => [...band.querySelectorAll(':scope > .board:not(.open)')].map((b) => [Math.round(b.getBoundingClientRect().top), b.getBoundingClientRect().height]))
   );
   expect(bands).toHaveLength(3); // so the loop below can't pass vacuously
-  for (const hs of bands) if (hs.length > 1) expect(Math.max(...hs) - Math.min(...hs)).toBeLessThanOrEqual(1);
+  for (const band of bands) for (const [top, h] of band) for (const [t2, h2] of band) if (Math.abs(top - t2) <= 1) expect(Math.abs(h - h2)).toBeLessThanOrEqual(1);
+  const blank = await page.locator('.board-foot:not(:has(button))').count();
+  expect(blank, 'no empty Show all footers').toBe(0);
 }
 
 // Desktop edit table: every input and button in a row shares one vertical
@@ -2662,7 +2665,7 @@ export const STATES: State[] = [
       }
     } },
   // M7: phones (≤480) abbreviate months/years/Previous in the Period and Compare selects (also before hydration,
-  // app.html's script); whatever still overflows a closed select ends in an ellipsis. Runs at 360 and 480.
+  // app.html's script); the closed selects' text must fit (long custom spans / bag names fall back to the ellipsis style). Runs at 360 and 480.
   { name: 'insights-phone-selects', path: () => '/insights?tab=overview&range=12m&compare=1',
     act: async (page) => {
       const phone = page.viewportSize()!.width <= 480;
@@ -2672,11 +2675,12 @@ export const STATES: State[] = [
         return els.filter((el) => {
           const s = el as HTMLSelectElement, cs = getComputedStyle(s);
           c.font = cs.font;
+          // The closed text must fit the select's content box (the arrow sits in its padding), not just carry an ellipsis.
           const avail = s.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
-          return c.measureText(s.selectedOptions[0].textContent!.trim()).width > avail && cs.textOverflow !== 'ellipsis';
+          return c.measureText(s.selectedOptions[0].textContent!.trim()).width > avail;
         }).map((el) => el.getAttribute('aria-label'));
       });
-      expect(bad, 'clipped selects without an ellipsis').toEqual([]);
+      if (phone) expect(bad, 'closed selects whose text overflows').toEqual([]);
     } },
   // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
   // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
@@ -2708,6 +2712,12 @@ export const STATES: State[] = [
       const btn = page.locator('.see-all .boards-tip');
       await expect(btn).toHaveText(/^\d+ boards$/);
       await expect(btn).toHaveAttribute('aria-label', /Hidden rows/);
+      if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes
+        await btn.hover();
+        await expect(page.locator('[popover]:popover-open')).toContainText('Hidden rows');
+        await page.mouse.move(0, 0);
+        await expect(page.locator('[popover]:popover-open')).toHaveCount(0);
+      }
       await btn.click();
       const tip = page.locator('[popover]:popover-open');
       await expect(tip).toContainText('Hidden rows');

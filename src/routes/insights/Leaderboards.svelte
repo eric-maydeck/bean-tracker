@@ -187,14 +187,13 @@
         </ol>
       {/if}
     </div>
-    <!-- No footer under an empty board's note (nothing to expand); boards with rows keep it so a band stays level. -->
-    {#if rows.length || bagOnly(b)}
+    <!-- The footer exists only for a Show all button; a band row stretches its cards level, so a board whose
+         neighbor has the button keeps that space (and one with none, none). -->
+    {#if rows.length > size && !bagOnly(b)}
       <footer class="board-foot">
-        {#if rows.length > size && !bagOnly(b)}
-          <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
-            >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
-          >
-        {/if}
+        <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
+          >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
+        >
       </footer>
     {/if}
   </section>
@@ -237,15 +236,19 @@
     margin: 0;
     font-size: 0.85rem;
   }
-  /* Cards in a band share one height: fixed rows, placeholders for empty slots, a fixed
-     footer. Only an expanded card grows (align-items: start keeps its neighbors put). */
+  /* Cards in a band share one height: fixed rows, placeholders for empty slots; the grid stretches
+     them level (the Show all footer exists only on boards that need it). */
   .board-band {
     --row-h: 3rem;
     display: grid;
     grid-template-columns: repeat(var(--cols, 1), minmax(0, 1fr));
-    align-items: start;
+    align-items: stretch;
     gap: var(--space-3);
     margin-bottom: var(--space-3);
+  }
+  /* An expanded card alone grows; its neighbors keep their own height. */
+  .board-band:has(.board.open) {
+    align-items: start;
   }
   @media (min-width: 641px) {
     .band-2,
