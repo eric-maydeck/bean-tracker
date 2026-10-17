@@ -184,6 +184,7 @@
         {@const p = c.spot}
         {@const id = `spot-${c.key}`}
         {@const v = value(p)}
+        {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const full = [`${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, evidence(p), usually(p)].filter(Boolean).join('\n')}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
@@ -196,7 +197,7 @@
               <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
           </div>
-          <span class="hl-value" class:long={v.length > 9}>{#if leaning(p)}<small>Leaning </small>{/if}{v}</span>
+          <span class="hl-value" class:long={say.length > 9}>{say}</span>
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->

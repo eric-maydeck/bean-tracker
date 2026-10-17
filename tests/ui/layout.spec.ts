@@ -2422,6 +2422,19 @@ export const STATES: State[] = [
       }
       await expectPairsFilled(page, '.lab-grid');
     } },
+  // Gate P4: "Leaning 20+ g" reads as one phrase in one size; under "No clear winner" a same-bag delta names its setting.
+  { name: 'insights-sweetspots-words', path: () => '/insights?tab=sweetspots&range=all',
+    act: async (page) => {
+      const cards = await page.locator('.spot-card').evaluateAll((cs) => cs.map((c) => ({
+        value: c.querySelector('.hl-value')!.textContent!, small: !!c.querySelector('.hl-value small'), ev: c.querySelector('.evidence')!.textContent!
+      })));
+      expect(cards.length).toBeGreaterThan(0);
+      for (const c of cards) {
+        expect(c.value).not.toMatch(/Leaning\S/);
+        expect(c.small).toBe(false);
+        if (c.value === 'No clear winner' && c.ev.includes('vs same bag')) expect(c.ev).toMatch(/^Best so far: \S/);
+      }
+    } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
