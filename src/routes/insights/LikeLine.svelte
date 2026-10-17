@@ -9,16 +9,24 @@
   // opened from the text itself (41) on hover, tap and keyboard focus; Enter opens it too. A whole line needs no tip,
   // and it sits over the row's stretched link, so a tap on it goes on to that link.
   const cut = () => !!anchor && anchor.scrollWidth > anchor.clientWidth + 1;
+  // Only a cut line is a tab stop: a whole one has nothing to open (measured on mount and on every resize).
+  let isCut = $state(false);
+  $effect(() => {
+    if (!anchor) return;
+    const ro = new ResizeObserver(() => (isCut = cut()));
+    ro.observe(anchor);
+    return () => ro.disconnect();
+  });
 </script>
 
-<!-- No button role: the row (48px) is the tap target. Focusable for keyboard. -->
+<!-- No button role: the row (48px) is the tap target. Focusable for keyboard when cut. -->
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_static_element_interactions -->
-<small bind:this={anchor} class="like-line" tabindex="0"
+<small bind:this={anchor} class="like-line" tabindex={isCut ? 0 : -1}
   onpointerenter={(e) => e.pointerType === 'mouse' && cut() && (open = true)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && cut() && (open = true)}
   onblur={() => (open = false)}
-  onkeydown={(e) => e.key === 'Enter' && (open = true)}
+  onkeydown={(e) => e.key === 'Enter' && cut() && (open = true)}
   onclick={() => (cut() ? (open = true) : anchor?.parentElement?.querySelector('a')?.click())}
   ><span class={deltaInk(like.gap)}>{likeGap(like.gap)}</span> vs {like.label}</small
 >{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${likeGap(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
