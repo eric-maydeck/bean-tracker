@@ -502,7 +502,9 @@ describe('page-wide coffees filter', () => {
     expect(run(`${q}&tab=habits`).habits.tiles.brewDays).toBe(1);
     expect(run(`${q}&tab=records`).records).not.toBeNull();
     expect(run(`${q}&tab=sweetspots`).sweetSpots.matching).toEqual({ bags: 1, brews: 2 });
-    for (const t of ['brewing', 'water', 'gear', 'consumption', 'milestones', 'insights']) expect(run(`${q}&tab=${t}`)).toBeTruthy();
+    // One filtered figure per remaining tab: each loader got the payload, built from the Washed bag's 2 brews only.
+    for (const t of ['brewing', 'water', 'gear', 'insights'] as const) expect(run(`${q}&tab=${t}`)[t]).not.toBeNull();
+    expect(run(`${q}&tab=milestones`).milestones.totals.find((x: { key: string }) => x.key === 'brews').value).toBe(2);
     expect(run(`${q}&tab=consumption`).consumptionTab).not.toBeNull();
   });
   it('picker options come from the unfiltered data', () => {
@@ -562,5 +564,30 @@ describe('page-wide coffees filter', () => {
     expect(top('&caffeine=decaf')).toHaveLength(3);
     expect(top('&caffeine=decaf').map((b: { holder: { label: string } }) => b.holder.label)).not.toContain('Washed');
     expect(top('')).toHaveLength(2); // the default skips decaf ratings
+  });
+});
+
+describe('the mixed-roast nudge', () => {
+  // Two roast levels, 3 bags × 4 rated brews each, bag means 1 point apart: past the pooled rule both sides.
+  function seedRoasts() {
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
+    const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, ?, ?)`);
+    [['Light', 8.5], ['Dark', 7.5]].forEach(([roast, r], k) => [0, 1, 2].forEach((j) => {
+      const bean = `b${k}${j}`;
+      const { id } = createCoffee(db, {
+        roaster: 'R', coffee_name: bean, origin: null, roast_level: roast as string, processing: 'Washed', amount_g: 250, cost: 25,
+        roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
+      });
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(bean, bean, today, id);
+      for (let i = 0; i < 4; i++) ins.run(`${today}T1${k}:${j}0:0${i}.000Z`, bean, (r as number) + (j - 1) * 0.1, today);
+    }));
+  }
+  it('shows on mixed roasts; a Roast filter or rank=like turns it off', () => {
+    seedRoasts();
+    const q = '?range=all&ratings=all&dial=all&tab=leaderboards';
+    expect(run(q).roastMix?.map((x: { roast: string }) => x.roast)).toEqual(['Light', 'Dark']);
+    expect(run(`${q}&roast=Light`).roastMix).toBeNull();
+    expect(run(`${q}&rank=like`).roastMix).toBeNull();
   });
 });

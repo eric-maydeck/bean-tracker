@@ -527,7 +527,7 @@
   {/if}
   <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
   {#if ratingsMenu}
-    <div class="cell-contents" style={cell('menu')}><RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
+    <div style={cell('menu')}><RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
   {/if}
   <div class="form-field group-field filters-field" style={cell('filters')}>
     <span>{FILTERS_LABEL}</span>
@@ -552,19 +552,19 @@
       </div>
     </div>
   {/if}
-  <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. -->
+  <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
   {#if coffeeChips.length}
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
           ><button type="button" class="filter-chip-label" title="Edit in Filters" onclick={() => coffeesDialog?.showModal()}>{value}</button
           ><button type="button" class="filter-chip-remove" title="Remove filter"
-            aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined })}>✕</button
+            aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined, ...(key === 'roast' || key === 'process' ? { bag: undefined } : {}) })}>✕</button
           ></span
         >
       {/each}
       <button type="button" class="filter-clear-all"
-        onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined })}>Clear all</button>
+        onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
     </div>
   {/if}
 </div>

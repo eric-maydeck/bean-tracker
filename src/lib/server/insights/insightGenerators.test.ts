@@ -1,3 +1,4 @@
+import { signed } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
 import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
@@ -777,7 +778,7 @@ describe('like-with-like findings', () => {
     const f = gen('likeRoaster', all, gb)!;
     const row = leaderboard(all, gb, { start: '2026-09-01', end: '2026-09-30' }, 'roasters', 'like', 'all', 'raw').find((r) => r.key === 'Sey')!;
     expect(f.headline).toMatch(/^Sey rates/);
-    expect(f.value).toBe(`${row.value < 0 ? '-' : '+'}${Math.abs(row.value).toFixed(2)}`);
+    expect(f.value).toBe(signed(row.value)); // the board's format ("−", not "-")
     expect(f.sample).toBe(`${row.bags} bags`);
   });
   const dialRows = (ids: number[], ratings: number[], o: Partial<BrewFact>) =>
@@ -816,7 +817,7 @@ describe('like-with-like findings', () => {
     const all = [...rs('Tiny', [1, 2, 3], 2, 1), ...rs('Big', [4, 5, 6, 7, 8, 9], 8, 5), ...rs('Mid', [10, 11, 12, 13, 14, 15], 7, 5)];
     const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, roaster: b.roaster!, ...LW }));
     const f = gen('likeRoaster', all, gb);
-    expect(f === null || !f.headline.startsWith('Tiny')).toBe(true);
+    expect(f!.headline).toMatch(/^Big /); // the widest gap among roasters past the small-sample rule
   });
   it('rescued bags: a one-brew skip (bag with one dial-in brew) and fewer than 3 bags give nothing', () => {
     const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));

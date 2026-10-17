@@ -1,4 +1,5 @@
 import { MON, type Ratings, type Theme } from '$lib/insightsUrl';
+import { signed as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.13")
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
@@ -91,6 +92,7 @@ function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, 
 }
 
 const LB = '/insights?tab=leaderboards';
+const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // settle speed and rescues: the Brewing tab's Dial-in chart
 
 const dialinCurve: Generator = (c) => {
   const all = demeaned(counted(c));
@@ -134,7 +136,6 @@ const settlePositions = (c: GenCtx) => {
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
     if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
-    // Rated brews to reach the bag's settled rating (dialed.ts settleAt)
     out.push({ id, pos: settleAt(bs.map((b) => b.rating!)), month: bs[0].localDate.slice(0, 7) });
   }
   return out;
@@ -764,8 +765,8 @@ const likeStandouts: Generator = (c) => {
     .map((t) => [t.x, t.tag ? `${t.label} (${t.tag})` : t.label]));
   const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
     key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
-    value: signed(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
-    ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, signed(l.gap), coffeeHref(byId.get(x))))])
+    value: gapText(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
+    ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
   // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
   const rl = roasterLikes(counted(c)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
@@ -774,7 +775,7 @@ const likeStandouts: Generator = (c) => {
   const roaster = best ? graded({
     key: 'likeRoaster', theme: 'taste', kind: 'number',
     headline: `${best.r} rates ${Math.abs(best.gap).toFixed(2)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
-    value: signed(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
+    value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
   }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
@@ -799,7 +800,7 @@ const dialinByGroup: Generator = (c) => {
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
-      href: `${LB}&open=${dim === 'roastLevel' ? 'roast' : 'process'}`
+      href: DIAL_IN
     }, groupZ(slow.ps, allPos), true, 'bags', slow.bags, undefined, groups.length);
     return f ? [f] : [];
   });
@@ -824,7 +825,7 @@ const rescuedBags: Generator = (c) => {
     key: 'rescuedBags', theme: 'dialin', kind: 'number', headline: `${plural(saved.length, 'bag')} rescued after a rough start`,
     value: `${saved.length} of ${bags.length}`,
     body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}.`,
-    sample: plural(bags.length, 'bag'), href: `${LB}&open=coffees`, z: null, strength: null,
+    sample: plural(bags.length, 'bag'), href: DIAL_IN, z: null, strength: null,
     ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(byId.get(x.id))))])
   };
 };

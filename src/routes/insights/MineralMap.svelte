@@ -11,7 +11,7 @@
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the
   // lab's fixed green/gray/red scale, then each mineral's amount shaded within its column (one neutral hue:
-  // light = little, dark = most, 0 = blank). Thin rows: minerals faded, the delta chip striped (T3). A row's
+  // light = little, dark = most, 0 = blank). Thin rows: the delta chip hatched with the fold (T3); minerals as usual. A row's
   // name text (not its cell's empty space) is its tip target (brews, bags, strength); ↑/↓ move between rows.
   // The vs usual chip is sized to its value. Scrolls inside its card with the name column pinned.
   let { map }: { map: MineralMap } = $props();

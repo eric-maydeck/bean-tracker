@@ -1,7 +1,7 @@
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
-import { likeGaps } from './likeGroup';
+import { likeGaps, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { countsForRating } from './ratings';
 import { BAG_MIN_BREWS, single } from '$lib/sample';
@@ -407,6 +407,8 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   const inP = ctx(c.period);
   const rated = held(inP).filter((b) => b.rating !== null && countsForRating(b, c.ratings));
   const likes = likeGaps(rated.filter((b) => b.rating! > 0));
+  // Only what the like line renders goes to the client.
+  const likeLine = (l: Like | undefined) => l && { gap: l.gap, label: l.label };
   const top = [...rated].sort((a, b) => b.rating! - a.rating! || a.localDate.localeCompare(b.localDate));
   const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer });
   return {
@@ -414,7 +416,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
     // Bags past the one-bag small-sample rule (Best bag's rule), best mean first.
     topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length > 0 && !single(s.rated.length).small)
-      .map((s) => ({ like: likes.get(s.coffeeId), mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
+      .map((s) => ({ like: likeLine(likes.get(s.coffeeId)), mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
       .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),

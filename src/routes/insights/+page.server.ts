@@ -4,7 +4,7 @@ import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
-import { RATINGS_SETTLED_FROM, countsForRating, roastMix } from '$lib/server/insights/ratings';
+import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
 import { cutBoards, hiddenRows, leaderboards } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
@@ -13,7 +13,7 @@ import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
-import { labOptions, matchesCoffee, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
+import { labOptions, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn } from '$lib/insightsUrl';
 
 // Public, like /stats.
@@ -61,7 +61,7 @@ export const load: PageServerLoad = ({ url }) => {
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
   const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
-  const ratedIn = (xs: typeof brews, r: typeof s.ratings) => xs.filter((b) => b.coffeeId !== null && inPeriod(b.localDate, period) && countsForRating(b, r)).length;
+  const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
@@ -142,9 +142,9 @@ export const load: PageServerLoad = ({ url }) => {
     hidden: ratingsMenuOn(s)
       ? {
           rows: h?.rows ?? {}, rowsWhy: h?.why ?? [], rowsBy: h?.by ?? {},
-          brews: ratedIn(brews, 'all') - ratedIn(scored, s.ratings),
+          brews: rated(brews, 'all') - rated(scored, s.ratings),
           // Which setting actually hid them: Calibrated (ratings) first, then Once dialed.
-          why: [ratedIn(brews, 'all') > ratedIn(brews, s.ratings) && 'ratings', ratedIn(brews, s.ratings) > ratedIn(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]
+          why: [rated(brews, 'all') > rated(brews, s.ratings) && 'ratings', rated(brews, s.ratings) > rated(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]
         }
       : null,
     roastMix: ratingsMenuOn(s) && s.rank !== 'like' ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,
