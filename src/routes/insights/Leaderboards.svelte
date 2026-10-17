@@ -8,7 +8,7 @@
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaColor, deltaInk, signed } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
@@ -166,6 +166,8 @@
   {@const size = SIZE(b)}
   {@const isOpen = open === b}
   {@const shown = isOpen ? rows : rows.slice(0, size)}
+  <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
+  {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
   <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
     <h2>{TITLE[b]}</h2>
     <div class="board-body">
@@ -175,10 +177,14 @@
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
-        <ol class="board-rows">
+        <ol class="board-rows" class:diverge={rank === 'like'}>
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row bar" class:liked={r.like && rank !== 'like'} class:small-sample={r.sample?.small} style:--share={rank !== 'like' && rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            {@const half = rank === 'like' ? Math.abs(r.value) / span / 2 : 0}
+            <li class="board-row bar" class:liked={r.like && rank !== 'like'} class:small-sample={r.sample?.small}
+              style:--share={rank === 'like' ? half : rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}
+              style:--left={rank === 'like' ? (r.value < 0 ? 0.5 - half : 0.5) : undefined}
+              style:--bar-color={rank === 'like' ? deltaColor(r.value) : undefined}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
@@ -312,6 +318,10 @@
     place-items: center;
     text-align: center;
     color: var(--color-text-muted);
+  }
+  /* rank=like: the zero line the bars grow from. */
+  .board-rows.diverge {
+    background: linear-gradient(var(--color-border), var(--color-border)) 50% 0 / 1px 100% no-repeat;
   }
   .move {
     min-width: 2.5rem;

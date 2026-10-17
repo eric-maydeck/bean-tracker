@@ -1930,7 +1930,19 @@ export const STATES: State[] = [
       await expect(tip).toHaveText(await text(1));
       await expectTipInView(page, tip);
     } },
-  { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
+  // Gate P4: zero-centred bars: a positive gap grows right of the middle, a negative one left, in its delta color.
+  { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',
+    act: async (page) => {
+      const bars = await page.locator('[data-board="coffees"] .board-row:not(.placeholder)').evaluateAll((rows) => rows.map((r) => {
+        const b = getComputedStyle(r, '::before'), w = r.getBoundingClientRect().width;
+        return { v: r.querySelector('.val')!.textContent!, left: parseFloat(b.left) / w, right: (parseFloat(b.left) + parseFloat(b.width)) / w };
+      }));
+      expect(bars.some((b) => b.v.startsWith('−'))).toBe(true);
+      for (const b of bars) {
+        if (b.v.startsWith('+')) expect(b.left).toBeCloseTo(0.5, 1);
+        if (b.v.startsWith('−')) expect(b.right).toBeCloseTo(0.5, 1);
+      }
+    } },
   {
     name: 'insights-leaderboards-open',
     path: () => '/insights?tab=leaderboards&rank=spend&open=coffees',

@@ -1338,14 +1338,15 @@
   :global(.board-row.bar) {
     isolation: isolate;
   }
+  /* A signed value (rank=like) grows from the middle (--left, the bar's start) in its delta color (--bar-color). */
   :global(.board-row.bar::before) {
     content: '';
     position: absolute;
     z-index: -1;
-    inset: 3px auto 3px 0;
+    inset: 3px auto 3px calc(var(--left, 0) * 100%);
     width: calc(var(--share) * 100%);
     border-radius: var(--radius);
-    background: color-mix(in oklab, var(--map-high) var(--bar-alpha), transparent);
+    background: color-mix(in oklab, var(--bar-color, var(--map-high)) var(--bar-alpha), transparent);
     transition: background-color 150ms ease;
   }
   :global(.board-row.bar .who > *),
