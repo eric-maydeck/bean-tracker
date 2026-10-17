@@ -843,7 +843,8 @@ const likeStandouts: Generator = (c) => {
 // Dial-in speed by roast level and by process (spec Part 4): the median brew a bag settles at within its first
 // SETTLE_WINDOW rated brews (settleWithin), per group of 3+ bags (so the brew half of the pooled rule always holds).
 // No "N more bags would settle it": the window's settle brews take few values and the median rounds up, so the
-// sample-size estimate (built for a mean) would promise more than it can (audit must-fix 6).
+// sample-size estimate (built for a mean) would promise more than it can (audit must-fix 6). Its Too early card keeps
+// the progress bar (N% there).
 const dialinByGroup: Generator = (c) => {
   const pos = settlePositions({ ...c, brews: c.allBrews });
   const allPos = pos.map((x) => x.pos);
@@ -865,7 +866,9 @@ const dialinByGroup: Generator = (c) => {
       href: SETTLE[dim]
     }, Number.isFinite(z) ? z : 0, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
     if (!f) return [];
-    const { settle: _s, progress: _p, ...rest } = f;
+    // The progress bar stays (every Too early card has one, user 2026-10-17): n / (n + more) is (z / bar)², the
+    // evidence so far, which needs no sample-size guess. Only the "about N more" count goes.
+    const { settle: _s, ...rest } = f;
     return [rest];
   });
 };

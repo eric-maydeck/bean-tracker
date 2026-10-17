@@ -3545,7 +3545,8 @@ export const STATES: State[] = [
       const rows = page.locator('.early li');
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
-      await expect(rows.first().locator('.meter')).toBeVisible();
+      // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17).
+      expect(await rows.evaluateAll((ls) => ls.filter((l) => !l.querySelector('.meter') || !/\d+% there/.test(l.textContent ?? '')).length)).toBe(0);
       // A multi-line chart: a legend entry per line, each line in its own color (B2).
       const multi = page.locator('.finding-grid .multi').first();
       const legend = await multi.locator('.legend li').count();

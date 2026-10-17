@@ -840,7 +840,10 @@ describe('like-with-like findings', () => {
     expect(f?.headline).toBe('Medium is right on brew 1; Light settles by brew 3');
     // No "N more bags would settle it" (audit must-fix 6): the estimate is for a mean, the figure is a median brew.
     expect(f).not.toHaveProperty('settle');
-    expect(f).not.toHaveProperty('progress');
+    // Its Too early card still gets the progress bar, as every Too early card does (user, 2026-10-17).
+    expect(f?.strength).toBe('early');
+    expect(f?.progress).toBeGreaterThan(0);
+    expect(f?.progress).toBeLessThan(1);
   });
   it('dial-in by process: groups under 3 bags are left out', () => {
     const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9, 9], { processGroup: 'Washed' });
