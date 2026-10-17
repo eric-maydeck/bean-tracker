@@ -980,11 +980,16 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
   const stories = [...told, ...fs.filter((f) => inGrid(f) && graded(f) && f.body)].slice(0, DECK);
   const out = new Set(stories.flatMap((f) => (f.of ? [f.key, f.of] : [f.key])));
   let early = 0; // Too early's count toward EARLY_CAP
+  const leads = fs.filter((f) => f.strength === 'early' && (PINNED(f) || !negligible(f)));
+  const capped = leads.filter((f) => PINNED(f) || early++ < EARLY_CAP);
+  // Two cards a row: an odd count leaves the last one spanning the row, so the next lead the cap cut joins
+  // (user ruling 2026-10-17), if there is one.
+  const extra = capped.length % 2 ? leads.find((f) => !capped.includes(f)) : undefined;
   return {
     grid: fs.filter((f) => inGrid(f) && !out.has(f.key) && (!theme || f.theme === theme)),
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
-    tooEarly: fs.filter((f) => f.strength === 'early' && (PINNED(f) || (!negligible(f) && early++ < EARLY_CAP))),
+    tooEarly: extra ? leads.filter((f) => capped.includes(f) || f === extra) : capped,
     tested: fs.filter((f) => f.z !== null && f.kind !== 'story').length,
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };

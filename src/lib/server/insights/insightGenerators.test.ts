@@ -753,6 +753,18 @@ describe('insightsTab', () => {
       GENERATORS.splice(0, GENERATORS.length, ...saved);
     }
   });
+  it('too early to tell: an odd count pulls in the next lead the cap cut; none left, it stays odd', () => {
+    const f = (key: string, z: number): Finding => ({ key, theme: 'taste', kind: 'number', headline: key, value: '-0.25', sample: 's', z, strength: 'early' });
+    const run = (n: number) => {
+      const fake: Generator[] = [() => [...Array.from({ length: n }, (_, i) => f(`real-${i}`, 1.9 - i / 20)), f('dialinBy:roastLevel', 0.1)]];
+      const saved = GENERATORS.splice(0, GENERATORS.length, ...fake);
+      try { return insightsTab(ctx([]), undefined).tooEarly.map((x) => x.key); } finally { GENERATORS.splice(0, GENERATORS.length, ...saved); }
+    };
+    // 6 capped + the pinned one = 7: real-6 joins, in strength order.
+    expect(run(9)).toEqual([...Array.from({ length: 7 }, (_, i) => `real-${i}`), 'dialinBy:roastLevel']);
+    expect(run(6)).toHaveLength(7); // nothing left to pull in
+    expect(run(5)).toHaveLength(6); // even already
+  });
   it('defaults come from the data: drinkers = household size, gpp = measured g/day ÷ size', () => {
     // 180 brews × 20 g over Sep 1-30 (30 tracked days): 120 g/day, 2 drinkers → 60 g each; 6 brews/day.
     const t = insightsTab(ctx(brews, bs, { onHandG: 3600 }), undefined);
