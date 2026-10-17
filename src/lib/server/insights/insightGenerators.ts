@@ -49,6 +49,9 @@ export type Generator = (c: GenCtx) => Finding | Finding[] | null;
 
 const num = (x: number, d = 2) => (+x.toFixed(d) || 0).toFixed(d); // never "-0.00"
 const signed = (x: number, d = 2) => `${+x.toFixed(d) < 0 ? '-' : '+'}${Math.abs(x).toFixed(d)}`;
+// A delta's decimals (stats audit 2026-10-17): 2 only when its SE (= |gap / z|) is under 0.05, else 1.
+// Means of one bag or a month's few brews are always 1.
+const dp = (gap: number, z: number) => (Math.abs(gap / z) < 0.05 ? 2 : 1);
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not entered
 const counted = (c: Pick<GenCtx, 'brews' | 'ratings'>) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
@@ -112,13 +115,13 @@ const dialinCurve: Generator = (c) => {
     const rs = rows.filter((r) => bucket(r) === i);
     return rs.length ? [{ label: i === 7 ? '7+' : String(i), value: mean(rs.map((r) => r.dm)) }] : [];
   });
-  const lower = mean(first.map((r) => r.dm)) < mean(rest.map((r) => r.dm));
+  const gap = mean(first.map((r) => r.dm)) - mean(rest.map((r) => r.dm)), lower = gap < 0;
   const z = brewZ(first.map((r) => r.dm), rest.map((r) => r.dm), sd(rows.map((r) => r.dm)));
   const base = { theme: 'dialin' as const, sample: `${bags.size} bags`, href: `${LB}&open=coffees` };
   const curve = graded({
     ...base, key: 'dialinCurve', kind: 'pattern',
     headline: lower ? 'Your first brew of a bag rates below the rest' : 'You nail a bag from the first brew',
-    value: signed(mean(first.map((r) => r.dm)) - mean(rest.map((r) => r.dm))), series
+    value: signed(gap, dp(gap, z)), series
   }, z, enough, 'bags', first.length);
   if (!curve) return null;
   // Within a bag (the demeaned series): raw means by brew number mix in survivorship, since bags that reach brew 7
@@ -191,7 +194,7 @@ const secondCup: Generator = (c) => {
   const { m, z } = paired(d);
   return graded({
     key: 'secondCup', theme: 'dialin', kind: 'number', headline: m >= 0 ? 'Your second cup is better' : 'Your second cup is worse',
-    value: signed(m), sample: `${d.length} pairs`, href: `${LB}&open=coffees`
+    value: signed(m, dp(m, z)), sample: `${d.length} pairs`, href: `${LB}&open=coffees`
   }, z, true, 'pairs', d.length);
 };
 
@@ -207,9 +210,9 @@ const fondMemory: Generator = (c) => {
   const most = [...gaps].sort((x, y) => (m >= 0 ? y.gap - x.gap : x.gap - y.gap) || x.b.name.localeCompare(y.b.name));
   return graded({
     key: 'fondMemory', theme: 'taste', kind: 'number', headline: m >= 0 ? 'You remember bags more fondly than you brewed them' : 'You remember bags less fondly than you brewed them',
-    value: signed(m), body: `${Math.round((100 * d.filter((x) => (m >= 0 ? x > 0 : x < 0)).length) / d.length)}% of ${d.length} bags.`,
+    value: signed(m, dp(m, z)), body: `${Math.round((100 * d.filter((x) => (m >= 0 ? x > 0 : x < 0)).length) / d.length)}% of ${d.length} bags.`,
     sample: `${d.length} bags`, href: `${LB}&open=coffees`,
-    ...details([m >= 0 ? 'Remembered most fondly' : 'Remembered least fondly', most.map((g) => detail(g.b.name, signed(g.gap), coffeeHref(g.b)))])
+    ...details([m >= 0 ? 'Remembered most fondly' : 'Remembered least fondly', most.map((g) => detail(g.b.name, signed(g.gap, 1), coffeeHref(g.b)))])
   }, z, true, 'bags', d.length);
 };
 
@@ -225,9 +228,9 @@ const repeatBuys: Generator = (c) => {
   const big = [...pairs].sort((x, y) => (m >= 0 ? y.d - x.d : x.d - y.d) || x.b.name.localeCompare(y.b.name));
   const f = {
     key: 'repeatBuys', theme: 'taste' as const, kind: 'number' as const, headline: m >= 0 ? 'Repeat buys rate higher' : 'Repeat buys rate lower',
-    value: signed(m), body: `${d.filter((x) => x > 0).length} of ${d.length} second bags rated higher.`,
+    value: signed(m, dp(m, z)), body: `${d.filter((x) => x > 0).length} of ${d.length} second bags rated higher.`,
     sample: `${d.length} repeat pairs`, href: `${LB}&open=coffees`, caveat: 'Ratings settled over time and you re-buy winners.',
-    ...details([m >= 0 ? 'Biggest second-bag gains' : 'Biggest second-bag drops', big.map((x) => detail(x.b.name, signed(x.d), coffeeHref(x.b)))])
+    ...details([m >= 0 ? 'Biggest second-bag gains' : 'Biggest second-bag drops', big.map((x) => detail(x.b.name, signed(x.d, 1), coffeeHref(x.b)))])
   };
   return graded(f, z, true, 'pairs', d.length);
 };
@@ -293,13 +296,13 @@ const notesTrouble: Generator = (c) => {
   const rows = demeaned(counted(c));
   const [yes, no] = [rows.filter((r) => r.hasNote).map((r) => r.dm), rows.filter((r) => !r.hasNote).map((r) => r.dm)];
   if (yes.length < MIN_BREWS || no.length < MIN_BREWS) return null;
-  const diff = mean(yes) - mean(no);
+  const diff = mean(yes) - mean(no), z = brewZ(yes, no, sd(rows.map((r) => r.dm)));
   return graded({
     key: 'notesTrouble', theme: 'taste', kind: 'number', headline: diff < 0 ? 'Brews you write notes on rate lower' : 'Brews you write notes on rate higher',
-    value: signed(diff), sample: `${yes.length} noted vs ${no.length} plain brews`, href: `${LB}&open=coffees`,
+    value: signed(diff, dp(diff, z)), sample: `${yes.length} noted vs ${no.length} plain brews`, href: `${LB}&open=coffees`,
     // Which way it runs is unknown; the audit's reading (2026-10-17) is the likelier one.
     ...(diff < 0 ? { caveat: "Likely the other way round: you write notes when a cup is off." } : {})
-  }, brewZ(yes, no, sd(rows.map((r) => r.dm))), true, 'brews', Math.min(yes.length, no.length));
+  }, z, true, 'brews', Math.min(yes.length, no.length));
 };
 
 // On hand / measured g/day (consumption); bought vs brewed kg in the period. Descriptive.
@@ -395,11 +398,11 @@ const earlyBrews: Generator = (c) => {
   const rows = demeaned(counted(c).filter((b) => !b.backfilled));
   const early = rows.filter((r) => minuteOf(r) < 9 * 60).map((r) => r.dm), rest = rows.filter((r) => minuteOf(r) >= 9 * 60).map((r) => r.dm);
   if (early.length < MIN_BREWS || rest.length < MIN_BREWS) return null;
-  const diff = mean(early) - mean(rest);
+  const diff = mean(early) - mean(rest), z = brewZ(early, rest, sd(rows.map((r) => r.dm))), d = dp(diff, z);
   return graded({
-    key: 'earlyBrews', theme: 'habits', kind: 'number', headline: `Brews before 9 am rate ${Math.abs(diff).toFixed(2)} ${diff < 0 ? 'lower' : 'higher'}`,
-    value: signed(diff), sample: `${early.length} early vs ${rest.length} later brews`, href: HABITS
-  }, brewZ(early, rest, sd(rows.map((r) => r.dm))), true, 'brews', Math.min(early.length, rest.length));
+    key: 'earlyBrews', theme: 'habits', kind: 'number', headline: `Brews before 9 am rate ${Math.abs(diff).toFixed(d)} ${diff < 0 ? 'lower' : 'higher'}`,
+    value: signed(diff, d), sample: `${early.length} early vs ${rest.length} later brews`, href: HABITS
+  }, z, true, 'brews', Math.min(early.length, rest.length));
 };
 
 // The weekday that stands out most (demeaned, vs the other days); one card, multiple-comparison caveat.
@@ -417,9 +420,10 @@ const weekdayRatings: Generator = (c) => {
     return { d, n: g.length, days: a.length, diff: mean(dm) - mean(rest), z: brewZ(a, b, res) };
   }).filter((x) => Number.isFinite(x.z)).sort((a, b) => Math.abs(b.z) - Math.abs(a.z) || a.d - b.d)[0];
   if (!best) return null;
+  const d = dp(best.diff, best.z);
   return graded({
-    key: 'weekday', theme: 'habits', kind: 'number', headline: `${DAY_NAMES[best.d]} rate ${Math.abs(best.diff).toFixed(2)} ${best.diff < 0 ? 'lower' : 'higher'}`,
-    value: signed(best.diff), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS
+    key: 'weekday', theme: 'habits', kind: 'number', headline: `${DAY_NAMES[best.d]} rate ${Math.abs(best.diff).toFixed(d)} ${best.diff < 0 ? 'lower' : 'higher'}`,
+    value: signed(best.diff, d), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS
   }, best.z, true, DAY_NAMES[best.d], best.days, `With ${groups.length} weekdays compared, one usually stands out by chance.`, groups.length, dayMeans.length);
 };
 
@@ -441,7 +445,7 @@ const periodVsPrevious: Generator = (c) => {
   const [a, b] = [true, false].map((now) => rows.filter((r) => r.now === now).map((r) => r.dm));
   if (a.length >= MIN_BREWS && b.length >= MIN_BREWS) {
     const z = brewZ(a, b, sd(rows.map((r) => r.dm)));
-    if (Number.isFinite(z) && Math.abs(z) >= 1.5) lines.push(`The same bags rate ${signed(mean(a) - mean(b))} vs then.`);
+    if (Number.isFinite(z) && Math.abs(z) >= 1.5) lines.push(`The same bags rate ${signed(mean(a) - mean(b), dp(mean(a) - mean(b), z))} vs then.`);
   }
   return {
     key: 'periodVsPrevious', theme: 'habits', kind: 'versus',
@@ -484,8 +488,8 @@ const roastRating: Generator = (c) => {
   const t = m && m.lines.length >= 2 && !flat(m, 0.3) && mover(m);
   if (!m || !t) return null;
   return {
-    key: 'roastRating', theme: 'taste', kind: 'pattern', headline: `${t.label} roasts: ${t.a.toFixed(2)} → ${t.b.toFixed(2)}`,
-    value: signed(t.b - t.a), body: 'Mean rating by roast level each month (5+ rated brews).', multi: m,
+    key: 'roastRating', theme: 'taste', kind: 'pattern', headline: `${t.label} roasts: ${t.a.toFixed(1)} → ${t.b.toFixed(1)}`,
+    value: signed(t.b - t.a, 1), body: 'Mean rating by roast level each month (5+ rated brews).', multi: m,
     sample: plural(m.x.length, 'month'), href: `${LB}&open=roast`, z: null, strength: null
   };
 };
@@ -508,8 +512,8 @@ const firstVsLater: Generator = (c) => {
   const gaps = one.flatMap((v, i) => (v !== null && later[i] !== null ? [v - later[i]!] : []));
   if (gaps.length < 3) return null;
   return {
-    key: 'firstVsLater', theme: 'dialin', kind: 'pattern', headline: `Brew #1 gap: ${signed(gaps[0])} → ${signed(gaps.at(-1)!)}`,
-    value: signed(gaps.at(-1)!), body: "Each bag's first brew vs its later brews, mean rating by month.", multi: m,
+    key: 'firstVsLater', theme: 'dialin', kind: 'pattern', headline: `Brew #1 gap: ${signed(gaps[0], 1)} → ${signed(gaps.at(-1)!, 1)}`,
+    value: signed(gaps.at(-1)!, 1), body: "Each bag's first brew vs its later brews, mean rating by month.", multi: m,
     sample: plural(m.x.length, 'month'), href: `${LB}&open=coffees`, z: null, strength: null
   };
 };
@@ -573,15 +577,15 @@ const sameBagVersus: Generator = (c) => SAME_BAG.flatMap((dim) => {
   const rows = demeaned(rs.filter((x) => ha.has(x.coffeeId) && hb.has(x.coffeeId)));
   const [da, db] = [a, b].map((k) => rows.filter((r) => val(r) === k).map((r) => r.dm));
   if (da.length < MIN_BREWS || db.length < MIN_BREWS) return [];
-  const diff = mean(da) - mean(db), se = sd(rows.map((r) => r.dm)) * Math.sqrt(1 / da.length + 1 / db.length);
+  const diff = mean(da) - mean(db), se = sd(rows.map((r) => r.dm)) * Math.sqrt(1 / da.length + 1 / db.length), d = se < 0.05 ? 2 : 1;
   const base = {
-    key: `sameBagVersus:${dim}`, theme: 'gear' as const, kind: 'versus' as const, value: signed(diff),
-    sides: [{ label: a, value: signed(mean(da)) }, { label: b, value: signed(mean(db)) }],
+    key: `sameBagVersus:${dim}`, theme: 'gear' as const, kind: 'versus' as const, value: signed(diff, d),
+    sides: [{ label: a, value: signed(mean(da), d) }, { label: b, value: signed(mean(db), d) }],
     sample: `${new Set(rows.map((r) => r.coffeeId)).size} bags, ${rows.length} brews`, href: `${LB}&open=${dim}`
   };
   if (Math.abs(diff) < TIE && Math.abs(diff) + 2 * se < TIE_BAND) return [{ ...base, headline: `${a} and ${b} tie on the same bags`, z: null, strength: null }];
   const [w, l] = diff > 0 ? [a, b] : [b, a];
-  const headline = Math.abs(diff) < TIE ? `${a} and ${b} look even on the same bags` : `${w} beats ${l} by ${Math.abs(diff).toFixed(2)} on the same bags`;
+  const headline = Math.abs(diff) < TIE ? `${a} and ${b} look even on the same bags` : `${w} beats ${l} by ${Math.abs(diff).toFixed(d)} on the same bags`;
   const f = graded({ ...base, headline }, diff / se, true, 'brews', Math.min(da.length, db.length));
   return f ? [f] : [];
 });

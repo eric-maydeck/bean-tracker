@@ -121,11 +121,11 @@ describe('second cup', () => {
     const f = gen('secondCup', around(0.25))!;
     const more = +f.settle!.match(/\d+/)![0];
     expect(f.progress).toBeCloseTo(30 / (30 + more), 10);
-    expect(gen('secondCup', around(0.04))!.progress).toBeLessThan(0.1);
+    expect(gen('secondCup', around(0.06))!.progress).toBeLessThan(0.1);
     expect(gen('secondCup', mk(28).concat(Array.from({ length: 12 }, (_, i) => pair(i).map((x) => ({ ...x, localDate: `2026-08-${String(i + 1).padStart(2, '0')}` }))).flat()))!.progress).toBeUndefined();
   });
-  it('too early and far off: no giant number', () =>
-    expect(gen('secondCup', around(0.04))).toMatchObject({ strength: 'early', settle: 'Too small a difference to settle with your data.' }));
+  it('too early and far off: no giant number (0.04 rounds to +0.0 and is no finding)', () =>
+    expect(gen('secondCup', around(0.06))).toMatchObject({ strength: 'early', settle: 'Too small a difference to settle with your data.' }));
 });
 
 describe('remembered fondly', () => {
@@ -229,12 +229,12 @@ describe('details (supporting lists)', () => {
   it('remembered fondly: the biggest gaps', () => {
     const bs = bags(30, (i) => ({ bagRating: 8 + (i % 2 ? 0.3 : 0.5) }));
     expect(gen('fondMemory', bs.flatMap((x) => seq(x.id, dup([7, 8, 9]))), bs)!.details).toEqual([{ label: 'Remembered most fondly', items: [
-      { name: 'Bag 1', value: '+0.50' }, { name: 'Bag 11', value: '+0.50' }] }]);
+      { name: 'Bag 1', value: '+0.5' }, { name: 'Bag 11', value: '+0.5' }] }]);
   });
   it('repeat buys: the biggest second-bag gains', () => {
     const bs = Array.from({ length: 10 }, (_, i) => bag({ id: i + 1, name: `Cof ${i >> 1}`, roaster: 'Same', purchaseDate: `2026-0${1 + (i & 1)}-01` }));
     const f = gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, dup([i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7]))), bs)!;
-    expect(f.details).toEqual([{ label: 'Biggest second-bag gains', items: [{ name: 'Cof 4', value: '+0.83' }, { name: 'Cof 3', value: '+0.75' }] }]);
+    expect(f.details).toEqual([{ label: 'Biggest second-bag gains', items: [{ name: 'Cof 4', value: '+0.8' }, { name: 'Cof 3', value: '+0.8' }] }]);
   });
   it('group effects: the group\'s lowest-rated bags when it rates lower', () => {
     const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', slug: `b${i + 1}` }));
@@ -273,7 +273,7 @@ describe('details (supporting lists)', () => {
 describe('notes mean trouble', () => {
   const mk = (bagsN: number) => Array.from({ length: bagsN }, (_, i) => seq(i + 1, [7.5, 7.9, 7.7, 7.5, 7.9, 8.1, 8.5, 8.3, 8.1, 8.5], '2026-07-01', (j) => ({ hasNote: j < 5 }))).flat();
   it('60 noted at -0.3 vs 60 plain at +0.3', () =>
-    expect(gen('notesTrouble', mk(12))).toMatchObject({ theme: 'taste', strength: 'solid', value: '-0.60', headline: 'Brews you write notes on rate lower' }));
+    expect(gen('notesTrouble', mk(12))).toMatchObject({ theme: 'taste', strength: 'solid', value: '-0.6', headline: 'Brews you write notes on rate lower' }));
   it('null under 30 per side', () => expect(gen('notesTrouble', mk(5))).toBeNull());
 });
 
@@ -342,7 +342,7 @@ describe('before 9 am', () => {
   const mk = (n: number, o: (j: number) => Partial<BrewFact> = () => ({})) => Array.from({ length: n }, (_, i) =>
     seq(i + 1, r, `2026-07-${String(i + 1).padStart(2, '0')}`, (j) => ({ localTime: `2026-07-${String(i + 1).padStart(2, '0')}T${j < 5 ? '08' : '10'}:1${j}`, ...o(j) }))).flat();
   it('early brews rate lower (demeaned)', () =>
-    expect(gen('earlyBrews', mk(12))).toMatchObject({ theme: 'habits', strength: 'solid', value: '-0.60', headline: 'Brews before 9 am rate 0.60 lower', sample: '60 early vs 60 later brews' }));
+    expect(gen('earlyBrews', mk(12))).toMatchObject({ theme: 'habits', strength: 'solid', value: '-0.6', headline: 'Brews before 9 am rate 0.6 lower', sample: '60 early vs 60 later brews' }));
   it('back-filled brews are skipped', () => expect(gen('earlyBrews', mk(12, (j) => ({ backfilled: j < 5 })))).toBeNull());
   it('null under 30 per side', () => expect(gen('earlyBrews', mk(5))).toBeNull());
 });
@@ -354,14 +354,14 @@ describe('weekday ratings', () => {
   it('the standout weekday', () => {
     const f = gen('weekday', mk(7, 1))!;
     expect(f).toMatchObject({ theme: 'habits', strength: 'solid', sample: '35 brews on 5 Mondays' });
-    expect(f.headline).toMatch(/^Mondays rate 1\.\d\d higher$/);
+    expect(f.headline).toMatch(/^Mondays rate 1\.\d higher$/);
   });
   it('a weak standout is too early, with the multiple-comparison caveat', () => {
     // ±0.5 week-to-week noise that cancels per weekday over 6 weeks; Mondays only +0.05
     const weak = Array.from({ length: 7 }, (_, i) =>
       days('2026-09-07', 42).map((d, j) => at(d, '09:15', { coffeeId: i + 1, rating: 7.5 + alt(-0.5, 0.5)(Math.floor(j / 7)) + (j % 7 === 0 ? 0.05 : 0) }))).flat();
     expect(gen('weekday', weak)).toMatchObject({ strength: 'early', caveat: 'With 7 weekdays compared, one usually stands out by chance.' });
-    expect(gen('weekday', weak)!.headline).toMatch(/^Mondays rate 0\.\d\d higher$/);
+    expect(gen('weekday', weak)!.headline).toMatch(/^Mondays rate 0\.\d higher$/);
   });
   it('null under 30 brews a weekday', () => expect(gen('weekday', mk(5, 1))).toBeNull());
   it('brews of one day move together: the day is the unit, not the brew', () => {
@@ -371,7 +371,7 @@ describe('weekday ratings', () => {
     const b = Array.from({ length: 12 }, (_, i) => days('2026-09-07', 28).map((d, k) =>
       at(d, '09:15', { coffeeId: i + 1, rating: 7.5 + shift(Math.floor(k / 7), k % 7) + alt(-0.05, 0.05)(i) }))).flat();
     const f = gen('weekday', b)!;
-    expect(f.headline).toBe('Mondays rate 0.30 higher');
+    expect(f.headline).toBe('Mondays rate 0.3 higher');
     expect(f.strength).toBe('early');
     expect(f.sample).toBe('48 brews on 4 Mondays');
   });
@@ -385,7 +385,7 @@ describe('this period vs previous', () => {
     const f = gen('periodVsPrevious', cur, [], { prevBrews: prev })!;
     expect(f).toMatchObject({ theme: 'habits', kind: 'versus', z: null, headline: '60% more brews than the comparison period', href: '/insights?tab=overview' });
     expect(f.sides).toEqual([{ label: 'This period', value: '64 brews' }, { label: 'Comparison', value: '40 brews' }]);
-    expect(f.body).toBe('4 bags brewed vs 4. Top origin Kenya (was Ethiopia). V60 on 100% of brews (was Origami 100%). The same bags rate +1.00 vs then.');
+    expect(f.body).toBe('4 bags brewed vs 4. Top origin Kenya (was Ethiopia). V60 on 100% of brews (was Origami 100%). The same bags rate +1.0 vs then.');
   });
   it('no rating line under 30 rated brews a side', () =>
     expect(gen('periodVsPrevious', cur, [], { prevBrews: prev.slice(0, 20) })!.body).not.toContain('same bags'));
@@ -433,8 +433,8 @@ describe('same-bag versus', () => {
   const solo = seq(99, Array(20).fill(9), '2026-07-03', { dripper: 'V60' }); // only V60: left out
   it('top 2 drippers on the bags brewed with both', () => {
     const f = gen('sameBagVersus:dripper', [...mk(6, [8.2, 8.4], [7.6, 7.8]), ...solo, ...seq(98, [8, 8, 8], '2026-07-04', { dripper: 'Kalita' })])!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.60', headline: 'V60 beats Origami by 0.60 on the same bags', sample: '6 bags, 120 brews', href: '/insights?tab=leaderboards&open=dripper' });
-    expect(f.sides).toEqual([{ label: 'V60', value: '+0.30' }, { label: 'Origami', value: '-0.30' }]);
+    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.6', headline: 'V60 beats Origami by 0.6 on the same bags', sample: '6 bags, 120 brews', href: '/insights?tab=leaderboards&open=dripper' });
+    expect(f.sides).toEqual([{ label: 'V60', value: '+0.3' }, { label: 'Origami', value: '-0.3' }]);
   });
   it('a confident dead heat is a finding', () =>
     expect(gen('sameBagVersus:dripper', mk(6, [7.9, 8.1], [7.9, 8.1]))).toMatchObject({ headline: 'Origami and V60 tie on the same bags', z: null, strength: null }));
@@ -631,7 +631,7 @@ describe('trend charts', () => {
     seq(100 * k + i + 1, [0, 1, 2, 3].map((j) => rate(m, i, j)), `2026-${m}-${String(i + 1).padStart(2, '0')}`, { roastLevel: level(m, i) })).flat());
   it('rating by roast level per month', () => {
     const f = gen('roastRating', brews)!;
-    expect(f).toMatchObject({ theme: 'taste', kind: 'pattern', z: null, strength: null, headline: 'A roasts: 7.00 → 9.00', value: '+2.00', sample: '3 months' });
+    expect(f).toMatchObject({ theme: 'taste', kind: 'pattern', z: null, strength: null, headline: 'A roasts: 7.0 → 9.0', value: '+2.0', sample: '3 months' });
     expect(f.multi).toEqual({ x: ['Apr 26', 'May 26', 'Jun 26'], unit: 'rating', lines: [{ label: 'A', values: [7, 8, 9] }, { label: 'B', values: [8, 8, 8] }] });
   });
   it('roast share of brews per month', () => {
@@ -648,7 +648,7 @@ describe('trend charts', () => {
     const bs = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 4 }, (_, i) =>
       seq(10 * k + i + 1, [6 + k * 0.5, 8, 8, 8], `2026-${m}-${String(i + 1).padStart(2, '0')}`)).flat());
     const f = gen('firstVsLater', bs)!;
-    expect(f).toMatchObject({ theme: 'dialin', headline: 'Brew #1 gap: -2.00 → -1.00', value: '-1.00' });
+    expect(f).toMatchObject({ theme: 'dialin', headline: 'Brew #1 gap: -2.0 → -1.0', value: '-1.0' });
     expect(f.multi!.lines).toEqual([{ label: 'Brew #1', values: [6, 6.5, 7] }, { label: 'Later brews', values: [8, 8, 8] }]);
     // first brews under 20% of a month still get their own line (no folding into Other)
     const long = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 4 }, (_, i) =>
