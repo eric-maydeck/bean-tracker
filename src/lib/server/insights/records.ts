@@ -222,7 +222,7 @@ const ratioIn = (b: BrewFact) => (b.dose && b.waterG ? `${g(b.dose)} to ${g(b.wa
 // bag means, which the adjustment shrinks toward); shown as the group's raw mean vs it (spec: Eymen
 // −2.51). The group's latest brew is its date.
 const least = (board: Board) => (c: RecCtx): Candidate[] => {
-  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg);
+  const lb = (avg: Avg) => leaderboard(c.brews, c.bags, { start: null, end: c.today }, board, 'rating', c.ratings, avg, true, true);
   const raw = lb('raw'), avg = raw.reduce((s, r) => s + r.value * r.bags, 0) / raw.reduce((s, r) => s + r.bags, 0);
   const rawMean = new Map(raw.map((r) => [r.key, r.value]));
   const rows = lb('adjusted').filter((r) => !r.sample!.small);
@@ -382,7 +382,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
   // Bag holders carry their roaster as sub; day holders have none and fall through to a–z.
   const tasteTie = (x: RecCtx) => {
-    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw').map((r) => [r.key, r.value]));
+    const m = new Map(leaderboard(x.brews, x.bags, all, 'roasters', 'rating', c.ratings, 'raw', true, true).map((r) => [r.key, r.value]));
     const r = (h: Holder) => (h.sub ? m.get(h.sub) : undefined) ?? -Infinity;
     return (a: Holder, b: Holder) => r(b) - r(a) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
   };

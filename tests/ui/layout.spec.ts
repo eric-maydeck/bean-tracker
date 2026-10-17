@@ -2888,6 +2888,16 @@ export const STATES: State[] = [
         expect(await note.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), 'one line')
           .toBeLessThan(1.5);
     } })),
+  // See all shows every bag (user, 2026-10-17): Onyx, a roaster of one 1-brew decaf bag, is on the Roasters rating
+  // board under See all + caffeine=all, and off it under the default Score.
+  { name: 'insights-see-all-every-bag', path: () => '/insights?tab=leaderboards&range=all&avg=raw&ratings=all&dial=all&caffeine=all&open=roasters',
+    act: async (page) => {
+      await expect(page.locator('.see-all')).toContainText('Showing everything');
+      await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
+      await page.goto('/insights?tab=leaderboards&range=all&caffeine=all&open=roasters');
+      await expect(page.locator('[data-board="roasters"] .board-row').first()).toBeVisible();
+      await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(0);
+    } },
   // Gate P4: "hidden by your settings" opens the shared tip (FloatTip): each board's count, the brews', the reasons
   // once; hover (mouse), tap and keyboard focus.
   { name: 'insights-see-all-tip', path: () => '/insights?tab=leaderboards&range=all',

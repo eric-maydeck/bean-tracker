@@ -534,6 +534,14 @@ describe('page-wide coffees filter', () => {
     expect(boards('&caffeine=decaf')).toHaveLength(1);
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
   });
+  it('See all shows every bag: a roaster of one 1-brew decaf bag (the seed\'s Onyx) is on the rating board (user, 2026-10-17)', () => {
+    seedTwo(true, 0); // R1: one decaf bag, one rated brew
+    const roasters = (q: string) => run(`?range=all&tab=leaderboards&caffeine=all${q}`).boards.roasters.map((r: { label: string }) => r.label);
+    expect(roasters('&avg=raw&ratings=all&dial=all')).toContain('R1');
+    expect(roasters('')).not.toContain('R1');
+    // The note offers it: Score hid the row.
+    expect(run('?range=all&tab=leaderboards&caffeine=all&ratings=all&dial=all').hidden.rowsBy.roasters).toEqual(['avg']);
+  });
   it('Leaderboards: boards the confident cutoff emptied are named; truly empty ones are not', () => {
     seedTwo(false, 4);
     const d = run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed');
@@ -550,7 +558,7 @@ describe('page-wide coffees filter', () => {
     getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'b0', 15, 6, ?)`)
       .run('2026-05-01T10:00:00.000Z', today);
     const h = (q: string) => run(`?range=all${q}`).hidden;
-    // dial=all: a 4–5-brew bag once dialed is under the 4-brew full-bag rule, which no See all step relaxes.
+    // dial=all: a 4–5-brew bag once dialed is under the 4-brew full-bag rule, which See all's Raw step relaxes (Score).
     expect(h('&tab=leaderboards&process=Washed&dial=all')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1, rowsBy: expect.objectContaining({ roasters: ['avg'] }), why: ['ratings'] });
     expect(h('&tab=leaderboards&process=Washed&avg=raw&dial=all')).toEqual({ rows: {}, rowsBy: {}, brews: 1, why: ['ratings'] });
     expect(h('&tab=records&ratings=all&dial=all')).toEqual({ rows: {}, rowsBy: {}, brews: 0, why: [] });

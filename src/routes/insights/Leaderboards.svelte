@@ -78,9 +78,9 @@
   // How scores work dialog: examples assume an overall average of 7.0 and use the real formulas.
   const HOW: { group: string; items: { id: Avg; text: string; eg: string }[] }[] = [
     { group: 'Average', items: [
-      { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews). Groups count bags with 4+ rated brews; fewer are mostly dial-in.", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
-      { id: 'min3', text: 'The same average, but rows marked Low confidence are left out: coffees with under 4 rated brews, groups under 3 such bags.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag, 12-brew roaster at 8 is.' },
-      { id: 'k2', text: 'Adjusted for confidence: the average pulled toward your overall average, as if every group had 2 extra bags at that average (light).', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
+      { id: 'raw', text: "The plain average of each bag's rating (a bag counts once, however many brews). Every bag counts, even one with 1–3 rated brews.", eg: 'Bags at 9 and 8 → 8.5. A one-bag roaster at 9.5 ranks above them.' },
+      { id: 'min3', text: 'The same average over bags with 4+ rated brews (fewer are mostly dial-in); rows marked Low confidence are left out: coffees with under 4 rated brews, groups under 3 such bags.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag, 12-brew roaster at 8 is.' },
+      { id: 'k2', text: 'Adjusted for confidence: the average of bags with 4+ rated brews pulled toward your overall average, as if every group had 2 extra bags at that average (light).', eg: 'One bag at 10 → 8.0. Four bags at 9 → 8.3.' },
       { id: 'adjusted', text: 'The same, with 5 extra bags (strong): small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
     ] },
     { group: 'Peak', items: [
@@ -94,12 +94,12 @@
   const emptyText = () =>
     rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
     : rank === 'like' ? 'No coffees with a like group to compare in this period.' : 'No brews in this period.';
-  // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews". Group boards under rating
-  // count only bags with BAG_MIN_BREWS+ rated brews (fullBags), so an empty one says that.
+  // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews". Group boards under a mean
+  // Score other than Raw count only bags with BAG_MIN_BREWS+ rated brews (fullBags), so an empty one says that.
   const boardEmpty = (b: Board) =>
     cut.includes(b)
       ? `No ${BOARD_NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags of ${BAG_MIN_BREWS}+ rated brews`} in this period.`
-      : rank === 'rating' && b !== 'coffees' ? `No bags with ${BAG_MIN_BREWS}+ rated brews in this period.` : emptyText();
+      : rank === 'rating' && b !== 'coffees' && avg !== 'raw' && !avg.startsWith('best') ? `No bags with ${BAG_MIN_BREWS}+ rated brews in this period.` : emptyText();
   const emptyLine = useEmptyLine();
 </script>
 
