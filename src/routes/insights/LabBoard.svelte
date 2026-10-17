@@ -3,7 +3,7 @@
   import type { LeaderRow } from '$lib/server/insights/lab';
   import { noMatch, SD_TIP } from './DeltaBars.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaInk, labDelta } from '$lib/components/deltaColor';
   import { STRENGTH } from './Insights.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
 
@@ -35,7 +35,7 @@
         </span>
         <span class="num">{r.plainBrews}</span>
         <span class="num bags">{r.plainBags}</span>
-        <span class="num">{r.adjusted.toFixed(2)}</span>
+        <span class="num">{r.adjusted.toFixed(1)}</span>
         <span class="num sd">{r.sd?.toFixed(2) ?? '—'}</span>
         <span class="lab-badge">
           {#if r.strength === 'solid' || r.strength === 'hint'}<span class="badge hl-badge" class:hint={r.strength === 'hint'}>{STRENGTH[r.strength]}</span>{/if}
@@ -44,7 +44,7 @@
           <span class="val"><button class="mode-tip-button no-match" popovertarget="{uid}-nm-{i}">no match</button></span>
           <div class="mode-tip" id="{uid}-nm-{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'No match', lines: [noMatch(noun)] }} /></div>
         {:else}
-          <span class="val {deltaInk(r.delta)}">{signed(r.delta)}</span>
+          <span class="val {deltaInk(r.delta)}">{labDelta(r.delta, r.se)}</span>
         {/if}
       </li>
     {/each}

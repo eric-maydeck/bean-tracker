@@ -6,7 +6,7 @@
 
 <div class="bar-labels" class:full aria-hidden="true" style:--n={series.length}>
   {#each series as p, i (i)}
-    {#if full}<span title={p.label}><b>{+p.value.toFixed(2)}</b>{p.label}</span>
+    {#if full}<span title={p.label}><b>{+p.value.toFixed(1)}</b>{p.label}</span>
     {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
   {/each}
 </div>

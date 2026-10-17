@@ -2,7 +2,7 @@
   import type { BandStat } from '$lib/server/insights/lab';
   import { SAMPLE_HELP, sampleField } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { signed } from '$lib/components/deltaColor';
+  import { labDelta } from '$lib/components/deltaColor';
   export const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
   // Help popovers are one idea per line (ui-rules 36, T1); a section's help builds on these.
   export const SAME_BAG_HELP = [
@@ -21,14 +21,14 @@
   // A same-bag delta chart's rows (Brewing's variables and dial-in, Water's GH); `bold` marks notable labels.
   // The tip (ui-rules 36) adds what the bar doesn't show: the counts behind it, the plain average, a small sample.
   export const bandRows = (bands: BandStat[], bold: (label: string) => boolean = () => false, what = 'band') => bands.map((b) => ({
-    label: b.label, value: b.delta, text: !b.plainBrews ? 'no brews' : b.delta === null ? 'no match' : signed(b.delta), small: b.sample.small, strength: b.strength,
+    label: b.label, value: b.delta, text: !b.plainBrews ? 'no brews' : b.delta === null ? 'no match' : labDelta(b.delta, b.se), small: b.sample.small, strength: b.strength,
     bold: bold(b.label),
     // A grind band's label is its first setting: the tip's title is its range ("0.9.0 – 0.9.9").
     tip: (!b.plainBrews
       ? { title: b.range ?? b.label, note: 'No brews in this band.' }
       : b.delta === null
-      ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(2)]], note: noMatch(what) }
-      : { title: b.range ?? b.label, rows: [...(b.sample.small ? [] : [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`]]), ['Avg rating', b.adjusted.toFixed(2)]], ...sampleField(b.sample, true), ...(b.strength === 'solid' || b.strength === 'hint' ? { strength: b.strength } : {}) }) as Tip
+      ? { title: b.range ?? b.label, rows: [['Brews', `${b.plainBrews}`], ['Bags', `${b.plainBags}`], ['Avg rating', b.adjusted.toFixed(1)]], note: noMatch(what) }
+      : { title: b.range ?? b.label, rows: [...(b.sample.small ? [] : [['Same-bag brews', `${b.brews}`], ['Bags', `${b.bags}`]]), ['Avg rating', b.adjusted.toFixed(1)]], ...sampleField(b.sample, true), ...(b.strength === 'solid' || b.strength === 'hint' ? { strength: b.strength } : {}) }) as Tip
   }));
 </script>
 

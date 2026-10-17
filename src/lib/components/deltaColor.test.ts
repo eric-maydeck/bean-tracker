@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deltaColor, deltaInk, deltaRamp } from './deltaColor';
+import { deltaColor, deltaInk, deltaRamp, labDelta } from './deltaColor';
 
 describe('deltaColor (fixed scale, T3)', () => {
   it('under 0.05 is plain gray, either sign', () => {
@@ -25,5 +25,14 @@ describe('deltaInk (T4)', () => {
     expect(deltaInk(0.049)).toBe('');
     expect(deltaInk(-0.01)).toBe('');
     expect(deltaInk(null)).toBe('');
+  });
+});
+
+describe('labDelta (stats re-review D)', () => {
+  it('1 decimal unless the bag-level SE is under 0.05', () => {
+    expect(labDelta(0.234)).toBe('+0.2');
+    expect(labDelta(-0.234, 0.08)).toBe('−0.2');
+    expect(labDelta(0.234, 0.04)).toBe('+0.23');
+    expect(labDelta(0.04, 0.2)).toBe('0.0');
   });
 });

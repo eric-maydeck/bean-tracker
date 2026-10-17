@@ -2637,7 +2637,7 @@ export const STATES: State[] = [
       await page.locator('h1').click();
       // A small-sample cell is striped with its value and sample label; the old legend line is gone.
       const small = hm.locator('.heat-cell.small-sample-mark');
-      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(Low confidence\)$/);
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d? \(Low confidence\)$/);
       await expect(hm.locator('.div-legend')).not.toContainText(/Striped:|few brews/i);
     } })),
   { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
@@ -2949,7 +2949,7 @@ export const STATES: State[] = [
       const map = page.locator('[data-section="water-minerals"]');
       await expect(map.locator('tbody tr')).toHaveCount(3);
       await expect(map.locator('thead th')).toHaveText(['Recipe', 'vs usual', 'Camg/L', 'Mgmg/L', 'Kmg/L', 'Namg/L', 'GHppm', 'KHppm', 'Mg:Ca', 'Mg:K']);
-      await expect(map.locator('tbody td.delta').first()).toHaveText(/^[+−]\d\.\d\d$|^0\.00$/);
+      await expect(map.locator('tbody td.delta').first()).toHaveText(/^[+−]\d\.\d\d?$|^0\.00?$/);
       await expectInnerScroll(page, '.map-scroll');
       const pinned = await map.locator('.map-scroll').evaluate((sc) => {
         sc.scrollLeft = sc.scrollWidth;
@@ -3250,7 +3250,7 @@ export const STATES: State[] = [
       // A small matrix cell is striped with its value; a cell tip names the pairing and its counts (tap and keyboard).
       const hm = page.locator('[data-section="gear-matrix"] .heatmap');
       const small = hm.locator('.heat-cell.small-sample-mark');
-      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d \(Low confidence\)$/);
+      if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d? \(Low confidence\)$/);
       await hm.locator('.heat-cell').first().click();
       await expect(hm.locator('.cell-tip .tip-title').first()).toContainText(' · ');
       await hm.locator('.heat-cell').first().focus();

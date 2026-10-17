@@ -2,7 +2,7 @@
   import Heatmap from '$lib/components/Heatmap.svelte';
   import type { Tip } from '$lib/components/TipBody.svelte';
   import type { Breakdown } from '$lib/server/insights/lab';
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaInk, labDelta } from '$lib/components/deltaColor';
   import { TIP_TITLE, sampleField } from '$lib/sample';
   import { noMatch, plural } from './DeltaBars.svelte';
 
@@ -15,7 +15,7 @@
 
   const text = (x: number | null, r: number, c: number) => {
     const cell = by.cells[r][c];
-    return x !== null ? `${signed(x)}${cell?.sample.small ? ` (${TIP_TITLE})` : ''}` : !cell ? 'No brews' : 'no match';
+    return x !== null ? `${labDelta(x, cell?.se)}${cell?.sample.small ? ` (${TIP_TITLE})` : ''}` : !cell ? 'No brews' : 'no match';
   };
   const label = (r: number, c: number) => {
     const cell = by.cells[r][c];
@@ -27,7 +27,7 @@
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
     if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
-    return { title, rows: [[`vs ${vs}`, signed(cell.delta), deltaInk(cell.delta)], ...(cell.sample.small ? [] : counts)], ...sampleField(cell.sample, true) };
+    return { title, rows: [[`vs ${vs}`, labDelta(cell.delta, cell.se), deltaInk(cell.delta)], ...(cell.sample.small ? [] : counts)], ...sampleField(cell.sample, true) };
   };
 </script>
 

@@ -235,7 +235,7 @@
     {@const max = Math.max(...f.series.map((p) => p.value)) || 1}
     {@const w = 100 / f.series.length}
     <!-- Magnitudes from zero: bars. Weekend bars take the second color (and their initials are bold). -->
-    <div class="bars" role="img" aria-label={f.series.map((p) => `${p.label} ${+p.value.toFixed(2)}`).join(', ')}>
+    <div class="bars" role="img" aria-label={f.series.map((p) => `${p.label} ${+p.value.toFixed(1)}`).join(', ')}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
           <rect x={i * w + w * 0.15} width={w * 0.7} y={40 - (Math.max(0, p.value) / max) * 38} height={(Math.max(0, p.value) / max) * 38}
