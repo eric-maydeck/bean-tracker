@@ -623,10 +623,16 @@ describe('hiddenNote', () => {
     expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] })).toBe('3 rated brews left out: before calibration.');
     expect(hiddenNote({ rows: {}, brews: 0 })).toBe('');
   });
+  it('one or two boards carry their own reasons in parentheses (no repeated clause); the total keeps the union', () => {
+    expect(hiddenNote({ rows: { roasters: 4, roast: 2 }, rowsWhy: ['avg', 'ratings'], rowsBy: { roasters: ['avg'], roast: ['ratings'] }, brews: 0 }))
+      .toBe('4 roasters (too few bags or brews) and 2 roast levels (before calibration) hidden.');
+    expect(hiddenNote({ rows: { roasters: 3, water: 1, grinder: 2 }, rowsWhy: ['avg', 'dial'], rowsBy: { roasters: ['avg'], water: ['avg', 'dial'], grinder: ['dial'] }, brews: 0 }))
+      .toBe('6 rows on 3 boards hidden: too few bags or brews, or while dialing in.');
+  });
   it('more than two boards: the total has a per-board breakdown', () => {
     expect(boardsTotal({ rows: { roasters: 42, roast: 1 }, brews: 0 })).toBeNull();
-    expect(boardsTotal({ rows: { roasters: 42, roast: 1, process: 5 }, brews: 0 }))
-      .toEqual({ before: '48 rows on ', boards: '3 boards', list: [['Roasters', '42'], ['Roast levels', '1'], ['Process groups', '5']] });
+    expect(boardsTotal({ rows: { roasters: 42, roast: 12, process: 5 }, rowsBy: { roasters: ['avg'], roast: ['avg', 'dial'], process: ['avg', 'ratings', 'dial'] }, brews: 0 }))
+      .toEqual({ before: '59 rows on ', boards: '3 boards', list: ['Roasters 42 · too few bags or brews', 'Roast levels 12 · too few bags or brews, or while dialing in', 'Process groups 5 · too few bags or brews, before calibration, or while dialing in'] });
   });
 });
 

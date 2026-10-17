@@ -143,7 +143,8 @@ describe('hiddenRows', () => {
   it('blames each setting that hid rows, and only those', () => {
     // One bag, two brews: min3 hides every board; raw shows it.
     expect(run(rated, rated, 'all', 'min3').why).toEqual(['avg']);
-    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [] });
+    expect(run(rated, rated, 'all', 'min3').by.roasters).toEqual(['avg']);
+    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [], by: {} });
     // Once dialed nulled the ratings (scored) that the full history has: Brews setting only.
     const dialed = rated.map((b) => ({ ...b, rating: null }));
     const d = run(dialed, rated, 'all', 'raw');
@@ -153,5 +154,14 @@ describe('hiddenRows', () => {
     const old = rated.map((b) => ({ ...b, localDate: '2026-05-01' }));
     expect(hiddenRows(leaderboards(old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, null, 'rating', 'current', 'raw'), old, old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, 'rating', 'current').why)
       .toEqual(['ratings']);
+  });
+  it('each board gets its own reasons', () => {
+    // Bag 1 (Sey) has 2 rated brews, bag 2 (Moonwake) one dial-in brew whose rating Once dialed nulls.
+    const sey = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 1, rating: 9 })];
+    const moon = brew({ coffeeId: 2, roaster: 'Moonwake', rating: 7 });
+    const bags = [bag({ id: 1 }), bag({ id: 2, roaster: 'Moonwake', name: 'B', slug: 'b' })];
+    const scored = [...sey, { ...moon, rating: null }], all = [...sey, moon];
+    const r = hiddenRows(leaderboards(scored, bags, SEPT, null, 'rating', 'all', 'min3'), scored, all, bags, SEPT, 'rating', 'all');
+    expect(r.by.roasters).toEqual(['avg', 'dial']); // both roasters gain at raw; Moonwake only once dialed shows
   });
 });

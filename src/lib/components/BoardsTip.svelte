@@ -4,10 +4,10 @@
 
   // "8 boards" in the See all note: hover, tap and keyboard focus list each board's hidden rows (the shared tip,
   // ui-rules 36, 39). Open state is transient UI, not URL state.
-  let { label, rows }: { label: string; rows: [string, string][] } = $props();
+  let { label, lines }: { label: string; lines: string[] } = $props();
   let anchor: HTMLButtonElement | undefined = $state();
   let open = $state(false);
-  let tip = $derived<Tip>({ title: 'Hidden rows', rows });
+  let tip = $derived<Tip>({ title: 'Hidden rows', lines });
 </script>
 
 <button bind:this={anchor} type="button" class="boards-tip" aria-expanded={open}

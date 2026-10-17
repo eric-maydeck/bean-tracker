@@ -1,4 +1,4 @@
-import { BOARDS, type Avg, type Board, type Rank, type Ratings } from '$lib/insightsUrl';
+import { BOARDS, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
@@ -160,17 +160,17 @@ export function cutBoards(
 export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
   ratings: Ratings
-): { rows: Partial<Record<Board, number>>; why: ('avg' | 'ratings' | 'dial')[] } {
-  if (rank !== 'rating') return { rows: {}, why: [] };
-  const rows: Partial<Record<Board, number>> = {};
+): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>> } {
+  if (rank !== 'rating') return { rows: {}, why: [], by: {} };
+  const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {};
   const hit = { avg: false, ratings: false, dial: false };
   for (const b of BOARDS) {
     const n0 = boards[b].length;
     const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw').length;
     const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw').length;
     const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw').length;
-    if (n3 > n0) rows[b] = n3 - n0;
+    if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
     hit.avg ||= n1 > n0; hit.ratings ||= n2 > n1; hit.dial ||= n3 > n2;
   }
-  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]) };
+  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]), by };
 }

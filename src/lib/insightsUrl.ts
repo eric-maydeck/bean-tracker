@@ -414,26 +414,32 @@ const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -
 // The See all note (gate 3): what the Score/Ratings/Brews settings hide on this tab ('' = nothing). Rows the
 // boards would gain (up to two boards named, else a total) and in-period rated brews left out.
 // `rowsWhy` / `why`: the settings that hid the rows / the brews (avg = Score's confident cutoff).
-export type Hidden = { rows: Partial<Record<Board, number>>; rowsWhy?: ('avg' | 'ratings' | 'dial')[]; brews: number; why?: ('ratings' | 'dial')[] };
+export type RowWhy = 'avg' | 'ratings' | 'dial';
+// `rowsBy`: the same per board.
+export type Hidden = { rows: Partial<Record<Board, number>>; rowsWhy?: RowWhy[]; rowsBy?: Partial<Record<Board, RowWhy[]>>; brews: number; why?: ('ratings' | 'dial')[] };
 const WHY = { avg: 'too few bags or brews', ratings: 'before calibration', dial: 'while dialing in' };
 // "a or b"; with an item that holds an "or" itself, commas keep it readable: "a or b, c, or d".
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.some((x) => x.includes(' or ')) ? `${xs.slice(0, -1).join(', ')}, or ${xs.at(-1)}` : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
 // More than two boards gain rows: the total phrase, whose "M boards" carries a per-board tooltip.
-export const boardsTotal = (h: Hidden): { before: string; boards: string; list: [string, string][] } | null => {
+const reasons = (ws?: RowWhy[]) => list((ws ?? []).map((w) => WHY[w]));
+export const boardsTotal = (h: Hidden): { before: string; boards: string; list: string[] } | null => {
   const rows = Object.entries(h.rows) as [Board, number][];
   if (rows.length <= 2) return null;
   return {
     before: `${rows.reduce((t, [, r]) => t + r, 0)} rows on `, boards: `${rows.length} boards`,
-    list: rows.map(([b, r]) => [BOARD_NOUN[b][0].toUpperCase() + BOARD_NOUN[b].slice(1), String(r)])
+    list: rows.map(([b, r]) => [`${BOARD_NOUN[b][0].toUpperCase()}${BOARD_NOUN[b].slice(1)} ${r}`, reasons(h.rowsBy?.[b])].filter(Boolean).join(' · '))
   };
 };
 export function hiddenNote(h: Hidden): string {
   const rows = Object.entries(h.rows) as [Board, number][];
   const tot = boardsTotal(h);
-  const named = tot ? `${tot.before}${tot.boards}` : rows.map(([b, n]) => count(n, BOARD_NOUN[b])).join(' and ');
-  const why = (ws?: ('avg' | 'ratings' | 'dial')[]) => (ws?.length ? `: ${list(ws.map((w) => WHY[w]))}` : '');
+  // One or two boards: each name carries its own reason in parentheses (and the sentence adds none).
+  const own = (b: Board) => (h.rowsBy?.[b]?.length ? ` (${reasons(h.rowsBy[b])})` : '');
+  const named = tot ? `${tot.before}${tot.boards}` : rows.map(([b, n]) => `${count(n, BOARD_NOUN[b])}${own(b)}`).join(' and ');
+  const why = (ws?: ('avg' | 'ratings' | 'dial')[]) => (ws?.length ? `: ${reasons(ws)}` : '');
+  const perBoard = !tot && rows.length > 0 && rows.every(([b]) => h.rowsBy?.[b]?.length);
   return [
-    rows.length ? `${named} hidden${why(h.rowsWhy)}.` : '',
+    rows.length ? `${named} hidden${perBoard ? '' : why(h.rowsWhy)}.` : '',
     h.brews ? `${count(h.brews, 'rated brews')} left out${why(h.why)}.` : ''
   ].filter(Boolean).join(' ');
 }

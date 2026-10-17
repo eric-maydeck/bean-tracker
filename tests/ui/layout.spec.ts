@@ -2688,7 +2688,7 @@ export const STATES: State[] = [
     name: `insights-see-all-${step}`, path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page: Page) => {
       const note = page.locator('.see-all');
-      await expect(note).toHaveText(/hidden: too few bags or brews\..* See all$/);
+      await expect(note).toHaveText(/(\(too few bags or brews[^)]*\)|hidden: too few bags or brews).* See all$/);
       if (step !== 'note') {
         await note.getByRole('button', { name: 'See all' }).click();
         await expect(page).toHaveURL(/[?&]avg=raw/);
@@ -2721,7 +2721,10 @@ export const STATES: State[] = [
       await btn.click();
       const tip = page.locator('[popover]:popover-open');
       await expect(tip).toContainText('Hidden rows');
-      await expect(tip.locator('dt').first()).toHaveText(/^[A-Z]/);
+      await expect(tip.locator('li').first()).toHaveText(/^[A-Z]/);
+      // Each board line: its count, then its own reasons (U1 round 2); wraps inside the tip, never overflows it.
+      for (const li of await tip.locator('li').all()) await expect(li).toHaveText(/^[A-Z][a-z ]+ \d+ · (too few bags or brews|before calibration|while dialing in)/);
+      expect(await tip.evaluate((e) => e.scrollWidth <= e.clientWidth + 1), 'tip text overflows').toBe(true);
       const [b, t] = [await btn.boundingBox(), await tip.boundingBox()];
       const vw = page.viewportSize()!.width;
       expect(t!.x).toBeGreaterThanOrEqual(0);

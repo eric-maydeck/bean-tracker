@@ -581,7 +581,7 @@
   {:else if hiddenNote(data.hidden)}
     {@const tot = boardsTotal(data.hidden)}
     {@const note = hiddenNote(data.hidden)}
-    <p class="chart-note see-all">{#if tot}{tot.before}<BoardsTip label={tot.boards} rows={tot.list} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
+    <p class="chart-note see-all">{#if tot}{tot.before}<BoardsTip label={tot.boards} lines={tot.list} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}
