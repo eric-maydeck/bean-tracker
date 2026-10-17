@@ -47,7 +47,7 @@ describe('load (coffee detail page)', () => {
 
     const headers: Record<string, string> = {};
     const fakeEvent = {
-      params: { slug: oldSlug },
+      params: { slug: oldSlug }, url: new URL('http://x/'),
       setHeaders: (h: Record<string, string>) => Object.assign(headers, h),
       locals: { isAdmin: false }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -70,7 +70,7 @@ describe('coffee page Bean Conqueror link', () => {
     const db = getDb();
     const { id, slug } = createCoffee(db, sampleInput({ coffee_name: 'Linked Page Test' }));
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('pb1', 'BC Name', '2026-10-01', ?)`).run(id);
-    const event = (isAdmin: boolean) => ({ params: { slug }, setHeaders: () => {}, locals: { isAdmin } }) as never;
+    const event = (isAdmin: boolean) => ({ params: { slug }, url: new URL('http://x/'), setHeaders: () => {}, locals: { isAdmin } }) as never;
 
     const data = (await load(event(false))) as { beanConqueror: unknown };
     expect(data.beanConqueror).toEqual({ id: 'pb1', name: 'BC Name', brewCount: 0 });
@@ -88,7 +88,7 @@ describe("coffee page counts days on the local date", () => {
     vi.setSystemTime(new Date('2026-10-14T03:00:00Z')); // 2026-10-13 21:00 MDT
     try {
       const { slug } = createCoffee(getDb(), sampleInput({ coffee_name: 'local Day Test', roast_date: '2026-10-01' }));
-      const data = (await load({ params: { slug }, setHeaders: () => {}, locals: { isAdmin: false } } as never)) as {
+      const data = (await load({ params: { slug }, url: new URL('http://x/'), setHeaders: () => {}, locals: { isAdmin: false } } as never)) as {
         coffee: { days_since_roast: number };
       };
       expect(data.coffee.days_since_roast).toBe(12);
@@ -101,7 +101,7 @@ describe("coffee page counts days on the local date", () => {
 describe('coffee page vs like coffees', () => {
   it('ranks a bag among like coffees; none without rated brews', () => {
     const db = getDb();
-    const ev = (slug: string) => ({ params: { slug }, setHeaders: () => {}, locals: { isAdmin: false } }) as never;
+    const ev = (slug: string) => ({ params: { slug }, url: new URL('http://x/'), setHeaders: () => {}, locals: { isAdmin: false } }) as never;
     const ratings = [9, 8, 8, 7];
     const made = ratings.map((r, k) => {
       const c = createCoffee(db, sampleInput({ coffee_name: `Like ${k}`, roaster: `Roaster ${k}`, origin: ['Kenya', 'Peru', 'Brazil', 'Ethiopia'][k], roast_level: 'Light', processing: 'Washed' }));
@@ -131,5 +131,23 @@ describe('coffee page vs like coffees', () => {
     const bare = createCoffee(db, sampleInput({ coffee_name: 'Like None' }));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((load(ev(bare.slug)) as any).like).toBeNull();
+    // No rated brews at all: no line either.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((load(ev(bare.slug)) as any).noLike).toBeNull();
+
+    // Gate P4: why there's no panel, its counts, and the nearest view that has one (?caffeine=all / ?ratings=all).
+    const at = (slug: string, q = '') => load({ params: { slug }, url: new URL(`http://x/?${q}`), setHeaders: () => {}, locals: { isAdmin: false } } as never) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(at(dec.slug).noLike).toMatchObject({ why: 'No comparison: decaf coffees are left out by default.', fix: { caffeine: 'all' } });
+    expect(at(dec.slug, 'caffeine=all')).toMatchObject({ like: { label: 'Washed Light coffees' }, noLike: null, likeView: { caffeine: 'all' } });
+    const old = createCoffee(db, sampleInput({ coffee_name: 'Like Old', roaster: 'Roaster 8', origin: 'Kenya', roast_level: 'Light', processing: 'Washed' }));
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('lko', 'C', '2026-10-01', ?)`).run(old.id);
+    for (let j = 0; j < 3; j++)
+      db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'lko', 15, 8, '2026-10-01')`).run(`2026-05-0${j + 1}T08:00:00`);
+    expect(at(old.slug).noLike).toEqual({
+      why: 'No comparison yet: all 3 rated brews are from before calibration.',
+      rows: [['Rated brews', '3'], ['Before calibration', '3'], ['Dial-in brews', '0']],
+      fix: { ratings: 'all' }
+    });
+    expect(at(old.slug, 'ratings=all').like).toMatchObject({ label: 'Washed Light coffees' });
   });
 });

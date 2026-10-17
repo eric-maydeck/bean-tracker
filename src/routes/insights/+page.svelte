@@ -1,5 +1,5 @@
 <script lang="ts">
-  import BoardsTip from '$lib/components/BoardsTip.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
@@ -581,7 +581,7 @@
   {:else if hiddenNote(data.hidden)}
     {@const tot = boardsTotal(data.hidden)}
     {@const note = hiddenNote(data.hidden)}
-    <p class="chart-note see-all">{#if tot}{tot.before}<BoardsTip label={tot.boards} lines={tot.list} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
+    <p class="chart-note see-all">{#if tot}{tot.before}<TextTip label={tot.boards} tip={{ title: 'Hidden rows', lines: tot.list }} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}

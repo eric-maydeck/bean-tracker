@@ -368,6 +368,14 @@ function parsePairs(v: string | null): string[] | undefined {
   return xs.length ? xs : undefined;
 }
 
+// The coffee page's Vs like coffees panel (gate P4) honors the insights Ratings and Brews params, and caffeine=all
+// (a decaf coffee is otherwise left out). Its links build with insightsParams; nothing else is read.
+export type LikeView = Pick<InsightsUrlState, 'ratings' | 'dial' | 'caffeine'>;
+export function parseLikeView(p: URLSearchParams): LikeView {
+  const { ratings, dial, caffeine } = parseInsightsUrl(p, []);
+  return { ...(ratings && { ratings }), ...(dial && { dial }), ...(caffeine === 'all' && { caffeine }) };
+}
+
 export function insightsParams(s: InsightsUrlState): URLSearchParams {
   const p = new URLSearchParams();
   if (s.range) p.set('range', s.range);

@@ -12,8 +12,9 @@ import { queueFillMissing } from '$lib/server/imageFills';
 import { getLinkedBean, unlinkBeanConquerorBean } from '$lib/server/beanConquerorLinks';
 import { coffeeLike } from '$lib/server/insights/likeGroup';
 import { ordinal } from '$lib/server/insights/milestones';
+import { parseLikeView } from '$lib/insightsUrl';
 
-export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
+export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   const db = getDb();
   const coffee = getCoffeeBySlug(db, params.slug);
   if (!coffee) {
@@ -26,7 +27,9 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     }
     error(404, 'Coffee not found');
   }
-  const like = coffeeLike(db, coffee.id);
+  const likeView = parseLikeView(url.searchParams);
+  const r = coffeeLike(db, coffee.id, likeView);
+  const like = r && 'like' in r ? r.like : null;
   return {
     coffee: withComputedFields(coffee, localTodayDate()),
     roastLevels: getRoastLevels(db),
@@ -36,6 +39,8 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     roasterImages: getRoasterImages(db),
     beanConqueror: getLinkedBean(db, coffee.id),
     like: like && { ...like, place: `${ordinal(like.rank)} of ${like.of}` },
+    noLike: r && !('like' in r) ? r : null,
+    likeView,
     restHistory: locals.isAdmin ? getFillHistory(db) : []
   };
 };

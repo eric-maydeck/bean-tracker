@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, withPageWide
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -665,4 +665,14 @@ describe('withPageWide (finding links)', () => {
     expect(withPageWide('/coffees/x', s)).toBe('/coffees/x');
     expect(withPageWide('#insight-a', s)).toBe('#insight-a');
   });
+});
+
+describe('parseLikeView (coffee page Vs like coffees)', () => {
+  const v = (q: string) => parseLikeView(new URLSearchParams(q));
+  it('bare by default', () => expect(v('')).toEqual({}));
+  it('reads ratings, dial=all and caffeine=all, case-insensitive', () =>
+    expect(v('ratings=ALL&dial=All&caffeine=all')).toEqual({ ratings: 'all', dial: 'all', caffeine: 'all' }));
+  it('keeps an explicit default', () => expect(v('ratings=current')).toEqual({ ratings: 'current' }));
+  it('drops bad values, caffeine=decaf and other params', () => expect(v('ratings=x&dial=dialed&caffeine=decaf&tab=records')).toEqual({}));
+  it('round-trips through insightsParams', () => expect(insightsParams(v('dial=all&ratings=all')).toString()).toBe('ratings=all&dial=all'));
 });

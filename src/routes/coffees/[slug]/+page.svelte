@@ -25,8 +25,18 @@
   import { formatBag } from '$lib/grams';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, signed } from '$lib/components/deltaColor';
+  import TextTip from '$lib/components/TextTip.svelte';
+  import { DIAL_LABEL, RATINGS_LABEL, insightsParams, type LikeView } from '$lib/insightsUrl';
 
   let { data, form } = $props();
+
+  // Vs like coffees under ?ratings / ?dial / ?caffeine (gate P4): the panel names the view; any explicit one offers
+  // Back to defaults. The coffee page never writes the insights remembered view.
+  let v = $derived(data.likeView);
+  let explicit = $derived(Object.keys(v).length > 0);
+  const lower = (s: string) => s[0].toLowerCase() + s.slice(1);
+  const fixText = (f: LikeView) =>
+    [f.ratings === 'all' && 'all ratings', f.dial === 'all' && 'all brews', f.caffeine === 'all' && 'decaf included'].filter(Boolean).join(' and ');
 
   let clonePrefillData = $state<Partial<CoffeeRow> | null>(null);
   // The same modal with an empty form is "+ Add Coffee": stays on this page.
@@ -459,7 +469,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="text-muted">Compared with {l.label}: all time, once dialed, calibrated ratings.</p>
+          <p class="text-muted">Compared with {l.label}: all time, {lower(DIAL_LABEL[v.dial ?? 'dialed'])}, {lower(RATINGS_LABEL[v.ratings ?? 'current'])}{v.caffeine ? ', decaf included' : ''}.{#if explicit}{' '}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
@@ -469,6 +479,17 @@
             <div class="stat"><span class="stat-label">Gap</span><span class="stat-value {deltaInk(l.gap)}">{signed(l.gap)}</span></div>
             <div class="stat"><span class="stat-label">Rank</span><span class="stat-value">{l.place}</span></div>
           </div>
+        </section>
+      {:else if data.noLike}
+        {@const n = data.noLike}
+        <!-- Why there's no panel (gate P4): one line, its counts in the tip, and a link to the nearest view that has one. -->
+        <section class="detail-section" data-section="like">
+          <h2>Vs like coffees</h2>
+          <p class="text-muted like-none">
+            <TextTip label={n.why} tip={{ title: 'Why no comparison', rows: n.rows }} />
+            {#if n.fix}<a href="?{insightsParams(n.fix)}" data-sveltekit-noscroll>Compare with {fixText(n.fix)}</a>{/if}
+            {#if explicit}<a href="/coffees/{data.coffee.slug}" data-sveltekit-noscroll>Back to defaults</a>{/if}
+          </p>
         </section>
       {/if}
     </div>
@@ -501,6 +522,12 @@
   /* Four stats: auto-fit so a wide screen has no blank fifth track. */
   [data-section='like'] .stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+  .like-none {
+    margin: 0;
+  }
+  .like-none a {
+    margin-left: var(--space-2);
   }
   .bc-link-line {
     display: flex;

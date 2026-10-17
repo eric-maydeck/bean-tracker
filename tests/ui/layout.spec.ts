@@ -606,6 +606,24 @@ export const STATES: State[] = [
     } },
   { name: 'coffee-detail-no-like', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
+  // Gate P4: a coffee with rated brews but no panel says why in one line; the tip has the counts; the link opens
+  // the nearest view with a comparison (URL state), which offers Back to defaults.
+  { name: 'coffee-detail-like-why', path: (s) => `/coffees/${s.slugs.decaf}`,
+    act: async (page) => {
+      const line = page.locator('[data-section="like"] .like-none');
+      await expect(line).toContainText('No comparison: decaf coffees are left out by default.');
+      await line.locator('.text-tip').click();
+      await expect(page.locator('.float-tip')).toContainText('Why no comparison');
+      await expect(page.locator('.float-tip')).toContainText('Rated brews');
+    } },
+  { name: 'coffee-detail-like-all', path: (s) => `/coffees/${s.slugs.lab}?ratings=all&dial=all`,
+    act: async (page) => {
+      const panel = page.locator('[data-section="like"]');
+      await expect(panel).toContainText('all brews, all ratings.');
+      await panel.getByRole('link', { name: 'Back to defaults' }).click();
+      await expect(page).toHaveURL(/\/coffees\/[^?]+$/);
+      await expect(panel).toContainText('once dialed, calibrated ratings.');
+    } },
   { name: 'coffee-long', path: (s) => `/coffees/${s.slugs.long}` },
   { name: 'coffee-frozen', path: (s) => `/coffees/${s.slugs.frozen}` },
   { name: 'coffee-decaf', path: (s) => `/coffees/${s.slugs.decaf}` },
@@ -2783,7 +2801,7 @@ export const STATES: State[] = [
   // U1: "N boards" in the See all note carries a per-board tooltip: hover (mouse) and tap/focus open the shared tip.
   { name: 'insights-see-all-boards-tip', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
-      const btn = page.locator('.see-all .boards-tip');
+      const btn = page.locator('.see-all .text-tip');
       await expect(btn).toHaveText(/^\d+ boards$/);
       await expect(btn).toHaveAttribute('aria-label', /Hidden rows/);
       if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes
