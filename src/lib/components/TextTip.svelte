@@ -6,16 +6,17 @@
   // the text itself opens it on hover, tap and keyboard focus (ui-rules 36, 39, 41). Open state is transient UI, not URL state.
   let { label, tip }: { label: string; tip: Tip } = $props();
   let anchor: HTMLButtonElement | undefined = $state();
-  let open = $state(false);
+  // 'hover' or 'tap' (tap and keyboard focus): a tapped tip may scroll itself into view (FloatTip `reveal`).
+  let open = $state<false | 'hover' | 'tap'>(false);
 </script>
 
-<button bind:this={anchor} type="button" class="text-tip" aria-expanded={open}
+<button bind:this={anchor} type="button" class="text-tip" aria-expanded={!!open}
   aria-label="{label}: {tipText(tip)}"
-  onpointerenter={(e) => e.pointerType === 'mouse' && (open = true)}
-  onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
-  onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = true)}
+  onpointerenter={(e) => e.pointerType === 'mouse' && (open = 'hover')}
+  onpointerleave={(e) => e.pointerType === 'mouse' && open === 'hover' && (open = false)}
+  onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = 'tap')}
   onblur={() => (open = false)}
-  onclick={() => (open = true)}>{label}</button>{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
+  onclick={() => (open = 'tap')}>{label}</button>{#if open && anchor}<FloatTip {anchor} reveal={open === 'tap'} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
 
 <style>
   .text-tip {

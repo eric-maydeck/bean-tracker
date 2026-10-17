@@ -580,7 +580,7 @@
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
   {:else if hiddenNote(data.hidden)}
     {@const note = hiddenNote(data.hidden)!}
-    <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={{ title: 'Hidden by your settings', lines: note.lines }} />.
+    <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={note.tip} />.
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}

@@ -2851,8 +2851,8 @@ export const STATES: State[] = [
         expect(await note.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), 'one line')
           .toBeLessThan(1.5);
     } })),
-  // Gate P4: "hidden by your settings" opens the shared tip (FloatTip): each board with its count and reasons, then
-  // the brews; hover (mouse), tap and keyboard focus.
+  // Gate P4: "hidden by your settings" opens the shared tip (FloatTip): each board's count, the brews', the reasons
+  // once; hover (mouse), tap and keyboard focus.
   { name: 'insights-see-all-tip', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       const btn = page.locator('.see-all .text-tip');
@@ -2867,14 +2867,15 @@ export const STATES: State[] = [
       }
       await btn.click();
       await expect(tip).toContainText('Hidden by your settings');
-      const lines = await tip.locator('li').allTextContents();
-      for (const l of lines) expect(l).toMatch(/^[A-Z][a-z ]+ \d+( · (too few bags or brews|before calibration|while dialing in).*)?$/);
-      expect(lines.at(-1)).toMatch(/^Rated brews \d+/);
+      // One row per board ("Roasters 23"), at most 2 then "+N more", the brews row (1–4 rows), then the reasons once (ui-rules 36).
+      const labels = await tip.locator('dt').allTextContents();
+      expect(labels.length).toBeLessThanOrEqual(4);
+      for (const l of labels) expect(l).toMatch(/^([A-Z][a-z ]+|\+\d+ more)$/);
+      expect(labels.at(-1)).toBe('Rated brews');
+      await expect(tip.locator('.tip-note')).toHaveText(/^Why: (too few bags or brews|before calibration|while dialing in)/);
       expect(await tip.evaluate((e) => e.scrollWidth <= e.clientWidth + 1), 'tip text overflows').toBe(true);
-      // ponytail: at 1003×333 the band under the sticky bar (~170px) is shorter than the anchor plus a 5-line tip, so
-      // only the sides are checked there; every taller viewport checks the whole box.
-      if (page.viewportSize()!.height >= 600) await expectTipInView(page, tip);
-      else { const t = (await tip.boundingBox())!; expect(t.x).toBeGreaterThanOrEqual(0); expect(t.x + t.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1); }
+      // Whole tip in view at every viewport, 1003×333 included (ui-rules 39).
+      await expectTipInView(page, tip);
       await page.keyboard.press('Escape');
       await btn.focus();
       await page.keyboard.press('Tab');

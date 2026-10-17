@@ -141,7 +141,7 @@ export const load: PageServerLoad = ({ url }) => {
     // brews: in-period rated brews the Ratings/Brews settings leave out (decaf's nulled ratings aren't counted).
     hidden: ratingsMenuOn(s)
       ? {
-          rows: h?.rows ?? {}, rowsWhy: h?.why ?? [], rowsBy: h?.by ?? {},
+          rows: h?.rows ?? {}, rowsBy: h?.by ?? {},
           brews: rated(brews, 'all') - rated(scored, s.ratings),
           // Which setting actually hid them: Calibrated (ratings) first, then Once dialed.
           why: [rated(brews, 'all') > rated(brews, s.ratings) && 'ratings', rated(brews, s.ratings) > rated(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]

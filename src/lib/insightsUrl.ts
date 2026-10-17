@@ -1,4 +1,5 @@
 import { pickOne } from '$lib/pageUrlState';
+import type { Tip } from '$lib/components/TipBody.svelte';
 
 // /insights view state (spec "URL state"). Explicit choices only: a param a
 // visitor never touched stays undefined and out of the URL (HANDOFF rule).
@@ -436,27 +437,35 @@ export const BOARD_NOUN: Record<Board, string> = {
 const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -1) : plural}`;
 // The See all note (gate 3): what the Score/Ratings/Brews settings hide on this tab. Rows the boards would gain
 // and in-period rated brews left out.
-// `rowsWhy` / `why`: the settings that hid the rows / the brews (avg = Score's confident cutoff).
+// `why`: the settings that hid the brews; `rowsBy`: the settings that hid each board's rows (avg = Score's confident cutoff).
 export type RowWhy = 'avg' | 'ratings' | 'dial';
-// `rowsBy`: the same per board.
-export type Hidden = { rows: Partial<Record<Board, number>>; rowsWhy?: RowWhy[]; rowsBy?: Partial<Record<Board, RowWhy[]>>; brews: number; why?: ('ratings' | 'dial')[] };
+export type Hidden = { rows: Partial<Record<Board, number>>; rowsBy?: Partial<Record<Board, RowWhy[]>>; brews: number; why?: ('ratings' | 'dial')[] };
 const WHY = { avg: 'too few bags or brews', ratings: 'before calibration', dial: 'while dialing in' };
 // "a or b"; with an item that holds an "or" itself, commas keep it readable: "a or b, c, or d".
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.some((x) => x.includes(' or ')) ? `${xs.slice(0, -1).join(', ')}, or ${xs.at(-1)}` : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
-const reasons = (ws?: RowWhy[]) => list((ws ?? []).map((w) => WHY[w]));
+// The tip's board rows before "+N more": with the brews row a data tip's 1–4 rows (ui-rules 36), short enough to fit
+// the band under the sticky bar at 1003×333 (rule 39). A single leftover board shows instead of "+1 more".
+const HIDDEN_ROWS = 2;
 // One short line (user, gate P4): "75 rows and 703 brews" + "hidden by your settings", whose tip lists each board's
-// count and reasons, then the brews'. null when nothing is hidden.
-export function hiddenNote(h: Hidden): { lead: string; lines: string[] } | null {
+// count ("Roasters 23"), then the brews', then the reasons once. null when nothing is hidden.
+export function hiddenNote(h: Hidden): { lead: string; tip: Tip } | null {
   const rows = Object.entries(h.rows) as [Board, number][];
   const n = rows.reduce((t, [, r]) => t + r, 0);
   if (!n && !h.brews) return null;
-  const line = (label: string, ws?: RowWhy[]) => [label, reasons(ws)].filter(Boolean).join(' · ');
+  const k = rows.length <= HIDDEN_ROWS + 1 ? rows.length : HIDDEN_ROWS;
+  const rest = rows.slice(k).reduce((t, [, r]) => t + r, 0);
+  const why = (Object.keys(WHY) as RowWhy[]).filter((w) => rows.some(([b]) => h.rowsBy?.[b]?.includes(w)) || (h.brews && (h.why as RowWhy[] | undefined)?.includes(w)));
   return {
     lead: [n && count(n, 'rows'), h.brews && count(h.brews, 'brews')].filter(Boolean).join(' and '),
-    lines: [
-      ...rows.map(([b, r]) => line(`${BOARD_NOUN[b][0].toUpperCase()}${BOARD_NOUN[b].slice(1)} ${r}`, h.rowsBy?.[b])),
-      ...(h.brews ? [line(`Rated brews ${h.brews}`, h.why)] : [])
-    ]
+    tip: {
+      title: 'Hidden by your settings',
+      rows: [
+        ...rows.slice(0, k).map(([b, r]): [string, string] => [`${BOARD_NOUN[b][0].toUpperCase()}${BOARD_NOUN[b].slice(1)}`, `${r}`]),
+        ...(rest ? [[`+${rows.length - k} more`, `${rest}`] as [string, string]] : []),
+        ...(h.brews ? [['Rated brews', `${h.brews}`] as [string, string]] : [])
+      ],
+      note: why.length ? `Why: ${list(why.map((w) => WHY[w]))}.` : undefined
+    }
   };
 }
 

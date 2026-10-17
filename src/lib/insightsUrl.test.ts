@@ -618,12 +618,16 @@ describe('hiddenNote', () => {
     expect(hiddenNote({ rows: {}, brews: 1, why: ['ratings'] })!.lead).toBe('1 brew');
     expect(hiddenNote({ rows: {}, brews: 0 })).toBeNull();
   });
-  it('the tip: each board with its count and reasons, then the brews with theirs', () => {
-    expect(hiddenNote({ rows: { roasters: 42, roast: 12, origins: 2 }, rowsBy: { roasters: ['avg'], roast: ['avg', 'dial'] }, brews: 9, why: both })!.lines)
-      .toEqual(['Roasters 42 · too few bags or brews', 'Roast levels 12 · too few bags or brews, or while dialing in', 'Origins 2',
-        'Rated brews 9 · before calibration or while dialing in']);
-    expect(hiddenNote({ rows: { process: 5 }, rowsBy: { process: ['avg', 'ratings', 'dial'] }, brews: 0 })!.lines)
-      .toEqual(['Process groups 5 · too few bags or brews, before calibration, or while dialing in']);
+  it('the tip: one row per board, the brews row, then the reasons once; boards past 2 fold into "+N more"', () => {
+    expect(hiddenNote({ rows: { roasters: 42, roast: 12, origins: 2 }, rowsBy: { roasters: ['avg'], roast: ['avg', 'dial'] }, brews: 9, why: both })!.tip)
+      .toEqual({ title: 'Hidden by your settings', rows: [['Roasters', '42'], ['Roast levels', '12'], ['Origins', '2'], ['Rated brews', '9']],
+        note: 'Why: too few bags or brews, before calibration, or while dialing in.' });
+    expect(hiddenNote({ rows: { process: 5 }, rowsBy: { process: ['avg'] }, brews: 0 })!.tip).toMatchObject({ rows: [['Process groups', '5']], note: 'Why: too few bags or brews.' });
+    // A single leftover board shows instead of "+1 more"; two or more fold, their rows summed.
+    const three = { roasters: 4, coffees: 3, origins: 2 };
+    expect(hiddenNote({ rows: three, brews: 0 })!.tip.rows!.map((r) => r[0])).toEqual(['Roasters', 'Coffees', 'Origins']);
+    expect(hiddenNote({ rows: { ...three, water: 5 }, brews: 1 })!.tip.rows!.slice(2)).toEqual([['+2 more', '7'], ['Rated brews', '1']]);
+    expect(hiddenNote({ rows: { roasters: 1 }, brews: 0 })!.tip.note).toBeUndefined();
   });
 });
 
