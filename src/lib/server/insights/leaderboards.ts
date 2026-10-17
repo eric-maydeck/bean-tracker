@@ -78,7 +78,8 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
 }
 
 export function leaderboard(
-  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg
+  brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg,
+  like = true // false: callers that only count rows or read keys skip the rating rank's like lines
 ): BoardRow[] {
   let rows: BoardRow[] = [];
   if (rank === 'spend' || rank === 'ppg') {
@@ -104,13 +105,13 @@ export function leaderboard(
     const key = BREW_KEY[board];
     // vs like coffees (spec Part 4): each bag's once-dialed score minus its like-group's mean (likeGroup.ts).
     // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
-    const likeRows = inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
-    const likes = (rank === 'like' && board === 'coffees') || (rank === 'rating' && board === 'coffees') ? likeGaps(likeRows) : null;
+    const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
+    const likes = board === 'coffees' && (rank === 'like' || (rank === 'rating' && like)) ? likeGaps(likeRows()) : null;
     if (rank === 'like') {
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows)].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        : [...roasterLikes(likeRows())].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
@@ -152,7 +153,7 @@ export function leaderboards(
   return Object.fromEntries(
     BOARDS.map((board) => {
       let rows = leaderboard(brews, bags, p, board, rank, ratings, avg);
-      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, avg));
+      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, avg, false));
       if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
       return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
     })
@@ -161,31 +162,35 @@ export function leaderboards(
 
 // The boards min3's confident cutoff emptied: rated groups exist, every one under the small-sample rule. Their
 // line says what is missing ("No roasters with 3+ bags and 10+ rated brews ..."), not "No brews".
+// Where the See all note runs, hiddenRows' `cut` is the same list without the extra calls; this is the fallback.
 export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
 ): Board[] {
   if (rank !== 'rating' || avg !== 'min3') return [];
-  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw').length);
+  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
 // them (each step relaxes one: Score, then Ratings, then Brews). `scored`: the brews the boards were built from;
-// `all`: the brews before Once dialed. Boards that gain none are left out.
+// `all`: the brews before Once dialed. Boards that gain none are left out. `cut`: cutBoards' list (only min3
+// drops rows, so n0 = 0 < n1 under rating is exactly a board min3 emptied).
+// ponytail: up to 27 leaderboard() calls (3 per board; 18 under like), no like lines; memoize if a board gets slow.
 export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
   ratings: Ratings
-): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>> } {
+): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>>; cut: Board[] } {
   // The Score step adds nothing under like (avg is ignored), so only Ratings and Brews are named.
-  if (rank !== 'rating' && rank !== 'like') return { rows: {}, why: [], by: {} };
-  const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {};
+  if (rank !== 'rating' && rank !== 'like') return { rows: {}, why: [], by: {}, cut: [] };
+  const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {}, cut: Board[] = [];
   const hit = { avg: false, ratings: false, dial: false };
   for (const b of BOARDS) {
     const n0 = boards[b].length;
-    const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw').length;
-    const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw').length;
-    const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw').length;
+    const n1 = rank === 'like' ? n0 : leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
+    const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw', false).length;
+    const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw', false).length;
+    if (!n0 && n1) cut.push(b);
     if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
     hit.avg ||= n1 > n0; hit.ratings ||= n2 > n1; hit.dial ||= n3 > n2;
   }
-  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]), by };
+  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]), by, cut };
 }

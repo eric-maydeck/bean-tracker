@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hiddenRows, leaderboard, leaderboards, withMovement, type BoardRow } from './leaderboards';
+import { cutBoards, hiddenRows, leaderboard, leaderboards, withMovement, type BoardRow } from './leaderboards';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -144,7 +144,7 @@ describe('hiddenRows', () => {
     // One bag, two brews: min3 hides every board; raw shows it.
     expect(run(rated, rated, 'all', 'min3').why).toEqual(['avg']);
     expect(run(rated, rated, 'all', 'min3').by.roasters).toEqual(['avg']);
-    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [], by: {} });
+    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [], by: {}, cut: [] });
     // Once dialed nulled the ratings (scored) that the full history has: Brews setting only.
     const dialed = rated.map((b) => ({ ...b, rating: null }));
     const d = run(dialed, rated, 'all', 'raw');
@@ -163,6 +163,12 @@ describe('hiddenRows', () => {
     const scored = [...sey, { ...moon, rating: null }], all = [...sey, moon];
     const r = hiddenRows(leaderboards(scored, bags, SEPT, null, 'rating', 'all', 'min3'), scored, all, bags, SEPT, 'rating', 'all');
     expect(r.by.roasters).toEqual(['avg', 'dial']); // both roasters gain at raw; Moonwake only once dialed shows
+  });
+  it('cut matches cutBoards', () => {
+    const boards = leaderboards(rated, [bag({ id: 1 })], SEPT, null, 'rating', 'all', 'min3');
+    const cut = cutBoards(boards, rated, [bag({ id: 1 })], SEPT, 'rating', 'all', 'min3');
+    expect(cut.length).toBeGreaterThan(0);
+    expect(hiddenRows(boards, rated, rated, [bag({ id: 1 })], SEPT, 'rating', 'all').cut).toEqual(cut);
   });
 });
 

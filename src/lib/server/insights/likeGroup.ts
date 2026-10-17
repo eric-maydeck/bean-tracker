@@ -28,19 +28,20 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 // roaster → roast + process + roaster → roast + process → roast) whose bags, without the bag itself, pass the
 // pooled small-sample rule. `rows`: rated, linked brews already cut to the view (Coffees filter, Period,
 // Current/All, Once dialed). No qualifying step: no entry.
-// ponytail: O(bags × brews) per call (≈ 200 × 1500 on prod); index rows by field if it ever shows.
+// ponytail: O(bags × same-roast brews) per call; every step has the bag's roast level, so rows are pre-split by it.
 // `outside`: for roaster-level comparisons. The group leaves out every bag of the bag's own roaster and the
 // ladder skips its roaster step, so a roaster is never compared against itself.
 export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number, Like> {
   const byBag = groupBy(rows, (b) => b.coffeeId);
   const score = new Map([...byBag].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
+  const byRoast = groupBy(rows, (b) => b.roastLevel);
   const out = new Map<number, Like>();
   for (const [id, bs] of byBag) {
     const f = filtersOf(bs[0]);
     if (!f) continue;
     const r = bs[0].roaster;
     if (outside) delete f.roaster;
-    const g = groupsFor(rows.filter((b) => b.coffeeId !== id && !(outside && r && b.roaster === r)), f)
+    const g = groupsFor(byRoast.get(f.roast!)!.filter((b) => b.coffeeId !== id && !(outside && r && b.roaster === r)), f)
       // pooled() calls an empty group "no data", not small, so an empty step must be rejected here.
       .find((x) => x.brews.length > 0 && !pooled(new Set(x.brews.map((b) => b.coffeeId)).size, x.brews.length).small);
     if (!g) continue;

@@ -60,6 +60,7 @@ export const load: PageServerLoad = ({ url }) => {
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
+  const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
   const ratedIn = (xs: typeof brews, r: typeof s.ratings) => xs.filter((b) => b.coffeeId !== null && inPeriod(b.localDate, period) && countsForRating(b, r)).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
@@ -106,7 +107,7 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
-    boardsCut: boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, s.avg) : [],
+    boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, s.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'
@@ -140,7 +141,7 @@ export const load: PageServerLoad = ({ url }) => {
     // brews: in-period rated brews the Ratings/Brews settings leave out (decaf's nulled ratings aren't counted).
     hidden: ratingsMenuOn(s)
       ? {
-          ...(() => { const h = boards ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null; return { rows: h?.rows ?? {}, rowsWhy: h?.why ?? [], rowsBy: h?.by ?? {} }; })(),
+          rows: h?.rows ?? {}, rowsWhy: h?.why ?? [], rowsBy: h?.by ?? {},
           brews: ratedIn(brews, 'all') - ratedIn(scored, s.ratings),
           // Which setting actually hid them: Calibrated (ratings) first, then Once dialed.
           why: [ratedIn(brews, 'all') > ratedIn(brews, s.ratings) && 'ratings', ratedIn(brews, s.ratings) > ratedIn(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]
