@@ -1,5 +1,4 @@
 import { pickOne } from '$lib/pageUrlState';
-import type { Tip } from '$lib/components/TipBody.svelte';
 
 // /insights view state (spec "URL state"). Explicit choices only: a param a
 // visitor never touched stays undefined and out of the URL (HANDOFF rule).
@@ -448,7 +447,7 @@ const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.some((x) => x.i
 const HIDDEN_ROWS = 2;
 // One short line (user, gate P4): "75 rows and 703 brews" + "hidden by your settings", whose tip lists each board's
 // count ("Roasters 23"), then the brews', then the reasons once. null when nothing is hidden.
-export function hiddenNote(h: Hidden): { lead: string; tip: Tip } | null {
+export function hiddenNote(h: Hidden): { lead: string; tip: { title: string; rows: [string, string][]; note?: string } } | null {
   const rows = Object.entries(h.rows) as [Board, number][];
   const n = rows.reduce((t, [, r]) => t + r, 0);
   if (!n && !h.brews) return null;

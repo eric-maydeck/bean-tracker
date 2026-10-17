@@ -625,8 +625,8 @@ describe('hiddenNote', () => {
     expect(hiddenNote({ rows: { process: 5 }, rowsBy: { process: ['avg'] }, brews: 0 })!.tip).toMatchObject({ rows: [['Process groups', '5']], note: 'Why: too few bags or brews.' });
     // A single leftover board shows instead of "+1 more"; two or more fold, their rows summed.
     const three = { roasters: 4, coffees: 3, origins: 2 };
-    expect(hiddenNote({ rows: three, brews: 0 })!.tip.rows!.map((r) => r[0])).toEqual(['Roasters', 'Coffees', 'Origins']);
-    expect(hiddenNote({ rows: { ...three, water: 5 }, brews: 1 })!.tip.rows!.slice(2)).toEqual([['+2 more', '7'], ['Rated brews', '1']]);
+    expect(hiddenNote({ rows: three, brews: 0 })!.tip.rows.map((r) => r[0])).toEqual(['Roasters', 'Coffees', 'Origins']);
+    expect(hiddenNote({ rows: { ...three, water: 5 }, brews: 1 })!.tip.rows.slice(2)).toEqual([['+2 more', '7'], ['Rated brews', '1']]);
     expect(hiddenNote({ rows: { roasters: 1 }, brews: 0 })!.tip.note).toBeUndefined();
   });
 });
