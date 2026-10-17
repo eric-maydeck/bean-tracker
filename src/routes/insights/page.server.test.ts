@@ -538,7 +538,8 @@ describe('page-wide coffees filter', () => {
     seedTwo(true, 0); // R1: one decaf bag, one rated brew
     const roasters = (q: string) => run(`?range=all&tab=leaderboards&caffeine=all${q}`).boards.roasters.map((r: { label: string }) => r.label);
     expect(roasters('&avg=raw&ratings=all&dial=all')).toContain('R1');
-    expect(roasters('')).not.toContain('R1');
+    // k2 has no confident cutoff, so only the 4-brew rule keeps R1 off (min3 would drop a 1-bag group anyway).
+    expect(roasters('&avg=k2&ratings=all&dial=all')).not.toContain('R1');
     // The note offers it: Score hid the row.
     expect(run('?range=all&tab=leaderboards&caffeine=all&ratings=all&dial=all').hidden.rowsBy.roasters).toEqual(['avg']);
   });

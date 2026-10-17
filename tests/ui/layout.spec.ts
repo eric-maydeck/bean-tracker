@@ -2894,7 +2894,8 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('.see-all')).toContainText('Showing everything');
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
-      await page.goto('/insights?tab=leaderboards&range=all&caffeine=all&open=roasters');
+      // k2: no confident cutoff, so only the 4-brew rule keeps Onyx off (min3 drops a 1-bag group anyway).
+      await page.goto('/insights?tab=leaderboards&range=all&avg=k2&ratings=all&dial=all&caffeine=all&open=roasters');
       await expect(page.locator('[data-board="roasters"] .board-row').first()).toBeVisible();
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(0);
     } },
