@@ -305,8 +305,8 @@ describe('/insights load', () => {
 
   it('movement against the compare window', () => {
     seed([[today, 15]]);
-    expect(run('?tab=leaderboards&avg=raw&compare=1').boards.roasters[0].move).toBe('new');
-    expect(run('?tab=leaderboards&avg=raw').boards.roasters[0].move).toBeUndefined();
+    expect(run('?tab=leaderboards&rank=brews&compare=1').boards.roasters[0].move).toBe('new');
+    expect(run('?tab=leaderboards&rank=brews').boards.roasters[0].move).toBeUndefined();
   });
 });
 
@@ -479,7 +479,8 @@ describe('once dialed', () => {
 
 describe('page-wide coffees filter', () => {
   // Two bags: Washed (2 brews) and Natural (3 brews), both rated 8; `decaf` makes the second a decaf bag.
-  function seedTwo(decaf = false) {
+  // `base`: the Washed bag's brews (Natural gets one more); 4 makes both full bags for the group boards.
+  function seedTwo(decaf = false, base = 2) {
     const db = getDb();
     db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
     const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, 8, ?)`);
@@ -490,7 +491,7 @@ describe('page-wide coffees filter', () => {
       });
       if (decaf && k) db.prepare('UPDATE coffees SET decaf = 1 WHERE id = ?').run(id);
       db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(`b${k}`, processing, today, id);
-      for (let i = 0; i < 2 + k; i++) ins.run(`${today}T1${k}:00:0${i}.000Z`, `b${k}`, today);
+      for (let i = 0; i < base + k; i++) ins.run(`${today}T1${k}:00:0${i}.000Z`, `b${k}`, today);
     });
   }
   it('every tab loader sees only the matching coffees', () => {
@@ -534,29 +535,31 @@ describe('page-wide coffees filter', () => {
     expect(run('?caffeine=CAF').explicit.caffeine).toBeUndefined();
   });
   it('Leaderboards: boards the confident cutoff emptied are named; truly empty ones are not', () => {
-    seedTwo();
+    seedTwo(false, 4);
     const d = run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed');
     expect(d.boards.roasters).toEqual([]);
-    expect(d.boardsCut).toEqual(expect.arrayContaining(['roasters', 'coffees', 'origins']));
+    expect(d.boardsCut).toEqual(expect.arrayContaining(['roasters', 'origins']));
+    expect(d.boardsCut).not.toContain('coffees'); // one bag of 4 rated brews passes the one-bag rule
     expect(d.boardsCut).not.toContain('dripper'); // no dripper recorded: no rated group at all
     expect(run('?range=all&ratings=all&dial=all&tab=leaderboards&process=Washed&avg=raw').boardsCut).toEqual([]);
     expect(run('?tab=leaderboards&roaster=R0&range=' + addDays(today, -30) + '..' + addDays(today, -20)).boardsCut).toEqual([]);
   });
   it('See all: rows the boards gain and rated brews left out, vs avg=raw, ratings=all, dial=all', () => {
-    seedTwo();
+    seedTwo(false, 4);
     // One calibration-period brew on the Washed bag: left out by Calibrated ratings.
     getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'b0', 15, 6, ?)`)
       .run('2026-05-01T10:00:00.000Z', today);
     const h = (q: string) => run(`?range=all${q}`).hidden;
-    expect(h('&tab=leaderboards&process=Washed')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1, rowsWhy: ['avg'], rowsBy: expect.objectContaining({ roasters: ['avg'] }), why: ['ratings'] });
-    expect(h('&tab=leaderboards&process=Washed&avg=raw')).toEqual({ rows: {}, rowsWhy: [], rowsBy: {}, brews: 1, why: ['ratings'] });
-    expect(h('&tab=records&ratings=all')).toEqual({ rows: {}, rowsWhy: [], rowsBy: {}, brews: 0, why: [] });
+    // dial=all: a 4–5-brew bag once dialed is under the 4-brew full-bag rule, which no See all step relaxes.
+    expect(h('&tab=leaderboards&process=Washed&dial=all')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1, rowsWhy: ['avg'], rowsBy: expect.objectContaining({ roasters: ['avg'] }), why: ['ratings'] });
+    expect(h('&tab=leaderboards&process=Washed&avg=raw&dial=all')).toEqual({ rows: {}, rowsWhy: [], rowsBy: {}, brews: 1, why: ['ratings'] });
+    expect(h('&tab=records&ratings=all&dial=all')).toEqual({ rows: {}, rowsWhy: [], rowsBy: {}, brews: 0, why: [] });
     expect(h('&tab=leaderboards&avg=raw&ratings=all&dial=all')).toEqual({ rows: {}, rowsWhy: [], rowsBy: {}, brews: 0, why: [] });
     expect(h('&tab=consumption')).toBeNull();
     // An unlinked brew (no bag) never shows in rating views, so it isn't "left out".
     getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, NULL, 15, 6, ?)`)
       .run('2026-05-02T10:00:00.000Z', today);
-    expect(h('&tab=records')).toMatchObject({ brews: 1, why: ['ratings'] });
+    expect(h('&tab=records&dial=all')).toMatchObject({ brews: 1, why: ['ratings'] });
   });
   it('Records with caffeine=decaf sees only the decaf bag', () => {
     seedTwo(true);

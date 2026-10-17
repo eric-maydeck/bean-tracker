@@ -39,10 +39,15 @@ describe('likeGaps', () => {
     expect(likeGaps(rows).get(1)!.label).toBe('Light coffees');
   });
   it('ties share a rank; the sample is the bag\u2019s own', () => {
-    const rows = [...bag(1, 8, LWKS, 3), ...bag(2, 8, LWKS), ...bag(3, 9, LWKS), ...bag(4, 7, LWKS)];
+    const rows = [...bag(1, 8, LWKS, 3), ...bag(2, 8, LWKS), ...bag(3, 9, LWKS), ...bag(4, 7, LWKS), ...bag(5, 6, LWKS)];
     const l = likeGaps(rows);
     expect([l.get(1)!.rank, l.get(2)!.rank, l.get(3)!.rank]).toEqual([2, 2, 1]);
     expect(l.get(1)!.sample).toEqual({ bags: 1, brews: 3, small: true, one: true });
+  });
+  it('a bag under 4 brews is in no other bag\u2019s group (its dial-in brews would drag the baseline)', () => {
+    const rows = [...bag(1, 9, LWKS), ...bag(2, 8, LWKS), ...bag(3, 8, LWKS), ...bag(4, 8, LWKS), ...bag(5, 2, LWKS, 1)];
+    expect(likeGaps(rows).get(1)).toMatchObject({ groupMean: 8, of: 4 });
+    expect(likeGaps(rows).get(5)).toMatchObject({ groupMean: 8.25, sample: { small: true } }); // still compared itself
   });
   it('outside: the group leaves out the roaster\u2019s own bags and skips the roaster step', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 7, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, { ...LWKS, roaster: 'Other' }))];

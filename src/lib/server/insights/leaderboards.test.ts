@@ -30,6 +30,12 @@ const BAGS = [
   bag({ id: 6, roaster: 'Sey', purchaseDate: '2026-08-01', cost: 99 }) // bought before SEPT
 ];
 const vals = (rows: BoardRow[]) => rows.map((r) => [r.label, r.value]);
+// Rated: Sey's bag 1 (8, 9, 8, 9) and Moonwake's bag 2 (7 ×4) are full bags; Sey's 1-brew bag 3 (2) is not.
+const RATED = [
+  ...[8, 9, 8, 9].map((rating) => brew({ coffeeId: 1, rating })),
+  ...[7, 7, 7, 7].map((rating) => brew({ coffeeId: 2, roaster: 'Moonwake', rating })),
+  brew({ coffeeId: 3, rating: 2 })
+];
 
 describe('leaderboard', () => {
   it('brews: count per key, bags distinct', () =>
@@ -39,8 +45,11 @@ describe('leaderboard', () => {
     ]));
   it('grams: sum of doses in the period', () =>
     expect(vals(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'grams', 'all', 'raw'))).toEqual([['Moonwake', 40], ['Sey', 30]]));
-  it('rating: bag-weighted mean via ratedGroups', () =>
-    expect(vals(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'rating', 'all', 'raw'))).toEqual([['Sey', 8.5], ['Moonwake', 7]]));
+  it('rating: bag-weighted mean via ratedGroups, full bags only (a 1-brew bag is left out)', () => {
+    expect(vals(leaderboard(RATED, BAGS, SEPT, 'roasters', 'rating', 'all', 'raw'))).toEqual([['Sey', 8.5], ['Moonwake', 7]]);
+    // The coffees board is single bags: the 1-brew bag stays, marked by the one-bag rule.
+    expect(leaderboard(RATED, BAGS, SEPT, 'coffees', 'rating', 'all', 'raw')).toHaveLength(3);
+  });
   it('spend: bags bought in the period, by purchase date not brew date', () =>
     expect(vals(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'spend', 'all', 'raw'))).toEqual([['Moonwake', 40 + 0 + 25], ['Sey', 25]]));
   it('ppg skips bags without cost or amount; a free bag counts', () => {
@@ -64,33 +73,34 @@ describe('leaderboard', () => {
     }));
   it('min3 (Raw average, confident): leaves out the rows the Low confidence chip marks', () => {
     const many = (n: number) => (i: number) => Array.from({ length: n }, () => brew({ coffeeId: i, roaster: 'Many', rating: 6 }));
-    // Many: 3 bags, 12 brews (kept). Thin: 3 bags but 9 brews. Few: 1 bag.
+    // Many: 3 bags, 12 brews (kept). Thin: 2 bags. Few: 1 bag. Tiny: one 1-brew bag, on no group board at all.
     const brews = [
       ...[2, 3, 4].flatMap(many(4)),
-      ...[5, 6, 7].flatMap((i) => Array.from({ length: 3 }, () => brew({ coffeeId: i, roaster: 'Thin', rating: 7 }))),
-      brew({ coffeeId: 1, roaster: 'Few', rating: 10 })
+      ...[5, 6].flatMap((i) => Array.from({ length: 4 }, () => brew({ coffeeId: i, roaster: 'Thin', rating: 7 }))),
+      ...Array.from({ length: 4 }, () => brew({ coffeeId: 1, roaster: 'Few', rating: 10 })),
+      brew({ coffeeId: 7, roaster: 'Tiny', rating: 9 })
     ];
     const names = (b: 'roasters' | 'coffees', avg: 'min3' | 'raw' | 'k2') => leaderboard(brews, [], SEPT, b, 'rating', 'all', avg).map((r) => r.label);
     expect(names('roasters', 'min3')).toEqual(['Many']);
     expect(names('roasters', 'raw')).toEqual(['Few', 'Thin', 'Many']);
     expect(names('roasters', 'k2')).toHaveLength(3);
     // Coffees: 4 rated brews stay, 3 go (single rule, edge at 4).
-    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'min3').map((r) => r.value)).toEqual([6, 6, 6]);
+    expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'min3').map((r) => r.value)).toEqual([10, 7, 7, 6, 6, 6]);
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'raw')).toHaveLength(7);
   });
   it('best: value is the top brew; coffees board is that bag\'s top brew', () => {
-    const brews = [brew({ coffeeId: 1, rating: 6 }), brew({ coffeeId: 1, rating: 9 }), brew({ coffeeId: 2, rating: 9 })];
+    const brews = [...[6, 9, 6, 6].map((rating) => brew({ coffeeId: 1, rating })), ...[9, 5, 5, 5].map((rating) => brew({ coffeeId: 2, rating }))];
     const [r] = leaderboard(brews, [], SEPT, 'roasters', 'rating', 'all', 'best');
-    expect(r).toMatchObject({ value: 9, atBest: 2, bags: 2, brews: 3 });
-    expect(r.sample).toEqual({ bags: 2, brews: 3, small: true });
+    expect(r).toMatchObject({ value: 9, atBest: 2, bags: 2, brews: 8 });
+    expect(r.sample).toEqual({ bags: 2, brews: 8, small: true });
     expect(leaderboard(brews, [], SEPT, 'coffees', 'rating', 'all', 'best').map((x) => [x.value, x.atBest])).toEqual([[9, 1], [9, 1]]);
   });
   it('rating rows carry a sample; the coffees board uses the one-bag rule', () => {
-    const bs = [1, 1, 1, 2, 2, 2, 2].map((coffeeId, i) => brew({ coffeeId, roaster: 'R', rating: 8, id: i + 1 }));
+    const bs = [1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3].map((coffeeId, i) => brew({ coffeeId, roaster: 'R', rating: 8, id: i + 1 }));
     const roasters = leaderboard(bs, [], SEPT, 'roasters', 'rating', 'all', 'raw');
-    expect(roasters[0].sample).toEqual({ bags: 2, brews: 7, small: true });
+    expect(roasters[0].sample).toEqual({ bags: 2, brews: 8, small: true }); // bag 1 (3 brews) is no full bag
     const coffees = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw');
-    expect(coffees.map((r) => r.sample)).toEqual([{ bags: 1, brews: 4, small: false, one: true }, { bags: 1, brews: 3, small: true, one: true }]);
+    expect(coffees.map((r) => r.sample)).toEqual([{ bags: 1, brews: 4, small: false, one: true }, { bags: 1, brews: 4, small: false, one: true }, { bags: 1, brews: 3, small: true, one: true }]);
     expect(leaderboard(bs, [], SEPT, 'roasters', 'brews', 'all', 'raw')[0].sample).toBeUndefined();
   });
   it('roast level link includes alias labels', () => {
@@ -130,18 +140,18 @@ describe('leaderboards', () => {
   });
   it('per person divides totals only', () => {
     expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'grams', 'all', 'raw', 2).roasters)).toEqual([['Moonwake', 20], ['Sey', 15]]);
-    expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'rating', 'all', 'raw', 2).roasters)).toEqual([['Sey', 8.5], ['Moonwake', 7]]);
+    expect(vals(leaderboards(RATED, BAGS, SEPT, null, 'rating', 'all', 'raw', 2).roasters)).toEqual([['Sey', 8.5], ['Moonwake', 7]]);
     const ppg = leaderboards(BREWS, BAGS, SEPT, null, 'ppg', 'all', 'raw', 2).roasters[0];
     expect([ppg.value, ppg.cost, ppg.grams]).toEqual([0.2, 20, 100]);
   });
 });
 
 describe('hiddenRows', () => {
-  const rated = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 1, rating: 9 })];
+  const rated = [8, 9, 8, 9].map((rating) => brew({ coffeeId: 1, rating }));
   const run = (scored: BrewFact[], all: BrewFact[], ratings: 'current' | 'all', avg: 'min3' | 'raw') =>
     hiddenRows(leaderboards(scored, [bag({ id: 1 })], SEPT, null, 'rating', ratings, avg), scored, all, [bag({ id: 1 })], SEPT, 'rating', ratings);
   it('blames each setting that hid rows, and only those', () => {
-    // One bag, two brews: min3 hides every board; raw shows it.
+    // One bag, four brews: min3 hides every board; raw shows it.
     expect(run(rated, rated, 'all', 'min3').why).toEqual(['avg']);
     expect(run(rated, rated, 'all', 'min3').by.roasters).toEqual(['avg']);
     expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [], by: {}, cut: [] });
@@ -156,11 +166,11 @@ describe('hiddenRows', () => {
       .toEqual(['ratings']);
   });
   it('each board gets its own reasons', () => {
-    // Bag 1 (Sey) has 2 rated brews, bag 2 (Moonwake) one dial-in brew whose rating Once dialed nulls.
-    const sey = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 1, rating: 9 })];
-    const moon = brew({ coffeeId: 2, roaster: 'Moonwake', rating: 7 });
+    // Bag 1 (Sey) has 4 rated brews, bag 2 (Moonwake) 4 brews whose ratings Once dialed nulls.
+    const sey = [8, 9, 8, 9].map((rating) => brew({ coffeeId: 1, rating }));
+    const moon = [7, 7, 7, 7].map((rating) => brew({ coffeeId: 2, roaster: 'Moonwake', rating }));
     const bags = [bag({ id: 1 }), bag({ id: 2, roaster: 'Moonwake', name: 'B', slug: 'b' })];
-    const scored = [...sey, { ...moon, rating: null }], all = [...sey, moon];
+    const scored = [...sey, ...moon.map((b) => ({ ...b, rating: null }))], all = [...sey, ...moon];
     const r = hiddenRows(leaderboards(scored, bags, SEPT, null, 'rating', 'all', 'min3'), scored, all, bags, SEPT, 'rating', 'all');
     expect(r.by.roasters).toEqual(['avg', 'dial']); // both roasters gain at raw; Moonwake only once dialed shows
   });

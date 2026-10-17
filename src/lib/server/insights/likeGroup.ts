@@ -1,9 +1,9 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { DEFAULTS, type LikeView } from '$lib/insightsUrl';
-import { POOLED_MIN_BAGS, POOLED_MIN_BREWS, pooled, single, type Sample } from '$lib/sample';
+import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, pooled, single, type Sample } from '$lib/sample';
 import { loadFacts, type BrewFact } from './facts';
 import { dialInIds, onceDialed } from './dialed';
-import { countsForRating } from './ratings';
+import { countsForRating, fullBags } from './ratings';
 import { groupsFor, type LabFilters } from './lab';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -26,7 +26,8 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 
 // Each bag's like-group (spec 2026-10-15 Part 4): the narrowest groupsFor step (roast + process + origin +
 // roaster → roast + process + roaster → roast + process → roast) whose bags, without the bag itself, pass the
-// pooled small-sample rule. `rows`: rated, linked brews already cut to the view (Coffees filter, Period,
+// pooled small-sample rule. The group's bags are full bags only (fullBags: BAG_MIN_BREWS+ brews), so a 1-brew bag never
+// drags the baseline; the bag itself may be small (its own sample says so). `rows`: rated, linked brews already cut to the view (Coffees filter, Period,
 // Current/All, Once dialed). No qualifying step: no entry.
 // ponytail: O(bags × same-roast brews) per call; every step has the bag's roast level, so rows are pre-split by it.
 // `outside`: for roaster-level comparisons. The group leaves out every bag of the bag's own roaster and the
@@ -34,14 +35,14 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number, Like> {
   const byBag = groupBy(rows, (b) => b.coffeeId);
   const score = new Map([...byBag].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
-  const byRoast = groupBy(rows, (b) => b.roastLevel);
+  const byRoast = groupBy(fullBags(rows, 'all'), (b) => b.roastLevel);
   const out = new Map<number, Like>();
   for (const [id, bs] of byBag) {
     const f = filtersOf(bs[0]);
     if (!f) continue;
     const r = bs[0].roaster;
     if (outside) delete f.roaster;
-    const g = groupsFor(byRoast.get(f.roast!)!.filter((b) => b.coffeeId !== id && !(outside && r && b.roaster === r)), f)
+    const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.coffeeId !== id && !(outside && r && b.roaster === r)), f)
       // pooled() calls an empty group "no data", not small, so an empty step must be rejected here.
       .find((x) => x.brews.length > 0 && !pooled(new Set(x.brews.map((b) => b.coffeeId)).size, x.brews.length).small);
     if (!g) continue;
@@ -98,15 +99,15 @@ export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { li
     : !mine[0].roastLevel ? 'No comparison: this coffee has no roast level.'
     : !left ? `No comparison yet: ${all} ${early === n ? 'from before calibration' : dialing === n ? 'dial-in brews' : 'from before calibration or dial-in'}.`
     : 'No comparison yet: too few similar coffees to compare with.';
-  // The widest like group (same roast level), as likeGaps sees it under this view.
-  const similar = viewRows(brews, dialIn, v).filter((b) => b.coffeeId !== id && b.roastLevel === mine[0].roastLevel);
+  // The widest like group (same roast level), as likeGaps sees it under this view: full bags only.
+  const similar = fullBags(viewRows(brews, dialIn, v), 'all').filter((b) => b.coffeeId !== id && b.roastLevel === mine[0].roastLevel);
   const rows: [string, string][] = [
     ['Rated brews', `${n}`],
     ...(ratings === 'current' ? [['Before calibration', `${early}`] as [string, string]] : []),
     ...(v.dial !== 'all' ? [['Dial-in brews', `${dialing}`] as [string, string]] : []),
     ...(!decaf && left && mine[0].roastLevel ? [
       [`Other ${mine[0].roastLevel} coffees`, `${new Set(similar.map((b) => b.coffeeId)).size} bags, ${similar.length} brews`],
-      ['Needed', `${POOLED_MIN_BAGS}+ bags, ${POOLED_MIN_BREWS}+ brews`]
+      ['Needed', `${POOLED_MIN_BAGS}+ bags of ${BAG_MIN_BREWS}+ brews, ${POOLED_MIN_BREWS}+ brews`]
     ] as [string, string][] : [])
   ];
   // The nearest view with a comparison: Caffeine first for a decaf coffee, then Ratings, Brews, both.

@@ -95,12 +95,12 @@ describe('ratedGroups', () => {
 });
 
 describe('roastMix', () => {
-  // Each bag: two brews at one rating, so its bag mean is that rating; `bags` bags per level spread evenly ±spread.
+  // Each bag: four brews at one rating (a full bag), so its bag mean is that rating; `bags` bags per level spread evenly ±spread.
   let id = 0;
   const level = (roastLevel: string, at: number, spread = 0.5, bags = 5) =>
     Array.from({ length: bags }, (_, i) => spread * (-1 + (2 * i) / (bags - 1))).flatMap((o) => {
       const coffeeId = ++id;
-      return [0, 1].map(() => ({ coffeeId, rating: at + o, localDate: '2026-07-01', roastLevel }));
+      return [0, 1, 2, 3].map(() => ({ coffeeId, rating: at + o, localDate: '2026-07-01', roastLevel }));
     });
   const pair = (gap: number, spread = 0.5, bags = 5) => [...level('Medium', 7, spread, bags), ...level('Light', 7 + gap, spread, bags)];
 
@@ -123,6 +123,10 @@ describe('roastMix', () => {
   });
   it('a small level is left out (and of the SD)', () => {
     expect(roastMix([...pair(0.7), ...level('Dark', 3, 0.5, 2)], 'all')?.map((r) => r.roast)).toEqual(['Light', 'Medium']);
+  });
+  it('bags under 4 rated brews are left out: a 1-brew Light bag at 2 does not drag Light down', () => {
+    const tiny = { coffeeId: 999, rating: 2, localDate: '2026-07-01', roastLevel: 'Light' };
+    expect(roastMix([...pair(0.7), tiny], 'all')?.[0]).toEqual({ roast: 'Light', mean: expect.closeTo(7.7) });
   });
   it('one level (a Roast filter set) → null', () => expect(roastMix(level('Light', 8), 'all')).toBeNull());
   it('Calibrated ratings leave out early brews; unlinked brews are skipped', () => {

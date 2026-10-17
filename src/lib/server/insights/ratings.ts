@@ -1,5 +1,5 @@
 import type { Ratings, Avg } from '$lib/insightsUrl';
-import { pooled, type Sample } from '$lib/sample';
+import { BAG_MIN_BREWS, pooled, type Sample } from '$lib/sample';
 import { sd, strengthOf } from './stats';
 
 // Ratings before this date were ~3× as scattered (calibration period), so
@@ -12,6 +12,16 @@ export type Rated = { coffeeId: number | null; rating: number | null; localDate:
 
 export const countsForRating = (b: Rated, ratings: Ratings): boolean =>
   b.rating !== null && (ratings === 'all' || b.localDate >= RATINGS_SETTLED_FROM);
+
+// The brews of bags with BAG_MIN_BREWS+ counted ratings: the only bags a pooled mean (a roast, origin or roaster's
+// figure, a like-group's baseline, the roast nudge) counts (stats audit 2026-10-17, must-fix 1). A smaller bag is
+// the one-bag rule's low-confidence case, and under Once dialed its ratings are the dial-in brews, low by
+// construction, so as a full point it drags every baseline down. A board of single bags (Coffees) keeps them.
+export function fullBags<T extends Rated>(brews: readonly T[], ratings: Ratings): T[] {
+  const n = new Map<number, number>();
+  for (const b of brews) if (b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0) n.set(b.coffeeId, (n.get(b.coffeeId) ?? 0) + 1);
+  return brews.filter((b) => b.coffeeId !== null && (n.get(b.coffeeId) ?? 0) >= BAG_MIN_BREWS);
+}
 
 export interface RatedGroup {
   label: string;
@@ -85,13 +95,14 @@ export function ratedGroups<T extends Rated>(
 // The roast nudge's smallest gap worth naming (user ruling, gate 3): a z ≥ 2 alone fires on a big sample's tiny gap.
 export const ROAST_GAP = 0.5;
 
-// The mixed-roast nudge (spec Part 3, gate-3 rule): roast levels passing the pooled rule, best first, when the
+// The mixed-roast nudge (spec Part 3, gate-3 rule), over full bags only (fullBags): roast levels passing the pooled rule, best first, when the
 // highest and lowest bag-weighted means differ at strengthOf 'solid' (groupZ-style SE over the qualifying bag
 // means, one test) and by ROAST_GAP or more; else null. `brews`: the rating views' source in the Period.
 export function roastMix<T extends Rated & { roastLevel: string | null }>(
   brews: readonly T[],
   ratings: Ratings
 ): { roast: string; mean: number }[] | null {
+  brews = fullBags(brews, ratings);
   const levels = ratedGroups(brews, (b) => b.roastLevel, ratings, 'raw').filter((g) => !g.sample.small)
     .sort((a, b) => b.mean - a.mean);
   if (levels.length < 2) return null;

@@ -2772,7 +2772,7 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-cut', path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="roasters"] .board-note'))
-        .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
+        .toHaveText('No roasters with 3+ bags of 4+ rated brews matching Washed · Light in this period.');
       await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
       await expectShortEmpty(page);
     } },

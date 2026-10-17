@@ -259,12 +259,13 @@ describe('recordsTab', () => {
                 bag({ id: 3, name: 'beta', roaster: 'Lo' })];
     const of = (id: number, ratings: number[], date: string) =>
       rated(id, ratings, date).map((b) => ({ ...b, roaster: TB.find((x) => x.id === id)!.roaster }));
+    // 4 brews a bag: the roaster mean is the Roasters board's, which counts full bags only.
     it('go to the higher-rated roaster, despite a later date', () => {
-      const t = recordsTab([...of(2, [10, 6], '2026-07-01'), ...of(1, [10, 9], '2026-08-01')], TB, CTX);
+      const t = recordsTab([...of(2, [10, 6, 6, 6], '2026-07-01'), ...of(1, [10, 9, 9, 9], '2026-08-01')], TB, CTX);
       expect(tileOf(t, 'mostTens')).toMatchObject({ value: 1, holder: { label: 'Zeta' }, ties: [{ label: 'Alpha' }] });
     });
     it('equal roaster means fall back to a–z, ignoring case', () => {
-      const t = recordsTab([...of(3, [10, 8], '2026-07-01'), ...of(2, [10, 8], '2026-08-01')], TB, CTX);
+      const t = recordsTab([...of(3, [10, 8, 8, 8], '2026-07-01'), ...of(2, [10, 8, 8, 8], '2026-08-01')], TB, CTX);
       expect(tileOf(t, 'mostTens')).toMatchObject({ holder: { label: 'Alpha' }, ties: [{ label: 'beta' }] });
     });
     it('other records keep earliest-first', () => {

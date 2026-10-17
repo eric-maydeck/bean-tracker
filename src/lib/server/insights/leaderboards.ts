@@ -3,7 +3,7 @@ import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
-import { countsForRating, ratedGroups } from './ratings';
+import { countsForRating, fullBags, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -114,7 +114,8 @@ export function leaderboard(
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
         : [...roasterLikes(likeRows())].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
-      rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
+      // A pooled board counts full bags only (fullBags); Coffees rows are single bags, the one-bag rule marks them.
+      rows = ratedGroups(board === 'coffees' ? inP : fullBags(inP, ratings), key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
         ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: r.value, sample: r.sample })
       }));
