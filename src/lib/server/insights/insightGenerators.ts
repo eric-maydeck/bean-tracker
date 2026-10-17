@@ -8,7 +8,7 @@ import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, type Like } from './likeGroup';
-import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
+import { BAG_MIN_BREWS, POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
 import { tagTwins } from './lab';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
@@ -53,9 +53,9 @@ const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not entered
 const counted = (c: Pick<GenCtx, 'brews' | 'ratings'>) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
 const bagLabel = (c: GenCtx, id: number, b = bagById(c).get(id)) => (b ? `${b.roaster} ${b.name}` : `Bag ${id}`);
-// Mean rating per bag, for bags with at least MIN_BAGS rated brews.
+// Mean rating per bag, for bags with BAG_MIN_BREWS+ rated brews: the page's one bag rule (sample.ts, fullBags).
 const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
-  new Map([...perBag(rows)].filter(([, bs]) => bs.length >= MIN_BAGS).map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
+  new Map([...perBag(rows)].filter(([, bs]) => bs.length >= BAG_MIN_BREWS).map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
 // Rated brews of each bag, in time order.
 const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => groupBy(rows, (b) => b.coffeeId);
 // Supporting lists: `details(['Label', items], …)` keeps non-empty groups, DETAIL_ITEMS each, unique names.
@@ -194,7 +194,7 @@ const fondMemory: Generator = (c) => {
   const by = perBag(counted(c));
   const gaps = c.bags.flatMap((b) => {
     const bs = by.get(b.id);
-    return b.bagRating !== null && bs && bs.length >= MIN_BAGS ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
+    return b.bagRating !== null && bs && bs.length >= BAG_MIN_BREWS ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
   });
   const d = gaps.map((g) => g.gap);
   if (d.length < MIN_BREWS) return null;

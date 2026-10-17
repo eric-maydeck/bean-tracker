@@ -25,6 +25,8 @@ const gen = (key: string, brews: BrewFact[], bags: BagFact[] = [], o: Partial<Ge
   all(ctx(brews, bags, o)).find((f) => f!.key === key) ?? null;
 const finite = (v: unknown) => !/NaN|Infinity|undefined/.test(JSON.stringify(v));
 
+// A bag's ratings twice over: the same mean, past the 4-brew bag rule.
+const dup = <T,>(a: T[]) => [...a, ...a];
 // One bag's rated brews, 10 minutes apart on `date`, brewIndex 1.. in order.
 let nextId = 1;
 const seq = (coffeeId: number, ratings: number[], date = '2026-07-01', o: Partial<BrewFact> | ((i: number) => Partial<BrewFact>) = {}): BrewFact[] =>
@@ -127,7 +129,7 @@ describe('second cup', () => {
 describe('remembered fondly', () => {
   const mk = (n: number) => {
     const bs = bags(n, (i) => ({ bagRating: 8 + (i % 2 ? 0.3 : 0.5) }));
-    return { bs, brews: bs.flatMap((x) => seq(x.id, [7, 8, 9])) };
+    return { bs, brews: bs.flatMap((x) => seq(x.id, dup([7, 8, 9]))) };
   };
   it('30 bags rated 0.4 above their brew mean', () => {
     const { bs, brews } = mk(30);
@@ -139,7 +141,7 @@ describe('remembered fondly', () => {
 describe('repeat buys', () => {
   // 5 coffees bought twice: second bag mean higher by 0.5..1.5
   const bs = Array.from({ length: 10 }, (_, i) => bag({ id: i + 1, name: `Cof ${i >> 1}`, roaster: 'Same', purchaseDate: `2026-0${1 + (i & 1)}-01` }));
-  const brews = bs.flatMap((x, i) => seq(x.id, [i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7]));
+  const brews = bs.flatMap((x, i) => seq(x.id, dup([i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7])));
   it('carries the caveat', () => {
     const f = gen('repeatBuys', brews, bs)!;
     expect(f).toMatchObject({ theme: 'taste', caveat: 'Ratings settled over time and you re-buy winners.', sample: '5 repeat pairs' });
@@ -149,15 +151,15 @@ describe('repeat buys', () => {
   });
   it('null when every pair differs by the same amount (z not finite)', () => {
     const b2 = bs.map((x) => bag({ ...x }));
-    const br = b2.flatMap((x, i) => seq(x.id, i & 1 ? [8, 8, 8] : [7, 7, 7]));
+    const br = b2.flatMap((x, i) => seq(x.id, dup(i & 1 ? [8, 8, 8] : [7, 7, 7])));
     expect(gen('repeatBuys', br, b2)).toBeNull();
   });
-  it('bags with under 3 rated brews are ignored', () => expect(gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, i & 1 ? [9, 9] : [7, 7])), bs)).toBeNull());
+  it('bags with under 4 rated brews are ignored', () => expect(gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, i & 1 ? [9, 9, 9] : [7, 7, 7])), bs)).toBeNull());
   it('null under 3 pairs', () => expect(gen('repeatBuys', brews.slice(0, 12), bs.slice(0, 4))).toBeNull());
   it('paired z uses the sample SD (n − 1)', () => {
     // Differences 0.5, 1, 1.5: mean 1, sample SD 0.5 -> z = 1 / (0.5 / √3) = 2√3 (population SD would give 3√2).
     const b3 = bs.slice(0, 6);
-    const f = gen('repeatBuys', b3.flatMap((x, i) => seq(x.id, Array(3).fill(i & 1 ? 7 + 0.5 * ((i >> 1) + 1) : 7))), b3)!;
+    const f = gen('repeatBuys', b3.flatMap((x, i) => seq(x.id, Array(4).fill(i & 1 ? 7 + 0.5 * ((i >> 1) + 1) : 7))), b3)!;
     expect(f.z).toBeCloseTo(2 * Math.sqrt(3), 6);
     // 3 pairs: a t test on 2 df (one-sided p .037), so Possible, not the normal curve's Likely (p .0003).
     expect(f.strength).toBe('hint');
@@ -167,7 +169,7 @@ describe('repeat buys', () => {
 describe('group effects', () => {
   const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', roaster: `Rst ${i % 4}`, origin: 'Kenya', processGroup: 'Washed' }));
   const rate = (i: number) => (i < 4 ? 6 : 8 + (i % 2 ? 0.2 : -0.2));
-  const brews = bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i), rate(i)]));
+  const brews = bs.flatMap((x, i) => seq(x.id, dup([rate(i), rate(i), rate(i)])));
   it('Light roasts rate lower (delta vs all bag means)', () => {
     const f = gen('groupDelta:roastLevel:Light', brews, bs)!;
     const allMean = (4 * 6 + 8 * 8) / 12;
@@ -177,7 +179,7 @@ describe('group effects', () => {
   it('a group under 3 bags is skipped', () => expect(gen('groupDelta:roastLevel:Light', brews.slice(0, 18), bs.slice(0, 6).map((x, i) => ({ ...x, roastLevel: i < 2 ? 'Light' : 'Medium' })))).toBeNull());
   it('a weak effect is too early and carries the multiple-comparisons caveat', () => {
     const b2 = bags(12, (i) => ({ roaster: `Rst ${i % 3}` }));
-    const br = b2.flatMap((x, i) => seq(x.id, [7 + ((i * 7) % 5) * 0.4, 7, 7]));
+    const br = b2.flatMap((x, i) => seq(x.id, dup([7 + ((i * 7) % 5) * 0.4, 7, 7])));
     const fs = all(ctx(br, b2)).filter((f) => f!.key.startsWith('groupDelta:roaster'));
     expect(fs.some((f) => f!.strength === 'early')).toBe(true);
     for (const f of fs) if (f!.strength === 'early') expect(f!.caveat).toContain('groups compared');
@@ -187,7 +189,7 @@ describe('group effects', () => {
     // 8 roasters × 3 bags; Rst 0 sits about 2.05 SE above: solid alone, not with 8 groups compared.
     const b8 = bags(24, (i) => ({ roaster: `Rst ${i % 8}` }));
     const mean8 = (i: number) => (i % 8 === 0 ? 8.2 : 7.5 + ((i * 5) % 7) * 0.12);
-    const f = gen('groupDelta:roaster:Rst 0', b8.flatMap((x, i) => seq(x.id, [mean8(i), mean8(i), mean8(i)])), b8)!;
+    const f = gen('groupDelta:roaster:Rst 0', b8.flatMap((x, i) => seq(x.id, dup([mean8(i), mean8(i), mean8(i)]))), b8)!;
     expect(f.z).toBeGreaterThan(2);
     expect(f.strength).toBe('early');
     expect(f.caveat).toBe('With 8 roaster groups compared, one usually stands out by chance.');
@@ -224,18 +226,18 @@ describe('details (supporting lists)', () => {
     expect(gen('coFerments', [], Array.from({ length: 5 }, (_, i) => bag({ id: i + 1, processGroup: 'Co-ferment / Infused', origin: 'Colombia' })))!.details).toBeUndefined());
   it('remembered fondly: the biggest gaps', () => {
     const bs = bags(30, (i) => ({ bagRating: 8 + (i % 2 ? 0.3 : 0.5) }));
-    expect(gen('fondMemory', bs.flatMap((x) => seq(x.id, [7, 8, 9])), bs)!.details).toEqual([{ label: 'Remembered most fondly', items: [
+    expect(gen('fondMemory', bs.flatMap((x) => seq(x.id, dup([7, 8, 9]))), bs)!.details).toEqual([{ label: 'Remembered most fondly', items: [
       { name: 'Bag 1', value: '+0.50' }, { name: 'Bag 11', value: '+0.50' }] }]);
   });
   it('repeat buys: the biggest second-bag gains', () => {
     const bs = Array.from({ length: 10 }, (_, i) => bag({ id: i + 1, name: `Cof ${i >> 1}`, roaster: 'Same', purchaseDate: `2026-0${1 + (i & 1)}-01` }));
-    const f = gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, [i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7])), bs)!;
+    const f = gen('repeatBuys', bs.flatMap((x, i) => seq(x.id, dup([i & 1 ? 8 + (i >> 1) * 0.25 + 0.5 : 7, 7, 7]))), bs)!;
     expect(f.details).toEqual([{ label: 'Biggest second-bag gains', items: [{ name: 'Cof 4', value: '+0.83' }, { name: 'Cof 3', value: '+0.75' }] }]);
   });
   it('group effects: the group\'s lowest-rated bags when it rates lower', () => {
     const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', slug: `b${i + 1}` }));
     const rate = (i: number) => (i < 4 ? 6 + i * 0.1 : 8 + (i % 2 ? 0.2 : -0.2));
-    expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i), rate(i)])), bs)!.details).toEqual([{ label: 'Lowest rated', items: [
+    expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, dup([rate(i), rate(i), rate(i)]))), bs)!.details).toEqual([{ label: 'Lowest rated', items: [
       { name: 'Bag 1', value: '6.0', href: '/coffees/b1' }, { name: 'Bag 2', value: '6.1', href: '/coffees/b2' }] }]);
   });
   it('runway: most on hand among open and backlog bags', () => {
@@ -465,7 +467,7 @@ describe('wildcard brewer', () => {
 describe('price vs rating', () => {
   const mk = (rate: (i: number) => number, n = 30) => {
     const bs = bags(n, (i) => ({ cost: i + 1, amountG: 100 }));
-    return { bs, brews: bs.flatMap((b, i) => seq(b.id, [rate(i), rate(i), rate(i)])) };
+    return { bs, brews: bs.flatMap((b, i) => seq(b.id, dup([rate(i), rate(i), rate(i)]))) };
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10); // V shape: r = 0
@@ -543,7 +545,7 @@ describe('rest window myth', () => {
 describe('origin myth', () => {
   const mk = (rates: number[], origins = ['Kenya', 'Ethiopia', 'Colombia']) => {
     const bs = bags(9, (i) => ({ origin: origins[Math.floor(i / 3)] }));
-    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(3).fill(rates[Math.floor(i / 3)]))) };
+    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(4).fill(rates[Math.floor(i / 3)]))) };
   };
   it('every origin within 0.5: myth', () => {
     const { bs, brews } = mk([8, 8.3, 7.7]);
@@ -558,7 +560,7 @@ describe('origin myth', () => {
 describe('backlog wait myth', () => {
   const mk = (rate: (i: number) => number, n = 30) => {
     const bs = bags(n, (i) => ({ purchaseDate: '2026-06-01', firstBrew: addDays('2026-06-01', i) }));
-    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(3).fill(rate(i)))) };
+    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(4).fill(rate(i)))) };
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10);
