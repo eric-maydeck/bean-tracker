@@ -3,12 +3,12 @@ import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps re
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
-import { countsForRating } from './ratings';
+import { countsForRating, fullBags } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
-import { BAG_MIN_BREWS, POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
+import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
 import { tagTwins } from './lab';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
@@ -58,7 +58,7 @@ const counted = (c: Pick<GenCtx, 'brews' | 'ratings'>) => c.brews.filter((b) => 
 const bagLabel = (c: GenCtx, id: number, b = bagById(c).get(id)) => (b ? `${b.roaster} ${b.name}` : `Bag ${id}`);
 // Mean rating per bag, for bags with BAG_MIN_BREWS+ rated brews: the page's one bag rule (sample.ts, fullBags).
 const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
-  new Map([...perBag(rows)].filter(([, bs]) => bs.length >= BAG_MIN_BREWS).map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
+  new Map([...perBag(fullBags(rows, 'all'))].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
 // Rated brews of each bag, in time order.
 const perBag = (rows: readonly BrewFact[]): Map<number, BrewFact[]> => groupBy(rows, (b) => b.coffeeId);
 // Supporting lists: `details(['Label', items], …)` keeps non-empty groups, DETAIL_ITEMS each, unique names.
@@ -199,10 +199,10 @@ const secondCup: Generator = (c) => {
 };
 
 const fondMemory: Generator = (c) => {
-  const by = perBag(counted(c));
+  const by = perBag(fullBags(counted(c), 'all'));
   const gaps = c.bags.flatMap((b) => {
     const bs = by.get(b.id);
-    return b.bagRating !== null && bs && bs.length >= BAG_MIN_BREWS ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
+    return b.bagRating !== null && bs ? [{ b, gap: b.bagRating - mean(bs.map((x) => x.rating!)) }] : [];
   });
   const d = gaps.map((g) => g.gap);
   if (d.length < MIN_BREWS) return null;

@@ -70,7 +70,7 @@ export interface RoasterLike { gap: number; gaps: number[]; bags: number; brews:
 export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<number, string>): Map<string, RoasterLike> {
   const roasterOf = new Map(rows.map((b) => [b.coffeeId, b.roaster]));
   const out = new Map<string, RoasterLike>();
-  for (const [r, g] of groupBy([...likeGaps(rows, true, twins)].filter(([id, l]) => roasterOf.get(id) && !l.sample.small), ([id]) => roasterOf.get(id)!)) {
+  for (const [r, g] of groupBy([...likeGaps(fullBags(rows, 'all'), true, twins)].filter(([id]) => roasterOf.get(id)), ([id]) => roasterOf.get(id)!)) {
     const gaps = g.map(([, l]) => l.gap);
     out.set(r, { gap: mean(gaps), gaps, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
   }
