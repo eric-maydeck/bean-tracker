@@ -98,6 +98,8 @@
   // from (2 decimals: they can round to the same 1-decimal value); a group row its score ± 1 SE (user ruling
   // 2026-10-17). null: no tip (other ranks, peak modes).
   // Either way, when dial-in brews were skipped the tip says both counts (the row shows the scored one).
+  // A tip (and its dotted underline) only when it adds something the row lacks (user, 2026-10-17): both counts, a ±, or
+  // a plain average that differs from the score. Raw with every brew scored, or a tip that repeats the row: none.
   const valueTip = (b: Board, r: Row): Tip | null => {
     const base = scoreTip(b, r), counts = rank === 'rating' || rank === 'like' ? scoredLine(r.sample) : null;
     return counts ? { ...(base ?? { title: r.label }), lines: [`${counts}.`] } : base;
@@ -105,7 +107,8 @@
   const scoreTip = (b: Board, r: Row): Tip | null =>
     rank !== 'rating' ? null
     : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
-      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
+      ? r.value.toFixed(2) === r.mean.toFixed(2) ? null // it would only repeat the row
+      : { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
     : r.se !== undefined
       ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '± is the standard error, how sure this average is. The true one is usually within it.' }
     : null;

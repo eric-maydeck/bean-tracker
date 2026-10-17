@@ -1974,6 +1974,29 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
     }
   },
+  {
+    // A row's value is dotted and tipped only when the tip adds something (user, 2026-10-17): both counts, a ±, or a
+    // plain average that differs from the score. Raw with every brew scored: no Coffees tip, no dotted underline.
+    name: 'insights-leaderboards-tip-adds',
+    path: () => '/insights?tab=leaderboards&range=all&avg=raw&dial=all',
+    act: async (page) => {
+      await expect(page.locator('[data-board="coffees"] .board-row.bar').first()).toBeVisible();
+      await expect(page.locator('[data-board="coffees"] .val .text-tip')).toHaveCount(0);
+      expect(await page.locator('[data-board="coffees"] .val').first().evaluate((e) => getComputedStyle(e).textDecorationLine)).not.toContain('underline');
+      // Default (Confidence adj., Once dialed): every Coffees tip shows a differing plain average or both counts.
+      await gotoReady(page, '/insights?tab=leaderboards&range=all');
+      const tips = page.locator('[data-board="coffees"] .val .text-tip');
+      expect(await tips.count()).toBeGreaterThan(0);
+      for (const t of await tips.all()) {
+        await t.click();
+        const tip = page.locator('.float-tip');
+        const dd = await tip.locator('dd').allInnerTexts();
+        const adds = (dd.length === 2 && dd[0] !== dd[1]) || /scored once dialed/.test(await tip.innerText());
+        expect(adds, dd.join(' / ')).toBe(true);
+        await page.keyboard.press('Escape');
+      }
+    }
+  },
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-leaderboards-spend-compare',
