@@ -617,7 +617,7 @@ describe('hiddenNote', () => {
   });
   it('rows are blamed on every setting that hid some, none when avg=raw alone is not the cause', () => {
     expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['avg', 'ratings', 'dial'], brews: 0 }))
-      .toBe('2 origins hidden: too few bags or brews, before calibration or while dialing in.');
+      .toBe('2 origins hidden: too few bags or brews, before calibration, or while dialing in.');
     expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['dial'], brews: 3, why: ['dial'] })).toBe('2 origins hidden: while dialing in. 3 rated brews left out: while dialing in.');
     expect(hiddenNote({ rows: { origins: 2 }, brews: 0 })).toBe('2 origins hidden.');
     expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] })).toBe('3 rated brews left out: before calibration.');

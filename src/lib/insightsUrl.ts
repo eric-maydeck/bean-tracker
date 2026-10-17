@@ -416,7 +416,8 @@ const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -
 // `rowsWhy` / `why`: the settings that hid the rows / the brews (avg = Score's confident cutoff).
 export type Hidden = { rows: Partial<Record<Board, number>>; rowsWhy?: ('avg' | 'ratings' | 'dial')[]; brews: number; why?: ('ratings' | 'dial')[] };
 const WHY = { avg: 'too few bags or brews', ratings: 'before calibration', dial: 'while dialing in' };
-const list = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}` : xs.join(''));
+// "a or b"; with an item that holds an "or" itself, commas keep it readable: "a or b, c, or d".
+const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.some((x) => x.includes(' or ')) ? `${xs.slice(0, -1).join(', ')}, or ${xs.at(-1)}` : `${xs.slice(0, -1).join(', ')} or ${xs.at(-1)}`);
 // More than two boards gain rows: the total phrase, whose "M boards" carries a per-board tooltip.
 export const boardsTotal = (h: Hidden): { before: string; boards: string; list: [string, string][] } | null => {
   const rows = Object.entries(h.rows) as [Board, number][];
