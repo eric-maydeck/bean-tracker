@@ -13,7 +13,7 @@
   // re-placed on scroll and resize while open. Every tip is the structured one (TipBody), wrapping at 15rem.
   // `onclose`: called when another tip dismisses this one, so its owner resets its open state (a tap-only device
   // never blurs, so the trigger would otherwise stay "open" and never show again).
-  // `reveal`: a tip opened by tap or keyboard (never hover: the page would slide out from under the pointer) that runs
+  // `reveal`: a tip opened by a click, tap or keyboard (never by hover: the page would slide out from under it) that runs
   // past the bottom of the visible band scrolls the page just enough to show it whole (ui-rules 39; the See all tip
   // under the sticky bar at 1003×333). ponytail: only the below-overflow case; a tip clamped over its anchor stays.
   let { anchor, children, onclose, reveal = false }: { anchor: Element; children: Snippet; onclose?: () => void; reveal?: boolean } = $props();
@@ -42,7 +42,12 @@
     if (!el.matches(':popover-open')) el.showPopover();
     place();
     const over = reveal ? el.getBoundingClientRect().bottom + 8 - viewBand().bottom : 0;
-    if (over > 0) scrollBy({ top: over, behavior: 'instant' });
+    if (over > 0) {
+      scrollBy({ top: over, behavior: 'instant' });
+      // Never so far that the anchor slides under the sticky bar (the tip would hide with it): back off the excess.
+      const under = viewBand().top + 4 - anchor.getBoundingClientRect().top;
+      if (under > 0) scrollBy({ top: -under, behavior: 'instant' });
+    }
     addEventListener('scroll', place, true);
     addEventListener('resize', place);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && (dismissed = true);

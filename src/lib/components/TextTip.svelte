@@ -8,7 +8,7 @@
   // empty side opened the tip (rule 41). The span's box is the text's own line boxes.
   let { label, tip }: { label: string; tip: Tip } = $props();
   let anchor: HTMLSpanElement | undefined = $state();
-  // 'hover' or 'tap' (tap and keyboard focus): a tapped tip may scroll itself into view (FloatTip `reveal`).
+  // 'hover' or 'tap' (a click, tap or keyboard focus): only a non-hover tip may scroll itself into view (FloatTip `reveal`).
   let open = $state<false | 'hover' | 'tap'>(false);
 </script>
 
