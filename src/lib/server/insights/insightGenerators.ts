@@ -6,6 +6,8 @@ import { countsForRating } from './ratings';
 import { settleAt } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
+import { likeGaps, type Like } from './likeGroup';
+import { POOLED_MIN_BAGS, single } from '$lib/sample';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
@@ -743,12 +745,84 @@ const calibration: Generator = (c) => {
   });
 };
 
+
+// vs like coffees (spec Part 4): the coffee, and the roaster, furthest from its like-group (likeGroup.ts).
+// Coffee z: its gap over the spread of every bag's gap, Bonferroni over the bags compared.
+const likeStandouts: Generator = (c) => {
+  const likes = [...likeGaps(counted(c))].filter(([, l]) => !l.sample.small);
+  if (likes.length < POOLED_MIN_BAGS) return null;
+  const gaps = likes.map(([, l]) => l.gap), spread = sd(gaps);
+  if (spread < 1e-9) return [];
+  const byGap = (a: [number, Like], b: [number, Like]) => Math.abs(b[1].gap) - Math.abs(a[1].gap) || bagLabel(c, a[0]).localeCompare(bagLabel(c, b[0]));
+  const [id, top] = [...likes].sort(byGap)[0];
+  const up = top.gap >= 0;
+  const coffee = graded({
+    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${bagLabel(c, id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
+    value: signed(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
+    ...details([up ? 'Also above their peers' : 'Also below their peers', [...likes].sort(byGap).slice(1).filter(([, l]) => (l.gap >= 0) === up)
+      .map(([x, l]) => detail(bagLabel(c, x), signed(l.gap), coffeeHref(c.bags.find((b) => b.id === x))))])
+  }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
+  const roasters = [...groupBy(likes, ([x]) => c.bags.find((b) => b.id === x)?.roaster)].filter(([, g]) => g.length >= POOLED_MIN_BAGS);
+  const best = roasters.map(([r, g]) => ({ r: r!, ms: g.map(([, l]) => l.gap) }))
+    .sort((a, b) => Math.abs(mean(b.ms)) - Math.abs(mean(a.ms)) || a.r.localeCompare(b.r))[0];
+  const roaster = best ? graded({
+    key: 'likeRoaster', theme: 'taste', kind: 'number',
+    headline: `${best.r} rates ${Math.abs(mean(best.ms)).toFixed(2)} ${mean(best.ms) >= 0 ? 'above' : 'below'} like coffees`,
+    value: signed(mean(best.ms)), sample: plural(best.ms.length, 'bag'), href: `${LB}&rank=like&open=roasters`
+  }, groupZ(best.ms, gaps), true, 'bags', best.ms.length, undefined, roasters.length) : null;
+  return [coffee, roaster].filter((f): f is Finding => f !== null);
+};
+
+// Dial-in speed by roast level and by process (spec Part 4): the median brew a bag settles at (settleAt), per
+// group of 3+ bags (each has 5+ rated brews, so the brew half of the pooled rule always holds). Descriptive.
+const dialinByGroup: Generator = (c) => {
+  const pos = settlePositions({ ...c, brews: c.allBrews });
+  const byId = bagById(c);
+  return (['roastLevel', 'processGroup'] as const).flatMap((dim) => {
+    const groups = [...groupBy(pos, (x) => { const v = byId.get(x.id)?.[dim]; return v && v !== 'Other / Unknown' ? v : null; })]
+      .filter(([, g]) => g.length >= POOLED_MIN_BAGS)
+      .map(([label, g]) => ({ label: label!, value: median(g.map((x) => x.pos)) }))
+      .sort((a, b) => a.value - b.value || a.label.localeCompare(b.label));
+    if (groups.length < 2 || groups[0].value === groups.at(-1)!.value) return [];
+    const [fast, slow] = [groups[0], groups.at(-1)!];
+    return [{
+      key: `dialinBy:${dim}`, theme: 'dialin' as const, kind: 'pattern' as const, chart: 'bars' as const,
+      headline: `${fast.label} settles by brew ${fast.value}; ${slow.label} by brew ${slow.value}`,
+      series: groups, sample: plural(pos.length, 'bag'), href: `${LB}&open=${dim === 'roastLevel' ? 'roast' : 'process'}`, z: null, strength: null
+    }];
+  });
+};
+
+// Rescued bags (spec Part 4): the bag's first two rated brews (both dial-in) average RESCUE or more below its
+// once-dialed brews. Descriptive.
+const RESCUE = 1; // ponytail: a fixed 1-point climb; tune at the Part 4 preview
+const rescuedBags: Generator = (c) => {
+  const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
+  const bags = [...perBag(raw)].flatMap(([id, bs]) => {
+    const later = bs.filter((b) => !c.dialIn.has(b.id));
+    if (single(bs.length).small || !c.dialIn.has(bs[0].id) || !c.dialIn.has(bs[1].id) || !later.length) return [];
+    const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(later.map((b) => b.rating!));
+    return [{ id: id!, start, end }];
+  });
+  const saved = bags.filter((x) => x.end - x.start >= RESCUE)
+    .sort((a, b) => b.end - b.start - (a.end - a.start) || bagLabel(c, a.id).localeCompare(bagLabel(c, b.id)));
+  if (bags.length < POOLED_MIN_BAGS || !saved.length) return null;
+  return {
+    key: 'rescuedBags', theme: 'dialin', kind: 'number', headline: `${plural(saved.length, 'bag')} rescued after a rough start`,
+    value: `${saved.length} of ${bags.length}`,
+    body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}.`,
+    sample: plural(bags.length, 'bag'), href: `${LB}&open=coffees`, z: null, strength: null,
+    ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(c.bags.find((b) => b.id === x.id))))])
+  };
+};
+
 export const DIAL_IN_GENERATORS: ReadonlySet<Generator> = new Set([dialinCurve, dialinSpeed, firstVsLater, settleTrend]);
 
 export const GENERATORS: Generator[] = [
   dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
   morningDrift, weekendVsWeekday, earlyBrews, weekdayRatings, periodVsPrevious, gearEras, sameBagVersus, wildcardBrewer,
-  priceVsRating, costPerCup, pricePerMonth, loyalty, restMyth, restWindowMyth, originMyth, backlogWaitMyth, variablesMyth, calibration
+  priceVsRating, costPerCup, pricePerMonth, loyalty, restMyth, restWindowMyth, originMyth, backlogWaitMyth, variablesMyth, calibration,
+  likeStandouts, dialinByGroup, rescuedBags
 ];
 
 // ---- Insights tab: bucketing and What-if ----

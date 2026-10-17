@@ -742,3 +742,31 @@ describe('insightsTab', () => {
     expect(keys(ctx(scored, [], { allBrews: scored }))).not.toContain('dialinSpeed');
   });
 });
+
+describe('like-with-like findings', () => {
+  const LW = { roastLevel: 'Light', processGroup: 'Washed' as const };
+  // 12 Light/Washed bags × 5 brews: bag 1 far above its peers, the rest spread 7.8–8.2.
+  const peers = Array.from({ length: 12 }, (_, k) => k + 1).flatMap((id) =>
+    [0, 1, 2, 3, 4].map((i) => brew({ id: id * 10 + i, coffeeId: id, roaster: id <= 6 ? 'Sey' : 'Other', ...LW,
+      rating: id === 1 ? 9.6 : 7.8 + ((id + i) % 5) * 0.1, brewIndex: i + 1 })));
+  const bags = Array.from({ length: 12 }, (_, k) => bag({ id: k + 1, name: `Bag ${k + 1}`, roaster: k < 6 ? 'Sey' : 'Other', ...LW }));
+  it('standout: the coffee furthest from its like-group', () => {
+    const f = gen('likeStandout', peers, bags);
+    expect(f?.headline).toMatch(/Bag 1 beats Washed Light coffees by/);
+    expect(f?.value).toMatch(/^\+1\.\d\d$/);
+  });
+  it('dial-in speed by roast level: median settle position per group', () => {
+    const slow = [1, 2, 3].flatMap((id) => [5, 6, 7, 9, 9].map((r, i) => brew({ id: 500 + id * 10 + i, coffeeId: 100 + id, rating: r, brewIndex: i + 1, roastLevel: 'Ultralight' })));
+    const fast = [1, 2, 3].flatMap((id) => [9, 9, 9, 9, 9].map((r, i) => brew({ id: 700 + id * 10 + i, coffeeId: 200 + id, rating: r, brewIndex: i + 1, roastLevel: 'Medium' })));
+    const all = [...slow, ...fast];
+    const gb = [...[1, 2, 3].map((id) => bag({ id: 100 + id, roastLevel: 'Ultralight' })), ...[1, 2, 3].map((id) => bag({ id: 200 + id, roastLevel: 'Medium' }))];
+    const f = gen('dialinBy:roastLevel', all, gb, { allBrews: all });
+    expect(f?.series).toEqual([{ label: 'Medium', value: 1 }, { label: 'Ultralight', value: 4 }]);
+  });
+  it('rescued bags: a low first two, high once dialed', () => {
+    const raw = [1, 2, 3].flatMap((id) => [5, 5.5, 8.5, 9, 9].map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 })));
+    const dialIn = new Set(raw.filter((b) => b.brewIndex <= 2).map((b) => b.id));
+    const f = gen('rescuedBags', raw, [1, 2, 3].map((id) => bag({ id, name: `Bag ${id}` })), { allBrews: raw, dialIn });
+    expect(f?.headline).toBe('3 bags rescued after a rough start');
+  });
+});
