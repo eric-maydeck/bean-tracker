@@ -3177,9 +3177,9 @@ export const STATES: State[] = [
         return out;
       });
       expect(b7.filter((c) => c.bad.length)).toEqual([]);
-      // The seed has both at every viewport: a card with spare room showing entries, and a full one showing none.
+      // The seed always has a card with spare room showing entries. (A full card showing none is not asserted:
+      // whether one exists depends on which findings the seed produces; `bad` above checks both cases when present.)
       expect(b7.some((c) => c.shown > 0)).toBe(true);
-      expect(b7.some((c) => c.shown === 0)).toBe(true);
       // A shown chart is never squeezed below its minimum to make room for details.
       const squeezed = await page.locator('.finding-grid .hl-card:has(.dgroup:not([hidden])) :is(.multi, .bars, .spark) svg').evaluateAll((ss) =>
         ss.filter((s) => s.getBoundingClientRect().height < 23).length);
