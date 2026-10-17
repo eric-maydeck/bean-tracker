@@ -51,7 +51,7 @@ describe('likeGaps', () => {
   });
   it('sizes: the bag\u2019s own sample counts its dial-in brews (bagSizes)', () => {
     const rows = [...bag(1, 9, LWKS, 3), ...[2, 3, 4].flatMap((id) => bag(id, 8, LWKS))];
-    expect(likeGaps(rows, false, undefined, new Map([[1, 4]])).get(1)!.sample).toEqual({ bags: 1, brews: 4, small: false, one: true });
+    expect(likeGaps(rows, false, undefined, new Map([[1, 4]])).get(1)!.sample).toEqual({ bags: 1, brews: 4, small: false, one: true, scored: 3 });
   });
   it('twins: a repurchase of the same coffee is not in its twin\u2019s group', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 5, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, LWKS))];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise } from './sample';
+import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise, scoredLine } from './sample';
 
 describe('withinNoise', () => {
   it('rows whose spread is at most their mean SE\u00b2 are noise; a wider spread is not', () => {
@@ -52,6 +52,18 @@ describe('small-sample rule', () => {
   it('labels and legend line', () => {
     expect(TIP_TITLE).toBe('Low confidence');
     expect([chipLabel(pooled(2, 14)), chipLabel(pooled(5, 7)), chipLabel(single(3)), chipLabel(single(1)), chipLabel(pooled(1, 1))]).toEqual(['Only 2 bags', 'Only 7 brews', 'Only 3 brews', 'Only 1 brew', 'Only 1 bag']);
+    // Dial-in skipped: the chip says the row's (scored) count; the tip gives both; no scored when they match.
+    expect(chipLabel(pooled(5, 8, 6))).toBe('Only 6 brews');
+    expect(sampleTip(pooled(5, 8, 6)).rows).toEqual([['Bags', '5'], ['Rated brews', '8'], ['Scored once dialed', '6']]);
+    expect(pooled(5, 8, 8)).not.toHaveProperty('scored');
     expect(SAMPLE_HELP).toBe('Only 2 bags: low confidence, under 3 bags or 10 rated brews (one coffee: under 4), so one bag or brew can swing it.');
+  });
+});
+
+describe('scoredLine', () => {
+  it('says both counts only when they differ', () => {
+    expect(scoredLine(pooled(3, 12, 9))).toBe('12 rated brews, 9 scored once dialed');
+    expect(scoredLine(pooled(3, 12))).toBeNull();
+    expect(scoredLine(undefined)).toBeNull();
   });
 });

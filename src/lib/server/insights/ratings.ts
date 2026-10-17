@@ -38,7 +38,7 @@ export interface RatedGroup {
   adjusted: number; // shrunk by the avg mode's K (= mean for the unshrunk modes)
   value: number; // what the mode ranks by
   bags: number;
-  brews: number;
+  brews: number; // the scored brews behind `mean` (after the dial-in skip); `sample.brews` counts before it
   eff: number; // effective bags (Kish: (Σw)² / Σw²): the bag count a weighted mean's spread is read against
   se?: number; // 1 SE of `mean`: the board's pooled within-group spread of bag means ÷ √Σw (none without 2+ bags in a group)
   sample: Sample; // pooled rule over the group's bags and its rated brews before the dial-in skip
@@ -72,7 +72,8 @@ export function ratedGroups<T extends Rated>(
   for (const b of brews) {
     const label = key(b);
     if (label === null || b.coffeeId === null) continue;
-    if (countsForRating({ ...b, rating: b.rating ?? b.dialRating ?? null }, ratings)) size.set(label, (size.get(label) ?? 0) + 1);
+    const r = b.rating ?? b.dialRating ?? null;
+    if (r !== null && r > 0 && countsForRating({ ...b, rating: r }, ratings)) size.set(label, (size.get(label) ?? 0) + 1);
     if (!countsForRating(b, ratings)) continue;
     const k = `${label}\u0000${b.coffeeId}`;
     const p = perBag.get(k) ?? { label, sum: 0, n: 0 };
@@ -118,7 +119,7 @@ export function ratedGroups<T extends Rated>(
         : adjusted;
       return {
         label, mean, adjusted, value, bags: g.bags, brews: g.brews, eff: (g.w * g.w) / g.w2,
-        ...(within !== null ? { se: within / Math.sqrt(g.w) } : {}), sample: pooled(g.bags, size.get(label)!), ...t
+        ...(within !== null ? { se: within / Math.sqrt(g.w) } : {}), sample: pooled(g.bags, size.get(label)!, g.brews), ...t
       };
     })
     .sort((a, b) =>

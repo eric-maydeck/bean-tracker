@@ -61,7 +61,7 @@ export function likeGaps(
     const mine = score.get(id)!, groupMean = wmean(ids.map((x) => score.get(x)!), ids.map((x) => weight.get(x)!));
     out.set(id, {
       label: g.name, score: mine, groupMean, gap: mine - groupMean,
-      rank: 1 + ids.filter((x) => score.get(x)! > mine).length, of: ids.length + 1, sample: single(sizes?.get(id!) ?? bs.length)
+      rank: 1 + ids.filter((x) => score.get(x)! > mine).length, of: ids.length + 1, sample: single(sizes?.get(id!) ?? bs.length, bs.length)
     });
   }
   return out;
@@ -71,7 +71,7 @@ export function likeGaps(
 export const twinKeys = (bags: readonly BagFact[]): Map<number, string> =>
   new Map(bags.map((b) => [b.id, `${b.roaster.toLowerCase()}|${b.name.toLowerCase()}`]));
 
-export interface RoasterLike { gap: number; gaps: number[]; ws: number[]; bags: number; brews: number }
+export interface RoasterLike { gap: number; gaps: number[]; ws: number[]; bags: number; brews: number; scored: number } // brews: before the skip
 // Each roaster's mean gap against like coffees from other roasters (likeGaps `outside`), every bag's gap weighted
 // bagWeight (a 1-brew bag counts a third; user ruling 2026-10-17). The one computation behind the Leaderboards
 // roaster row and the likeRoaster finding. `ws`: the gaps' weights, for the finding's test.
@@ -83,7 +83,7 @@ export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<numb
   const scored = groupBy(rows, (b) => b.coffeeId);
   for (const [r, g] of groupBy([...likeGaps(rows, true, twins, sizes)].filter(([id]) => roasterOf.get(id)), ([id]) => roasterOf.get(id)!)) {
     const gaps = g.map(([, l]) => l.gap), ws = g.map(([id]) => bagWeight(scored.get(id)!.length));
-    out.set(r, { gap: wmean(gaps, ws), gaps, ws, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
+    out.set(r, { gap: wmean(gaps, ws), gaps, ws, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0), scored: g.reduce((n, [id]) => n + scored.get(id)!.length, 0) });
   }
   return out;
 }

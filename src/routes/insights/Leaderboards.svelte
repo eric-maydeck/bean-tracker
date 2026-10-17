@@ -8,7 +8,7 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, withinNoise } from '$lib/sample';
+  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
@@ -97,7 +97,12 @@
   // A rating row's value tip: a Coffees row under k2/adjusted shows the shrunk score beside the plain average it came
   // from (2 decimals: they can round to the same 1-decimal value); a group row its score ± 1 SE (user ruling
   // 2026-10-17). null: no tip (other ranks, peak modes).
-  const valueTip = (b: Board, r: Row): Tip | null =>
+  // Either way, when dial-in brews were skipped the tip says both counts (the row shows the scored one).
+  const valueTip = (b: Board, r: Row): Tip | null => {
+    const base = scoreTip(b, r), counts = rank === 'rating' || rank === 'like' ? scoredLine(r.sample) : null;
+    return counts ? { ...(base ?? { title: r.label }), lines: [`${counts}.`] } : base;
+  };
+  const scoreTip = (b: Board, r: Row): Tip | null =>
     rank !== 'rating' ? null
     : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
       ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }

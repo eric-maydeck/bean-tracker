@@ -258,7 +258,18 @@ describe('vs like coffees', () => {
   it('a roaster\'s 10-brew rule counts dial-in brews (sample 12, though 9 are scored)', () => {
     const dialed = bs.map((b) => (b.id % 10 === 0 ? { ...b, rating: null, dialRating: b.rating } : b));
     const r = leaderboard(dialed, [], SEPT, 'roasters', 'like', 'all', 'min3');
-    expect(r.map((x) => [x.key, x.sample])).toEqual([['A', { bags: 3, brews: 12, small: false }], ['B', { bags: 3, brews: 12, small: false }]]);
+    expect(r.map((x) => [x.key, x.brews, x.sample])).toEqual([['A', 9, { bags: 3, brews: 12, small: false, scored: 9 }], ['B', 9, { bags: 3, brews: 12, small: false, scored: 9 }]]);
+  });
+  it('one coffee shows the same brew count (its scored brews) under rating and like; its sample counts dial-in', () => {
+    const dialed = bs.map((b) => (b.id % 10 === 0 ? { ...b, rating: null, dialRating: b.rating } : b));
+    const by = (rank: 'rating' | 'like') => new Map(leaderboard(dialed, [], SEPT, 'coffees', rank, 'all', 'raw').map((r) => [r.key, [r.brews, r.sample]]));
+    const rating = by('rating'), like = by('like');
+    expect(like.size).toBe(6);
+    for (const [k, v] of like) expect(rating.get(k), k).toEqual(v);
+    expect(like.get('1')).toEqual([3, { bags: 1, brews: 4, small: false, one: true, scored: 3 }]);
+    // Roaster rows: 9 scored on the row and in the sample, 12 counted by the rule (rating board too).
+    const g = leaderboard(dialed, [], SEPT, 'roasters', 'rating', 'all', 'raw')[0];
+    expect([g.brews, g.sample]).toEqual([9, { bags: 3, brews: 12, small: false, scored: 9 }]);
   });
   it('the See all note counts like rows that Once dialed hid', () => {
     const dialed = bs.map((b) => ({ ...b, rating: null }));

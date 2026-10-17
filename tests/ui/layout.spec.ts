@@ -1705,7 +1705,7 @@ export const STATES: State[] = [
     path: () => '/insights?tab=leaderboards',
     act: async (page) => {
       if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) return;
-      const score = page.getByRole('button', { name: 'Score' });
+      const score = page.getByRole('button', { name: 'Score', exact: true });
       const tip = page.locator('#tip-score');
       await score.hover();
       await expect(tip).toBeVisible();
@@ -1957,6 +1957,11 @@ export const STATES: State[] = [
       await expect(tip.locator('.tip-note')).toHaveText(/standard error/);
       await expectTipInView(page, tip);
       await expect(page.locator('.noise-note')).toHaveText(/differ by less than their noise/);
+      // Dial-in brews skipped: the row shows the scored count, its tip both (coordinator ruling 2026-10-17).
+      const [scored, rated] = (await tip.locator('p, li, div').filter({ hasText: /scored once dialed/ }).last().innerText())
+        .match(/(\d+) rated brews?, (\d+) scored/)!.slice(1).reverse().map(Number);
+      expect(scored).toBeLessThan(rated);
+      await expect(page.locator('[data-board="roasters"] .board-row').first()).toContainText(`${scored} brew`);
       await expectEqualBoardHeights(page);
     }
   },

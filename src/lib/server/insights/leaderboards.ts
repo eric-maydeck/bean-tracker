@@ -7,7 +7,7 @@ import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
-import { pooled, single, type Sample } from '$lib/sample';
+import { pooled, shownBrews, single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
   key: string;
@@ -69,7 +69,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: Re
     const bag = bags.find((b) => b.id === Number(r.key));
     // One bag each: the one-bag rule, on the bag's size (bagSizes: dial-in brews included).
     return {
-      ...r, sample: r.sample && single(sizes.get(Number(r.key)) ?? r.brews), label: bag?.name ?? r.label, sub: bag?.roaster,
+      ...r, sample: r.sample && single(sizes.get(Number(r.key)) ?? r.brews, r.brews), label: bag?.name ?? r.label, sub: bag?.roaster,
       ...(bag?.slug ? { href: `/coffees/${bag.slug}` } : {})
     };
   }
@@ -117,8 +117,8 @@ export function leaderboard(
     if (rank === 'like') {
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
-        ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows(), twinKeys(bags), sizes)].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: shownBrews(l.sample), sample: l.sample, like: { gap: l.gap, label: l.label } }))
+        : [...roasterLikes(likeRows(), twinKeys(bags), sizes)].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.scored, sample: pooled(x.bags, x.brews, x.scored) }));
     } else if (rank === 'rating') {
       // Every bag counts, weighted by its brews (ratedGroups); Coffees rows are single bags, shrunk by brews.
       const coffees = board === 'coffees';
