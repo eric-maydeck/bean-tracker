@@ -3408,7 +3408,10 @@ export const STATES: State[] = [
     act: async (page) => {
       // A link to a deck card opens the deck on it, in view.
       await expect(page.locator('#insight-wildcardBrewer')).toBeInViewport();
-      expect(await page.locator('.dot').evaluateAll((ds) => ds.findIndex((d) => d.classList.contains('on')))).toBe(1);
+      // The dot on is the card's own place in the deck (not the first, so the link did move it).
+      const want = await page.locator('.deck-track > *').evaluateAll((cs) => cs.findIndex((c) => c.id === 'insight-wildcardBrewer' || !!c.querySelector('#insight-wildcardBrewer')));
+      expect(want).toBeGreaterThan(0);
+      expect(await page.locator('.dot').evaluateAll((ds) => ds.findIndex((d) => d.classList.contains('on')))).toBe(want);
       expect(await page.locator('.deck').evaluate((e) => e.scrollLeft)).toBe(0);
     } },
   // Part 4 findings, each under its own theme: the cards render and nothing spills (checkLayout runs after).
