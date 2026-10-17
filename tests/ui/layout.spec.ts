@@ -1995,13 +1995,16 @@ export const STATES: State[] = [
   },
   {
     // A row's value is dotted and tipped only when the tip adds something (user, 2026-10-17): both counts, a ±, or a
-    // plain average that differs from the score. Raw with every brew scored: no Coffees tip, no dotted underline.
+    // plain average that differs from the score. One rated coffee (The Picky Chemist, all brews): its Confidence adj.
+    // score shrinks toward its own mean, so it equals the plain average; the tip would only repeat the row.
     name: 'insights-leaderboards-tip-adds',
-    path: () => '/insights?tab=leaderboards&range=all&avg=raw&dial=all',
+    path: () => '/insights?tab=leaderboards&range=all&dial=all&roaster=The%20Picky%20Chemist',
     act: async (page) => {
-      await expect(page.locator('[data-board="coffees"] .board-row.bar').first()).toBeVisible();
-      await expect(page.locator('[data-board="coffees"] .val .text-tip')).toHaveCount(0);
-      expect(await page.locator('[data-board="coffees"] .val').first().evaluate((e) => getComputedStyle(e).textDecorationLine)).not.toContain('underline');
+      const val = page.locator('[data-board="coffees"] .board-row.bar .val');
+      await expect(val).toHaveCount(1);
+      await expect(val.locator('.text-tip')).toHaveCount(0);
+      // Nothing in the value is dotted (the underline lives on a .text-tip, never on .val itself).
+      expect(await val.evaluate((v) => [v, ...v.querySelectorAll('*')].filter((e) => getComputedStyle(e).textDecorationLine.includes('underline')).length)).toBe(0);
       // Default (Confidence adj., Once dialed): every Coffees tip shows a differing plain average or both counts.
       await gotoReady(page, '/insights?tab=leaderboards&range=all');
       const tips = page.locator('[data-board="coffees"] .val .text-tip');
