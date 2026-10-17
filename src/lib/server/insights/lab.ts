@@ -5,6 +5,7 @@ import { grindKey, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
+import { likeGaps } from './likeGroup';
 import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
@@ -239,7 +240,7 @@ export interface SweetSpotsTab {
   matching: { bags: number; brews: number };
   cards: { key: SpotVar; name: string; spot: Spot }[];
   // `tag`: what tells apart listed bags sharing a name ("roasted May 5" / "opened Jul 30"), else null.
-  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; sd: number | null; usual: string; sample: Sample }[];
+  topBags: { label: string; tag: string | null; sub: string; href: string | null; score: number; brews: number; sd: number | null; usual: string; sample: Sample; like?: { gap: number; label: string } }[];
 }
 const TOP_N = 5; // bags listed
 const TOP_K = 5; // shrink a bag's mean toward the slice mean by 5 brews: one great brew doesn't top the list
@@ -273,10 +274,12 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   });
   const overall = mean(slice.map((b) => b.rating!));
   const byId = new Map(bags.map((b) => [b.id, b]));
+  const likes = likeGaps(slice.filter((b) => b.coffeeId !== null && b.rating! > 0));
   const topBags = [...perBag].map(([id, bs]) => {
     const bag = byId.get(id!);
     return {
       label: bag?.name ?? `Bag ${id}`, sub: bag?.roaster ?? '', href: bag?.slug ? `/coffees/${bag.slug}` : null, brews: bs.length,
+      ...(likes.get(id!) ? { like: { gap: likes.get(id!)!.gap, label: likes.get(id!)!.label } } : {}),
       roastedOn: bag?.purchaseDate ?? null, openedOn: bag?.firstBrew ?? null,
       score: (bs.reduce((s, b) => s + b.rating!, 0) + TOP_K * overall) / (bs.length + TOP_K),
       sd: bs.length >= 2 ? sampleSd(bs.map((b) => b.rating!)) : null, sample: single(bs.length),

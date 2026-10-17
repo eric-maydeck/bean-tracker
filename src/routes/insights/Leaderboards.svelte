@@ -7,6 +7,7 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import LikeLine from './LikeLine.svelte';
   import { signed } from './DeltaBars.svelte';
   import { deltaInk } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
@@ -90,7 +91,7 @@
     ] }
   ];
   let help = $state<HTMLDialogElement>();
-  const unranked = (b: Board) => ((rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b)) || (rank === 'like' && !LIKE_BOARDS.includes(b));
+  const unranked = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () =>
     rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
     : rank === 'like' ? 'No coffees with a like group to compare in this period.' : 'No brews in this period.';
@@ -171,7 +172,7 @@
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
       {#if unranked(b)}
-        <p class="board-note bag-only">{rank === 'like' ? 'vs like coffees ranks coffees and roasters only.' : `${RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.`}</p>
+        <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
@@ -183,6 +184,8 @@
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
                 <span class="who-line"><small>{detail(r)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
+                <!-- Under rank=like the value already is this gap. -->
+                {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
               <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}>{fmt(r.value)}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
@@ -214,7 +217,7 @@
   {#each BANDS as full, i (i)}
     {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}
-      <div class="board-band band-{band.length}">
+      <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))}>
         {#each band as b (b)}{@render board(b)}{/each}
       </div>
     {/if}
@@ -258,6 +261,10 @@
     gap: var(--space-3);
     margin-bottom: var(--space-3);
   }
+  /* A third line (vs like coffees) per row. */
+  .board-band.has-like {
+    --row-h: 3.75rem;
+  }
   /* An expanded card alone grows; its neighbors keep their own height. */
   .board-band:has(.board.open) {
     align-items: start;
@@ -287,6 +294,7 @@
   }
   .like-note {
     margin: 0;
+    padding: var(--space-4) 0;
     text-align: center;
     color: var(--color-text-muted);
   }

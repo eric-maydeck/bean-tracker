@@ -329,3 +329,13 @@ describe('once dialed (F4)', () => {
     expect(tileOf(recordsTab(scored, BAGS, { ...CTX, unscored: raw }), 'bestBagDialed')?.value).toBe(tileOf(recordsTab(raw, BAGS, CTX), 'bestBagDialed')?.value);
   });
 });
+
+describe('topCoffees like line', () => {
+  it('names the like group and the gap', () => {
+    const light = (id: number, r: number[]) => rated(id, r).map((b) => ({ ...b, roastLevel: 'Light' }));
+    const rows = [light(1, [9, 9, 9, 9]), light(2, [8, 8, 8, 8]), light(3, [8, 8, 8, 8]), light(4, [7, 7, 7, 7])].flat();
+    const l = recordsTab(rows, BAGS, CTX).topCoffees[0].like!;
+    expect(l.label).toBe('Washed Light coffees');
+    expect(l.gap).toBeCloseTo(4 / 3);
+  });
+});

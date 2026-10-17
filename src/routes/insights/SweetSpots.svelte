@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
@@ -241,7 +242,7 @@
         ><button class="mode-tip-button" popovertarget="spots-top-sd" aria-describedby="spots-top-sd" onfocus={sdFocus} onblur={sdBlur}><span class="tip-text">SD</span></button></span
       ><span class="num">Score</span></div>
       <div class="mode-tip" id="spots-top-sd" popover onbeforetoggle={placeTip}><TipBody tip={SD_TIP} /></div>
-      <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h="3rem">
+      <ol class="board-rows top-bags" style:--rows={t.topBags.length} style:--row-h={t.topBags.some((r) => r.like) ? '3.75rem' : '3rem'}>
         {#each t.topBags as r, i (i)}
           <li class="board-row" class:small-sample={r.sample.small}>
             <span class="rank">{i + 1}</span>
@@ -249,6 +250,7 @@
               {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
               <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
               <span class="who-line"><small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>{#if r.sample.small}<SampleNote s={r.sample} />{/if}</span>
+              {#if r.like}<LikeLine like={r.like} />{/if}
             </span>
             <span class="num">{r.brews}</span>
             <span class="num">{r.sd?.toFixed(2) ?? '—'}</span>

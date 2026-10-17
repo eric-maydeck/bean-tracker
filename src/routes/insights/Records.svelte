@@ -8,6 +8,7 @@
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import LikeLine from './LikeLine.svelte';
   import TileCaption from './TileCaption.svelte';
 
   let {
@@ -192,7 +193,7 @@
 {/snippet}
 
 <!-- A ranked list (top coffees, top brews): 10 → 20 → 50 and back a step at a time; Show less sits left. -->
-{#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string }[], n: Top | undefined, set: (v: Top | undefined) => void)}
+{#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string; like?: { gap: number; label: string } }[], n: Top | undefined, set: (v: Top | undefined) => void)}
   {@const shown = rows.slice(0, n ?? 10)}
   <HeadingAnchor {id} level={3} class="top-title">Top {shown.length} {noun}</HeadingAnchor>
   <ol class="top-brews" style:--n={shown.length} style:--half={Math.ceil(shown.length / 2)}>
@@ -203,6 +204,7 @@
         <span class="who">
           {#if row.holder.href}<a href={row.holder.href} use:full>{row.holder.label}</a>{:else}<span use:full>{row.holder.label}</span>{/if}
           <small use:full>{row.line}</small>
+          {#if row.like}<LikeLine like={row.like} />{/if}
         </span>
       </li>
     {/each}
@@ -244,7 +246,7 @@
     {#if s.key === 'taste'}
       {#if t.topCoffees.length}
         {@render topList('records-top-coffees', 'coffees', t.topCoffees.map((c) => ({
-          score: c.mean, holder: c.holder, line: [c.holder.sub, `${c.brews} rated brews`].filter(Boolean).join(' · ')
+          score: c.mean, holder: c.holder, like: c.like, line: [c.holder.sub, `${c.brews} rated brews`].filter(Boolean).join(' · ')
         })), topc, (v) => choose({ topc: v }))}
       {/if}
       {#if t.topBrews.length}

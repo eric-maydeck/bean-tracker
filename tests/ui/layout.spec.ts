@@ -1848,9 +1848,26 @@ export const STATES: State[] = [
       await expect(page.locator('.board')).toHaveCount(2);
       await expect(page.locator('[data-board="origins"], [data-board="water"]')).toHaveCount(0);
       await expect(page.locator('[data-board="coffees"] .val').first()).toHaveText(/^([+−]\d\.\d\d|0\.00)$/);
-      // Side by side, the two cards are level (stacked on a phone, they are not compared).
-      const [a, c] = await page.locator('.board').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()));
-      if (Math.abs(a.top - c.top) <= 1) expect(Math.abs(a.height - c.height)).toBeLessThanOrEqual(1);
+      // No empty footers, and no "vs" line (the value already is that number).
+      await expect(page.locator('.board-foot:not(:has(button))')).toHaveCount(0);
+      await expect(page.locator('.like-line')).toHaveCount(0);
+      // Side by side (wider than a phone), the two cards start level and are as tall as each other.
+      const cards = await page.locator('.board').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()));
+      expect(cards).toHaveLength(2);
+      const [a, c] = cards;
+      if ((page.viewportSize()?.width ?? 0) > 640) {
+        expect(Math.abs(a.top - c.top)).toBeLessThanOrEqual(1);
+        expect(Math.abs(a.height - c.height)).toBeLessThanOrEqual(1);
+      }
+    } },
+  { name: 'insights-like-lines', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const line = page.locator('[data-board="coffees"] .like-line').first();
+      await expect(line).toHaveText(/^([+−]\d\.\d\d|0\.00) vs .+ coffees/);
+      await page.getByLabel('View').selectOption('records');
+      await expect(page.locator('.like-line').first()).toBeVisible();
+      await page.getByLabel('View').selectOption('sweetspots');
+      await expect(page.locator('.like-line').first()).toBeVisible();
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {

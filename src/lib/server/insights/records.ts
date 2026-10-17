@@ -1,6 +1,7 @@
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
+import { likeGaps } from './likeGroup';
 import { isFinished } from './overview';
 import { countsForRating } from './ratings';
 import { BAG_MIN_BREWS, single } from '$lib/sample';
@@ -40,7 +41,7 @@ export interface RecordTile extends RecordPick {
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
   topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 50, best first (10 shown, or top=20|50)
-  topCoffees: { mean: number; brews: number; holder: Holder }[]; // ≤ 50 bags by mean rating, like Best bag (topc)
+  topCoffees: { mean: number; brews: number; holder: Holder; like?: { gap: number; label: string } }[]; // ≤ 50 bags by mean rating, like Best bag (topc)
   perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
   coversAll: boolean; // the period spans the first to the last (filtered) brew: every record is all-time
@@ -405,6 +406,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   }
   const inP = ctx(c.period);
   const rated = held(inP).filter((b) => b.rating !== null && countsForRating(b, c.ratings));
+  const likes = likeGaps(rated.filter((b) => b.rating! > 0));
   const top = [...rated].sort((a, b) => b.rating! - a.rating! || a.localDate.localeCompare(b.localDate));
   const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer });
   return {
@@ -412,7 +414,8 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
     // Bags past the one-bag small-sample rule (Best bag's rule), best mean first.
     topCoffees: [...bagStats(inP.brews, c.ratings).values()].filter((s) => s.rated.length > 0 && !single(s.rated.length).small)
-      .map((s) => ({ mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }))
+      .map((s) => ({ mean: s.mean!, brews: s.rated.length, holder: bagHolder(inP.bags, s.coffeeId, lastRatedDate(s, c.ratings)),
+        ...(likes.get(s.coffeeId) ? { like: { gap: likes.get(s.coffeeId)!.gap, label: likes.get(s.coffeeId)!.label } } : {}) }))
       .sort((a, b) => b.mean - a.mean || a.holder.date.localeCompare(b.holder.date)).slice(0, 50),
     perfectTens: tens(inP).sort((a, b) => b.value - a.value || a.holder.date.localeCompare(b.holder.date))
       .map((x) => ({ holder: x.holder, count: x.value })),

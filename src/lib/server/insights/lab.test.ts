@@ -605,3 +605,13 @@ describe('sample rule in the lab', () => {
     expect(emptyStat({ label: 'x', order: 0 }).sample).toEqual({ bags: 0, brews: 0, small: false });
   });
 });
+
+describe('topBags like line', () => {
+  it('names the like group and the gap', () => {
+    const rows = [[1, 9], [2, 8], [3, 8], [4, 7]].flatMap(([id, r]) => Array.from({ length: 4 }, () => brew({ coffeeId: id, rating: r, roastLevel: 'Light' })));
+    const bags = [1, 2, 3, 4].map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` }));
+    const l = sweetSpotsTab(rows, bags, { period: P, ratings: 'all', grinder: null, filters: {}, all: rows }).topBags[0].like!;
+    expect(l.label).toBe('Washed Light coffees');
+    expect(l.gap).toBeCloseTo(4 / 3);
+  });
+});
