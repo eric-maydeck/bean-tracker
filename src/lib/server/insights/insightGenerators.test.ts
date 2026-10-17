@@ -50,7 +50,7 @@ describe('dial-in curve', () => {
   it('story variant: raw means and share of bags', () => {
     const f = gen('dialinStory', brews)!;
     expect(f.kind).toBe('story');
-    expect(f.body).toBe("Brew #1 averages 6.0; by brew #6 you're at 8.0. The first brew rated below the bag's later brews in 100% of 30 bags.");
+    expect(f.body).toBe("Brew #1 rates 1.4 below its bag's average; by brew #6, 0.6 above. The first brew rated below the bag's later brews in 100% of 30 bags.");
   });
   it("story share: first brew below the bag's later brews, not only its single lowest", () => {
     // Brew #2 is each bag's low point, yet brew #1 still rates below the later brews' average.

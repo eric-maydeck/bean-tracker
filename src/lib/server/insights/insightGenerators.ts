@@ -121,13 +121,16 @@ const dialinCurve: Generator = (c) => {
     value: signed(mean(first.map((r) => r.dm)) - mean(rest.map((r) => r.dm))), series
   }, z, enough, 'bags', first.length);
   if (!curve) return null;
-  const raw = (i: number) => mean(rows.filter((r) => bucket(r) === i).map((r) => r.rating!));
+  // Within a bag (the demeaned series): raw means by brew number mix in survivorship, since bags that reach brew 7
+  // are better bags (stats audit 2026-10-17).
+  const dm = (i: number) => mean(rows.filter((r) => bucket(r) === i).map((r) => r.dm));
+  const side = (v: number) => `${Math.abs(v).toFixed(1)} ${v < 0 ? 'below' : 'above'}`;
   const lastI = series.length ? Math.max(...series.map((s) => (s.label === '7+' ? 7 : +s.label))) : 1;
   // Below (above) the bag's own average = below (above) its later brews' average.
   const share = first.filter((r) => (lower ? r.dm < 0 : r.dm > 0)).length;
   const story: Finding = {
     ...curve, key: 'dialinStory', kind: 'story', of: 'dialinCurve',
-    body: `Brew #1 averages ${raw(1).toFixed(1)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(1)}. ` +
+    body: `Brew #1 rates ${side(dm(1))} its bag's average; by brew #${lastI}${lastI === 7 ? '+' : ''}, ${side(dm(lastI))}. ` +
       `The first brew rated ${lower ? 'below' : 'above'} the bag's later brews in ${Math.round((100 * share) / first.length)}% of ${first.length} bags.`
   };
   return [curve, story];
