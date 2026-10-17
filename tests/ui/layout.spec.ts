@@ -1887,6 +1887,13 @@ export const STATES: State[] = [
       await expect(page.locator('.like-line').first()).toBeVisible();
       await expectDeltaInk(page);
     } },
+  // Gate P4: the line shows under every rank but like; spend ranks bags, so it shows there too.
+  { name: 'insights-like-lines-brews', path: () => '/insights?tab=leaderboards&rank=brews&range=all',
+    act: async (page) => {
+      await expect(page.locator('[data-board="coffees"] .like-line').first()).toHaveText(/^([+−]\d\.\d\d|0\.00) vs .+ coffees/);
+      await page.getByLabel('Rank by').selectOption('spend');
+      await expect(page.locator('[data-board="coffees"] .like-line').first()).toBeVisible();
+    } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {
     name: 'insights-leaderboards-open',

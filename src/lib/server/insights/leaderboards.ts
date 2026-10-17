@@ -17,7 +17,7 @@ export interface BoardRow {
   value: number;
   bags: number;
   brews: number;
-  like?: { gap: number; label: string }; // coffees board, rating and like ranks: vs its like-group
+  like?: { gap: number; label: string }; // coffees board, every rank: vs its like-group
   sample?: Sample; // rating ranks: the small-sample marker
   best?: number; // peak modes: the group's top brew rating
   atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
@@ -79,9 +79,15 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[]): BoardRow
 
 export function leaderboard(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, board: Board, rank: Rank, ratings: Ratings, avg: Avg,
-  like = true // false: callers that only count rows or read keys skip the rating rank's like lines
+  like = true // false: callers that only count rows or read keys skip the like lines
 ): BoardRow[] {
   let rows: BoardRow[] = [];
+  const inP = brews.filter((b) => inPeriod(b.localDate, p));
+  // vs like coffees (spec Part 4): each bag's once-dialed score minus its like-group's mean (likeGroup.ts).
+  // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
+  // Coffees rows carry the line under every rank (gate P4: under like the value already is it).
+  const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
+  const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows()) : null;
   if (rank === 'spend' || rank === 'ppg') {
     const key = BAG_KEY[board];
     if (!key) return [];
@@ -101,12 +107,7 @@ export function leaderboard(
       ...(rank === 'spend' ? { value: x.cost } : { value: x.cost / x.grams, cost: x.cost, grams: x.grams })
     }));
   } else {
-    const inP = brews.filter((b) => inPeriod(b.localDate, p));
     const key = BREW_KEY[board];
-    // vs like coffees (spec Part 4): each bag's once-dialed score minus its like-group's mean (likeGroup.ts).
-    // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
-    const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
-    const likes = board === 'coffees' && (rank === 'like' || (rank === 'rating' && like)) ? likeGaps(likeRows()) : null;
     if (rank === 'like') {
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
@@ -117,7 +118,6 @@ export function leaderboard(
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
         ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: r.value, sample: r.sample })
       }));
-      if (likes) rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
       for (const b of inP) {
@@ -132,6 +132,7 @@ export function leaderboard(
       rows = [...g].map(([k, x]) => ({ key: k, label: k, value: rank === 'brews' ? x.brews : x.grams, bags: x.bags.size, brews: x.brews }));
     }
   }
+  if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
   const out = rows.map((r) => decorate(r, board, bags));
   // min3 (Raw average, confident) leaves out every row the Low confidence chip would mark.
   return (rank === 'rating' && avg === 'min3' ? out.filter((r) => !r.sample?.small) : out).sort(byRank);

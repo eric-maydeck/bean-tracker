@@ -194,4 +194,9 @@ describe('vs like coffees', () => {
     expect(like.label).toBe('Washed Light coffees');
     expect(like.gap).toBeCloseTo(1.8);
   });
+  it('the like line shows under every rank but like (gate P4)', () => {
+    for (const rank of ['brews', 'grams'] as const)
+      expect(leaderboard(bs, [], SEPT, 'coffees', rank, 'all', 'raw').find((r) => r.key === '1')!.like!.gap).toBeCloseTo(1.8);
+    expect(leaderboard(bs, [], SEPT, 'coffees', 'brews', 'all', 'raw', false).every((r) => !r.like)).toBe(true);
+  });
 });
