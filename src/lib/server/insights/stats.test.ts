@@ -49,6 +49,11 @@ describe('stats', () => {
 });
 
 describe('small samples: Student t', () => {
+  it('t for every n: no step at 30, and the normal curve in the limit', () => {
+    expect(strengthOf(2.03, true, 1, 29)).toBe(strengthOf(2.03, true, 1, 30)); // both hint (t(28), t(29) need ~2.05)
+    expect(2 * tTail(2, 5000)).toBeCloseTo(0.0455, 3); // normal two-sided p at z 2
+    expect(strengthOf(2.1, true, 1, 5000)).toBe('solid');
+  });
   it('tTail matches t tables', () => {
     expect(2 * tTail(2.132, 4)).toBeCloseTo(0.1, 3); // t(4) two-sided .10
     expect(2 * tTail(2.776, 4)).toBeCloseTo(0.05, 3);

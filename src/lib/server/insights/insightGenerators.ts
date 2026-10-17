@@ -87,7 +87,7 @@ const settleText = (z: number, n: number, unit: string, bar = 2): { settle?: str
 
 // Attach z and strength; null when z isn't finite or the strength is hidden. `tests` > 1: the finding
 // is the pick of a multiple-comparison set, held to a Bonferroni bar (spec: Strength). `sdN`: the units the SE's spread
-// was measured over (default n; all bags for a group vs all): under T_SMALL the test is a t test on sdN − 1 df.
+// was measured over (default n; all bags for a group vs all): the test is a t test on sdN − 1 df.
 function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string, tests = 1, sdN = n): Finding | null {
   // A signed delta that rounds to ±0.00 isn't a finding ("rate 0.00 higher").
   if (!Number.isFinite(z) || /^[-+]0\.0+$/.test(f.value ?? '')) return null;
