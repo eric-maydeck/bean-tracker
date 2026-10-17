@@ -858,18 +858,19 @@ const dialinByGroup: Generator = (c) => {
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
     const z = restZ(slow.ps, pos.filter((x) => x[dim] !== slow.label).map((x) => x.pos));
+    if (!Number.isFinite(z)) return []; // can't measure the evidence: no card rather than a false "0% there"
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       body: `Median brew each bag settles at, within its first ${SETTLE_WINDOW} rated brews (bags of ${SETTLE_WINDOW}+).`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
       href: SETTLE[dim]
-    }, Number.isFinite(z) ? z : 0, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
+    }, z, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
     if (!f) return [];
-    // The progress bar stays (every Too early card has one, user 2026-10-17): n / (n + more) is (z / bar)², the
-    // evidence so far, which needs no sample-size guess. Only the "about N more" count goes.
-    const { settle: _s, ...rest } = f;
-    return [rest];
+    // The progress bar stays (every Too early card has one, user 2026-10-17) as (z / bar)², the evidence so far, which
+    // needs no sample-size guess (settleText's n / (n + more) rounds `more` up over a few bags). Only "about N more" goes.
+    const { settle: _s, progress: _p, ...rest } = f;
+    return [f.strength === 'early' ? { ...rest, progress: Math.min(1, (z / solidBar(groups.length)) ** 2) } : rest];
   });
 };
 

@@ -6,6 +6,7 @@ import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
 import { formatGrams } from '$lib/grams';
+import { solidBar } from './stats';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
@@ -842,8 +843,9 @@ describe('like-with-like findings', () => {
     expect(f).not.toHaveProperty('settle');
     // Its Too early card still gets the progress bar, as every Too early card does (user, 2026-10-17).
     expect(f?.strength).toBe('early');
+    // (z / bar)², the evidence so far, not settleText's rounded n / (n + more); 3 groups compared.
+    expect(f?.progress).toBeCloseTo(Math.min(1, (f!.z! / solidBar(3)) ** 2), 6);
     expect(f?.progress).toBeGreaterThan(0);
-    expect(f?.progress).toBeLessThan(1);
   });
   it('dial-in by process: groups under 3 bags are left out', () => {
     const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9, 9], { processGroup: 'Washed' });
