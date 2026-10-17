@@ -67,6 +67,15 @@ describe('pairedDeltas', () => {
     // Brews are not units: three times the brews per bag, same bags, same verdict.
     expect(pairedDeltas(bagGaps(six, 30), temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
   });
+  it('a bar and its badge never disagree in sign: the per-bag gap against the bar is Too early (stats re-review B)', () => {
+    // Every bag: 94 °C 0.5 under 91 °C, plus one 1-rated 88 °C brew (unpaired) that pulls the bag mean down, so the
+    // 94 °C brews still sit above it: the bar reads +, the per-bag test says − with a large |t|.
+    const rows = [0.5, 0.4, 0.6, 0.45, 0.55, 0.5].flatMap((g, i) => [...bagGaps([g]).map((r) => ({ ...r, coffeeId: i + 1 })), ...many(1, i + 1, 88, 1)]);
+    const b94 = pairedDeltas(rows, temp).find((s) => s.label === '93–94 °C')!;
+    expect(b94.delta!).toBeGreaterThan(0);
+    expect(b94.strength).toBe('early');
+    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength).toBe('solid'); // same sign: badged
+  });
   it('Bonferroni counts every band in the data, also bands with no pairs', () => {
     // 3 bags at t(2) 4.16: Possible over 2 bands; an unpaired 88 °C bag makes it 3 tests: Too early.
     const rows = bagGaps([0.25, 0.1, 0.2]);
@@ -169,6 +178,16 @@ describe('ladder', () => {
     expect(s.best!.strength).toBe(strengthOf(z, true, 3, 9));
     expect(s).toMatchObject({ tier: 2, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
     expect(strengthOf(z, true, 2, 9)).toBe('solid'); // solid.length as the test count would say win
+  });
+  it('tier 2 counts a bag brewed in two compared bands once (stats re-review C)', () => {
+    // Bags 1–3 at 91 °C and at 94 °C, each band brewed on separate days (no pairs in the slice: tier 1 is skipped).
+    const cross = [[8, 7], [8.2, 7.2], [7.9, 7.1]].flatMap(([hi, lo], i) => [...many(12, i + 1, 91, hi), ...many(12, i + 1, 94, lo)]);
+    const slice = cross.filter((b) => b.tempC === 91);
+    const s = ladder(slice, [{ name: 'g', brews: cross }], [temp])!;
+    const z = restZ([8, 8.2, 7.9], [7, 7.2, 7.1]);
+    expect(s).toMatchObject({ tier: 2, best: { label: '90–92 °C' } });
+    expect(s.best!.strength).toBe(strengthOf(z, true, 2, 3));
+    expect(strengthOf(z, true, 2, 3)).not.toBe(strengthOf(z, true, 2, 6)); // 6 bag-band means would overstate it
   });
   it('tier 2: bag means identical to float noise are not a finding', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
