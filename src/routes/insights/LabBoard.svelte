@@ -1,9 +1,9 @@
 <script lang="ts">
   import { sdFocus, sdBlur } from './DeltaBars.svelte';
   import type { LeaderRow } from '$lib/server/insights/lab';
-  import { noMatch, SD_TIP, signed } from './DeltaBars.svelte';
+  import { noMatch, SD_TIP } from './DeltaBars.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
-  import { deltaInk } from '$lib/components/deltaColor';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
   import { STRENGTH } from './Insights.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
 

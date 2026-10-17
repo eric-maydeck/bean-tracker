@@ -4,7 +4,8 @@
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
   import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
   import { SAMPLE_HELP, sampleField } from '$lib/sample';
-  import DeltaBars, { bandRows, SAME_BAG_HELP, signed } from './DeltaBars.svelte';
+  import DeltaBars, { bandRows, SAME_BAG_HELP } from './DeltaBars.svelte';
+  import { signed } from '$lib/components/deltaColor';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';

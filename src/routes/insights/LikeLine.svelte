@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { signed } from './DeltaBars.svelte';
-  import { deltaInk } from '$lib/components/deltaColor';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
   let { like }: { like: { gap: number; label: string } } = $props();
 </script>
 

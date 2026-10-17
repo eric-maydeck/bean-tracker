@@ -5,8 +5,8 @@
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
-  import { deltaInk } from '$lib/components/deltaColor';
-  import DeltaBars, { bandRows, SAME_BAG_HELP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import DeltaBars, { bandRows, SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';

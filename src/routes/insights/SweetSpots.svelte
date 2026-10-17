@@ -5,14 +5,14 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { noMatch, plural, sdBlur, sdFocus, SD_TIP, signed, STRENGTH_LINE } from './DeltaBars.svelte';
+  import { noMatch, plural, sdBlur, sdFocus, SD_TIP, STRENGTH_LINE } from './DeltaBars.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleField } from '$lib/sample';
   import LabHead from './LabHead.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import TileCaption from './TileCaption.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
-  import { deltaInk } from '$lib/components/deltaColor';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, placeTip, choose }: {

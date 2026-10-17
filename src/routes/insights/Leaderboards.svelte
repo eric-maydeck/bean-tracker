@@ -8,8 +8,7 @@
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
-  import { signed } from './DeltaBars.svelte';
-  import { deltaInk } from '$lib/components/deltaColor';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;

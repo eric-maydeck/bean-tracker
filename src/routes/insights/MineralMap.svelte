@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { deltaColor } from '$lib/components/deltaColor';
+  import { deltaColor, signed } from '$lib/components/deltaColor';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
@@ -7,7 +7,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { chipLabel, sampleField } from '$lib/sample';
   import { deltaInk } from '$lib/components/deltaColor';
-  import { noMatch, signed } from './DeltaBars.svelte';
+  import { noMatch } from './DeltaBars.svelte';
 
   // Recipe mineral map (round 2, W-map): a row per recipe (Ratings by recipe order), its same-bag delta on the
   // lab's fixed green/gray/red scale, then each mineral's amount shaded within its column (one neutral hue:
