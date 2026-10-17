@@ -149,5 +149,8 @@ describe('coffee page vs like coffees', () => {
       fix: { ratings: 'all' }
     });
     expect(at(old.slug, 'ratings=all').like).toMatchObject({ label: 'Washed Light coffees' });
+    // A 4th early brew makes the first 2 dial-in brews too; they count once, under Before calibration (rows add up).
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES ('2026-05-04T08:00:00', 'lko', 15, 8, '2026-10-01')`).run();
+    expect(at(old.slug).noLike.rows).toEqual([['Rated brews', '4'], ['Before calibration', '4'], ['Dial-in brews', '0']]);
   });
 });

@@ -99,13 +99,14 @@ export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { li
   if (!mine.length) return null;
   const n = mine.length, ratings = v.ratings ?? DEFAULTS.ratings;
   const early = mine.filter((b) => !countsForRating(b, ratings)).length;
-  const dialing = v.dial === 'all' ? 0 : mine.filter((b) => dialIn.has(b.id)).length;
+  // Dial-in brews among the calibrated ones only, so the tip's rows don't overlap: early + dialing + left = n.
+  const dialing = v.dial === 'all' ? 0 : mine.filter((b) => countsForRating(b, ratings) && dialIn.has(b.id)).length;
   const left = mine.filter((b) => countsForRating(b, ratings) && (v.dial === 'all' || !dialIn.has(b.id))).length;
   const decaf = mine[0].decaf && v.caffeine !== 'all';
   const all = n === 1 ? 'its only rated brew is' : `all ${n} rated brews are`;
   const why = decaf ? 'No comparison: decaf coffees are left out by default.'
     : !mine[0].roastLevel ? 'No comparison: this coffee has no roast level.'
-    : !left ? `No comparison yet: ${all} ${early === n ? 'from before calibration' : dialing === n ? 'dial-in brews' : 'from before calibration or dial-in'}.`
+    : !left ? `No comparison yet: ${all} ${early === n ? 'from before calibration' : !early ? 'dial-in brews' : 'from before calibration or dial-in'}.`
     : 'No comparison yet: too few similar coffees to compare with.';
   // The widest like group (same roast level), as likeGaps sees it under this view: full bags only.
   const similar = fullBags(viewRows(brews, dialIn, v), 'all').filter((b) => b.coffeeId !== id && b.roastLevel === mine[0].roastLevel);
