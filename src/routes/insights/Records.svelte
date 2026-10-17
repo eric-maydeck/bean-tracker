@@ -204,7 +204,7 @@
         <span class="who">
           {#if row.holder.href}<a href={row.holder.href} use:full>{row.holder.label}</a>{:else}<span use:full>{row.holder.label}</span>{/if}
           <small use:full>{row.line}</small>
-          {#if row.like}<LikeLine like={row.like} />{/if}
+          {#if row.like}<LikeLine like={row.like} {placeTip} />{/if}
         </span>
       </li>
     {/each}

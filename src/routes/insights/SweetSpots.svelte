@@ -250,7 +250,7 @@
               {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
               <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
               <span class="who-line"><small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>{#if r.sample.small}<SampleNote s={r.sample} />{/if}</span>
-              {#if r.like}<LikeLine like={r.like} />{/if}
+              {#if r.like}<LikeLine like={r.like} {placeTip} />{/if}
             </span>
             <span class="num">{r.brews}</span>
             <span class="num">{r.sd?.toFixed(2) ?? '—'}</span>
