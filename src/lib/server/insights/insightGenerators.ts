@@ -296,7 +296,9 @@ const notesTrouble: Generator = (c) => {
   const diff = mean(yes) - mean(no);
   return graded({
     key: 'notesTrouble', theme: 'taste', kind: 'number', headline: diff < 0 ? 'Brews you write notes on rate lower' : 'Brews you write notes on rate higher',
-    value: signed(diff), sample: `${yes.length} noted vs ${no.length} plain brews`, href: `${LB}&open=coffees`
+    value: signed(diff), sample: `${yes.length} noted vs ${no.length} plain brews`, href: `${LB}&open=coffees`,
+    // Which way it runs is unknown; the audit's reading (2026-10-17) is the likelier one.
+    ...(diff < 0 ? { caveat: "Likely the other way round: you write notes when a cup is off." } : {})
   }, brewZ(yes, no, sd(rows.map((r) => r.dm))), true, 'brews', Math.min(yes.length, no.length));
 };
 
