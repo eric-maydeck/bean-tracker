@@ -1840,6 +1840,14 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
     }
   },
+  { name: 'insights-leaderboards-like', path: () => '/insights?tab=leaderboards&rank=like&range=all',
+    act: async (page) => {
+      await expect(page.locator('[data-board="coffees"] .board-row:not(.placeholder)').first()).toBeVisible();
+      await expect(page.locator('[data-board="origins"] .board-note')).toHaveText('vs like coffees ranks coffees and roasters only.');
+      await expect(page.locator('[data-board="coffees"] .val').first()).toHaveText(/^([+−]\d\.\d\d|0\.00)$/);
+      await expectEqualBoardHeights(page);
+    } },
+  { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {
     name: 'insights-leaderboards-open',
     path: () => '/insights?tab=leaderboards&rank=spend&open=coffees',

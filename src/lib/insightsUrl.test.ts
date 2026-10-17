@@ -280,6 +280,10 @@ describe('leaderboards params', () => {
       tab: 'leaderboards', rank: 'grams', open: 'roasters'
     }));
   it('keeps an explicit default tab', () => expect(parse('tab=overview').tab).toBe('overview'));
+  it('rank=like', () => {
+    expect(parse('rank=LIKE').rank).toBe('like');
+    expect(insightsParams(parse('tab=leaderboards&rank=like&open=coffees')).toString()).toBe('tab=leaderboards&rank=like&open=coffees');
+  });
   it('keeps rank and open on other tabs, so a choice survives a tab switch', () => {
     expect(parse('tab=overview&rank=grams&open=roasters')).toMatchObject({ rank: 'grams', open: 'roasters' });
     expect(parse('rank=grams').rank).toBe('grams');
@@ -600,7 +604,7 @@ describe('ratingsMenuOn', () => {
   const on = (q: string) => ratingsMenuOn(withDefaults(parse(q)));
   it('the lab tabs and Records; Leaderboards by rating; Habits measuring rating', () => {
     expect(['tab=sweetspots', 'tab=brewing', 'tab=water', 'tab=gear', 'tab=records'].map(on)).toEqual([true, true, true, true, true]);
-    expect(['tab=leaderboards&rank=rating', 'tab=habits&measure=rating'].map(on)).toEqual([true, true]);
+    expect(['tab=leaderboards&rank=rating', 'tab=leaderboards&rank=like', 'tab=habits&measure=rating'].map(on)).toEqual([true, true, true]);
     expect(['', 'tab=leaderboards&rank=brews', 'tab=habits&measure=brews', 'tab=consumption', 'tab=milestones'].map(on))
       .toEqual([false, false, false, false, false]);
   });

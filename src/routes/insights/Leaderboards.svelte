@@ -6,7 +6,9 @@
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
-  import { BAG_BOARDS, BOARD_NOUN, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { signed } from './DeltaBars.svelte';
+  import { deltaInk } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
@@ -21,7 +23,7 @@
     roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', process: 'Process group', roast: 'Roast level',
     water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
   };
-  const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g' };
+  const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g', like: 'vs like coffees' };
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
@@ -29,6 +31,7 @@
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   function fmt(v: number): string {
+    if (rank === 'like') return signed(v);
     if (rank === 'rating') return v.toFixed(1);
     if (rank === 'grams') return formatGrams(v);
     if (rank === 'spend') return usd.format(v);
@@ -56,7 +59,8 @@
     brews: 'Number of brews.',
     grams: 'Grams brewed.',
     spend: 'Money spent on bags bought in the period.',
-    ppg: 'Price per gram of bags bought in the period.'
+    ppg: 'Price per gram of bags bought in the period.',
+    like: "Each coffee's rating minus similar coffees' (same roast, process, origin), once dialed."
   };
   const AVG_LABEL: Record<Avg, string> = {
     raw: 'Raw average', min3: 'Raw average, confident', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
@@ -86,8 +90,10 @@
     ] }
   ];
   let help = $state<HTMLDialogElement>();
-  const bagOnly = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
-  const emptyText = () => (rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.' : 'No brews in this period.');
+  const unranked = (b: Board) => ((rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b)) || (rank === 'like' && !LIKE_BOARDS.includes(b));
+  const emptyText = () =>
+    rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
+    : rank === 'like' ? 'No coffees with enough similar coffees to compare in this period.' : 'No brews in this period.';
   // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews".
   const boardEmpty = (b: Board) =>
     cut.includes(b)
@@ -104,7 +110,8 @@
       value={rank}
       onchange={(e) => {
         const r = e.currentTarget.value as Rank;
-        choose({ rank: r, ...((r === 'spend' || r === 'ppg') && open && !BAG_BOARDS.includes(open) ? { open: undefined } : {}) });
+        const off = open && (((r === 'spend' || r === 'ppg') && !BAG_BOARDS.includes(open)) || (r === 'like' && !LIKE_BOARDS.includes(open)));
+        choose({ rank: r, ...(off ? { open: undefined } : {}) });
       }}
     >
       {#each RANKS as r (r)}<option value={r} title={RANK_HELP[r]}>{RANK_LABEL[r]}</option>{/each}
@@ -163,21 +170,21 @@
     <h2>{TITLE[b]}</h2>
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
-      {#if bagOnly(b)}
-        <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
+      {#if unranked(b)}
+        <p class="board-note bag-only">{rank === 'like' ? 'vs like coffees ranks coffees and roasters only.' : `${RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.`}</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
         <ol class="board-rows">
           {#each shown as r, i (r.key)}
             {@const m = comparing ? move(r.move) : null}
-            <li class="board-row bar" class:small-sample={r.sample?.small} style:--share={rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
+            <li class="board-row bar" class:small-sample={r.sample?.small} style:--share={rank !== 'like' && rows[0].value > 0 ? Math.max(0, r.value / rows[0].value) : 0}>
               <span class="rank">{i + 1}</span>
               <span class="who">
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
                 <span class="who-line"><small>{detail(r)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
               </span>
-              <span class="val">{fmt(r.value)}</span>
+              <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}>{fmt(r.value)}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
             </li>
           {/each}
@@ -189,7 +196,7 @@
     </div>
     <!-- The footer exists only for a Show all button; a band row stretches its cards level, so a board whose
          neighbor has the button keeps that space (and one with none, none). -->
-    {#if rows.length > size && !bagOnly(b)}
+    {#if rows.length > size && !unranked(b)}
       <footer class="board-foot">
         <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
           >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button

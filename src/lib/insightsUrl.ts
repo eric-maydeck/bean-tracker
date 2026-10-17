@@ -88,7 +88,7 @@ export type By = (typeof BYS)[number];
 // Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).
 export type ByFits = (range: string, by: By) => boolean;
 // Leaderboards: one Rank by for every board; `open` = the one board showing all its rows.
-export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg'] as const;
+export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg', 'like'] as const;
 export type Rank = (typeof RANKS)[number];
 // Milestones: which kinds of moment to show (kinds=firsts,bests; absent = all).
 export const KINDS = ['counts', 'firsts', 'bests', 'streaks', 'gear', 'anniversaries'] as const;
@@ -112,6 +112,8 @@ export const BOARDS = ['roasters', 'coffees', 'origins', 'process', 'roast', 'wa
 export type Board = (typeof BOARDS)[number];
 // Spend and $/g are per bag: only boards of bag attributes rank by them.
 export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'process', 'roast'];
+// vs like coffees ranks coffees and their roasters only.
+export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
 // Shared by /insights and /stats: the People switch's help text.
 export const peopleHelp = (size: number): Record<People, string> => ({
   household: "Everyone's brews together.",
@@ -446,7 +448,7 @@ export function hiddenNote(h: Hidden): string {
 
 // The tabs and modes whose views read ratings: the Ratings/Brews menu shows there, and so does the roast nudge.
 export const ratingsMenuOn = (s: Pick<InsightsView, 'tab' | 'rank' | 'measure'>): boolean =>
-  ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && s.rank === 'rating') || (s.tab === 'habits' && s.measure === 'rating');
+  ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && (s.rank === 'rating' || s.rank === 'like')) || (s.tab === 'habits' && s.measure === 'rating');
 
 export function withDefaults(s: InsightsUrlState): InsightsView {
   return {

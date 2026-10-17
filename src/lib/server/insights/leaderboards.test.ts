@@ -165,3 +165,21 @@ describe('hiddenRows', () => {
     expect(r.by.roasters).toEqual(['avg', 'dial']); // both roasters gain at raw; Moonwake only once dialed shows
   });
 });
+
+describe('vs like coffees', () => {
+  const LW = { roastLevel: 'Light', processGroup: 'Washed' as const };
+  const bs = [[1, 9, 'A'], [2, 8, 'A'], [3, 8, 'B'], [4, 7, 'B']].flatMap(([id, r, roaster]) =>
+    [0, 1, 2, 3].map((i) => brew({ id: Number(id) * 10 + i, coffeeId: Number(id), rating: Number(r), roaster: String(roaster), ...LW })));
+  it('coffees: each bag’s gap, best first; roasters: the bag-weighted mean gap', () => {
+    const c = leaderboard(bs, [], SEPT, 'coffees', 'like', 'all', 'raw');
+    expect(c.map((r) => [r.key, +r.value.toFixed(2)])).toEqual([['1', 1.33], ['2', 0], ['3', 0], ['4', -1.33]]);
+    const r = leaderboard(bs, [], SEPT, 'roasters', 'like', 'all', 'raw');
+    expect(r.map((x) => [x.key, +x.value.toFixed(2), x.sample])).toEqual([['A', 0.67, { bags: 2, brews: 8, small: true }], ['B', -0.67, { bags: 2, brews: 8, small: true }]]);
+  });
+  it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
+  it('the coffees board carries the like line under rating', () => {
+    const like = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').find((r) => r.key === '1')!.like!;
+    expect(like.label).toBe('Washed Light coffees');
+    expect(like.gap).toBeCloseTo(4 / 3);
+  });
+});

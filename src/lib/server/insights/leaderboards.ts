@@ -1,10 +1,13 @@
-import { BOARDS, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
+import { BOARDS, LIKE_BOARDS, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
-import { ratedGroups } from './ratings';
-import { single, type Sample } from '$lib/sample';
+import { countsForRating, ratedGroups } from './ratings';
+import { likeGaps } from './likeGroup';
+import { groupBy } from './records';
+import { mean } from './stats';
+import { pooled, single, type Sample } from '$lib/sample';
 
 export interface BoardRow {
   key: string;
@@ -14,6 +17,7 @@ export interface BoardRow {
   value: number;
   bags: number;
   brews: number;
+  like?: { gap: number; label: string }; // coffees board, rating and like ranks: vs its like-group
   sample?: Sample; // rating ranks: the small-sample marker
   best?: number; // peak modes: the group's top brew rating
   atBest?: number; // peak modes: brews at that rating (tie-break, detail line)
@@ -98,11 +102,26 @@ export function leaderboard(
   } else {
     const inP = brews.filter((b) => inPeriod(b.localDate, p));
     const key = BREW_KEY[board];
-    if (rank === 'rating') {
+    // vs like coffees (spec Part 4): each bag's once-dialed score minus its like-group's mean (likeGroup.ts).
+    // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
+    const likes = (rank === 'like' && LIKE_BOARDS.includes(board)) || (rank === 'rating' && board === 'coffees')
+      ? likeGaps(inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0)) : null;
+    if (rank === 'like') {
+      if (!likes) return [];
+      const roasterOf = new Map(inP.map((b) => [b.coffeeId, b.roaster]));
+      const ls = [...likes].map(([id, l]) => ({ id, l, roaster: roasterOf.get(id) ?? null }));
+      rows = board === 'coffees'
+        ? ls.map(({ id, l }) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
+        : [...groupBy(ls.filter((x) => x.roaster), (x) => x.roaster!)].map(([r, g]) => {
+          const brews = g.reduce((s, x) => s + x.l.sample.brews, 0);
+          return { key: r, label: r, value: mean(g.map((x) => x.l.gap)), bags: g.length, brews, sample: pooled(g.length, brews) };
+        });
+    } else if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,
         ...(avg.startsWith('best') ? { value: r.value, best: r.best, atBest: r.atBest, mean: r.mean, sample: r.sample } : { value: r.value, sample: r.sample })
       }));
+      if (likes) rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
     } else {
       const g = new Map<string, { brews: number; grams: number; bags: Set<number> }>();
       for (const b of inP) {
