@@ -1135,6 +1135,7 @@
           {#if bcVisibleMethodGroups.length === 0}
             <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
+            <p class="text-muted">Showing top {bcVisibleMethodGroups.length} of {bc.byMethod.length}.</p>
             <Chart
               type="bar"
               labels={bcVisibleMethodGroups.map((g) => g.label)}
@@ -1149,6 +1150,7 @@
           {#if bcVisibleGrinderGroups.length === 0}
             <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
+            <p class="text-muted">Showing top {bcVisibleGrinderGroups.length} of {bc.byGrinder.length}.</p>
             <Chart
               type="bar"
               labels={bcVisibleGrinderGroups.map((g) => g.label)}

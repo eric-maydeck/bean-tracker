@@ -1055,7 +1055,9 @@ export const STATES: State[] = [
   },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
-    path: () => `/stats?tab=bq&bc=${tab}`
+    path: () => `/stats?tab=bq&bc=${tab}`,
+    // ui-rules 47: a top-N chart says how many it shows (By Method, By Grinder: one line each).
+    act: tab === 'brewing' ? async (page: Page) => { await expect(page.locator('.chart-panel-row').getByText(/^Showing top \d+ of \d+\.$/)).toHaveCount(2); } : undefined
   })),
   {
     // ui-rules 46: the cost-per-roaster chart's bar labels are usd ("$0.05/g"), never Chart's plain-number fallback.
