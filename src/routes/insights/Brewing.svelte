@@ -12,8 +12,9 @@
   import GrinderSelect from './GrinderSelect.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
+  import { settleTip } from './settleTip';
   import FloatTip from '$lib/components/FloatTip.svelte';
-  import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
+  import TipBody, { tipText } from '$lib/components/TipBody.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: BrewingTab; lab: LabOptions; s: InsightsView;
@@ -34,13 +35,7 @@
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
   const emptyLine = useEmptyLine();
-  // A settle column's tip (ui-rules 29, 36): the group, its median settle brew and counts, the Low confidence caveat
-  // last (a small group's counts are in the caveat). Opens on hover, tap and keyboard focus; transient, not URL state.
   type SettleRow = BrewingTab['settle']['roast'][number];
-  const settleTip = (g: SettleRow): Tip => ({
-    title: g.label, rows: [['Median settle brew', `${g.value}`], ...(g.sample.small ? [] : [['Bags', `${g.bags}`], ['Rated brews', `${g.brews}`]] as [string, string][])],
-    ...sampleField(g.sample)
-  });
   let settleOpen = $state<{ el: HTMLElement; g: SettleRow; hover: boolean } | null>(null);
 </script>
 
