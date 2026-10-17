@@ -86,7 +86,7 @@ export function leaderboard(
   like = true, // false: callers that only count rows or read keys skip the like lines
   // Pooled rating boards count full bags only (fullBags, stats audit must-fix 1), except under Raw (See all: every bag
   // shows, so "Showing everything" holds; user, 2026-10-17) and the peak modes (a best brew isn't dragged down by
-  // dial-in brews the way a mean is). Records pass true for their mean-vs-average comparisons.
+  // dial-in brews the way a mean is). Records pass true for their mean-vs-average comparisons; so do the cutoff checks.
   full = avg !== 'raw' && !avg.startsWith('best')
 ): BoardRow[] {
   let rows: BoardRow[] = [];
@@ -176,13 +176,13 @@ export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
 ): Board[] {
   if (!confident(rank, avg)) return [];
-  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
+  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false, true).length);
 }
 
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
 // them (each step relaxes one: Score, then Ratings, then Brews). `scored`: the brews the boards were built from;
 // `all`: the brews before Once dialed. Boards that gain none are left out. `cut`: cutBoards' list (only min3
-// drops rows, so n0 = 0 < n1 under rating is exactly a board min3 emptied).
+// drops rows; n1 alone counts 1–3-brew bags, so `cut` re-checks with full bags).
 // ponytail: up to 27 leaderboard() calls (3 per board; 18 under like), no like lines; memoize if a board gets slow.
 export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
@@ -195,7 +195,9 @@ export function hiddenRows(
     const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
     const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw', false).length;
     const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw', false).length;
-    if (!n0 && n1) cut.push(b);
+    // The cutoff emptied it only if full bags would fill it (cutBoards' rule): Raw's every-bag n1 would also name a
+    // board of 1–3-brew bags, which k2/adjusted leave empty for the full-bag rule, not a cutoff.
+    if (!n0 && n1 && leaderboard(scored, bags, p, b, rank, ratings, 'raw', false, true).length) cut.push(b);
     if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
   }
   return { rows, by, cut };

@@ -196,6 +196,17 @@ describe('hiddenRows', () => {
     expect(cut.length).toBeGreaterThan(0);
     expect(hiddenRows(boards, rated, rated, [bag({ id: 1 })], SEPT, 'rating', 'all').cut).toEqual(cut);
   });
+  it('a group board of only 1–3-brew bags is no cutoff under any Score: cut matches cutBoards', () => {
+    const small = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 2, roaster: 'Moonwake', rating: 7 })];
+    for (const avg of ['k2', 'adjusted', 'min3'] as const) {
+      const boards = leaderboards(small, [], SEPT, null, 'rating', 'all', avg);
+      const h = hiddenRows(boards, small, small, [], SEPT, 'rating', 'all');
+      // Only min3's coffees board is a true cutoff (single bags skip the 4-brew rule; 1 brew is Low confidence).
+      expect(h.cut, avg).toEqual(avg === 'min3' ? ['coffees'] : []);
+      expect(cutBoards(boards, small, [], SEPT, 'rating', 'all', avg), avg).toEqual(h.cut);
+      expect(h.rows.roasters, avg).toBe(2); // See all (Raw) still shows them
+    }
+  });
 });
 
 describe('vs like coffees', () => {
