@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { leaderboard, leaderboards, withMovement, type BoardRow } from './leaderboards';
+import { hiddenRows, leaderboard, leaderboards, withMovement, type BoardRow } from './leaderboards';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -133,5 +133,25 @@ describe('leaderboards', () => {
     expect(vals(leaderboards(BREWS, BAGS, SEPT, null, 'rating', 'all', 'raw', 2).roasters)).toEqual([['Sey', 8.5], ['Moonwake', 7]]);
     const ppg = leaderboards(BREWS, BAGS, SEPT, null, 'ppg', 'all', 'raw', 2).roasters[0];
     expect([ppg.value, ppg.cost, ppg.grams]).toEqual([0.2, 20, 100]);
+  });
+});
+
+describe('hiddenRows', () => {
+  const rated = [brew({ coffeeId: 1, rating: 8 }), brew({ coffeeId: 1, rating: 9 })];
+  const run = (scored: BrewFact[], all: BrewFact[], ratings: 'current' | 'all', avg: 'min3' | 'raw') =>
+    hiddenRows(leaderboards(scored, [bag({ id: 1 })], SEPT, null, 'rating', ratings, avg), scored, all, [bag({ id: 1 })], SEPT, 'rating', ratings);
+  it('blames each setting that hid rows, and only those', () => {
+    // One bag, two brews: min3 hides every board; raw shows it.
+    expect(run(rated, rated, 'all', 'min3').why).toEqual(['avg']);
+    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [] });
+    // Once dialed nulled the ratings (scored) that the full history has: Brews setting only.
+    const dialed = rated.map((b) => ({ ...b, rating: null }));
+    const d = run(dialed, rated, 'all', 'raw');
+    expect(d.why).toEqual(['dial']);
+    expect(d.rows.roasters).toBe(1);
+    // Calibrated hides a pre-calibration brew's rating: Ratings setting only.
+    const old = rated.map((b) => ({ ...b, localDate: '2026-05-01' }));
+    expect(hiddenRows(leaderboards(old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, null, 'rating', 'current', 'raw'), old, old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, 'rating', 'current').why)
+      .toEqual(['ratings']);
   });
 });

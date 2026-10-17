@@ -154,13 +154,23 @@ export function cutBoards(
   return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw').length);
 }
 
-// The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all. `all`: the brews before
-// Once dialed. Boards that gain none are left out.
+// The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
+// them (each step relaxes one: Score, then Ratings, then Brews). `scored`: the brews the boards were built from;
+// `all`: the brews before Once dialed. Boards that gain none are left out.
 export function hiddenRows(
-  boards: Record<Board, BoardRow[]>, all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank
-): Partial<Record<Board, number>> {
-  if (rank !== 'rating') return {};
-  return Object.fromEntries(
-    BOARDS.map((b) => [b, leaderboard(all, bags, p, b, rank, 'all', 'raw').length - boards[b].length]).filter(([, n]) => (n as number) > 0)
-  );
+  boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
+  ratings: Ratings
+): { rows: Partial<Record<Board, number>>; why: ('avg' | 'ratings' | 'dial')[] } {
+  if (rank !== 'rating') return { rows: {}, why: [] };
+  const rows: Partial<Record<Board, number>> = {};
+  const hit = { avg: false, ratings: false, dial: false };
+  for (const b of BOARDS) {
+    const n0 = boards[b].length;
+    const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw').length;
+    const n2 = leaderboard(scored, bags, p, b, rank, 'all', 'raw').length;
+    const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw').length;
+    if (n3 > n0) rows[b] = n3 - n0;
+    hit.avg ||= n1 > n0; hit.ratings ||= n2 > n1; hit.dial ||= n3 > n2;
+  }
+  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]) };
 }

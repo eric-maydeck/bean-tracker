@@ -607,21 +607,21 @@ describe('ratingsMenuOn', () => {
 });
 
 describe('hiddenNote', () => {
-  const at = { avg: 'min3', ratings: 'current', dial: 'dialed' } as const;
   const both = ['ratings', 'dial'] as ('ratings' | 'dial')[];
-  it('names up to two boards (singular for one row), else a total; brews with the reasons that apply', () => {
-    expect(hiddenNote({ rows: { roasters: 4 }, brews: 12, why: both }, at))
+  it('names up to two boards (singular for one row), else a total; the settings that hid rows and brews', () => {
+    expect(hiddenNote({ rows: { roasters: 4 }, rowsWhy: ['avg'], brews: 12, why: both }))
       .toBe('4 roasters hidden: too few bags or brews. 12 rated brews left out: before calibration or while dialing in.');
-    expect(hiddenNote({ rows: { roasters: 1, roast: 2 }, brews: 0 }, at)).toBe('1 roaster and 2 roast levels hidden: too few bags or brews.');
-    expect(hiddenNote({ rows: { roasters: 1, roast: 2, water: 3 }, brews: 1, why: both }, at))
+    expect(hiddenNote({ rows: { roasters: 1, roast: 2 }, rowsWhy: ['avg'], brews: 0 })).toBe('1 roaster and 2 roast levels hidden: too few bags or brews.');
+    expect(hiddenNote({ rows: { roasters: 1, roast: 2, water: 3 }, rowsWhy: ['avg'], brews: 1, why: both }))
       .toBe('6 rows on 3 boards hidden: too few bags or brews. 1 rated brew left out: before calibration or while dialing in.');
   });
-  it('the reasons are the settings that hid the brews; nothing hidden → empty', () => {
-    const raw = { avg: 'raw', ratings: 'all', dial: 'dialed' } as const;
-    expect(hiddenNote({ rows: { origins: 2 }, brews: 3, why: ['dial'] }, raw)).toBe('2 origins hidden. 3 rated brews left out: while dialing in.');
-    expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] }, { ...at, dial: 'all' })).toBe('3 rated brews left out: before calibration.');
-    expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] }, at)).toBe('3 rated brews left out: before calibration.');
-    expect(hiddenNote({ rows: {}, brews: 0 }, at)).toBe('');
+  it('rows are blamed on every setting that hid some, none when avg=raw alone is not the cause', () => {
+    expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['avg', 'ratings', 'dial'], brews: 0 }))
+      .toBe('2 origins hidden: too few bags or brews, before calibration or while dialing in.');
+    expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['dial'], brews: 3, why: ['dial'] })).toBe('2 origins hidden: while dialing in. 3 rated brews left out: while dialing in.');
+    expect(hiddenNote({ rows: { origins: 2 }, brews: 0 })).toBe('2 origins hidden.');
+    expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] })).toBe('3 rated brews left out: before calibration.');
+    expect(hiddenNote({ rows: {}, brews: 0 })).toBe('');
   });
   it('more than two boards: the total has a per-board breakdown', () => {
     expect(boardsTotal({ rows: { roasters: 42, roast: 1 }, brews: 0 })).toBeNull();

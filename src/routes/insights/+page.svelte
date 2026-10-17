@@ -578,10 +578,10 @@
   {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
     <p class="chart-note see-all">Showing everything, including low-confidence rows.
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
-  {:else if hiddenNote(data.hidden, s)}
+  {:else if hiddenNote(data.hidden)}
     {@const tot = boardsTotal(data.hidden)}
-    {@const note = hiddenNote(data.hidden, s)}
-    <p class="chart-note see-all">{#if tot}{@const [pre, post] = note.split(tot.boards)}{pre}<BoardsTip label={tot.boards} rows={tot.list} />{post}{:else}{note}{/if}
+    {@const note = hiddenNote(data.hidden)}
+    <p class="chart-note see-all">{#if tot}{tot.before}<BoardsTip label={tot.boards} rows={tot.list} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}

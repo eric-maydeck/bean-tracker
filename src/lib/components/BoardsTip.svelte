@@ -16,12 +16,10 @@
   onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = true)}
   onblur={() => (open = false)}
-  onclick={() => (open = true)}>{label}</button>
-{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
+  onclick={() => (open = true)}>{label}</button>{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
 
 <style>
   .boards-tip {
-    padding: 0;
     border: 0;
     background: none;
     font: inherit;
@@ -29,16 +27,14 @@
     cursor: help;
     text-decoration: underline dotted;
     text-underline-offset: 2px;
-  }
-  .boards-tip:focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-  /* A 44 px hit area that doesn't open a gap in the line (as .see-all's links): padding out, margin back in. */
-  .boards-tip {
+    /* A 44 px hit area that doesn't open a gap in the line (as .see-all's links): padding out, margin back in. */
     min-height: 44px;
     box-sizing: border-box;
     padding: 0.75rem 0;
     margin: -0.75rem 0;
+  }
+  .boards-tip:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
   }
 </style>
