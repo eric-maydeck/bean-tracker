@@ -9,6 +9,7 @@ process.env.DB_PATH = ':memory:';
 import { getDb } from '$lib/server/db';
 import { createCoffee, updateCoffee, getRedirectSlug, type NewCoffeeInput } from '$lib/server/coffees';
 import { load, actions } from './+page.server';
+import { load as insightsLoad } from '../../insights/+page.server';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
   return {
@@ -111,6 +112,20 @@ describe('coffee page vs like coffees', () => {
           .run(`2026-09-0${j + 1}T08:00:00`, `lk${k}`, r);
       return c;
     });
+    // A decaf Washed Light bag (rated 1) must not move the panel: decaf ratings are left out, as in Leaderboards' default.
+    const dec = createCoffee(db, sampleInput({ coffee_name: 'Like Decaf', roaster: 'Roaster 9', origin: 'Colombia', roast_level: 'Light', processing: 'Washed', decaf: true }));
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('lkd', 'C', '2026-10-01', ?)`).run(dec.id);
+    for (let j = 0; j < 6; j++)
+      db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'lkd', 15, 1, '2026-10-01')`).run(`2026-09-0${j + 1}T08:00:00`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const like = (load(ev(made[1].slug)) as any).like;
+    expect(like).toMatchObject({ label: 'Washed Light coffees', rank: 2, of: 4 });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((load(ev(dec.slug)) as any).like).toBeNull();
+    // The panel's gap equals the Leaderboards vs-like row.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rows = ((insightsLoad({ url: new URL('http://localhost/insights?tab=leaderboards&rank=like&range=all') } as never) as any).boards.coffees) as { key: string; value: number }[];
+    expect(rows.find((r) => r.key === String(made[1].id))!.value).toBeCloseTo(like.gap, 10);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((load(ev(made[0].slug)) as any).like).toMatchObject({ label: 'Washed Light coffees', rank: 1, of: 4, place: '1st of 4' });
     const bare = createCoffee(db, sampleInput({ coffee_name: 'Like None' }));

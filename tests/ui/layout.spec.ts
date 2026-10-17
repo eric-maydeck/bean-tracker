@@ -602,6 +602,7 @@ export const STATES: State[] = [
       const panel = page.locator('[data-section="like"]');
       await expect(panel.getByRole('heading', { name: 'Vs like coffees' })).toBeVisible();
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
+      await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
   { name: 'coffee-detail-no-like', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },

@@ -20,3 +20,6 @@ export function deltaColor(v: number | null): string {
 // A signed delta as text (round 3, T4): its class, green from +0.05, red from −0.05 (the scale's thresholds), else ink.
 export const deltaInk = (v: number | null): 'ink-better' | 'ink-worse' | '' =>
   v === null || Math.abs(v) < GRAY_BELOW ? '' : v > 0 ? 'ink-better' : 'ink-worse';
+
+// The lab's number format: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
+export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));

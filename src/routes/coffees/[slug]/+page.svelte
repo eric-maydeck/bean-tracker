@@ -24,8 +24,7 @@
   import type { CoffeeRow } from '$lib/types';
   import { formatBag } from '$lib/grams';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { deltaInk } from '$lib/components/deltaColor';
-  import { signed } from '../../insights/DeltaBars.svelte';
+  import { deltaInk, signed } from '$lib/components/deltaColor';
 
   let { data, form } = $props();
 
@@ -460,7 +459,7 @@
         {@const l = data.like}
         <section class="detail-section" data-section="like">
           <h2>Vs like coffees</h2>
-          <p class="like-note">Compared with {l.label}: all time, once dialed, calibrated ratings.</p>
+          <p class="text-muted">Compared with {l.label}: all time, once dialed, calibrated ratings.</p>
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
@@ -499,9 +498,9 @@
 <AddedToast bind:slug={addedSlug} />
 
 <style>
-  .like-note {
-    margin: 0 0 var(--space-3);
-    color: var(--color-text-muted);
+  /* Four stats: auto-fit so a wide screen has no blank fifth track. */
+  [data-section='like'] .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
   .bc-link-line {
     display: flex;

@@ -71,6 +71,7 @@ export function roasterLikes(rows: readonly BrewFact[]): Map<string, RoasterLike
 // ponytail: loads every brew per coffee-page view (like each insights view); cache per request if it ever shows.
 export function coffeeLike(db: DatabaseSync, id: number): Like | null {
   const { brews } = loadFacts(db);
-  const rows = onceDialed(brews, dialInIds(brews)).filter((b) => b.coffeeId !== null && countsForRating(b, DEFAULTS.ratings) && b.rating! > 0);
+  // Caffeinated only, like the insights default: decaf brews lose their rating (so a decaf bag gets no panel).
+  const rows = onceDialed(brews, dialInIds(brews)).map((b) => (b.decaf ? { ...b, rating: null } : b)).filter((b) => b.coffeeId !== null && countsForRating(b, DEFAULTS.ratings) && b.rating! > 0);
   return likeGaps(rows).get(id) ?? null;
 }
