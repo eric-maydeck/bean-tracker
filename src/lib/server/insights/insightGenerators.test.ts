@@ -66,7 +66,7 @@ describe('dial-in curve', () => {
 });
 
 describe('dial-in speed', () => {
-  const b = [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [8, 8, 8, 8, 8]), ...seq(3, [6, 8, 8, 8, 8])];
+  const b = [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [8, 8, 8, 8, 8, 8]), ...seq(3, [6, 8, 8, 8, 8, 8])];
   it('slowest and fastest bag by brews to settle', () => {
     const f = gen('dialinSpeed', b, bags(3))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'versus', z: null, strength: null, headline: 'Dial-in takes up to 4 brews' });
@@ -74,25 +74,25 @@ describe('dial-in speed', () => {
     expect(f.sides).toEqual([{ label: 'Slowest: R Bag 1', value: '4 brews' }, { label: 'Right on brew 1', value: '1 of 3 bags' }]);
   });
   it('skips bags that began before the period (brewIndex > 1)', () => {
-    const late = seq(4, [9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
+    const late = seq(4, [9, 9, 9, 9, 9, 9], '2026-07-01', (i) => ({ brewIndex: i + 4 }));
     const f = gen('dialinSpeed', [...b, ...late], bags(4))!;
     expect(f.sides![1]).toEqual({ label: 'Right on brew 1', value: '1 of 3 bags' }); // Bag 4 would make it 2
     expect(f.sample).toBe('3 bags');
     expect(gen('dialinSpeed', [...b.slice(0, 11), ...late], bags(4))).toBeNull();
   });
   it('a fastest bag past brew 1 keeps the fastest side', () => {
-    const f = gen('dialinSpeed', [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [6, 8, 8, 8, 8]), ...seq(3, [6, 7, 8, 8, 8])], bags(3))!;
+    const f = gen('dialinSpeed', [...seq(1, [5, 6, 7, 8, 8, 8]), ...seq(2, [6, 8, 8, 8, 8, 8]), ...seq(3, [6, 7, 8, 8, 8, 8])], bags(3))!;
     expect(f.headline).toBe('Dial-in takes 2 to 4 brews');
     expect(f.sides![1]).toEqual({ label: 'Fastest: R Bag 2', value: '2 brews' });
   });
   it('details: the next slowest bags and the most common brews-to-settle', () => {
-    const more = [...b, ...seq(4, [6, 7, 8, 8, 8]), ...seq(5, [8, 8, 8, 8, 8])];
+    const more = [...b, ...seq(4, [6, 7, 8, 8, 8, 8]), ...seq(5, [8, 8, 8, 8, 8, 8])];
     expect(gen('dialinSpeed', more, bags(5, (i) => ({ slug: `b${i + 1}` })))!.details).toEqual([
       { label: 'Next slowest', items: [{ name: 'R Bag 4', value: '3 brews', href: '/coffees/b4' }, { name: 'R Bag 3', value: '2 brews', href: '/coffees/b3' }] },
       { label: 'Most bags settle by', items: [{ name: 'brew 1', value: '2 bags' }, { name: 'brew 2', value: '1 bag' }] }
     ]);
   });
-  it('null below MIN_BAGS bags with 5+ rated brews', () => expect(gen('dialinSpeed', b.slice(0, 11), bags(3))).toBeNull());
+  it('null below MIN_BAGS bags with 6+ rated brews', () => expect(gen('dialinSpeed', b.slice(0, 11), bags(3))).toBeNull());
 });
 
 describe('second cup', () => {
@@ -644,7 +644,7 @@ describe('trend charts', () => {
     expect(gen('firstVsLater', bs.filter((b) => b.coffeeId! > 2 && b.coffeeId! < 10 || b.coffeeId! > 10))).toBeNull(); // April under 3 first brews
   });
   it('brews to settle by month', () => {
-    const settle = (k: number) => [[8, 8, 8, 8, 8], [6, 8, 8, 8, 8], [5, 6, 7, 8, 8]][k];
+    const settle = (k: number) => [[8, 8, 8, 8, 8, 8], [6, 8, 8, 8, 8, 8], [5, 6, 7, 8, 8, 8]][k];
     const bs = ['04', '05', '06'].flatMap((m, k) => Array.from({ length: 3 }, (_, i) =>
       seq(10 * k + i + 1, settle(k), `2026-${m}-${String(i + 1).padStart(2, '0')}`)).flat());
     const f = gen('settleTrend', bs)!;
@@ -747,7 +747,7 @@ describe('insightsTab', () => {
   });
   it('dial-in findings read every brew; the others the scored ones', () => {
     // Bags 1–3 settle at brew 3, bag 4 at brew 1: Dial-in speed has a spread on every brew. Scored, each bag
-    // keeps 4 rated brews, under settlePositions' 5, so the finding exists only if it reads allBrews.
+    // keeps 4 rated brews, under the 6-brew settle window, so the finding exists only if it reads allBrews.
     const raw = [1, 2, 3, 4].flatMap((id) => (id < 4 ? [5, 5, 9, 9, 9, 9] : [9, 9, 9, 9, 9, 9])
       .map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 })));
     const scored = raw.map((b) => (b.brewIndex <= 2 ? { ...b, rating: null } : b));
@@ -770,8 +770,8 @@ describe('like-with-like findings', () => {
     expect(f?.value).toMatch(/^\+1\.\d\d$/);
   });
   it('dial-in speed by roast level: median settle position per group', () => {
-    const slow = [1, 2, 3].flatMap((id) => [5, 6, 7, 9, 9].map((r, i) => brew({ id: 500 + id * 10 + i, coffeeId: 100 + id, rating: r, brewIndex: i + 1, roastLevel: 'Ultralight' })));
-    const fast = [1, 2, 3].flatMap((id) => [9, 9, 9, 9, 9].map((r, i) => brew({ id: 700 + id * 10 + i, coffeeId: 200 + id, rating: r, brewIndex: i + 1, roastLevel: 'Medium' })));
+    const slow = [1, 2, 3].flatMap((id) => [5, 6, 7, 9, 9, 9].map((r, i) => brew({ id: 500 + id * 10 + i, coffeeId: 100 + id, rating: r, brewIndex: i + 1, roastLevel: 'Ultralight' })));
+    const fast = [1, 2, 3].flatMap((id) => [9, 9, 9, 9, 9, 9].map((r, i) => brew({ id: 700 + id * 10 + i, coffeeId: 200 + id, rating: r, brewIndex: i + 1, roastLevel: 'Medium' })));
     const all = [...slow, ...fast];
     const gb = [...[1, 2, 3].map((id) => bag({ id: 100 + id, roastLevel: 'Ultralight' })), ...[1, 2, 3].map((id) => bag({ id: 200 + id, roastLevel: 'Medium' }))];
     const f = gen('dialinBy:roastLevel', all, gb, { allBrews: all });
@@ -796,20 +796,23 @@ describe('like-with-like findings', () => {
   const dialRows = (ids: number[], ratings: number[], o: Partial<BrewFact>) =>
     ids.flatMap((id) => ratings.map((r, i) => brew({ id: id * 100 + i, coffeeId: id, rating: r, brewIndex: i + 1, ...o })));
   it('dial-in by group: medians print as whole brews and ties go to the bigger group', () => {
-    const light = [[9, 9, 9, 9, 9], [5, 9, 9, 9, 9], [5, 5, 9, 9, 9], [5, 5, 5, 9, 9]].flatMap((r, k) => dialRows([10 + k], r, { roastLevel: 'Light' }));
-    const dark = [20, 21, 22].flatMap((id) => dialRows([id], [5, 5, 9, 9, 9], { roastLevel: 'Dark' }));
-    const medium = dialRows([30, 31, 32], [9, 9, 9, 9, 9], { roastLevel: 'Medium' });
+    const light = [[9, 9, 9, 9, 9, 9], [5, 9, 9, 9, 9, 9], [5, 5, 9, 9, 9, 9], [5, 5, 5, 9, 9, 9]].flatMap((r, k) => dialRows([10 + k], r, { roastLevel: 'Light' }));
+    const dark = [20, 21, 22].flatMap((id) => dialRows([id], [5, 5, 9, 9, 9, 9], { roastLevel: 'Dark' }));
+    const medium = dialRows([30, 31, 32], [9, 9, 9, 9, 9, 9], { roastLevel: 'Medium' });
     const all = [...light, ...dark, ...medium];
     const gb = [10, 11, 12, 13, 20, 21, 22, 30, 31, 32].map((id) => bag({ id, roastLevel: id < 14 ? 'Light' : id < 30 ? 'Dark' : 'Medium' }));
     const f = gen('dialinBy:roastLevel', all, gb, { allBrews: all });
     expect(f?.series?.map((x) => x.value)).toEqual([1, 3, 3]);
     expect(f?.series?.map((x) => x.label)).toEqual(['Medium', 'Light', 'Dark']);
     expect(f?.headline).toBe('Medium is right on brew 1; Light settles by brew 3');
+    // No "N more bags would settle it" (audit must-fix 6): the estimate is for a mean, the figure is a median brew.
+    expect(f).not.toHaveProperty('settle');
+    expect(f).not.toHaveProperty('progress');
   });
   it('dial-in by process: groups under 3 bags are left out', () => {
-    const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9], { processGroup: 'Washed' });
-    const n = [4, 5, 6].flatMap((id) => dialRows([id], [5, 5, 5, 9, 9], { processGroup: 'Natural' }));
-    const h = dialRows([7, 8], [5, 5, 5, 5, 9], { processGroup: 'Honey' });
+    const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9, 9], { processGroup: 'Washed' });
+    const n = [4, 5, 6].flatMap((id) => dialRows([id], [5, 5, 5, 9, 9, 9], { processGroup: 'Natural' }));
+    const h = dialRows([7, 8], [5, 5, 5, 5, 9, 9], { processGroup: 'Honey' });
     const all = [...w, ...n, ...h];
     const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, processGroup: b.processGroup }));
     const f = gen('dialinBy:processGroup', all, gb, { allBrews: all });

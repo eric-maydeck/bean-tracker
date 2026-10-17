@@ -4,7 +4,7 @@ import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
-import { settleAt } from './dialed';
+import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, type Like } from './likeGroup';
@@ -131,19 +131,21 @@ const dialinCurve: Generator = (c) => {
   return [curve, story];
 };
 
-// Rated brews to reach the bag's settled rating: the first at or above (mean of its best half) - 0.5.
-// Bags with 5+ counted rated brews that began in the period; `month` = the month of its first rated brew.
-const settlePositions = (c: Pick<GenCtx, 'brews' | 'ratings'>) => {
+// Brews to reach the bag's settled rating within its first SETTLE_WINDOW rated brews (dialed.ts settleWithin).
+// Bags with SETTLE_WINDOW+ counted rated brews that began in the period; `month` = the month of its first rated brew;
+// `n`: the window's brews (what the measure read).
+export const settlePositions = (c: Pick<GenCtx, 'brews' | 'ratings'>) => {
   const out: { id: number; pos: number; month: string; n: number; roastLevel: string | null; processGroup: string | null }[] = [];
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
-    if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
+    const pos = settleWithin(bs.map((b) => b.rating!));
+    if (pos === null || firstIdx.get(id) !== 1) continue;
     const { roastLevel, processGroup } = bs[0];
-    out.push({ id, pos: settleAt(bs.map((b) => b.rating!)), month: bs[0].localDate.slice(0, 7), n: bs.length, roastLevel, processGroup });
+    out.push({ id, pos, month: bs[0].localDate.slice(0, 7), n: SETTLE_WINDOW, roastLevel, processGroup });
   }
   return out;
 };
-// Dial-in speed per roast level or process group (spec Part 4): the median brew its bags settle at (settleAt), as
+// Dial-in speed per roast level or process group (spec Part 4): the median brew its bags settle at (settleWithin), as
 // whole brews rounded up; `brews`: in-period, every rating (Once dialed exempts dial-in). Unknown groups are left out.
 // The dialinBy findings keep groups of 3+ bags; the Brewing charts show all, marking the pooled rule's small ones.
 export function settleGroups(c: Pick<GenCtx, 'brews' | 'ratings'>, dim: 'roastLevel' | 'processGroup') {
@@ -792,8 +794,10 @@ const likeStandouts: Generator = (c) => {
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
 
-// Dial-in speed by roast level and by process (spec Part 4): the median brew a bag settles at (settleAt), per
-// group of 3+ bags (each has 5+ rated brews, so the brew half of the pooled rule always holds). Descriptive.
+// Dial-in speed by roast level and by process (spec Part 4): the median brew a bag settles at within its first
+// SETTLE_WINDOW rated brews (settleWithin), per group of 3+ bags (so the brew half of the pooled rule always holds).
+// No "N more bags would settle it": the window's settle brews take few values and the median rounds up, so the
+// sample-size estimate (built for a mean) would promise more than it can (audit must-fix 6).
 const dialinByGroup: Generator = (c) => {
   const pos = settlePositions({ ...c, brews: c.allBrews });
   const allPos = pos.map((x) => x.pos);
@@ -806,13 +810,17 @@ const dialinByGroup: Generator = (c) => {
     const [fast, slow] = [[...groups].sort(by(1))[0], [...groups].sort(by(-1))[0]];
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
+    const z = groupZ(slow.ps, allPos);
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
+      body: `Median brew each bag settles at, within its first ${SETTLE_WINDOW} rated brews (bags of ${SETTLE_WINDOW}+).`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
       href: SETTLE[dim]
-    }, ((z) => (Number.isFinite(z) ? z : 0))(groupZ(slow.ps, allPos)), true, 'bags', slow.bags, undefined, groups.length, allPos.length);
-    return f ? [f] : [];
+    }, Number.isFinite(z) ? z : 0, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
+    if (!f) return [];
+    const { settle: _s, progress: _p, ...rest } = f;
+    return [rest];
   });
 };
 

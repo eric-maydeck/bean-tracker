@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dialInIds, onceDialed, settleAt, skipCount } from './dialed';
+import { dialInIds, onceDialed, settleAt, settleWithin, skipCount } from './dialed';
 import type { BrewFact } from './facts';
 
 let n = 0;
@@ -14,6 +14,16 @@ describe('settleAt', () => {
   it('first brew within 0.5 of the best half', () => {
     expect(settleAt([6, 7, 8.5, 9, 9])).toBe(3); // best half 9, 9, 8.5 → 8.83; 8.5 ≥ 8.33
     expect(settleAt([9, 6, 6, 6])).toBe(1);
+  });
+});
+
+describe('settleWithin: the first 6 rated brews only', () => {
+  it('a shorter bag has no settle brew', () => expect(settleWithin([5, 6, 7, 8, 8])).toBeNull());
+  it('brews past the window never move it, so a long bag reads like a short one', () => {
+    const start = [6, 7, 8, 8, 8, 8];
+    expect(settleWithin(start)).toBe(3);
+    expect(settleWithin([...start, 9.5, 9.5, 10, 10, 10, 10])).toBe(3); // over the whole bag: settleAt says 7
+    expect(settleAt([...start, 9.5, 9.5, 10, 10, 10, 10])).toBe(7);
   });
 });
 

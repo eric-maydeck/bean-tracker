@@ -321,11 +321,11 @@ describe('brewingTab', () => {
   it('brews until dialed in: the median settle brew per roast level and process, small groups marked (gate P4)', () => {
     const bag = (id: number, roastLevel: string, rs: number[]) =>
       rs.map((rating, i) => brew({ coffeeId: id, roastLevel, processGroup: 'Washed', rating, brewIndex: i + 1 }));
-    const all = [...[1, 2, 3].flatMap((id) => bag(id, 'Light', [8, 8, 8, 8, 8])), ...[4, 5].flatMap((id) => bag(id, 'Nordic', [5, 6, 7, 8, 8]))];
+    const all = [...[1, 2, 3].flatMap((id) => bag(id, 'Light', [8, 8, 8, 8, 8, 8])), ...[4, 5].flatMap((id) => bag(id, 'Nordic', [5, 6, 7, 8, 8, 8]))];
     const t = brewingTab(all, { ...c0, all });
     expect(t.settle.roast).toEqual([
-      { label: 'Light', value: 1, bags: 3, brews: 15, sample: { bags: 3, brews: 15, small: false } },
-      { label: 'Nordic', value: 4, bags: 2, brews: 10, sample: { bags: 2, brews: 10, small: true } }
+      { label: 'Light', value: 1, bags: 3, brews: 18, sample: { bags: 3, brews: 18, small: false } },
+      { label: 'Nordic', value: 4, bags: 2, brews: 12, sample: { bags: 2, brews: 12, small: true } }
     ]);
     expect(t.settle.process).toEqual([]); // one group: nothing to compare
   });

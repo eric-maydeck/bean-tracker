@@ -78,8 +78,8 @@
         {#if rows.length}
           <section class="chart-panel lab-chart" class:span={!t.settle[k === 'roast' ? 'process' : 'roast'].length} data-section="brewing-settle-{k}">
             <LabHead id="brewing-settle-{k}" title="Brews until dialed in, by {by}" {placeTip}
-              help={["Each bag's settle point: its first brew within 0.5 of its best half's average.", `Per ${by}: the middle bag's, in whole brews.`,
-                'Bags with 5+ rated brews that started this period.', SAMPLE_HELP]} />
+              help={["Each bag's settle brew: within its first 6 rated brews, the first within 0.5 of their best half's average.", `Per ${by}: the middle bag's, in whole brews.`,
+                'Bags with 6+ rated brews that started this period.', SAMPLE_HELP]} />
             <div class="fit-body">
               <div class="settle">
                 <div class="settle-cols" role="img" aria-label="Brews until dialed in by {by}: {rows.map((g) => `${g.label} ${g.value} (${g.bags} bags)`).join(', ')}">
