@@ -9,7 +9,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -579,9 +579,8 @@
     <p class="chart-note see-all">Showing everything, including low-confidence rows.
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
   {:else if hiddenNote(data.hidden)}
-    {@const tot = boardsTotal(data.hidden)}
-    {@const note = hiddenNote(data.hidden)}
-    <p class="chart-note see-all">{#if tot}{tot.before}<TextTip label={tot.boards} tip={{ title: 'Hidden rows', lines: tot.list }} />{note.slice(tot.before.length + tot.boards.length)}{:else}{note}{/if}
+    {@const note = hiddenNote(data.hidden)!}
+    <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={{ title: 'Hidden by your settings', lines: note.lines }} />.
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}

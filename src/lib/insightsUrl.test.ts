@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, withPageWide, parseLikeView
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -612,33 +612,21 @@ describe('ratingsMenuOn', () => {
 
 describe('hiddenNote', () => {
   const both = ['ratings', 'dial'] as ('ratings' | 'dial')[];
-  it('names up to two boards (singular for one row), else a total; the settings that hid rows and brews', () => {
-    expect(hiddenNote({ rows: { roasters: 4 }, rowsWhy: ['avg'], brews: 12, why: both }))
-      .toBe('4 roasters hidden: too few bags or brews. 12 rated brews left out: before calibration or while dialing in.');
-    expect(hiddenNote({ rows: { roasters: 1, roast: 2 }, rowsWhy: ['avg'], brews: 0 })).toBe('1 roaster and 2 roast levels hidden: too few bags or brews.');
-    expect(hiddenNote({ rows: { roasters: 1, roast: 2, water: 3 }, rowsWhy: ['avg'], brews: 1, why: both }))
-      .toBe('6 rows on 3 boards hidden: too few bags or brews. 1 rated brew left out: before calibration or while dialing in.');
+  it('one short line: rows and brews, rows only, brews only, singular; nothing hidden → null (gate P4)', () => {
+    expect(hiddenNote({ rows: { roasters: 40, roast: 35 }, brews: 703, why: both })!.lead).toBe('75 rows and 703 brews');
+    expect(hiddenNote({ rows: { roasters: 1 }, brews: 0 })!.lead).toBe('1 row');
+    expect(hiddenNote({ rows: {}, brews: 1, why: ['ratings'] })!.lead).toBe('1 brew');
+    expect(hiddenNote({ rows: {}, brews: 0 })).toBeNull();
   });
-  it('rows are blamed on every setting that hid some, none when avg=raw alone is not the cause', () => {
-    expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['avg', 'ratings', 'dial'], brews: 0 }))
-      .toBe('2 origins hidden: too few bags or brews, before calibration, or while dialing in.');
-    expect(hiddenNote({ rows: { origins: 2 }, rowsWhy: ['dial'], brews: 3, why: ['dial'] })).toBe('2 origins hidden: while dialing in. 3 rated brews left out: while dialing in.');
-    expect(hiddenNote({ rows: { origins: 2 }, brews: 0 })).toBe('2 origins hidden.');
-    expect(hiddenNote({ rows: {}, brews: 3, why: ['ratings'] })).toBe('3 rated brews left out: before calibration.');
-    expect(hiddenNote({ rows: {}, brews: 0 })).toBe('');
-  });
-  it('one or two boards carry their own reasons in parentheses (no repeated clause); the total keeps the union', () => {
-    expect(hiddenNote({ rows: { roasters: 4, roast: 2 }, rowsWhy: ['avg', 'ratings'], rowsBy: { roasters: ['avg'], roast: ['ratings'] }, brews: 0 }))
-      .toBe('4 roasters (too few bags or brews) and 2 roast levels (before calibration) hidden.');
-    expect(hiddenNote({ rows: { roasters: 3, water: 1, grinder: 2 }, rowsWhy: ['avg', 'dial'], rowsBy: { roasters: ['avg'], water: ['avg', 'dial'], grinder: ['dial'] }, brews: 0 }))
-      .toBe('6 rows on 3 boards hidden: too few bags or brews, or while dialing in.');
-  });
-  it('more than two boards: the total has a per-board breakdown', () => {
-    expect(boardsTotal({ rows: { roasters: 42, roast: 1 }, brews: 0 })).toBeNull();
-    expect(boardsTotal({ rows: { roasters: 42, roast: 12, process: 5 }, rowsBy: { roasters: ['avg'], roast: ['avg', 'dial'], process: ['avg', 'ratings', 'dial'] }, brews: 0 }))
-      .toEqual({ before: '59 rows on ', boards: '3 boards', list: ['Roasters 42 · too few bags or brews', 'Roast levels 12 · too few bags or brews, or while dialing in', 'Process groups 5 · too few bags or brews, before calibration, or while dialing in'] });
+  it('the tip: each board with its count and reasons, then the brews with theirs', () => {
+    expect(hiddenNote({ rows: { roasters: 42, roast: 12, origins: 2 }, rowsBy: { roasters: ['avg'], roast: ['avg', 'dial'] }, brews: 9, why: both })!.lines)
+      .toEqual(['Roasters 42 · too few bags or brews', 'Roast levels 12 · too few bags or brews, or while dialing in', 'Origins 2',
+        'Rated brews 9 · before calibration or while dialing in']);
+    expect(hiddenNote({ rows: { process: 5 }, rowsBy: { process: ['avg', 'ratings', 'dial'] }, brews: 0 })!.lines)
+      .toEqual(['Process groups 5 · too few bags or brews, before calibration, or while dialing in']);
   });
 });
+
 
 describe('phoneWords', () => {
   it('abbreviates plural months and years only', () => {

@@ -2807,7 +2807,8 @@ export const STATES: State[] = [
     name: `insights-see-all-${step}`, path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page: Page) => {
       const note = page.locator('.see-all');
-      await expect(note).toHaveText(/(\(too few bags or brews[^)]*\)|hidden: too few bags or brews).* See all$/);
+      // One short line (gate P4): "N rows and M brews hidden by your settings. See all".
+      await expect(note).toHaveText(/^\d+ rows?( and \d+ brews?)? hidden by your settings\. See all$/);
       if (step !== 'note') {
         await note.getByRole('button', { name: 'See all' }).click();
         await expect(page).toHaveURL(/[?&]avg=raw/);
@@ -2825,30 +2826,35 @@ export const STATES: State[] = [
         expect(await note.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), 'one line')
           .toBeLessThan(1.5);
     } })),
-  // U1: "N boards" in the See all note carries a per-board tooltip: hover (mouse) and tap/focus open the shared tip.
-  { name: 'insights-see-all-boards-tip', path: () => '/insights?tab=leaderboards&range=all',
+  // Gate P4: "hidden by your settings" opens the shared tip (FloatTip): each board with its count and reasons, then
+  // the brews; hover (mouse), tap and keyboard focus.
+  { name: 'insights-see-all-tip', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       const btn = page.locator('.see-all .text-tip');
-      await expect(btn).toHaveText(/^\d+ boards$/);
-      await expect(btn).toHaveAttribute('aria-label', /Hidden rows/);
+      await expect(btn).toHaveText('hidden by your settings');
+      await expect(btn).toHaveAttribute('aria-label', /Hidden by your settings/);
+      const tip = page.locator('.float-tip');
       if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes
         await btn.hover();
-        await expect(page.locator('[popover]:popover-open')).toContainText('Hidden rows');
+        await expect(tip).toContainText('Hidden by your settings');
         await page.mouse.move(0, 0);
-        await expect(page.locator('[popover]:popover-open')).toHaveCount(0);
+        await expect(tip).toHaveCount(0);
       }
       await btn.click();
-      const tip = page.locator('[popover]:popover-open');
-      await expect(tip).toContainText('Hidden rows');
-      await expect(tip.locator('li').first()).toHaveText(/^[A-Z]/);
-      // Each board line: its count, then its own reasons (U1 round 2); wraps inside the tip, never overflows it.
-      for (const li of await tip.locator('li').all()) await expect(li).toHaveText(/^[A-Z][a-z ]+ \d+ · (too few bags or brews|before calibration|while dialing in)/);
+      await expect(tip).toContainText('Hidden by your settings');
+      const lines = await tip.locator('li').allTextContents();
+      for (const l of lines) expect(l).toMatch(/^[A-Z][a-z ]+ \d+( · (too few bags or brews|before calibration|while dialing in).*)?$/);
+      expect(lines.at(-1)).toMatch(/^Rated brews \d+/);
       expect(await tip.evaluate((e) => e.scrollWidth <= e.clientWidth + 1), 'tip text overflows').toBe(true);
-      const [b, t] = [await btn.boundingBox(), await tip.boundingBox()];
-      const vw = page.viewportSize()!.width;
-      expect(t!.x).toBeGreaterThanOrEqual(0);
-      expect(t!.x + t!.width).toBeLessThanOrEqual(vw + 1);
-      expect(b!.height).toBeGreaterThan(0);
+      // ponytail: at 1003×333 the band under the sticky bar (~170px) is shorter than the anchor plus a 5-line tip, so
+      // only the sides are checked there; every taller viewport checks the whole box.
+      if (page.viewportSize()!.height >= 600) await expectTipInView(page, tip);
+      else { const t = (await tip.boundingBox())!; expect(t.x).toBeGreaterThanOrEqual(0); expect(t.x + t.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1); }
+      await page.keyboard.press('Escape');
+      await btn.focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab'); // keyboard focus (focus-visible) opens it
+      await expect(tip).toBeVisible();
       expect(page.url()).not.toContain('tip');
     } },
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
