@@ -13,6 +13,9 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
   ytd: 'Year to date',
   all: 'All time'
 };
+// How people abbreviate on a phone ("Last 12 months" → "Last 12 mo."); the narrow selects use it, and app.html's
+// first-paint script applies the same data-short text before hydration (no flash of the long words).
+export const phoneWords = (s: string): string => s.replace(/\bmonths\b/g, 'mo.').replace(/\byears\b/g, 'yr.').replace(/^Previous /, 'Prev. ');
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Option names, used verbatim wherever a setting is shown (the URL values stay current / all).

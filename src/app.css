@@ -596,6 +596,7 @@ input:focus-visible {
   border-radius: var(--radius);
   background: var(--color-surface);
   color: var(--color-text);
+  text-overflow: ellipsis; /* a long chosen option (a custom span, a bag name) ends in … instead of a hard cut */
 }
 @media (max-width: 640px) {
   .ctl-select {

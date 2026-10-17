@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal
+  parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
 
@@ -627,5 +627,14 @@ describe('hiddenNote', () => {
     expect(boardsTotal({ rows: { roasters: 42, roast: 1 }, brews: 0 })).toBeNull();
     expect(boardsTotal({ rows: { roasters: 42, roast: 1, process: 5 }, brews: 0 }))
       .toEqual({ before: '48 rows on ', boards: '3 boards', list: [['Roasters', '42'], ['Roast levels', '1'], ['Process groups', '5']] });
+  });
+});
+
+describe('phoneWords', () => {
+  it('abbreviates plural months and years only', () => {
+    expect(phoneWords('Last 12 months')).toBe('Last 12 mo.');
+    expect(phoneWords('Previous 3 years')).toBe('Prev. 3 yr.');
+    expect(phoneWords('Last month')).toBe('Last month');
+    expect(phoneWords('Year to date')).toBe('Year to date');
   });
 });

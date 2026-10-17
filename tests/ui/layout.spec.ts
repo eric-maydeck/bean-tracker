@@ -2635,6 +2635,23 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Period').locator('option:checked')).toHaveText(want);
       await expect(page.getByLabel('Period').locator('option[value="1m"]')).toHaveText('Last month');
     } },
+  // M7: phones (≤480) abbreviate months/years/Previous in the Period and Compare selects (also before hydration,
+  // app.html's script); whatever still overflows a closed select ends in an ellipsis. Runs at 360 and 480.
+  { name: 'insights-phone-selects', path: () => '/insights?tab=overview&range=12m&compare=1',
+    act: async (page) => {
+      const phone = page.viewportSize()!.width <= 480;
+      await expect(page.getByLabel('Compare').locator('option:checked')).toHaveText(phone ? 'Prev. 12 mo.' : 'Previous 12 months');
+      const bad = await page.locator('.insights-controls select').evaluateAll((els) => {
+        const c = document.createElement('canvas').getContext('2d')!;
+        return els.filter((el) => {
+          const s = el as HTMLSelectElement, cs = getComputedStyle(s);
+          c.font = cs.font;
+          const avail = s.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 2;
+          return c.measureText(s.selectedOptions[0].textContent!.trim()).width > avail && cs.textOverflow !== 'ellipsis';
+        }).map((el) => el.getAttribute('aria-label'));
+      });
+      expect(bad, 'clipped selects without an ellipsis').toEqual([]);
+    } },
   // See all (gate 3): the note names what the settings hide; See all → everything (filters, Period, tab kept);
   // Back to defaults drops only avg/ratings/dial. One line at 1280+, may wrap on phones.
   ...(['note', 'see-all', 'back'] as const).map((step) => ({

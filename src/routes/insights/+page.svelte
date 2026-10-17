@@ -9,7 +9,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, boardsTotal, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, boardsTotal, phoneWords, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -371,9 +371,10 @@
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
   let ratingsMenu = $derived(ratingsMenuOn(s));
-  // Phones (≤480): the narrow Period select reads "Last 12 mo." instead of clipping "Last 12 months" (user, gate 3).
+  // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
+  // The data-short attribute lets app.html's first-paint script show the short text before hydration.
   const phone = new MediaQuery('max-width: 480px');
-  const rangeLabel = (r: (typeof ROLLING)[number]) => (phone.current ? RANGE_LABELS[r].replace(/ months$/, ' mo.') : RANGE_LABELS[r]);
+  const phoneText = (long: string) => (phone.current ? phoneWords(long) : long);
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
   const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
@@ -487,7 +488,7 @@
     <span>Period</span>
     <select class="ctl-select" aria-label="Period" value={custom('range') ? 'custom' : s.range} onchange={(e) => pickRange(e.currentTarget.value)}>
       <optgroup label="Rolling">
-        {#each ROLLING as r (r)}<option value={r}>{rangeLabel(r)}</option>{/each}
+        {#each ROLLING as r (r)}<option value={r} data-short={phoneWords(RANGE_LABELS[r])}>{phoneText(RANGE_LABELS[r])}</option>{/each}
       </optgroup>
       <optgroup label="Calendar">
         <option value="ytd">{RANGE_LABELS.ytd}</option>
@@ -514,7 +515,7 @@
       <option value="0">Off</option>
       {#each data.compareMenus[s.range] as g (g.label)}
         <optgroup label={g.label}>
-          {#each g.options as o (o.value)}<option value={o.value}>{o.label}</option>{/each}
+          {#each g.options as o (o.value)}<option value={o.value} data-short={phoneWords(o.label)}>{phoneText(o.label)}</option>{/each}
         </optgroup>
       {/each}
       <optgroup label="Custom"><option value="custom">Custom range…</option></optgroup>
