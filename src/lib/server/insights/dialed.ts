@@ -9,11 +9,11 @@ export const settleAt = (rs: readonly number[]): number => {
   return rs.findIndex((r) => r >= mean(top) - 0.5) + 1;
 };
 
-// How many of a bag's first rated brews Once dialed leaves out, by its rated-brew count (spec tiers, a first
-// try locked at the Part 2 preview): 1–3 none (the bag is small, sample.ts), 4–7 the first 2, 8+ up to the
-// settle point, at least 1 and at most half.
-export const skipCount = (rs: readonly number[]): number =>
-  rs.length <= 3 ? 0 : rs.length <= 7 ? 2 : Math.min(Math.max(settleAt(rs) - 1, 1), Math.floor(rs.length / 2));
+// How many of a bag's first rated brews Once dialed leaves out, by position only (stats audit 2026-10-17: skipping
+// "until it got good" selects on the result and lifted 8+ bags by +0.14): 1–3 none (the bag is small, sample.ts),
+// 4–7 the first 2, 8+ the first 3 (rating vs bag mean by brew #1 −0.46, #2 −0.13, #3 −0.08, flat from #4).
+// `rs` is the bag's ratings, of which only the count is read.
+export const skipCount = (rs: readonly number[]): number => (rs.length <= 3 ? 0 : rs.length <= 7 ? 2 : 3);
 
 // The ids of every dial-in brew. Bag-intrinsic: over each bag's whole rated history in time order (`brews`
 // as loadFacts returns them), before any Period, People, Current/All or Coffees filter.

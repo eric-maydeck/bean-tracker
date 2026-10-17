@@ -24,10 +24,13 @@ describe('skipCount tiers', () => {
   });
   it('4-7: the first 2 (7/8 edge)', () => {
     expect(skipCount([5, 6, 9, 9, 9, 9, 9])).toBe(2);
-    expect(skipCount([5, 6, 9, 9, 9, 9, 9, 9])).toBe(2); // 8+: settles at #3 → skip 2
+    expect(skipCount([5, 6, 9, 9, 9, 9, 9, 9])).toBe(3); // 8+: the first 3
   });
-  it('8+: from the settle point, at least 1', () => expect(skipCount([9, 9, 9, 9, 9, 9, 9, 9])).toBe(1));
-  it('8+: at most half', () => expect(skipCount([5, 5, 5, 5, 5, 5, 9, 9])).toBe(4)); // settles at #7 → clamp floor(8/2)
+  it('8+: the first 3 by position, never by outcome', () => {
+    expect(skipCount([9, 9, 9, 9, 9, 9, 9, 9])).toBe(3); // right on brew 1: still 3
+    expect(skipCount([5, 5, 5, 5, 5, 5, 9, 9])).toBe(3); // good only at #7: still 3
+    expect(skipCount([9, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBe(3); // its best brews first: still 3
+  });
 });
 
 describe('dialInIds', () => {

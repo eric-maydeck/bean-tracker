@@ -80,7 +80,7 @@ export const DIALS = ['dialed', 'all'] as const;
 export type Dial = (typeof DIALS)[number];
 export const DIAL_LABEL: Record<Dial, string> = { all: 'All brews', dialed: 'Once dialed' };
 export const DIAL_HELP: Record<Dial, string> = {
-  dialed: "Leaves out each bag's dial-in brews (the first 2, or until it settled).",
+  dialed: "Leaves out each bag's dial-in brews (the first 2, or 3 for a bag of 8+ rated brews).",
   all: 'Every rated brew, dial-in included.'
 };
 export const BYS = ['day', 'week', 'month'] as const;
