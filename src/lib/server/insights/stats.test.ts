@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mean, sd, pearson, partialR, demeaned, strengthOf, groupZ, brewZ, tTail } from './stats';
+import { mean, sd, pearson, partialR, demeaned, strengthOf, groupZ, brewZ, tTail, spearman, rBand } from './stats';
 
 describe('stats', () => {
   it('mean and population sd', () => {
@@ -67,5 +67,17 @@ describe('small samples: Student t', () => {
     expect(strengthOf(4, true, 7, 10)).toBe('solid'); // t(9) one-sided .0016 × 7 = .011 ≤ .023
     expect(strengthOf(3, true, 7, 10)).toBe('hint'); // .0075 × 7 = .052, under .067
     expect(strengthOf(9, true, 1, 1)).toBe('hidden');
+  });
+});
+
+describe('myth helpers', () => {
+  it('spearman: ranks, so one far-out point counts as one step; ties share ranks', () => {
+    expect(spearman([1, 2, 3, 4], [10, 20, 30, 1000])).toBeCloseTo(1);
+    expect(spearman([1, 2, 3, 100], [4, 3, 2, 1])).toBeCloseTo(-1);
+    expect(spearman([1, 1, 2, 2], [1, 1, 2, 2])).toBeCloseTo(1);
+  });
+  it('rBand: 2 SE of r, narrower near ±1', () => {
+    expect(rBand(103)).toBeCloseTo(0.2);
+    expect(rBand(103, 0.5)).toBeCloseTo(0.15);
   });
 });

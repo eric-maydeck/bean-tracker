@@ -5,7 +5,7 @@ import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { countsForRating } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
-import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, restZ, sd, solidBar, strengthOf, type Strength } from './stats';
+import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { BAG_MIN_BREWS, POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
@@ -339,6 +339,16 @@ const period = (c: GenCtx) => ({ start: c.period.from, end: c.period.to });
 const per100 = (b: BagFact) => (b.cost && b.amountG ? (100 * b.cost) / b.amountG : null); // cost 0/null excluded
 const moves = (r: number) => Math.abs(r) < 0.1 ? 'barely move together' : `${Math.abs(r) < 0.3 ? 'loosely' : 'clearly'} ${r < 0 ? 'move in opposite directions' : 'move together'}`;
 const myth = (f: Omit<Finding, 'kind' | 'z' | 'strength'>): Finding => ({ ...f, kind: 'myth', z: null, strength: null });
+// A myth's correlation with its margin of error (stats audit 2026-10-17: a myth is a claim of no effect, so it says
+// how big an effect the data can't rule out).
+const rValue = (r: number, n: number) => `r = ${num(r)} ± ${num(rBand(n, r))}`;
+// 'none' only when even the far end of the margin is a weak link (|r| < WEAK_R); 'unclear' while the margin still
+// spans no link; else the direction.
+const WEAK_R = 0.2;
+const rVerdict = (r: number, n: number): 'none' | 'unclear' | 'up' | 'down' => {
+  const b = rBand(n, r);
+  return Math.abs(r) + b < WEAK_R ? 'none' : Math.abs(r) < b ? 'unclear' : r > 0 ? 'up' : 'down';
+};
 const HABITS = '/insights?tab=habits';
 const DAY_NAMES = ['Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays', 'Sundays'];
 
@@ -591,11 +601,13 @@ const wildcardBrewer: Generator = (c) => {
 const priceVsRating: Generator = (c) => {
   const means = bagMeans(counted(c));
   const pts = c.bags.flatMap((b) => { const p = per100(b); return p !== null && means.has(b.id) ? [[p, means.get(b.id)!]] : []; });
-  const r = pts.length >= MIN_BREWS ? pearson(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
+  // Rank correlation: one pricey outlier bag can't make or break it.
+  const r = pts.length >= MIN_BREWS ? spearman(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
   if (r === null) return null;
   return myth({
-    key: 'priceVsRating', theme: 'money', headline: Math.abs(r) < 0.2 ? "Price doesn't buy rating" : r > 0 ? 'Pricier bags rate higher' : 'Cheaper bags rate higher',
-    value: `r = ${num(r)}`, body: `Across ${pts.length} bags, $/100 g and your bag rating ${moves(r)}.`,
+    key: 'priceVsRating', theme: 'money',
+    headline: { none: "Price doesn't buy rating", unclear: 'No clear link between price and rating yet', up: 'Pricier bags rate higher', down: 'Cheaper bags rate higher' }[rVerdict(r, pts.length)],
+    value: rValue(r, pts.length), body: `Across ${pts.length} bags, $/100 g and your bag rating ${moves(r)} (by rank).`,
     sample: `${pts.length} bags`, href: `${LB}&open=coffees&rank=ppg`
   });
 };
@@ -661,11 +673,15 @@ const restMyth: Generator = (c) => {
   const x = rows.map((r) => r.restDays!), y = rows.map((r) => r.dm);
   const r = pearson(x, y), p = partialR(x, y, rows.map((r) => r.brewIndex));
   if (r === null || p === null) return null;
+  // A null only covers the rests you brew at (mostly 30–90 days): say the range.
+  const days = [...x].sort((a, b) => a - b), lo = days[Math.floor(0.1 * (days.length - 1))], hi = days[Math.ceil(0.9 * (days.length - 1))];
   return myth({
-    key: 'restMyth', theme: 'dialin', headline: Math.abs(p) < 0.1 ? "Longer rest doesn't make a better cup" : p > 0 ? 'Longer rest helps' : 'Longer rest hurts',
-    value: `r = ${num(p)}`,
+    key: 'restMyth', theme: 'dialin',
+    headline: { none: "Longer rest doesn't make a better cup", unclear: 'No clear link between rest and rating yet', up: 'Longer rest helps', down: 'Longer rest hurts' }[rVerdict(p, rows.length)],
+    value: rValue(p, rows.length),
     body: `Rest days and rating line up at r = ${num(r)}; with brew number held fixed, r = ${num(p)}.` +
-      (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : ''),
+      (Math.abs(p) < Math.abs(r) - 0.05 ? ' Later brews of a bag are both more rested and better dialed in.' : '') +
+      ` Most brews rested ${lo}–${hi} days; outside that it can't say.`,
     sample: `${rows.length} brews`, href: `${LB}&open=coffees`
   });
 };
@@ -687,17 +703,26 @@ const restWindowMyth: Generator = (c) => {
   });
 };
 
+// Each origin vs your other bags; a myth only when every origin's gap is under 0.5. "Barely matters" also needs the
+// margin of error (2 SE) inside ±0.5, else "no origin stands out yet" (stats audit 2026-10-17: an equivalence claim).
+const ORIGIN_EVEN = 0.5;
 const originMyth: Generator = (c) => {
   const means = bagMeans(counted(c));
   const bs = c.bags.filter((b) => means.has(b.id));
-  const all = mean(bs.map((b) => means.get(b.id)!));
+  const spread = sd(bs.map((b) => means.get(b.id)!));
   const gs = [...groupBy(bs, (b) => (b.origin && b.origin !== 'Other / Unknown' ? b.origin : null)).values()].filter((g) => g.length >= MIN_BAGS);
   if (gs.length < 3) return null;
-  const max = Math.max(...gs.map((g) => Math.abs(mean(g.map((b) => means.get(b.id)!)) - all)));
-  if (max > 0.5) return null;
+  const gaps = gs.map((g) => {
+    const rest = bs.filter((b) => !g.includes(b)).map((b) => means.get(b.id)!);
+    return { d: Math.abs(mean(g.map((b) => means.get(b.id)!)) - mean(rest)), se: spread * Math.sqrt(1 / g.length + 1 / rest.length) };
+  });
+  const max = Math.max(...gaps.map((x) => x.d)), band = Math.max(...gaps.map((x) => x.d + 2 * x.se));
+  if (max > ORIGIN_EVEN) return null;
+  const sure = band <= ORIGIN_EVEN;
   return myth({
-    key: 'originMyth', theme: 'taste', headline: 'Origin barely matters', value: `±${max.toFixed(2)}`,
-    body: `All ${gs.length} origins with ${MIN_BAGS}+ bags rate within ±${max.toFixed(2)} of your average.`,
+    key: 'originMyth', theme: 'taste', headline: sure ? 'Origin barely matters' : 'No origin stands out yet', value: `±${max.toFixed(1)}`,
+    body: `All ${gs.length} origins with ${MIN_BAGS}+ bags rate within ±${max.toFixed(1)} of your other bags` +
+      (sure ? `, ±${band.toFixed(1)} at most with the margin of error.` : `; with so few bags each, the margin of error reaches ±${band.toFixed(1)}.`),
     sample: plural(sum(gs.map((g) => g.length)), 'bag'), href: `${LB}&open=origins`
   });
 };
@@ -712,8 +737,9 @@ const backlogWaitMyth: Generator = (c) => {
   const r = pts.length >= MIN_BREWS ? pearson(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
   if (r === null) return null;
   return myth({
-    key: 'backlogWaitMyth', theme: 'money', headline: Math.abs(r) < 0.2 ? "Waiting in the backlog doesn't hurt" : r < 0 ? 'Bags that wait rate lower' : 'Bags that wait rate higher',
-    value: `r = ${num(r)}`, body: `Across ${pts.length} bags, days from roast to first brew and the bag's rating ${moves(r)}.`,
+    key: 'backlogWaitMyth', theme: 'money',
+    headline: { none: "Waiting in the backlog doesn't hurt", unclear: 'No clear link between backlog wait and rating yet', up: 'Bags that wait rate higher', down: 'Bags that wait rate lower' }[rVerdict(r, pts.length)],
+    value: rValue(r, pts.length), body: `Across ${pts.length} bags, days from roast to first brew and the bag's rating ${moves(r)}.`,
     sample: `${pts.length} bags`, href: '/insights?tab=consumption'
   });
 };
@@ -721,10 +747,10 @@ const backlogWaitMyth: Generator = (c) => {
 // |r| of each brew variable vs demeaned rating (grind as its rank within one grinder); one card when all ≤ 0.1.
 const variablesMyth: Generator = (c) => {
   const rows = demeaned(counted(c));
-  const rs: { name: string; r: number }[] = [];
+  const rs: { name: string; r: number; n: number }[] = [];
   const add = (name: string, pts: number[][]) => {
     const r = pts.length >= MIN_BREWS ? pearson(pts.map((p) => p[0]), pts.map((p) => p[1])) : null;
-    if (r !== null) rs.push({ name, r });
+    if (r !== null) rs.push({ name, r, n: pts.length });
   };
   const VARS: [string, (b: BrewFact) => number | null][] = [
     ['ratio', (b) => b.ratio], ['dose', (b) => (b.dose && b.dose > 0 ? b.dose : null)], ['bloom', (b) => b.bloomSeconds], ['time', (b) => b.brewTimeSeconds]
@@ -743,7 +769,7 @@ const variablesMyth: Generator = (c) => {
   names[0] = names[0][0].toUpperCase() + names[0].slice(1);
   return myth({
     key: 'variablesMyth', theme: 'dialin', headline: 'Your brew variables barely move the rating', value: `|r| ≤ ${max.toFixed(2)}`,
-    body: `${list(names)} all stay within |r| ≤ ${max.toFixed(2)} of your rating, within a bag.`,
+    body: `${list(names)} all stay within |r| ≤ ${max.toFixed(2)} of your rating, within a bag, each give or take ${num(rBand(Math.min(...rs.map((x) => x.n))))} at most.`,
     sample: `${rows.length} brews`, href: `${LB}&open=grinder`
   });
 };

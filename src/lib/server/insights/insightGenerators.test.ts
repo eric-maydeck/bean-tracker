@@ -473,11 +473,11 @@ describe('price vs rating', () => {
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10); // V shape: r = 0
-    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: "Price doesn't buy rating", value: 'r = 0.00', sample: '30 bags', body: 'Across 30 bags, $/100 g and your bag rating barely move together.' });
+    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: 'No clear link between price and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags', body: 'Across 30 bags, $/100 g and your bag rating barely move together (by rank).' });
   });
   it('a real link says so', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
-    expect(gen('priceVsRating', brews, bs)).toMatchObject({ headline: 'Pricier bags rate higher', value: 'r = 1.00' });
+    expect(gen('priceVsRating', brews, bs)).toMatchObject({ headline: 'Pricier bags rate higher', value: 'r = 1.00 ± 0.00' });
   });
   it('cost 0 is not a price; null under 30 bags', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
@@ -525,9 +525,12 @@ describe('rest myth', () => {
   const mk = (n: number) => Array.from({ length: n }, (_, i) => seq(i + 1, [6, 7, 7.5, 8, 8, 8], '2026-07-01', (j) => ({ restDays: 10 + 2 * (j + 1) + (i % 2) * 3 }))).flat();
   it('raw r falls once brew number is held fixed', () => {
     const f = gen('restMyth', mk(10))!;
-    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', headline: "Longer rest doesn't make a better cup", value: 'r = 0.00' });
+    expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', headline: 'No clear link between rest and rating yet', value: 'r = 0.00 ± 0.26' });
     expect(f.body).toMatch(/^Rest days and rating line up at r = 0\.\d\d; with brew number held fixed, r = 0\.00\. Later brews/);
+    expect(f.body).toMatch(/ Most brews rested \d+–\d+ days; outside that it can't say\.$/);
   });
+  it('a null claim needs the whole margin under a weak link (|r| + 2 SE < 0.2)', () =>
+    expect(gen('restMyth', mk(60))).toMatchObject({ headline: "Longer rest doesn't make a better cup" }));
   it('null under 30 brews', () => expect(gen('restMyth', mk(4))).toBeNull());
 });
 
@@ -545,13 +548,19 @@ describe('rest window myth', () => {
 });
 
 describe('origin myth', () => {
-  const mk = (rates: number[], origins = ['Kenya', 'Ethiopia', 'Colombia']) => {
-    const bs = bags(9, (i) => ({ origin: origins[Math.floor(i / 3)] }));
-    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(4).fill(rates[Math.floor(i / 3)]))) };
+  const mk = (rates: number[], origins = ['Kenya', 'Ethiopia', 'Colombia'], per = 3) => {
+    const bs = bags(3 * per, (i) => ({ origin: origins[Math.floor(i / per)] }));
+    return { bs, brews: bs.flatMap((b, i) => seq(b.id, Array(4).fill(rates[Math.floor(i / per)]))) };
   };
-  it('every origin within 0.5: myth', () => {
-    const { bs, brews } = mk([8, 8.3, 7.7]);
-    expect(gen('originMyth', brews, bs)).toMatchObject({ theme: 'taste', kind: 'myth', headline: 'Origin barely matters', value: '±0.30', sample: '9 bags', body: 'All 3 origins with 3+ bags rate within ±0.30 of your average.' });
+  it('every origin within 0.5 of the other bags, margin of error too: barely matters', () => {
+    const { bs, brews } = mk([8, 8, 8.2], undefined, 30);
+    expect(gen('originMyth', brews, bs)).toMatchObject({ theme: 'taste', kind: 'myth', headline: 'Origin barely matters', value: '±0.2', sample: '90 bags',
+      body: 'All 3 origins with 3+ bags rate within ±0.2 of your other bags, ±0.2 at most with the margin of error.' });
+  });
+  it('within 0.5, but a margin of error past it: no origin stands out yet', () => {
+    const { bs, brews } = mk([8, 8.2, 7.8]);
+    expect(gen('originMyth', brews, bs)).toMatchObject({ headline: 'No origin stands out yet', value: '±0.3',
+      body: 'All 3 origins with 3+ bags rate within ±0.3 of your other bags; with so few bags each, the margin of error reaches ±0.5.' });
   });
   it('a 0.6 gap or under 3 origins: null', () => {
     let m = mk([8, 8.6, 7.4]); expect(gen('originMyth', m.brews, m.bs)).toBeNull();
@@ -566,7 +575,7 @@ describe('backlog wait myth', () => {
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10);
-    expect(gen('backlogWaitMyth', brews, bs)).toMatchObject({ kind: 'myth', headline: "Waiting in the backlog doesn't hurt", value: 'r = 0.00', sample: '30 bags' });
+    expect(gen('backlogWaitMyth', brews, bs)).toMatchObject({ kind: 'myth', headline: 'No clear link between backlog wait and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags' });
   });
   it('a link shows; freezer time is left out of the wait', () => {
     const { bs, brews } = mk((i) => 9 - i / 20);
@@ -575,7 +584,7 @@ describe('backlog wait myth', () => {
     const same = bs.map((b) => ({ ...b, firstBrew: '2026-06-30' }));
     expect(gen('backlogWaitMyth', brews, same)).toBeNull();
     const frozen = same.map((b, i) => ({ ...b, frozenStart: '2026-06-01', frozenEnd: addDays('2026-06-01', i) }));
-    expect(gen('backlogWaitMyth', brews, frozen)).toMatchObject({ headline: 'Bags that wait rate higher', value: 'r = 1.00' });
+    expect(gen('backlogWaitMyth', brews, frozen)).toMatchObject({ headline: 'Bags that wait rate higher', value: 'r = 1.00 ± 0.00' });
   });
   it('null under 30 bags', () => { const { bs, brews } = mk((i) => 9 - i / 20, 29); expect(gen('backlogWaitMyth', brews, bs)).toBeNull(); });
 });
@@ -586,7 +595,7 @@ describe('brew variables myth', () => {
   it('all |r| ≤ 0.1: one myth card', () => {
     const f = gen('variablesMyth', mk(10))!;
     expect(f).toMatchObject({ theme: 'dialin', kind: 'myth', value: '|r| ≤ 0.05', sample: '40 brews' });
-    expect(f.body).toBe('Ratio, dose and ZP6 grind all stay within |r| ≤ 0.05 of your rating, within a bag.');
+    expect(f.body).toBe('Ratio, dose and ZP6 grind all stay within |r| ≤ 0.05 of your rating, within a bag, each give or take 0.33 at most.');
   });
   it('no card when every |r| rounds to 0.00', () => expect(gen('variablesMyth', mk(10, undefined, [7.9, 8.1, 8.1, 7.9]))).toBeNull());
   it('a variable that matters: no myth', () => expect(gen('variablesMyth', mk(10, [15, 17, 17, 15]))).toBeNull());

@@ -21,6 +21,20 @@ export function pearson(xs: readonly number[], ys: readonly number[]): number | 
   return sxx === 0 || syy === 0 ? null : sxy / Math.sqrt(sxx * syy);
 }
 
+// Ranks 1..n, ties sharing their average rank.
+const ranks = (xs: readonly number[]): number[] => {
+  const o = xs.map((x, i) => [x, i]).sort((a, b) => a[0] - b[0]), r: number[] = [];
+  for (let i = 0, j = 0; i < o.length; i = j) {
+    while (j < o.length && o[j][0] === o[i][0]) j++;
+    for (let k = i; k < j; k++) r[o[k][1]] = (i + j + 1) / 2;
+  }
+  return r;
+};
+// Spearman's rank correlation: Pearson on ranks, so one extreme point (a $117/100 g bag) can't swing it.
+export const spearman = (xs: readonly number[], ys: readonly number[]): number | null => pearson(ranks(xs), ranks(ys));
+// About 2 SE of a correlation r from n points (Fisher's z, mapped back near r): the myths' margin of error.
+export const rBand = (n: number, r = 0): number => (2 * (1 - r * r)) / Math.sqrt(n - 3);
+
 // Correlation of x and y with z held constant.
 export function partialR(x: number[], y: number[], z: number[]): number | null {
   const rxy = pearson(x, y), rxz = pearson(x, z), ryz = pearson(y, z);
