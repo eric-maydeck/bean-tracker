@@ -1914,6 +1914,23 @@ export const STATES: State[] = [
       await expectEqualBoardHeights(page);
     }
   },
+  {
+    // A group board's value tip gives its score ± 1 SE; a board that differs by less than its noise is named in one
+    // line under the boards (user ruling 2026-10-17).
+    name: 'insights-leaderboards-se-tip',
+    path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+    act: async (page) => {
+      const val = page.locator('[data-board="roasters"] .val .text-tip').first();
+      await val.click();
+      const tip = page.locator('.float-tip');
+      await expect(tip.locator('dd').first()).toHaveText(/^\d+\.\d ± \d+\.\d$/);
+      await expect(tip.locator('.tip-note')).toHaveText(/standard error/);
+      await expectTipInView(page, tip);
+      const note = page.locator('.noise-note');
+      if (await note.count()) await expect(note).toHaveText(/differ by less than their noise/);
+      await expectEqualBoardHeights(page);
+    }
+  },
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-leaderboards-spend-compare',
@@ -2871,7 +2888,7 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-cut', path: () => '/insights?tab=leaderboards&process=Washed&roast=Light&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="roasters"] .board-note'))
-        .toHaveText('No roasters with 3+ bags of 4+ rated brews matching Washed · Light in this period.');
+        .toHaveText('No roasters with 3+ bags and 10+ rated brews matching Washed · Light in this period.');
       await expect(page.locator('.board-note', { hasText: /^No brews/ })).toHaveCount(0);
       await expectShortEmpty(page);
     } },

@@ -10,6 +10,16 @@ export const pooled = (bags: number, brews: number): Sample =>
   ({ bags, brews, small: brews > 0 && (bags < POOLED_MIN_BAGS || brews < POOLED_MIN_BREWS) });
 // A result about one bag or coffee.
 export const single = (brews: number): Sample => ({ bags: 1, brews, small: brews > 0 && brews < BAG_MIN_BREWS, one: true });
+// A board whose rows differ by no more than chance would make them (user ruling 2026-10-17, threshold audit: roasters
+// and origins barely differ): the variance of its row values is at most their mean SE² (an F of 1 or less).
+// Rows without an SE are left out; under 2 rows with one, false.
+export function withinNoise(rows: readonly { value: number; se?: number }[]): boolean {
+  const xs = rows.filter((r) => r.se !== undefined);
+  if (xs.length < 2) return false;
+  const m = xs.reduce((s, r) => s + r.value, 0) / xs.length;
+  const v = xs.reduce((s, r) => s + (r.value - m) ** 2, 0) / (xs.length - 1);
+  return v <= xs.reduce((s, r) => s + r.se! ** 2, 0) / xs.length;
+}
 // The tip's title, wherever a small sample is marked; the chip itself reads chipLabel (a short count).
 export const TIP_TITLE = 'Low confidence';
 const n = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;

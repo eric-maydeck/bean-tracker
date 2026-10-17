@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP } from './sample';
+import { pooled, single, sampleTip, sampleField, TIP_TITLE, chipLabel, SAMPLE_HELP, withinNoise } from './sample';
+
+describe('withinNoise', () => {
+  it('rows whose spread is at most their mean SE\u00b2 are noise; a wider spread is not', () => {
+    // values 7, 7.4: variance 0.08; SE 0.2 each → SE\u00b2 0.04 (not noise); SE 0.3 → 0.09 (noise).
+    expect(withinNoise([{ value: 7, se: 0.2 }, { value: 7.4, se: 0.2 }])).toBe(false);
+    expect(withinNoise([{ value: 7, se: 0.3 }, { value: 7.4, se: 0.3 }])).toBe(true);
+  });
+  it('needs 2 rows with an SE', () => {
+    expect(withinNoise([{ value: 7, se: 1 }, { value: 9 }])).toBe(false);
+    expect(withinNoise([])).toBe(false);
+  });
+});
 
 describe('small-sample rule', () => {
   it('pooled: small under 3 bags or 10 brews (both edges)', () => {

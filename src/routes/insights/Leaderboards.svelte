@@ -7,7 +7,8 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
-  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
+  import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, withinNoise } from '$lib/sample';
+  import type { Tip } from '$lib/components/TipBody.svelte';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
@@ -92,12 +93,23 @@
     ] }
   ];
   const DEFAULT_HELP = `Coffees: ${AVG_LABEL[COFFEES_AVG]}. Other boards: ${AVG_LABEL[DEFAULT_AVG]}.`;
-  // A Coffees row under k2/adjusted: the shrunk score and the plain average it came from (2 decimals: they can
-  // round to the same 1-decimal value).
-  const coffeeTip = (r: Row) => ({
-    title: r.label,
-    rows: [[AVG_LABEL[boardAvg('coffees', avg)], r.value.toFixed(2)], ['Plain average', r.mean!.toFixed(2)]] as [string, string][]
-  });
+  // A rating row's value tip: a Coffees row under k2/adjusted shows the shrunk score beside the plain average it came
+  // from (2 decimals: they can round to the same 1-decimal value); a group row its score ± 1 SE (user ruling
+  // 2026-10-17). null: no tip (other ranks, peak modes).
+  const valueTip = (b: Board, r: Row): Tip | null =>
+    rank !== 'rating' ? null
+    : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
+      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
+    : r.se !== undefined
+      ? { title: r.label, rows: [[AVG_LABEL[boardAvg(b, avg)], `${r.value.toFixed(1)} ± ${r.se.toFixed(1)}`]], note: '±: one standard error, about how far the next few bags could move it.' }
+    : null;
+  // Rating boards whose rows differ by less than their noise (withinNoise), named in one line under the boards.
+  const noisy = $derived(rank === 'rating' ? BANDS.flat().filter((b) => withinNoise(boards[b])) : []);
+  const names = (bs: Board[]) => {
+    const xs = bs.map((b) => BOARD_NOUN[b]);
+    const s = xs.length < 2 ? xs[0] : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`;
+    return s[0].toUpperCase() + s.slice(1);
+  };
   let help = $state<HTMLDialogElement>();
   const unranked = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () =>
@@ -206,7 +218,7 @@
                 {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
               <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}
-                >{#if b === 'coffees' && rank === 'rating' && r.mean !== undefined && !r.atBest}<TextTip label={fmt(r.value)} tip={coffeeTip(r)} />{:else}{fmt(r.value)}{/if}</span>
+                >{#if valueTip(b, r)}<TextTip label={fmt(r.value)} tip={valueTip(b, r)!} />{:else}{fmt(r.value)}{/if}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
             </li>
           {/each}
@@ -241,6 +253,7 @@
       </div>
     {/if}
   {/each}
+  {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
   {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
 {/if}
 
@@ -310,6 +323,13 @@
   .board :global(.val .text-tip) {
     position: relative;
     z-index: 1;
+  }
+  /* Phones: a 1-decimal value is ~20px wide; side padding (pulled back by the margin) grows its target to 44 (rule 4). */
+  @media (max-width: 640px) {
+    .board :global(.val .text-tip) {
+      padding-inline: 12px;
+      margin-inline: -12px;
+    }
   }
   /* The row rules (.board-rows, .board-row, .rank, .who, .val) are :global() in +page.svelte,
      shared with the lab tabs. */
