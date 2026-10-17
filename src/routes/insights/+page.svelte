@@ -704,7 +704,7 @@
     boards={data.boards}
     cut={data.boardsCut}
     rank={s.rank}
-    avg={s.avg}
+    avg={data.explicit.avg}
     open={s.open}
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}

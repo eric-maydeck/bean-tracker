@@ -1888,12 +1888,30 @@ export const STATES: State[] = [
       const dlg = page.getByRole('dialog', { name: 'How scores work' });
       await expect(dlg).toBeVisible();
       await expect(dlg).toContainText('Confidence adj. (strong)');
-      await expect(dlg).toContainText('Raw average, confident (default)');
+      await expect(dlg).toContainText('Average (3+ bags) (default for other boards)');
+      await expect(dlg).toContainText('Confidence adj. (light) (Coffees default)');
+      // Bare URL: the Score menu reads Default (each board's own); no avg param.
+      await expect(page.getByRole('combobox', { name: 'Score' })).toHaveValue('');
       await expectDialogInViewport(page);
       await expect(dlg.getByRole('button', { name: 'Close', exact: true }).last()).toBeInViewport();
       expect(page.url()).not.toContain('how');
       await page.keyboard.press('Escape');
       await expect(dlg).toBeHidden();
+    }
+  },
+  {
+    // Coffees default to k2 (shrunk by brews): a row's value tip shows the shrunk score beside the plain average
+    // (user ruling 2026-10-17), opening from the value text over the row's stretched link.
+    name: 'insights-leaderboards-coffee-tip',
+    path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const val = page.locator('[data-board="coffees"] .val .text-tip').first();
+      await val.click();
+      const tip = page.locator('.float-tip');
+      await expect(tip.locator('dt')).toHaveText(['Confidence adj. (light)', 'Plain average']);
+      await expectTipInView(page, tip);
+      await expect(page).toHaveURL(/tab=leaderboards/); // the tap opened the tip, not the coffee
+      await expectEqualBoardHeights(page);
     }
   },
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

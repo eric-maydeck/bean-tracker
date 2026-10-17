@@ -21,14 +21,18 @@ export type Ratings = (typeof RATINGS)[number];
 // Option names, used verbatim wherever a setting is shown (the URL values stay current / all).
 export const RATINGS_LABEL: Record<Ratings, string> = { current: 'Calibrated ratings', all: 'All ratings' };
 // Rating boards' score: raw mean of bag means; min3 (the same, rows marked Low confidence left out); k2 / adjusted
-// (shrunk toward the overall mean, K = 2 / 5 bags); best (highest single brew) and best-k2 / best-k5
-// (best pulled toward the overall mean, K = 2 / 5 brews at that score).
+// (shrunk toward the overall mean, K = 2 / 5 bags; a Coffees row, one bag, by K = 2 / 5 brews); best (highest single
+// brew) and best-k2 / best-k5 (best pulled toward the overall mean, K = 2 / 5 brews at that score).
 export const AVGS = ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5'] as const;
 export type Avg = (typeof AVGS)[number];
 // Old links to the retired best-half scores.
 const RETIRED_AVGS = new Map<string, Avg>([['dial-k2', 'k2'], ['dial-k5', 'adjusted']]);
-// One line to change the Score default.
+// The Score default per board (user ruling 2026-10-17): Coffees COFFEES_AVG (k2: shrunk by brews, every coffee
+// shows, a 1-brew one can't top it), every other board DEFAULT_AVG (min3: rows under 3 bags / 10 brews left out).
+// The one `avg` param: absent = these defaults; an explicit value (min3 included) applies to every board.
 export const DEFAULT_AVG: Avg = 'min3';
+export const COFFEES_AVG: Avg = 'k2';
+export const boardAvg = (board: Board, avg: Avg | undefined): Avg => avg ?? (board === 'coffees' ? COFFEES_AVG : DEFAULT_AVG);
 export const PEOPLE = ['household', 'person'] as const;
 export type People = (typeof PEOPLE)[number];
 export const BREWER_TYPES = ['pourover', 'espresso', 'immersion', 'soup', 'other'] as const;

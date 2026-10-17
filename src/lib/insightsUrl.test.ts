@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  parseInsightsUrl, insightsParams, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
+  parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import { compareFits } from '$lib/server/insights/time';
@@ -29,6 +29,17 @@ describe('parseInsightsUrl', () => {
   it('reads every avg mode, old avg=adjusted links included', () => {
     for (const a of ['raw', 'min3', 'k2', 'adjusted', 'best', 'best-k2', 'best-k5']) expect(parse(`avg=${a.toUpperCase()}`).avg).toBe(a);
     expect(insightsParams({ avg: 'raw' }).toString()).toBe('avg=raw'); // explicit default kept
+  });
+  it('avg: absent = per-board defaults (Coffees k2, others min3); an explicit value, min3 included, is every board\u2019s', () => {
+    expect(parse('').avg).toBeUndefined();
+    expect(insightsParams(parse('')).toString()).toBe('');
+    expect(boardAvg('coffees', parse('').avg)).toBe('k2');
+    expect(boardAvg('roasters', parse('').avg)).toBe('min3');
+    expect(insightsParams(parse('avg=min3')).toString()).toBe('avg=min3'); // explicit min3 stays: it changes Coffees
+    for (const b of ['coffees', 'roasters'] as const) {
+      expect(boardAvg(b, parse('avg=MIN3').avg)).toBe('min3');
+      expect(boardAvg(b, parse('avg=raw').avg)).toBe('raw');
+    }
   });
   it('maps the retired best-half scores to their nearest', () => {
     expect(parse('avg=dial-k2').avg).toBe('k2');

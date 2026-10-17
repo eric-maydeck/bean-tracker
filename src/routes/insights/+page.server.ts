@@ -59,7 +59,7 @@ export const load: PageServerLoad = ({ url }) => {
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
-  const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
+  const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, explicit.avg, size) : null;
   const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
   const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
@@ -107,7 +107,7 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
-    boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, s.avg) : [],
+    boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'

@@ -1,4 +1,4 @@
-import { BOARDS, LIKE_BOARDS, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
+import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
@@ -154,15 +154,17 @@ export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
 
 // Every board for the page. Per person divides brews, grams and spend (an even split, like
 // the overview); rating and $/g don't change (its spend and grams do), and no order changes.
+// `avg`: the URL's Score, undefined = each board's default (boardAvg).
 export function leaderboards(
   brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, prev: Period | null, rank: Rank, ratings: Ratings,
-  avg: Avg, size = 1
+  avg: Avg | undefined, size = 1
 ): Record<Board, BoardRow[]> {
   const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend');
   return Object.fromEntries(
     BOARDS.map((board) => {
-      let rows = leaderboard(brews, bags, p, board, rank, ratings, avg);
-      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, avg, false));
+      const a = boardAvg(board, avg);
+      let rows = leaderboard(brews, bags, p, board, rank, ratings, a);
+      if (prev) rows = withMovement(rows, leaderboard(brews, bags, prev, board, rank, ratings, a, false));
       if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
       return [board, split ? rows.map((r) => ({ ...r, value: r.value / size })) : rows];
     })
@@ -173,10 +175,9 @@ export function leaderboards(
 // line says what is missing ("No roasters with 3+ bags and 10+ rated brews ..."), not "No brews".
 // Where the See all note runs, hiddenRows' `cut` is the same list without the extra calls; this is the fallback.
 export function cutBoards(
-  boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg
+  boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg | undefined
 ): Board[] {
-  if (!confident(rank, avg)) return [];
-  return BOARDS.filter((b) => !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
+  return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(brews, bags, p, b, rank, ratings, 'raw', false).length);
 }
 
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid

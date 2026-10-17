@@ -144,6 +144,29 @@ describe('withMovement', () => {
     expect(withMovement([row('a'), row('b'), row('c'), row('d')], [row('b'), row('a'), row('c')]).map((r) => r.move)).toEqual([1, -1, 0, 'new']));
 });
 
+describe('coffees under k2 / adjusted: shrunk by brews', () => {
+  // A lucky 1-brew bag at 10, a 6-brew bag at 9, an 8-brew bag at 7; brew mean (10 + 54 + 56) / 15 = 8.
+  const n = (k: number, coffeeId: number, rating: number) => Array.from({ length: k }, () => brew({ coffeeId, rating }));
+  const bs = [...n(1, 1, 10), ...n(6, 2, 9), ...n(8, 3, 7)];
+  const o = 8;
+  it('K brews at the brew mean: the 6-brew bag tops; the row keeps its plain average', () => {
+    const rows = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'k2');
+    expect(rows.map((r) => r.key)).toEqual(['2', '1', '3']);
+    expect(rows[0]).toMatchObject({ value: expect.closeTo((54 + 2 * o) / 8), mean: 9 });
+    expect(rows[1]).toMatchObject({ value: expect.closeTo((10 + 2 * o) / 3), mean: 10 });
+    expect(leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'adjusted')[0].value).toBeCloseTo((54 + 5 * o) / 11);
+    expect(leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').map((r) => r.key)).toEqual(['1', '2', '3']); // Raw: no shrink
+  });
+  it('no avg param: Coffees k2, every other board min3; an explicit avg is every board\u2019s', () => {
+    const def = leaderboards(bs, [], SEPT, null, 'rating', 'all', undefined);
+    expect(def.coffees.map((r) => r.key)).toEqual(['2', '1', '3']); // k2: the 1-brew bag shows, below
+    // min3 on the group boards: one roaster (Sey), 3 bags and 15 brews, passes; its mean weights each bag n/(n+2).
+    expect(def.roasters.map((r) => r.value)).toEqual([expect.closeTo((0.75 * 9 + 0.8 * 7 + (1 / 3) * 10) / (0.75 + 0.8 + 1 / 3))]);
+    expect(leaderboards(bs, [], SEPT, null, 'rating', 'all', 'min3').coffees.map((r) => r.key)).toEqual(['2', '3']);
+    expect(cutBoards(def, bs, [], SEPT, 'rating', 'all', undefined)).not.toContain('coffees');
+  });
+});
+
 describe('leaderboards', () => {
   it('every board, movement only with a compare window', () => {
     const all = leaderboards(BREWS, BAGS, SEPT, null, 'brews', 'all', 'raw');

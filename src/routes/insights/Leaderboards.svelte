@@ -4,10 +4,11 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS } from '$lib/sample';
-  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
@@ -16,7 +17,8 @@
   let {
     boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose
   }: {
-    boards: Rows; cut: Board[]; rank: Rank; avg: Avg; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    // avg: the URL's Score; undefined = each board's default (boardAvg).
+    boards: Rows; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -42,7 +44,7 @@
   const detail = (r: Row) =>
     [
       r.sub,
-      ...(avg.startsWith('best') && rank === 'rating' && r.atBest
+      ...(avg?.startsWith('best') && rank === 'rating' && r.atBest
         ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
         : rank === 'ppg' && r.cost !== undefined
           ? [plural(r.bags, 'bag'), usd(r.cost), formatGrams(r.grams!)]
@@ -63,14 +65,14 @@
     like: "Rating minus similar coffees' (same roast; process, roaster and origin too when there are enough)."
   };
   const AVG_LABEL: Record<Avg, string> = {
-    raw: 'Raw average', min3: 'Raw average, confident', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
+    raw: 'Raw average', min3: 'Average (3+ bags)', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
     best: 'Best brew', 'best-k2': 'Best, conf. adj. (light)', 'best-k5': 'Best, conf. adj. (strong)'
   };
   const AVG_HELP: Record<Avg, string> = {
     raw: "Average of each bag's rating, all groups ranked together.",
     min3: 'Leaves out coffees with under 4 rated brews and groups under 3 bags or 10 rated brews.',
-    k2: "Adjusted for confidence: pulled toward your overall average until a group has about 2 bags, so 1–2 bag groups can't top the board (light).",
-    adjusted: 'Adjusted for confidence: pulled strongly toward your overall average until a group has about 5 bags (strong).',
+    k2: "Adjusted for confidence: pulled toward your overall average until a group has about 2 bags, a coffee about 2 brews (light).",
+    adjusted: 'Adjusted for confidence: pulled strongly toward your overall average until a group has about 5 bags, a coffee about 5 brews (strong).',
     best: 'The highest single brew rating in the group.',
     'best-k2': 'Best single brew, adjusted for confidence: pulled toward your overall average until the group has hit that score about 2 times (light).',
     'best-k5': 'Best single brew, adjusted for confidence: pulled toward your overall average until the group has hit that score about 5 times (strong).'
@@ -80,8 +82,8 @@
     { group: 'Average', items: [
       { id: 'raw', text: "The average of each bag's rating; a bag counts once, weighted by its rated brews (n/(n+2): 1 brew a third, 4 brews two thirds, 10 brews 0.83), so a sachet brewed once can't outvote a full bag.", eg: 'Bags at 9 (10 brews) and 6 (1 brew) → 8.1. A one-bag roaster at 9.5 ranks above them.' },
       { id: 'min3', text: 'The same average; rows marked Low confidence are left out: coffees with under 4 rated brews, groups under 3 bags or 10 rated brews.', eg: 'A one-bag roaster at 9.5 is not listed; a 3-bag, 12-brew roaster at 8 is.' },
-      { id: 'k2', text: 'Adjusted for confidence: the average pulled toward your overall average, as if every group had 2 extra full-weight bags at that average (light).', eg: 'One full bag at 10 → 8.0. Four at 9 → 8.3.' },
-      { id: 'adjusted', text: 'The same, with 5 extra bags (strong): small groups stay close to your overall average.', eg: 'One bag at 10 → 7.5. Four bags at 9 → 7.9.' }
+      { id: 'k2', text: "Adjusted for confidence: the average pulled toward your overall average, as if every group had 2 extra bags at that average (light). A coffee (one bag) gets 2 extra brews instead, so one lucky brew can't top the board.", eg: "A roaster's one 10-brew bag at 10 → 7.9; four at 9.5 → 8.6. A coffee at 9 over 6 brews → 8.5." },
+      { id: 'adjusted', text: 'The same, with 5 extra bags, or 5 extra brews for a coffee (strong): small groups stay close to your overall average.', eg: 'One 10-brew bag at 10 → 7.4; four at 9.5 → 8.0. A coffee at 9 over 6 brews → 8.1.' }
     ] },
     { group: 'Peak', items: [
       { id: 'best', text: 'The highest single brew rating in the group.', eg: 'Brews of 8, 9 and 10 → 10.' },
@@ -89,6 +91,13 @@
       { id: 'best-k5', text: 'The same, with 5 extra brews.', eg: 'One 10 → 7.5. Four 9.5s → 8.1.' }
     ] }
   ];
+  const DEFAULT_HELP = `Coffees: ${AVG_LABEL[COFFEES_AVG]}. Other boards: ${AVG_LABEL[DEFAULT_AVG]}.`;
+  // A Coffees row under k2/adjusted: the shrunk score and the plain average it came from (2 decimals: they can
+  // round to the same 1-decimal value).
+  const coffeeTip = (r: Row) => ({
+    title: r.label,
+    rows: [[AVG_LABEL[boardAvg('coffees', avg)], r.value.toFixed(2)], ['Plain average', r.mean!.toFixed(2)]] as [string, string][]
+  });
   let help = $state<HTMLDialogElement>();
   const unranked = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () =>
@@ -125,7 +134,9 @@
     <div class="mode-tip" id="tip-score" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Score', lines: ['How each score is worked out.', 'Click for the full explanation.'] }} /></div>
     <div class="form-field">
       <span><button class="mode-tip-button" aria-haspopup="dialog" data-tip="tip-score" onclick={() => help?.showModal()}><span class="tip-text">Score</span><Icon name="question" /></button></span>
-      <select aria-label="Score" value={avg} onchange={(e) => choose({ avg: e.currentTarget.value as Avg })}>
+      <!-- Default (no avg param): each board's own Score (boardAvg); any other pick applies to every board. -->
+      <select aria-label="Score" value={avg ?? ''} onchange={(e) => choose({ avg: (e.currentTarget.value || undefined) as Avg | undefined })}>
+        <option value="" title={DEFAULT_HELP}>Default</option>
         <optgroup label="Average">
           {#each ['raw', 'min3', 'k2', 'adjusted'] as const as a (a)}<option value={a} title={AVG_HELP[a]}>{AVG_LABEL[a]}</option>{/each}
         </optgroup>
@@ -148,11 +159,12 @@
     <button class="button button-ghost close" aria-label="Close" onclick={() => help?.close()}>×</button>
   </header>
   <div class="how-body">
+    <p><b>Default.</b> {DEFAULT_HELP}</p>
     {#each HOW as g (g.group)}
       <h3>{g.group}</h3>
       {#each g.items as it (it.id)}
         <p>
-          <b>{AVG_LABEL[it.id]}{it.id === DEFAULT_AVG ? ' (default)' : ''}.</b>
+          <b>{AVG_LABEL[it.id]}{it.id === COFFEES_AVG ? ' (Coffees default)' : it.id === DEFAULT_AVG ? ' (default for other boards)' : ''}.</b>
           {it.text} <span class="eg">{it.eg}</span>
         </p>
       {/each}
@@ -193,7 +205,8 @@
                 <!-- Under rank=like the value already is this gap. -->
                 {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
-              <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}>{fmt(r.value)}</span>
+              <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}
+                >{#if b === 'coffees' && rank === 'rating' && r.mean !== undefined && !r.atBest}<TextTip label={fmt(r.value)} tip={coffeeTip(r)} />{:else}{fmt(r.value)}{/if}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
             </li>
           {/each}
@@ -292,6 +305,11 @@
   }
   .board {
     margin: 0;
+  }
+  /* A value's tip (TextTip) sits over the row's stretched link, so hover and tap reach it (ui-rules 41). */
+  .board :global(.val .text-tip) {
+    position: relative;
+    z-index: 1;
   }
   /* The row rules (.board-rows, .board-row, .rank, .who, .val) are :global() in +page.svelte,
      shared with the lab tabs. */
