@@ -23,6 +23,7 @@
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
 
   let { t, theme, inputs, today, explicit, placeTip, choose }: {
     t: InsightsTab; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;
@@ -167,6 +168,16 @@
   const r1 = (n: number) => +n.toFixed(1);
   const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
+  // Page-wide multiple comparisons (stats audit 2026-10-17): every badged test shown, and how many Likely badges a
+  // page of them earns by chance (about 1 in 20 tests of a zero gap). Picks from a set (weekdays…) are already
+  // Bonferroni-held, so this is an upper bound.
+  let tested = $derived([...t.grid, ...t.stories, ...t.tooEarly].filter((f) => f.z !== null && f.kind !== 'story').length);
+  const MANY_TIP: Tip = { title: 'Many findings at once', lines: [
+    'Each badge is about 95% (Likely) or 87% (Possible) sure on its own.',
+    'Over 20 tests of gaps that are really zero, about 1 still earns Likely by chance.',
+    'Picks from a set (the best weekday, roaster or dripper) already meet a stricter bar.'
+  ] };
+
   // ---- Too early to tell: what was seen, the sample, why it isn't trusted yet, what would settle it. ----
   const early = (f: Finding) => f.caveat ?? 'Not yet enough to rule out chance.';
   const pct = (p: number) => `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
@@ -283,6 +294,10 @@
         </div>
       {/each}
     </div>
+  {/if}
+  {#if tested}
+    {@const k = Math.round(tested / 20)}
+    <p class="chart-note many">This page tests <TextTip label="{tested} findings" tip={MANY_TIP} />: by chance alone, {k ? `about ${k}` : 'under one'} would earn Likely.</p>
   {/if}
 </section>
 
