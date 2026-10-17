@@ -51,7 +51,7 @@ const num = (x: number, d = 2) => (+x.toFixed(d) || 0).toFixed(d); // never "-0.
 const signed = (x: number, d = 2) => `${+x.toFixed(d) < 0 ? '-' : '+'}${Math.abs(x).toFixed(d)}`;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rated = (b: BrewFact) => b.rating !== null && b.rating > 0; // 0 = not entered
-const counted = (c: GenCtx) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
+const counted = (c: Pick<GenCtx, 'brews' | 'ratings'>) => c.brews.filter((b) => countsForRating(b, c.ratings) && rated(b));
 const bagLabel = (c: GenCtx, id: number, b = bagById(c).get(id)) => (b ? `${b.roaster} ${b.name}` : `Bag ${id}`);
 // Mean rating per bag, for bags with at least MIN_BAGS rated brews.
 const bagMeans = (rows: readonly BrewFact[]): Map<number, number> =>
@@ -92,7 +92,8 @@ function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, 
 }
 
 const LB = '/insights?tab=leaderboards';
-const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // settle speed and rescues: the Brewing tab's Dial-in chart
+const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // rescues: the Brewing tab's Dial-in chart
+const SETTLE: Record<'roastLevel' | 'processGroup', string> = { roastLevel: '/insights?tab=brewing#brewing-settle-roast', processGroup: '/insights?tab=brewing#brewing-settle-process' }; // dialinBy: its chart
 
 const dialinCurve: Generator = (c) => {
   const all = demeaned(counted(c));
@@ -131,15 +132,25 @@ const dialinCurve: Generator = (c) => {
 
 // Rated brews to reach the bag's settled rating: the first at or above (mean of its best half) - 0.5.
 // Bags with 5+ counted rated brews that began in the period; `month` = the month of its first rated brew.
-const settlePositions = (c: GenCtx) => {
-  const out: { id: number; pos: number; month: string }[] = [];
+const settlePositions = (c: Pick<GenCtx, 'brews' | 'ratings'>) => {
+  const out: { id: number; pos: number; month: string; n: number; roastLevel: string | null; processGroup: string | null }[] = [];
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
     if (bs.length < 5 || firstIdx.get(id) !== 1) continue;
-    out.push({ id, pos: settleAt(bs.map((b) => b.rating!)), month: bs[0].localDate.slice(0, 7) });
+    const { roastLevel, processGroup } = bs[0];
+    out.push({ id, pos: settleAt(bs.map((b) => b.rating!)), month: bs[0].localDate.slice(0, 7), n: bs.length, roastLevel, processGroup });
   }
   return out;
 };
+// Dial-in speed per roast level or process group (spec Part 4): the median brew its bags settle at (settleAt), as
+// whole brews rounded up; `brews`: in-period, every rating (Once dialed exempts dial-in). Unknown groups are left out.
+// The dialinBy findings keep groups of 3+ bags; the Brewing charts show all, marking the pooled rule's small ones.
+export function settleGroups(c: Pick<GenCtx, 'brews' | 'ratings'>, dim: 'roastLevel' | 'processGroup') {
+  return [...groupBy(settlePositions(c), (x) => (x[dim] && x[dim] !== 'Other / Unknown' ? x[dim] : null))].map(([label, g]) => {
+    const brews = g.reduce((n, x) => n + x.n, 0);
+    return { label: label!, value: Math.ceil(median(g.map((x) => x.pos))), bags: g.length, brews, ps: g.map((x) => x.pos), sample: pooled(g.length, brews) };
+  });
+}
 const dialinSpeed: Generator = (c) => {
   const slow = settlePositions(c);
   if (slow.length < MIN_BAGS) return null;
@@ -784,12 +795,10 @@ const likeStandouts: Generator = (c) => {
 // group of 3+ bags (each has 5+ rated brews, so the brew half of the pooled rule always holds). Descriptive.
 const dialinByGroup: Generator = (c) => {
   const pos = settlePositions({ ...c, brews: c.allBrews });
-  const byId = bagById(c), allPos = pos.map((x) => x.pos);
+  const allPos = pos.map((x) => x.pos);
   return (['roastLevel', 'processGroup'] as const).flatMap((dim) => {
-    // Group medians print as whole brews (rounded up). Groups under the pooled bag rule are left out.
-    const groups = [...groupBy(pos, (x) => { const v = byId.get(x.id)?.[dim]; return v && v !== 'Other / Unknown' ? v : null; })]
-      .filter(([, g]) => g.length >= POOLED_MIN_BAGS)
-      .map(([label, g]) => ({ label: label!, value: Math.ceil(median(g.map((x) => x.pos))), bags: g.length, ps: g.map((x) => x.pos) }));
+    // Groups under the pooled bag rule are left out.
+    const groups = settleGroups({ ...c, brews: c.allBrews }, dim).filter((g) => g.bags >= POOLED_MIN_BAGS);
     if (groups.length < 2) return [];
     // Ties go to the group with more bags.
     const by = (dir: 1 | -1) => (a: (typeof groups)[0], b: (typeof groups)[0]) => dir * (a.value - b.value) || b.bags - a.bags || a.label.localeCompare(b.label);
@@ -800,7 +809,7 @@ const dialinByGroup: Generator = (c) => {
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
-      href: DIAL_IN
+      href: SETTLE[dim]
     }, groupZ(slow.ps, allPos), true, 'bags', slow.bags, undefined, groups.length);
     return f ? [f] : [];
   });

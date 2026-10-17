@@ -11,6 +11,7 @@
   import LabHeatmap from './LabHeatmap.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import { fitPairs } from './fitPairs';
+  import BarLabels from './BarLabels.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: BrewingTab; lab: LabOptions; s: InsightsView;
@@ -18,7 +19,9 @@
   } = $props();
 
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
-  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !t.drift.length && !t.vars.length);
+  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !t.settle.roast.length && !t.settle.process.length && !t.drift.length && !t.vars.length);
+  // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
+  const SETTLE = [['roast', 'roast level'], ['process', 'process']] as const;
   // Fixed slots (G9/B5): a toggle or Break down by never moves a chart. Pairs share a row (one height); Brew
   // time is full width; Grind drift sits beside Grind. A slot with no data leaves its partner the full row.
   const SLOTS: (BrewVar | 'drift')[][] = [['temp', 'ratio'], ['dose', 'bloom'], ['time'], ['grind', 'drift']];
@@ -50,7 +53,7 @@
     </section>
   {/if}
 
-  {#if t.dialIn.length || t.bestAt.length}
+  {#if t.dialIn.length || t.bestAt.length || t.settle.roast.length || t.settle.process.length}
     <div class="lab-grid" use:fitPairs={t}>
       {#if t.dialIn.length}
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
@@ -69,6 +72,26 @@
           <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews){s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
         </section>
       {/if}
+      {#each SETTLE as [k, by] (k)}
+        {@const rows = t.settle[k]}
+        {@const max = Math.max(...rows.map((g) => g.value))}
+        {#if rows.length}
+          <section class="chart-panel lab-chart" class:span={!t.settle[k === 'roast' ? 'process' : 'roast'].length} data-section="brewing-settle-{k}">
+            <LabHead id="brewing-settle-{k}" title="Brews until dialed in, by {by}" {placeTip}
+              help={["Each bag's settle point: its first brew within 0.5 of its best half's average.", `Per ${by}: the middle bag's, in whole brews.`,
+                'Bags with 5+ rated brews that started this period.', SAMPLE_HELP]} />
+            <div class="fit-body">
+              <div class="settle">
+                <div class="settle-cols" role="img" aria-label="Brews until dialed in by {by}: {rows.map((g) => `${g.label} ${g.value} (${g.bags} bags)`).join(', ')}">
+                  {#each rows as g (g.label)}<span class="col"><span class="bar" class:small-sample-mark={g.sample.small} style:height="{(g.value / max) * 100}%"></span></span>{/each}
+                </div>
+                <BarLabels series={rows} full />
+              </div>
+            </div>
+            <p class="chart-note">Median settle brew per {by}{s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
+          </section>
+        {/if}
+      {/each}
     </div>
   {/if}
 
@@ -169,6 +192,38 @@
   .best-chart :global(.chart-container canvas) {
     position: absolute;
     inset: 0;
+  }
+  /* Brews until dialed in: columns from a zero baseline, filling the card's spare height (fitPairs). */
+  .settle {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .settle-cols {
+    flex: 1 0 8rem;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    align-items: end;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .settle-cols .col {
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .settle-cols .bar {
+    width: min(100%, 3rem);
+    border-radius: 3px 3px 0 0;
+    background-color: var(--series-brown-1);
+  }
+  /* A panel has room for whole names: they wrap under their column instead of an ellipsis. */
+  .settle :global(.bar-labels.full span) {
+    font-size: 0.75rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   /* viewport 900px (no rail; the rail narrows it) */
   @container insights (min-width: 868px) {

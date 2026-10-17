@@ -2395,10 +2395,25 @@ export const STATES: State[] = [
       await expect(page.locator('.spot-picker').getByLabel('Process')).toHaveCount(0);
       await expect(page.getByRole('button', { name: 'Reset picker' })).toHaveCount(0);
     } },
+  // Gate P4: Brews until dialed in by roast level and by process, beside each other from 900px; whole group names.
+  { name: 'insights-brewing-settle', path: () => '/insights?tab=brewing&range=all#brewing-settle-roast',
+    act: async (page) => {
+      const cards = page.locator('[data-section^="brewing-settle-"]');
+      await expect(cards.first()).toBeVisible();
+      for (const c of await cards.all()) {
+        const n = await c.locator('.settle-cols .col').count();
+        expect(n).toBeGreaterThanOrEqual(2);
+        await expect(c.locator('.bar-labels span')).toHaveCount(n);
+        // Names are whole: no label is cut.
+        const cut = await c.locator('.bar-labels span').evaluateAll((ss) => ss.filter((x) => x.scrollWidth > x.clientWidth + 1).length);
+        expect(cut).toBe(0);
+      }
+      await expectPairsFilled(page, '.lab-grid');
+    } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
-        await expect(page.getByRole('heading', { name: h })).toBeVisible();
+        await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
       // Fixed slots (G9/B5): Temp | Ratio, Dose | Bloom, Brew time full width, Grind | Grind drift.
       const order = await page.locator('.brewing-vars .lab-chart').evaluateAll((ps) => ps.map((p) => (p as HTMLElement).dataset.section));
       expect(order).toEqual(['temp', 'ratio', 'dose', 'bloom', 'time', 'grind', 'drift'].map((k) => `brewing-${k}`));

@@ -318,6 +318,17 @@ describe('sweetSpotsTab', () => {
 
 describe('brewingTab', () => {
   const c0 = { period: P, ratings: 'all' as const, grinder: null, by: {}, exact: {} };
+  it('brews until dialed in: the median settle brew per roast level and process, small groups marked (gate P4)', () => {
+    const bag = (id: number, roastLevel: string, rs: number[]) =>
+      rs.map((rating, i) => brew({ coffeeId: id, roastLevel, processGroup: 'Washed', rating, brewIndex: i + 1 }));
+    const all = [...[1, 2, 3].flatMap((id) => bag(id, 'Light', [8, 8, 8, 8, 8])), ...[4, 5].flatMap((id) => bag(id, 'Nordic', [5, 6, 7, 8, 8]))];
+    const t = brewingTab(all, { ...c0, all });
+    expect(t.settle.roast).toEqual([
+      { label: 'Light', value: 1, bags: 3, brews: 15, sample: { bags: 3, brews: 15, small: false } },
+      { label: 'Nordic', value: 4, bags: 2, brews: 10, sample: { bags: 2, brews: 10, small: true } }
+    ]);
+    expect(t.settle.process).toEqual([]); // one group: nothing to compare
+  });
   // 3 Light + 3 Nordic bags: 10 brews each at rest 10 (0–21 d), 25 (22–30 d), 35 (31–45 d); 91 °C beats 94 °C.
   const rows = [1, 2, 3, 4, 5, 6].flatMap((id) => [10, 25, 35].flatMap((rest, k) =>
     Array.from({ length: 10 }, (_, i) => brew({ coffeeId: id, restDays: rest, roastLevel: id < 4 ? 'Light' : 'Nordic', tempC: i % 2 ? 91 : 94,
@@ -416,7 +427,7 @@ describe('brewingTab', () => {
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { all: rows, period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
-    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], vars: [] });
+    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], drift: [], settle: { roast: [], process: [] }, vars: [] });
   });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };

@@ -2,7 +2,7 @@ import { pooled, single, type Sample } from '$lib/sample';
 import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
 import { grindKey, type BagFact, type BrewFact } from './facts';
-import { monthlyMulti, type Multi } from './insightGenerators';
+import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
 import { likeGaps } from './likeGroup';
@@ -300,6 +300,9 @@ export interface BrewingTab {
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
   drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
+  // Brews until dialed in (gate P4): per roast level / process group, the median brew its bags settle at (the dialinBy
+  // findings' measure), fastest first; empty under 2 groups.
+  settle: Record<'roast' | 'process', { label: string; value: number; bags: number; brews: number; sample: Sample }[]>;
   vars: VarChart[];
 }
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -348,6 +351,12 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     dialIn: pairedDeltas(every, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],
+    settle: Object.fromEntries((['roast', 'process'] as const).map((k) => {
+      const g = settleGroups({ brews: c.all.filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
+        .sort((a, b) => a.value - b.value || b.bags - a.bags || a.label.localeCompare(b.label))
+        .map(({ label, value, bags, brews, sample }) => ({ label, value, bags, brews, sample }));
+      return [k, g.length >= 2 ? g : []];
+    })) as BrewingTab['settle'],
     vars: VARS.flatMap((key) => {
       const f = labFn(c.exact[key] ? `${key}Exact` : key, c.grinder); // each chart's own Band/Exact toggle (G10)
       // A band with no paired brews carries no delta: dropped, except exact temps (every whole °C used is listed, user)

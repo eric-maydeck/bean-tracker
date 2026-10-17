@@ -12,6 +12,7 @@
 
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
+  import BarLabels from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { formatGrams } from '$lib/grams';
@@ -230,12 +231,7 @@
             class:weekend={/^(Sat|Sun)/.test(p.label)} />
         {/each}
       </svg>
-      <div class="bar-labels" class:full={f.barLabels === 'full'} aria-hidden="true" style:--n={f.series.length}>
-        {#each f.series as p, i (i)}
-          {#if f.barLabels === 'full'}<span title={p.label}><b>{+p.value.toFixed(2)}</b>{p.label}</span>
-          {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
-        {/each}
-      </div>
+      <BarLabels series={f.series} full={f.barLabels === 'full'} />
     </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
@@ -580,7 +576,7 @@
     width: 100%;
     max-width: 14rem;
   }
-  .bars:has(.bar-labels.full) {
+  .bars:has(:global(.bar-labels.full)) {
     max-width: none;
   }
   .bars svg {
@@ -596,49 +592,6 @@
     stroke: var(--series-brown-2-ink);
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
-  }
-  .bar-labels {
-    display: grid;
-    grid-template-columns: repeat(var(--n), minmax(0, 1fr));
-    margin-top: 0.15rem;
-    color: var(--color-text-muted);
-    font-size: 0.68rem;
-    text-align: center;
-  }
-  /* Full labels (roast / process groups): the value, then the name, cut with an ellipsis rather than spilling. */
-  .bar-labels.full span {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 0.62rem;
-    line-height: 1.15;
-  }
-  /* Phones: columns are too narrow for names, so the labels wrap as "value name" chips under the bars, whole. */
-  @media (max-width: 480px) {
-    .bar-labels.full {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0 0.6rem;
-    }
-    .bar-labels.full span {
-      flex: none;
-      max-width: 100%;
-    }
-    .bar-labels.full b {
-      display: inline;
-      margin-right: 0.25em;
-    }
-  }
-  .bar-labels.full b {
-    display: block;
-    color: var(--color-text);
-    font-weight: 700;
-  }
-  .bar-labels .weekend {
-    color: var(--color-text);
-    font-weight: 700;
   }
   .hl-card > .bars,
   .hl-card > .multi,
