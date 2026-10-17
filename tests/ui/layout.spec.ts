@@ -1912,23 +1912,23 @@ export const STATES: State[] = [
       await page.getByLabel('Rank by').selectOption('spend');
       await expect(page.locator('[data-board="coffees"] .like-line').first()).toBeVisible();
     } },
-  // Gate P4: a cut like line opens its full text on tap (the line is narrowed here so every viewport has one cut),
-  // and on Enter from the keyboard; one tip at a time.
+  // Gate P4: a cut like line opens its full text (the shared FloatTip) on tap, hover and keyboard focus/Enter (the line
+  // is narrowed so every viewport has one cut); one tip at a time; a whole line's tap goes on to the row's link.
   { name: 'insights-like-line-tip', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       const lines = page.locator('[data-board="coffees"] .like-line');
-      const line = lines.first();
-      const text = (await line.getAttribute('title'))!;
-      await line.evaluate((e) => (e.style.maxWidth = '4rem'));
-      await line.click();
-      const tip = page.locator('.mode-tip:popover-open');
+      const tip = page.locator('.float-tip');
+      for (const i of [0, 1]) await lines.nth(i).evaluate((e) => (e.style.maxWidth = '4rem'));
+      const text = (i: number) => lines.nth(i).evaluate((e) => e.textContent!);
+      await lines.first().click();
       await expect(tip).toHaveCount(1);
-      await expect(tip).toHaveText(text);
+      await expect(tip).toHaveText(await text(0));
       await expect(page).toHaveURL(/tab=leaderboards/); // the tap opened the tip, not the row's link
       await lines.nth(1).focus();
       await page.keyboard.press('Enter');
       await expect(tip).toHaveCount(1);
-      await expect(tip).toHaveText((await lines.nth(1).getAttribute('title'))!);
+      await expect(tip).toHaveText(await text(1));
+      await expectTipInView(page, tip);
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {

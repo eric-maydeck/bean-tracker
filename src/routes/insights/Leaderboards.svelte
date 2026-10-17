@@ -184,7 +184,7 @@
                 {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
                 <span class="who-line"><small>{detail(r)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
                 <!-- Under rank=like the value already is this gap. -->
-                {#if r.like && rank !== 'like'}<LikeLine like={r.like} {placeTip} />{/if}
+                {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}
               </span>
               <span class={rank === 'like' ? `val ${deltaInk(r.value)}` : 'val'}>{fmt(r.value)}</span>
               {#if comparing}<span class="move {m?.cls ?? ''}" role="img" aria-label={m?.label}>{m?.text}</span>{/if}
