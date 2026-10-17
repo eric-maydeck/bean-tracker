@@ -4,7 +4,7 @@ import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { countsForRating, fullBags, ratedGroups } from './ratings';
-import { likeGaps, roasterLikes } from './likeGroup';
+import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
 import { pooled, single, type Sample } from '$lib/sample';
@@ -91,7 +91,7 @@ export function leaderboard(
   // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
   // Coffees rows carry the line under every rank (gate P4: under like the value already is it).
   const likeRows = () => inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
-  const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows()) : null;
+  const likes = board === 'coffees' && (rank === 'like' || like) ? likeGaps(likeRows(), false, twinKeys(bags)) : null;
   if (rank === 'spend' || rank === 'ppg') {
     const key = BAG_KEY[board];
     if (!key) return [];
@@ -116,7 +116,7 @@ export function leaderboard(
       if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
         ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...roasterLikes(likeRows())].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
+        : [...roasterLikes(likeRows(), twinKeys(bags))].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
       // A pooled board counts full bags only (fullBags); Coffees rows are single bags, the one-bag rule marks them.
       rows = ratedGroups(board === 'coffees' ? inP : fullBags(inP, ratings), key, ratings, avg).map((r) => ({

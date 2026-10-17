@@ -1,7 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { DEFAULTS, type LikeView } from '$lib/insightsUrl';
 import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, pooled, single, type Sample } from '$lib/sample';
-import { loadFacts, type BrewFact } from './facts';
+import { loadFacts, type BagFact, type BrewFact } from './facts';
 import { dialInIds, onceDialed } from './dialed';
 import { countsForRating, fullBags } from './ratings';
 import { groupsFor, type LabFilters } from './lab';
@@ -32,7 +32,9 @@ const filtersOf = (b: BrewFact): LabFilters | null =>
 // ponytail: O(bags × same-roast brews) per call; every step has the bag's roast level, so rows are pre-split by it.
 // `outside`: for roaster-level comparisons. The group leaves out every bag of the bag's own roaster and the
 // ladder skips its roaster step, so a roaster is never compared against itself.
-export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number, Like> {
+// `twins` (twinKeys): a repurchase of the same coffee is left out of its twin's group, so a coffee is never compared
+// with itself (stats audit 2026-10-17: 9 twin pairs sat in each other's groups).
+export function likeGaps(rows: readonly BrewFact[], outside = false, twins?: ReadonlyMap<number, string>): Map<number, Like> {
   const byBag = groupBy(rows, (b) => b.coffeeId);
   const score = new Map([...byBag].map(([id, bs]) => [id, mean(bs.map((b) => b.rating!))]));
   const byRoast = groupBy(fullBags(rows, 'all'), (b) => b.roastLevel);
@@ -42,7 +44,8 @@ export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number
     if (!f) continue;
     const r = bs[0].roaster;
     if (outside) delete f.roaster;
-    const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.coffeeId !== id && !(outside && r && b.roaster === r)), f)
+    const twin = twins?.get(id!);
+    const g = groupsFor((byRoast.get(f.roast!) ?? []).filter((b) => b.coffeeId !== id && !(twin && twins!.get(b.coffeeId!) === twin) && !(outside && r && b.roaster === r)), f)
       // pooled() calls an empty group "no data", not small, so an empty step must be rejected here.
       .find((x) => x.brews.length > 0 && !pooled(new Set(x.brews.map((b) => b.coffeeId)).size, x.brews.length).small);
     if (!g) continue;
@@ -56,14 +59,18 @@ export function likeGaps(rows: readonly BrewFact[], outside = false): Map<number
   return out;
 }
 
+// Each bag's coffee (roaster + name, case-insensitive, as repeatBuys keys repurchases), for likeGaps' `twins`.
+export const twinKeys = (bags: readonly BagFact[]): Map<number, string> =>
+  new Map(bags.map((b) => [b.id, `${b.roaster.toLowerCase()}|${b.name.toLowerCase()}`]));
+
 export interface RoasterLike { gap: number; gaps: number[]; bags: number; brews: number }
 // Each roaster's bag-weighted mean gap against like coffees from other roasters (likeGaps `outside`), over its bags
 // past the one-bag rule (a 1-brew bag's gap is a full point otherwise). The one computation behind the Leaderboards
 // roaster row and the likeRoaster finding.
-export function roasterLikes(rows: readonly BrewFact[]): Map<string, RoasterLike> {
+export function roasterLikes(rows: readonly BrewFact[], twins?: ReadonlyMap<number, string>): Map<string, RoasterLike> {
   const roasterOf = new Map(rows.map((b) => [b.coffeeId, b.roaster]));
   const out = new Map<string, RoasterLike>();
-  for (const [r, g] of groupBy([...likeGaps(rows, true)].filter(([id, l]) => roasterOf.get(id) && !l.sample.small), ([id]) => roasterOf.get(id)!)) {
+  for (const [r, g] of groupBy([...likeGaps(rows, true, twins)].filter(([id, l]) => roasterOf.get(id) && !l.sample.small), ([id]) => roasterOf.get(id)!)) {
     const gaps = g.map(([, l]) => l.gap);
     out.set(r, { gap: mean(gaps), gaps, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
   }
@@ -84,9 +91,9 @@ export interface NoLike { why: string; rows: [string, string][]; fix: LikeView |
 // The panel for a coffee under a view, or why there is none; null when the coffee has no rated brews at all.
 // ponytail: loads every brew per coffee-page view, up to 5 likeGaps runs when there is no panel; cache if it ever shows.
 export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { like: Like } | NoLike | null {
-  const { brews } = loadFacts(db);
-  const dialIn = dialInIds(brews);
-  const like = likeGaps(viewRows(brews, dialIn, v)).get(id);
+  const { brews, bags } = loadFacts(db);
+  const dialIn = dialInIds(brews), twins = twinKeys(bags);
+  const like = likeGaps(viewRows(brews, dialIn, v), false, twins).get(id);
   if (like) return { like };
   const mine = brews.filter((b) => b.coffeeId === id && b.rating !== null && b.rating > 0);
   if (!mine.length) return null;
@@ -114,6 +121,6 @@ export function coffeeLike(db: DatabaseSync, id: number, v: LikeView = {}): { li
   // The nearest view with a comparison: Caffeine first for a decaf coffee, then Ratings, Brews, both.
   const base: LikeView = decaf ? { ...v, caffeine: 'all' } : v;
   const fix = ([base, { ...base, ratings: 'all' }, { ...base, dial: 'all' }, { ...base, ratings: 'all', dial: 'all' }] as LikeView[])
-    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x)).has(id));
+    .find((x) => JSON.stringify(x) !== JSON.stringify(v) && likeGaps(viewRows(brews, dialIn, x), false, twins).has(id));
   return { why, rows, fix: fix ?? null };
 }

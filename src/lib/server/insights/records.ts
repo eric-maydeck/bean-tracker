@@ -1,7 +1,7 @@
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
-import { likeGaps, type Like } from './likeGroup';
+import { likeGaps, twinKeys, type Like } from './likeGroup';
 import { isFinished } from './overview';
 import { countsForRating } from './ratings';
 import { BAG_MIN_BREWS, single } from '$lib/sample';
@@ -406,7 +406,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   }
   const inP = ctx(c.period);
   const rated = held(inP).filter((b) => b.rating !== null && countsForRating(b, c.ratings));
-  const likes = likeGaps(rated.filter((b) => b.rating! > 0));
+  const likes = likeGaps(rated.filter((b) => b.rating! > 0), false, twinKeys(bags));
   // Only what the like line renders goes to the client.
   const likeLine = (l: Like | undefined) => l && { gap: l.gap, label: l.label };
   const top = [...rated].sort((a, b) => b.rating! - a.rating! || a.localDate.localeCompare(b.localDate));

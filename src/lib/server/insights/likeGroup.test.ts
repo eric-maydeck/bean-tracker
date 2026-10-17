@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { likeGaps } from './likeGroup';
-import type { BrewFact } from './facts';
+import { likeGaps, twinKeys } from './likeGroup';
+import type { BagFact, BrewFact } from './facts';
 
 let n = 0;
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -48,6 +48,12 @@ describe('likeGaps', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 8, LWKS), ...bag(3, 8, LWKS), ...bag(4, 8, LWKS), ...bag(5, 2, LWKS, 1)];
     expect(likeGaps(rows).get(1)).toMatchObject({ groupMean: 8, of: 4 });
     expect(likeGaps(rows).get(5)).toMatchObject({ groupMean: 8.25, sample: { small: true } }); // still compared itself
+  });
+  it('twins: a repurchase of the same coffee is not in its twin\u2019s group', () => {
+    const rows = [...bag(1, 9, LWKS), ...bag(2, 5, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, LWKS))];
+    const bags = [1, 2, 3, 4, 5].map((id) => ({ id, roaster: 'Sey', name: id <= 2 ? 'Kiambu' : `C${id}` }) as BagFact);
+    expect(likeGaps(rows).get(1)!.groupMean).toBe(7.25); // bag 2 (its own repurchase at 5) drags it
+    expect(likeGaps(rows, false, twinKeys(bags)).get(1)).toMatchObject({ groupMean: 8, of: 4 });
   });
   it('outside: the group leaves out the roaster\u2019s own bags and skips the roaster step', () => {
     const rows = [...bag(1, 9, LWKS), ...bag(2, 7, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, { ...LWKS, roaster: 'Other' }))];

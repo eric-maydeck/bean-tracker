@@ -5,7 +5,7 @@ import { grindKey, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
 import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { countsForRating, ratedGroups } from './ratings';
-import { likeGaps } from './likeGroup';
+import { likeGaps, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
@@ -274,7 +274,7 @@ export function sweetSpotsTab(brews: readonly BrewFact[], bags: readonly BagFact
   });
   const overall = mean(slice.map((b) => b.rating!));
   const byId = new Map(bags.map((b) => [b.id, b]));
-  const likes = likeGaps(slice);
+  const likes = likeGaps(slice, false, twinKeys(bags));
   const topBags = [...perBag].map(([id, bs]) => {
     const bag = byId.get(id!), like = likes.get(id!);
     return {

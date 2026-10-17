@@ -7,7 +7,7 @@ import { countsForRating } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
 import { brewZ, demeaned, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, restZ, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
-import { likeGaps, roasterLikes, type Like } from './likeGroup';
+import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { BAG_MIN_BREWS, POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
 import { tagTwins } from './lab';
 import { listHref } from './leaderboards';
@@ -771,7 +771,8 @@ const calibration: Generator = (c) => {
 // vs like coffees (spec Part 4): the coffee, and the roaster, furthest from its like-group (likeGroup.ts).
 // Coffee z: its gap over the spread of every bag's gap, Bonferroni over the bags compared.
 const likeStandouts: Generator = (c) => {
-  const likes = [...likeGaps(counted(c))].filter(([, l]) => !l.sample.small);
+  const twins = twinKeys(c.bags);
+  const likes = [...likeGaps(counted(c), false, twins)].filter(([, l]) => !l.sample.small);
   const gaps = likes.map(([, l]) => l.gap), spread = sd(gaps);
   const byGap = (a: [number, Like], b: [number, Like]) => Math.abs(b[1].gap) - Math.abs(a[1].gap) || bagLabel(c, a[0]).localeCompare(bagLabel(c, b[0]));
   const ranked = [...likes].sort(byGap), byId = bagById(c), [id, top] = ranked[0] ?? [];
@@ -786,7 +787,7 @@ const likeStandouts: Generator = (c) => {
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
   // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
-  const rl = roasterLikes(counted(c)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
+  const rl = roasterLikes(counted(c), twins), allGaps = [...rl.values()].flatMap((x) => x.gaps);
   const roasters = [...rl].filter(([, x]) => !pooled(x.bags, x.brews).small); // the board's small-sample rule
   const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
   const roaster = best ? graded({
