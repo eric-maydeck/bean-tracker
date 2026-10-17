@@ -96,7 +96,7 @@ export function ratedGroups<T extends Rated>(
 export const ROAST_GAP = 0.5;
 
 // The mixed-roast nudge (spec Part 3, gate-3 rule), over full bags only (fullBags): roast levels passing the pooled rule, best first, when the
-// highest and lowest bag-weighted means differ at strengthOf 'solid' (groupZ-style SE over the qualifying bag
+// highest and lowest bag-weighted means differ at strengthOf 'solid' (group-vs-all SE over the qualifying bag
 // means, one test) and by ROAST_GAP or more; else null. `brews`: the rating views' source in the Period.
 export function roastMix<T extends Rated & { roastLevel: string | null }>(
   brews: readonly T[],

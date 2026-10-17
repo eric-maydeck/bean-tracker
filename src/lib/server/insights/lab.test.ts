@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { brewZ, demeaned, groupZ, sd, strengthOf } from './stats';
+import { restZ, strengthOf } from './stats';
 import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, ladder, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
@@ -14,9 +14,8 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 // k brews of one bag at one temp, ratings r-0.1 / r / r+0.1 cycling (non-zero SDs).
 const many = (k: number, coffeeId: number, tempC: number, r: number, o: Partial<BrewFact> = {}) =>
   Array.from({ length: k }, (_, i) => brew({ coffeeId, tempC, rating: +(r + ((i % 3) - 1) * 0.1).toFixed(2), ...o }));
-// Same, with +-0.3 noise: keeps z near the solid bar, so the Bonferroni test count changes the verdict.
-const noisy = (k: number, coffeeId: number, tempC: number, r: number) =>
-  Array.from({ length: k }, (_, i) => brew({ coffeeId, tempC, rating: +(r + ((i % 3) - 1) * 0.3).toFixed(2) }));
+// Bag i: k brews at 91 °C and k at 94 °C, `gaps[i]` apart (the brew noise cancels in the difference).
+const bagGaps = (gaps: number[], k = 10) => gaps.flatMap((g, i) => [...many(k, i + 1, 91, 7 + g / 2), ...many(k, i + 1, 94, 7 - g / 2)]);
 const temp = labFn('temp'), exact = labFn('tempExact');
 const P = { start: '2026-09-01', end: '2026-09-30' };
 
@@ -49,28 +48,30 @@ describe('pairedDeltas', () => {
     const two = [1, 2].flatMap((id) => [...many(20, id, 91, 8), ...many(20, id, 94, 7)]);
     expect(pairedDeltas(two, temp).map((s) => s.solid)).toEqual([false, false]);
   });
-  const near = (extra: BrewFact[] = []) => [1, 2, 3].flatMap((id) => [...noisy(10, id, 91, 8.06), ...noisy(10, id, 94, 7.94), ...noisy(10, id, 88, 7.94)]).concat(extra);
-  const zOf = (rows: BrewFact[], skip = -1) => {
-    const dm = demeaned(rows);
-    const of = (lo: number, hi: number) => dm.filter((r) => r.tempC! >= lo && r.tempC! < hi && r.coffeeId !== skip).map((r) => r.dm);
-    return brewZ(of(90, 93), [...of(0, 90), ...of(93, 99)], sd(of(0, 99)));
+  // The bag-unit paired t: each bag's 91 °C mean minus its 94 °C mean.
+  const zOf = (rows: BrewFact[]) => {
+    const d = [...new Set(rows.map((r) => r.coffeeId))].map((id) => {
+      const m = (lo: number, hi: number) => { const rs = rows.filter((r) => r.coffeeId === id && r.tempC! >= lo && r.tempC! < hi); return rs.reduce((t, r) => t + r.rating!, 0) / rs.length; };
+      return m(90, 93) - m(93, 99);
+    }).filter(Number.isFinite);
+    const m = d.reduce((t, x) => t + x, 0) / d.length, s = Math.sqrt(d.reduce((t, x) => t + (x - m) ** 2, 0) / (d.length - 1));
+    return m / (s / Math.sqrt(d.length));
   };
-  it('strength: brewZ vs the other bands, Bonferroni over the band count', () => {
-    const rows = near();
-    const z = zOf(rows);
+  const six = [0.5, 0.2, 0.8, -0.1, 0.6, 0.3];
+  it('strength: a paired t test with the bag as the unit (stats review I-2), Bonferroni over the band count', () => {
+    const rows = bagGaps(six), z = zOf(rows);
     const got = pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength;
-    expect(got).toBe(strengthOf(z, true, 3));
+    expect(got).toBe(strengthOf(z, true, 2, 6));
     expect(got).toBe('hint');
-    expect(got).not.toBe(strengthOf(z, true, 1)); // would be solid without the correction
+    expect(got).not.toBe(strengthOf(z, true, 1, 6)); // would be solid without the correction
+    // Brews are not units: three times the brews per bag, same bags, same verdict.
+    expect(pairedDeltas(bagGaps(six, 30), temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
   });
   it('Bonferroni counts every band in the data, also bands with no pairs', () => {
-    // 96 °C is a 4th band (one unpaired bag, no pairs): tests = 4, not 3.
-    const more = near(many(3, 9, 96, 7));
-    const z = zOf(more, 9);
-    const got = pairedDeltas(more, temp).find((s) => s.label === '90–92 °C')!.strength;
-    expect(got).toBe(strengthOf(z, true, 4));
-    expect(got).toBe('early');
-    expect(got).not.toBe(strengthOf(z, true, 3));
+    // 3 bags at t(2) 4.16: Possible over 2 bands; an unpaired 88 °C bag makes it 3 tests: Too early.
+    const rows = bagGaps([0.25, 0.1, 0.2]);
+    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
+    expect(pairedDeltas([...rows, ...many(3, 9, 88, 7)], temp).find((s) => s.label === '90–92 °C')!.strength).toBe('early');
   });
   it('in-period bag means (ratedIn drops the old brews before demeaning)', () => {
     const rows = [...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(5, 1, 91, 2, { localDate: '2026-01-01' })];
@@ -104,7 +105,8 @@ describe('pairedDeltas', () => {
 });
 
 describe('ladder', () => {
-  const sameBag = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8), ...many(10, id, 94, 7)]);
+  // 3 bags, 91 °C about 1 above 94 °C in each (1.2, 0.8, 1.0: t(2) 8.7).
+  const sameBag = [1.2, 0.8, 1.0].flatMap((g, i) => [...many(10, i + 1, 91, 7.5 + g / 2), ...many(10, i + 1, 94, 7.5 - g / 2)]);
   it('tier 1: same bag, ≥ 2 solid bands; exact temps first', () => {
     const s = ladder(sameBag, [], [exact, temp])!;
     expect(s).toMatchObject({ tier: 1, verdict: 'win', group: null, bags: 3 });
@@ -157,24 +159,25 @@ describe('ladder', () => {
     expect(s).toMatchObject({ tier: 2, group: 'Natural Ultralight coffees', bags: 3, next: { label: '93–94 °C' } });
     expect(s.best!.value).toBeCloseTo(8, 1);
   });
-  it('tier 2: strength is Bonferroni-corrected over every band of the group, solid or not', () => {
+  it('tier 2: the winner vs the other solid bands (t test on their 9 bags), Bonferroni over every band of the group', () => {
     const a = [1, 2, 3].flatMap((id) => many(12, id, 91, 8));
     const bm = [6.8, 7.2, 6.9, 7.1, 6.8, 7.2];
     const b = bm.flatMap((r, i) => many(6, 10 + i, 94, r));
     const cross = [...a, ...b, ...many(3, 20, 96, 7)]; // 95+ °C: a third band, one bag, not solid
-    const z = groupZ([8, 8, 8], [8, 8, 8, ...bm]);
+    const z = restZ([8, 8, 8], bm);
     const s = ladder(cross, [{ name: 'g', brews: cross }], [temp])!;
+    expect(s.best!.strength).toBe(strengthOf(z, true, 3, 9));
     expect(s).toMatchObject({ tier: 2, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
-    expect(strengthOf(z, true, 2)).toBe('solid'); // solid.length as the test count would say win
+    expect(strengthOf(z, true, 2, 9)).toBe('solid'); // solid.length as the test count would say win
   });
   it('tier 2: bag means identical to float noise are not a finding', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
     expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'none', best: { strength: 'early' } });
   });
   it('tier 1: a hint leans, a weak gap is no clear winner', () => {
-    const two = (hi: number, lo: number) => [1, 2, 3].flatMap((id) => [...noisy(10, id, 91, hi), ...noisy(10, id, 94, lo)]);
-    expect(ladder(two(8.07, 7.93), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
-    expect(ladder(two(8.02, 7.98), [], [temp])).toMatchObject({ tier: 1, verdict: 'none', best: { strength: 'early' } });
+    // 3 bags: t(2) 4.16 is Possible over 2 bands; t(2) 1.89 is no clear winner.
+    expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
+    expect(ladder(bagGaps([0.3, 0, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'none', best: { strength: 'early' } });
   });
   it('usual.mean is bag-weighted: a 40-brew bag does not outvote a 2-brew one', () => {
     const rows = [...many(39, 1, 91, 8), ...many(2, 2, 91, 6)];

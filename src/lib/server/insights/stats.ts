@@ -84,10 +84,6 @@ export const solidBar = (tests: number): number => {
   return hi;
 };
 
-// Group's bag-mean average vs all bags, SE = sd(all bag means) / sqrt(bags in the group).
-export const groupZ = (groupBagMeans: number[], allBagMeans: number[]): number =>
-  (mean(groupBagMeans) - mean(allBagMeans)) / (sd(allBagMeans) / Math.sqrt(groupBagMeans.length));
-
 // Difference of two demeaned-rating means, SE = residualSd * sqrt(1/n1 + 1/n2).
 export const brewZ = (a: number[], b: number[], residualSd: number): number =>
   (mean(a) - mean(b)) / (residualSd * Math.sqrt(1 / a.length + 1 / b.length));

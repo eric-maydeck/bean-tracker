@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mean, sd, pearson, partialR, demeaned, strengthOf, groupZ, brewZ, tTail, spearman, rBand } from './stats';
+import { mean, sd, pearson, partialR, demeaned, strengthOf, brewZ, tTail, spearman, rBand } from './stats';
 
 describe('stats', () => {
   it('mean and population sd', () => {
@@ -42,8 +42,6 @@ describe('stats', () => {
     expect(strengthOf(2, true, 1)).toBe('solid');
     expect(strengthOf(1.5, true, 1)).toBe('hint');
   });
-  it('groupZ: all bags [6..10] mean 8 sd sqrt2; group [9,10] mean 9.5 -> 1.5 / (sqrt2/sqrt2) = 1.5', () =>
-    expect(groupZ([9, 10], [6, 7, 8, 9, 10])).toBeCloseTo(1.5));
   it('brewZ: a mean 8, b mean 7, n 2+2, sd 0.5 -> 1 / (0.5 * 1) = 2', () =>
     expect(brewZ([7.5, 8.5], [6.5, 7.5], 0.5)).toBeCloseTo(2));
 });

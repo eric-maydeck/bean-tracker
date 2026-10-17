@@ -7,7 +7,7 @@ import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, t
 import { countsForRating, ratedGroups } from './ratings';
 import { likeGaps, twinKeys } from './likeGroup';
 import { groupBy } from './records';
-import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, sd, strengthOf, type Strength } from './stats';
+import { demeaned, mean, MIN_BAGS, MIN_BREWS, restZ, sd, strengthOf, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
 
 // The lab's input rows: the period's linked brews with a counted rating (spec "Shared rules").
@@ -34,29 +34,37 @@ const sampleSd = (xs: number[]) => sd(xs) * Math.sqrt(xs.length / (xs.length - 1
 
 // Same-bag deltas per band (spec "The measurement"): rating minus the bag's mean over `rows`. A bag is
 // paired when ≥ 2 of its bands have ≥ minPerBand brews; those bands' brews make `delta`.
+// The badge's test has the bag as its unit (stats review I-2, user 2026-10-17): each paired bag gives one number,
+// its mean in this band minus its mean in its other paired bands (the band against the rest, within the bag), and
+// the strength is a paired t test on those, n = bags. A bag's brews share its mean and its days, so counting each
+// brew as a unit understated the SE.
 export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand = 2): BandStat[] {
   const dm = demeaned(rows).flatMap((r) => { const k = band(r); return k ? [{ ...r, k }] : []; });
-  const bands = new Map<string, { order: number; range?: string; paired: number[]; bags: Set<number> }>();
-  for (const r of dm) if (!bands.has(r.k.label)) bands.set(r.k.label, { order: r.k.order, range: r.k.range, paired: [], bags: new Set() });
+  const bands = new Map<string, { order: number; range?: string; paired: number[]; bags: Set<number>; byBag: number[] }>();
+  for (const r of dm) if (!bands.has(r.k.label)) bands.set(r.k.label, { order: r.k.order, range: r.k.range, paired: [], bags: new Set(), byBag: [] });
   for (const [id, rs] of groupBy(dm, (r) => r.coffeeId)) {
     const used = [...groupBy(rs, (r) => r.k.label)].filter(([, g]) => g.length >= minPerBand);
     if (used.length < 2) continue;
-    for (const [label, g] of used) { const s = bands.get(label)!; s.paired.push(...g.map((r) => r.dm)); s.bags.add(id!); }
+    for (const [label, g] of used) {
+      const s = bands.get(label)!;
+      s.paired.push(...g.map((r) => r.dm));
+      s.bags.add(id!);
+      s.byBag.push(mean(g.map((r) => r.dm)) - mean(used.filter(([l]) => l !== label).flatMap(([, o]) => o.map((r) => r.dm))));
+    }
   }
   const plain = new Map(ratedGroups(dm, (r) => r.k.label, 'all', 'adjusted').map((g) => [g.label, g]));
   const tests = bands.size; // Bonferroni: every band of the variable present in the data (spec), not only those with pairs
-  const residual = sd([...bands.values()].flatMap((s) => s.paired));
   const pairedSd = new Map([...bands].map(([l, s]) => [l, s.paired.length >= 2 ? sampleSd(s.paired) : null]));
   const ratingSd = new Map([...groupBy(dm, (r) => r.k.label)].map(([l, g]) => [l, g.length >= 2 ? sampleSd(g.map((r) => r.rating!)) : null]));
   return [...bands].map(([label, s]): BandStat => {
-    const others = [...bands].filter(([l]) => l !== label).flatMap(([, o]) => o.paired);
     const solid = s.bags.size >= MIN_BAGS && s.paired.length >= MIN_BREWS;
-    const z = s.paired.length && others.length && residual > EPS ? brewZ(s.paired, others, residual) : null;
+    const n = s.byBag.length, spread = n >= 2 ? sampleSd(s.byBag) : 0;
+    const z = n >= 2 && spread > EPS ? mean(s.byBag) / (spread / Math.sqrt(n)) : null;
     const g = plain.get(label)!;
     return {
       label, order: s.order, ...(s.range ? { range: s.range } : {}), delta: s.paired.length ? mean(s.paired) : null, brews: s.paired.length, bags: s.bags.size, solid,
       sample: s.paired.length ? pooled(s.bags.size, s.paired.length) : pooled(g.bags, g.brews),
-      strength: z === null ? null : strengthOf(z, solid, tests),
+      strength: z === null ? null : strengthOf(z, solid, tests, n),
       adjusted: g.adjusted, plainBrews: g.brews, plainBags: g.bags, spread: pairedSd.get(label)!, sd: ratingSd.get(label)!
     };
   }).sort(byOrder);
@@ -141,9 +149,10 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
         .sort((a, b) => mean(b[1].means) - mean(a[1].means) || a[1].order - b[1].order);
       if (solid.length < 2) continue;
       const [[label, s], [nextLabel, n]] = solid;
-      const pool = solid.flatMap(([, x]) => x.means);
-      // Bonferroni over every band of the group, not only the solid ones.
-      const strength = sd(pool) < EPS ? 'early' : strengthOf(groupZ(s.means, pool), true, all.size);
+      // The winner against the group's other solid bands (not a pool holding it), as a t test on the bags behind
+      // them (stats review I-2); Bonferroni over every band of the group, not only the solid ones.
+      const rest = solid.slice(1).flatMap(([, x]) => x.means), pool = [...s.means, ...rest];
+      const strength = sd(pool) < EPS ? 'early' : strengthOf(restZ(s.means, rest), true, all.size, pool.length);
       return {
         ...base, tier: 2, verdict: verdictOf(strength), best: { label, value: mean(s.means), strength },
         next: { label: nextLabel, value: mean(n.means) }, group: g.name, bags: s.means.length, bands: meanBands(all)
