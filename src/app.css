@@ -360,6 +360,17 @@ a {
   color: var(--color-accent);
 }
 
+/* A setting's name inside prose ("vs like coffees ranks ...", the Score help's "Average (3+ bags)"): bold, in the link
+   brown; its qualifier ("(default for other boards)") in green. Text color only (5.4:1 / 4.6:1 on the light page,
+   6.8:1 / 7.0:1 dark) (user, 2026-10-17). */
+.setting-name {
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.setting-note {
+  color: var(--color-fresh);
+}
+
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {

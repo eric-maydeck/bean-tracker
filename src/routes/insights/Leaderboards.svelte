@@ -177,12 +177,12 @@
     <button class="button button-ghost close" aria-label="Close" onclick={() => help?.close()}>×</button>
   </header>
   <div class="how-body">
-    <p><b>Default.</b> {DEFAULT_HELP}</p>
+    <p><b class="setting-name">Default.</b> Coffees: <span class="setting-name">{AVG_LABEL[COFFEES_AVG]}</span>. Other boards: <span class="setting-name">{AVG_LABEL[DEFAULT_AVG]}</span>.</p>
     {#each HOW as g (g.group)}
       <h3>{g.group}</h3>
       {#each g.items as it (it.id)}
         <p>
-          <b>{AVG_LABEL[it.id]}{it.id === COFFEES_AVG ? ' (Coffees default)' : it.id === DEFAULT_AVG ? ' (default for other boards)' : ''}.</b>
+          <b class="setting-name">{AVG_LABEL[it.id]}</b>{#if it.id === COFFEES_AVG}{' '}<span class="setting-note">(default for Coffees)</span>{:else if it.id === DEFAULT_AVG}{' '}<span class="setting-note">(default for other boards)</span>{/if}.
           {it.text} <span class="eg">{it.eg}</span>
         </p>
       {/each}
@@ -204,7 +204,7 @@
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={fmt} /></div>{/if}
       {#if unranked(b)}
-        <p class="board-note bag-only">{RANK_LABEL[rank]} is per bag, so gear and water aren't ranked by it.</p>
+        <p class="board-note bag-only"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
@@ -260,7 +260,7 @@
     {/if}
   {/each}
   {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
-  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
+  {#if rank === 'like'}<p class="like-note"><span class="setting-name">{RANK_LABEL.like}</span> ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
 {/if}
 
 <style>

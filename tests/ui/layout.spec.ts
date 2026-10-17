@@ -1896,7 +1896,16 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       await expect(dlg).toContainText('Confidence adj. (strong)');
       await expect(dlg).toContainText('Average (3+ bags) (default for other boards)');
-      await expect(dlg).toContainText('Confidence adj. (light) (Coffees default)');
+      await expect(dlg).toContainText('Confidence adj. (light) (default for Coffees)');
+      // Setting names in the link brown, their "(default for ...)" in green, text color only (user, 2026-10-17).
+      const inks = await dlg.evaluate((d) => {
+        const probe = (v: string) => { const s = document.createElement('span'); s.style.color = `var(${v})`; d.append(s); const c = getComputedStyle(s).color; s.remove(); return c; };
+        const col = (sel: string) => [...d.querySelectorAll(sel)].map((e) => getComputedStyle(e).color);
+        return { accent: probe('--color-accent'), fresh: probe('--color-fresh'), names: col('.setting-name'), notes: col('.setting-note') };
+      });
+      expect(inks.names.length).toBeGreaterThan(7);
+      expect(new Set(inks.names)).toEqual(new Set([inks.accent]));
+      expect(inks.notes).toEqual([inks.fresh, inks.fresh]);
       // Bare URL: the Score menu reads Default (each board's own); no avg param.
       await expect(page.getByRole('combobox', { name: 'Score' })).toHaveValue('');
       await expectDialogInViewport(page);
