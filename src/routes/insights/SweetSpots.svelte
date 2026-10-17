@@ -48,6 +48,24 @@
       return `Across ${p.group}: ${nb(p.best.label)} ${p.best.value.toFixed(1)} vs ${nb(p.next.label)} ${p.next.value.toFixed(1)} · ${plural(p.bags, 'bag')}`;
     return p.varied ? 'Not enough brews to compare yet' : `No comparison yet: always ${p.usual.label} (avg ${p.usual.mean.toFixed(1)})`;
   }
+  // The card's line, short (user, 2026-10-17): its label, the numbers behind it in `tip`. A same-bag winner leads with
+  // its delta (`delta`, outside the tip text so it keeps its ink). null: a plain line (evidence), nothing to tip.
+  function result(p: Spot): { label: string; tip: Tip; delta?: string; result: boolean } | null {
+    const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0');
+    if (p.tier === 1 && p.best) {
+      const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]];
+      return lead(p) ? { label: lead(p).trim(), tip: { title: lead(p).trim(), rows }, result: true }
+        : { label: 'vs same bag', delta: d, tip: { title: p.best.label, rows }, result: true };
+    }
+    if (p.tier === 2 && p.best && p.next) {
+      const title = `Highest across ${p.group}`;
+      return { label: `${title}: ${nb(p.best.label)} (${p.best.value.toFixed(1)})`, result: true,
+        tip: { title, rows: [[p.best.label, p.best.value.toFixed(1)], [p.next.label, p.next.value.toFixed(1)], ['Bags', `${p.bags}`]] } };
+    }
+    if (p.tier === 3 && !p.varied)
+      return { label: 'No comparison yet', result: false, tip: { title: 'No comparison yet', rows: [['Always', p.usual.label], ['Avg', p.usual.mean.toFixed(1)]] } };
+    return null;
+  }
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
   const badge = (p: Spot) => (p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
@@ -189,6 +207,7 @@
         {@const v = value(p)}
         {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
+        {@const r = result(p)}
         {@const full = [`${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, evidence(p), usually(p)].filter(Boolean).join('\n')}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
         <div class="hl-card spot-card" {id} {style} title={full} onclick={unclamp}>
@@ -226,11 +245,10 @@
               {/if}
             </div>
           {/if}
-          <!-- A same-bag delta reads green or red (T4); the rest of the line stays muted. -->
-          <!-- "Best so far: 20+ g" alone; its numbers move into a tip on that text (user, 2026-10-17), so the line never wraps
-               and squeezes the chart above it. -->
-          <span class="hl-line evidence">{#if p.tier === 1 && p.best && lead(p)}{@const d = labDelta(p.best.value, ses(p))}<TextTip label={lead(p).trim()}
-            tip={{ title: lead(p).trim(), rows: [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]] }} />{:else if p.tier === 1 && p.best}{@const d = labDelta(p.best.value, ses(p))}{lead(p)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(lead(p).length + d.length)}{:else}{evidence(p)}{/if}</span>
+          <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17: as
+               "Best so far"), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
+               highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
+          <span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
@@ -333,12 +351,17 @@
     white-space: normal;
     line-height: 1.3;
   }
-  /* "Best so far: <answer>" is one line at any width: a long answer (a recipe name) ends in an ellipsis, and the tip's
+  /* A tipped line ("Best so far: <answer>", "Highest across ...") is one line at any width: a long answer (a recipe name) ends in an ellipsis, and the tip's
      title has it whole (the card's overflow already clips the text's tap padding to the line). */
   .evidence:has(:global(.text-tip)) {
     display: block;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  /* A result line stands out from the muted lines (accent ink: 5.8:1 on the light card, 6.8:1 dark), so a "No clear
+     winner" card isn't all gray (user, 2026-10-17). */
+  .evidence.result {
+    color: var(--color-accent);
   }
   .usually {
     font-size: 0.75rem;

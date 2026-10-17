@@ -2579,8 +2579,23 @@ export const STATES: State[] = [
         expect(c.small).toBe(false);
         // "Best so far: <answer>" alone: the delta and bags sit in its tip (user, 2026-10-17).
         if (c.ev.startsWith('Best so far')) expect(c.ev).toMatch(/^Best so far: [^·]+$/);
+        // Every line is short: its comparison and bag count sit in its tip (user, 2026-10-17).
+        expect(c.ev).not.toContain('·');
+        expect(c.ev).not.toMatch(/^Across /);
       }
-      const best = page.locator('.spot-card .evidence .text-tip').first(); // the seed has one at every width
+      // A result line (same-bag delta, "Best so far", "Highest across ...") is one line in the accent ink.
+      // (a phone card that hid its line to fit, data-tight 4, is skipped)
+      const results = await page.locator('.spot-card .evidence.result').evaluateAll((es) => es.filter((e) => e.getClientRects().length).map((e) => {
+        const probe = document.createElement('span');
+        probe.style.color = 'var(--color-accent)';
+        e.append(probe);
+        const want = getComputedStyle(probe).color;
+        probe.remove();
+        return { ink: getComputedStyle(e).color === want, lines: e.querySelector('.text-tip')!.getClientRects().length, text: e.textContent };
+      }));
+      expect(results.length).toBeGreaterThan(0);
+      for (const r of results) expect(r, r.text!).toMatchObject({ ink: true, lines: 1 });
+      const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^Best so far/ }).first(); // the seed has one at every width
       await best.click();
       const tip = page.locator('.float-tip');
       await expect(tip).toContainText('vs same bag');
@@ -2588,7 +2603,7 @@ export const STATES: State[] = [
       // One line at any width: a long answer ends in an ellipsis; the tip's title has it whole.
       await expect(tip).toContainText(/^Best so far: /);
       const lines = page.locator('.spot-card .evidence .text-tip');
-      for (const n of await lines.evaluateAll((ts) => ts.map((t) => t.getClientRects().length))) expect(n).toBe(1);
+      for (const n of await lines.evaluateAll((ts) => ts.map((t) => t.getClientRects().length))) expect(n).toBeLessThanOrEqual(1); // 0: hidden to fit (data-tight 4)
     } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
