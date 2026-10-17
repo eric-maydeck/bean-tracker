@@ -44,11 +44,23 @@ const tail = (z: number): number => {
   const t = 1 / (1 + 0.2316419 * z);
   return (Math.exp((-z * z) / 2) / Math.sqrt(2 * Math.PI)) * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
 };
+// Under T_SMALL units the SE is itself a rough estimate, so the normal curve overstates certainty (5 pairs at
+// z 2.11: normal p .035, t(4) p .10; stats audit 2026-10-17): the test uses Student's t, df = n − 1.
+export const T_SMALL = 30;
+// One-sided P(T > t), t ≥ 0, Student's t with integer df ≥ 1 (Abramowitz & Stegun 26.7.3 / 26.7.4, exact).
+export const tTail = (t: number, df: number): number => {
+  const th = Math.atan(t / Math.sqrt(df)), c2 = Math.cos(th) ** 2;
+  let term = 1, sum = df % 2 ? (df > 1 ? 1 : 0) : 1;
+  for (let k = 1; k <= (df - (df % 2 ? 3 : 2)) / 2; k++) sum += (term *= (df % 2 ? (2 * k) / (2 * k + 1) : (2 * k - 1) / (2 * k)) * c2);
+  const inside = df % 2 ? (2 / Math.PI) * (th + Math.sin(th) * Math.cos(th) * sum) : Math.sin(th) * sum; // P(|T| < t)
+  return (1 - inside) / 2;
+};
 // solid = |z| ≥ 2, hint = |z| ≥ 1.5, as two-sided p-values. Over a multiple-comparison set of
 // `tests` (weekdays, roaster groups…) the p-value is multiplied by `tests` first (Bonferroni).
-export const strengthOf = (z: number, enoughSample: boolean, tests = 1): Strength => {
-  if (!enoughSample) return 'hidden';
-  const p = tail(Math.abs(z)) * tests;
+// `n`: the units behind the SE (pairs, bags, days); under T_SMALL, z is read as t with n − 1 df.
+export const strengthOf = (z: number, enoughSample: boolean, tests = 1, n = Infinity): Strength => {
+  if (!enoughSample || n < 2) return 'hidden';
+  const p = (n < T_SMALL ? tTail(Math.abs(z), n - 1) : tail(Math.abs(z))) * tests;
   return p <= tail(2) ? 'solid' : p <= tail(1.5) ? 'hint' : 'early';
 };
 // The |z| a finding needs for solid over `tests` comparisons (2 for one test), by bisection.

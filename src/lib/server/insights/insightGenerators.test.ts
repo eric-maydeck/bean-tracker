@@ -159,6 +159,8 @@ describe('repeat buys', () => {
     const b3 = bs.slice(0, 6);
     const f = gen('repeatBuys', b3.flatMap((x, i) => seq(x.id, Array(3).fill(i & 1 ? 7 + 0.5 * ((i >> 1) + 1) : 7))), b3)!;
     expect(f.z).toBeCloseTo(2 * Math.sqrt(3), 6);
+    // 3 pairs: a t test on 2 df (one-sided p .037), so Possible, not the normal curve's Likely (p .0003).
+    expect(f.strength).toBe('hint');
   });
 });
 

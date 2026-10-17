@@ -81,11 +81,12 @@ const settleText = (z: number, n: number, unit: string, bar = 2): { settle?: str
 };
 
 // Attach z and strength; null when z isn't finite or the strength is hidden. `tests` > 1: the finding
-// is the pick of a multiple-comparison set, held to a Bonferroni bar (spec: Strength).
-function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string, tests = 1): Finding | null {
+// is the pick of a multiple-comparison set, held to a Bonferroni bar (spec: Strength). `sdN`: the units the SE's spread
+// was measured over (default n; all bags for a group vs all): under T_SMALL the test is a t test on sdN − 1 df.
+function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string, tests = 1, sdN = n): Finding | null {
   // A signed delta that rounds to ±0.00 isn't a finding ("rate 0.00 higher").
   if (!Number.isFinite(z) || /^[-+]0\.00$/.test(f.value ?? '')) return null;
-  const strength = strengthOf(z, enough, tests);
+  const strength = strengthOf(z, enough, tests, sdN);
   if (strength === 'hidden') return null;
   const early = strength === 'early';
   return { ...f, z, strength, ...(early ? { ...settleText(z, n, unit, solidBar(tests)), caveat: caveatEarly ?? f.caveat } : {}) };
@@ -244,7 +245,7 @@ const groupDelta: Generator = (c) => {
         headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(2)} ${delta < 0 ? 'lower' : 'higher'}`,
         value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
         ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(2), coffeeHref(b)))])
-      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length);
+      }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, all.length);
       return f ? [f] : [];
     });
   });
@@ -399,7 +400,7 @@ const weekdayRatings: Generator = (c) => {
   return graded({
     key: 'weekday', theme: 'habits', kind: 'number', headline: `${DAY_NAMES[best.d]} rate ${Math.abs(best.diff).toFixed(2)} ${best.diff < 0 ? 'lower' : 'higher'}`,
     value: signed(best.diff), sample: `${best.n} brews on ${plural(best.days, DAY_NAMES[best.d].slice(0, -1))}`, href: HABITS
-  }, best.z, true, DAY_NAMES[best.d], best.days, `With ${groups.length} weekdays compared, one usually stands out by chance.`, groups.length);
+  }, best.z, true, DAY_NAMES[best.d], best.days, `With ${groups.length} weekdays compared, one usually stands out by chance.`, groups.length, dayMeans.length);
 };
 
 // This period vs prevBrews (Compare window when on, else the previous period). Descriptive; the
@@ -787,7 +788,7 @@ const likeStandouts: Generator = (c) => {
     key: 'likeRoaster', theme: 'taste', kind: 'number',
     headline: `${best.r} rates ${Math.abs(best.gap).toFixed(2)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
     value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
-  }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length) : null;
+  }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
 
@@ -810,7 +811,7 @@ const dialinByGroup: Generator = (c) => {
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
       href: SETTLE[dim]
-    }, ((z) => (Number.isFinite(z) ? z : 0))(groupZ(slow.ps, allPos)), true, 'bags', slow.bags, undefined, groups.length);
+    }, ((z) => (Number.isFinite(z) ? z : 0))(groupZ(slow.ps, allPos)), true, 'bags', slow.bags, undefined, groups.length, allPos.length);
     return f ? [f] : [];
   });
 };

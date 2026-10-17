@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mean, sd, pearson, partialR, demeaned, strengthOf, groupZ, brewZ } from './stats';
+import { mean, sd, pearson, partialR, demeaned, strengthOf, groupZ, brewZ, tTail } from './stats';
 
 describe('stats', () => {
   it('mean and population sd', () => {
@@ -46,4 +46,26 @@ describe('stats', () => {
     expect(groupZ([9, 10], [6, 7, 8, 9, 10])).toBeCloseTo(1.5));
   it('brewZ: a mean 8, b mean 7, n 2+2, sd 0.5 -> 1 / (0.5 * 1) = 2', () =>
     expect(brewZ([7.5, 8.5], [6.5, 7.5], 0.5)).toBeCloseTo(2));
+});
+
+describe('small samples: Student t', () => {
+  it('tTail matches t tables', () => {
+    expect(2 * tTail(2.132, 4)).toBeCloseTo(0.1, 3); // t(4) two-sided .10
+    expect(2 * tTail(2.776, 4)).toBeCloseTo(0.05, 3);
+    expect(2 * tTail(12.706, 1)).toBeCloseTo(0.05, 3);
+    expect(2 * tTail(2.571, 5)).toBeCloseTo(0.05, 3);
+    expect(2 * tTail(2.045, 29)).toBeCloseTo(0.05, 3);
+    expect(2 * tTail(0, 7)).toBeCloseTo(1, 9);
+  });
+  it('5 repeat pairs at +1.19, t 2.11: not Likely (t(4) p .10, Possible); the same z over 30+ units still is', () => {
+    expect(strengthOf(2.11, true, 1, 5)).toBe('hint');
+    expect(strengthOf(1.8, true, 1, 5)).toBe('early'); // t(4) p .15: over the 1.5 bar's .134
+    expect(strengthOf(2.11, true, 1, 30)).toBe('solid');
+    expect(strengthOf(2.11, true)).toBe('solid');
+  });
+  it('Bonferroni still applies on top; under 2 units there is no test', () => {
+    expect(strengthOf(4, true, 7, 10)).toBe('solid'); // t(9) one-sided .0016 × 7 = .011 ≤ .023
+    expect(strengthOf(3, true, 7, 10)).toBe('hint'); // .0075 × 7 = .052, under .067
+    expect(strengthOf(9, true, 1, 1)).toBe('hidden');
+  });
 });
