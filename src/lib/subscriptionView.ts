@@ -1,3 +1,4 @@
+import { usd } from '$lib/money';
 // Client-safe subscription helpers: the "Subscription page" link, its
 // roaster warning, totals, and the staged Pause/Resume toggle.
 import { hostMatchesRoaster } from './imageSuggest';
@@ -125,5 +126,5 @@ export function variantValues(v: SubscriptionFillVariant): Record<string, number
 }
 
 export function variantChipLabel(v: SubscriptionFillVariant, i: number): string {
-  return `${v.label || `Option ${i + 1}`} · ${v.price != null ? `$${v.price.toFixed(2)}` : v.originalPrice}`;
+  return `${v.label || `Option ${i + 1}`} · ${v.price != null ? usd(v.price) : v.originalPrice}`;
 }

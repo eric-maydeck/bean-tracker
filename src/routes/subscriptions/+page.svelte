@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
   import { page } from '$app/state';
@@ -438,7 +439,7 @@
             {#if canEdit}
               <input class="inline-input" form={`sub-form-${sub.id}`} name="price" type="number" step="0.01" value={val(sub, 'price')} disabled={effectivePaused(sub.paused, pending.get(sub.id))} oninput={() => stageRow(sub.id)} />
             {:else}
-              {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
+              {sub.price != null ? usd(sub.price) : '—'}
             {/if}
           </td>
           {#if !canEdit}
@@ -551,7 +552,7 @@
     <tfoot>
       <tr>
         <td colspan="2"><strong>Totals</strong></td>
-        <td><strong>{totals.price != null ? `$${totals.price.toFixed(2)}` : '—'}</strong></td>
+        <td><strong>{totals.price != null ? usd(totals.price) : '—'}</strong></td>
         {#if canEdit}
           <td colspan="2"><strong>{totals.grams != null ? `${totals.grams} g` : '—'}</strong></td>
           <td></td>
@@ -701,7 +702,7 @@
               <span class="compact-row-sub text-muted">{sub.subscription_name ?? '—'}</span>
             </span>
             <span class="compact-row-trailing">
-              {sub.price != null ? `$${sub.price.toFixed(2)}` : '—'}
+              {sub.price != null ? usd(sub.price) : '—'}
             </span>
           </button>
           {#if expandedId === sub.id}
@@ -725,7 +726,7 @@
     {/each}
   </div>
   <div class="compact-row-detail" style="border-top: 1px solid var(--color-border); padding-top: var(--space-3); margin-top: var(--space-2);">
-    <strong>Totals:</strong> {totals.price != null ? `$${totals.price.toFixed(2)}` : '—'} · {totals.grams ?? '—'}g
+    <strong>Totals:</strong> {totals.price != null ? usd(totals.price) : '—'} · {totals.grams ?? '—'}g
   </div>
 {/if}
 

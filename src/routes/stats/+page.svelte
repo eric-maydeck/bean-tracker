@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
@@ -298,7 +299,7 @@
   }
 
   function formatCostPerGram(value: number | null): string {
-    return value === null ? '—' : `$${value.toFixed(3)}`;
+    return value === null ? '—' : usd(value);
   }
 
   function formatTemperature(value: number | null): string {

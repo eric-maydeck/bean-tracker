@@ -1,3 +1,4 @@
+import { usd } from '$lib/money';
 import { MON, type Ratings, type Theme } from '$lib/insightsUrl';
 import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.1")
 import { formatGrams } from '$lib/grams';
@@ -340,7 +341,7 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 const monthLabel = (ym: string) => `${MON[+ym.slice(5, 7) - 1]} ${ym.slice(2, 4)}`;
 const minuteOf = (b: BrewFact) => +b.localTime.slice(11, 13) * 60 + +b.localTime.slice(14, 16);
 const clock = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
-const money = (x: number) => `$${x.toFixed(2)}`;
+const money = usd;
 const pct = (x: number) => `${Math.round(100 * x)}%`;
 const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}`);
 const period = (c: GenCtx) => ({ start: c.period.from, end: c.period.to });

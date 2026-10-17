@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -28,14 +29,13 @@
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
-  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   function fmt(v: number): string {
     if (rank === 'like') return likeGap(v);
     if (rank === 'rating') return v.toFixed(1);
     if (rank === 'grams') return formatGrams(v);
-    if (rank === 'spend') return usd.format(v);
-    if (rank === 'ppg') return `$${v.toFixed(3)}/g`;
+    if (rank === 'spend') return usd(v);
+    if (rank === 'ppg') return `${usd(v)}/g`;
     return perPerson && v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('en-US');
   }
   type Row = Rows[Board][number];
@@ -45,7 +45,7 @@
       ...(avg.startsWith('best') && rank === 'rating' && r.atBest
         ? [`${plural(r.atBest, 'brew')} at ${r.best?.toFixed(1)}`, plural(r.bags, 'bag')]
         : rank === 'ppg' && r.cost !== undefined
-          ? [plural(r.bags, 'bag'), usd.format(r.cost), formatGrams(r.grams!)]
+          ? [plural(r.bags, 'bag'), usd(r.cost), formatGrams(r.grams!)]
           : [plural(r.bags, 'bag'), r.brews ? plural(r.brews, 'brew') : null])
     ].filter(Boolean).join(' · ');
   const move = (m: Row['move']) =>

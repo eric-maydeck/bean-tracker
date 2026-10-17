@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { onMount, tick } from 'svelte';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
@@ -427,7 +428,7 @@
         {#each fillVariants as v, i (i)}
           <button type="button" aria-pressed={selectedVariant === i} onclick={() => chooseVariant(i)}>
             {v.label || (v.grams != null ? `${v.grams}g` : `Option ${i + 1}`)} · {v.costUsd != null
-              ? `$${v.costUsd.toFixed(2)}`
+              ? usd(v.costUsd)
               : v.originalPrice}
           </button>
         {/each}

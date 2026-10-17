@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { tick } from 'svelte';
   import { browser } from '$app/environment';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -757,7 +758,7 @@
                 <p class="text-muted">{coffee.processing}</p>
               {/if}
               <p class="text-muted">
-                {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
+                {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : 'Cost unknown'}
                 {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
               </p>
               {#if coffee.roast_date}
@@ -812,7 +813,7 @@
             <p class="text-muted">{coffee.processing}</p>
           {/if}
           <p class="text-muted">
-            {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : 'Cost unknown'}
+            {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : 'Cost unknown'}
             {coffee.amount_g != null ? ` · ${formatBag(coffee.amount_g, coffee.grams_left)}` : ''}
           </p>
           {#if coffee.roast_date}
@@ -893,7 +894,7 @@
                 <div><span class="eyebrow">Processing</span>{coffee.processing ?? '—'}</div>
                 <div>
                   <span class="eyebrow">Cost/g · amount</span>
-                  {coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}/g` : '—'}{#if coffee.amount_g != null}
+                  {coffee.cost_per_gram != null ? `${usd(coffee.cost_per_gram)}/g` : '—'}{#if coffee.amount_g != null}
                     · <span class="nowrap">{formatBag(coffee.amount_g, coffee.grams_left)}</span>{/if}
                 </div>
                 <div>
@@ -1072,7 +1073,7 @@
             </td>
             <td>{coffee.decaf ? 'Yes' : 'No'}</td>
             <td>{coffee.processing ?? '—'}</td>
-            <td>{coffee.cost_per_gram != null ? `$${coffee.cost_per_gram.toFixed(3)}` : '—'}</td>
+            <td>{coffee.cost_per_gram != null ? usd(coffee.cost_per_gram) : '—'}</td>
             <td class="nowrap">{coffee.amount_g != null ? formatBag(coffee.amount_g, coffee.grams_left) : '—'}</td>
             <td>
               {coffee.roast_date ?? '—'}

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -33,7 +34,6 @@
 
   const num = (n: number) => (Number.isInteger(n) ? n.toLocaleString('en-US') : n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString('en-US'));
   const grams = (n: number) => (n < 100 && !Number.isInteger(n) ? `${+n.toFixed(1)}g` : formatGrams(n));
-  const usd = (n: number) => `$${n.toFixed(2)}`;
   const mss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
   // [value, small unit after it, the context line when the format moves the detail into the value].
   function parts(p: RecordPick, fmt: Fmt): [string, string?, string?] {

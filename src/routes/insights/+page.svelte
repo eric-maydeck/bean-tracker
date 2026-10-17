@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { usd } from '$lib/money';
   import TextTip from '$lib/components/TextTip.svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
@@ -214,8 +215,6 @@
     return qs ? `?${qs}` : '/insights';
   }
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
-  const usdCompact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact', maximumFractionDigits: 1 });
-  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const count = (n: number) => Math.round(n).toLocaleString('en-US');
   const mss = (sec: number) => {
     const r = Math.round(sec);
@@ -252,13 +251,13 @@
   const TOTALS: Tile[] = [
     { key: 'brews', split: true, label: 'Brews', fmt: count, up: 'good' },
     { key: 'grams', split: true, label: 'Grams', fmt: formatGrams },
-    { key: 'spend', split: true, label: 'Spend', fmt: usdCompact.format, up: 'bad' },
+    { key: 'spend', split: true, label: 'Spend', fmt: usd, up: 'bad' },
     { key: 'bagsFinished', split: true, label: 'Bags finished', fmt: count, up: 'good' },
     { key: 'rated', split: true, label: 'Rated', fmt: count, ratingSwitch: true, up: 'good' }
   ];
   const AVERAGES: Tile[] = [
     { key: 'avgRating', label: 'Avg rating', fmt: (n) => n.toFixed(1), ratingSwitch: true, up: 'good' },
-    { key: 'costPerBrew', label: 'Cost per brew', fmt: usd.format, up: 'bad' },
+    { key: 'costPerBrew', label: 'Cost per brew', fmt: usd, up: 'bad' },
     { key: 'brewsPerDay', split: true, label: 'Brews per day', fmt: (n) => n.toFixed(1), up: 'good' },
     { key: 'avgDose', label: 'Avg dose', fmt: (n) => `${n.toFixed(1)}g` },
     { key: 'avgRestDays', label: 'Avg rest', fmt: (n) => String(Math.round(n)), suffix: 'days' },

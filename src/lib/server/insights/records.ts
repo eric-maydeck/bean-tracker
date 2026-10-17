@@ -1,3 +1,4 @@
+import { usd } from '$lib/money';
 import { BREWER_TYPES, type Avg, type Board, type BrewerType, type Ratings } from '$lib/insightsUrl';
 import { grindValue, restDays, type BrewFact, type BagFact } from './facts';
 import { BREW_KEY, leaderboard } from './leaderboards';
@@ -110,7 +111,6 @@ const perBag = (c: RecCtx, min: number, f: (s: BagStat, id: number) => Omit<Cand
     return r ? [{ ...r, holder: bagHolder(c.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }] : [];
   });
 
-const usd = (n: number) => `$${n.toFixed(2)}`;
 const g = (n: number) => `${n < 100 ? +n.toFixed(1) : Math.round(n)}g`;
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 const rangeOf = (xs: number[]) => `${Math.min(...xs)}–${Math.max(...xs)}`;
@@ -203,7 +203,7 @@ const value = (c: RecCtx): Candidate[] =>
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
     const p = (bag.cost / bag.amountG) * 100;
-    return { value: s.mean! / p, mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at $${p.toFixed(2)}/100\u00a0g` };
+    return { value: s.mean! / p, mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100\u00a0g` };
   });
 const spent = (bs: BagFact[]) => bs.reduce((s, b) => s + (b.cost ?? 0), 0);
 const roasters = (c: RecCtx, f: (bs: BagFact[]) => number, detail: (bs: BagFact[]) => string): Candidate[] =>

@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+  import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import BarLabels from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -166,7 +167,6 @@
     timer = setTimeout(() => choose({ ...live }), wait);
   }
   const r1 = (n: number) => +n.toFixed(1);
-  const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
 
   // Page-wide multiple comparisons (stats audit 2026-10-17): every badgeable test the server ran (shown or not,
   // under any theme), and how many Likely badges a page of them earns by chance (about 1 in 20 tests of a zero gap).
@@ -419,17 +419,17 @@
               <div class="month-parts">
                 <span><b>{Math.round(w.bpd * DAYS_PER_MONTH)}</b> brews</span>
                 <span><b>{formatGrams(w.bpd * w.dose * DAYS_PER_MONTH)}</b></span>
-                <span><b>${(w.dose * t.whatIf.avgPricePerG!).toFixed(2)}</b> a cup</span>
+                <span><b>{usd(w.dose * t.whatIf.avgPricePerG!)}</b> a cup</span>
               </div>
             </div>
           </div>
           {#if w.bpd * w.dose > 0}
-            <span class="hl-value result">{usd0(perMonth)}<small>{' a month'}</small></span>
+            <span class="hl-value result">{usd(perMonth)}<small>{' a month'}</small></span>
           {:else}
             <span class="hl-line wrap result">Not enough brews to measure your spend yet</span>
           {/if}
-          <span class="hl-line wrap">At ${(t.whatIf.avgPricePerG! * 100).toFixed(2)} / 100&nbsp;g, your last 12 months' average</span>
-          {#if w.bpd * w.dose > 0}<span class="hl-line">{usd0(perMonth * 12)} a year</span>{/if}
+          <span class="hl-line wrap">At {usd(t.whatIf.avgPricePerG! * 100)} / 100&nbsp;g, your last 12 months' average</span>
+          {#if w.bpd * w.dose > 0}<span class="hl-line">{usd(perMonth * 12)} a year</span>{/if}
           <TileCaption href="#insights-spend" label="Monthly spend" />
         </div>
       {/if}

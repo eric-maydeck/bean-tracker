@@ -3461,7 +3461,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const spend = page.locator('#insights-spend');
       await expect(spend).toContainText('Not enough brews to measure your spend yet');
-      await expect(spend).not.toContainText(/\$0 a (month|year)/);
+      await expect(spend).not.toContainText(/\$0(\.00)? a (month|year)/);
     } },
   { name: 'insights-insights-whatif', path: () => '/insights?tab=insights&range=all&drinkers=2&gpp=60&inflow=500',
     act: async (page) => {
