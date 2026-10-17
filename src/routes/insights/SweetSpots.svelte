@@ -35,10 +35,12 @@
   const value = (p: Spot) =>
     p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
+  // Under "No clear winner" the same-bag delta names its setting, so it never reads as the card's value (gate P4).
+  const lead = (p: Spot) => (p.best && p.verdict === 'none' ? `Best so far: ${p.best.label.replace(/(\d) /g, '$1\u00a0')} ` : '');
   // The evidence behind it, one muted line (clamped; the card's title and popover have it in full).
   function evidence(p: Spot): string {
     const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
-    if (p.tier === 1 && p.best) return `${signed(p.best.value)} vs same bag · ${plural(p.bags, 'bag')}`;
+    if (p.tier === 1 && p.best) return `${lead(p)}${signed(p.best.value)} vs same bag · ${plural(p.bags, 'bag')}`;
     if (p.tier === 2 && p.best && p.next)
       return `Across ${p.group}: ${nb(p.best.label)} ${p.best.value.toFixed(1)} vs ${nb(p.next.label)} ${p.next.value.toFixed(1)} · ${plural(p.bags, 'bag')}`;
     return p.varied ? 'Not enough brews to compare yet' : `No comparison yet: always ${p.usual.label} (avg ${p.usual.mean.toFixed(1)})`;
@@ -221,7 +223,7 @@
             </div>
           {/if}
           <!-- A same-bag delta reads green or red (T4); the rest of the line stays muted. -->
-          <span class="hl-line evidence">{#if p.tier === 1 && p.best}{@const d = signed(p.best.value)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(d.length)}{:else}{evidence(p)}{/if}</span>
+          <span class="hl-line evidence">{#if p.tier === 1 && p.best}{@const d = signed(p.best.value)}{lead(p)}<span class="delta-text {deltaInk(p.best.value)}">{d}</span>{evidence(p).slice(lead(p).length + d.length)}{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
