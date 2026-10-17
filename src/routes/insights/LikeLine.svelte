@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaInk, likeGap } from '$lib/components/deltaColor';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   let { like }: { like: { gap: number; label: string } } = $props();
@@ -20,8 +20,8 @@
   onblur={() => (open = false)}
   onkeydown={(e) => e.key === 'Enter' && (open = true)}
   onclick={() => (cut() ? (open = true) : anchor?.parentElement?.querySelector('a')?.click())}
-  ><span class={deltaInk(like.gap)}>{signed(like.gap)}</span> vs {like.label}</small
->{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${signed(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
+  ><span class={deltaInk(like.gap)}>{likeGap(like.gap)}</span> vs {like.label}</small
+>{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${likeGap(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
 
 <style>
   .like-line {

@@ -22,4 +22,7 @@ export const deltaInk = (v: number | null): 'ink-better' | 'ink-worse' | '' =>
   v === null || Math.abs(v) < GRAY_BELOW ? '' : v > 0 ? 'ink-better' : 'ink-worse';
 
 // The lab's number format: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
-export const signed = (x: number) => (Math.abs(x) < 0.005 ? '0.00' : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(2));
+// `d` decimals: 2 for brew-level deltas; 1 for gaps between bag means (SE 0.2+), likeGap.
+export const signed = (x: number, d = 2) => (+Math.abs(x).toFixed(d) === 0 ? (0).toFixed(d) : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(d));
+// A coffee's gap to its like coffees: means of a few brews, so 1 decimal (stats audit 2026-10-17: precision).
+export const likeGap = (x: number) => signed(x, 1);

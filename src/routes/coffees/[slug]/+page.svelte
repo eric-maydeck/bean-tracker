@@ -24,7 +24,7 @@
   import type { CoffeeRow } from '$lib/types';
   import { formatBag } from '$lib/grams';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaInk, likeGap } from '$lib/components/deltaColor';
   import TextTip from '$lib/components/TextTip.svelte';
   import { DIAL_LABEL, RATINGS_LABEL, insightsParams, type LikeView } from '$lib/insightsUrl';
 
@@ -473,10 +473,10 @@
           <div class="stat-grid">
             <div class="stat">
               <span class="stat-label">Score</span>
-              <span class="stat-value">{l.score.toFixed(2)}{#if l.sample.small}{' '}<SampleNote s={l.sample} />{/if}</span>
+              <span class="stat-value">{l.score.toFixed(1)}{#if l.sample.small}{' '}<SampleNote s={l.sample} />{/if}</span>
             </div>
-            <div class="stat"><span class="stat-label">Like coffees</span><span class="stat-value">{l.groupMean.toFixed(2)}</span></div>
-            <div class="stat"><span class="stat-label">Gap</span><span class="stat-value {deltaInk(l.gap)}">{signed(l.gap)}</span></div>
+            <div class="stat"><span class="stat-label">Like coffees</span><span class="stat-value">{l.groupMean.toFixed(1)}</span></div>
+            <div class="stat"><span class="stat-label">Gap</span><span class="stat-value {deltaInk(l.gap)}">{likeGap(l.gap)}</span></div>
             <div class="stat"><span class="stat-label">Rank</span><span class="stat-value">{l.place}</span></div>
           </div>
         </section>

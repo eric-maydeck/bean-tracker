@@ -257,7 +257,7 @@
             </span>
             <span class="num">{r.brews}</span>
             <span class="num">{r.sd?.toFixed(2) ?? '—'}</span>
-            <span class="val">{r.score.toFixed(2)}</span>
+            <span class="val">{r.score.toFixed(1)}</span>
           </li>
         {/each}
       </ol>

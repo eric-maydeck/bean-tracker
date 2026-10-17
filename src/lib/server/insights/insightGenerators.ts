@@ -1,5 +1,5 @@
 import { MON, type Ratings, type Theme } from '$lib/insightsUrl';
-import { signed as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.13")
+import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.1")
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
@@ -85,7 +85,7 @@ const settleText = (z: number, n: number, unit: string, bar = 2): { settle?: str
 // was measured over (default n; all bags for a group vs all): under T_SMALL the test is a t test on sdN − 1 df.
 function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, unit: string, n: number, caveatEarly?: string, tests = 1, sdN = n): Finding | null {
   // A signed delta that rounds to ±0.00 isn't a finding ("rate 0.00 higher").
-  if (!Number.isFinite(z) || /^[-+]0\.00$/.test(f.value ?? '')) return null;
+  if (!Number.isFinite(z) || /^[-+]0\.0+$/.test(f.value ?? '')) return null;
   const strength = strengthOf(z, enough, tests, sdN);
   if (strength === 'hidden') return null;
   const early = strength === 'early';
@@ -125,7 +125,7 @@ const dialinCurve: Generator = (c) => {
   const share = first.filter((r) => (lower ? r.dm < 0 : r.dm > 0)).length;
   const story: Finding = {
     ...curve, key: 'dialinStory', kind: 'story', of: 'dialinCurve',
-    body: `Brew #1 averages ${raw(1).toFixed(2)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(2)}. ` +
+    body: `Brew #1 averages ${raw(1).toFixed(1)}; by brew #${lastI}${lastI === 7 ? '+' : ''} you're at ${raw(lastI).toFixed(1)}. ` +
       `The first brew rated ${lower ? 'below' : 'above'} the bag's later brews in ${Math.round((100 * share) / first.length)}% of ${first.length} bags.`
   };
   return [curve, story];
@@ -244,9 +244,9 @@ const groupDelta: Generator = (c) => {
       const ranked = [...bs].sort((x, y) => (delta >= 0 ? means.get(y.id)! - means.get(x.id)! : means.get(x.id)! - means.get(y.id)!) || x.name.localeCompare(y.name));
       const f = graded({
         key: `groupDelta:${dim}:${label}`, theme: 'taste', kind: 'number',
-        headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(2)} ${delta < 0 ? 'lower' : 'higher'}`,
-        value: signed(delta), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
-        ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(2), coffeeHref(b)))])
+        headline: `${label} ${noun} rate ${Math.abs(delta).toFixed(1)} ${delta < 0 ? 'lower' : 'higher'}`,
+        value: signed(delta, 1), sample: `${plural(ms.length, 'bag')}`, href: `${LB}&open=${board}`,
+        ...details([delta >= 0 ? 'Highest rated' : 'Lowest rated', ranked.map((b) => detail(b.name, means.get(b.id)!.toFixed(1), coffeeHref(b)))])
       }, groupZ(ms, all), true, 'bags', ms.length, big.length > 1 ? `With ${big.length} ${dimName} groups compared, one usually stands out by chance.` : undefined, big.length, all.length);
       return f ? [f] : [];
     });
@@ -778,7 +778,7 @@ const likeStandouts: Generator = (c) => {
   const named = new Map(tagTwins([[id], ...same].map(([x]) => { const b = byId.get(x as number); return { x, label: bagLabel(c, x as number, b), roastedOn: b?.purchaseDate ?? null, openedOn: b?.firstBrew ?? null }; }))
     .map((t) => [t.x, t.tag ? `${t.label} (${t.tag})` : t.label]));
   const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
-    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
+    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(1)}`,
     value: gapText(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
@@ -788,7 +788,7 @@ const likeStandouts: Generator = (c) => {
   const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
   const roaster = best ? graded({
     key: 'likeRoaster', theme: 'taste', kind: 'number',
-    headline: `${best.r} rates ${Math.abs(best.gap).toFixed(2)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
+    headline: `${best.r} rates ${Math.abs(best.gap).toFixed(1)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
     value: gapText(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
   }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length, allGaps.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);

@@ -8,7 +8,7 @@
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS } from '$lib/sample';
   import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, DEFAULT_AVG, RANKS, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
-  import { deltaColor, deltaInk, signed } from '$lib/components/deltaColor';
+  import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
@@ -31,7 +31,7 @@
   const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   function fmt(v: number): string {
-    if (rank === 'like') return signed(v);
+    if (rank === 'like') return likeGap(v);
     if (rank === 'rating') return v.toFixed(1);
     if (rank === 'grams') return formatGrams(v);
     if (rank === 'spend') return usd.format(v);

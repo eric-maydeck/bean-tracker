@@ -1,4 +1,4 @@
-import { signed } from '$lib/components/deltaColor';
+import { likeGap } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
 import { GENERATORS, insightsTab, rescueOdds, type Finding, type GenCtx, type Generator } from './insightGenerators';
@@ -48,7 +48,7 @@ describe('dial-in curve', () => {
   it('story variant: raw means and share of bags', () => {
     const f = gen('dialinStory', brews)!;
     expect(f.kind).toBe('story');
-    expect(f.body).toBe("Brew #1 averages 6.00; by brew #6 you're at 8.00. The first brew rated below the bag's later brews in 100% of 30 bags.");
+    expect(f.body).toBe("Brew #1 averages 6.0; by brew #6 you're at 8.0. The first brew rated below the bag's later brews in 100% of 30 bags.");
   });
   it("story share: first brew below the bag's later brews, not only its single lowest", () => {
     // Brew #2 is each bag's low point, yet brew #1 still rates below the later brews' average.
@@ -171,7 +171,7 @@ describe('group effects', () => {
   it('Light roasts rate lower (delta vs all bag means)', () => {
     const f = gen('groupDelta:roastLevel:Light', brews, bs)!;
     const allMean = (4 * 6 + 8 * 8) / 12;
-    expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: `-${(allMean - 6).toFixed(2)}`, headline: 'Light roasts rate 1.33 lower', sample: '4 bags' });
+    expect(f).toMatchObject({ theme: 'taste', kind: 'number', strength: 'solid', value: `-${(allMean - 6).toFixed(1)}`, headline: 'Light roasts rate 1.3 lower', sample: '4 bags' });
     expect(f.href).toBe('/insights?tab=leaderboards&open=roast');
   });
   it('a group under 3 bags is skipped', () => expect(gen('groupDelta:roastLevel:Light', brews.slice(0, 18), bs.slice(0, 6).map((x, i) => ({ ...x, roastLevel: i < 2 ? 'Light' : 'Medium' })))).toBeNull());
@@ -236,7 +236,7 @@ describe('details (supporting lists)', () => {
     const bs = bags(12, (i) => ({ roastLevel: i < 4 ? 'Light' : 'Medium', slug: `b${i + 1}` }));
     const rate = (i: number) => (i < 4 ? 6 + i * 0.1 : 8 + (i % 2 ? 0.2 : -0.2));
     expect(gen('groupDelta:roastLevel:Light', bs.flatMap((x, i) => seq(x.id, [rate(i), rate(i), rate(i)])), bs)!.details).toEqual([{ label: 'Lowest rated', items: [
-      { name: 'Bag 1', value: '6.00', href: '/coffees/b1' }, { name: 'Bag 2', value: '6.10', href: '/coffees/b2' }] }]);
+      { name: 'Bag 1', value: '6.0', href: '/coffees/b1' }, { name: 'Bag 2', value: '6.1', href: '/coffees/b2' }] }]);
   });
   it('runway: most on hand among open and backlog bags', () => {
     const bs = [bag({ id: 1, name: 'Big', amountG: 1000, purchaseDate: '2026-09-01' }), bag({ id: 2, name: 'Half', amountG: 1000, purchaseDate: '2026-08-01', frozenStart: '2026-08-02', frozenEnd: '2026-08-31' }),
@@ -767,7 +767,7 @@ describe('like-with-like findings', () => {
   it('standout: the coffee furthest from its like-group', () => {
     const f = gen('likeStandout', peers, bags);
     expect(f?.headline).toMatch(/Bag 1 beats Washed Light coffees by/);
-    expect(f?.value).toMatch(/^\+1\.\d\d$/);
+    expect(f?.value).toMatch(/^\+1\.\d$/);
   });
   it('dial-in speed by roast level: median settle position per group', () => {
     const slow = [1, 2, 3].flatMap((id) => [5, 6, 7, 9, 9, 9].map((r, i) => brew({ id: 500 + id * 10 + i, coffeeId: 100 + id, rating: r, brewIndex: i + 1, roastLevel: 'Ultralight' })));
@@ -790,7 +790,7 @@ describe('like-with-like findings', () => {
     const f = gen('likeRoaster', all, gb)!;
     const row = leaderboard(all, gb, { start: '2026-09-01', end: '2026-09-30' }, 'roasters', 'like', 'all', 'raw').find((r) => r.key === 'Sey')!;
     expect(f.headline).toMatch(/^Sey rates/);
-    expect(f.value).toBe(signed(row.value)); // the board's format ("−", not "-")
+    expect(f.value).toBe(likeGap(row.value)); // the board's format ("−", not "-"; 1 decimal)
     expect(f.sample).toBe(`${row.bags} bags`);
   });
   const dialRows = (ids: number[], ratings: number[], o: Partial<BrewFact>) =>
