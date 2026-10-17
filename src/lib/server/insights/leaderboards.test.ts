@@ -37,6 +37,9 @@ const RATED = [
   brew({ coffeeId: 3, rating: 2 })
 ];
 
+// hiddenRows' reasons over every board, in order.
+const why = (h: ReturnType<typeof hiddenRows>) => [...new Set(Object.values(h.by).flat())];
+
 describe('leaderboard', () => {
   it('brews: count per key, bags distinct', () =>
     expect(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'brews', 'all', 'raw')).toMatchObject([
@@ -152,17 +155,17 @@ describe('hiddenRows', () => {
     hiddenRows(leaderboards(scored, [bag({ id: 1 })], SEPT, null, 'rating', ratings, avg), scored, all, [bag({ id: 1 })], SEPT, 'rating', ratings);
   it('blames each setting that hid rows, and only those', () => {
     // One bag, four brews: min3 hides every board; raw shows it.
-    expect(run(rated, rated, 'all', 'min3').why).toEqual(['avg']);
+    expect(why(run(rated, rated, 'all', 'min3'))).toEqual(['avg']);
     expect(run(rated, rated, 'all', 'min3').by.roasters).toEqual(['avg']);
-    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, why: [], by: {}, cut: [] });
+    expect(run(rated, rated, 'all', 'raw')).toEqual({ rows: {}, by: {}, cut: [] });
     // Once dialed nulled the ratings (scored) that the full history has: Brews setting only.
     const dialed = rated.map((b) => ({ ...b, rating: null }));
     const d = run(dialed, rated, 'all', 'raw');
-    expect(d.why).toEqual(['dial']);
+    expect(why(d)).toEqual(['dial']);
     expect(d.rows.roasters).toBe(1);
     // Calibrated hides a pre-calibration brew's rating: Ratings setting only.
     const old = rated.map((b) => ({ ...b, localDate: '2026-05-01' }));
-    expect(hiddenRows(leaderboards(old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, null, 'rating', 'current', 'raw'), old, old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, 'rating', 'current').why)
+    expect(why(hiddenRows(leaderboards(old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, null, 'rating', 'current', 'raw'), old, old, [bag({ id: 1 })], { start: '2026-05-01', end: '2026-05-31' }, 'rating', 'current')))
       .toEqual(['ratings']);
   });
   it('each board gets its own reasons', () => {
@@ -196,7 +199,8 @@ describe('vs like coffees', () => {
   it('the See all note counts like rows that Once dialed hid', () => {
     const dialed = bs.map((b) => ({ ...b, rating: null }));
     const h = hiddenRows(leaderboards(dialed, [], SEPT, null, 'like', 'all', 'raw'), dialed, bs, [], SEPT, 'like', 'all');
-    expect(h).toMatchObject({ rows: { coffees: 6, roasters: 2 }, why: ['dial'] });
+    expect(h).toMatchObject({ rows: { coffees: 6, roasters: 2 } });
+    expect(why(h)).toEqual(['dial']);
   });
   it('the confident cutoff: a 1-brew bag is no like row under the default, nor in its roaster figure; raw keeps the row', () => {
     const tiny = brew({ id: 999, coffeeId: 7, rating: 10, roaster: 'A', ...LW });
@@ -206,7 +210,8 @@ describe('vs like coffees', () => {
     // A's figure stays 1: the tiny bag's +3 gap is no point in it (raw too: roasterLikes leaves it out).
     expect(+leaderboard([...bs, tiny], [], SEPT, 'roasters', 'like', 'all', 'raw')[0].value.toFixed(2)).toBe(1);
     const h = hiddenRows(leaderboards([...bs, tiny], [], SEPT, null, 'like', 'all', 'min3'), [...bs, tiny], [...bs, tiny], [], SEPT, 'like', 'all');
-    expect(h).toMatchObject({ rows: { coffees: 1 }, why: ['avg'] });
+    expect(h).toMatchObject({ rows: { coffees: 1 } });
+    expect(why(h)).toEqual(['avg']);
   });
   it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
   it('the coffees board carries the like line under rating', () => {

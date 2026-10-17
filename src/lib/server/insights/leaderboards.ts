@@ -183,10 +183,9 @@ export function cutBoards(
 export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
   ratings: Ratings
-): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>>; cut: Board[] } {
-  if (rank !== 'rating' && rank !== 'like') return { rows: {}, why: [], by: {}, cut: [] };
+): { rows: Partial<Record<Board, number>>; by: Partial<Record<Board, RowWhy[]>>; cut: Board[] } {
+  if (rank !== 'rating' && rank !== 'like') return { rows: {}, by: {}, cut: [] };
   const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {}, cut: Board[] = [];
-  const hit = { avg: false, ratings: false, dial: false };
   for (const b of BOARDS) {
     const n0 = boards[b].length;
     const n1 = leaderboard(scored, bags, p, b, rank, ratings, 'raw', false).length;
@@ -194,7 +193,6 @@ export function hiddenRows(
     const n3 = leaderboard(all, bags, p, b, rank, 'all', 'raw', false).length;
     if (!n0 && n1) cut.push(b);
     if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
-    hit.avg ||= n1 > n0; hit.ratings ||= n2 > n1; hit.dial ||= n3 > n2;
   }
-  return { rows, why: (['avg', 'ratings', 'dial'] as const).filter((k) => hit[k]), by, cut };
+  return { rows, by, cut };
 }
