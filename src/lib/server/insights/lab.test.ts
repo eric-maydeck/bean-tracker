@@ -407,9 +407,9 @@ describe('brewingTab', () => {
     expect(d.map((s) => s.label)).toEqual(['#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10+']);
     expect(d[0].delta).not.toBeNull();
   });
-  it('brews to your best: brew # of each bag\'s best (earliest on ties), every label', () => {
+  it('brews to your best: brew # of each bag\'s best (earliest on ties), #1–#7', () => {
     const b = tab().bestAt;
-    expect(b.map((x) => x.label)).toEqual(['#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9', '#10+']);
+    expect(b.map((x) => x.label)).toEqual(['#1', '#2', '#3', '#4', '#5', '#6', '#7']);
     expect(b.reduce((s, x) => s + x.bags, 0)).toBe(6);
   });
   it('grind drift: change vs the bag\'s first setting, negative = finer', () => {
@@ -455,6 +455,13 @@ describe('brewingTab', () => {
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };
   it('best brew: earliest wins a tie', () => {
     expect(brewingTab(bag1([7, 8, 8, 7, 7]), { ...c1, all: bag1([7, 8, 8, 7, 7]) }).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+  });
+  it('best brew: only each bag\'s first 7 brews count (no bag-length bias)', () => {
+    // A late 10 at brew 9 is past the window: the best is the 8 at #2; 5 rated brews are needed inside it.
+    const long = bag1([7, 8, 7, 7, 7, 7, 7, 7, 10]);
+    expect(brewingTab(long, { ...c1, all: long }).bestAt.find((x) => x.bags)).toEqual({ label: '#2', bags: 1 });
+    const late = bag1([7, 8, 7, 7, 7, 7, 7, 7, 10]).filter((b) => b.brewIndex <= 3 || b.brewIndex >= 8); // 3 rated in #1–#7
+    expect(brewingTab(late, { ...c1, all: late }).bestAt).toEqual([]);
   });
   it('best brew: a 4-brew bag does not count', () => {
     const b = brewingTab([...bag1([7, 8, 8, 7, 7]), ...bag1([7, 7, 7, 9], [2])], { ...c1, all: [...bag1([7, 8, 8, 7, 7]), ...bag1([7, 7, 7, 9], [2])] }).bestAt;

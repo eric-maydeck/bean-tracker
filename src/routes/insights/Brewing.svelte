@@ -69,12 +69,12 @@
       {/if}
       {#if t.bestAt.length}
         <section class="chart-panel lab-chart best-chart" class:span={!t.dialIn.length} data-section="brewing-best">
-          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews this period: the brew number of its best-rated brew.', 'A tie: the earliest.']} {placeTip} />
+          <LabHead id="brewing-best" title="Brews until dialed" help={['Each bag with 5+ rated brews among its first 7 this period: the brew number of its best-rated brew.', 'Only the first 7 count, so a bag brewed longer gets no extra chances at a late best.', 'A tie: the earliest.']} {placeTip} />
           <div class="fit-body">
             <Chart type="bar" vertical labels={t.bestAt.map((b) => b.label)} values={t.bestAt.map((b) => b.bags)} datasetLabel="Bags"
               integer format={(v) => `${v} bag${v === 1 ? '' : 's'}`} height={240} />
           </div>
-          <p class="chart-note">Brew number of each bag's best brew (bags with 5+ rated brews){s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
+          <p class="chart-note">Brew number of each bag's best brew, within its first 7 (bags with 5+ rated there){s.dial === 'dialed' ? ' · Always all brews' : ''}</p>
         </section>
       {/if}
       {#each SETTLE as [k, by] (k)}

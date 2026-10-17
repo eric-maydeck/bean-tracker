@@ -29,6 +29,7 @@ export interface BandStat {
   spread: number | null; // sample SD of the paired brews' same-bag deltas (consistency); null under 2 paired brews
   sd: number | null; // sample SD of the band's rated brews' ratings (board SD column, over plainBrews); null under 2 brews
 }
+export const BEST_WINDOW = 7; // the Brews until dialed chart reads each bag's first 7 brews
 const EPS = 1e-9; // an SD below this is float noise: no spread to measure a gap against
 const byOrder = (a: { order: number; label: string }, b: { order: number; label: string }) => a.order - b.order || a.label.localeCompare(b.label);
 const sampleSd = (xs: number[]) => sd(xs) * Math.sqrt(xs.length / (xs.length - 1));
@@ -314,7 +315,7 @@ export interface BrewingTab {
   // under 2 solid cells (nothing to compare).
   rest: (Breakdown & { best: (number | null)[] }) | null;
   dialIn: BandStat[]; // delta by brew number in the bag (one brew per band per bag: minPerBand 1)
-  bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew (bags with ≥ 5 rated brews)
+  bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew within its first 7 (bags with ≥ 5 rated there)
   drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
   // Brews until dialed in (gate P4): per roast level / process group, the median brew its bags settle at (the dialinBy
   // findings' measure), fastest first; empty under 2 groups.
@@ -350,7 +351,9 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     const solid = row.flatMap((x, i) => (x?.solid ? [{ i, d: x.delta! }] : []));
     return solid.length >= 2 ? solid.reduce((x, y) => (y.d > x.d ? y : x)).i : null;
   };
-  const best = [...groupBy(every.filter((b) => b.brewIndex > 0), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
+  // Each bag's first BEST_WINDOW brews only, so a bag brewed 20 times has no more chances at a late best than one
+  // brewed 7 (user, 2026-10-17: the bag-length bias).
+  const best = [...groupBy(every.filter((b) => b.brewIndex > 0 && b.brewIndex <= BEST_WINDOW), (b) => b.coffeeId).values()].filter((g) => g.length >= 5)
     .map((g) => bandOf('brewNo', g.reduce((x, y) => (y.rating! > x.rating! ? y : x)))!.label); // rows are in time order: earliest best wins
   // Baseline = the bag's first in-period brew on the chosen grinder. Ignores the ratings switch: drift is
   // about settings, not ratings (controller ruling).
@@ -365,7 +368,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   return {
     rest: restMap && { ...restMap, best: restMap.cells.map(bestOf) },
     dialIn: pairedDeltas(every, labFn('brewNo'), 1),
-    bestAt: best.length ? BREW_NO_LABELS.map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
+    bestAt: best.length ? BREW_NO_LABELS.slice(0, BEST_WINDOW).map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     drift: drift.length >= 2 ? drift : [],
     settle: Object.fromEntries((['roast', 'process'] as const).map((k) => {
       const g = settleGroups({ brews: c.all.filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
