@@ -1900,7 +1900,7 @@ export const STATES: State[] = [
       // Boards that can't rank are left out, not shown empty.
       await expect(page.locator('.board')).toHaveCount(2);
       await expect(page.locator('[data-board="origins"], [data-board="water"]')).toHaveCount(0);
-      await expect(page.locator('[data-board="coffees"] .val').first()).toHaveText(/^([+−]\d\.\d\d|0\.00)$/);
+      await expect(page.locator('[data-board="coffees"] .val').first()).toHaveText(/^([+−]\d\.\d|0\.0)$/);
       // No empty footers, and no "vs" line (the value already is that number).
       await expect(page.locator('.board-foot:not(:has(button))')).toHaveCount(0);
       await expect(page.locator('.like-line')).toHaveCount(0);
@@ -1916,7 +1916,7 @@ export const STATES: State[] = [
   { name: 'insights-like-lines', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       const line = page.locator('[data-board="coffees"] .like-line').first();
-      await expect(line).toHaveText(/^([+−]\d\.\d\d|0\.00) vs .+ coffees/);
+      await expect(line).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
       await expectDeltaInk(page);
       // Stacked (phone), only rows with a line grow: Roasters keeps the plain 3rem row; side by side the band stays level.
       const h = (sel: string) => page.locator(sel).first().evaluate((e) => e.getBoundingClientRect().height);
@@ -1934,7 +1934,7 @@ export const STATES: State[] = [
   // Gate P4: the line shows under every rank but like; spend ranks bags, so it shows there too.
   { name: 'insights-like-lines-brews', path: () => '/insights?tab=leaderboards&rank=brews&range=all',
     act: async (page) => {
-      await expect(page.locator('[data-board="coffees"] .like-line').first()).toHaveText(/^([+−]\d\.\d\d|0\.00) vs .+ coffees/);
+      await expect(page.locator('[data-board="coffees"] .like-line').first()).toHaveText(/^([+−]\d\.\d|0\.0) vs .+ coffees/);
       await page.getByLabel('Rank by').selectOption('spend');
       await expect(page.locator('[data-board="coffees"] .like-line').first()).toBeVisible();
     } },
