@@ -1,5 +1,9 @@
+import type { DatabaseSync } from 'node:sqlite';
+import { DEFAULTS } from '$lib/insightsUrl';
 import { pooled, single, type Sample } from '$lib/sample';
-import type { BrewFact } from './facts';
+import { loadFacts, type BrewFact } from './facts';
+import { dialInIds, onceDialed } from './dialed';
+import { countsForRating } from './ratings';
 import { groupsFor, type LabFilters } from './lab';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -61,4 +65,12 @@ export function roasterLikes(rows: readonly BrewFact[]): Map<string, RoasterLike
     out.set(r, { gap: mean(gaps), gaps, bags: g.length, brews: g.reduce((n, [, l]) => n + l.sample.brews, 0) });
   }
   return out;
+}
+
+// The /coffees/[slug] panel (spec Part 4): all time, Current ratings, once dialed; null when no group qualifies.
+// ponytail: loads every brew per coffee-page view (like each insights view); cache per request if it ever shows.
+export function coffeeLike(db: DatabaseSync, id: number): Like | null {
+  const { brews } = loadFacts(db);
+  const rows = onceDialed(brews, dialInIds(brews)).filter((b) => b.coffeeId !== null && countsForRating(b, DEFAULTS.ratings) && b.rating! > 0);
+  return likeGaps(rows).get(id) ?? null;
 }

@@ -23,6 +23,9 @@
   import AddedToast from '$lib/components/AddedToast.svelte';
   import type { CoffeeRow } from '$lib/types';
   import { formatBag } from '$lib/grams';
+  import SampleNote from '$lib/components/SampleNote.svelte';
+  import { deltaInk } from '$lib/components/deltaColor';
+  import { signed } from '../../insights/DeltaBars.svelte';
 
   let { data, form } = $props();
 
@@ -453,6 +456,22 @@
           {/if}
         </div>
       </section>
+      {#if data.like}
+        {@const l = data.like}
+        <section class="detail-section" data-section="like">
+          <h2>Vs like coffees</h2>
+          <p class="like-note">Compared with {l.label}: all time, once dialed, calibrated ratings.</p>
+          <div class="stat-grid">
+            <div class="stat">
+              <span class="stat-label">Score</span>
+              <span class="stat-value">{l.score.toFixed(2)}{#if l.sample.small}{' '}<SampleNote s={l.sample} />{/if}</span>
+            </div>
+            <div class="stat"><span class="stat-label">Like coffees</span><span class="stat-value">{l.groupMean.toFixed(2)}</span></div>
+            <div class="stat"><span class="stat-label">Gap</span><span class="stat-value {deltaInk(l.gap)}">{signed(l.gap)}</span></div>
+            <div class="stat"><span class="stat-label">Rank</span><span class="stat-value">{l.place}</span></div>
+          </div>
+        </section>
+      {/if}
     </div>
   </article>
 {/if}
@@ -480,6 +499,10 @@
 <AddedToast bind:slug={addedSlug} />
 
 <style>
+  .like-note {
+    margin: 0 0 var(--space-3);
+    color: var(--color-text-muted);
+  }
   .bc-link-line {
     display: flex;
     flex-wrap: wrap;

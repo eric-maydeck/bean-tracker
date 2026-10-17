@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
@@ -597,6 +597,14 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(new RegExp(`/coffees/${s.slugs.long}$`));
     }
   },
+  { name: 'coffee-detail-like', path: (s) => `/coffees/${s.slugs.lab}`,
+    act: async (page) => {
+      const panel = page.locator('[data-section="like"]');
+      await expect(panel.getByRole('heading', { name: 'Vs like coffees' })).toBeVisible();
+      await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
+    } },
+  { name: 'coffee-detail-no-like', path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
   { name: 'coffee-long', path: (s) => `/coffees/${s.slugs.long}` },
   { name: 'coffee-frozen', path: (s) => `/coffees/${s.slugs.frozen}` },
   { name: 'coffee-decaf', path: (s) => `/coffees/${s.slugs.decaf}` },

@@ -10,6 +10,8 @@ import { requireAdmin } from '$lib/server/auth';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
 import { queueFillMissing } from '$lib/server/imageFills';
 import { getLinkedBean, unlinkBeanConquerorBean } from '$lib/server/beanConquerorLinks';
+import { coffeeLike } from '$lib/server/insights/likeGroup';
+import { ordinal } from '$lib/server/insights/milestones';
 
 export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
   const db = getDb();
@@ -24,6 +26,7 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     }
     error(404, 'Coffee not found');
   }
+  const like = coffeeLike(db, coffee.id);
   return {
     coffee: withComputedFields(coffee, localTodayDate()),
     roastLevels: getRoastLevels(db),
@@ -32,6 +35,7 @@ export const load: PageServerLoad = ({ params, setHeaders, locals }) => {
     processingMethods: getDistinctFieldValues(db, 'processing'),
     roasterImages: getRoasterImages(db),
     beanConqueror: getLinkedBean(db, coffee.id),
+    like: like && { ...like, place: `${ordinal(like.rank)} of ${like.of}` },
     restHistory: locals.isAdmin ? getFillHistory(db) : []
   };
 };

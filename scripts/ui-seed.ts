@@ -194,12 +194,14 @@ const labBrew = db.prepare(
 const LAB = [['Light', 'Natural'], ['Light', 'Washed'], ['Ultralight', 'Natural'], ['Ultralight', 'Washed']] as const;
 const TEMPS = [91, 92, 94, 88], DOSES = [15, 17, 19], WATERS = ['w1', 'w2', 'w3'], METHODS = ['m4', 'm5', 'm6'];
 const TIMES = ['150', '180', '210', '240'], BLOOMS = ['30', '45'];
+const labSlugs: string[] = [];
 for (let k = 0; k < 8; k++) {
   const [roast_level, processing] = LAB[k % 4];
   const first = 132 - 10 * k;
   const name = `Lab Bag ${k + 1}`;
   const c = coffee({ roaster: k < 4 ? 'Lab Roasters' : 'Other Lab', coffee_name: name, roast_level, processing,
     origin: k % 2 ? 'Kenya' : 'Ethiopia', status: 'archive', roast_date: daysAgo(first + 10) });
+  labSlugs.push(c.slug);
   bean.run(`bean-lab-${k}`, name, 'Lab', daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-lab-${k}`);
   for (let j = 0; j < 32; j++) {
@@ -228,7 +230,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
-  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, big: grams.big.slug,
+  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));

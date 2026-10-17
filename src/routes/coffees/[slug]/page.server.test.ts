@@ -96,3 +96,25 @@ describe("coffee page counts days on the local date", () => {
     }
   });
 });
+
+describe('coffee page vs like coffees', () => {
+  it('ranks a bag among like coffees; none without rated brews', () => {
+    const db = getDb();
+    const ev = (slug: string) => ({ params: { slug }, setHeaders: () => {}, locals: { isAdmin: false } }) as never;
+    const ratings = [9, 8, 8, 7];
+    const made = ratings.map((r, k) => {
+      const c = createCoffee(db, sampleInput({ coffee_name: `Like ${k}`, roaster: `Roaster ${k}`, origin: ['Kenya', 'Peru', 'Brazil', 'Ethiopia'][k], roast_level: 'Light', processing: 'Washed' }));
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, 'C', '2026-10-01', ?)`).run(`lk${k}`, c.id);
+      // 6 brews: Once dialed drops the first 2, leaving the 3 other bags 4 each (the pooled 10+).
+      for (let j = 0; j < 6; j++)
+        db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, ?, '2026-10-01')`)
+          .run(`2026-09-0${j + 1}T08:00:00`, `lk${k}`, r);
+      return c;
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((load(ev(made[0].slug)) as any).like).toMatchObject({ label: 'Washed Light coffees', rank: 1, of: 4, place: '1st of 4' });
+    const bare = createCoffee(db, sampleInput({ coffee_name: 'Like None' }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((load(ev(bare.slug)) as any).like).toBeNull();
+  });
+});
