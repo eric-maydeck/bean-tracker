@@ -222,7 +222,7 @@
       </div>
     {/if}
   {/each}
-  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only.</p>{/if}
+  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees.</p>{/if}
 {/if}
 
 <style>

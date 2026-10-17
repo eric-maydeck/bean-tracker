@@ -4,7 +4,7 @@ import type { ColumnKey } from '$lib/coffeeFilters';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { countsForRating, ratedGroups } from './ratings';
-import { likeGaps } from './likeGroup';
+import { likeGaps, roasterLikes } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
 import { pooled, single, type Sample } from '$lib/sample';
@@ -104,18 +104,13 @@ export function leaderboard(
     const key = BREW_KEY[board];
     // vs like coffees (spec Part 4): each bag's once-dialed score minus its like-group's mean (likeGroup.ts).
     // Rated, linked brews of the view only (ratings / dial / coffees filter already applied by the caller).
-    const likes = (rank === 'like' && LIKE_BOARDS.includes(board)) || (rank === 'rating' && board === 'coffees')
-      ? likeGaps(inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0)) : null;
+    const likeRows = inP.filter((b) => b.coffeeId !== null && countsForRating(b, ratings) && b.rating! > 0);
+    const likes = (rank === 'like' && board === 'coffees') || (rank === 'rating' && board === 'coffees') ? likeGaps(likeRows) : null;
     if (rank === 'like') {
-      if (!likes) return [];
-      const roasterOf = new Map(inP.map((b) => [b.coffeeId, b.roaster]));
-      const ls = [...likes].map(([id, l]) => ({ id, l, roaster: roasterOf.get(id) ?? null }));
+      if (!LIKE_BOARDS.includes(board)) return [];
       rows = board === 'coffees'
-        ? ls.map(({ id, l }) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
-        : [...groupBy(ls.filter((x) => x.roaster), (x) => x.roaster!)].map(([r, g]) => {
-          const brews = g.reduce((s, x) => s + x.l.sample.brews, 0);
-          return { key: r, label: r, value: mean(g.map((x) => x.l.gap)), bags: g.length, brews, sample: pooled(g.length, brews) };
-        });
+        ? [...likes!].map(([id, l]) => ({ key: String(id), label: String(id), value: l.gap, bags: 1, brews: l.sample.brews, sample: l.sample, like: { gap: l.gap, label: l.label } }))
+        : [...roasterLikes(likeRows)].map(([r, x]) => ({ key: r, label: r, value: x.gap, bags: x.bags, brews: x.brews, sample: pooled(x.bags, x.brews) }));
     } else if (rank === 'rating') {
       rows = ratedGroups(inP, key, ratings, avg).map((r) => ({
         key: r.label, label: r.label, bags: r.bags, brews: r.brews,

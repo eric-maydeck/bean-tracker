@@ -44,4 +44,10 @@ describe('likeGaps', () => {
     expect([l.get(1)!.rank, l.get(2)!.rank, l.get(3)!.rank]).toEqual([2, 2, 1]);
     expect(l.get(1)!.sample).toEqual({ bags: 1, brews: 3, small: true, one: true });
   });
+  it('outside: the group leaves out the roaster\u2019s own bags and skips the roaster step', () => {
+    const rows = [...bag(1, 9, LWKS), ...bag(2, 7, LWKS), ...[3, 4, 5].flatMap((id) => bag(id, 8, { ...LWKS, roaster: 'Other' }))];
+    const out = likeGaps(rows, true).get(1)!;
+    expect(out.label).toBe('Washed Light coffees from Kenya');
+    expect(out.groupMean).toBe(8); // Sey's bag 2 (7) is left out
+  });
 });

@@ -1843,7 +1843,7 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-like', path: () => '/insights?tab=leaderboards&rank=like&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="coffees"] .board-row:not(.placeholder)').first()).toBeVisible();
-      await expect(page.locator('.like-note')).toHaveText('vs like coffees ranks coffees and roasters only.');
+      await expect(page.locator('.like-note')).toHaveText("vs like coffees ranks coffees and roasters only. A roaster is compared with other roasters' coffees.");
       // Boards that can't rank are left out, not shown empty.
       await expect(page.locator('.board')).toHaveCount(2);
       await expect(page.locator('[data-board="origins"], [data-board="water"]')).toHaveCount(0);
@@ -2171,8 +2171,9 @@ export const STATES: State[] = [
       await page.mouse.move(end.x, end.y, { steps: 4 });
       await settle();
       const pb = (await panel.boundingBox())!;
-      // 2.5: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off.
-      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(2.5);
+      // 3: the bar's height is fractional at some widths (its label line), so the scroll lands a sub-pixel off
+      // (2.65 with the Part 4 seed bags in the feed).
+      expect(Math.abs(pb.y + pb.height - vh), 'panel bottom at the screen bottom').toBeLessThanOrEqual(3);
       const tEnd = (await track.boundingBox())!; // the side ruler may have slid up a few px with the feed's end
       expect(Math.abs(await off(tEnd.height > tEnd.width ? { x: 0, y: tEnd.y + tEnd.height } : { x: tEnd.x + tEnd.width, y: 0 })),
         'thumb at the ruler end').toBeLessThanOrEqual(2);
@@ -3177,9 +3178,23 @@ export const STATES: State[] = [
         return out;
       });
       expect(b7.filter((c) => c.bad.length)).toEqual([]);
-      // The seed always has a card with spare room showing entries. (A full card showing none is not asserted:
-      // whether one exists depends on which findings the seed produces; `bad` above checks both cases when present.)
       expect(b7.some((c) => c.shown > 0)).toBe(true);
+      // A full card shows no details: forced (the seed's mix of cards decides whether one is full on its own).
+      // A spacer fills the first details card; a 3px narrower grid re-runs the filler; then both are undone.
+      const forcedShown = await page.locator('.finding-grid').evaluate(async (grid) => {
+        const card = [...grid.children].find((c) => c.querySelector('.dgroup')) as HTMLElement;
+        const pad = document.createElement('div');
+        pad.style.cssText = `flex: none; height: ${card.clientHeight}px`;
+        card.prepend(pad);
+        (grid as HTMLElement).style.width = 'calc(100% - 3px)';
+        await new Promise((r) => setTimeout(r, 400));
+        const shown = card.querySelectorAll('.dgroup:not([hidden]) li:not([hidden])').length;
+        pad.remove();
+        (grid as HTMLElement).style.width = '';
+        await new Promise((r) => setTimeout(r, 400));
+        return shown;
+      });
+      expect(forcedShown).toBe(0);
       // A shown chart is never squeezed below its minimum to make room for details.
       const squeezed = await page.locator('.finding-grid .hl-card:has(.dgroup:not([hidden])) :is(.multi, .bars, .spark) svg').evaluateAll((ss) =>
         ss.filter((s) => s.getBoundingClientRect().height < 23).length);
@@ -3212,9 +3227,21 @@ export const STATES: State[] = [
       const colors = await multi.locator('.swatch').evaluateAll((ss) => ss.map((s) => getComputedStyle(s).backgroundColor));
       expect(new Set(colors).size).toBe(legend);
       // Weekday bars: seven bars, the weekend two in the second color (B6).
-      const bars = page.locator('.finding-grid .bars').first();
+      const bars = page.locator('.finding-grid .bars:not(:has(.full))').first();
       await expect(bars.locator('rect')).toHaveCount(7);
       expect(await bars.locator('rect.weekend').count()).toBe(2);
+      // The seed renders the Part 4 findings. Dial-in bars carry full labels with values; nothing spills its card.
+      for (const id of ['dialinBy-roastLevel', 'dialinBy-processGroup']) {
+        const labels = page.locator(`#insight-${id} .bar-labels.full span`);
+        expect(await labels.count()).toBeGreaterThanOrEqual(2);
+        expect(await labels.locator('b').allTextContents()).toEqual(expect.arrayContaining([expect.stringMatching(/^\d+$/)]));
+        const spill = await page.locator(`#insight-${id}`).evaluate((card) => {
+          const r = card.getBoundingClientRect();
+          return [...card.querySelectorAll('.bar-labels.full span')].filter((e) => { const b = e.getBoundingClientRect(); return b.left < r.left - 1 || b.right > r.right + 1 || e.scrollHeight > e.clientHeight + 1; }).length;
+        });
+        expect(spill).toBe(0);
+      }
+      for (const id of ['rescuedBags', 'likeRoaster']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
       // A badge explains itself on tap.
       await page.locator('.finding-grid .hl-badge').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
@@ -3226,6 +3253,13 @@ export const STATES: State[] = [
       expect(await page.locator('.dot').evaluateAll((ds) => ds.findIndex((d) => d.classList.contains('on')))).toBe(1);
       expect(await page.locator('.deck').evaluate((e) => e.scrollLeft)).toBe(0);
     } },
+  // Part 4 findings, each under its own theme: the cards render and nothing spills (checkLayout runs after).
+  { name: 'insights-insights-theme-dialin', path: () => '/insights?tab=insights&range=all&theme=dialin',
+    act: async (page) => {
+      for (const id of ['dialinBy-roastLevel', 'dialinBy-processGroup', 'rescuedBags']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
+    } },
+  { name: 'insights-insights-theme-taste', path: () => '/insights?tab=insights&range=all&theme=taste',
+    act: async (page) => { await expect(page.locator('#insight-likeRoaster')).toBeVisible(); } },
   { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Money', pressed: true })).toBeVisible();

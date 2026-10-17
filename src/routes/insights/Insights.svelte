@@ -228,8 +228,11 @@
             class:weekend={/^(Sat|Sun)/.test(p.label)} />
         {/each}
       </svg>
-      <div class="bar-labels" aria-hidden="true" style:--n={f.series.length}>
-        {#each f.series as p, i (i)}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/each}
+      <div class="bar-labels" class:full={f.barLabels === 'full'} aria-hidden="true" style:--n={f.series.length}>
+        {#each f.series as p, i (i)}
+          {#if f.barLabels === 'full'}<span title={p.label}><b>{+p.value.toFixed(2)}</b>{p.label}</span>
+          {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
+        {/each}
       </div>
     </div>
   {:else if f.series && f.series.length > 1}
@@ -575,6 +578,9 @@
     width: 100%;
     max-width: 14rem;
   }
+  .bars:has(.bar-labels.full) {
+    max-width: none;
+  }
   .bars svg {
     display: block;
     width: 100%;
@@ -596,6 +602,20 @@
     color: var(--color-text-muted);
     font-size: 0.68rem;
     text-align: center;
+  }
+  /* Full labels (roast / process groups): the value, then the name, cut with an ellipsis rather than spilling. */
+  .bar-labels.full span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.62rem;
+    line-height: 1.15;
+  }
+  .bar-labels.full b {
+    display: block;
+    color: var(--color-text);
+    font-weight: 700;
   }
   .bar-labels .weekend {
     color: var(--color-text);

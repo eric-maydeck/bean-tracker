@@ -168,23 +168,24 @@ describe('hiddenRows', () => {
 
 describe('vs like coffees', () => {
   const LW = { roastLevel: 'Light', processGroup: 'Washed' as const };
-  const bs = [[1, 9, 'A'], [2, 8, 'A'], [3, 8, 'B'], [4, 7, 'B']].flatMap(([id, r, roaster]) =>
+  const bs = [[1, 9, 'A'], [2, 8, 'A'], [3, 7, 'A'], [4, 8, 'B'], [5, 7, 'B'], [6, 6, 'B']].flatMap(([id, r, roaster]) =>
     [0, 1, 2, 3].map((i) => brew({ id: Number(id) * 10 + i, coffeeId: Number(id), rating: Number(r), roaster: String(roaster), ...LW })));
   it('coffees: each bag’s gap, best first; roasters: the bag-weighted mean gap', () => {
     const c = leaderboard(bs, [], SEPT, 'coffees', 'like', 'all', 'raw');
-    expect(c.map((r) => [r.key, +r.value.toFixed(2)])).toEqual([['1', 1.33], ['2', 0], ['3', 0], ['4', -1.33]]);
+    expect(c.map((r) => r.key)).toEqual(['1', '2', '4', '3', '5', '6']);
+    // A roaster is compared with the other roaster's coffees only: A's 9/8/7 vs B's mean 7, B's 8/7/6 vs A's mean 8.
     const r = leaderboard(bs, [], SEPT, 'roasters', 'like', 'all', 'raw');
-    expect(r.map((x) => [x.key, +x.value.toFixed(2), x.sample])).toEqual([['A', 0.67, { bags: 2, brews: 8, small: true }], ['B', -0.67, { bags: 2, brews: 8, small: true }]]);
+    expect(r.map((x) => [x.key, +x.value.toFixed(2), x.sample])).toEqual([['A', 1, { bags: 3, brews: 12, small: false }], ['B', -1, { bags: 3, brews: 12, small: false }]]);
   });
   it('the See all note counts like rows that Once dialed hid', () => {
     const dialed = bs.map((b) => ({ ...b, rating: null }));
     const h = hiddenRows(leaderboards(dialed, [], SEPT, null, 'like', 'all', 'raw'), dialed, bs, [], SEPT, 'like', 'all');
-    expect(h).toMatchObject({ rows: { coffees: 4, roasters: 2 }, why: ['dial'] });
+    expect(h).toMatchObject({ rows: { coffees: 6, roasters: 2 }, why: ['dial'] });
   });
   it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
   it('the coffees board carries the like line under rating', () => {
     const like = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').find((r) => r.key === '1')!.like!;
     expect(like.label).toBe('Washed Light coffees');
-    expect(like.gap).toBeCloseTo(4 / 3);
+    expect(like.gap).toBeCloseTo(1.8);
   });
 });

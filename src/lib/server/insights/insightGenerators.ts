@@ -6,7 +6,7 @@ import { countsForRating } from './ratings';
 import { settleAt } from './dialed';
 import { brewZ, demeaned, groupZ, mean, MIN_BAGS, MIN_BREWS, partialR, pearson, sd, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
-import { likeGaps, type Like } from './likeGroup';
+import { likeGaps, roasterLikes, type Like } from './likeGroup';
 import { POOLED_MIN_BAGS, single } from '$lib/sample';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
@@ -32,6 +32,7 @@ export interface Finding {
   progress?: number; // too early only: n / (n + more needed), 0..1, how close to settled
   details?: { label: string; items: DetailItem[] }[]; // supporting lists from real data: ≤ 2 groups × 2 items
   chart?: 'bars'; // draw `series` as mini vertical bars instead of a line
+  barLabels?: 'full'; // bars: full labels with values (default: one-letter labels, the weekday bars)
 }
 export interface DetailItem { name: string; value?: string; href?: string }
 export interface GenCtx {
@@ -750,26 +751,25 @@ const calibration: Generator = (c) => {
 // Coffee z: its gap over the spread of every bag's gap, Bonferroni over the bags compared.
 const likeStandouts: Generator = (c) => {
   const likes = [...likeGaps(counted(c))].filter(([, l]) => !l.sample.small);
-  if (likes.length < POOLED_MIN_BAGS) return null;
   const gaps = likes.map(([, l]) => l.gap), spread = sd(gaps);
-  if (spread < 1e-9) return [];
   const byGap = (a: [number, Like], b: [number, Like]) => Math.abs(b[1].gap) - Math.abs(a[1].gap) || bagLabel(c, a[0]).localeCompare(bagLabel(c, b[0]));
-  const [id, top] = [...likes].sort(byGap)[0];
-  const up = top.gap >= 0;
-  const coffee = graded({
+  const ranked = [...likes].sort(byGap), byId = bagById(c), [id, top] = ranked[0] ?? [];
+  const up = (top?.gap ?? 0) >= 0;
+  const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
     key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${bagLabel(c, id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(2)}`,
     value: signed(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
-    ...details([up ? 'Also above their peers' : 'Also below their peers', [...likes].sort(byGap).slice(1).filter(([, l]) => (l.gap >= 0) === up)
-      .map(([x, l]) => detail(bagLabel(c, x), signed(l.gap), coffeeHref(c.bags.find((b) => b.id === x))))])
+    ...details([up ? 'Also above their peers' : 'Also below their peers', ranked.slice(1).filter(([, l]) => (l.gap >= 0) === up)
+      .map(([x, l]) => detail(bagLabel(c, x), signed(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);
-  const roasters = [...groupBy(likes, ([x]) => c.bags.find((b) => b.id === x)?.roaster)].filter(([, g]) => g.length >= POOLED_MIN_BAGS);
-  const best = roasters.map(([r, g]) => ({ r: r!, ms: g.map(([, l]) => l.gap) }))
-    .sort((a, b) => Math.abs(mean(b.ms)) - Math.abs(mean(a.ms)) || a.r.localeCompare(b.r))[0];
+  // Roasters: the Leaderboards figure (roasterLikes: against other roasters' coffees), 3+ bags each.
+  const rl = roasterLikes(counted(c)), allGaps = [...rl.values()].flatMap((x) => x.gaps);
+  const roasters = [...rl].filter(([, x]) => x.bags >= POOLED_MIN_BAGS);
+  const best = roasters.map(([r, x]) => ({ r, ...x })).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap) || a.r.localeCompare(b.r))[0];
   const roaster = best ? graded({
     key: 'likeRoaster', theme: 'taste', kind: 'number',
-    headline: `${best.r} rates ${Math.abs(mean(best.ms)).toFixed(2)} ${mean(best.ms) >= 0 ? 'above' : 'below'} like coffees`,
-    value: signed(mean(best.ms)), sample: plural(best.ms.length, 'bag'), href: `${LB}&rank=like&open=roasters`
-  }, groupZ(best.ms, gaps), true, 'bags', best.ms.length, undefined, roasters.length) : null;
+    headline: `${best.r} rates ${Math.abs(best.gap).toFixed(2)} ${best.gap >= 0 ? 'above' : 'below'} like coffees`,
+    value: signed(best.gap), sample: plural(best.bags, 'bag'), href: `${LB}&rank=like&open=roasters`
+  }, groupZ(best.gaps, allGaps), true, 'bags', best.bags, undefined, roasters.length) : null;
   return [coffee, roaster].filter((f): f is Finding => f !== null);
 };
 
@@ -777,34 +777,41 @@ const likeStandouts: Generator = (c) => {
 // group of 3+ bags (each has 5+ rated brews, so the brew half of the pooled rule always holds). Descriptive.
 const dialinByGroup: Generator = (c) => {
   const pos = settlePositions({ ...c, brews: c.allBrews });
-  const byId = bagById(c);
+  const byId = bagById(c), allPos = pos.map((x) => x.pos);
   return (['roastLevel', 'processGroup'] as const).flatMap((dim) => {
+    // Group medians print as whole brews (rounded up). Groups under the pooled bag rule are left out.
     const groups = [...groupBy(pos, (x) => { const v = byId.get(x.id)?.[dim]; return v && v !== 'Other / Unknown' ? v : null; })]
       .filter(([, g]) => g.length >= POOLED_MIN_BAGS)
-      .map(([label, g]) => ({ label: label!, value: median(g.map((x) => x.pos)) }))
-      .sort((a, b) => a.value - b.value || a.label.localeCompare(b.label));
-    if (groups.length < 2 || groups[0].value === groups.at(-1)!.value) return [];
-    const [fast, slow] = [groups[0], groups.at(-1)!];
-    return [{
-      key: `dialinBy:${dim}`, theme: 'dialin' as const, kind: 'pattern' as const, chart: 'bars' as const,
-      headline: `${fast.label} settles by brew ${fast.value}; ${slow.label} by brew ${slow.value}`,
-      series: groups, sample: plural(pos.length, 'bag'), href: `${LB}&open=${dim === 'roastLevel' ? 'roast' : 'process'}`, z: null, strength: null
-    }];
+      .map(([label, g]) => ({ label: label!, value: Math.ceil(median(g.map((x) => x.pos))), bags: g.length, ps: g.map((x) => x.pos) }));
+    if (groups.length < 2) return [];
+    // Ties go to the group with more bags.
+    const by = (dir: 1 | -1) => (a: (typeof groups)[0], b: (typeof groups)[0]) => dir * (a.value - b.value) || b.bags - a.bags || a.label.localeCompare(b.label);
+    const [fast, slow] = [[...groups].sort(by(1))[0], [...groups].sort(by(-1))[0]];
+    if (fast.value === slow.value) return [];
+    const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
+    const f = graded({
+      key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
+      headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
+      series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
+      href: `${LB}&open=${dim === 'roastLevel' ? 'roast' : 'process'}`
+    }, groupZ(slow.ps, allPos), true, 'bags', slow.bags, undefined, groups.length);
+    return f ? [f] : [];
   });
 };
 
-// Rescued bags (spec Part 4): the bag's first two rated brews (both dial-in) average RESCUE or more below its
-// once-dialed brews. Descriptive.
+// Rescued bags (spec Part 4): the first two rated brews (both dial-in) average below your own mean, the
+// once-dialed brews at or above it, and at least RESCUE higher. Descriptive.
 const RESCUE = 1; // ponytail: a fixed 1-point climb; tune at the Part 4 preview
 const rescuedBags: Generator = (c) => {
   const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
+  const userMean = mean(raw.map((b) => b.rating!));
   const bags = [...perBag(raw)].flatMap(([id, bs]) => {
     const later = bs.filter((b) => !c.dialIn.has(b.id));
     if (single(bs.length).small || !c.dialIn.has(bs[0].id) || !c.dialIn.has(bs[1].id) || !later.length) return [];
     const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(later.map((b) => b.rating!));
     return [{ id: id!, start, end }];
   });
-  const saved = bags.filter((x) => x.end - x.start >= RESCUE)
+  const saved = bags.filter((x) => x.start < userMean && x.end >= userMean && x.end - x.start >= RESCUE)
     .sort((a, b) => b.end - b.start - (a.end - a.start) || bagLabel(c, a.id).localeCompare(bagLabel(c, b.id)));
   if (bags.length < POOLED_MIN_BAGS || !saved.length) return null;
   return {
@@ -812,7 +819,7 @@ const rescuedBags: Generator = (c) => {
     value: `${saved.length} of ${bags.length}`,
     body: `Their first two brews averaged ${mean(saved.map((x) => x.start)).toFixed(1)}; once dialed, ${mean(saved.map((x) => x.end)).toFixed(1)}.`,
     sample: plural(bags.length, 'bag'), href: `${LB}&open=coffees`, z: null, strength: null,
-    ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(c.bags.find((b) => b.id === x.id))))])
+    ...details(['Biggest rescues', saved.map((x) => detail(bagLabel(c, x.id), `${x.start.toFixed(1)} → ${x.end.toFixed(1)}`, coffeeHref(bagById(c).get(x.id))))])
   };
 };
 

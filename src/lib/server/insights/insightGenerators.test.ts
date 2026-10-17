@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { leaderboard } from './leaderboards';
 import { GENERATORS, insightsTab, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
@@ -768,5 +769,46 @@ describe('like-with-like findings', () => {
     const dialIn = new Set(raw.filter((b) => b.brewIndex <= 2).map((b) => b.id));
     const f = gen('rescuedBags', raw, [1, 2, 3].map((id) => bag({ id, name: `Bag ${id}` })), { allBrews: raw, dialIn });
     expect(f?.headline).toBe('3 bags rescued after a rough start');
+  });
+  it('likeRoaster: the same figure as the Leaderboards roaster row', () => {
+    const rs = (roaster: string, ids: number[], r: number) => ids.flatMap((id) => [0, 1, 2, 3, 4].map((i) => brew({ id: id * 10 + i, coffeeId: id, roaster, ...LW, rating: r + (i % 2) * 0.2, brewIndex: i + 1 })));
+    const all = [...rs('Sey', [1, 2, 3, 4, 5, 6], 9), ...rs('Other', [7, 8, 9, 10, 11, 12], 6)];
+    const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, roaster: b.roaster!, ...LW }));
+    const f = gen('likeRoaster', all, gb)!;
+    const row = leaderboard(all, gb, { start: '2026-09-01', end: '2026-09-30' }, 'roasters', 'like', 'all', 'raw').find((r) => r.key === 'Sey')!;
+    expect(f.headline).toMatch(/^Sey rates/);
+    expect(f.value).toBe(`${row.value < 0 ? '-' : '+'}${Math.abs(row.value).toFixed(2)}`);
+    expect(f.sample).toBe(`${row.bags} bags`);
+  });
+  const dialRows = (ids: number[], ratings: number[], o: Partial<BrewFact>) =>
+    ids.flatMap((id) => ratings.map((r, i) => brew({ id: id * 100 + i, coffeeId: id, rating: r, brewIndex: i + 1, ...o })));
+  it('dial-in by group: medians print as whole brews and ties go to the bigger group', () => {
+    const light = [[9, 9, 9, 9, 9], [5, 9, 9, 9, 9], [5, 5, 9, 9, 9], [5, 5, 5, 9, 9]].flatMap((r, k) => dialRows([10 + k], r, { roastLevel: 'Light' }));
+    const dark = [20, 21, 22].flatMap((id) => dialRows([id], [5, 5, 9, 9, 9], { roastLevel: 'Dark' }));
+    const medium = dialRows([30, 31, 32], [9, 9, 9, 9, 9], { roastLevel: 'Medium' });
+    const all = [...light, ...dark, ...medium];
+    const gb = [10, 11, 12, 13, 20, 21, 22, 30, 31, 32].map((id) => bag({ id, roastLevel: id < 14 ? 'Light' : id < 30 ? 'Dark' : 'Medium' }));
+    const f = gen('dialinBy:roastLevel', all, gb, { allBrews: all });
+    expect(f?.series?.map((x) => x.value)).toEqual([1, 3, 3]);
+    expect(f?.series?.map((x) => x.label)).toEqual(['Medium', 'Light', 'Dark']);
+    expect(f?.headline).toBe('Medium is right on brew 1; Light settles by brew 3');
+  });
+  it('dial-in by process: groups under 3 bags are left out', () => {
+    const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9], { processGroup: 'Washed' });
+    const n = [4, 5, 6].flatMap((id) => dialRows([id], [5, 5, 5, 9, 9], { processGroup: 'Natural' }));
+    const h = dialRows([7, 8], [5, 5, 5, 5, 9], { processGroup: 'Honey' });
+    const all = [...w, ...n, ...h];
+    const gb = all.filter((b) => b.brewIndex === 1).map((b) => bag({ id: b.coffeeId!, processGroup: b.processGroup }));
+    const f = gen('dialinBy:processGroup', all, gb, { allBrews: all });
+    expect(f?.series?.map((x) => x.label)).toEqual(['Washed', 'Natural']);
+  });
+  it('rescued bags: needs a start below your mean, an end at or above it, and a 1 point lift', () => {
+    const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));
+    const good = [1, 2, 3].flatMap((id) => mk(id, [5, 5.5, 8.5, 9, 9]));
+    const raw = [...good, ...mk(4, [8, 8, 9.5, 9.5, 9.5]), ...mk(5, [2, 2, 3.5, 4, 4])]; // 4 starts high; 5 ends low
+    const dialIn = new Set(raw.filter((b) => b.brewIndex <= 2).map((b) => b.id));
+    const f = gen('rescuedBags', raw, [1, 2, 3, 4, 5].map((id) => bag({ id })), { allBrews: raw, dialIn });
+    expect(f?.headline).toBe('3 bags rescued after a rough start');
+    expect(f?.value).toBe('3 of 5');
   });
 });

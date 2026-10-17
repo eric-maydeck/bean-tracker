@@ -210,6 +210,20 @@ for (let k = 0; k < 8; k++) {
       TIMES[(j >> 2) % 4], BLOOMS[j % 2], zp6 ? String(5 + (j % 3) * 0.5) : `1.${6 - Math.floor(j / 8)}.0`, +Math.min(9.9, rating).toFixed(1), now);
   }
 }
+// Like-with-like dial-in (Part 4): 18 archived bags, 7 rated brews each, daily from `first` days ago. Two roasters
+// × two (roast, process) groups, 9 bags each. Only Light / Ultralight: the mixed-roast nudge needs exactly two levels. Ultralight / Washed bags are right on brew 1; Light / Natural bags (same average, so the mixed-roast nudge stays hidden) start
+// low (three 5s) and settle on brew 4, so dial-in by roast and by process both show a spread and some bags are
+// rescued. Slow bags brew on the Origami (their swings widen it, keeping the wildcard finding solid), fast ones on
+// the V60 (flat ratings). 'Dial Co' rates 1 point above 'Cup Co' everywhere, so likeRoaster has a gap to find.
+for (let k = 0; k < 18; k++) {
+  const slow = k >= 9, roaster = k % 2 ? 'Cup Co' : 'Dial Co', up = roaster === 'Dial Co' ? 0.5 : -0.5;
+  const [roast_level, processing] = slow ? (['Light', 'Natural'] as const) : (['Ultralight', 'Washed'] as const);
+  const first = 100 - 5 * k, name = `Dial Bag ${k + 1}`;
+  const c = coffee({ roaster, coffee_name: name, roast_level, processing, origin: 'Ethiopia', status: 'archive', roast_date: daysAgo(first + 10) });
+  bean.run(`bean-dial-${k}`, name, roaster, daysAgo(first + 10), 250, 22, 0, isoDaysAgo(first), now);
+  db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-dial-${k}`);
+  for (let j = 0; j < 7; j++) timed.run(atLocal(first - j, 8, 30), `bean-dial-${k}`, slow ? 'm3' : 'm1', (slow ? (j < 3 ? 5 : 9) : 7.3) + up, null, now);
+}
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
