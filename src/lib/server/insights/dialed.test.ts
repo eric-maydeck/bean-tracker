@@ -30,16 +30,16 @@ describe('settleWithin: the first 6 rated brews only', () => {
 describe('skipCount tiers', () => {
   it('1-3 rated brews: none (3/4 edge)', () => {
     expect(skipCount([5, 6, 9])).toBe(0);
-    expect(skipCount([5, 6, 9, 9])).toBe(2);
+    expect(skipCount([5, 6, 9, 9])).toBe(1);
   });
-  it('4-7: the first 2 (7/8 edge)', () => {
-    expect(skipCount([5, 6, 9, 9, 9, 9, 9])).toBe(2);
-    expect(skipCount([5, 6, 9, 9, 9, 9, 9, 9])).toBe(3); // 8+: the first 3
+  it('4-7: the first (7/8 edge)', () => {
+    expect(skipCount([5, 6, 9, 9, 9, 9, 9])).toBe(1);
+    expect(skipCount([5, 6, 9, 9, 9, 9, 9, 9])).toBe(2); // 8+: the first 2
   });
-  it('8+: the first 3 by position, never by outcome', () => {
-    expect(skipCount([9, 9, 9, 9, 9, 9, 9, 9])).toBe(3); // right on brew 1: still 3
-    expect(skipCount([5, 5, 5, 5, 5, 5, 9, 9])).toBe(3); // good only at #7: still 3
-    expect(skipCount([9, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBe(3); // its best brews first: still 3
+  it('8+: the first 2 by position, never by outcome', () => {
+    expect(skipCount([9, 9, 9, 9, 9, 9, 9, 9])).toBe(2); // right on brew 1: still 2
+    expect(skipCount([5, 5, 5, 5, 5, 5, 9, 9])).toBe(2); // good only at #7: still 2
+    expect(skipCount([9, 8, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5])).toBe(2); // its best brews first: still 2
   });
 });
 
@@ -50,7 +50,7 @@ describe('dialInIds', () => {
       brew({ coffeeId: 1, rating: 0 }), brew({ coffeeId: 1, rating: 6 }), brew({ coffeeId: null, rating: 2 }),
       brew({ coffeeId: 1, rating: 9 }), brew({ coffeeId: 1, rating: 9 })
     ];
-    expect([...dialInIds(bs)]).toEqual([bs[0].id, bs[4].id]); // bag 1: 4 rated → skip 2; bag 2: 1 rated → none
+    expect([...dialInIds(bs)]).toEqual([bs[0].id]); // bag 1: 4 rated → skip 1; bag 2: 1 rated → none
   });
   it('onceDialed nulls only those ratings and keeps every brew', () => {
     const bs = [brew({ rating: 5 }), brew({ rating: 9 })];

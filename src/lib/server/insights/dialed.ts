@@ -20,9 +20,10 @@ export const settleWithin = (rs: readonly number[]): number | null => (rs.length
 
 // How many of a bag's first rated brews Once dialed leaves out, by position only (stats audit 2026-10-17: skipping
 // "until it got good" selects on the result and lifted 8+ bags by +0.14): 1–3 none (the bag is small, sample.ts),
-// 4–7 the first 2, 8+ the first 3 (rating vs bag mean by brew #1 −0.46, #2 −0.13, #3 −0.08, flat from #4).
+// 4–7 the first, 8+ the first 2 (threshold audit 2026-10-17, demeaned rating by position: 4–7 bags #1 −0.27,
+// #2 −0.10; 8+ bags #1 −0.61, #2 −0.35, #3 −0.18; skipping more costs a bag a fifth of its data for ≤0.02).
 // `rs` is the bag's ratings, of which only the count is read.
-export const skipCount = (rs: readonly number[]): number => (rs.length <= 3 ? 0 : rs.length <= 7 ? 2 : 3);
+export const skipCount = (rs: readonly number[]): number => (rs.length <= 3 ? 0 : rs.length <= 7 ? 1 : 2);
 
 // The ids of every dial-in brew. Bag-intrinsic: over each bag's whole rated history in time order (`brews`
 // as loadFacts returns them), before any Period, People, Current/All or Coffees filter.
