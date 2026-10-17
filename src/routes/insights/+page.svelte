@@ -1,4 +1,5 @@
 <script lang="ts">
+  import BoardsTip from '$lib/components/BoardsTip.svelte';
   import { afterNavigate, goto } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
@@ -8,7 +9,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, boardsTotal, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -577,7 +578,9 @@
     <p class="chart-note see-all">Showing everything, including low-confidence rows.
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
   {:else if hiddenNote(data.hidden, s)}
-    <p class="chart-note see-all">{hiddenNote(data.hidden, s)}
+    {@const tot = boardsTotal(data.hidden)}
+    {@const note = hiddenNote(data.hidden, s)}
+    <p class="chart-note see-all">{#if tot}{@const [pre, post] = note.split(tot.boards)}{pre}<BoardsTip label={tot.boards} rows={tot.list} />{post}{:else}{note}{/if}
       <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
   {/if}
 {/if}

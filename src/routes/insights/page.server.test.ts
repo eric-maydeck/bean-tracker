@@ -546,11 +546,15 @@ describe('page-wide coffees filter', () => {
     getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, 'b0', 15, 6, ?)`)
       .run('2026-05-01T10:00:00.000Z', today);
     const h = (q: string) => run(`?range=all${q}`).hidden;
-    expect(h('&tab=leaderboards&process=Washed')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1 });
-    expect(h('&tab=leaderboards&process=Washed&avg=raw')).toEqual({ rows: {}, brews: 1 });
-    expect(h('&tab=records&ratings=all')).toEqual({ rows: {}, brews: 0 });
-    expect(h('&tab=leaderboards&avg=raw&ratings=all&dial=all')).toEqual({ rows: {}, brews: 0 });
+    expect(h('&tab=leaderboards&process=Washed')).toEqual({ rows: expect.objectContaining({ roasters: 1, origins: 1 }), brews: 1, why: ['ratings'] });
+    expect(h('&tab=leaderboards&process=Washed&avg=raw')).toEqual({ rows: {}, brews: 1, why: ['ratings'] });
+    expect(h('&tab=records&ratings=all')).toEqual({ rows: {}, brews: 0, why: [] });
+    expect(h('&tab=leaderboards&avg=raw&ratings=all&dial=all')).toEqual({ rows: {}, brews: 0, why: [] });
     expect(h('&tab=consumption')).toBeNull();
+    // An unlinked brew (no bag) never shows in rating views, so it isn't "left out".
+    getDb().prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, NULL, 15, 6, ?)`)
+      .run('2026-05-02T10:00:00.000Z', today);
+    expect(h('&tab=records')).toMatchObject({ brews: 1, why: ['ratings'] });
   });
   it('Records with caffeine=decaf sees only the decaf bag', () => {
     seedTwo(true);

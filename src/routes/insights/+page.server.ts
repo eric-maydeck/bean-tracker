@@ -60,7 +60,7 @@ export const load: PageServerLoad = ({ url }) => {
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
   const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, s.avg, size) : null;
-  const ratedIn = (xs: typeof brews, r: typeof s.ratings) => xs.filter((b) => inPeriod(b.localDate, period) && countsForRating(b, r)).length;
+  const ratedIn = (xs: typeof brews, r: typeof s.ratings) => xs.filter((b) => b.coffeeId !== null && inPeriod(b.localDate, period) && countsForRating(b, r)).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
   // Same-length compares (a number) pace only when a window is partly tracked: calendar-month
@@ -141,7 +141,9 @@ export const load: PageServerLoad = ({ url }) => {
     hidden: ratingsMenuOn(s)
       ? {
           rows: boards ? hiddenRows(boards, brews, bags, period, s.rank) : {},
-          brews: ratedIn(brews, 'all') - ratedIn(scored, s.ratings)
+          brews: ratedIn(brews, 'all') - ratedIn(scored, s.ratings),
+          // Which setting actually hid them: Calibrated (ratings) first, then Once dialed.
+          why: [ratedIn(brews, 'all') > ratedIn(brews, s.ratings) && 'ratings', ratedIn(brews, s.ratings) > ratedIn(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]
         }
       : null,
     roastMix: ratingsMenuOn(s) ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,

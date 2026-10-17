@@ -410,16 +410,25 @@ export const BOARD_NOUN: Record<Board, string> = {
 const count = (n: number, plural: string) => `${n} ${n === 1 ? plural.slice(0, -1) : plural}`;
 // The See all note (gate 3): what the Score/Ratings/Brews settings hide on this tab ('' = nothing). Rows the
 // boards would gain (up to two boards named, else a total) and in-period rated brews left out.
-export function hiddenNote(
-  h: { rows: Partial<Record<Board, number>>; brews: number }, s: Pick<InsightsView, 'avg' | 'ratings' | 'dial'>
-): string {
+export type Hidden = { rows: Partial<Record<Board, number>>; brews: number; why?: ('ratings' | 'dial')[] };
+const WHY = { ratings: 'before calibration', dial: 'while dialing in' };
+// More than two boards gain rows: the total phrase, whose "M boards" carries a per-board tooltip.
+export const boardsTotal = (h: Hidden): { before: string; boards: string; list: [string, string][] } | null => {
   const rows = Object.entries(h.rows) as [Board, number][];
-  const named = rows.length <= 2 ? rows.map(([b, n]) => count(n, BOARD_NOUN[b])).join(' and ')
-    : `${rows.reduce((t, [, n]) => t + n, 0)} rows on ${rows.length} boards`;
-  const why = [s.ratings === 'current' && 'before calibration', s.dial === 'dialed' && 'while dialing in'].filter(Boolean).join(' or ');
+  if (rows.length <= 2) return null;
+  return {
+    before: `${rows.reduce((t, [, r]) => t + r, 0)} rows on `, boards: `${rows.length} boards`,
+    list: rows.map(([b, r]) => [BOARD_NOUN[b][0].toUpperCase() + BOARD_NOUN[b].slice(1), String(r)])
+  };
+};
+export function hiddenNote(h: Hidden, s: Pick<InsightsView, 'avg' | 'ratings' | 'dial'>): string {
+  const rows = Object.entries(h.rows) as [Board, number][];
+  const tot = boardsTotal(h);
+  const named = tot ? `${tot.before}${tot.boards}` : rows.map(([b, n]) => count(n, BOARD_NOUN[b])).join(' and ');
+  const why = (h.why ?? []).map((w) => WHY[w]).join(' or ');
   return [
     rows.length ? `${named} hidden${s.avg === 'min3' ? ': too few bags or brews' : ''}.` : '',
-    h.brews ? `${count(h.brews, 'rated brews')} left out: ${why}.` : ''
+    h.brews ? `${count(h.brews, 'rated brews')} left out${why ? `: ${why}` : ''}.` : ''
   ].filter(Boolean).join(' ');
 }
 

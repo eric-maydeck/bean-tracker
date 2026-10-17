@@ -2657,6 +2657,23 @@ export const STATES: State[] = [
         expect(await note.evaluate((e) => e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)), 'one line')
           .toBeLessThan(1.5);
     } })),
+  // U1: "N boards" in the See all note carries a per-board tooltip: hover (mouse) and tap/focus open the shared tip.
+  { name: 'insights-see-all-boards-tip', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const btn = page.locator('.see-all .boards-tip');
+      await expect(btn).toHaveText(/^\d+ boards$/);
+      await expect(btn).toHaveAttribute('aria-label', /Hidden rows/);
+      await btn.click();
+      const tip = page.locator('[popover]:popover-open');
+      await expect(tip).toContainText('Hidden rows');
+      await expect(tip.locator('dt').first()).toHaveText(/^[A-Z]/);
+      const [b, t] = [await btn.boundingBox(), await tip.boundingBox()];
+      const vw = page.viewportSize()!.width;
+      expect(t!.x).toBeGreaterThanOrEqual(0);
+      expect(t!.x + t!.width).toBeLessThanOrEqual(vw + 1);
+      expect(b!.height).toBeGreaterThan(0);
+      expect(page.url()).not.toContain('tip');
+    } },
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
     act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
   { name: 'insights-water', path: () => '/insights?tab=water',
