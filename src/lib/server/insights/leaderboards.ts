@@ -180,7 +180,8 @@ export function hiddenRows(
   boards: Record<Board, BoardRow[]>, scored: readonly BrewFact[], all: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank,
   ratings: Ratings
 ): { rows: Partial<Record<Board, number>>; why: RowWhy[]; by: Partial<Record<Board, RowWhy[]>> } {
-  if (rank !== 'rating') return { rows: {}, why: [], by: {} };
+  // The Score step adds nothing under like (avg is ignored), so only Ratings and Brews are named.
+  if (rank !== 'rating' && rank !== 'like') return { rows: {}, why: [], by: {} };
   const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {};
   const hit = { avg: false, ratings: false, dial: false };
   for (const b of BOARDS) {

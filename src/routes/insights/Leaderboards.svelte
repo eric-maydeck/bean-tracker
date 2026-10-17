@@ -60,7 +60,7 @@
     grams: 'Grams brewed.',
     spend: 'Money spent on bags bought in the period.',
     ppg: 'Price per gram of bags bought in the period.',
-    like: "Each coffee's rating minus similar coffees' (same roast, process, origin), once dialed."
+    like: "Rating minus similar coffees' (same roast; process, roaster and origin too when there are enough)."
   };
   const AVG_LABEL: Record<Avg, string> = {
     raw: 'Raw average', min3: 'Raw average, confident', k2: 'Confidence adj. (light)', adjusted: 'Confidence adj. (strong)',
@@ -93,7 +93,7 @@
   const unranked = (b: Board) => ((rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b)) || (rank === 'like' && !LIKE_BOARDS.includes(b));
   const emptyText = () =>
     rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
-    : rank === 'like' ? 'No coffees with enough similar coffees to compare in this period.' : 'No brews in this period.';
+    : rank === 'like' ? 'No coffees with a like group to compare in this period.' : 'No brews in this period.';
   // A board the confident cutoff (min3) emptied says what its rows lacked, not "No brews".
   const boardEmpty = (b: Board) =>
     cut.includes(b)
@@ -210,11 +210,16 @@
 {#if !cut.length && BANDS.flat().every((b) => !boards[b].length)}
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
 {:else}
-  {#each BANDS as band, i (i)}
-    <div class="board-band band-{band.length}">
-      {#each band as b (b)}{@render board(b)}{/each}
-    </div>
+  <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
+  {#each BANDS as full, i (i)}
+    {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
+    {#if band.length}
+      <div class="board-band band-{band.length}">
+        {#each band as b (b)}{@render board(b)}{/each}
+      </div>
+    {/if}
   {/each}
+  {#if rank === 'like'}<p class="like-note">vs like coffees ranks coffees and roasters only.</p>{/if}
 {/if}
 
 <style>
@@ -279,6 +284,11 @@
   .board-note {
     margin: 0;
     padding: var(--space-4) 0;
+  }
+  .like-note {
+    margin: 0;
+    text-align: center;
+    color: var(--color-text-muted);
   }
   .board-note.bag-only {
     min-height: calc(var(--rows) * var(--row-h));

@@ -146,7 +146,7 @@ export const load: PageServerLoad = ({ url }) => {
           why: [ratedIn(brews, 'all') > ratedIn(brews, s.ratings) && 'ratings', ratedIn(brews, s.ratings) > ratedIn(scored, s.ratings) && 'dial'].filter(Boolean) as ('ratings' | 'dial')[]
         }
       : null,
-    roastMix: ratingsMenuOn(s) ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,
+    roastMix: ratingsMenuOn(s) && s.rank !== 'like' ? roastMix(scored.filter((b) => inPeriod(b.localDate, period)), s.ratings) : null,
     lab,
     coffeeOptions: { roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters },
     grinder,

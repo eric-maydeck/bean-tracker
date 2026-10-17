@@ -1843,9 +1843,14 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-like', path: () => '/insights?tab=leaderboards&rank=like&range=all',
     act: async (page) => {
       await expect(page.locator('[data-board="coffees"] .board-row:not(.placeholder)').first()).toBeVisible();
-      await expect(page.locator('[data-board="origins"] .board-note')).toHaveText('vs like coffees ranks coffees and roasters only.');
+      await expect(page.locator('.like-note')).toHaveText('vs like coffees ranks coffees and roasters only.');
+      // Boards that can't rank are left out, not shown empty.
+      await expect(page.locator('.board')).toHaveCount(2);
+      await expect(page.locator('[data-board="origins"], [data-board="water"]')).toHaveCount(0);
       await expect(page.locator('[data-board="coffees"] .val').first()).toHaveText(/^([+−]\d\.\d\d|0\.00)$/);
-      await expectEqualBoardHeights(page);
+      // Side by side, the two cards are level (stacked on a phone, they are not compared).
+      const [a, c] = await page.locator('.board').evaluateAll((bs) => bs.map((b) => b.getBoundingClientRect()));
+      if (Math.abs(a.top - c.top) <= 1) expect(Math.abs(a.height - c.height)).toBeLessThanOrEqual(1);
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees' },
   {

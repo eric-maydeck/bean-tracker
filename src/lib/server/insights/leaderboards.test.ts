@@ -176,6 +176,11 @@ describe('vs like coffees', () => {
     const r = leaderboard(bs, [], SEPT, 'roasters', 'like', 'all', 'raw');
     expect(r.map((x) => [x.key, +x.value.toFixed(2), x.sample])).toEqual([['A', 0.67, { bags: 2, brews: 8, small: true }], ['B', -0.67, { bags: 2, brews: 8, small: true }]]);
   });
+  it('the See all note counts like rows that Once dialed hid', () => {
+    const dialed = bs.map((b) => ({ ...b, rating: null }));
+    const h = hiddenRows(leaderboards(dialed, [], SEPT, null, 'like', 'all', 'raw'), dialed, bs, [], SEPT, 'like', 'all');
+    expect(h).toMatchObject({ rows: { coffees: 4, roasters: 2 }, why: ['dial'] });
+  });
   it('like on other boards is empty', () => expect(leaderboard(bs, [], SEPT, 'origins', 'like', 'all', 'raw')).toEqual([]));
   it('the coffees board carries the like line under rating', () => {
     const like = leaderboard(bs, [], SEPT, 'coffees', 'rating', 'all', 'raw').find((r) => r.key === '1')!.like!;
