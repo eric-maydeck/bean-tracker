@@ -1803,12 +1803,13 @@ export const STATES: State[] = [
         const [bg, op] = await m.evaluate((el) => [getComputedStyle(el).backgroundImage, getComputedStyle(el).opacity]);
         expect(bg).toContain('gradient');
         expect(op).toBe('1');
-        // Stripes plus the amber corner fold (top right).
+        // Stripes plus the amber corner fold.
         if (!(await m.evaluate((el) => el.classList.contains('clip')))) {
-          // The fold is at the top left everywhere.
-          expect(await m.evaluate((el) => [getComputedStyle(el).backgroundSize, getComputedStyle(el).backgroundPosition])).toEqual(['9px 9px, auto', '0% 0%, 0px 0px']);
+          // A 9px fold; its corner (top left, top right on a left-pointing bar) is expectFoldCorners'.
+          expect(await m.evaluate((el) => getComputedStyle(el).backgroundSize)).toBe('9px 9px, auto');
         }
       }
+      await expectFoldCorners(page);
       // A clipped bar's cut end is an arrow tip, not a dark cap.
       for (const c of await page.locator('.bar.clip').all()) expect(await c.evaluate((el) => getComputedStyle(el).clipPath)).toContain('polygon');
       await expect(page.locator('body')).not.toContainText(/Striped:|Few brews|few brews/i);
@@ -1854,7 +1855,7 @@ export const STATES: State[] = [
   },
   {
     name: 'insights-leaderboards-avg',
-    path: () => '/insights?tab=leaderboards&avg=best&compare=1',
+    path: () => '/insights?tab=leaderboards&avg=best&range=12m&compare=1',
     act: async (page) => {
       await expect(page.getByRole('combobox', { name: 'Score' })).toHaveValue('best');
       await expect(page.getByRole('combobox', { name: 'Rank by' })).toHaveValue('rating');
@@ -1934,7 +1935,7 @@ export const STATES: State[] = [
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-leaderboards-spend-compare',
-    path: () => '/insights?tab=leaderboards&rank=spend&compare=1',
+    path: () => '/insights?tab=leaderboards&rank=spend&range=12m&compare=1',
     act: async (page) => {
       await expect(page.locator('.board-note.bag-only')).toHaveCount(4);
       await expect(page.locator('.board .move').first()).toBeVisible();
@@ -2752,7 +2753,7 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expectShortEmpty(page);
     } })),
-  { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&compare=1&people=person&grinder=zp6-special',
+  { name: 'insights-lab-no-compare', path: () => '/insights?tab=gear&range=12m&compare=1&people=person&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Compare')).toHaveCount(0);
       await expect(page.getByRole('group', { name: 'People' })).toHaveCount(0);
@@ -2956,13 +2957,15 @@ export const STATES: State[] = [
           .toBeLessThan(1.5);
     } })),
   // See all shows every bag (user, 2026-10-17): Onyx, a roaster of one 1-brew decaf bag, is on the Roasters rating
-  // board under See all + caffeine=all, and off it under the default Score.
+  // board under See all + caffeine=all, and under k2 too (every bag counts, weighted by its brews; user ruling 2026-10-17).
   { name: 'insights-see-all-every-bag', path: () => '/insights?tab=leaderboards&range=all&avg=raw&ratings=all&dial=all&caffeine=all&open=roasters',
     act: async (page) => {
       await expect(page.locator('.see-all')).toContainText('Showing everything');
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
-      // k2: no confident cutoff, so only the 4-brew rule keeps Onyx off (min3 drops a 1-bag group anyway).
       await page.goto('/insights?tab=leaderboards&range=all&avg=k2&ratings=all&dial=all&caffeine=all&open=roasters');
+      await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(1);
+      // min3 (Average (3+ bags)) drops the 1-bag group.
+      await page.goto('/insights?tab=leaderboards&range=all&avg=min3&ratings=all&dial=all&caffeine=all&open=roasters');
       await expect(page.locator('[data-board="roasters"] .board-row').first()).toBeVisible();
       await expect(page.locator('[data-board="roasters"] .board-row', { hasText: 'Onyx' })).toHaveCount(0);
     } },

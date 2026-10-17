@@ -870,8 +870,9 @@ const dialinByGroup: Generator = (c) => {
   });
 };
 
-// Rescued bags (spec Part 4): the first two rated brews (both dial-in) average below your own mean, the
-// once-dialed brews at or above it, and at least RESCUE higher. Dropped bags are the reverse (started at or above,
+// Rescued bags (spec Part 4): the first two rated brews average below your own mean, the rest at or above it, and at
+// least RESCUE higher. (Once the skip went 0/1/2, 2026-10-17, a 4–7 bag's brew #2 counts as dialed; the card keeps
+// "the first two" for every bag of 4+ so its meaning didn't change.) Dropped bags are the reverse (started at or above,
 // ended below, RESCUE lower). Any bag with a low start averages higher later by chance alone (regression to the
 // mean; stats audit 2026-10-17 must-fix 7), so the card says how many would look rescued with each bag's ratings in
 // random order (exact over every ordering, rescueOdds), and earns a badge only when the count clearly beats that.
@@ -901,10 +902,9 @@ const rescuedBags: Generator = (c) => {
   const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
   const userMean = mean(raw.map((b) => b.rating!)), byId = bagById(c);
   const bags = [...perBag(raw)].flatMap(([id, bs]) => {
-    const later = bs.filter((b) => !c.dialIn.has(b.id));
-    if (single(bs.length).small || !c.dialIn.has(bs[0].id) || !c.dialIn.has(bs[1].id) || !later.length) return [];
-    const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(later.map((b) => b.rating!));
-    return [{ id: id!, start, end, odds: rescueOdds(bs.map((b) => b.rating!), bs.length - later.length, userMean) }];
+    if (single(bs.length).small) return [];
+    const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(bs.slice(2).map((b) => b.rating!));
+    return [{ id: id!, start, end, odds: rescueOdds(bs.map((b) => b.rating!), 2, userMean) }];
   });
   const saved = bags.filter((x) => rescued(x.start, x.end, userMean))
     .sort((a, b) => b.end - b.start - (a.end - a.start) || bagLabel(c, a.id).localeCompare(bagLabel(c, b.id)));

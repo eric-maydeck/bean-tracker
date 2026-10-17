@@ -892,11 +892,14 @@ describe('like-with-like findings', () => {
     const f = gen('likeRoaster', all, gb);
     expect(f!.headline).toMatch(/^Big /); // the widest gap among roasters past the small-sample rule
   });
-  it('rescued bags: a one-brew skip (bag with one dial-in brew) and fewer than 3 bags give nothing', () => {
+  it('rescued bags: the first two vs the rest, whatever the skip; a bag under 4 brews or fewer than 3 bags give nothing', () => {
     const mk = (id: number, rs: number[]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1 }));
-    const raw = [...[1, 2, 3].flatMap((id) => mk(id, [5, 9, 9, 9, 9])), ...mk(4, [9, 9, 9, 9, 9])]; // only brew 1 is dial-in
+    // 5-brew bags skip one dial-in brew (0/1/2): brews 1–2 (5, 9 → 7) still read against 3–5 (9).
+    const raw = [...[1, 2, 3].flatMap((id) => mk(id, [5, 9, 9, 9, 9])), ...mk(4, [9, 9, 9, 9, 9])];
     const dialIn = new Set(raw.filter((b) => b.brewIndex <= 1).map((b) => b.id));
-    expect(gen('rescuedBags', raw, [1, 2, 3, 4].map((id) => bag({ id })), { allBrews: raw, dialIn })).toBeNull();
+    expect(gen('rescuedBags', raw, [1, 2, 3, 4].map((id) => bag({ id })), { allBrews: raw, dialIn })?.value).toBe('3 of 4');
+    const short = [1, 2, 3].flatMap((id) => mk(id, [5, 9, 9]));
+    expect(gen('rescuedBags', short, [1, 2, 3].map((id) => bag({ id })), { allBrews: short, dialIn: new Set() })).toBeNull();
     const two = [1, 2].flatMap((id) => mk(id, [5, 5.5, 8.5, 9, 9]));
     const d2 = new Set(two.filter((b) => b.brewIndex <= 2).map((b) => b.id));
     expect(gen('rescuedBags', two, [1, 2].map((id) => bag({ id })), { allBrews: two, dialIn: d2 })).toBeNull();
