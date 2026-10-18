@@ -59,12 +59,17 @@ export function stagedPause(change: PendingChange | undefined): 'pause' | 'resum
   return p === '1' ? 'pause' : p === '0' ? 'resume' : null;
 }
 
+// What a row has staged: ["delete"], or "pause" / "resume" and "edited" (both when both are staged).
+export function pendingParts(change: PendingChange | undefined): string[] {
+  if (!change) return [];
+  if (change.statusAction === 'delete') return ['delete'];
+  return [stagedPause(change), Object.keys(change.fields ?? {}).some((k) => k !== 'paused') ? 'edited' : null].filter((x): x is string => !!x);
+}
+
 // The one per-row pending badge: "Pending: delete" / "pause" / "resume" /
 // "edited", or "pause, edited" when both are staged.
 export function pendingLabel(change: PendingChange | undefined): string | null {
-  if (!change) return null;
-  if (change.statusAction === 'delete') return 'Pending: delete';
-  const parts = [stagedPause(change), Object.keys(change.fields ?? {}).some((k) => k !== 'paused') ? 'edited' : null].filter(Boolean);
+  const parts = pendingParts(change);
   return parts.length ? `Pending: ${parts.join(', ')}` : null;
 }
 
@@ -84,11 +89,11 @@ export function deleteButtonLabel(change: PendingChange | undefined): 'Delete' |
   return change?.statusAction === 'delete' ? 'Restore' : 'Delete';
 }
 
-// The Bags / g/bag inputs' tooltip in the edit table.
-export function totalGramsTitle(bags: string, gramsPerBag: string): string {
+// The visible total under the edit table's Bags / g/bag inputs.
+export function totalGramsText(bags: string, gramsPerBag: string): string {
   const b = parseFloat(bags);
   const g = parseFloat(gramsPerBag);
-  return Number.isFinite(b) && Number.isFinite(g) ? `Total: ${b * g} g` : 'Total: —';
+  return Number.isFinite(b) && Number.isFinite(g) ? `${b * g} g total` : '— g total';
 }
 
 // One option of a subscription page (POST /api/subscriptions/fill-from-url).

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectivePaused, deleteButtonLabel, totalGramsTitle, pauseButtonLabel, pendingLabel, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, urlWarning, fillValues, variantValues, variantChipLabel } from './subscriptionView';
+import { effectivePaused, deleteButtonLabel, totalGramsText, pauseButtonLabel, pendingLabel, pendingParts, parseSubscriptionUrl, siteOrigin, subscriptionTotals, togglePauseStage, stagedPause, urlWarning, fillValues, variantValues, variantChipLabel } from './subscriptionView';
 import type { PendingChange } from './pendingChanges';
 
 describe('parseSubscriptionUrl', () => {
@@ -79,6 +79,14 @@ describe('togglePauseStage / stagedPause', () => {
   });
 });
 
+describe('pendingParts', () => {
+  it('lists what is staged', () => {
+    expect(pendingParts(undefined)).toEqual([]);
+    expect(pendingParts({ statusAction: 'delete', fields: { price: '1' } })).toEqual(['delete']);
+    expect(pendingParts({ fields: { roaster_service: 'X', paused: '1' } })).toEqual(['pause', 'edited']);
+  });
+});
+
 describe('pendingLabel', () => {
   it('is null with nothing staged', () => expect(pendingLabel(undefined)).toBeNull());
   it('names a delete, a pause/resume, an edit, or both', () => {
@@ -107,11 +115,11 @@ describe('deleteButtonLabel', () => {
   });
 });
 
-describe('totalGramsTitle', () => {
+describe('totalGramsText', () => {
   it('multiplies bags by grams per bag', () => {
-    expect(totalGramsTitle('2', '150')).toBe('Total: 300 g');
-    expect(totalGramsTitle('', '150')).toBe('Total: —');
-    expect(totalGramsTitle('2', 'x')).toBe('Total: —');
+    expect(totalGramsText('2', '150')).toBe('300 g total');
+    expect(totalGramsText('', '150')).toBe('— g total');
+    expect(totalGramsText('2', 'x')).toBe('— g total');
   });
 });
 

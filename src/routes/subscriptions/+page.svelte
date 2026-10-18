@@ -1,5 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
   import { usd, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { browser } from '$app/environment';
@@ -12,7 +13,7 @@
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { stageFieldChange, stageStatusAction, hasPending, type PendingChange } from '$lib/pendingChanges';
   import { SvelteMap } from 'svelte/reactivity';
-  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsTitle, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '$lib/subscriptionView';
+  import { siteOrigin, subscriptionTotals, togglePauseStage, pendingLabel, pendingParts, pauseButtonLabel, effectivePaused, deleteButtonLabel, totalGramsText, urlWarning, fillValues, variantValues, variantChipLabel, type SubscriptionFillVariant } from '$lib/subscriptionView';
   import { afterFailedFill } from '$lib/coffeeFormFill';
   import type { SubscriptionRow } from '$lib/types';
   let { data, form } = $props();
@@ -409,7 +410,6 @@
         <tr
           class:paused={sub.paused && !canEdit}
           class:pending={canEdit && !!pendingLabel(pending.get(sub.id))}
-          title={canEdit ? (pendingLabel(pending.get(sub.id)) ?? undefined) : undefined}
         >
           <td>
             {#if canEdit}
@@ -457,7 +457,6 @@
                 type="number"
                 step="1"
                 aria-label="Bags"
-                title={totalGramsTitle(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}
                 value={val(sub, 'bag_count')}
                 disabled={effectivePaused(sub.paused, pending.get(sub.id))}
                 oninput={() => stageRow(sub.id)}
@@ -471,11 +470,11 @@
                 type="number"
                 step="1"
                 aria-label="g/bag"
-                title={totalGramsTitle(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}
                 value={val(sub, 'amount_per_bag_g')}
                 disabled={effectivePaused(sub.paused, pending.get(sub.id))}
                 oninput={() => stageRow(sub.id)}
               />
+              <span class="total-note">{totalGramsText(val(sub, 'bag_count'), val(sub, 'amount_per_bag_g'))}</span>
             </td>
             <td>
               <input
@@ -537,8 +536,10 @@
                   {deleteButtonLabel(pending.get(sub.id))}
                 </button>
               </div>
-              <!-- Pending shows as the row's left accent + tooltip; this is for screen readers. -->
-              {#if pendingLabel(pending.get(sub.id))}<span class="sr-only">{pendingLabel(pending.get(sub.id))}</span>{/if}
+              <!-- Pending: the row's left accent and this chip; its tip (and its accessible name) lists what.
+                   Always rendered (hidden when empty), so staging never grows the row. -->
+              <span class="badge badge-neutral pending-chip" class:empty={!pendingParts(pending.get(sub.id)).length}><TextTip label="Pending"
+                tip={{ title: 'Pending changes', lines: pendingParts(pending.get(sub.id)).map((p) => p[0].toUpperCase() + p.slice(1)) }} /></span>
               {#if commitErrors.get(sub.id)}
                 <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>
               {/if}
@@ -831,19 +832,20 @@
     visibility: hidden;
   }
 
-  /* Edit-mode table: rows are input height plus cell padding, everything
-     vertically centered, buttons exactly input height. Only a shown URL
-     warning adds height. */
+  /* Edit-mode table: rows are input height plus cell padding and the line
+     under (the bags × g total, the Pending chip), everything top-aligned so
+     inputs and buttons share one line; buttons exactly input height. Only a
+     shown URL warning adds height. */
   .data-table.editing td {
-    vertical-align: middle;
+    vertical-align: top;
   }
   /* A paused row's inputs in edit mode: visibly off. */
   .inline-input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  /* A row with staged changes: a left accent (plus the row's title tooltip
-     and screen-reader text), so it adds no height and moves nothing. */
+  /* A row with staged changes: a left accent and the Pending chip under its
+     buttons (its slot always kept, so staging adds no height). */
   tr.pending > td:first-child {
     box-shadow: inset 4px 0 0 var(--color-accent);
   }
@@ -852,8 +854,7 @@
     box-sizing: border-box;
     height: 2.25rem;
   }
-  /* Wide enough for both buttons and the longest pending badge, so staging
-     never reflows the column. */
+  /* Wide enough for both buttons. */
   .actions-cell {
     width: 15rem;
     min-width: 15rem;
@@ -870,6 +871,19 @@
   }
   .data-table input[name='subscription_name'] {
     min-width: 13rem;
+  }
+  /* The bags × g total under the g/bag input. */
+  .total-note {
+    display: block;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+  }
+  .pending-chip {
+    margin-top: var(--space-1);
+  }
+  .pending-chip.empty {
+    visibility: hidden;
   }
   /* Small numbers: just wide enough for their value plus the spinner. */
   .data-table .num-input {

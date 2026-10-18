@@ -711,6 +711,21 @@ export const STATES: State[] = [
   { name: 'subscriptions-compact', path: () => '/subscriptions?view=compact' },
   { name: 'subscriptions-list', path: () => '/subscriptions?view=list' },
   {
+    // A staged row's Pending chip opens its tip (what's pending) on a tap, in view (ui-rules 36, 39).
+    name: 'subscriptions-list-edit-pending-tip',
+    path: () => '/subscriptions?view=list',
+    act: async (page: Page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const row = page.locator('tbody tr').nth(0);
+      await row.locator('input[name="price"]').fill('45');
+      await row.locator('.pending-chip .text-tip').click();
+      const tip = page.locator('.cell-tip');
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).toHaveText('Pending changes');
+      await expect(tip.locator('.tip-lines li')).toHaveText(['Edited']);
+    }
+  },
+  {
     // Edit mode (nothing saved): Pause/Resume · Delete, staged edits and a
     // staged pause, and the URL warning for a host that isn't the roaster's.
     name: 'subscriptions-list-edit',
@@ -740,18 +755,20 @@ export const STATES: State[] = [
         await expectRowLevel(ceto);
       }
       await expectAddUrlFullWidth(page);
-      // Edits stage as you type; the tooltip totals update live.
+      // Edits stage as you type: the Pending chip names them (its tip and accessible name); the visible total
+      // under g/bag updates live.
+      const chip = row.locator('.pending-chip .text-tip');
+      await expect(ceto.locator('.pending-chip')).toBeHidden();
       await row.locator('input[name="price"]').fill('45');
-      await expect(row).toHaveAttribute('title', 'Pending: edited');
-      await expect(row.locator('input[name="bag_count"]')).toHaveAttribute('title', 'Total: 500 g');
+      await expect(chip).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
+      await expect(row.locator('.total-note')).toHaveText('500 g total');
       await row.locator('input[name="bag_count"]').fill('3');
-      await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveAttribute('title', 'Total: 750 g');
+      await expect(row.locator('.total-note')).toHaveText('750 g total');
       // Pausing disables the inputs (keeping the staged values); the label
       // flips to what a click would do now; nothing moves or grows.
       await pause.click();
       await expect(pause).toHaveText('Resume');
-      await expect(row).toHaveAttribute('title', 'Pending: pause, edited');
-      await expect(row.locator('.sr-only')).toHaveText('Pending: pause, edited');
+      await expect(chip).toHaveAttribute('aria-label', 'Pending: Pending changes · Pause · Edited');
       await expect(row.locator('input[name="price"]')).toBeDisabled();
       expect(await boxes()).toEqual(before);
       expect(await height(row)).toBe(rowHeight);
@@ -772,7 +789,7 @@ export const STATES: State[] = [
       await sey.locator('input[name="subscription_url"]').fill('https://evil.example.com');
       await expect(page.getByText("⚠ doesn't look like Sey's site")).toBeVisible();
       await expectClearlyBelow(sey.locator('input[name="subscription_url"]'), page.getByText("⚠ doesn't look like Sey's site"));
-      await expect(sey).toHaveAttribute('title', 'Pending: edited');
+      await expect(sey.locator('.pending-chip .text-tip')).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
       // Desktop: the edit table fits, no sideways scroll (user, 2026-10-08).
       const size = page.viewportSize();
       if (size && size.width >= 1280) {
@@ -895,7 +912,7 @@ export const STATES: State[] = [
       const fillRow = page.locator('tr.fill-row');
       await expect(fillRow.getByText('Filled 3 fields · pick an option below')).toBeVisible();
       await expect(row.locator('input[name="roaster_service"]')).toHaveValue('H&S Coffee Roasters');
-      await expect(row).toHaveAttribute('title', 'Pending: edited');
+      await expect(row.locator('.pending-chip .text-tip')).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
       await fillRow.getByRole('button', { name: '1 bag, 125g (4.4oz) · $16.00' }).click();
       await expect(row.locator('input[name="price"]')).toHaveValue('16');
       await expect(row.locator('input[name="amount_per_bag_g"]')).toHaveValue('125');
