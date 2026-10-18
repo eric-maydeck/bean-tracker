@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
@@ -281,7 +282,7 @@
           <ol class="milestone-feed">
             {#each g.events as e (e.key)}
               <li>
-                <span class="kind-icon" style:--kind="var(--kind-{e.kind})" title={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
+                <span class="kind-icon" style:--kind="var(--kind-{e.kind})" role="img" aria-label={LABEL[e.kind]} use:labelTip={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
                 <time datetime={e.date}>{day(e.date)}</time>
                 <span class="who">
                   <span class="ev-title"><CoffeeName text={e.title} /></span>

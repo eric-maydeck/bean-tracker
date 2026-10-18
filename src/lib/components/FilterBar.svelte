@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import { tick } from 'svelte';
   import FilterEditor from './FilterEditor.svelte';
   import { chipLabel, chipTitle, upsertFilter, type ColumnKey, type Filter } from '$lib/coffeeFilters';
@@ -83,7 +84,7 @@
           <button
             type="button"
             class="filter-chip-label"
-            title={chipTitle(f)}
+            use:labelTip={chipTitle(f)}
             aria-describedby="filter-chip-desc-{f.column}"
             aria-expanded={open === f.column}
             onclick={(e) => openEditor(f.column, e.currentTarget)}>{chipLabel(f)}</button
@@ -92,7 +93,7 @@
           <button
             type="button"
             class="filter-chip-remove"
-            title="Remove filter"
+            use:labelTip={'Remove filter'}
             aria-label={`Remove filter: ${chipTitle(f)}`}
             onclick={() => remove(f.column)}>✕</button
           >

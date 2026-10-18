@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import { setting, plainText } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
@@ -501,8 +502,8 @@
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
-          ><button type="button" class="filter-chip-label" title="Edit in Filters" onclick={() => coffeesDialog?.showModal()}>{value}</button
-          ><button type="button" class="filter-chip-remove" title="Remove filter"
+          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {value}" onclick={() => choose({ [key]: undefined, ...(key === 'roast' || key === 'process' ? { bag: undefined } : {}) })}>✕</button
           ></span
         >

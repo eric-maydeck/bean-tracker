@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -483,7 +484,7 @@
 
 {#snippet cloneButton(coffee: CoffeeRow, icons = false)}
   <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}
-    title={icons ? 'Clone' : undefined} aria-label={icons ? 'Clone' : undefined}>
+    use:labelTip={icons ? 'Clone' : undefined} aria-label={icons ? 'Clone' : undefined}>
     {#if icons}<Icon name="clone" />{:else}Clone{/if}
   </button>
 {/snippet}
@@ -492,7 +493,7 @@
   <button
     class="button button-secondary" class:button-icon={icons}
     type="button"
-    title={icons ? 'Edit' : undefined} aria-label={icons ? 'Edit' : undefined}
+    use:labelTip={icons ? 'Edit' : undefined} aria-label={icons ? 'Edit' : undefined}
     onclick={() => {
       editMode = true;
       editIds.add(coffee.id);
@@ -508,12 +509,12 @@
     <div class="action-row">
       {#if soloEdit(coffee.id)}
         <button class="button button-success button-solid" class:button-icon={icons} type="button" disabled={saving} onclick={() => saveChanges(coffee.id)}
-          title={icons ? 'Save' : undefined} aria-label={icons ? 'Save' : undefined}>
+          use:labelTip={icons ? 'Save' : undefined} aria-label={icons ? 'Save' : undefined}>
           {#if icons}<Icon name="save" />{:else}{saving ? 'Saving…' : 'Save'}{/if}
         </button>
       {/if}
       <button class="button button-secondary" class:button-icon={icons} class:button-danger={icons && showCancel(coffee.id)} type="button" disabled={saving} onclick={() => (soloEdit(coffee.id) ? discardRow(coffee.id) : toggleEdit(coffee.id))}
-        title={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined}>
+        use:labelTip={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined} aria-label={icons ? (showCancel(coffee.id) ? 'Cancel' : 'Edit') : undefined}>
         {#if icons}<Icon name={showCancel(coffee.id) ? 'cancel' : 'edit'} />{:else}{showCancel(coffee.id) ? 'Cancel' : 'Edit'}{/if}
       </button>
       {#if coffee.status !== 'archive'}
@@ -529,7 +530,7 @@
               stageStatusAction(pending, coffee.id, 'delete');
             }
           }}
-          title={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
+          use:labelTip={icons ? 'Delete' : undefined} aria-label={icons ? 'Delete' : undefined}
         >
           {#if icons}<Icon name="delete" />{:else}Delete{/if}
         </button>
@@ -543,7 +544,7 @@
           aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
           disabled={saving}
           onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
-          title={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
+          use:labelTip={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
         >
           {#if icons}<Icon name="restore" />{:else}Restore{/if}
         </button>
@@ -555,7 +556,7 @@
             aria-pressed={pending.get(coffee.id)?.statusAction === 'open'}
             disabled={saving}
             onclick={() => stageStatusAction(pending, coffee.id, 'open')}
-            title={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
+            use:labelTip={icons ? 'Open' : undefined} aria-label={icons ? 'Open' : undefined}
           >
             {#if icons}<Icon name="open" />{:else}Open{/if}
           </button>
@@ -566,7 +567,7 @@
               aria-pressed={pending.get(coffee.id)?.statusAction === 'thaw'}
               disabled={saving}
               onclick={() => stageStatusAction(pending, coffee.id, 'thaw')}
-              title={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
+              use:labelTip={icons ? 'Thaw' : undefined} aria-label={icons ? 'Thaw' : undefined}
             >
               {#if icons}<Icon name="thaw" />{:else}Thaw{/if}
             </button>
@@ -577,7 +578,7 @@
               aria-pressed={pending.get(coffee.id)?.statusAction === 'freeze'}
               disabled={saving}
               onclick={() => stageStatusAction(pending, coffee.id, 'freeze')}
-              title={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
+              use:labelTip={icons ? 'Freeze' : undefined} aria-label={icons ? 'Freeze' : undefined}
             >
               {#if icons}<Icon name="freeze" />{:else}Freeze{/if}
             </button>
@@ -589,7 +590,7 @@
             aria-pressed={pending.get(coffee.id)?.statusAction === 'unopen'}
             disabled={saving}
             onclick={() => stageStatusAction(pending, coffee.id, 'unopen')}
-            title={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
+            use:labelTip={icons ? 'Unopen' : undefined} aria-label={icons ? 'Unopen' : undefined}
           >
             {#if icons}<Icon name="unopen" />{:else}Unopen{/if}
           </button>
@@ -600,7 +601,7 @@
           aria-pressed={pending.get(coffee.id)?.statusAction === 'archive'}
           disabled={saving}
           onclick={() => stageStatusAction(pending, coffee.id, 'archive')}
-          title={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
+          use:labelTip={icons ? 'Archive' : undefined} aria-label={icons ? 'Archive' : undefined}
         >
           {#if icons}<Icon name="archive" />{:else}Archive{/if}
         </button>
@@ -922,7 +923,7 @@
           {/if}
           {#if expandedId === coffee.id}
             <div class="action-buttons">
-              <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}`} title="Open coffee page" aria-label="Open coffee page"><Icon name="page" /></a>
+              <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}`} use:labelTip={'Open coffee page'} aria-label="Open coffee page"><Icon name="page" /></a>
               {#if data.isAdmin}
                 {@render editButton(coffee, true)}
                 {@render cloneButton(coffee, true)}
