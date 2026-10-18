@@ -1,3 +1,127 @@
+# [1.78.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.77.0...v1.78.0) (2026-10-18)
+
+
+### Bug Fixes
+
+* **charts:** a chart tip another tip dismisses unmounts instead of staying hidden
+* **coffees:** like panel matches Leaderboards on decaf, no blank grid track, shared signed
+* **coffees:** the no-comparison tip counts dial-in brews only among calibrated ones
+* every price, spend and cost shows dollars to 2 decimals through one formatter
+* **insights:** a board value is tipped only when the tip adds to the row
+* **insights:** a left-pointing small bar's corner fold sits top right
+* **insights:** a like line is a tab stop and opens on Enter only when cut
+* **insights:** a repurchase stays out of its twin's like group
+* **insights:** badges explain the gap against its margin of error
+* **insights:** bag means and gaps between them show one decimal
+* **insights:** bag-mean findings use the page's 4-brew bag rule
+* **insights:** brews until dialed reads each bag's first 7 brews, closes [1-#7](https://github.com/1-/issues/7)
+* **insights:** dial-in by group always lists; with no measurable z it has no bar
+* **insights:** dial-in by group progress is (z / bar)²; no card when z can't be measured
+* **insights:** empty leaderboard panels fit their note
+* **insights:** empty panels are one short line
+* **insights:** equal row gaps in the phone control bar
+* **insights:** every bag counts in pooled means, weighted by its brews
+* **insights:** every too early card has its progress bar, dial-in by group too
+* **insights:** filters field sits level with the bar's controls
+* **insights:** final-review minors
+* **insights:** finding deltas show 2 decimals only when their margin is under 0.05
+* **insights:** finding links keep the page's Period, ratings, caffeine and Coffees filter
+* **insights:** findings use the t test at every n, with no step at 30
+* **insights:** group 10-brew rule counts dial-in brews; tips follow the mode
+* **insights:** group findings compare a group with the rest, not a pool holding it
+* **insights:** habits rating charts say they are raw means
+* **insights:** lab badges never back a gap the bar contradicts, and tier 2 counts bags once
+* **insights:** lab badges use the page's t test with the bag as the unit
+* **insights:** lab charts pick their decimals per chart, not per row
+* **insights:** lab deltas and means show 1 decimal unless the bag-level se is under 0.05
+* **insights:** leaning and its setting read as one phrase in one size
+* **insights:** like line tip uses the shared float tip, opens on hover, tap and focus
+* **insights:** like rank help, See-all rows, and only boards that can rank
+* **insights:** likeRoaster small-sample rule, twin tags, phone bar labels, tighter milestones check
+* **insights:** money mini charts read their values as usd for screen readers
+* **insights:** more dollar amounts get the Usd tip; ± note says what an SE is
+* **insights:** myths show their margin of error and claim no effect only inside it
+* **insights:** name the confident cutoff on boards it emptied
+* **insights:** no clear winner cards name the best-so-far setting
+* **insights:** no clear winner sweet spots lines take the accent ink; contrast notes corrected
+* **insights:** notes finding says the cause likely runs the other way
+* **insights:** once dialed skips dial-in brews by position only
+* **insights:** once dialed skips the first brew of a 4–7 bag, two of an 8+ bag, closes [#2](https://github.com/eric-maydeck/bean-tracker/issues/2) [#3](https://github.com/eric-maydeck/bean-tracker/issues/3)
+* **insights:** one empty panel when a filtered tab has nothing
+* **insights:** only rows with a like line grow; ink check, tidy lookups
+* **insights:** overview tiles fit 2-decimal costs
+* **insights:** pooled means count only bags with 4+ rated brews
+* **insights:** rank like leaves out low-confidence rows
+* **insights:** readable reason list when one reason holds an or
+* **insights:** rescued bags compare the first two brews with the rest
+* **insights:** rescued bags say how many chance alone would rescue
+* **insights:** roast nudge on a z of 2 and a gap of half a point
+* **insights:** roaster like gaps vs other roasters, rescue and dial-in rules, bar labels, seed
+* **insights:** rows show their scored brews; chip and tips give both counts
+* **insights:** see all counts every bag under raw and the peak scores
+* **insights:** see all under rank like counts every bag in the roaster figure
+* **insights:** see-all note blames each setting that hid rows; review minors
+* **insights:** setting names are bold brown in tips and chart notes too; dial window from data
+* **insights:** setting names in prose are bold brown; their default notes are green
+* **insights:** settle bars get a tip with counts, small-sample caveat last
+* **insights:** settle brews measured within each bag's first 6 brews
+* **insights:** show-all footer only where a band row needs it
+* **insights:** small-sample findings use a t test
+* **insights:** sweet spots best so far reads as the answer alone, its numbers in a tip
+* **insights:** sweet spots lines are short with numbers in a tip; results in the accent ink
+* **insights:** tapping a cut-off like line follows the row link
+* **insights:** the cutoff line names a board only when full bags would fill it
+* **insights:** the dial-in story quotes ratings within a bag, closes [#1](https://github.com/eric-maydeck/bean-tracker/issues/1)
+* **insights:** the hidden-by-settings tip lists one row per board and the reasons once
+* **insights:** the hidden-by-settings tip type is plain TypeScript, so tsc stays at baseline
+* **insights:** the many-findings line counts every test run, under any theme
+* **insights:** the score help's default entry gets its own group header
+* **insights:** the settle tip counts the brews it read, and its small-group shape is unit-tested
+* **insights:** too early lists 6 leads past 1× their margin of error
+* **milestones:** resize the side ruler when the bar or viewport height changes
+* **money:** $1,000 and up shows whole dollars; the tip keeps the cents
+* **money:** charts and lists keep one format; stats cost chart labels use usd
+* **stats:** by method and by grinder say how many of their groups they show
+* **stats:** showing top n of m only shows when the chart cuts something
+* **ui:** a revealed tip never scrolls its own anchor under the sticky bar
+* **ui:** a text tip is inline text, so a wrapped label opens only from its words
+
+
+### Features
+
+* **coffees:** explain a missing vs like coffees panel, honor ratings and dial params
+* **coffees:** vs like coffees panel on the coffee page
+* **insights:** a cut like line opens its full text on tap or enter
+* **insights:** an odd Too early list pulls in the next lead the cap cut
+* **insights:** board-count tooltip and accurate See all reasons
+* **insights:** brews until dialed in by roast level and process on brewing
+* **insights:** brews until dialed says it shows the first 7 brews; see all tips the rest
+* **insights:** coffees button, panel and chips for the page-wide filter
+* **insights:** coffees default to a by-brews confidence score; min3 is "Average (3+ bags)"
+* **insights:** dialinBy findings always show, too early ones outside the cap
+* **insights:** findings for like-coffee standouts, dial-in by group, rescues
+* **insights:** group rows show their score ± 1 SE; boards within noise say so
+* **insights:** like line under every leaderboard rank but like
+* **insights:** like-coffee groups with self-exclusion
+* **insights:** nudge to filter by roast when roast levels rate apart
+* **insights:** page-wide coffees filter in the load
+* **insights:** phone-short Period/Compare words before first paint, ellipsis on long selects
+* **insights:** rank coffees and roasters vs like coffees
+* **insights:** remember the view for 12 hours; reset clears it
+* **insights:** say how many Likely badges a page of findings earns by chance
+* **insights:** see all note as one short line, its breakdown in a tip
+* **insights:** see all when settings hide results
+* **insights:** see-all note gives each board its own reasons
+* **insights:** the default Period is All time, on /insights and /stats
+* **insights:** vs like coffees line on coffee rows
+* **insights:** zero-centred delta bars under rank like
+* **money:** a rounded dollar amount shows its 4-decimal value in a tip
+
+
+### Performance Improvements
+
+* **insights:** skip like lines where boards are only counted, pre-split like groups by roast
+
 # [1.77.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.76.2...v1.77.0) (2026-10-16)
 
 
