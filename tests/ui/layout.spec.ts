@@ -776,11 +776,15 @@ export const STATES: State[] = [
           const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent!.trim() ? 1 : 2) });
           const n = w.nextNode()!, r = document.createRange();
           r.selectNodeContents(n);
-          return { bottom: r.getBoundingClientRect().bottom, size: getComputedStyle(n.parentElement!).fontSize };
+          const b = r.getBoundingClientRect();
+          return { bottom: b.bottom, left: b.left, size: getComputedStyle(n.parentElement!).fontSize };
         };
         const a = textBox(chip), b = textBox(tr.querySelector('.total-note')!);
-        return { off: (c.top + c.bottom) / 2 - (pause.bottom + divider) / 2, baseline: a.bottom - b.bottom, sizes: [a.size, b.size] };
+        const input = tr.querySelector('input[name="amount_per_bag_g"]')!, s = getComputedStyle(input);
+        const textLeft = input.getBoundingClientRect().left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft);
+        return { off: (c.top + c.bottom) / 2 - (pause.bottom + divider) / 2, baseline: a.bottom - b.bottom, sizes: [a.size, b.size], left: b.left - textLeft };
       });
+      expect(Math.abs(m.left), "total's left edge on the g/bag input's text").toBeLessThanOrEqual(1);
       expect(Math.abs(m.off), 'chip centered under Pause').toBeLessThanOrEqual(1);
       expect(Math.abs(m.baseline), 'total on the chip text baseline').toBeLessThanOrEqual(1);
       expect(m.sizes[0]).toBe(m.sizes[1]);

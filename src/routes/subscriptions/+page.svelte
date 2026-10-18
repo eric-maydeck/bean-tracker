@@ -875,10 +875,11 @@
   /* The bags × g total under the g/bag input. */
   /* The Pending chip sits midway between the buttons and the row's divider: a block (no line-box strut) whose gap
      above equals the cell's bottom padding. The total under g/bag lines up with the chip's text: the same gap plus
-     the badge's top padding, the badge's font size. */
+     the badge's top padding, the badge's font size; its left edge is the g/bag input's text (border + padding). */
   .total-note {
     display: block;
     margin-top: calc(var(--space-2) + 0.15rem);
+    padding-left: calc(1px + 0.5rem);
     font-size: 0.8rem;
     white-space: nowrap;
     color: var(--color-text-muted);
