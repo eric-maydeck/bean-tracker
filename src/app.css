@@ -13,7 +13,8 @@
   --color-warm: #d68910;
   --color-fresh: #4a7c59;
   --color-frozen: #2e6f9e;
-  --color-decaf: #7b4fa0;
+  --color-decaf: #8f456b;
+  --color-skip: #845eb6;
   --color-sunflower: #f5c518;
   --color-sunflower-text: #2b211b;
   --color-urgency-low: #16a34a;
@@ -125,10 +126,9 @@
     --color-urgent: #e57368;
     --color-warm: #e8b04b;
     --color-fresh: #7fb890;
-  --color-frozen: #7fb3d9;
-  --color-decaf: #b994d6;
     --color-frozen: #7fb3d9;
-    --color-decaf: #b994d6;
+    --color-decaf: #e08fb8;
+    --color-skip: #a98ad6;
     --color-sunflower: #f2c94c;
     --color-sunflower-text: #1c1712;
     --color-urgency-low: #4ade80;
@@ -218,6 +218,9 @@
   --color-urgent: #e57368;
   --color-warm: #e8b04b;
   --color-fresh: #7fb890;
+  --color-frozen: #7fb3d9;
+  --color-decaf: #e08fb8;
+  --color-skip: #a98ad6;
   --color-sunflower: #f2c94c;
   --color-sunflower-text: #1c1712;
   --color-urgency-low: #4ade80;
@@ -358,6 +361,11 @@ h2 {
 
 a {
   color: var(--color-accent);
+}
+
+/* A keyword-colored coffee name (CoffeeName.svelte) right inside a link draws the link's underline in its own color. */
+a > .coffee-name {
+  text-decoration: inherit;
 }
 
 /* A setting's name inside prose ("vs like coffees ranks ...", the Score help's "Average (3+ bags)"): bold, in the link
