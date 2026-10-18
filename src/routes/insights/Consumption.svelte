@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
@@ -56,7 +57,7 @@
         <button
           aria-pressed={t.by === b}
           aria-disabled={!offered.includes(b)}
-          title={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
+          use:labelTip={offered.includes(b) ? undefined : b === 'day' ? 'Too many bars for this period' : 'Too few bars for this period'}
           onclick={() => offered.includes(b) && choose({ by: b })}>{CAP(b)}</button
         >
       {/each}

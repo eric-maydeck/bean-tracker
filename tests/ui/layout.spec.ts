@@ -1068,6 +1068,11 @@ export const STATES: State[] = [
       await people.getByRole('button', { name: 'Per person', exact: true }).click();
       await expect(page).toHaveURL(/people=person/);
       await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
+      // The switch options' help is the shared hover tip (ui-rules 27), not a native title.
+      await people.getByRole('button', { name: 'Household', exact: true }).hover();
+      await expectTipInView(page, page.locator('.cell-tip:popover-open'), { inBar: true });
+      await expect(page.locator('.cell-tip:popover-open .tip-title')).toHaveText('Household');
+      await page.mouse.move(0, 0);
       // The mode word opens its help popover (ui-rules 27), in view under the sticky bar.
       const help = page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' });
       await help.click();
@@ -1526,6 +1531,34 @@ export const STATES: State[] = [
   },
   { name: 'insights-year', path: () => `/insights?range=${new Date().getFullYear()}&ratings=all` },
   { name: 'insights-compare-2', path: () => '/insights?range=1w&compare=2' },
+  {
+    // Former native titles, now the shared hover tip (labelTip): a tile's delta sentence, the People switch's help.
+    name: 'insights-hover-tips',
+    path: () => '/insights?range=1w&compare=2',
+    act: async (page) => {
+      const tip = page.locator('.cell-tip:popover-open');
+      const delta = page.locator('.stat-item .insights-delta').first();
+      await delta.hover();
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).toHaveText((await delta.locator('.sr-only').textContent())!);
+      await page.getByRole('group', { name: 'People' }).getByRole('button', { name: 'Per person', exact: true }).hover();
+      await expectTipInView(page, tip, { inBar: true });
+      await expect(tip.locator('.tip-title')).toHaveText('Per person');
+      await expect(tip.locator('.tip-lines li')).toHaveCount(1);
+    }
+  },
+  {
+    // A finding card's hover tip: its headline (and sides), the shared tip in place of the card's native title.
+    name: 'insights-insights-card-hover-tip',
+    path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      const card = page.locator('.hl-card.finding').first();
+      await card.locator('.hl-value, .stat-label').first().hover();
+      const tip = page.locator('.cell-tip:popover-open');
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).not.toBeEmpty();
+    }
+  },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
   {
     // Overview: Totals and Averages each carry the Ratings and Brews switches in their header (no in-tile pills);

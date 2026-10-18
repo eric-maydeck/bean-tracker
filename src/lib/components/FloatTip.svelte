@@ -24,7 +24,8 @@
   function place() {
     if (!el || !anchor.isConnected) return;
     const t = el.getBoundingClientRect();
-    const a = anchor.getBoundingClientRect(), view = viewBand();
+    // A control in the sticky bar itself (a switch's help tip) is never "under" it: its band starts at the top.
+    const a = anchor.getBoundingClientRect(), band = viewBand(), view = anchor.closest('.filter-bar') ? { ...band, top: 0 } : band;
     away = a.bottom <= view.top || a.top >= view.bottom;
     const { x, y } = tipPlace(a, { w: t.width, h: t.height }, view);
     el.style.left = `${x}px`;

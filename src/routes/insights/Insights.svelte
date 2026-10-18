@@ -11,6 +11,7 @@
 </script>
 
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -46,7 +47,8 @@
   let grid = $derived(t.grid);
   // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
   // The card's title: the headline plus each versus side in full (a clamped side label's only full-text route besides the popover).
-  const full = (f: Finding) => [f.headline, ...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : [])].join('\n');
+  // A card's hover tip: the headline and, for a two-sided finding, each side (the click popover adds the body).
+  const full = (f: Finding): Tip => ({ title: f.headline, lines: f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : [] });
   const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
   let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
@@ -288,10 +290,10 @@
       {#each sized as { item: f, size, style }, i (f.key)}
         {@const id = anchor(f.key)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
-        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" title={full(f)} onclick={unclamp}>
+        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" use:labelTip={full(f)} onclick={unclamp}>
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
-          {#if f.body}<span class="hl-line wrap body" title={f.body}><CoffeeName text={f.body} /></span>{/if}
+          {#if f.body}<span class="hl-line wrap body"><CoffeeName text={f.body} /></span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
           <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>

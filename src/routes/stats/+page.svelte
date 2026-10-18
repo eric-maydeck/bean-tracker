@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import Usd from '$lib/components/Usd.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
@@ -403,7 +404,7 @@
         {#each PEOPLE as m (m)}
           <button
             aria-pressed={people === m}
-            title={PEOPLE_HELP[m]}
+            use:labelTip={{ title: m === 'person' ? 'Per person' : 'Household', lines: [PEOPLE_HELP[m]] }}
             aria-describedby="people-help-{m}"
             onclick={() => (explicitPeople = m)}>{m === 'person' ? 'Per person' : 'Household'}</button
           >

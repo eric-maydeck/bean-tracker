@@ -489,7 +489,7 @@
         {#each PEOPLE as m (m)}
           <button
             aria-pressed={s.people === m}
-            title={PEOPLE_HELP[m]}
+            use:labelTip={{ title: m === 'person' ? 'Per person' : 'Household', lines: [PEOPLE_HELP[m]] }}
             aria-describedby="people-help-{m}"
             onclick={() => choose({ people: m })}>{m === 'person' ? 'Per person' : 'Household'}</button
           >
@@ -606,8 +606,8 @@
             >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
           {#if d}
-            <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and hover. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd) && !d.paced} title={deltaTitle(d, t)}
+            <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->
+            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd) && !d.paced} use:labelTip={deltaTitle(d, t)}
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
@@ -616,7 +616,7 @@
           {/if}
           {#if !d && t.stack?.()}
             {@const st = t.stack()!}
-            <span class="insights-pace compare" title={st.said}
+            <span class="insights-pace compare" use:labelTip={st.said}
               ><span aria-hidden="true"><span class="part">{st.head}</span>{' '}<span class="part">{st.tail}</span></span><span class="sr-only">{st.said}</span></span
             >
           {/if}

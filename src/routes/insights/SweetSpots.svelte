@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
@@ -208,9 +209,9 @@
         {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const r = result(p)}
-        {@const full = [`${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, evidence(p), usually(p)].filter(Boolean).join('\n')}
+        {@const full = { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), usually(p)].filter((x): x is string => !!x) }}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
-        <div class="hl-card spot-card" {id} {style} title={full} onclick={unclamp}>
+        <div class="hl-card spot-card" {id} {style} use:labelTip={full} onclick={unclamp}>
           <div class="hl-top">
             {#if b}
               <button class="mode-tip-button" popovertarget="{id}-badge" aria-describedby="{id}-badge"
@@ -252,7 +253,7 @@
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
-            <TipBody tip={{ title: full.split('\n')[0], lines: full.split('\n').slice(1) }} />
+            <TipBody tip={full} />
           </div>
         </div>
       {/each}

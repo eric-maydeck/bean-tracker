@@ -280,16 +280,17 @@ export async function expectPairsFilled(page: Page, selector: string) {
 // wrapper or sticky bar can cover or cut it), and its box is inside the viewport and below the sticky filter bar.
 // ponytail: Firefox's elementFromPoint skipped the open top-layer tip in the runner (it hit the content under
 // it even with pointer-events on), so the top-layer check stands in for a per-corner hit test.
-export async function expectTipInView(page: Page, tip: Locator) {
+// `inBar`: the tip of a control inside the sticky bar (a switch's help) may sit over the bar.
+export async function expectTipInView(page: Page, tip: Locator, { inBar = false } = {}) {
   await expect(tip).toBeVisible();
-  const bad = await tip.evaluate((el) => {
+  const bad = await tip.evaluate((el, inBar) => {
     const r = el.getBoundingClientRect(), out: string[] = [];
     const bar = document.querySelector('.filter-bar')?.getBoundingClientRect();
     if (!el.matches(':popover-open')) out.push('not in the top layer (an open popover)');
     if (r.left < 0 || r.top < 0 || r.right > document.documentElement.clientWidth || r.bottom > innerHeight) out.push(`outside the viewport: ${JSON.stringify(r)}`);
-    if (bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
+    if (!inBar && bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
     return out;
-  });
+  }, inBar);
   expect(bad).toEqual([]);
 }
 
@@ -376,14 +377,9 @@ export async function expectTipsFormatted(page: Page) {
 // attributes, so the head's and any SVG's are out of scope. Allowed, each for its reason:
 const TITLE_OK: [string, string][] = [
   ['iframe', "an iframe's accessible name, not a tip"],
-  ['option', 'a native select option: the browser draws the list, so no tip can open there (its select has a ? popover)'],
-  ['.tab-group > button[aria-describedby]', "a mode switch option: rule 27's own hover hint, beside the mode word's popover"],
-  // Older /insights titles, outside the 2026-10-17 audit's inventory (follow-up):
-  ['.tab-group > button[aria-disabled="true"]', "an unavailable Group by option's reason (Consumption)"],
-  ['.insights-delta, .insights-pace', "a tile's delta sentence (its sr-only twin carries it)"],
-  ['.hl-card.finding, .hl-card.spot-card, .hl-line.body', "a card's clamped text in full (a click opens it as a popover)"],
-  ['.who > a, .who > .name', "a Recent row's clamped coffee name"],
-  ['.bar-labels span', 'a clamped bar label (the row is aria-hidden)']
+  // A native select option: the browser draws the open list, so no page tip can open there; the same help is in the
+  // select's own ? popover (Rank by, Score), so the title only adds a desktop hover hint inside the list.
+  ['option', 'a native select option']
 ];
 export async function expectNoTitleTips(page: Page) {
   const left = await page.evaluate((ok) => [...document.body.querySelectorAll('[title]')]

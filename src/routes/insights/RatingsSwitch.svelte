@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { plainText } from '$lib/settingName';
+  import { labelTip } from '$lib/components/labelTip';
   import { DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, type Dial, type InsightsUrlState, type Ratings } from '$lib/insightsUrl';
 
-  // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: title +
+  // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: a hover/focus help tip (labelTip) +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
   // `menu`: one compact filter-bar button showing the state, the switches in a popover under it.
   let { ratings, dial, ratingsHelp, choose, menu = false }: {
@@ -26,7 +26,7 @@
     <span>Ratings</span>
     <div class="tab-group" role="group" aria-label="Ratings">
       {#each ['current', 'all'] as const as m (m)}
-        <button aria-pressed={ratings === m} title={plainText(ratingsHelp[m])} aria-describedby="ratings-help-{m}"
+        <button aria-pressed={ratings === m} use:labelTip={{ title: RATINGS_LABEL[m], lines: [ratingsHelp[m]] }} aria-describedby="ratings-help-{m}"
           onclick={() => choose({ ratings: m })}>{RATINGS_LABEL[m]}</button>
       {/each}
     </div>
@@ -35,7 +35,7 @@
     <span>Brews</span>
     <div class="tab-group" role="group" aria-label="Brews">
       {#each ['dialed', 'all'] as const as m (m)}
-        <button aria-pressed={dial === m} title={DIAL_HELP[m]} aria-describedby="dial-help-{m}"
+        <button aria-pressed={dial === m} use:labelTip={{ title: DIAL_LABEL[m], lines: [DIAL_HELP[m]] }} aria-describedby="dial-help-{m}"
           onclick={() => choose({ dial: m === 'all' ? 'all' : undefined })}>{DIAL_LABEL[m]}</button>
       {/each}
     </div>
