@@ -1,3 +1,11 @@
+# [1.79.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.78.0...v1.79.0) (2026-10-18)
+
+
+### Features
+
+* show coffee names containing skip in purple everywhere
+* **theme:** add skip color token; decaf badge turns rose
+
 # [1.78.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.77.0...v1.78.0) (2026-10-18)
 
 
