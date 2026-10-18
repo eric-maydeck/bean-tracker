@@ -765,6 +765,25 @@ export const STATES: State[] = [
       await expectTipInView(page, tip);
       await expect(tip.locator('.tip-title')).toHaveText('Pending changes');
       await expect(tip.locator('.tip-lines li')).toHaveText(['Edited']);
+      // The chip sits midway between Pause and the row's divider (±1px); the total under g/bag shares its text's
+      // baseline (±1px) and font size (user, 2026-10-18).
+      const m = await row.evaluate((tr) => {
+        const pause = tr.querySelector('.pause-button')!.getBoundingClientRect();
+        const chip = tr.querySelector('.pending-chip')!, cell = chip.closest('td')!;
+        const c = chip.getBoundingClientRect();
+        const divider = cell.getBoundingClientRect().bottom - parseFloat(getComputedStyle(cell).borderBottomWidth);
+        const textBox = (el: Element) => {
+          const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.textContent!.trim() ? 1 : 2) });
+          const n = w.nextNode()!, r = document.createRange();
+          r.selectNodeContents(n);
+          return { bottom: r.getBoundingClientRect().bottom, size: getComputedStyle(n.parentElement!).fontSize };
+        };
+        const a = textBox(chip), b = textBox(tr.querySelector('.total-note')!);
+        return { off: (c.top + c.bottom) / 2 - (pause.bottom + divider) / 2, baseline: a.bottom - b.bottom, sizes: [a.size, b.size] };
+      });
+      expect(Math.abs(m.off), 'chip centered under Pause').toBeLessThanOrEqual(1);
+      expect(Math.abs(m.baseline), 'total on the chip text baseline').toBeLessThanOrEqual(1);
+      expect(m.sizes[0]).toBe(m.sizes[1]);
     }
   },
   {

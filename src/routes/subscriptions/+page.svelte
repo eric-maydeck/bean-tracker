@@ -873,14 +873,20 @@
     min-width: 13rem;
   }
   /* The bags × g total under the g/bag input. */
+  /* The Pending chip sits midway between the buttons and the row's divider: a block (no line-box strut) whose gap
+     above equals the cell's bottom padding. The total under g/bag lines up with the chip's text: the same gap plus
+     the badge's top padding, the badge's font size. */
   .total-note {
     display: block;
-    font-size: 0.75rem;
+    margin-top: calc(var(--space-2) + 0.15rem);
+    font-size: 0.8rem;
     white-space: nowrap;
     color: var(--color-text-muted);
   }
   .pending-chip {
-    margin-top: var(--space-1);
+    display: block;
+    width: fit-content;
+    margin-top: var(--space-2);
   }
   .pending-chip.empty {
     visibility: hidden;
@@ -898,6 +904,11 @@
   @media (max-width: 640px) {
     .data-table .inline-input {
       width: 8rem;
+    }
+    /* Phone buttons are 44px tall (app.css), the inputs 2.25rem: the total drops by the difference to stay on the
+       chip's line. */
+    .total-note {
+      margin-top: calc(var(--space-2) + 0.15rem + 44px - 2.25rem);
     }
     .data-table .num-input {
       width: calc(5ch + 2rem);
