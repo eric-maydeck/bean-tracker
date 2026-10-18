@@ -1922,6 +1922,7 @@ export const STATES: State[] = [
       const dlg = page.getByRole('dialog', { name: 'How scores work' });
       await expect(dlg).toBeVisible();
       await expect(dlg).toContainText('Confidence adj. (strong)');
+      await expect(dlg.locator('h3')).toHaveText(['Default', 'Average', 'Peak']); // every entry under a group header
       await expect(dlg).toContainText('Average (3+ bags) (default for other boards)');
       await expect(dlg).toContainText('Confidence adj. (light) (default for Coffees)');
       // Setting names in the link brown, their "(default for ...)" in green, text color only (user, 2026-10-17).

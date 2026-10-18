@@ -182,6 +182,8 @@
     <button class="button button-ghost close" aria-label="Close" onclick={() => help?.close()}>×</button>
   </header>
   <div class="how-body">
+    <!-- A group header like Average's and Peak's, though redundant: one design language in the tip (user, 2026-10-17). -->
+    <h3>Default</h3>
     <p><b class="setting-name">Default.</b> Coffees: <span class="setting-name">{AVG_LABEL[COFFEES_AVG]}</span>. Other boards: <span class="setting-name">{AVG_LABEL[DEFAULT_AVG]}</span>.</p>
     {#each HOW as g (g.group)}
       <h3>{g.group}</h3>
