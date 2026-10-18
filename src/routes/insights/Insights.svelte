@@ -12,6 +12,7 @@
 
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import BarLabels from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -191,6 +192,8 @@
       zero: lo < 0 && hi > 0 ? y(0) : null
     };
   }
+  // A mini chart's points for screen readers, valued as the card shows them: dollars as usd (ui-rules 46), else 1 dp.
+  const seriesText = (f: Finding) => f.series!.map((p) => `${p.label} ${f.money ? usd(p.value) : +p.value.toFixed(1)}`).join(', ');
   const emptyLine = useEmptyLine();
 </script>
 
@@ -235,7 +238,7 @@
     {@const max = Math.max(...f.series.map((p) => p.value)) || 1}
     {@const w = 100 / f.series.length}
     <!-- Magnitudes from zero: bars. Weekend bars take the second color (and their initials are bold). -->
-    <div class="bars" role="img" aria-label={f.series.map((p) => `${p.label} ${+p.value.toFixed(1)}`).join(', ')}>
+    <div class="bars" role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
         {#each f.series as p, i (i)}
           <rect x={i * w + w * 0.15} width={w * 0.7} y={40 - (Math.max(0, p.value) / max) * 38} height={(Math.max(0, p.value) / max) * 38}
@@ -246,7 +249,7 @@
     </div>
   {:else if f.series && f.series.length > 1}
     {@const l = line(f.series)}
-    <div class="spark" role="img" aria-label="{f.series.map((p) => p.label).join(', ')}">
+    <div class="spark" role="img" aria-label={seriesText(f)}>
       <svg viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
         {#if l.zero !== null}<line class="zero" x1="0" x2="100" y1={l.zero} y2={l.zero} />{/if}
         <polyline points={l.points} />

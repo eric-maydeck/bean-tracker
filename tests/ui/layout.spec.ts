@@ -3577,7 +3577,12 @@ export const STATES: State[] = [
       const rows = page.locator('.early li');
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
-      // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17).
+      // A money finding's mini chart reads its values as usd for screen readers ("2026 Q1 $10.00"), as its headline shows them.
+      const money = page.locator('.finding-grid .hl-card', { hasText: '$/100 g went from' }).locator(':is(.spark, .bars)');
+      await expect(money).toHaveCount(1);
+      expect(await money.getAttribute('aria-label')).toMatch(/^[^,]+ \$\d[\d,]*\.\d{2}(, [^,]+ \$\d[\d,]*\.\d{2})+$/);
+      // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17); only a finding whose
+      // evidence can't be measured has neither (settleEvidence, unit-tested: the seed can't reach it).
       expect(await rows.evaluateAll((ls) => ls.filter((l) => !l.querySelector('.meter') || !/\d+% there/.test(l.textContent ?? '')).length)).toBe(0);
       // A multi-line chart: a legend entry per line, each line in its own color (B2).
       const multi = page.locator('.finding-grid .multi').first();
