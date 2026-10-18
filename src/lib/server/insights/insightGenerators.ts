@@ -35,6 +35,7 @@ export interface Finding {
   progress?: number; // too early only: n / (n + more needed), 0..1, how close to settled
   details?: { label: string; items: DetailItem[] }[]; // supporting lists from real data: ≤ 2 groups × 2 items
   chart?: 'bars'; // draw `series` as mini vertical bars instead of a line
+  money?: true; // `series` values are dollars: the chart's aria-label reads them as usd, as the headline shows them
   barLabels?: 'full'; // bars: full labels with values (default: one-letter labels, the weekday bars)
 }
 export interface DetailItem { name: string; value?: string; href?: string }
@@ -655,7 +656,7 @@ const pricePerMonth: Generator = (c) => {
   const [a, b] = [qs[0].value, qs.at(-1)!.value];
   return {
     key: 'pricePerMonth', theme: 'money', kind: 'pattern', headline: `$/100 g went from ${money(a)} to ${money(b)}`, value: money(b),
-    series: qs, sample: plural(bs.length, 'bag'), href: `${LB}&open=coffees&rank=ppg`, z: null, strength: null
+    series: qs, money: true, sample: plural(bs.length, 'bag'), href: `${LB}&open=coffees&rank=ppg`, z: null, strength: null
   };
 };
 
@@ -845,6 +846,14 @@ const likeStandouts: Generator = (c) => {
 // No "N more bags would settle it": the window's settle brews take few values and the median rounds up, so the
 // sample-size estimate (built for a mean) would promise more than it can (audit must-fix 6). Its Too early card keeps
 // the progress bar (N% there).
+// A dial-in-by-group finding's evidence fields: no "about N more"; progress = (z / bar)² when early; z null (no bar,
+// no "N% there", not counted as a test) when it can't be measured. Exported for its test: real data can't reach the
+// null case (medians that differ always have spread), but the card must still list (gate P4).
+export function settleEvidence(f: Finding, z: number | null, tests: number): Finding {
+  const { settle: _s, progress: _p, ...rest } = f;
+  if (z === null) return { ...rest, z: null };
+  return f.strength === 'early' ? { ...rest, progress: Math.min(1, (z / solidBar(tests)) ** 2) } : rest;
+}
 const dialinByGroup: Generator = (c) => {
   const pos = settlePositions({ ...c, brews: c.allBrews });
   const allPos = pos.map((x) => x.pos);
@@ -858,19 +867,19 @@ const dialinByGroup: Generator = (c) => {
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
     const z = restZ(slow.ps, pos.filter((x) => x[dim] !== slow.label).map((x) => x.pos));
-    if (!Number.isFinite(z)) return []; // can't measure the evidence: no card rather than a false "0% there"
+    const measured = Number.isFinite(z); // false: no spread to test (always listed, user 2026-10-17: no bar then)
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',
       headline: `${fast.label} ${phrase(fast)}; ${slow.label} ${phrase(slow)}`,
       body: `Median brew each bag settles at, within its first ${SETTLE_WINDOW} rated brews (bags of ${SETTLE_WINDOW}+).`,
       series: [...groups].sort(by(1)).map(({ label, value }) => ({ label, value })), sample: plural(pos.length, 'bag'),
       href: SETTLE[dim]
-    }, z, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
+    }, measured ? z : 0, true, 'bags', slow.bags, undefined, groups.length, allPos.length);
     if (!f) return [];
-    // The progress bar stays (every Too early card has one, user 2026-10-17) as (z / bar)², the evidence so far, which
-    // needs no sample-size guess (settleText's n / (n + more) rounds `more` up over a few bags). Only "about N more" goes.
-    const { settle: _s, progress: _p, ...rest } = f;
-    return [f.strength === 'early' ? { ...rest, progress: Math.min(1, (z / solidBar(groups.length)) ** 2) } : rest];
+    // The progress bar stays (every Too early card whose evidence can be measured has one, user 2026-10-17) as
+    // (z / bar)², the evidence so far, which needs no sample-size guess (settleText's n / (n + more) rounds `more` up
+    // over a few bags). Only "about N more" goes. Unmeasured: no bar, no "N% there", no z (not a test run).
+    return [settleEvidence(f, measured ? z : null, groups.length)];
   });
 };
 

@@ -1,7 +1,7 @@
 import { likeGap } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
-import { GENERATORS, insightsTab, rescueOdds, type Finding, type GenCtx, type Generator } from './insightGenerators';
+import { GENERATORS, insightsTab, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
@@ -506,6 +506,7 @@ describe('$/100 g by quarter', () => {
     const f = gen('pricePerMonth', [], bs, o)!;
     expect(f).toMatchObject({ theme: 'money', kind: 'pattern', headline: '$/100 g went from $10.00 to $20.00', sample: '6 bags' });
     expect(f.series).toEqual([{ label: '2026 Q1', value: 10 }, { label: '2026 Q2', value: 20 }]);
+    expect(f.money).toBe(true); // its chart's aria-label reads the values as usd
   });
   it('null when a quarter has under 3 bags', () => expect(gen('pricePerMonth', [], bs.slice(0, 5), o)).toBeNull());
 });
@@ -846,6 +847,11 @@ describe('like-with-like findings', () => {
     // (z / bar)², the evidence so far, not settleText's rounded n / (n + more); 3 groups compared.
     expect(f?.progress).toBeCloseTo(Math.min(1, (f!.z! / solidBar(3)) ** 2), 6);
     expect(f?.progress).toBeGreaterThan(0);
+    // z can't be measured: the card still lists (gate P4), with no bar, no "N% there", no estimate, no z.
+    const u = settleEvidence({ ...f!, settle: 'About 3 more bags would settle it.' }, null, 3);
+    expect(u).toMatchObject({ key: 'dialinBy:roastLevel', strength: 'early', z: null });
+    expect(u).not.toHaveProperty('progress');
+    expect(u).not.toHaveProperty('settle');
   });
   it('dial-in by process: groups under 3 bags are left out', () => {
     const w = dialRows([1, 2, 3], [9, 9, 9, 9, 9, 9], { processGroup: 'Washed' });
