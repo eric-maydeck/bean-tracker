@@ -2840,6 +2840,52 @@ export const STATES: State[] = [
       expect(bad, 'tightened cards without a full-text tip on the value').toEqual([]);
     }
   },
+  { name: 'cursor-rules', path: () => '/insights?tab=habits',
+    act: async (page) => {
+      // ui-rules 50: tile text shows the arrow yet stays selectable; a tip-only click target shows help, never the hand.
+      const css = (sel: string) => page.locator(sel).first().evaluate((e) => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect]);
+      expect(await css('.stat-item .stat-value')).toEqual(['default', 'auto']);
+      for (const sel of ['.heatmap .heat-cell', '.brew-calendar .cal-cell']) expect((await css(sel))[0], sel).toBe('help');
+    } },
+  // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
+  { name: 'tap-tip-text', path: () => '/coffees?status=all&view=list',
+    act: (page) => expectTapTip(page, page.getByRole('button', { name: /^Roast level: / }).first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
+  { name: 'tap-tip-mode', path: () => '/stats?people=person',
+    act: (page) => expectTapTip(page, page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' }),
+      page.locator('.mode-tip:popover-open'), page.getByRole('heading', { name: 'Time to Clear' })) },
+  { name: 'tap-tip-chart', path: () => '/stats',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
+      await expectTapTip(page, () => tapChart(page, panel.locator('canvas')), page.locator('.chart-container .cell-tip:popover-open'), panel.locator('h2'));
+    } },
+  { name: 'tap-tip-sample', path: () => '/insights?tab=leaderboards&avg=raw',
+    act: (page) => expectTapTip(page, page.locator('.sample-note').first(), page.locator('.cell-tip:popover-open'), page.locator('.insights-period').last()) },
+  { name: 'tap-tip-heatmap', path: () => '/insights?tab=habits',
+    act: async (page) => {
+      const tip = page.locator('.cell-tip:popover-open'), away = page.locator('.insights-period').last();
+      await expectTapTip(page, page.locator('.heatmap .heat-cell').nth(10), tip, away);
+      await expectTapTip(page, page.locator('.brew-calendar .cal-cell').last(), tip, away);
+    } },
+  { name: 'tap-tip-map', path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      const tip = page.locator('.cell-tip:popover-open');
+      const tapEthiopia = async () => {
+        await page.locator('.world-map').scrollIntoViewIfNeeded();
+        const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+          const path = p as unknown as SVGPathElement, svg = path.ownerSVGElement!, pt = svg.createSVGPoint();
+          pt.x = 582; pt.y = 200; // inside Ethiopia in the 957x420 viewBox
+          const c = pt.matrixTransform(svg.getScreenCTM()!);
+          return [c.x, c.y];
+        });
+        await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+        // A click pins it: the mouse leaving the map doesn't close it (E, 2026-10-18).
+        if (!touch()) await page.mouse.move(1, 1);
+      };
+      await expectTapTip(page, tapEthiopia, tip, page.locator('.insights-period').last());
+      await tapEthiopia();
+      await page.keyboard.press('Escape');
+      await expect(tip).toBeHidden();
+    } },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])
@@ -4373,6 +4419,30 @@ export const STATES: State[] = [
   { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
 ];
+
+// A tip a hover opens also opens on a tap (a click without touch) and stays open until a tap elsewhere, one at a time
+// (ui-rules 49). `open`: a tap on the trigger, or a function that taps it; `away`: a neutral spot to tap.
+const touch = () => !!test.info().project.use.hasTouch;
+const tapOn = async (l: Locator) => (touch() ? l.tap() : l.click());
+async function expectTapTip(page: Page, open: Locator | (() => Promise<unknown>), tip: Locator, away: Locator) {
+  await (typeof open === 'function' ? open() : tapOn(open));
+  await expect(tip).toBeVisible();
+  await page.waitForTimeout(700);
+  await expect(tip, 'still open a moment after the tap').toBeVisible();
+  await tapOn(away);
+  await expect(tip, 'a tap elsewhere closes it').toBeHidden();
+}
+// Taps (or clicks) a Chart.js canvas over a grid of points until its tip opens.
+async function tapChart(page: Page, canvas: Locator) {
+  await canvas.scrollIntoViewIfNeeded();
+  const b = (await canvas.boundingBox())!;
+  const tip = page.locator('.chart-container .cell-tip:popover-open');
+  for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1 && !(await tip.count()); fx += 0.1) {
+    const [x, y] = [b.x + b.width * fx, b.y + b.height * fy];
+    await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+    await page.waitForTimeout(100);
+  }
+}
 
 // Hovers a Chart.js canvas until its tip opens (bars hover by intersection, so it sweeps a grid of points); returns the tip.
 async function hoverChart(page: Page, canvas: Locator) {

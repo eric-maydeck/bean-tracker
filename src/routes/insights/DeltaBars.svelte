@@ -158,7 +158,7 @@
     align-items: center;
     min-height: var(--cell-h);
     border-radius: 2px;
-    cursor: pointer;
+    cursor: help; /* a click opens only the tip (ui-rules 50) */
   }
   @media (hover: hover) {
     .bar-row:hover {

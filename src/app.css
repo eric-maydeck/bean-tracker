@@ -1625,6 +1625,15 @@ td > .action-buttons.under-form {
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
+/* Text in a tile, card or panel shows the arrow, not the I-beam, yet stays selectable; links, buttons, tip
+   triggers and fields keep their own cursor (ui-rules 50). */
+:where(.stat-item, .hl-card, .card, .chart-panel) {
+  cursor: default;
+}
+:where(.stat-item, .hl-card, .card, .chart-panel) :is(input, textarea, [contenteditable]) {
+  cursor: auto;
+}
+
 /* Hero ("At a Glance") tiles: same geometry as every other tile, set apart
    by color only. */
 .stat-item-hero {

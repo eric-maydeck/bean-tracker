@@ -35,6 +35,10 @@
   let wrap: HTMLDivElement | undefined = $state();
   let anchor: HTMLSpanElement | undefined = $state();
   let tip = $state<{ iso: string; name: string; x: number; y: number } | null>(null);
+  // A click or tap pins the tip open until a click or tap elsewhere (or Escape); a mouse hover shows it only while
+  // over the country (user, 2026-10-18).
+  let pinned = false;
+  const close = () => ((tip = null), (pinned = false));
 
   // A tip stays where the pointer entered its country (no re-placing on every move inside it).
   function place(el: SVGPathElement, clientX: number, clientY: number) {
@@ -47,6 +51,10 @@
     const el = e.target;
     if (el instanceof SVGPathElement) place(el, e.clientX, e.clientY);
     else tip = null;
+  }
+  function pin(e: MouseEvent) {
+    at(e);
+    pinned = !!tip;
   }
   function focusTip(e: Event) {
     const el = e.currentTarget as SVGPathElement;
@@ -61,17 +69,19 @@
   }
 </script>
 
+<!-- A click or tap outside the map, or Escape, closes a pinned tip. -->
+<svelte:document onclick={(e) => tip && !wrap?.contains(e.target as Node) && close()} onkeydown={(e) => e.key === 'Escape' && close()} />
+
 <div class="world-map" bind:this={wrap}>
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events (each country is a focusable button; Escape is document-wide) -->
   <svg
     viewBox={WORLD_VIEWBOX}
     preserveAspectRatio="xMidYMid slice"
     role="group"
     aria-label="Coffees by origin country"
-    onpointermove={(e) => e.pointerType === 'mouse' && at(e)}
-    onpointerleave={(e) => e.pointerType === 'mouse' && (tip = null)}
-    onclick={at}
-    onkeydown={(e) => e.key === 'Escape' && (tip = null)}
+    onpointermove={(e) => e.pointerType === 'mouse' && !pinned && at(e)}
+    onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && (tip = null)}
+    onclick={pin}
   >
     {#each WORLD as c (c.name)}
       {@const d = byIso.get(c.iso)}
@@ -87,7 +97,7 @@
           aria-label="{d.label}: {d.text}"
           onkeydown={key}
           onfocus={focusTip}
-          onblur={() => (tip = null)}
+          onblur={(e) => !wrap?.contains(e.relatedTarget as Node) && !pinned && close()}
         />
       {:else}
         <path d={c.d} data-iso={c.iso} data-name={c.name} />
@@ -96,7 +106,7 @@
   </svg>
   <span class="tip-anchor" bind:this={anchor} style:left="{tip?.x ?? 0}px" style:top="{tip?.y ?? 0}px"></span>
   {#if tip && anchor}
-    {#key tip.iso}<FloatTip {anchor} onclose={() => (tip = null)}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} /></FloatTip>{/key}
+    {#key tip.iso}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} /></FloatTip>{/key}
   {/if}
 </div>
 
@@ -117,7 +127,7 @@
     stroke-width: 0.5;
   }
   path.has {
-    cursor: pointer;
+    cursor: help; /* a click pins the tip, nothing more (ui-rules 50) */
   }
   path:focus-visible {
     outline: none;

@@ -146,7 +146,7 @@
   .seg {
     flex-basis: 0;
     box-sizing: border-box;
-    cursor: pointer;
+    cursor: help; /* a click opens only the tip (ui-rules 50) */
     box-shadow: inset 0 0 0 1px var(--ink); /* pastel fills: the outline carries the 3:1 (ui-rules 42) */
   }
   .seg:not(:last-child) {

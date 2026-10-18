@@ -115,12 +115,12 @@
   }
   .map-name {
     font-weight: 500;
-    cursor: pointer;
+    cursor: help;
     border-radius: 2px;
   }
   /* The Low confidence chip sits under a small row's name (the column is 8-14rem wide). */
   .map-chip {
-    cursor: pointer;
+    cursor: help; /* name and chip open only the tip (ui-rules 50) */
   }
   .map-note {
     display: block;
