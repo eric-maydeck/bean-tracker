@@ -3,6 +3,9 @@
    * 5 bean icons, filled left-to-right in 0.5-bean steps, representing a
    * roast's degrees_of_roast (0-5, matching the "Roast level guide" sheet).
    */
+  import TextTip from './TextTip.svelte';
+  // `label`: the roast level, shown as the icons' tip (hover, tap, focus) where no text beside them says it (the
+  // list table); a card that prints the level beside the icons passes none, so they stay decorative (no tab stop).
   let { degrees, label }: { degrees: number; label?: string | null } = $props();
 
   const BEAN_PATH =
@@ -12,7 +15,10 @@
   const fills = $derived(Array.from({ length: 5 }, (_, i) => Math.max(0, Math.min(1, degrees - i))));
 </script>
 
-<span class="roast-beans" title={label ?? undefined}>
+{#if label}<TextTip label="Roast level" tip={{ title: label }}>{@render beans()}</TextTip>{:else}{@render beans()}{/if}
+
+{#snippet beans()}
+<span class="roast-beans">
   {#each fills as fill}
     <span class="roast-bean">
       <svg viewBox="0 0 16 24" class="roast-bean-bg" aria-hidden="true">
@@ -33,3 +39,4 @@
     </span>
   {/each}
 </span>
+{/snippet}

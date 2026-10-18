@@ -543,6 +543,48 @@ export const STATES: State[] = [
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
   {
+    // Icon-only buttons name themselves in the site's label tip (ui-rules 36, 39): on mouse hover and keyboard focus,
+    // never on a tap or click (which just acts).
+    name: 'coffees-icon-label-tip',
+    path: () => '/coffees?status=all&view=list',
+    act: async (page: Page) => {
+      const row = page.locator('tbody tr').first();
+      const [edit, clone] = [row.getByRole('button', { name: 'Edit', exact: true }), row.getByRole('button', { name: 'Clone', exact: true })];
+      const tip = page.locator('.cell-tip:popover-open');
+      await edit.hover();
+      await expectTipInView(page, tip);
+      await expect(tip).toHaveText('Edit');
+      await page.mouse.move(0, 0);
+      await expect(tip).toHaveCount(0);
+      // A touch pointer opens none; keyboard focus does (Shift+Tab from Clone lands on Edit, focus-visible).
+      await clone.dispatchEvent('pointerenter', { pointerType: 'touch' });
+      await expect(tip).toHaveCount(0);
+      await clone.focus();
+      await page.keyboard.press('Shift+Tab');
+      await expect(edit).toBeFocused();
+      await expectTipInView(page, tip);
+      await expect(tip).toHaveText('Edit');
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+      // A click acts (Clone opens the add form) and leaves no tip.
+      await clone.click();
+      await page.waitForTimeout(200);
+      await expect(tip).toHaveCount(0);
+    }
+  },
+  {
+    // The list table's roast icons carry the level only as their tip (hover, tap, focus).
+    name: 'coffees-list-roast-tip',
+    path: () => '/coffees?status=all&view=list',
+    act: async (page: Page) => {
+      const beans = page.getByRole('button', { name: /^Roast level: / }).first();
+      await beans.click();
+      const tip = page.locator('.cell-tip:popover-open');
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).not.toBeEmpty();
+    }
+  },
+  {
     name: 'coffees-refreshed',
     path: () => '/coffees?status=all&view=compact',
     act: async (page) => {
@@ -3776,7 +3818,16 @@ export const STATES: State[] = [
       await expect(tip).toHaveCount(0);
     }
   },
-  { name: 'coffees-bc-yes', path: () => '/coffees?status=all&view=list&bc=yes' },
+  {
+    name: 'coffees-bc-yes',
+    path: () => '/coffees?status=all&view=list&bc=yes',
+    act: async (page: Page) => {
+      // A filter chip's full text is its label tip on hover.
+      await page.locator('.filter-chip-label').first().hover();
+      await expectTipInView(page, page.locator('.cell-tip:popover-open'));
+      await expect(page.locator('.cell-tip:popover-open')).toHaveText('Showing coffees in Bean Conqueror');
+    }
+  },
   { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },
   {
     name: 'coffees-filter-editor',

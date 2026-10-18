@@ -754,7 +754,7 @@
               <p class="text-muted">{coffee.roaster}</p>
               <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
               <p class="roast-row">
-                <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
+                <RoastBeans degrees={degreesFor(coffee.roast_level)} />
                 <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
               </p>
               {#if coffee.processing}
@@ -809,7 +809,7 @@
           <p class="text-muted">{coffee.roaster}</p>
           <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
           <p class="roast-row">
-            <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
+            <RoastBeans degrees={degreesFor(coffee.roast_level)} />
             <span class="text-muted">{coffee.roast_level ?? 'Roast level unknown'}</span>
           </p>
           {#if coffee.processing}
