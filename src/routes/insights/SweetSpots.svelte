@@ -169,7 +169,7 @@
   // Tap on a card whose evidence is clamped opens its full text (as Findings cards do); hover has the title.
   function unclamp(e: MouseEvent) {
     const c = e.currentTarget as HTMLElement;
-    if ((e.target as Element).closest('a, button, .mode-tip, .spot-chart')) return;
+    if ((e.target as Element).closest('a, button, .mode-tip, .spot-chart, .text-tip')) return; // a text tip opens its own tip
     const ev = c.querySelector('.evidence');
     if (+(c.dataset.tight ?? 0) >= 2 || (ev && ev.scrollHeight > ev.clientHeight + 1)) document.getElementById(`${c.id}-full`)?.togglePopover();
   }

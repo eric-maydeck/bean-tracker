@@ -109,7 +109,7 @@
   // A tap on a card whose headline or body is clamped shows the full text (title covers hover).
   function unclamp(e: MouseEvent) {
     const c = e.currentTarget as HTMLElement;
-    if ((e.target as Element).closest('a, button, .mode-tip')) return;
+    if ((e.target as Element).closest('a, button, .mode-tip, .text-tip')) return; // a text tip opens its own tip
     if ([...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)) document.getElementById(c.dataset.tip!)!.togglePopover();
   }
 
