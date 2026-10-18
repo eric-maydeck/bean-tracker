@@ -2724,10 +2724,8 @@ export const STATES: State[] = [
       await expect(page.locator('#spot-temp .cell-tip')).toContainText(/Brews\s*\d+/);
       await chart.press('Escape');
       await expect(page.locator('.cell-tip')).toHaveCount(0);
-      await chart.press('Enter');
-      await expect(page.locator('#spot-temp-full')).toBeVisible();
+      // The card's full text is the chart's description (no card popover: user, 2026-10-18).
       await expect(page.locator('#spot-temp-full')).toContainText(/vs same bag|Across|No comparison|Not enough/);
-      await chart.press('Enter');
       await chart.blur();
       // S-grind: the Grind card spans every setting brewed, lowest to highest, no-match ones too: the same
       // bands as Brewing's Grind chart (same period, ratings and grinder, no filters).
@@ -2828,6 +2826,20 @@ export const STATES: State[] = [
       const lines = page.locator('.spot-card .evidence .text-tip');
       for (const n of await lines.evaluateAll((ts) => ts.map((t) => t.getClientRects().length))) expect(n).toBeLessThanOrEqual(1); // 0: hidden to fit (data-tight 4)
     } },
+  {
+    // No card-level popover on Sweet spots (user, 2026-10-18): a click on a card's empty space opens nothing; a card
+    // that tightened (a cut or hidden line) has its full text on its value, a text tip.
+    name: 'insights-sweetspots-no-card-popover',
+    path: () => '/insights?tab=sweetspots',
+    act: async (page) => {
+      const card = page.locator('.spot-card').first();
+      const b = (await card.boundingBox())!;
+      await page.mouse.click(b.x + 3, b.y + b.height / 2); // the card's left padding
+      await expect(page.locator(':popover-open')).toHaveCount(0);
+      const bad = await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => (c as HTMLElement).dataset.tight && !c.querySelector('.hl-value .text-tip')).map((c) => c.id));
+      expect(bad, 'tightened cards without a full-text tip on the value').toEqual([]);
+    }
+  },
   { name: 'insights-brewing', path: () => '/insights?tab=brewing',
     act: async (page) => {
       for (const h of ['Rest curve', 'Dial-in', 'Brews until dialed', 'Grind drift', 'Variables vs rating'])

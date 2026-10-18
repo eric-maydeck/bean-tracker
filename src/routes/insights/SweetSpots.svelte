@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
   import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
@@ -134,7 +133,6 @@
   function chartKey(e: KeyboardEvent, key: string, bars: { pick: boolean; usual: boolean }[]) {
     const wrap = e.currentTarget as HTMLElement, n = bars.length;
     if (e.key === 'Escape') tip = null;
-    else if (e.key === 'Enter') document.getElementById(`spot-${key}-full`)?.togglePopover();
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
       // The first press with no tip open shows the start band rather than stepping past it.
@@ -144,17 +142,22 @@
   }
 
   // A card whose text doesn't fit its row's height token tightens (ui-rules 34, as Findings cards do):
-  // 1 = evidence to one line, 2 = the Usually line goes too (the card's title and popover keep both),
-  // 3 = the chart's end labels go (its tip and aria-label name every band), 4 = the evidence line goes
-  // (phone rows: the chart still shows its shape; the line stays in the title and the tap popover).
+  // 1 = evidence to one line, 2 = the Usually line goes too, 3 = the chart's end labels go (its tip and aria-label
+  // name every band), 4 = the evidence line goes (phone rows: the chart still shows its shape). A tightened card's
+  // value opens its full text as a text tip (`tight`), so a cut or hidden line is never lost (user, 2026-10-18: no
+  // card-level popover).
   // Re-runs on a width change only, so tightening can't loop.
+  let tight = $state<Record<string, number>>({});
   function tighten(el: HTMLElement, _cards: unknown) {
     let w = -1;
     const run = () => {
+      const next: Record<string, number> = {};
       for (const c of el.children as HTMLCollectionOf<HTMLElement>) {
         delete c.dataset.tight;
         for (let t = 1; t <= 4 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
+        if (c.dataset.tight) next[c.id] = +c.dataset.tight;
       }
+      tight = next;
     };
     const ro = new ResizeObserver(([e]) => {
       if (Math.round(e.contentRect.width) === w) return;
@@ -165,14 +168,6 @@
     document.fonts?.ready.then(run);
     let raf = 0;
     return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
-  }
-
-  // Tap on a card whose evidence is clamped opens its full text (as Findings cards do); hover has the title.
-  function unclamp(e: MouseEvent) {
-    const c = e.currentTarget as HTMLElement;
-    if ((e.target as Element).closest('a, button, .mode-tip, .spot-chart, .text-tip')) return; // a text tip opens its own tip
-    const ev = c.querySelector('.evidence');
-    if (+(c.dataset.tight ?? 0) >= 2 || (ev && ev.scrollHeight > ev.clientHeight + 1)) document.getElementById(`${c.id}-full`)?.togglePopover();
   }
 </script>
 
@@ -210,8 +205,7 @@
         {@const b = badge(p)}
         {@const r = result(p)}
         {@const full = { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), usually(p)].filter((x): x is string => !!x) }}
-        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
-        <div class="hl-card spot-card" {id} {style} use:labelTip={full} onclick={unclamp}>
+        <div class="hl-card spot-card" {id} {style}>
           <div class="hl-top">
             {#if b}
               <button class="mode-tip-button" popovertarget="{id}-badge" aria-describedby="{id}-badge"
@@ -220,7 +214,7 @@
               <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
           </div>
-          <span class="hl-value" class:long={say.length > 9}>{say}</span>
+          <span class="hl-value" class:long={say.length > 9}>{#if tight[id]}<TextTip label={say} tip={full} />{:else}{say}{/if}</span>
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
@@ -252,9 +246,7 @@
           <span class="hl-line evidence" class:result={!!r?.result || v === 'No clear winner'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
-          <div class="mode-tip" id="{id}-full" popover onbeforetoggle={placeTip}>
-            <TipBody tip={full} />
-          </div>
+          <span id="{id}-full" hidden>{tipText(full)}</span>
         </div>
       {/each}
     </div>
