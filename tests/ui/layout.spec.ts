@@ -3811,9 +3811,11 @@ export const STATES: State[] = [
         return [c.x, c.y];
       });
       await page.mouse.click(x, y);
-      const tip = page.locator('.map-tip');
-      await expect(tip).toBeVisible();
-      await expect(tip).toContainText(/\d+ coffees? · \d+%/);
+      // The shared data tip (ui-rules 36, 39): the country, then Coffees / Share / the Rank by value rows.
+      const tip = page.locator('.cell-tip:popover-open');
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
+      await expect(tip.locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
       await page.locator('.world-map svg').click({ position: { x: 4, y: 4 } }); // outside the globe: the sea
       await expect(tip).toHaveCount(0);
     }
