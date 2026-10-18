@@ -88,8 +88,10 @@
     yMin?: number;
     // The tooltip's value text, and horizontal bars' value labels.
     format?: (v: number) => string;
-    // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents).
-    tipFormat?: (v: number) => string;
+    // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
+    // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
+    // (ui-rules 36).
+    tipFormat?: (v: number, i: number) => string;
     // Vertical bars: tooltip titles, when the axis labels are abbreviated.
     titles?: string[];
     // Plain lines: point markers (off for dense series, where they merge into a blob).
@@ -324,11 +326,13 @@
           ...({ valueLabels: { format } } as object), // the horizontal-bar value labels' text (valueLabelsPlugin)
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
-          tooltip: { enabled: false, external, ...(format && !trendValues
+          tooltip: { enabled: false, external, ...((format || tipFormat) && !trendValues
             ? { callbacks: { ...(titles && { title: (c) => titles[c[0].dataIndex] }), label: (ctx) => {
               const when = series[ctx.datasetIndex - 1]?.names?.[ctx.dataIndex];
-              const v = (ctx.chart.options.indexAxis === 'y' ? ctx.parsed.x : ctx.parsed.y) ?? 0; // horizontal bars: x is the value
-              const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${(tipFormat ?? format)(v)}`;
+              // Horizontal bars: x is the value; a doughnut's parsed value is the number itself.
+              const p = ctx.parsed as number | { x: number; y: number };
+              const v = (typeof p === 'number' ? p : ctx.chart.options.indexAxis === 'y' ? p.x : p.y) ?? 0;
+              const line = `${ctx.dataset.label}${when ? ` (${when})` : ''}: ${tipFormat ? tipFormat(v, ctx.dataIndex) : format!(v)}`;
               return line;
             } } }
             : trendValues

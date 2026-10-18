@@ -23,7 +23,8 @@
   const div = (vs: (number | null)[], k: number) => vs.map((v) => (v === null ? null : v / k));
   const axis = (k: number) => (g ? (k === 1 ? 'g' : 'kg') : '');
   const avg = $derived(agg === 'average');
-  const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : Number.isInteger(v) ? String(v) : v.toFixed(avg ? 2 : 1));
+  // A tip value carries its unit (ui-rules 36): "1.2kg", "3 bags".
+  const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} bag${v === 1 ? '' : 's'}`);
   // compareBrewed lines up with brewed by index only (a clipped previous window can be shorter):
   // pad/slice it to brewed's buckets. A compare window with no data adds no series.
   const compare = $derived(t.compareBrewed ? t.brewed.map((_, i) => t.compareBrewed![i] ?? null) : null);

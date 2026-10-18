@@ -353,6 +353,12 @@ export async function expectTipsFormatted(page: Page) {
     if (float) {
       if (!t.querySelector('.tip-title')?.textContent?.trim() && !t.querySelector('.tip-rows')) out.push(`${id}: no title or rows`);
       for (const dt of t.querySelectorAll('.tip-rows dt')) if (dt.textContent!.includes(':')) out.push(`${id}: "Label:" row "${dt.textContent}"`);
+      // A chart tip's value carries its unit unless its label names one (ui-rules 36): "This period 3" fails, "Brews 3"
+      // passes. Chart tips only: a lab or text tip's count row names its noun ("Roasters 5", "Plain average 7.80").
+      for (const dd of t.matches('.chart-container .cell-tip') ? t.querySelectorAll('.tip-rows dd') : []) {
+        const v = dd.textContent!.trim(), label = dd.previousElementSibling?.textContent ?? '';
+        if (/^[-+−]?[\d.,]+$/.test(v) && !/\b(bags?|brews?|grams?|coffees?|ratings?|days?|count|cups?)\b/i.test(label)) out.push(`${id}: bare number "${label} ${v}"`);
+      }
     } else {
       if (!first?.classList.contains('tip-title') || !first.textContent?.trim()) out.push(`${id}: no bold title first`);
       if (/^full-|-full$/.test(t.id)) return out;
@@ -425,7 +431,7 @@ export async function expectColumnsFilled(page: Page, selector: string) {
 }
 
 // An open data tip (FloatTip, a chart tip, ui-rules 36): a bold title, then label/value rows ("Brews  3"), never a
-// "Label: value" line.
+// "Label: value" line. (A chart tip's bare number under a label that names no unit fails expectTipsFormatted.)
 export async function expectDataTip(tip: Locator) {
   await expect(tip.locator('.tip-title').first()).not.toBeEmpty(); // a caveat block (Low confidence) has its own
   await expect(tip.locator('.tip-rows dt').first()).toBeVisible();

@@ -146,6 +146,10 @@
     )
   );
   let breakdownLabels = $derived(visibleBreakdownEntries.map((e) => e.label));
+  // The tip's value with its unit and the other measure in parentheses: "1,750 g (14 bags)" / "14 bags (1,750 g)".
+  const bags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
+  const breakdownTip = (e: { grams: number; count: number }) =>
+    metric === 'grams' ? `${e.grams.toLocaleString('en-US')} g (${bags(e.count)})` : `${bags(e.count)} (${e.grams.toLocaleString('en-US')} g)`;
   let breakdownValues = $derived(visibleBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
   // A fixed per-bar thickness (rather than a fixed chart height) keeps bars
   // a consistent size across dimensions/tabs instead of stretching thin
@@ -703,6 +707,7 @@
         labels={['Open', 'Unopened backlog']}
         values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
         datasetLabel="Grams"
+        tipFormat={(v) => `${v.toLocaleString('en-US')} g`}
       />
     {/if}
   </section>
@@ -717,6 +722,7 @@
         labels={['Finished', 'Still have']}
         values={[data.stats.finishedGrams, data.stats.totalBacklogGrams]}
         datasetLabel="Grams"
+        tipFormat={(v) => `${v.toLocaleString('en-US')} g`}
       />
     {/if}
   </section>
@@ -760,6 +766,7 @@
       labels={breakdownLabels}
       values={breakdownValues}
       datasetLabel={dimensionLabels[dimension]}
+      tipFormat={(v, i) => breakdownTip(visibleBreakdownEntries[i])}
       height={compositionChartHeight}
       valueAxisMax={breakdownAxisMax}
     />

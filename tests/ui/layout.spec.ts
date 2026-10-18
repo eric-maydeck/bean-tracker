@@ -1089,6 +1089,17 @@ export const STATES: State[] = [
     }
   },
   {
+    // A tip value carries its unit, the other measure in parentheses (ui-rules 36): "1,750 g (14 bags)".
+    name: 'stats-breakdown-tip',
+    path: () => '/stats',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
+      const tip = await hoverChart(page, panel.locator('canvas'));
+      await expectDataTip(tip);
+      await expect(tip.locator('dd')).toHaveText(/^[\d,]+ g \(\d+ bags?\)$/);
+    }
+  },
+  {
     // A /stats chart's tip (ui-rules 36, 39): the shared data tip, in view with the chart scrolled up under the sticky bar.
     name: 'stats-chart-tip',
     path: () => '/stats',
@@ -4334,6 +4345,7 @@ export const STATES: State[] = [
 
 // Hovers a Chart.js canvas until its tip opens (bars hover by intersection, so it sweeps a grid of points); returns the tip.
 async function hoverChart(page: Page, canvas: Locator) {
+  await canvas.scrollIntoViewIfNeeded();
   const b = (await canvas.boundingBox())!;
   const tip = page.locator('.chart-container .cell-tip:popover-open');
   for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1 && !(await tip.count()); fx += 0.1) {
