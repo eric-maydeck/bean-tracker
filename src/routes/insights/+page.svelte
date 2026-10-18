@@ -8,6 +8,7 @@
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import { placeTip } from '$lib/components/modeTip';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
@@ -83,50 +84,6 @@
     const qs = insightsParams(next).toString();
     // A tab switch drops the old tab's #anchor: it names nothing on the new one.
     goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
-  }
-
-  // Click-for-explanation triggers also open on mouse hover (mouse only: touch and keyboard keep
-  // click/Enter). The hover opens it, so a mouse click must not toggle it shut again.
-  const tipOf = (e: Event) => {
-    const b = (e.target as Element | null)?.closest?.('.mode-tip-button');
-    // A popover trigger names its tip with popovertarget; a dialog trigger (Score) with data-tip.
-    return b && matchMedia('(hover: hover)').matches ? document.getElementById(b.getAttribute('popovertarget') ?? b.getAttribute('data-tip') ?? '') : null;
-  };
-  // The tip a hover opened: a click on its button must leave it open, not toggle it shut.
-  let hoverTip: HTMLElement | null = null;
-  let closing: ReturnType<typeof setTimeout> | undefined;
-  $effect(() => () => clearTimeout(closing));
-  // The hover tip and its trigger are one area: the pointer can cross the gap into the tip (to
-  // scroll a long list) and back. Leaving the area closes it after a short grace.
-  const inHover = (el: EventTarget | null) =>
-    !!hoverTip && el instanceof Element &&
-    (hoverTip.contains(el) || !!document.querySelector(`[popovertarget="${hoverTip.id}"], [data-tip="${hoverTip.id}"]`)?.contains(el));
-  function closeHover() {
-    clearTimeout(closing);
-    if (hoverTip?.matches(':popover-open')) hoverTip.hidePopover();
-    hoverTip = null;
-  }
-  function tipOver(e: PointerEvent) {
-    if (e.pointerType !== 'mouse') return;
-    if (inHover(e.target)) return clearTimeout(closing);
-    const tip = tipOf(e);
-    if (!tip || tip.matches(':popover-open')) return;
-    closeHover();
-    tip.showPopover();
-    hoverTip = tip;
-  }
-  function tipOut(e: PointerEvent) {
-    if (e.pointerType !== 'mouse' || !inHover(e.target) || inHover(e.relatedTarget)) return;
-    clearTimeout(closing);
-    closing = setTimeout(closeHover, 200);
-  }
-  function tipClick(e: MouseEvent) {
-    const tip = tipOf(e);
-    if (!tip) return;
-    // A dialog trigger opens its dialog: the hover tip steps aside. A popover trigger keeps the tip
-    // the hover opened (unless Escape or a click elsewhere already closed it: then the click reopens it).
-    if ((e.target as Element).closest('[data-tip]')) tip.hidePopover();
-    else if (tip === hoverTip && tip.matches(':popover-open')) e.preventDefault();
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL
@@ -389,19 +346,6 @@
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
-  // A popover sits in the top layer; put it under its caption button (above
-  // when there's no room below). Its CSS clamps it inside the viewport.
-  // ponytail: fixed position, so it stays put if the page scrolls while open.
-  function placeTip(e: ToggleEvent) {
-    if (e.newState !== 'open') return;
-    const tip = e.currentTarget as HTMLElement;
-    const r = document.querySelector(`[popovertarget="${tip.id}"], [data-tip="${tip.id}"]`)!.getBoundingClientRect();
-    const below = r.bottom + 96 < innerHeight;
-    tip.style.setProperty('--x', `${r.left + r.width / 2}px`);
-    tip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);
-    tip.toggleAttribute('data-above', !below);
-  }
-
   // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
   // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
   const paced = (t: Tile) =>
@@ -446,7 +390,6 @@
   );
 </script>
 
-<svelte:document onpointerover={tipOver} onpointerout={tipOut} onclickcapture={tipClick} />
 
 <svelte:head>
   <title>Bean Tracker - Insights</title>
@@ -1081,101 +1024,6 @@
     white-space: normal;
     line-height: 1.1; /* two lines end flush with the tile; keep them inside */
   }
-  :global(.mode-tip-button) {
-    padding: 0;
-    border: 0;
-    background: none;
-    font: inherit;
-    color: inherit;
-    /* Match the label's uppercase; buttons don't inherit either by default. */
-    text-transform: inherit;
-    letter-spacing: inherit;
-    cursor: help;
-  }
-  /* Click-for-explanation triggers: dotted underline on the text, a circled ? after it. */
-  :global(.mode-tip-button .tip-text) {
-    text-decoration: underline dotted;
-    text-underline-offset: 0.2em;
-  }
-  :global(.mode-tip-button .icon) {
-    width: 0.85em;
-    height: 0.85em;
-    margin-inline-start: 0.15em;
-    vertical-align: -0.1em;
-  }
-  :global(.mode-tip-button:focus-visible) {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-  @media (max-width: 640px) {
-    :global(.mode-tip-button) {
-      min-width: 44px;
-      padding: 16px 15px;
-      margin: -16px -15px;
-    }
-  }
-  :global(.mode-tip) {
-    --w: min(15rem, 100vw - 2rem);
-    position: fixed;
-    inset: auto;
-    top: var(--y);
-    left: clamp(1rem, var(--x) - var(--w) / 2, 100vw - 1rem - var(--w));
-    width: var(--w);
-    margin: 0.25rem 0 0;
-    padding: 0.5rem 0.75rem; /* one tip look (T1): .cell-tip in app.css matches */
-    font-size: 0.85rem;
-    line-height: 1.35;
-    text-align: left;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
-  }
-  /* List tips (Records ties, perfect 10s by coffee): left-aligned rows, each a one-line name and its muted
-     date at the right; a long list scrolls past about eight rows. */
-  :global(.mode-tip.tip-list) {
-    --w: min(20rem, 100vw - 2rem);
-    text-align: left;
-  }
-  :global(.tip-list .tip-title) {
-    margin: 0 0 0.25rem;
-  }
-  :global(.tip-list ul) {
-    max-height: 15rem;
-    margin: 0;
-    padding: 0;
-    overflow-y: auto;
-    list-style: none;
-  }
-  :global(.tip-list li) {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-3);
-    padding: 0.3rem 0;
-    border-top: 1px solid var(--color-border);
-  }
-  :global(.tip-list li:first-child) {
-    border-top: 0;
-  }
-  :global(.tip-list li > span) {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  :global(.tip-list li > small) {
-    flex-shrink: 0;
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    font-variant-numeric: tabular-nums;
-  }
-  /* Set from placeTip, so Svelte can't see it. */
-  :global(.mode-tip[data-above]) {
-    translate: 0 calc(-100% - 0.5rem);
-  }
-
   /* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
      (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. Findings
      cards also get their row's height token the same way (--h, rows.ts sizedGrid). */

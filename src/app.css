@@ -2425,7 +2425,7 @@ td > .action-buttons.under-form {
 
 /* Heatmap and BrewCalendar: the cell tooltip (themed like WorldMap's .map-tip), and the
    no-data cell, an outline rather than a fill so it never reads as a value. One tip look (T1): the
-   same padding, type and frame as the help popovers (.mode-tip, +page.svelte). */
+   same padding, type and frame as the help popovers (.mode-tip, below). */
 .cell-tip {
   padding: 0.5rem 0.75rem;
   font-size: 0.85rem;
@@ -2604,4 +2604,101 @@ button .sample-chip {
   background-size: 9px 9px, auto;
   background-position: left top, 0 0;
   background-repeat: no-repeat, repeat;
+}
+
+/* Help popovers (ui-rules 27; modeTip.ts): the mode-word trigger button and its native popover.
+   Last in the file, as when it lived in the insights page's styles (no tie with an earlier rule changes). */
+.mode-tip-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  /* Match the label's uppercase; buttons don't inherit either by default. */
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: help;
+}
+/* Click-for-explanation triggers: dotted underline on the text, a circled ? after it. */
+.mode-tip-button .tip-text {
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+}
+.mode-tip-button .icon {
+  width: 0.85em;
+  height: 0.85em;
+  margin-inline-start: 0.15em;
+  vertical-align: -0.1em;
+}
+.mode-tip-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+@media (max-width: 640px) {
+  .mode-tip-button {
+    min-width: 44px;
+    padding: 16px 15px;
+    margin: -16px -15px;
+  }
+}
+.mode-tip {
+  --w: min(15rem, 100vw - 2rem);
+  position: fixed;
+  inset: auto;
+  top: var(--y);
+  left: clamp(1rem, var(--x) - var(--w) / 2, 100vw - 1rem - var(--w));
+  width: var(--w);
+  margin: 0.25rem 0 0;
+  padding: 0.5rem 0.75rem; /* one tip look (T1): .cell-tip in app.css matches */
+  font-size: 0.85rem;
+  line-height: 1.35;
+  text-align: left;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
+}
+/* List tips (Records ties, perfect 10s by coffee): left-aligned rows, each a one-line name and its muted
+   date at the right; a long list scrolls past about eight rows. */
+.mode-tip.tip-list {
+  --w: min(20rem, 100vw - 2rem);
+  text-align: left;
+}
+.tip-list .tip-title {
+  margin: 0 0 0.25rem;
+}
+.tip-list ul {
+  max-height: 15rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+.tip-list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: 0.3rem 0;
+  border-top: 1px solid var(--color-border);
+}
+.tip-list li:first-child {
+  border-top: 0;
+}
+.tip-list li > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tip-list li > small {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+/* Set from placeTip (modeTip.ts). */
+.mode-tip[data-above] {
+  translate: 0 calc(-100% - 0.5rem);
 }

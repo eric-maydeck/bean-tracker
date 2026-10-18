@@ -278,7 +278,7 @@
 {/if}
 
 <style>
-  /* .mode-tip / .mode-tip-button base styles are :global() in +page.svelte. */
+  /* .mode-tip / .mode-tip-button base styles are in app.css. */
   .rank-bar {
     display: flex;
     flex-wrap: wrap;

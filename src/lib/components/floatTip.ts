@@ -18,3 +18,10 @@ export function viewBand() {
     bottom: tabs && tabs.height ? tabs.top : innerHeight
   };
 }
+// Only one tip is open app-wide: a FloatTip that opens dismisses the one before it (its owner may still think it
+// open), and so does a help popover (.mode-tip, modeTip.ts placeTip).
+export const openTip: { current: { dismiss: () => void } | null } = { current: null };
+export function closeFloatTip() {
+  openTip.current?.dismiss();
+  openTip.current = null;
+}

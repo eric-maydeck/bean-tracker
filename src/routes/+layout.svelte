@@ -8,6 +8,7 @@
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { formatUpdated } from '$lib/formatDate';
   import { onMount } from 'svelte';
+  import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
   let { children, data } = $props();
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
   onMount(() => { document.documentElement.dataset.hydrated = ''; });
@@ -182,6 +183,9 @@
     )}
   </footer>
 </main>
+
+<!-- Help popovers open on mouse hover too, on every page (modeTip.ts). -->
+<svelte:document onpointerover={tipOver} onpointerout={tipOut} onclickcapture={tipClick} />
 
 <svelte:window
   onkeydown={(e) => {
