@@ -1,3 +1,10 @@
+## [1.79.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.79.0...v1.79.1) (2026-10-18)
+
+
+### Bug Fixes
+
+* **data:** shoebox rest windows to 45 days (caf) and 30-60 (decaf)
+
 # [1.79.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.78.0...v1.79.0) (2026-10-18)
 
 
