@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
 
   let { brews, bags }: { brews: RecentBrew[]; bags: RecentBag[] } = $props();
 
@@ -14,7 +15,8 @@
 
 {#snippet who(name: string, slug: string | null, sub: string)}
   <span class="who">
-    {#if slug}<a href="/coffees/{slug}" title={name}>{name}</a>{:else}<span class="name" title={name}>{name}</span>{/if}
+    {#if slug}<a href="/coffees/{slug}" title={name}><CoffeeName {name} /></a>{:else}<span class="name" title={name}><CoffeeName {name} /></span>{/if}
+
     <small>{sub}</small>
   </span>
 {/snippet}

@@ -5,6 +5,7 @@
   import { useEmptyLine } from './coffeeNote';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
   import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
@@ -88,7 +89,7 @@
   function full(el: HTMLElement) {
     const show = () => {
       if (!fullTip || !cut(el)) return;
-      fullTip.textContent = el.textContent;
+      fullTip.replaceChildren(...[...el.childNodes].map((n) => n.cloneNode(true))); // keeps a coffee name's color
       const r = el.getBoundingClientRect(), below = r.bottom + 96 < innerHeight;
       fullTip.style.setProperty('--x', `${r.left + r.width / 2}px`);
       fullTip.style.setProperty('--y', `${below ? r.bottom : r.top}px`);
@@ -132,7 +133,8 @@
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
 {/snippet}
 
-{#snippet link(h: Holder)}{#if h.href}<a href={h.href}>{name(h)}</a>{:else}{name(h)}{/if}{/snippet}
+<!-- Holders are coffees, brews, roasters, gear or dates: `text` colors only the coffee names in them. -->
+{#snippet link(h: Holder)}{#if h.href}<a href={h.href}><CoffeeName text={name(h)} /></a>{:else}<CoffeeName text={name(h)} />{/if}{/snippet}
 
 {#snippet holderLine(q: string, p: RecordPick, fmt: Fmt)}
   <span class="hl-line" use:full>{q}: {plain(p, fmt)} · {@render link(p.holder)}</span>
@@ -141,8 +143,8 @@
 <!-- A list tip: one row per entry, the name cut to a line and its date muted at the right. -->
 {#snippet tipList(id: string, head: string | null, rows: { name: string; side: string; href?: string }[])}
   <div class="mode-tip tip-list" id={id} popover onbeforetoggle={placeTip}>
-    {#if head}<strong class="tip-title">{head}</strong>{/if}
-    <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={row.href}>{row.name}</a>{:else}{row.name}{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
+    {#if head}<strong class="tip-title"><CoffeeName text={head} /></strong>{/if}
+    <ul>{#each rows as row, i (i)}<li><span>{#if row.href}<a href={row.href}><CoffeeName text={row.name} /></a>{:else}<CoffeeName text={row.name} />{/if}</span>{#if row.side}<small>{row.side}</small>{/if}</li>{/each}</ul>
   </div>
 {/snippet}
 
@@ -161,7 +163,7 @@
     {#if why || !isDate(r.holder)}
       <div class="grp">
         {#if r.fmt === 'value' && r.per100 != null}<span class="hl-line" use:full>At <Usd n={r.per100} suffix={'/100\u00a0g'} /></span>
-        {:else if why}<span class="hl-line" use:full>{why}</span>{/if}
+        {:else if why}<span class="hl-line" use:full><CoffeeName text={why} /></span>{/if}
         {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
       </div>
     {/if}
@@ -205,8 +207,9 @@
         <span class="rank">{i + 1}</span>
         <span class="top-rating">{row.score.toFixed(1)}</span>
         <span class="who">
-          {#if row.holder.href}<a href={row.holder.href} use:full>{row.holder.label}</a>{:else}<span use:full>{row.holder.label}</span>{/if}
-          <small use:full>{row.line}</small>
+          {#if row.holder.href}<a href={row.holder.href} use:full><CoffeeName text={row.holder.label} /></a>{:else}<span use:full><CoffeeName text={row.holder.label} /></span>{/if}
+          <small use:full><CoffeeName text={row.line} /></small>
+
           {#if row.like}<LikeLine like={row.like} />{/if}
         </span>
       </li>

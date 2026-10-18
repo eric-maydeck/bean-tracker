@@ -149,14 +149,18 @@ const timed = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
      water_amount_g, rating, notes, imported_at) VALUES (?, ?, ?, 'g1', 15, 93, 250, ?, ?, ?)`
 );
-const PAIRS = [['Kurasu', 'Kenya Gichathaini AA', 'Kenya'], ['Luna', 'Ethiopia Hambela Alaka', 'Ethiopia'], ['Rogue Wave', 'Colombia La Palma', 'Colombia']];
+const PAIRS = [['Kurasu', 'Kenya Gichathaini AA', 'Kenya'], ['Luna', 'Ethiopia Hambela Alaka', 'Ethiopia'], ['Rogue Wave', 'Colombia La Palma Skipper', 'Colombia']];
+// "Skipper": a keyword-colored coffee name (src/lib/nameColor.ts), checked by the `skip-name-color` tests.
+
 // A1 B1 C1 A2 B2 C2: with the Origami swings, second bags rate 0.5, 0.6 and 0.8 above their first.
 const BASE = [7.0, 6.8, 7.2, 8.5, 6.4, 8.5];
 const ROAST = [7, 12, 9, 15, 10, 13]; // days roasted before the bag's first brew, so rest days vary
+let skipSlug = '';
 for (let k = 0; k < 6; k++) {
   const [roaster, name, origin] = PAIRS[k % 3];
   const first = 60 - k * 6;
   const c = coffee({ roaster, coffee_name: name, origin, status: 'archive', roast_date: daysAgo(first + ROAST[k]) });
+  if (k === 2) skipSlug = c.slug;
   bean.run(`bean-hl-${k}`, name, roaster, daysAgo(first + ROAST[k]), 250, 22, 0, isoDaysAgo(first), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-hl-${k}`);
   for (let j = 0; j < 6; j++) {
@@ -231,7 +235,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], big: grams.big.slug,
-    under: grams.under.slug, part: grams.part.slug },
+    under: grams.under.slug, part: grams.part.slug, skip: skipSlug },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));
 db.close();

@@ -12,6 +12,7 @@
 
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import BarLabels from './BarLabels.svelte';
@@ -215,7 +216,7 @@
         {#if i}<span class="vs-x" aria-hidden="true">vs</span>{/if}
         <div class="vs-side">
           <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
-          <span class="vs-label">{s.label}</span>
+          <span class="vs-label"><CoffeeName text={s.label} /></span>
         </div>
       {/each}
     </div>
@@ -264,7 +265,7 @@
           <span class="dlabel">{g.label}</span>
           <ol>
             {#each g.items as it, k (k)}
-              <li><span class="dname">{#if it.href}<a href={link(it.href)}>{it.name}</a>{:else}{it.name}{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
+              <li><span class="dname">{#if it.href}<a href={link(it.href)}><CoffeeName text={it.name} /></a>{:else}<CoffeeName text={it.name} />{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
             {/each}
           </ol>
         </div>
@@ -290,7 +291,7 @@
         <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" title={full(f)} onclick={unclamp}>
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
-          {#if f.body}<span class="hl-line wrap body" title={f.body}>{f.body}</span>{/if}
+          {#if f.body}<span class="hl-line wrap body" title={f.body}><CoffeeName text={f.body} /></span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
           <TileCaption href="#{id}" label={f.headline} />
           <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
@@ -323,7 +324,7 @@
         {#each deck as f, i (f.key)}
           <article class="story" id={anchor(f.key)} aria-hidden={i !== pos} inert={i !== pos}>
             <div class="story-head">
-              <h3>{f.headline}</h3>
+              <h3><CoffeeName text={f.headline} /></h3>
               {@render badge(f, `s-${i}`)}
             </div>
             <div class="story-visual">{@render visual(f)}</div>
@@ -356,7 +357,7 @@
     <div class="hl-grid myth-grid">
       {#each t.myths as f, i (f.key)}
         <div class="hl-card myth" id={anchor(f.key)} style={mythVars[i]}>
-          <h3>{f.headline}</h3>
+          <h3><CoffeeName text={f.headline} /></h3>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
           <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
@@ -447,7 +448,8 @@
       {#each t.tooEarly as f (f.key)}
         <li>
           <div class="early-top"><span class="early-theme">{THEME_LABEL[f.theme]}</span><span>{f.sample}</span></div>
-          <p class="early-head">{f.headline}</p>
+          <p class="early-head"><CoffeeName text={f.headline} /></p>
+
           <p class="early-why">{early(f)}</p>
           {#if f.progress !== undefined}
             <div class="meter" role="meter" aria-label="Evidence toward settled" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(f.progress * 100)}>

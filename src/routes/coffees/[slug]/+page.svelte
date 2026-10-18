@@ -1,5 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { untrack } from 'svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
@@ -336,7 +337,7 @@
       <div class="detail-header">
         <div>
           <h1>
-            {data.coffee.coffee_name}
+            <CoffeeName name={data.coffee.coffee_name} />
             {#if data.coffee.status === 'archive'}
               <span class="badge badge-fresh">Archive</span>
             {:else if data.coffee.status === 'open'}
@@ -363,7 +364,7 @@
           {#if data.beanConqueror}
             <div class="bc-link-line text-muted">
               <span>
-                {`Bean Conqueror: ${data.beanConqueror.name} · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
+                {'Bean Conqueror: '}<CoffeeName name={data.beanConqueror.name} />{` · ${data.beanConqueror.brewCount} ${data.beanConqueror.brewCount === 1 ? 'brew' : 'brews'}`}
               </span>
               {#if data.isAdmin}
                 <form method="POST" action="?/unlinkBeanConqueror" use:enhance>
@@ -500,7 +501,7 @@
 {#if clonePrefillData}
   <div class="modal-backdrop">
     <div class="modal">
-      <h2>{adding ? 'Add Coffee' : `Clone ${data.coffee.coffee_name}`}</h2>
+      <h2>{adding ? 'Add Coffee' : 'Clone '}{#if !adding}<CoffeeName name={data.coffee.coffee_name} />{/if}</h2>
       <CoffeeForm
         prefill={clonePrefillData}
         roastLevels={data.roastLevels}

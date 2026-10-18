@@ -3,6 +3,7 @@
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
   import { coffeeImage } from '$lib/coffeeImage';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { currentParams, pickOne } from '$lib/pageUrlState';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   import { writeUrlParams } from '$lib/urlState';
@@ -103,7 +104,8 @@
             {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
             {/if}
-            <h2>{coffee.coffee_name}</h2>
+            <h2><CoffeeName name={coffee.coffee_name} /></h2>
+
             <p class="text-muted">{coffee.roaster}</p>
             {#if coffee.amount_g != null && coffee.grams_left != null}
               <p class="text-muted">{formatBag(coffee.amount_g, coffee.grams_left)}</p>
@@ -143,7 +145,8 @@
             {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
             {/if}
-            <h2>{coffee.coffee_name}</h2>
+            <h2><CoffeeName name={coffee.coffee_name} /></h2>
+
             <p class="text-muted">{coffee.roaster}</p>
             <p class="text-muted">
               Urgency: <span style={urgencyColorStyle(coffee.urgency_rating)}

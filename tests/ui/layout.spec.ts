@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; skip: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
@@ -4161,7 +4161,56 @@ export const STATES: State[] = [
       expect(posts).toEqual([]);
     }
   })),
+  // Keyword name color (src/lib/nameColor.ts): the seed's "Colombia La Palma Skipper" in --color-skip on every surface.
+  { name: 'skip-name-coffees-cards', path: () => '/coffees?status=archive&view=cards', act: (page) => expectSkipColored(page, 2) },
+  { name: 'skip-name-coffees-list', path: () => '/coffees?status=archive&view=list', act: (page) => expectSkipColored(page, 2) },
+  { name: 'skip-name-coffees-compact', path: () => '/coffees?status=archive&view=compact', act: (page) => expectSkipColored(page, 2) },
+  { name: 'skip-name-coffee-detail', path: (s) => `/coffees/${s.slugs.skip}`, act: (page) => expectSkipColored(page, 2) },
+  {
+    // A coffees board row, and its value tip's title (TipBody).
+    name: 'skip-name-insights-leaderboards',
+    path: () => '/insights?tab=leaderboards&range=all&open=coffees',
+    act: async (page) => {
+      const row = page.locator('[data-board="coffees"] .board-row').filter({ hasText: 'Skipper' }).first();
+      await expect(row.locator('.coffee-name')).toBeVisible();
+      const tip = row.locator('.text-tip');
+      if (await tip.count()) {
+        await tip.click();
+        await expect(page.locator('.float-tip .coffee-name')).toBeVisible();
+      }
+      await expectSkipColored(page, 1);
+    }
+  },
+  // Holder labels, tie lists and the full-text tip (Records); server-built feed lines (Milestones).
+  { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
+  { name: 'skip-name-insights-milestones', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
 ];
+
+// Every text node naming the seed's skip coffee sits in a .coffee-name span in the --color-skip color (hidden tips and
+// popovers too), and there are at least `min` of them.
+async function expectSkipColored(page: Page, min: number) {
+  const r = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--color-skip)';
+    document.body.append(probe);
+    const want = getComputedStyle(probe).color;
+    probe.remove();
+    const bad: string[] = [];
+    let ok = 0;
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const el = n.parentElement!;
+      if (!n.textContent!.includes('Skipper') || el.closest('option, script, style')) continue;
+      if (el.closest('.coffee-name') && getComputedStyle(el).color === want) ok++;
+      else bad.push(el.outerHTML.slice(0, 160));
+    }
+    return { ok, bad, want };
+  });
+  expect(['rgb(132, 94, 182)', 'rgb(169, 138, 214)'], 'the token resolves (light or dark)').toContain(r.want);
+  expect(r.bad, 'skip names outside .coffee-name or off color').toEqual([]);
+
+  expect(r.ok).toBeGreaterThanOrEqual(min);
+}
 
 // Route tag for test:changed (scripts/testScope.ts): the path's first segment, read with a stub seed.
 const stubSeed = new Proxy({}, { get: () => new Proxy({}, { get: () => 'x' }) }) as unknown as Seed;

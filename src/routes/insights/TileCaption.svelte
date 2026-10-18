@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
 
   // A Records / Milestones tile's name at its foot: bold in the label color, linking to the tile's
   // own #anchor. `children` follows the name on the same line (Records' "· Current" mode words).
@@ -9,5 +10,6 @@
 </script>
 
 <div class="hl-caption">
-  <span class="stat-label"><a class="caption-link" {href}>{label}</a>{@render children?.()}</span>
+  <span class="stat-label"><a class="caption-link" {href}><CoffeeName text={label} /></a>
+{@render children?.()}</span>
 </div>

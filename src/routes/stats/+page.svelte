@@ -1,5 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd, usdPrecise, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
   import { invalidateAll, afterNavigate } from '$app/navigation';
@@ -434,7 +435,7 @@
         <button class="button" type="submit">Save</button>
         <button class="button button-ghost" type="button" onclick={() => (editingHousehold = false)}>Cancel</button>
         {#if form?.error}
-          <span class="badge badge-urgent">{form.error}</span>
+          <span class="badge badge-urgent"><CoffeeName text={form.error} /></span>
         {/if}
       </form>
     {:else}
@@ -630,7 +631,7 @@
         </span>
         {#if data.stats.oldestUnopenedBag}
           <a class="stat-sublink" href={`/coffees/${data.stats.oldestUnopenedBag.slug}`}
-            >{data.stats.oldestUnopenedBag.roaster} · {data.stats.oldestUnopenedBag.coffeeName}</a
+            >{data.stats.oldestUnopenedBag.roaster} · <CoffeeName name={data.stats.oldestUnopenedBag.coffeeName} /></a
           >
         {/if}
         <div class="stat-caption">
@@ -643,7 +644,7 @@
         </span>
         {#if data.stats.youngestUnopenedBag}
           <a class="stat-sublink" href={`/coffees/${data.stats.youngestUnopenedBag.slug}`}
-            >{data.stats.youngestUnopenedBag.roaster} · {data.stats.youngestUnopenedBag.coffeeName}</a
+            >{data.stats.youngestUnopenedBag.roaster} · <CoffeeName name={data.stats.youngestUnopenedBag.coffeeName} /></a
           >
         {/if}
         <div class="stat-caption">
@@ -813,7 +814,8 @@
       <button class="button" type="submit">Import</button>
     </form>
     {#if form?.error}
-      <p class="badge badge-urgent">{form.error}</p>
+      <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
+
     {:else if form && 'imported' in form && form.imported}
       <p class="text-muted">
         Imported {form.imported.beans} beans, {form.imported.brews} brews, {form.imported.waters} waters.
@@ -878,7 +880,7 @@
             <div class="compact-row">
               <div class="compact-row-main">
                 <div class="compact-row-title">
-                  {bean.name}
+                  <CoffeeName name={bean.name} />
                   {#if bean.decaffeinated}<span class="badge badge-decaf">Decaf</span>{/if}
                 </div>
                 <div class="compact-row-sub text-muted">{bean.roaster ?? 'Unknown roaster'}</div>
@@ -893,7 +895,7 @@
               {#if bean.likelyMatch}
                 <p class="text-muted">
                   Possibly already tracked as <a href={`/coffees/${bean.likelyMatch.slug}`}
-                    >{bean.likelyMatch.coffeeName}</a
+                    ><CoffeeName name={bean.likelyMatch.coffeeName} /></a
                   >
                   ({bean.likelyMatch.roastDate ? `Roasted ${bean.likelyMatch.roastDate}` : 'No roast date'} · {cap(bean.likelyMatch.status)})
                 </p>
@@ -923,7 +925,7 @@
           <tbody>
             {#each data.unmatchedBeans.beans as bean (bean.id)}
               <tr>
-                <td>{bean.name}</td>
+                <td><CoffeeName name={bean.name} /></td>
                 <td>{bean.roaster ?? 'Unknown roaster'}</td>
                 <td>{bean.origin ?? '—'}</td>
                 <td>{bean.processing ?? '—'}</td>
@@ -931,7 +933,7 @@
                 <td>{bean.decaffeinated ? 'Yes' : 'No'}</td>
                 <td>
                   {#if bean.likelyMatch}
-                    <a href={`/coffees/${bean.likelyMatch.slug}`}>{bean.likelyMatch.coffeeName}</a><br />
+                    <a href={`/coffees/${bean.likelyMatch.slug}`}><CoffeeName name={bean.likelyMatch.coffeeName} /></a><br />
                     <span class="text-muted">{bean.likelyMatch.roastDate ?? 'no date'} · {bean.likelyMatch.status}</span>
                   {:else}
                     —
@@ -1194,7 +1196,7 @@
   {#if createModalBean}
     <div class="modal-backdrop">
       <div class="modal">
-        <h2>Create coffee from {createModalBean.name}</h2>
+        <h2>Create coffee from <CoffeeName name={createModalBean.name} /></h2>
         <CoffeeForm
           prefill={prefillFor(createModalBean)}
           roastLevels={data.roastLevels}

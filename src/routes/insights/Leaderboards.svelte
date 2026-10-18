@@ -7,6 +7,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { formatGrams } from '$lib/grams';
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
@@ -228,7 +229,10 @@
               style:--bar-color={rank === 'like' ? deltaColor(r.value) : undefined}>
               <span class="rank">{i + 1}</span>
               <span class="who">
-                {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
+                <!-- Only the coffees board's labels are coffee names (the others: roasters, origins, gear…). -->
+                {#snippet who()}{#if b === 'coffees'}<CoffeeName name={r.label} />{:else}{r.label}{/if}{/snippet}
+                {#if r.href}<a href={r.href}>{@render who()}</a>{:else}<span class="name">{@render who()}</span>{/if}
+
                 <span class="who-line"><small>{detail(r, costWhole)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
                 <!-- Under rank=like the value already is this gap. -->
                 {#if r.like && rank !== 'like'}<LikeLine like={r.like} />{/if}

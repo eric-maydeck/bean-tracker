@@ -1,6 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { getDb, getLastDeployed } from '$lib/server/db';
 import { getActiveAlerts } from '$lib/server/alerts';
+import { nameColor } from '$lib/nameColor';
 import { version } from '../../package.json';
 
 export const load: LayoutServerLoad = ({ locals }) => {
@@ -17,5 +18,9 @@ export const load: LayoutServerLoad = ({ locals }) => {
   const lastDeployed = getLastDeployed(db);
   const lastUpdated = [row.dataUpdated, lastDeployed].filter((v): v is string => v != null).sort().at(-1) ?? null;
   const alerts = locals.isAdmin ? getActiveAlerts(db) : [];
-  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts };
+  // Coffee names in a keyword color, for CoffeeName's `text` mode (names inside headlines, labels and tips).
+  // ponytail: scans every name per request (a few hundred rows); filter in SQL if that ever shows up in timings.
+  const names = db.prepare('SELECT coffee_name AS n FROM coffees UNION SELECT name FROM beanconqueror_beans').all() as { n: string }[];
+  const coloredNames = names.map((r) => r.n).filter((n) => nameColor(n));
+  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames };
 };

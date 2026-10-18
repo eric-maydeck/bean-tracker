@@ -1,5 +1,6 @@
 <script lang="ts">
   import FloatTip from './FloatTip.svelte';
+  import CoffeeName from './CoffeeName.svelte';
   import TipBody, { tipText, type Tip } from './TipBody.svelte';
 
   // A tip on a run of text (the See all note's "hidden by your settings", the coffee page's no-comparison line):
@@ -19,7 +20,7 @@
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = 'tap')}
   onblur={() => (open = false)}
   onclick={() => (open = 'tap')}
-  onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = 'tap'))}>{label}</span>{#if open && anchor}<FloatTip {anchor} reveal={open === 'tap'} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
+  onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (open = 'tap'))}><CoffeeName text={label} /></span>{#if open && anchor}<FloatTip {anchor} reveal={open === 'tap'} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
 
 <style>
   .text-tip {

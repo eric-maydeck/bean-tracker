@@ -3,6 +3,7 @@
   focuses the list, never the search box (a phone keyboard would pop up). -->
 <script lang="ts">
   import { tick } from 'svelte';
+  import CoffeeName from './CoffeeName.svelte';
   import { filterLinkGroups, type LinkPickerGroup } from '$lib/linkPicker';
 
   let {
@@ -121,7 +122,7 @@
     {#if selected}
       <span class="lp-text">
         {#if selected.roaster}<span class="lp-r">{selected.roaster}</span>{/if}
-        <span class="lp-n">{selected.name}</span>
+        <span class="lp-n"><CoffeeName name={selected.name} /></span>
         <span class="lp-m">{selected.meta}</span>
         {#if selected.twin}<span class="lp-m">{selected.twin}</span>{/if}
       </span>
@@ -169,7 +170,8 @@
                 data-id={o.id}
               >
                 {#if o.roaster}<span class="lp-r">{o.roaster}</span>{/if}
-                <span class="lp-n">{o.name}</span>
+                <span class="lp-n"><CoffeeName name={o.name} /></span>
+
                 <span class="lp-m">{o.meta}</span>
                 {#if o.twin}<span class="lp-m">{o.twin}</span>{/if}
               </div>

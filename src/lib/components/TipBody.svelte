@@ -20,15 +20,17 @@ export type Tip = { title: string; rows?: TipRow[]; lines?: string[]; note?: str
 
 <script lang="ts">
   import Icon from './Icon.svelte';
+  import CoffeeName from './CoffeeName.svelte';
   import { CHIP_EXAMPLE, SAMPLE_HELP } from '$lib/sample';
   let { tip }: { tip: Tip } = $props();
   let caution = $derived(tip.caution ?? (tip.sample ? sampleTip(tip.sample.s, tip.sample.paired) : null));
 </script>
 
-<!-- Text with setting names (settingName.ts) marked: the names bold brown. -->
-{#snippet text(s: string)}{#each settingRuns(s) as [t, name], i (i)}{#if name}<span class="setting-name">{t}</span>{:else}{t}{/if}{/each}{/snippet}
-{#if tip.title}<strong class="tip-title">{plainText(tip.title)}</strong>{/if}
-{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{@render text(l)}</dt><dd class={ink}>{v}</dd>{/each}</dl>{/if}
+<!-- Text with setting names (settingName.ts) marked: the names bold brown; coffee names in their keyword color. -->
+{#snippet text(s: string)}{#each settingRuns(s) as [t, name], i (i)}{#if name}<span class="setting-name">{t}</span>{:else}<CoffeeName text={t} />{/if}{/each}{/snippet}
+{#if tip.title}<strong class="tip-title"><CoffeeName text={plainText(tip.title)} /></strong>{/if}
+{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/if}
+
 {#if tip.lines?.length || tip.sampleLegend}<ul class="tip-lines">{#each tip.lines ?? [] as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{@render text(line)}</li>{/each}{#if tip.sampleLegend}<li><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> <i class="sample-swatch small-sample-mark"></i> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>{/if}</ul>{/if}
 {#if tip.note}<span class="tip-note">{@render text(tip.note)}</span>{/if}
 {#if caution}<dl class="tip-rows tip-counts">{#each caution.rows as [l, v] (l)}<dt>{l}</dt><dd>{v}</dd>{/each}</dl>{/if}

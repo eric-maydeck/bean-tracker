@@ -2,6 +2,7 @@
   import { useEmptyLine } from './coffeeNote';
   import { tick } from 'svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { WaterTab } from '$lib/server/insights/lab';
@@ -154,7 +155,8 @@
             <ol class="pair-bags">
               {#each all ? p.bags : p.bags.slice(0, SHOWN) as b, j (j)}
                 <li class="pair-row">
-                  <span class="bag">{#if b.href}<a href={b.href}>{b.label}</a>{:else}{b.label}{/if}{#if b.tag}<small> {b.tag}</small>{/if}</span>
+                  <span class="bag">{#if b.href}<a href={b.href}><CoffeeName text={b.label} /></a>{:else}<CoffeeName text={b.label} />{/if}
+{#if b.tag}<small> {b.tag}</small>{/if}</span>
                   <span class="score a" class:win={b.win === 'a'}>{b.a.toFixed(2)}</span>
                   <span class="score b" class:win={b.win === 'b'}>{b.b.toFixed(2)}</span>
                 </li>

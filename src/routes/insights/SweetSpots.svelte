@@ -15,6 +15,7 @@
   import { deltaInk, labDelta } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
 
   let { t, lab, s, placeTip, choose }: {
     t: SweetSpotsTab; lab: LabOptions; s: InsightsView;
@@ -273,7 +274,8 @@
           <li class="board-row" class:liked={r.like} class:small-sample={r.sample.small}>
             <span class="rank">{i + 1}</span>
             <span class="who">
-              {#if r.href}<a href={r.href}>{r.label}</a>{:else}<span class="name">{r.label}</span>{/if}
+              {#if r.href}<a href={r.href}><CoffeeName text={r.label} /></a>{:else}<span class="name"><CoffeeName text={r.label} /></span>{/if}
+
               <!-- A twin's tag ("roasted May 5") leads the sub line, so the ellipsis never hides it. -->
               <span class="who-line"><small>{[r.tag, r.sub, r.usual].filter(Boolean).join(' · ')}</small>{#if r.sample.small}<SampleNote s={r.sample} />{/if}</span>
               {#if r.like}<LikeLine like={r.like} />{/if}

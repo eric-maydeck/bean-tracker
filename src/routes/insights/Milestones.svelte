@@ -1,5 +1,6 @@
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { KINDS, MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
   import type { MilestonesTab } from '$lib/server/insights/milestones';
@@ -234,7 +235,7 @@
       <div class="who">
         <HeadingAnchor id="milestones-on-this-day" level={3} class="otd-title">On this day a year ago</HeadingAnchor>
         <span>
-          {#if o.holder.href}<a href={o.holder.href}>{o.holder.label}</a>{:else}{o.holder.label}{/if}
+          {#if o.holder.href}<a href={o.holder.href}><CoffeeName text={o.holder.label} /></a>{:else}<CoffeeName text={o.holder.label} />{/if}
         </span>
         <small>{[o.brewer, o.holder.sub].filter(Boolean).join(' · ')}</small>
       </div>
@@ -283,9 +284,10 @@
                 <span class="kind-icon" style:--kind="var(--kind-{e.kind})" title={LABEL[e.kind]}><Icon name={ICON[e.kind]} /></span>
                 <time datetime={e.date}>{day(e.date)}</time>
                 <span class="who">
-                  <span class="ev-title">{e.title}</span>
+                  <span class="ev-title"><CoffeeName text={e.title} /></span>
                   {#if e.detail}
-                    <small>{#if e.href}<a href={e.href}>{e.detail}</a>{:else}{e.detail}{/if}</small>
+                    <small>{#if e.href}<a href={e.href}><CoffeeName text={e.detail} /></a>{:else}<CoffeeName text={e.detail} />{/if}</small>
+
                   {/if}
                 </span>
               </li>

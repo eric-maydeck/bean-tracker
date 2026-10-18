@@ -1,5 +1,6 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
   import { tick } from 'svelte';
   import { browser } from '$app/environment';
@@ -748,7 +749,7 @@
                   <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
                 </a>
               {/if}
-              <h2><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></h2>
+              <h2><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a></h2>
               <p class="text-muted">{coffee.roaster}</p>
               <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
               <p class="roast-row">
@@ -803,7 +804,7 @@
           {#if img}
             <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
           {/if}
-          <h2>{coffee.coffee_name}</h2>
+          <h2><CoffeeName name={coffee.coffee_name} /></h2>
           <p class="text-muted">{coffee.roaster}</p>
           <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
           <p class="roast-row">
@@ -851,7 +852,7 @@
           <div class="compact-row">
             <div class="compact-row-main">
               <div class="compact-row-title">
-                <a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a>
+                <a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>
                 {#if coffee.decaf}<span class="badge badge-decaf">Decaf</span>{/if}{#if isFrozen(coffee)}<span class="badge badge-frozen">Frozen</span>{/if}
               </div>
               <div class="compact-row-sub text-muted">
@@ -877,7 +878,8 @@
           >
             <span class="compact-row-main">
               <span class="compact-row-title">
-                {coffee.coffee_name}
+                <CoffeeName name={coffee.coffee_name} />
+
                 {#if coffee.decaf}<span class="badge badge-decaf">Decaf</span>{/if}{#if isFrozen(coffee)}<span class="badge badge-frozen">Frozen</span>{/if}
               </span>
               <span class="compact-row-sub text-muted">
@@ -1067,7 +1069,7 @@
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><a href={`/coffees/${coffee.slug}`}>{coffee.coffee_name}</a></td>
+            <td><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a></td>
             <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
