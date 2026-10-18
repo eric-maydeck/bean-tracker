@@ -64,7 +64,7 @@
           <th scope="row" class="name-col"><span class="map-name" role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(r))}
             onfocus={(e) => (takeFocus(e), show(e))} onblur={() => (tip = null)}>{r.label}</span>{#if r.sample.small}<span class="map-note"><span class="sample-chip map-chip" data-i={i} aria-hidden="true"><Icon name="warning" />{chipLabel(r.sample)}</span></span>{/if}</th>
           <!-- The chip's fill carries the color (T3 scale, mixed so ink text keeps 4.5:1 in both themes). -->
-          <td class="delta">{#if r.delta === null}<span class="none" title="No match">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip"
+          <td class="delta">{#if r.delta === null}<span class="none">—</span><span class="sr-only">no match</span>{:else}<span class="delta-chip"
             style:background-color={`color-mix(in oklab, ${deltaColor(r.delta)} 65%, transparent)`}>{labDelta(r.delta, ses)}</span>{/if}</td>
           {#each map.cols as c, j (c.key)}<td style:background={shades[j](r.values[j])}>{fmt(r.values[j], c.unit)}</td>{/each}
         </tr>

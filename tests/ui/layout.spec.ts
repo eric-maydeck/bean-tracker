@@ -1,7 +1,7 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
-import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
+import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; skip: string } & Record<GramsKey, string>;
@@ -4345,10 +4345,9 @@ for (const state of STATES) {
     const s = seed();
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
-    if (state.name.startsWith('insights-')) {
-      await expectStatRowsFull(page);
-      await expectTipsFormatted(page);
-    }
+    if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
+    await expectTipsFormatted(page);
+    await expectNoTitleTips(page);
     // Screenshot first, so a failing state still leaves a picture to look at.
     // Firefox can't capture past 32767 device px: a long page (phone cards at DPR 3) keeps its top part.
     const [w, h, dpr] = await page.evaluate(() => [innerWidth, document.documentElement.scrollHeight, devicePixelRatio]);

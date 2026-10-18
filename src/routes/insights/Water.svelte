@@ -95,7 +95,7 @@
   {#if t.map}
     <section class="chart-panel" data-section="water-minerals">
       <LabHead id="water-minerals" title="Recipe mineral map" {placeTip}
-        help={['Each recipe with an entered water profile, best vs usual first, no match last.', 'vs usual: its same-bag delta, from Ratings by recipe.',
+        help={['Each recipe with an entered water profile, best vs usual first, no match last.', 'vs usual: its same-bag delta, from Ratings by recipe.', 'A dash: no match.',
           'A mineral cell is shaded within its column: light = little · dark = the most any recipe used.',
           'Strongly tied to era and roast level: the water changed with time and with what you brewed.', 'Read the minerals as leads, not causes.']} />
       <MineralMap map={t.map} />
