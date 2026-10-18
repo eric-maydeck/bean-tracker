@@ -1056,8 +1056,14 @@ export const STATES: State[] = [
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
     name: `stats-${tab}`,
     path: () => `/stats?tab=bq&bc=${tab}`,
-    // ui-rules 47: a top-N chart says how many it shows (By Method, By Grinder: one line each).
-    act: tab === 'brewing' ? async (page: Page) => { await expect(page.locator('.chart-panel-row').getByText(/^Showing top \d+ of \d+\.$/)).toHaveCount(2); } : undefined
+    // ui-rules 47: a top-N chart says how many it shows, only while it cuts something (never "top 4 of 4").
+    act: async (page: Page) => {
+      await expect(page.locator('main')).toBeVisible();
+      const lines = await page.getByText(/^\s*Showing top \d+ of \d+\.\s*$/).allInnerTexts();
+      for (const l of lines) { const [n, m] = l.match(/\d+/g)!.map(Number); expect(n, l).toBeLessThan(m); }
+      // The seed's By Method and By Grinder have under 10 groups each: no line.
+      if (tab === 'brewing') await expect(page.locator('.chart-panel-row').getByText(/Showing top/)).toHaveCount(0);
+    }
   })),
   {
     // ui-rules 46: the cost-per-roaster chart's bar labels are usd ("$0.05/g"), never Chart's plain-number fallback.

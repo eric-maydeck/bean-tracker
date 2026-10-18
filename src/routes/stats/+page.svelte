@@ -768,7 +768,7 @@
   {#if breakdownEntries.length === 0}
     <p class="text-muted">No coffees with the selected status.</p>
   {:else}
-    <p class="text-muted">Showing top {visibleBreakdownEntries.length} of {breakdownEntries.length}.</p>
+    {#if visibleBreakdownEntries.length < breakdownEntries.length}<p class="text-muted">Showing top {visibleBreakdownEntries.length} of {breakdownEntries.length}.</p>{/if}
     <Chart
       type="bar"
       labels={breakdownLabels}
@@ -870,7 +870,7 @@
 
   {#if data.unmatchedBeans.total > 0}
     <h3>Not yet tracked ({data.unmatchedBeans.total})</h3>
-    <p class="text-muted">Showing top {data.unmatchedBeans.beans.length} of {data.unmatchedBeans.total}.</p>
+    {#if data.unmatchedBeans.beans.length < data.unmatchedBeans.total}<p class="text-muted">Showing top {data.unmatchedBeans.beans.length} of {data.unmatchedBeans.total}.</p>{/if}
     {#if candidateView === 'compact'}
       <div class="compact-list bean-cards">
         {#each data.unmatchedBeans.beans as bean (bean.id)}
@@ -1088,7 +1088,7 @@
       {#if bcFavoriteGroups.length === 0}
         <p class="text-muted">No groups with 3+ rated brews yet.</p>
       {:else}
-        <p class="text-muted">Showing top {bcVisibleFavoriteGroups.length} of {bcFavoriteGroups.length}.</p>
+        {#if bcVisibleFavoriteGroups.length < bcFavoriteGroups.length}<p class="text-muted">Showing top {bcVisibleFavoriteGroups.length} of {bcFavoriteGroups.length}.</p>{/if}
         <Chart
           type="bar"
           labels={bcVisibleFavoriteGroups.map((g) => g.label)}
@@ -1135,7 +1135,7 @@
           {#if bcVisibleMethodGroups.length === 0}
             <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
-            <p class="text-muted">Showing top {bcVisibleMethodGroups.length} of {bc.byMethod.length}.</p>
+            {#if bcVisibleMethodGroups.length < bc.byMethod.length}<p class="text-muted">Showing top {bcVisibleMethodGroups.length} of {bc.byMethod.length}.</p>{/if}
             <Chart
               type="bar"
               labels={bcVisibleMethodGroups.map((g) => g.label)}
@@ -1150,7 +1150,7 @@
           {#if bcVisibleGrinderGroups.length === 0}
             <p class="text-muted">No groups with 3+ rated brews yet.</p>
           {:else}
-            <p class="text-muted">Showing top {bcVisibleGrinderGroups.length} of {bc.byGrinder.length}.</p>
+            {#if bcVisibleGrinderGroups.length < bc.byGrinder.length}<p class="text-muted">Showing top {bcVisibleGrinderGroups.length} of {bc.byGrinder.length}.</p>{/if}
             <Chart
               type="bar"
               labels={bcVisibleGrinderGroups.map((g) => g.label)}
@@ -1175,9 +1175,9 @@
       {#if bcVisibleCostByRoaster.length === 0}
         <p class="text-muted">No cost data yet.</p>
       {:else}
-        <p class="text-muted">
+        {#if bcVisibleCostByRoaster.length < bc.costPerGramByRoaster.length}<p class="text-muted">
           Showing top {bcVisibleCostByRoaster.length} of {bc.costPerGramByRoaster.length}.
-        </p>
+        </p>{/if}
         <Chart
           type="bar"
           labels={bcVisibleCostByRoaster.map((g) => g.label)}
