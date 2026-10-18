@@ -209,9 +209,9 @@ export type CoffeeFix = {
   coffee_id: number;
   roaster?: string;
   field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url' | 'roast_level'
-    | 'frozen_end_date';
-  from: string | null;
-  to: string;
+    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high';
+  from: string | number | null;
+  to: string | number;
 };
 
 // Same as a UI edit (coffeeBatchActions' nextSlug + updateCoffee): an
