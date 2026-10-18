@@ -1025,14 +1025,57 @@ export const STATES: State[] = [
       const people = page.getByRole('group', { name: 'People' });
       await people.getByRole('button', { name: 'Per person', exact: true }).click();
       await expect(page).toHaveURL(/people=person/);
-      await expect(page.getByText('To clear per person')).toBeVisible();
+      await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
+      // The mode word opens its help popover (ui-rules 27), in view under the sticky bar.
+      const help = page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' });
+      await help.click();
+      await expectTipInView(page, page.locator('.mode-tip:popover-open'));
+      await expect(page.locator('.mode-tip:popover-open .tip-title')).toHaveText('Per person');
+      await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Bean Conqueror', exact: true }).click();
       await expect(page).toHaveURL(/people=person/);
-      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews · per person');
+      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews · per person', { useInnerText: true, ignoreCase: true });
       await expect(page.locator('.stat-label', { hasText: 'Average rating' })).toHaveText('Average rating');
       await expect(page.locator('.stat-label', { hasText: 'Total beans' })).toHaveText('Total beans');
       await expect(page.getByRole('heading', { name: 'Brews per day · per person' })).toBeVisible();
       await expect(page.locator('.stat-item', { hasText: 'Total brews' }).locator('.stat-value')).toHaveText(/^\d+(\.\d)?$/);
+    }
+  },
+  {
+    // A /stats chart's tip (ui-rules 36, 39): the shared data tip, in view with the chart scrolled up under the sticky bar.
+    name: 'stats-chart-tip',
+    path: () => '/stats',
+    act: async (page) => {
+      const c = page.locator('.chart-container canvas').first();
+      await c.scrollIntoViewIfNeeded();
+      const bar = (await page.locator('.filter-bar').boundingBox())!;
+      await page.evaluate((dy) => scrollBy(0, dy), (await c.boundingBox())!.y - bar.y - bar.height - 8);
+      await expectDataTip(await hoverChart(page, c));
+      await expectTipInView(page, page.locator('.chart-container .cell-tip:popover-open'));
+    }
+  },
+  {
+    // A weight of 100 kg and up drops its decimal; the tile's value opens "Exact" (like Usd's Before rounding). The seed
+    // has no 100 kg total, so the client load's data is rewritten (a client navigation from /coffees).
+    name: 'stats-exact-tip',
+    path: () => '/coffees',
+    act: async (page) => {
+      await page.route(/\/stats\/__data\.json/, async (route) => {
+        const res = await route.fetch();
+        const body = await res.json();
+        for (const n of body.nodes ?? []) for (const o of Array.isArray(n?.data) ? n.data : []) {
+          if (o && typeof o === 'object' && !Array.isArray(o) && 'finishedGrams' in o) n.data[o.finishedGrams] = 123456;
+        }
+        await route.fulfill({ response: res, json: body });
+      });
+      await page.locator('a[href="/stats"]:visible').first().click();
+      const value = page.getByRole('button', { name: /^123kg: Exact/ });
+      await value.click();
+      const tip = page.locator('.cell-tip:popover-open');
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).toHaveText('Exact');
+      await expect(tip.locator('dd')).toHaveText('123,456 g');
     }
   },
   {
@@ -1046,8 +1089,8 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/people=person/);
       await expect(panel.locator('.stat-label')).toHaveText([
         'Time to clear · per person', 'Per day · per person', 'Per week · per person', 'Per month · per person'
-      ]);
-      await expect(page.getByText('To clear per person')).toBeVisible();
+      ], { useInnerText: true, ignoreCase: true });
+      await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
     }
   },
   {
@@ -4202,6 +4245,17 @@ export const STATES: State[] = [
   { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
 ];
+
+// Hovers a Chart.js canvas until its tip opens (bars hover by intersection, so it sweeps a grid of points); returns the tip.
+async function hoverChart(page: Page, canvas: Locator) {
+  const b = (await canvas.boundingBox())!;
+  const tip = page.locator('.chart-container .cell-tip:popover-open');
+  for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1 && !(await tip.count()); fx += 0.1) {
+    await page.mouse.move(b.x + b.width * fx, b.y + b.height * fy);
+    await page.waitForTimeout(100);
+  }
+  return tip;
+}
 
 // Every text node naming the seed's skip coffee sits in a .coffee-name span in the --color-skip color (hidden tips and
 // popovers too), and there are at least `min` of them.

@@ -1,5 +1,9 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
+  import Icon from '$lib/components/Icon.svelte';
+  import { placeTip } from '$lib/components/modeTip';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd, usdPrecise, wholeUsd } from '$lib/money';
   import { enhance } from '$app/forms';
@@ -98,7 +102,6 @@
   const PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let use = $derived(data.consumption[range][people]);
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
-  const pp = (label: string) => (people === 'person' ? `${label} · per person` : label);
 
   // Caps how many bars the composition chart draws — without this, a
   // dimension like Roaster with 20+ distinct values crams so many bars into
@@ -327,16 +330,6 @@
     return `${Math.round(g).toLocaleString('en-US')}g`;
   }
 
-  // Only meaningful once formatGrams has rounded away the decimal (the
-  // >=100kg case) — null otherwise, so the caller knows not to render a
-  // tooltip when the displayed value is already exact.
-  function formatGramsTooltip(g: number): string | null {
-    if (g >= 100000) {
-      return `${(g / 1000).toFixed(1)}kg`;
-    }
-    return null;
-  }
-
   const currencyCompactFormatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -370,6 +363,14 @@
 </svelte:head>
 
 <!-- One toggle state, shown in both the Brews and Grams panel headers. -->
+<!-- A per-person label's mode word opens its help (ui-rules 27, as on /insights); `id` keys its popover. -->
+{#snippet pp(label: string, id: string, sep = ' · ')}{label}{#if people === 'person'}{sep}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
+    ><span class="tip-text">per person</span><Icon name="question" /></button
+  ><span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/if}{/snippet}
+
+<!-- A weight; where formatGrams drops the decimal (100 kg and up), the exact grams in the shared text tip (like Usd). -->
+{#snippet grams(g: number)}{#if g >= 100000}<TextTip label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
+
 {#snippet bcAverageToggle()}
   <div class="form-field group-field">
     <span>Average</span>
@@ -457,9 +458,7 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value" title={formatGramsTooltip(data.stats.totalBacklogGrams)}
-        >{formatGrams(data.stats.totalBacklogGrams)}</span
-      >
+      <span class="stat-value">{@render grams(data.stats.totalBacklogGrams)}</span>
       <div class="stat-caption">
         <span class="stat-label">Total weight</span>
       </div>
@@ -474,7 +473,7 @@
         <span class="stat-value">{use.daysToClear === null ? '—' : `${use.daysToClear}d`}</span>
         {#if use.clearBy}<span class="stat-unit">by {formatClearBy(use.clearBy)}</span>{/if}
         <div class="stat-caption">
-          <span class="stat-label">{people === 'person' ? 'To clear per person' : 'To clear as a household'}</span>
+          <span class="stat-label">{#if people === 'person'}{@render pp('To clear', 'hero-clear', ' ')}{:else}To clear as a household{/if}</span>
         </div>
       {/if}
     </div>
@@ -525,33 +524,25 @@
   <h2>Weight</h2>
   <div class="stat-row">
     <div class="stat-item">
-      <span class="stat-value" title={formatGramsTooltip(data.stats.openedGrams)}
-        >{formatGrams(data.stats.openedGrams)}</span
-      >
+      <span class="stat-value">{@render grams(data.stats.openedGrams)}</span>
       <div class="stat-caption">
         <span class="stat-label">Opened</span>
       </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value" title={formatGramsTooltip(data.stats.unopenedBacklogGrams)}
-        >{formatGrams(data.stats.unopenedBacklogGrams)}</span
-      >
+      <span class="stat-value">{@render grams(data.stats.unopenedBacklogGrams)}</span>
       <div class="stat-caption">
         <span class="stat-label">Unopened weight</span>
       </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value" title={formatGramsTooltip(data.stats.totalBacklogGrams)}
-        >{formatGrams(data.stats.totalBacklogGrams)}</span
-      >
+      <span class="stat-value">{@render grams(data.stats.totalBacklogGrams)}</span>
       <div class="stat-caption">
         <span class="stat-label">Total (opened + unopened)</span>
       </div>
     </div>
     <div class="stat-item">
-      <span class="stat-value" title={formatGramsTooltip(data.stats.finishedGrams)}
-        >{formatGrams(data.stats.finishedGrams)}</span
-      >
+      <span class="stat-value">{@render grams(data.stats.finishedGrams)}</span>
       <div class="stat-caption">
         <span class="stat-label">Finished</span>
       </div>
@@ -611,12 +602,12 @@
     <div class="stat-item">
       <span class="stat-value">{use.daysToClear === null ? '—' : `${use.daysToClear}d`}</span>
       {#if use.clearBy}<span class="stat-unit">by {formatClearBy(use.clearBy)}</span>{/if}
-      <div class="stat-caption"><span class="stat-label">{pp('Time to clear')}</span></div>
+      <div class="stat-caption"><span class="stat-label">{@render pp('Time to clear', 'clear')}</span></div>
     </div>
     {#each [['Per day', use.perDay], ['Per week', use.perWeek], ['Per month', use.perMonth]] as const as [label, g] (label)}
       <div class="stat-item">
         <span class="stat-value">{g === null ? '—' : formatGrams(g)}</span>
-        <div class="stat-caption"><span class="stat-label">{pp(label)}</span></div>
+        <div class="stat-caption"><span class="stat-label">{@render pp(label, label)}</span></div>
       </div>
     {/each}
   </div>
@@ -692,14 +683,7 @@
       </div>
     </div>
     <div class="stat-item">
-      <span
-        class="stat-value"
-        title={data.stats.averageBagSizeGrams === null
-          ? null
-          : formatGramsTooltip(data.stats.averageBagSizeGrams)}
-      >
-        {data.stats.averageBagSizeGrams === null ? '—' : formatGrams(data.stats.averageBagSizeGrams)}
-      </span>
+      <span class="stat-value">{#if data.stats.averageBagSizeGrams === null}—{:else}{@render grams(data.stats.averageBagSizeGrams)}{/if}</span>
       <div class="stat-caption">
         <span class="stat-label">Average bag size</span>
       </div>
@@ -969,7 +953,7 @@
         <div class="stat-item">
           <span class="stat-value">{tenth(bc.totalBrews)}</span>
           <div class="stat-caption">
-            <span class="stat-label">{pp('Total brews')}</span>
+            <span class="stat-label">{@render pp('Total brews', 'brews')}</span>
           </div>
         </div>
         <div class="stat-item">
@@ -991,13 +975,13 @@
               : formatGrams(bc.totalGramsBrewed)}</span
           >
           <div class="stat-caption">
-            <span class="stat-label">{pp('Total brewed')}</span>
+            <span class="stat-label">{@render pp('Total brewed', 'brewed')}</span>
           </div>
         </div>
       </div>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>{pp('Brews per day')}</h2>
+          <h2>{@render pp('Brews per day', 'brews-day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
@@ -1026,7 +1010,7 @@
       </section>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>{pp('Grams per day')}</h2>
+          <h2>{@render pp('Grams per day', 'grams-day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
@@ -1217,6 +1201,11 @@
 {/if}
 
 <style>
+  /* A caption with a per-person help button lets the button's 44px tap area overflow (as on /insights). */
+  .stat-caption:has(:global(.mode-tip-button)),
+  .stat-label:has(:global(.mode-tip-button)) {
+    overflow: visible;
+  }
   .period-select {
     min-height: 2.25rem;
     padding: 0 0.6rem;
