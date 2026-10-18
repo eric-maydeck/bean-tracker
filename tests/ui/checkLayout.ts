@@ -431,7 +431,7 @@ export async function expectColumnsFilled(page: Page, selector: string) {
 // An open data tip (FloatTip, a chart tip, ui-rules 36): a bold title, then label/value rows ("Brews  3"), never a
 // "Label: value" line.
 export async function expectDataTip(tip: Locator) {
-  await expect(tip.locator('.tip-title')).not.toBeEmpty();
+  await expect(tip.locator('.tip-title').first()).not.toBeEmpty(); // a caveat block (Low confidence) has its own
   await expect(tip.locator('.tip-rows dt').first()).toBeVisible();
   expect(await tip.locator('.tip-rows dt').evaluateAll((ds) => ds.every((d) => !d.textContent!.includes(':')))).toBe(true);
 }
