@@ -126,8 +126,9 @@
     stroke: var(--color-surface);
     stroke-width: 0.5;
   }
-  path.has {
-    cursor: help; /* a click pins the tip, nothing more (ui-rules 50) */
+  /* Every country opens a tip (its name; with data, its numbers too), and a click only pins it (ui-rules 50). */
+  path {
+    cursor: help;
   }
   path:focus-visible {
     outline: none;

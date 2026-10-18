@@ -1625,13 +1625,17 @@ td > .action-buttons.under-form {
   transition: background-color 150ms ease, border-color 150ms ease;
 }
 
-/* Text in a tile, card or panel shows the arrow, not the I-beam, yet stays selectable; links, buttons, tip
-   triggers and fields keep their own cursor (ui-rules 50). */
-:where(.stat-item, .hl-card, .card, .chart-panel) {
+/* Cursors (ui-rules 50): the arrow by default, text included (it stays selectable); the I-beam only in a field meant
+   for typing; the hand on what a click acts on. Zero specificity: a tip trigger's help and any other cursor a
+   component sets win. */
+html {
   cursor: default;
 }
-:where(.stat-item, .hl-card, .card, .chart-panel) :is(input, textarea, [contenteditable]) {
-  cursor: auto;
+:where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset'], :disabled, [readonly]), textarea:not(:disabled, [readonly]), [contenteditable]:not([contenteditable='false'])) {
+  cursor: text;
+}
+:where(a[href], button:not(:disabled, [aria-disabled='true']), select:not(:disabled), summary, label:has(> input:is([type='checkbox'], [type='radio'])), input:is([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file'], [type='button'], [type='submit'], [type='reset']):not(:disabled)) {
+  cursor: pointer;
 }
 
 /* Hero ("At a Glance") tiles: same geometry as every other tile, set apart

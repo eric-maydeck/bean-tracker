@@ -69,8 +69,9 @@
     const i = +(el as HTMLElement).dataset.i!;
     tip = bars[i] ? { i, el: el.querySelector('.track')!, hover } : null;
   };
+  // Only a row's label, bar or value opens its tip, never the empty track around the bar (ui-rules 50).
   const show = (e: Event, hover = false) => {
-    const el = (e.target as Element).closest('.bar-row');
+    const el = (e.target as Element).closest('.bar-label, .bar, .bar-value')?.closest('.bar-row');
     if (el) showRow(el, hover);
     else tip = null;
   };
@@ -158,10 +159,27 @@
     align-items: center;
     min-height: var(--cell-h);
     border-radius: 2px;
-    cursor: help; /* a click opens only the tip (ui-rules 50) */
+  }
+  /* The tip's marks (ui-rules 50): help over them; a label or value is its text's width, not its column's. */
+  .bar-label,
+  .bar,
+  .bar-value {
+    cursor: help;
+  }
+  .bar-label {
+    justify-self: end;
+  }
+  .bar-value {
+    justify-self: start;
+  }
+  /* A thin bar's hit area reaches past its edges, so a near-zero delta is still easy to point at. */
+  .bar::after {
+    content: '';
+    position: absolute;
+    inset: -2px -4px;
   }
   @media (hover: hover) {
-    .bar-row:hover {
+    .bar-row:has(.bar-label:hover, .bar:hover, .bar-value:hover) {
       background: color-mix(in oklab, var(--color-text-muted) 8%, transparent);
     }
   }

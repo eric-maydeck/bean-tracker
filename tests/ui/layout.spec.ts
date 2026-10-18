@@ -1581,18 +1581,6 @@ export const STATES: State[] = [
       await expect(tip.locator('.tip-lines li')).toHaveCount(1);
     }
   },
-  {
-    // A finding card's hover tip: its headline (and sides), the shared tip in place of the card's native title.
-    name: 'insights-insights-card-hover-tip',
-    path: () => '/insights?tab=insights&range=all',
-    act: async (page) => {
-      const card = page.locator('.hl-card.finding').first();
-      await card.locator('.hl-value, .stat-label').first().hover();
-      const tip = page.locator('.cell-tip:popover-open');
-      await expectTipInView(page, tip);
-      await expect(tip.locator('.tip-title')).not.toBeEmpty();
-    }
-  },
   { name: 'insights-ratings-all', path: () => '/insights?ratings=all' },
   {
     // Overview: Totals and Averages each carry the Ratings and Brews switches in their header (no in-tile pills);
@@ -2703,8 +2691,10 @@ export const STATES: State[] = [
         return [...(!cols || cols.height < 23 ? [`${c.id} chart ${cols?.height}px`] : []), ...(bigger ? [`${c.id} value not largest`] : []), ...(out ? [`${c.id} bar outside chart`] : [])];
       }));
       expect(charts).toEqual([]);
-      // A tap on a chart shows its themed tip; a tap elsewhere closes it.
-      await page.locator('#spot-temp .spot-chart').click();
+      // A tap on a band's bar shows its themed tip; a tap elsewhere closes it. The column's empty space opens
+      // nothing (ui-rules 50, user 2026-10-18: not above the bar).
+      await expectMarkOnly(page, page.locator('.spot-chart .col'), '.bar', page.locator('.spot-chart .cell-tip'));
+      await page.locator('#spot-temp .spot-chart .bar:not(.empty)').first().click();
       // A short structured tip (ui-rules 36): the band as its title, then label/value rows.
       await expect(page.locator('#spot-temp .cell-tip .tip-title').first()).not.toBeEmpty();
       await expect(page.locator('#spot-temp .cell-tip .tip-rows')).toContainText(/Bags\s*\d+\s*Brews\s*\d+/);
@@ -2737,7 +2727,7 @@ export const STATES: State[] = [
       await gotoReady(page, '/insights?tab=brewing');
       const titles: string[] = [];
       for (const row of await page.locator('[data-section="brewing-grind"] .bar-row').all()) {
-        await row.click();
+        await row.locator('.bar-label').click();
         titles.push((await page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').first().textContent())!.trim());
       }
       expect(spotBands).toEqual(titles);
@@ -2778,15 +2768,15 @@ export const STATES: State[] = [
       }
       await expectPairsFilled(page, '.lab-grid');
       // A tap on a bar opens its tip (ui-rules 29, 36): group name and median, then counts; a small group's caveat last.
-      const col = page.locator('.settle-cols .col').first();
-      await col.click();
+      await expectMarkOnly(page, page.locator('.settle-cols .col'), '.bar', page.locator('.float-tip'));
+      await page.locator('.settle-cols .col .bar').first().click();
       const tip = page.locator('.float-tip');
       await expect(tip).toBeVisible();
       await expect(tip).toContainText('Median settle brew');
       await expectTipInView(page, tip);
       const small = page.locator('.settle-cols .col:has(.small-sample-mark)').first();
       if (await small.count()) {
-        await small.click();
+        await small.locator('.bar').click();
         expect(await tip.evaluate((el) => el.lastElementChild!.className)).toBe('tip-block caution');
       }
     } },
@@ -2846,10 +2836,55 @@ export const STATES: State[] = [
   },
   { name: 'cursor-rules', path: () => '/insights?tab=habits',
     act: async (page) => {
-      // ui-rules 50: tile text shows the arrow yet stays selectable; a tip-only click target shows help, never the hand.
+      // ui-rules 50: text shows the arrow yet stays selectable; a tip trigger shows help, never the hand; a link the hand.
       const css = (sel: string) => page.locator(sel).first().evaluate((e) => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect]);
       expect(await css('.stat-item .stat-value')).toEqual(['default', 'auto']);
+      expect(await css('h1')).toEqual(['default', 'auto']);
       for (const sel of ['.heatmap .heat-cell', '.brew-calendar .cal-cell']) expect((await css(sel))[0], sel).toBe('help');
+    } },
+  { name: 'cursor-rules-fields', path: () => '/subscriptions?view=list',
+    act: async (page) => {
+      // The I-beam only in a field meant for typing; buttons and links the hand; a ? help trigger help.
+      const cur = (l: Locator) => l.first().evaluate((e) => getComputedStyle(e).cursor);
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      expect(await cur(page.locator('input[name="subscription_name"]'))).toBe('text');
+      expect(await cur(page.locator('td'))).toBe('default');
+      expect(await cur(page.locator('main button:not(:disabled)'))).toBe('pointer');
+      await page.goto('/insights');
+      expect(await cur(page.locator('.stat-item .caption-link'))).toBe('pointer');
+      expect(await cur(page.locator('.mode-tip-button'))).toBe('help');
+    } },
+  // Tips open only on their marks (ui-rules 50): a chart's empty space opens none and keeps the arrow; a bar or a line's
+  // point opens it with the help cursor.
+  { name: 'tip-hit-chart-bars', path: () => '/stats',
+    act: (page) => expectChartMarkOnly(page, page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) }).locator('canvas')) },
+  { name: 'tip-hit-chart-line', path: () => '/insights?tab=consumption',
+    act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first()) },
+  { name: 'tip-hit-delta-bars', path: () => '/insights?tab=brewing&range=all',
+    act: (page) => expectMarkOnly(page, page.locator('[data-section="brewing-temp"] .track'), '.bar', page.locator('.cell-tip:popover-open')) },
+  { name: 'tip-hit-findings', path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      // A finding card's empty space opens nothing; its clamped body opens the full text (hover, then a click keeps it).
+      const card = page.locator('.finding-grid .hl-card').first();
+      const b = (await card.boundingBox())!;
+      await page.mouse.move(b.x + 3, b.y + b.height / 2);
+      await page.mouse.click(b.x + 3, b.y + b.height / 2);
+      await expect(page.locator(':popover-open')).toHaveCount(0);
+      const i = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
+        const j = cs.findIndex((c) => c.querySelector('.body'));
+        if (j >= 0) cs[j].querySelector('.body')!.textContent = 'A very long finding body that keeps going. '.repeat(12);
+        return j;
+      });
+      test.skip(i < 0, 'no finding with a body');
+      const body = page.locator('.finding-grid .hl-card').nth(i).locator('.body');
+      await body.hover();
+      const full = page.locator('.finding-grid .mode-tip:popover-open');
+      await expect(full).toBeVisible();
+      expect(await body.evaluate((e) => getComputedStyle(e).cursor)).toBe('help');
+      await body.click();
+      await page.mouse.move(1, 1);
+      await page.waitForTimeout(300);
+      await expect(full, 'a click keeps it open').toBeVisible();
     } },
   // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
   { name: 'tap-tip-text', path: () => '/coffees?status=all&view=list',
@@ -2864,6 +2899,8 @@ export const STATES: State[] = [
     } },
   { name: 'tap-tip-sample', path: () => '/insights?tab=leaderboards&avg=raw',
     act: (page) => expectTapTip(page, page.locator('.sample-note').first(), page.locator('.cell-tip:popover-open'), page.locator('.insights-period').last()) },
+  { name: 'tap-tip-label', path: () => '/insights?tab=habits&range=1w&compare=1',
+    act: (page) => expectTapTip(page, page.locator('.insights-delta').first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
   { name: 'tap-tip-heatmap', path: () => '/insights?tab=habits',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open'), away = page.locator('.insights-period').last();
@@ -2932,7 +2969,7 @@ export const STATES: State[] = [
       // A4Z grind bands: labeled "1.3.0", the tip gives the range "1.3.0 – 1.3.9".
       const grindRow = page.locator('[data-section="brewing-grind"] .bar-row').first();
       await expect(grindRow.locator('.bar-label')).toHaveText(/^\d+\.\d+\.0$/);
-      await grindRow.click();
+      await grindRow.locator('.bar-label').click();
       await expect(page.locator('[data-section="brewing-grind"] .cell-tip .tip-title').first()).toHaveText(/^(\d+\.\d+)\.0 – \1\.9$/);
       await page.locator('h1').click();
       // A pair of charts is one height; the shorter fills it, the taller scrolls inside past 2× (ui-rules 37).
@@ -2980,7 +3017,7 @@ export const STATES: State[] = [
       await expectDeltaInk(page);
       await expectFoldCorners(page);
       // C2: a tip never clips: the Bloom chart's last row and a top-row heat cell, scrolled just under the sticky bar.
-      for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
+      for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1 >> .bar-label', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
         const el = page.locator(target);
         await el.evaluate((e) => {
           const bar = document.querySelector('.filter-bar')!.getBoundingClientRect().bottom;
@@ -3078,12 +3115,12 @@ export const STATES: State[] = [
       // ZP6 half-number bands are labeled by their first setting, the tip gives the range (no-match bands: vitest).
       const grind = page.locator('[data-section="brewing-grind"]');
       await expect(grind.locator('.bar-label')).toHaveText(['5.0', '5.5', '6.0']);
-      await grind.locator('.bar-row').first().click();
+      await grind.locator('.bar-row .bar-label').first().click();
       await expect(grind.locator('.cell-tip .tip-title').first()).toHaveText('5.0 – 5.4');
     } },
   { name: 'insights-brewing-tip', path: () => '/insights?tab=brewing',
     act: async (page) => {
-      await page.locator('[data-section="brewing-temp"] .bar-row').first().click();
+      await page.locator('[data-section="brewing-temp"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
     } },
   ...(['ratio', 'dose', 'time', 'bloom', 'grind'] as const).map((v) => ({
@@ -3574,7 +3611,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-water-tip', path: () => '/insights?tab=water',
     act: async (page) => {
-      await page.locator('[data-section="water-gh"] .bar-row').first().click();
+      await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
   { name: 'insights-gear', path: () => '/insights?tab=gear',
@@ -3791,19 +3828,21 @@ export const STATES: State[] = [
       const squeezed = await page.locator('.finding-grid .hl-card:has(.dgroup:not([hidden])) :is(.multi, .bars, .spark) svg').evaluateAll((ss) =>
         ss.filter((s) => s.getBoundingClientRect().height < 23).length);
       expect(squeezed).toBe(0);
-      // A tap on a card with clamped text opens that card's full-text popover (not its badge tip). Where no
-      // seeded card clamps at this width (768, phone landscape), the first graded card's caption is lengthened.
+      // A tap on a card's clamped body opens that card's full-text popover (not its badge tip); its empty space opens
+      // nothing (ui-rules 50). Where no seeded card's body clamps at this width, the first one's body is lengthened.
       const clamped = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
-        const isClamped = (c: Element) => [...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1);
+        const isClamped = (c: Element) => [...c.querySelectorAll('.body')].some((t) => t.scrollHeight > t.clientHeight + 1);
         const i = cs.findIndex((c) => c.querySelector('.hl-badge') && isClamped(c));
         if (i >= 0) return i;
-        const j = cs.findIndex((c) => c.querySelector('.hl-badge'));
-        cs[j].querySelector('.caption-link')!.textContent = 'A very long headline '.repeat(12);
+        const j = cs.findIndex((c) => c.querySelector('.hl-badge') && c.querySelector('.body'));
+        cs[j].querySelector('.body')!.textContent = 'A very long finding body '.repeat(16);
         return isClamped(cs[j]) ? j : -1;
       });
       expect(clamped).toBeGreaterThanOrEqual(0);
       const card = page.locator('.finding-grid .hl-card').nth(clamped);
       await card.locator('.hl-top').click({ position: { x: 2, y: 2 } }); // clear of the badge at its right
+      await expect(card.locator('.mode-tip:popover-open')).toHaveCount(0);
+      await card.locator('.body').click();
       await expect(card.locator('.mode-tip:popover-open')).toHaveCount(1);
       await expect(card.locator(`#full-${await card.getAttribute('id')}:popover-open`)).toBeVisible();
       await page.keyboard.press('Escape');
@@ -4436,28 +4475,113 @@ async function expectTapTip(page: Page, open: Locator | (() => Promise<unknown>)
   await tapOn(away);
   await expect(tip, 'a tap elsewhere closes it').toBeHidden();
 }
-// Taps (or clicks) a Chart.js canvas over a grid of points until its tip opens.
-async function tapChart(page: Page, canvas: Locator) {
+// A Chart.js tip opens only on a mark (ui-rules 50), so the sweeps aim at marks: points on colored pixels (a bar,
+// slice or line: chroma, unlike gray grid lines and text), one per 8px column, then a coarse grid as a fallback.
+async function chartPoints(canvas: Locator) {
   await canvas.scrollIntoViewIfNeeded();
-  const b = (await canvas.boundingBox())!;
+  await canvas.page().waitForTimeout(450); // the 400ms draw animation: marks at their final size
+  const b = (await canvas.boundingBox())!, vh = canvas.page().viewportSize()!.height;
+  const marks = await canvas.evaluate((c) => {
+    const cv = c as HTMLCanvasElement, k = cv.width / cv.getBoundingClientRect().width;
+    const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data, out: [number, number][] = [];
+    for (let x = 4; x < cv.width / k - 4; x += 8)
+      for (let y = 4; y < cv.height / k - 4; y += 2) {
+        const i = (Math.round(y * k) * cv.width + Math.round(x * k)) * 4;
+        if (d[i + 3] > 200 && Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 40) {
+          out.push([x, y + 2]);
+          break;
+        }
+      }
+    return out;
+  });
+  const grid: [number, number][] = [];
+  for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1; fx += 0.1) grid.push([b.width * fx, b.height * fy]);
+  return [...marks, ...grid].map(([x, y]) => [b.x + x, b.y + y] as const).filter(([, y]) => y > 60 && y < vh - 4);
+}
+// Taps (or clicks) a Chart.js canvas on its marks until its tip opens; returns where.
+async function tapChart(page: Page, canvas: Locator) {
   const tip = page.locator('.chart-container .cell-tip:popover-open');
-  for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1 && !(await tip.count()); fx += 0.1) {
-    const [x, y] = [b.x + b.width * fx, b.y + b.height * fy];
+  for (const [x, y] of await chartPoints(canvas)) {
     await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(60);
+    if (await tip.count()) return [x, y] as const;
   }
 }
 
-// Hovers a Chart.js canvas until its tip opens (bars hover by intersection, so it sweeps a grid of points); returns the tip.
+// Hovers a Chart.js canvas on its marks until its tip opens; returns the tip.
 async function hoverChart(page: Page, canvas: Locator) {
-  await canvas.scrollIntoViewIfNeeded();
-  const b = (await canvas.boundingBox())!;
   const tip = page.locator('.chart-container .cell-tip:popover-open');
-  for (const fy of [0.75, 0.5, 0.25]) for (let fx = 0.1; fx < 1 && !(await tip.count()); fx += 0.1) {
-    await page.mouse.move(b.x + b.width * fx, b.y + b.height * fy);
-    await page.waitForTimeout(100);
+  for (const [x, y] of await chartPoints(canvas)) {
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(60);
+    if (await tip.count()) break;
   }
   return tip;
+}
+
+// A tip opens only on its mark (ui-rules 50): the help cursor and the tip over the mark, neither over the empty space
+// beside it. `boxes`: the areas a mark sits in (a column, a row's track); `mark`: its selector inside them. Uses the
+// first box with a gap of 12px or more beside its mark (a mark's hit area may reach 4px past it).
+async function expectMarkOnly(page: Page, boxes: Locator, mark: string, tip: Locator) {
+  const at = await boxes.evaluateAll((bs, mark) => {
+    const gapOf = (b: Element) => {
+      const br = b.getBoundingClientRect(), mr = b.querySelector(mark)?.getBoundingClientRect();
+      if (!mr?.width || !mr.height) return null;
+      const [cx, cy] = [mr.left + mr.width / 2, mr.top + mr.height / 2];
+      const gaps: [number, number[]][] = [
+        [mr.top - br.top, [cx, (br.top + mr.top) / 2]], [br.bottom - mr.bottom, [cx, (mr.bottom + br.bottom) / 2]],
+        [mr.left - br.left, [(br.left + mr.left) / 2, cy]], [br.right - mr.right, [(mr.right + br.right) / 2, cy]]];
+      const [size, empty] = gaps.sort((x, y) => y[0] - x[0])[0];
+      return size >= 12 ? { empty, mark: [cx, cy] } : null;
+    };
+    const b = bs.find(gapOf);
+    b?.scrollIntoView({ block: 'center' });
+    return b ? gapOf(b) : null;
+  }, mark);
+  expect(at, `a ${mark} with empty space beside it`).not.toBeNull();
+  const cursor = (x: number, y: number) => page.evaluate(([x, y]) => getComputedStyle(document.elementFromPoint(x, y)!).cursor, [x, y]);
+  const [[ex, ey], [mx, my]] = [at!.empty, at!.mark];
+  await page.mouse.move(ex, ey);
+  await page.waitForTimeout(150);
+  await expect(tip, 'empty space beside a mark opens no tip').toBeHidden();
+  expect(await cursor(ex, ey), 'the arrow over empty space').toBe('default');
+  await page.mouse.move(mx, my);
+  await expect(tip, 'its mark opens the tip').toBeVisible();
+  expect(await cursor(mx, my)).toBe('help');
+  await page.mouse.move(0, 0);
+  await expect(tip).toBeHidden();
+}
+
+// The same on a Chart.js canvas: an unpainted spot with no mark within 10px opens no tip and keeps
+// the arrow; a mark opens the tip with the help cursor.
+async function expectChartMarkOnly(page: Page, canvas: Locator) {
+  await canvas.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(450); // the 400ms draw animation
+  const b = (await canvas.boundingBox())!;
+  const empty = await canvas.evaluate((c) => {
+    const cv = c as HTMLCanvasElement, k = cv.width / cv.getBoundingClientRect().width;
+    const d = cv.getContext('2d')!.getImageData(0, 0, cv.width, cv.height).data, w = cv.width / k, h = cv.height / k;
+    const at = (x: number, y: number) => (Math.round(y * k) * cv.width + Math.round(x * k)) * 4;
+    // Unpainted itself, and no colored pixel (a mark; gray grid lines and labels aren't marks) within 10px.
+    const clear = (x: number, y: number) => {
+      if (d[at(x, y) + 3] > 0) return false;
+      for (let dy = -10; dy <= 10; dy += 2) for (let dx = -10; dx <= 10; dx += 2) {
+        const i = at(x + dx, y + dy);
+        if (d[i + 3] > 0 && Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 40) return false;
+      }
+      return true;
+    };
+    for (let y = h * 0.1; y < h * 0.9; y += 4) for (let x = w * 0.15; x < w * 0.95; x += 4) if (clear(x, y)) return [x, y];
+    return null;
+  });
+  expect(empty, 'an empty spot in the chart').not.toBeNull();
+  const tip = page.locator('.chart-container .cell-tip:popover-open');
+  await page.mouse.move(b.x + empty![0], b.y + empty![1]);
+  await page.waitForTimeout(150);
+  await expect(tip, 'empty chart space opens no tip').toHaveCount(0);
+  expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'the arrow over empty chart space').toBe('default');
+  await expect(await hoverChart(page, canvas), 'a mark opens the tip').toBeVisible();
+  expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'help over a mark').toBe('help');
 }
 
 // Every text node naming the seed's skip coffee sits in a .coffee-name span in the --color-skip color (hidden tips and

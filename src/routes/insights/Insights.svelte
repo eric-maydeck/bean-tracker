@@ -11,7 +11,6 @@
 </script>
 
 <script lang="ts">
-  import { labelTip } from '$lib/components/labelTip';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -48,7 +47,6 @@
   // Card sizes come from content (ui-rules 34): a chart or a versus split is LARGE, a number SMALL.
   // The card's title: the headline plus each versus side in full (a clamped side label's only full-text route besides the popover).
   // A card's hover tip: the headline and, for a two-sided finding, each side (the click popover adds the body).
-  const full = (f: Finding): Tip => ({ title: f.headline, lines: f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : [] });
   const large = (f: Finding) => f.sides?.length === 2 || (f.series?.length ?? 0) > 1 || (!!f.multi && f.multi.x.length > 1 && f.multi.lines.length > 0);
   let sized = $derived(sizedGrid(grid, large));
   let mythVars = $derived(rowVars(t.myths.length));
@@ -108,11 +106,34 @@
     return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
   }
 
-  // A tap on a card whose headline or body is clamped shows the full text (title covers hover).
+  // A clamped headline or body opens the card's full text, from that text only, never the card's empty space
+  // (ui-rules 49, 50): a mouse hover while over it, or a tap/click that keeps it open until a tap elsewhere.
+  const clampedText = (el: EventTarget | null) => {
+    const t = (el as Element | null)?.closest?.<HTMLElement>('.body, .stat-label');
+    return t && t.scrollHeight > t.clientHeight + 1 ? t : null;
+  };
+  const fullOf = (e: Event) => document.getElementById((e.currentTarget as HTMLElement).dataset.tip!)!;
+  let hovered: HTMLElement | null = null; // the full text a hover opened: a click on its text keeps it open
+  function clampOver(e: PointerEvent) {
+    const t = clampedText(e.target);
+    if (t) t.style.cursor = 'help';
+    if (hovered && !hovered.matches(':popover-open')) hovered = null; // Escape or a tap elsewhere closed it
+    if (e.pointerType !== 'mouse' || !t || hovered) return;
+    const p = fullOf(e);
+    if (!p.matches(':popover-open')) (p.showPopover(), (hovered = p));
+  }
+  function clampOut(e: PointerEvent) {
+    const t = clampedText(e.target);
+    if (!hovered || !t || t.contains(e.relatedTarget as Node)) return;
+    if (hovered.matches(':popover-open')) hovered.hidePopover();
+    hovered = null;
+  }
   function unclamp(e: MouseEvent) {
-    const c = e.currentTarget as HTMLElement;
-    if ((e.target as Element).closest('a, button, .mode-tip, .text-tip')) return; // a text tip opens its own tip
-    if ([...c.querySelectorAll('.body, .stat-label')].some((t) => t.scrollHeight > t.clientHeight + 1)) document.getElementById(c.dataset.tip!)!.togglePopover();
+    if ((e.target as Element).closest('a, button, .mode-tip, .text-tip') || !clampedText(e.target)) return;
+    // A click pins it: the hover's tip stays; one a light dismiss closed on this click opens again.
+    const p = fullOf(e);
+    hovered = null;
+    if (!p.matches(':popover-open')) p.showPopover();
   }
 
   // ---- Deck: position is component state, not URL (spec). ----
@@ -290,7 +311,7 @@
       {#each sized as { item: f, size, style }, i (f.key)}
         {@const id = anchor(f.key)}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions (the clamped text is in the DOM for readers) -->
-        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" use:labelTip={full(f)} onclick={unclamp}>
+        <div class="hl-card finding" {id} {style} data-size={size} data-tip="full-{id}" onpointerover={clampOver} onpointerout={clampOut} onclick={unclamp}>
           <div class="hl-top">{@render badge(f, `g-${i}`)}</div>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body"><CoffeeName text={f.body} /></span>{/if}

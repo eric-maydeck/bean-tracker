@@ -315,9 +315,12 @@
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 400 },
-        // Line charts read by date: hovering anywhere over a day shows every
-        // series' value for it, not just a point under the cursor.
-        interaction: type === 'line' ? { mode: 'index', intersect: false } : undefined,
+        // A tip opens only on a mark (ui-rules 50): a bar, a slice, or within 8px of a line's point, never the
+        // plot's empty space. On a line chart a point shows every series' value for its date (index mode).
+        interaction: { mode: type === 'line' ? 'index' : 'nearest', intersect: true },
+        elements: { point: { hitRadius: 8 } },
+        // The help cursor over a mark (every mark has a tip), the arrow elsewhere.
+        onHover: (_e, els, c) => (c.canvas.style.cursor = els.length ? 'help' : ''),
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,

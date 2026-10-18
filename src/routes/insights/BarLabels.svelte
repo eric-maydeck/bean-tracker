@@ -24,6 +24,8 @@
   /* Full labels (roast / process groups): the value, then the name, cut with an ellipsis rather than spilling. */
   .bar-labels.full span {
     min-width: 0;
+    max-width: 100%;
+    justify-self: center; /* the text's own width, so only the label opens its tip (ui-rules 50) */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

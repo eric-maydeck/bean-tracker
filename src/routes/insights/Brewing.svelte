@@ -233,7 +233,7 @@
     border: 0;
     padding: 0;
     background: none;
-    cursor: help;
+    pointer-events: none; /* only the bar opens the tip, not the column's space above it (ui-rules 50) */
   }
   .settle-cols .col:focus-visible {
     outline: 2px solid var(--color-accent);
@@ -241,6 +241,8 @@
   }
   /* One series, no categories: the lone-highlight brown (ui-rules 42). */
   .settle-cols .bar {
+    pointer-events: auto;
+    cursor: help;
     width: min(100%, 3rem);
     border-radius: 3px 3px 0 0;
     background-color: var(--chart-color-1);

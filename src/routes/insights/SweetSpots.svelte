@@ -118,9 +118,14 @@
     const el = wrap.querySelectorAll('.col')[i];
     tip = el ? { key, i, el, hover } : null;
   }
+  // Only a band's mark (its bar, the usual dot) or an end label (the first or last band) opens its tip, never the
+  // column's empty space above or below the bar (ui-rules 50).
   function tipFrom(e: MouseEvent | PointerEvent, key: string, n: number, hover: boolean) {
-    const wrap = e.currentTarget as HTMLElement, r = wrap.getBoundingClientRect();
-    const i = Math.min(n - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * n)));
+    const wrap = e.currentTarget as HTMLElement, el = e.target as Element;
+    const col = el.closest('.bar, .usual-dot')?.closest('.col');
+    const end = el.closest('.ends span');
+    const i = col ? [...wrap.querySelectorAll('.col')].indexOf(col) : end ? (end.previousElementSibling ? n - 1 : 0) : -1;
+    if (i < 0) return void (tip?.key === key && (hover ? tip.hover : true) && (tip = null));
     if (!hover && tip?.key === key && tip.i === i && !tip.hover) return (tip = null);
     showTip(wrap, key, i, hover);
   }
@@ -413,6 +418,17 @@
   }
   .bar.up {
     border-radius: 3px 3px 0 0;
+  }
+  /* A thin bar's hit area reaches 4px past each end, so a near-zero band is still easy to point at. */
+  .bar::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+  .bar,
+  .usual-dot,
+  .ends span {
+    cursor: help; /* the band's tip (ui-rules 50); the column's empty space keeps the arrow */
   }
   /* No match (grind brewed there, never paired): a dotted mark on the zero line keeps the setting in range. */
   .bar.none {
