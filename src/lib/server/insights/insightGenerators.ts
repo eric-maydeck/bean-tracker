@@ -19,7 +19,7 @@ export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story';
 export interface Finding {
   key: string; theme: Theme; kind: CardKind;
   headline: string; // short, number-first
-  headTip?: { phrase: string; tip: string }; // a phrase in the headline whose tip clarifies it (the like-group's name)
+  headLines?: string[]; // clarifying lines under the full headline in its tip (the like-group compared with)
   value?: string; // the big value ("+0.28")
   sides?: { label: string; value: string }[]; // versus: exactly 2
   body?: string; // 1-3 plain sentences
@@ -566,10 +566,12 @@ const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]): Finding[] => 
   }
   if (multi.lines.length < 2 || flat(multi, 15)) return [];
   const [a, b] = [months[0], months.at(-1)!];
-  return [{
-    ...base, key: `gearShare:${dim}`, headline: `${name}: ${a.top!.name === b.top!.name ? '' : 'now '}mostly ${b.top!.name}`, // the earlier gear: in the body
-    body: `${a.top!.name} had ${pct(a.top!.n / a.total)} of ${monthLabel(a.m)}; ${b.top!.name} ${pct(b.top!.n / b.total)} of ${monthLabel(b.m)}.`
-  }];
+  const [sa, sb] = [`${pct(a.top!.n / a.total)} of ${monthLabel(a.m)}`, `${pct(b.top!.n / b.total)} of ${monthLabel(b.m)}`];
+  // A switch is a dense card: its words go in the headline's tip, leaving the headline, sample and chart (user,
+  // 2026-10-18: the deliberate exception to "a tip doesn't repeat the card").
+  return [a.top!.name === b.top!.name
+    ? { ...base, key: `gearShare:${dim}`, headline: `${name}: mostly ${b.top!.name}`, body: `${a.top!.name} had ${sa}; ${b.top!.name} ${sb}.` }
+    : { ...base, key: `gearShare:${dim}`, headline: `${name}: now mostly ${b.top!.name}`, headLines: [`Before: ${a.top!.name}`, `${a.top!.name}: ${sa}`, `${b.top!.name}: ${sb}`] }];
 });
 
 // The top 2 by brews, on bags brewed with both (demeaned within those bags). A confident dead heat
@@ -589,7 +591,7 @@ const sameBagVersus: Generator = (c) => SAME_BAG.flatMap((dim) => {
   const base = {
     key: `sameBagVersus:${dim}`, theme: 'gear' as const, kind: 'versus' as const, value: signed(diff, d),
     sides: [{ label: a, value: signed(mean(da), d) }, { label: b, value: signed(mean(db), d) }],
-    sample: `same bags · ${new Set(rows.map((r) => r.coffeeId)).size} bags, ${rows.length} brews`, href: `${LB}&open=${dim}`
+    sample: `Same bags · ${new Set(rows.map((r) => r.coffeeId)).size} bags, ${rows.length} brews`, href: `${LB}&open=${dim}`
   };
   if (Math.abs(diff) < TIE && Math.abs(diff) + 2 * se < TIE_BAND) return [{ ...base, headline: `${a} and ${b} tie`, z: null, strength: null }];
   const [w, l] = diff > 0 ? [a, b] : [b, a];
@@ -826,10 +828,10 @@ const likeStandouts: Generator = (c) => {
   const named = new Map(tagTwins([[id], ...same].map(([x]) => { const b = byId.get(x as number); return { x, label: bagLabel(c, x as number, b), roastedOn: b?.purchaseDate ?? null, openedOn: b?.firstBrew ?? null }; }))
     .map((t) => [t.x, t.tag ? `${t.label} (${t.tag})` : t.label]));
   const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
-    // The like-group's long name ("Washed Ultralight coffees from Colombia by H&S") is the tip on "like coffees",
-    // so the headline fits 2 lines (user, 2026-10-18).
+    // The like-group's long name ("Washed Ultralight coffees from Colombia by H&S") is in the headline's tip, so the
+    // headline fits 2 lines (user, 2026-10-18).
     key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} like coffees by ${Math.abs(top.gap).toFixed(1)}`,
-    headTip: { phrase: 'like coffees', tip: top.label.charAt(0).toUpperCase() + top.label.slice(1) },
+    headLines: [`Compared with: ${top.label}`],
     value: gapText(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);

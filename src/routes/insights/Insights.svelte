@@ -27,7 +27,6 @@
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
-  import Headline from './Headline.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
 
   let { t, theme, inputs, today, explicit, placeTip, choose }: {
@@ -114,21 +113,27 @@
     const t = (el as Element | null)?.closest?.<HTMLElement>(sel);
     return t && t.scrollHeight > t.clientHeight + 1 ? t : null;
   };
-  // A clamped headline (2 lines at most) shows its full text in the shared tip, from the headline only: on a mouse
-  // hover while over it; a click or tap still follows its own #anchor link and also keeps the tip open until a tap
-  // elsewhere (user, 2026-10-18). An unclamped headline is just its link.
-  let headTip = $state<{ el: HTMLElement; text: string; hover: boolean } | null>(null);
-  const headOf = (e: Event) => ((e.target as Element).closest?.('.phrase-tip') ? null : clampedText(e.target, '.hl-caption .stat-label'));
+  // The headline tip, one on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
+  // (`headLines`: the like-group compared with, a gear switch's before and shares). Only when the headline is clamped
+  // (2 lines at most) or has lines; else the headline is just its link. From the headline only: a mouse hover while
+  // over it; a click or tap still follows its own #anchor link and also keeps the tip open until a tap elsewhere.
+  let headTip = $state<{ el: HTMLElement; tip: Tip; hover: boolean } | null>(null);
+  let headLines = $derived(new Map(grid.map((f) => [anchor(f.key), f.headLines ?? []])));
+  function headOf(e: Event) {
+    const t = (e.target as Element).closest?.<HTMLElement>('.hl-caption .stat-label'), id = t?.closest('.hl-card')?.id;
+    const lines = (id && headLines.get(id)) || [];
+    return t && (lines.length || t.scrollHeight > t.clientHeight + 1) ? { el: t, tip: { title: t.textContent!.trim(), lines } } : null;
+  }
   function headOver(e: PointerEvent) {
-    const t = headOf(e);
-    if (e.pointerType === 'mouse' && t && headTip?.el !== t) headTip = { el: t, text: t.textContent!.trim(), hover: true };
+    const h = headOf(e);
+    if (e.pointerType === 'mouse' && h && headTip?.el !== h.el) headTip = { ...h, hover: true };
   }
   function headOut(e: PointerEvent) {
-    if (headTip?.hover && headOf(e) === headTip.el && !headTip.el.contains(e.relatedTarget as Node)) headTip = null;
+    if (headTip?.hover && headOf(e)?.el === headTip.el && !headTip.el.contains(e.relatedTarget as Node)) headTip = null;
   }
   function headClick(e: MouseEvent) {
-    const t = headOf(e);
-    if (t) headTip = { el: t, text: t.textContent!.trim(), hover: false };
+    const h = headOf(e);
+    if (h) headTip = { ...h, hover: false };
   }
   const fullOf = (e: Event) => document.getElementById((e.currentTarget as HTMLElement).dataset.tip!)!;
   let hovered: HTMLElement | null = null; // the full text a hover opened: a click on its text keeps it open
@@ -337,7 +342,7 @@
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body"><CoffeeName text={f.body} /></span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
-          <TileCaption href="#{id}" label={f.headline} tip={f.headTip} />
+          <TileCaption href="#{id}" label={f.headline} />
           <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
         </div>
       {/each}
@@ -350,7 +355,7 @@
 </section>
 
 <svelte:document onclick={(e) => headTip && !headTip.el.contains(e.target as Node) && (headTip = null)} />
-{#if headTip}<FloatTip anchor={headTip.el} reveal={!headTip.hover} onclose={() => (headTip = null)}><TipBody tip={{ title: headTip.text }} /></FloatTip>{/if}
+{#if headTip}<FloatTip anchor={headTip.el} reveal={!headTip.hover} onclose={() => (headTip = null)}><TipBody tip={headTip.tip} /></FloatTip>{/if}
 
 {#if deck.length}
   <section class="chart-panel">
@@ -371,7 +376,7 @@
         {#each deck as f, i (f.key)}
           <article class="story" id={anchor(f.key)} aria-hidden={i !== pos} inert={i !== pos}>
             <div class="story-head">
-              <h3><Headline text={f.headline} tip={f.headTip} /></h3>
+              <h3><CoffeeName text={f.headline} /></h3>
               {@render badge(f, `s-${i}`)}
             </div>
             <div class="story-visual">{@render visual(f)}</div>
@@ -404,7 +409,7 @@
     <div class="hl-grid myth-grid">
       {#each t.myths as f, i (f.key)}
         <div class="hl-card myth" id={anchor(f.key)} style={mythVars[i]}>
-          <h3><Headline text={f.headline} tip={f.headTip} /></h3>
+          <h3><CoffeeName text={f.headline} /></h3>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
           <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
@@ -495,7 +500,7 @@
       {#each t.tooEarly as f (f.key)}
         <li>
           <div class="early-top"><span class="early-theme">{THEME_LABEL[f.theme]}</span><span>{f.sample}</span></div>
-          <p class="early-head"><Headline text={f.headline} tip={f.headTip} /></p>
+          <p class="early-head"><CoffeeName text={f.headline} /></p>
 
           <p class="early-why">{early(f)}</p>
           {#if f.progress !== undefined}
@@ -564,17 +569,14 @@
   .finding > * {
     flex-shrink: 0;
   }
-  /* A headline is 2 lines at most at any width (1 when the card tightens fully), cut with an ellipsis; its full text
-     is its tip (user, 2026-10-18). */
+  /* A headline is 2 lines at any width and tightening step, cut with an ellipsis; its full text is its tip (user,
+     2026-10-18). */
   .finding :global(.hl-caption .stat-label) {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: var(--head-clamp, 2);
     line-clamp: var(--head-clamp, 2);
     overflow: hidden;
-  }
-  .finding:global([data-tight='3']) {
-    --head-clamp: 1;
   }
   .finding .body,
   .finding:global([data-tight='2']) .sample {
@@ -613,6 +615,13 @@
     vertical-align: middle;
   }
   /* A long value wraps at its spaces inside the card rather than spill (B3). */
+  /* A findings card's versus split takes the card's spare height, its values a size up, so no hole opens under it. */
+  .finding > .vs {
+    flex: 1 1 auto;
+  }
+  .finding .vs .hl-value {
+    font-size: min(2rem, 13cqw / var(--q, 2));
+  }
   .finding > .hl-value {
     max-width: 100%;
     white-space: normal;
@@ -622,6 +631,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: start;
+    align-content: center;
     gap: var(--space-1);
     width: 100%;
   }

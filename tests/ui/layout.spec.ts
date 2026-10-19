@@ -2870,7 +2870,7 @@ export const STATES: State[] = [
         r.selectNodeContents(h);
         const lines = new Set([...r.getClientRects()].filter((q) => q.width > 1 && q.bottom <= h.getBoundingClientRect().bottom + 1).map((q) => Math.round(q.bottom))).size;
         const clamp = +getComputedStyle(h).webkitLineClamp;
-        return lines > 2 || !(clamp >= 1 && clamp <= 2) ? [`${h.closest('.hl-card')!.id}: ${lines} lines, clamp ${clamp}`] : [];
+        return lines > 2 || clamp !== 2 ? [`${h.closest('.hl-card')!.id}: ${lines} lines, clamp ${clamp}`] : [];
       }));
       expect(over).toEqual([]);
       // A clamped headline (one is lengthened where none clamps at this width) shows its full text as a tip: on hover
@@ -2911,21 +2911,44 @@ export const STATES: State[] = [
         await expect(tip).toHaveCount(0);
       }
     } },
-  { name: 'insights-findings-phrase-tip', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-findings-headline-tip', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
-      // likeStandout: "like coffees" opens the like-group's name in the shared tip (hover; a tap keeps it), alone (user,
-      // 2026-10-18: tips carry the clarifying info, the headline stays short).
-      const phrase = page.locator('#insight-likeStandout .phrase-tip');
-      await expect(phrase).toHaveText('like coffees');
+      // One headline tip on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
+      // (likeStandout: the like-group compared with). Hover on desktop; a tap follows the #anchor and opens it too.
+      const head = page.locator('#insight-likeStandout .caption-link'), full = (await head.textContent())!.trim();
+      expect(full).toMatch(/ like coffees by /);
       const tip = page.locator('.cell-tip:popover-open');
       if (!touch()) {
-        await phrase.hover();
+        await head.hover();
         await expect(tip).toHaveCount(1);
-        await expect(tip.locator('.tip-title')).toHaveText(/coffees/);
+        await expect(tip.locator('.tip-title')).toHaveText(full);
+        await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Compared with: .+coffees/);
         await page.mouse.move(1, 1);
         await expect(tip).toHaveCount(0);
       }
-      await expectTapTip(page, phrase, tip, page.locator('h1'));
+      await tapOn(head);
+      await expect(page).toHaveURL(/#insight-likeStandout$/);
+      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Compared with: /);
+      await tapOn(page.locator('h1'));
+      await expect(tip).toHaveCount(0);
+      // A versus card's split fills the card: "Same bags" sample, no hole.
+      const vs = page.locator('[id^="insight-sameBagVersus-"]').first();
+      await expect(vs.locator('.sample')).toHaveText(/^Same bags · \d+ bags, \d+ brews/);
+      await expectNoHoles(vs);
+    } },
+  { name: 'insights-findings-gear-switch', path: () => '/insights?tab=insights&range=3m',
+    act: async (page) => {
+      // A gear switch card is its headline, sample and a tall chart; its words are the headline's tip (user, 2026-10-18).
+      const card = page.locator('[id^="insight-gearShare-"]').filter({ has: page.locator('.caption-link', { hasText: 'now mostly' }) }).first();
+      await expect(card).toBeVisible();
+      await expect(card.locator('.body')).toHaveCount(0);
+      const [chart, h] = await card.evaluate((c) => [c.querySelector('.multi svg')!.getBoundingClientRect().height, c.getBoundingClientRect().height]);
+      expect(chart / h, 'the chart is the card\'s draw').toBeGreaterThan(0.25);
+      await expectNoHoles(card);
+      const tip = page.locator('.cell-tip:popover-open');
+      await tapOn(card.locator('.caption-link'));
+      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Before: /);
+      await expect(tip.locator('.tip-lines li')).toHaveCount(3);
     } },
   { name: 'insights-milestones-ruler-cursor', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
@@ -4591,6 +4614,32 @@ async function tapChart(page: Page, canvas: Locator) {
     await page.waitForTimeout(60);
     if (await tip.count()) return [x, y] as const;
   }
+}
+
+// No large hole inside a card (fill panel space): the tallest band of its content box with no text or graphic in it is
+// under `max` of the card's height.
+async function expectNoHoles(card: Locator, max = 0.25) {
+  const r = await card.evaluate((c) => {
+    const cb = c.getBoundingClientRect(), cs = getComputedStyle(c);
+    const top = cb.top + parseFloat(cs.paddingTop), bottom = cb.bottom - parseFloat(cs.paddingBottom), spans: [number, number][] = [];
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      if (!n.textContent!.trim() || n.parentElement!.closest('[popover]')) continue;
+      const rg = document.createRange();
+      rg.selectNodeContents(n);
+      for (const q of rg.getClientRects()) if (q.height) spans.push([q.top, q.bottom]);
+    }
+    for (const s of c.querySelectorAll('svg, .badge')) if (!s.closest('[popover]') && s.getBoundingClientRect().height) spans.push([s.getBoundingClientRect().top, s.getBoundingClientRect().bottom]);
+    spans.sort((x, y) => x[0] - y[0]);
+    let at = top, gap = 0;
+    for (const [t, b] of spans) {
+      if (b <= at) continue;
+      gap = Math.max(gap, Math.min(t, bottom) - at);
+      at = Math.max(at, b);
+    }
+    return { gap: Math.max(gap, bottom - at), h: cb.height };
+  });
+  expect(r.gap / r.h, `a ${Math.round(r.gap)}px hole in a ${Math.round(r.h)}px card`).toBeLessThan(max);
 }
 
 // Hovers a Chart.js canvas on its marks until its tip opens; returns the tip.
