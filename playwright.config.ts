@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { setPriority } from 'node:os';
 import { profileFor, shotsOn } from './scripts/uiProfile.ts';
-import { VIEWPORTS } from './tests/ui/viewports';
+import { TWO_VIEWPORTS, VIEWPORTS } from './tests/ui/viewports';
 
 // Run profile (UI_PROFILE=performance|balanced|background, default balanced): workers + priority.
 // Workers and Firefox inherit the runner's priority. --workers=N on the CLI still wins.
@@ -51,6 +51,8 @@ export default defineConfig({
       dependencies: ['setup'],
       // States never save, so tests within a viewport can spread across workers.
       fullyParallel: true,
+      // Width-independent behavior states run at two viewports only (not generated elsewhere).
+      ...(TWO_VIEWPORTS.includes(name) ? {} : { grepInvert: /@two\b/ }),
       use: { ...use, storageState: '.ui-test/admin.json' }
     })),
     // Adds coffees to the shared DB, so it waits for every layout check.

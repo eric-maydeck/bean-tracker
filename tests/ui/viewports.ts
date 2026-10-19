@@ -21,3 +21,5 @@ export function pickViewports(list: string | undefined) {
   return ALL_VIEWPORTS.filter((v) => names.includes(v.name));
 }
 export const VIEWPORTS = pickViewports(process.env.UI_VIEWPORTS);
+// Where width-independent behavior states (tagged @two in layout.spec.ts) run: one touch phone, one desktop.
+export const TWO_VIEWPORTS = ['phone-portrait', 'w1280'];

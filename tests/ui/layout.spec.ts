@@ -20,6 +20,9 @@ interface State {
   name: string;
   path: (s: Seed) => string;
   act?: (page: Page, s: Seed) => Promise<void>;
+  // 'two' (tagged @two): phone-portrait + w1280 only (TWO_VIEWPORTS, playwright.config.ts). Only for a state whose
+  // assertions are all width-independent (tip text, URL sync, labels) and whose path an 'all' state also loads.
+  viewports?: 'all' | 'two';
 }
 
 // Stats → Not yet tracked → Link on the bean row containing `text`.
@@ -659,7 +662,7 @@ export const STATES: State[] = [
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
-  { name: 'coffee-detail-no-like', path: (s) => `/coffees/${s.slugs.frozen}`,
+  { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
   // Gate P4: a coffee with rated brews but no panel says why in one line; the tip has the counts; the link opens
   // the nearest view with a comparison (URL state), which offers Back to defaults.
@@ -1077,7 +1080,7 @@ export const STATES: State[] = [
     }
   },
   // A bare /stats URL is All time (DEFAULTS.range, user ruling 2026-10-17) and stays bare.
-  { name: 'stats-general', path: () => '/stats',
+  { name: 'stats-general', viewports: 'two', path: () => '/stats',
     act: async (page) => {
       await expect(page.getByLabel('Period')).toHaveValue('all');
       expect(new URL(page.url()).search).toBe('');
@@ -1113,7 +1116,7 @@ export const STATES: State[] = [
   },
   {
     // A tip value carries its unit, the other measure in parentheses (ui-rules 36): "1,750 g (14 bags)".
-    name: 'stats-breakdown-tip',
+    name: 'stats-breakdown-tip', viewports: 'two',
     path: () => '/stats',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
@@ -1208,7 +1211,7 @@ export const STATES: State[] = [
   })),
   {
     // ui-rules 46: the cost-per-roaster chart's bar labels are usd ("$0.05/g"), never Chart's plain-number fallback.
-    name: 'stats-bc-economics-usd',
+    name: 'stats-bc-economics-usd', viewports: 'two',
     path: () => '/stats?tab=bq&bc=economics',
     act: async (page) => {
       await page.addInitScript(() => {
@@ -1249,7 +1252,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-habits',
+    name: 'insights-habits', viewports: 'two',
     path: () => '/insights?tab=habits',
     act: async (page) => {
       await expect(page.locator('.insights-charts canvas')).toHaveCount(2);
@@ -1532,7 +1535,7 @@ export const STATES: State[] = [
   },
   { name: 'insights-habits-sticky', path: () => '/insights?tab=habits', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
-    name: 'insights-consumption-tab',
+    name: 'insights-consumption-tab', viewports: 'two',
     path: () => '/insights?tab=consumption',
     act: async (page) => expect(page.locator('.insights-charts canvas')).toHaveCount(2)
   },
@@ -1546,7 +1549,7 @@ export const STATES: State[] = [
   },
   {
     // The ~21-day ui seed is too short for months, even over all time (ruling P2).
-    name: 'insights-consumption-all',
+    name: 'insights-consumption-all', viewports: 'two',
     path: () => '/insights?tab=consumption&range=all',
     act: async (page) => {
       // The seed's insights brews reach back 60 days: all time spans months (1w keeps Month disabled).
@@ -1696,7 +1699,7 @@ export const STATES: State[] = [
   },
   {
     // Consumption: 4 tiles in the same columns as Totals, deltas on the three rates only.
-    name: 'insights-consumption',
+    name: 'insights-consumption', viewports: 'two',
     path: () => '/insights?range=1w&compare=1',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Consumption' }) });
@@ -1857,7 +1860,7 @@ export const STATES: State[] = [
   {
     // Mouse hover opens a click-for-explanation tip and leaving closes it; a click then keeps it open.
     // Touch viewports (no hover) only get the tap path, covered by insights-ratings-tip.
-    name: 'insights-tip-hover',
+    name: 'insights-tip-hover', viewports: 'two',
     path: () => '/insights',
     act: async (page) => {
       const btn = page.locator('.mode-tip-button').first();
@@ -1885,7 +1888,7 @@ export const STATES: State[] = [
   {
     // Score's ⓘ opens a dialog: hover shows a short tip instead, a click swaps it for the dialog. And a tip
     // closed by Escape after a hover reopens on the next click (no stale hover flag).
-    name: 'insights-tip-hover-dialog',
+    name: 'insights-tip-hover-dialog', viewports: 'two',
     path: () => '/insights?tab=leaderboards',
     act: async (page) => {
       if (!(await page.evaluate(() => matchMedia('(hover: hover)').matches))) return;
@@ -2007,14 +2010,14 @@ export const STATES: State[] = [
     } },
   { name: 'insights-sample-habits', path: () => '/insights?tab=habits&measure=rating&range=all',
     act: async (page) => expect(page.locator('.heat-cell.small-sample-mark').first()).toBeVisible() },
-  { name: 'insights-sample-legend', path: () => '/insights?tab=brewing',
+  { name: 'insights-sample-legend', viewports: 'two', path: () => '/insights?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Only 2 bags');
       await expect(page.locator('.mode-tip:popover-open')).toContainText('low confidence, under 3 bags or 10 rated brews');
       await expect(page.locator('.mode-tip:popover-open .sample-chip')).toBeVisible();
     } },
-  { name: 'insights-strength-badges', path: () => '/insights?tab=sweetspots',
+  { name: 'insights-strength-badges', viewports: 'two', path: () => '/insights?tab=sweetspots',
     act: async (page) => {
       // The strength badges read Likely / Possible, never Solid / Hint; the legend explains both and "no badge".
       for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible)$/);
@@ -2940,7 +2943,7 @@ export const STATES: State[] = [
       await expectNoHoles(vs);
       await expectValueLine(page);
     } },
-  { name: 'insights-findings-list-head-tips', path: () => '/insights?tab=insights&range=all',
+  { name: 'insights-findings-list-head-tips', viewports: 'two', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       // The same headline tip in Top stories, Myth busters and Too early as in the grid (user, 2026-10-18). Where no
       // seeded headline there has points, one is given a point: the mechanism is what's under test.
@@ -3020,27 +3023,27 @@ export const STATES: State[] = [
       await expect(full, 'a click keeps it open').toBeVisible();
     } },
   // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
-  { name: 'tap-tip-text', path: () => '/coffees?status=all&view=list',
+  { name: 'tap-tip-text', viewports: 'two', path: () => '/coffees?status=all&view=list',
     act: (page) => expectTapTip(page, page.getByRole('button', { name: /^Roast level: / }).first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
   { name: 'tap-tip-mode', path: () => '/stats?people=person',
     act: (page) => expectTapTip(page, page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' }),
       page.locator('.mode-tip:popover-open'), page.getByRole('heading', { name: 'Time to Clear' })) },
-  { name: 'tap-tip-chart', path: () => '/stats',
+  { name: 'tap-tip-chart', viewports: 'two', path: () => '/stats',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
       await expectTapTip(page, () => tapChart(page, panel.locator('canvas')), page.locator('.chart-container .cell-tip:popover-open'), panel.locator('h2'));
     } },
-  { name: 'tap-tip-sample', path: () => '/insights?tab=leaderboards&avg=raw',
+  { name: 'tap-tip-sample', viewports: 'two', path: () => '/insights?tab=leaderboards&avg=raw',
     act: (page) => expectTapTip(page, page.locator('.sample-note').first(), page.locator('.cell-tip:popover-open'), page.locator('.insights-period').last()) },
-  { name: 'tap-tip-label', path: () => '/insights?tab=habits&range=1w&compare=1',
+  { name: 'tap-tip-label', viewports: 'two', path: () => '/insights?tab=habits&range=1w&compare=1',
     act: (page) => expectTapTip(page, page.locator('.insights-delta').first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
-  { name: 'tap-tip-heatmap', path: () => '/insights?tab=habits',
+  { name: 'tap-tip-heatmap', viewports: 'two', path: () => '/insights?tab=habits',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open'), away = page.locator('.insights-period').last();
       await expectTapTip(page, page.locator('.heatmap .heat-cell').nth(10), tip, away);
       await expectTapTip(page, page.locator('.brew-calendar .cal-cell').last(), tip, away);
     } },
-  { name: 'tap-tip-map', path: () => '/insights?tab=leaderboards&rank=brews',
+  { name: 'tap-tip-map', viewports: 'two', path: () => '/insights?tab=leaderboards&rank=brews',
     act: async (page) => {
       const tip = page.locator('.cell-tip:popover-open');
       const tapEthiopia = async () => {
@@ -3241,7 +3244,7 @@ export const STATES: State[] = [
       const bold = page.locator('[data-section="brewing-temp"] .bar-label.bold');
       await expect(bold).toHaveText(['88 °C', '91 °C', '92 °C', '94 °C']);
     } },
-  { name: 'insights-brewing-zp6', path: () => '/insights?tab=brewing&grinder=zp6-special',
+  { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/insights?tab=brewing&grinder=zp6-special',
     act: async (page) => {
       await expect(page.getByLabel('Grinder')).toHaveValue('zp6-special');
       await expect(page.locator('[data-section="brewing-grind"] .bar-row.small').first()).toBeVisible();
@@ -3251,7 +3254,7 @@ export const STATES: State[] = [
       await grind.locator('.bar-row .bar-label').first().click();
       await expect(grind.locator('.cell-tip .tip-title').first()).toHaveText('5.0 – 5.4');
     } },
-  { name: 'insights-brewing-tip', path: () => '/insights?tab=brewing',
+  { name: 'insights-brewing-tip', viewports: 'two', path: () => '/insights?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-temp"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="brewing-temp"] .cell-tip')).toContainText(/brews/);
@@ -3742,7 +3745,7 @@ export const STATES: State[] = [
       await expect(eras.locator('.cell-tip')).toHaveCount(0);
       await eras.locator('.seg:focus').blur();
     } },
-  { name: 'insights-water-tip', path: () => '/insights?tab=water',
+  { name: 'insights-water-tip', viewports: 'two', path: () => '/insights?tab=water',
     act: async (page) => {
       await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
@@ -4593,7 +4596,7 @@ export const STATES: State[] = [
   },
   // Holder labels, tie lists and the full-text tip (Records); server-built feed lines (Milestones).
   { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
-  { name: 'skip-name-insights-milestones', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
+  { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
 ];
 
 // A tip a hover opens also opens on a tap (a click without touch) and stays open until a tap elsewhere, one at a time
@@ -4815,7 +4818,7 @@ const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
 
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES) {
-  test(state.name, { tag: routeTag(state) }, async ({ page }, info) => {
+  test(state.name, { tag: [routeTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     const s = seed();
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);
