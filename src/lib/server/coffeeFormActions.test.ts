@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { getRoasterImage } from './roasterImages';
 import { getRoasterWebsite } from './roasterWebsites';
-import { isActionFailure } from '@sveltejs/kit';
+import { isActionFailure, type ActionFailure } from '@sveltejs/kit';
 import { createDb } from './db';
 import { handleCoffeeCreate, handleCoffeeCreateAndLink } from './coffeeFormActions';
 import { importBeanConquerorData } from './beanconqueror';
@@ -44,7 +44,7 @@ describe('handleCoffeeCreate', () => {
     expect(isActionFailure(result)).toBe(true);
     if (isActionFailure(result)) {
       expect(result.status).toBe(400);
-      expect(result.data?.error).toMatch(/roaster/i);
+      expect((result as unknown as ActionFailure<{ error: string }>).data.error).toMatch(/roaster/i);
     }
   });
 });

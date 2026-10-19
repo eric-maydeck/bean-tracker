@@ -25,7 +25,7 @@ export function createAlert(db: DatabaseSync, input: NewAlertInput): AlertRow {
 }
 
 export function getActiveAlerts(db: DatabaseSync): AlertRow[] {
-  return db.prepare(`SELECT * FROM alerts WHERE dismissed_at IS NULL ORDER BY created_at DESC, id DESC`).all() as AlertRow[];
+  return db.prepare(`SELECT * FROM alerts WHERE dismissed_at IS NULL ORDER BY created_at DESC, id DESC`).all() as unknown as AlertRow[];
 }
 
 export function markAlertRead(db: DatabaseSync, id: number): void {

@@ -52,7 +52,7 @@ const MIN_BREWS_PER_RATED_GROUP = 3;
 // differ, so they all run through this one helper rather than duplicating
 // the row-shaping logic five times.
 function ratedGroups(db: DatabaseSync, sql: string): RatedGroup[] {
-  return db.prepare(sql).all() as RatedGroup[];
+  return db.prepare(sql).all() as unknown as RatedGroup[];
 }
 
 function addDays(isoDate: string, days: number): string {

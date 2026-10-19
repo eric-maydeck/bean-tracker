@@ -14,7 +14,7 @@
   const valueLabelsPlugin: Plugin = {
     id: 'valueLabels',
     afterDatasetsDraw(chart, _args, opts: { format?: (v: number) => string }) {
-      if (chart.config.type !== 'bar' || chart.options.indexAxis !== 'y') return;
+      if ((chart.config as { type?: string }).type !== 'bar' || chart.options.indexAxis !== 'y') return;
       const { ctx } = chart;
       const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
       chart.data.datasets.forEach((dataset, datasetIndex) => {
@@ -24,6 +24,7 @@
           const value = dataset.data[index];
           if (value == null) return;
           const { x, y } = element.tooltipPosition(true);
+          if (x == null || y == null) return;
           ctx.save();
           ctx.fillStyle = textColor;
           ctx.font = '12px sans-serif';

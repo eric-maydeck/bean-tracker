@@ -91,12 +91,12 @@ describe('subscriptions CRUD', () => {
 
 describe('withTotalGrams', () => {
   it('multiplies bag count by amount per bag', () => {
-    const sub = { ...sampleInput(), id: 1 };
+    const sub = { ...sampleInput(), id: 1, subscription_url: null, paused: 0, updated_at: '' };
     expect(withTotalGrams(sub).total_grams).toBe(600);
   });
 
   it('returns null when either input is missing', () => {
-    const sub = { ...sampleInput({ bag_count: null }), id: 1 };
+    const sub = { ...sampleInput({ bag_count: null }), id: 1, subscription_url: null, paused: 0, updated_at: '' };
     expect(withTotalGrams(sub).total_grams).toBeNull();
   });
 });
@@ -129,7 +129,7 @@ describe('computeNextRenewalDate', () => {
 
 describe('withNextRenewalDate', () => {
   it('adds next_renewal_date while preserving other fields', () => {
-    const sub = { ...sampleInput({ renewal_day: 10 }), id: 1 };
+    const sub = { ...sampleInput({ renewal_day: 10 }), id: 1, subscription_url: null, paused: 0, updated_at: '' };
     const result = withNextRenewalDate(sub, new Date('2026-03-01T00:00:00.000Z'));
     expect(result.next_renewal_date).toBe('2026-03-10');
     expect(result.roaster_service).toBe('Airworks');

@@ -617,7 +617,7 @@
   {/if}
 {/snippet}
 
-{#snippet expandedForm(coffee)}
+{#snippet expandedForm(coffee: CoffeeRow)}
   <CoffeeForm
     bind:this={formRefs[coffee.id]}
     coffee={formCoffeeFor(coffee)}

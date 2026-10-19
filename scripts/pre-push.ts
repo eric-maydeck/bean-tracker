@@ -1,5 +1,5 @@
 // Husky pre-push gate, all on the prod build and all 7 viewports, screenshots off.
-// Push to `release` (promotion = deploy): vitest + the full test:ui. Any other push: test:changed
+// Every push first runs tsc + svelte-check (must be clean). Push to `release` (promotion = deploy): vitest + the full test:ui. Any other push: test:changed
 // (vitest + the UI tags the pushed diff reaches; docs-only runs vitest alone).
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -28,6 +28,9 @@ if (import.meta.main) {
       process.exit(code);
     }
   };
+  // Typecheck must stay clean (zero errors): cheap, so it runs first on every push.
+  step('tsc', 'npx', ['tsc', '--noEmit']);
+  step('svelte-check', 'npx', ['svelte-check', '--threshold', 'error']);
   if (pushesRelease(stdin)) {
     step('vitest', 'npx', ['vitest', 'run']);
     step(`test:ui:prod, full (${env.UI_PROFILE})`, 'npx', ['playwright', 'test']);
