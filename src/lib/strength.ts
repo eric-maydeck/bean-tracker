@@ -6,5 +6,5 @@ export const STRENGTH: Record<Badge, string> = { solid: 'Likely', hint: 'Possibl
 export const STRENGTH_WHY: Record<Badge, string> = {
   solid: "The gap is at least twice its margin of error: about 95% sure it isn't chance.",
   hint: 'The gap is 1.5 to 2 times its margin of error: about 87% sure, so it could still be chance.',
-  early: 'Ahead so far, but under 1.5 times its margin of error: too little data to call it.'
+  early: 'Ahead (or looking tied) so far, but too little data to call it.'
 };

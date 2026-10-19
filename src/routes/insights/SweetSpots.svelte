@@ -34,9 +34,9 @@
   const emptyLine = useEmptyLine();
 
   // The card's number (largest): the winner, a lean, an early lead, the tied settings (or a summary of them), the one
-  // setting ever used, or no winner (tier 3).
+  // setting ever used, or not enough data (tier 3).
   const value = (p: Spot) =>
-    p.tie ? p.tie.head : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
+    p.tie ? p.tie.head : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'Not enough data';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
   const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
   // A tie's gap, rounded up so "within 0.2" is never short of the widest gap.
@@ -46,11 +46,11 @@
   const ses = (p: Spot) => p.bands.filter((b) => b.value !== null).map((b) => b.se);
   // The evidence behind it, one muted line (clamped; the card's title and popover have it in full).
   function evidence(p: Spot): string {
-    if (p.tie) return `${p.tie.labels.map(nb).join(', ')}: within ${within(p)} of each other · ${plural(p.bags, 'bag')}`;
+    if (p.tie) return `${p.tie.labels.map(nb).join(', ')}: within ${within(p)}${p.tie.proven ? '' : ' so far'} · ${plural(p.bags, 'bag')}`;
     if (p.tier === 1 && p.best) return `${labDelta(p.best.value, ses(p))} vs same bag · ${plural(p.bags, 'bag')}`;
     if (p.tier === 2 && p.best && p.next)
       return `Across ${p.group}: ${nb(p.best.label)} ${p.best.value.toFixed(1)} vs ${nb(p.next.label)} ${p.next.value.toFixed(1)} · ${plural(p.bags, 'bag')}`;
-    return p.varied ? 'Not enough brews to compare yet' : `No comparison yet: always ${p.usual.label} (avg ${p.usual.mean.toFixed(1)})`;
+    return p.varied ? '' : `No comparison yet: always ${p.usual.label} (avg ${p.usual.mean.toFixed(1)})`;
   }
   // The card's line, short (user, 2026-10-17): its label, the numbers behind it in `tip`. A same-bag winner leads with
   // its delta (`delta`, outside the tip text so it keeps its ink). null: a plain line (evidence), nothing to tip.
@@ -60,8 +60,8 @@
       // Its tip: each tied setting's number (at most 4 rows, ui-rules 36), best first.
       const title = `${p.tie.labels.length} settings within ${within(p)}`, one = p.tier === 1;
       const rows: Tip['rows'] = tied(p).slice(0, 4).map((b) => [b.label, one ? labDelta(b.value!, ses(p)) : b.value!.toFixed(1)]);
-      return { label: p.tie.list ? nb(p.tie.list) : `All within ${within(p)}`, result: true,
-        tip: { title, rows, note: `${plural(p.bags, 'bag')} behind ${nb(p.best!.label)}. No badge: close enough that the choice hardly matters.` } };
+      return { label: p.tie.list ? nb(p.tie.list) : `All within ${within(p)}${p.tie.proven ? '' : ' so far'}`, result: true,
+        tip: { title, rows, note: `${plural(p.bags, 'bag')} behind ${nb(p.best!.label)}. ${p.tie.proven ? 'No badge: close enough that the choice hardly matters.' : 'Looks close, but too few bags to be sure.'}` } };
     }
     if (p.tier === 1 && p.best) {
       const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]];
@@ -77,7 +77,7 @@
     return null;
   }
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
-  const badge = (p: Spot) => (p.verdict === 'early' ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
+  const badge = (p: Spot) => (p.verdict === 'early' || (p.tie && !p.tie.proven) ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
   let sized = $derived(sizedGrid(t.cards, () => false));
 
@@ -211,7 +211,7 @@
     <LabHead id="spots-cards" title="Sweet spots" {placeTip}
       help={['For each setting, the band your ratings favor for coffees like this.', 'First choice: the same bag brewed both ways.',
         "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", STRENGTH_LINE,
-        'Early: ahead, but too few bags to call.']} />
+        'Early: ahead or looking tied, but too few bags to call.']} />
     <div class="hl-grid finding-grid spot-grid" use:tighten={sized}>
       {#each sized as { item: c, style } (c.key)}
         {@const p = c.spot}
@@ -258,7 +258,7 @@
           {/if}
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
-          <span class="hl-line evidence" class:result={!!r?.result || v === 'No clear winner'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
+          <span class="hl-line evidence" class:result={!!r?.result || v === 'Not enough data'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <span id="{id}-full" hidden>{tipText(full)}</span>
@@ -338,7 +338,7 @@
   .hl-top .mode-tip-button {
     line-height: 1;
   }
-  /* A long setting (a water recipe, "No clear winner") steps down and wraps inside the card. */
+  /* A long setting (a water recipe, "Not enough data") steps down and wraps inside the card. */
   .spot-card > .hl-value {
     max-width: 100%;
     white-space: normal;
@@ -371,7 +371,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* A result line, and any "No clear winner" card's line, stands out from the muted lines (accent ink on the card's
+  /* A result line, and any "Not enough data" card's line, stands out from the muted lines (accent ink on the card's
      --color-bg: 5.45:1 light, 7.4:1 dark), so no card is all gray (user, 2026-10-17). */
   .evidence.result {
     color: var(--color-accent);

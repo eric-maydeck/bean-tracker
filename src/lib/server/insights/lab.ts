@@ -114,7 +114,7 @@ export interface Spot {
   // none: tier 3. early: a lead short of Possible. tie: the best bands are too close to matter, with enough bags to say so.
   verdict: 'win' | 'leaning' | 'early' | 'tie' | 'none';
   // verdict tie: the tied bands (best first), their widest gap, the card's headline and, when the names don't fit it, the list for the line below.
-  tie: { labels: string[]; within: number; head: string; list: string | null } | null;
+  tie: { labels: string[]; within: number; proven: boolean; head: string; list: string | null } | null;
   best: { label: string; value: number; strength: Strength | null } | null; // tier 1: delta; tier 2: mean of bag means
   next: { label: string; value: number } | null; // tier 2: the runner-up band
   group: string | null; // tier 2: the group's name
@@ -132,9 +132,10 @@ export interface SpotBand { label: string; range?: string; value: number | null;
 // The Insights tab's two badges: Likely wins (strength 'solid'), Possible leans (strength 'hint') (spec "Strong/Likely/Hint" mapped onto them).
 export const verdictOf = (s: Strength | null): Spot['verdict'] => (s === 'solid' ? 'win' : s === 'hint' ? 'leaning' : 'early');
 
-// A tie (equivalence test, TOST): a band ties the best when the 90% confidence interval of its gap to the best (the two
-// one-sided 5% tests) lies inside ±TIE_MARGIN rating points, so only enough bags can say "close", never few. The
-// margin is a quarter point: about a third of the typical brew-to-brew SD (~0.77), too small to steer a decision.
+// A tie: a band ties the best when its observed gap is within ±TIE_MARGIN rating points (the headline: what the data
+// seems to show). It is `proven` (no badge) when also the 90% confidence interval of every tied gap (the two one-sided
+// 5% tests, TOST) lies inside the margin, so only enough bags prove "close"; else the tile wears Early (looks tied so
+// far). The margin is a quarter point: about a third of the typical brew-to-brew SD (~0.77), too small to steer a decision.
 export const TIE_MARGIN = 0.25;
 const TIE_P = 0.05;
 // ponytail: a character budget for "fits the tile" (the narrowest phone card, 3 across at 360px, wraps ~12 characters a line, 2 lines);
@@ -146,10 +147,11 @@ export function tieHead(labels: readonly string[]): { head: string; list: string
 }
 // `rivals`: the other solid bands' gap to the best, its SE and the bags behind the smaller side.
 function tieOf(best: string, rivals: { label: string; diff: number; se: number | null; n: number }[]): Spot['tie'] {
-  const close = rivals.filter((r) => r.se !== null && r.n >= 2 && Math.abs(r.diff) + tCrit(r.n - 1, TIE_P) * r.se <= TIE_MARGIN);
+  const close = rivals.filter((r) => Math.abs(r.diff) <= TIE_MARGIN);
   if (!close.length) return null;
   const labels = [best, ...close.map((r) => r.label)];
-  return { labels, within: Math.max(...close.map((r) => Math.abs(r.diff))), ...tieHead(labels) };
+  const proven = close.every((r) => r.se !== null && r.n >= 2 && Math.abs(r.diff) + tCrit(r.n - 1, TIE_P) * r.se <= TIE_MARGIN);
+  return { labels, within: Math.max(...close.map((r) => Math.abs(r.diff))), proven, ...tieHead(labels) };
 }
 
 // Sweet spots grouping ladder (spec): same bag within the slice, else bag means within the narrowest

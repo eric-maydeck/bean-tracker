@@ -2024,7 +2024,7 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/\b(Solid|Hint)\b/);
       await page.locator('[data-section="spots-cards"] .mode-tip-button').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Likely / Possible: the gap is 2×+ / 1.5–2× its margin of error (about 95% / 87% sure).');
-      await expect(page.locator('.mode-tip:popover-open')).toContainText('Early: ahead, but too few bags to call.');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Early: ahead or looking tied, but too few bags to call.');
     } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
@@ -2784,7 +2784,7 @@ export const STATES: State[] = [
         expect(await tip.evaluate((el) => el.lastElementChild!.className)).toBe('tip-block caution');
       }
     } },
-  // Gate P4: "Leaning 20+ g" reads as one phrase in one size; under "No clear winner" a same-bag delta names its setting.
+  // Gate P4: "Leaning 20+ g" reads as one phrase in one size; a tier-3 card reads "Not enough data".
   { name: 'insights-sweetspots-words', path: () => '/insights?tab=sweetspots&range=all',
     act: async (page) => {
       const cards = await page.locator('.spot-card').evaluateAll((cs) => cs.map((c) => ({
@@ -2809,8 +2809,8 @@ export const STATES: State[] = [
         return { ink: getComputedStyle(e).color === want, lines: e.querySelector('.text-tip')?.getClientRects().length ?? 1, text: e.textContent };
       }));
       expect(results.length).toBeGreaterThan(0);
-      // No all-gray card: every "No clear winner" card's line is in the accent ink too (user, 2026-10-17).
-      expect(await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.querySelector('.hl-value')!.textContent!.trim() === 'No clear winner' && !c.querySelector('.evidence.result')).map((c) => c.id))).toEqual([]);
+      // No all-gray card: every "Not enough data" card's line is in the accent ink too (user, 2026-10-17).
+      expect(await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.querySelector('.hl-value')!.textContent!.trim() === 'Not enough data' && !c.querySelector('.evidence.result')).map((c) => c.id))).toEqual([]);
       for (const r of results) expect(r, r.text!).toMatchObject({ ink: true, lines: 1 });
       const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^vs same bag/ }).first(); // the seed has one at every width
       await best.click();

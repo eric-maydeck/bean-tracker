@@ -191,12 +191,12 @@ describe('ladder', () => {
   });
   it('tier 2: bag means identical to float noise are not a finding', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
-    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92 °C', '93–94 °C'], within: 0 } });
+    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92 °C', '93–94 °C'], within: 0, proven: true } });
   });
   it('tier 1: a hint leans, a weak gap is no clear winner', () => {
     // 3 bags: t(2) 4.16 is Possible over 2 bands; t(2) 1.89 is no clear winner.
     expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
-    expect(ladder(bagGaps([0.3, 0, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'early', best: { strength: 'early' }, tie: null });
+    expect(ladder(bagGaps([0.3, 0, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'tie', best: { strength: 'early' }, tie: { proven: false } });
   });
   describe('ties (equivalence within TIE_MARGIN) and early leads', () => {
     it('enough bags, small gaps: a tie of both bands, no badge strength', () => {
@@ -204,8 +204,11 @@ describe('ladder', () => {
       expect(s).toMatchObject({ tier: 1, verdict: 'tie', tie: { labels: expect.arrayContaining(['90–92 °C', '93–94 °C']), head: expect.stringMatching(/ or /), list: null } });
       expect(s.tie!.within).toBeLessThan(TIE_MARGIN);
     });
-    it('thin data: three bags with a small mean gap but wide spread are an early lead, not a tie', () => {
-      expect(ladder(bagGaps([0.3, -0.3, 0.05]), [], [temp])).toMatchObject({ tier: 1, verdict: 'early', tie: null, best: { strength: 'early' } });
+    it('thin data: a small observed gap but wide spread is an unproven tie (Early), not proven', () => {
+      expect(ladder(bagGaps([0.3, -0.3, 0.05]), [], [temp])).toMatchObject({ tier: 1, verdict: 'tie', tie: { proven: false, labels: expect.any(Array) } });
+    });
+    it('an observed gap past the margin names the leader alone (Early, no tie)', () => {
+      expect(ladder(bagGaps([0.9, 1.1, 1.0, 0.8]), [], [temp])!.tie?.labels ?? null).toBeNull();
     });
     it('a real gap is never a tie; a win and a lean stay as they are', () => {
       expect(ladder(sameBag, [], [exact, temp])).toMatchObject({ verdict: 'win', tie: null });
@@ -216,7 +219,7 @@ describe('ladder', () => {
       const near = [...side([...Array(12).keys()].map((i) => i + 1), 91, [8.0, 8.1, 7.9]), ...side([...Array(12).keys()].map((i) => i + 21), 94, [8.0, 7.9, 8.1])];
       expect(ladder(near, [{ name: 'g', brews: near }], [temp])).toMatchObject({ tier: 2, verdict: 'tie' });
       const few = [...side([1, 2, 3], 91, [8.2, 7.6, 8.0]), ...side([4, 5, 6], 94, [7.9, 8.3, 7.7])];
-      expect(ladder(few, [{ name: 'g', brews: few }], [temp])).toMatchObject({ tier: 2, verdict: 'early', tie: null });
+      expect(ladder(few, [{ name: 'g', brews: few }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', tie: { proven: false } });
     });
   });
   it('tieHead: names that fit are listed, longer ones are summarized with the list for the line below', () => {
