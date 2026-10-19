@@ -1,4 +1,5 @@
 // npm run test:changed: unit tests, then only the test:ui route tags the change touches.
+// `-- <files>` (pre-push) scopes to those files instead of this branch's diff + working tree.
 import { spawnSync } from 'node:child_process';
 import { scopeFor } from './testScope.ts';
 import { VIEWPORTS } from '../tests/ui/viewports.ts';
@@ -7,7 +8,8 @@ import { VIEWPORTS } from '../tests/ui/viewports.ts';
 const env = { ...process.env, UI_SHOTS: process.env.UI_SHOTS || 'all' };
 const run = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'inherit', env }).status ?? 1;
 const lines = (args: string[]) => spawnSync('git', args, { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
-const files = [...new Set([
+const dash = process.argv.indexOf('--');
+const files = dash >= 0 ? process.argv.slice(dash + 1) : [...new Set([
   ...lines(['diff', '--name-only', 'origin/main...HEAD']),
   ...lines(['diff', '--name-only', 'HEAD']),
   ...lines(['ls-files', '--others', '--exclude-standard'])

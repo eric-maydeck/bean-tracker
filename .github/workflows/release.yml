@@ -4,18 +4,19 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
-    branches: [main]
+    branches: [release]
 
+# Releases come only from the `release` branch: promote with `git push origin main:release`.
 # Pushing two commits close together used to make this fail outright:
-# a Release run for the OLDER commit could still be starting after `main`
+# a Release run for the OLDER commit could still be starting after the branch
 # had already moved past it (a newer commit's CI had already completed),
 # and semantic-release aborts with "local branch is behind remote" rather
 # than publish from a non-HEAD commit. Cancelling the stale run instead of
-# letting it race the newer one — combined with always checking out `main`
+# letting it race the newer one — combined with always checking out `release`
 # below instead of the pinned commit that triggered the run — means
 # whichever run survives always builds off the real current tip.
 concurrency:
-  group: release-main
+  group: release-branch
   cancel-in-progress: true
 
 jobs:
@@ -29,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: release
           fetch-depth: 0
 
       # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
@@ -54,3 +55,11 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # The bot's release-commit push must not run the local husky pre-push gate (full test:ui).
           HUSKY: '0'
+
+      - name: Back-merge release into main
+        env:
+          HUSKY: '0'
+          TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git"
+          .github/back-merge-release.sh

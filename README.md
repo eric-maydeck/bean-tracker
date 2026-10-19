@@ -112,9 +112,13 @@ data-access layer, form validation, and the migration script.
 - Every commit on `main` must follow [Conventional Commits](https://www.conventionalcommits.org/)
   (`feat:`, `fix:`, `chore:`, etc.) — enforced locally by a Husky `commit-msg`
   hook and backstopped in CI. This drives fully automatic semantic
-  versioning: once CI passes on `main`, `semantic-release` computes the next
+  versioning: once CI passes on the `release` branch, `semantic-release` computes the next
   version from the commits since the last release and, if one is warranted,
   cuts a git tag, a GitHub Release, and a `CHANGELOG.md` entry.
+- Pushing to `main` does not release or deploy. Promote with
+  `git push origin main:release` (fast-forward only; its pre-push gate runs the full prod UI
+  suite). After a release, `.github/back-merge-release.sh` merges `release` back into `main`
+  so the bot's `chore(release)` commit is on both and the next promotion fast-forwards.
 - `semantic-release` authenticates as a dedicated GitHub App
   (`RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY` repo secrets), not the
   workflow's built-in `GITHUB_TOKEN` — GitHub does not raise `release:
@@ -123,7 +127,7 @@ data-access layer, form validation, and the migration script.
 - A published release triggers a Docker image build (targeting the server's
   `linux/arm64`, via `buildx`/QEMU emulation) pushed to
   `ghcr.io/eric-maydeck/bean-tracker`.
-- `@semantic-release/git` pushes the version-bump commit directly to `main`.
-  If branch protection ever requires PRs on this repo, the release App will
-  need an explicit bypass allowance for that push — otherwise every release
+- `@semantic-release/git` pushes the version-bump commit directly to `release`, and the
+  back-merge pushes to `main`. If branch protection ever requires PRs on either branch, the
+  release App will need an explicit bypass allowance for those pushes — otherwise every release
   starts failing at that step.

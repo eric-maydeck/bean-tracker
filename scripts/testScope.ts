@@ -1,19 +1,72 @@
-// Changed files -> which test:ui route tags to run (npm run test:changed). Shared or unknown
-// paths run everything: the full suite is still the gate before every push.
+// Changed files -> which test:ui route tags to run (test:changed and the non-release pre-push gate).
+// A src/ file's tags are the tagged routes that import it, transitively (import lines parsed here,
+// no dependency). Reaching the root layout/hooks, an untagged route, or no route at all, or any
+// file outside src/, runs everything.
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, normalize } from 'node:path';
+
 export type Scope = { kind: 'full'; reason: string } | { kind: 'tags'; tags: string[] } | { kind: 'none' };
-const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^AppsScript\//, /^deploy\//, /^\.claude\//];
-const ROUTES: [RegExp, string | string[]][] = [
-  [/^src\/routes\/(coffees|insights|stats|on-deck|subscriptions)\//, '@$1'],
-  [/^src\/lib\/server\/insights\//, ['@insights', '@stats']] // also imported by /stats
-];
-export function scopeFor(files: string[]): Scope {
+const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^AppsScript\//, /^deploy\//, /^\.claude\//,
+  /^src\/lib\/server\/fixtures\//];
+// The test:ui tag is a state's first path segment (routeTag in tests/ui/layout.spec.ts).
+const TAGGED = /^src\/routes\/(coffees|insights|stats|on-deck|subscriptions)\//;
+// Shared by every route: the root layout/page, hooks, app.css, app.html.
+const EVERY_ROUTE = /^src\/(routes\/\+|hooks|app\.)/;
+const EXTS = ['', '.ts', '.js', '.svelte', '/index.ts', '/index.js'];
+// A '/api/...' string in a caller counts as importing that endpoint's +server.ts.
+const API_CALL = /['"`](\/api\/[\w/-]+)/g;
+const IMPORT = /\b(?:import|export)\s[^'"`;]*?\bfrom\s*['"]([^'"]+)['"]|\bimport\s*\(?\s*['"]([^'"]+)['"]/g;
+
+// Every file under src/ except unit tests (they import routes but aren't UI): path -> text.
+export function srcFiles(dir = 'src'): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const e of readdirSync(dir, { recursive: true, withFileTypes: true })) {
+    const p = join(e.parentPath, e.name);
+    if (e.isFile() && !/\.test\.ts$/.test(p)) out[p] = readFileSync(p, 'utf8');
+  }
+  return out;
+}
+
+// file -> the src files that import it directly ($lib/ and relative specifiers only).
+function importers(sources: Record<string, string>) {
+  const out = new Map<string, string[]>();
+  for (const [file, text] of Object.entries(sources)) {
+    for (const m of text.matchAll(IMPORT)) {
+      const spec = m[1] ?? m[2];
+      const base = spec.startsWith('$lib/') ? 'src/lib/' + spec.slice(5)
+        : spec.startsWith('.') ? normalize(join(dirname(file), spec)) : null;
+      const target = base === null ? undefined : EXTS.map((e) => base + e).find((p) => p in sources);
+      if (target) out.set(target, [...(out.get(target) ?? []), file]);
+    }
+    for (const [, path] of text.matchAll(API_CALL)) {
+      const target = `src/routes${path}/+server.ts`;
+      if (target in sources) out.set(target, [...(out.get(target) ?? []), file]);
+    }
+  }
+  return out;
+}
+
+export function scopeFor(files: string[], sources?: Record<string, string>): Scope {
+  const full = (reason: string): Scope => ({ kind: 'full', reason });
   const tags = new Set<string>();
+  let graph: Map<string, string[]> | undefined;
   for (const f of files) {
     if (NO_UI.some((re) => re.test(f))) continue;
-    const route = ROUTES.find(([re]) => re.test(f));
-    if (!route) return { kind: 'full', reason: `${f} is shared or unmapped` };
-    const [re, tag] = route;
-    for (const t of [tag].flat()) tags.add(re.exec(f)![0].replace(re, t)); // '@$1' -> '@coffees'
+    if (!f.startsWith('src/')) return full(`${f} is outside src/`);
+    sources ??= srcFiles();
+    if (!(f in sources)) return full(`${f} is deleted or unreadable`);
+    graph ??= importers(sources);
+    const seen = new Set([f]);
+    for (const x of seen) for (const y of graph.get(x) ?? []) seen.add(y); // Set iteration visits additions
+    // API endpoints only pass through to the pages that call them.
+    const routes = [...seen].filter((p) => EVERY_ROUTE.test(p)
+      || (p.startsWith('src/routes/') && !p.startsWith('src/routes/api/')));
+    if (!routes.length) return full(`${f} reaches no route`);
+    for (const r of routes) {
+      const m = TAGGED.exec(r);
+      if (!m) return full(`${f} reaches ${r}`);
+      tags.add('@' + m[1]);
+    }
   }
   return tags.size ? { kind: 'tags', tags: [...tags].sort() } : { kind: 'none' };
 }

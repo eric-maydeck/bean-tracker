@@ -21,12 +21,15 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Releases come from `release` (main is merged back). The bot's pushes skip the husky gate.
+    env:
+      HUSKY: '0'
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: release
           fetch-depth: 0
 
       # The built-in secrets.GITHUB_TOKEN can't be used here: GitHub does not
@@ -102,8 +105,9 @@ jobs:
           git commit -m "chore(release): ${{ steps.bump.outputs.version }} [skip ci]"
           git tag ${{ steps.bump.outputs.tag }}
           git remote set-url origin "https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}.git"
-          git push origin main
+          git push origin release
           git push origin ${{ steps.bump.outputs.tag }}
+          .github/back-merge-release.sh
 
       - name: Create GitHub Release
         env:
