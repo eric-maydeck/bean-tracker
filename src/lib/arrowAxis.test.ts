@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inkOf, spotAxis } from './spotAxis';
+import { inkOf, spotAxis, symAxis } from './arrowAxis';
 
 describe('spotAxis', () => {
   it('no band past the edge: no headroom, nothing clipped', () => {
@@ -24,6 +24,20 @@ describe('spotAxis', () => {
     expect(a.lo).toBeLessThan(0);
     expect(a.clip).toEqual([false, true]);
   });
+});
+
+describe('symAxis', () => {
+  it('nothing past the axis: the longest bar fills its half', () => {
+    expect(symAxis([0.2, -0.1], [0.2, -0.1])).toEqual({ w: [50, 25], clip: [false, false], sh: [0, 0] });
+  });
+  it('a muted row past the axis: the solid rows shrink to leave the point room, the shoulder at the old edge', () => {
+    const a = symAxis([0.2, -0.1, 0.9], [0.2, -0.1]);
+    expect(a.clip).toEqual([false, false, true]);
+    expect(a.w[2]).toBe(50);
+    expect(a.w[0]).toBeCloseTo((0.2 / 0.24) * 50); // the solid max sits at the shoulder, short of the tip
+    expect(a.sh[2]).toBeCloseTo((0.04 / 0.24) * 100);
+  });
+  it('the floor keeps tiny deltas visible', () => expect(symAxis([0.01], [0.01]).w[0]).toBeCloseTo(10));
 });
 
 describe('inkOf', () => {

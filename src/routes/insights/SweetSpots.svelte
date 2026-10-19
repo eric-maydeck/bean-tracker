@@ -5,7 +5,7 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
-  import { inkOf, spotAxis } from './spotAxis';
+  import { inkOf, spotAxis } from '$lib/arrowAxis';
   import { noMatch, plural, sdBlur, sdFocus, SD_TIP, STRENGTH_LINE } from './DeltaBars.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleField } from '$lib/sample';
@@ -82,8 +82,11 @@
   // One line (nowrap, ellipsis); a tightened card hides it and its value's tip has it whole.
   const thin = (p: Spot) => (p.thin ? `${nb(p.thin.label)} looks higher · ${plural(p.thin.bags, 'bag')}` : null);
   // Why a tier-3 card has no comparison: its counts against the bar (a solid setting = 3+ bags and 30+ brews).
-  const whyNot = (p: Spot): Tip => ({ title: 'Not enough data', lines: ['Needs 2+ settings with 3+ bags and 30+ brews each.'],
-    rows: [['Settings brewed', `${p.bands.filter((b) => b.brews).length}`], ['With enough', `${p.bands.filter((b) => b.solid).length}`]] });
+  const NOUN: Record<string, string> = { temp: 'temps', water: 'waters', dripper: 'drippers', filter: 'filters', ratio: 'ratios', dose: 'doses', grind: 'grind settings', bloom: 'bloom times', rest: 'rest times' };
+  const whyNot = (p: Spot, key: string): Tip => {
+    const n = p.bands.filter((b) => b.brews).length, ok = p.bands.filter((b) => b.solid).length;
+    return { title: 'Not enough data', lines: [`${ok} of ${n} ${NOUN[key]} you've brewed ${ok === 1 ? 'has' : 'have'} enough to compare (3+ bags, 30+ brews). Needs 2.`] };
+  };
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
   const badge = (p: Spot) => (p.verdict === 'early' || (p.tie && !p.tie.proven) ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
@@ -227,7 +230,7 @@
         {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const r = result(p)}
-        {@const full = v === 'Not enough data' ? whyNot(p) : { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}
+        {@const full = v === 'Not enough data' ? whyNot(p, c.key) : { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}
         <div class="hl-card spot-card" {id} {style}>
           <div class="hl-top">
             {#if b}
@@ -386,6 +389,13 @@
   }
   .zero {
     color: var(--color-text-muted);
+  }
+  /* On a hovered tile (accent-tinted) the shared green and red fall just under 4.5:1 at this size: a touch of ink in them. */
+  .evidence :global(.ink-better) {
+    color: color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text));
+  }
+  .evidence :global(.ink-worse) {
+    color: color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text));
   }
   .usually,
   .thin {

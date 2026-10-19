@@ -42,6 +42,7 @@
   import TipBody, { tipText } from '$lib/components/TipBody.svelte';
   import type { Strength } from '$lib/server/insights/stats';
   import { STRENGTH } from './Insights.svelte';
+  import { symAxis } from '$lib/arrowAxis';
 
   type Row = { label: string; value: number | null; text: string; tip: Tip; small: boolean; bold?: boolean; strength?: Strength | null };
   let { rows, ariaLabel, colors = 'polarity' }: { rows: Row[]; ariaLabel: string; colors?: 'polarity' | 'direction' } = $props();
@@ -50,11 +51,8 @@
   // edge with a cap (its real value stays in the text and tip); never under 0.05, so tiny deltas show a stub.
   let bars = $derived.by(() => {
     const fit = rows.some((r) => !r.small && r.value !== null) ? rows.filter((r) => !r.small) : rows;
-    const max = Math.max(0.05, ...fit.map((r) => Math.abs(r.value ?? 0)));
-    return rows.map((r) => {
-      const v = r.value ?? 0;
-      return { ...r, w: Math.min(1, Math.abs(v) / max) * 50, up: v >= 0, clip: Math.abs(v) > max };
-    });
+    const a = symAxis(rows.map((r) => r.value ?? 0), fit.map((r) => r.value ?? 0));
+    return rows.map((r, i) => ({ ...r, w: a.w[i], up: (r.value ?? 0) >= 0, clip: a.clip[i], sh: a.sh[i] }));
   });
 
   let wrap: HTMLDivElement | undefined = $state();
@@ -115,7 +113,7 @@
     >
       <span class="bar-label" class:bold={b.bold}>{b.label}</span>
       <span class="track" aria-hidden="true">
-        {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} class:small-sample-mark={b.small} style:width="{b.w}%"
+        {#if b.value !== null}<span class="bar" class:up={b.up} class:clip={b.clip} class:small-sample-mark={b.small} style:width="{b.w}%" style:--sh="{b.sh}%"
           style:background-color={colors === 'direction' ? null : deltaColor(b.value)}></span>{/if}
       </span>
       <span class="bar-value {colors === 'direction' ? '' : deltaInk(b.value)}">
@@ -232,10 +230,10 @@
   }
   .bar.clip {
     border-radius: 0;
-    clip-path: polygon(9px -40%, 100% -40%, 100% 140%, 9px 140%, 0 50%);
+    clip-path: polygon(var(--sh) -40%, 100% -40%, 100% 140%, var(--sh) 140%, 0 50%);
   }
   .bar.up.clip {
-    clip-path: polygon(0 -40%, calc(100% - 9px) -40%, 100% 50%, calc(100% - 9px) 140%, 0 140%);
+    clip-path: polygon(0 -40%, calc(100% - var(--sh)) -40%, 100% 50%, calc(100% - var(--sh)) 140%, 0 140%);
   }
   .bar-value {
     display: inline-flex;
