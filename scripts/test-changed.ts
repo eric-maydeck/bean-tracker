@@ -3,7 +3,9 @@ import { spawnSync } from 'node:child_process';
 import { scopeFor } from './testScope.ts';
 import { VIEWPORTS } from '../tests/ui/viewports.ts';
 
-const run = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'inherit', env: process.env }).status ?? 1;
+// Iterating wants pictures: screenshots on unless UI_SHOTS says otherwise.
+const env = { ...process.env, UI_SHOTS: process.env.UI_SHOTS || 'all' };
+const run = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'inherit', env }).status ?? 1;
 const lines = (args: string[]) => spawnSync('git', args, { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
 const files = [...new Set([
   ...lines(['diff', '--name-only', 'origin/main...HEAD']),

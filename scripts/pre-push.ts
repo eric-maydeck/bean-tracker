@@ -19,7 +19,9 @@ if (import.meta.main) {
     if (r.status) files.add(`unresolved range ${range}`);
     else r.stdout.split('\n').filter(Boolean).forEach((f) => files.add(f));
   }
+  // The gate always runs every viewport: UI_VIEWPORTS (an iteration filter) is dropped here.
   const env = { ...process.env, UI_PROFILE: process.env.UI_PROFILE || 'performance' };
+  delete env.UI_VIEWPORTS;
   const step = (label: string, args: string[], extra: Record<string, string> = {}) => {
     console.log(`\n=== pre-push: ${label} ===`);
     const code = spawnSync('npx', args, { stdio: 'inherit', env: { ...env, ...extra } }).status ?? 1;

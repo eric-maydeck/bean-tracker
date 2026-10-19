@@ -4813,6 +4813,7 @@ async function expectSkipColored(page: Page, min: number) {
 const stubSeed = new Proxy({}, { get: () => new Proxy({}, { get: () => 'x' }) }) as unknown as Seed;
 const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
 
+const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES) {
   test(state.name, { tag: routeTag(state) }, async ({ page }, info) => {
     const s = seed();
@@ -4821,11 +4822,13 @@ for (const state of STATES) {
     if (state.name.startsWith('insights-')) await expectStatRowsFull(page);
     await expectTipsFormatted(page);
     await expectNoTitleTips(page);
-    // Screenshot first, so a failing state still leaves a picture to look at.
+    // UI_SHOTS=all only (playwright.config.ts); failures get Playwright's own screenshot either way.
     // Firefox can't capture past 32767 device px: a long page (phone cards at DPR 3) keeps its top part.
-    const [w, h, dpr] = await page.evaluate(() => [innerWidth, document.documentElement.scrollHeight, devicePixelRatio]);
-    await page.screenshot({ path: `.ui-test/screenshots/${state.name}-${info.project.name}.png`, fullPage: true,
-      clip: { x: 0, y: 0, width: w, height: Math.min(h, Math.floor(32767 / dpr)) } });
+    if (SHOTS) {
+      const [w, h, dpr] = await page.evaluate(() => [innerWidth, document.documentElement.scrollHeight, devicePixelRatio]);
+      await page.screenshot({ path: `.ui-test/screenshots/${state.name}-${info.project.name}.png`, fullPage: true,
+        clip: { x: 0, y: 0, width: w, height: Math.min(h, Math.floor(32767 / dpr)) } });
+    }
     await checkLayout(page);
   });
 }
@@ -4840,7 +4843,7 @@ test.describe('signed out', () => {
     expect(await img.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
     await expectContained(page.locator('a.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img'), WIDE_FILL);
     // Viewport only: the public card wall (every seeded bag) passes the 32767 px full-page screenshot cap at DPR 3.
-    await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png` });
+    if (SHOTS) await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png` });
     await checkLayout(page);
   });
 });

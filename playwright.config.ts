@@ -1,12 +1,14 @@
 import { defineConfig } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { setPriority } from 'node:os';
-import { profileFor } from './scripts/uiProfile.ts';
+import { profileFor, shotsOn } from './scripts/uiProfile.ts';
 import { VIEWPORTS } from './tests/ui/viewports';
 
 // Run profile (UI_PROFILE=performance|balanced|background, default balanced): workers + priority.
 // Workers and Firefox inherit the runner's priority. --workers=N on the CLI still wins.
 const profile = profileFor(process.env.UI_PROFILE);
+// UI_SHOTS=all|off (specs read it) and UI_VIEWPORTS (tests/ui/viewports.ts): bad values fail here.
+shotsOn(process.env.UI_SHOTS);
 if (profile.nice) setPriority(profile.nice);
 if (profile.background) execFileSync('taskpolicy', ['-b', '-p', String(process.pid)]);
 
@@ -24,7 +26,10 @@ export default defineConfig({
   workers: profile.workers,
   // E-core-only runs: SvelteKit goto's URL update can land ~8s after the click.
   expect: { timeout: profile.background ? 15_000 : 5_000 },
-  use: { baseURL: `http://localhost:${PORT}`, browserName: 'firefox', headless: true },
+  use: {
+    baseURL: `http://localhost:${PORT}`, browserName: 'firefox', headless: true,
+    screenshot: { mode: 'only-on-failure', fullPage: true }
+  },
   webServer: {
     // Fresh seed every run; never reuse a server (it could be on a real DB).
     // UI_BUILD=prod: a production build (adapter-node assumes https without ORIGIN, failing CSRF).

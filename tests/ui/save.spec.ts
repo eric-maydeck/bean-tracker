@@ -92,7 +92,9 @@ test('household of one hides the people switch everywhere', { tag: ['@stats', '@
       await expect(page.getByText(/per person/i)).toHaveCount(0);
       if (path.startsWith('/insights')) await expectStatRowsFull(page);
       const name = path.replace(/\W+/g, '-');
-      await page.screenshot({ path: `.ui-test/screenshots/household-of-one${name}-${v.name}.png`, fullPage: true });
+      if (process.env.UI_SHOTS === 'all') {
+        await page.screenshot({ path: `.ui-test/screenshots/household-of-one${name}-${v.name}.png`, fullPage: true });
+      }
       await checkLayout(page);
     }
   }

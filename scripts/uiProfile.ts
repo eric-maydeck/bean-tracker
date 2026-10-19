@@ -15,3 +15,10 @@ export function profileFor(name: string | undefined) {
   if (!Object.hasOwn(PROFILES, key)) throw new Error(`Unknown UI_PROFILE "${key}": use performance, balanced or background`);
   return { name: key as ProfileName, ...PROFILES[key as ProfileName] };
 }
+
+// UI_SHOTS=all|off (default off): per-state full-page screenshots in test:ui. Failures always get one.
+export function shotsOn(value: string | undefined) {
+  if (!value || value === 'off') return false;
+  if (value === 'all') return true;
+  throw new Error(`Unknown UI_SHOTS "${value}": use all or off`);
+}
