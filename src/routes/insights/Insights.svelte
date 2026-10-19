@@ -6,7 +6,8 @@
   // Their help popovers (ui-rules 36: a title, one idea per line).
   export const STRENGTH_TIP: Record<Badge, Tip> = {
     solid: { title: STRENGTH.solid, lines: [STRENGTH_WHY.solid] },
-    hint: { title: STRENGTH.hint, lines: [STRENGTH_WHY.hint, 'Under 1.5 times its margin of error gets no badge.'] }
+    hint: { title: STRENGTH.hint, lines: [STRENGTH_WHY.hint, 'Under 1.5 times its margin of error gets no badge.'] },
+    early: { title: STRENGTH.early, lines: [STRENGTH_WHY.early, 'More brews would settle it.'] }
   };
 </script>
 

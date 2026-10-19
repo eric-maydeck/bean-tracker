@@ -2513,6 +2513,10 @@ html {
 .tip-block.strength-hint .tip-lines {
   color: var(--color-possible);
 }
+.tip-block.strength-early .tip-title,
+.tip-block.strength-early .tip-lines {
+  color: var(--color-text-muted);
+}
 .tip-counts {
   margin-top: var(--space-2);
 }

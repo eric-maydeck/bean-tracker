@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mean, sd, pearson, partialR, demeaned, strengthOf, brewZ, tTail, spearman, rBand } from './stats';
+import { mean, sd, pearson, partialR, demeaned, strengthOf, brewZ, tCrit, tTail, spearman, rBand } from './stats';
 
 describe('stats', () => {
   it('mean and population sd', () => {
@@ -51,6 +51,11 @@ describe('small samples: Student t', () => {
     expect(strengthOf(2.03, true, 1, 29)).toBe(strengthOf(2.03, true, 1, 30)); // both hint (t(28), t(29) need ~2.05)
     expect(2 * tTail(2, 5000)).toBeCloseTo(0.0455, 3); // normal two-sided p at z 2
     expect(strengthOf(2.1, true, 1, 5000)).toBe('solid');
+  });
+  it('tCrit is the one-sided 5% t value (90% interval)', () => {
+    expect(tCrit(2)).toBeCloseTo(2.92, 2);
+    expect(tCrit(8)).toBeCloseTo(1.86, 2);
+    expect(tCrit(5000)).toBeCloseTo(1.645, 2);
   });
   it('tTail matches t tables', () => {
     expect(2 * tTail(2.132, 4)).toBeCloseTo(0.1, 3); // t(4) two-sided .10

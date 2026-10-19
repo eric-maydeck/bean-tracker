@@ -2019,11 +2019,12 @@ export const STATES: State[] = [
     } },
   { name: 'insights-strength-badges', viewports: 'two', path: () => '/insights?tab=sweetspots',
     act: async (page) => {
-      // The strength badges read Likely / Possible, never Solid / Hint; the legend explains both and "no badge".
-      for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible)$/);
+      // The strength badges read Likely / Possible, never Solid / Hint; the legend explains them and "no badge".
+      for (const t of await page.locator('.hl-badge').allTextContents()) expect(t).toMatch(/^(Likely|Possible|Early)$/);
       await expect(page.locator('body')).not.toContainText(/\b(Solid|Hint)\b/);
       await page.locator('[data-section="spots-cards"] .mode-tip-button').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Likely / Possible: the gap is 2×+ / 1.5–2× its margin of error (about 95% / 87% sure).');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Early: ahead, but too few bags to call.');
     } },
   {
     // Overview's Recent panel: last 10 brews (bar = rating on the 10 scale) and last 10 coffees finished.
@@ -2793,13 +2794,11 @@ export const STATES: State[] = [
       for (const c of cards) {
         expect(c.value).not.toMatch(/Leaning\S/);
         expect(c.small).toBe(false);
-        // "Best so far: <answer>" alone: the delta and bags sit in its tip (user, 2026-10-17).
-        if (c.ev.startsWith('Best so far')) expect(c.ev).toMatch(/^Best so far: [^·]+$/);
         // Every line is short: its comparison and bag count sit in its tip (user, 2026-10-17).
         expect(c.ev).not.toContain('·');
         expect(c.ev).not.toMatch(/^Across /);
       }
-      // A result line (same-bag delta, "Best so far", "Highest across ...") is one line in the accent ink.
+      // A result line (same-bag delta, "Highest across ...", a tie's "All within 0.2") is one line in the accent ink.
       // (a phone card that hid its line to fit, data-tight 4, is skipped)
       const results = await page.locator('.spot-card .evidence.result').evaluateAll((es) => es.filter((e) => e.getClientRects().length).map((e) => {
         const probe = document.createElement('span');
@@ -2813,13 +2812,12 @@ export const STATES: State[] = [
       // No all-gray card: every "No clear winner" card's line is in the accent ink too (user, 2026-10-17).
       expect(await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.querySelector('.hl-value')!.textContent!.trim() === 'No clear winner' && !c.querySelector('.evidence.result')).map((c) => c.id))).toEqual([]);
       for (const r of results) expect(r, r.text!).toMatchObject({ ink: true, lines: 1 });
-      const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^Best so far/ }).first(); // the seed has one at every width
+      const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^vs same bag/ }).first(); // the seed has one at every width
       await best.click();
       const tip = page.locator('.float-tip');
       await expect(tip).toContainText('vs same bag');
       await expectTipInView(page, tip);
       // One line at any width: a long answer ends in an ellipsis; the tip's title has it whole.
-      await expect(tip).toContainText(/^Best so far: /);
       const lines = page.locator('.spot-card .evidence .text-tip');
       for (const n of await lines.evaluateAll((ts) => ts.map((t) => t.getClientRects().length))) expect(n).toBeLessThanOrEqual(1); // 0: hidden to fit (data-tight 4)
     } },

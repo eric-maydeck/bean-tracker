@@ -91,6 +91,13 @@ export const solidBar = (tests: number): number => {
   return hi;
 };
 
+// The t value with `p` of its upper tail beyond it (df ≥ 1), by bisection: a confidence interval's half-width is this × SE.
+export const tCrit = (df: number, p = 0.05): number => {
+  let lo = 0, hi = 1000;
+  for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (tTail(m, df) > p) lo = m; else hi = m; }
+  return hi;
+};
+
 // Difference of two demeaned-rating means, SE = residualSd * sqrt(1/n1 + 1/n2).
 export const brewZ = (a: number[], b: number[], residualSd: number): number =>
   (mean(a) - mean(b)) / (residualSd * Math.sqrt(1 / a.length + 1 / b.length));

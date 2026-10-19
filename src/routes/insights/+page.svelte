@@ -1273,6 +1273,11 @@
     background: color-mix(in srgb, var(--color-possible) 14%, transparent);
     color: var(--color-possible);
   }
+  /* An Early badge: the same pill, muted (a lead with no test behind it). */
+  :global(.hl-badge.early) {
+    background: color-mix(in srgb, var(--color-text-muted) 14%, transparent);
+    color: var(--color-text-muted);
+  }
   /* Flex: its tip buttons form their own row (checkLayout rule 5), apart from the card's. */
   :global(.hl-caption) {
     display: flex;

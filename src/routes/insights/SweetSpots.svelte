@@ -33,18 +33,21 @@
   }
   const emptyLine = useEmptyLine();
 
-  // The card's number (largest): the winner, a lean, the one setting ever used, or no winner.
+  // The card's number (largest): the winner, a lean, an early lead, the tied settings (or a summary of them), the one
+  // setting ever used, or no winner (tier 3).
   const value = (p: Spot) =>
-    p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
+    p.tie ? p.tie.head : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'No clear winner';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
   const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
-  // Under "No clear winner" the same-bag delta names its setting, so it never reads as the card's value (gate P4).
-  const lead = (p: Spot) => (p.best && p.verdict === 'none' ? `Best so far: ${nb(p.best.label)} ` : '');
+  // A tie's gap, rounded up so "within 0.2" is never short of the widest gap.
+  const within = (p: Spot) => `${(Math.ceil(p.tie!.within * 10 - 1e-9) / 10).toFixed(1)}`;
+  const tied = (p: Spot) => p.bands.filter((b) => p.tie!.labels.includes(b.label)).sort((a, b) => p.tie!.labels.indexOf(a.label) - p.tie!.labels.indexOf(b.label));
   // A tier-1 card's shown deltas' SEs: its line, tips and chart share one decimal count.
   const ses = (p: Spot) => p.bands.filter((b) => b.value !== null).map((b) => b.se);
   // The evidence behind it, one muted line (clamped; the card's title and popover have it in full).
   function evidence(p: Spot): string {
-    if (p.tier === 1 && p.best) return `${lead(p)}${labDelta(p.best.value, ses(p))} vs same bag · ${plural(p.bags, 'bag')}`;
+    if (p.tie) return `${p.tie.labels.map(nb).join(', ')}: within ${within(p)} of each other · ${plural(p.bags, 'bag')}`;
+    if (p.tier === 1 && p.best) return `${labDelta(p.best.value, ses(p))} vs same bag · ${plural(p.bags, 'bag')}`;
     if (p.tier === 2 && p.best && p.next)
       return `Across ${p.group}: ${nb(p.best.label)} ${p.best.value.toFixed(1)} vs ${nb(p.next.label)} ${p.next.value.toFixed(1)} · ${plural(p.bags, 'bag')}`;
     return p.varied ? 'Not enough brews to compare yet' : `No comparison yet: always ${p.usual.label} (avg ${p.usual.mean.toFixed(1)})`;
@@ -52,10 +55,17 @@
   // The card's line, short (user, 2026-10-17): its label, the numbers behind it in `tip`. A same-bag winner leads with
   // its delta (`delta`, outside the tip text so it keeps its ink). null: a plain line (evidence), nothing to tip.
   function result(p: Spot): { label: string; tip: Tip; delta?: string; result: boolean } | null {
+    if (p.tie) {
+      // The line below the headline: the tied settings when the headline only summarizes them, else how close they are.
+      // Its tip: each tied setting's number (at most 4 rows, ui-rules 36), best first.
+      const title = `${p.tie.labels.length} settings within ${within(p)}`, one = p.tier === 1;
+      const rows: Tip['rows'] = tied(p).slice(0, 4).map((b) => [b.label, one ? labDelta(b.value!, ses(p)) : b.value!.toFixed(1)]);
+      return { label: p.tie.list ? nb(p.tie.list) : `All within ${within(p)}`, result: true,
+        tip: { title, rows, note: `${plural(p.bags, 'bag')} behind ${nb(p.best!.label)}. No badge: close enough that the choice hardly matters.` } };
+    }
     if (p.tier === 1 && p.best) {
       const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]];
-      return lead(p) ? { label: lead(p).trim(), tip: { title: lead(p).trim(), rows }, result: true }
-        : { label: 'vs same bag', delta: d, tip: { title: p.best.label, rows }, result: true };
+      return { label: 'vs same bag', delta: d, tip: { title: p.best.label, rows }, result: true };
     }
     if (p.tier === 2 && p.best && p.next) {
       const title = `Highest across ${p.group}`;
@@ -67,7 +77,7 @@
     return null;
   }
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
-  const badge = (p: Spot) => (p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
+  const badge = (p: Spot) => (p.verdict === 'early' ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
   let sized = $derived(sizedGrid(t.cards, () => false));
 
@@ -85,12 +95,12 @@
     const fit = p.bands.some((b) => b.solid) ? ds.filter((_, i) => p.bands[i].solid) : ds;
     const hi = Math.max(0, ...fit), lo = Math.min(0, ...fit), span = hi - lo || 1;
     const shown = ds.map((d) => Math.min(hi, Math.max(lo, d)));
-    const pick = p.best && p.verdict !== 'none' ? p.best.label : null;
+    const picks = p.tie ? p.tie.labels : p.best && p.verdict !== 'none' ? [p.best.label] : [];
     return {
       zero: (hi / span) * 100,
       bars: p.bands.map((b, i) => ({
         ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
-        pick: b.label === pick, usual: b.label === p.usual.label, none: b.value === null && b.brews > 0, empty: !b.brews,
+        pick: picks.includes(b.label), usual: b.label === p.usual.label, none: b.value === null && b.brews > 0, empty: !b.brews,
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
         tip: (!b.brews
           ? { title: b.range ?? b.label, note: 'No brews in this band.' }
@@ -200,7 +210,8 @@
   <section class="chart-panel" data-section="spots-cards">
     <LabHead id="spots-cards" title="Sweet spots" {placeTip}
       help={['For each setting, the band your ratings favor for coffees like this.', 'First choice: the same bag brewed both ways.',
-        "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", STRENGTH_LINE]} />
+        "+0.4: beat the same bag's other brews by 0.4.", "Too few of those: bag averages across similar coffees, widening the group until there's enough.", STRENGTH_LINE,
+        'Early: ahead, but too few bags to call.']} />
     <div class="hl-grid finding-grid spot-grid" use:tighten={sized}>
       {#each sized as { item: c, style } (c.key)}
         {@const p = c.spot}
@@ -214,7 +225,7 @@
           <div class="hl-top">
             {#if b}
               <button class="mode-tip-button" popovertarget="{id}-badge" aria-describedby="{id}-badge"
-                ><span class="badge hl-badge" class:hint={b === 'hint'}>{STRENGTH[b]}</span></button
+                ><span class="badge hl-badge" class:hint={b === 'hint'} class:early={b === 'early'}>{STRENGTH[b]}</span></button
               >
               <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
@@ -233,7 +244,7 @@
               <div class="cols" style:--zero="{ch.zero}%">
                 {#each ch.bars as b (b.label)}
                   <span class="col"
-                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict === 'leaning'} class:small-sample-mark={b.sample.small} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
+                    ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict !== 'win'} class:small-sample-mark={b.sample.small} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
                       style:top="{b.top}%" style:height="{b.h}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
@@ -245,8 +256,7 @@
               {/if}
             </div>
           {/if}
-          <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17: as
-               "Best so far"), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
+          <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
           <span class="hl-line evidence" class:result={!!r?.result || v === 'No clear winner'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
@@ -335,6 +345,10 @@
     text-wrap: balance;
     overflow-wrap: anywhere;
   }
+  /* A short setting ("V60") in a tightened card is a text tip: pad its tap target out to 44px wide (rule 4). */
+  .spot-card > .hl-value :global(.text-tip) {
+    padding-inline: 4px;
+  }
   /* Floors keep the setting the largest text in a narrow phone card (a row of 3 at 360px). */
   .spot-card > .hl-value {
     font-size: max(1.05rem, min(2rem, 15cqw / var(--q, 2)));
@@ -350,7 +364,7 @@
     white-space: normal;
     line-height: 1.3;
   }
-  /* A tipped line ("Best so far: <answer>", "Highest across ...") is one line at any width: a long answer (a recipe name) ends in an ellipsis, and the tip's
+  /* A tipped line ("Highest across ...", a tie's list) is one line at any width: a long answer (a recipe name) ends in an ellipsis, and the tip's
      title has it whole (the card's overflow already clips the text's tap padding to the line). */
   .evidence:has(:global(.text-tip)) {
     display: block;
