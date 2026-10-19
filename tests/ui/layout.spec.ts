@@ -2862,6 +2862,75 @@ export const STATES: State[] = [
     act: (page) => expectChartMarkOnly(page, page.locator('.chart-container canvas').first()) },
   { name: 'tip-hit-delta-bars', path: () => '/insights?tab=brewing&range=all',
     act: (page) => expectMarkOnly(page, page.locator('[data-section="brewing-temp"] .track'), '.bar', page.locator('.cell-tip:popover-open')) },
+  { name: 'insights-findings-headline-clamp', path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      // A Findings headline is 2 lines at most at any width, cut with an ellipsis (user, 2026-10-18).
+      const over = await page.locator('.finding-grid .hl-caption .stat-label').evaluateAll((hs) => hs.flatMap((h) => {
+        const r = document.createRange();
+        r.selectNodeContents(h);
+        const lines = new Set([...r.getClientRects()].filter((q) => q.width > 1 && q.bottom <= h.getBoundingClientRect().bottom + 1).map((q) => Math.round(q.bottom))).size;
+        const clamp = +getComputedStyle(h).webkitLineClamp;
+        return lines > 2 || !(clamp >= 1 && clamp <= 2) ? [`${h.closest('.hl-card')!.id}: ${lines} lines, clamp ${clamp}`] : [];
+      }));
+      expect(over).toEqual([]);
+      // A clamped headline (one is lengthened where none clamps at this width) shows its full text as a tip: on hover
+      // (desktop), and a tap or click also follows its #anchor link and keeps the tip until a tap elsewhere.
+      const i = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
+        const cut = (c: Element) => { const h = c.querySelector('.hl-caption .stat-label')!; return h.scrollHeight > h.clientHeight + 1; };
+        const j = cs.findIndex(cut);
+        if (j >= 0) return j;
+        cs[0].querySelector('.caption-link')!.textContent = 'A very long finding headline that keeps going '.repeat(6);
+        return cut(cs[0]) ? 0 : -1;
+      });
+      expect(i).toBeGreaterThanOrEqual(0);
+      const card = page.locator('.finding-grid .hl-card').nth(i), id = (await card.getAttribute('id'))!;
+      const head = card.locator('.caption-link');
+      const full = (await head.textContent())!.trim();
+      const tip = page.locator('.cell-tip:popover-open');
+      if (!touch()) {
+        await head.hover();
+        await expect(tip.locator('.tip-title')).toHaveText(full);
+        await page.mouse.move(1, 1);
+        await expect(tip).toHaveCount(0);
+      }
+      await tapOn(head);
+      await expect(page).toHaveURL(new RegExp(`#${id}$`));
+      await expect(tip.locator('.tip-title')).toHaveText(full);
+      await page.waitForTimeout(700);
+      await expect(tip, 'still open a moment after the tap').toBeVisible();
+      await tapOn(page.locator('h1'));
+      await expect(tip).toHaveCount(0);
+      // An unclamped headline is just its link: no tip.
+      const j = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => cs.findIndex((c) => {
+        const h = c.querySelector('.hl-caption .stat-label')!;
+        return h.scrollHeight <= h.clientHeight + 1;
+      }));
+      if (j >= 0 && !touch()) {
+        await page.locator('.finding-grid .hl-card').nth(j).locator('.caption-link').hover();
+        await page.waitForTimeout(150);
+        await expect(tip).toHaveCount(0);
+      }
+    } },
+  { name: 'insights-milestones-ruler-cursor', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      // The whole ruler is grab (a press anywhere moves the view there), grabbing while dragging (user, 2026-10-18).
+      const ruler = page.locator('nav.ruler');
+      test.skip(!(await ruler.isVisible()), 'no ruler on a screen this short');
+      const cur = (l: Locator) => l.first().evaluate((e) => getComputedStyle(e).cursor);
+      expect(await cur(ruler)).toBe('grab');
+      expect(await cur(ruler.locator('.tick'))).toBe('grab');
+      if (touch()) return;
+      await ruler.scrollIntoViewIfNeeded();
+      const b = (await ruler.boundingBox())!, vh = page.viewportSize()!.height;
+      const [x, y] = [b.x + b.width / 2, (Math.max(b.y, 0) + Math.min(b.y + b.height, vh)) / 2]; // its visible middle
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + 5, y + 5);
+      expect(await cur(ruler)).toBe('grabbing');
+      expect(await cur(ruler.locator('.tick'))).toBe('grabbing');
+      await page.mouse.up();
+      expect(await cur(ruler)).toBe('grab');
+    } },
   { name: 'tip-hit-findings', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
       // A finding card's empty space opens nothing; its clamped body opens the full text (hover, then a click keeps it).

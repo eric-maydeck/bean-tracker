@@ -18,6 +18,7 @@
   import BarLabels from './BarLabels.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import FloatTip from '$lib/components/FloatTip.svelte';
   import { formatGrams } from '$lib/grams';
   import { MON, THEMES, WHATIF_LIMITS as L, withPageWide, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
@@ -106,15 +107,32 @@
     return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
   }
 
-  // A clamped headline or body opens the card's full text, from that text only, never the card's empty space
-  // (ui-rules 49, 50): a mouse hover while over it, or a tap/click that keeps it open until a tap elsewhere.
-  const clampedText = (el: EventTarget | null) => {
-    const t = (el as Element | null)?.closest?.<HTMLElement>('.body, .stat-label');
+  // A clamped body opens the card's full text, from that text only, never the card's empty space (ui-rules 49, 50):
+  // a mouse hover while over it, or a tap/click that keeps it open until a tap elsewhere.
+  const clampedText = (el: EventTarget | null, sel = '.body') => {
+    const t = (el as Element | null)?.closest?.<HTMLElement>(sel);
     return t && t.scrollHeight > t.clientHeight + 1 ? t : null;
   };
+  // A clamped headline (2 lines at most) shows its full text in the shared tip, from the headline only: on a mouse
+  // hover while over it; a click or tap still follows its own #anchor link and also keeps the tip open until a tap
+  // elsewhere (user, 2026-10-18). An unclamped headline is just its link.
+  let headTip = $state<{ el: HTMLElement; text: string; hover: boolean } | null>(null);
+  const headOf = (e: Event) => clampedText(e.target, '.hl-caption .stat-label');
+  function headOver(e: PointerEvent) {
+    const t = headOf(e);
+    if (e.pointerType === 'mouse' && t && headTip?.el !== t) headTip = { el: t, text: t.textContent!.trim(), hover: true };
+  }
+  function headOut(e: PointerEvent) {
+    if (headTip?.hover && headOf(e) === headTip.el && !headTip.el.contains(e.relatedTarget as Node)) headTip = null;
+  }
+  function headClick(e: MouseEvent) {
+    const t = headOf(e);
+    if (t) headTip = { el: t, text: t.textContent!.trim(), hover: false };
+  }
   const fullOf = (e: Event) => document.getElementById((e.currentTarget as HTMLElement).dataset.tip!)!;
   let hovered: HTMLElement | null = null; // the full text a hover opened: a click on its text keeps it open
   function clampOver(e: PointerEvent) {
+    headOver(e);
     const t = clampedText(e.target);
     if (t) t.style.cursor = 'help';
     if (hovered && !hovered.matches(':popover-open')) hovered = null; // Escape or a tap elsewhere closed it
@@ -123,12 +141,14 @@
     if (!p.matches(':popover-open')) (p.showPopover(), (hovered = p));
   }
   function clampOut(e: PointerEvent) {
+    headOut(e);
     const t = clampedText(e.target);
     if (!hovered || !t || t.contains(e.relatedTarget as Node)) return;
     if (hovered.matches(':popover-open')) hovered.hidePopover();
     hovered = null;
   }
   function unclamp(e: MouseEvent) {
+    headClick(e);
     if ((e.target as Element).closest('a, button, .mode-tip, .text-tip') || !clampedText(e.target)) return;
     // A click pins it: the hover's tip stays; one a light dismiss closed on this click opens again.
     const p = fullOf(e);
@@ -327,6 +347,9 @@
     <p class="chart-note many">This page tests <TextTip label="{tested} findings" tip={MANY_TIP} />: by chance alone, {k ? `about ${k}` : 'under one'} would earn Likely.</p>
   {/if}
 </section>
+
+<svelte:document onclick={(e) => headTip && !headTip.el.contains(e.target as Node) && (headTip = null)} />
+{#if headTip}<FloatTip anchor={headTip.el} reveal={!headTip.hover} onclose={() => (headTip = null)}><TipBody tip={{ title: headTip.text }} /></FloatTip>{/if}
 
 {#if deck.length}
   <section class="chart-panel">
@@ -540,7 +563,18 @@
   .finding > * {
     flex-shrink: 0;
   }
-  .finding :global(.hl-caption .stat-label),
+  /* A headline is 2 lines at most at any width (1 when the card tightens fully), cut with an ellipsis; its full text
+     is its tip (user, 2026-10-18). */
+  .finding :global(.hl-caption .stat-label) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: var(--head-clamp, 2);
+    line-clamp: var(--head-clamp, 2);
+    overflow: hidden;
+  }
+  .finding:global([data-tight='3']) {
+    --head-clamp: 1;
+  }
   .finding .body,
   .finding:global([data-tight='2']) .sample {
     display: -webkit-box;

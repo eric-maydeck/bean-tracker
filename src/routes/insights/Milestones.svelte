@@ -72,7 +72,7 @@
     const hs = [...feed!.querySelectorAll<HTMLElement>('.month')], end = feed!.getBoundingClientRect().bottom;
     return hs.map((h, j) => ({ ym: h.id.slice(2), top: h.getBoundingClientRect().top, bottom: hs[j + 1]?.getBoundingClientRect().top ?? end }));
   }
-  let dragging = false;
+  let dragging = $state(false);
   function update() {
     if (!feed || !nav || !ticks.length) return;
     const secs = sections(), top = vertical ? barH : Math.max(barH, nav.getBoundingClientRect().bottom);
@@ -252,6 +252,7 @@
       <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <nav
         class="ruler"
+        class:dragging
         aria-label="Timeline"
         style:height={rulerH === null ? null : `${rulerH}px`}
         bind:this={nav}
@@ -409,7 +410,9 @@
     margin: var(--space-3) calc(-1 * var(--space-4)) 0;
     padding: var(--space-1) 2.5rem 0;
     overflow: hidden;
-    cursor: pointer;
+    /* A press anywhere on the ruler moves the view there and a drag scrubs: grab, grabbing while dragging (user,
+       2026-10-18), ticks and thumb included. */
+    cursor: grab;
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
   }
@@ -436,7 +439,11 @@
     background: none;
     color: var(--color-text-muted);
     font: inherit;
-    cursor: pointer;
+    cursor: inherit;
+  }
+  .ruler.dragging,
+  .ruler.dragging * {
+    cursor: grabbing;
   }
   .tick::before {
     content: '';
