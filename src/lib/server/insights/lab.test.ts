@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { restZ, strengthOf } from './stats';
-import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, ladder, HEAD_FIT, TIE_MARGIN, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
+import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
 import type { BagFact, BrewFact } from './facts';
 import type { BandStat } from './lab';
 
@@ -222,13 +222,33 @@ describe('ladder', () => {
       expect(ladder(few, [{ name: 'g', brews: few }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', tie: { proven: false } });
     });
   });
+  it('an Early single leader is hedged "Maybe X" when that stays on the bare setting\'s line, else the bare setting', () => {
+    expect(mightBe('60 s+')).toBe('Maybe 60 s+');
+    expect(mightBe('Cafec T90')).toBeNull(); // 15 characters: over MAYBE_FIT
+    expect(mightBe('x'.repeat(MAYBE_FIT - 6))).toHaveLength(MAYBE_FIT);
+    expect(mightBe('x'.repeat(MAYBE_FIT - 5))).toBeNull();
+    // through the ladder: a clear Early leader carries it; wins, leans and ties do not
+    const early = ladder(bagGaps([1.4, -0.3, 1.0]), [], [exact, temp])!; // a gap past the margin, three bags with a wide spread
+    expect(early).toMatchObject({ verdict: 'early', tie: null, might: 'Maybe 91 °C' });
+    expect(ladder(sameBag, [], [exact, temp])!.might).toBeNull();
+    expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])!.might).toBeNull();
+  });
+  it('thinOf: the top band under the solid minimum that is TIE_MARGIN or more above the best gets the line', () => {
+    const band = (label: string, value: number | null, solid: boolean, bags = 2) => ({ label, value, bags, brews: 4, solid, sample: { small: true } }) as never;
+    const bands = [band('a', 0.1, true, 9), band('b', 0.1 + TIE_MARGIN, false), band('c', 0.9, false, 3), band('d', 0.1 + TIE_MARGIN - 0.01, false), band('e', null, false), band('f', 2, true, 9)];
+    expect(thinOf(0.1, bands)).toEqual({ label: 'c', bags: 3 }); // c is the highest thin one; f is solid, so ignored
+    expect(thinOf(0.1, [bands[3], bands[4], bands[0]])).toBeNull(); // below the margin, no value, solid: none
+    expect(thinOf(0.1, [bands[1]])).toEqual({ label: 'b', bags: 2 }); // exactly the margin counts
+    expect(ladder(sameBag, [], [exact, temp])!.thin).toBeNull();
+  });
   it('tieHead: names that fit are listed, longer ones are summarized with the list for the line below', () => {
     expect(tieHead(['Gabi Master A', 'CT62'])).toEqual({ head: 'Gabi Master A or CT62', list: null });
     expect(tieHead(['A', 'B', 'C'])).toEqual({ head: 'A, B or C', list: null });
     const long = ['Lotus - Ultralight (Mg + K)', 'Lotus - Mg/K 60/10'];
-    expect(tieHead(long)).toEqual({ head: 'Close call', list: 'Lotus - Ultralight (Mg + K) or Lotus - Mg/K 60/10' });
-    expect(tieHead([...long, 'Third water recipe', 'Fourth']).head).toBe('Any of 4');
-    expect(tieHead(['x'.repeat(HEAD_FIT), 'y']).head).toBe('Close call');
+    expect(tieHead(long)).toEqual({ head: '2 in the running', list: 'Lotus - Ultralight (Mg + K) or Lotus - Mg/K 60/10' });
+    expect(tieHead([...long, 'Third water recipe', 'Fourth']).head).toBe('4 in the running');
+    expect(tieHead(['x'.repeat(HEAD_FIT), 'y']).head).toBe('2 in the running');
+    expect('4 in the running'.length).toBeLessThanOrEqual(HEAD_FIT);
   });
   it('usual.mean is bag-weighted n/(n+2): a 39-brew bag (0.95) does not outvote a 2-brew one (0.5) 39 to 2', () => {
     const rows = [...many(39, 1, 91, 8), ...many(2, 2, 91, 6)];

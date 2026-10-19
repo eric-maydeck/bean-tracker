@@ -36,7 +36,7 @@
   // The card's number (largest): the winner, a lean, an early lead, the tied settings (or a summary of them), the one
   // setting ever used, or not enough data (tier 3).
   const value = (p: Spot) =>
-    p.tie ? p.tie.head : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'Not enough data';
+    p.tie ? p.tie.head : p.might ? p.might : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'Not enough data';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
   const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
   // A tie's gap, rounded up so "within 0.2" is never short of the widest gap.
@@ -58,7 +58,7 @@
     if (p.tie) {
       // The line below the headline: the tied settings when the headline only summarizes them, else how close they are.
       // Its tip: each tied setting's number (at most 4 rows, ui-rules 36), best first.
-      const title = `${p.tie.labels.length} settings within ${within(p)}`, one = p.tier === 1;
+      const title = `${p.tie.labels.length} in the running (within ${within(p)})`, one = p.tier === 1;
       const rows: Tip['rows'] = tied(p).slice(0, 4).map((b) => [b.label, one ? labDelta(b.value!, ses(p)) : b.value!.toFixed(1)]);
       return { label: p.tie.list ? nb(p.tie.list) : `All within ${within(p)}${p.tie.proven ? '' : ' so far'}`, result: true,
         tip: { title, rows, note: `${plural(p.bags, 'bag')} behind ${nb(p.best!.label)}. ${p.tie.proven ? 'No badge: close enough that the choice hardly matters.' : 'Looks close, but too few bags to be sure.'}` } };
@@ -76,6 +76,9 @@
       return { label: 'No comparison yet', result: false, tip: { title: 'No comparison yet', rows: [['Always', p.usual.label], ['Avg', p.usual.mean.toFixed(1)]] } };
     return null;
   }
+  // The thin standout band's line (under the solid minimum, so its bar is pale): what the chart shows, hedged.
+  // One line (nowrap, ellipsis); a tightened card hides it and its value's tip has it whole.
+  const thin = (p: Spot) => (p.thin ? `${nb(p.thin.label)} looks higher · ${plural(p.thin.bags, 'bag')}` : null);
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
   const badge = (p: Spot) => (p.verdict === 'early' || (p.tie && !p.tie.proven) ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
@@ -220,7 +223,7 @@
         {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const r = result(p)}
-        {@const full = { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), usually(p)].filter((x): x is string => !!x) }}
+        {@const full = { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}
         <div class="hl-card spot-card" {id} {style}>
           <div class="hl-top">
             {#if b}
@@ -259,6 +262,7 @@
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
           <span class="hl-line evidence" class:result={!!r?.result || v === 'Not enough data'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
+          {#if thin(p)}<span class="hl-line thin">{thin(p)}</span>{/if}
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
           <span id="{id}-full" hidden>{tipText(full)}</span>
@@ -376,13 +380,22 @@
   .evidence.result {
     color: var(--color-accent);
   }
-  .usually {
+.usually,
+  .thin {
     font-size: 0.75rem;
+  }
+  .thin {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   /* Set from tighten(), so Svelte can't see the attribute: :global keeps the rule. */
   .spot-card:global([data-tight]) .evidence {
     -webkit-line-clamp: 1;
     line-clamp: 1;
+  }
+  .spot-card:global(:is([data-tight='3'], [data-tight='4'])) .thin {
+    display: none;
   }
   .spot-card:global(:is([data-tight='2'], [data-tight='3'], [data-tight='4'])) .usually {
     display: none;

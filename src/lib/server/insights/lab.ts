@@ -115,6 +115,10 @@ export interface Spot {
   verdict: 'win' | 'leaning' | 'early' | 'tie' | 'none';
   // verdict tie: the tied bands (best first), their widest gap, the card's headline and, when the names don't fit it, the list for the line below.
   tie: { labels: string[]; within: number; proven: boolean; head: string; list: string | null } | null;
+  // An Early single leader's hedged headline ("Maybe X"), only when it takes no more lines than the bare setting; else null (the badge alone carries the doubt).
+  might: string | null;
+  // A band under the solid minimum that looks higher than `best` by TIE_MARGIN or more, on the value the chart plots (tier 1 delta, tier 2 mean).
+  thin: { label: string; bags: number } | null;
   best: { label: string; value: number; strength: Strength | null } | null; // tier 1: delta; tier 2: mean of bag means
   next: { label: string; value: number } | null; // tier 2: the runner-up band
   group: string | null; // tier 2: the group's name
@@ -143,7 +147,16 @@ const TIE_P = 0.05;
 export const HEAD_FIT = 24;
 export function tieHead(labels: readonly string[]): { head: string; list: string | null } {
   const list = labels.length > 2 ? `${labels.slice(0, -1).join(', ')} or ${labels.at(-1)}` : labels.join(' or ');
-  return list.length <= HEAD_FIT ? { head: list, list: null } : { head: labels.length === 2 ? 'Close call' : `Any of ${labels.length}`, list };
+  return list.length <= HEAD_FIT ? { head: list, list: null } : { head: `${labels.length} in the running`, list };
+}
+// ponytail: "Maybe X" must stay on the one line the bare setting takes at 360px portrait (a card ~150px wide: ~12 characters
+// at the headline's step-down size); live text measuring is the upgrade.
+export const MAYBE_FIT = 12;
+export const mightBe = (label: string): Spot['might'] => (`Maybe ${label}`.length <= MAYBE_FIT ? `Maybe ${label}` : null);
+// The top thin band (not solid, so the bars draw it pale) standing TIE_MARGIN or more above `best`: one line says so.
+export function thinOf(best: number, bands: readonly SpotBand[]): Spot['thin'] {
+  const t = bands.filter((b) => !b.solid && b.value !== null && b.value - best >= TIE_MARGIN - 1e-9).sort((a, b) => b.value! - a.value!)[0];
+  return t ? { label: t.label, bags: t.bags } : null;
 }
 // `rivals`: the other solid bands' gap to the best, its SE and the bags behind the smaller side.
 function tieOf(best: string, rivals: { label: string; diff: number; se: number | null; n: number }[]): Spot['tie'] {
@@ -162,7 +175,7 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
   const used = (rows: readonly BrewFact[]) => groupBy(rows, (b) => coarse(b)?.label);
   const top = [...used(slice)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]))[0];
   if (!top) return null; // no brew in the slice has this variable: the card is hidden
-  const base = { next: null, group: null, varied: true, tie: null as Spot['tie'], usual: { label: top[0], mean: ratedGroups(top[1], () => 'x', 'all', 'adjusted')[0].mean } };
+  const base = { next: null, group: null, varied: true, tie: null as Spot['tie'], might: null as Spot['might'], thin: null as Spot['thin'], usual: { label: top[0], mean: ratedGroups(top[1], () => 'x', 'all', 'adjusted')[0].mean } };
   for (const f of bands) {
     const st = pairedDeltas(slice, f), solid = st.filter((s) => s.solid);
     if (solid.length < 2) continue;
@@ -175,7 +188,7 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
     // ponytail: a rival's gap SE = the larger of the two bands' SEs (each is already a band-vs-rest gap SE, and in a
     // two-band split the same one); summing would double it. Upgrade: the SE of the paired differences between bands.
     const tie = verdict === 'early' ? tieOf(b.label, solid.filter((x) => x !== b).map((x) => ({ label: x.label, diff: b.delta! - x.delta!, se: b.se === null || x.se === null ? null : Math.max(b.se, x.se), n: Math.min(b.bags, x.bags) }))) : null;
-    return { ...base, tie, tier: 1, verdict: tie ? 'tie' : verdict, best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
+    return { ...base, tie, might: verdict === 'early' && !tie ? mightBe(b.label) : null, thin: thinOf(b.delta!, shown), tier: 1, verdict: tie ? 'tie' : verdict, best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
     for (const f of bands) {
@@ -193,7 +206,7 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       const verdict = verdictOf(strength), poolSd = pool.length > 1 ? sampleSd(pool) : null;
       const tie = verdict === 'early' ? tieOf(label, solid.slice(1).map(([l, x]) => ({ label: l, diff: mean(s.means) - mean(x.means), se: poolSd === null ? null : poolSd * Math.sqrt(1 / s.means.length + 1 / x.means.length), n: Math.min(s.means.length, x.means.length) }))) : null;
       return {
-        ...base, tie, tier: 2, verdict: tie ? 'tie' : verdict, best: { label, value: mean(s.means), strength },
+        ...base, tie, might: verdict === 'early' && !tie ? mightBe(label) : null, thin: thinOf(mean(s.means), meanBands(all)), tier: 2, verdict: tie ? 'tie' : verdict, best: { label, value: mean(s.means), strength },
         next: { label: nextLabel, value: mean(n.means) }, group: g.name, bags: s.means.length, bands: meanBands(all)
       };
     }
