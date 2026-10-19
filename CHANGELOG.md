@@ -1,3 +1,31 @@
+# [1.80.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.79.1...v1.80.0) (2026-10-19)
+
+
+### Bug Fixes
+
+* **insights:** a text tip inside a clamped card opens only its own tip
+* **insights:** versus values sit on the row's value line
+* **subscriptions:** pending chip centered under the buttons, total on its line
+* **subscriptions:** the bag total lines up with the g/bag input's text
+
+
+### Features
+
+* chart tips show their units
+* **coffees:** roast icons open the level as a text tip; label tip states
+* **insights:** findings headlines clamp to 2 lines with a tip; the ruler is grab, closes [#anchor](https://github.com/eric-maydeck/bean-tracker/issues/anchor)
+* **insights:** labeled-point headline tips everywhere; larger versus values with their sample
+* **insights:** no card-level popover on Sweet spots cards
+* **insights:** one headline tip for findings; leaner gear switch and versus cards
+* **insights:** shorter findings headlines, the like-group in a tip
+* **insights:** world map tip is the shared FloatTip data tip
+* label tips for icon-only buttons and filter chips
+* map taps pin the tip, tap tips stay open, tip-only clicks show help
+* **stats:** exact-weight tips and the per person help popover
+* **subscriptions:** pending chip with a tip, visible bag total in the edit table
+* the last native title tips become the shared hover tip
+* tips open only on their marks; cursors follow the user's ruling
+
 ## [1.79.1](https://github.com/eric-maydeck/bean-tracker/compare/v1.79.0...v1.79.1) (2026-10-18)
 
 
