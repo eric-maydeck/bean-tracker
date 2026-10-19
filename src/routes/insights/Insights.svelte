@@ -614,10 +614,13 @@
     vertical-align: middle;
   }
   /* A long value wraps at its spaces inside the card rather than spill (B3). */
-  /* A findings card's versus split: values and side names a size up, and with its sample line one group centered in
-     the card's spare height, so no hole opens above or under it (user, 2026-10-18). */
+  /* A findings card's versus split: values and side names a size up (user, 2026-10-18), the values on the row's
+     value line: same top as a lone value, and the larger size's deeper baseline pulled up onto a lone value's
+     baseline (Karla's baseline sits 0.88 of its size into a 1.1 line box; layout.spec checks it). */
   .finding .vs .hl-value {
-    font-size: min(2.4rem, 15cqw / var(--q, 2));
+    --vs-size: min(2.4rem, 15cqw / var(--q, 2));
+    font-size: var(--vs-size);
+    margin-top: calc(var(--space-1) - (var(--vs-size) - min(2rem, 15cqw / var(--q, 2))) * 0.88);
   }
   /* A unit that doesn't fit beside its number wraps whole under it ("22" / "of 34 bags"), not mid-unit. */
   .finding .vs .hl-value small {
@@ -627,11 +630,9 @@
   .finding .vs-label {
     font-size: clamp(0.8rem, 8cqw / var(--q, 2), 0.9rem); /* the base size on a narrow card, so "Comparison" fits */
   }
-  .finding > .vs {
-    margin-top: auto;
-  }
+  /* Its sample line centers in the spare height under the split, so no hole opens above or under it. */
   .finding:has(> .vs) > .sample {
-    margin-bottom: auto;
+    margin-block: auto;
   }
   .finding:has(> .vs) > :global(.hl-caption) {
     margin-top: 0;

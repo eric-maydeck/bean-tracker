@@ -2938,6 +2938,7 @@ export const STATES: State[] = [
       const vs = page.locator('[id^="insight-sameBagVersus-"]').first();
       await expect(vs.locator('.sample')).toHaveText(/^Same bags · \d+ bags, \d+ brews/);
       await expectNoHoles(vs);
+      await expectValueLine(page);
     } },
   { name: 'insights-findings-list-head-tips', path: () => '/insights?tab=insights&range=all',
     act: async (page) => {
@@ -4638,6 +4639,46 @@ async function tapChart(page: Page, canvas: Locator) {
     await page.waitForTimeout(60);
     if (await tip.count()) return [x, y] as const;
   }
+}
+
+// Versus values sit on the row's value line (user, 2026-10-18): each side's first-line baseline matches a lone value's
+// (a reference `.hl-value` put where a lone value goes, so it holds for any seed), and the other cards' values in the
+// same grid row, within 2px. Returns how many cross-card pairs it compared.
+async function expectValueLine(page: Page) {
+  const r = await page.locator('.finding-grid').first().evaluate((grid) => {
+    const base = (v: Element) => {
+      const i = document.createElement('i');
+      i.style.cssText = 'display:inline-block;width:0;height:0';
+      v.prepend(i);
+      const y = i.getBoundingClientRect().top;
+      i.remove();
+      return y;
+    };
+    const bad: string[] = [];
+    let pairs = 0;
+    const cards = [...grid.children] as HTMLElement[];
+    for (const c of cards.filter((k) => k.querySelector(':scope > .vs'))) {
+      const ys = [...c.querySelectorAll(':scope > .vs .hl-value')].map(base);
+      const ref = document.createElement('span');
+      ref.className = 'hl-value';
+      ref.textContent = '0';
+      c.querySelector(':scope > .vs')!.before(ref); // in the split's own slot, so its baseline is the lone value's
+      const lone = base(ref);
+      ref.remove();
+      if (Math.max(...ys) - Math.min(...ys) > 2) bad.push(`${c.id}: its sides' baselines differ (${ys.map(Math.round)})`);
+      if (Math.abs(lone - ys[0]) > 2) bad.push(`${c.id}: baseline ${Math.round(ys[0] - lone)}px off a lone value's`);
+      for (const k of cards.filter((k) => k !== c && k.offsetTop === c.offsetTop)) {
+        const v = k.querySelector(':scope > .hl-value:not(.long)');
+        if (!v) continue;
+        pairs++;
+        const d = base(v) - ys[0];
+        if (Math.abs(d) > 2) bad.push(`${c.id} vs ${k.id}: baselines ${Math.round(d)}px apart`);
+      }
+    }
+    return { bad, pairs };
+  });
+  expect(r.bad).toEqual([]);
+  return r.pairs;
 }
 
 // No large hole inside a card (fill panel space): the tallest band of its content box with no text or graphic in it is
