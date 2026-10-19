@@ -6,6 +6,8 @@ import { VIEWPORTS } from '../tests/ui/viewports.ts';
 
 // Iterating wants pictures: screenshots on unless UI_SHOTS says otherwise.
 const env = { ...process.env, UI_SHOTS: process.env.UI_SHOTS || 'all' };
+// Whatever the exit path, end with the list of screenshots that changed since the last run.
+if (env.UI_SHOTS === 'all') process.on('exit', () => { spawnSync('node', ['scripts/shots-diff.ts'], { stdio: 'inherit' }); });
 const run = (cmd: string, args: string[]) => spawnSync(cmd, args, { stdio: 'inherit', env }).status ?? 1;
 const lines = (args: string[]) => spawnSync('git', args, { encoding: 'utf8' }).stdout.split('\n').filter(Boolean);
 const dash = process.argv.indexOf('--');

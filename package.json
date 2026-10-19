@@ -20,6 +20,7 @@
     "test:changed": "node scripts/test-changed.ts",
     "test:changed:performance": "UI_PROFILE=performance node scripts/test-changed.ts",
     "test:changed:background": "UI_PROFILE=background node scripts/test-changed.ts",
+    "shots:diff": "node scripts/shots-diff.ts",
     "migrate": "node scripts/migrate.ts",
     "prepare": "husky"
   },
