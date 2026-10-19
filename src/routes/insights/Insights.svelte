@@ -27,6 +27,7 @@
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
+  import Headline from './Headline.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
 
   let { t, theme, inputs, today, explicit, placeTip, choose }: {
@@ -117,7 +118,7 @@
   // hover while over it; a click or tap still follows its own #anchor link and also keeps the tip open until a tap
   // elsewhere (user, 2026-10-18). An unclamped headline is just its link.
   let headTip = $state<{ el: HTMLElement; text: string; hover: boolean } | null>(null);
-  const headOf = (e: Event) => clampedText(e.target, '.hl-caption .stat-label');
+  const headOf = (e: Event) => ((e.target as Element).closest?.('.phrase-tip') ? null : clampedText(e.target, '.hl-caption .stat-label'));
   function headOver(e: PointerEvent) {
     const t = headOf(e);
     if (e.pointerType === 'mouse' && t && headTip?.el !== t) headTip = { el: t, text: t.textContent!.trim(), hover: true };
@@ -336,7 +337,7 @@
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body"><CoffeeName text={f.body} /></span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
-          <TileCaption href="#{id}" label={f.headline} />
+          <TileCaption href="#{id}" label={f.headline} tip={f.headTip} />
           <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
         </div>
       {/each}
@@ -370,7 +371,7 @@
         {#each deck as f, i (f.key)}
           <article class="story" id={anchor(f.key)} aria-hidden={i !== pos} inert={i !== pos}>
             <div class="story-head">
-              <h3><CoffeeName text={f.headline} /></h3>
+              <h3><Headline text={f.headline} tip={f.headTip} /></h3>
               {@render badge(f, `s-${i}`)}
             </div>
             <div class="story-visual">{@render visual(f)}</div>
@@ -403,7 +404,7 @@
     <div class="hl-grid myth-grid">
       {#each t.myths as f, i (f.key)}
         <div class="hl-card myth" id={anchor(f.key)} style={mythVars[i]}>
-          <h3><CoffeeName text={f.headline} /></h3>
+          <h3><Headline text={f.headline} tip={f.headTip} /></h3>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
           <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
@@ -494,7 +495,7 @@
       {#each t.tooEarly as f (f.key)}
         <li>
           <div class="early-top"><span class="early-theme">{THEME_LABEL[f.theme]}</span><span>{f.sample}</span></div>
-          <p class="early-head"><CoffeeName text={f.headline} /></p>
+          <p class="early-head"><Headline text={f.headline} tip={f.headTip} /></p>
 
           <p class="early-why">{early(f)}</p>
           {#if f.progress !== undefined}

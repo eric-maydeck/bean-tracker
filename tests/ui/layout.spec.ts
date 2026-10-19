@@ -2911,6 +2911,22 @@ export const STATES: State[] = [
         await expect(tip).toHaveCount(0);
       }
     } },
+  { name: 'insights-findings-phrase-tip', path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      // likeStandout: "like coffees" opens the like-group's name in the shared tip (hover; a tap keeps it), alone (user,
+      // 2026-10-18: tips carry the clarifying info, the headline stays short).
+      const phrase = page.locator('#insight-likeStandout .phrase-tip');
+      await expect(phrase).toHaveText('like coffees');
+      const tip = page.locator('.cell-tip:popover-open');
+      if (!touch()) {
+        await phrase.hover();
+        await expect(tip).toHaveCount(1);
+        await expect(tip.locator('.tip-title')).toHaveText(/coffees/);
+        await page.mouse.move(1, 1);
+        await expect(tip).toHaveCount(0);
+      }
+      await expectTapTip(page, phrase, tip, page.locator('h1'));
+    } },
   { name: 'insights-milestones-ruler-cursor', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
       // The whole ruler is grab (a press anywhere moves the view there), grabbing while dragging (user, 2026-10-18).

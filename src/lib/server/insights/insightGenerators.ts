@@ -19,6 +19,7 @@ export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story';
 export interface Finding {
   key: string; theme: Theme; kind: CardKind;
   headline: string; // short, number-first
+  headTip?: { phrase: string; tip: string }; // a phrase in the headline whose tip clarifies it (the like-group's name)
   value?: string; // the big value ("+0.28")
   sides?: { label: string; value: string }[]; // versus: exactly 2
   body?: string; // 1-3 plain sentences
@@ -566,7 +567,7 @@ const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]): Finding[] => 
   if (multi.lines.length < 2 || flat(multi, 15)) return [];
   const [a, b] = [months[0], months.at(-1)!];
   return [{
-    ...base, key: `gearShare:${dim}`, headline: a.top!.name === b.top!.name ? `${name}: mostly ${b.top!.name}` : `${name}: ${a.top!.name} → ${b.top!.name}`,
+    ...base, key: `gearShare:${dim}`, headline: `${name}: ${a.top!.name === b.top!.name ? '' : 'now '}mostly ${b.top!.name}`, // the earlier gear: in the body
     body: `${a.top!.name} had ${pct(a.top!.n / a.total)} of ${monthLabel(a.m)}; ${b.top!.name} ${pct(b.top!.n / b.total)} of ${monthLabel(b.m)}.`
   }];
 });
@@ -588,11 +589,11 @@ const sameBagVersus: Generator = (c) => SAME_BAG.flatMap((dim) => {
   const base = {
     key: `sameBagVersus:${dim}`, theme: 'gear' as const, kind: 'versus' as const, value: signed(diff, d),
     sides: [{ label: a, value: signed(mean(da), d) }, { label: b, value: signed(mean(db), d) }],
-    sample: `${new Set(rows.map((r) => r.coffeeId)).size} bags, ${rows.length} brews`, href: `${LB}&open=${dim}`
+    sample: `same bags · ${new Set(rows.map((r) => r.coffeeId)).size} bags, ${rows.length} brews`, href: `${LB}&open=${dim}`
   };
-  if (Math.abs(diff) < TIE && Math.abs(diff) + 2 * se < TIE_BAND) return [{ ...base, headline: `${a} and ${b} tie on the same bags`, z: null, strength: null }];
+  if (Math.abs(diff) < TIE && Math.abs(diff) + 2 * se < TIE_BAND) return [{ ...base, headline: `${a} and ${b} tie`, z: null, strength: null }];
   const [w, l] = diff > 0 ? [a, b] : [b, a];
-  const headline = Math.abs(diff) < TIE ? `${a} and ${b} look even on the same bags` : `${w} beats ${l} by ${Math.abs(diff).toFixed(d)} on the same bags`;
+  const headline = Math.abs(diff) < TIE ? `${a} and ${b} look even` : `${w} beats ${l} by ${Math.abs(diff).toFixed(d)}`; // "same bags": the sample line
   const f = graded({ ...base, headline }, diff / se, true, 'brews', Math.min(da.length, db.length));
   return f ? [f] : [];
 });
@@ -825,7 +826,10 @@ const likeStandouts: Generator = (c) => {
   const named = new Map(tagTwins([[id], ...same].map(([x]) => { const b = byId.get(x as number); return { x, label: bagLabel(c, x as number, b), roastedOn: b?.purchaseDate ?? null, openedOn: b?.firstBrew ?? null }; }))
     .map((t) => [t.x, t.tag ? `${t.label} (${t.tag})` : t.label]));
   const coffee = likes.length < POOLED_MIN_BAGS || spread < 1e-9 ? null : graded({
-    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} ${top.label} by ${Math.abs(top.gap).toFixed(1)}`,
+    // The like-group's long name ("Washed Ultralight coffees from Colombia by H&S") is the tip on "like coffees",
+    // so the headline fits 2 lines (user, 2026-10-18).
+    key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} like coffees by ${Math.abs(top.gap).toFixed(1)}`,
+    headTip: { phrase: 'like coffees', tip: top.label.charAt(0).toUpperCase() + top.label.slice(1) },
     value: gapText(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);

@@ -418,7 +418,7 @@ describe('gear eras', () => {
   });
   it('no two eras but a moving mix: a share card', () => {
     const f = gen('gearShare:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', z: null, headline: 'Dripper: Alpha Switch → CT62', body: 'Alpha Switch had 75% of Apr 26; CT62 60% of Jun 26.' });
+    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', z: null, headline: 'Dripper: now mostly CT62', body: 'Alpha Switch had 75% of Apr 26; CT62 60% of Jun 26.' });
     expect(f.multi!.lines.map((l) => l.values)).toEqual([[75, 60, 40], [25, 40, 60]]);
     expect(gen('gearEras:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])).toBeNull();
   });
@@ -437,13 +437,13 @@ describe('same-bag versus', () => {
   const solo = seq(99, Array(20).fill(9), '2026-07-03', { dripper: 'V60' }); // only V60: left out
   it('top 2 drippers on the bags brewed with both', () => {
     const f = gen('sameBagVersus:dripper', [...mk(6, [8.2, 8.4], [7.6, 7.8]), ...solo, ...seq(98, [8, 8, 8], '2026-07-04', { dripper: 'Kalita' })])!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.6', headline: 'V60 beats Origami by 0.6 on the same bags', sample: '6 bags, 120 brews', href: '/insights?tab=leaderboards&open=dripper' });
+    expect(f).toMatchObject({ theme: 'gear', kind: 'versus', strength: 'solid', value: '+0.6', headline: 'V60 beats Origami by 0.6', sample: 'same bags · 6 bags, 120 brews', href: '/insights?tab=leaderboards&open=dripper' });
     expect(f.sides).toEqual([{ label: 'V60', value: '+0.3' }, { label: 'Origami', value: '-0.3' }]);
   });
   it('a confident dead heat is a finding', () =>
-    expect(gen('sameBagVersus:dripper', mk(6, [7.9, 8.1], [7.9, 8.1]))).toMatchObject({ headline: 'Origami and V60 tie on the same bags', z: null, strength: null }));
+    expect(gen('sameBagVersus:dripper', mk(6, [7.9, 8.1], [7.9, 8.1]))).toMatchObject({ headline: 'Origami and V60 tie', z: null, strength: null }));
   it('a small gap on noisy data is too early, not a tie', () =>
-    expect(gen('sameBagVersus:dripper', mk(6, [7, 9], [7.05, 9.05]))).toMatchObject({ headline: 'Origami and V60 look even on the same bags', strength: 'early' }));
+    expect(gen('sameBagVersus:dripper', mk(6, [7, 9], [7.05, 9.05]))).toMatchObject({ headline: 'Origami and V60 look even', strength: 'early' }));
   it('the mixed 155 filter is left out', () =>
     expect(gen('sameBagVersus:filter', mk(6, [8.2, 8.4], [7.6, 7.8]).map((b) => ({ ...b, filter: b.dripper === 'V60' ? 'Abaca' : MIXED_FILTER })))).toBeNull());
   it('null under 30 brews a side', () => expect(gen('sameBagVersus:dripper', mk(2, [8.2, 8.4], [7.6, 7.8]))).toBeNull());
@@ -800,7 +800,8 @@ describe('like-with-like findings', () => {
   const bags = Array.from({ length: 12 }, (_, k) => bag({ id: k + 1, name: `Bag ${k + 1}`, roaster: k < 6 ? 'Sey' : 'Other', ...LW }));
   it('standout: the coffee furthest from its like-group', () => {
     const f = gen('likeStandout', peers, bags);
-    expect(f?.headline).toMatch(/Bag 1 beats Washed Light coffees by/);
+    expect(f?.headline).toMatch(/Bag 1 beats like coffees by/);
+    expect(f?.headTip).toEqual({ phrase: 'like coffees', tip: 'Washed Light coffees by Sey' }); // the like-group, in a tip
     expect(f?.value).toMatch(/^\+1\.\d$/);
   });
   it('dial-in speed by roast level: median settle position per group', () => {
