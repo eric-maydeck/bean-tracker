@@ -10,11 +10,13 @@
   // one-line why), then the Low confidence title and reason. `sample` builds the caution from a Sample (sample.ts),
   // `caution` is a custom one (lines + count rows);
 // `sampleLegend`: the help line explaining the chip (the one place the chip and the striped swatch show together).
-export type Tip = { title: string; rows?: TipRow[]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
+// `points`: labeled facts, one per line: a bold label, then a concise value that may wrap ("Before: Lotus - Light and
+// Bright (49% as of Mar 26)"); related facts merge into one point (ui-rules 36). Numbers to compare go in `rows`.
+export type Tip = { title: string; rows?: TipRow[]; points?: [string, string][]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
   // The same tip as one line, for an aria-label.
   export const tipText = (t: Tip) => {
     const st = t.caution ?? (t.sample && sampleTip(t.sample.s, t.sample.paired));
-    return [t.title, ...(t.rows ?? []).map(([l, v]) => `${l} ${v}`), ...(t.lines ?? []), t.note, ...(st ? st.rows.map(([l, v]) => `${l} ${v}`) : []), ...(t.strength ? [STRENGTH[t.strength], STRENGTH_WHY[t.strength]] : []), ...(st ? [TIP_TITLE, st.lines[0]] : [])].filter(Boolean).map((x) => plainText(String(x))).join(' · ');
+    return [t.title, ...(t.rows ?? []).map(([l, v]) => `${l} ${v}`), ...(t.points ?? []).map(([l, v]) => `${l}: ${v}`), ...(t.lines ?? []), t.note, ...(st ? st.rows.map(([l, v]) => `${l} ${v}`) : []), ...(t.strength ? [STRENGTH[t.strength], STRENGTH_WHY[t.strength]] : []), ...(st ? [TIP_TITLE, st.lines[0]] : [])].filter(Boolean).map((x) => plainText(String(x))).join(' · ');
   };
 </script>
 
@@ -31,6 +33,7 @@ export type Tip = { title: string; rows?: TipRow[]; lines?: string[]; note?: str
 {#if tip.title}<strong class="tip-title"><CoffeeName text={plainText(tip.title)} /></strong>{/if}
 {#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/if}
 
+{#if tip.points?.length}<ul class="tip-lines tip-points">{#each tip.points as [l, v], i (i)}<li><b class="tip-label">{@render text(l)}:</b> {@render text(v)}</li>{/each}</ul>{/if}
 {#if tip.lines?.length || tip.sampleLegend}<ul class="tip-lines">{#each tip.lines ?? [] as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{@render text(line)}</li>{/each}{#if tip.sampleLegend}<li><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> <i class="sample-swatch small-sample-mark"></i> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>{/if}</ul>{/if}
 {#if tip.note}<span class="tip-note">{@render text(tip.note)}</span>{/if}
 {#if caution}<dl class="tip-rows tip-counts">{#each caution.rows as [l, v] (l)}<dt>{l}</dt><dd>{v}</dd>{/each}</dl>{/if}

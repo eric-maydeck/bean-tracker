@@ -113,16 +113,17 @@
     const t = (el as Element | null)?.closest?.<HTMLElement>(sel);
     return t && t.scrollHeight > t.clientHeight + 1 ? t : null;
   };
-  // The headline tip, one on every device (user, 2026-10-18): the full headline, then the card's clarifying lines
-  // (`headLines`: the like-group compared with, a gear switch's before and shares). Only when the headline is clamped
-  // (2 lines at most) or has lines; else the headline is just its link. From the headline only: a mouse hover while
-  // over it; a click or tap still follows its own #anchor link and also keeps the tip open until a tap elsewhere.
+  // The headline tip, one on every device and in every list (grid, Top stories, Myth busters, Too early; user,
+  // 2026-10-18): the full headline, then its labeled points (`headPoints`: the like-group compared with, a gear
+  // switch's before and now), from the headline's data-head. Only when the headline is clamped or has points; else
+  // none. From the headline only: a mouse hover while over it; a click or tap (which still follows a headline link)
+  // also keeps it open until a tap elsewhere.
   let headTip = $state<{ el: HTMLElement; tip: Tip; hover: boolean } | null>(null);
-  let headLines = $derived(new Map(grid.map((f) => [anchor(f.key), f.headLines ?? []])));
+  const head = (f: Finding) => JSON.stringify(f.headPoints ?? []);
   function headOf(e: Event) {
-    const t = (e.target as Element).closest?.<HTMLElement>('.hl-caption .stat-label'), id = t?.closest('.hl-card')?.id;
-    const lines = (id && headLines.get(id)) || [];
-    return t && (lines.length || t.scrollHeight > t.clientHeight + 1) ? { el: t, tip: { title: t.textContent!.trim(), lines } } : null;
+    const t = (e.target as Element).closest?.<HTMLElement>('[data-head]');
+    const points: [string, string][] = t ? JSON.parse(t.dataset.head || '[]') : [];
+    return t && (points.length || t.scrollHeight > t.clientHeight + 1) ? { el: t, tip: { title: t.textContent!.trim(), points } } : null;
   }
   function headOver(e: PointerEvent) {
     const h = headOf(e);
@@ -134,11 +135,11 @@
   function headClick(e: MouseEvent) {
     const h = headOf(e);
     if (h) headTip = { ...h, hover: false };
+    else if (headTip && !headTip.el.contains(e.target as Node)) headTip = null;
   }
   const fullOf = (e: Event) => document.getElementById((e.currentTarget as HTMLElement).dataset.tip!)!;
   let hovered: HTMLElement | null = null; // the full text a hover opened: a click on its text keeps it open
   function clampOver(e: PointerEvent) {
-    headOver(e);
     const t = clampedText(e.target);
     if (t) t.style.cursor = 'help';
     if (hovered && !hovered.matches(':popover-open')) hovered = null; // Escape or a tap elsewhere closed it
@@ -147,14 +148,12 @@
     if (!p.matches(':popover-open')) (p.showPopover(), (hovered = p));
   }
   function clampOut(e: PointerEvent) {
-    headOut(e);
     const t = clampedText(e.target);
     if (!hovered || !t || t.contains(e.relatedTarget as Node)) return;
     if (hovered.matches(':popover-open')) hovered.hidePopover();
     hovered = null;
   }
   function unclamp(e: MouseEvent) {
-    headClick(e);
     if ((e.target as Element).closest('a, button, .mode-tip, .text-tip') || !clampedText(e.target)) return;
     // A click pins it: the hover's tip stays; one a light dismiss closed on this click opens again.
     const p = fullOf(e);
@@ -342,8 +341,8 @@
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap body"><CoffeeName text={f.body} /></span>{/if}
           <span class="hl-line wrap sample">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
-          <TileCaption href="#{id}" label={f.headline} />
-          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, lines: [...(f.sides?.length === 2 ? f.sides.map((s) => `${s.label}: ${s.value}`) : []), f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
+          <TileCaption href="#{id}" label={f.headline} head={head(f)} />
+          <div class="mode-tip" id="full-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.headline, points: f.sides?.length === 2 ? f.sides.map((s) => [s.label, s.value]) : undefined, lines: [f.body, f.caveat].filter((x): x is string => !!x) }} /></div>
         </div>
       {/each}
     </div>
@@ -354,7 +353,7 @@
   {/if}
 </section>
 
-<svelte:document onclick={(e) => headTip && !headTip.el.contains(e.target as Node) && (headTip = null)} />
+<svelte:document onpointerover={headOver} onpointerout={headOut} onclick={headClick} />
 {#if headTip}<FloatTip anchor={headTip.el} reveal={!headTip.hover} onclose={() => (headTip = null)}><TipBody tip={headTip.tip} /></FloatTip>{/if}
 
 {#if deck.length}
@@ -376,7 +375,7 @@
         {#each deck as f, i (f.key)}
           <article class="story" id={anchor(f.key)} aria-hidden={i !== pos} inert={i !== pos}>
             <div class="story-head">
-              <h3><CoffeeName text={f.headline} /></h3>
+              <h3 data-head={head(f)}><CoffeeName text={f.headline} /></h3>
               {@render badge(f, `s-${i}`)}
             </div>
             <div class="story-visual">{@render visual(f)}</div>
@@ -409,7 +408,7 @@
     <div class="hl-grid myth-grid">
       {#each t.myths as f, i (f.key)}
         <div class="hl-card myth" id={anchor(f.key)} style={mythVars[i]}>
-          <h3><CoffeeName text={f.headline} /></h3>
+          <h3 data-head={head(f)}><CoffeeName text={f.headline} /></h3>
           {@render visual(f)}
           {#if f.body}<span class="hl-line wrap">{f.body}</span>{/if}
           <span class="hl-line wrap">{f.sample}{#if f.href}{' · '}<a href={link(f.href)}>Data</a>{/if}</span>
@@ -500,7 +499,7 @@
       {#each t.tooEarly as f (f.key)}
         <li>
           <div class="early-top"><span class="early-theme">{THEME_LABEL[f.theme]}</span><span>{f.sample}</span></div>
-          <p class="early-head"><CoffeeName text={f.headline} /></p>
+          <p class="early-head" data-head={head(f)}><CoffeeName text={f.headline} /></p>
 
           <p class="early-why">{early(f)}</p>
           {#if f.progress !== undefined}
@@ -615,12 +614,32 @@
     vertical-align: middle;
   }
   /* A long value wraps at its spaces inside the card rather than spill (B3). */
-  /* A findings card's versus split takes the card's spare height, its values a size up, so no hole opens under it. */
-  .finding > .vs {
-    flex: 1 1 auto;
-  }
+  /* A findings card's versus split: values and side names a size up, and with its sample line one group centered in
+     the card's spare height, so no hole opens above or under it (user, 2026-10-18). */
   .finding .vs .hl-value {
-    font-size: min(2rem, 13cqw / var(--q, 2));
+    font-size: min(2.4rem, 15cqw / var(--q, 2));
+  }
+  /* A unit that doesn't fit beside its number wraps whole under it ("22" / "of 34 bags"), not mid-unit. */
+  .finding .vs .hl-value small {
+    display: inline-block;
+    margin-left: 0.25em; /* its leading space trims inside an inline-block */
+  }
+  .finding .vs-label {
+    font-size: clamp(0.8rem, 8cqw / var(--q, 2), 0.9rem); /* the base size on a narrow card, so "Comparison" fits */
+  }
+  .finding > .vs {
+    margin-top: auto;
+  }
+  .finding:has(> .vs) > .sample {
+    margin-bottom: auto;
+  }
+  .finding:has(> .vs) > :global(.hl-caption) {
+    margin-top: 0;
+    padding-top: 0;
+  }
+  /* A headline with a tip (its points) is a tip trigger: help, except its link keeps the hand. */
+  :global([data-head]:not([data-head='[]'])) {
+    cursor: help;
   }
   .finding > .hl-value {
     max-width: 100%;

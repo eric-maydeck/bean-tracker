@@ -418,7 +418,7 @@ describe('gear eras', () => {
   });
   it('no two eras but a moving mix: a share card', () => {
     const f = gen('gearShare:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])!;
-    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', z: null, headline: 'Dripper: now mostly CT62', headLines: ['Before: Alpha Switch', 'Alpha Switch: 75% of Apr 26', 'CT62: 60% of Jun 26'] });
+    expect(f).toMatchObject({ theme: 'gear', kind: 'pattern', z: null, headline: 'Dripper: now mostly CT62', headPoints: [['Before', 'Alpha Switch (75% as of Apr 26)'], ['Now', 'CT62 (60% as of Jun 26)']] });
     expect(f.body).toBeUndefined(); // a switch's words are in the headline's tip (user, 2026-10-18)
     expect(f.multi!.lines.map((l) => l.values)).toEqual([[75, 60, 40], [25, 40, 60]]);
     expect(gen('gearEras:dripper', [...month('04', 15, 5), ...month('05', 12, 8), ...month('06', 8, 12)])).toBeNull();
@@ -802,7 +802,7 @@ describe('like-with-like findings', () => {
   it('standout: the coffee furthest from its like-group', () => {
     const f = gen('likeStandout', peers, bags);
     expect(f?.headline).toMatch(/Bag 1 beats like coffees by/);
-    expect(f?.headLines).toEqual(['Compared with: Washed Light coffees by Sey']); // the like-group, in the headline's tip
+    expect(f?.headPoints).toEqual([['Compared with', 'Washed Light coffees by Sey']]); // the like-group, in the headline's tip
     expect(f?.value).toMatch(/^\+1\.\d$/);
   });
   it('dial-in speed by roast level: median settle position per group', () => {

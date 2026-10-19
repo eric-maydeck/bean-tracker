@@ -2519,6 +2519,10 @@ html {
 .tip-lines li + li {
   margin-top: 0.25rem;
 }
+/* A labeled point's label: bold in the tip's text color; its value runs on after it and wraps under it. */
+.tip-points .tip-label {
+  font-weight: 700;
+}
 .tip-lines li.gap {
   height: 0.4rem;
   margin: 0;

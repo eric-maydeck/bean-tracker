@@ -19,7 +19,7 @@ export type CardKind = 'number' | 'pattern' | 'versus' | 'myth' | 'story';
 export interface Finding {
   key: string; theme: Theme; kind: CardKind;
   headline: string; // short, number-first
-  headLines?: string[]; // clarifying lines under the full headline in its tip (the like-group compared with)
+  headPoints?: [string, string][]; // the headline tip's labeled points under the full headline (TipBody points)
   value?: string; // the big value ("+0.28")
   sides?: { label: string; value: string }[]; // versus: exactly 2
   body?: string; // 1-3 plain sentences
@@ -567,11 +567,12 @@ const gearEras: Generator = (c) => ERA_DIMS.flatMap(([dim, name]): Finding[] => 
   if (multi.lines.length < 2 || flat(multi, 15)) return [];
   const [a, b] = [months[0], months.at(-1)!];
   const [sa, sb] = [`${pct(a.top!.n / a.total)} of ${monthLabel(a.m)}`, `${pct(b.top!.n / b.total)} of ${monthLabel(b.m)}`];
+  const asOf = (g: typeof a) => `${g.top!.name} (${pct(g.top!.n / g.total)} as of ${monthLabel(g.m)})`;
   // A switch is a dense card: its words go in the headline's tip, leaving the headline, sample and chart (user,
   // 2026-10-18: the deliberate exception to "a tip doesn't repeat the card").
   return [a.top!.name === b.top!.name
     ? { ...base, key: `gearShare:${dim}`, headline: `${name}: mostly ${b.top!.name}`, body: `${a.top!.name} had ${sa}; ${b.top!.name} ${sb}.` }
-    : { ...base, key: `gearShare:${dim}`, headline: `${name}: now mostly ${b.top!.name}`, headLines: [`Before: ${a.top!.name}`, `${a.top!.name}: ${sa}`, `${b.top!.name}: ${sb}`] }];
+    : { ...base, key: `gearShare:${dim}`, headline: `${name}: now mostly ${b.top!.name}`, headPoints: [['Before', asOf(a)], ['Now', asOf(b)]] }];
 });
 
 // The top 2 by brews, on bags brewed with both (demeaned within those bags). A confident dead heat
@@ -831,7 +832,7 @@ const likeStandouts: Generator = (c) => {
     // The like-group's long name ("Washed Ultralight coffees from Colombia by H&S") is in the headline's tip, so the
     // headline fits 2 lines (user, 2026-10-18).
     key: 'likeStandout', theme: 'taste', kind: 'number', headline: `${named.get(id)} ${up ? 'beats' : 'trails'} like coffees by ${Math.abs(top.gap).toFixed(1)}`,
-    headLines: [`Compared with: ${top.label}`],
+    headPoints: [['Compared with', top.label]],
     value: gapText(top.gap), sample: plural(likes.length, 'bag'), href: `${LB}&rank=like&open=coffees`,
     ...details([up ? 'Also above their peers' : 'Also below their peers', same.map(([x, l]) => detail(named.get(x)!, gapText(l.gap), coffeeHref(byId.get(x))))])
   }, top.gap / spread, true, 'bags', likes.length, undefined, likes.length);

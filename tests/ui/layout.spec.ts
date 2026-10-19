@@ -2922,19 +2922,43 @@ export const STATES: State[] = [
         await head.hover();
         await expect(tip).toHaveCount(1);
         await expect(tip.locator('.tip-title')).toHaveText(full);
-        await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Compared with: .+coffees/);
+        // Labeled points (ui-rules 36): a bold label, then the value.
+        await expect(tip.locator('.tip-points li').first()).toHaveText(/^Compared with: .+coffees/);
+        await expect(tip.locator('.tip-points li .tip-label').first()).toHaveText('Compared with:');
+        expect(await tip.locator('.tip-label').first().evaluate((e) => +getComputedStyle(e).fontWeight)).toBeGreaterThanOrEqual(700);
         await page.mouse.move(1, 1);
         await expect(tip).toHaveCount(0);
       }
       await tapOn(head);
       await expect(page).toHaveURL(/#insight-likeStandout$/);
-      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Compared with: /);
+      await expect(tip.locator('.tip-points li').first()).toHaveText(/^Compared with: /);
       await tapOn(page.locator('h1'));
       await expect(tip).toHaveCount(0);
       // A versus card's split fills the card: "Same bags" sample, no hole.
       const vs = page.locator('[id^="insight-sameBagVersus-"]').first();
       await expect(vs.locator('.sample')).toHaveText(/^Same bags · \d+ bags, \d+ brews/);
       await expectNoHoles(vs);
+    } },
+  { name: 'insights-findings-list-head-tips', path: () => '/insights?tab=insights&range=all',
+    act: async (page) => {
+      // The same headline tip in Top stories, Myth busters and Too early as in the grid (user, 2026-10-18). Where no
+      // seeded headline there has points, one is given a point: the mechanism is what's under test.
+      const tip = page.locator('.cell-tip:popover-open');
+      for (const sel of ['.story:not([aria-hidden="true"]) h3[data-head]', '.myth h3[data-head]', '.early-head[data-head]']) {
+        const h = page.locator(sel).first();
+        if (!(await h.count())) continue;
+        await h.evaluate((e) => e.dataset.head === '[]' && (e.dataset.head = '[["Test","a point"]]'));
+        const [full, label] = await h.evaluate((e) => [e.textContent!.trim(), JSON.parse(e.dataset.head!)[0][0]]);
+        await h.scrollIntoViewIfNeeded();
+        if (!touch()) {
+          await h.hover();
+          await expect(tip.locator('.tip-title'), sel).toHaveText(full);
+          await expect(tip.locator('.tip-points .tip-label').first()).toHaveText(`${label}:`);
+          await page.mouse.move(1, 1);
+          await expect(tip).toHaveCount(0);
+        }
+        await expectTapTip(page, h, tip, page.locator('h1'));
+      }
     } },
   { name: 'insights-findings-gear-switch', path: () => '/insights?tab=insights&range=3m',
     act: async (page) => {
@@ -2947,8 +2971,8 @@ export const STATES: State[] = [
       await expectNoHoles(card);
       const tip = page.locator('.cell-tip:popover-open');
       await tapOn(card.locator('.caption-link'));
-      await expect(tip.locator('.tip-lines li').first()).toHaveText(/^Before: /);
-      await expect(tip.locator('.tip-lines li')).toHaveCount(3);
+      await expect(tip.locator('.tip-points .tip-label')).toHaveText(['Before:', 'Now:']);
+      await expect(tip.locator('.tip-points li').first()).toHaveText(/^Before: .+ \(\d+% as of \w+ \d+\)$/);
     } },
   { name: 'insights-milestones-ruler-cursor', path: () => '/insights?tab=milestones&range=all',
     act: async (page) => {
