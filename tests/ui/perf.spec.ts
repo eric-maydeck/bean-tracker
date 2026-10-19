@@ -75,7 +75,7 @@ test('link picker opens and filters within budget', { tag: '@stats' }, async ({ 
     keystrokeMedianMs: +median(r.key).toFixed(1),
     keystrokeMaxMs: +Math.max(...r.key).toFixed(1)
   };
-  console.log('link picker perf:', JSON.stringify(result));
+  test.info().annotations.push({ type: 'link picker perf', description: JSON.stringify(result) });
   expect(r.options).toBeGreaterThanOrEqual(300);
   expect(r.focusOnSearch, 'opening must not focus the search box').toBe(false);
   expect(result.openMedianMs).toBeLessThan(BUDGET.open);
