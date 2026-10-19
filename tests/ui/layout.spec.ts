@@ -2812,7 +2812,7 @@ export const STATES: State[] = [
       // No all-gray card: every "Not enough data" card's line is in the accent ink too (user, 2026-10-17).
       expect(await page.locator('.spot-card').evaluateAll((cs) => cs.filter((c) => c.querySelector('.hl-value')!.textContent!.trim() === 'Not enough data' && !c.querySelector('.evidence.result')).map((c) => c.id))).toEqual([]);
       for (const r of results) expect(r, r.text!).toMatchObject({ ink: true, lines: 1 });
-      const best = page.locator('.spot-card .evidence .text-tip', { hasText: /^vs same bag/ }).first(); // the seed has one at every width
+      const best = page.locator('.spot-card .evidence .text-tip', { hasText: /vs same bag/ }).first(); // the seed has one at every width
       await best.click();
       const tip = page.locator('.float-tip');
       await expect(tip).toContainText('vs same bag');

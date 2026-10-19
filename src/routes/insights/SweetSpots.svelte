@@ -5,6 +5,7 @@
   import type { LabOptions, Spot, SweetSpotsTab } from '$lib/server/insights/lab';
   import { STRENGTH, STRENGTH_TIP } from './Insights.svelte';
   import { sizedGrid } from './rows';
+  import { inkOf, spotAxis } from './spotAxis';
   import { noMatch, plural, sdBlur, sdFocus, SD_TIP, STRENGTH_LINE } from './DeltaBars.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { sampleField } from '$lib/sample';
@@ -12,7 +13,7 @@
   import GrinderSelect from './GrinderSelect.svelte';
   import TileCaption from './TileCaption.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
-  import { deltaInk, labDelta } from '$lib/components/deltaColor';
+  import { labDelta } from '$lib/components/deltaColor';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -64,13 +65,14 @@
         tip: { title, rows, note: `${plural(p.bags, 'bag')} behind ${nb(p.best!.label)}. ${p.tie.proven ? 'No badge: close enough that the choice hardly matters.' : 'Looks close, but too few bags to be sure.'}` } };
     }
     if (p.tier === 1 && p.best) {
-      const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, deltaInk(p.best.value)], ['Bags', `${p.bags}`]];
+      const d = labDelta(p.best.value, ses(p)), rows: Tip['rows'] = [['vs same bag', d, inkOf(d)], ['Bags', `${p.bags}`]];
       return { label: 'vs same bag', delta: d, tip: { title: p.best.label, rows }, result: true };
     }
     if (p.tier === 2 && p.best && p.next) {
       const title = `Highest across ${p.group}`;
       return { label: `${title}: ${nb(p.best.label)} (${p.best.value.toFixed(1)})`, result: true,
-        tip: { title, rows: [[p.best.label, p.best.value.toFixed(1)], [p.next.label, p.next.value.toFixed(1)], ['Bags', `${p.bags}`]] } };
+        // One row per compared setting, best first: its bags, then its average (4 rows at most, ui-rules 36).
+        tip: { title, rows: p.bands.filter((b) => b.solid && b.value !== null).sort((a, b) => b.value! - a.value!).slice(0, 4).map((b) => [b.label, `${plural(b.bags, 'bag')} · ${b.value!.toFixed(1)}`]) } };
     }
     if (p.tier === 3 && !p.varied)
       return { label: 'No comparison yet', result: false, tip: { title: 'No comparison yet', rows: [['Always', p.usual.label], ['Avg', p.usual.mean.toFixed(1)]] } };
@@ -79,6 +81,9 @@
   // The thin standout band's line (under the solid minimum, so its bar is pale): what the chart shows, hedged.
   // One line (nowrap, ellipsis); a tightened card hides it and its value's tip has it whole.
   const thin = (p: Spot) => (p.thin ? `${nb(p.thin.label)} looks higher · ${plural(p.thin.bags, 'bag')}` : null);
+  // Why a tier-3 card has no comparison: its counts against the bar (a solid setting = 3+ bags and 30+ brews).
+  const whyNot = (p: Spot): Tip => ({ title: 'Not enough data', lines: ['Needs 2+ settings with 3+ bags and 30+ brews each.'],
+    rows: [['Settings brewed', `${p.bands.filter((b) => b.brews).length}`], ['With enough', `${p.bands.filter((b) => b.solid).length}`]] });
   const usually = (p: Spot) => (p.tier === 3 && !p.varied ? null : `Usually: ${p.usual.label}`);
   const badge = (p: Spot) => (p.verdict === 'early' || (p.tie && !p.tie.proven) ? 'early' : p.best?.strength === 'solid' || p.best?.strength === 'hint' ? p.best.strength : null);
 
@@ -96,13 +101,12 @@
     // The axis fits the solid bands when there are any: a thin band past it is clipped at the edge with a cap
     // (its value stays in the tip), so thin data shows without dominating.
     const fit = p.bands.some((b) => b.solid) ? ds.filter((_, i) => p.bands[i].solid) : ds;
-    const hi = Math.max(0, ...fit), lo = Math.min(0, ...fit), span = hi - lo || 1;
-    const shown = ds.map((d) => Math.min(hi, Math.max(lo, d)));
+    const { hi, span, shown, clip, sh } = spotAxis(ds, fit);
     const picks = p.tie ? p.tie.labels : p.best && p.verdict !== 'none' ? [p.best.label] : [];
     return {
       zero: (hi / span) * 100,
       bars: p.bands.map((b, i) => ({
-        ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: shown[i] !== ds[i],
+        ...b, top: ((hi - Math.max(0, shown[i])) / span) * 100, h: (Math.abs(shown[i]) / span) * 100, up: ds[i] >= 0, clip: clip[i], sh: sh[i],
         pick: picks.includes(b.label), usual: b.label === p.usual.label, none: b.value === null && b.brews > 0, empty: !b.brews,
         // The chart names only its end bands, so the tip leads with the band and its value (ui-rules 36).
         tip: (!b.brews
@@ -111,7 +115,7 @@
           ? { title: b.range ?? b.label, rows: [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]], note: noMatch('grind setting') }
           : {
               title: b.range ?? b.label, // a grind band's label is its first setting; the tip gives its range
-              rows: [p.tier === 1 ? ['vs same bag', labDelta(b.value, ses(p)), deltaInk(b.value)] : ['Avg (bag means)', b.value.toFixed(1)], ...(b.sample.small ? [] : [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]])],
+              rows: [p.tier === 1 ? ['vs same bag', labDelta(b.value, ses(p)), inkOf(labDelta(b.value, ses(p)))] : ['Avg (bag means)', b.value.toFixed(1)], ...(b.sample.small ? [] : [['Bags', `${b.bags}`], ['Brews', `${b.brews}`]])],
               ...sampleField(b.sample, p.tier === 1),
               note: b.label === p.usual.label ? 'Your usual setting.' : undefined
             }) as Tip
@@ -223,7 +227,7 @@
         {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const r = result(p)}
-        {@const full = { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}
+        {@const full = v === 'Not enough data' ? whyNot(p) : { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}
         <div class="hl-card spot-card" {id} {style}>
           <div class="hl-top">
             {#if b}
@@ -233,7 +237,7 @@
               <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
           </div>
-          <span class="hl-value" class:long={say.length > 9}>{#if tight[id]}<TextTip label={say} tip={full} />{:else}{say}{/if}</span>
+          <span class="hl-value" class:long={say.length > 9}>{#if tight[id] || v === 'Not enough data'}<TextTip label={say} tip={full} />{:else}{say}{/if}</span>
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
@@ -248,7 +252,7 @@
                 {#each ch.bars as b (b.label)}
                   <span class="col"
                     ><span class="bar" class:up={b.up} class:pick={b.pick} class:lean={b.pick && p.verdict !== 'win'} class:small-sample-mark={b.sample.small} class:clip={b.clip} class:none={b.none} class:empty={b.empty}
-                      style:top="{b.top}%" style:height="{b.h}%"></span
+                      style:top="{b.top}%" style:height="{b.h}%" style:--sh="{b.sh}%"></span
                     >{#if b.usual}<span class="usual-dot"></span>{/if}</span
                   >
                 {/each}
@@ -261,7 +265,7 @@
           {/if}
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
-          <span class="hl-line evidence" class:result={!!r?.result || v === 'Not enough data'}>{#if r}{#if r.delta}<span class="delta-text {deltaInk(p.best!.value)}">{r.delta}</span>{' '}{/if}<TextTip label={r.label} tip={r.tip} />{:else}{evidence(p)}{/if}</span>
+          <span class="hl-line evidence" class:result={!!r?.result || v === 'Not enough data'}>{#if r}{#if r.delta}<TextTip label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>
           {#if thin(p)}<span class="hl-line thin">{thin(p)}</span>{/if}
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />
@@ -380,7 +384,10 @@
   .evidence.result {
     color: var(--color-accent);
   }
-.usually,
+  .zero {
+    color: var(--color-text-muted);
+  }
+  .usually,
   .thin {
     font-size: 0.75rem;
   }
@@ -471,11 +478,11 @@
   /* Clipped at the axis edge (a thin band past the solid bands' range): the cut end is an arrow tip, "keeps going". */
   .bar.clip {
     border-radius: 0;
-    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), 50% 100%, 0 calc(100% - 9px));
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--sh)), 50% 100%, 0 calc(100% - var(--sh)));
   }
   .bar.clip.up {
-    clip-path: polygon(0 9px, 50% 0, 100% 9px, 100% 100%, 0 100%);
-    background-position: left 0 top 9px, 0 0; /* a small bar's fold sits below the arrow taper */
+    clip-path: polygon(0 var(--sh), 50% 0, 100% var(--sh), 100% 100%, 0 100%);
+    background-position: left 0 top var(--sh), 0 0; /* a small bar's fold sits below the arrow taper */
   }
   .bar.pick {
     background: var(--chart-color-1);
