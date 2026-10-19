@@ -26,3 +26,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npx tsc --noEmit
+      - run: npx svelte-check --threshold error
