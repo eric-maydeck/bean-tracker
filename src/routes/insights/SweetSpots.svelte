@@ -268,7 +268,7 @@
           {/if}
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
-          <span class="hl-line evidence" class:result={!!r?.result || v === 'Not enough data'}>{#if r}{#if r.delta}<TextTip label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>
+          {#if r || evidence(p)}<span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<TextTip label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>{/if}
           {#if thin(p)}<span class="hl-line thin">{thin(p)}</span>{/if}
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.name} />

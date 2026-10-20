@@ -191,7 +191,7 @@ describe('ladder', () => {
   });
   it('tier 2: bag means identical to float noise are not a finding', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
-    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92 °C', '93–94 °C'], within: 0, proven: true } });
+    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92 °C', '93–94 °C'], within: expect.closeTo(0), proven: false } });
   });
   it('tier 1: a hint leans, a weak gap is no clear winner', () => {
     // 3 bags: t(2) 4.16 is Possible over 2 bands; t(2) 1.89 is no clear winner.

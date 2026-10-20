@@ -159,11 +159,22 @@ export function thinOf(best: number, bands: readonly SpotBand[]): Spot['thin'] {
   return t ? { label: t.label, bags: t.bags } : null;
 }
 // `rivals`: the other solid bands' gap to the best, its SE and the bags behind the smaller side.
+// Best's gap to band `x` on the bags that brewed both (≥ 2 brews each, as pairedDeltas pairs): each bag's mean rating in
+// best minus its mean in x. Its mean, SE (SD of those bag gaps ÷ √n) and n; null under 2 shared bags.
+function pairedGap(rows: readonly BrewFact[], band: BandFn, best: string, x: string) {
+  const d: number[] = [];
+  for (const [, g] of groupBy(rows, (r) => r.coffeeId)) {
+    const by = groupBy(g, (r) => band(r)?.label), a = by.get(best), c = by.get(x);
+    if (a && c && a.length >= 2 && c.length >= 2) d.push(mean(a.map((r) => r.rating!)) - mean(c.map((r) => r.rating!)));
+  }
+  return d.length >= 2 ? { diff: mean(d), se: sampleSd(d) / Math.sqrt(d.length), n: d.length } : null;
+}
 function tieOf(best: string, rivals: { label: string; diff: number; se: number | null; n: number }[]): Spot['tie'] {
   const close = rivals.filter((r) => Math.abs(r.diff) <= TIE_MARGIN);
   if (!close.length) return null;
   const labels = [best, ...close.map((r) => r.label)];
-  const proven = close.every((r) => r.se !== null && r.n >= 2 && Math.abs(r.diff) + tCrit(r.n - 1, TIE_P) * r.se <= TIE_MARGIN);
+  // A proof needs a real sample: ≥ MIN_BAGS bags behind the gap and a spread to measure it by (zero variance proves nothing).
+  const proven = close.every((r) => r.se !== null && r.se > EPS && r.n >= MIN_BAGS && Math.abs(r.diff) + tCrit(r.n - 1, TIE_P) * r.se <= TIE_MARGIN);
   return { labels, within: Math.max(...close.map((r) => Math.abs(r.diff))), proven, ...tieHead(labels) };
 }
 
@@ -185,9 +196,13 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       return { label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta, se: s.se, bags, brews, solid: s.solid, sample: pooled(bags, brews) };
     });
     const verdict = verdictOf(b.strength);
-    // ponytail: a rival's gap SE = the larger of the two bands' SEs (each is already a band-vs-rest gap SE, and in a
-    // two-band split the same one); summing would double it. Upgrade: the SE of the paired differences between bands.
-    const tie = verdict === 'early' ? tieOf(b.label, solid.filter((x) => x !== b).map((x) => ({ label: x.label, diff: b.delta! - x.delta!, se: b.se === null || x.se === null ? null : Math.max(b.se, x.se), n: Math.min(b.bags, x.bags) }))) : null;
+    // The gap between best and a rival is their paired per-bag difference (not the two bands' deltas against the rest
+    // of the bag, which double it in a two-band split); with under 2 shared bags it falls back to the bands' chart
+    // values, never proven.
+    const tie = verdict === 'early' ? tieOf(b.label, solid.filter((x) => x !== b).map((x) => {
+      const g = pairedGap(slice, f, b.label, x.label);
+      return { label: x.label, ...(g ?? { diff: b.delta! - x.delta!, se: null, n: 0 }) };
+    })) : null;
     return { ...base, tie, might: verdict === 'early' && !tie ? mightBe(b.label) : null, thin: thinOf(b.delta!, shown), tier: 1, verdict: tie ? 'tie' : verdict, best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
