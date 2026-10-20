@@ -4143,6 +4143,29 @@ export const STATES: State[] = [
     }
   },
   {
+    // A column's value list has a back button to the filter list (nothing applied, URL untouched), and the counts clear the scrollbar.
+    name: 'coffees-filter-editor-back',
+    path: () => '/coffees?status=all&view=compact',
+    act: async (page) => {
+      const url = page.url();
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await page.getByRole('button', { name: 'Origin', exact: true }).click();
+      const back = page.getByRole('button', { name: 'Back to filters' });
+      await expect(back).toBeVisible();
+      const b = (await back.boundingBox())!;
+      if (page.viewportSize()!.width <= 480) { expect(b.width).toBeGreaterThanOrEqual(44); expect(b.height).toBeGreaterThanOrEqual(44); }
+      const gap = await page.locator('.filter-values').evaluate((el) => {
+        const c = el.querySelector('.filter-value-count')!.getBoundingClientRect();
+        return el.getBoundingClientRect().right - c.right - (el.offsetWidth - el.clientWidth);
+      });
+      expect(gap, 'space between the counts and the scrollbar').toBeGreaterThanOrEqual(16);
+      await back.click();
+      await expect(page.getByRole('radiogroup', { name: 'In Bean Conqueror' })).toBeVisible();
+      await expect(page.locator('.filter-chip')).toHaveCount(0);
+      expect(page.url()).toBe(url);
+    }
+  },
+  {
     // Moonwake has a seeded default and no own image: the form previews it.
     name: 'coffee-edit-roaster-default-preview',
     path: (s) => `/coffees/${s.slugs.frozen}`,

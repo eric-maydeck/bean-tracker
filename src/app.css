@@ -2287,13 +2287,22 @@ html {
   margin-bottom: 0;
 }
 
+.filter-editor-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.filter-editor-head .eyebrow {
+  margin: 0;
+}
+
 .filter-values {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   max-height: 16rem;
   overflow-y: auto;
-  padding-right: var(--space-3); /* an overlay scrollbar (phones, macOS) must not cover the counts */
+  padding-right: var(--space-5); /* an overlay scrollbar (phones, macOS) must not cover the counts */
 }
 
 .filter-value {

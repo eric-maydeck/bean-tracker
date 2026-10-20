@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Icon from './Icon.svelte';
   import {
     COLUMNS,
     column,
@@ -241,7 +242,11 @@
   {:else}
     {@const k = key}
     {@const kind = column(k).kind}
-    <p class="eyebrow">{editorLabel(column(k))}</p>
+    <!-- Back to the filter list; nothing is applied or cleared (the editor's state is not URL state, like the list). -->
+    <div class="filter-editor-head">
+      <button class="icon-button" type="button" aria-label="Back to filters" onclick={() => (key = null)}><Icon name="arrow-left" /></button>
+      <p class="eyebrow">{editorLabel(column(k))}</p>
+    </div>
 
     {#if kind === 'text'}
       <div class="form-field group-field">
