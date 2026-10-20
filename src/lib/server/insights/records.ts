@@ -391,7 +391,9 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     return (a: Holder, b: Holder) => r(b) - r(a) || a.label.localeCompare(b.label, undefined, { sensitivity: 'base' });
   };
   const tiles: RecordTile[] = [];
-  for (const def of [...RECORDS, ...grindDefs(brews)]) {
+  // Brew extremes end with these three, after the per-grinder grind tiles.
+  const LAST = ['waterMost', 'earlyBird', 'nightOwl'];
+  for (const def of [...RECORDS.filter((d) => !LAST.includes(d.key)), ...grindDefs(brews), ...LAST.map((k) => RECORDS.find((d) => d.key === k)!)]) {
     const p = (w: Period | null) => {
       if (!w) return null;
       const x = ctx(w, def);
