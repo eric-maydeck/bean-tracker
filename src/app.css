@@ -2300,6 +2300,7 @@ html {
   margin: 0;
   min-width: 0;
   text-align: center;
+  font-family: inherit; /* the panel's own font, not the heading serif */
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--color-accent);
