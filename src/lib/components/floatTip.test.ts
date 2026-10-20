@@ -10,8 +10,9 @@ describe('tipPlace', () => {
     expect(tipPlace(box(0, 300), { w: 200, h: 50 }, view).x).toBe(8);
     expect(tipPlace(box(390, 300), { w: 200, h: 50 }, view).x).toBe(192);
   });
-  it('neither side fits: the roomier side', () => {
+  it('neither side fits: clamped into the band, over the anchor', () => {
     expect(tipPlace(box(190, 700), { w: 100, h: 700 }, view).y).toBe(60); // more room above: pinned under the bar
-    expect(tipPlace(box(190, 100), { w: 100, h: 700 }, view).y).toBe(126); // more room below
+    expect(tipPlace(box(190, 100), { w: 100, h: 700 }, view).y).toBe(100); // more room below: would pass the end
+    expect(tipPlace(box(190, 300), { w: 100, h: 800 }, view).y).toBe(60); // taller than the band: top under the bar
   });
 });

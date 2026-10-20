@@ -47,6 +47,7 @@
       // Never so far that the anchor slides under the sticky bar (the tip would hide with it): back off the excess.
       const under = viewBand().top + 4 - anchor.getBoundingClientRect().top;
       if (under > 0) scrollBy({ top: -under, behavior: 'instant' });
+      place(); // now, not on the scroll event a frame later: the tip is never seen (or measured) at the old spot
     }
     addEventListener('scroll', place, true);
     addEventListener('resize', place);

@@ -3780,13 +3780,22 @@ export const STATES: State[] = [
       await expect(page.locator('.pair-bags .bag').first()).toContainText(' · ');
       // The 5 biggest gaps; "Show all N" expands that pair (pairs=<slug> in the URL), "Show fewer" collapses it.
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
+      // The toggle scrolls its button to the screen's bottom (above Back to top when it shows) a moment after the
+      // URL changes (bottomInView awaits the navigation): a click while that scroll is pending lands on whatever
+      // the page jumps to, so wait for the landing before the next action.
+      const landed = (name: string | RegExp) => expect.poll(() => pair.getByRole('button', { name }).evaluate((el) => {
+        const t = document.querySelector('.bottom-tabs'), lift = t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0;
+        return Math.abs(innerHeight - el.getBoundingClientRect().bottom - lift - (document.querySelector('.back-to-top') ? 64 : 0));
+      })).toBeLessThanOrEqual(2);
       await pair.getByRole('button', { name: /^Show all \d+$/ }).click();
       await expect(page).toHaveURL(/[?&]pairs=[a-z0-9-]+--[a-z0-9-]+/);
+      await landed('Show fewer');
       await expect(pair.locator('.pair-bags li')).toHaveCount(8); // every seeded bag used all three waters
       await expect(page.locator('.pair').nth(1).locator('.pair-bags li')).toHaveCount(5); // only that pair
       expect(await pairGaps()).toEqual([]); // expanded, it spans; the rest stay balanced
       await pair.getByRole('button', { name: 'Show fewer' }).click();
       await expect(page).not.toHaveURL(/pairs=/);
+      await landed(/^Show all \d+$/);
       await expect(pair.locator('.pair-bags li')).toHaveCount(5);
       // Usage over time: 100% stacked bars; a segment's tip: the month, then the recipe and its share in one row.
       const eras = page.locator('[data-section="water-eras"]');
