@@ -67,6 +67,10 @@ describe('pairedDeltas', () => {
     // Brews are not units: three times the brews per bag, same bags, same verdict.
     expect(pairedDeltas(bagGaps(six, 30), temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
   });
+  it('few bags, many brews per bag: 3 bags × 30 brews is a t(2) test, never solid (brew-level z would be huge)', () => {
+    const got = pairedDeltas(bagGaps([0.25, 0.1, 0.2], 30), temp).find((s) => s.label === '90–92 °C')!;
+    expect(got.strength).toBe('hint');
+  });
   it('a bar and its badge never disagree in sign: the per-bag gap against the bar is Too early (stats re-review B)', () => {
     // Every bag: 94 °C 0.5 under 91 °C, plus one 1-rated 88 °C brew (unpaired) that pulls the bag mean down, so the
     // 94 °C brews still sit above it: the bar reads +, the per-bag test says − with a large |t|.

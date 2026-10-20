@@ -133,7 +133,7 @@ export const ROAST_GAP = 0.5;
 // The mixed-roast nudge (spec Part 3, gate-3 rule): roast levels passing the pooled rule, best first, when the
 // highest and lowest weighted means (ratedGroups) differ at strengthOf 'solid' (the SD of the qualifying bag means
 // over each level's effective bags, one test) and by ROAST_GAP or more; else null. `brews`: the rating views'
-// source in the Period.
+// source in the Period. The test is a t test, df = bags − 1 (each bag has one roast level, so bagMeans are distinct bags).
 export function roastMix<T extends Rated & { roastLevel: string | null }>(
   brews: readonly T[],
   ratings: Ratings
@@ -146,5 +146,5 @@ export function roastMix<T extends Rated & { roastLevel: string | null }>(
   const [hi, lo] = [levels[0], levels.at(-1)!];
   const z = (hi.mean - lo.mean) / (sd(bagMeans) * Math.sqrt(1 / hi.eff + 1 / lo.eff));
   // 1e-9: bag means are float sums, a 0.5 gap can land at 0.49999….
-  return strengthOf(z, true, 1) === 'solid' && hi.mean - lo.mean >= ROAST_GAP - 1e-9 ? levels.map((g) => ({ roast: g.label, mean: g.mean })) : null;
+  return strengthOf(z, true, 1, bagMeans.length) === 'solid' && hi.mean - lo.mean >= ROAST_GAP - 1e-9 ? levels.map((g) => ({ roast: g.label, mean: g.mean })) : null;
 }

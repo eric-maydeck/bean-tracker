@@ -129,15 +129,20 @@ describe('roastMix', () => {
   const pair = (gap: number, spread = 0.5, bags = 5) => [...level('Medium', 7, spread, bags), ...level('Light', 7 + gap, spread, bags)];
 
   it('names every qualifying level, best first, when z ≥ 2 and the gap ≥ 0.5', () => {
-    expect(roastMix(pair(0.7), 'all')).toEqual([{ roast: 'Light', mean: expect.closeTo(7.7) }, { roast: 'Medium', mean: expect.closeTo(7) }]);
+    expect(roastMix(pair(0.9), 'all')).toEqual([{ roast: 'Light', mean: expect.closeTo(7.9) }, { roast: 'Medium', mean: expect.closeTo(7) }]);
   });
-  it('z threshold: 2.05 shows, 1.94 (gap 0.55) does not', () => {
-    expect(roastMix(pair(0.6), 'all')).not.toBeNull();
-    expect(roastMix(pair(0.55), 'all')).toBeNull();
+  it('t threshold (10 bags, df 9): gap 0.8 shows, 0.75 does not', () => {
+    expect(roastMix(pair(0.8), 'all')).not.toBeNull();
+    expect(roastMix(pair(0.75), 'all')).toBeNull();
   });
   it('gap threshold: 0.5 shows (z 2.4), 0.49 does not (z 2.39)', () => {
     expect(roastMix(pair(0.5, 0.3), 'all')).not.toBeNull();
     expect(roastMix(pair(0.49, 0.3), 'all')).toBeNull();
+  });
+  it('few bags, many brews per bag: a t test on the bags, not the normal curve (gap 0.7, 5 bags a level)', () => {
+    // z ≈ 2.2 passes the normal curve; t with 9 df does not. Ten bags a level pass.
+    expect(roastMix(pair(0.7, 0.5, 5), 'all')).toBeNull();
+    expect(roastMix(pair(0.7, 0.5, 10), 'all')).not.toBeNull();
   });
   it('a big sample with a tiny gap stays hidden (40 bags each, gap 0.4, z ≈ 5)', () =>
     expect(roastMix(pair(0.4, 0.5, 40), 'all')).toBeNull());
@@ -146,7 +151,7 @@ describe('roastMix', () => {
       .toEqual(['Light', 'Medium', 'Dark']);
   });
   it('a small level is left out (and of the SD)', () => {
-    expect(roastMix([...pair(0.7), ...level('Dark', 3, 0.5, 2)], 'all')?.map((r) => r.roast)).toEqual(['Light', 'Medium']);
+    expect(roastMix([...pair(0.9), ...level('Dark', 3, 0.5, 2)], 'all')?.map((r) => r.roast)).toEqual(['Light', 'Medium']);
   });
   it('every bag counts, weighted n/(n+2): a 1-brew Light bag at 6 (1/3) weighs half a 4-brew bag (2/3)', () => {
     const tiny = { coffeeId: 999, rating: 6, localDate: '2026-07-01', roastLevel: 'Light' };

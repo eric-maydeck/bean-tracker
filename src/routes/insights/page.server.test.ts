@@ -583,19 +583,19 @@ describe('page-wide coffees filter', () => {
 });
 
 describe('the mixed-roast nudge', () => {
-  // Two roast levels, 3 bags × 4 rated brews each, bag means 1 point apart: past the pooled rule both sides.
+  // Two roast levels, 5 bags × 4 rated brews each, bag means 1 point apart: past the pooled rule both sides and the t test.
   function seedRoasts() {
     const db = getDb();
     db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees;');
     const ins = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, 15, ?, ?)`);
-    [['Light', 8.5], ['Dark', 7.5]].forEach(([roast, r], k) => [0, 1, 2].forEach((j) => {
+    [['Light', 8.5], ['Dark', 7.5]].forEach(([roast, r], k) => [0, 1, 2, 3, 4].forEach((j) => {
       const bean = `b${k}${j}`;
       const { id } = createCoffee(db, {
         roaster: 'R', coffee_name: bean, origin: null, roast_level: roast as string, processing: 'Washed', amount_g: 250, cost: 25,
         roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
       });
       db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(bean, bean, today, id);
-      for (let i = 0; i < 4; i++) ins.run(`${today}T1${k}:${j}0:0${i}.000Z`, bean, (r as number) + (j - 1) * 0.1, today);
+      for (let i = 0; i < 4; i++) ins.run(`${today}T1${k}:${j}0:0${i}.000Z`, bean, (r as number) + (j - 2) * 0.1, today);
     }));
   }
   it('shows on mixed roasts; a Roast filter or rank=like turns it off', () => {
