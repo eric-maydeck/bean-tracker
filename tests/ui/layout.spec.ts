@@ -38,6 +38,15 @@ function buttonBoxes(scope: Locator) {
   });
 }
 
+// Back to top never covers a Show more / Show less button after the scroll lands: when it shows, the button ends above it.
+async function expectClearOfBackToTop(page: Page, button: Locator) {
+  await page.waitForTimeout(300);
+  const btt = page.getByRole('button', { name: 'Back to top' });
+  if (!(await btt.count())) return;
+  const [a, b] = await Promise.all([btt.boundingBox(), button.boundingBox()]);
+  const overlap = a!.x < b!.x + b!.width && a!.x + a!.width > b!.x && a!.y < b!.y + b!.height && a!.y + a!.height > b!.y;
+  expect(overlap, `Back to top ${JSON.stringify(a)} over the button ${JSON.stringify(b)}`).toBe(false);
+}
 // A sticky filter bar: pinned at the top after scrolling, one short row in phone landscape,
 // and a panel scrolled into view starts below it (scroll-padding-top), not under it.
 // Every delta / pace / sub line on the page: right shape, sentence for screen readers, one line, no ellipsis.
@@ -2303,6 +2312,27 @@ export const STATES: State[] = [
     act: async (page) => {
       const color = (panel: string) => page.locator('section.chart-panel', { has: page.getByRole('heading', { name: panel, exact: true }) }).locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
       expect(await color('Totals')).toBe(await color('Averages'));
+    } },
+  // Show all / Show fewer on a board and on a Water pair end clear of Back to top too.
+  { name: 'insights-leaderboards-show-all-clear', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const btn = page.locator('.board-foot button').first();
+      await btn.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      const b = (await btn.boundingBox())!;
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      await expect(page).toHaveURL(/open=/);
+      await expectClearOfBackToTop(page, page.locator('.board.open .board-foot button'));
+    } },
+  { name: 'insights-water-show-all-clear', path: () => '/insights?tab=water',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const btn = page.locator('.pair-more').first();
+      await btn.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      const b = (await btn.boundingBox())!;
+      await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      await expect(page).toHaveURL(/pairs=/);
+      await expectClearOfBackToTop(page, page.locator('.pair-more').first());
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',
     act: async (page) => {
@@ -4695,10 +4725,14 @@ export const STATES: State[] = [
       await click('Show more');
       await expect(page).toHaveURL(/top=20/);
       const l = await lift();
-      await expect.poll(async () => Math.abs((await gap()) - l)).toBeLessThanOrEqual(2);
+      await expectClearOfBackToTop(page, foot.getByRole('button').last());
+      // With Back to top showing the button lands above it (8px gap), else at the screen bottom above the tab bar.
+      const bttUp = async () => ((await page.getByRole('button', { name: 'Back to top' }).count()) ? 64 : 0);
+      await expect.poll(async () => Math.abs((await gap()) - l - (await bttUp()))).toBeLessThanOrEqual(2);
       await click('Show less');
       await expect(page).not.toHaveURL(/top=/);
-      await expect.poll(async () => Math.abs((await gap()) - l)).toBeLessThanOrEqual(2);
+      await expectClearOfBackToTop(page, foot.getByRole('button').last());
+      await expect.poll(async () => Math.abs((await gap()) - l - (await bttUp()))).toBeLessThanOrEqual(2);
     } },
   // M4: Back to top appears after a screenful of scrolling, bottom right (above the phone tab bar), and returns to the top.
   { name: 'back-to-top', path: () => '/insights?tab=milestones&range=all',

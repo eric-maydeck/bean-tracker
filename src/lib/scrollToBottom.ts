@@ -12,5 +12,9 @@ export async function bottomInView(list: Element | null | undefined, change: () 
   const target = [...list.querySelectorAll('button')].at(-1) ?? list; // the button itself, not its footer's padding
   const tabs = document.querySelector('.bottom-tabs');
   const lift = tabs && getComputedStyle(tabs).display !== 'none' ? tabs.getBoundingClientRect().height : 0;
-  scrollBy({ top: target.getBoundingClientRect().bottom - (innerHeight - lift), behavior: scrollBehavior() });
+  let dy = target.getBoundingClientRect().bottom - (innerHeight - lift);
+  // Back to top (layout.svelte: shown past one screen of scroll, 44px, 12px off the bottom) must not cover the button: land
+  // just above it, with an 8px gap, whenever it will be showing.
+  if (Math.min(scrollY + dy, document.documentElement.scrollHeight - innerHeight) > innerHeight) dy += 44 + 12 + 8;
+  scrollBy({ top: dy, behavior: scrollBehavior() });
 }
