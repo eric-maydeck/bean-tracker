@@ -169,12 +169,14 @@ function pairedGap(rows: readonly BrewFact[], band: BandFn, best: string, x: str
   }
   return d.length >= 2 ? { diff: mean(d), se: sampleSd(d) / Math.sqrt(d.length), n: d.length } : null;
 }
-function tieOf(best: string, rivals: { label: string; diff: number; se: number | null; n: number }[]): Spot['tie'] {
+// `diff`: the gap between the two bands' chart values (the bar heights the viewer sees) says who is in the running and
+// how close; `proof`: the gap measured on shared bags (with its SE and n) says whether it is proven.
+function tieOf(best: string, rivals: { label: string; diff: number; proof: { diff: number; se: number | null; n: number } | null }[]): Spot['tie'] {
   const close = rivals.filter((r) => Math.abs(r.diff) <= TIE_MARGIN);
   if (!close.length) return null;
   const labels = [best, ...close.map((r) => r.label)];
   // A proof needs a real sample: ≥ MIN_BAGS bags behind the gap and a spread to measure it by (zero variance proves nothing).
-  const proven = close.every((r) => r.se !== null && r.se > EPS && r.n >= MIN_BAGS && Math.abs(r.diff) + tCrit(r.n - 1, TIE_P) * r.se <= TIE_MARGIN);
+  const proven = close.every(({ proof: p }) => p !== null && p.se !== null && p.se > EPS && p.n >= MIN_BAGS && Math.abs(p.diff) + tCrit(p.n - 1, TIE_P) * p.se <= TIE_MARGIN);
   return { labels, within: Math.max(...close.map((r) => Math.abs(r.diff))), proven, ...tieHead(labels) };
 }
 
@@ -196,13 +198,10 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       return { label: s.label, ...(s.range ? { range: s.range } : {}), value: s.delta, se: s.se, bags, brews, solid: s.solid, sample: pooled(bags, brews) };
     });
     const verdict = verdictOf(b.strength);
-    // The gap between best and a rival is their paired per-bag difference (not the two bands' deltas against the rest
-    // of the bag, which double it in a two-band split); with under 2 shared bags it falls back to the bands' chart
-    // values, never proven.
-    const tie = verdict === 'early' ? tieOf(b.label, solid.filter((x) => x !== b).map((x) => {
-      const g = pairedGap(slice, f, b.label, x.label);
-      return { label: x.label, ...(g ?? { diff: b.delta! - x.delta!, se: null, n: 0 }) };
-    })) : null;
+    // Who is in the running: the gap between the chart values (same-bag deltas). Proven: the paired per-bag difference
+    // on the bags that brewed both (not the two deltas against the rest of the bag, which double it in a two-band split);
+    // under 2 shared bags there is no proof.
+    const tie = verdict === 'early' ? tieOf(b.label, solid.filter((x) => x !== b).map((x) => ({ label: x.label, diff: b.delta! - x.delta!, proof: pairedGap(slice, f, b.label, x.label) }))) : null;
     return { ...base, tie, might: verdict === 'early' && !tie ? mightBe(b.label) : null, thin: thinOf(b.delta!, shown), tier: 1, verdict: tie ? 'tie' : verdict, best: { label: b.label, value: b.delta!, strength: b.strength }, bags: b.bags, bands: shown };
   }
   for (const g of groups)
@@ -219,7 +218,7 @@ export function ladder(slice: readonly BrewFact[], groups: readonly Group[], ban
       const bags = new Set(solid.flatMap(([, x]) => x.ids)).size;
       const strength = sd(pool) < EPS ? 'early' : strengthOf(restZ(s.means, rest), true, all.size, bags);
       const verdict = verdictOf(strength), poolSd = pool.length > 1 ? sampleSd(pool) : null;
-      const tie = verdict === 'early' ? tieOf(label, solid.slice(1).map(([l, x]) => ({ label: l, diff: mean(s.means) - mean(x.means), se: poolSd === null ? null : poolSd * Math.sqrt(1 / s.means.length + 1 / x.means.length), n: Math.min(s.means.length, x.means.length) }))) : null;
+      const tie = verdict === 'early' ? tieOf(label, solid.slice(1).map(([l, x]) => ({ label: l, diff: mean(s.means) - mean(x.means), proof: { diff: mean(s.means) - mean(x.means), se: poolSd === null ? null : poolSd * Math.sqrt(1 / s.means.length + 1 / x.means.length), n: Math.min(s.means.length, x.means.length) } }))) : null;
       return {
         ...base, tie, might: verdict === 'early' && !tie ? mightBe(label) : null, thin: thinOf(mean(s.means), meanBands(all)), tier: 2, verdict: tie ? 'tie' : verdict, best: { label, value: mean(s.means), strength },
         next: { label: nextLabel, value: mean(n.means) }, group: g.name, bags: s.means.length, bands: meanBands(all)

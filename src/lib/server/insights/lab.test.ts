@@ -204,6 +204,25 @@ describe('ladder', () => {
       expect(s).toMatchObject({ tier: 1, verdict: 'tie', tie: { labels: expect.arrayContaining(['90–92 °C', '93–94 °C']), head: expect.stringMatching(/ or /), list: null } });
       expect(s.tie!.within).toBeLessThan(TIE_MARGIN);
     });
+    it('who is in the running is the gap between the bars (+0.1 / −0.1 → within 0.2, not doubled); the proof is the paired gap', () => {
+      const g = ladder(bagGaps([0.5, -0.1, 0.3, 0.0, 0.4, 0.1]), [], [temp])!;
+      expect(g.bands.map((b) => +b.value!.toFixed(2)).sort()).toEqual([-0.1, 0.1]);
+      expect(g).toMatchObject({ verdict: 'tie', tie: { proven: false } }); // wide spread: visible tie, no proof
+      expect(g.tie!.within).toBeCloseTo(0.2);
+    });
+    it('a visible tie is proven only with the paired spread to show it (3+ shared bags, nonzero SE)', () => {
+      const gaps = [0.14, -0.1, 0.13, -0.11, 0.12, -0.12, 0.15, -0.09, 0.13, -0.11, 0.12, -0.12];
+      expect(ladder(bagGaps(gaps), [], [temp])!.tie).toMatchObject({ proven: true });
+      expect(ladder(bagGaps([0.04, 0.04, 0.04, 0.04, 0.04, 0.04]), [], [temp])).toMatchObject({ verdict: 'tie', tie: { proven: false } }); // zero variance
+    });
+    it('three bands: each rival is in the running by its bar gap to the best', () => {
+      const n1 = [0.5, -0.3, 0.2, -0.4, 0.6, -0.2], n2 = [-0.4, 0.3, -0.2, 0.5, -0.5, 0.1], n3 = [0.2, -0.5, 0.5, -0.3, -0.4, 0.6];
+      const rows = n1.flatMap((_, i) => [...many(10, i + 1, 91, 8 + n1[i]), ...many(10, i + 1, 94, 8 + n2[i]), ...many(10, i + 1, 96, 8 + n3[i])]);
+      const s = ladder(rows, [], [exact])!;
+      expect(s.tie!.labels).toEqual(['91 °C', '94 °C', '96 °C']);
+      const v = s.bands.map((b) => b.value!);
+      expect(s.tie!.within).toBeCloseTo(Math.max(v[0] - v[1], v[0] - v[2]));
+    });
     it('thin data: a small observed gap but wide spread is an unproven tie (Early), not proven', () => {
       expect(ladder(bagGaps([0.3, -0.3, 0.05]), [], [temp])).toMatchObject({ tier: 1, verdict: 'tie', tie: { proven: false, labels: expect.any(Array) } });
     });
