@@ -2286,13 +2286,26 @@ html {
   margin-bottom: 0;
 }
 
+/* The back arrow left, the column's name a centered accent title: equal side columns keep it centered on the panel. */
 .filter-editor-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
   align-items: center;
   gap: var(--space-2);
 }
-.filter-editor-head .eyebrow {
+.filter-editor-head .icon-button {
+  justify-self: start;
+}
+.filter-editor-title {
   margin: 0;
+  min-width: 0;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .filter-values {

@@ -4206,6 +4206,13 @@ export const STATES: State[] = [
         return el.getBoundingClientRect().right - c.right - ((el as HTMLElement).offsetWidth - el.clientWidth);
       });
       expect(gap, 'space between the counts and the scrollbar').toBeGreaterThanOrEqual(16);
+      // The column name is a bold accent title centered on the panel, clear of the arrow, on one line.
+      const title = page.locator('.filter-editor-title');
+      const [t, ed, st] = await Promise.all([title.boundingBox(), page.locator('.filter-editor').boundingBox(), title.evaluate((e) => ({ w: getComputedStyle(e).fontWeight, c: getComputedStyle(e).color, a: getComputedStyle(document.documentElement).getPropertyValue('--color-accent'), h: e.scrollHeight <= e.clientHeight + 1 }))]);
+      expect(+st.w).toBeGreaterThanOrEqual(700);
+      expect(st.h, 'title on one line').toBe(true);
+      expect(t!.x, 'clear of the arrow').toBeGreaterThanOrEqual(b.x + b.width);
+      expect(Math.abs(t!.x + t!.width / 2 - (ed!.x + ed!.width / 2)), 'centered on the panel').toBeLessThanOrEqual(2);
       await back.click();
       await expect(page.getByRole('radiogroup', { name: 'In Bean Conqueror' })).toBeVisible();
       await expect(page.locator('.filter-chip')).toHaveCount(0);

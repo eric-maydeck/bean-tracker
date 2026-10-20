@@ -245,7 +245,7 @@
     <!-- Back to the filter list; nothing is applied or cleared (the editor's state is not URL state, like the list). -->
     <div class="filter-editor-head">
       <button class="icon-button" type="button" aria-label="Back to filters" onclick={() => (key = null)}><Icon name="arrow-left" /></button>
-      <p class="eyebrow">{editorLabel(column(k))}</p>
+      <h3 class="filter-editor-title">{editorLabel(column(k))}</h3>
     </div>
 
     {#if kind === 'text'}
