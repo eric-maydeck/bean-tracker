@@ -269,7 +269,7 @@ export const RECORDS: RecordDef[] = [
   taste('mostTens', 'Most perfect ratings', 'max', 'count', (c) => tens(c)),
 
   volume('mostBrewedBag', 'Most-brewed bag', 'max', 'count', (c) => bagCount(c, (s) => s.brews.length)),
-  volume('mostGramsBag', 'Most grams from one bag', 'max', 'grams', (c) => bagCount(c, (s) => s.grams)),
+  volume('mostGramsBag', 'Most brewed from one bag', 'max', 'grams', (c) => bagCount(c, (s) => s.grams)),
   volume('marathon', 'Most brews of one bag in a day', 'max', 'count', (c) =>
     [...groupBy(c.brews, (b) => (b.coffeeId === null ? null : `${b.coffeeId}|${b.localDate}`)).values()]
       .map((bs) => ({ value: bs.length, holder: bagHolder(c.bags, bs[0].coffeeId, bs[0].localDate) })), { perDay: true }),
@@ -284,8 +284,6 @@ export const RECORDS: RecordDef[] = [
         .filter((x) => !x.startsWith('0 ')).join(' · '),
       holder: bagHolder(c.bags, s.coffeeId, s.last)
     }))),
-  volume('earlyBird', 'Early bird', 'min', 'clock', (c) => clock(c, () => true)),
-  volume('nightOwl', 'Night owl', 'max', 'clock', (c) => clock(c, () => true)),
 
   fresh('fastestFinish', 'Fastest finish', 'min', 'days', (c) => lifeSpans(c, true)),
   fresh('drinkRate', 'Fastest drinking rate', 'max', 'gpd', (c) =>
@@ -333,6 +331,8 @@ export const RECORDS: RecordDef[] = [
   extreme('brewTimeLong', 'Longest brew', 'max', 'seconds', (c) => brewMetric(c, (b) => b.brewTimeSeconds, (b, v) => v >= (FLOORS[b.brewerType]?.seconds ?? 0))),
   extreme('brewTimeShort', 'Shortest brew', 'min', 'seconds', (c) => brewMetric(c, (b) => b.brewTimeSeconds, (b, v) => v >= (FLOORS[b.brewerType]?.seconds ?? 0))),
   extreme('waterMost', 'Most water in one brew', 'max', 'ml', (c) => brewMetric(c, (b) => b.waterG)),
+  extreme('earlyBird', 'Early bird', 'min', 'clock', (c) => clock(c, () => true)),
+  extreme('nightOwl', 'Night owl', 'max', 'clock', (c) => clock(c, () => true)),
 
   gentle('lowestBag', 'Lowest-rated bag', 'min', 'rating', bestBag()),
   dial(gentle, 'biggestDip', 'Biggest rating drop', 'max', 'rating', (c) => perBag(c, 2, (s) => {

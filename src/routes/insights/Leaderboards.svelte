@@ -253,6 +253,7 @@
         </ol>
       {/if}
     </div>
+    {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've drunk, not coffee you've bought.</p>{/if}
     <!-- The footer exists only for a Show all button; a band row stretches its cards level, so a board whose
          neighbor has the button keeps that space (and one with none, none). -->
     {#if rows.length > size && !unranked(b)}
