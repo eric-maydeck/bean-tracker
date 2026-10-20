@@ -62,7 +62,7 @@
   async function togglePair(slug: string, e: MouseEvent) {
     const open = s.pairs?.includes(slug);
     const next = open ? (s.pairs ?? []).filter((x) => x !== slug) : [...(s.pairs ?? []), slug];
-    await bottomInView((e.currentTarget as HTMLElement).closest('.pair')?.querySelector('.pair-bags'), () => choose({ pairs: next.length ? next : undefined }));
+    await bottomInView(e.currentTarget as HTMLElement, () => choose({ pairs: next.length ? next : undefined }));
   }
   const emptyLine = useEmptyLine();
 </script>

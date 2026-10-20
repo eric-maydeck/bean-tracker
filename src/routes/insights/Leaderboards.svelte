@@ -110,7 +110,8 @@
     return counts ? { ...(base ?? { title: r.label }), lines: [`${counts}.`] } : base;
   };
   const scoreTip = (b: Board, r: Row): Tip | null =>
-    rank !== 'rating' ? null
+    rank === 'like' ? { title: r.label, rows: [[setting(RANK_LABEL.like), likeGap(r.value), deltaInk(r.value)]] } // the signed gap, inked like the row's
+    : rank !== 'rating' ? null
     : b === 'coffees' && r.mean !== undefined && r.atBest === undefined
       ? r.value.toFixed(2) === r.mean.toFixed(2) ? null // it would only repeat the row
       : { title: r.label, rows: [[setting(AVG_LABEL[boardAvg(b, avg)]), r.value.toFixed(2)], ['Plain average', r.mean.toFixed(2)]] }
@@ -256,7 +257,7 @@
          neighbor has the button keeps that space (and one with none, none). -->
     {#if rows.length > size && !unranked(b)}
       <footer class="board-foot">
-        <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board')?.querySelector('.board-rows'), () => choose({ open: isOpen ? undefined : b }))}
+        <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board-foot'), () => choose({ open: isOpen ? undefined : b }))}
           >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
         >
       </footer>

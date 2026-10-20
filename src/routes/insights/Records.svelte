@@ -87,8 +87,8 @@
   // tip, placed like placeTip's. A cut line with no link inside gets a tabindex so it can take focus.
   let fullTip = $state<HTMLElement>();
   const cut = (el: HTMLElement) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
-  // The list a Show more / Show less button belongs to (its footer's previous sibling).
-  const listOf = (e: Event) => (e.currentTarget as Element).closest('.top-foot')?.previousElementSibling;
+  // The footer holding the Show more / Show less buttons: it outlasts a button the click removes.
+  const listOf = (e: Event) => (e.currentTarget as Element).closest('.top-foot');
   function full(el: HTMLElement) {
     const show = () => {
       if (!fullTip || !cut(el)) return;

@@ -2287,6 +2287,17 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/\/coffees\//);
     } },
   // Gate P4: zero-centred bars: a positive gap grows right of the middle, a negative one left, in its delta color.
+  // Signed values in a tip are inked by sign like the row's (round 2): the like board's value tip carries its gap.
+  { name: 'insights-leaderboards-like-tip', path: () => '/insights?tab=leaderboards&rank=like&range=all',
+    act: async (page) => {
+      await page.locator('[data-board="roasters"] .val .text-tip').first().click();
+      const tip = page.locator('.float-tip');
+      const gap = tip.locator('dd').first();
+      await expect(gap).toHaveText(/^[+−]\d\.\d$/);
+      const [got, plain] = await Promise.all([gap.locator('span').first().evaluate((e) => getComputedStyle(e).color), tip.evaluate((e) => getComputedStyle(e).color)]);
+      expect(got, 'signed value in the tip is inked, not the tip text color').not.toBe(plain);
+      await expect(gap.locator('.ink-better, .ink-worse')).toHaveCount(1);
+    } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',
     act: async (page) => {
       const bars = await page.locator('[data-board="coffees"] .board-row:not(.placeholder)').evaluateAll((rows) => rows.map((r) => {
@@ -4666,12 +4677,12 @@ export const STATES: State[] = [
         expect(Math.abs(b!.x - a!.x)).toBeLessThanOrEqual(1);
       }
     } },
-  // M3: Show more scrolls the extended list's bottom to the screen's bottom; Show less does the same for the shorter list.
+  // M3: Show more scrolls the Show less / Show more buttons' bottom to the screen's bottom; Show less does the same.
   { name: 'insights-records-show-more-scroll', path: () => '/insights?tab=records&range=all',
     act: async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
-      const gap = () => page.locator('#records-top-brews + ol').evaluate((el) => innerHeight - el.getBoundingClientRect().bottom);
+      const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom); // the last button in the footer
       const foot = page.locator('#records-top-brews ~ .top-foot');
       await foot.scrollIntoViewIfNeeded();
       const click = async (name: string) => { await foot.evaluate((el) => el.scrollIntoView({ block: 'center' })); const b = (await foot.getByRole('button', { name }).boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
