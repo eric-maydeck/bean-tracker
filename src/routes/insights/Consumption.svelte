@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useTabBar } from './tabBar';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
@@ -42,8 +43,11 @@
   const unitNote = $derived(avg ? `per day${t.by === 'day' ? '' : `, averaged by ${t.by}`}` : `per ${t.by}`);
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
   const emptyLine = useEmptyLine();
+  const registerBar = useTabBar();
+  $effect(() => registerBar(bar));
 </script>
 
+{#snippet bar()}
 <div class="insights-bar">
   <div class="form-field group-field">
     <span>Unit</span>
@@ -71,6 +75,7 @@
     </div>
   </div>
 </div>
+{/snippet}
 
 {@render tiles()}
 

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { useTabBar } from './tabBar';
+  import { bottomInView } from '$lib/scrollToBottom';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd, wholeUsd } from '$lib/money';
@@ -134,8 +136,11 @@
       ? `No ${BOARD_NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews`} in this period.`
       : emptyText();
   const emptyLine = useEmptyLine();
+  const registerBar = useTabBar();
+  $effect(() => registerBar(bar));
 </script>
 
+{#snippet bar()}
 <div class="rank-bar">
   <div class="form-field">
     <span><button class="mode-tip-button" popovertarget="tip-rank" aria-describedby="tip-rank"><span class="tip-text">Rank by</span><Icon name="question" /></button></span>
@@ -171,6 +176,7 @@
     </div>
   {/if}
 </div>
+{/snippet}
 
 <dialog
   bind:this={help}
@@ -283,7 +289,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-3);
-    margin-bottom: var(--space-3);
   }
   .rank-bar .form-field {
     margin-bottom: 0;
@@ -414,7 +419,8 @@
       min-height: 44px;
     }
     .rank-bar .form-field {
-      flex: 1 1 100%;
+      flex: 1 1 0;
+      min-width: 0;
     }
     .rank-bar select {
       min-height: 44px;

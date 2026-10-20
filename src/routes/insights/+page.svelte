@@ -17,6 +17,8 @@
     PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
+  import { provideTabBar } from './tabBar';
+  import type { Snippet } from 'svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import { packSpans } from './rows';
   import Leaderboards from './Leaderboards.svelte';
@@ -36,6 +38,12 @@
   let { data }: { data: PageData } = $props();
   let s = $derived(withDefaults(data.explicit));
   provideCoffeeNote(() => coffeeNote(s));
+  // The active tab's own controls (Rank by, Measure, Grinder...), shown inside the sticky bar so they float with it.
+  let tabBar = $state.raw<Snippet>();
+  provideTabBar((bar) => {
+    tabBar = bar;
+    return () => { if (tabBar === bar) tabBar = undefined; };
+  });
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
   let coffeesDialog: HTMLDialogElement | undefined = $state();
@@ -497,6 +505,7 @@
       </div>
     </div>
   {/if}
+  {#if tabBar}<div class="tab-controls">{@render tabBar()}</div>{/if}
   <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
   {#if coffeeChips.length}
     <div class="filter-chips coffee-chips">
@@ -814,6 +823,11 @@
   .insights-controls .form-field {
     margin-bottom: 0;
   }
+  /* The active tab's own controls: a row of the sticky bar (rendered from the tab, see tabBar.ts). */
+  .tab-controls {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
   .people-switch button {
     min-height: 2.25rem;
     margin: 0;
@@ -955,6 +969,9 @@
       grid-column: span var(--s2, 1);
       min-width: 0;
     }
+    .insights-controls > .tab-controls {
+      grid-column: 1 / -1;
+    }
     .people-switch button {
       flex: 1;
       min-height: 44px;
@@ -980,6 +997,9 @@
     }
     .insights-controls > * {
       grid-column: span var(--s3, 1);
+    }
+    .insights-controls > .tab-controls {
+      grid-column: 1 / -1;
     }
     .insights-controls :global(.form-field > span) {
       font-size: 0.75rem;

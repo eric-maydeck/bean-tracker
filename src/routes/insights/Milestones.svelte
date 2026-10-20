@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useTabBar } from './tabBar';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -181,6 +182,8 @@
     return () => ro.disconnect();
   });
   const emptyLine = useEmptyLine();
+  const registerBar = useTabBar();
+  $effect(() => registerBar(bar));
 </script>
 
 {#snippet caption(id: string, label: string)}
@@ -189,6 +192,7 @@
 
 <svelte:window bind:innerHeight={innerH} bind:innerWidth={innerW} />
 
+{#snippet bar()}
 <div class="kinds-bar">
   <div class="tab-group kind-chips" role="group" aria-label="Kinds" data-button-row>
     {#each KINDS as k (k)}
@@ -198,6 +202,7 @@
     {/each}
   </div>
 </div>
+{/snippet}
 
 <section class="chart-panel">
   <HeadingAnchor id="milestones-totals">All-time totals</HeadingAnchor>
@@ -331,8 +336,11 @@
   .hl-card {
     scroll-margin-top: var(--space-2);
   }
-  .kinds-bar {
-    margin-bottom: var(--space-3);
+  /* Phones: this row has no label, so it sits 3px lower to keep the bar's row gaps equal by ink (insights-bar-gaps). */
+  @media (max-width: 640px) {
+    .kinds-bar {
+      margin-top: 3px;
+    }
   }
   .kind-chips button {
     display: inline-flex;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useTabBar } from './tabBar';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
@@ -48,8 +49,11 @@
     return Number.isFinite(lo) ? Math.max(0, Math.floor(lo) - 1) : undefined;
   };
   const emptyLine = useEmptyLine();
+  const registerBar = useTabBar();
+  $effect(() => registerBar(bar));
 </script>
 
+{#snippet bar()}
 <div class="insights-bar">
   <div class="form-field group-field">
     <span>Measure</span>
@@ -66,6 +70,7 @@
     </div>
   {/if}
 </div>
+{/snippet}
 
 {@render tiles()}
 

@@ -2058,7 +2058,7 @@ html {
   .filter-bar {
     padding-block: var(--space-1);
   }
-  .filter-bar .form-field > span {
+  .filter-bar .form-field > span:not(:has(button)) {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -2590,7 +2590,6 @@ html {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
 }
 .insights-charts {
   display: grid;

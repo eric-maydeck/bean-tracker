@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useTabBar } from './tabBar';
   import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
@@ -194,11 +195,14 @@
     let raf = 0;
     return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
   }
+  const registerBar = useTabBar();
+  $effect(() => registerBar(bar));
 </script>
 
 <!-- A tap outside a chart closes its tip. -->
 <svelte:document onclick={(e) => tip && !(e.target as Element).closest?.('.spot-chart') && (tip = null)} />
 
+{#snippet bar()}
 <div class="insights-bar spot-picker">
   <label class="form-field group-field">
     <span>Bag</span>
@@ -209,6 +213,7 @@
   </label>
   <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
 </div>
+{/snippet}
 
 {#if !t.matching.brews}
   <section class="chart-panel">
@@ -320,11 +325,11 @@
   .spot-picker select {
     max-width: 16rem;
   }
-  /* Phones: Bag (and Grinder) each take a full row. */
+  /* Phones: Bag and Grinder share a row. */
   @media (max-width: 640px) {
     .spot-picker {
       display: grid;
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .spot-picker select {
       width: 100%;
