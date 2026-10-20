@@ -738,6 +738,9 @@
     .insights-rail {
       display: flex;
       flex-direction: column;
+    :global(body:has(main.container > .rail-layout)) {
+      --nav-max: calc(var(--container-max) + 10rem + 1rem);
+    }
       gap: var(--space-4);
       position: sticky;
       top: 0;

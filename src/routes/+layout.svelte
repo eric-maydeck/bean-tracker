@@ -9,6 +9,7 @@
   import { formatUpdated } from '$lib/formatDate';
   import { onMount } from 'svelte';
   import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
+  import { scrollBehavior } from '$lib/scrollToBottom';
   let { children, data } = $props();
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
   onMount(() => { document.documentElement.dataset.hydrated = ''; });
@@ -26,6 +27,10 @@
   let theme = $state<'light' | 'dark'>('light');
 
   let showMore = $state(false);
+
+  // Back to top: after one screenful of scrolling, on every page that scrolls that far.
+  let scrollY = $state(0);
+  let innerHeight = $state(0);
 
   let showAlerts = $state(false);
 
@@ -184,10 +189,18 @@
   </footer>
 </main>
 
+{#if scrollY > innerHeight}
+  <button class="back-to-top" data-layout-ignore="fixed overlay that floats over page content on purpose (peer review B, M4)" type="button" aria-label="Back to top" onclick={() => scrollTo({ top: 0, behavior: scrollBehavior() })}>
+    <Icon name="arrow-up" />
+  </button>
+{/if}
+
 <!-- Help popovers open on mouse hover too, on every page (modeTip.ts). -->
 <svelte:document onpointerover={tipOver} onpointerout={tipOut} onclickcapture={tipClick} />
 
 <svelte:window
+  bind:scrollY
+  bind:innerHeight
   onkeydown={(e) => {
     if (showAlerts && e.key === 'Escape') showAlerts = false;
   }}
