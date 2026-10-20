@@ -4678,6 +4678,21 @@ export const STATES: State[] = [
       await expect(btn).toHaveCount(0);
     } },
 
+  // Every tab leads to every other: switching from each tab to the next in a ring changes the page content, not just the URL
+  // (a tab's bar once threw on the new tab's null data and froze the swap on Consumption).
+  { name: 'insights-tab-switch-ring', path: () => '/insights?range=all',
+    act: async (page) => {
+      const tabs = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', 'sweetspots', 'brewing', 'water', 'gear', 'consumption', 'records', 'overview'];
+      const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
+      let before = await body();
+      for (const t of tabs.slice(1)) {
+        await page.getByRole('combobox', { name: 'View', exact: true }).selectOption(t);
+        await expect(page).toHaveURL(new RegExp(`tab=${t}`));
+        await expect.poll(body, { message: `content after switching to ${t}` }).not.toBe(before);
+        before = await body();
+      }
+    } },
+
 ];
 
 // A tip a hover opens also opens on a tap (a click without touch) and stays open until a tap elsewhere, one at a time
@@ -4931,3 +4946,20 @@ test.describe('signed out', () => {
     await checkLayout(page);
   });
 });
+
+// The sticky bar is the same height before hydration (the server HTML, no JS) as after it: a tab's own controls are
+// rendered with the bar, so nothing grows it on load (peer review B, round 2).
+for (const tab of ['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing']) {
+  test(`insights-bar-first-paint-${tab}`, { tag: '@insights' }, async ({ browser, page }, info) => {
+    const url = `/insights?tab=${tab}&range=all`;
+    await gotoReady(page, url);
+    const hydrated = (await page.locator('.filter-bar').boundingBox())!.height;
+    const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: info.project.use.viewport ?? undefined, baseURL: info.project.use.baseURL, deviceScaleFactor: info.project.use.deviceScaleFactor });
+    try {
+      const raw = await ctx.newPage();
+      await raw.goto(url);
+      await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
+      expect(Math.abs((await raw.locator('.filter-bar').boundingBox())!.height - hydrated), 'bar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
+    } finally { await ctx.close(); }
+  });
+}

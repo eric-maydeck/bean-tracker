@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import { bottomInView } from '$lib/scrollToBottom';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
@@ -21,8 +20,9 @@
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose
+    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose, part
   }: {
+    part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
@@ -136,8 +136,6 @@
       ? `No ${BOARD_NOUN[b]} with ${b === 'coffees' ? `${BAG_MIN_BREWS}+ rated brews` : `${POOLED_MIN_BAGS}+ bags and ${POOLED_MIN_BREWS}+ rated brews`} in this period.`
       : emptyText();
   const emptyLine = useEmptyLine();
-  const registerBar = useTabBar();
-  $effect(() => registerBar(bar));
 </script>
 
 {#snippet bar()}
@@ -176,7 +174,6 @@
     </div>
   {/if}
 </div>
-{/snippet}
 
 <dialog
   bind:this={help}
@@ -205,6 +202,7 @@
   </div>
   <footer><button class="button" onclick={() => help?.close()}>Close</button></footer>
 </dialog>
+{/snippet}
 
 {#snippet board(b: Board)}
   {@const rows = boards[b]}
@@ -266,6 +264,7 @@
   </section>
 {/snippet}
 
+{#if part === 'bar'}{@render bar()}{:else}
 <!-- A whole tab with nothing to rank is one empty panel, not ten empty boards (rule 28). -->
 {#if !cut.length && BANDS.flat().every((b) => !boards[b].length)}
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
@@ -281,6 +280,7 @@
   {/each}
   {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
   {#if rank === 'like'}<p class="like-note"><span class="setting-name">{RANK_LABEL.like}</span> ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
+{/if}
 {/if}
 
 <style>

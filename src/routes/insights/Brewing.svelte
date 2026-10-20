@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import { useEmptyLine } from './coffeeNote';
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
@@ -10,7 +9,6 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import GrinderSelect from './GrinderSelect.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
   import { settleTip } from './settleTip';
@@ -40,16 +38,7 @@
   const emptyLine = useEmptyLine();
   type SettleRow = BrewingTab['settle']['roast'][number];
   let settleOpen = $state<{ el: HTMLElement; g: SettleRow; hover: boolean } | null>(null);
-  const registerBar = useTabBar();
-  $effect(() => (lab.grinders.length > 1 ? registerBar(bar) : undefined)); // no bar without a Grinder choice
 </script>
-
-{#snippet bar()}
-<div class="insights-bar brewing-bar">
-  <!-- One Grinder for the tab: it drives Grind drift and the Grind chart. -->
-  <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
-</div>
-{/snippet}
 
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews in this period.')}</p></section>
@@ -180,9 +169,6 @@
 {/if}
 
 <style>
-  .brewing-bar {
-    align-items: end;
-  }
   .brewing-vars {
     margin-bottom: var(--space-5);
   }

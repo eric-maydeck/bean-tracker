@@ -17,8 +17,8 @@
     PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
-  import { provideTabBar } from './tabBar';
-  import type { Snippet } from 'svelte';
+  import GrinderSelect from './GrinderSelect.svelte';
+  import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import { packSpans } from './rows';
   import Leaderboards from './Leaderboards.svelte';
@@ -38,12 +38,6 @@
   let { data }: { data: PageData } = $props();
   let s = $derived(withDefaults(data.explicit));
   provideCoffeeNote(() => coffeeNote(s));
-  // The active tab's own controls (Rank by, Measure, Grinder...), shown inside the sticky bar so they float with it.
-  let tabBar = $state.raw<Snippet>();
-  provideTabBar((bar) => {
-    tabBar = bar;
-    return () => { if (tabBar === bar) tabBar = undefined; };
-  });
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
   let coffeesDialog: HTMLDialogElement | undefined = $state();
@@ -338,6 +332,11 @@
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
   let ratingsMenu = $derived(ratingsMenuOn(s));
+  // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
+  let tabBarOn = $derived(
+    !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
+      (s.tab === 'sweetspots' && data.sweetSpots) || (s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1))
+  );
   // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
   // The data-short attribute lets app.html's first-paint script show the short text before hydration.
   const phone = new MediaQuery('max-width: 480px');
@@ -505,7 +504,14 @@
       </div>
     </div>
   {/if}
-  {#if tabBar}<div class="tab-controls">{@render tabBar()}</div>{/if}
+  <!-- The active tab's own controls, a row of the bar so they float with it; rendered here (not by the tab) so they are in the server HTML. -->
+  {#if tabBarOn}
+    <div class="tab-controls">
+      {#if s.tab === 'milestones'}<KindsBar kinds={s.kinds} {choose} />
+      {:else if s.tab === 'brewing'}<div class="insights-bar"><GrinderSelect grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
+      {:else}{@render tab('bar')}{/if}
+    </div>
+  {/if}
   <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
   {#if coffeeChips.length}
     <div class="filter-chips coffee-chips">
@@ -654,8 +660,10 @@
   </section>
 {/snippet}
 
+{#snippet tab(part?: 'bar')}
 {#if data.boards}
   <Leaderboards
+    {part}
     boards={data.boards}
     cut={data.boardsCut}
     rank={s.rank}
@@ -667,13 +675,20 @@
     {choose}
   />
 {:else if s.tab === 'habits' && data.habits}
-  <Habits h={data.habits} measure={s.measure} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} {choose}>
+  <Habits {part} h={data.habits} measure={s.measure} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} {choose}>
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
+  <Consumption {part} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas)}{/snippet}
   </Consumption>
+{:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
+  <SweetSpots {part} t={data.sweetSpots} lab={data.lab} {s} {placeTip} {choose} />
+{/if}
+{/snippet}
+
+{#if data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'sweetspots' && data.sweetSpots && data.lab)}
+  {@render tab()}
 {:else if s.tab === 'records' && data.records}
   <Records
     t={data.records}
@@ -691,7 +706,7 @@
     {choose}
   />
 {:else if s.tab === 'milestones' && data.milestones}
-  <Milestones m={data.milestones} kinds={s.kinds} {choose} />
+  <Milestones m={data.milestones} />
 {:else if s.tab === 'insights' && data.insights}
   <Insights
     t={data.insights}
@@ -702,8 +717,6 @@
     {placeTip}
     {choose}
   />
-{:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
-  <SweetSpots t={data.sweetSpots} lab={data.lab} {s} {placeTip} {choose} />
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
   <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
 {:else if s.tab === 'water' && data.water}

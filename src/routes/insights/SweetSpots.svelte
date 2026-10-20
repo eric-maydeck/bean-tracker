@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import LikeLine from './LikeLine.svelte';
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
@@ -19,7 +18,8 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
 
-  let { t, lab, s, placeTip, choose }: {
+  let { t, lab, s, placeTip, choose, part }: {
+    part?: 'bar'; // 'bar': only the Bag / Grinder controls (rendered inside the sticky bar), else the tab
     t: SweetSpotsTab; lab: LabOptions; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
@@ -195,8 +195,6 @@
     let raf = 0;
     return { update: () => (raf = requestAnimationFrame(run)), destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
   }
-  const registerBar = useTabBar();
-  $effect(() => registerBar(bar));
 </script>
 
 <!-- A tap outside a chart closes its tip. -->
@@ -215,6 +213,7 @@
 </div>
 {/snippet}
 
+{#if part === 'bar'}{@render bar()}{:else}
 {#if !t.matching.brews}
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews in this period.')}</p>
@@ -312,6 +311,7 @@
       </ol>
     </section>
   {/if}
+{/if}
 {/if}
 
 <style>

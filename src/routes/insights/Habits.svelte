@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
@@ -12,8 +11,9 @@
   import type { Habits } from '$lib/server/insights/habits';
 
   let {
-    h, measure, agg, comparing, periodLabel, compareLabel, choose, tiles
+    h, measure, agg, comparing, periodLabel, compareLabel, choose, tiles, part
   }: {
+    part?: 'bar'; // 'bar': only the controls (rendered inside the sticky bar), else the tab
     h: Habits; measure: Measure; agg: Agg; comparing: boolean; periodLabel: string; compareLabel: string;
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
@@ -49,8 +49,6 @@
     return Number.isFinite(lo) ? Math.max(0, Math.floor(lo) - 1) : undefined;
   };
   const emptyLine = useEmptyLine();
-  const registerBar = useTabBar();
-  $effect(() => registerBar(bar));
 </script>
 
 {#snippet bar()}
@@ -72,6 +70,7 @@
 </div>
 {/snippet}
 
+{#if part === 'bar'}{@render bar()}{:else}
 {@render tiles()}
 
 <!-- A period with no brews is one empty panel, not four empty charts (rule 28). -->
@@ -102,4 +101,5 @@
     <h2>Brew calendar</h2>
     <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
   </section>
+{/if}
 {/if}

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
@@ -9,8 +8,9 @@
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, periodLabel, compareLabel, compareDates, unit, agg, offered, choose, tiles
+    t, periodLabel, compareLabel, compareDates, unit, agg, offered, choose, tiles, part
   }: {
+    part?: 'bar'; // 'bar': only the controls (rendered inside the sticky bar), else the tab
     t: ConsumptionTab; periodLabel: string; compareLabel: string; compareDates: string; unit: Unit; agg: Agg; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
@@ -43,8 +43,6 @@
   const unitNote = $derived(avg ? `per day${t.by === 'day' ? '' : `, averaged by ${t.by}`}` : `per ${t.by}`);
   const brewedLabel = $derived(g ? 'Brewed' : 'Finished');
   const emptyLine = useEmptyLine();
-  const registerBar = useTabBar();
-  $effect(() => registerBar(bar));
 </script>
 
 {#snippet bar()}
@@ -77,6 +75,7 @@
 </div>
 {/snippet}
 
+{#if part === 'bar'}{@render bar()}{:else}
 {@render tiles()}
 
 <!-- Nothing in the period: one short panel, not three tall blank charts (rule 28). -->
@@ -102,4 +101,5 @@
     <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
   </section>
+{/if}
 {/if}

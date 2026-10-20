@@ -1,33 +1,24 @@
 <script lang="ts">
-  import { useTabBar } from './tabBar';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import Icon, { type IconName } from '$lib/components/Icon.svelte';
-  import { KINDS, MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
+  import Icon from '$lib/components/Icon.svelte';
+  import { MON, type InsightsUrlState, type Kind } from '$lib/insightsUrl';
+  import { ICON, LABEL } from './KindsBar.svelte';
   import type { MilestonesTab } from '$lib/server/insights/milestones';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import TileCaption from './TileCaption.svelte';
   import { rulerTicks, tickAt, rulerToFeed, feedToRuler, type Section } from './ruler';
 
-  let { m, kinds, choose }: { m: MilestonesTab; kinds: Kind[] | undefined; choose: (c: InsightsUrlState) => void } = $props();
+  let { m }: { m: MilestonesTab } = $props();
 
-  const LABEL: Record<Kind, string> = { counts: 'Counts', firsts: 'Firsts', bests: 'Bests', streaks: 'Streaks', gear: 'Gear', anniversaries: 'Anniversaries' };
-  const ICON: Record<Kind, IconName> = { counts: 'hash', firsts: 'sparkle', bests: 'trophy', streaks: 'fire', gear: 'gear', anniversaries: 'cake' };
   const FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const month = (ym: string) => `${FULL[+ym.slice(5, 7) - 1]} ${ym.slice(0, 4)}`;
   const day = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}`;
   const n = (v: number) => v.toLocaleString('en-US');
   // A tile's own anchor, its caption links to it (as Records' #record-…): kgBrewed → milestones-total-kg-brewed.
   const tileId = (group: string, key: string) => `milestones-${group}-${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`;
-
-  // Chips: none pressed = every kind (no param).
-  function toggle(k: Kind) {
-    const on = kinds ?? [];
-    const next = KINDS.filter((x) => (x === k ? !on.includes(x) : on.includes(x)));
-    choose({ kinds: next.length ? next : undefined });
-  }
 
   let summary = $derived(
     (['total', 'firsts', 'bests'] as const).map((k) => ({
@@ -182,8 +173,6 @@
     return () => ro.disconnect();
   });
   const emptyLine = useEmptyLine();
-  const registerBar = useTabBar();
-  $effect(() => registerBar(bar));
 </script>
 
 {#snippet caption(id: string, label: string)}
@@ -191,18 +180,6 @@
 {/snippet}
 
 <svelte:window bind:innerHeight={innerH} bind:innerWidth={innerW} />
-
-{#snippet bar()}
-<div class="kinds-bar">
-  <div class="tab-group kind-chips" role="group" aria-label="Kinds" data-button-row>
-    {#each KINDS as k (k)}
-      <button aria-pressed={!!kinds?.includes(k)} onclick={() => toggle(k)} style:--kind="var(--kind-{k})"
-        ><Icon name={ICON[k]} />{LABEL[k]}</button
-      >
-    {/each}
-  </div>
-</div>
-{/snippet}
 
 <section class="chart-panel">
   <HeadingAnchor id="milestones-totals">All-time totals</HeadingAnchor>
@@ -335,40 +312,6 @@
      (scroll-padding) with a little room. */
   .hl-card {
     scroll-margin-top: var(--space-2);
-  }
-  /* Phones: this row has no label, so it sits 3px lower to keep the bar's row gaps equal by ink (insights-bar-gaps). */
-  @media (max-width: 640px) {
-    .kinds-bar {
-      margin-top: 3px;
-    }
-  }
-  .kind-chips button {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    margin: 0;
-    padding: 0.3rem 0.75rem;
-    font-size: 0.85rem;
-    white-space: nowrap;
-  }
-  .kind-chips :global(.icon) {
-    width: 1rem;
-    height: 1rem;
-  }
-  .kind-chips button:not([aria-pressed='true']) :global(.icon) {
-    color: var(--kind);
-  }
-  /* Phones: the six chips as a 2×3 grid of equal buttons (feedback M6). */
-  @media (max-width: 640px) {
-    .kind-chips {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: var(--space-2);
-    }
-    .kind-chips button {
-      justify-content: center;
-      padding-inline: var(--space-1);
-    }
   }
   .hl-delta.trend-good {
     color: var(--color-fresh);
