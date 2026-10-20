@@ -601,7 +601,7 @@
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
-{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, hero = false)}
+{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null)}
   <section class="chart-panel">
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
@@ -616,7 +616,7 @@
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
-        <div class="stat-item" id={tileId(t.key)} class:stat-item-accent={hero} class:stack={t.stack?.() && t.sub?.()}>
+        <div class="stat-item" id={tileId(t.key)} class:stack={t.stack?.() && t.sub?.()}>
           <span class="stat-value" style:--len={valueText(t, v).length}
             >{#if t.fmt === usd && v !== null}<Usd n={v} />{:else}{valueText(t, v)}{/if}{#if t.suffix && v !== null}<small>{` ${t.suffix}`}</small>{/if}</span
           >
@@ -724,7 +724,7 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} {s} {placeTip} {choose} />
 {:else}
-  {@render panel('Totals', TOTALS, data.tiles, data.deltas, true)}
+  {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
   {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}

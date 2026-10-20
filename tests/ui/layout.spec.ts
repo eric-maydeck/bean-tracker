@@ -1244,12 +1244,12 @@ export const STATES: State[] = [
       // Every click-for-explanation trigger ends with its circled ?.
       expect(await page.locator('.mode-tip-button').count()).toBeGreaterThan(0);
       expect(await page.locator('.mode-tip-button').evaluateAll((bs) => bs.filter((b) => !b.querySelector('svg.icon')).length)).toBe(0);
-      // Totals values take the /stats "At a glance" hero color; Averages do not.
+      // Totals values are the same color as the Averages' (they were the /stats hero brown until round 2).
       const color = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
-      expect(await color('Totals')).not.toBe(await color('Averages'));
-      // ...but only the value color: background and border match the other tiles.
+      expect(await color('Totals')).toBe(await color('Averages'));
+      // Background and border match too.
       const box = (title: string) =>
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-item').first().evaluate((e) => getComputedStyle(e).backgroundColor + getComputedStyle(e).borderColor);
@@ -2297,6 +2297,12 @@ export const STATES: State[] = [
       const [got, plain] = await Promise.all([gap.locator('span').first().evaluate((e) => getComputedStyle(e).color), tip.evaluate((e) => getComputedStyle(e).color)]);
       expect(got, 'signed value in the tip is inked, not the tip text color').not.toBe(plain);
       await expect(gap.locator('.ink-better, .ink-worse')).toHaveCount(1);
+    } },
+  // Totals' values are the same color as the other tiles' (they were the accent brown).
+  { name: 'insights-totals-value-color', path: () => '/insights?range=all',
+    act: async (page) => {
+      const color = (panel: string) => page.locator('section.chart-panel', { has: page.getByRole('heading', { name: panel, exact: true }) }).locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
+      expect(await color('Totals')).toBe(await color('Averages'));
     } },
   { name: 'insights-leaderboards-like-open', path: () => '/insights?tab=leaderboards&rank=like&range=all&open=coffees',
     act: async (page) => {
@@ -4167,7 +4173,7 @@ export const STATES: State[] = [
       if (page.viewportSize()!.width <= 480) { expect(b.width).toBeGreaterThanOrEqual(44); expect(b.height).toBeGreaterThanOrEqual(44); }
       const gap = await page.locator('.filter-values').evaluate((el) => {
         const c = el.querySelector('.filter-value-count')!.getBoundingClientRect();
-        return el.getBoundingClientRect().right - c.right - (el.offsetWidth - el.clientWidth);
+        return el.getBoundingClientRect().right - c.right - ((el as HTMLElement).offsetWidth - el.clientWidth);
       });
       expect(gap, 'space between the counts and the scrollbar').toBeGreaterThanOrEqual(16);
       await back.click();
