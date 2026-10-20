@@ -1,6 +1,6 @@
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
-  import { tick } from 'svelte';
+  import { bottomInView } from '$lib/scrollToBottom';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
@@ -62,9 +62,7 @@
   async function togglePair(slug: string, e: MouseEvent) {
     const open = s.pairs?.includes(slug);
     const next = open ? (s.pairs ?? []).filter((x) => x !== slug) : [...(s.pairs ?? []), slug];
-    const block = (e.currentTarget as HTMLElement).closest('.pair');
-    choose({ pairs: next.length ? next : undefined });
-    if (open) { await tick(); block?.scrollIntoView({ block: 'nearest' }); } // collapsing: keep the pair in view
+    await bottomInView((e.currentTarget as HTMLElement).closest('.pair')?.querySelector('.pair-bags'), () => choose({ pairs: next.length ? next : undefined }));
   }
   const emptyLine = useEmptyLine();
 </script>

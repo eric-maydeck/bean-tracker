@@ -92,7 +92,7 @@
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
     // A tab switch drops the old tab's #anchor: it names nothing on the new one.
-    goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
+    return goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL

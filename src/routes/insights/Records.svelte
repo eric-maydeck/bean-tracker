@@ -10,6 +10,7 @@
   import { clock12 } from '$lib/hours';
   import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
+  import { bottomInView } from '$lib/scrollToBottom';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
@@ -86,6 +87,8 @@
   // tip, placed like placeTip's. A cut line with no link inside gets a tabindex so it can take focus.
   let fullTip = $state<HTMLElement>();
   const cut = (el: HTMLElement) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
+  // The list a Show more / Show less button belongs to (its footer's previous sibling).
+  const listOf = (e: Event) => (e.currentTarget as Element).closest('.top-foot')?.previousElementSibling;
   function full(el: HTMLElement) {
     const show = () => {
       if (!fullTip || !cut(el)) return;
@@ -198,10 +201,10 @@
 {/snippet}
 
 <!-- A ranked list (top coffees, top brews): 10 → 20 → 50 and back a step at a time; Show less sits left. -->
-{#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string; like?: { gap: number; label: string } }[], n: Top | undefined, set: (v: Top | undefined) => void)}
+{#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string; like?: { gap: number; label: string } }[], n: Top | undefined, set: (v: Top | undefined) => unknown)}
   {@const shown = rows.slice(0, n ?? 10)}
   <HeadingAnchor {id} level={3} class="top-title">Top {shown.length} {noun}</HeadingAnchor>
-  <ol class="top-brews" style:--n={shown.length} style:--half={Math.ceil(shown.length / 2)}>
+  <ol class="top-brews">
     {#each shown as row, i (i)}
       <li>
         <span class="rank">{i + 1}</span>
@@ -218,8 +221,8 @@
   {#if rows.length > 10}
     {@const next = n === 50 ? null : n === 20 ? 50 : 20}
     <div class="top-foot">
-      {#if n}<button class="button button-ghost" onclick={() => set(n === 50 ? 20 : undefined)}>Show less</button>{/if}
-      {#if next && rows.length > shown.length}<button class="button button-ghost" onclick={() => set(next)}>Show more</button>{/if}
+      {#if n}<button class="button button-ghost" onclick={(e) => bottomInView(listOf(e), () => set(n === 50 ? 20 : undefined))}>Show less</button>{/if}
+      {#if next && rows.length > shown.length}<button class="button button-ghost" onclick={(e) => bottomInView(listOf(e), () => set(next))}>Show more</button>{/if}
     </div>
   {/if}
 {/snippet}
@@ -350,7 +353,7 @@
     margin: var(--space-4) 0 var(--space-2);
     font-size: 1rem;
   }
-  /* Two columns of five on wider screens, so the list doesn't run a tall single column. */
+  /* Two columns on wider screens, filled a row at a time (1 left, 2 right, 3 left ...); one column on phones. */
   .top-brews {
     display: grid;
     grid-auto-flow: column;
@@ -365,7 +368,7 @@
   }
   @media (min-width: 641px) {
     .top-brews {
-      --rows: var(--half);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
   .top-brews li {

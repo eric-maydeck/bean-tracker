@@ -258,7 +258,7 @@
          neighbor has the button keeps that space (and one with none, none). -->
     {#if rows.length > size && !unranked(b)}
       <footer class="board-foot">
-        <button class="button button-ghost" aria-expanded={isOpen} onclick={() => choose({ open: isOpen ? undefined : b })}
+        <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board')?.querySelector('.board-rows'), () => choose({ open: isOpen ? undefined : b }))}
           >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
         >
       </footer>
