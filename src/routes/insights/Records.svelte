@@ -356,11 +356,6 @@
   /* Two columns on wider screens, filled a row at a time (1 left, 2 right, 3 left ...); one column on phones. */
   .top-brews {
     display: grid;
-    grid-auto-flow: column;
-    /* Phones: one column, however many rows (top 20 runs down, not across). */
-    grid-template-rows: repeat(var(--rows, var(--n)), auto);
-    /* Equal columns, so Top coffees and Top brews line up. */
-    grid-auto-columns: minmax(0, 1fr);
     column-gap: var(--space-5);
     margin: 0;
     padding: 0;
