@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deltaColor, deltaInk, deltaRamp, labDelta } from './deltaColor';
+import { deltaColor, deltaInk, deltaRamp, labDelta, signRuns } from './deltaColor';
 
 describe('deltaColor (fixed scale, T3)', () => {
   it('under 0.05 is plain gray, either sign', () => {
@@ -35,5 +35,14 @@ describe('labDelta (stats re-review D, per chart)', () => {
     expect(labDelta(-0.234, [0.04, null])).toBe('−0.2'); // a row with no test counts as wide
     expect(labDelta(0.234, [])).toBe('+0.2');
     expect(labDelta(0.04, [0.2])).toBe('0.0');
+  });
+});
+
+describe('signRuns', () => {
+  it('inks signed decimals by sign, leaves counts, ranges, dates and zeros plain', () => {
+    expect(signRuns('Brew #1 gap: -2.0 → +1.0 (−0.3)')).toEqual([
+      ['Brew #1 gap: ', ''], ['-2.0', 'ink-worse'], [' → ', ''], ['+1.0', 'ink-better'], [' (', ''], ['−0.3', 'ink-worse'], [')', '']]);
+    for (const t of ['+3 more', '1.5-2.0 mm', '2026-10-19', 'Lotus - Light']) expect(signRuns(t)).toEqual([[t, '']]);
+    expect(signRuns('+0.0')).toEqual([['+0.0', '']]);
   });
 });

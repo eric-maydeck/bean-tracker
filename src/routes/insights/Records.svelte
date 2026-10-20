@@ -158,7 +158,7 @@
   <!-- Lines come in groups (holder + its sub; inputs + date; All-time + Was), tight inside, a little
        apart between. -->
   <div class="hl-card" id={anchor(r.key)} {style}>
-    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'per100'}<Usd n={r.value} tipSuffix={r.fmt === 'per100' ? '/100\u00a0g' : ''} />{:else}{v}{/if}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'per100'}<Usd n={r.value} tipSuffix={r.fmt === 'per100' ? '/100\u00a0g' : ''} />{:else}<CoffeeName text={v} />{/if}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
     <div class="grp">
       <span class="hl-holder" use:full>{@render link(r.holder)}</span>
       {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}

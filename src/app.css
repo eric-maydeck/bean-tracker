@@ -2574,11 +2574,13 @@ html {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
+/* A signed value's ink: the diverging ink with 15% text color, so it holds 4.5:1 on a hover-tinted tile too (light
+   hover tint: 5.3:1 green, 5.4:1 red; dark 6.3:1 / 5.7:1). */
 .ink-better {
-  color: var(--div-high-ink);
+  color: color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text));
 }
 .ink-worse {
-  color: var(--div-low-ink);
+  color: color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text));
 }
 .heat-cell.none,
 .cal-cell.none {

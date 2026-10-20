@@ -264,14 +264,14 @@
         {@const [v, unit] = split(s.value)}
         {#if i}<span class="vs-x" aria-hidden="true">vs</span>{/if}
         <div class="vs-side">
-          <span class="hl-value">{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+          <span class="hl-value"><CoffeeName text={v} />{#if unit}<small>{` ${unit}`}</small>{/if}</span>
           <span class="vs-label"><CoffeeName text={s.label} /></span>
         </div>
       {/each}
     </div>
   {:else if f.value}
     {@const [v, unit] = split(f.value)}
-    <span class="hl-value" class:long={v.length > 9}>{v}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+    <span class="hl-value" class:long={v.length > 9}><CoffeeName text={v} />{#if unit}<small>{` ${unit}`}</small>{/if}</span>
   {/if}
   {#if f.multi && f.multi.x.length > 1 && f.multi.lines.length}
     {@const ls = lines(f.multi)}
@@ -314,7 +314,7 @@
           <span class="dlabel">{g.label}</span>
           <ol>
             {#each g.items as it, k (k)}
-              <li><span class="dname">{#if it.href}<a href={link(it.href)}><CoffeeName text={it.name} /></a>{:else}<CoffeeName text={it.name} />{/if}</span>{#if it.value}<span class="dval">{it.value}</span>{/if}</li>
+              <li><span class="dname">{#if it.href}<a href={link(it.href)}><CoffeeName text={it.name} /></a>{:else}<CoffeeName text={it.name} />{/if}</span>{#if it.value}<span class="dval"><CoffeeName text={it.value} /></span>{/if}</li>
             {/each}
           </ol>
         </div>
@@ -862,6 +862,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     container-type: inline-size;
+    transition: background-color 150ms ease, border-color 150ms ease;
   }
   .story-head {
     display: flex;
@@ -1085,6 +1086,15 @@
     background: var(--color-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  /* The same hover tint as the other tiles (+page.svelte's .hl-card:hover); mouse only. */
+  @media (hover: hover) {
+    .story:hover,
+    .early li:hover {
+      background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg));
+      border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+    }
   }
   .early-top,
   .early-foot {

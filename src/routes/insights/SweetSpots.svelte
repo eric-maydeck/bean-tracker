@@ -395,13 +395,6 @@
   .zero {
     color: var(--color-text-muted);
   }
-  /* On a hovered tile (accent-tinted) the shared green and red fall just under 4.5:1 at this size: a touch of ink in them. */
-  .evidence :global(.ink-better) {
-    color: color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text));
-  }
-  .evidence :global(.ink-worse) {
-    color: color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text));
-  }
   .usually,
   .thin {
     font-size: 0.75rem;
@@ -497,7 +490,12 @@
   }
   .bar.clip.up {
     clip-path: polygon(0 var(--sh), 50% 0, 100% var(--sh), 100% 100%, 0 100%);
-    background-position: left 0 top var(--sh), 0 0; /* a small bar's fold sits below the arrow taper */
+  }
+  /* A small bar's amber fold (global .small-sample-mark) sits at the bar's base, always on the left: top of a downward bar,
+     bottom of an upward one, clear of a pointed tip (user, 2026-10-19; as Brewing and Water). */
+  .bar.up.small-sample-mark {
+    background-image: linear-gradient(to top right, var(--chip) 50%, transparent 50%), var(--thin-hatch);
+    background-position: left bottom, 0 0;
   }
   .bar.pick {
     background: var(--chart-color-1);

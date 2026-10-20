@@ -19,9 +19,12 @@ const OTHER = 'var(--series-other)';
 export const slotsFor = (n: number) => (n <= 3 ? [1, 2, 3].map((i) => `var(--series-brown-${i})`) : SLOTS);
 
 // Categorical slots in line order; "Other" is muted.
-export function seriesColors(labels: string[]) {
+// `strokes`: lines take the slots from 2 colored series up, because the browns' -ink tokens (the stroke colors) are nearly
+// the same brown; only a lone line stays brown.
+export function seriesColors(labels: string[], strokes = false) {
   let slot = 0;
-  const slots = slotsFor(labels.filter((l) => l !== 'Other').length);
+  const n = labels.filter((l) => l !== 'Other').length;
+  const slots = strokes && n > 1 ? SLOTS : slotsFor(n);
   return labels.map((l) => (l === 'Other' ? OTHER : slots[slot++ % slots.length]));
 }
 
@@ -72,7 +75,7 @@ export function smooth(p: [number, number][]): string {
 
 // Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. Each run is an SVG path.
 export function lines(m: Multi) {
-  const { py } = frame(m), n = m.x.length, colors = seriesColors(m.lines.map((l) => l.label));
+  const { py } = frame(m), n = m.x.length, colors = seriesColors(m.lines.map((l) => l.label), true);
   return m.lines.map((l, k) => {
     const runs: string[] = [];
     let run: [number, number][] = [];

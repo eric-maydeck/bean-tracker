@@ -248,9 +248,9 @@
   }
   /* A delta's color (T4) holds on small rows too; the stripes carry the sample cue. */
   .small .bar-value:global(.ink-better) {
-    color: var(--div-high-ink);
+    color: color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text)); /* = app.css .ink-better */
   }
   .small .bar-value:global(.ink-worse) {
-    color: var(--div-low-ink);
+    color: color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text)); /* = app.css .ink-worse */
   }
 </style>

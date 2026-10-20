@@ -123,10 +123,10 @@
   }
   /* A delta's color (T4) holds on thin rows too (the muted numbers beside it carry the few-brews cue). */
   .lab-rows .val:global(.ink-better) {
-    color: var(--div-high-ink);
+    color: color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text)); /* = app.css .ink-better */
   }
   .lab-rows .val:global(.ink-worse) {
-    color: var(--div-low-ink);
+    color: color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text)); /* = app.css .ink-worse */
   }
   .no-match {
     font: inherit;

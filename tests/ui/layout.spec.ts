@@ -120,7 +120,7 @@ async function expectDeltaInk(page: Page) {
     const probe = document.createElement('span');
     document.body.append(probe);
     const ink = (v: string) => ((probe.style.color = v), getComputedStyle(probe).color);
-    const [better, worse] = [ink('var(--div-high-ink)'), ink('var(--div-low-ink)')];
+    const [better, worse] = [ink('color-mix(in srgb, var(--div-high-ink) 85%, var(--color-text))'), ink('color-mix(in srgb, var(--div-low-ink) 85%, var(--color-text))')]; // app.css .ink-better / .ink-worse
     probe.remove();
     const els = [...document.querySelectorAll<HTMLElement>('.lab-rows .board-row .val, .delta-bars:not(.direction) .bar-row .bar-value, .delta-text, .like-line > span')];
     return els.flatMap((e) => {
@@ -156,6 +156,9 @@ async function expectFoldCorners(page: Page) {
   }));
   expect(bad).toEqual([]);
 }
+// Height of the active tab's own controls row inside the sticky bar (0 when the tab has none).
+const tabRowHeight = (bar: Locator) =>
+  bar.evaluate((el) => { const r = el.querySelector('.tab-controls')?.getBoundingClientRect().height; return r ? r + parseFloat(getComputedStyle(el).rowGap) : 0; });
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
@@ -163,10 +166,11 @@ async function expectStickyBar(page: Page, bar: Locator) {
   await target.evaluate((el) => el.scrollIntoView());
   await page.waitForTimeout(100);
   const b = (await bar.boundingBox())!;
+  const tabRow = await tabRowHeight(bar);
   expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
   // Phone landscape: one short controls row, plus (when filters are set) the one-line chips row (gate r2 A3), at most
   // 44px (a phone tap target's height).
-  if (page.viewportSize()!.height <= 450) expect(b.height).toBeLessThanOrEqual(60 + ((await bar.locator('.coffee-chips').count()) ? 44 : 0));
+  if (page.viewportSize()!.height <= 450) expect(b.height - tabRow).toBeLessThanOrEqual(60 + ((await bar.locator('.coffee-chips').count()) ? 44 : 0));
   expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(b.y + b.height - 1);
 }
 
@@ -534,7 +538,8 @@ const BAR_GAPS = `() => { const cx=document.createElement('canvas').getContext('
  const vis = (el) => { // visible extent: label text range top; controls (select/button/chip) border box
   let top=Infinity,bottom=-Infinity;
   for (const n of el.querySelectorAll('span:not(.badge), select, button, .filter-chip')) {
-   if (n.closest('button') && n.tagName==='SPAN') continue;
+   if (n.tagName==='SPAN' && ((n.closest('button') && !n.classList.contains('tip-text')) || n.querySelector('button'))) continue;
+   if (n.classList.contains('mode-tip-button')) continue; // its tap padding is not ink; the label's .tip-text is measured instead
    let r; if (n.tagName==='SPAN') { const g=document.createRange(); g.selectNodeContents(n); r=g.getBoundingClientRect(); if(r.height){ const cs=getComputedStyle(n); cx.font=cs.font; const m=cx.measureText(n.textContent.trim()); const content=m.fontBoundingBoxAscent+m.fontBoundingBoxDescent; const base=r.top+(r.height-content)/2+m.fontBoundingBoxAscent; top=Math.min(top,base-m.actualBoundingBoxAscent);} continue; }
    r=n.getBoundingClientRect(); if(!r.height) continue; top=Math.min(top,r.top); bottom=Math.max(bottom,r.bottom); }
   return {top,bottom}; };
@@ -1631,7 +1636,8 @@ export const STATES: State[] = [
       await expect(bar.getByRole('button', { name: /^Ratings and brews/ })).toHaveCount(on ? 1 : 0);
       await expect(page.getByRole('group', { name: 'Ratings', exact: true })).toHaveCount(0); // closed: not rendered
       const { width, height } = page.viewportSize()!;
-      const h = (await bar.boundingBox())!.height;
+      // The tab's own controls row (rendered inside the bar) is measured apart: these limits are for the shared controls.
+      const h = (await bar.boundingBox())!.height - (await tabRowHeight(bar));
       // Phone landscape: one short row with People shown; phones: at most three rows of controls.
       if (height <= 450) {
         if (!/^(sweetspots|water|gear|brewing|milestones)$/.test(t)) await expect(bar.getByRole('group', { name: 'People' })).toBeVisible(); // household > 1 in the seed
@@ -2149,6 +2155,7 @@ export const STATES: State[] = [
     path: () => '/insights?tab=leaderboards&range=all&avg=raw',
     act: async (page) => {
       const val = page.locator('[data-board="roasters"] .val .text-tip').first();
+      await val.evaluate((el) => el.scrollIntoView({ block: 'start' })); // phone landscape: the sticky bar (with the tab's controls) leaves little room
       await val.click();
       const tip = page.locator('.float-tip');
       await expect(tip.locator('dd').first()).toHaveText(/^\d+\.\d ± \d+\.\d$/);
@@ -2560,7 +2567,7 @@ export const STATES: State[] = [
       const p = await at(0.6);
       await page.mouse.click(p.x, p.y);
       await settle();
-      expect(Math.abs(await off(p)), 'thumb under the pointer').toBeLessThanOrEqual(2);
+      expect(Math.abs(await off(p)), 'thumb under the pointer').toBeLessThanOrEqual(2.5); // sub-pixel slack: the sticky bar's height is fractional now that Kinds sits in it
       await expect(ruler.locator('[aria-current]')).toHaveAttribute('aria-label', `Jump to ${await page.locator('.feed .month').first().textContent()}`);
       // Dragging along the ruler scrubs the feed: scrollY only grows going towards the oldest.
       const n = await ruler.locator('.tick').count();
@@ -4593,6 +4600,84 @@ export const STATES: State[] = [
   // Holder labels, tie lists and the full-text tip (Records); server-built feed lines (Milestones).
   { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
+  // ---- Peer review B (2026-10-19) ----
+  // M2: the top navbar's first link lines up with the page content's left edge (the tab bar replaces it at <= 640px).
+  ...['/insights?tab=habits', '/stats'].map((path): State => ({
+    name: `nav-aligned${path.replace(/[^a-z]+/g, '-')}`, path: () => path,
+    act: async (page) => {
+      if (page.viewportSize()!.width <= 640) return;
+      const nav = (await page.locator('nav.site-nav .nav-links a').first().boundingBox())!.x;
+      const main = await page.locator('main.container').evaluate((el) => el.getBoundingClientRect().left + parseFloat(getComputedStyle(el).paddingLeft));
+      expect(Math.abs(nav - main), 'nav link left vs content left').toBeLessThanOrEqual(1);
+    }
+  })),
+  // M1: each tab's own controls sit in the sticky filter bar and stay pinned inside it while scrolling.
+  ...([['leaderboards', 'Rank by'], ['habits', 'Measure'], ['consumption', 'Group by'], ['milestones', 'Kinds'], ['sweetspots', 'Bag']] as const).map(([tab, label]): State => ({
+    name: `insights-tab-controls-${tab}`, path: () => `/insights?tab=${tab}&range=all`,
+    act: async (page) => {
+      const ctl = page.locator('.filter-bar .tab-controls').getByRole(tab === 'habits' || tab === 'consumption' || tab === 'milestones' ? 'group' : 'combobox', { name: label });
+      await expect(ctl).toBeVisible();
+      await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
+      await page.evaluate(() => scrollTo(0, 700));
+      await page.waitForTimeout(150);
+      const bar = (await page.locator('.filter-bar').boundingBox())!, c = (await ctl.boundingBox())!;
+      expect(Math.abs(bar.y)).toBeLessThanOrEqual(1);
+      expect(c.y).toBeGreaterThanOrEqual(bar.y - 1);
+      expect(c.y + c.height).toBeLessThanOrEqual(bar.y + bar.height + 1);
+      // Nothing of the tab's bar is left inline in the page below the sticky bar.
+      await expect(page.locator('.rail-main > .rank-bar, .rail-main > .insights-bar, .rail-main > .kinds-bar')).toHaveCount(0);
+    }
+  })),
+  // S2: a two-column list reads row by row (1 left, 2 right, 3 under 1); one column on phones.
+  { name: 'insights-records-top-rowwise', path: () => '/insights?tab=records&range=all&top=20',
+    act: async (page) => {
+      const li = page.locator('#records-top-brews + ol li');
+      const [a, b, c] = await Promise.all([0, 1, 2].map((i) => li.nth(i).boundingBox()));
+      if (page.viewportSize()!.width > 640) {
+        expect(Math.abs(a!.y - b!.y)).toBeLessThanOrEqual(1);
+        expect(b!.x).toBeGreaterThan(a!.x);
+        expect(c!.y).toBeGreaterThan(a!.y + 10);
+        expect(Math.abs(c!.x - a!.x)).toBeLessThanOrEqual(1);
+      } else {
+        expect(b!.y).toBeGreaterThan(a!.y + 10);
+        expect(Math.abs(b!.x - a!.x)).toBeLessThanOrEqual(1);
+      }
+    } },
+  // M3: Show more scrolls the extended list's bottom to the screen's bottom; Show less does the same for the shorter list.
+  { name: 'insights-records-show-more-scroll', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const gap = () => page.locator('#records-top-brews + ol').evaluate((el) => innerHeight - el.getBoundingClientRect().bottom);
+      const foot = page.locator('#records-top-brews ~ .top-foot');
+      await foot.scrollIntoViewIfNeeded();
+      const click = async (name: string) => { await foot.evaluate((el) => el.scrollIntoView({ block: 'center' })); const b = (await foot.getByRole('button', { name }).boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
+      await click('Show more');
+      await expect(page).toHaveURL(/top=20/);
+      const l = await lift();
+      await expect.poll(async () => Math.abs((await gap()) - l)).toBeLessThanOrEqual(2);
+      await click('Show less');
+      await expect(page).not.toHaveURL(/top=/);
+      await expect.poll(async () => Math.abs((await gap()) - l)).toBeLessThanOrEqual(2);
+    } },
+  // M4: Back to top appears after a screenful of scrolling, bottom right (above the phone tab bar), and returns to the top.
+  { name: 'back-to-top', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const btn = page.getByRole('button', { name: 'Back to top' });
+      await expect(btn).toHaveCount(0);
+      await page.evaluate(() => scrollTo(0, innerHeight * 2));
+      await expect(btn).toBeVisible();
+      const [b, vp, tabs] = await Promise.all([btn.boundingBox(), page.evaluate(() => [innerWidth, innerHeight]), page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().top : null; })]);
+      expect(b!.width).toBeGreaterThanOrEqual(44);
+      expect(b!.height).toBeGreaterThanOrEqual(44);
+      expect(vp[0] - (b!.x + b!.width), 'right gap').toBeLessThanOrEqual(24);
+      expect((tabs ?? vp[1]) - (b!.y + b!.height), 'clear of the tab bar').toBeGreaterThanOrEqual(0);
+      await btn.click();
+      await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+      await expect(btn).toHaveCount(0);
+    } },
+
 ];
 
 // A tip a hover opens also opens on a tap (a click without touch) and stays open until a tap elsewhere, one at a time

@@ -21,6 +21,14 @@ export function deltaColor(v: number | null): string {
 export const deltaInk = (v: number | null): 'ink-better' | 'ink-worse' | '' =>
   v === null || Math.abs(v) < GRAY_BELOW ? '' : v > 0 ? 'ink-better' : 'ink-worse';
 
+// A text's signed numbers ("+0.3", "−0.1", "-2.0": a sign right before a decimal, not after a word character or a dot, so
+// counts like "+3 more", ranges and dates stay plain) as [text, ink class] runs; a shown zero has no ink.
+export const signRuns = (text: string): [string, string][] =>
+  text.split(/((?<![\w.])[+−-]\d+\.\d+)/u).flatMap((t, i): [string, string][] => {
+    const n = i % 2 ? +t.replace('−', '-') : 0;
+    return t ? [[t, n > 0 ? 'ink-better' : n < 0 ? 'ink-worse' : '']] : [];
+  });
+
 // The lab's number format: a true minus, and a value that rounds to 0 reads "0.00" (never "−0.00" or "+0.00").
 // `d` decimals: 2 for brew-level deltas; 1 for gaps between bag means (SE 0.2+), likeGap.
 export const signed = (x: number, d = 2) => (+Math.abs(x).toFixed(d) === 0 ? (0).toFixed(d) : (x > 0 ? '+' : '−') + Math.abs(x).toFixed(d));
