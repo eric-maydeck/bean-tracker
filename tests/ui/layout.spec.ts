@@ -23,6 +23,8 @@ interface State {
   // 'two' (tagged @two): phone-portrait + w1280 only (TWO_VIEWPORTS, playwright.config.ts). Only for a state whose
   // assertions are all width-independent (tip text, URL sync, labels) and whose path an 'all' state also loads.
   viewports?: 'all' | 'two';
+  /** Reloads the page dozens of times (insights-rail: 36 loads at w1280): triple the 30 s timeout, which the `background` profile's slow loads overrun. */
+  slow?: boolean;
 }
 
 // Stats → Not yet tracked → Link on the bean row containing `text`.
@@ -2473,6 +2475,7 @@ export const STATES: State[] = [
   // At w1280 this state also runs the comparisons at other sizes, then ends back at 1280 x 800.
   {
     name: 'insights-rail',
+    slow: true,
     path: () => '/insights?range=all',
     act: async (page) => {
       const rail = page.locator('nav.insights-rail');
@@ -2488,6 +2491,12 @@ export const STATES: State[] = [
         cols: [...m.querySelectorAll('.stat-row, .fit, .hl-grid, .board-band, .insights-charts, .lab-grid')].map(
           (g) => new Set([...g.children].map((c) => Math.round(c.getBoundingClientRect().left))).size)
       }));
+      // fitPairs stretches the lab pairs a frame after fonts load and after a width change, so a snapshot taken
+      // at once can be pre-fit at one width and post-fit at the other: wait for its [data-fit-pending] to clear.
+      const settled = async () => {
+        await page.waitForFunction(() => !document.querySelector('[data-fit-pending]'));
+        return shape();
+      };
       const at = async (width: number, height: number, url: string) => {
         await page.setViewportSize({ width, height });
         await gotoReady(page, url);
@@ -2497,9 +2506,9 @@ export const STATES: State[] = [
         for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
           const url = `/insights?range=all${q}`;
           await at(w - 176, 499, url);
-          const today = await shape();
+          const today = await settled();
           await at(w, 900, url);
-          expect(await shape(), `${w}px tab${q || '=overview'}: as without the rail at ${w - 176}px`).toEqual(today);
+          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${w - 176}px`).toEqual(today);
         }
       // Full width from 1416px: every tab's content column is 1240 - 2rem.
       await at(1436, 900, '/insights?range=all');
@@ -2585,9 +2594,13 @@ export const STATES: State[] = [
         await settle();
         const full = (await ruler.boundingBox())!.height;
         const seen: { y: number; h: number; why: string }[] = [];
-        for (let i = 0; i < 400 && (await page.locator('.feed').boundingBox())!.y + (await page.locator('.feed').boundingBox())!.height > 0; i++) {
-          await page.evaluate(() => scrollBy(0, 250));
+        // Until the feed is off the top or the page can't scroll further: below the feed sit Next up and the
+        // footer, so on a tall screen the feed's end never leaves it and a feed-only exit ran all 400 steps.
+        for (let i = 0, y0 = -1; i < 400 && (await page.locator('.feed').boundingBox())!.y + (await page.locator('.feed').boundingBox())!.height > 0; i++) {
+          const y1 = await page.evaluate(() => (scrollBy(0, 250), scrollY));
           await settle();
+          if (y1 === y0) break;
+          y0 = y1;
           const b = (await ruler.boundingBox())!;
           // What the height was computed from, so a failure says which input moved.
           if (b.y + b.height > 0) seen.push({ y: b.y, h: b.height, why: await ruler.evaluate((e) => `inline ${(e as HTMLElement).style.height || 'none'}, innerHeight ${innerHeight}, bar ${document.querySelector<HTMLElement>('.filter-bar')!.offsetHeight}, scrollY ${scrollY}`) });
@@ -4996,6 +5009,7 @@ const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES) {
   test(state.name, { tag: [routeTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
+    if (state.slow) test.slow();
     const s = seed();
     await gotoReady(page, state.path(s));
     if (state.act) await state.act(page, s);

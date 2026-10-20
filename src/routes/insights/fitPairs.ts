@@ -17,6 +17,7 @@ export function fitPairs(node: HTMLElement, _key: unknown) {
   const cardsOf = (c: HTMLElement) => (c.classList.contains('fit-col') ? ([...c.children] as HTMLElement[]) : [c]);
   const body = (c: HTMLElement) => c.querySelector<HTMLElement>('.fit-body');
   const run = () => {
+    delete node.dataset.fitPending;
     const cols = [...node.children] as HTMLElement[];
     const cards = cols.flatMap(cardsOf);
     for (const c of cols) c.style.height = '';
@@ -53,6 +54,7 @@ export function fitPairs(node: HTMLElement, _key: unknown) {
     }
   };
   const later = () => {
+    node.dataset.fitPending = ''; // until run(): tests (and anything measuring) wait for no [data-fit-pending]
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(run);
   };
@@ -61,6 +63,7 @@ export function fitPairs(node: HTMLElement, _key: unknown) {
     w = Math.round(e.contentRect.width);
     later();
   });
+  node.dataset.fitPending = '';
   ro.observe(node);
   document.fonts?.ready.then(later);
   return { update: later, destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
