@@ -738,6 +738,9 @@
       --rail-gap: 1rem;
       max-width: calc(var(--container-max) + var(--rail-w) + var(--rail-gap));
     }
+    :global(body:has(main.container > .rail-layout)) {
+      --nav-max: calc(var(--container-max) + 10rem + 1rem);
+    }
     .rail-layout {
       display: grid;
       grid-template-columns: var(--rail-w) minmax(0, 1fr);
@@ -747,9 +750,6 @@
     .insights-rail {
       display: flex;
       flex-direction: column;
-    :global(body:has(main.container > .rail-layout)) {
-      --nav-max: calc(var(--container-max) + 10rem + 1rem);
-    }
       gap: var(--space-4);
       position: sticky;
       top: 0;
