@@ -2172,6 +2172,17 @@ export const STATES: State[] = [
     }
   },
   {
+    // The seed has fewer than 50 finished coffees: every row shows, so the footer is Show less only.
+    name: 'insights-recent-short-list',
+    viewports: 'two',
+    path: () => '/insights?recentc=50',
+    act: async (page) => {
+      const foot = page.locator('section.recent .top-foot').nth(1);
+      await expect(foot.getByRole('button', { name: 'Show less' })).toBeVisible();
+      await expect(foot.getByRole('button', { name: 'Show more' })).toHaveCount(0);
+    }
+  },
+  {
     // Recent expanded: Show less sits left of Show more; rows read row by row in two columns (one on phones).
     name: 'insights-recent-more',
     path: () => '/insights?recent=20',
@@ -4346,6 +4357,28 @@ export const STATES: State[] = [
       await link.click();
       await expect(page).toHaveURL(/\/coffees\?status=all&origin=Ethiopia/);
       await expect(page.getByRole('button', { name: 'All', pressed: true })).toBeVisible();
+    }
+  },
+  {
+    // A click on the sea closes the pinned map tip.
+    name: 'insights-leaderboards-map-tip-close',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      await page.locator('.world-map').scrollIntoViewIfNeeded();
+      const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+        const path = p as unknown as SVGPathElement;
+        const svg = path.ownerSVGElement!;
+        const pt = svg.createSVGPoint();
+        pt.x = 582; pt.y = 200;
+        const c = pt.matrixTransform(svg.getScreenCTM()!);
+        return [c.x, c.y];
+      });
+      await page.mouse.click(x, y);
+      const tip = page.locator('.cell-tip:popover-open');
+      await expect(tip).toBeVisible();
+      await page.locator('.world-map svg').click({ position: { x: 4, y: 4 } }); // outside the globe: the sea
+      await expect(tip).toHaveCount(0);
     }
   },
   {

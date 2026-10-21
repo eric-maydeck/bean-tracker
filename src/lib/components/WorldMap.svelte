@@ -106,7 +106,7 @@
   </svg>
   <span class="tip-anchor" bind:this={anchor} style:left="{tip?.x ?? 0}px" style:top="{tip?.y ?? 0}px"></span>
   {#if tip && anchor}
-    {#key tip.iso}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if byIso.get(tip.iso)?.href}<a class="tip-link" href={byIso.get(tip.iso)?.href}>See coffees</a>{/if}</FloatTip>{/key}
+    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</FloatTip>{/key}
   {/if}
 </div>
 

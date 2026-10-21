@@ -389,10 +389,9 @@
   }
 
   function tapStatus(tapped: StatusTab) {
-    const allOn = lit[0] === 'all';
     const next = toggleStatus(lit, tapped, explicit.prev ?? null);
     // Entering All remembers what was lit; any other result forgets it.
-    if (next[0] === 'all') explicit.prev = allOn ? explicit.prev : (lit as Status[]);
+    if (next[0] === 'all') explicit.prev = lit as Status[];
     else delete explicit.prev;
     explicit.status = next;
   }
