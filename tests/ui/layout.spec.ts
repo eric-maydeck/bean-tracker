@@ -847,6 +847,25 @@ export const STATES: State[] = [
     }
   },
   {
+    // Nav "Water" on a deep link resets to bare; a partial mL keeps the last results with no layout shift.
+    name: 'water-reset-partial',
+    path: () => '/water?recipe=substance&ml=900',
+    act: async (page) => {
+      await expect(page.getByLabel('Recipe')).toHaveValue('substance');
+      const box = page.getByLabel('Water (mL)');
+      const results = page.locator('main section');
+      const before = (await results.boundingBox())!.height;
+      await box.fill('8');
+      await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Drops in 900 mL' })).toBeVisible();
+      expect((await results.boundingBox())!.height).toBe(before);
+      await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
+      await expect(page).not.toHaveURL(/recipe=/);
+      await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
+      await expect(box).toHaveValue('1000');
+    }
+  },
+  {
     name: 'water-deep-link',
     path: () => '/water?recipe=HOLY-water&ml=1200',
     act: async (page) => {

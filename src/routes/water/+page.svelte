@@ -1,16 +1,28 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { afterNavigate } from '$app/navigation';
+  import ShareButton from '$lib/components/ShareButton.svelte';
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import { RECIPES, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, dropsFor, hardness, KETTLES, kettleFor, lotusParams, parseLotus } from '$lib/lotus';
 
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
-  const start = parseLotus(currentParams(page.url));
-  let recipeSlug = $state<string | undefined>(start.recipe);
-  // A bare ?kettle=<slug> fills its capacity; with an ml that differs, the kettle is dropped.
-  let picked = $state(start.kettle ?? '');
-  let ml = $state<number | undefined>(start.ml ?? KETTLES.find((k) => k.slug === start.kettle)?.ml);
-  let raw = $state(String(ml ?? DEFAULT_ML));
+  let recipeSlug = $state<string | undefined>();
+  let picked = $state('');
+  let ml = $state<number | undefined>();
+  let raw = $state(String(DEFAULT_ML));
+
+  // Read the URL on entry and on every navigation (nav "Water" -> bare resets). A bare ?kettle=<slug>
+  // fills its capacity; with an ml that differs, the kettle is dropped.
+  function applyUrl() {
+    const s = parseLotus(currentParams(page.url));
+    recipeSlug = s.recipe;
+    picked = s.kettle ?? '';
+    ml = s.ml ?? KETTLES.find((k) => k.slug === s.kettle)?.ml;
+    raw = String(ml ?? DEFAULT_ML);
+  }
+  applyUrl();
+  afterNavigate(applyUrl);
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
@@ -39,7 +51,10 @@
   <title>Bean Tracker - Water</title>
 </svelte:head>
 
-<h1>Water</h1>
+<div class="toolbar">
+  <h1>Water</h1>
+  <ShareButton />
+</div>
 
 <div class="search-row">
   <label class="form-field group-field water-field">
@@ -61,34 +76,35 @@
   </label>
   <label class="form-field group-field water-field">
     <span>Water slider</span>
-    <input type="range" min={MIN_ML} max={MAX_ML} step="50" aria-label="Water slider (mL)" value={valid ? volume : DEFAULT_ML} oninput={(e) => setMl(e.currentTarget.value)} />
+    <input type="range" min={MIN_ML} max={MAX_ML} step="50" aria-label="Water slider (mL)" aria-valuetext="{volume} mL" value={volume} oninput={(e) => setMl(e.currentTarget.value)} />
   </label>
 </div>
 
-{#if valid}
-  <section>
-    <h2>Drops in {volume} mL</h2>
-    <table class="water-table">
-      <tbody>
-        {#each CONCENTRATES as [key, label] (key)}
-          <tr><th scope="row">{label}</th><td>{drops[key]}</td></tr>
-        {/each}
-      </tbody>
-    </table>
-    <table class="water-table">
-      <thead><tr><th></th><th scope="col">Result</th><th scope="col">Target</th></tr></thead>
-      <tbody>
-        <tr><th scope="row">GH</th><td>{fit.gh.toFixed(1)}</td><td>{target.gh.toFixed(1).replace(/\.0$/, '')}</td></tr>
-        <tr><th scope="row">KH</th><td>{fit.kh.toFixed(1)}</td><td>{target.kh.toFixed(1).replace(/\.0$/, '')}</td></tr>
-      </tbody>
-    </table>
-    <p class="text-muted">Whole drops from a round-tip dropper, ppm as CaCO3.</p>
-  </section>
-{:else}
-  <p class="text-muted">Enter {MIN_ML}-{MAX_ML} mL.</p>
-{/if}
+<!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
+<p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML} mL.</p>
+<section>
+  <h2>Drops in {volume} mL</h2>
+  <table class="water-table" aria-label="Drops per concentrate">
+    <tbody>
+      {#each CONCENTRATES as [key, label] (key)}
+        <tr><th scope="row">{label}</th><td>{drops[key]}</td></tr>
+      {/each}
+    </tbody>
+  </table>
+  <table class="water-table" aria-label="Resulting hardness against target">
+    <thead><tr><td></td><th scope="col">Result</th><th scope="col">Target</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">GH</th><td>{fit.gh.toFixed(1)}</td><td>{target.gh.toFixed(1).replace(/\.0$/, '')}</td></tr>
+      <tr><th scope="row">KH</th><td>{fit.kh.toFixed(1)}</td><td>{target.kh.toFixed(1).replace(/\.0$/, '')}</td></tr>
+    </tbody>
+  </table>
+  <p class="text-muted">Whole drops from a round-tip dropper, ppm as CaCO3.</p>
+</section>
 
 <style>
+  .water-hint-off {
+    visibility: hidden;
+  }
   /* Fields share a row when they fit; a long kettle name never widens the page. */
   .water-field {
     flex: 1 1 12rem;
