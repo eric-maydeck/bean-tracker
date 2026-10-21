@@ -2,6 +2,7 @@
   import { WORLD, WORLD_VIEWBOX } from '$lib/worldMap';
   import { isoCode } from '$lib/countryFlags';
   import type { Rank } from '$lib/insightsUrl';
+  import { onDestroy } from 'svelte';
   import FloatTip from './FloatTip.svelte';
   import TipBody, { type TipRow } from './TipBody.svelte';
 
@@ -38,7 +39,13 @@
   // A click or tap pins the tip open until a click or tap elsewhere (or Escape); a mouse hover shows it only while
   // over the country (user, 2026-10-18).
   let pinned = false;
-  const close = () => ((tip = null), (pinned = false));
+  // An unpinned hover tip closes after a short delay, so the mouse can cross the gap from the country onto the tip
+  // (its link is clickable); entering either cancels it (user, 2026-10-20).
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const keep = () => clearTimeout(timer);
+  const close = () => (keep(), (tip = null), (pinned = false));
+  const later = () => ((keep(), (timer = setTimeout(close, 200))));
+  onDestroy(keep);
 
   // A tip stays where the pointer entered its country (no re-placing on every move inside it).
   function place(el: SVGPathElement, clientX: number, clientY: number) {
@@ -49,10 +56,19 @@
   // Hover (mouse) and tap (touch/click) share one handler; the sea clears the tip.
   function at(e: MouseEvent) {
     const el = e.target;
-    if (el instanceof SVGPathElement) place(el, e.clientX, e.clientY);
+    if (el instanceof SVGPathElement) (keep(), place(el, e.clientX, e.clientY));
     else tip = null;
   }
+  // Hover only: the sea and the map's edge close an unpinned tip after the bridge delay, not at once.
+  function hover(e: PointerEvent) {
+    if (e.pointerType !== 'mouse' || pinned) return;
+    if (e.target instanceof SVGPathElement) at(e);
+    else later();
+  }
+  // A click pins; clicking the pinned country again closes it.
   function pin(e: MouseEvent) {
+    const same = pinned && e.target instanceof SVGPathElement && e.target.dataset.iso === tip?.iso;
+    if (same) return close();
     at(e);
     pinned = !!tip;
   }
@@ -79,8 +95,8 @@
     preserveAspectRatio="xMidYMid slice"
     role="group"
     aria-label="Coffees by origin country"
-    onpointermove={(e) => e.pointerType === 'mouse' && !pinned && at(e)}
-    onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && (tip = null)}
+    onpointermove={hover}
+    onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()}
     onclick={pin}
   >
     {#each WORLD as c (c.name)}
@@ -106,7 +122,7 @@
   </svg>
   <span class="tip-anchor" bind:this={anchor} style:left="{tip?.x ?? 0}px" style:top="{tip?.y ?? 0}px"></span>
   {#if tip && anchor}
-    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</FloatTip>{/key}
+    {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close}><!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (the tip body is a mouse-only extra: Escape closes it, the link is a real link) --><div class="tip-hover" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()} onclick={(e) => !(e.target as Element).closest('a') && close()}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</div></FloatTip>{/key}
   {/if}
 </div>
 
@@ -135,12 +151,18 @@
     stroke: var(--color-accent);
     stroke-width: 2;
   }
-  /* The tip is pointer-events: none (a hover tip); its link takes clicks once the tip is pinned. */
+  /* The tip is pointer-events: none (a hover tip); this wrapper fills it (cancelling its padding) so the mouse can
+     rest on it and click the link. */
+  .tip-hover {
+    margin: -0.5rem -0.75rem;
+    padding: 0.5rem 0.75rem;
+    pointer-events: auto;
+    cursor: default;
+  }
   .tip-link {
     display: block;
     margin-top: 0.35rem;
     color: var(--color-accent);
-    pointer-events: auto;
     cursor: pointer;
   }
   .tip-anchor {

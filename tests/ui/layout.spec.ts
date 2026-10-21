@@ -4382,6 +4382,62 @@ export const STATES: State[] = [
     }
   },
   {
+    // A hover tip stays open while the mouse is on it (the link is clickable); an unpinned tip closes once the
+    // mouse leaves both country and tip; a click pins, a second click on the country (or the tip body) closes.
+    name: 'insights-leaderboards-map-tip-hover',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      await page.locator('.world-map').scrollIntoViewIfNeeded();
+      const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+        const path = p as unknown as SVGPathElement;
+        const svg = path.ownerSVGElement!;
+        const pt = svg.createSVGPoint();
+        pt.x = 582; pt.y = 200;
+        const c = pt.matrixTransform(svg.getScreenCTM()!);
+        return [c.x, c.y];
+      });
+      const tip = page.locator('.cell-tip:popover-open');
+      const onTip = async () => {
+        const b = (await tip.boundingBox())!;
+        await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2, { steps: 8 });
+      };
+      await page.mouse.move(x, y);
+      await expect(tip).toBeVisible();
+      await onTip();
+      await page.waitForTimeout(400); // past the bridge delay
+      await expect(tip).toBeVisible();
+      await page.mouse.move(2, 2, { steps: 4 }); // off the tip and the country
+      await expect(tip).toHaveCount(0);
+      // Hover, then onto the tip, then click the link.
+      await page.mouse.move(x, y);
+      await expect(tip).toBeVisible();
+      await onTip();
+      await tip.getByRole('link', { name: 'See coffees' }).click();
+      await expect(page).toHaveURL(/\/coffees\?status=all&origin=Ethiopia/);
+      await page.goBack();
+      await page.locator('.world-map').scrollIntoViewIfNeeded();
+      // A click pins; clicking the country again closes.
+      const [x2, y2] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+        const path = p as unknown as SVGPathElement;
+        const svg = path.ownerSVGElement!;
+        const pt = svg.createSVGPoint();
+        pt.x = 582; pt.y = 200;
+        const c = pt.matrixTransform(svg.getScreenCTM()!);
+        return [c.x, c.y];
+      });
+      await page.mouse.click(x2, y2);
+      await expect(tip).toBeVisible();
+      await page.mouse.click(x2, y2);
+      await expect(tip).toHaveCount(0);
+      // A click on the tip's own body (not the link) closes a pinned tip.
+      await page.mouse.click(x2, y2);
+      await expect(tip).toBeVisible();
+      await tip.locator('.tip-title').click();
+      await expect(tip).toHaveCount(0);
+    }
+  },
+  {
     // The page-wide filters ride along on the tip link, as on the list rows.
     name: 'insights-leaderboards-map-tip-filtered',
     viewports: 'two',
