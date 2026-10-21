@@ -863,12 +863,14 @@ export const STATES: State[] = [
     path: () => '/water?mode=drops&ml=880&mg=3&ca=1&na=1&k=1',
     act: async (page) => {
       await expect(page.getByRole('button', { name: 'Drops', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByRole('spinbutton', { name: 'Magnesium' })).toHaveValue('3');
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('3');
       await expect(page.getByRole('listitem', { name: '3 Magnesium' })).toBeVisible();
       await expect(page.locator('.wr-meters li', { hasText: 'Chloride' })).toBeVisible();
       await expect(page.locator('.wr-gauge', { hasText: 'GH' })).toContainText('36.5');
       await expect(page.locator('.wr-gauges')).not.toContainText('target');
-      await page.getByRole('spinbutton', { name: 'Calcium' }).fill('2');
+      await page.getByRole('spinbutton', { name: 'Ca' }).fill('2');
+      await page.getByRole('spinbutton', { name: 'Ca' }).pressSequentially('.5'); // a decimal drop is refused
+      await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('2');
       await expect(page).toHaveURL(/ca=2/);
       await expect(page.getByRole('listitem', { name: '2 Calcium' })).toBeVisible();
       await expectGroupsLabelled(page);

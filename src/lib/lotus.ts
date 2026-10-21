@@ -69,12 +69,6 @@ export function minerals(d: Drops, ml: number) {
   };
 }
 
-// Resulting hardness (ppm as CaCO3) from whole drops.
-export function hardness(d: Drops, ml: number): { gh: number; kh: number } {
-  const perDrop = 4.5 / (ROUND_TIP * (ml / 1000));
-  return { gh: (d.ca + d.mg) * perDrop, kh: ((d.na + d.k) * perDrop) / 2 };
-}
-
 export type Mode = 'recipe' | 'drops' | 'target';
 export const MODES: Mode[] = ['recipe', 'drops', 'target'];
 export const MODE_LABEL: Record<Mode, string> = { recipe: 'Recipe', drops: 'Drops', target: 'Target' };

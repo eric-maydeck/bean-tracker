@@ -74,6 +74,12 @@
   const hardTop = (v: number, goal: number) => (showTarget ? Math.max(v, goal, 1) * 1.15 : Math.max(150, v * 1.15));
   const f1 = (n: number) => n.toFixed(1).replace(/\.0$/, '');
 
+  // Whole drops only: a decimal (or 4+ digits) is refused where it is typed, so the results never jump to 0.
+  function setDrops(key: keyof Drops, el: HTMLInputElement) {
+    if (el.value === '' || INT.test(el.value)) dropsIn[key] = el.value;
+    else el.value = dropsIn[key];
+  }
+
   function pickKettle(name: string) {
     const k = KETTLES.find((x) => x.slug === name);
     if (!k) return;
@@ -183,9 +189,9 @@
       <label class="form-field group-field water-mineral" style:--el="var(--el-{key})">
         <span class="water-el">{SYMBOL[key]}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
         {#if mode === 'drops'}
-          <input type="number" inputmode="numeric" min="0" step="1" aria-label={label} value={dropsIn[key]} oninput={(e) => (dropsIn[key] = e.currentTarget.value)} />
+          <input type="number" inputmode="numeric" min="0" step="1" value={dropsIn[key]} oninput={(e) => setDrops(key, e.currentTarget)} />
         {:else}
-          <input type="number" inputmode="decimal" min="0" step="any" aria-label={label} value={targetIn[key]} oninput={(e) => (targetIn[key] = e.currentTarget.value)} />
+          <input type="number" inputmode="decimal" min="0" step="any" value={targetIn[key]} oninput={(e) => (targetIn[key] = e.currentTarget.value)} />
         {/if}
       </label>
     {/each}

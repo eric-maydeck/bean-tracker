@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, hardness, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
+import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -28,11 +28,6 @@ describe('dropsFor (Lotus formula)', () => {
   it('1000 mL case from the formula: Substance', () => {
     // Ca 60: round(60/4.5*.56)=7, Mg 30: 4, K 40: round(40/4.5*.56*2)=10
     expect(dropsFor(r('substance'), 1000)).toEqual(d(7, 4, 0, 10));
-  });
-  it('hardness from whole drops', () => {
-    const h = hardness(d(4, 4, 2, 2), 800); // 8 drops x 4.5/(.56*.8) = 80.4; 4 KH drops / 2
-    expect(h.gh).toBeCloseTo(80.36, 1);
-    expect(h.kh).toBeCloseTo(20.09, 1);
   });
 });
 
