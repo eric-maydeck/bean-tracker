@@ -4355,8 +4355,8 @@ export const STATES: State[] = [
       const link = tip.getByRole('link', { name: 'See coffees' });
       await expect(link).toHaveAttribute('href', (await page.locator('.board-rows a[href*="origin=Ethiopia"]').first().getAttribute('href'))!);
       await link.click();
-      await expect(page).toHaveURL(/\/coffees\?status=all&origin=Ethiopia/);
-      await expect(page.getByRole('button', { name: 'All', pressed: true })).toBeVisible();
+      await expect(page).toHaveURL(/\/coffees\?status=open&status=archive&origin=Ethiopia/);
+      for (const n of ['Open', 'Archive']) await expect(page.getByRole('button', { name: n, pressed: true })).toBeVisible();
     }
   },
   {
@@ -4414,7 +4414,7 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       await onTip();
       await tip.getByRole('link', { name: 'See coffees' }).click();
-      await expect(page).toHaveURL(/\/coffees\?status=all&origin=Ethiopia/);
+      await expect(page).toHaveURL(/\/coffees\?status=open&status=archive&origin=Ethiopia/);
       await page.goBack();
       await page.locator('.world-map').scrollIntoViewIfNeeded();
       // A click pins; clicking the country again closes.

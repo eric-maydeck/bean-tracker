@@ -62,8 +62,10 @@ const byRank = (a: BoardRow, b: BoardRow) =>
 // and under like unless See all set avg=raw (stats audit 2026-10-17: a 1-brew bag topped the like board).
 const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3') || (rank === 'like' && avg !== 'raw');
 
-export const listHref = (column: ColumnKey, values: (string | null)[]) =>
-  `/coffees?${toParams({ status: ['all'], filters: [{ column, mode: 'any', values }] })}`;
+// `status`: all by default; a Leaderboards row follows its rank (statusFor): Backlog bags have no brews.
+export const listHref = (column: ColumnKey, values: (string | null)[], status: ('all' | 'open' | 'archive')[] = ['all']) =>
+  `/coffees?${toParams({ status, filters: [{ column, mode: 'any', values }] })}`;
+const statusFor = (rank: Rank): ('all' | 'open' | 'archive')[] => (rank === 'spend' || rank === 'ppg' ? ['all'] : ['open', 'archive']);
 
 // The distinct `processing` labels of the bags in a process group (a /coffees filter spells them out).
 export const processLabels = (bags: readonly BagFact[], group: string): (string | null)[] =>
@@ -80,7 +82,7 @@ export function pageFilters(f: LabFilters & { caffeine?: Caffeine }, bags: reado
   return out;
 }
 
-function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: ReadonlyMap<number, number>): BoardRow {
+function decorate(r: BoardRow, board: Board, rank: Rank, bags: readonly BagFact[], sizes: ReadonlyMap<number, number>): BoardRow {
   if (board === 'coffees') {
     const bag = bags.find((b) => b.id === Number(r.key));
     // One bag each: the one-bag rule, on the bag's size (bagSizes: dial-in brews included).
@@ -91,11 +93,11 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: Re
   }
   if (board === 'process') {
     const labels = processLabels(bags, r.key);
-    return labels.length ? { ...r, href: listHref('processing', labels) } : r;
+    return labels.length ? { ...r, href: listHref('processing', labels, statusFor(rank)) } : r;
   }
   const column = FILTER_COLUMN[board];
   // Bags stored under an alias label (Light/Med) normalize to this row, so link them too.
-  return column ? { ...r, href: listHref(column, board === 'roast' ? roastLevelLabels(r.key) : [r.key]) } : r;
+  return column ? { ...r, href: listHref(column, board === 'roast' ? roastLevelLabels(r.key) : [r.key], statusFor(rank)) } : r;
 }
 
 export function leaderboard(
@@ -158,7 +160,7 @@ export function leaderboard(
     }
   }
   if (likes && rank !== 'like') rows = rows.map((r) => { const l = likes.get(Number(r.key)); return l ? { ...r, like: { gap: l.gap, label: l.label } } : r; });
-  const out = rows.map((r) => decorate(r, board, bags, sizes));
+  const out = rows.map((r) => decorate(r, board, rank, bags, sizes));
   return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 

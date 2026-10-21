@@ -120,14 +120,21 @@ describe('leaderboard', () => {
   });
   it('roast level link includes alias labels', () => {
     const [r] = leaderboard([brew({ roastLevel: 'Light/Medium' })], [], SEPT, 'roast', 'brews', 'all', 'raw');
-    expect(r.href).toBe('/coffees?status=all&roast_level=Light%2FMedium&roast_level=Light%2FMed');
+    expect(r.href).toBe('/coffees?status=open&status=archive&roast_level=Light%2FMedium&roast_level=Light%2FMed');
   });
-  it('attribute boards link to the filtered coffee list, archived included', () => {
+  it('attribute boards link to the filtered coffee list, Backlog left out', () => {
     const [r] = leaderboard(BREWS, BAGS, SEPT, 'roasters', 'brews', 'all', 'raw');
-    expect(r.href).toBe('/coffees?status=all&roaster=Sey');
+    expect(r.href).toBe('/coffees?status=open&status=archive&roaster=Sey');
     const [p] = leaderboard(BREWS, [...BAGS, bag({ id: 7, processing: 'Fully washed' })], SEPT, 'process', 'brews', 'all', 'raw');
-    expect(p.href).toBe('/coffees?status=all&processing=Washed&processing=Fully+washed');
+    expect(p.href).toBe('/coffees?status=open&status=archive&processing=Washed&processing=Fully+washed');
     expect(leaderboard(BREWS, BAGS, SEPT, 'dripper', 'brews', 'all', 'raw')[0].href).toBeUndefined();
+  });
+  it('the link status follows the rank: consumption ranks open+archive, spend and ppg all (Backlog bags were bought)', () => {
+    const bought = [bag({ id: 8, roaster: 'Sey', cost: 20, amountG: 250, purchaseDate: '2026-09-02' })];
+    for (const rank of ['spend', 'ppg'] as const) {
+      expect(leaderboard([], bought, SEPT, 'roasters', rank, 'all', 'raw')[0].href).toBe('/coffees?status=all&roaster=Sey');
+    }
+    expect(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'rating', 'all', 'raw')[0].href).toContain('status=open&status=archive');
   });
   it('ties: more bags, then more brews, then label', () =>
     expect(
