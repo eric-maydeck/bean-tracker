@@ -17,9 +17,6 @@
   const str = (n?: number) => (n === undefined ? '' : String(n));
 
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
-  // TEMP (preview only): ?layout=narrow|wide, default narrow; delete with the layout commit.
-  let layout = $state<'narrow' | 'wide'>('narrow');
-  let layoutExplicit = $state(false);
   let mode = $state<Mode>('recipe');
   let unit = $state<Unit | undefined>();
   let recipeSlug = $state<string | undefined>();
@@ -33,9 +30,6 @@
   // fills its capacity; with an ml that differs, the kettle is dropped.
   function applyUrl() {
     const s = parseLotus(currentParams(page.url));
-    const lay = currentParams(page.url).get('layout')?.toLowerCase();
-    layoutExplicit = lay === 'wide' || lay === 'narrow';
-    layout = lay === 'wide' ? 'wide' : 'narrow';
     mode = s.mode ?? 'recipe';
     unit = s.unit;
     recipeSlug = s.recipe;
@@ -118,7 +112,6 @@
         unit: mode === 'target' ? unit : undefined,
         vals: mode === 'drops' ? urlVals(dropsIn, INT) : mode === 'target' ? urlVals(targetIn, DEC) : undefined
       });
-    if (layoutExplicit) p.set('layout', layout);
     writeUrlParams(p);
   });
 </script>
@@ -127,15 +120,13 @@
   <title>Bean Tracker - Water</title>
 </svelte:head>
 
-<div class="toolbar">
+<div class="water-page">
+<div class="toolbar water-title">
   <h1>Water</h1>
   <ShareButton />
 </div>
 
-<div class="water-page lay-{layout}">
-<div class="water-top">
-<div class="water-tabs">
-<div class="search-row">
+<div class="water-tabs search-row">
   <div class="form-field group-field">
     <span>Mode</span>
     <div class="tab-group" role="group" aria-label="Mode">
@@ -145,14 +136,12 @@
     </div>
   </div>
 </div>
-</div>
-<div class="water-ctl">
 <div class="water-controls">
 <div class="water-kettle-row">
   <label class="form-field group-field water-field water-kettle">
     <span>Kettle</span>
     <select class="ctl-select" aria-label="Kettle" value={valid ? kettle : ''} onchange={(e) => pickKettle(e.currentTarget.value)}>
-      <option value="" disabled>Kettle</option>
+      <option value="" disabled>Custom</option>
       {#each KETTLES as k (k.slug)}<option value={k.slug}>{k.name} ({k.ml} mL)</option>{/each}
     </select>
   </label>
@@ -172,8 +161,7 @@
   </div>
 </div>
 </div>
-</div>
-<div class="water-inputs search-row">
+<div class="water-inputs-wrap"><div class="water-inputs search-row">
   {#if mode === 'recipe'}
     <label class="form-field group-field water-field">
       <span>Recipe</span>
@@ -193,7 +181,7 @@
     {/if}
     {#each CONCENTRATES as [key, label] (key)}
       <label class="form-field group-field water-mineral" style:--el="var(--el-{key})">
-        <span class="water-el">{layout === 'narrow' ? SYMBOL[key] : label}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
+        <span class="water-el">{SYMBOL[key]}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
         {#if mode === 'drops'}
           <input type="number" inputmode="numeric" min="0" step="1" aria-label={label} value={dropsIn[key]} oninput={(e) => (dropsIn[key] = e.currentTarget.value)} />
         {:else}
@@ -202,22 +190,19 @@
       </label>
     {/each}
   {/if}
-</div>
-</div>
-
+</div></div>
 
 <!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
 <p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML} mL.</p>
-<section class="wr">
+<section class="wr water-results">
   <div class="card wr-head">
-    <h2>Lotus drops for {volume} mL{layout === 'wide' ? ' of water' : ''}</h2>
+    <h2>Lotus drops for {volume} mL of water</h2>
     <ul class="wr-drops" aria-label="Drops to add">
       {#each CONCENTRATES as [key, label] (key)}
         <li class="wr-drop" style:--el="var(--el-{key})" class:wr-zero={drops[key] === 0} aria-label="{drops[key]} {label}"><b>{drops[key]}</b><span>{SYMBOL[key]}</span></li>
       {/each}
     </ul>
   </div>
-  <div class="wr-split">
     <div class="card wr-card">
       <h3>Minerals</h3>
       <ul class="wr-meters">
@@ -239,13 +224,14 @@
         {/each}
       </div>
     </div>
-  </div>
+</section>
+<div class="water-notes">
   <p class="text-muted wr-note">Whole drops from a round-tip dropper; GH and KH in ppm as CaCO₃.</p>
   <p class="text-muted wr-note">
     Drop math follows Lotus's own calculator. For official Lotus recipes and instructions, see
     <a href="https://lotuscoffeeproducts.com/pages/product-instructions" rel="noopener">Lotus Coffee Products</a>.
   </p>
-</section>
+</div>
 </div>
 
 <style>
@@ -255,8 +241,6 @@
   /* Fields share a row when they fit; a long kettle name never widens the page. */
   /* Kettle + mL box sit together and the slider spans exactly from the kettle's left edge to the box's right edge. */
   .water-controls {
-    width: fit-content;
-    max-width: 100%;
     margin-bottom: var(--space-4);
   }
   .water-kettle-row {
@@ -374,9 +358,7 @@
   .wr-drop b { font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .wr-drop span { font-size: 1.1rem; font-weight: 600; }
   @container card (min-width: 26rem) { .wr-drops { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .wr-zero { opacity: 0.45; }
-  .wr-split { display: grid; gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-4); }
-  @media (min-width: 768px) { .wr-split { grid-template-columns: 1.4fr 1fr; } }
+  .wr-zero b, .wr-zero span { color: var(--color-text-muted); }
   .wr-meters { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
   .wr-meters li { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr) 5.5rem; align-items: center; gap: var(--space-2); }
   .wr-meter-label { color: var(--el); font-size: 0.9rem; font-weight: 600; }
@@ -389,19 +371,35 @@
   .wr-gauges { --el: var(--color-label); display: grid; gap: var(--space-5); }
   .wr-gauge-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-2); }
   .wr-gauge-head span { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  /* TEMP layout previews (?layout=narrow|wide); one revertable commit. */
-  .water-top { display: grid; gap: var(--space-3); margin-bottom: var(--space-3); }
-  .water-top > * { min-width: 0; }
-  .water-inputs { margin-bottom: 0; }
-  .lay-narrow { max-width: 34rem; }
-  .lay-narrow .water-controls { width: 100%; }
-  .lay-narrow .water-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); }
-  .lay-narrow .water-inputs .water-unit, .lay-narrow .water-inputs .water-field { grid-column: 1 / -1; }
-  .lay-narrow .water-mineral { flex: none; }
-  .lay-narrow .wr-split { grid-template-columns: 1fr; }
-  @media (min-width: 768px) {
-    .lay-wide .water-top { grid-template-columns: auto minmax(0, 1fr); align-items: start; column-gap: var(--space-6); }
-    .lay-wide .water-tabs { grid-column: 1 / -1; }
-    .lay-wide .water-inputs { align-content: start; }
+  /* Page grid: one narrow column (title, tabs, controls, inputs, results, notes); from 1200px two narrow columns,
+     left = title..inputs + notes, right = results. */
+  .water-page {
+    display: grid;
+    grid-template-columns: minmax(0, 34rem);
+    grid-template-areas: 'title' 'tabs' 'ctl' 'inputs' 'hint' 'results' 'notes';
+    column-gap: var(--space-6);
   }
+  .water-page > * { min-width: 0; }
+  .water-title { grid-area: title; }
+  .water-tabs { grid-area: tabs; }
+  .water-controls { grid-area: ctl; width: 100%; }
+  .water-inputs-wrap { grid-area: inputs; container-type: inline-size; margin-bottom: var(--space-3); }
+  .water-results { grid-area: results; }
+  .water-notes { grid-area: notes; }
+  .water-hint { grid-area: hint; }
+  @media (min-width: 1200px) {
+    .water-page {
+      grid-template-columns: repeat(2, minmax(0, 34rem));
+      grid-template-rows: repeat(6, auto) 1fr;
+      grid-template-areas: 'title results' 'tabs results' 'ctl results' 'inputs results' 'hint results' 'notes results' '. results';
+    }
+    .water-notes { align-self: start; }
+    /* Two columns: every select the same width. */
+    .water-field select { max-width: none; width: 100%; }
+  }
+  .water-inputs { margin-bottom: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @container (min-width: 26rem) { .water-inputs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .water-inputs .water-unit, .water-inputs .water-field { grid-column: 1 / -1; }
+  .water-inputs .water-mineral { flex: none; }
+  .wr-card { margin-bottom: var(--space-4); }
 </style>

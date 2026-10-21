@@ -943,39 +943,94 @@ export const STATES: State[] = [
     }
   },
   {
-    // TEMP layout preview (narrow): overflow checks and a Mg, Ca, Na, K order check.
-    name: 'water-layout-narrow',
-    path: () => '/water?layout=narrow&recipe=substance&ml=880',
+    // Page grid: one narrow column on phones (notes last), two on wide screens (notes left, results right); inputs 2x2 or 4 across.
+    name: 'water-columns',
+    path: () => '/water?recipe=substance&ml=880',
     act: async (page) => {
-      await expect(page.locator('.lay-narrow')).toBeVisible();
-      await expect(page.locator('.wr-drop')).toHaveCount(4);
+      const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+      const two = page.viewportSize()!.width >= 1200;
+      const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
+      expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
+      if (two) {
+        expect(res.x, 'results in the right column').toBeGreaterThanOrEqual(controls.x + controls.width);
+        expect(Math.abs(notes.x - title.x), 'notes in the left column').toBeLessThan(2);
+        expect(notes.y).toBeGreaterThan(controls.y);
+        expect(Math.abs(res.y - title.y), 'results start level with the title').toBeLessThan(2);
+      } else {
+        expect(res.y, 'one column: results below the controls').toBeGreaterThanOrEqual(controls.y + controls.height);
+        expect(notes.y, 'one column: notes after the results').toBeGreaterThanOrEqual(res.y + res.height - 1);
+      }
+      const inputs = await page.locator('.water-inputs :is(input, select)').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+      if (inputs.length === 4) {
+        const perRow = Object.values(inputs.reduce<Record<number, number>>((m, r) => ((m[Math.round(r.top)] = (m[Math.round(r.top)] ?? 0) + 1), m), {}));
+        expect(perRow.every((n) => n === perRow[0]), `inputs per row ${perRow}: never 3+1`).toBe(true);
+      }
+      if (two) {
+        const slider = (await page.getByLabel('Water slider (mL)').boundingBox())!;
+        const sel = page.getByLabel('Recipe');
+        if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
+      }
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
     }
   },
   {
-    // TEMP layout preview (narrow, drops mode): overflow checks and a Mg, Ca, Na, K order check.
-    name: 'water-layout-narrow-drops',
-    path: () => '/water?layout=narrow&recipe=substance&ml=880&mode=drops&mg=3&ca=1&na=1&k=1',
+    name: 'water-columns-drops',
+    path: () => '/water?mode=drops&ml=880&mg=3&ca=1&na=1&k=1',
     act: async (page) => {
-      await expect(page.locator('.lay-narrow')).toBeVisible();
-      await expect(page.locator('.wr-drop')).toHaveCount(4);
+      const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+      const two = page.viewportSize()!.width >= 1200;
+      const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
+      expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
+      if (two) {
+        expect(res.x, 'results in the right column').toBeGreaterThanOrEqual(controls.x + controls.width);
+        expect(Math.abs(notes.x - title.x), 'notes in the left column').toBeLessThan(2);
+        expect(notes.y).toBeGreaterThan(controls.y);
+        expect(Math.abs(res.y - title.y), 'results start level with the title').toBeLessThan(2);
+      } else {
+        expect(res.y, 'one column: results below the controls').toBeGreaterThanOrEqual(controls.y + controls.height);
+        expect(notes.y, 'one column: notes after the results').toBeGreaterThanOrEqual(res.y + res.height - 1);
+      }
+      const inputs = await page.locator('.water-inputs :is(input, select)').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+      if (inputs.length === 4) {
+        const perRow = Object.values(inputs.reduce<Record<number, number>>((m, r) => ((m[Math.round(r.top)] = (m[Math.round(r.top)] ?? 0) + 1), m), {}));
+        expect(perRow.every((n) => n === perRow[0]), `inputs per row ${perRow}: never 3+1`).toBe(true);
+      }
+      if (two) {
+        const slider = (await page.getByLabel('Water slider (mL)').boundingBox())!;
+        const sel = page.getByLabel('Recipe');
+        if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
+      }
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
     }
   },
   {
-    // TEMP layout preview (wide): overflow checks and a Mg, Ca, Na, K order check.
-    name: 'water-layout-wide',
-    path: () => '/water?layout=wide&recipe=substance&ml=880',
+    name: 'water-columns-target',
+    path: () => '/water?mode=target&ml=880&mg=60&ca=40',
     act: async (page) => {
-      await expect(page.locator('.lay-wide')).toBeVisible();
-      await expect(page.locator('.wr-drop')).toHaveCount(4);
-    }
-  },
-  {
-    // TEMP layout preview (wide, drops mode): overflow checks and a Mg, Ca, Na, K order check.
-    name: 'water-layout-wide-drops',
-    path: () => '/water?layout=wide&recipe=substance&ml=880&mode=drops&mg=3&ca=1&na=1&k=1',
-    act: async (page) => {
-      await expect(page.locator('.lay-wide')).toBeVisible();
-      await expect(page.locator('.wr-drop')).toHaveCount(4);
+      const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+      const two = page.viewportSize()!.width >= 1200;
+      const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
+      expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
+      if (two) {
+        expect(res.x, 'results in the right column').toBeGreaterThanOrEqual(controls.x + controls.width);
+        expect(Math.abs(notes.x - title.x), 'notes in the left column').toBeLessThan(2);
+        expect(notes.y).toBeGreaterThan(controls.y);
+        expect(Math.abs(res.y - title.y), 'results start level with the title').toBeLessThan(2);
+      } else {
+        expect(res.y, 'one column: results below the controls').toBeGreaterThanOrEqual(controls.y + controls.height);
+        expect(notes.y, 'one column: notes after the results').toBeGreaterThanOrEqual(res.y + res.height - 1);
+      }
+      const inputs = await page.locator('.water-inputs :is(input, select)').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+      if (inputs.length === 4) {
+        const perRow = Object.values(inputs.reduce<Record<number, number>>((m, r) => ((m[Math.round(r.top)] = (m[Math.round(r.top)] ?? 0) + 1), m), {}));
+        expect(perRow.every((n) => n === perRow[0]), `inputs per row ${perRow}: never 3+1`).toBe(true);
+      }
+      if (two) {
+        const slider = (await page.getByLabel('Water slider (mL)').boundingBox())!;
+        const sel = page.getByLabel('Recipe');
+        if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
+      }
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
     }
   },
   {
