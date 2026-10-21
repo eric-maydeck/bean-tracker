@@ -50,7 +50,10 @@ jobs:
 
       - run: npm ci
 
-      - run: npx semantic-release
+      # A workflow_run job runs in the default branch's context (GITHUB_REF = main), and
+      # semantic-release reads the branch from GITHUB_REF, so it refused to publish ("triggered on
+      # the branch main"). Point it at the branch actually checked out.
+      - run: GITHUB_REF=refs/heads/release npx semantic-release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           # The bot's release-commit push must not run the local husky pre-push gate (full test:ui).
