@@ -3,24 +3,24 @@ import { pickOne } from '$lib/pageUrlState';
 // Lotus drop calculator, copied from Lotus's own (lotuscoffeeproducts.com product-instructions):
 // drops = round(ppm x L/4.5 x 0.56), doubled for Na and K, round-tip dropper. Basis and recipes:
 // docs/backlog/lotus-800ml-recipes.md.
-export type Drops = { ca: number; mg: number; na: number; k: number };
+export type Drops = { mg: number; ca: number; na: number; k: number };
 // Target ppm per mineral: Ca and Mg count as GH, Na and K as KH.
 export interface Recipe { name: string; slug: string; ppm: Drops }
 
-const recipe = (name: string, ca: number, mg: number, na: number, k: number): Recipe => ({
-  name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, ''), ppm: { ca, mg, na, k }
+const recipe = (name: string, mg: number, ca: number, na: number, k: number): Recipe => ({
+  name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, ''), ppm: { mg, ca, na, k }
 });
 export const RECIPES: Recipe[] = [
   recipe('Bright and Juicy', 40, 40, 10, 10),
-  recipe('Holy Water', 0, 60, 0, 20),
-  recipe('Light and Bright', 60, 0, 0, 25),
-  recipe('Lume High Clarity', 8, 24.1, 0, 4),
+  recipe('Holy Water', 60, 0, 0, 20),
+  recipe('Light and Bright', 0, 60, 0, 25),
+  recipe('Lume High Clarity', 24.1, 8, 0, 4),
   recipe('Lume Ultra Soft', 10, 10, 0, 5),
-  recipe('Mg/K 60/10', 0, 60, 0, 10),
-  recipe('Reddit Bright and Juicy mod', 30, 40, 10, 5),
-  recipe('Substance', 60, 30, 0, 40),
+  recipe('Mg/K 60/10', 60, 0, 0, 10),
+  recipe('Reddit Bright and Juicy mod', 40, 30, 10, 5),
+  recipe('Substance', 30, 60, 0, 40),
   recipe('Ultralight (Mg + Ca + K)', 20, 20, 0, 10),
-  recipe('Ultralight (Mg + K)', 0, 40, 0, 10)
+  recipe('Ultralight (Mg + K)', 40, 0, 0, 10)
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 export const DEFAULT_ML = 1000;
@@ -39,14 +39,14 @@ export const KETTLES = [
 // The dropdown shows the picked kettle (slug) only while the mL still equals its capacity, else the placeholder.
 export const kettleFor = (ml: number, picked = ''): string => (KETTLES.find((k) => k.slug === picked && k.ml === ml) ? picked : '');
 
-export const CONCENTRATES = [['ca', 'Calcium'], ['mg', 'Magnesium'], ['na', 'Sodium'], ['k', 'Potassium']] as const;
+export const CONCENTRATES = [['mg', 'Magnesium'], ['ca', 'Calcium'], ['na', 'Sodium'], ['k', 'Potassium']] as const;
 
 const ROUND_TIP = 0.56;
 
 // Lotus rounding on target ppm as CaCO3 (Ca, Mg as GH; Na, K as KH).
 export function dropsFromPpm(ppm: Drops, ml: number): Drops {
   const n = (v: number, f = 1) => Math.round(((v * ml) / 1000 / 4.5) * ROUND_TIP * f);
-  return { ca: n(ppm.ca), mg: n(ppm.mg), na: n(ppm.na, 2), k: n(ppm.k, 2) };
+  return { mg: n(ppm.mg), ca: n(ppm.ca), na: n(ppm.na, 2), k: n(ppm.k, 2) };
 }
 export const dropsFor = (r: Recipe, ml: number): Drops => dropsFromPpm(r.ppm, ml);
 
@@ -54,7 +54,7 @@ export const dropsFor = (r: Recipe, ml: number): Drops => dropsFromPpm(r.ppm, ml
 const CA = 0.40078, MG = 0.24305, NA = 2 * 0.22989, K = 2 * 0.390983, CL = 2 * 0.35453, HCO3 = 2 * 0.61016;
 
 // A target in mg/L of each ion -> ppm as CaCO3.
-export const ppmFromMgl = (m: Drops): Drops => ({ ca: m.ca / CA, mg: m.mg / MG, na: m.na / NA, k: m.k / K });
+export const ppmFromMgl = (m: Drops): Drops => ({ mg: m.mg / MG, ca: m.ca / CA, na: m.na / NA, k: m.k / K });
 
 // Resulting water from whole drops: minerals in mg/L (Cl and HCO3 included), GH and KH as ppm CaCO3.
 export function minerals(d: Drops, ml: number) {
@@ -80,7 +80,7 @@ export const MODES: Mode[] = ['recipe', 'drops', 'target'];
 export const MODE_LABEL: Record<Mode, string> = { recipe: 'Recipe', drops: 'Drops', target: 'Target' };
 export type Unit = 'ppm' | 'mgl';
 export interface LotusState { recipe?: string; ml?: number; kettle?: string; mode?: Mode; unit?: Unit; vals?: Partial<Drops> }
-const MINERALS = ['ca', 'mg', 'na', 'k'] as const;
+const MINERALS = ['mg', 'ca', 'na', 'k'] as const;
 
 // ?mode=drops|target (bare = recipe) &recipe=<slug> (recipe mode) &ml=<n> &kettle=<slug>
 // &ca/mg/na/k=<n> (drops: integers; target: decimals) &unit=mgl (target mode; bare = ppm). Explicit choices stay in the URL.

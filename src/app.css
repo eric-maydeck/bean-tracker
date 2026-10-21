@@ -20,6 +20,11 @@
   --color-urgency-low: #16a34a;
   --color-urgency-mid: #f59e0b;
   --color-urgency-high: #dc2626;
+  /* /water element key (text colors): Mg, Ca, Na, K. Chart tokens, >= 4.5:1 on the surface in both themes. */
+  --el-mg: var(--chart-color-4);
+  --el-ca: var(--chart-color-1);
+  --el-na: var(--chart-color-2);
+  --el-k: var(--chart-color-5);
   --chart-color-1: #8a5a3b;
   --chart-color-2: #2f7d6b;
   --chart-color-3: #c77b2e;
