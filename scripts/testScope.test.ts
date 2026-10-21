@@ -8,7 +8,12 @@ const SRC = {
   'src/lib/components/Icon.svelte': '',
   'src/lib/components/Label.svelte': '',
   'src/lib/components/Tile.svelte': `<script>\n  import {\n    x\n  } from './Label.svelte';\n</script>`,
-  'src/routes/insights/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';</script>`,
+  'src/routes/insights/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';import Water from './Water.svelte';import B from './Brewing.svelte';import Gear from './Gear.svelte';</script>`,
+  'src/routes/insights/Water.svelte': `<script>import W from '$lib/water.ts';</script>`,
+  'src/routes/insights/Gear.svelte': `<script>import W from '$lib/water.ts';</script>`,
+  'src/lib/water.ts': '',
+  'src/lib/gear.ts': '',
+  'src/routes/insights/Brewing.svelte': `<script>import G from '$lib/gear.ts';</script>`,
   'src/routes/stats/+page.svelte': `<script>import Tile from '$lib/components/Tile.svelte';</script>`,
   'src/routes/coffees/+page.svelte': `<script>fetch('/api/coffees/save', {});</script>`,
   'src/routes/api/coffees/save/+server.ts': `import { save } from '$lib/server/coffees';`,
@@ -27,6 +32,12 @@ describe('scopeFor', () => {
     // The known miss of the old path regex: a shared label failed insights-lab states at push.
     expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights', '@stats'] });
   });
+  it('narrows to the tabs a file is reached through, unless the page imports it directly', () => {
+    expect(scopeFor(['src/routes/insights/Water.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:water'] });
+    expect(scopeFor(['src/lib/gear.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:brewing'] });
+    expect(scopeFor(['src/lib/water.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@insights:gear', '@insights:water'] });
+    expect(scopeFor(['src/lib/components/Label.svelte'], SRC)).toEqual({ kind: 'tags', tags: ['@insights', '@stats'] });
+  });
   it('follows /api/ calls from pages to their endpoints', () => {
     expect(scopeFor(['src/lib/server/coffees.ts'], SRC)).toEqual({ kind: 'tags', tags: ['@coffees'] });
   });
@@ -42,5 +53,6 @@ describe('scopeFor', () => {
   it('reads the real src/ tree', () => {
     expect(scopeFor(['src/routes/insights/+page.svelte'])).toEqual({ kind: 'tags', tags: ['@insights'] });
     expect(scopeFor(['src/routes/+layout.svelte']).kind).toBe('full');
+    expect(scopeFor(['src/routes/insights/SweetSpots.svelte'])).toEqual({ kind: 'tags', tags: ['@insights:sweetspots'] });
   });
 });
