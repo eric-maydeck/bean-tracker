@@ -33,6 +33,8 @@
     // A bag fills the page-wide Roast level and Process (Coffees panel) from itself; Origin and Roaster stay as set.
     choose(b ? { bag: b.slug, roast: b.roast && lab.roasts.includes(b.roast) ? b.roast : undefined, process: lab.processes.includes(b.process) ? b.process : undefined } : { bag: undefined });
   }
+  // The Grind card is the only one that follows the grinder, so it names it (as Brewing's Grind chart does).
+  let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
   const emptyLine = useEmptyLine();
 
   // The card's number (largest): the winner, a lean, an early lead, the tied settings (or a summary of them), the one
@@ -209,7 +211,7 @@
       {#each bagOptions as b (b.slug)}<option value={b.slug}>{b.label}</option>{/each}
     </select>
   </label>
-  <GrinderSelect grinders={lab.grinders} grinder={s.grinder} {choose} />
+  <GrinderSelect label="Grind for:" grinders={lab.grinders} grinder={s.grinder} {choose} />
 </div>
 {/snippet}
 
@@ -275,7 +277,7 @@
           {#if r || evidence(p)}<span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<TextTip label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>{/if}
           {#if thin(p)}<span class="hl-line thin">{thin(p)}</span>{/if}
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
-          <TileCaption href="#{id}" label={c.name} />
+          <TileCaption href="#{id}" label={c.key === 'grind' && grinderName ? `${c.name} · ${grinderName}` : c.name} />
           <span id="{id}-full" hidden>{tipText(full)}</span>
         </div>
       {/each}

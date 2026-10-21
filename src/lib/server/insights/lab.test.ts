@@ -371,6 +371,15 @@ describe('sweetSpotsTab', () => {
     ...many(10, id, 94, 7, { roastLevel: 'Light', water: 'B', dripper: 'V60' })]);
   const bags = [1, 2, 3].map((id) => bag({ id, slug: `s${id}`, name: `Bag ${id}` }));
   const tab = (filters = {}) => sweetSpotsTab(rows.filter(matchesCoffee(filters)), bags, { period: P, ratings: 'all', grinder: null, filters, all: rows });
+  it('the grinder only changes the Grind card', () => {
+    const g = (grinder: string, grind: string) => [1, 2, 3].flatMap((id) => many(10, id, 91, 8, { grinder, grind }));
+    const all = [...g('A4Z', '1.3.0'), ...g('ZP6', '5.0')];
+    const run = (grinder: string) => sweetSpotsTab(all, bags, { period: P, ratings: 'all', grinder, filters: {}, all });
+    const [a, z] = [run('A4Z'), run('ZP6')];
+    expect(a.cards.find((c) => c.key === 'grind')!.spot.bands.map((b) => b.label)).not.toEqual(z.cards.find((c) => c.key === 'grind')!.spot.bands.map((b) => b.label));
+    const rest = (t: typeof a) => ({ ...t, cards: t.cards.filter((c) => c.key !== 'grind') });
+    expect(rest(a)).toEqual(rest(z));
+  });
   it('matching line counts the slice', () => expect(tab().matching).toEqual({ bags: 3, brews: 60 }));
   it('cards: only variables with data, in spec order', () =>
     expect(tab().cards.map((c) => c.key)).toEqual(['temp', 'water', 'dripper']));

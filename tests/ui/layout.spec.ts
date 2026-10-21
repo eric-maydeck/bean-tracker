@@ -3807,7 +3807,14 @@ export const STATES: State[] = [
       await expectInnerScroll(page, '.heatmap.diverging .scroll');
     } })),
   { name: 'insights-brewing-all-ratings', path: () => '/insights?tab=brewing&ratings=all' },
-  { name: 'insights-sweetspots-grinder', path: () => '/insights?tab=sweetspots&grinder=zp6-special' },
+  { name: 'insights-sweetspots-grinder', path: () => '/insights?tab=sweetspots&grinder=zp6-special',
+    act: async (page) => {
+      await expect(page.getByLabel('Grind for:')).toHaveValue('zp6-special');
+      const name = await page.getByLabel('Grind for:').locator('option:checked').innerText();
+      await expect(page.locator('#spot-grind .hl-caption')).toContainText(`Grind · ${name}`); // only this card follows the grinder
+      await expect(page.locator('#spot-temp .hl-caption')).not.toContainText(name);
+      await expectGridRowsFull(page, '.spot-grid');
+    } },
   ...(['sweetspots', 'brewing', 'water', 'gear'] as const).map((tab) => ({
     name: `insights-lab-empty-${tab}`, path: () => `/insights?tab=${tab}&range=2000-01-01..2000-01-31`,
     act: async (page: Page) => {
