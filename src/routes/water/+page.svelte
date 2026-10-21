@@ -7,18 +7,19 @@
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
   const start = parseLotus(currentParams(page.url));
   let recipeSlug = $state<string | undefined>(start.recipe);
-  let ml = $state<number | undefined>(start.ml);
-  let raw = $state(String(start.ml ?? DEFAULT_ML));
+  // A bare ?kettle=<slug> fills its capacity; with an ml that differs, the kettle is dropped.
+  let picked = $state(start.kettle ?? '');
+  let ml = $state<number | undefined>(start.ml ?? KETTLES.find((k) => k.slug === start.kettle)?.ml);
+  let raw = $state(String(ml ?? DEFAULT_ML));
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
-  let picked = $state('');
   let kettle = $derived(kettleFor(volume, picked));
   let fit = $derived(bestFit(recipe, volume));
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
   function pickKettle(name: string) {
-    const k = KETTLES.find((x) => x.name === name);
+    const k = KETTLES.find((x) => x.slug === name);
     if (!k) return;
     picked = name;
     setMl(String(k.ml));
@@ -29,7 +30,7 @@
     if (/^\d+$/.test(v) && +v >= MIN_ML && +v <= MAX_ML) ml = +v;
   }
 
-  $effect(() => writeUrlParams(lotusParams({ recipe: recipeSlug, ml })));
+  $effect(() => writeUrlParams(lotusParams({ recipe: recipeSlug, ml, kettle })));
 </script>
 
 <svelte:head>
@@ -49,7 +50,7 @@
     <span>Kettle</span>
     <select class="ctl-select" aria-label="Kettle" value={valid ? kettle : ''} onchange={(e) => pickKettle(e.currentTarget.value)}>
       <option value="" disabled>Kettle</option>
-      {#each KETTLES as k (k.name)}<option value={k.name}>{k.name} ({k.ml} mL)</option>{/each}
+      {#each KETTLES as k (k.slug)}<option value={k.slug}>{k.name} ({k.ml} mL)</option>{/each}
     </select>
   </label>
   <label class="form-field group-field water-field">
@@ -68,9 +69,7 @@
     <table class="water-table">
       <tbody>
         {#each CONCENTRATES as [key, label] (key)}
-          {#if recipe.drops[key] !== undefined}
-            <tr><th scope="row">{label}</th><td>{fit.drops[key]}</td></tr>
-          {/if}
+          <tr><th scope="row">{label}</th><td>{fit.drops[key] ?? 0}</td></tr>
         {/each}
       </tbody>
     </table>

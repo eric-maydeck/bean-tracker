@@ -53,9 +53,26 @@ describe('lotus url state', () => {
     expect(parseLotus(p('ml=800.5'))).toEqual({});
     expect(parseLotus(p('ml=1000'))).toEqual({ ml: 1000 }); // explicit default stays explicit
   });
+  it('kettle param: case-insensitive, bad ignored, slugs unique', () => {
+    expect(parseLotus(p('kettle=PALATTI-Enso&ml=880'))).toEqual({ ml: 880, kettle: 'palatti-enso' });
+    expect(parseLotus(p('kettle=nope'))).toEqual({});
+    expect(new Set(KETTLES.map((k) => k.slug)).size).toBe(KETTLES.length);
+    expect(lotusParams({ ml: 880, kettle: 'palatti-enso' }).toString()).toBe('ml=880&kettle=palatti-enso');
+  });
   it('round trip', () => {
     expect(lotusParams({ recipe: 'holy-water', ml: 1000 }).toString()).toBe('recipe=holy-water&ml=1000');
     expect(lotusParams({}).toString()).toBe('');
+  });
+});
+
+describe('recipes', () => {
+  it('alphabetical by name; bare default is the first', () => {
+    const names = RECIPES.map((x) => x.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+    expect(RECIPES[0].slug).toBe('bright-and-juicy');
+  });
+  it('unused concentrates stay 0 (absent)', () => {
+    expect(bestFit(r('holy-water'), 800).drops.ca).toBeUndefined();
   });
 });
 
@@ -68,8 +85,8 @@ describe('kettles', () => {
     expect(KETTLES.find((k) => k.name === 'Timemore Fish Smart 800 mL')!.ml).toBe(800);
   });
   it('shows the picked kettle only while ml matches it', () => {
-    expect(kettleFor(880, 'Palatti Enso')).toBe('Palatti Enso');
-    expect(kettleFor(881, 'Palatti Enso')).toBe('');
+    expect(kettleFor(880, 'palatti-enso')).toBe('palatti-enso');
+    expect(kettleFor(881, 'palatti-enso')).toBe('');
     expect(kettleFor(1000)).toBe('');
   });
 });

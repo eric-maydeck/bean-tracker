@@ -802,11 +802,14 @@ export const STATES: State[] = [
     name: 'water',
     path: () => '/water',
     act: async (page) => {
-      await expect(page.getByLabel('Recipe')).toHaveValue('mg-k-60-10');
+      await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
       await expect(page.getByRole('heading', { name: 'Drops in 1000 mL' })).toBeVisible();
+      await expect(page.getByRole('row')).toHaveCount(7); // four concentrates, header, GH, KH
+      await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
+      await expect(page.getByRole('row', { name: /Calcium 0/ })).toBeVisible();
       await expect(page.getByRole('row', { name: /Magnesium 5/ })).toBeVisible();
       await expect(page.getByRole('row', { name: /GH 56\.3 60/ })).toBeVisible();
       await expectGroupsLabelled(page);
@@ -820,19 +823,20 @@ export const STATES: State[] = [
     }
   },
   {
-    // Kettle fills mL (its published capacity); box and slider edit the same value live (no blur); only ml rides the URL.
+    // Kettle fills mL (its published capacity); box and slider edit the same value live (no blur); kettle rides the URL while ml matches it.
     name: 'water-kettle',
     path: () => '/water',
     act: async (page) => {
       const kettle = page.getByLabel('Kettle');
       const box = page.getByLabel('Water (mL)');
       const slider = page.getByLabel('Water slider (mL)');
-      await kettle.selectOption('Palatti Enso');
+      await kettle.selectOption('palatti-enso');
       await expect(box).toHaveValue('880');
       await expect(page).toHaveURL(/ml=880/);
-      await expect(page).not.toHaveURL(/kettle/);
+      await expect(page).toHaveURL(/kettle=palatti-enso/);
       await box.fill('725');
       await expect(kettle).toHaveValue('');
+      await expect(page).not.toHaveURL(/kettle/);
       await expect(page.getByRole('heading', { name: 'Drops in 725 mL' })).toBeVisible();
       expect(['700', '750']).toContain(await slider.inputValue());
       await slider.fill('1200');
@@ -850,6 +854,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
       await expect(page.getByRole('row', { name: /Magnesium 8/ })).toBeVisible();
       await expect(page.locator('.water-table').first()).toBeVisible();
+      await gotoReady(page, '/water?kettle=FELLOW-stagg-ekg-pro');
+      await expect(page.getByLabel('Kettle')).toHaveValue('fellow-stagg-ekg-pro');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('900');
     }
   },
   {

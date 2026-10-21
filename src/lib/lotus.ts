@@ -14,7 +14,7 @@ export const RECIPES: Recipe[] = [
   { name: 'Bright and Juicy', slug: 'bright-and-juicy', drops: { mg: 4, ca: 4, na: 2, k: 2 }, gh: 80, kh: 20 },
   { name: 'Ultralight (Mg + Ca + K)', slug: 'ultralight-mg-ca-k', drops: { mg: 2, ca: 2, k: 2 }, gh: 40, kh: 10 },
   { name: 'Substance', slug: 'substance', drops: { ca: 6, mg: 3, k: 8 }, gh: 90, kh: 40 }
-];
+].sort((a, b) => a.name.localeCompare(b.name));
 
 export const DEFAULT_ML = 1000;
 export const MIN_ML = 100;
@@ -27,9 +27,9 @@ export const KETTLES = [
   ['Fellow Stagg EKG Pro', 900], ['Fellow Stagg EKG Pro Studio', 900], ['Hario V60 Buono Power Kettle', 800],
   ['OXO Brew Adjustable Temperature Pour-Over Kettle', 1000], ['Palatti Enso', 880], ['Timemore Fish Pro X', 900],
   ['Timemore Fish Smart 600 mL', 600], ['Timemore Fish Smart 800 mL', 800]
-].map(([name, ml]) => ({ name: name as string, ml: ml as number }));
-// The dropdown shows the picked kettle only while the mL still equals its capacity, else the placeholder.
-export const kettleFor = (ml: number, picked = ''): string => (KETTLES.find((k) => k.name === picked && k.ml === ml) ? picked : '');
+].map(([name, ml]) => ({ name: name as string, ml: ml as number, slug: (name as string).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, '') }));
+// The dropdown shows the picked kettle (slug) only while the mL still equals its capacity, else the placeholder.
+export const kettleFor = (ml: number, picked = ''): string => (KETTLES.find((k) => k.slug === picked && k.ml === ml) ? picked : '');
 
 export const CONCENTRATES = [['ca', 'Calcium'], ['mg', 'Magnesium'], ['na', 'Sodium'], ['k', 'Potassium']] as const;
 
@@ -74,17 +74,19 @@ export function bestFit(r: Recipe, ml: number): { drops: Drops; gh: number; kh: 
   return { drops: best!.drops, gh: best!.gh, kh: best!.kh };
 }
 
-// ?recipe=<slug>&ml=<n>; bare = first recipe, 1000 mL. Explicit choices stay in the URL.
-export function parseLotus(p: URLSearchParams): { recipe?: string; ml?: number } {
+// ?recipe=<slug>&ml=<n>&kettle=<slug>; bare = first recipe (alphabetical), 1000 mL, no kettle. Explicit choices stay in the URL.
+export function parseLotus(p: URLSearchParams): { recipe?: string; ml?: number; kettle?: string } {
   const recipe = pickOne(p, 'recipe', RECIPES.map((r) => r.slug));
+  const kettle = pickOne(p, 'kettle', KETTLES.map((k) => k.slug));
   const raw = p.get('ml') ?? '';
   const ml = /^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML ? +raw : undefined;
-  return { ...(recipe && { recipe }), ...(ml !== undefined && { ml }) };
+  return { ...(recipe && { recipe }), ...(ml !== undefined && { ml }), ...(kettle && { kettle }) };
 }
 
-export function lotusParams(s: { recipe?: string; ml?: number }): URLSearchParams {
+export function lotusParams(s: { recipe?: string; ml?: number; kettle?: string }): URLSearchParams {
   const p = new URLSearchParams();
   if (s.recipe) p.set('recipe', s.recipe);
   if (s.ml !== undefined) p.set('ml', String(s.ml));
+  if (s.kettle) p.set('kettle', s.kettle);
   return p;
 }
