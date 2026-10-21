@@ -1,6 +1,7 @@
-import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
+import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
-import type { ColumnKey } from '$lib/coffeeFilters';
+import type { ColumnKey, Filter } from '$lib/coffeeFilters';
+import type { LabFilters } from './lab';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -64,6 +65,21 @@ const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3'
 export const listHref = (column: ColumnKey, values: (string | null)[]) =>
   `/coffees?${toParams({ status: ['all'], filters: [{ column, mode: 'any', values }] })}`;
 
+// The distinct `processing` labels of the bags in a process group (a /coffees filter spells them out).
+export const processLabels = (bags: readonly BagFact[], group: string): (string | null)[] =>
+  [...new Set(bags.filter((b) => b.processGroup === group).map((b) => b.processing))];
+
+// Insights' page-wide Coffees filter (and Caffeine) as /coffees filters; default and 'all' add nothing.
+export function pageFilters(f: LabFilters & { caffeine?: Caffeine }, bags: readonly BagFact[]): Filter[] {
+  const out: Filter[] = [];
+  if (f.roast) out.push({ column: 'roast_level', mode: 'any', values: roastLevelLabels(f.roast) });
+  if (f.process) out.push({ column: 'processing', mode: 'any', values: processLabels(bags, f.process) });
+  if (f.origin) out.push({ column: 'origin', mode: 'any', values: [f.origin] });
+  if (f.roaster) out.push({ column: 'roaster', mode: 'any', values: [f.roaster] });
+  if (f.caffeine === 'decaf') out.push({ column: 'decaf', mode: 'bool', value: true });
+  return out;
+}
+
 function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: ReadonlyMap<number, number>): BoardRow {
   if (board === 'coffees') {
     const bag = bags.find((b) => b.id === Number(r.key));
@@ -74,7 +90,7 @@ function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: Re
     };
   }
   if (board === 'process') {
-    const labels = [...new Set(bags.filter((b) => b.processGroup === r.key).map((b) => b.processing))];
+    const labels = processLabels(bags, r.key);
     return labels.length ? { ...r, href: listHref('processing', labels) } : r;
   }
   const column = FILTER_COLUMN[board];

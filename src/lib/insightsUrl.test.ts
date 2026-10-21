@@ -3,6 +3,7 @@ import {
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
+import type { Filter } from '$lib/coffeeFilters';
 import { compareFits } from '$lib/server/insights/time';
 
 const YEARS = [2026];
@@ -661,6 +662,13 @@ describe('phoneWords', () => {
 });
 
 describe('withPageWide (finding links)', () => {
+  it('carries the Coffees filter into /coffees list links; the link\'s own column wins', () => {
+    const f: Filter[] = [{ column: 'roaster', mode: 'any', values: ['Sey'] }, { column: 'decaf', mode: 'bool', value: true }];
+    expect(withPageWide('/coffees?status=open', {}, f)).toBe('/coffees?status=open&roaster=Sey&decaf=true');
+    expect(withPageWide('/coffees?status=all&roaster=Lume', {}, f)).toBe('/coffees?status=all&roaster=Lume&decaf=true');
+    expect(withPageWide('/coffees?status=backlog&status=open', {}, [])).toBe('/coffees?status=backlog&status=open');
+    expect(withPageWide('/coffees/x', {}, f)).toBe('/coffees/x');
+  });
   const s = { range: 'all', compare: 1, ratings: 'all', dial: 'all', caffeine: 'decaf', roast: 'Light', roaster: 'Sey', tab: 'insights', theme: 'taste', avg: 'raw' } as const;
   it('carries the page-wide view under the link; its own params win; tab-local state stays behind', () => {
     const href = withPageWide('/insights?tab=leaderboards&rank=like&open=coffees&ratings=current', s);

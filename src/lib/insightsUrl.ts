@@ -1,4 +1,6 @@
 import { pickOne } from '$lib/pageUrlState';
+import { upsertFilter, type Filter } from '$lib/coffeeFilters';
+import { fromParams, toParams } from '$lib/coffeeViewState';
 
 // /insights view state (spec "URL state"). Explicit choices only: a param a
 // visitor never touched stays undefined and out of the URL (HANDOFF rule).
@@ -411,8 +413,13 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
 // Brews, Caffeine, Coffees filter), so the board shows the same figure and the remembered view survives the click.
 // The link's own params win; links off /insights are left alone.
 const PAGE_WIDE = ['range', 'compare', 'people', 'ratings', 'dial', 'caffeine', 'roast', 'process', 'origin', 'roaster'] as const;
-export function withPageWide(href: string, s: InsightsUrlState): string {
+// A /coffees list link instead takes the page's Coffees filter (`coffees`, as /coffees filters); its own column wins.
+export function withPageWide(href: string, s: InsightsUrlState, coffees: Filter[] = []): string {
   const u = new URL(href, 'http://x');
+  if (u.origin === 'http://x' && u.pathname === '/coffees') {
+    const own = fromParams(u.searchParams);
+    return `/coffees?${toParams({ ...own, filters: own.filters.reduce(upsertFilter, coffees) })}${u.hash}`;
+  }
   if (u.origin !== 'http://x' || u.pathname !== '/insights') return href;
   const p = insightsParams(s), out = new URLSearchParams();
   for (const k of PAGE_WIDE) if (p.has(k)) out.set(k, p.get(k)!);

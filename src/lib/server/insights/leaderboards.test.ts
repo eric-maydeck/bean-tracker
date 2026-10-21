@@ -1,7 +1,7 @@
 import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
-import { cutBoards, hiddenRows, leaderboard, leaderboards, withMovement, type BoardRow } from './leaderboards';
-import type { BrewFact, BagFact } from './facts';
+import { cutBoards, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
+import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: 15, rating: null, roaster: 'Sey', origin: 'Kenya',
@@ -306,5 +306,23 @@ describe('vs like coffees', () => {
     for (const rank of ['brews', 'grams'] as const)
       expect(leaderboard(bs, [], SEPT, 'coffees', rank, 'all', 'raw').find((r) => r.key === '1')!.like!.gap).toBeCloseTo(1.8);
     expect(leaderboard(bs, [], SEPT, 'coffees', 'brews', 'all', 'raw', false).every((r) => !r.like)).toBe(true);
+  });
+});
+
+describe('pageFilters', () => {
+  it('translates a process group into its bags\' processing labels', () => {
+    const bags = [bag({ id: 1, processing: 'Washed' }), bag({ id: 2, processing: 'Fully washed' }), bag({ id: 3, processing: 'Natural', processGroup: 'Natural' })];
+    expect(pageFilters({ process: 'Washed' }, bags)).toEqual([{ column: 'processing', mode: 'any', values: ['Washed', 'Fully washed'] }]);
+  });
+  it('expands a roast alias, maps origin and roaster', () => {
+    expect(pageFilters({ roast: 'Light/Medium' }, [])).toEqual([{ column: 'roast_level', mode: 'any', values: roastLevelLabels('Light/Medium') }]);
+    expect(pageFilters({ origin: 'Kenya', roaster: 'Sey' }, [])).toEqual([
+      { column: 'origin', mode: 'any', values: ['Kenya'] }, { column: 'roaster', mode: 'any', values: ['Sey'] }
+    ]);
+  });
+  it('adds decaf only for caffeine=decaf', () => {
+    expect(pageFilters({ caffeine: 'decaf' }, [])).toEqual([{ column: 'decaf', mode: 'bool', value: true }]);
+    expect(pageFilters({ caffeine: 'all' }, [])).toEqual([]);
+    expect(pageFilters({}, [])).toEqual([]);
   });
 });

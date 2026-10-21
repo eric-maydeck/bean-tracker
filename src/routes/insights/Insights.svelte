@@ -21,7 +21,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, WHATIF_LIMITS as L, withPageWide, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
@@ -30,12 +30,11 @@
   import TileCaption from './TileCaption.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
 
-  let { t, theme, inputs, today, explicit, placeTip, choose }: {
+  let { t, theme, inputs, today, explicit, placeTip, choose, link }: {
     t: InsightsTab; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+    link: (href: string) => string; // finding links keep the page's Period, Ratings, Caffeine and Coffees filter (withPageWide)
   } = $props();
-  // Finding links keep the page's Period, Ratings, Caffeine and Coffees filter (insightsUrl withPageWide).
-  const link = (href: string) => withPageWide(href, explicit);
 
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;

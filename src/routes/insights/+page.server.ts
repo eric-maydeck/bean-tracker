@@ -6,7 +6,7 @@ import {
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { cutBoards, hiddenRows, leaderboards } from '$lib/server/insights/leaderboards';
+import { cutBoards, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
@@ -90,6 +90,7 @@ export const load: PageServerLoad = ({ url }) => {
   const menuRanges = [...RANGES, ...years.map(String), ...(isCustom(s.range) ? [s.range] : [])];
   return {
     explicit,
+    coffeeFilters: pageFilters({ ...coffees, caffeine: s.caffeine }, everyBag),
     householdSize,
     years,
     // Every range's menu, so a Period change can keep or drop the compare (keepCompare).

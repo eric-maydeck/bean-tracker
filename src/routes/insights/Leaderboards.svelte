@@ -20,12 +20,13 @@
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose, part
+    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+    link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
 
   const TITLE: Record<Board, string> = {
@@ -237,7 +238,7 @@
               <span class="who">
                 <!-- Only the coffees board's labels are coffee names (the others: roasters, origins, gear…). -->
                 {#snippet who()}{#if b === 'coffees'}<CoffeeName name={r.label} />{:else}{r.label}{/if}{/snippet}
-                {#if r.href}<a href={r.href}>{@render who()}</a>{:else}<span class="name">{@render who()}</span>{/if}
+                {#if r.href}<a href={link(r.href)}>{@render who()}</a>{:else}<span class="name">{@render who()}</span>{/if}
 
                 <span class="who-line"><small>{detail(r, costWhole)}</small>{#if r.sample?.small}<SampleNote s={r.sample} />{/if}</span>
                 <!-- Under rank=like the value already is this gap. -->

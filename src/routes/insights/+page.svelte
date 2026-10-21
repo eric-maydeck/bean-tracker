@@ -14,7 +14,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -34,6 +34,7 @@
   import Recent from './Recent.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
+  import { toParams, type StatusTab } from '$lib/coffeeViewState';
 
   let { data }: { data: PageData } = $props();
   let s = $derived(withDefaults(data.explicit));
@@ -193,6 +194,15 @@
   let compareDates = $derived(data.previousPeriod && !isCustom(s.compare) ? windowLabel(data.previousPeriod, data.today) : '');
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
+  // Finding, leaderboard and Right now links keep the page's Period, Ratings, Caffeine and Coffees filter.
+  const link = (href: string) => withPageWide(href, data.explicit, data.coffeeFilters);
+  // Right now tiles: a link to the /coffees list the number counts.
+  const SEE: Partial<Record<string, { status: StatusTab[]; label: string }>> = {
+    openedG: { status: ['open'], label: 'See coffees' }, opened: { status: ['open'], label: 'See coffees' },
+    unopenedG: { status: ['backlog'], label: 'See coffees' }, unopened: { status: ['backlog'], label: 'See coffees' },
+    onHandG: { status: ['backlog', 'open'], label: 'See coffees' }, onHand: { status: ['backlog', 'open'], label: 'See coffees' },
+    finishedG: { status: ['archive'], label: 'See all finished coffees' }, finished: { status: ['archive'], label: 'See all finished coffees' }
+  };
   type Key = string; // tile keys span four data shapes
   type D = Delta;
   // `fmt` formats a value and its change; `suffix` is a unit set small after
@@ -611,7 +621,7 @@
     {:else}
       <h2>{title}</h2>
     {/if}
-    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}">
+    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'}>
       {#each tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
@@ -646,7 +656,7 @@
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}</span
-            >
+            >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
           </div>
           {#if t.ratingSwitch}
             <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[s.ratings], lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
@@ -673,6 +683,7 @@
     perPerson={perPersonOn}
     {placeTip}
     {choose}
+    {link}
   />
 {:else if s.tab === 'habits' && data.habits}
   <Habits {part} h={data.habits} measure={s.measure} agg={s.agg} comparing={!!data.previousPeriod} {periodLabel} {compareLabel} {choose}>
@@ -716,6 +727,7 @@
     explicit={data.explicit}
     {placeTip}
     {choose}
+    {link}
   />
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
   <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
@@ -1457,6 +1469,16 @@
      is one line taller (ui-rules 44), the first line stays at its fixed top and the rest flow down. */
   .fit {
     --grow-caption: 1rem;
+  }
+  /* Right now: one more caption line for the See coffees link (ui-rules 44). */
+  .fit.right-now {
+    --grow-caption: 2.2rem;
+  }
+  .tile-link {
+    font-size: max(0.6rem, 5.4cqw);
+    line-height: 1.1;
+    text-align: center;
+    color: var(--color-accent);
   }
   .fit .stat-item {
     --q: var(--c);

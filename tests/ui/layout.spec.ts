@@ -558,6 +558,15 @@ const BAR_GAPS = `() => { const cx=document.createElement('canvas').getContext('
   if(k){k.top=Math.min(k.top,v.top);k.bottom=Math.max(k.bottom,v.bottom)} else rows.push({bt:r.top,top:v.top,bottom:v.bottom}); }
  return rows.slice(1).map((r,i)=>Math.round((r.top-rows[i].bottom)*10)/10); }`;
 
+// Each Right now tile link sits inside its tile box.
+async function expectLinksInTiles(page: Page, links: Locator) {
+  const out = await links.evaluateAll((as) => as.map((a) => {
+    const l = a.getBoundingClientRect(), t = a.closest('.stat-item')!.getBoundingClientRect();
+    return l.top >= t.top - 0.5 && l.bottom <= t.bottom + 0.5 && l.left >= t.left - 0.5 && l.right <= t.right + 0.5;
+  }));
+  expect(out, 'every See link inside its tile').not.toContain(false);
+}
+
 export const STATES: State[] = [
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', path: () => '/coffees?status=backlog&status=open&view=cards',
@@ -1321,6 +1330,42 @@ export const STATES: State[] = [
         page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: title }) })
           .locator('.stat-item').first().evaluate((e) => getComputedStyle(e).backgroundColor + getComputedStyle(e).borderColor);
       expect(await box('Totals')).toBe(await box('Averages'));
+    }
+  },
+  // Right now tiles link to the /coffees list they count, under the page-wide Coffees filter.
+  {
+    name: 'insights-right-now-links',
+    path: () => '/insights?process=Washed&caffeine=decaf',
+    act: async (page) => {
+      const links = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Right now' }) }).locator('.tile-link');
+      await expect(links).toHaveCount(8);
+      const texts = await links.allTextContents();
+      expect(texts.filter((x) => x === 'See coffees')).toHaveLength(6);
+      expect(texts.filter((x) => x === 'See all finished coffees')).toHaveLength(2);
+      const onHand = new URL((await links.nth(2).getAttribute('href'))!, 'http://x').searchParams;
+      expect(onHand.getAll('status')).toEqual(['backlog', 'open']);
+      expect(onHand.getAll('processing').length).toBeGreaterThan(0);
+      expect(onHand.get('decaf')).toBe('true');
+      await expectLinksInTiles(page, links);
+    }
+  },
+  { name: 'insights-right-now-links-compare', path: () => '/insights?range=1w&compare=1',
+    act: async (page) => {
+      const links = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Right now' }) }).locator('.tile-link');
+      await expect(links).toHaveCount(8);
+      await expectLinksInTiles(page, links);
+    } },
+  {
+    name: 'insights-right-now-link-lands', viewports: 'two',
+    path: () => '/insights',
+    act: async (page) => {
+      const tile = page.locator('#overview-on-hand');
+      const value = (await tile.locator('.stat-value').innerText()).replace(/,/g, '').trim();
+      await tile.locator('.tile-link').click();
+      await expect(page).toHaveURL(/\/coffees\?/);
+      for (const n of ['Backlog', 'Open']) await expect(page.getByRole('button', { name: n }).first()).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Archive' }).first()).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.getByText(/^\d+ coffees? ·/)).toHaveText(new RegExp(`^${value} coffees? ·`));
     }
   },
   {
