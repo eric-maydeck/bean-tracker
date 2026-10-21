@@ -810,14 +810,14 @@ export const STATES: State[] = [
       await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
       await expect(page.getByRole('row', { name: /Calcium 0/ })).toBeVisible();
-      await expect(page.getByRole('row', { name: /Magnesium 5/ })).toBeVisible();
-      await expect(page.getByRole('row', { name: /GH 56\.3 60/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /Magnesium 6/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /GH 60\.3 60/ })).toBeVisible();
       await expectGroupsLabelled(page);
       await page.getByLabel('Recipe').selectOption('substance');
       await expect(page).toHaveURL(/recipe=substance/);
       await page.getByLabel('Water (mL)').fill('900');
       await expect(page).toHaveURL(/ml=900/);
-      await expect(page.getByRole('row', { name: /Potassium 8/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /Potassium 9/ })).toBeVisible();
       await page.getByLabel('Water (mL)').fill('5');
       await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
     }
@@ -852,7 +852,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
       await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
-      await expect(page.getByRole('row', { name: /Magnesium 8/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /Magnesium 9/ })).toBeVisible();
       await expect(page.locator('.water-table').first()).toBeVisible();
       await gotoReady(page, '/water?kettle=FELLOW-stagg-ekg-pro');
       await expect(page.getByLabel('Kettle')).toHaveValue('fellow-stagg-ekg-pro');

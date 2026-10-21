@@ -1,42 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, bestFit, hardness, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
+import { RECIPES, dropsFor, hardness, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
+const d = (ca: number, mg: number, na: number, k: number): Drops => ({ ca, mg, na, k });
 
-// The drafted 800 mL table (docs/backlog/lotus-800ml-recipes.md).
-const T800: [string, Drops, number, number][] = [
-  ['mg-k-60-10', { mg: 5, k: 2 }, 56.25, 11.25],
-  ['holy-water', { mg: 5, k: 4 }, 56.25, 22.5],
-  ['ultralight-mg-k', { mg: 4, k: 2 }, 45, 11.25],
-  ['light-and-bright', { ca: 5, k: 4 }, 56.25, 22.5],
-  ['reddit-bright-and-juicy-mod', { mg: 3, ca: 3, na: 2, k: 1 }, 67.5, 16.875],
-  ['bright-and-juicy', { mg: 3, ca: 4, na: 2, k: 2 }, 78.75, 22.5],
-  ['ultralight-mg-ca-k', { mg: 2, ca: 2, k: 2 }, 45, 11.25],
-  ['substance', { ca: 5, mg: 3, k: 7 }, 90, 39.375]
+// Spec "Drops at 800 mL" column (docs/backlog/lotus-800ml-recipes.md).
+const T800: [string, Drops][] = [
+  ['bright-and-juicy', d(4, 4, 2, 2)],
+  ['holy-water', d(0, 6, 0, 4)],
+  ['light-and-bright', d(6, 0, 0, 5)],
+  ['lume-ultra-soft', d(1, 1, 0, 1)],
+  ['mg-k-60-10', d(0, 6, 0, 2)],
+  ['reddit-bright-and-juicy-mod', d(3, 4, 2, 1)],
+  ['substance', d(6, 3, 0, 8)],
+  ['ultralight-mg-ca-k', d(2, 2, 0, 2)],
+  ['ultralight-mg-k', d(0, 4, 0, 2)]
 ];
 
-describe('bestFit', () => {
-  it.each(T800)('%s at 800 mL', (slug, drops, gh, kh) => {
-    const fit = bestFit(r(slug), 800);
-    expect(fit.drops).toEqual(drops);
-    expect(fit.gh).toBeCloseTo(gh, 2);
-    expect(fit.kh).toBeCloseTo(kh, 2);
+describe('dropsFor (Lotus formula)', () => {
+  it.each(T800)('%s at 800 mL', (slug, drops) => {
+    expect(dropsFor(r(slug), 800)).toEqual(drops);
   });
-  it('900 mL gives back the original drops', () => {
-    for (const rec of RECIPES) {
-      expect(bestFit(rec, 900).drops).toEqual(rec.drops);
-    }
+  it('Lume High Clarity at 1000 mL', () => {
+    expect(dropsFor(r('lume-high-clarity'), 1000)).toEqual(d(1, 3, 0, 1));
   });
-  it('hardness scales per drop with volume', () => {
-    expect(hardness({ ca: 1 }, 900)).toEqual({ gh: 10, kh: 0 });
-    expect(hardness({ k: 1 }, 450)).toEqual({ gh: 0, kh: 10 });
+  it('1000 mL case from the formula: Substance', () => {
+    // Ca 60: round(60/4.5*.56)=7, Mg 30: 4, K 40: round(40/4.5*.56*2)=10
+    expect(dropsFor(r('substance'), 1000)).toEqual(d(7, 4, 0, 10));
   });
-  it('keeps a used concentrate at 1+ drop in a small volume', () => {
-    const d = bestFit(r('substance'), 100).drops; // scaled 0.67 / 0.33 / 0.89
-    expect(d.ca).toBeGreaterThanOrEqual(1);
-    expect(d.k).toBeGreaterThanOrEqual(1);
-    expect(d.mg).toBe(0); // 0.33 < 0.5
+  it('hardness from whole drops', () => {
+    const h = hardness(d(4, 4, 2, 2), 800); // 8 drops x 4.5/(.56*.8) = 80.4; 4 KH drops / 2
+    expect(h.gh).toBeCloseTo(80.36, 1);
+    expect(h.kh).toBeCloseTo(20.09, 1);
   });
 });
 
@@ -71,8 +67,8 @@ describe('recipes', () => {
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     expect(RECIPES[0].slug).toBe('bright-and-juicy');
   });
-  it('unused concentrates stay 0 (absent)', () => {
-    expect(bestFit(r('holy-water'), 800).drops.ca).toBeUndefined();
+  it('unused concentrates are 0', () => {
+    expect(dropsFor(r('holy-water'), 800).ca).toBe(0);
   });
 });
 

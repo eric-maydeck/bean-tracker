@@ -1,24 +1,32 @@
 import { pickOne } from '$lib/pageUrlState';
 
-// Lotus drop calculator. Per drop in 900 mL: Ca or Mg +10 GH, Na or K +5 KH
-// (docs/backlog/lotus-800ml-recipes.md "Basis"); in V mL each drop scales by 900/V.
-export type Drops = { ca?: number; mg?: number; na?: number; k?: number };
-export interface Recipe { name: string; slug: string; drops: Drops; gh: number; kh: number }
+// Lotus drop calculator, copied from Lotus's own (lotuscoffeeproducts.com product-instructions):
+// drops = round(ppm x L/4.5 x 0.56), doubled for Na and K, round-tip dropper. Basis and recipes:
+// docs/backlog/lotus-800ml-recipes.md.
+export type Drops = { ca: number; mg: number; na: number; k: number };
+// Target ppm per mineral: Ca and Mg count as GH, Na and K as KH.
+export interface Recipe { name: string; slug: string; ppm: Drops }
 
+const recipe = (name: string, ca: number, mg: number, na: number, k: number): Recipe => ({
+  name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/, ''), ppm: { ca, mg, na, k }
+});
 export const RECIPES: Recipe[] = [
-  { name: 'Mg/K 60/10', slug: 'mg-k-60-10', drops: { mg: 6, k: 2 }, gh: 60, kh: 10 },
-  { name: 'Holy Water', slug: 'holy-water', drops: { mg: 6, k: 4 }, gh: 60, kh: 20 },
-  { name: 'Ultralight (Mg + K)', slug: 'ultralight-mg-k', drops: { mg: 4, k: 2 }, gh: 40, kh: 10 },
-  { name: 'Light and Bright', slug: 'light-and-bright', drops: { ca: 6, k: 5 }, gh: 60, kh: 25 },
-  { name: 'Reddit Bright and Juicy mod', slug: 'reddit-bright-and-juicy-mod', drops: { mg: 4, ca: 3, na: 2, k: 1 }, gh: 70, kh: 15 },
-  { name: 'Bright and Juicy', slug: 'bright-and-juicy', drops: { mg: 4, ca: 4, na: 2, k: 2 }, gh: 80, kh: 20 },
-  { name: 'Ultralight (Mg + Ca + K)', slug: 'ultralight-mg-ca-k', drops: { mg: 2, ca: 2, k: 2 }, gh: 40, kh: 10 },
-  { name: 'Substance', slug: 'substance', drops: { ca: 6, mg: 3, k: 8 }, gh: 90, kh: 40 }
+  recipe('Bright and Juicy', 40, 40, 10, 10),
+  recipe('Holy Water', 0, 60, 0, 20),
+  recipe('Light and Bright', 60, 0, 0, 25),
+  recipe('Lume High Clarity', 8, 24.1, 0, 4),
+  recipe('Lume Ultra Soft', 10, 10, 0, 5),
+  recipe('Mg/K 60/10', 0, 60, 0, 10),
+  recipe('Reddit Bright and Juicy mod', 30, 40, 10, 5),
+  recipe('Substance', 60, 30, 0, 40),
+  recipe('Ultralight (Mg + Ca + K)', 20, 20, 0, 10),
+  recipe('Ultralight (Mg + K)', 0, 40, 0, 10)
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 export const DEFAULT_ML = 1000;
 export const MIN_ML = 100;
 export const MAX_ML = 2000;
+
 // Manufacturer-published capacity (mL), alphabetical.
 export const KETTLES = [
   ['Bodum Melior Gooseneck', 800], ['Bonavita Variable Temperature Gooseneck', 1000],
@@ -33,45 +41,17 @@ export const kettleFor = (ml: number, picked = ''): string => (KETTLES.find((k) 
 
 export const CONCENTRATES = [['ca', 'Calcium'], ['mg', 'Magnesium'], ['na', 'Sodium'], ['k', 'Potassium']] as const;
 
-export function hardness(d: Drops, ml: number): { gh: number; kh: number } {
-  const f = 900 / ml;
-  return { gh: ((d.ca ?? 0) + (d.mg ?? 0)) * 10 * f, kh: ((d.na ?? 0) + (d.k ?? 0)) * 5 * f };
+const ROUND_TIP = 0.56;
+
+export function dropsFor(r: Recipe, ml: number): Drops {
+  const n = (ppm: number, f = 1) => Math.round(((ppm * ml) / 1000 / 4.5) * ROUND_TIP * f);
+  return { ca: n(r.ppm.ca), mg: n(r.ppm.mg), na: n(r.ppm.na, 2), k: n(r.ppm.k, 2) };
 }
 
-// Fraction of a pair's drops that is the first one (Ca of Ca+Mg, Na of Na+K); 0.5 when neither is used.
-const share = (a = 0, b = 0) => (a + b ? a / (a + b) : 0.5);
-
-// Every combo of floor-1..ceil+1 of each concentrate's scaled drops (a used one stays >= 1 unless it
-// scales below 0.5); smallest relative GH+KH miss wins, then the closest Ca:Mg and Na:K split, then
-// more Ca / Na. ponytail: brute force, at most 5^4 combos.
-export function bestFit(r: Recipe, ml: number): { drops: Drops; gh: number; kh: number } {
-  const keys = Object.keys(r.drops) as (keyof Drops)[];
-  const opts = keys.map((k) => {
-    const s = (r.drops[k]! * ml) / 900;
-    const lo = s < 0.5 ? 0 : 1;
-    const out: number[] = [];
-    for (let n = Math.floor(s) - 1; n <= Math.ceil(s) + 1; n++) if (n >= lo) out.push(n);
-    return out;
-  });
-  let best: { drops: Drops; gh: number; kh: number; key: number[] } | undefined;
-  const walk = (i: number, d: Drops) => {
-    if (i === keys.length) {
-      const h = hardness(d, ml);
-      const key = [
-        Math.abs(h.gh - r.gh) / r.gh + Math.abs(h.kh - r.kh) / r.kh,
-        Math.abs(share(d.ca, d.mg) - share(r.drops.ca, r.drops.mg)) + Math.abs(share(d.na, d.k) - share(r.drops.na, r.drops.k)),
-        -(d.ca ?? 0),
-        -(d.na ?? 0)
-      ];
-      const j = best ? key.findIndex((v, m) => v !== best!.key[m]) : 0;
-      const better = !best || (j >= 0 && key[j] < best.key[j]);
-      if (better) best = { drops: { ...d }, ...h, key };
-      return;
-    }
-    for (const n of opts[i]) walk(i + 1, { ...d, [keys[i]]: n });
-  };
-  walk(0, {});
-  return { drops: best!.drops, gh: best!.gh, kh: best!.kh };
+// Resulting hardness (ppm as CaCO3) from whole drops.
+export function hardness(d: Drops, ml: number): { gh: number; kh: number } {
+  const perDrop = 4.5 / (ROUND_TIP * (ml / 1000));
+  return { gh: (d.ca + d.mg) * perDrop, kh: ((d.na + d.k) * perDrop) / 2 };
 }
 
 // ?recipe=<slug>&ml=<n>&kettle=<slug>; bare = first recipe (alphabetical), 1000 mL, no kettle. Explicit choices stay in the URL.

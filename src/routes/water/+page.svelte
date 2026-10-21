@@ -2,7 +2,7 @@
   import { page } from '$app/state';
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
-  import { RECIPES, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, bestFit, KETTLES, kettleFor, lotusParams, parseLotus } from '$lib/lotus';
+  import { RECIPES, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, dropsFor, hardness, KETTLES, kettleFor, lotusParams, parseLotus } from '$lib/lotus';
 
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
   const start = parseLotus(currentParams(page.url));
@@ -15,7 +15,9 @@
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
   let kettle = $derived(kettleFor(volume, picked));
-  let fit = $derived(bestFit(recipe, volume));
+  let drops = $derived(dropsFor(recipe, volume));
+  let fit = $derived(hardness(drops, volume));
+  let target = $derived({ gh: recipe.ppm.ca + recipe.ppm.mg, kh: recipe.ppm.na + recipe.ppm.k });
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
   function pickKettle(name: string) {
@@ -69,15 +71,15 @@
     <table class="water-table">
       <tbody>
         {#each CONCENTRATES as [key, label] (key)}
-          <tr><th scope="row">{label}</th><td>{fit.drops[key] ?? 0}</td></tr>
+          <tr><th scope="row">{label}</th><td>{drops[key]}</td></tr>
         {/each}
       </tbody>
     </table>
     <table class="water-table">
       <thead><tr><th></th><th scope="col">Result</th><th scope="col">Target</th></tr></thead>
       <tbody>
-        <tr><th scope="row">GH</th><td>{fit.gh.toFixed(1)}</td><td>{recipe.gh}</td></tr>
-        <tr><th scope="row">KH</th><td>{fit.kh.toFixed(1)}</td><td>{recipe.kh}</td></tr>
+        <tr><th scope="row">GH</th><td>{fit.gh.toFixed(1)}</td><td>{target.gh.toFixed(1).replace(/\.0$/, '')}</td></tr>
+        <tr><th scope="row">KH</th><td>{fit.kh.toFixed(1)}</td><td>{target.kh.toFixed(1).replace(/\.0$/, '')}</td></tr>
       </tbody>
     </table>
     <p class="text-muted">Whole drops from a round-tip dropper, ppm as CaCO3.</p>
