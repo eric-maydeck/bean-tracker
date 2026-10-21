@@ -17,6 +17,9 @@
   const str = (n?: number) => (n === undefined ? '' : String(n));
 
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
+  // TEMP (preview only): ?layout=narrow|wide, default narrow; delete with the layout commit.
+  let layout = $state<'narrow' | 'wide'>('narrow');
+  let layoutExplicit = $state(false);
   let mode = $state<Mode>('recipe');
   let unit = $state<Unit | undefined>();
   let recipeSlug = $state<string | undefined>();
@@ -30,6 +33,9 @@
   // fills its capacity; with an ml that differs, the kettle is dropped.
   function applyUrl() {
     const s = parseLotus(currentParams(page.url));
+    const lay = currentParams(page.url).get('layout')?.toLowerCase();
+    layoutExplicit = lay === 'wide' || lay === 'narrow';
+    layout = lay === 'wide' ? 'wide' : 'narrow';
     mode = s.mode ?? 'recipe';
     unit = s.unit;
     recipeSlug = s.recipe;
@@ -103,7 +109,7 @@
   }
 
   $effect(() => {
-    writeUrlParams(
+    const p =
       lotusParams({
         mode: mode === 'recipe' ? undefined : mode,
         recipe: mode === 'recipe' ? recipeSlug : undefined,
@@ -111,8 +117,9 @@
         kettle,
         unit: mode === 'target' ? unit : undefined,
         vals: mode === 'drops' ? urlVals(dropsIn, INT) : mode === 'target' ? urlVals(targetIn, DEC) : undefined
-      })
-    );
+      });
+    if (layoutExplicit) p.set('layout', layout);
+    writeUrlParams(p);
   });
 </script>
 
@@ -125,6 +132,9 @@
   <ShareButton />
 </div>
 
+<div class="water-page lay-{layout}">
+<div class="water-top">
+<div class="water-tabs">
 <div class="search-row">
   <div class="form-field group-field">
     <span>Mode</span>
@@ -135,7 +145,8 @@
     </div>
   </div>
 </div>
-
+</div>
+<div class="water-ctl">
 <div class="water-controls">
 <div class="water-kettle-row">
   <label class="form-field group-field water-field water-kettle">
@@ -161,8 +172,8 @@
   </div>
 </div>
 </div>
-
-<div class="search-row">
+</div>
+<div class="water-inputs search-row">
   {#if mode === 'recipe'}
     <label class="form-field group-field water-field">
       <span>Recipe</span>
@@ -182,7 +193,7 @@
     {/if}
     {#each CONCENTRATES as [key, label] (key)}
       <label class="form-field group-field water-mineral" style:--el="var(--el-{key})">
-        <span class="water-el">{label}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
+        <span class="water-el">{layout === 'narrow' ? SYMBOL[key] : label}{mode === 'drops' ? ' (drops)' : (unit ?? 'ppm') === 'mgl' ? ' (mg/L)' : ' (ppm)'}</span>
         {#if mode === 'drops'}
           <input type="number" inputmode="numeric" min="0" step="1" aria-label={label} value={dropsIn[key]} oninput={(e) => (dropsIn[key] = e.currentTarget.value)} />
         {:else}
@@ -192,12 +203,14 @@
     {/each}
   {/if}
 </div>
+</div>
+
 
 <!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
 <p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML} mL.</p>
 <section class="wr">
   <div class="card wr-head">
-    <h2>Lotus drops for {volume} mL of water</h2>
+    <h2>Lotus drops for {volume} mL{layout === 'wide' ? ' of water' : ''}</h2>
     <ul class="wr-drops" aria-label="Drops to add">
       {#each CONCENTRATES as [key, label] (key)}
         <li class="wr-drop" style:--el="var(--el-{key})" class:wr-zero={drops[key] === 0} aria-label="{drops[key]} {label}"><b>{drops[key]}</b><span>{SYMBOL[key]}</span></li>
@@ -233,6 +246,7 @@
     <a href="https://lotuscoffeeproducts.com/pages/product-instructions" rel="noopener">Lotus Coffee Products</a>.
   </p>
 </section>
+</div>
 
 <style>
   .water-hint-off {
@@ -253,6 +267,9 @@
   }
   .water-kettle {
     flex: 1 1 auto;
+  }
+  .water-field > span {
+    white-space: nowrap;
   }
   .water-field {
     max-width: 100%;
@@ -343,32 +360,20 @@
     color: var(--color-text-muted);
     font-variant-numeric: tabular-nums;
   }
-  .water-table {
-    border-collapse: collapse;
-    margin-bottom: var(--space-4);
-    max-width: 100%;
-  }
-  .water-table th,
-  .water-table td {
-    padding: var(--space-1) var(--space-3);
-    text-align: left;
-  }
-  .water-table td {
-    font-variant-numeric: tabular-nums;
-  }
 
   /* Results: a headline card of drop counts, then minerals and hardness cards (side by side from 768px). */
   .wr small { color: var(--color-text-muted); font-size: 0.75em; margin-left: 0.25em; font-weight: 400; }
   .wr h2 { margin: 0 0 var(--space-3); font-size: 1.1rem; }
   .wr h3 { margin: 0 0 var(--space-3); font-size: 0.9rem; color: var(--color-label); }
   .wr-head { margin-bottom: var(--space-4); border-left: 4px solid var(--color-accent); }
-  .wr-drops { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
-  .wr-drop { flex: 1 1 4.5rem; display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); white-space: nowrap; }
+  .wr-drops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+  .wr-drop { display: flex; align-items: baseline; justify-content: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); white-space: nowrap; }
   .wr-drop b, .wr-drop span { color: var(--el); }
   .wr-note { font-size: 0.85rem; margin: 0 0 var(--space-2); }
   .water-el { color: var(--el); font-weight: 600; }
   .wr-drop b { font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .wr-drop span { font-size: 1.1rem; font-weight: 600; }
+  @container card (min-width: 26rem) { .wr-drops { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .wr-zero { opacity: 0.45; }
   .wr-split { display: grid; gap: var(--space-4); align-items: stretch; margin-bottom: var(--space-4); }
   @media (min-width: 768px) { .wr-split { grid-template-columns: 1.4fr 1fr; } }
@@ -384,4 +389,19 @@
   .wr-gauges { --el: var(--color-label); display: grid; gap: var(--space-5); }
   .wr-gauge-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-2); }
   .wr-gauge-head span { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  /* TEMP layout previews (?layout=narrow|wide); one revertable commit. */
+  .water-top { display: grid; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .water-top > * { min-width: 0; }
+  .water-inputs { margin-bottom: 0; }
+  .lay-narrow { max-width: 34rem; }
+  .lay-narrow .water-controls { width: 100%; }
+  .lay-narrow .water-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); }
+  .lay-narrow .water-inputs .water-unit, .lay-narrow .water-inputs .water-field { grid-column: 1 / -1; }
+  .lay-narrow .water-mineral { flex: none; }
+  .lay-narrow .wr-split { grid-template-columns: 1fr; }
+  @media (min-width: 768px) {
+    .lay-wide .water-top { grid-template-columns: auto minmax(0, 1fr); align-items: start; column-gap: var(--space-6); }
+    .lay-wide .water-tabs { grid-column: 1 / -1; }
+    .lay-wide .water-inputs { align-content: start; }
+  }
 </style>

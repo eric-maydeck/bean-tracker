@@ -805,7 +805,7 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000 mL' })).toBeVisible();
       await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
       await expect(page.getByRole('listitem', { name: '0 Calcium' })).toBeVisible();
@@ -836,7 +836,7 @@ export const STATES: State[] = [
       await box.fill('725');
       await expect(kettle).toHaveValue('');
       await expect(page).not.toHaveURL(/kettle/);
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 725 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 725 mL' })).toBeVisible();
       expect(await slider.inputValue()).toBe('725'); // typed mL sits exactly, not at a step
       await box.fill('825');
       expect(await slider.inputValue()).toBe('825');
@@ -852,7 +852,7 @@ export const STATES: State[] = [
       await box.fill('725');
       await slider.fill('1200');
       await expect(box).toHaveValue('1200');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL' })).toBeVisible();
       await expectGroupsLabelled(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }
@@ -920,15 +920,15 @@ export const STATES: State[] = [
     name: 'water-result',
     path: () => '/water?recipe=substance&ml=880',
     act: async (page) => {
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL' })).toBeVisible();
       expect(await page.locator('.wr-drop').evaluateAll((els) => els.map((e) => e.textContent))).toEqual(['3Mg', '7Ca', '0Na', '9K']);
       const rows = await page.locator('.wr-meters li .wr-meter-label').allTextContents();
       expect(rows).toEqual(['Magnesium', 'Calcium', 'Sodium', 'Potassium', 'Chloride', 'Bicarbonate']);
       const lines = (await page.locator('.wr').innerText()).split('\n').map((l) => l.trim());
       for (const l of lines) expect(/^·|·$/.test(l), `line "${l}" starts or ends with a dot`).toBe(false);
       const head = (await page.locator('.wr-drops').boundingBox())!;
-      const last = (await page.locator('.wr-drop').last().boundingBox())!;
-      expect(head.x + head.width - (last.x + last.width), 'drops fill the headline card').toBeLessThan(2);
+      const rights = (await page.locator('.wr-drop').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right)));
+      expect(head.x + head.width - Math.max(...rights), 'drops fill the headline card').toBeLessThan(2);
       const kettle = (await page.getByLabel('Kettle').boundingBox())!;
       const mlBox = (await page.getByLabel('Water (mL)').boundingBox())!;
       const slider = (await page.getByLabel('Water slider (mL)').boundingBox())!;
@@ -943,6 +943,42 @@ export const STATES: State[] = [
     }
   },
   {
+    // TEMP layout preview (narrow): overflow checks and a Mg, Ca, Na, K order check.
+    name: 'water-layout-narrow',
+    path: () => '/water?layout=narrow&recipe=substance&ml=880',
+    act: async (page) => {
+      await expect(page.locator('.lay-narrow')).toBeVisible();
+      await expect(page.locator('.wr-drop')).toHaveCount(4);
+    }
+  },
+  {
+    // TEMP layout preview (narrow, drops mode): overflow checks and a Mg, Ca, Na, K order check.
+    name: 'water-layout-narrow-drops',
+    path: () => '/water?layout=narrow&recipe=substance&ml=880&mode=drops&mg=3&ca=1&na=1&k=1',
+    act: async (page) => {
+      await expect(page.locator('.lay-narrow')).toBeVisible();
+      await expect(page.locator('.wr-drop')).toHaveCount(4);
+    }
+  },
+  {
+    // TEMP layout preview (wide): overflow checks and a Mg, Ca, Na, K order check.
+    name: 'water-layout-wide',
+    path: () => '/water?layout=wide&recipe=substance&ml=880',
+    act: async (page) => {
+      await expect(page.locator('.lay-wide')).toBeVisible();
+      await expect(page.locator('.wr-drop')).toHaveCount(4);
+    }
+  },
+  {
+    // TEMP layout preview (wide, drops mode): overflow checks and a Mg, Ca, Na, K order check.
+    name: 'water-layout-wide-drops',
+    path: () => '/water?layout=wide&recipe=substance&ml=880&mode=drops&mg=3&ca=1&na=1&k=1',
+    act: async (page) => {
+      await expect(page.locator('.lay-wide')).toBeVisible();
+      await expect(page.locator('.wr-drop')).toHaveCount(4);
+    }
+  },
+  {
     // Nav "Water" on a deep link resets to bare; a partial mL keeps the last results with no layout shift.
     name: 'water-reset-partial',
     path: () => '/water?recipe=substance&ml=900',
@@ -953,7 +989,7 @@ export const STATES: State[] = [
       const before = (await results.boundingBox())!.height;
       await box.fill('8');
       await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 900 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 900 mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
       await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
       await expect(page).not.toHaveURL(/recipe=/);
@@ -966,7 +1002,7 @@ export const STATES: State[] = [
     path: () => '/water?recipe=HOLY-water&ml=1200',
     act: async (page) => {
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL' })).toBeVisible();
       await expect(page.getByRole('listitem', { name: '9 Magnesium' })).toBeVisible();
       await expect(page.locator('.wr-head')).toBeVisible();
       await gotoReady(page, '/water?kettle=FELLOW-stagg-ekg-pro');
