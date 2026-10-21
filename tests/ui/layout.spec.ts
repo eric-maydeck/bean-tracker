@@ -950,7 +950,7 @@ export const STATES: State[] = [
     path: () => '/water?recipe=substance&ml=880',
     act: async (page) => {
       const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
-      const two = page.viewportSize()!.width >= 1200;
+      const two = page.viewportSize()!.width >= 900;
       const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
       expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
       if (two) {
@@ -980,7 +980,7 @@ export const STATES: State[] = [
     path: () => '/water?mode=drops&ml=880&mg=3&ca=1&na=1&k=1',
     act: async (page) => {
       const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
-      const two = page.viewportSize()!.width >= 1200;
+      const two = page.viewportSize()!.width >= 900;
       const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
       expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
       if (two) {
@@ -1010,7 +1010,7 @@ export const STATES: State[] = [
     path: () => '/water?mode=target&ml=880&mg=60&ca=40',
     act: async (page) => {
       const box = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
-      const two = page.viewportSize()!.width >= 1200;
+      const two = page.viewportSize()!.width >= 900;
       const title = await box('.water-title'), controls = await box('.water-controls'), res = await box('.water-results'), notes = await box('.water-notes');
       expect(controls.width, 'columns never wider than the narrow width').toBeLessThanOrEqual(34 * 16 + 1);
       if (two) {
@@ -1036,7 +1036,24 @@ export const STATES: State[] = [
     }
   },
   {
-    // Nav "Water" on a deep link resets to bare; a partial mL keeps the last results with no layout shift.
+    // Remembered per browser: kettle + recipe survive a trip to another page and back to a bare /water.
+    name: 'water-remembered',
+    path: () => '/water',
+    act: async (page) => {
+      await page.getByLabel('Kettle').selectOption('palatti-enso');
+      await page.getByLabel('Recipe').selectOption('holy-water');
+      await expect(page).toHaveURL(/recipe=holy-water/);
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/insights"]')?.click());
+      await expect(page).toHaveURL(/\/insights/);
+      await page.evaluate(() => document.querySelector<HTMLElement>('nav.site-nav a[href="/water"]')?.click());
+      await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
+      await expect(page.getByLabel('Kettle')).toHaveValue('palatti-enso');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('880');
+      await expect(page).toHaveURL(/kettle=palatti-enso/);
+    }
+  },
+  {
+    // Nav "Water" on a bare URL restores the remembered state; a partial mL keeps the last results with no layout shift.
     name: 'water-reset-partial',
     path: () => '/water?recipe=substance&ml=900',
     act: async (page) => {
@@ -1049,9 +1066,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'Lotus drops for 900 mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
       await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
-      await expect(page).not.toHaveURL(/recipe=/);
-      await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
-      await expect(box).toHaveValue('1000');
+      await expect(page).toHaveURL(/recipe=substance&ml=900/); // a bare visit restores the remembered state
+      await expect(page.getByLabel('Recipe')).toHaveValue('substance');
+      await expect(box).toHaveValue('900');
     }
   },
   {

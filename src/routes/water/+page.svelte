@@ -6,7 +6,7 @@
   import { writeUrlParams } from '$lib/urlState';
   import {
     RECIPES, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
-    minerals, lotusParams, parseLotus, type Drops, type Mode, type Unit
+    minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, type Drops, type Mode, type Unit
   } from '$lib/lotus';
 
   const SLIDER_MAX = 1200;
@@ -29,7 +29,15 @@
   // Read the URL on entry and on every navigation (nav "Water" -> bare resets). A bare ?kettle=<slug>
   // fills its capacity; with an ml that differs, the kettle is dropped.
   function applyUrl() {
-    const s = parseLotus(currentParams(page.url));
+    // The URL's params win; a bare URL restores the remembered state, which the effect below writes into the URL.
+    let s = parseLotus(currentParams(page.url));
+    if (!Object.keys(s).length) {
+      try {
+        s = loadWater(localStorage.getItem(WATER_STORAGE_KEY));
+      } catch {
+        // ignore: storage may be unavailable (private browsing)
+      }
+    }
     mode = s.mode ?? 'recipe';
     unit = s.unit;
     recipeSlug = s.recipe;
@@ -40,7 +48,6 @@
     targetIn = s.mode === 'target' ? fromVals(s.vals) : blank();
   }
   applyUrl();
-  afterNavigate(applyUrl);
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
@@ -108,7 +115,8 @@
     if (/^\d+$/.test(v) && +v >= MIN_ML && +v <= MAX_ML) ml = +v;
   }
 
-  $effect(() => {
+  // Mirror the state into the URL and the remembered state.
+  function sync() {
     const p =
       lotusParams({
         mode: mode === 'recipe' ? undefined : mode,
@@ -119,6 +127,19 @@
         vals: mode === 'drops' ? urlVals(dropsIn, INT) : mode === 'target' ? urlVals(targetIn, DEC) : undefined
       });
     writeUrlParams(p);
+    try {
+      if (p.size) localStorage.setItem(WATER_STORAGE_KEY, serializeWater(p));
+      else localStorage.removeItem(WATER_STORAGE_KEY);
+    } catch {
+      // ignore: the page still works, it just isn't remembered
+    }
+  }
+
+  $effect(sync);
+  // A restored state may equal the current one (no effect re-run), so write the URL after every navigation too.
+  afterNavigate(() => {
+    applyUrl();
+    sync();
   });
 </script>
 
@@ -377,7 +398,7 @@
   .wr-gauges { --el: var(--color-label); display: grid; gap: var(--space-5); }
   .wr-gauge-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--space-2); }
   .wr-gauge-head span { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-  /* Page grid: one narrow column (title, tabs, controls, inputs, results, notes); from 1200px two narrow columns,
+  /* Page grid: one narrow column (title, tabs, controls, inputs, results, notes); from 900px (phone landscape included) two columns that shrink to fit, at most 34rem each,
      left = title..inputs + notes, right = results. */
   .water-page {
     display: grid;
@@ -393,7 +414,7 @@
   .water-results { grid-area: results; }
   .water-notes { grid-area: notes; }
   .water-hint { grid-area: hint; }
-  @media (min-width: 1200px) {
+  @media (min-width: 900px) {
     .water-page {
       grid-template-columns: repeat(2, minmax(0, 34rem));
       grid-template-rows: repeat(6, auto) 1fr;

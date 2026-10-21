@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
+import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -109,5 +109,18 @@ describe('kettles', () => {
     expect(kettleFor(880, 'palatti-enso')).toBe('palatti-enso');
     expect(kettleFor(881, 'palatti-enso')).toBe('');
     expect(kettleFor(1000)).toBe('');
+  });
+});
+
+describe('remembered state', () => {
+  it('round-trips through the same gate as the URL', () => {
+    const p = lotusParams({ mode: 'target', unit: 'mgl', ml: 880, kettle: 'palatti-enso', vals: { mg: 32.5, k: 11.25 } });
+    expect(loadWater(serializeWater(p))).toEqual(parseLotus(p));
+  });
+  it('garbage, other versions and invalid saved params give the default', () => {
+    expect(loadWater(null)).toEqual({});
+    expect(loadWater('nope')).toEqual({});
+    expect(loadWater(JSON.stringify({ version: 99, params: 'ml=900' }))).toEqual({});
+    expect(loadWater(JSON.stringify({ version: 1, params: 'recipe=bogus&ml=5' }))).toEqual({});
   });
 });

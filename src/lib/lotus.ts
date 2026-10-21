@@ -106,3 +106,22 @@ export function lotusParams(s: LotusState): URLSearchParams {
   for (const m of MINERALS) if (s.vals?.[m] !== undefined) p.set(m, String(s.vals[m]));
   return p;
 }
+
+// The page's state is remembered per browser, no expiry: the same query string the URL carries, so a saved
+// value goes through parseLotus (the one gate) when loaded. Versioned: bump if the params change meaning.
+export const WATER_STORAGE_KEY = 'bean-tracker-water';
+const WATER_VERSION = 1;
+
+export function serializeWater(p: URLSearchParams): string {
+  return JSON.stringify({ version: WATER_VERSION, params: p.toString() });
+}
+
+export function loadWater(raw: string | null): LotusState {
+  try {
+    const saved = JSON.parse(raw ?? 'null');
+    if (saved?.version !== WATER_VERSION || typeof saved.params !== 'string') return {};
+    return parseLotus(new URLSearchParams(saved.params));
+  } catch {
+    return {};
+  }
+}
