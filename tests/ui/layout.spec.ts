@@ -798,6 +798,61 @@ export const STATES: State[] = [
     act: (page) => expectContained(page.locator('.detail-media img'), WIDE_FILL)
   },
   {
+    // Defaults on a bare URL; the picker and mL input write explicit params; a bad ml shows the hint, no results.
+    name: 'water',
+    path: () => '/water',
+    act: async (page) => {
+      await expect(page.getByLabel('Recipe')).toHaveValue('mg-k-60-10');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByLabel('Kettle')).toHaveValue('');
+      await expect(page.getByRole('heading', { name: 'Drops in 1000 mL' })).toBeVisible();
+      await page.getByLabel('Water (mL)').fill('800');
+      await expect(page.getByRole('row', { name: /Magnesium 5/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /GH 56\.3 60/ })).toBeVisible();
+      await expectGroupsLabelled(page);
+      await page.getByLabel('Recipe').selectOption('substance');
+      await expect(page).toHaveURL(/recipe=substance/);
+      await page.getByLabel('Water (mL)').fill('900');
+      await expect(page).toHaveURL(/ml=900/);
+      await expect(page.getByRole('row', { name: /Potassium 8/ })).toBeVisible();
+      await page.getByLabel('Water (mL)').fill('5');
+      await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
+    }
+  },
+  {
+    // Kettle fills mL (its published capacity); box and slider edit the same value live (no blur); only ml rides the URL.
+    name: 'water-kettle',
+    path: () => '/water',
+    act: async (page) => {
+      const kettle = page.getByLabel('Kettle');
+      const box = page.getByLabel('Water (mL)');
+      const slider = page.getByLabel('Water slider (mL)');
+      await kettle.selectOption('Palatti Enso');
+      await expect(box).toHaveValue('880');
+      await expect(page).toHaveURL(/ml=880/);
+      await expect(page).not.toHaveURL(/kettle/);
+      await box.fill('725');
+      await expect(kettle).toHaveValue('');
+      await expect(page.getByRole('heading', { name: 'Drops in 725 mL' })).toBeVisible();
+      expect(['700', '750']).toContain(await slider.inputValue());
+      await slider.fill('1200');
+      await expect(box).toHaveValue('1200');
+      await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
+      await expectGroupsLabelled(page);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  },
+  {
+    name: 'water-deep-link',
+    path: () => '/water?recipe=HOLY-water&ml=1200',
+    act: async (page) => {
+      await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
+      await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
+      await expect(page.getByRole('row', { name: /Magnesium 8/ })).toBeVisible();
+      await expect(page.locator('.water-table').first()).toBeVisible();
+    }
+  },
+  {
     name: 'on-deck',
     path: () => '/on-deck',
     act: async (page) => {

@@ -19,10 +19,11 @@
     { href: '/on-deck', label: 'On Deck' },
     { href: '/subscriptions', label: 'Subscriptions' },
     { href: '/stats', label: 'Stats' },
-    { href: '/insights', label: 'Insights' }
+    { href: '/insights', label: 'Insights' },
+    { href: '/water', label: 'Water' }
   ];
-  // The bottom bar is full at phone width; Insights (alpha) lives in More there.
-  const tabLinks = links.filter((l) => l.href !== '/insights');
+  // The bottom bar is full at phone width; Insights (alpha) and Water live in More there.
+  const tabLinks = links.filter((l) => l.href !== '/insights' && l.href !== '/water');
 
   let theme = $state<'light' | 'dark'>('light');
 
@@ -161,6 +162,9 @@
   <div class="bottom-tabs-more-panel">
     <a class="nav-link-button" href="/insights" aria-current={page.url.pathname === '/insights' ? 'page' : undefined}
       ><Icon name="chart-line" /> Insights</a
+    >
+    <a class="nav-link-button" href="/water" aria-current={page.url.pathname === '/water' ? 'page' : undefined}
+      ><Icon name="drop" /> Water</a
     >
     {#if data.isAdmin}
       <form method="POST" action="/login?/logout" use:enhance>
