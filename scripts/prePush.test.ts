@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { diffRanges, pushesRelease } from './pre-push.ts';
+import { diffRanges, pushesRelease, GATE_VIEWPORTS } from './pre-push.ts';
+import { pickViewports, TWO_VIEWPORTS } from '../tests/ui/viewports.ts';
 
 const Z = '0'.repeat(40);
 describe('diffRanges', () => {
@@ -16,5 +17,13 @@ describe('pushesRelease', () => {
     expect(pushesRelease(`refs/heads/main abc refs/heads/main def\n`)).toBe(false);
     expect(pushesRelease(`(delete) ${Z} refs/heads/release def\n`)).toBe(false);
     expect(pushesRelease('')).toBe(false);
+  });
+});
+
+describe('GATE_VIEWPORTS', () => {
+  it('are real viewports and include the @two ones', () => {
+    const names = pickViewports(GATE_VIEWPORTS).map((v) => v.name);
+    expect(names).toHaveLength(3);
+    expect(names).toEqual(expect.arrayContaining(TWO_VIEWPORTS));
   });
 });

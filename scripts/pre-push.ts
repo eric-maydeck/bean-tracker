@@ -1,6 +1,7 @@
-// Husky pre-push gate, all on the prod build and all 7 viewports, screenshots off.
-// Every push first runs tsc + svelte-check (must be clean). Push to `release` (promotion = deploy): vitest + the full test:ui. Any other push: test:changed
-// (vitest + the UI tags the pushed diff reaches; docs-only runs vitest alone).
+// Husky pre-push gate, all on the prod build, screenshots off.
+// Every push first runs tsc + svelte-check (must be clean). Push to `release` (promotion = deploy): vitest + the full test:ui at all 7 viewports.
+// Any other push: test:changed (vitest + the UI tags the pushed diff reaches; docs-only runs vitest alone) at 3 viewports
+// (GATE_VIEWPORTS); a layout break at the other widths can sit on main until release.
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
@@ -12,12 +13,14 @@ export function diffRanges(stdin: string): string[] {
   return lines(stdin).filter((p) => !ZERO.test(p[1]))
     .map(([, local, , remote]) => (ZERO.test(remote) ? `origin/main...${local}` : `${remote}..${local}`));
 }
+// w360 = smallest phones, phone-portrait = the test phone, w1280 = desktop. Must cover TWO_VIEWPORTS so @two states still run.
+export const GATE_VIEWPORTS = 'w360,phone-portrait,w1280';
 export const pushesRelease = (stdin: string) =>
   lines(stdin).some(([, local, remote]) => remote === 'refs/heads/release' && !ZERO.test(local));
 
 if (import.meta.main) {
   const stdin = readFileSync(0, 'utf8');
-  // The gate always runs every viewport: UI_VIEWPORTS (an iteration filter) is dropped here.
+  // UI_VIEWPORTS (an iteration filter) is dropped here: release runs all 7, other pushes GATE_VIEWPORTS.
   const env = { ...process.env, UI_PROFILE: process.env.UI_PROFILE || 'performance', UI_BUILD: 'prod', UI_SHOTS: 'off' };
   delete env.UI_VIEWPORTS;
   const step = (label: string, cmd: string, args: string[]) => {
@@ -35,6 +38,7 @@ if (import.meta.main) {
     step('vitest', 'npx', ['vitest', 'run']);
     step(`test:ui:prod, full (${env.UI_PROFILE})`, 'npx', ['playwright', 'test']);
   } else {
+    env.UI_VIEWPORTS = GATE_VIEWPORTS;
     const files = new Set<string>();
     for (const range of diffRanges(stdin)) {
       const r = spawnSync('git', ['diff', '--name-only', range], { encoding: 'utf8' });
@@ -42,6 +46,6 @@ if (import.meta.main) {
       if (r.status) files.add(`unresolved range ${range}`);
       else r.stdout.split('\n').filter(Boolean).forEach((f) => files.add(f));
     }
-    step(`test:changed, prod (${env.UI_PROFILE})`, 'node', ['scripts/test-changed.ts', '--', ...files]);
+    step(`test:changed, prod, 3 sizes (${env.UI_PROFILE})`, 'node', ['scripts/test-changed.ts', '--', ...files]);
   }
 }
