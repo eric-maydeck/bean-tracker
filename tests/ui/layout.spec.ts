@@ -916,6 +916,30 @@ export const STATES: State[] = [
     }
   },
   {
+    // TEMP design preview a: overflow checks only (reverted with the design commit).
+    name: 'water-design-a',
+    path: () => '/water?design=a&recipe=substance&ml=880',
+    act: async (page) => {
+      await expect(page.locator('.wr-a')).toBeVisible();
+    }
+  },
+  {
+    // TEMP design preview b: overflow checks only (reverted with the design commit).
+    name: 'water-design-b',
+    path: () => '/water?design=b&recipe=substance&ml=880',
+    act: async (page) => {
+      await expect(page.locator('.wr-b')).toBeVisible();
+    }
+  },
+  {
+    // TEMP design preview c: overflow checks only (reverted with the design commit).
+    name: 'water-design-c',
+    path: () => '/water?design=c&recipe=substance&ml=880',
+    act: async (page) => {
+      await expect(page.locator('.wr-c')).toBeVisible();
+    }
+  },
+  {
     // Nav "Water" on a deep link resets to bare; a partial mL keeps the last results with no layout shift.
     name: 'water-reset-partial',
     path: () => '/water?recipe=substance&ml=900',
