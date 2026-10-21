@@ -1050,6 +1050,29 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Kettle')).toHaveValue('palatti-enso');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('880');
       await expect(page).toHaveURL(/kettle=palatti-enso/);
+      // A full load of the bare URL (SSR renders defaults, the client restores) ends in the same state.
+      await gotoReady(page, '/water');
+      await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('880');
+      await expect(page).toHaveURL(/recipe=holy-water.*kettle=palatti-enso|kettle=palatti-enso.*recipe=holy-water/);
+    }
+  },
+  {
+    // Reset: clears the saved state and goes back to the bare URL with the defaults; a reload stays default.
+    name: 'water-reset',
+    path: () => '/water?mode=drops&ml=880&mg=3&ca=1&kettle=palatti-enso',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Drops', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await page.getByRole('button', { name: 'Reset' }).click();
+      await expect(page).toHaveURL(/\/water$/);
+      await expect(page.getByRole('button', { name: 'Recipe', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByLabel('Kettle')).toHaveValue('');
+      await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
+      await page.reload();
+      await expect(page).toHaveURL(/\/water$/);
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expectGroupsLabelled(page);
     }
   },
   {

@@ -135,11 +135,29 @@
     }
   }
 
-  $effect(sync);
-  // A restored state may equal the current one (no effect re-run), so write the URL after every navigation too.
+  // Back to the defaults: first recipe, 1000 mL, no kettle, recipe mode; the saved state goes with it.
+  function reset() {
+    mode = 'recipe';
+    unit = undefined;
+    recipeSlug = undefined;
+    picked = '';
+    ml = undefined;
+    raw = String(DEFAULT_ML);
+    dropsIn = blank();
+    targetIn = blank();
+    sync();
+  }
+
+  // Every navigation bumps `arrived`, so the effect writes the URL after the router is ready (a write straight from
+  // afterNavigate on a full load is dropped) even when the restored state equals the current one.
+  let arrived = $state(0);
+  $effect(() => {
+    arrived;
+    sync();
+  });
   afterNavigate(() => {
     applyUrl();
-    sync();
+    arrived++;
   });
 </script>
 
@@ -150,7 +168,10 @@
 <div class="water-page">
 <div class="toolbar water-title">
   <h1>Water</h1>
-  <ShareButton />
+  <div class="water-actions">
+    <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
+    <ShareButton />
+  </div>
 </div>
 
 <div class="water-tabs search-row">
@@ -262,6 +283,11 @@
 </div>
 
 <style>
+  .water-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
   .water-hint-off {
     visibility: hidden;
   }
