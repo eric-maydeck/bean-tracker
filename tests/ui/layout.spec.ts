@@ -1037,7 +1037,7 @@ export const STATES: State[] = [
   },
   {
     // Remembered per browser: kettle + recipe survive a trip to another page and back to a bare /water.
-    name: 'water-remembered',
+    name: 'water-remembered', viewports: 'two',
     path: () => '/water',
     act: async (page) => {
       await page.getByLabel('Kettle').selectOption('palatti-enso');
@@ -1580,7 +1580,7 @@ export const STATES: State[] = [
   },
   {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
-    name: 'stats-import-too-big',
+    name: 'stats-import-too-big', viewports: 'two',
     path: () => '/stats?tab=bq',
     act: async (page) => {
       const input = page.locator('input[name="file"]');
@@ -1623,7 +1623,7 @@ export const STATES: State[] = [
   { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
-    name: 'insights-default',
+    name: 'insights-default', viewports: 'two',
     path: () => '/insights',
     act: async (page) => {
       await expect(page.locator('.chart-panel h2', { hasText: 'Right now' })).toBeVisible();
@@ -2015,7 +2015,7 @@ export const STATES: State[] = [
   {
     // Overview: Totals and Averages each carry the Ratings and Brews switches in their header (no in-tile pills);
     // one URL param each keeps them in sync.
-    name: 'insights-ratings-switch-sync',
+    name: 'insights-ratings-switch-sync', viewports: 'two',
     path: () => '/insights',
     act: async (page) => {
       await expect(page.locator('.stat-item [role="group"]')).toHaveCount(0);
@@ -2660,7 +2660,7 @@ export const STATES: State[] = [
     // A row's value is dotted and tipped only when the tip adds something (user, 2026-10-17): both counts, a ±, or a
     // plain average that differs from the score. One rated coffee (The Picky Chemist, all brews): its Confidence adj.
     // score shrinks toward its own mean, so it equals the plain average; the tip would only repeat the row.
-    name: 'insights-leaderboards-tip-adds',
+    name: 'insights-leaderboards-tip-adds', viewports: 'two',
     path: () => '/insights?tab=leaderboards&range=all&dial=all&roaster=The%20Picky%20Chemist',
     act: async (page) => {
       const val = page.locator('[data-board="coffees"] .board-row.bar .val');
@@ -2783,7 +2783,7 @@ export const STATES: State[] = [
       await expect(gap.locator('.ink-better, .ink-worse')).toHaveCount(1);
     } },
   // Totals' values are the same color as the other tiles' (they were the accent brown).
-  { name: 'insights-totals-value-color', path: () => '/insights?range=all',
+  { name: 'insights-totals-value-color', viewports: 'two', path: () => '/insights?range=all',
     act: async (page) => {
       const color = (panel: string) => page.locator('section.chart-panel', { has: page.getByRole('heading', { name: panel, exact: true }) }).locator('.stat-value').first().evaluate((e) => getComputedStyle(e).color);
       expect(await color('Totals')).toBe(await color('Averages'));
@@ -3378,7 +3378,7 @@ export const STATES: State[] = [
       expect(bad, 'tightened cards without a full-text tip on the value').toEqual([]);
     }
   },
-  { name: 'cursor-rules', path: () => '/insights?tab=habits',
+  { name: 'cursor-rules', viewports: 'two', path: () => '/insights?tab=habits',
     act: async (page) => {
       // ui-rules 50: text shows the arrow yet stays selectable; a tip trigger shows help, never the hand; a link the hand.
       const css = (sel: string) => page.locator(sel).first().evaluate((e) => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect]);
@@ -3566,7 +3566,7 @@ export const STATES: State[] = [
   // Tap tips (ui-rules 49): every tip kind a hover opens also opens on a tap, stays, and a tap elsewhere closes it.
   { name: 'tap-tip-text', viewports: 'two', path: () => '/coffees?status=all&view=list',
     act: (page) => expectTapTip(page, page.getByRole('button', { name: /^Roast level: / }).first(), page.locator('.cell-tip:popover-open'), page.locator('h1')) },
-  { name: 'tap-tip-mode', path: () => '/stats?people=person',
+  { name: 'tap-tip-mode', viewports: 'two', path: () => '/stats?people=person',
     act: (page) => expectTapTip(page, page.locator('.stat-item', { hasText: 'Time to clear' }).getByRole('button', { name: 'per person' }),
       page.locator('.mode-tip:popover-open'), page.getByRole('heading', { name: 'Time to Clear' })) },
   { name: 'tap-tip-chart', viewports: 'two', path: () => '/stats',
@@ -3843,12 +3843,12 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/tab=gear.*grinder=zp6-special/);
       await expect(page.getByLabel('Compare')).toHaveCount(0);
     } },
-  { name: 'insights-lab-reset', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
+  { name: 'insights-lab-reset', viewports: 'two', path: () => '/insights?tab=brewing&tempBy=roast&temp=exact&grinder=zp6-special',
     act: async (page) => {
       await page.getByRole('button', { name: 'Reset', exact: true }).click();
       await expect(page).toHaveURL(/\/insights\?tab=brewing$/);
     } },
-  { name: 'insights-remembered', path: () => '/insights?tab=habits&range=1w',
+  { name: 'insights-remembered', viewports: 'two', path: () => '/insights?tab=habits&range=1w',
     act: async (page) => {
       await gotoReady(page, '/coffees');
       await gotoReady(page, '/insights');
@@ -3895,7 +3895,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
-  { name: 'insights-coffees-chips', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
+  { name: 'insights-coffees-chips', viewports: 'two', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
     act: async (page) => {
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(3);
       await expect(page.locator('.coffee-chips .filter-chip').last()).toHaveText(/Caf \+ decaf/);
@@ -3941,7 +3941,7 @@ export const STATES: State[] = [
         await expectStickyBar(page, page.locator('.filter-bar'));
       } })),
   // F1: Clear all on the sole chip leaves the URL bare and forgets it; a later bare visit stays bare.
-  { name: 'insights-coffees-clear-bare', path: () => '/insights?process=Washed',
+  { name: 'insights-coffees-clear-bare', viewports: 'two', path: () => '/insights?process=Washed',
     act: async (page) => {
       await page.getByRole('button', { name: 'Clear all' }).click();
       await expect(page).toHaveURL(/\/insights$/);
@@ -5283,7 +5283,7 @@ export const STATES: State[] = [
     }
   },
   // Holder labels, tie lists and the full-text tip (Records); server-built feed lines (Milestones).
-  { name: 'skip-name-insights-records', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
+  { name: 'skip-name-insights-records', viewports: 'two', path: () => '/insights?tab=records&range=all', act: (page) => expectSkipColored(page, 1) },
   { name: 'skip-name-insights-milestones', viewports: 'two', path: () => '/insights?tab=milestones&range=all', act: (page) => expectSkipColored(page, 1) },
   // ---- Peer review B (2026-10-19) ----
   // M2: the top navbar's first link lines up with the page content's left edge (the tab bar replaces it at <= 640px).
@@ -5369,7 +5369,7 @@ export const STATES: State[] = [
 
   // Every tab leads to every other: switching from each tab to the next in a ring changes the page content, not just the URL
   // (a tab's bar once threw on the new tab's null data and froze the swap on Consumption).
-  { name: 'insights-tab-switch-ring', path: () => '/insights?range=all',
+  { name: 'insights-tab-switch-ring', viewports: 'two', path: () => '/insights?range=all',
     act: async (page) => {
       const tabs = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', 'sweetspots', 'brewing', 'water', 'gear', 'consumption', 'records', 'overview'];
       const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
@@ -5600,10 +5600,15 @@ async function expectSkipColored(page: Page, min: number) {
 // Route tag for test:changed (scripts/testScope.ts): the path's first segment, read with a stub seed.
 const stubSeed = new Proxy({}, { get: () => new Proxy({}, { get: () => 'x' }) }) as unknown as Seed;
 const routeTag = (st: State) => '@' + st.path(stubSeed).split(/[/?#]/)[1];
+// Insights states also carry their tab (?tab=, none = overview) so a one-tab change can run just those.
+const tabTag = (st: State) => {
+  const path = st.path(stubSeed);
+  return routeTag(st) === '@insights' ? ['@insights:' + (new URL(path, 'http://x').searchParams.get('tab') ?? 'overview')] : [];
+};
 
 const SHOTS = process.env.UI_SHOTS === 'all';
 for (const state of STATES) {
-  test(state.name, { tag: [routeTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
+  test(state.name, { tag: [routeTag(state), ...tabTag(state), ...(state.viewports === 'two' ? ['@two'] : [])] }, async ({ page }, info) => {
     if (state.slow) test.slow();
     const s = seed();
     await gotoReady(page, state.path(s));
