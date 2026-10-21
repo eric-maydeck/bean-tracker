@@ -2726,7 +2726,12 @@ export const STATES: State[] = [
       const oldest = page.locator('.feed .month').last();
       const label = `Jump to ${await oldest.textContent()}`;
       await ruler.getByRole('button', { name: label }).last().click();
-      await expect(oldest).toBeInViewport();
+      // A click scrubs to the middle of that month's section, so the heading itself is out of view when the oldest
+      // month is long (seed data is relative to today): the claim is that the oldest month's section is on screen.
+      expect(await oldest.evaluate((h) => {
+        const end = h.parentElement!.lastElementChild!.getBoundingClientRect().bottom;
+        return h.getBoundingClientRect().top < innerHeight && end > 0;
+      }), 'oldest month section in view').toBe(true);
       await expect(ruler).toBeInViewport();
       // Scrolled to the feed's very end, the ruler is still wholly on screen (M10).
       await page.evaluate(() => document.querySelector('.feed')!.lastElementChild!.scrollIntoView({ block: 'end' }));
