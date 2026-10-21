@@ -485,6 +485,15 @@ describe('highlights params', () => {
     expect(insightsParams(parse('tab=records&topc=50')).toString()).toBe('tab=records&topc=50');
     expect(insightsParams(parse('tab=records&top=20')).toString()).toBe('tab=records&top=20');
   });
+  it('recent / recentc: 20 or 50 expand Overview\'s Recent lists; 10 is bare; separate from top', () => {
+    expect(parse('recent=20').recent).toBe(20);
+    expect(parse('recentc=50&recent=20')).toMatchObject({ recentc: 50, recent: 20 });
+    expect(parse('recent=10').recent).toBeUndefined();
+    expect(parse('recent=30&recentc=x')).toMatchObject({ recent: undefined, recentc: undefined });
+    expect(parse('top=20').recent).toBeUndefined();
+    expect(insightsParams(parse('recent=50&recentc=20')).toString()).toBe('recent=50&recentc=20');
+    expect(resetInsights(parse('recent=20'))).toEqual({});
+  });
 });
 
 describe('insights params', () => {

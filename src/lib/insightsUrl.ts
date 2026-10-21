@@ -186,6 +186,8 @@ export interface InsightsUrlState {
   caffeine?: Caffeine; // absent = Caffeinated; an old caffeine=caf parses to it
   top?: Top; // Records: the top-brews list expanded from 10 to 20 or 50
   topc?: Top; // Records: the top-coffees list, likewise
+  recent?: Top; // Overview: the Recent "Last brews" list expanded from 10 to 20 or 50
+  recentc?: Top; // Overview: the "Last coffees finished" list, likewise
   kinds?: Kind[]; // Milestones: absent = all kinds
   theme?: Theme; // Insights: absent = All
   drinkers?: number; // Insights What if: absent = household size
@@ -217,10 +219,10 @@ export interface InsightsUrlState {
 }
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
-type Optional = 'avg' | 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'avg' | 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top;
+  avg?: Avg; open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
@@ -343,6 +345,8 @@ export function parseInsightsUrl(
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
     top: TOPS.find((n) => String(n) === p.get('top')),
     topc: TOPS.find((n) => String(n) === p.get('topc')),
+    recent: TOPS.find((n) => String(n) === p.get('recent')),
+    recentc: TOPS.find((n) => String(n) === p.get('recentc')),
     theme: pickOne(p, 'theme', THEMES),
     drinkers: pickNumber(p, 'drinkers', ...WHATIF_LIMITS.drinkers, true),
     gpp: pickNumber(p, 'gpp', ...WHATIF_LIMITS.gpp),
@@ -402,6 +406,8 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.caffeine) p.set('caffeine', s.caffeine);
   if (s.top) p.set('top', String(s.top));
   if (s.topc) p.set('topc', String(s.topc));
+  if (s.recent) p.set('recent', String(s.recent));
+  if (s.recentc) p.set('recentc', String(s.recentc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
   for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
@@ -503,6 +509,8 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     caffeine: s.caffeine,
     top: s.top,
     topc: s.topc,
+    recent: s.recent,
+    recentc: s.recentc,
     theme: s.theme,
     drinkers: s.drinkers,
     gpp: s.gpp,

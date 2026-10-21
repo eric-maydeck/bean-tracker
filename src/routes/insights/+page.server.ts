@@ -161,7 +161,7 @@ export const load: PageServerLoad = ({ url }) => {
       : null,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
-    recent: s.tab === 'overview' ? recent(brews, bags) : null,
+    recent: s.tab === 'overview' ? recent(brews, bags, 50) : null,
     rightNow: now,
     rightNowDeltas: nowPrev && {
       finished: paceDelta(now.finished, nowPrev.finished, days(period), days(prev!), pace),

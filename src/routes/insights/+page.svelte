@@ -740,7 +740,7 @@
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
   {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}
-  {#if data.recent}<Recent {...data.recent} />{/if}
+  {#if data.recent}<Recent {...data.recent} n={s.recent} nc={s.recentc} {choose} />{/if}
 {/if}
 </div>
 </div>

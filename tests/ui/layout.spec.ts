@@ -2157,12 +2157,63 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel').last()).toHaveClass(/recent/);
       const lists = panel.locator('.board-rows');
       await expect(lists).toHaveCount(2);
-      // Both boards are one height (padded with placeholders).
-      const [a, b] = await lists.evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().height));
-      expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
+      // Stacked: the brews list sits above the finished list.
+      const [a, b] = await lists.evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect()));
+      expect(b.top).toBeGreaterThan(a.bottom - 1);
+      // The seed has more than 10 brews and finished coffees, so each list has a footer with Show more only.
+      await expect(panel.locator('.top-foot')).toHaveCount(2);
+      for (const f of await panel.locator('.top-foot').all()) {
+        await expect(f.getByRole('button', { name: 'Show more' })).toBeVisible();
+        await expect(f.getByRole('button', { name: 'Show less' })).toHaveCount(0);
+      }
       expect(await lists.first().locator('.board-row.bar').count()).toBeGreaterThan(0);
       await expect(lists.first().locator('.board-row.bar a').first()).toHaveAttribute('href', /^\/coffees\//);
       await expectBarHover(page);
+    }
+  },
+  {
+    // Recent expanded: Show less sits left of Show more; rows read row by row in two columns (one on phones).
+    name: 'insights-recent-more',
+    path: () => '/insights?recent=20',
+    act: async (page) => {
+      const panel = page.locator('section.recent');
+      await expect(panel.getByRole('heading', { name: 'Last 20 brews' })).toBeVisible();
+      const foot = panel.locator('.top-foot').first();
+      const [less, more] = await Promise.all(['Show less', 'Show more'].map((n) => foot.getByRole('button', { name: n }).boundingBox()));
+      expect(less!.x).toBeLessThan(more!.x);
+      const li = panel.locator('.board-rows').first().locator('li');
+      const [a, b, c] = await Promise.all([0, 1, 2].map((i) => li.nth(i).boundingBox()));
+      if (page.viewportSize()!.width > 640) {
+        expect(Math.abs(a!.y - b!.y)).toBeLessThanOrEqual(1);
+        expect(b!.x).toBeGreaterThan(a!.x);
+        expect(c!.y).toBeGreaterThan(a!.y + 10);
+        expect(Math.abs(c!.x - a!.x)).toBeLessThanOrEqual(1);
+      } else {
+        expect(b!.y).toBeGreaterThan(a!.y + 10);
+        expect(Math.abs(b!.x - a!.x)).toBeLessThanOrEqual(1);
+      }
+    }
+  },
+  {
+    // Show more / Show less on the brews list scrolls its footer's button to the screen bottom (as Records does).
+    name: 'insights-recent-show-more-scroll',
+    path: () => '/insights',
+    act: async (page) => {
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const lift = () => page.evaluate(() => { const t = document.querySelector('.bottom-tabs'); return t && getComputedStyle(t).display !== 'none' ? t.getBoundingClientRect().height : 0; });
+      const foot = page.locator('section.recent .top-foot').first();
+      const gap = () => foot.getByRole('button').last().evaluate((el) => innerHeight - el.getBoundingClientRect().bottom);
+      const click = async (name: string) => { await foot.evaluate((el) => el.scrollIntoView({ block: 'center' })); const b = (await foot.getByRole('button', { name }).boundingBox())!; await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2); };
+      await click('Show more');
+      await expect(page).toHaveURL(/recent=20/);
+      const l = await lift();
+      await expectClearOfBackToTop(page, foot.getByRole('button').last());
+      const bttUp = async () => ((await page.getByRole('button', { name: 'Back to top' }).count()) ? 64 : 0);
+      await expect.poll(async () => Math.abs((await gap()) - l - (await bttUp()))).toBeLessThanOrEqual(2);
+      await click('Show less');
+      await expect(page).not.toHaveURL(/recent=/);
+      await expectClearOfBackToTop(page, foot.getByRole('button').last());
+      await expect.poll(async () => Math.abs((await gap()) - l - (await bttUp()))).toBeLessThanOrEqual(2);
     }
   },
   {

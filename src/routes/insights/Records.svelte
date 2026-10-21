@@ -10,10 +10,10 @@
   import { clock12 } from '$lib/hours';
   import { DIAL_HELP, RATINGS_LABEL, MON, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
-  import { bottomInView } from '$lib/scrollToBottom';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
+  import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';
 
   let {
@@ -87,8 +87,6 @@
   // tip, placed like placeTip's. A cut line with no link inside gets a tabindex so it can take focus.
   let fullTip = $state<HTMLElement>();
   const cut = (el: HTMLElement) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
-  // The footer holding the Show more / Show less buttons: it outlasts a button the click removes.
-  const listOf = (e: Event) => (e.currentTarget as Element).closest('.top-foot');
   function full(el: HTMLElement) {
     const show = () => {
       if (!fullTip || !cut(el)) return;
@@ -218,13 +216,7 @@
       </li>
     {/each}
   </ol>
-  {#if rows.length > 10}
-    {@const next = n === 50 ? null : n === 20 ? 50 : 20}
-    <div class="top-foot">
-      {#if n}<button class="button button-ghost" onclick={(e) => bottomInView(listOf(e), () => set(n === 50 ? 20 : undefined))}>Show less</button>{/if}
-      {#if next && rows.length > shown.length}<button class="button button-ghost" onclick={(e) => bottomInView(listOf(e), () => set(next))}>Show more</button>{/if}
-    </div>
-  {/if}
+  <ShowMore count={rows.length} {n} {set} />
 {/snippet}
 
 {#if !sections.length}
@@ -319,20 +311,6 @@
   .badge-tip + :global(.hl-caption) {
     margin-top: 0;
     padding-top: var(--space-1);
-  }
-  .top-foot {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-3);
-    padding-top: var(--space-2);
-  }
-  .top-foot button {
-    margin: 0;
-  }
-  @media (max-width: 640px) {
-    .top-foot button {
-      min-height: 44px;
-    }
   }
   .hl-card {
     gap: 0.4rem;
