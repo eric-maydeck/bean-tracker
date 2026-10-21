@@ -805,8 +805,8 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
-      await expect(page.getByRole('heading', { name: 'Drops in 1000 mL' })).toBeVisible();
-      await expect(page.getByRole('row')).toHaveCount(7); // four concentrates, header, GH, KH
+      await expect(page.getByRole('heading', { name: 'Result in 1000 mL' })).toBeVisible();
+      await expect(page.getByRole('row')).toHaveCount(10); // header + six mineral rows, header + GH + KH
       await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
       await expect(page.getByRole('row', { name: /Calcium 0/ })).toBeVisible();
@@ -837,13 +837,82 @@ export const STATES: State[] = [
       await box.fill('725');
       await expect(kettle).toHaveValue('');
       await expect(page).not.toHaveURL(/kettle/);
-      await expect(page.getByRole('heading', { name: 'Drops in 725 mL' })).toBeVisible();
-      expect(['700', '750']).toContain(await slider.inputValue());
+      await expect(page.getByRole('heading', { name: 'Result in 725 mL' })).toBeVisible();
+      expect(await slider.inputValue()).toBe('725'); // typed mL sits exactly, not at a step
+      await box.fill('825');
+      expect(await slider.inputValue()).toBe('825');
+      await slider.focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(box).toHaveValue('850');
+      await box.fill('825');
+      await slider.focus();
+      await page.keyboard.press('ArrowLeft');
+      await expect(box).toHaveValue('800');
+      await slider.evaluate((el: HTMLInputElement) => { el.value = '827'; el.dispatchEvent(new Event('input', { bubbles: true })); });
+      await expect(box).toHaveValue('850'); // dragging snaps to 50
+      await box.fill('725');
       await slider.fill('1200');
       await expect(box).toHaveValue('1200');
-      await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Result in 1200 mL' })).toBeVisible();
       await expectGroupsLabelled(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    }
+  },
+  {
+    // Drops tab: whole-drop inputs -> minerals, GH, KH (880 mL: Mg 3, Ca 1, Na 1, K 1); values ride the URL with mode.
+    name: 'water-mode-drops',
+    path: () => '/water?mode=drops&ml=880&mg=3&ca=1&na=1&k=1',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Drops', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByLabel('Magnesium')).toHaveValue('3');
+      await expect(page.getByRole('row', { name: /^Magnesium 3 / })).toBeVisible();
+      await expect(page.getByRole('row', { name: /^Chloride/ })).toBeVisible();
+      await expect(page.getByRole('row', { name: /^GH 36\.5$/ })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Target' })).toHaveCount(0);
+      await page.getByLabel('Calcium').fill('2');
+      await expect(page).toHaveURL(/ca=2/);
+      await expect(page.getByRole('row', { name: /^Calcium 2 / })).toBeVisible();
+      await expectGroupsLabelled(page);
+    }
+  },
+  {
+    // Target tab: ppm as CaCO3 or mg/L (toggle -> unit=mgl); Mg 32.5 / K 11.25 mg/L at 880 mL -> Mg 15, K 3.
+    name: 'water-mode-target',
+    path: () => '/water?mode=target&unit=mgl&ml=880&mg=32.5&k=11.25',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'mg/L' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('row', { name: /^Magnesium 15 / })).toBeVisible();
+      await expect(page.getByRole('row', { name: /^Potassium 3 / })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: 'Target' })).toBeVisible();
+      await page.getByRole('button', { name: 'ppm as CaCO₃' }).click();
+      await expect(page).toHaveURL(/unit=ppm/);
+      await page.getByRole('button', { name: 'Recipe', exact: true }).click();
+      await expect(page).not.toHaveURL(/mode=|unit=|mg=/);
+      await expectGroupsLabelled(page);
+    }
+  },
+  {
+    // Slider scale: a labelled tick every 100 mL, none overlapping, all inside the slider's box.
+    name: 'water-slider-ticks',
+    path: () => '/water',
+    act: async (page) => {
+      const labels = page.locator('.water-tick-label');
+      await expect(labels).toHaveCount(12);
+      const box = (await page.locator('.water-slider input').boundingBox())!;
+      const rects = await labels.evaluateAll((els) => els.map((e) => e.getBoundingClientRect()).map((r) => ({ l: r.left, r: r.right })));
+      rects.forEach((r, i) => {
+        expect(r.l, `label ${i} inside left`).toBeGreaterThanOrEqual(box.x - 0.5);
+        expect(r.r, `label ${i} inside right`).toBeLessThanOrEqual(box.x + box.width + 0.5);
+        if (i) expect(r.l, `label ${i} clear of the previous`).toBeGreaterThan(rects[i - 1].r);
+      });
+      // The 600 mL tick sits under the thumb when the slider is at 600.
+      await page.getByLabel('Water slider (mL)').fill('600');
+      const thumbX = await page.locator('.water-slider input').evaluate((el: HTMLInputElement) => {
+        const r = el.getBoundingClientRect();
+        return r.left + 10 + ((+el.value - +el.min) / (+el.max - +el.min)) * (r.width - 20);
+      });
+      const tick = (await page.locator('.water-tick-major').nth(5).boundingBox())!;
+      expect(Math.abs(tick.x - thumbX)).toBeLessThan(1.5);
     }
   },
   {
@@ -857,7 +926,7 @@ export const STATES: State[] = [
       const before = (await results.boundingBox())!.height;
       await box.fill('8');
       await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Drops in 900 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Result in 900 mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
       await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
       await expect(page).not.toHaveURL(/recipe=/);
@@ -870,7 +939,7 @@ export const STATES: State[] = [
     path: () => '/water?recipe=HOLY-water&ml=1200',
     act: async (page) => {
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
-      await expect(page.getByRole('heading', { name: 'Drops in 1200 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Result in 1200 mL' })).toBeVisible();
       await expect(page.getByRole('row', { name: /Magnesium 9/ })).toBeVisible();
       await expect(page.locator('.water-table').first()).toBeVisible();
       await gotoReady(page, '/water?kettle=FELLOW-stagg-ekg-pro');

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, dropsFor, hardness, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
+import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, hardness, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -55,9 +55,39 @@ describe('lotus url state', () => {
     expect(new Set(KETTLES.map((k) => k.slug)).size).toBe(KETTLES.length);
     expect(lotusParams({ ml: 880, kettle: 'palatti-enso' }).toString()).toBe('ml=880&kettle=palatti-enso');
   });
+  it('mode, unit and mineral values', () => {
+    expect(parseLotus(p('mode=DROPS&ca=1&mg=3&k=1.5&na=x'))).toEqual({ mode: 'drops', vals: { ca: 1, mg: 3 } });
+    expect(parseLotus(p('mode=target&unit=MGL&mg=32.5&k=11.25'))).toEqual({ mode: 'target', unit: 'mgl', vals: { mg: 32.5, k: 11.25 } });
+    expect(parseLotus(p('mode=target&unit=ppm'))).toEqual({ mode: 'target', unit: 'ppm' }); // explicit default stays
+    expect(parseLotus(p('mode=bogus&mg=3&unit=mgl&recipe=holy-water'))).toEqual({ recipe: 'holy-water' });
+    expect(parseLotus(p('mg=3&unit=mgl'))).toEqual({}); // values ride only with their mode
+    expect(parseLotus(p('mode=drops&recipe=holy-water'))).toEqual({ mode: 'drops' });
+    expect(lotusParams({ mode: 'target', unit: 'mgl', vals: { mg: 32.5, k: 0 } }).toString()).toBe('mode=target&unit=mgl&mg=32.5&k=0');
+  });
   it('round trip', () => {
     expect(lotusParams({ recipe: 'holy-water', ml: 1000 }).toString()).toBe('recipe=holy-water&ml=1000');
     expect(lotusParams({}).toString()).toBe('');
+  });
+});
+
+describe('minerals and targets', () => {
+  it('drops mode: 880 mL Mg 3, Ca 1, Na 1, K 1 from the Basis formulas', () => {
+    const per = 4.5 / (0.56 * 0.88); // ppm GH per drop
+    const m = minerals(d(1, 3, 1, 1), 880);
+    expect(m.gh).toBeCloseTo(4 * per, 6);
+    expect(m.kh).toBeCloseTo((2 * per) / 2, 6);
+    expect(m.ca).toBeCloseTo(per * 0.40078, 6);
+    expect(m.mg).toBeCloseTo(3 * per * 0.24305, 6);
+    expect(m.na).toBeCloseTo(per * 0.22989, 6); // (per/2 KH) x 2 x .22989
+    expect(m.k).toBeCloseTo(per * 0.390983, 6);
+    expect(m.cl).toBeCloseTo(4 * per * 2 * 0.35453, 6);
+    expect(m.hco3).toBeCloseTo(per * 2 * 0.61016, 6);
+  });
+  it('target mode: 880 mL Mg 32.5 mg/L, K 11.25 mg/L -> closest whole drops', () => {
+    const ppm = ppmFromMgl({ ca: 0, mg: 32.5, na: 0, k: 11.25 });
+    expect(ppm.mg).toBeCloseTo(32.5 / 0.24305, 6);
+    expect(ppm.k).toBeCloseTo(11.25 / (2 * 0.390983), 6);
+    expect(dropsFromPpm(ppm, 880)).toEqual(d(0, 15, 0, 3));
   });
 });
 
