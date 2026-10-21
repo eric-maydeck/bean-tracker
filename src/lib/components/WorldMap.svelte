@@ -44,7 +44,7 @@
   let timer: ReturnType<typeof setTimeout> | undefined;
   const keep = () => clearTimeout(timer);
   const close = () => (keep(), (tip = null), (pinned = false));
-  const later = () => ((keep(), (timer = setTimeout(close, 200))));
+  const later = () => ((keep(), (timer = setTimeout(close, 100))));
   onDestroy(keep);
 
   // A tip stays where the pointer entered its country (no re-placing on every move inside it).
