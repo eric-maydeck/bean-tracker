@@ -220,7 +220,7 @@
     <h2>{TITLE[b]}</h2>
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     <div class="board-body">
-      {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap {rows} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
+      {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
       {#if unranked(b)}
         <p class="board-note bag-only"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>
       {:else if !rows.length}

@@ -4340,8 +4340,31 @@ export const STATES: State[] = [
       await expectDataTip(tip);
       await expectTipInView(page, tip);
       await expect(tip.locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
-      await page.locator('.world-map svg').click({ position: { x: 4, y: 4 } }); // outside the globe: the sea
-      await expect(tip).toHaveCount(0);
+      // The tip's link is the Ethiopia list row's own link; the pinned tip takes the click.
+      const link = tip.getByRole('link', { name: 'See coffees' });
+      await expect(link).toHaveAttribute('href', (await page.locator('.board-rows a[href*="origin=Ethiopia"]').first().getAttribute('href'))!);
+      await link.click();
+      await expect(page).toHaveURL(/\/coffees\?status=all&origin=Ethiopia/);
+      await expect(page.getByRole('button', { name: 'All', pressed: true })).toBeVisible();
+    }
+  },
+  {
+    // The page-wide filters ride along on the tip link, as on the list rows.
+    name: 'insights-leaderboards-map-tip-filtered',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews&process=Washed',
+    act: async (page) => {
+      await page.locator('.world-map').scrollIntoViewIfNeeded();
+      const [x, y] = await page.locator('.world-map path[data-iso="ET"]').evaluate((p) => {
+        const path = p as unknown as SVGPathElement;
+        const svg = path.ownerSVGElement!;
+        const pt = svg.createSVGPoint();
+        pt.x = 582; pt.y = 200;
+        const c = pt.matrixTransform(svg.getScreenCTM()!);
+        return [c.x, c.y];
+      });
+      await page.mouse.click(x, y);
+      await expect(page.locator('.cell-tip:popover-open').getByRole('link', { name: 'See coffees' })).toHaveAttribute('href', /processing=/);
     }
   },
   {

@@ -8,13 +8,13 @@
   // `valueLabel`: the Rank by value's name, the tip's last row label.
   let {
     rows, rank, valueText, valueLabel
-  }: { rows: { key: string; label: string; value: number; bags: number }[]; rank: Rank; valueText: (v: number) => string; valueLabel: string } =
+  }: { rows: { key: string; label: string; value: number; bags: number; href?: string }[]; rank: Rank; valueText: (v: number) => string; valueLabel: string } =
     $props();
 
   // Shade by the Rank-by value: a share (value ÷ the top value) for totals and $/g, min → max
   // for ratings, so the map and the list beside it never disagree.
   let byIso = $derived.by(() => {
-    const m = new Map<string, { label: string; rows: TipRow[]; text: string; tone: number }>();
+    const m = new Map<string, { label: string; rows: TipRow[]; text: string; tone: number; href?: string }>();
     if (!rows.length) return m;
     const total = rows.reduce((s, r) => s + r.bags, 0);
     const vals = rows.map((r) => r.value);
@@ -25,7 +25,7 @@
       const tone = rank === 'rating' ? (hi === lo ? 1 : (r.value - lo) / (hi - lo)) : hi > 0 ? r.value / hi : 0;
       const share = `${total ? Math.round((100 * r.bags) / total) : 0}%`;
       const rows: TipRow[] = [['Coffees', `${r.bags}`], ['Share', share], [valueLabel, valueText(r.value)]];
-      m.set(iso, { label: r.label, rows, text: `${r.bags} coffee${r.bags === 1 ? '' : 's'} · ${share} · ${valueText(r.value)}`, tone });
+      m.set(iso, { label: r.label, rows, text: `${r.bags} coffee${r.bags === 1 ? '' : 's'} · ${share} · ${valueText(r.value)}`, tone, href: r.href });
     }
     return m;
   });
@@ -106,7 +106,7 @@
   </svg>
   <span class="tip-anchor" bind:this={anchor} style:left="{tip?.x ?? 0}px" style:top="{tip?.y ?? 0}px"></span>
   {#if tip && anchor}
-    {#key tip.iso}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} /></FloatTip>{/key}
+    {#key tip.iso}<FloatTip {anchor} onclose={close}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if byIso.get(tip.iso)?.href}<a class="tip-link" href={byIso.get(tip.iso)?.href}>See coffees</a>{/if}</FloatTip>{/key}
   {/if}
 </div>
 
@@ -134,6 +134,14 @@
     outline: none;
     stroke: var(--color-accent);
     stroke-width: 2;
+  }
+  /* The tip is pointer-events: none (a hover tip); its link takes clicks once the tip is pinned. */
+  .tip-link {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--color-accent);
+    pointer-events: auto;
+    cursor: pointer;
   }
   .tip-anchor {
     position: absolute;
