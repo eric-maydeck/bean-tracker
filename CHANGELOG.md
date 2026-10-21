@@ -1,3 +1,56 @@
+# [1.81.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.80.0...v1.81.0) (2026-10-21)
+
+
+### Bug Fixes
+
+* **ci:** release job publishes from the release branch, closes [#1](https://github.com/eric-maydeck/bean-tracker/issues/1)
+* **coffees:** filter picker title uses the panel's own font
+* **insights:** drop the column-flow rules the row-wise top lists replaced
+* **insights:** map tip closes 100ms after the mouse leaves
+* **insights:** origin note on top, grind tiles before the last three brew extremes
+* **insights:** overview totals tile values use the ordinary tile value color
+* **insights:** paired tie gaps, proof needs a real sample, no empty tier 3 line
+* **insights:** restore map tip close check, pin short recent list, tidy dead code
+* **insights:** roast nudge uses the t test with the bag as the unit
+* **insights:** show more lands the button above Back to top, never under it
+* **insights:** tab controls render server-side with the bar; tab switch no longer freezes
+* **insights:** tie membership from the bar gap, proof from the paired gap
+* **layout:** navbar width var set on the rail layout, not inside the rail rule
+* **tips:** tips stay in the visible band; test: water waits for the toggle scroll
+* **water:** drop duplicate hardness, name drop inputs by their label, refuse decimal drops
+* **water:** reset on nav, keep results while typing, share button and table a11y
+
+
+### Features
+
+* **coffees:** filter editor back button, more room between counts and scrollbar
+* **coffees:** filter picker column name is a centered bold accent title
+* **coffees:** one list, backlog/open/archive as multi-select status toggles
+* **insights:** clearer records wording, brew extremes home for clock records, origin map note
+* **insights:** early and tie headlines for sweet spots tiles without a winner
+* **insights:** headline the observed tie, badge how sure; tier 3 reads not enough data
+* **insights:** hedge early leaders, thin band line, n in the running ties
+* **insights:** label sweet spots grinder as grind for, name it on the grind card
+* **insights:** leaderboard links follow the rank for status
+* **insights:** like tip shows its inked gap; show more aligns the button's bottom
+* **insights:** map tip stays open under the mouse so its link is clickable
+* **insights:** origin map tip links to its coffees
+* **insights:** per-tab controls float in the sticky filter bar
+* **insights:** right now tiles link to /coffees with the page-wide coffees filter
+* **insights:** shared arrow ends for delta bars, plain tier 3 tip, hover-safe sign ink
+* **insights:** show more / show less on overview recent lists
+* **insights:** show more scrolls the list's bottom into view, top lists fill row by row
+* **insights:** sweet spots tip rows, signed ink, arrow shoulders, tier 3 tip
+* **layout:** navbar aligned with content, back to top, origins filter scrollbar room
+* **water:** copy lotus's drop formula, add lume recipes
+* **water:** design c results with element colors, mg ca na k order, lotus credit
+* **water:** kettle in the url, alphabetical recipes, all four concentrates shown
+* **water:** lotus drop calculator page with kettle picker and slider
+* **water:** recipe, drops and target tabs, minerals in mg/L, slider scale
+* **water:** remember the page state per browser, two columns in phone landscape
+* **water:** reset button, and write the restored state to the url after a full load
+* **water:** two columns on wide screens, narrow column on phones
+
 # [1.80.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.79.1...v1.80.0) (2026-10-19)
 
 
