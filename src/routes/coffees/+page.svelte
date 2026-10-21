@@ -37,11 +37,14 @@
     loadViewState,
     resetView,
     serializeViewState,
+    toggleStatus,
+    litStatuses,
     VIEW_STORAGE_KEY,
     LEGACY_STORAGE_KEYS,
     type CoffeeViewState,
     type CoffeeView,
     type StatusTab,
+    type Status,
     type SortKey,
     type SortDir
   } from '$lib/coffeeViewState';
@@ -83,7 +86,7 @@
   // Untouched layout = width-based default, measured on the client (SSR
   // renders List, as before).
   let widthView = $state<CoffeeView>('list');
-  let filter = $derived<StatusTab>(explicit.status ?? 'backlog');
+  let lit = $derived<StatusTab[]>(explicit.status ?? ['backlog']);
   let query = $derived(explicit.query ?? '');
   let view = $derived<CoffeeView>(explicit.view ?? widthView);
 
@@ -340,7 +343,10 @@
     widthView = defaultViewForWidth(window.innerWidth);
     const fromUrl = fromParams(currentParams(page.url), knownValues());
     try {
-      explicit = isUntouched(fromUrl) ? loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now()) : fromUrl;
+      const saved = loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now());
+      explicit = isUntouched(fromUrl) ? saved : fromUrl;
+      // A linked ?status=all keeps the remembered All-off restore.
+      if (explicit.status?.[0] === 'all' && saved.prev) explicit.prev = saved.prev;
       for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
     } catch {
       // ignore — localStorage may be unavailable (private browsing, etc.)
@@ -382,7 +388,12 @@
     explicit.view = next;
   }
 
-  function setFilter(next: StatusTab) {
+  function tapStatus(tapped: StatusTab) {
+    const allOn = lit[0] === 'all';
+    const next = toggleStatus(lit, tapped, explicit.prev ?? null);
+    // Entering All remembers what was lit; any other result forgets it.
+    if (next[0] === 'all') explicit.prev = allOn ? explicit.prev : (lit as Status[]);
+    else delete explicit.prev;
     explicit.status = next;
   }
 
@@ -391,15 +402,7 @@
     explicit = resetView(explicit);
   }
 
-  let source = $derived(
-    filter === 'backlog'
-      ? data.backlog
-      : filter === 'open'
-        ? data.open
-        : filter === 'archive'
-          ? data.archive
-          : [...data.backlog, ...data.open, ...data.archive]
-  );
+  let source = $derived(litStatuses(explicit.status).flatMap((st) => data[st]));
 
   let coffees = $derived(
     applyFilters(
@@ -644,16 +647,16 @@
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
-      <button aria-pressed={filter === 'backlog'} onclick={() => setFilter('backlog')}>
+      <button aria-pressed={lit.includes('backlog')} onclick={() => tapStatus('backlog')}>
         Backlog ({data.backlog.length})
       </button>
-      <button aria-pressed={filter === 'open'} onclick={() => setFilter('open')}>
+      <button aria-pressed={lit.includes('open')} onclick={() => tapStatus('open')}>
         Open ({data.open.length})
       </button>
-      <button aria-pressed={filter === 'archive'} onclick={() => setFilter('archive')}>
+      <button aria-pressed={lit.includes('archive')} onclick={() => tapStatus('archive')}>
         Archive ({data.archive.length})
       </button>
-      <button aria-pressed={filter === 'all'} onclick={() => setFilter('all')}>All</button>
+      <button aria-pressed={lit[0] === 'all'} onclick={() => tapStatus('all')}>All</button>
     </div>
   </div>
 

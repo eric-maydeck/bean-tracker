@@ -62,7 +62,7 @@ const byRank = (a: BoardRow, b: BoardRow) =>
 const confident = (rank: Rank, avg: Avg) => (rank === 'rating' && avg === 'min3') || (rank === 'like' && avg !== 'raw');
 
 export const listHref = (column: ColumnKey, values: (string | null)[]) =>
-  `/coffees?${toParams({ status: 'all', filters: [{ column, mode: 'any', values }] })}`;
+  `/coffees?${toParams({ status: ['all'], filters: [{ column, mode: 'any', values }] })}`;
 
 function decorate(r: BoardRow, board: Board, bags: readonly BagFact[], sizes: ReadonlyMap<number, number>): BoardRow {
   if (board === 'coffees') {

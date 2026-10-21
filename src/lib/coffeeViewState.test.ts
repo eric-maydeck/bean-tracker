@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toParams, fromParams, isUntouched, resetView, loadViewState, serializeViewState, VIEW_TTL_MS, type CoffeeViewState } from './coffeeViewState';
+import { toParams, fromParams, isUntouched, resetView, loadViewState, serializeViewState, toggleStatus, litStatuses, VIEW_TTL_MS, type CoffeeViewState } from './coffeeViewState';
 import type { Filter } from './coffeeFilters';
 
 const roundTrip = (s: CoffeeViewState, known?: Parameters<typeof fromParams>[1]) =>
@@ -11,7 +11,7 @@ describe('toParams', () => {
     expect(toParams({ query: '', filters: [] }).toString()).toBe('');
   });
   it('writes explicit choices even when they equal a default', () => {
-    const p = toParams({ status: 'backlog', view: 'compact', sort: { key: 'urgency', dir: 'desc' }, filters: [] });
+    const p = toParams({ status: ['backlog'], view: 'compact', sort: { key: 'urgency', dir: 'desc' }, filters: [] });
     expect(p.get('status')).toBe('backlog');
     expect(p.get('view')).toBe('compact');
     expect(p.get('sort')).toBe('urgency.desc');
@@ -39,7 +39,7 @@ describe('toParams', () => {
 describe('fromParams', () => {
   it('round-trips a full state', () => {
     const s: CoffeeViewState = {
-      status: 'archive', query: 'lume coffee', sort: { key: 'roast_date', dir: 'asc' }, view: 'list',
+      status: ['archive'], query: 'lume coffee', sort: { key: 'roast_date', dir: 'asc' }, view: 'list',
       filters: [
         { column: 'origin', mode: 'any', values: [null] },
         { column: 'processing', mode: 'any', values: ['Washed', 'Natural'] },
@@ -59,7 +59,7 @@ describe('fromParams', () => {
   });
   it('accepts case-insensitive keywords', () => {
     const s = fromParams(new URLSearchParams('status=Archive&view=LIST&sort=Roast_Date.DESC&decaf=TRUE'));
-    expect(s.status).toBe('archive');
+    expect(s.status).toEqual(['archive']);
     expect(s.view).toBe('list');
     expect(s.sort).toEqual({ key: 'roast_date', dir: 'desc' });
     expect(s.filters).toEqual([{ column: 'decaf', mode: 'bool', value: true }]);
@@ -74,7 +74,7 @@ describe('fromParams', () => {
 describe('persistence', () => {
   const now = 1_000_000_000_000;
   it('round-trips within the TTL and expires after it', () => {
-    const s: CoffeeViewState = { view: 'cards', status: 'open', filters: [{ column: 'decaf', mode: 'bool', value: false }] };
+    const s: CoffeeViewState = { view: 'cards', status: ['open'], filters: [{ column: 'decaf', mode: 'bool', value: false }] };
     const raw = serializeViewState(s, now);
     expect(loadViewState(raw, now + 1000)).toEqual(s);
     expect(loadViewState(raw, now + VIEW_TTL_MS + 1)).toEqual({ filters: [] });
@@ -114,5 +114,62 @@ describe('resetView', () => {
     const s = fromParams(new URLSearchParams('q=gesha&view=list'));
     expect(toParams(resetView(s)).toString()).toBe('');
     expect(isUntouched(resetView(s))).toBe(true);
+  });
+});
+
+describe('multi-status', () => {
+  const st = (q: string) => fromParams(new URLSearchParams(q)).status;
+  it('reads repeated status params, case-insensitive, in Backlog/Open/Archive order', () => {
+    expect(st('status=Open&status=BACKLOG')).toEqual(['backlog', 'open']);
+    expect(st('status=archive&status=open&status=open')).toEqual(['open', 'archive']);
+  });
+  it('all wins over the others; bad values are ignored', () => {
+    expect(st('status=all&status=open')).toEqual(['all']);
+    expect(st('status=x')).toBeUndefined();
+    expect(st('status=x&status=open')).toEqual(['open']);
+  });
+  it('writes one param per lit status and round-trips', () => {
+    expect(toParams({ status: ['backlog', 'open'], filters: [] }).toString()).toBe('status=backlog&status=open');
+    expect(toParams({ status: ['all'], filters: [] }).toString()).toBe('status=all');
+    expect(roundTrip({ status: ['open', 'archive'], filters: [] })).toEqual({ status: ['open', 'archive'], filters: [] });
+  });
+  it('a v2 remembered single status still loads (no version bump)', () => {
+    const raw = JSON.stringify({ version: 2, lastUsed: 1000, params: 'status=open' });
+    expect(loadViewState(raw, 2000).status).toEqual(['open']);
+  });
+  it('prev is remembered next to params, never in the URL, and only while All is lit', () => {
+    const s: CoffeeViewState = { status: ['all'], prev: ['archive'], filters: [] };
+    expect(toParams(s).toString()).toBe('status=all');
+    expect(JSON.parse(serializeViewState(s, 1000)).prev).toEqual(['archive']);
+    expect(loadViewState(serializeViewState(s, 1000), 2000)).toEqual(s);
+    expect(loadViewState(serializeViewState({ ...s, status: ['open'] }, 1000), 2000).prev).toBeUndefined();
+    const junk = JSON.stringify({ version: 2, lastUsed: 1000, params: 'status=all', prev: ['x', 'open'] });
+    expect(loadViewState(junk, 2000).prev).toEqual(['open']);
+    expect(resetView(s).prev).toEqual(['archive']);
+  });
+});
+
+describe('toggleStatus', () => {
+  it('toggles Backlog/Open/Archive on and off, kept in order', () => {
+    expect(toggleStatus(['backlog'], 'open', null)).toEqual(['backlog', 'open']);
+    expect(toggleStatus(['open', 'archive'], 'backlog', null)).toEqual(['backlog', 'open', 'archive']);
+    expect(toggleStatus(['backlog', 'open'], 'backlog', null)).toEqual(['open']);
+  });
+  it('the last lit status stays on', () => expect(toggleStatus(['open'], 'open', null)).toEqual(['open']));
+  it('three on stay three; they never become All', () =>
+    expect(toggleStatus(['backlog', 'open'], 'archive', null)).toEqual(['backlog', 'open', 'archive']));
+  it('All is exclusive: on lights only All, off restores the earlier selection or Backlog', () => {
+    expect(toggleStatus(['backlog', 'open'], 'all', null)).toEqual(['all']);
+    expect(toggleStatus(['all'], 'all', ['backlog', 'open'])).toEqual(['backlog', 'open']);
+    expect(toggleStatus(['all'], 'all', null)).toEqual(['backlog']);
+  });
+  it('with All on, tapping one status gives just that one', () => expect(toggleStatus(['all'], 'archive', ['open'])).toEqual(['archive']));
+});
+
+describe('litStatuses', () => {
+  it('maps the selection to the lists to show', () => {
+    expect(litStatuses(undefined)).toEqual(['backlog']);
+    expect(litStatuses(['all'])).toEqual(['backlog', 'open', 'archive']);
+    expect(litStatuses(['open', 'archive'])).toEqual(['open', 'archive']);
   });
 });

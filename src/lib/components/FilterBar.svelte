@@ -10,7 +10,7 @@
     coffees
   }: {
     filters: Filter[];
-    coffees: CoffeeWithComputed[]; // current status tab, for the "Is any of" counts
+    coffees: CoffeeWithComputed[]; // lit statuses, for the "Is any of" counts
   } = $props();
 
   // 'new' = the "+ Filter" picker; a column key = that chip's editor.

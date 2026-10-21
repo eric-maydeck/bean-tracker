@@ -1,3 +1,4 @@
+import { pickMany } from './pageUrlState';
 import { COLUMNS, isComplete, isValidFilter, normalizeFilter, upsertFilter, type ColumnKey, type Filter, type Op } from './coffeeFilters';
 
 // The Coffees page's shareable view state. Only explicit choices are kept:
@@ -7,6 +8,8 @@ import { COLUMNS, isComplete, isValidFilter, normalizeFilter, upsertFilter, type
 // reach a URL.
 export const STATUS_TABS = ['backlog', 'open', 'archive', 'all'] as const;
 export type StatusTab = (typeof STATUS_TABS)[number];
+export const STATUSES = ['backlog', 'open', 'archive'] as const;
+export type Status = (typeof STATUSES)[number];
 export const VIEWS = ['cards', 'list', 'compact'] as const;
 export type CoffeeView = (typeof VIEWS)[number];
 export const SORT_KEYS = [
@@ -17,7 +20,11 @@ export type SortKey = (typeof SORT_KEYS)[number];
 export type SortDir = 'asc' | 'desc';
 
 export interface CoffeeViewState {
-  status?: StatusTab;
+  // ['all'] or a non-empty subset of STATUSES in order; undefined = untouched (Backlog).
+  status?: StatusTab[];
+  // The selection before All was tapped, so All-off can restore it. Remembered
+  // with the view state but never in the URL (toParams ignores it).
+  prev?: Status[];
   query?: string;
   sort?: { key: SortKey; dir: SortDir };
   view?: CoffeeView;
@@ -57,7 +64,7 @@ function encodeFilter(f: Filter): string[] {
 
 export function toParams(s: CoffeeViewState): URLSearchParams {
   const p = new URLSearchParams();
-  if (s.status) p.set('status', s.status);
+  for (const v of s.status ?? []) p.append('status', v);
   if (s.query) p.set('q', s.query);
   if (s.sort) p.set('sort', `${s.sort.key}.${s.sort.dir}`);
   if (s.view) p.set('view', s.view);
@@ -113,8 +120,8 @@ function decodeFilter(key: ColumnKey, raw: string[], known: string[] | undefined
 
 export function fromParams(p: URLSearchParams, known: Partial<Record<ColumnKey, string[]>> = {}): CoffeeViewState {
   const s: CoffeeViewState = { filters: [] };
-  const status = oneOf(STATUS_TABS, p.get('status'));
-  if (status) s.status = status;
+  const status = pickMany(p, 'status', STATUS_TABS);
+  if (status) s.status = status.includes('all') ? ['all'] : status;
   const q = p.get('q');
   if (q) s.query = q;
   const view = oneOf(VIEWS, p.get('view'));
@@ -138,9 +145,22 @@ export function fromParams(p: URLSearchParams, known: Partial<Record<ColumnKey, 
   return s;
 }
 
-// Reset clears everything but the status tab (Open/Archive/All stay put).
+// Reset clears everything but the status selection (and its All-off restore).
 export function resetView(s: CoffeeViewState): CoffeeViewState {
-  return s.status ? { filters: [], status: s.status } : { filters: [] };
+  return s.status ? { filters: [], status: s.status, ...(s.prev && { prev: s.prev }) } : { filters: [] };
+}
+
+// A tap on a status button. All is exclusive (off restores `prev`, else Backlog);
+// the last lit status stays on.
+export function toggleStatus(lit: StatusTab[], tapped: StatusTab, prev: Status[] | null): StatusTab[] {
+  if (tapped === 'all') return lit[0] === 'all' ? (prev?.length ? prev : ['backlog']) : ['all'];
+  const on = lit[0] === 'all' ? [] : lit;
+  const next = on.includes(tapped) ? on.filter((x) => x !== tapped) : [...on, tapped];
+  return next.length ? STATUS_TABS.filter((x) => next.includes(x)) : lit[0] === 'all' ? [tapped] : lit;
+}
+
+export function litStatuses(status: StatusTab[] | undefined): Status[] {
+  return !status ? ['backlog'] : status[0] === 'all' ? [...STATUSES] : (status as Status[]);
 }
 
 export function isUntouched(s: CoffeeViewState): boolean {
@@ -171,9 +191,12 @@ export function loadViewState(raw: string | null, now: number): CoffeeViewState 
   if (typeof saved.lastUsed !== 'number' || now - saved.lastUsed > VIEW_TTL_MS) return empty;
   // Re-validate through the URL codec so saved and linked state share one gate.
   const p = typeof saved.params === 'string' ? new URLSearchParams(saved.params) : new URLSearchParams();
-  return fromParams(p);
+  const out = fromParams(p);
+  const prev = Array.isArray(saved.prev) ? STATUSES.filter((x) => (saved.prev as unknown[]).includes(x)) : [];
+  if (out.status?.[0] === 'all' && prev.length) out.prev = prev;
+  return out;
 }
 
 export function serializeViewState(s: CoffeeViewState, now: number): string {
-  return JSON.stringify({ version: VIEW_STATE_VERSION, params: toParams(s).toString(), lastUsed: now });
+  return JSON.stringify({ version: VIEW_STATE_VERSION, params: toParams(s).toString(), lastUsed: now, ...(s.prev && { prev: s.prev }) });
 }

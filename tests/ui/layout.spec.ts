@@ -559,6 +559,62 @@ const BAR_GAPS = `() => { const cx=document.createElement('canvas').getContext('
  return rows.slice(1).map((r,i)=>Math.round((r.top-rows[i].bottom)*10)/10); }`;
 
 export const STATES: State[] = [
+  // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
+  { name: 'coffees-status-multi', path: () => '/coffees?status=backlog&status=open&view=cards',
+    act: async (page) => {
+      const pressed = async (n: string) => page.getByRole('button', { name: n }).first().getAttribute('aria-pressed');
+      expect([await pressed('Backlog'), await pressed('Open'), await pressed('Archive'), await pressed('All')]).toEqual(['true', 'true', 'false', 'false']);
+      await expect(page.locator('.badge', { hasText: /^Open$/ }).first()).toBeVisible();
+      await expect(page.locator('.badge', { hasText: /^Archive$/ })).toHaveCount(0);
+      // Backlog cards (no badge) sit beside the Open ones.
+      expect(await page.locator('h2 a[href^="/coffees/"]').count()).toBeGreaterThan(await page.locator('.badge', { hasText: /^Open$/ }).count());
+    } },
+  { name: 'coffees-status-toggle', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=list',
+    act: async (page) => {
+      const tap = async (n: string) => {
+        const btn = page.getByRole('button', { name: n }).first();
+        await btn.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+        const b = (await btn.boundingBox())!;
+        await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      };
+      const pressed = (n: string) => page.getByRole('button', { name: n }).first();
+      await tap('All');
+      await expect(page).toHaveURL(/status=all(&|$)/);
+      await expect(pressed('All')).toHaveAttribute('aria-pressed', 'true');
+      for (const n of ['Backlog', 'Open', 'Archive']) await expect(pressed(n)).toHaveAttribute('aria-pressed', 'false');
+      await tap('All');
+      await expect(page).toHaveURL(/status=backlog&status=open/);
+      await tap('Open');
+      await tap('Backlog'); // the last lit status stays on
+      await expect(pressed('Backlog')).toHaveAttribute('aria-pressed', 'true');
+      await expect(page).toHaveURL(/status=backlog(&|$)/);
+      expect(page.url()).not.toContain('status=open');
+    } },
+  { name: 'coffees-status-remembered', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=list',
+    act: async (page) => {
+      await gotoReady(page, '/insights');
+      await gotoReady(page, '/coffees');
+      await expect(page).toHaveURL(/status=backlog&status=open/);
+    } },
+  // All-off restores the earlier selection even after leaving /coffees (kept in the remembered state, not the URL).
+  { name: 'coffees-status-all-restore', viewports: 'two', path: () => '/coffees?status=archive&view=list',
+    act: async (page) => {
+      const tap = async (n: string) => {
+        const btn = page.getByRole('button', { name: n }).first();
+        await btn.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+        const b = (await btn.boundingBox())!;
+        await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+      };
+      await tap('All');
+      await expect(page).toHaveURL(/status=all(&|$)/);
+      await gotoReady(page, '/insights');
+      await gotoReady(page, '/coffees');
+      await expect(page).toHaveURL(/status=all(&|$)/);
+      expect(page.url()).not.toContain('prev');
+      await tap('All');
+      await expect(page).toHaveURL(/status=archive(&|$)/);
+      expect(page.url()).not.toContain('status=all');
+    } },
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
   {
