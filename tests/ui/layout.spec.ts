@@ -4718,7 +4718,7 @@ export const STATES: State[] = [
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg).toBeVisible();
       await expect(dlg.getByRole('heading', { name: 'ZP6 Special' })).toBeVisible();
-      await expect(dlg.locator('.trophy-details')).toBeVisible();
+      await expect(dlg.locator('.stat-grid').last()).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
       // Inside the screen; the close button is a 44px target.
       const box = (await dlg.boundingBox())!, vp = page.viewportSize()!;
@@ -4729,7 +4729,7 @@ export const STATES: State[] = [
       expect(close.width).toBeGreaterThanOrEqual(43.5);
       expect(close.height).toBeGreaterThanOrEqual(43.5);
       // The facts fill their rows: every fact in a row is stretched to the row's right edge.
-      const rows = await dlg.locator('.trophy-details > div').evaluateAll((els) => {
+      const rows = await dlg.locator('.stat-grid .stat').evaluateAll((els) => {
         const byTop = new Map<number, DOMRect[]>();
         for (const e of els) { const r = e.getBoundingClientRect(); byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]); }
         const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
@@ -4797,22 +4797,6 @@ export const STATES: State[] = [
       await expect(page).not.toHaveURL(/grinder=/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
     } },
-  // TEMP: remove after the user picks a style.
-  { name: 'insights-trophy-style-latch', viewports: 'two', path: () => '/insights?tab=gear&trophystyle=b',
-    act: async (page) => {
-      await expect(page.locator('[data-section="gear-trophies"].ts-b')).toHaveCount(1);
-      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
-      await expect(page).toHaveURL(/card=dripper-v60/);
-      await expect(page).not.toHaveURL(/trophystyle/);
-      await expect(page.locator('[data-section="gear-trophies"].ts-b')).toHaveCount(1);
-    } },
-  ...(['a', 'b', 'c'] as const).map((st) => ({ name: `insights-trophy-style-${st}`, viewports: 'two' as const, path: () => `/insights?tab=gear&trophystyle=${st}&card=dripper-v60`,
-    act: async (page: Page) => {
-      await expectGridRowsFull(page, '.trophy-grid');
-      if (SHOTS) await page.screenshot({ path: `.ui-test/screenshots/trophy-style-${st}-open-${page.viewportSize()!.width}.png` });
-      await page.locator('dialog.trophy-dialog').getByRole('button', { name: 'Close' }).click();
-      await expectGridRowsFull(page, '.trophy-grid');
-    } })),
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {
       for (const h of ['Ratings by dripper', 'Ratings by filter', 'Filters within each dripper', 'Dripper × roast level', 'Gear usage over time'])

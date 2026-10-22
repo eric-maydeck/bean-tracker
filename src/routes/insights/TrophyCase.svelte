@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { page } from '$app/state';
   import Icon from '$lib/components/Icon.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, shownTrophies } from '$lib/gear';
+  import { KIND_LABEL, shownTrophies } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
@@ -16,19 +15,11 @@
     choose: (c: InsightsUrlState) => void; placeTip: (e: ToggleEvent) => void;
   } = $props();
 
-  // TEMP: remove after the user picks a style. Preview-only, read from the URL once on mount (choose() rebuilds the
-  // query without it, so re-reading would snap back to a), never in the parser or URL state.
-  const picked = page.url.searchParams.get('trophystyle') ?? '';
-  let style = $state(['a', 'b', 'c'].includes(picked) ? picked : 'a');
-
   let shown = $derived(shownTrophies(list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
-  // Each kind's brews ranking (1 = most), for the medals.
-  let rank = $derived(new Map(GEAR_KINDS.flatMap((k) => list.filter((t) => t.kind === k).sort((a, b) => b.brews - a.brews).map((t, i) => [t.key, i + 1] as const))));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
-  const MEDAL = ['', 'gold', 'silver', 'bronze'];
 
   let dlg: HTMLDialogElement | undefined = $state();
   // The URL is the state: the dialog follows `card`, and its own closes (✕, Esc, backdrop) clear it.
@@ -48,7 +39,7 @@
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
-    <span class="fig fig-brews"><b>{t.brews}</b><i>{t.brews === 1 ? 'brew' : 'brews'}</i></span>
+    <span class="fig fig-brews"><b class="hl-value">{t.brews}</b><i>{t.brews === 1 ? 'brew' : 'brews'}</i></span>
     <span class="fig fig-grams"><b>{formatGrams(t.grams)}</b><i>brewed</i></span>
     <span class="fig fig-avg">
       {#if t.rating === null}<b class="none">None</b><i>ratings</i>{:else}<b>{t.rating.toFixed(1)}</b><i>avg</i>{/if}
@@ -60,7 +51,6 @@
 {#snippet img(t: Trophy)}
   <div class="trophy-img" style:--fill={backdrop(null)}>
     <Icon name="gear" />
-    {#if rank.get(t.key)! <= 3}<span class="medal {MEDAL[rank.get(t.key)!]}" aria-label="Number {rank.get(t.key)} {t.kind} by brews">#{rank.get(t.key)}</span>{/if}
   </div>
 {/snippet}
 
@@ -69,7 +59,7 @@
   <div class="trophy-grid hl-grid" class:retired>
     {#each items as t, i (t.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="hl-card trophy-card" class:top={rank.get(t.key)! <= 3} data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
+      <div class="hl-card trophy-card" data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
         {@render img(t)}
         <div class="trophy-main">
           <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
@@ -82,7 +72,7 @@
 {/snippet}
 
 {#if list.length}
-  <section class="chart-panel ts-{style}" data-section="gear-trophies">
+  <section class="chart-panel" data-section="gear-trophies">
     <LabHead id="gear-trophies" title="Trophy case" {placeTip}
       help={["Every piece of gear you've brewed with, all time.", 'Ignores Period, Ratings, Brews and the other filters; Dripper, Filter and Grinder each pick one card of their own kind.',
         'Average: every rated brew.', 'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
@@ -101,29 +91,38 @@
       onclick={(e) => e.target === dlg && dlg.close()}>
       {#if current}
         {@const t = current}
-        <div class="trophy-sheet" class:top={rank.get(t.key)! <= 3}>
-          <header class="trophy-head">
-            <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
-            <button type="button" class="trophy-close" aria-label="Close" onclick={() => dlg?.close()}>✕</button>
-          </header>
-          <div class="trophy-body">
-            <div class="trophy-hero">
-              {@render img(t)}
-              <div class="trophy-main">
-                <h3 id="trophy-title" class="trophy-name">{t.name}</h3>
-                {@render figs(t)}
+        <div class="trophy-sheet">
+          <button type="button" class="trophy-close" aria-label="Close" onclick={() => dlg?.close()}>✕</button>
+          <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
+          <article class="detail trophy-detail">
+            <div class="detail-media">{@render img(t)}</div>
+            <div class="detail-body">
+              <div class="detail-header">
+                <h2 id="trophy-title" class="trophy-name">{t.name}
+                  <span class="badge badge-neutral">{KIND_LABEL[t.kind]}</span>
+                  {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
+                </h2>
               </div>
+              <div class="stat-grid">
+                <div class="stat"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
+                <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
+                <div class="stat"><span class="stat-label">Average</span>
+                  <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
+                {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
+              </div>
+              <section class="detail-section">
+                <h3>Usage</h3>
+                <div class="stat-grid">
+                  {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
+                  <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
+                  <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
+                  <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
+                  <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
+                  {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
+                </div>
+              </section>
             </div>
-            <dl class="trophy-details">
-              {#if t.favorite}<div><dt>{withLabel(t)}</dt><dd>{t.favorite.name} ({t.favorite.brews})</dd></div>{/if}
-              <div><dt>First used</dt><dd>{formatDate(t.firstUsed)}</dd></div>
-              <div><dt>Last used</dt><dd>{formatDate(t.lastUsed)}</dd></div>
-              <div><dt>Bags</dt><dd>{t.bags}</dd></div>
-              <div><dt>Days brewed</dt><dd>{t.days}</dd></div>
-              {#if t.best !== null}<div><dt>Best rating</dt><dd>{t.best.toFixed(1)}</dd></div>{/if}
-              {#if t.retired}<div><dt>Retired</dt><dd>{reason(t)}</dd></div>{/if}
-            </dl>
-          </div>
+          </article>
         </div>
       {/if}
     </dialog>
@@ -131,17 +130,15 @@
 {/if}
 
 <style>
-  /* ---- shared ---- */
+  /* Collapsed card: a kind-colored top edge and brew count (the number is the insights tiles' .hl-value), small figures under it. */
   .trophy-card {
     cursor: pointer;
     align-items: stretch;
     padding: var(--space-2);
-    --medal: var(--series-other);
-    --medal-ink: var(--series-other-ink);
+    border-top: 4px solid var(--kc);
   }
   /* The picture box takes the card's spare height, so the card has no hole (Part 2 puts the photo in it). */
   .trophy-img {
-    position: relative;
     flex: 1 1 auto;
     min-height: 4.5rem;
     display: grid;
@@ -154,23 +151,6 @@
     width: 2.5rem;
     height: 2.5rem;
   }
-  .medal {
-    position: absolute;
-    top: 0.3rem;
-    left: 0.3rem;
-    display: none;
-    padding: 0 0.4rem;
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    line-height: 1.5;
-    color: var(--medal-ink);
-    background: color-mix(in srgb, var(--medal) 55%, #fff);
-    border: 1px solid var(--medal-ink);
-  }
-  .medal.gold { --medal: var(--series-4); --medal-ink: var(--series-4-ink); }
-  .medal.silver { --medal: var(--series-other); --medal-ink: var(--series-other-ink); }
-  .medal.bronze { --medal: var(--series-brown-2); --medal-ink: var(--series-brown-2-ink); }
   .trophy-main {
     display: flex;
     flex-direction: column;
@@ -207,10 +187,10 @@
     outline-offset: 2px;
   }
   .trophy-figs {
-    display: flex;
-    justify-content: center;
-    align-items: flex-end;
-    gap: var(--space-3);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: var(--space-3);
+    justify-items: center;
     font-variant-numeric: tabular-nums;
   }
   .fig {
@@ -219,8 +199,18 @@
     align-items: center;
     line-height: 1.15;
   }
+  .fig-brews {
+    grid-column: 1 / -1;
+  }
+  .fig-brews b {
+    margin-top: 0;
+    color: var(--kc-ink);
+  }
   .fig b {
     font-size: 1rem;
+  }
+  .fig-brews b.hl-value {
+    font-size: min(2rem, 15cqw / var(--q, 2));
   }
   .fig i {
     font-style: normal;
@@ -234,88 +224,8 @@
     font-weight: 500;
   }
   .trophy-card :global(.sample-note) {
-    align-self: center;
-  }
-
-  /* ---- A: scoreboard: a big serif brew count, small-caps figures, a kind-colored top edge ---- */
-  .ts-a .trophy-card {
-    border-top: 4px solid var(--kc);
-  }
-  .ts-a .trophy-figs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: var(--space-3);
-    justify-items: center;
-  }
-  .ts-a .fig-brews {
+    justify-self: center;
     grid-column: 1 / -1;
-  }
-  .ts-a .fig-brews b {
-    font-family: var(--font-display);
-    font-size: 2.1rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--kc-ink);
-  }
-
-  /* ---- B: color blocks: a kind-tinted picture box, a kind pill, figures in ruled columns ---- */
-  .ts-b .trophy-img {
-    background: color-mix(in srgb, var(--kc) 55%, #fff);
-    color: var(--kc-ink);
-  }
-  .ts-b .trophy-kind {
-    padding: 0.1rem 0.55rem;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--kc) 30%, transparent);
-  }
-  .ts-b .trophy-figs {
-    width: 100%;
-    gap: 0;
-    align-items: stretch;
-    border-top: 1px solid var(--color-border);
-    padding-top: 0.35rem;
-  }
-  .ts-b .fig {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .ts-b .fig + .fig {
-    border-left: 1px solid var(--color-border);
-  }
-  .ts-b .fig b {
-    font-size: 1.15rem;
-    font-weight: 700;
-  }
-
-  /* ---- C: medals: the top 3 per kind carry a gold / silver / bronze ring and rank; cards tinted by kind; serif names ---- */
-  .ts-c .trophy-card {
-    background: color-mix(in srgb, var(--kc) 12%, var(--color-bg));
-  }
-  .ts-c .trophy-card.top {
-    border: 2px solid var(--medal-ink);
-  }
-  :is(.trophy-card, .trophy-sheet):has(.medal.gold) { --medal-ink: var(--series-4-ink); }
-  :is(.trophy-card, .trophy-sheet):has(.medal.silver) { --medal-ink: var(--series-other-ink); }
-  :is(.trophy-card, .trophy-sheet):has(.medal.bronze) { --medal-ink: var(--series-brown-2-ink); }
-  .ts-c .medal {
-    display: inline-block;
-  }
-  .ts-c .trophy-toggle,
-  .ts-c .trophy-name {
-    font-family: var(--font-display);
-    font-weight: 700;
-  }
-  .ts-c .trophy-figs {
-    flex-wrap: wrap;
-    gap: 0 var(--space-3);
-  }
-  .ts-c .fig-avg {
-    order: -1;
-  }
-  .ts-c .fig-avg b {
-    font-size: 1.6rem;
-    line-height: 1;
-    color: var(--kc-ink);
   }
 
   /* ---- Retired shelf ---- */
@@ -344,9 +254,9 @@
     margin-top: var(--space-1);
   }
 
-  /* ---- The open card: the site's dialog pattern (Image Suggest): a centered box, a full-screen sheet on phones ---- */
+  /* ---- The open card: the site's dialog (Image Suggest's frame) holding the coffee page's layout and type ---- */
   .trophy-dialog {
-    width: min(40rem, 100% - 2rem);
+    width: min(48rem, 100% - 2rem);
     max-height: calc(100dvh - 2rem);
     padding: 0;
     border: 1px solid var(--color-border);
@@ -361,21 +271,18 @@
     background: rgb(0 0 0 / 0.45);
   }
   .trophy-sheet {
-    display: flex;
+    position: relative;
     flex: 1;
-    flex-direction: column;
     min-width: 0;
-    min-height: 0;
+    overflow-y: auto;
+    padding: var(--space-4);
     border-top: 4px solid var(--kc);
-    --medal-ink: var(--series-other-ink);
-  }
-  .trophy-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 var(--space-2) 0 var(--space-4);
   }
   .trophy-close {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    z-index: 1;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
@@ -386,100 +293,55 @@
     font-size: 1.2rem;
     cursor: pointer;
   }
-  .trophy-body {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 0 var(--space-4) var(--space-4);
+  .trophy-detail {
+    margin-top: 0;
   }
-  .trophy-hero {
-    display: flex;
-    align-items: stretch;
-    gap: var(--space-4);
+  /* The coffee page's image frame (.detail-media img): square on the picture's backdrop, border and shadow. */
+  .trophy-detail .trophy-img {
+    aspect-ratio: 1;
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow);
   }
-  .trophy-hero .trophy-img {
-    flex: 0 0 10rem;
-    min-height: 10rem;
-  }
-  .trophy-hero .trophy-img :global(svg) {
-    width: 4rem;
-    height: 4rem;
-  }
-  .trophy-hero .trophy-main {
-    flex: 1;
-    align-items: flex-start;
-    justify-content: center;
-    gap: var(--space-2);
+  .trophy-detail .trophy-img :global(svg) {
+    width: 3.5rem;
+    height: 3.5rem;
   }
   .trophy-name {
     margin: 0;
-    font-size: 1.5rem;
+    padding-right: 2.5rem;
     overflow-wrap: anywhere;
   }
-  .trophy-hero .trophy-figs {
-    gap: var(--space-4);
-  }
-  .trophy-hero .fig b {
-    font-size: 1.5rem;
-  }
-  /* The facts wrap and stretch: every row is full, no orphaned empty cell. */
-  .trophy-details {
+  /* Facts wrap and stretch: every row is full, no orphaned empty cell (the coffee page's auto-fill grid leaves holes). */
+  .trophy-detail .stat-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 var(--space-4);
-    margin: var(--space-4) 0 0;
   }
-  .trophy-details div {
-    flex: 1 1 9rem;
-    padding: 0.4rem 0;
-    border-top: 1px solid var(--color-border);
+  .trophy-detail .stat {
+    flex: 1 1 8.5rem;
+    min-width: 0;
   }
-  .trophy-details dt {
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-  }
-  .trophy-details dd {
-    margin: 0;
+  .trophy-detail .stat-value {
     overflow-wrap: anywhere;
   }
-  .ts-b .trophy-dialog .trophy-img {
-    background: color-mix(in srgb, var(--kc) 55%, #fff);
-    color: var(--kc-ink);
-  }
-  .ts-c .trophy-dialog .trophy-sheet {
-    background: color-mix(in srgb, var(--kc) 12%, var(--color-surface));
-  }
-  .ts-c .trophy-dialog .trophy-sheet.top {
-    border-top-color: var(--medal-ink);
-  }
   @media (max-width: 640px) {
-    /* A near-full-width sheet that is only as tall as its content (a full-height one is mostly empty), scrolling when taller than the screen. */
+    /* A near-full-width sheet only as tall as its content; the square picture is capped so the facts stay in reach. */
     .trophy-dialog {
       width: calc(100% - 1rem);
       max-height: calc(100dvh - 1rem);
     }
-    .trophy-hero {
-      flex-direction: column;
-    }
-    .trophy-hero .trophy-img {
-      flex: 0 0 auto;
-      min-height: 7rem;
-    }
-    .trophy-hero .trophy-main {
-      align-items: center;
+    .trophy-detail .detail-media {
+      width: min(100%, 11rem);
+      margin-inline: auto;
     }
   }
-  /* Phone landscape (333px tall): picture beside the text, so the facts need less scrolling. */
-  @media (max-width: 640px) and (max-height: 500px) {
-    .trophy-hero {
-      flex-direction: row;
+  /* Phone landscape (333px tall): picture beside the facts. */
+  @media (max-width: 1100px) and (max-height: 500px) {
+    .trophy-detail {
+      grid-template-columns: 8rem 1fr;
+      gap: var(--space-3);
     }
-    .trophy-hero .trophy-img {
-      flex: 0 0 8rem;
-      min-height: 0;
-    }
-    .trophy-hero .trophy-main {
-      align-items: flex-start;
+    .trophy-detail .detail-media {
+      width: auto;
     }
   }
 </style>
