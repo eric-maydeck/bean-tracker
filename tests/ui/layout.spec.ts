@@ -4708,7 +4708,7 @@ export const STATES: State[] = [
   { name: 'insights-trophy', path: () => '/insights?tab=gear',
     act: async (page) => {
       const sec = page.locator('[data-section="gear-trophies"]');
-      await expect(sec.getByRole('heading', { name: 'Trophy case' })).toBeVisible();
+      await expect(sec.getByRole('heading', { name: 'Gear showcase' })).toBeVisible();
       await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
       await expectGridRowsFull(page, '.trophy-grid');

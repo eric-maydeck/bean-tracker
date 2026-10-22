@@ -39,13 +39,15 @@
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
-    <span class="fig fig-brews"><b class="hl-value">{t.brews}</b><i>{t.brews === 1 ? 'brew' : 'brews'}</i></span>
-    <span class="fig fig-grams"><b>{formatGrams(t.grams)}</b><i>brewed</i></span>
     <span class="fig fig-avg">
-      {#if t.rating === null}<b class="none">None</b><i>ratings</i>{:else}<b>{t.rating.toFixed(1)}</b><i>avg</i>{/if}
+      {#if t.rating === null}<b class="none">No ratings</b>{:else}<b class="hl-value">{t.rating.toFixed(1)}</b><i>avg</i>{/if}
+    </span>
+    {#if t.rating !== null && t.sample.small}<SampleNote s={t.sample} />{/if}
+    <span class="fig-row">
+      <span class="fig"><b>{t.brews}</b><i>{t.brews === 1 ? 'brew' : 'brews'}</i></span>
+      <span class="fig"><b>{formatGrams(t.grams)}</b><i>brewed</i></span>
     </span>
   </div>
-  {#if t.rating !== null && t.sample.small}<SampleNote s={t.sample} />{/if}
 {/snippet}
 
 {#snippet img(t: Trophy)}
@@ -73,7 +75,7 @@
 
 {#if list.length}
   <section class="chart-panel" data-section="gear-trophies">
-    <LabHead id="gear-trophies" title="Trophy case" {placeTip}
+    <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
       help={["Every piece of gear you've brewed with, all time.", 'Ignores Period, Ratings, Brews and the other filters; Dripper, Filter and Grinder each pick one card of their own kind.',
         'Average: every rated brew.', 'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
     {#if shown.active.length}{@render grid(shown.active, false)}{/if}
@@ -178,7 +180,12 @@
     overflow: hidden;
     align-content: center;
     overflow-wrap: anywhere;
-    font-weight: 600;
+    /* The card's headline: the display serif the site's headings use, bigger and bolder than the figures. */
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.2;
+    max-height: max(44px, 2.4em); /* two lines, never a third peeking through */
     text-align: center;
   }
   .trophy-toggle:focus-visible,
@@ -187,10 +194,11 @@
     outline-offset: 2px;
   }
   .trophy-figs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: var(--space-3);
-    justify-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    width: 100%;
     font-variant-numeric: tabular-nums;
   }
   .fig {
@@ -199,18 +207,16 @@
     align-items: center;
     line-height: 1.15;
   }
-  .fig-brews {
-    grid-column: 1 / -1;
-  }
-  .fig-brews b {
+  /* The headline: the average, in the insights tiles' .hl-value and the kind color. */
+  .fig-avg b.hl-value {
     margin-top: 0;
     color: var(--kc-ink);
   }
   .fig b {
     font-size: 1rem;
   }
-  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the headline count keeps .hl-value's size. */
-  .fig-brews b.hl-value {
+  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the headline keeps .hl-value's size. */
+  .fig-avg b.hl-value {
     font-size: min(2rem, 15cqw / var(--q, 2));
   }
   .fig i {
@@ -223,10 +229,20 @@
   .fig .none {
     color: var(--color-text-muted);
     font-weight: 500;
+    font-size: 0.85rem;
+  }
+  /* Brews left, grams right, under a rule: the room between them and the headline is the card's breathing space. */
+  .fig-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: var(--space-2);
+    padding: var(--space-2) var(--space-2) 0;
+    border-top: 1px solid var(--color-border);
+    box-sizing: border-box;
   }
   .trophy-card :global(.sample-note) {
-    justify-self: center;
-    grid-column: 1 / -1;
+    align-self: center;
   }
 
   /* ---- Retired shelf ---- */
@@ -306,6 +322,11 @@
   .trophy-detail .trophy-img :global(svg) {
     width: 3.5rem;
     height: 3.5rem;
+  }
+  /* The kind badge in the card's kind color (light tint, kind ink). */
+  .trophy-name .badge {
+    background: color-mix(in srgb, var(--kc) 22%, transparent);
+    color: var(--kc-ink);
   }
   .trophy-name {
     margin: 0;
