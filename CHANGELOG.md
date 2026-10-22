@@ -1,3 +1,22 @@
+# [1.84.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.83.0...v1.84.0) (2026-10-22)
+
+
+### Bug Fixes
+
+* **insights:** keep the space before the dashed-gaps note
+* **insights:** over time fills the list's card height, show all adds every group's line
+* **insights:** show all and over time toggles apply in place, charts rebuild only on changed data
+* **insights:** show all in over time keeps the card's height, only list cards start the band
+
+
+### Features
+
+* **insights:** board jump links, view switch on small boards, ui states
+* **insights:** board views url state, over-time series, bars and over-time on small boards
+* **insights:** boards open independently, over time never stretches, per-line dash check
+* **insights:** drop bars view, expand toggle for over time, dashed gaps across no-data periods
+* **insights:** over time starts at the calibration date under calibrated ratings
+
 # [1.83.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.82.0...v1.83.0) (2026-10-22)
 
 
