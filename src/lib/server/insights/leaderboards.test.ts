@@ -333,3 +333,22 @@ describe('pageFilters', () => {
     expect(pageFilters({}, [])).toEqual([]);
   });
 });
+
+describe('brew filters: a board skips its own dimension', () => {
+  const mk = (dripper: string, water: string, roaster: string, n: number) => Array.from({ length: n }, () => brew({ dripper, water, roaster, rating: 8 }));
+  const all = [...mk('V60', 'W1', 'Sey', 3), ...mk('V60', 'W2', 'Moonwake', 2), ...mk('Origami', 'W1', 'Sey', 4), ...mk('Origami', 'W2', 'Moonwake', 5)];
+  const bf = { dripper: 'V60', water: 'W1' };
+  const counts = (rows: BoardRow[]) => Object.fromEntries(rows.map((r) => [r.label, r.value]));
+  const boards = leaderboards(all, [bag({ id: 1 })], SEPT, null, 'brews', 'current', undefined, 1, bf);
+  it('leaderboards', () => {
+    expect(counts(boards.dripper)).toEqual({ V60: 3, Origami: 4 });
+    expect(counts(boards.water)).toEqual({ W1: 3, W2: 2 });
+    expect(counts(boards.roasters)).toEqual({ Sey: 3 });
+  });
+  it('hiddenRows and cutBoards agree', () => {
+    const rb = leaderboards(all, [], SEPT, null, 'rating', 'all', 'min3', 1, bf);
+    const h = hiddenRows(rb, all, all, [], SEPT, 'rating', 'all', bf);
+    expect(Object.values(h.rows).every((n) => n! > 0)).toBe(true);
+    expect(cutBoards(rb, all, [], SEPT, 'rating', 'all', 'min3', bf)).toEqual(h.cut);
+  });
+});

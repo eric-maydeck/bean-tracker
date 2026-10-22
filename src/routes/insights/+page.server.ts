@@ -59,13 +59,14 @@ export const load: PageServerLoad = ({ url }) => {
   const brews = whole.filter(matchesBrew(bf));
   const bags = everyBag.filter((b) => (s.caffeine !== 'decaf' || b.decaf) && matches(b));
   const scored = s.dial === 'all' ? brews : onceDialed(brews, dialIn);
+  const wholeScored = s.dial === 'all' ? whole : onceDialed(whole, dialIn); // leaderboards filter per board
   const labCtx = { period, ratings: s.ratings };
   const size = s.people === 'person' ? householdSize : 1;
   // The parser already dropped a compare this range doesn't offer.
   const prev = comparePeriod(s.range, period, s.compare, dataStart, today);
   // Leaderboards only on its tab; the overview tiles are cheap and always computed.
-  const boards = s.tab === 'leaderboards' ? leaderboards(scored, bags, period, prev, s.rank, s.ratings, explicit.avg, size) : null;
-  const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, scored, brews, bags, period, s.rank, s.ratings) : null;
+  const boards = s.tab === 'leaderboards' ? leaderboards(wholeScored, bags, period, prev, s.rank, s.ratings, explicit.avg, size, bf) : null;
+  const h = boards && ratingsMenuOn(s) ? hiddenRows(boards, wholeScored, whole, bags, period, s.rank, s.ratings, bf) : null;
   const rated = (xs: typeof brews, r: typeof s.ratings) => ratedIn(xs, period, r).length;
   const tiles = perPerson(overviewTiles(scored, bags, period, s.ratings, today, dataStart), size);
   const days = (w: Period) => trackedDays(w, dataStart, today);
@@ -118,7 +119,7 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
-    boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
+    boardsCut: h ? h.cut : boards ? cutBoards(boards, wholeScored, bags, period, s.rank, s.ratings, explicit.avg, bf) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'
