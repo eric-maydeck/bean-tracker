@@ -10,7 +10,7 @@ import { bagWeight, brewZ, demeaned, effN, mean, wmean, weightedMedian, MIN_BAGS
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
-import { matchesBrew, tagTwins } from './lab';
+import { exceptOwn, matchesBrew, tagTwins } from './lab';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
@@ -111,7 +111,7 @@ function graded(f: Omit<Finding, 'z' | 'strength'>, z: number, enough: boolean, 
 
 const LB = '/insights?tab=leaderboards';
 const DIAL_IN = '/insights?tab=brewing#brewing-dialin'; // rescues: the Brewing tab's Dial-in chart
-const SETTLE: Record<'roastLevel' | 'processGroup', string> = { roastLevel: '/insights?tab=brewing#brewing-settle-roast', processGroup: '/insights?tab=brewing#brewing-settle-process' }; // dialinBy: its chart
+const SETTLE: Record<SettleDim, string> = { roastLevel: '/insights?tab=brewing#brewing-settle-roast', processGroup: '/insights?tab=brewing#brewing-settle-process', dripper: '/insights?tab=brewing#brewing-settle-dripper', water: '/insights?tab=brewing#brewing-settle-water' }; // dialinBy: its chart
 
 const dialinCurve: Generator = (c) => {
   const all = demeaned(counted(c));
@@ -883,18 +883,20 @@ export function settleEvidence(f: Finding, z: number | null, tests: number): Fin
   return f.strength === 'early' ? { ...rest, progress: Math.min(1, (z / solidBar(tests)) ** 2) } : rest;
 }
 const dialinByGroup: Generator = (c) => {
-  const pos = settlePositions({ ...c, brews: c.wholeBrews });
-  const allPos = pos.map((x) => x.pos);
-  return (['roastLevel', 'processGroup'] as const).flatMap((dim) => {
+  return (['roastLevel', 'processGroup', 'dripper', 'water'] as const).flatMap((dim) => {
+    // A dimension's own brew filter doesn't narrow its own groups.
+    const keep = matchesBrew(exceptOwn(c.brewFilters, dim));
+    const pos = settlePositions({ ...c, brews: c.wholeBrews }, keep);
+    const allPos = pos.map((x) => x.pos);
     // Groups under the pooled bag rule are left out.
-    const groups = settleGroups({ ...c, brews: c.wholeBrews }, dim).filter((g) => g.bags >= POOLED_MIN_BAGS);
+    const groups = settleGroups({ ...c, brews: c.wholeBrews }, dim, keep).filter((g) => g.bags >= POOLED_MIN_BAGS);
     if (groups.length < 2) return [];
     // Ties go to the group with more bags.
     const by = (dir: 1 | -1) => (a: (typeof groups)[0], b: (typeof groups)[0]) => dir * (a.value - b.value) || b.bags - a.bags || a.label.localeCompare(b.label);
     const [fast, slow] = [[...groups].sort(by(1))[0], [...groups].sort(by(-1))[0]];
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
-    const z = restZ(slow.ps, pos.filter((x) => x.window[0][dim] !== slow.label).map((x) => x.pos));
+    const z = restZ(slow.ps, pos.filter((x) => !x.window.some((b) => b[dim] === slow.label && keep(b))).map((x) => x.pos));
     const measured = Number.isFinite(z); // false: no spread to test (always listed, user 2026-10-17: no bar then)
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',

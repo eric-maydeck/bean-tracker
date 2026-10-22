@@ -4787,6 +4787,12 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const id of ['dialinBy-roastLevel', 'dialinBy-processGroup', 'rescuedBags']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
     } },
+  { name: 'insights-dialin-by-dripper', path: () => '/insights?tab=insights&theme=dialin&range=all',
+    act: async (page) => {
+      const card = page.locator('#insight-dialinBy-dripper');
+      await expect(card).toBeVisible();
+      await expect(card.locator('a[href$="#brewing-settle-dripper"]').first()).toBeVisible();
+    } },
   { name: 'insights-insights-theme-taste', path: () => '/insights?tab=insights&range=all&theme=taste',
     act: async (page) => { await expect(page.locator('#insight-likeRoaster')).toBeVisible(); } },
   { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',

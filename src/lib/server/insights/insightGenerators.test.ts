@@ -971,3 +971,24 @@ describe('weighted settle groups', () => {
     expect(v60(bagsOf(18, 1)).bags).toBe(3); // 18 x 1/6: float sum is 2.999...
   });
 });
+
+describe('dialinBy: dripper', () => {
+  const mk = (id: number, rs: number[], drip: (i: number) => string) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1, dripper: drip(i), water: 'Lotus' }));
+  const all = [
+    ...[1, 2, 3].flatMap((id) => mk(id, [5, 6, 7, 9, 9, 9], () => 'CT62')),
+    ...[4, 5, 6].flatMap((id) => mk(id, [9, 9, 9, 9, 9, 9], () => 'V60')),
+    ...mk(7, [9, 9, 9, 9, 9, 9], (i) => (i < 3 ? 'V60' : 'CT62')) // a split bag
+  ];
+  const gb = Array.from({ length: 7 }, (_, i) => bag({ id: i + 1 }));
+  it('with a split bag', () => {
+    const f = gen('dialinBy:dripper', all, gb, { allBrews: all })!;
+    expect(f).toBeTruthy();
+    expect(f.headline).toMatch(/V60.*CT62|CT62.*V60/);
+    expect(f.href).toMatch(/#brewing-settle-dripper$/);
+  });
+  it('ignores the dripper filter', () => {
+    const a = gen('dialinBy:dripper', all, gb, { allBrews: all })!;
+    const b = gen('dialinBy:dripper', all, gb, { allBrews: all, brewFilters: { dripper: 'V60' } })!;
+    expect(b.headline).toBe(a.headline);
+  });
+});
