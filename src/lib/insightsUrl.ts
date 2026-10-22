@@ -466,7 +466,7 @@ export const coffeeNote = (s: Pick<InsightsUrlState, 'roast' | 'process' | 'orig
 export const emptyLine = (text: string, note: string): string =>
   note ? text.replace(/ in this period(.*?)\.?$/, ` matching ${note} in this period$1.`) : text;
 
-// Which brew filters each tab offers (spec table); the rest don't apply there and are neither shown nor sent.
+// Which brew filters each tab offers (spec table); the rest don't apply there (a muted chip; they still ride the URL and links).
 export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   overview: BREW_FILTER_KEYS, leaderboards: BREW_FILTER_KEYS, insights: BREW_FILTER_KEYS,
   habits: ['dripper', 'brewDose'], consumption: ['dripper', 'brewDose'], records: ['dripper', 'water', 'brewDose'],

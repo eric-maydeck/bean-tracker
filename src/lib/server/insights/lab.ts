@@ -399,7 +399,7 @@ export interface BrewingTab {
   bestAt: { label: string; bags: number }[]; // brew number of each bag's best brew within its first 7 (bags with ≥ 5 rated there)
   bestLater: { label: string; bags: number }[]; // of those bags, the ones whose best brew came after #7, by its number (#8, #9, #10+)
   drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
-  // Brews until dialed in (gate P4): per roast level / process group, the median brew its bags settle at (the dialinBy
+  // Brews until dialed in (gate P4): per roast level / process / dripper / water, the median brew its bags settle at (the dialinBy
   // findings' measure), fastest first; empty under 2 groups.
   settle: Record<'roast' | 'process' | 'dripper' | 'water', { label: string; value: number; bags: number; brews: number; sample: Sample }[]>;
   vars: VarChart[];

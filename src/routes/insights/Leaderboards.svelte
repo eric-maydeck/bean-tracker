@@ -275,7 +275,7 @@
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
   {#each BANDS as full, i (i)}
-    {@const band = full.filter((b) => (rank !== 'like' || LIKE_BOARDS.includes(b)))}
+    {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}
       <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))}>
         {#each band as b (b)}{@render board(b)}{/each}
