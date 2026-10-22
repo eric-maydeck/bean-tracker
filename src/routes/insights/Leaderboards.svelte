@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import WholeNote from './WholeNote.svelte';
   import { bottomInView } from '$lib/scrollToBottom';
   import { setting } from '$lib/settingName';
@@ -37,6 +38,8 @@
   const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g', like: 'vs like coffees' };
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
+  // TEMP preview: ?emptyBoards=1 shows the unranked gear boards as empty cards instead of hiding them.
+  const emptyBoards = $derived(page.url.searchParams.get('emptyBoards') === '1');
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
@@ -222,7 +225,9 @@
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
-      {#if !rows.length}
+      {#if unranked(b)}<!-- TEMP preview -->
+        <p class="board-note">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
+      {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
@@ -273,14 +278,14 @@
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
   {#each BANDS as full, i (i)}
-    {@const band = full.filter((b) => !unranked(b) && (rank !== 'like' || LIKE_BOARDS.includes(b)))}
+    {@const band = full.filter((b) => (emptyBoards || !unranked(b)) && (rank !== 'like' || LIKE_BOARDS.includes(b)))}
     {#if band.length}
       <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))}>
         {#each band as b (b)}{@render board(b)}{/each}
       </div>
     {/if}
   {/each}
-  {#if (rank === 'spend' || rank === 'ppg') && BANDS.flat().some(unranked)}<p class="chart-note"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>{/if}
+  {#if !emptyBoards && (rank === 'spend' || rank === 'ppg') && BANDS.flat().some(unranked)}<p class="chart-note"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>{/if}
   {#if wholeKeys.length && (rank === 'spend' || rank === 'ppg')}<WholeNote keys={wholeKeys} />{/if}
   {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
   {#if rank === 'like'}<p class="like-note"><span class="setting-name">{RANK_LABEL.like}</span> ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
