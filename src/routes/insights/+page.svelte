@@ -14,7 +14,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -54,6 +54,16 @@
     ...COFFEE_FIELDS.flatMap(([k]) => (s[k] ? [[k, s[k]!] as const] : [])),
     ...(s.caffeine ? [['caffeine', CAFFEINE_CHIP[s.caffeine]] as const] : [])
   ]);
+
+  // Brew filters: one select each, on the tabs that use them (BREW_FILTERS_ON); a chip for every one set, any tab.
+  const BREW_OPTIONS = $derived({
+    dripper: data.brewOptions.drippers, filter: data.brewOptions.filters, water: data.brewOptions.waters,
+    brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps
+  });
+  const brewSelects = $derived(BREW_FILTERS_ON[s.tab].filter((k) => BREW_OPTIONS[k].length));
+  const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => BREW_FILTERS_ON[s.tab].includes(k)).length);
+  const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Custom range dialog; its draft is `draft` below.
   let rangeDialog: HTMLDialogElement | undefined = $state();
@@ -495,7 +505,7 @@
     <span>{FILTERS_LABEL}</span>
     <button class="button button-secondary filters-button" type="button" aria-haspopup="dialog"
       onclick={() => coffeesDialog?.showModal()}
-      >Filters{#if coffeeChips.length}<span class="badge">{coffeeChips.length}</span>{/if}</button
+      >Filters{#if badgeCount}<span class="badge">{badgeCount}</span>{/if}</button
     >
   </div>
   <!-- Milestones and the lab tabs are household-level: no People switch there. -->
@@ -523,7 +533,7 @@
     </div>
   {/if}
   <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
-  {#if coffeeChips.length}
+  {#if coffeeChips.length || brewChips.length}
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
@@ -533,8 +543,18 @@
           ></span
         >
       {/each}
+      {#each brewChips as k (k)}
+        {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
+        {@const value = brewFilterText(k, s[k]!)}
+        <span class="filter-chip" class:muted={off}
+          ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
+            aria-label="Remove filter: {value}" onclick={() => choose({ [k]: undefined })}>✕</button
+          ></span
+        >
+      {/each}
       <button type="button" class="filter-clear-all"
-        onclick={() => choose({ roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
+        onclick={() => choose({ ...brewOff, roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
     </div>
   {/if}
 </div>
@@ -599,6 +619,16 @@
           <option value="all">All</option>
         </select>
       </label>
+      {#each brewSelects as key (key)}
+        <label class="form-field">
+          <span>{BREW_FILTER_LABEL[key]}</span>
+          <select class="ctl-select" aria-label={BREW_FILTER_LABEL[key]} value={s[key] ?? ''}
+            onchange={(e) => choose({ [key]: e.currentTarget.value || undefined })}>
+            <option value="">Any</option>
+            {#each BREW_OPTIONS[key] as v (v)}<option value={v}>{brewFilterText(key, v)}</option>{/each}
+          </select>
+        </label>
+      {/each}
     </div>
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
@@ -937,6 +967,11 @@
   .coffee-chips > * {
     flex-shrink: 0;
   }
+  /* A brew filter set but not used on this tab: the chip stays, muted. */
+  .coffee-chips :global(.filter-chip.muted) {
+    border-color: var(--color-border);
+    color: var(--color-text-muted);
+  }
   /* The row scrolls, so a long name shows in full (no ellipsis, ui-rules 3). */
   .coffee-chips :global(.filter-chip),
   .coffee-chips :global(.filter-chip-label) {
@@ -954,21 +989,25 @@
     padding: 0.75rem 0;
     margin: -0.75rem 0;
   }
+  .coffees-dialog {
+    width: min(34rem, 100% - 2rem);
+  }
   .coffees-fields {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
     margin-bottom: var(--space-3);
   }
   .coffees-fields .form-field {
     margin-bottom: 0;
   }
-  /* Phone landscape (333px tall): the fields in three columns so the panel fits without scrolling. */
+  /* Phone landscape (333px tall): the fields in five columns so the panel fits without scrolling. */
   @media (max-height: 450px) {
     .coffees-dialog {
-      width: min(40rem, 100% - 2rem);
+      width: min(56rem, 100% - 2rem);
     }
     .coffees-fields {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
   }
   .range-dialog::backdrop {

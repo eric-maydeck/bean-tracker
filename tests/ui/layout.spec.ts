@@ -3922,6 +3922,57 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('2');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/Washed/, /Decaf/]);
     } },
+  // Brew filters in the Filters dialog (Part 1): one select each on the tabs that use it; chips for any tab, muted off-tab.
+  { name: 'insights-brew-dialog', path: () => '/insights',
+    act: async (page) => {
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await expect(dlg).toBeVisible();
+      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('SELECT');
+      await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
+      await expect(page).toHaveURL(/dripper=V60/);
+      await dlg.getByLabel('Dose', { exact: true }).selectOption({ label: '15g' });
+      await expect(page).toHaveURL(/brewDose=15/);
+      const box = (await dlg.boundingBox())!;
+      expect(box.y).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height).toBeLessThanOrEqual(page.viewportSize()!.height);
+      expect(await dlg.evaluate((d) => d.scrollHeight - d.clientHeight)).toBeLessThanOrEqual(1);
+    } },
+  { name: 'insights-brew-dialog-gear', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await expect(dlg).toBeVisible();
+      for (const l of ['Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
+      for (const l of ['Dripper', 'Filter']) await expect(dlg.getByLabel(l, { exact: true })).toHaveCount(0);
+    } },
+  { name: 'insights-brew-chips-muted', path: () => '/insights?tab=gear&dripper=V60&water=Lab%20Water%20A',
+    act: async (page) => {
+      const chips = page.locator('.coffee-chips .filter-chip');
+      await expect(chips).toHaveCount(2);
+      await expect(chips.first()).toHaveClass(/muted/);
+      await expect(chips.last()).not.toHaveClass(/muted/);
+      await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
+      await chips.first().locator('.filter-chip-label').hover();
+      await expect(page.getByText('Not used on this tab')).toBeVisible();
+      await expectChipsFit(page);
+      await page.getByRole('button', { name: 'Remove filter: V60' }).click();
+      await expect(page).not.toHaveURL(/dripper=/);
+      await expect(page).toHaveURL(/water=Lab(%20|\+)Water(%20|\+)A/);
+    } },
+  { name: 'insights-brew-clear', viewports: 'two', path: () => '/insights?dripper=V60&process=Washed',
+    act: async (page) => {
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(2);
+      await page.getByRole('button', { name: 'Clear all' }).click();
+      await expect(page).toHaveURL(/\/insights$/);
+    } },
+  { name: 'insights-brew-remembered', viewports: 'two', path: () => '/insights?tab=gear&dripper=V60',
+    act: async (page) => {
+      await gotoReady(page, '/coffees');
+      await gotoReady(page, '/insights');
+      await expect(page).toHaveURL(/dripper=V60/);
+    } },
   { name: 'insights-coffees-chips', viewports: 'two', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
     act: async (page) => {
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(3);
