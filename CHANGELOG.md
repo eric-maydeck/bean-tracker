@@ -1,3 +1,15 @@
+# [1.82.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.81.0...v1.82.0) (2026-10-22)
+
+
+### Bug Fixes
+
+* **water:** bold the ideal-volume hint, drop idle hint gap above notes
+
+
+### Features
+
+* **water:** suggest each recipe's ideal volume under the picker
+
 # [1.81.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.80.0...v1.81.0) (2026-10-21)
 
 
