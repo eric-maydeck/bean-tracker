@@ -16,8 +16,10 @@
     choose: (c: InsightsUrlState) => void; placeTip: (e: ToggleEvent) => void;
   } = $props();
 
-  // TEMP: remove after the user picks a style. Preview-only, read from the URL, never in the parser or URL state.
-  const style = $derived(['a', 'b', 'c'].includes(page.url.searchParams.get('trophystyle') ?? '') ? page.url.searchParams.get('trophystyle')! : 'a');
+  // TEMP: remove after the user picks a style. Preview-only, read from the URL once on mount (choose() rebuilds the
+  // query without it, so re-reading would snap back to a), never in the parser or URL state.
+  const picked = page.url.searchParams.get('trophystyle') ?? '';
+  let style = $state(['a', 'b', 'c'].includes(picked) ? picked : 'a');
 
   let shown = $derived(shownTrophies(list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
   let shelf = $derived(s.retired === 'open');

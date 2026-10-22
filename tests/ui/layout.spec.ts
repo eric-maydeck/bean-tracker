@@ -4798,6 +4798,14 @@ export const STATES: State[] = [
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
     } },
   // TEMP: remove after the user picks a style.
+  { name: 'insights-trophy-style-latch', viewports: 'two', path: () => '/insights?tab=gear&trophystyle=b',
+    act: async (page) => {
+      await expect(page.locator('[data-section="gear-trophies"].ts-b')).toHaveCount(1);
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
+      await expect(page).toHaveURL(/card=dripper-v60/);
+      await expect(page).not.toHaveURL(/trophystyle/);
+      await expect(page.locator('[data-section="gear-trophies"].ts-b')).toHaveCount(1);
+    } },
   ...(['a', 'b', 'c'] as const).map((st) => ({ name: `insights-trophy-style-${st}`, viewports: 'two' as const, path: () => `/insights?tab=gear&trophystyle=${st}&card=dripper-v60`,
     act: async (page: Page) => {
       await expectGridRowsFull(page, '.trophy-grid');
