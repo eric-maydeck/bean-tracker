@@ -197,6 +197,20 @@ async function expectEqualBoardHeights(page: Page) {
   expect(blank, 'no empty Show all footers').toBe(0);
 }
 
+// Under spend/ppg each gear/water board is an empty card with its one line, no shorter than a populated row-mate.
+async function expectEmptyGearCards(page: Page) {
+  for (const b of ['water', 'dripper', 'filter', 'grinder']) {
+    await expect(page.locator(`[data-board="${b}"]`)).toContainText(/Not ranked by .+: it's per bag\./);
+  }
+  const rows = await page.locator('.board-band').evaluateAll((bands) =>
+    bands.map((band) => [...band.querySelectorAll(':scope > .board')].map((b) => ({
+      top: Math.round(b.getBoundingClientRect().top), h: b.getBoundingClientRect().height, empty: b.classList.contains('fill')
+    }))));
+  for (const band of rows) for (const e of band.filter((x) => x.empty))
+    for (const o of band) if (!o.empty && Math.abs(o.top - e.top) <= 1) expect(e.h).toBeGreaterThanOrEqual(o.h - 1);
+  await expect(page.locator('.chart-note', { hasText: 'is per bag' })).toHaveCount(0);
+}
+
 // Desktop edit table: every input and button in a row shares one vertical
 // center (±1px).
 async function expectRowLevel(row: Locator) {
@@ -533,7 +547,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString
 // Gate 3: a panel holding only an empty line (whole-tab .hl-empty, a board's empty note) is short: its blank
 // area is the line's own padding, not a chart's or a band's height (text may wrap to 3 lines at 360).
 async function expectShortEmpty(page: Page) {
-  const tall = await page.locator('section.chart-panel:has(> .hl-empty), .board:has(.board-note)').evaluateAll((ps) =>
+  const tall = await page.locator('section.chart-panel:has(> .hl-empty), .board:has(.board-note:not(.fill))').evaluateAll((ps) =>
     ps.filter((p) => {
       const note = p.querySelector('.hl-empty, .board-note')!;
       const lines = note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight);
@@ -2714,8 +2728,7 @@ export const STATES: State[] = [
     name: 'insights-leaderboards-spend-compare',
     path: () => '/insights?tab=leaderboards&rank=spend&range=12m&compare=1',
     act: async (page) => {
-      await expect(page.locator('.chart-note', { hasText: 'is per bag' })).toHaveCount(1);
-      await expect(page.locator('[data-board="dripper"]')).toHaveCount(0);
+      await expectEmptyGearCards(page);
       await expect(page.locator('.board .move').first()).toBeVisible();
       await expectEqualBoardHeights(page);
     }
@@ -3990,9 +4003,7 @@ export const STATES: State[] = [
   { name: 'insights-brew-leaderboards-spend', path: () => '/insights?tab=leaderboards&rank=spend&dripper=V60',
     act: async (page) => {
       await expect(page.locator('.chart-note', { hasText: "Whole bags: the dripper filter doesn't apply." })).toHaveCount(1);
-      // The per-bag line is one plain note under the boards, not an empty board per gear dimension.
-      await expect(page.locator('.chart-note', { hasText: 'is per bag' })).toHaveCount(1);
-      await expect(page.locator('[data-board="dripper"]')).toHaveCount(0);
+      await expectEmptyGearCards(page);
     } },
   { name: 'insights-brew-leaderboards', path: () => '/insights?tab=leaderboards&dripper=V60',
     act: async (page) => {
