@@ -5,7 +5,7 @@
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import {
-    RECIPES, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
+    RECIPES, idealMl, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
     minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, type Drops, type Mode, type Unit
   } from '$lib/lotus';
 
@@ -51,6 +51,7 @@
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
+  let ideal = $derived(idealMl(recipe));
   let kettle = $derived(kettleFor(volume, picked));
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
@@ -217,6 +218,12 @@
         {#each RECIPES as r (r.slug)}<option value={r.slug}>{r.name}</option>{/each}
       </select>
     </label>
+    {#if volume !== ideal}
+      <p class="text-muted water-ideal">
+        The {recipe.name} recipe is best used with {ideal}&nbsp;mL of distilled water.
+        <button class="button button-secondary" type="button" onclick={() => setMl(String(ideal))}>Switch to {ideal}&nbsp;mL</button>
+      </p>
+    {/if}
   {:else}
     {#if mode === 'target'}
       <div class="form-field group-field water-unit">
@@ -452,7 +459,8 @@
   }
   .water-inputs { margin-bottom: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   @container (min-width: 26rem) { .water-inputs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  .water-inputs .water-unit, .water-inputs .water-field { grid-column: 1 / -1; }
+  .water-inputs .water-unit, .water-inputs .water-field, .water-ideal { grid-column: 1 / -1; }
+  .water-ideal { margin: 0; font-size: 0.85rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .water-inputs .water-mineral { flex: none; }
   .wr-card { margin-bottom: var(--space-4); }
 </style>

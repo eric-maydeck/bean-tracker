@@ -822,6 +822,33 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'water-ideal-hint',
+    path: () => '/water?recipe=lume-high-clarity&ml=800',
+    act: async (page) => {
+      await expect(page.locator('.water-ideal')).toContainText('The Lume High Clarity recipe is best used with 1000 mL of distilled water.');
+      await expect(page.getByRole('button', { name: 'Switch to 1000 mL' })).toBeVisible();
+    }
+  },
+  {
+    name: 'water-ideal-switch',
+    path: () => '/water?recipe=lume-high-clarity&ml=800',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Switch to 1000 mL' }).click();
+      await expect(page).toHaveURL(/ml=1000/);
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000 mL' })).toBeVisible();
+      await expect(page.locator('.water-ideal')).toHaveCount(0);
+    }
+  },
+  {
+    name: 'water-ideal-none',
+    path: () => '/water?recipe=lume-high-clarity&ml=1000',
+    act: async (page) => {
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.locator('.water-ideal')).toHaveCount(0);
+    }
+  },
+  {
     // Kettle fills mL (its published capacity); box and slider edit the same value live (no blur); kettle rides the URL while ml matches it.
     name: 'water-kettle',
     path: () => '/water',

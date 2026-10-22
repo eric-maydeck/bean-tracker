@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, type Drops } from './lotus';
+import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -109,6 +109,15 @@ describe('kettles', () => {
     expect(kettleFor(880, 'palatti-enso')).toBe('palatti-enso');
     expect(kettleFor(881, 'palatti-enso')).toBe('');
     expect(kettleFor(1000)).toBe('');
+  });
+});
+
+describe('idealMl', () => {
+  it('is 800 mL for every recipe except Lume High Clarity (1000)', () => {
+    for (const x of RECIPES) {
+      expect(idealMl(x), x.name).toBe(x.name === 'Lume High Clarity' ? 1000 : 800);
+      expect(idealMl(x) % 50).toBe(0);
+    }
   });
 });
 

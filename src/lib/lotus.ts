@@ -68,6 +68,20 @@ export function minerals(d: Drops, ml: number) {
   };
 }
 
+// The mL (100-1200, 50 mL steps like the slider, so always a round measurable volume) where whole drops land closest to the recipe: smallest worst relative error of the
+// result's ppm vs its target over the nonzero minerals; near-ties (400/800/1200) go to the median kettle capacity.
+export function idealMl(r: Recipe): number {
+  const typical = KETTLES.map((k) => k.ml).sort((a, b) => a - b)[KETTLES.length >> 1];
+  const keys = (['mg', 'ca', 'na', 'k'] as const).filter((m) => r.ppm[m] > 0);
+  let best = 0, bestErr = Infinity;
+  for (let ml = MIN_ML; ml <= 1200; ml += 50) {
+    const d = dropsFor(r, ml), perDrop = 4.5 / (ROUND_TIP * (ml / 1000));
+    const err = Math.max(...keys.map((m) => Math.abs((d[m] * perDrop * (m === 'na' || m === 'k' ? 0.5 : 1)) / r.ppm[m] - 1)));
+    if (err < bestErr - 1e-9 || (err < bestErr + 1e-9 && Math.abs(ml - typical) < Math.abs(best - typical))) [best, bestErr] = [ml, err];
+  }
+  return best;
+}
+
 export type Mode = 'recipe' | 'drops' | 'target';
 export const MODES: Mode[] = ['recipe', 'drops', 'target'];
 export const MODE_LABEL: Record<Mode, string> = { recipe: 'Recipe', drops: 'Drops', target: 'Target' };
