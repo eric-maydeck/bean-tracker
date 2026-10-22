@@ -251,6 +251,8 @@ export interface InsightsUrlState {
   time?: 'exact';
   bloom?: 'exact';
   grind?: 'exact';
+  cards?: string[]; // Gear's trophy cards shown expanded (keys "kind-slug")
+  retired?: 'open'; // Gear's retired shelf is open
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // only 'total' is ever explicit: average is the default
   dial?: Dial; // only 'all' is ever explicit
@@ -258,12 +260,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'cards' | 'retired';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; cards?: string[]; retired?: 'open';
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -410,7 +412,9 @@ export function parseInsightsUrl(
     bloomBy: pickOne(p, 'bloomBy', SLICES),
     grindBy: pickOne(p, 'grindBy', SLICES),
     ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
-    pairs: parsePairs(p.get('pairs'))
+    pairs: parsePairs(p.get('pairs')),
+    cards: parseCards(p.get('cards')),
+    retired: pickOne(p, 'retired', ['open'])
   };
 }
 
@@ -419,6 +423,13 @@ export function parseInsightsUrl(
 const PAIR = /^[a-z0-9]+(-[a-z0-9]+)*--[a-z0-9]+(-[a-z0-9]+)*$/;
 function parsePairs(v: string | null): string[] | undefined {
   const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => PAIR.test(x)).map((x) => x.split('--').sort().join('--')))];
+  return xs.length ? xs : undefined;
+}
+
+// Expanded trophy cards on Gear: "kind-slug" keys, lowercased, deduped, sorted; anything else is dropped.
+const CARD = /^(dripper|grinder|filter)-[a-z0-9]+(-[a-z0-9]+)*$/;
+function parseCards(v: string | null): string[] | undefined {
+  const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => CARD.test(x)))].sort();
   return xs.length ? xs : undefined;
 }
 
@@ -457,6 +468,8 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
   for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
+  if (s.cards?.length) p.set('cards', s.cards.join(','));
+  if (s.retired) p.set('retired', s.retired);
   return p;
 }
 
@@ -493,6 +506,9 @@ export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
   milestones: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'],
   water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp']
 };
+// Gear's Dripper and Filter selects pick trophy cards, so they are offered there but filter nothing (activeBrewFilters).
+export const GEAR_PICKS: readonly BrewFilterKey[] = ['dripper', 'filter'];
+export const brewSelectsOn = (tab: Tab): readonly BrewFilterKey[] => (tab === 'gear' ? [...GEAR_PICKS, ...BREW_FILTERS_ON.gear] : BREW_FILTERS_ON[tab]);
 export const activeBrewFilters = (s: InsightsView): BrewFilters =>
   Object.fromEntries(BREW_FILTERS_ON[s.tab].filter((k) => s[k]).map((k) => [k, s[k]]));
 // The note under a figure that counts whole bags: brew filters can't narrow it. `items` names the figures.
@@ -582,7 +598,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, cards: s.cards, retired: s.retired
   };
 }
 

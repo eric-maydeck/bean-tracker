@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
-  BREW_FILTERS_ON, activeBrewFilters, wholeNote,
+  BREW_FILTERS_ON, activeBrewFilters, wholeNote, brewSelectsOn,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import type { Filter } from '$lib/coffeeFilters';
@@ -768,4 +768,26 @@ describe('brew filters', () => {
     expect(wholeNote(['brewDose'], ['Spend', 'Bags finished'])).toBe("Spend and Bags finished count whole bags: the dose filter doesn't apply.");
   });
   it('resetInsights drops brew filters', () => expect(resetInsights({ tab: 'gear', water: 'x' })).toEqual({ tab: 'gear' }));
+});
+
+describe('gear trophy params', () => {
+  it('cards: lowercased, deduped, sorted, junk dropped', () => {
+    expect(parse('cards=Grinder-ZP6,dripper-v60,,bogus,dripper-v60,water-a').cards).toEqual(['dripper-v60', 'grinder-zp6']);
+    expect(parse('cards=').cards).toBeUndefined();
+  });
+  it('retired takes only open', () => {
+    expect(parse('retired=OPEN').retired).toBe('open');
+    expect(parse('retired=yes').retired).toBeUndefined();
+  });
+  it('round-trips and is bare when collapsed', () => {
+    expect(insightsParams({ tab: 'gear', cards: ['dripper-v60'], retired: 'open' }).toString()).toBe('tab=gear&cards=dripper-v60&retired=open');
+    expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
+    expect(withDefaults(parse('tab=gear&cards=dripper-v60&retired=open'))).toMatchObject({ cards: ['dripper-v60'], retired: 'open' });
+  });
+  it('reset drops cards and retired', () => expect(resetInsights({ tab: 'gear', cards: ['dripper-v60'], retired: 'open' })).toEqual({ tab: 'gear' }));
+  it('gear offers dripper and filter selects without filtering the lab', () => {
+    expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
+    expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
+    expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60' }))).toEqual({});
+  });
 });
