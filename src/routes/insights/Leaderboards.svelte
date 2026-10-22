@@ -268,7 +268,7 @@
         {#if sr?.lines.length && sr.labels.length}
           <Chart type="line" labels={sr.labels} values={sr.lines[0].values} datasetLabel={sr.lines[0].label}
             series={sr.lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={260} />
-          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {sr.lines.length > 1 ? `top ${sr.lines.length} ` : ''}{BOARD_NOUN[b]}{#if sr.lines.some((l) => gappy(l.values))} · Dashed: {sr.by}s with no data{/if}</p>
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {sr.lines.length > 1 ? `top ${sr.lines.length} ` : ''}{BOARD_NOUN[b]}{#if sr.lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
