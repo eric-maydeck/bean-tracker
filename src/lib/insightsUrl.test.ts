@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseInsightsUrl, insightsParams, boardAvg, EXACT_PARAM, resetInsights, withDefaults, DEFAULTS, compareOptions, isCustom, keepCompare, customRange,
+  BREW_FILTERS_ON, activeBrewFilters, wholeNote,
   parsePeople, parseRange, pickNumber, BOARDS, BAG_BOARDS, BYS, windowLabel, periodLabel, compareLabel, coffeeNote, emptyLine, type BrewerType, BREWER_TYPES, type LabValues, TABS, TAB_GROUPS, ratingsMenuOn, hiddenNote, phoneWords, withPageWide, parseLikeView
 } from './insightsUrl';
 import type { Filter } from '$lib/coffeeFilters';
@@ -530,7 +531,8 @@ describe('insights params', () => {
 
 describe('brewing lab params', () => {
   const LAB: LabValues = { bags: ['2026-sey-kiambu', '2025-old-bag'], roasts: ['Light', 'Ultralight'], processes: ['Natural', 'Washed'],
-    origins: ['Kenya'], roasters: ['Sey', 'Moonwake'], grinders: ['a4z-femobook', 'zp6-1zpresso'] };
+    origins: ['Kenya'], roasters: ['Sey', 'Moonwake'], grinders: ['a4z-femobook', 'zp6-1zpresso'],
+    drippers: [], filters: [], waters: [], doses: [], temps: [] };
   const parse = (q: string) => parseInsightsUrl(new URLSearchParams(q), [2026], [2026], () => false, 1, () => true, '2026-10-12', BREWER_TYPES, LAB);
   it('reads the four tabs', () => {
     for (const t of ['sweetspots', 'brewing', 'water', 'gear']) expect(parse(`tab=${t.toUpperCase()}`).tab).toBe(t);
@@ -703,4 +705,49 @@ describe('parseLikeView (coffee page Vs like coffees)', () => {
   it('keeps an explicit default', () => expect(v('ratings=current')).toEqual({ ratings: 'current' }));
   it('drops bad values, caffeine=decaf and other params', () => expect(v('ratings=x&dial=dialed&caffeine=decaf&tab=records')).toEqual({}));
   it('round-trips through insightsParams', () => expect(insightsParams(v('dial=all&ratings=all')).toString()).toBe('ratings=all&dial=all'));
+});
+
+describe('brew filters', () => {
+  const lab: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [],
+    drippers: ['V60', 'Origami'], filters: ['Cafec Abaca'], waters: ['Lotus 900'], doses: ['15', '18'], temps: ['93'] };
+  const p = (q: string) => parseInsightsUrl(new URLSearchParams(q), YEARS, [], undefined, 2, undefined, '2026-06-01', BREWER_TYPES, lab);
+  it('brew params: case-insensitive', () => {
+    const s = p('dripper=v60&filter=CAFEC%20ABACA&water=lotus%20900&brewDose=18&brewTemp=93');
+    expect(s).toMatchObject({ dripper: 'V60', filter: 'Cafec Abaca', water: 'Lotus 900', brewDose: '18', brewTemp: '93' });
+  });
+  it('brew params: unknown values drop', () => {
+    const s = p('water=Mars&brewDose=99&brewTemp=hot&dripper=');
+    for (const k of ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const) expect(s[k]).toBeUndefined();
+  });
+  it('brew params round-trip', () => {
+    const q = 'dripper=V60&filter=Cafec+Abaca&water=Lotus+900&brewDose=18&brewTemp=93';
+    const out = insightsParams(p(q));
+    for (const [k, v] of new URLSearchParams(q)) expect(out.get(k)).toBe(v);
+    expect(insightsParams({}).toString()).toBe('');
+  });
+  it("dose keeps What-if's meaning", () => expect(p('dose=12&brewDose=15')).toMatchObject({ dose: 12, brewDose: '15' }));
+  it('withPageWide carries brew filters to /insights links, not /coffees', () => {
+    expect(withPageWide('/insights?tab=gear', { dripper: 'V60' })).toContain('dripper=V60');
+    expect(withPageWide('/coffees?view=list', { dripper: 'V60' })).not.toContain('dripper');
+  });
+  it('BREW_FILTERS_ON covers every tab', () => {
+    expect(Object.keys(BREW_FILTERS_ON).sort()).toEqual([...TABS].sort());
+    expect(BREW_FILTERS_ON.sweetspots).toEqual([]);
+    expect(BREW_FILTERS_ON.milestones).toEqual([]);
+    expect(BREW_FILTERS_ON.brewing).toEqual(['dripper', 'filter', 'water']);
+    expect(BREW_FILTERS_ON.water).toEqual(['dripper', 'filter', 'brewDose', 'brewTemp']);
+    expect(BREW_FILTERS_ON.gear).toEqual(['water', 'brewDose', 'brewTemp']);
+    expect(BREW_FILTERS_ON.records).toEqual(['dripper', 'water', 'brewDose']);
+    expect(BREW_FILTERS_ON.habits).toEqual(['dripper', 'brewDose']);
+    expect(BREW_FILTERS_ON.consumption).toEqual(['dripper', 'brewDose']);
+    for (const t of ['overview', 'leaderboards', 'insights'] as const) expect(BREW_FILTERS_ON[t]).toHaveLength(5);
+  });
+  it('activeBrewFilters keeps only offered ones', () =>
+    expect(activeBrewFilters(withDefaults({ tab: 'gear', dripper: 'V60', water: 'Lotus 900' }))).toEqual({ water: 'Lotus 900' }));
+  it('wholeNote', () => {
+    expect(wholeNote(['dripper'])).toBe("Whole bags: the dripper filter doesn't apply.");
+    expect(wholeNote(['dripper', 'water'])).toBe("Whole bags: the dripper and water filters don't apply.");
+    expect(wholeNote(['brewDose'], ['Spend', 'Bags finished'])).toBe("Spend and Bags finished count whole bags: the dose filter doesn't apply.");
+  });
+  it('resetInsights drops brew filters', () => expect(resetInsights({ tab: 'gear', water: 'x' })).toEqual({ tab: 'gear' }));
 });

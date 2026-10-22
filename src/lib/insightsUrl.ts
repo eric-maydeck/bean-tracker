@@ -70,8 +70,11 @@ export const EXACT_PARAM = { temp: 'temp', ratio: 'ratio', dose: 'dosing', time:
 export const EXACT_PARAMS = Object.values(EXACT_PARAM);
 export type ExactParam = (typeof EXACT_PARAMS)[number];
 // The values the lab's pickers offer (lab.ts labOptions, server-side): anything else in the URL is dropped.
-export interface LabValues { bags: string[]; roasts: string[]; processes: string[]; origins: string[]; roasters: string[]; grinders: string[] }
-export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [] };
+export interface LabValues {
+  bags: string[]; roasts: string[]; processes: string[]; origins: string[]; roasters: string[]; grinders: string[];
+  drippers: string[]; filters: string[]; waters: string[]; doses: string[]; temps: string[];
+}
+export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [], drippers: [], filters: [], waters: [], doses: [], temps: [] };
 
 export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
 export type Tab = (typeof TABS)[number];
@@ -213,6 +216,11 @@ export interface InsightsUrlState {
   origin?: string;
   roaster?: string;
   grinder?: string; // a grinder slug (absent = the most-used one)
+  dripper?: string; // brew filters (BREW_FILTER_KEYS), one value each
+  filter?: string;
+  water?: string;
+  brewDose?: string; // a DOSE_BANDS slug
+  brewTemp?: string;
   tempBy?: Slice;
   ratioBy?: Slice;
   doseBy?: Slice;
@@ -232,13 +240,13 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | ByParam | ExactParam | 'pairs';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
-} & Partial<Record<ExactParam, 'exact'>>;
+} & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
   range: 'all', // All time (user ruling 2026-10-17; /stats' Time to Clear shares it)
@@ -371,6 +379,11 @@ export function parseInsightsUrl(
     origin: pickOne(p, 'origin', lab.origins),
     roaster: pickOne(p, 'roaster', lab.roasters),
     grinder: pickOne(p, 'grinder', lab.grinders),
+    dripper: pickOne(p, 'dripper', lab.drippers),
+    filter: pickOne(p, 'filter', lab.filters),
+    water: pickOne(p, 'water', lab.waters),
+    brewDose: pickOne(p, 'brewDose', lab.doses),
+    brewTemp: pickOne(p, 'brewTemp', lab.temps),
     tempBy: pickOne(p, 'tempBy', SLICES),
     ratioBy: pickOne(p, 'ratioBy', SLICES),
     doseBy: pickOne(p, 'doseBy', SLICES),
@@ -422,7 +435,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.recentc) p.set('recentc', String(s.recentc));
   if (s.theme) p.set('theme', s.theme);
   for (const k of ['drinkers', 'gpp', 'inflow', 'bpd', 'dose'] as const) if (s[k] !== undefined) p.set(k, String(s[k]));
-  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
+  for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   return p;
 }
@@ -430,7 +443,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
 // A finding's in-page link keeps the page-wide view it was computed on (Period, Compare, People, Ratings,
 // Brews, Caffeine, Coffees filter), so the board shows the same figure and the remembered view survives the click.
 // The link's own params win; links off /insights are left alone.
-const PAGE_WIDE = ['range', 'compare', 'people', 'ratings', 'dial', 'caffeine', 'roast', 'process', 'origin', 'roaster'] as const;
+const PAGE_WIDE = ['range', 'compare', 'people', 'ratings', 'dial', 'caffeine', 'roast', 'process', 'origin', 'roaster', ...BREW_FILTER_KEYS] as const;
 // A /coffees list link instead takes the page's Coffees filter (`coffees`, as /coffees filters); its own column wins.
 export function withPageWide(href: string, s: InsightsUrlState, coffees: Filter[] = []): string {
   const u = new URL(href, 'http://x');
@@ -452,6 +465,22 @@ export const coffeeNote = (s: Pick<InsightsUrlState, 'roast' | 'process' | 'orig
 // Every tab's empty line says "... in this period"; the phrase goes right before it.
 export const emptyLine = (text: string, note: string): string =>
   note ? text.replace(/ in this period(.*?)\.?$/, ` matching ${note} in this period$1.`) : text;
+
+// Which brew filters each tab offers (spec table); the rest don't apply there and are neither shown nor sent.
+export const BREW_FILTERS_ON: Record<Tab, readonly BrewFilterKey[]> = {
+  overview: BREW_FILTER_KEYS, leaderboards: BREW_FILTER_KEYS, insights: BREW_FILTER_KEYS,
+  habits: ['dripper', 'brewDose'], consumption: ['dripper', 'brewDose'], records: ['dripper', 'water', 'brewDose'],
+  milestones: [], sweetspots: [], brewing: ['dripper', 'filter', 'water'],
+  water: ['dripper', 'filter', 'brewDose', 'brewTemp'], gear: ['water', 'brewDose', 'brewTemp']
+};
+export const activeBrewFilters = (s: InsightsView): BrewFilters =>
+  Object.fromEntries(BREW_FILTERS_ON[s.tab].filter((k) => s[k]).map((k) => [k, s[k]]));
+// The note under a figure that counts whole bags: brew filters can't narrow it. `items` names the figures.
+export const wholeNote = (keys: readonly BrewFilterKey[], items?: readonly string[]): string => {
+  const names = keys.map((k) => BREW_FILTER_LABEL[k].toLowerCase()).join(' and ');
+  const rest = `the ${names} ${keys.length > 1 ? "filters don't" : "filter doesn't"} apply.`;
+  return items?.length ? `${items.join(' and ')} count whole bags: ${rest}` : `Whole bags: ${rest}`;
+};
 
 // Reset: every choice back to default (bare URL), keeping only a non-default tab.
 export const resetInsights = (s: InsightsUrlState): InsightsUrlState =>
@@ -530,6 +559,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bpd: s.bpd,
     dose: s.dose,
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
+    dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
     temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs
   };

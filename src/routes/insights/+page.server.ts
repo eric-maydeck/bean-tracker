@@ -34,7 +34,8 @@ export const load: PageServerLoad = ({ url }) => {
   const opts = labOptions(everyBrew, everyBag);
   const explicit = parseInsightsUrl(url.searchParams, years, brewYears, fits, householdSize, fitsBy, today, brewerTypes, {
     bags: opts.bags.map((b) => b.slug), roasts: opts.roasts, processes: opts.processes, origins: opts.origins, roasters: opts.roasters,
-    grinders: opts.grinders.map((g) => g.slug)
+    grinders: opts.grinders.map((g) => g.slug),
+    drippers: opts.drippers, filters: opts.filters, waters: opts.waters, doses: opts.doses, temps: opts.temps
   });
   const s = withDefaults(explicit);
   const lab = (LAB_TABS as readonly string[]).includes(s.tab) ? opts : null;

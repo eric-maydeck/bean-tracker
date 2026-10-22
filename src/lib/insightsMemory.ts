@@ -4,7 +4,7 @@ import { CHOICE_TTL_MS } from './rememberedChoice';
 // versioned like coffeeViewState.ts: bump VERSION if the stored shape changes. Stored as the URL's query;
 // restoring navigates to it, so the server parser stays the one gate for bad values.
 export const INSIGHTS_STORAGE_KEY = 'bean-tracker-insights-view-state';
-const VERSION = 1;
+const VERSION = 2;
 
 export function loadInsightsState(raw: string | null, now: number): string | null {
   if (!raw) return null;

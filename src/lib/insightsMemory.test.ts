@@ -18,3 +18,10 @@ describe('remembered /insights state', () => {
       expect(loadInsightsState(raw, t0)).toBeNull();
   });
 });
+
+describe('memory version', () => {
+  it('memory v1 ignored, v2 loads', () => {
+    expect(loadInsightsState(JSON.stringify({ version: 1, params: 'a=b', lastUsed: 5 }), 5)).toBeNull();
+    expect(loadInsightsState(serializeInsightsState('a=b', 5), 5)).toBe('a=b');
+  });
+});
