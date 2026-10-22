@@ -39,7 +39,8 @@
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   // TEMP preview: ?emptyBoards=1 shows the unranked gear boards as empty cards instead of hiding them.
-  const emptyBoards = $derived(page.url.searchParams.get('emptyBoards') === '1');
+  const emptyMode = $derived(page.url.searchParams.get('emptyBoards')); // '1' short cards, 'full' stretched to a populated board's height
+  const emptyBoards = $derived(emptyMode === '1' || emptyMode === 'full');
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
@@ -220,13 +221,13 @@
   {@const shown = isOpen ? rows : rows.slice(0, size)}
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
-  <section class="chart-panel board" class:open={isOpen} data-board={b} style:--rows={size}>
+  <section class="chart-panel board" class:fill={emptyMode === 'full' && unranked(b)} class:open={isOpen} data-board={b} style:--rows={size}>
     <h2>{TITLE[b]}</h2>
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
       {#if unranked(b)}<!-- TEMP preview -->
-        <p class="board-note">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
+        <p class="board-note" class:fill={emptyMode === 'full'}>Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else}
@@ -378,6 +379,13 @@
     padding: var(--space-4) 0;
     text-align: center;
     color: var(--color-text-muted);
+  }
+  /* TEMP preview (emptyBoards=full): an empty gear card as tall as a populated board. */
+  .board.fill:has(.board-note) {
+    align-self: stretch;
+  }
+  .board-note.fill {
+    min-height: calc(var(--rows) * var(--row-h));
   }
   .board:has(.board-note) {
     align-self: start;
