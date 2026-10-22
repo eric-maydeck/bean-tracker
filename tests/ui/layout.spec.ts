@@ -2844,7 +2844,9 @@ export const STATES: State[] = [
       const [open, time, plain] = [await h('dripper'), await h('grinder'), await h('filter')];
       expect(open).toBeGreaterThan(time + 20);
       expect(open).toBeGreaterThan(plain + 20); // a List sibling keeps its own height too (unchanged behaviour)
-      if ((page.viewportSize()?.width ?? 0) > 640) expect(await top('dripper')).toBe(await top('grinder')); // one row
+      // One row only where the band runs 3 across (dripper, filter, grinder); 2 across puts grinder below.
+      const cols = await page.locator('.board[data-board=dripper]').evaluate((e) => getComputedStyle(e.parentElement!).gridTemplateColumns.split(' ').length);
+      if (cols === 3) expect(await top('dripper')).toBe(await top('grinder'));
       await page.locator('.board[data-board=dripper]').getByRole('button', { name: /^Show top/ }).click();
       await expect(page).not.toHaveURL(/open=/);
       expect(Math.abs((await h('grinder')) - time)).toBeLessThanOrEqual(1);
