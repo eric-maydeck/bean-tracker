@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { restZ, strengthOf } from './stats';
-import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
-import type { BagFact, BrewFact } from './facts';
+import { breakdown, brewingTab, emptyStat, fillGrind, trimBlank, cellOf, groupsFor, matchesCoffee, labFn, labOptions, matchesBrew, exceptOwn, ladder, HEAD_FIT, MAYBE_FIT, TIE_MARGIN, mightBe, thinOf, tieHead, pairedDeltas, ratedIn, SLICE_OF, sweetSpotsTab, verdictOf, waterTab, gearTab, ranked } from './lab';
+import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import type { BandStat } from './lab';
 
 let n = 0;
@@ -741,5 +741,41 @@ describe('topBags like line', () => {
     const l = sweetSpotsTab(rows, bags, { period: P, ratings: 'all', grinder: null, filters: {}, all: rows }).topBags[0].like!;
     expect(l.label).toBe('Washed Light coffees');
     expect(l.gap).toBeCloseTo(4 / 3);
+  });
+});
+
+describe('matchesBrew', () => {
+  it('matches each set key; null and mixed never match', () => {
+    expect(matchesBrew({ dripper: 'V60' })(brew({ dripper: 'V60' }))).toBe(true);
+    expect(matchesBrew({ dripper: 'V60' })(brew({ dripper: 'Origami' }))).toBe(false);
+    const paper = matchesBrew({ filter: 'Paper' });
+    expect(paper(brew({ filter: 'Paper' }))).toBe(true);
+    expect(paper(brew({ filter: MIXED_FILTER }))).toBe(false);
+    expect(paper(brew({ filter: null }))).toBe(false);
+    expect(matchesBrew({ brewDose: '18' })(brew({ dose: 18.5 }))).toBe(true);
+    expect(matchesBrew({ brewDose: '18' })(brew({ dose: null }))).toBe(false);
+    expect(matchesBrew({ brewTemp: '93' })(brew({ tempC: 93 }))).toBe(true);
+    expect(matchesBrew({ brewTemp: '93' })(brew({ tempC: 92.5 }))).toBe(false);
+    expect(matchesBrew({})(brew({}))).toBe(true);
+  });
+  it('exceptOwn drops only a filter key', () => {
+    expect(exceptOwn({ dripper: 'V60', water: 'A' }, 'dripper')).toEqual({ water: 'A' });
+    const f = { water: 'A' };
+    expect(exceptOwn(f, 'roastLevel')).toBe(f);
+  });
+});
+
+describe('labOptions brew values', () => {
+  it('lists present values, no mixed, no null', () => {
+    const o = labOptions([
+      brew({ dripper: 'V60', filter: 'Paper', dose: 15, tempC: 93, water: 'A' }),
+      brew({ dripper: 'Origami', filter: MIXED_FILTER, dose: 20.5, tempC: 92.5, water: null }),
+      brew({ dripper: 'V60', filter: null, dose: null, tempC: null })
+    ], []);
+    expect(o.drippers).toEqual(['Origami', 'V60']);
+    expect(o.filters).toEqual(['Paper']);
+    expect(o.waters).toEqual(['A']);
+    expect(o.doses).toEqual(['15', '20']);
+    expect(o.temps).toEqual(['92.5', '93']);
   });
 });

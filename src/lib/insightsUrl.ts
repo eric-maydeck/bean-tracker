@@ -47,6 +47,18 @@ export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
 // Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
+// Insights brew filters (spec 2026-10-21): one value each, in the URL as these param names.
+export const BREW_FILTER_KEYS = ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const;
+export type BrewFilterKey = (typeof BREW_FILTER_KEYS)[number];
+export type BrewFilters = Partial<Record<BrewFilterKey, string>>;
+export const DOSE_BANDS: readonly { slug: string; label: string }[] = [
+  { slug: 'lt12', label: '< 12g' }, { slug: '12', label: '12g' }, { slug: '15', label: '15g' },
+  { slug: '18', label: '18g' }, { slug: '20', label: '20g' }, { slug: 'gt20', label: '> 20g' }
+];
+export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
+export const brewFilterText = (k: BrewFilterKey, v: string): string =>
+  k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v} °C` : v;
+
 export const LAB_TABS = ['sweetspots', 'brewing', 'water', 'gear'] as const;
 // Brewing breakdowns (tempBy=roast…; absent = None) and the slice functions' names in lab.ts.
 export const SLICES = ['roast', 'process', 'origin', 'roaster'] as const;

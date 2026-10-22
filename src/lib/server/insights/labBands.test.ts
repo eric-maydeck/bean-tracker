@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { bandOf, bloomRound, grindSteps, mineralOf, REST_LABELS, type LabVar } from './labBands';
+import { bandOf, doseBand, bloomRound, grindSteps, mineralOf, REST_LABELS, type LabVar } from './labBands';
 import { MIXED_FILTER, type BrewFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -126,5 +126,12 @@ describe('grindSteps (M-6: no step skipped inside the range)', () => {
     expect(s).toHaveLength(3);
     expect(grindSteps(['1.3.4', '1.5.0'])).toBeNull();
     expect(grindSteps([])).toEqual([]);
+  });
+});
+
+describe('doseBand edges', () => {
+  it('slugs at the cut points', () => {
+    const got = [10.99, 11, 13.4, 13.5, 16.4, 16.5, 18.5, 18.9, 19, 20.9, 21, 0, null].map(doseBand);
+    expect(got).toEqual(['lt12', '12', '12', '15', '15', '18', '18', '18', '20', '20', 'gt20', null, null]);
   });
 });

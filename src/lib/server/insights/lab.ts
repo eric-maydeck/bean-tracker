@@ -1,9 +1,9 @@
 import { pooled, single, type Sample } from '$lib/sample';
-import { MON, type Ratings, type Slice } from '$lib/insightsUrl';
+import { DOSE_BANDS, MON, BREW_FILTER_KEYS, type BrewFilterKey, type BrewFilters, type Ratings, type Slice } from '$lib/insightsUrl';
 import { slugify } from '$lib/server/slug';
-import { grindKey, type BagFact, type BrewFact } from './facts';
+import { grindKey, MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { monthlyMulti, settleGroups, type Multi } from './insightGenerators';
-import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
+import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, doseBand, grindSteps, mineralOf, type Band, type LabVar, type Mineral } from './labBands';
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, twinKeys } from './likeGroup';
 import { groupBy } from './records';
@@ -270,6 +270,9 @@ export interface LabOptions {
   bags: { slug: string; label: string; onHand: boolean; roast: string | null; process: string }[];
   roasts: string[]; processes: string[]; origins: string[]; roasters: string[];
   grinders: { slug: string; name: string }[]; // most rated brews first: [0] is the default
+  drippers: string[]; filters: string[]; waters: string[];
+  doses: string[]; // band slugs present, band order
+  temps: string[]; // numeric order
 }
 // The values the pickers offer and the URL parser accepts (spec "URL state": values from the data).
 // Roast levels need ≥ MIN_BAGS brewed bags (spec "Bands"); every slugged bag parses (an archived bag's
@@ -278,13 +281,31 @@ export function labOptions(brews: readonly BrewFact[], bags: readonly BagFact[])
   const brewed = bags.filter((b) => b.firstBrew);
   const values = (f: (b: BagFact) => string | null, min = 1) =>
     [...groupBy(brewed, f)].filter(([, g]) => g.length >= min).map(([k]) => k).sort((a, b) => a.localeCompare(b));
+  const uniq = (f: (b: BrewFact) => string | null) =>
+    [...new Set(brews.map(f).filter((v): v is string => !!v))].sort((a, b) => a.localeCompare(b));
+  const dosesPresent = new Set(brews.map((b) => doseBand(b.dose)));
   return {
     bags: bags.filter((b) => b.slug).map((b) => ({ slug: b.slug!, label: `${b.roaster} ${b.name}`, onHand: b.status !== 'archive', roast: b.roastLevel, process: b.processGroup })),
     roasts: values((b) => b.roastLevel, MIN_BAGS), processes: values((b) => b.processGroup), origins: values((b) => b.origin), roasters: values((b) => b.roaster),
     grinders: [...groupBy(brews.filter((b) => b.rating! > 0), (b) => b.grinder)]
-      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => ({ slug: slugify(name), name }))
+      .sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0])).map(([name]) => ({ slug: slugify(name), name })),
+    drippers: uniq((b) => b.dripper), filters: uniq((b) => (b.filter === MIXED_FILTER ? null : b.filter)), waters: uniq((b) => b.water),
+    doses: DOSE_BANDS.map((d) => d.slug).filter((s) => dosesPresent.has(s)),
+    temps: [...new Set(brews.map((b) => b.tempC).filter((t): t is number => t !== null))].sort((a, b) => a - b).map(String)
   };
 }
+
+// The brew filters (spec 2026-10-21): each set key must match; a missing value or the mixed filter never does.
+export const matchesBrew = (f: BrewFilters) => (b: BrewFact): boolean =>
+  (!f.dripper || b.dripper === f.dripper) && (!f.filter || (b.filter !== MIXED_FILTER && b.filter === f.filter)) &&
+  (!f.water || b.water === f.water) && (!f.brewDose || doseBand(b.dose) === f.brewDose) &&
+  (!f.brewTemp || (b.tempC !== null && b.tempC === Number(f.brewTemp)));
+// A control's own filter doesn't narrow its own options.
+export const exceptOwn = (f: BrewFilters, k: BrewFilterKey | string): BrewFilters => {
+  if (!(BREW_FILTER_KEYS as readonly string[]).includes(k)) return f;
+  const { [k as BrewFilterKey]: _, ...rest } = f;
+  return rest;
+};
 
 export interface LabFilters { roast?: string; process?: string; origin?: string; roaster?: string }
 type CoffeeFields = Pick<BrewFact, 'roastLevel' | 'processGroup' | 'origin' | 'roaster'>;

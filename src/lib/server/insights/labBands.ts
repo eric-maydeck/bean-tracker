@@ -1,3 +1,4 @@
+import { DOSE_BANDS } from '$lib/insightsUrl';
 import { grindKey, grindValue, MIXED_FILTER, type BrewFact } from './facts';
 
 // Brewing lab bands (spec "Bands"): a brew's band for one variable, or null when the value isn't
@@ -112,3 +113,7 @@ export function mineralOf(m: Mineral, b: BrewFact): number | null {
   if (m === 'gh' || m === 'kh') return round(w[m], 0);
   return w[m] === null ? null : round(w[m]!, 1);
 }
+
+// The brew Dose filter's band slug (spec 2026-10-21): 11 / 13.5 / 16.5 / 19 / 21 g edges; no dose → null.
+export const doseBand = (dose: number | null): string | null =>
+  dose && dose > 0 ? DOSE_BANDS[[11, 13.5, 16.5, 19, 21].filter((e) => dose >= e).length].slug : null;
