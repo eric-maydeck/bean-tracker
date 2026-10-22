@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -21,7 +22,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, WHATIF_LIMITS as L, wholeNote, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { MON, THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
@@ -350,7 +351,7 @@
   {/if}
   <!-- Cards are fixed-height: one note under the grid names the whole-bag ones by what they show. -->
   {#if wholeKeys.length && sized.some((x) => x.item.whole)}
-    <p class="chart-note">{wholeNote(wholeKeys, sized.filter((x) => x.item.whole).map((x) => WHOLE_NAME[x.item.key] ?? x.item.key))}</p>
+    <WholeNote keys={wholeKeys} items={sized.filter((x) => x.item.whole).map((x) => WHOLE_NAME[x.item.key] ?? x.item.key)} />
   {/if}
   {#if tested}
     {@const k = Math.round(tested / 20)}
@@ -386,7 +387,7 @@
             <div class="story-visual">{@render visual(f)}</div>
             {#if f.body}<p>{f.body}</p>{/if}
             {#if f.caveat}<p class="muted">{f.caveat}</p>{/if}
-            {#if f.whole && wholeKeys.length}<p class="muted">{wholeNote(wholeKeys)}</p>{/if}
+            {#if f.whole && wholeKeys.length}<WholeNote keys={wholeKeys} cls="muted" />{/if}
             <div class="story-foot">
               <span class="muted">{f.sample}</span>
               {#if f.href}<a href={link(f.href)}>See the data →</a>{/if}
@@ -495,7 +496,7 @@
         </div>
       {/if}
     </div>
-    {#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
+    {#if wholeKeys.length}<WholeNote keys={wholeKeys} />{/if}
   </section>
 {/if}
 

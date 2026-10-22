@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import { bottomInView } from '$lib/scrollToBottom';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
@@ -13,7 +14,7 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, wholeNote, type Avg, type Board, type BrewFilterKey, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
@@ -280,7 +281,7 @@
     {/if}
   {/each}
   {#if (rank === 'spend' || rank === 'ppg') && BANDS.flat().some(unranked)}<p class="chart-note"><span class="setting-name">{RANK_LABEL[rank]}</span> is per bag, so gear and water aren't ranked by it.</p>{/if}
-  {#if wholeKeys.length && (rank === 'spend' || rank === 'ppg')}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
+  {#if wholeKeys.length && (rank === 'spend' || rank === 'ppg')}<WholeNote keys={wholeKeys} />{/if}
   {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
   {#if rank === 'like'}<p class="like-note"><span class="setting-name">{RANK_LABEL.like}</span> ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
 {/if}

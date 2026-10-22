@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import { setting, plainText } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
@@ -14,7 +15,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, wholeNote, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -699,7 +700,7 @@
         </div>
       {/each}
     </div>
-    {#if whole && wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys, whole)}</p>{/if}
+    {#if whole && wholeKeys.length}<WholeNote keys={wholeKeys} items={whole} />{/if}
   </section>
 {/snippet}
 

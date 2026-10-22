@@ -3983,6 +3983,7 @@ export const STATES: State[] = [
       await expect(note(/^Totals$/)).toHaveText("Spend and Bags finished count whole bags: the dripper filter doesn't apply.");
       await expect(note(/^Consumption$/)).toHaveText("Time to clear counts whole bags: the dripper filter doesn't apply.");
       await expect(note(/^Right now$/)).toHaveText("Whole bags: the dripper filter doesn't apply.");
+      await expect(note(/^Totals$/).locator('strong')).toHaveText('Spend and Bags finished count whole bags:');
       await expect(note(/^Averages$/)).toHaveCount(0);
       await expect(page.locator('.chart-panel.recent .chart-note')).toHaveText("Whole bags: the dripper filter doesn't apply.");
     } },

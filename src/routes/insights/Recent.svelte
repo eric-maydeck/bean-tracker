@@ -1,6 +1,7 @@
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
-  import { wholeNote, type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
+  import { type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
   import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShowMore from './ShowMore.svelte';
@@ -55,7 +56,7 @@
     </ol>
     <ShowMore count={bags.length} n={nc} set={(v) => choose({ recentc: v })} />
   {:else}<p class="recent-note">No coffees finished yet.</p>{/if}
-  {#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
+  {#if wholeKeys.length}<WholeNote keys={wholeKeys} />{/if}
 </section>
 
 <style>

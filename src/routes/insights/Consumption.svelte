@@ -1,10 +1,11 @@
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
-  import { AGG_LABEL, AGGS, BYS, UNITS, wholeNote, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
@@ -75,7 +76,7 @@
 </div>
 {/snippet}
 
-{#snippet whole()}{#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}{/snippet}
+{#snippet whole()}{#if wholeKeys.length}<WholeNote keys={wholeKeys} />{/if}{/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
 {@render tiles()}

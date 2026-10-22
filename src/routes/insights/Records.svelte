@@ -1,4 +1,5 @@
 <script lang="ts">
+  import WholeNote from './WholeNote.svelte';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
@@ -8,7 +9,7 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, RATINGS_LABEL, MON, wholeNote, type BrewFilterKey, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewFilterKey, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
@@ -245,7 +246,7 @@
       </div>
       <!-- One note per section, naming its whole-bag cards (the rest of the section follows the filters). -->
       {#if wholeKeys.length && s.tiles.some((r) => r.whole)}
-        <p class="chart-note">{wholeNote(wholeKeys, s.tiles.filter((r) => r.whole).map((r) => r.label))}</p>
+        <WholeNote keys={wholeKeys} items={s.tiles.filter((r) => r.whole).map((r) => r.label)} />
       {/if}
     {/if}
     {#if s.key === 'taste'}
