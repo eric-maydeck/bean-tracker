@@ -238,7 +238,7 @@
   {@const pick = switchable ? viewOf(b) : undefined}
   {@const view = pick ? 'time' : 'list'}
   {@const wide = pick === 'wide'}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}
     data-lines={view === 'time' ? (isOpen ? series?.[b]?.lines.length : Math.min(size, series?.[b]?.lines.length ?? 0)) : undefined}>
     {#if switchable}
       <div class="board-head">
@@ -259,7 +259,7 @@
       </div>
     {:else}<h2>{TITLE[b]}</h2>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
-    <div class="board-body" class:time={view === 'time' && !isOpen}>
+    <div class="board-body" class:time={view === 'time'}>
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
       {#if unranked(b)}
         <p class="board-note fill">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
@@ -270,10 +270,11 @@
         <!-- The server sends every group's line, best first (colors follow that order, so Show all keeps the top ones'). -->
         {@const lines = isOpen ? (sr?.lines ?? []) : (sr?.lines ?? []).slice(0, size)}
         {#if sr && lines.length && sr.labels.length}
-          <!-- The chart fills the List's body height, so switching views never resizes the card; Show all may grow it. -->
+          <!-- The chart fills the List's body height, so neither switching views nor Show all resizes the card (the legend grows
+               inside it). -->
           <div class="time-chart">
             <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
-              series={lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={isOpen ? 360 : 'fill'} />
+              series={lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === sr.lines.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `top ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
@@ -385,9 +386,13 @@
       --row-h: var(--row-h-like);
     }
   }
-  /* An expanded card alone grows; its neighbors keep their own height. */
-  .board-band:has(.board.open) {
+  /* An opened List card alone grows; its neighbors keep their own height. An opened Over time card doesn't grow (Show all only
+     adds lines), so it doesn't start this; an Over time card beside an opened List card stretches to the row. */
+  .board-band:has(.board.open:not(.timeview)) {
     align-items: start;
+  }
+  .board-band:has(.board.open:not(.timeview)) > .board.timeview {
+    align-self: stretch;
   }
   @media (min-width: 641px) {
     .band-2,
@@ -551,14 +556,26 @@
     opacity: 0.45;
   }
   /* Over time: the body is the List's height (rows × row height), the chart takes what the caption leaves. */
-  .board-body.time {
+  .board.timeview {
     display: flex;
     flex-direction: column;
-    height: calc(var(--rows) * var(--row-h));
   }
+  .board-body.time {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(var(--rows) * var(--row-h));
+  }
+  /* The chart is laid out inside this box (absolute), whatever height the card is stretched to. A sane minimum keeps the
+     plot readable under a wrapped legend. */
   .time-chart {
+    position: relative;
     flex: 1 1 0;
-    min-height: 0;
+    min-height: 12rem;
+  }
+  .time-chart :global(.chart-container) {
+    position: absolute;
+    inset: 0;
   }
   .has-foot > .board:not(:has(.board-foot))::after {
     content: '';

@@ -2795,26 +2795,44 @@ export const STATES: State[] = [
     } },
   { name: 'insights-board-time-size', path: () => '/insights?tab=leaderboards&range=all&avg=raw',
     act: async (page) => {
-      // List and Over time are the same card size; Show all (Over time) adds lines and moves no other card.
-      const heights = () => page.locator('.board-band:has(.board[data-board=dripper]) > .board').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
-      const water = page.locator('.board[data-board=dripper]');
+      // List and Over time are the same card size; Show all (Over time) only adds lines: no card changes height.
+      const row = '.board-band:has(.board[data-board=dripper]) > .board';
+      const heights = () => page.locator(row).evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      const card = page.locator('.board[data-board=dripper]');
       const list = await heights();
-      await water.getByRole('button', { name: 'Over time' }).click();
-      await expect(water.locator('canvas')).toBeVisible();
+      await card.getByRole('button', { name: 'Over time' }).click();
+      await expect(card.locator('canvas')).toBeVisible();
       await expect(page).toHaveURL(/views=dripper-time/);
       expect(await heights()).toEqual(list);
-      const lines = () => water.locator('canvas').evaluate((c) => c.closest('.board')!.getAttribute('data-lines'));
+      const lines = () => card.evaluate((c) => c.getAttribute('data-lines'));
       expect(await lines()).toBe('5');
-      await water.getByRole('button', { name: /^Show all/ }).click();
+      await card.getByRole('button', { name: /^Show all/ }).click();
       await expect(page).toHaveURL(/open=dripper/);
       await expect.poll(lines).toBe('7');
-      const after = await heights();
-      const iw = await page.locator('.board-band:has(.board[data-board=dripper]) > .board').evaluateAll((els) => els.findIndex((e) => e.getAttribute('data-board') === 'dripper'));
-      after.forEach((h, k) => k !== iw && expect(Math.abs(h - list[k])).toBeLessThanOrEqual(1));
-      await expect(water.locator('.chart-note')).toContainText('all 7');
-      await water.getByRole('button', { name: /^Show top/ }).click();
+      await expect(card.locator('.chart-note')).toContainText('all 7');
+      expect(await heights()).toEqual(list);
+      // The plot keeps a readable height under the 7-name legend, and nothing spills out of the card.
+      const fit = await card.evaluate((c) => {
+        const b = c.getBoundingClientRect(), p = c.querySelector('.time-chart')!.getBoundingClientRect();
+        return { plot: p.height, inside: p.bottom <= b.bottom && p.right <= b.right + 0.5 && c.scrollWidth <= c.clientWidth + 1 };
+      });
+      expect(fit.plot).toBeGreaterThanOrEqual(190);
+      expect(fit.inside).toBe(true);
+      await card.getByRole('button', { name: /^Show top/ }).click();
       await expect.poll(lines).toBe('5');
       await expect.poll(heights).toEqual(list);
+    } },
+  { name: 'insights-board-time-beside-open', path: () => '/insights?tab=leaderboards&range=all&avg=raw&views=grinder-time&open=dripper',
+    act: async (page) => {
+      // A List card opened in the row grows; an Over time card beside it stretches to the row, its chart filling it.
+      const box = (b: string) => page.locator(`.board[data-board=${b}]`).evaluate((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; });
+      const [open, time, plain] = [await box('dripper'), await box('grinder'), await box('filter')];
+      if (open.top === time.top) { // same row (one column on a phone: nothing to match)
+        expect(Math.abs(time.h - open.h)).toBeLessThanOrEqual(1);
+        expect(plain.h).toBeLessThan(open.h - 20); // a List sibling keeps its own height (unchanged behaviour)
+        const chart = await page.locator('.board[data-board=grinder] .time-chart').evaluate((e) => e.getBoundingClientRect().height);
+        expect(chart).toBeGreaterThan(200);
+      }
     } },
   { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
