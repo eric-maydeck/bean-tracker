@@ -961,11 +961,13 @@ describe('weighted settle groups', () => {
     expect(p.pos).toBe(all0.pos); expect(p.w).toBeCloseTo(4 / 6);
   });
   it('fractional bags meet the pooled rule', () => {
-    const grp = (k: number) => settleGroups(c(Array.from({ length: k }, (_, i) => seq(i + 1, R, '2026-07-01', { dripper: 'V60' })).flat()), 'dripper', () => true)[0];
-    const half = (nHalf: number) => [...Array.from({ length: 2 }, (_, i) => seq(i + 1, R, '2026-07-01', { dripper: 'V60' })).flat(),
-      ...Array.from({ length: nHalf }, (_, i) => seq(i + 3, R, '2026-07-01', (j) => ({ dripper: j < 3 ? 'V60' : 'CT62' }))).flat()];
-    expect(grp(3).sample.small).toBe(false);
-    const g = settleGroups(c(half(1)), 'dripper', () => true).find((x) => x.label === 'V60')!;
-    expect(g.bags).toBeCloseTo(2.5); expect(g.sample.small).toBe(true);
+    // n bags, each brewed `v60` times on V60 and the rest on CT62
+    const bagsOf = (n: number, v60: number) => Array.from({ length: n }, (_, i) => seq(i + 1, R, '2026-07-01', (j) => ({ dripper: j < v60 ? 'V60' : 'CT62' }))).flat();
+    const v60 = (brews: BrewFact[]) => settleGroups(c(brews), 'dripper', () => true).find((x) => x.label === 'V60')!;
+    const exact = v60(bagsOf(6, 3)); // 6 x 3/6 = 3.0 bags
+    expect(exact.bags).toBe(3); expect(exact.sample.small).toBe(false);
+    const short = v60([...bagsOf(5, 3), ...seq(9, R, '2026-07-01', (j) => ({ dripper: j < 2 ? 'V60' : 'CT62' }))]); // 2.5 + 2/6 = 2.83 bags
+    expect(short.bags).toBeCloseTo(2.833); expect(short.sample.small).toBe(true);
+    expect(v60(bagsOf(18, 1)).bags).toBe(3); // 18 x 1/6: float sum is 2.999...
   });
 });

@@ -187,7 +187,7 @@ export function settleGroups(c: Pick<GenCtx, 'brews' | 'ratings'>, dim: SettleDi
     }
   }
   return [...groups].map(([label, g]) => {
-    const bags = g.ws.reduce((a, w) => a + w, 0);
+    const bags = g.brews / SETTLE_WINDOW; // integer brews, so no float drift (every window is exactly SETTLE_WINDOW)
     return { label, value: Math.ceil(weightedMedian(g.pos, g.ws)), bags, brews: g.brews, ps: g.pos, sample: pooled(bags, g.brews) };
   });
 }
