@@ -5,7 +5,7 @@ const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
 const d = (ca: number, mg: number, na: number, k: number): Drops => ({ ca, mg, na, k });
 
-// Spec "Drops at 800 mL" column (docs/backlog/lotus-800ml-recipes.md).
+// Spec "Drops at 800 mL" column.
 const T800: [string, Drops][] = [
   ['bright-and-juicy', d(4, 4, 2, 2)],
   ['holy-water', d(0, 6, 0, 4)],

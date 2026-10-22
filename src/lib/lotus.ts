@@ -1,8 +1,7 @@
 import { pickOne } from '$lib/pageUrlState';
 
 // Lotus drop calculator, copied from Lotus's own (lotuscoffeeproducts.com product-instructions):
-// drops = round(ppm x L/4.5 x 0.56), doubled for Na and K, round-tip dropper. Basis and recipes:
-// docs/backlog/lotus-800ml-recipes.md.
+// drops = round(ppm x L/4.5 x 0.56), doubled for Na and K, round-tip dropper.
 export type Drops = { mg: number; ca: number; na: number; k: number };
 // Target ppm per mineral: Ca and Mg count as GH, Na and K as KH.
 export interface Recipe { name: string; slug: string; ppm: Drops }
