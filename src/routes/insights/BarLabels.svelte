@@ -2,12 +2,12 @@
   import { labelTip } from '$lib/components/labelTip';
   // Labels under a row of bars (findings' bars, Brewing's Brews until dialed in): one-letter initials (weekday bars,
   // weekends bold), or `full`: the value, then the name, ellipsized; on phones "value name" chips, names whole.
-  let { series, full = false, text }: { series: { label: string; value: number }[]; full?: boolean; text?: (v: number) => string } = $props();
+  let { series, full = false }: { series: { label: string; value: number }[]; full?: boolean } = $props();
 </script>
 
 <div class="bar-labels" class:full aria-hidden="true" style:--n={series.length}>
   {#each series as p, i (i)}
-    {#if full}<span use:labelTip={p.label}><b>{text ? text(p.value) : +p.value.toFixed(1)}</b>{p.label}</span>
+    {#if full}<span use:labelTip={p.label}><b>{+p.value.toFixed(1)}</b>{p.label}</span>
     {:else}<span class:weekend={/^(Sat|Sun)/.test(p.label)}>{p.label[0]}</span>{/if}
   {/each}
 </div>

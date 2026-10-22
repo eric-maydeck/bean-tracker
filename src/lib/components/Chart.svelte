@@ -60,6 +60,7 @@
     dots = true,
     monotone = false,
     integer = false,
+    dashGaps = false,
     legend = false
   }: {
     type: 'bar' | 'doughnut' | 'line';
@@ -99,6 +100,8 @@
     dots?: boolean;
     // Plain lines: monotone interpolation, so a step (a delivery) never overshoots past real values.
     monotone?: boolean;
+    // Plain lines: a null (no data) is bridged by a dashed segment in the line's color; isolated points join their neighbors.
+    dashGaps?: boolean;
     // Value axis: whole-number ticks (counts), never 0.1 steps.
     integer?: boolean;
     // Vertical bars: per-bar samples (sample.ts); a small one is striped over its color, its tip adds a Sample row.
@@ -227,6 +230,7 @@
     const bgColors = paletteColors(labels.length);
     const inkColors = paletteColors(labels.length, '-ink');
     const vbar = type === 'bar' && vertical;
+    const gapped = dashGaps ? { spanGaps: true, segment: { borderDash: (c: { p0: { skip: boolean }; p1: { skip: boolean } }) => (c.p0.skip || c.p1.skip ? [6, 4] : undefined) } } : {};
 
     chart?.destroy();
     tipAt = null; // a rebuilt chart never fires the old hover's close
@@ -260,6 +264,7 @@
                 pointRadius: dots ? 3 : 0,
                 tension: 0.25,
                 ...(monotone && { cubicInterpolationMode: 'monotone' as const }),
+                ...gapped,
                 fill: false
               }
             : vbar
@@ -292,7 +297,7 @@
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
               : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), borderWidth: 1,
                 // A multi-line chart: the first line's look (2px, dots, tension) for every line, in its own color.
-                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`) }) }
+                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`) }) }
           )
         ]
       },
@@ -446,6 +451,7 @@
     void dots;
     void monotone;
     void integer;
+    void dashGaps;
     void legend;
     render();
 
@@ -462,7 +468,7 @@
 </script>
 
 <div class="chart-container" style="height: {height}px">
-  <canvas bind:this={canvasEl}></canvas>
+  <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}></canvas>
   <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px"></span>
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one

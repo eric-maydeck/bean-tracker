@@ -715,7 +715,6 @@
     open={s.open}
     views={s.views}
     series={data.boardSeries}
-    roastOrder={data.roastOrder}
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}
     {wholeKeys}

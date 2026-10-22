@@ -1,6 +1,5 @@
 import type { PageServerLoad } from './$types';
 import { getDb, getHouseholdSize } from '$lib/server/db';
-import { getRoastLevels } from '$lib/server/roastLevels';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
@@ -122,11 +121,9 @@ export const load: PageServerLoad = ({ url }) => {
     boards,
     // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
     boardSeries: boards
-      ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b] === 'time').map((b) => [b,
+      ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b]).map((b) => [b,
           boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].slice(0, 5).map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
-    // The roast boards' Bars run lightest to darkest (the roast_levels scale).
-    roastOrder: s.tab === 'leaderboards' && s.views?.roast === 'bars' ? getRoastLevels(db).map((r) => r.roast_level) : [],
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:

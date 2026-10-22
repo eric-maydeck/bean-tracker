@@ -14,9 +14,9 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARD_NOUN, BOARD_VIEWS, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
-  import BarLabels from './BarLabels.svelte';
+  import { labelTip } from '$lib/components/labelTip';
   import Chart from '$lib/components/Chart.svelte';
   import type { BoardSeries } from '$lib/server/insights/leaderboards';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
@@ -24,15 +24,15 @@
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, wholeKeys, cut, rank, avg, open, views, series, roastOrder, comparing, perPerson, placeTip, choose, link, part
+    boards, wholeKeys, cut, rank, avg, open, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
-    // views: the small boards' List / Bars / Over time pick (URL); series: Over time's lines (server, only boards on it);
-    // roastOrder: the roast levels lightest to darkest (Bars).
-    views: BoardViews | undefined; series: Record<string, BoardSeries> | null; roastOrder: string[];
+    // views: the small boards' Over time pick, `wide` when expanded (URL; absent = List); series: Over time's lines (server,
+    // only boards on it).
+    views: BoardViews | undefined; series: Record<string, BoardSeries> | null;
     link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
 
@@ -45,12 +45,15 @@
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
-  const VIEW_LABEL: Record<'list' | BoardView, string> = { list: 'List', bars: 'Bars', time: 'Over time' };
-  const BARS = 10; // columns shown (the biggest list is 10)
-  const setView = (b: Board, v: 'list' | BoardView) => {
-    const next = { ...views, [b]: v === 'list' ? undefined : v };
+  const VIEWS = [['list', 'List'], ['time', 'Over time']] as const;
+  const viewOf = (b: Board) => (views as Partial<Record<Board, BoardView>> | undefined)?.[b];
+  // v: undefined = List. Switching to Over time keeps an expansion already there.
+  const setView = (b: Board, v: BoardView | undefined) => {
+    const next = { ...views, [b]: v };
     choose({ views: Object.values(next).some(Boolean) ? next : undefined });
   };
+  // The first and last non-null values bound a gap: a null between them is a period with no data (drawn dashed).
+  const gappy = (vs: (number | null)[]) => vs.some((v, i) => v === null && vs.slice(0, i).some((x) => x !== null) && vs.slice(i).some((x) => x !== null));
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   // `whole`: the board's money format (ui-rules 46: one per list).
@@ -231,16 +234,25 @@
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
   {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
-  {@const view = switchable ? ((views as Partial<Record<Board, BoardView>> | undefined)?.[b] ?? 'list') : 'list'}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide={view === 'time'} id="leaderboard-{b}" data-board={b} style:--rows={size}>
+  {@const pick = switchable ? viewOf(b) : undefined}
+  {@const view = pick ? 'time' : 'list'}
+  {@const wide = pick === 'wide'}
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}>
     {#if switchable}
       <div class="board-head">
         <h2>{TITLE[b]}</h2>
-        <div class="form-field group-field">
-          <span class="sr-only">Shown as</span>
-          <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} shown as">
-            {#each ['list', ...BOARD_VIEWS] as const as v (v)}<button aria-pressed={view === v} onclick={() => setView(b, v)}>{VIEW_LABEL[v]}</button>{/each}
+        <div class="board-tools">
+          <div class="form-field group-field">
+            <span class="sr-only">Shown as</span>
+            <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} shown as">
+              {#each VIEWS as [v, label] (v)}<button aria-pressed={view === v} onclick={() => setView(b, v === 'list' ? undefined : (pick ?? 'time'))}>{label}</button>{/each}
+            </div>
           </div>
+          <!-- Only where the band has columns to span (CSS hides it on a phone). -->
+          {#if view === 'time'}
+            <button class="icon-button expand" aria-label={wide ? 'Shrink chart' : 'Expand chart'} aria-pressed={wide} use:labelTip={wide ? 'Shrink chart' : 'Expand chart'}
+              onclick={() => setView(b, wide ? 'time' : 'wide')}><Icon name={wide ? 'arrows-in-simple' : 'arrows-out-simple'} /></button>
+          {/if}
         </div>
       </div>
     {:else}<h2>{TITLE[b]}</h2>{/if}
@@ -251,23 +263,12 @@
         <p class="board-note fill">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
-      {:else if view === 'bars'}
-        <!-- Rank by per group, left to right; roast levels lightest to darkest, the rest in rank order. -->
-        {@const bars = (b === 'roast' ? [...rows].sort((x, y) => roastOrder.indexOf(x.key) - roastOrder.indexOf(y.key)) : rows).slice(0, BARS)}
-        {@const top = Math.max(...bars.map((r) => r.value), 1e-9)}
-        <div class="bars-view">
-          <div class="bar-cols" role="img" aria-label="{TITLE[b]} by {RANK_LABEL[rank]}: {bars.map((r) => `${r.label} ${fmt(r.value)}`).join(', ')}">
-            {#each bars as r (r.key)}<span class="col"><span class="bar" class:small-sample-mark={r.sample?.small} style:height="{Math.max(0, r.value / top) * 100}%"></span></span>{/each}
-          </div>
-          <BarLabels series={bars.map((r) => ({ label: r.label, value: r.value }))} full text={(v) => fmt(v)} />
-        </div>
-        {#if bars.some((r) => r.sample?.small)}<p class="chart-note">Striped bars are low confidence (a small sample).</p>{/if}
       {:else if view === 'time'}
         {@const sr = series?.[b]}
         {#if sr?.lines.length && sr.labels.length}
           <Chart type="line" labels={sr.labels} values={sr.lines[0].values} datasetLabel={sr.lines[0].label}
-            series={sr.lines.slice(1)} legend dots={sr.labels.length <= 40} integer={rank === 'brews'} format={(v) => fmt(v)} height={260} />
-          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, top {sr.lines.length} {BOARD_NOUN[b]}</p>
+            series={sr.lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={260} />
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {sr.lines.length > 1 ? `top ${sr.lines.length} ` : ''}{BOARD_NOUN[b]}{#if sr.lines.some((l) => gappy(l.values))} · Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
@@ -396,18 +397,29 @@
   .board {
     margin: 0;
   }
-  /* Over time spans the band's whole row. The band turns to wrapping flex, so the cards after it still fill their rows
-     (a last row of two grows to the full width, no hole); the basis is one grid column. */
+  /* An expanded Over time card spans the band's row; dense flow lets the cards after it fill the gap it leaves, at their
+     normal width. */
+  .board.wide {
+    grid-column: 1 / -1;
+  }
   .board-band:has(.board.wide) {
+    grid-auto-flow: dense;
+  }
+  /* Expand / Shrink: only where the band has more than one column. */
+  .expand {
+    display: none;
+  }
+  @media (min-width: 641px) {
+    .expand {
+      display: inline-flex;
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+  }
+  .board-tools {
     display: flex;
-    flex-wrap: wrap;
-  }
-  .board-band:has(.board.wide) > .board {
-    flex: 1 1 calc((100% - (var(--cols, 1) - 1) * var(--space-3)) / var(--cols, 1) - 1px);
-    min-width: 0;
-  }
-  .board-band:has(.board.wide) > .board.wide {
-    flex-basis: 100%;
+    align-items: center;
+    gap: var(--space-2);
   }
   .board-head {
     display: flex;
@@ -466,37 +478,6 @@
     .board-jump a {
       min-height: 44px;
     }
-  }
-  /* Bars: columns on the shared small-sample look, names and values under them (BarLabels). */
-  .bars-view {
-    display: flex;
-    flex-direction: column;
-  }
-  .bar-cols {
-    /* A definite height (percent bar heights need one): the List's rows less the labels, so the cards stay level. */
-    height: calc(var(--rows) * var(--row-h) - 3rem);
-    display: flex;
-    align-items: flex-end;
-    gap: 6%;
-    padding-inline: 3%;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .bar-cols .col {
-    flex: 1 1 0;
-    min-width: 0;
-    height: 100%;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .bar-cols .bar {
-    width: 100%;
-    max-width: 3.5rem;
-    min-height: 2px;
-    background: var(--series-brown-1);
-    border: 1px solid var(--series-brown-1-ink);
-    border-bottom: 0;
-    border-radius: 2px 2px 0 0;
   }
   /* A value's tip (TextTip) sits over the row's stretched link, so hover and tap reach it (ui-rules 41). */
   .board :global(.val .text-tip) {

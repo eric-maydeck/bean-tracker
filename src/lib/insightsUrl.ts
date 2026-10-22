@@ -135,22 +135,22 @@ export type Board = (typeof BOARDS)[number];
 export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'process', 'roast'];
 // vs like coffees ranks coffees and their roasters only.
 export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
-// The small boards' List · Bars · Over time switch: views=roast-bars,water-time (absent = List; only non-List views).
+// The small boards' List · Over time switch: views=roast-time,water-time-wide (absent = List; `wide`: the Over time card
+// expanded to the band's full row).
 export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const satisfies readonly Board[];
 export type ViewBoard = (typeof VIEW_BOARDS)[number];
-export const BOARD_VIEWS = ['bars', 'time'] as const;
-export type BoardView = (typeof BOARD_VIEWS)[number];
+export type BoardView = 'time' | 'wide';
 export type BoardViews = Partial<Record<ViewBoard, BoardView>>;
 function parseViews(v: string | null): BoardViews | undefined {
   const out: BoardViews = {};
   for (const x of (v ?? '').toLowerCase().split(',')) {
-    const [b, w] = x.trim().split('-');
-    const board = VIEW_BOARDS.find((a) => a === b), view = BOARD_VIEWS.find((a) => a === w);
-    if (board && view) out[board] = view;
+    const [b, w, e, ...rest] = x.trim().split('-');
+    const board = VIEW_BOARDS.find((a) => a === b);
+    if (board && w === 'time' && !rest.length && (e === undefined || e === 'wide')) out[board] = e ? 'wide' : 'time';
   }
   return Object.keys(out).length ? out : undefined;
 }
-const viewsText = (v: BoardViews) => VIEW_BOARDS.filter((b) => v[b]).map((b) => `${b}-${v[b]}`).join(',');
+const viewsText = (v: BoardViews) => VIEW_BOARDS.filter((b) => v[b]).map((b) => `${b}-time${v[b] === 'wide' ? '-wide' : ''}`).join(',');
 
 // Shared by /insights and /stats: the People switch's help text.
 export const peopleHelp = (size: number): Record<People, string> => ({
