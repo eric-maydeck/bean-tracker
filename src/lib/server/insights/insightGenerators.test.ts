@@ -1,7 +1,7 @@
 import { likeGap } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
-import { GENERATORS, insightsTab, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
+import { GENERATORS, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
@@ -932,5 +932,40 @@ describe('like-with-like findings', () => {
     expect(f!.headline).toMatch(/\(roasted /);
     const names = [f!.headline, ...(f!.details?.flatMap((d) => d.items.map((i) => i.name)) ?? [])];
     expect(new Set(names.map((n) => n.replace(/ (beats|trails) .*/, ''))).size).toBe(names.length);
+  });
+});
+
+describe('weighted settle groups', () => {
+  const R = [6, 7, 8, 8, 8, 8]; // settles at brew 3
+  const split = (n: number) => seq(1, R, '2026-07-01', (i) => ({ dripper: i < n ? 'CT62' : 'V60' }));
+  const c = (brews: BrewFact[]) => ({ brews, ratings: 'all' as const });
+  it('roast groups unchanged without keep', () => {
+    const g = settleGroups(c(seq(1, R, '2026-07-01', { roastLevel: 'Light' })), 'roastLevel');
+    expect(g).toMatchObject([{ label: 'Light', value: 3, bags: 1, brews: 6, ps: [3] }]);
+  });
+  it('4 + 2 split', () => {
+    const g = settleGroups(c(split(4)), 'dripper', () => true);
+    const by = Object.fromEntries(g.map((x) => [x.label, x]));
+    expect(by.CT62.bags).toBeCloseTo(0.667); expect(by.CT62.brews).toBe(4);
+    expect(by.V60.bags).toBeCloseTo(0.333); expect(by.V60.brews).toBe(2);
+    expect([by.CT62.value, by.V60.value]).toEqual([3, 3]);
+  });
+  it('null dripper brews weigh nothing', () => {
+    const g = settleGroups(c(seq(1, R, '2026-07-01', (i) => ({ dripper: i === 0 ? null : 'V60' }))), 'dripper', () => true);
+    expect(g.reduce((n, x) => n + x.bags, 0)).toBeCloseTo(5 / 6);
+  });
+  it('settle reads the full window', () => {
+    const brews = split(2); // V60 = #3-#6
+    const keep = (b: BrewFact) => b.dripper === 'V60';
+    const [all0] = settlePositions(c(brews)), [p] = settlePositions(c(brews), keep);
+    expect(p.pos).toBe(all0.pos); expect(p.w).toBeCloseTo(4 / 6);
+  });
+  it('fractional bags meet the pooled rule', () => {
+    const grp = (k: number) => settleGroups(c(Array.from({ length: k }, (_, i) => seq(i + 1, R, '2026-07-01', { dripper: 'V60' })).flat()), 'dripper', () => true)[0];
+    const half = (nHalf: number) => [...Array.from({ length: 2 }, (_, i) => seq(i + 1, R, '2026-07-01', { dripper: 'V60' })).flat(),
+      ...Array.from({ length: nHalf }, (_, i) => seq(i + 3, R, '2026-07-01', (j) => ({ dripper: j < 3 ? 'V60' : 'CT62' }))).flat()];
+    expect(grp(3).sample.small).toBe(false);
+    const g = settleGroups(c(half(1)), 'dripper', () => true).find((x) => x.label === 'V60')!;
+    expect(g.bags).toBeCloseTo(2.5); expect(g.sample.small).toBe(true);
   });
 });

@@ -5,6 +5,17 @@ export const MIN_BREWS = 30;
 export const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length; // NaN on empty
 // A bag mean's precision weight (user ruling 2026-10-17, threshold audit): n/(n+2) for n rated brews, 2 ≈ the
 // within-bag ÷ between-bag rating variance (0.77² ÷ 0.60² ≈ 1.6), so a 1-brew bag counts a third, a 12-brew one 0.86.
+// The x where the cumulative weight reaches half the total (the mean of the two points when it lands exactly on half).
+export function weightedMedian(xs: readonly number[], ws: readonly number[]): number {
+  const pts = xs.map((x, i) => [x, ws[i]] as const).sort((a, b) => a[0] - b[0]);
+  const half = ws.reduce((a, w) => a + w, 0) / 2;
+  let cum = 0;
+  for (let i = 0; i < pts.length; i++) {
+    cum += pts[i][1];
+    if (cum >= half - 1e-9) return Math.abs(cum - half) < 1e-9 && i + 1 < pts.length ? (pts[i][0] + pts[i + 1][0]) / 2 : pts[i][0];
+  }
+  return NaN;
+}
 export const bagWeight = (n: number): number => n / (n + 2);
 export const wmean = (xs: readonly number[], ws: readonly number[]): number =>
   xs.reduce((s, x, i) => s + x * ws[i], 0) / ws.reduce((a, b) => a + b, 0);

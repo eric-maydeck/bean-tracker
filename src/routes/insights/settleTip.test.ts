@@ -12,4 +12,9 @@ describe('settleTip', () => {
     expect(t.rows).toEqual([['Median settle brew', '4']]);
     expect(t).toHaveProperty('sample.s.small', true);
   });
+  it('fractional bags show one decimal', () => {
+    const rows = (bags: number) => settleTip({ label: 'V60', value: 3, bags, brews: 16, sample: pooled(5, 30) }).rows;
+    expect(rows(2.6667)).toContainEqual(['Bags', '2.7']);
+    expect(rows(5)).toContainEqual(['Bags', '5']);
+  });
 });

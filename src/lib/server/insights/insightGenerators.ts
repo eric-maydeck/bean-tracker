@@ -6,11 +6,11 @@ import type { WhatIf } from '$lib/insightsWhatIf';
 import { grindValue, MIXED_FILTER, restDays, type BagFact, type BrewFact } from './facts';
 import { bagSizes, countsForRating, fullBags } from './ratings';
 import { SETTLE_WINDOW, settleWithin } from './dialed';
-import { bagWeight, brewZ, demeaned, effN, mean, wmean, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
+import { bagWeight, brewZ, demeaned, effN, mean, wmean, weightedMedian, MIN_BAGS, MIN_BREWS, partialR, pearson, rBand, restZ, sd, spearman, solidBar, strengthOf, type Strength } from './stats';
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
-import { tagTwins } from './lab';
+import { matchesBrew, tagTwins } from './lab';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
@@ -154,28 +154,45 @@ const dialinCurve: Generator = (c) => {
 // Brews to reach the bag's settled rating within its first SETTLE_WINDOW rated brews (dialed.ts settleWithin).
 // Bags with SETTLE_WINDOW+ counted rated brews that began in the period; `month` = the month of its first rated brew;
 // `n`: the window's brews (what the measure read).
-export const settlePositions = (c: Pick<GenCtx, 'brews' | 'ratings'>) => {
-  const out: { id: number; pos: number; month: string; n: number; roastLevel: string | null; processGroup: string | null }[] = [];
+export type SettleDim = 'roastLevel' | 'processGroup' | 'dripper' | 'water';
+// `keep` (a brew filter) only weights: the measure always reads the bag's whole window, `w` = the window's share that
+// passes `keep`; bags with none are left out.
+export const settlePositions = (c: Pick<GenCtx, 'brews' | 'ratings'>, keep?: (b: BrewFact) => boolean) => {
+  const out: { id: number; pos: number; month: string; n: number; window: BrewFact[]; w: number }[] = [];
   const firstIdx = new Map([...perBag(c.brews)].map(([id, bs]) => [id, Math.min(...bs.map((b) => b.brewIndex))]));
   for (const [id, bs] of perBag(counted(c))) {
     const pos = settleWithin(bs.map((b) => b.rating!));
     if (pos === null || firstIdx.get(id) !== 1) continue;
-    const { roastLevel, processGroup } = bs[0];
-    out.push({ id, pos, month: bs[0].localDate.slice(0, 7), n: SETTLE_WINDOW, roastLevel, processGroup });
+    const window = bs.slice(0, SETTLE_WINDOW);
+    const w = keep ? window.filter(keep).length / SETTLE_WINDOW : 1;
+    if (w > 0) out.push({ id, pos, month: bs[0].localDate.slice(0, 7), n: SETTLE_WINDOW, window, w });
   }
   return out;
 };
-// Dial-in speed per roast level or process group (spec Part 4): the median brew its bags settle at (settleWithin), as
-// whole brews rounded up; `brews`: in-period, every rating (Once dialed exempts dial-in). Unknown groups are left out.
-// The dialinBy findings keep groups of 3+ bags; the Brewing charts show all, marking the pooled rule's small ones.
-export function settleGroups(c: Pick<GenCtx, 'brews' | 'ratings'>, dim: 'roastLevel' | 'processGroup') {
-  return [...groupBy(settlePositions(c), (x) => (x[dim] && x[dim] !== 'Other / Unknown' ? x[dim] : null))].map(([label, g]) => {
-    const brews = g.reduce((n, x) => n + x.n, 0);
-    return { label: label!, value: Math.ceil(median(g.map((x) => x.pos))), bags: g.length, brews, ps: g.map((x) => x.pos), sample: pooled(g.length, brews) };
+// Dial-in speed per roast level, process group, dripper or water (spec Part 4 / brew filters Part 2): the weighted
+// median brew its bags settle at (settleWithin), as whole brews rounded up. A bag counts for a label by the share of
+// its window brewed with it (and passing `keep`); `bags` = those shares summed, `brews` = the weighted window brews.
+// Unknown labels are left out. The dialinBy findings keep groups of 3+ bags; the Brewing charts show all.
+export function settleGroups(c: Pick<GenCtx, 'brews' | 'ratings'>, dim: SettleDim, keep?: (b: BrewFact) => boolean) {
+  const groups = new Map<string, { pos: number[]; ws: number[]; brews: number }>();
+  for (const x of settlePositions(c, keep)) {
+    const counts = new Map<string, number>();
+    for (const b of x.window) {
+      const l = b[dim];
+      if (l && l !== 'Other / Unknown' && (!keep || keep(b))) counts.set(l, (counts.get(l) ?? 0) + 1);
+    }
+    for (const [l, k] of counts) {
+      const g = groups.get(l) ?? groups.set(l, { pos: [], ws: [], brews: 0 }).get(l)!;
+      g.pos.push(x.pos); g.ws.push(k / SETTLE_WINDOW); g.brews += k;
+    }
+  }
+  return [...groups].map(([label, g]) => {
+    const bags = g.ws.reduce((a, w) => a + w, 0);
+    return { label, value: Math.ceil(weightedMedian(g.pos, g.ws)), bags, brews: g.brews, ps: g.pos, sample: pooled(bags, g.brews) };
   });
 }
 const dialinSpeed: Generator = (c) => {
-  const slow = settlePositions(c);
+  const slow = settlePositions({ ...c, brews: c.wholeBrews }, matchesBrew(c.brewFilters));
   if (slow.length < MIN_BAGS) return null;
   const label = (x: { id: number }) => bagLabel(c, x.id);
   const by = (a: { id: number; pos: number }, b: { id: number; pos: number }) => a.pos - b.pos || label(a).localeCompare(label(b));
@@ -530,7 +547,7 @@ const firstVsLater: Generator = (c) => {
   };
 };
 const settleTrend: Generator = (c) => {
-  const months = [...groupBy(settlePositions(c), (x) => x.month)].filter(([, g]) => g.length >= MIN_BAGS).sort(([a], [b]) => a.localeCompare(b));
+  const months = [...groupBy(settlePositions({ ...c, brews: c.wholeBrews }, matchesBrew(c.brewFilters)), (x) => x.month)].filter(([, g]) => g.length >= MIN_BAGS).sort(([a], [b]) => a.localeCompare(b));
   if (months.length < 3) return null;
   const values = months.map(([, g]) => Math.round(10 * mean(g.map((x) => x.pos))) / 10);
   const e = ends(values)!;
@@ -877,7 +894,7 @@ const dialinByGroup: Generator = (c) => {
     const [fast, slow] = [[...groups].sort(by(1))[0], [...groups].sort(by(-1))[0]];
     if (fast.value === slow.value) return [];
     const phrase = (g: typeof fast) => (g.value === 1 ? 'is right on brew 1' : `settles by brew ${g.value}`);
-    const z = restZ(slow.ps, pos.filter((x) => x[dim] !== slow.label).map((x) => x.pos));
+    const z = restZ(slow.ps, pos.filter((x) => x.window[0][dim] !== slow.label).map((x) => x.pos));
     const measured = Number.isFinite(z); // false: no spread to test (always listed, user 2026-10-17: no bar then)
     const f = graded({
       key: `dialinBy:${dim}`, theme: 'dialin', kind: 'pattern', chart: 'bars', barLabels: 'full',

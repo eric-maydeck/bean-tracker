@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mean, sd, pearson, partialR, demeaned, strengthOf, brewZ, tCrit, tTail, spearman, rBand } from './stats';
+import { mean, sd, pearson, partialR, demeaned, strengthOf, brewZ, tCrit, tTail, spearman, rBand, weightedMedian } from './stats';
 
 describe('stats', () => {
   it('mean and population sd', () => {
@@ -87,5 +87,14 @@ describe('myth helpers', () => {
   it('rBand: 2 SE of r, narrower near ±1', () => {
     expect(rBand(103)).toBeCloseTo(0.2);
     expect(rBand(103, 0.5)).toBeCloseTo(0.15);
+  });
+});
+
+describe('weightedMedian', () => {
+  it('equal weights are the median; a half-way tie averages; weight can dominate', () => {
+    expect(weightedMedian([1, 2, 3], [1, 1, 1])).toBe(2);
+    expect(weightedMedian([1, 2, 3, 4], [1, 1, 1, 1])).toBe(2.5);
+    expect(weightedMedian([1, 5], [2 / 3, 1 / 3])).toBe(1);
+    expect(weightedMedian([2, 4], [0.5, 0.5])).toBe(3);
   });
 });
