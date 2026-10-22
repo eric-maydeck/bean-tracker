@@ -219,8 +219,8 @@
       </select>
     </label>
     {#if volume !== ideal}
-      <p class="text-muted water-ideal">
-        The {recipe.name} recipe is best used with {ideal}&nbsp;mL of distilled water.
+      <p class="text-muted water-ideal"><strong>
+        The {recipe.name} recipe is best used with {ideal}&nbsp;mL of distilled water.</strong>
         <button class="button button-secondary" type="button" onclick={() => setMl(String(ideal))}>Switch to {ideal}&nbsp;mL</button>
       </p>
     {/if}
@@ -454,6 +454,8 @@
       grid-template-areas: 'title results' 'tabs results' 'ctl results' 'inputs results' 'hint results' 'notes results' '. results';
     }
     .water-notes { align-self: start; }
+    /* Notes sit right under it here, so the idle hint reserves no blank line above them (only the notes shift when it shows). */
+    .water-hint-off { display: none; }
     /* Two columns: every select the same width. */
     .water-field select { max-width: none; width: 100%; }
   }
