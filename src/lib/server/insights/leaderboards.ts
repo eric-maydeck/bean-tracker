@@ -5,7 +5,7 @@ import type { LabFilters } from './lab';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { autoBy, daysBetween, inPeriod, trackedBounds, type Period } from './time';
 import { bucketLabels, bucketTitles, buckets } from './consumption';
-import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
+import { ADJUSTED_K, RATINGS_SETTLED_FROM, bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
 import { mean } from './stats';
@@ -233,7 +233,8 @@ export function boardSeries(
 ): BoardSeries {
   const t = trackedBounds(c.period, c.dataStart, c.today);
   const by = autoBy(t ? daysBetween(t.start, t.end) + 1 : 0);
-  const bs = buckets(t, by);
+  // Calibrated ratings: rating ranks start at the first bucket reaching the calibration date (earlier ones would sit empty).
+  const bs = buckets(t, by).filter((b) => !(ratings === 'current' && (rank === 'rating' || rank === 'like')) || b.end >= RATINGS_SETTLED_FROM);
   const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend') ? size : 1;
   const empty = rank === 'brews' || rank === 'grams' || rank === 'spend' ? 0 : null;
   const perBucket = bs.map((b) => new Map(leaderboard(brews, bags, { start: b.start, end: b.end }, board, rank, ratings, confident(rank, avg) ? 'raw' : avg, false).map((r) => [r.key, r.value])));

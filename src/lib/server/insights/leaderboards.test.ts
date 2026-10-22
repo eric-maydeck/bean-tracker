@@ -1,5 +1,6 @@
 import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
+import { RATINGS_SETTLED_FROM } from './ratings';
 import { boardSeries, cutBoards, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
@@ -347,6 +348,17 @@ describe('boardSeries', () => {
     expect(s.labels).toHaveLength(10);
     expect(s.lines[0]).toEqual({ label: 'V60', values: [0, 30, 0, 10, 0, 0, 0, 0, 0, 0] });
     expect(s.lines[1].values[3]).toBe(20);
+  });
+  it('calibrated ratings start the axis at the calibration date; all ratings and counts keep the whole period', () => {
+    const from = RATINGS_SETTLED_FROM;
+    const c = { period: { start: '2020-01-01', end: '2020-02-15' }, dataStart: '2020-01-01', today: '2020-02-15' };
+    const rated = [brew({ localDate: '2020-01-10', rating: 8 })];
+    const cut = boardSeries(rated, [], { ...c, period: { start: from, end: from } , dataStart: from, today: from }, 'dripper', ['V60'], 'rating', 'current', 'raw');
+    expect(cut.labels.length).toBe(1);
+    const old = boardSeries(rated, [], c, 'dripper', ['V60'], 'rating', 'current', 'raw');
+    expect(old.labels).toEqual([]); // the whole period predates calibration
+    expect(boardSeries(rated, [], c, 'dripper', ['V60'], 'rating', 'all', 'raw').labels.length).toBeGreaterThan(5);
+    expect(boardSeries(rated, [], c, 'dripper', ['V60'], 'brews', 'current', 'raw').labels.length).toBeGreaterThan(5);
   });
   it('rating: a bucket without the group is a gap; per person divides counts only', () => {
     const rated = [brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 })];
