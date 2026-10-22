@@ -46,7 +46,6 @@ export type Caffeine = (typeof CAFFEINES)[number];
 export const TOPS = [20, 50] as const;
 export type Top = (typeof TOPS)[number];
 
-// Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
 // Insights brew filters (spec 2026-10-21): one value each, in the URL as these param names.
 export const BREW_FILTER_KEYS = ['dripper', 'filter', 'water', 'brewDose', 'brewTemp'] as const;
 export type BrewFilterKey = (typeof BREW_FILTER_KEYS)[number];
@@ -59,6 +58,7 @@ export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Drip
 export const brewFilterText = (k: BrewFilterKey, v: string): string =>
   k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v} °C` : v;
 
+// Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
 export const LAB_TABS = ['sweetspots', 'brewing', 'water', 'gear'] as const;
 // Brewing breakdowns (tempBy=roast…; absent = None) and the slice functions' names in lab.ts.
 export const SLICES = ['roast', 'process', 'origin', 'roaster'] as const;
