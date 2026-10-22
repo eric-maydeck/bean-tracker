@@ -99,7 +99,7 @@
                 <BarLabels series={rows} full />
               </div>
             </div>
-            <p class="chart-note">Median settle brew per {by}{#if (k === 'dripper' || k === 'water') && s[k]} · {by[0].toUpperCase() + by.slice(1)} filter not applied{/if}{#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
+            <p class="chart-note">Median settle brew per {by}{#if (k === 'dripper' || k === 'water') && s[k]}{' · '}{by[0].toUpperCase() + by.slice(1)} filter not applied{/if}{#if s.dial === 'dialed'}{' · '}<span class="setting-name">Always all brews</span>{/if}</p>
           </section>
         {/if}
       {/each}
