@@ -437,28 +437,18 @@
   // Chart.js reads CSS custom properties once, at construction time, so a
   // theme toggle (which only flips a data-theme attribute, not any of this
   // component's props) needs its own listener to pick up the new colors.
+  // A new-but-equal prop (a page reload of the same data: any navigation re-runs the load) must not rebuild the chart and
+  // replay its animation: the data inputs are compared by value (their JSON). The formats derive from them.
+  let lastSig = '';
   $effect(() => {
-    void type;
-    void labels;
-    void values;
-    void datasetLabel;
-    void valueAxisMax;
-    void trendValues;
-    void trendLabel;
-    void unit;
-    void vertical;
-    void series;
-    void yMin;
-    void samples;
     void format;
     void tipFormat;
-    void dots;
-    void monotone;
-    void integer;
-    void dashGaps;
-    void legend;
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend]);
+    if (chart && sig === lastSig) return;
+    lastSig = sig;
     render();
-
+  });
+  $effect(() => {
     const observer = new MutationObserver(render);
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 

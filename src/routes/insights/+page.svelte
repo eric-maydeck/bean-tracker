@@ -5,7 +5,7 @@
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import TextTip from '$lib/components/TextTip.svelte';
-  import { afterNavigate, goto } from '$app/navigation';
+  import { afterNavigate, goto, replaceState } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
@@ -38,7 +38,12 @@
   import { toParams, type StatusTab } from '$lib/coffeeViewState';
 
   let { data }: { data: PageData } = $props();
-  let s = $derived(withDefaults(data.explicit));
+  // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
+  // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
+  // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
+  let local = $state<Pick<InsightsUrlState, 'open' | 'views'> | null>(null);
+  const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
+  let s = $derived(withDefaults(explicit));
   provideCoffeeNote(() => coffeeNote(s));
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
@@ -89,7 +94,15 @@
     // Keep the scroll position through the swap: the content can collapse while the new data loads.
     const y = scrollY;
     const keep = () => { if (!change.tab) scrollTo(0, y); };
-    const next = { ...data.explicit, ...change };
+    const next = { ...explicit, ...change };
+    // Only open / views, and every Over time board already has its series: nothing to fetch.
+    if (Object.keys(change).every((k) => k === 'open' || k === 'views') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
+      local = { open: next.open, views: next.views };
+      const qs = insightsParams(next).toString();
+      replaceState(`${qs ? `?${qs}` : location.pathname}${location.hash}`, {});
+      remember(qs);
+      return Promise.resolve();
+    }
     // A compare the new range doesn't offer would be dropped by the parser.
     // A new custom Period has no menu yet: keep what could apply and let the parser drop what doesn't fit.
     const menu = change.range ? data.compareMenus[change.range] : undefined;
@@ -104,18 +117,26 @@
   // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL
   // (Share keeps working). Any in-page navigation saves its own state, and a bare one removes it (bare is the
   // state), so a link with params wins and becomes the remembered state.
+  function remember(qs: string) {
+    try {
+      if (qs) localStorage.setItem(INSIGHTS_STORAGE_KEY, serializeInsightsState(qs, Date.now()));
+      else localStorage.removeItem(INSIGHTS_STORAGE_KEY);
+    } catch {
+      // localStorage unavailable (private window): the page works, it just isn't remembered.
+    }
+  }
   afterNavigate(({ from }) => {
+    local = null;
     const qs = insightsParams(data.explicit).toString();
     try {
       if (!qs && !location.search && (!from || from.url.pathname !== location.pathname)) {
         const saved = loadInsightsState(localStorage.getItem(INSIGHTS_STORAGE_KEY), Date.now());
         if (saved) return void goto(`?${saved}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
       }
-      if (qs) localStorage.setItem(INSIGHTS_STORAGE_KEY, serializeInsightsState(qs, Date.now()));
-      else localStorage.removeItem(INSIGHTS_STORAGE_KEY);
     } catch {
       // localStorage unavailable (private window): the page works, it just isn't remembered.
     }
+    remember(qs);
   });
 
   // Reset: a hard reset of the filters (spec Part 3): every param but a non-default tab; the remembered state is
@@ -123,7 +144,7 @@
   function reset() {
     draft = null;
     try { localStorage.removeItem(INSIGHTS_STORAGE_KEY); } catch { /* nothing remembered to clear */ }
-    const qs = insightsParams(resetInsights(data.explicit)).toString();
+    const qs = insightsParams(resetInsights(explicit)).toString();
     goto(`${qs ? `?${qs}` : location.pathname}${location.hash}`, { replaceState: true, noScroll: true, keepFocus: true });
   }
 
@@ -185,7 +206,7 @@
   const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
-    const qs = insightsParams({ ...data.explicit, tab }).toString();
+    const qs = insightsParams({ ...explicit, tab }).toString();
     return qs ? `?${qs}` : '/insights';
   }
   const ROLLING = RANGES.filter((r) => r !== 'ytd' && r !== 'all');
@@ -206,7 +227,7 @@
   const span = (p: { start: string | null; end: string }) => (p.start ? `${day(p.start)} – ${day(p.end)}` : 'All time');
 
   // Finding, leaderboard and Right now links keep the page's Period, Ratings, Caffeine and Coffees filter.
-  const link = (href: string) => withPageWide(href, data.explicit, data.coffeeFilters);
+  const link = (href: string) => withPageWide(href, explicit, data.coffeeFilters);
   // Right now tiles: a link to the /coffees list the number counts.
   const SEE: Partial<Record<string, { status: StatusTab[]; label: string }>> = {
     openedG: { status: ['open'], label: 'See coffees' }, opened: { status: ['open'], label: 'See coffees' },
@@ -711,7 +732,7 @@
     boards={data.boards}
     cut={data.boardsCut}
     rank={s.rank}
-    avg={data.explicit.avg}
+    avg={explicit.avg}
     open={s.open ?? []}
     views={s.views}
     series={data.boardSeries}
@@ -762,7 +783,7 @@
     theme={s.theme}
     inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
     today={data.today}
-    explicit={data.explicit}
+    explicit={explicit}
     {wholeKeys}
     {placeTip}
     {choose}

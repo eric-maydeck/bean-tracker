@@ -2862,6 +2862,33 @@ export const STATES: State[] = [
       await btn('coffees', /^Show top/).click();
       await expect(page).not.toHaveURL(/open=/);
     } },
+  { name: 'insights-board-no-rerender', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all&avg=raw&views=grinder-time,process-time',
+    act: async (page) => {
+      // Show all and the expand toggle are view-only: no data request, and the other tiles' charts are not rebuilt (a rebuilt
+      // chart re-runs its animation, which rewrites data-dashed-segments; the marker below is cleared first).
+      const charts = page.locator('.board canvas');
+      await expect(charts).toHaveCount(2);
+      await expect.poll(() => charts.evaluateAll((cs) => cs.every((c) => c.hasAttribute('data-dashed-segments')))).toBe(true);
+      await page.waitForTimeout(600); // the first animation has finished
+      await charts.evaluateAll((cs) => cs.forEach((c) => c.removeAttribute('data-dashed-segments')));
+      let fetched = 0;
+      page.on('request', (r) => r.url().includes('__data.json') && fetched++);
+      const dripper = page.locator('.board[data-board=dripper]');
+      await dripper.getByRole('button', { name: /^Show all/ }).click();
+      await expect(page).toHaveURL(/open=dripper/);
+      await expect(dripper.getByRole('button', { name: /^Show top/ })).toBeVisible();
+      await page.locator('.board[data-board=grinder]').getByRole('button', { name: 'Expand chart' }).isVisible().then(async (shown) => {
+        if (shown) { await page.locator('.board[data-board=grinder]').getByRole('button', { name: 'Expand chart' }).click(); await expect(page).toHaveURL(/grinder-time-wide/); }
+      });
+      await page.waitForTimeout(1000);
+      expect(fetched).toBe(0);
+      // The process card's chart is untouched (the grinder's may resize when expanded).
+      expect(await page.locator('.board[data-board=process] canvas').getAttribute('data-dashed-segments')).toBeNull();
+      await reloadReady(page); // the URL carries it: a reload shows the same
+      await expect(page.locator('.board[data-board=dripper]').getByRole('button', { name: /^Show top/ })).toBeVisible();
+      await dripper.getByRole('button', { name: /^Show top/ }).click();
+      await expect(page).not.toHaveURL(/open=/);
+    } },
   { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       // The view is URL state: absent = List, a pick shows in the URL and survives a reload, List drops it again.
