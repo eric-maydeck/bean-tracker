@@ -2781,6 +2781,15 @@ export const STATES: State[] = [
       // The other cards keep a normal column, never stretched.
       during.forEach((x, k) => k !== i && expect(Math.abs(x - before[k])).toBeLessThanOrEqual(1));
       await expect(card.getByRole('button', { name: 'Shrink chart' })).toBeVisible();
+      // The chart resized with its card: the canvas's backing store is its CSS size x the device pixel ratio (no stale pixels).
+      const sharp = () => card.locator('canvas').evaluate((c: HTMLCanvasElement) => {
+        const r = c.getBoundingClientRect();
+        return Math.abs(c.width - r.width * devicePixelRatio) <= 1 && Math.abs(c.height - r.height * devicePixelRatio) <= 1;
+      });
+      await expect.poll(sharp).toBe(true);
+      await card.getByRole('button', { name: 'Shrink chart' }).click();
+      await expect.poll(sharp).toBe(true);
+      await card.getByRole('button', { name: 'Expand chart' }).click();
       await card.getByRole('button', { name: 'Shrink chart' }).click();
       await expect(page).toHaveURL(/views=roast-time(&|$)/);
       await expect.poll(widths).toEqual(before);
