@@ -4,14 +4,14 @@
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
-  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, BYS, UNITS, wholeNote, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
-    t, periodLabel, compareLabel, compareDates, unit, agg, offered, choose, tiles, part
+    t, wholeKeys, periodLabel, compareLabel, compareDates, unit, agg, offered, choose, tiles, part
   }: {
     part?: 'bar'; // 'bar': only the controls (rendered inside the sticky bar), else the tab
-    t: ConsumptionTab; periodLabel: string; compareLabel: string; compareDates: string; unit: Unit; agg: Agg; offered: By[];
+    t: ConsumptionTab; wholeKeys: BrewFilterKey[]; periodLabel: string; compareLabel: string; compareDates: string; unit: Unit; agg: Agg; offered: By[];
     choose: (c: InsightsUrlState) => void; tiles: Snippet;
   } = $props();
 
@@ -75,6 +75,8 @@
 </div>
 {/snippet}
 
+{#snippet whole()}{#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}{/snippet}
+
 {#if part === 'bar'}{@render bar()}{:else}
 {@render tiles()}
 
@@ -88,18 +90,21 @@
       <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={!g && !avg}
         format={fmt(k1)} unit={axis(k1)} height={260} />
       <p class="chart-note">{g ? 'Grams brewed' : 'Bags finished'} {unitNote}{note}</p>
+      {#if !g}{@render whole()}{/if}
     </section>
     <section class="chart-panel">
       <h2>Bought vs brewed</h2>
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
         series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
       <p class="chart-note">{g ? 'Grams' : 'Bags'} {unitNote}{note}</p>
+      {@render whole()}
     </section>
   </div>
   <section class="chart-panel">
     <h2>On hand over time</h2>
     <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
+    {@render whole()}
   </section>
 {/if}
 {/if}

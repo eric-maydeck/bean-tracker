@@ -3973,6 +3973,66 @@ export const STATES: State[] = [
       await gotoReady(page, '/insights');
       await expect(page).toHaveURL(/dripper=V60/);
     } },
+  // Whole-bag notes (Part 1, Task 6): one .chart-note per panel of whole-bag figures, none on brew-level panels.
+  { name: 'insights-brew-overview', path: () => '/insights?dripper=V60',
+    act: async (page) => {
+      const note = (t: RegExp) => page.locator('.chart-panel', { has: page.getByRole('heading', { name: t }) }).locator('.chart-note');
+      await expect(note(/^Totals$/)).toHaveText("Spend and Bags finished count whole bags: the dripper filter doesn't apply.");
+      await expect(note(/^Consumption$/)).toHaveText("Time to clear counts whole bags: the dripper filter doesn't apply.");
+      await expect(note(/^Right now$/)).toHaveText("Whole bags: the dripper filter doesn't apply.");
+      await expect(note(/^Averages$/)).toHaveCount(0);
+      await expect(page.locator('.chart-panel.recent .chart-note')).toHaveText("Whole bags: the dripper filter doesn't apply.");
+    } },
+  { name: 'insights-brew-leaderboards', path: () => '/insights?tab=leaderboards&rank=spend&dripper=V60',
+    act: async (page) => {
+      await expect(page.locator('.chart-note', { hasText: "Whole bags: the dripper filter doesn't apply." })).toHaveCount(1);
+      // The Drippers board skips its own filter: V60 and Origami both still list.
+      const board = page.locator('[data-board="dripper"]');
+      await gotoReady(page, '/insights?tab=leaderboards&dripper=V60');
+      await expect(board).toContainText('V60');
+      await expect(board).toContainText('Origami');
+      await expect(page.locator('.chart-note', { hasText: 'Whole bags' })).toHaveCount(0);
+    } },
+  { name: 'insights-brew-habits', path: () => '/insights?tab=habits&brewDose=15',
+    act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
+  { name: 'insights-brew-consumption', path: () => '/insights?tab=consumption&dripper=V60',
+    act: async (page) => {
+      const notes = page.locator('.chart-note', { hasText: "the dripper filter doesn't apply" });
+      await expect(notes.first()).toBeVisible();
+      await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Consumption', exact: true }) }).locator('.chart-note'))
+        .toHaveText("Bought, Net, On hand and Days to clear count whole bags: the dripper filter doesn't apply.");
+      // Bought vs brewed and On hand over time; Brewed over time (grams) follows the filter.
+      await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Brewed over time' }) }).locator('.chart-note')).toHaveCount(1);
+      await expect(notes).toHaveCount(3);
+    } },
+  { name: 'insights-brew-records', path: () => '/insights?tab=records&dripper=V60',
+    act: async (page) => {
+      const notes = page.locator('.chart-note', { hasText: 'count whole bags' });
+      expect(await notes.count()).toBeGreaterThan(0);
+      await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Volume' }) }).locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0);
+    } },
+  { name: 'insights-brew-insights', path: () => '/insights?tab=insights&dripper=V60',
+    act: async (page) => {
+      const notes = page.locator('.chart-note', { hasText: "whole bags: the dripper filter doesn't apply." });
+      expect(await notes.count()).toBeGreaterThan(0);
+    } },
+  { name: 'insights-brew-brewing', path: () => '/insights?tab=brewing&water=Lab%20Water%20A',
+    act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
+  { name: 'insights-brew-water', path: () => '/insights?tab=water&dripper=V60',
+    act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
+  { name: 'insights-brew-gear', path: () => '/insights?tab=gear&brewTemp=93',
+    act: async (page) => { await expect(page.locator('.chart-note', { hasText: 'whole bags' })).toHaveCount(0); } },
+  // A tile or section link keeps the brew filter; a /coffees link doesn't.
+  { name: 'insights-brew-link-carries', viewports: 'two', path: () => '/insights?dripper=V60',
+    act: async (page) => {
+      // Rail tab links (?tab=…) and finding links (/insights?…) carry the filter.
+      const hrefs = await page.locator('a[href^="?"], a[href^="/insights"]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
+      expect(hrefs.length).toBeGreaterThan(0);
+      expect(hrefs.some((h) => h.includes('dripper=V60'))).toBe(true);
+      const coffees = await page.locator('a[href^="/coffees?"]').evaluateAll((as) => as.map((a) => a.getAttribute('href') ?? ''));
+      expect(coffees.length).toBeGreaterThan(0);
+      expect(coffees.every((h) => !h.includes('dripper='))).toBe(true);
+    } },
   { name: 'insights-coffees-chips', viewports: 'two', path: () => '/insights?tab=brewing&process=Washed&origin=Ethiopia&caffeine=all',
     act: async (page) => {
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(3);

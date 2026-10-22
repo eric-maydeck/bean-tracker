@@ -125,7 +125,7 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
         : null,
-    records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
+    records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, whole: wholeScored, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
     insights:

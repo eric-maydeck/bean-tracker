@@ -21,7 +21,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { formatGrams } from '$lib/grams';
-  import { MON, THEMES, WHATIF_LIMITS as L, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
+  import { MON, THEMES, WHATIF_LIMITS as L, wholeNote, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
   import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
@@ -30,12 +30,13 @@
   import TileCaption from './TileCaption.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
 
-  let { t, theme, inputs, today, explicit, placeTip, choose, link }: {
-    t: InsightsTab; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;
+  let { t, wholeKeys, theme, inputs, today, explicit, placeTip, choose, link }: {
+    t: InsightsTab; wholeKeys: BrewFilterKey[]; theme: Theme | undefined; inputs: Partial<WhatIf>; today: string; explicit: InsightsUrlState;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     link: (href: string) => string; // finding links keep the page's Period, Ratings, Caffeine and Coffees filter (withPageWide)
   } = $props();
 
+  const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/100 g', loyalty: 'Top roasters' };
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
   const date = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`;
@@ -347,6 +348,10 @@
       {/each}
     </div>
   {/if}
+  <!-- Cards are fixed-height: one note under the grid names the whole-bag ones by what they show. -->
+  {#if wholeKeys.length && sized.some((x) => x.item.whole)}
+    <p class="chart-note">{wholeNote(wholeKeys, sized.filter((x) => x.item.whole).map((x) => WHOLE_NAME[x.item.key] ?? x.item.key))}</p>
+  {/if}
   {#if tested}
     {@const k = Math.round(tested / 20)}
     <p class="chart-note many">This page tests <TextTip label="{tested} findings" tip={MANY_TIP} />: by chance alone, {k ? `about ${k}` : 'under one'} would earn Likely.</p>
@@ -381,6 +386,7 @@
             <div class="story-visual">{@render visual(f)}</div>
             {#if f.body}<p>{f.body}</p>{/if}
             {#if f.caveat}<p class="muted">{f.caveat}</p>{/if}
+            {#if f.whole && wholeKeys.length}<p class="muted">{wholeNote(wholeKeys)}</p>{/if}
             <div class="story-foot">
               <span class="muted">{f.sample}</span>
               {#if f.href}<a href={link(f.href)}>See the data →</a>{/if}
@@ -489,6 +495,7 @@
         </div>
       {/if}
     </div>
+    {#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
   </section>
 {/if}
 

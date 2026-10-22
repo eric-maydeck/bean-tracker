@@ -1,12 +1,12 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
-  import type { InsightsUrlState, Top } from '$lib/insightsUrl';
+  import { wholeNote, type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
   import type { RecentBrew, RecentBag } from '$lib/server/insights/overview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import ShowMore from './ShowMore.svelte';
 
-  let { brews, bags, n, nc, choose }: {
-    brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;
+  let { brews, bags, n, nc, choose, wholeKeys }: {
+    wholeKeys: BrewFilterKey[]; brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;
   } = $props();
 
   const RATING_MAX = 10; // Bean Conqueror's rating scale
@@ -55,6 +55,7 @@
     </ol>
     <ShowMore count={bags.length} n={nc} set={(v) => choose({ recentc: v })} />
   {:else}<p class="recent-note">No coffees finished yet.</p>{/if}
+  {#if wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
 </section>
 
 <style>

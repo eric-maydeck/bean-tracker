@@ -747,6 +747,8 @@ describe('brew filters', () => {
   it('wholeNote', () => {
     expect(wholeNote(['dripper'])).toBe("Whole bags: the dripper filter doesn't apply.");
     expect(wholeNote(['dripper', 'water'])).toBe("Whole bags: the dripper and water filters don't apply.");
+    expect(wholeNote(['dripper'], ['Time to clear'])).toBe("Time to clear counts whole bags: the dripper filter doesn't apply.");
+    expect(wholeNote(['dripper'], ['Bought', 'Net', 'On hand'])).toBe("Bought, Net and On hand count whole bags: the dripper filter doesn't apply.");
     expect(wholeNote(['brewDose'], ['Spend', 'Bags finished'])).toBe("Spend and Bags finished count whole bags: the dose filter doesn't apply.");
   });
   it('resetInsights drops brew filters', () => expect(resetInsights({ tab: 'gear', water: 'x' })).toEqual({ tab: 'gear' }));

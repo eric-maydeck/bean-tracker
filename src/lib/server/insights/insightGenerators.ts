@@ -30,6 +30,7 @@ export interface Finding {
   z: number | null; // null = descriptive (no badge)
   strength: Strength | null;
   caveat?: string;
+  whole?: true; // counts whole bags: the brew filters don't narrow it (note on the card)
   of?: string; // a story: the key of the grid finding it retells (left out of the grid)
   // Multi-line trend: x = period labels ("Mar 26"), one line per category, null = gap.
   multi?: { x: string[]; lines: { label: string; values: (number | null)[] }[]; unit?: string };
@@ -327,7 +328,7 @@ const backlogRunway: Generator = (c) => {
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
   const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, c.logged) })).filter((x) => x.g > 0);
   return {
-    key: 'backlogRunway', theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
+    key: 'backlogRunway', whole: true, theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
     body: `At ${Math.round(perDay)} g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
     sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null,
@@ -662,7 +663,7 @@ const pricePerMonth: Generator = (c) => {
   if (qs.length < 2) return null;
   const [a, b] = [qs[0].value, qs.at(-1)!.value];
   return {
-    key: 'pricePerMonth', theme: 'money', kind: 'pattern', headline: `$/100 g went from ${money(a)} to ${money(b)}`, value: money(b),
+    key: 'pricePerMonth', whole: true, theme: 'money', kind: 'pattern', headline: `$/100 g went from ${money(a)} to ${money(b)}`, value: money(b),
     series: qs, money: true, sample: plural(bs.length, 'bag'), href: `${LB}&open=coffees&rank=ppg`, z: null, strength: null
   };
 };
@@ -682,7 +683,7 @@ const loyalty: Generator = (c) => {
   const rising = r && r.n >= 2 && before.length && r.n / recent.length > was / before.length
     ? ` Rising: ${r.name}, ${r.n} of your last ${recent.length} bags (${was} of ${before.length} before).` : '';
   return {
-    key: 'loyalty', theme: 'money', kind: 'number', headline: `Top 3 roasters: ${pct(sum(top3.map(([, g]) => g.length)) / bs.length)} of bags`,
+    key: 'loyalty', whole: true, theme: 'money', kind: 'number', headline: `Top 3 roasters: ${pct(sum(top3.map(([, g]) => g.length)) / bs.length)} of bags`,
     value: pct(sum(top3.map(([, g]) => g.length)) / bs.length), body: `${list(top3.map(([k]) => k))}.${rising}`,
     sample: `${bs.length} bags, ${by.length} roasters`, href: `${LB}&open=roasters`, z: null, strength: null,
     ...details(['Top roasters', top3.map(([k, g]) => detail(k, plural(g.length, 'bag'), listHref('roaster', [k])))])

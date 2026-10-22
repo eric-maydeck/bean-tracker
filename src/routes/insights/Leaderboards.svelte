@@ -13,18 +13,18 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, wholeNote, type Avg, type Board, type BrewFilterKey, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, cut, rank, avg, open, comparing, perPerson, placeTip, choose, link, part
+    boards, wholeKeys, cut, rank, avg, open, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
-    boards: Rows; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
@@ -281,6 +281,7 @@
       </div>
     {/if}
   {/each}
+  {#if wholeKeys.length && (rank === 'spend' || rank === 'ppg')}<p class="chart-note">{wholeNote(wholeKeys)}</p>{/if}
   {#if noisy.length}<p class="like-note noise-note">{names(noisy)} differ by less than their noise: their order can change with the next few bags. Each value's tip gives its ±.</p>{/if}
   {#if rank === 'like'}<p class="like-note"><span class="setting-name">{RANK_LABEL.like}</span> ranks coffees and roasters only. A roaster is compared with other roasters' coffees. Coffees with too few like coffees to compare, or under 4 rated brews, are left out.</p>{/if}
 {/if}

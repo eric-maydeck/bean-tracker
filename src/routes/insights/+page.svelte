@@ -14,7 +14,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, wholeNote, type BrewFilterKey
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -374,6 +374,8 @@
   const cell = (k: string) => `--s2:${span2[k]};--s3:${span3[k]}`;
   let PEOPLE_HELP = $derived(peopleHelp(data.householdSize));
   let perPersonOn = $derived(s.people === 'person');
+  // The brew filters in play on this tab: panels of whole-bag figures say they don't apply (wholeNote).
+  const wholeKeys = $derived(Object.keys(data.brewFilters) as BrewFilterKey[]);
   // Paced or per-person totals are fractional: a count under 10 keeps one decimal, so a small
   // value doesn't read "0" or round 6.5 to "7". Money and grams keep their own formats.
   const paced = (t: Tile) =>
@@ -641,7 +643,7 @@
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
-{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null)}
+{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, whole?: string[])}
   <section class="chart-panel">
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
@@ -697,6 +699,7 @@
         </div>
       {/each}
     </div>
+    {#if whole && wholeKeys.length}<p class="chart-note">{wholeNote(wholeKeys, whole)}</p>{/if}
   </section>
 {/snippet}
 
@@ -711,6 +714,7 @@
     open={s.open}
     comparing={!!data.previousPeriod}
     perPerson={perPersonOn}
+    {wholeKeys}
     {placeTip}
     {choose}
     {link}
@@ -720,8 +724,8 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption {part} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
-    {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas)}{/snippet}
+  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
+    {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas, ['Bought', 'Net', 'On hand', 'Days to clear'])}{/snippet}
   </Consumption>
 {:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}
   <SweetSpots {part} t={data.sweetSpots} lab={data.lab} {s} {placeTip} {choose} />
@@ -739,6 +743,7 @@
     top={s.top}
     topc={s.topc}
     perPerson={perPersonOn}
+    {wholeKeys}
     allRange={!data.period.start}
     {compareLabel}
     ratingsHelp={RATINGS_HELP}
@@ -755,6 +760,7 @@
     inputs={{ drinkers: s.drinkers, gpp: s.gpp, inflow: s.inflow, bpd: s.bpd, dose: s.dose }}
     today={data.today}
     explicit={data.explicit}
+    {wholeKeys}
     {placeTip}
     {choose}
     {link}
@@ -766,11 +772,11 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} {s} {placeTip} {choose} />
 {:else}
-  {@render panel('Totals', TOTALS, data.tiles, data.deltas)}
+  {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
-  {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas)}
-  {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas)}
-  {#if data.recent}<Recent {...data.recent} n={s.recent} nc={s.recentc} {choose} />{/if}
+  {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas, ['Time to clear'])}
+  {@render panel('Right now', RIGHT_NOW, data.rightNow, data.rightNowDeltas, [])}
+  {#if data.recent}<Recent {...data.recent} {wholeKeys} n={s.recent} nc={s.recentc} {choose} />{/if}
 {/if}
 </div>
 </div>

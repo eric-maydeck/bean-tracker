@@ -479,7 +479,7 @@ export const activeBrewFilters = (s: InsightsView): BrewFilters =>
 export const wholeNote = (keys: readonly BrewFilterKey[], items?: readonly string[]): string => {
   const names = keys.map((k) => BREW_FILTER_LABEL[k].toLowerCase()).join(' and ');
   const rest = `the ${names} ${keys.length > 1 ? "filters don't" : "filter doesn't"} apply.`;
-  return items?.length ? `${items.join(' and ')} count whole bags: ${rest}` : `Whole bags: ${rest}`;
+  return items?.length ? `${items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items.at(-1)}` : items[0]} ${items.length > 1 ? 'count' : 'counts'} whole bags: ${rest}` : `Whole bags: ${rest}`;
 };
 
 // Reset: every choice back to default (bare URL), keeping only a non-default tab.

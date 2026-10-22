@@ -36,6 +36,7 @@ export interface RecCtx {
 export interface RecordTile extends RecordPick {
   key: string; section: Section; label: string; fmt: Fmt; rating: boolean; dialIn: boolean; perDay: boolean;
   scope?: 'alltime' | 'now';
+  whole: boolean;
   allTime: RecordPick | null; // null = the period holder IS the all-time record (show the badge)
   was: RecordPick | null; // compare window's holder (null without Compare or when it had none)
 }
@@ -241,6 +242,11 @@ const least = (board: Board) => (c: RecCtx): Candidate[] => {
     }));
 };
 
+// The brew filters (dripper, water, dose) don't narrow these: they read bags, or the brews of whole bags.
+export const WHOLE_RECORDS: ReadonlySet<string> = new Set([
+  'fastestFinish', 'lifetime', 'waitToOpen', 'oldestWaiting', 'priciestBag', 'cheapestBag', 'buyingMonth', 'roasterBags', 'roasterSpend'
+]);
+
 export const RECORDS: RecordDef[] = [
   taste('bestBag', 'Best bag', 'max', 'rating', bestBag()),
   // Already takes each bag's best half, so it reads every brew and ignores the Brews switch (no double discount).
@@ -370,6 +376,7 @@ const grindDefs = (brews: readonly BrewFact[]): RecordDef[] =>
 
 export interface RecordsCtx {
   period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; size: number; today: string;
+  whole?: readonly BrewFact[]; // the brews before the brew filters, for WHOLE_RECORDS; defaults to the brews given
   unscored?: readonly BrewFact[]; // every rating (before Once dialed); defaults to the brews given
 }
 
@@ -380,7 +387,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   const all: Period = { start: null, end: c.today };
   const brews = allBrews, raw = c.unscored ?? allBrews, bags = allBags;
   const ctx = (w: Period | null, def?: RecordDef): RecCtx => ({
-    brews: w ? (def?.dialIn ? raw : brews).filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
+    brews: w ? (def?.dialIn ? raw : def && WHOLE_RECORDS.has(def.key) ? c.whole ?? brews : brews).filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
     bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today
   });
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
@@ -407,7 +414,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
     const same = ever && Math.abs(ever.value - cur.value) < 1e-9 && ever.holder.label === cur.holder.label && ever.holder.date === cur.holder.date;
     tiles.push({
       key: def.key, section: def.section, label: def.label, fmt: def.fmt, rating: !!def.rating, dialIn: !!def.dialIn, perDay: !!def.perDay,
-      ...(def.scope ? { scope: def.scope } : {}), ...split(cur)!, allTime: same ? null : split(ever), was: split(was)
+      ...(def.scope ? { scope: def.scope } : {}), whole: WHOLE_RECORDS.has(def.key), ...split(cur)!, allTime: same ? null : split(ever), was: split(was)
     });
   }
   const inP = ctx(c.period);

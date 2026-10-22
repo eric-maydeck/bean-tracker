@@ -341,3 +341,22 @@ describe('topCoffees like line', () => {
     expect(l.gap).toBeCloseTo(4 / 3);
   });
 });
+
+describe('whole records', () => {
+  const bags = [bag({ id: 1, name: 'Bag 1', slug: 'bag-1', purchaseDate: '2026-06-01', cost: 20, amountG: 250, firstBrew: '2026-07-01', lastBrew: '2026-07-05' })];
+  const first = brew({ id: 1, coffeeId: 1, localDate: '2026-07-01', localTime: '2026-07-01T09:00', dripper: 'Origami', restDays: 10 });
+  const later = brew({ id: 2, coffeeId: 1, localDate: '2026-07-05', localTime: '2026-07-05T09:00', dripper: 'V60', restDays: 14 });
+  const wholeTile = (t: ReturnType<typeof recordsTab>, k: string) => tileOf(t, k);
+  it('are flagged; brew-level records are not', () => {
+    const t = recordsTab([first, later], bags, CTX);
+    expect(wholeTile(t, 'priciestBag')).toMatchObject({ whole: true });
+    expect(wholeTile(t, 'doseHeavy') ?? wholeTile(t, 'mostBrewedBag')).toMatchObject({ whole: false });
+  });
+  it('a brew-reading whole record ignores the brew filter', () => {
+    const everything = wholeTile(recordsTab([first, later], bags, CTX), 'waitToOpen');
+    expect(everything).toMatchObject({ value: 10 });
+    // Dripper V60 leaves only the later brew; fed `whole`, the record is unchanged.
+    expect(wholeTile(recordsTab([later], bags, { ...CTX, whole: [first, later] }), 'waitToOpen')).toEqual(everything);
+    expect(wholeTile(recordsTab([later], bags, CTX), 'waitToOpen')).toBeUndefined();
+  });
+});
