@@ -4719,6 +4719,9 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       await expect(dlg.getByRole('heading', { name: 'ZP6 Special' })).toBeVisible();
       await expect(dlg.locator('.stat-grid').last()).toBeVisible();
+      // The scale matches the coffee page: the title is larger than the section heading.
+      const size = (l: Locator) => l.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+      expect(await size(dlg.locator('.trophy-name'))).toBeGreaterThan(await size(dlg.locator('.detail-section h2')));
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
       // Inside the screen; the close button is a 44px target.
       const box = (await dlg.boundingBox())!, vp = page.viewportSize()!;

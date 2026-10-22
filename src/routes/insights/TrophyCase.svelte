@@ -111,7 +111,7 @@
                 {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
               </div>
               <section class="detail-section">
-                <h3>Usage</h3>
+                <h2>Usage</h2>
                 <div class="stat-grid">
                   {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
                   <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
@@ -209,6 +209,7 @@
   .fig b {
     font-size: 1rem;
   }
+  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the headline count keeps .hl-value's size. */
   .fig-brews b.hl-value {
     font-size: min(2rem, 15cqw / var(--q, 2));
   }
@@ -308,6 +309,7 @@
   }
   .trophy-name {
     margin: 0;
+    font-size: 1.5rem; /* the coffee page's h1 size */
     padding-right: 2.5rem;
     overflow-wrap: anywhere;
   }
