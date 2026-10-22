@@ -48,7 +48,7 @@ export interface GenCtx {
   period: { from: string; to: string }; dataStart: string; // What-if defaults (Task 14)
   allBrews: readonly BrewFact[]; // in-period, every rating: the dial-in findings (Once dialed exempts them)
   dialIn: ReadonlySet<number>; // dialed.ts dialInIds over the whole history
-  // In-period, every rating, before the brew filters: whole-bag figures (What-if, runway) and, for now, the settle
+  // In-period, every rating, before the brew filters: whole-bag figures (What-if, runway) and the settle
   // views read it. `brewFilters` is what applied.
   wholeBrews: readonly BrewFact[]; brewFilters: BrewFilters;
 }
@@ -944,8 +944,10 @@ export function rescueOdds(rs: readonly number[], skip: number, m: number): numb
 const rescuedBags: Generator = (c) => {
   const raw = c.allBrews.filter((b) => countsForRating(b, c.ratings) && rated(b));
   const userMean = mean(raw.map((b) => b.rating!)), byId = bagById(c);
+  // The start is the bag's first two rated brews before any brew filter; a bag whose start was filtered out is left out.
+  const starts = new Map([...perBag(c.wholeBrews.filter((b) => countsForRating(b, c.ratings) && rated(b)))].map(([id, bs]) => [id, bs.slice(0, 2)]));
   const bags = [...perBag(raw)].flatMap(([id, bs]) => {
-    if (single(bs.length).small) return [];
+    if (single(bs.length).small || !starts.get(id)?.every((b, i) => bs[i] === b)) return [];
     const start = mean(bs.slice(0, 2).map((b) => b.rating!)), end = mean(bs.slice(2).map((b) => b.rating!));
     return [{ id: id!, start, end, odds: rescueOdds(bs.map((b) => b.rating!), 2, userMean) }];
   });
@@ -969,8 +971,6 @@ const rescuedBags: Generator = (c) => {
 };
 
 export const DIAL_IN_GENERATORS: ReadonlySet<Generator> = new Set([dialinCurve, dialinSpeed, firstVsLater, settleTrend]);
-// The settle measures read whole bags, never a brew-filtered subset (Part 2 weights them).
-const SETTLE_WHOLE: ReadonlySet<Generator> = new Set([dialinSpeed, settleTrend]);
 
 export const GENERATORS: Generator[] = [
   dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
@@ -997,7 +997,7 @@ const negligible = (f: Finding) => (/^[-+]\d/.test(f.value ?? '') && Math.abs(pa
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
-  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: SETTLE_WHOLE.has(g) ? c.wholeBrews : c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early';
 
   const p = { start: c.period.from, end: c.period.to };

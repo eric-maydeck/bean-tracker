@@ -360,3 +360,20 @@ describe('whole records', () => {
     expect(wholeTile(recordsTab([later], bags, CTX), 'waitToOpen')).toBeUndefined();
   });
 });
+
+describe('dial-in records under a brew filter keep each bag\'s true order', () => {
+  // Bag 1: two Origami brews (5, 6), then six V60 (9, 8, 8, 8, 8, 8). With dripper=V60 only the V60 brews remain.
+  const whole = rated(1, [5, 6, 9, 8, 8, 8, 8, 8]).map((b, i) => ({ ...b, brewIndex: i + 1, dripper: i < 2 ? 'Origami' : 'V60' }));
+  const v60 = whole.filter((b) => b.dripper === 'V60');
+  const tabOf = (key: string) => tileOf(recordsTab(v60, BAGS, { ...CTX, unscored: v60, wholeUnscored: whole, whole }), key);
+  it('best on first brew: the bag\'s real brew #1 must match', () => expect(tabOf('holeInOne')).toBeUndefined());
+  it('climb needs the real first brew; slowest to peak names the real position', () => {
+    expect(tabOf('climb')).toBeUndefined();
+    expect(tabOf('slowestPeak')).toMatchObject({ value: 3, detail: 'Best brew was #3 of 8' });
+  });
+  it('unfiltered is unchanged', () => {
+    const t = recordsTab(whole, BAGS, { ...CTX, unscored: whole });
+    expect(tileOf(t, 'slowestPeak')).toMatchObject({ value: 3, detail: 'Best brew was #3 of 8' });
+    expect(tileOf(t, 'climb')).toMatchObject({ value: 4, detail: 'First 5 → Best 9 (brew 3 of 8)' });
+  });
+});

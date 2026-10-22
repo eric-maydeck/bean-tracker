@@ -992,3 +992,18 @@ describe('dialinBy: dripper', () => {
     expect(b.headline).toBe(a.headline);
   });
 });
+
+describe('rescuedBags under a brew filter', () => {
+  // Bags brewed Origami (9, 9) first, then V60 (5, 5.5, 8.5, 9, 9): with dripper=V60 the first matching brews (5, 5.5)
+  // look like a rough start, but the bag's real start was 9, 9.
+  const mk = (id: number, rs = [9, 9, 5, 5.5, 8.5, 9, 9]) => rs.map((r, i) => brew({ id: id * 10 + i, coffeeId: id, rating: r, brewIndex: i + 1, dripper: i < 2 ? 'Origami' : 'V60' }));
+  const whole = [1, 2, 3, 4].flatMap((id) => mk(id));
+  const gb = [1, 2, 3, 4].map((id) => bag({ id }));
+  const v60 = whole.filter((b) => b.dripper === 'V60');
+  it('skips bags whose first two brews were filtered out', () =>
+    expect(gen('rescuedBags', v60, gb, { allBrews: v60, wholeBrews: whole, brewFilters: { dripper: 'V60' } })).toBeNull());
+  it('still counts a bag whose first two brews match', () => {
+    const own = [1, 2, 3].flatMap((id) => mk(id, [5, 5.5, 8.5, 9, 9]).map((b) => ({ ...b, dripper: 'V60' })));
+    expect(gen('rescuedBags', own, gb, { allBrews: own, wholeBrews: own, brewFilters: { dripper: 'V60' } })?.headline).toBe('3 bags rescued after a rough start');
+  });
+});

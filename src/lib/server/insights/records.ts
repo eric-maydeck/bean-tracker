@@ -32,6 +32,7 @@ export interface RecCtx {
   bags: readonly BagFact[];
   ratings: Ratings;
   today: string;
+  real?: ReadonlyMap<BrewFact, { pos: number; of: number }>; // each rated brew's place among its whole bag's (see realPositions)
 }
 export interface RecordTile extends RecordPick {
   key: string; section: Section; label: string; fmt: Fmt; rating: boolean; dialIn: boolean; perDay: boolean;
@@ -52,6 +53,7 @@ export interface BagStat {
   coffeeId: number; rated: number[]; brews: BrewFact[]; // in brew order
   size: number; // bagSizes: rated brews, dial-in ones included (the one-bag rule's count)
   mean: number | null; sd: number | null; grams: number; first: string; last: string;
+  pos: number[]; of: number; // parallel to `rated`: the rating's real place among the bag's rated brews, and their count
 }
 
 // tie orders tied holders before the date fallback (default: earliest first).
@@ -87,13 +89,24 @@ export const groupBy = <T, K>(xs: readonly T[], key: (x: T) => K | null | undefi
 };
 const distinct = (xs: (string | null)[]) => new Set(xs.filter((x) => x !== null)).size;
 
-export function bagStats(brews: readonly BrewFact[], ratings: Ratings): Map<number, BagStat> {
+// A brew filter must not renumber a bag's brews: positions are among the bag's rated brews before the brew filters.
+export function realPositions(whole: readonly BrewFact[], ratings: Ratings): Map<BrewFact, { pos: number; of: number }> {
+  const out = new Map<BrewFact, { pos: number; of: number }>();
+  for (const bs of groupBy(whole, (b) => b.coffeeId).values()) {
+    const r = bs.filter((b) => countsForRating(b, ratings));
+    r.forEach((b, i) => out.set(b, { pos: i + 1, of: r.length }));
+  }
+  return out;
+}
+
+export function bagStats(brews: readonly BrewFact[], ratings: Ratings, real?: RecCtx['real']): Map<number, BagStat> {
   const out = new Map<number, BagStat>();
   const sizes = bagSizes(brews, ratings);
   for (const [id, bs] of groupBy(brews, (b) => b.coffeeId)) {
-    const rated = bs.filter((b) => countsForRating(b, ratings)).map((b) => b.rating!);
+    const counted = bs.filter((b) => countsForRating(b, ratings));
+    const rated = counted.map((b) => b.rating!);
     out.set(id as number, {
-      coffeeId: id as number, rated, size: sizes.get(id as number) ?? 0, brews: bs,
+      coffeeId: id as number, rated, pos: counted.map((b, i) => real?.get(b)?.pos ?? i + 1), of: real?.get(counted[0])?.of ?? rated.length, size: sizes.get(id as number) ?? 0, brews: bs,
       mean: rated.length ? mean(rated) : null, sd: rated.length ? sd(rated) : null,
       grams: bs.reduce((s, b) => s + (b.dose && b.dose > 0 ? b.dose : 0), 0),
       first: bs[0].localDate, last: bs[bs.length - 1].localDate
@@ -108,7 +121,7 @@ const lastRatedDate = (s: BagStat, ratings: Ratings) =>
 
 // One candidate per bag with at least `min` counted rated brews.
 const perBag = (c: RecCtx, min: number, f: (s: BagStat, id: number) => Omit<Candidate, 'holder'> | null, only: (b: BrewFact) => boolean = () => true): Candidate[] =>
-  [...bagStats(c.brews.filter(only), c.ratings).values()].flatMap((s) => {
+  [...bagStats(c.brews.filter(only), c.ratings, c.real).values()].flatMap((s) => {
     if (s.size < min || !s.rated.length) return [];
     const r = f(s, s.coffeeId);
     return r ? [{ ...r, holder: bagHolder(c.bags, s.coffeeId, lastRatedDate(s, c.ratings)) }] : [];
@@ -256,16 +269,16 @@ export const RECORDS: RecordDef[] = [
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
       const d = s.rated[i] - s.rated[i - 1];
-      if (d > 0 && (!best || d > best.value)) best = { value: d, detail: `${s.rated[i - 1]} → ${s.rated[i]}` };
+      if (s.pos[i] === s.pos[i - 1] + 1 && d > 0 && (!best || d > best.value)) best = { value: d, detail: `${s.rated[i - 1]} → ${s.rated[i]}` };
     }
     return best;
   })),
   dial(taste, 'climb', 'Biggest rating climb', 'max', 'rating', (c) => perBag(c, 2, (s) => {
     const top = Math.max(...s.rated);
-    return top > s.rated[0] ? { value: top - s.rated[0], detail: `First ${s.rated[0]} → Best ${top} (brew ${s.rated.indexOf(top) + 1} of ${s.rated.length})` } : null;
+    return s.pos[0] === 1 && top > s.rated[0] ? { value: top - s.rated[0], detail: `First ${s.rated[0]} → Best ${top} (brew ${s.pos[s.rated.indexOf(top)]} of ${s.of})` } : null;
   })),
   dial(taste, 'holeInOne', 'Best on first brew', 'max', 'count', (c) => {
-    const firsts = perBag(c, BAG_MIN_BREWS, (s) => (s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
+    const firsts = perBag(c, BAG_MIN_BREWS, (s) => (s.pos[0] === 1 && s.rated[0] === Math.max(...s.rated) ? { value: s.rated[0] } : null));
     const top = pick(firsts, 'max');
     return top ? [{ value: firsts.length, detail: `Of ${perBag(c, BAG_MIN_BREWS, () => ({ value: 0 })).length} bags with 4+ ratings`, holder: top.holder }] : [];
   }),
@@ -345,7 +358,7 @@ export const RECORDS: RecordDef[] = [
     let best: Omit<Candidate, 'holder'> | null = null;
     for (let i = 1; i < s.rated.length; i++) {
       const d = s.rated[i - 1] - s.rated[i];
-      if (d > 0 && (!best || d > best.value)) best = { value: d, detail: `${s.rated[i - 1]} → ${s.rated[i]}` };
+      if (s.pos[i] === s.pos[i - 1] + 1 && d > 0 && (!best || d > best.value)) best = { value: d, detail: `${s.rated[i - 1]} → ${s.rated[i]}` };
     }
     return best;
   })),
@@ -353,7 +366,7 @@ export const RECORDS: RecordDef[] = [
     perBag(c, 5, (s) => ({ value: s.sd!, detail: `Ratings ranged ${rangeOf(s.rated)} over ${s.rated.length} brews` }))),
   dial(gentle, 'slowestPeak', 'Slowest to peak', 'max', 'count', (c) => perBag(c, 5, (s) => {
     const i = s.rated.indexOf(Math.max(...s.rated));
-    return { value: i + 1, detail: `Best brew was #${i + 1} of ${s.rated.length}` };
+    return { value: s.pos[i], detail: `Best brew was #${s.pos[i]} of ${s.of}` };
   })),
   gentle('leastRoaster', 'Lowest-rated roaster', 'min', 'delta', least('roasters')),
   gentle('leastOrigin', 'Lowest-rated origin', 'min', 'delta', least('origins')),
@@ -378,6 +391,7 @@ export interface RecordsCtx {
   period: Period; prev: Period | null; ratings: Ratings; brewer?: BrewerType; size: number; today: string;
   whole?: readonly BrewFact[]; // the brews before the brew filters, for WHOLE_RECORDS; defaults to the brews given
   unscored?: readonly BrewFact[]; // every rating (before Once dialed); defaults to the brews given
+  wholeUnscored?: readonly BrewFact[]; // unscored, before the brew filters: dial-in records' true brew positions; defaults to `unscored`
 }
 
 const SECTIONS: Section[] = ['taste', 'volume', 'freshness', 'money', 'extremes', 'gentle'];
@@ -386,10 +400,14 @@ const bagsIn = (bags: readonly BagFact[], w: Period | null) => (w ? bags.filter(
 export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagFact[], c: RecordsCtx): RecordsTab {
   const all: Period = { start: null, end: c.today };
   const brews = allBrews, raw = c.unscored ?? allBrews, bags = allBags;
-  const ctx = (w: Period | null, def?: RecordDef): RecCtx => ({
-    brews: w ? (def?.dialIn ? raw : def && WHOLE_RECORDS.has(def.key) ? c.whole ?? brews : brews).filter((b) => inPeriod(b.localDate, w) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer)) : [],
-    bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today
-  });
+  const ctx = (w: Period | null, def?: RecordDef): RecCtx => {
+    const inWin = (b: BrewFact) => inPeriod(b.localDate, w!) && (!def?.extremes || !c.brewer || b.brewerType === c.brewer);
+    return {
+      brews: w ? (def?.dialIn ? raw : def && WHOLE_RECORDS.has(def.key) ? c.whole ?? brews : brews).filter(inWin) : [],
+      bags: def?.bought ? bagsIn(bags, w) : bags, ratings: c.ratings, today: c.today,
+      ...(w && def?.dialIn && c.wholeUnscored ? { real: realPositions(c.wholeUnscored.filter(inWin), c.ratings) } : {})
+    };
+  };
   // Taste ties go to the holder whose roaster you rate higher (its mean over the record's brews), then a–z.
   // Bag holders carry their roaster as sub; day holders have none and fall through to a–z.
   const tasteTie = (x: RecCtx) => {
