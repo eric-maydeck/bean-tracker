@@ -1,3 +1,34 @@
+# [1.83.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.82.0...v1.83.0) (2026-10-22)
+
+
+### Bug Fixes
+
+* **insights:** bags-mode consumption note, specific dripper ui check, stale comments, backlog note
+* **insights:** dial-in records and rescued bags keep each bag's true brew order under brew filters
+* **insights:** every leaderboard board applies every brew filter
+* **insights:** fractional bag counts read with one decimal in sample text
+* **insights:** keep the space before the settle note's separators
+* **insights:** muted brew chip label is a no-op, keep chip padding
+* **insights:** not-quite-your-cup records use the standard tile surface
+* **insights:** per-bag leaderboard line is one note, not empty boards
+* **insights:** sum settle bag shares as integer brews
+* **water:** default to 800 ml, lotus's own basis
+
+
+### Features
+
+* **insights:** apply brew filters after dial-in, whole-bag figures stay whole
+* **insights:** bold the lead-in of whole-bag notes
+* **insights:** brew filter url params and per-tab offer list
+* **insights:** brew filter values, dose bands and the brew predicate
+* **insights:** brew filters in the filters dialog, muted chips off-tab
+* **insights:** brews until dialed in by dripper and by water
+* **insights:** dial-in speed findings by dripper and water
+* **insights:** full-height empty cards for gear boards under spend and ppg
+* **insights:** leaderboards skip the brew filter on their own dimension
+* **insights:** settle groups weighted by each bag's share of its window
+* **insights:** whole-bag notes where brew filters don't apply
+
 # [1.82.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.81.0...v1.82.0) (2026-10-22)
 
 
