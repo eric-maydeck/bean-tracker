@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rowSizes, rowVars, sizedGrid, packSpans } from './rows';
+import { rowSizes, rowVars, sizedGrid, packSpans, segmentVars } from './rows';
 
 describe('rowSizes', () => {
   it('spreads cards evenly over the fewest rows, fuller rows first', () => {
@@ -61,5 +61,11 @@ describe('packSpans', () => {
     expect(packSpans([['a', 1], ['b', 1], ['c', 1]], 2)).toEqual({ a: 1, b: 1, c: 2 });
     expect(packSpans([['a', 3]], 2)).toEqual({ a: 2 });
     expect(packSpans([], 3)).toEqual({});
+  });
+});
+
+describe('segmentVars', () => {
+  it('expanded cards span the row, runs fill their own rows', () => {
+    expect(segmentVars([false, false, true, false])).toEqual([...rowVars(2), '--q5:1;--q4:1;--q3:1;--q2:1', ...rowVars(1)]);
   });
 });
