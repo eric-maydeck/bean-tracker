@@ -1,0 +1,83 @@
+import type { DatabaseSync } from 'node:sqlite';
+import { GEAR_KINDS, type GearKind } from '$lib/gear';
+import { pooled, type Sample } from '$lib/sample';
+import { slugify } from '$lib/server/slug';
+import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
+import { daysBetween } from './time';
+
+export const RETIRED_AFTER_DAYS = 90;
+
+// Archived names per kind (Bean Conqueror's archive flag).
+export type GearArchive = Record<GearKind, Set<string>>;
+
+// A grinder is archived when every row of that name is; a dripper/filter when every method parsing to it is.
+export function gearArchive(db: DatabaseSync): GearArchive {
+  const all = new Map<string, boolean>(); // `${kind}\0${name}` -> every row archived so far
+  const note = (kind: GearKind, name: string | null, archived: boolean) => {
+    if (!name) return;
+    const k = `${kind}\0${name}`;
+    all.set(k, (all.get(k) ?? true) && archived);
+  };
+  for (const r of db.prepare(`SELECT name, bc_archived AS a FROM beanconqueror_grinders`).all() as { name: string; a: number }[])
+    note('grinder', r.name, !!r.a);
+  for (const r of db.prepare(`SELECT name, preparation_tools AS tools, bc_archived AS a FROM beanconqueror_methods`).all() as { name: string; tools: string | null; a: number }[]) {
+    const { dripper, filter } = parseMethod(r.name, r.tools);
+    note('dripper', dripper, !!r.a);
+    note('filter', filter, !!r.a);
+  }
+  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set() };
+  for (const [k, v] of all) if (v) { const [kind, name] = k.split('\0'); out[kind as GearKind].add(name); }
+  return out;
+}
+
+export interface Trophy {
+  key: string; kind: GearKind; name: string; brews: number; grams: number;
+  rating: number | null; best: number | null; sample: Sample; bags: number; days: number;
+  firstUsed: string; lastUsed: string; favorite: { name: string; brews: number } | null;
+  archived: boolean; retired: boolean;
+}
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+
+// One card per dripper, grinder and filter, from all brews (raw ratings: no cutoffs, decaf included).
+export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, today: string): Trophy[] {
+  const groups = new Map<string, { kind: GearKind; name: string; xs: BrewFact[] }>();
+  for (const b of brews)
+    for (const kind of GEAR_KINDS) {
+      const name = b[kind];
+      if (!name || name === MIXED_FILTER) continue;
+      const k = `${kind}\0${name}`;
+      if (!groups.has(k)) groups.set(k, { kind, name, xs: [] });
+      groups.get(k)!.xs.push(b);
+    }
+  const withKind = (kind: GearKind) => (kind === 'dripper' ? 'filter' : 'dripper') as 'filter' | 'dripper';
+  const out = [...groups.values()].map(({ kind, name, xs }): Trophy => {
+    const rated = xs.filter((b) => b.rating != null && b.rating > 0);
+    const dates = xs.map((b) => b.localDate).sort();
+    const partners = new Map<string, number[]>();
+    for (const b of xs) {
+      const p = b[withKind(kind)];
+      if (!p || p === MIXED_FILTER) continue;
+      if (!partners.has(p)) partners.set(p, []);
+      if (b.rating != null && b.rating > 0) partners.get(p)!.push(b.rating);
+    }
+    const count = new Map<string, number>();
+    for (const b of xs) { const p = b[withKind(kind)]; if (p && p !== MIXED_FILTER) count.set(p, (count.get(p) ?? 0) + 1); }
+    const fav = [...count].sort(([an, ac], [bn, bc]) =>
+      bc - ac || (mean(partners.get(bn)!) ?? -1) - (mean(partners.get(an)!) ?? -1) || an.localeCompare(bn))[0];
+    const archived = archive[kind].has(name), lastUsed = dates.at(-1)!;
+    const ratedBags = new Set(rated.map((b) => b.coffeeId).filter((c) => c != null)).size;
+    return {
+      key: `${kind}-${slugify(name)}`, kind, name, brews: xs.length,
+      grams: xs.reduce((s, b) => s + (b.dose ?? 0), 0),
+      rating: mean(rated.map((b) => b.rating!)), best: rated.length ? Math.max(...rated.map((b) => b.rating!)) : null,
+      sample: pooled(ratedBags, rated.length),
+      bags: new Set(xs.map((b) => b.coffeeId).filter((c) => c != null)).size,
+      days: new Set(dates).size, firstUsed: dates[0], lastUsed,
+      favorite: fav ? { name: fav[0], brews: fav[1] } : null,
+      archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
+    };
+  });
+  const order = (k: GearKind) => GEAR_KINDS.indexOf(k);
+  return out.sort((a, b) => order(a.kind) - order(b.kind) || b.brews - a.brews || a.name.localeCompare(b.name));
+}
