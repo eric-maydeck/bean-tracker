@@ -21,9 +21,10 @@
   } = $props();
 
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
-  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !t.settle.roast.length && !t.settle.process.length && !t.drift.length && !t.vars.length);
   // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
-  const SETTLE = [['roast', 'roast level'], ['process', 'process']] as const;
+  const SETTLE = [['roast', 'roast level'], ['process', 'process'], ['dripper', 'dripper'], ['water', 'water']] as const;
+  const PARTNER = { roast: 'process', process: 'roast', dripper: 'water', water: 'dripper' } as const;
+  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !SETTLE.some(([k]) => t.settle[k].length) && !t.drift.length && !t.vars.length);
   // Fixed slots (G9/B5): a toggle or Break down by never moves a chart. Pairs share a row (one height); Brew
   // time is full width; Grind drift sits beside Grind. A slot with no data leaves its partner the full row.
   const SLOTS: (BrewVar | 'drift')[][] = [['temp', 'ratio'], ['dose', 'bloom'], ['time'], ['grind', 'drift']];
@@ -54,7 +55,7 @@
     </section>
   {/if}
 
-  {#if t.dialIn.length || t.bestAt.length || t.settle.roast.length || t.settle.process.length}
+  {#if t.dialIn.length || t.bestAt.length || SETTLE.some(([k]) => t.settle[k].length)}
     <div class="lab-grid" use:fitPairs={t}>
       {#if t.dialIn.length}
         <section class="chart-panel lab-chart" class:span={!t.bestAt.length} data-section="brewing-dialin">
@@ -80,7 +81,7 @@
         {@const rows = t.settle[k]}
         {#if rows.length}
           {@const max = Math.max(...rows.map((g) => g.value))}
-          <section class="chart-panel lab-chart" class:span={!t.settle[k === 'roast' ? 'process' : 'roast'].length} data-section="brewing-settle-{k}">
+          <section class="chart-panel lab-chart" class:span={!t.settle[PARTNER[k]].length} data-section="brewing-settle-{k}">
             <LabHead id="brewing-settle-{k}" title="Brews until dialed in, by {by}" {placeTip}
               help={["Each bag's settle brew: within its first 6 rated brews, the first within 0.5 of their best half's average.", `Per ${by}: the middle bag's, in whole brews.`,
                 'Bags with 6+ rated brews that started this period.', SAMPLE_HELP]} />
@@ -98,7 +99,7 @@
                 <BarLabels series={rows} full />
               </div>
             </div>
-            <p class="chart-note">Median settle brew per {by}{#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
+            <p class="chart-note">Median settle brew per {by}{#if (k === 'dripper' || k === 'water') && s[k]} · {by[0].toUpperCase() + by.slice(1)} filter not applied{/if}{#if s.dial === 'dialed'} · <span class="setting-name">Always all brews</span>{/if}</p>
           </section>
         {/if}
       {/each}

@@ -435,6 +435,17 @@ describe('brewingTab', () => {
     ]);
     expect(t.settle.process).toEqual([]); // one group: nothing to compare
   });
+  it('settle by dripper ignores the dripper filter, by water the water filter; the rest apply both', () => {
+    const bag = (id: number, roastLevel: string, dripper: string, water: string) =>
+      [8, 8, 8, 8, 8, 8].map((rating, i) => brew({ coffeeId: id, roastLevel, dripper, water, rating, brewIndex: i + 1 }));
+    const all = [...bag(1, 'Light', 'V60', 'W1'), ...bag(2, 'Light', 'V60', 'W1'), ...bag(3, 'Light', 'Origami', 'W1'), ...bag(4, 'Light', 'Origami', 'W1'),
+      ...bag(5, 'Light', 'V60', 'W2'), ...bag(6, 'Light', 'V60', 'W2'), ...bag(7, 'Nordic', 'V60', 'W1'), ...bag(8, 'Nordic', 'V60', 'W1')];
+    const t = brewingTab(all, { ...c0, all, whole: all, brewFilters: { dripper: 'V60', water: 'W1' } });
+    const bags = (r: { label: string; bags: number }[]) => Object.fromEntries(r.map((x) => [x.label, x.bags]));
+    expect(bags(t.settle.dripper)).toEqual({ V60: 4, Origami: 2 }); // W1 brews only
+    expect(bags(t.settle.water)).toEqual({ W1: 4, W2: 2 }); // V60 brews only
+    expect(bags(t.settle.roast)).toEqual({ Light: 2, Nordic: 2 }); // V60 + W1 only
+  });
   // 3 Light + 3 Nordic bags: 10 brews each at rest 10 (0–21 d), 25 (22–30 d), 35 (31–45 d); 91 °C beats 94 °C.
   const rows = [1, 2, 3, 4, 5, 6].flatMap((id) => [10, 25, 35].flatMap((rest, k) =>
     Array.from({ length: 10 }, (_, i) => brew({ coffeeId: id, restDays: rest, roastLevel: id < 4 ? 'Light' : 'Nordic', tempC: i % 2 ? 91 : 94,
@@ -533,7 +544,7 @@ describe('brewingTab', () => {
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { all: rows, period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
-    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], bestLater: [], drift: [], settle: { roast: [], process: [] }, vars: [] });
+    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], bestLater: [], drift: [], settle: { roast: [], process: [], dripper: [], water: [] }, vars: [] });
   });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };

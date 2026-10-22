@@ -307,6 +307,7 @@ export const exceptOwn = (f: BrewFilters, k: BrewFilterKey | string): BrewFilter
   return rest;
 };
 
+const SETTLE_DIM = { roast: 'roastLevel', process: 'processGroup', dripper: 'dripper', water: 'water' } as const;
 export interface LabFilters { roast?: string; process?: string; origin?: string; roaster?: string }
 type CoffeeFields = Pick<BrewFact, 'roastLevel' | 'processGroup' | 'origin' | 'roaster'>;
 // The Coffees filter (spec 2026-10-15 Part 3), page-wide: a brew or a bag (same field names) matches every set field.
@@ -400,7 +401,7 @@ export interface BrewingTab {
   drift: { label: string; value: number; bags: number; sample: Sample }[]; // mean setting change vs the bag's first brew
   // Brews until dialed in (gate P4): per roast level / process group, the median brew its bags settle at (the dialinBy
   // findings' measure), fastest first; empty under 2 groups.
-  settle: Record<'roast' | 'process', { label: string; value: number; bags: number; brews: number; sample: Sample }[]>;
+  settle: Record<'roast' | 'process' | 'dripper' | 'water', { label: string; value: number; bags: number; brews: number; sample: Sample }[]>;
   vars: VarChart[];
 }
 const round2 = (x: number) => Math.round(x * 100) / 100;
@@ -457,8 +458,8 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     bestAt: best.length ? BREW_NO_LABELS.slice(0, BEST_WINDOW).map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],
     bestLater: BREW_NO_LABELS.slice(BEST_WINDOW).flatMap((label) => { const bags = later.filter((l) => l === label).length; return bags ? [{ label, bags }] : []; }),
     drift: drift.length >= 2 ? drift : [],
-    settle: Object.fromEntries((['roast', 'process'] as const).map((k) => {
-      const g = settleGroups({ brews: (c.whole ?? c.all).filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
+    settle: Object.fromEntries((['roast', 'process', 'dripper', 'water'] as const).map((k) => {
+      const g = settleGroups({ brews: (c.whole ?? c.all).filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, SETTLE_DIM[k], matchesBrew(exceptOwn(c.brewFilters ?? {}, k))) // a chart ignores its own filter
         .sort((a, b) => a.value - b.value || b.bags - a.bags || a.label.localeCompare(b.label))
         .map(({ label, value, bags, brews, sample }) => ({ label, value, bags, brews, sample }));
       return [k, g.length >= 2 ? g : []];

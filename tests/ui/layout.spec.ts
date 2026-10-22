@@ -2479,6 +2479,23 @@ export const STATES: State[] = [
     } },
   { name: 'insights-sample-habits', path: () => '/insights?tab=habits&measure=rating&range=all',
     act: async (page) => expect(page.locator('.heat-cell.small-sample-mark').first()).toBeVisible() },
+  { name: 'insights-settle-dripper-water', viewports: 'two', path: () => '/insights?tab=brewing&range=all',
+    act: async (page) => {
+      for (const k of ['dripper', 'water']) {
+        const sec = page.locator(`[data-section="brewing-settle-${k}"]`);
+        await expect(sec).toBeVisible();
+        expect(await sec.locator('.settle-cols .col').count()).toBeGreaterThanOrEqual(2);
+        await expect(sec.locator('.chart-note')).not.toContainText('filter not applied');
+      }
+    } },
+  { name: 'insights-settle-own-axis', viewports: 'two', path: () => '/insights?tab=brewing&range=all&dripper=V60',
+    act: async (page) => {
+      const sec = page.locator('[data-section="brewing-settle-dripper"]');
+      await expect(sec).toBeVisible();
+      expect(await sec.locator('.settle-cols .col').count()).toBeGreaterThanOrEqual(2);
+      await expect(sec.locator('.chart-note')).toContainText('Dripper filter not applied');
+      await expect(sec.locator('.settle-cols .col').first()).toHaveAttribute('aria-label', /Median settle brew/);
+    } },
   { name: 'insights-sample-legend', viewports: 'two', path: () => '/insights?tab=brewing',
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
