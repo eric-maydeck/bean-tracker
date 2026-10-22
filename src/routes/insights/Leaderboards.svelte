@@ -236,8 +236,11 @@
     {#if switchable}
       <div class="board-head">
         <h2>{TITLE[b]}</h2>
-        <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} view">
-          {#each ['list', ...BOARD_VIEWS] as const as v (v)}<button aria-pressed={view === v} onclick={() => setView(b, v)}>{VIEW_LABEL[v]}</button>{/each}
+        <div class="form-field group-field">
+          <span class="sr-only">Shown as</span>
+          <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} shown as">
+            {#each ['list', ...BOARD_VIEWS] as const as v (v)}<button aria-pressed={view === v} onclick={() => setView(b, v)}>{VIEW_LABEL[v]}</button>{/each}
+          </div>
         </div>
       </div>
     {:else}<h2>{TITLE[b]}</h2>{/if}
@@ -393,12 +396,18 @@
   .board {
     margin: 0;
   }
-  /* Over time spans the band's whole row (dense: the cards after it fill the gap it leaves). */
-  .board.wide {
-    grid-column: 1 / -1;
-  }
+  /* Over time spans the band's whole row. The band turns to wrapping flex, so the cards after it still fill their rows
+     (a last row of two grows to the full width, no hole); the basis is one grid column. */
   .board-band:has(.board.wide) {
-    grid-auto-flow: dense;
+    display: flex;
+    flex-wrap: wrap;
+  }
+  .board-band:has(.board.wide) > .board {
+    flex: 1 1 calc((100% - (var(--cols, 1) - 1) * var(--space-3)) / var(--cols, 1) - 1px);
+    min-width: 0;
+  }
+  .board-band:has(.board.wide) > .board.wide {
+    flex-basis: 100%;
   }
   .board-head {
     display: flex;
@@ -408,7 +417,8 @@
     gap: var(--space-2);
     margin-bottom: var(--space-3);
   }
-  .board-head h2 {
+  .board-head h2,
+  .board-head :global(.form-field) {
     margin: 0;
   }
   .board-head :global(.tab-group) {
@@ -461,11 +471,10 @@
   .bars-view {
     display: flex;
     flex-direction: column;
-    min-height: calc(var(--rows) * var(--row-h));
   }
   .bar-cols {
-    flex: 1 1 auto;
-    min-height: 8rem;
+    /* A definite height (percent bar heights need one): the List's rows less the labels, so the cards stay level. */
+    height: calc(var(--rows) * var(--row-h) - 3rem);
     display: flex;
     align-items: flex-end;
     gap: 6%;
@@ -478,9 +487,11 @@
     height: 100%;
     display: flex;
     align-items: flex-end;
+    justify-content: center;
   }
   .bar-cols .bar {
     width: 100%;
+    max-width: 3.5rem;
     min-height: 2px;
     background: var(--series-brown-1);
     border: 1px solid var(--series-brown-1-ink);

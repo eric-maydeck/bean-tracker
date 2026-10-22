@@ -2740,6 +2740,68 @@ export const STATES: State[] = [
       }
     }
   },
+  { name: 'insights-board-jump', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      // One jump link per board; a click lands the card's top just under the sticky bar.
+      const links = page.locator('.board-jump a');
+      await expect(links).toHaveCount(9);
+      await links.filter({ hasText: 'Origins' }).click();
+      await expect(page).toHaveURL(/#leaderboard-origins$/);
+      const gap = () => page.evaluate(() =>
+        document.getElementById('leaderboard-origins')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+    } },
+  { name: 'insights-board-bars', path: () => '/insights?tab=leaderboards&range=all&views=roast-bars,process-bars',
+    act: async (page) => {
+      for (const b of ['roast', 'process']) {
+        const card = page.locator(`.board[data-board=${b}]`);
+        await expect(card.getByRole('button', { name: 'Bars', pressed: true })).toBeVisible();
+        const cols = card.locator('.bar-cols .col');
+        expect(await cols.count()).toBeGreaterThan(0);
+        // Names and values sit under the bars, outside the plot, inside the card.
+        const r = await card.evaluate((el) => {
+          const c = el.getBoundingClientRect(), p = el.querySelector('.bar-cols')!.getBoundingClientRect(), l = el.querySelector('.bar-labels')!.getBoundingClientRect();
+          return { below: l.top >= p.bottom - 0.5, inside: l.bottom <= c.bottom && l.right <= c.right + 0.5 && l.left >= c.left - 0.5 };
+        });
+        expect(r).toEqual({ below: true, inside: true });
+      }
+      // The other boards keep their List.
+      await expect(page.locator('.board[data-board=roasters] .board-row').first()).toBeVisible();
+      await expect(page.locator('.board[data-board=roast] .board-row')).toHaveCount(0);
+      // Roast levels run lightest to darkest: the labels follow the roast_levels order.
+      const names = await page.locator('.board[data-board=roast] .bar-labels span').evaluateAll((els) => els.map((e) => e.lastChild!.textContent!));
+      const ORDER = ['Green', 'Hyperlight', 'Ultralight', 'Nordic Light', 'Nordic', 'Light', 'Light/Medium', 'Medium/Light', 'Medium', 'Medium/Dark', 'Dark'];
+      const idx = names.map((n) => ORDER.indexOf(n)).filter((i) => i >= 0);
+      expect(idx).toEqual([...idx].sort((a, b) => a - b));
+    } },
+  { name: 'insights-board-time', path: () => '/insights?tab=leaderboards&range=12m&views=dripper-time',
+    act: async (page) => {
+      const card = page.locator('.board[data-board=dripper]');
+      await expect(card.getByRole('button', { name: 'Over time', pressed: true })).toBeVisible();
+      await expect(card.locator('canvas')).toBeVisible();
+      // The card spans the band's whole row; the cards after it fill the gap (no hole in the band).
+      const r = await card.evaluate((el) => {
+        const band = el.parentElement!.getBoundingClientRect(), c = el.getBoundingClientRect();
+        return { full: Math.abs(c.width - band.width) <= 1 };
+      });
+      expect(r.full).toBe(true);
+      await expectGridRowsFull(page, '.board-band:has(.board.wide)', true);
+    } },
+  { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      // The view is URL state: absent = List, a pick shows in the URL and survives a reload, List drops it again.
+      const card = () => page.locator('.board[data-board=roast]');
+      await expect(card().getByRole('button', { name: 'List', pressed: true })).toBeVisible();
+      await card().getByRole('button', { name: 'Bars' }).click();
+      await expect(page).toHaveURL(/views=roast-bars/);
+      await reloadReady(page);
+      await expect(card().getByRole('button', { name: 'Bars', pressed: true })).toBeVisible();
+      await card().getByRole('button', { name: 'Over time' }).click();
+      await expect(page).toHaveURL(/views=roast-time/);
+      await card().getByRole('button', { name: 'List' }).click();
+      await expect(page).not.toHaveURL(/views=/);
+    } },
   { name: 'insights-leaderboards-sticky', path: () => '/insights?tab=leaderboards', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   {
     name: 'insights-leaderboards-spend-compare',
