@@ -2811,6 +2811,11 @@ export const STATES: State[] = [
       await expect.poll(lines).toBe('7');
       await expect(card.locator('.chart-note')).toContainText('all 7');
       expect(await heights()).toEqual(list);
+      // Every line with a gap is dashed across it, the 6th and 7th included (Chart.js's own segment styles, per line).
+      const dashed = ((await card.locator('canvas').getAttribute('data-dashed-segments')) ?? '').split(',').map(Number);
+      expect(dashed).toHaveLength(7);
+      expect(dashed.slice(-2).every((n) => n >= 1)).toBe(true);
+      expect(dashed.filter((n) => n >= 1).length).toBeGreaterThanOrEqual(4);
       // The plot keeps a readable height under the 7-name legend, and nothing spills out of the card.
       const fit = await card.evaluate((c) => {
         const b = c.getBoundingClientRect(), p = c.querySelector('.time-chart')!.getBoundingClientRect();
@@ -2824,15 +2829,38 @@ export const STATES: State[] = [
     } },
   { name: 'insights-board-time-beside-open', path: () => '/insights?tab=leaderboards&range=all&avg=raw&views=grinder-time&open=dripper',
     act: async (page) => {
-      // A List card opened in the row grows; an Over time card beside it stretches to the row, its chart filling it.
-      const box = (b: string) => page.locator(`.board[data-board=${b}]`).evaluate((e) => { const r = e.getBoundingClientRect(); return { top: Math.round(r.top), h: Math.round(r.height) }; });
-      const [open, time, plain] = [await box('dripper'), await box('grinder'), await box('filter')];
-      if (open.top === time.top) { // same row (one column on a phone: nothing to match)
-        expect(Math.abs(time.h - open.h)).toBeLessThanOrEqual(1);
-        expect(plain.h).toBeLessThan(open.h - 20); // a List sibling keeps its own height (unchanged behaviour)
-        const chart = await page.locator('.board[data-board=grinder] .time-chart').evaluate((e) => e.getBoundingClientRect().height);
-        expect(chart).toBeGreaterThan(200);
-      }
+      // Only a List card grows (by its own Show all): an Over time card in the same row keeps its normal height.
+      const h = (b: string) => page.locator(`.board[data-board=${b}]`).evaluate((e) => Math.round(e.getBoundingClientRect().height));
+      const top = (b: string) => page.locator(`.board[data-board=${b}]`).evaluate((e) => Math.round(e.getBoundingClientRect().top));
+      const [open, time, plain] = [await h('dripper'), await h('grinder'), await h('filter')];
+      expect(open).toBeGreaterThan(time + 20);
+      expect(open).toBeGreaterThan(plain + 20); // a List sibling keeps its own height too (unchanged behaviour)
+      if ((page.viewportSize()?.width ?? 0) > 640) expect(await top('dripper')).toBe(await top('grinder')); // one row
+      await page.locator('.board[data-board=dripper]').getByRole('button', { name: /^Show top/ }).click();
+      await expect(page).not.toHaveURL(/open=/);
+      expect(Math.abs((await h('grinder')) - time)).toBeLessThanOrEqual(1);
+      expect(Math.abs((await h('filter')) - plain)).toBeLessThanOrEqual(1);
+    } },
+  { name: 'insights-board-open-independent', path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+    act: async (page) => {
+      // Each board's Show all is its own: opening one never closes another, in any order, and it survives a reload.
+      const btn = (b: string, name: RegExp) => page.locator(`.board[data-board=${b}]`).getByRole('button', { name });
+      await btn('dripper', /^Show all/).click();
+      await expect(page).toHaveURL(/open=dripper(&|$)/);
+      await btn('coffees', /^Show all/).click();
+      await expect(page).toHaveURL(/open=coffees%2Cdripper/); // board order, not click order
+      await reloadReady(page);
+      for (const b of ['coffees', 'dripper']) await expect(btn(b, /^Show top/)).toBeVisible();
+      await btn('coffees', /^Show top/).click();
+      await expect(page).toHaveURL(/open=dripper(&|$)/);
+      await expect(btn('dripper', /^Show top/)).toBeVisible();
+      await expect(btn('coffees', /^Show all/)).toBeVisible();
+      await btn('coffees', /^Show all/).click(); // the other order
+      await expect(page).toHaveURL(/open=coffees%2Cdripper/);
+      await btn('dripper', /^Show top/).click();
+      await expect(page).toHaveURL(/open=coffees(&|$)/);
+      await btn('coffees', /^Show top/).click();
+      await expect(page).not.toHaveURL(/open=/);
     } },
   { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {

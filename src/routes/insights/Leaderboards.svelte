@@ -14,7 +14,7 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import Chart from '$lib/components/Chart.svelte';
@@ -28,7 +28,7 @@
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
-    boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
+    boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board[]; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
     // views: the small boards' Over time pick, `wide` when expanded (URL; absent = List); series: Over time's lines (server,
     // only boards on it).
@@ -45,6 +45,11 @@
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
+  // Each board's Show all is its own: toggling one leaves the others as they are.
+  const toggle = (b: Board) => {
+    const next = BOARDS.filter((x) => (x === b ? !open.includes(x) : open.includes(x)));
+    choose({ open: next.length ? next : undefined });
+  };
   const VIEWS = [['list', 'List'], ['time', 'Over time']] as const;
   const viewOf = (b: Board) => (views as Partial<Record<Board, BoardView>> | undefined)?.[b];
   // v: undefined = List. Switching to Over time keeps an expansion already there.
@@ -167,8 +172,9 @@
       value={rank}
       onchange={(e) => {
         const r = e.currentTarget.value as Rank;
-        const off = open && (((r === 'spend' || r === 'ppg') && !BAG_BOARDS.includes(open)) || (r === 'like' && !LIKE_BOARDS.includes(open)));
-        choose({ rank: r, ...(off ? { open: undefined } : {}) });
+        // A board that can't rank by the new Rank by is not shown, so it is not left open.
+        const keep = open.filter((b) => !(((r === 'spend' || r === 'ppg') && !BAG_BOARDS.includes(b)) || (r === 'like' && !LIKE_BOARDS.includes(b))));
+        choose({ rank: r, ...(keep.length < open.length ? { open: keep.length ? keep : undefined } : {}) });
       }}
     >
       {#each RANKS as r (r)}<option value={r} title={RANK_HELP[r]}>{RANK_LABEL[r]}</option>{/each}
@@ -227,7 +233,7 @@
 {#snippet board(b: Board)}
   {@const rows = boards[b]}
   {@const size = SIZE(b)}
-  {@const isOpen = open === b}
+  {@const isOpen = open.includes(b)}
   <!-- One money format per board (ui-rules 46): whole dollars for all when any amount is $1,000+. -->
   {@const whole = (rank === 'spend' || rank === 'ppg') && wholeUsd(rows.map((r) => r.value))}
   {@const costWhole = rank === 'ppg' && wholeUsd(rows.map((r) => r.cost))}
@@ -312,7 +318,7 @@
          CSS), so cards are level by their own content, not by stretching: a card that opens can't resize the others. -->
     {#if rows.length > size && !unranked(b)}
       <footer class="board-foot">
-        <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board-foot'), () => choose({ open: isOpen ? undefined : b }))}
+        <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board-foot'), () => toggle(b))}
           >{isOpen ? `Show top ${size}` : `Show all (${rows.length})`}</button
         >
       </footer>
@@ -387,12 +393,13 @@
     }
   }
   /* An opened List card alone grows; its neighbors keep their own height. An opened Over time card doesn't grow (Show all only
-     adds lines), so it doesn't start this; an Over time card beside an opened List card stretches to the row. */
+     adds lines), so it doesn't start this. */
   .board-band:has(.board.open:not(.timeview)) {
     align-items: start;
   }
-  .board-band:has(.board.open:not(.timeview)) > .board.timeview {
-    align-self: stretch;
+  /* An Over time card never stretches: only a List card grows, and only by its own Show all. */
+  .board.timeview {
+    align-self: start;
   }
   @media (min-width: 641px) {
     .band-2,

@@ -298,7 +298,7 @@ describe('shared readers (/insights and /stats)', () => {
 describe('leaderboards params', () => {
   it('reads tab, rank and open, case-insensitively', () =>
     expect(parse('tab=Leaderboards&rank=GRAMS&open=Roasters')).toMatchObject({
-      tab: 'leaderboards', rank: 'grams', open: 'roasters'
+      tab: 'leaderboards', rank: 'grams', open: ['roasters']
     }));
   it('keeps an explicit default tab', () => expect(parse('tab=overview').tab).toBe('overview'));
   it('rank=like', () => {
@@ -306,7 +306,7 @@ describe('leaderboards params', () => {
     expect(insightsParams(parse('tab=leaderboards&rank=like&open=coffees')).toString()).toBe('tab=leaderboards&rank=like&open=coffees');
   });
   it('keeps rank and open on other tabs, so a choice survives a tab switch', () => {
-    expect(parse('tab=overview&rank=grams&open=roasters')).toMatchObject({ rank: 'grams', open: 'roasters' });
+    expect(parse('tab=overview&rank=grams&open=roasters')).toMatchObject({ rank: 'grams', open: ['roasters'] });
     expect(parse('rank=grams').rank).toBe('grams');
   });
   it('ignores bad values', () => {
@@ -318,6 +318,13 @@ describe('leaderboards params', () => {
   });
   it('round-trips', () =>
     expect(insightsParams(parse('tab=leaderboards&rank=ppg&open=water')).toString()).toBe('tab=leaderboards&rank=ppg&open=water'));
+  it('open: a comma list in board order, case-insensitive, junk dropped; one value still parses; round trip', () => {
+    expect(parse('open=water,Process,junk,water').open).toEqual(['process', 'water']);
+    expect(parse('open=roasters').open).toEqual(['roasters']);
+    expect(parse('open=junk').open).toBeUndefined();
+    expect(insightsParams(parse('tab=leaderboards&open=water,process')).toString()).toBe('tab=leaderboards&open=process%2Cwater');
+    expect(insightsParams({ open: [] }).toString()).toBe('');
+  });
   it('defaults: overview, rating, nothing open', () =>
     expect(withDefaults({})).toMatchObject({ tab: 'overview', rank: 'rating', open: undefined }));
   it('spend and $/g apply to bag boards only', () =>

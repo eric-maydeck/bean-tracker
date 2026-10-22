@@ -322,7 +322,11 @@
         indexAxis: type === 'bar' && !vertical ? 'y' : undefined,
         responsive: true,
         maintainAspectRatio: false,
-        animation: { duration: 400 },
+        animation: {
+          duration: 400,
+          // dashGaps: how many dashed segments Chart.js really drew per line (the ui tests read it).
+          ...(dashGaps && { onComplete: ({ chart: c }: { chart: ChartJS }) => { canvasEl.dataset.dashedSegments = c.data.datasets.map((_, i) => (c.getDatasetMeta(i).dataset as unknown as { segments?: { style?: { borderDash?: unknown } }[] } | undefined)?.segments?.filter((s) => s.style?.borderDash).length ?? 0).join(','); } })
+        },
         // A tip opens only on a mark (ui-rules 50): a bar, a slice, or within 8px of a line's point, never the
         // plot's empty space. On a line chart a point shows every series' value for its date (index mode).
         interaction: { mode: type === 'line' ? 'index' : 'nearest', intersect: true },

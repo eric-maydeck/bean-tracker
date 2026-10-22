@@ -108,7 +108,7 @@ export const BYS = ['day', 'week', 'month'] as const;
 export type By = (typeof BYS)[number];
 // Whether a `by` gives a readable chart for a range (time.ts byFits; this module is client-safe).
 export type ByFits = (range: string, by: By) => boolean;
-// Leaderboards: one Rank by for every board; `open` = the one board showing all its rows.
+// Leaderboards: one Rank by for every board; `open` = the boards showing all their rows (open=water,process; board order).
 export const RANKS = ['rating', 'brews', 'grams', 'spend', 'ppg', 'like'] as const;
 export type Rank = (typeof RANKS)[number];
 // Milestones: which kinds of moment to show (kinds=firsts,bests; absent = all).
@@ -210,7 +210,7 @@ export interface InsightsUrlState {
   people?: People;
   tab?: Tab;
   rank?: Rank;
-  open?: Board;
+  open?: Board[];
   views?: BoardViews; // Leaderboards: each small board's view (absent = List)
   measure?: Measure;
   unit?: Unit;
@@ -260,7 +260,7 @@ export interface InsightsUrlState {
 type Optional = 'avg' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; open?: Board; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
+  avg?: Avg; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
@@ -373,7 +373,7 @@ export function parseInsightsUrl(
     // Tab-specific choices are kept on every tab so they survive a tab switch (each is only
     // used on its own tab); a by the range doesn't offer is dropped.
     rank: pickOne(p, 'rank', RANKS),
-    open: pickOne(p, 'open', BOARDS),
+    open: parseList(p, 'open', BOARDS),
     views: parseViews(p.get('views')),
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
@@ -440,7 +440,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.people) p.set('people', s.people);
   if (s.tab) p.set('tab', s.tab);
   if (s.rank) p.set('rank', s.rank);
-  if (s.open) p.set('open', s.open);
+  if (s.open?.length) p.set('open', s.open.join(','));
   if (s.views && Object.keys(s.views).length) p.set('views', viewsText(s.views));
   if (s.measure) p.set('measure', s.measure);
   if (s.unit) p.set('unit', s.unit);

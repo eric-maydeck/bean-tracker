@@ -712,7 +712,7 @@
     cut={data.boardsCut}
     rank={s.rank}
     avg={data.explicit.avg}
-    open={s.open}
+    open={s.open ?? []}
     views={s.views}
     series={data.boardSeries}
     comparing={!!data.previousPeriod}
