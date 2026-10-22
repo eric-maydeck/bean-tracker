@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { KIND_LABEL, shownTrophies } from '$lib/gear';
+  import { GEAR_KINDS, KIND_LABEL, shownTrophies } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
@@ -15,7 +15,8 @@
     choose: (c: InsightsUrlState) => void; placeTip: (e: ToggleEvent) => void;
   } = $props();
 
-  let shown = $derived(shownTrophies(list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
+  // The kind toggle (absent = All) narrows both the grid and the shelf; the picks still choose cards within a kind.
+  let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
@@ -76,8 +77,16 @@
 {#if list.length}
   <section class="chart-panel" data-section="gear-trophies">
     <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
-      help={["Every piece of gear you've brewed with, all time.", 'Ignores Period, Ratings, Brews and the other filters; Dripper, Filter and Grinder each pick one card of their own kind.',
-        'Average: every rated brew.', 'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
+      help={['Every piece of gear you brewed with in the Period.', 'Period sets brews, grams, bags, days and favorite.',
+        'Ratings and Brews set only the average and best rating.', 'First used, last used and Retired look at all your brews.',
+        'Ignores Compare, People and the other filters; Dripper, Filter and Grinder each pick a card of their own kind.',
+        'Retired: archived in Bean Conqueror, or no brew in 90 days.']} />
+    <div class="tab-group kind-chips" role="group" aria-label="Kind" data-button-row>
+      {#each [undefined, ...GEAR_KINDS] as k (k ?? 'all')}
+        <button aria-pressed={s.gear === k} onclick={() => choose({ gear: k })}>{k ? `${KIND_LABEL[k]}s` : 'All'}</button>
+      {/each}
+    </div>
+    {#if !shown.active.length && !shown.retired.length}<p class="hl-empty">No {s.gear ? `${KIND_LABEL[s.gear].toLowerCase()}s` : 'gear'} match.</p>{/if}
     {#if shown.active.length}{@render grid(shown.active, false)}{/if}
     {#if shown.retired.length}
       <button type="button" class="retired-toggle" aria-expanded={shelf} onclick={() => choose({ retired: shelf ? undefined : 'open' })}>
@@ -182,7 +191,7 @@
     overflow-wrap: anywhere;
     /* The card's headline: the display serif the site's headings use, bigger and bolder than the figures. */
     font-family: var(--font-display);
-    font-size: 1.15rem;
+    font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.2;
     max-height: max(44px, 2.4em); /* two lines, never a third peeking through */
@@ -215,9 +224,9 @@
   .fig b {
     font-size: 1rem;
   }
-  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the headline keeps .hl-value's size. */
+  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the average is the second step of the card's hierarchy: name > average > brews | grams. */
   .fig-avg b.hl-value {
-    font-size: min(2rem, 15cqw / var(--q, 2));
+    font-size: 1.25rem;
   }
   .fig i {
     font-style: normal;
@@ -243,6 +252,22 @@
   }
   .trophy-card :global(.sample-note) {
     align-self: center;
+  }
+
+  /* The kind toggle, the Findings theme chips' look (.tab-group): four equal buttons; a 2×2 grid on phones. */
+  .kind-chips {
+    margin-bottom: var(--space-3);
+  }
+  .kind-chips button {
+    margin: 0;
+    white-space: nowrap;
+  }
+  @media (max-width: 640px) {
+    .kind-chips {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
   }
 
   /* ---- Retired shelf ---- */

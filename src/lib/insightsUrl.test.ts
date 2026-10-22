@@ -778,6 +778,14 @@ describe('gear trophy params', () => {
     expect(parse('card=').card).toBeUndefined();
     expect(parse('tab=gear').card).toBeUndefined();
   });
+  it('gear kind toggle: case-insensitive, junk dropped, round-trips, reset clears', () => {
+    expect(parse('gear=Grinder').gear).toBe('grinder');
+    expect(parse('gear=water').gear).toBeUndefined();
+    expect(parse('tab=gear').gear).toBeUndefined();
+    expect(insightsParams({ tab: 'gear', gear: 'filter' }).toString()).toBe('tab=gear&gear=filter');
+    expect(withDefaults(parse('tab=gear&gear=dripper'))).toMatchObject({ gear: 'dripper' });
+    expect(resetInsights({ tab: 'gear', gear: 'filter' })).toEqual({ tab: 'gear' });
+  });
   it('retired takes only open', () => {
     expect(parse('retired=OPEN').retired).toBe('open');
     expect(parse('retired=yes').retired).toBeUndefined();

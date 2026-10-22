@@ -4147,7 +4147,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-brew-dialog-gear', path: () => '/insights?tab=gear',
     act: async (page) => {
-      await page.getByRole('button', { name: /^Filters/ }).click();
+      await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
       for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
@@ -4158,7 +4158,7 @@ export const STATES: State[] = [
       const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
       const all = await drippers.count();
       expect(all).toBeGreaterThan(1);
-      await page.getByRole('button', { name: /^Filters/ }).click();
+      await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
       await expect(page).toHaveURL(/dripper=V60/);
@@ -4170,7 +4170,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/insights',
     act: async (page) => {
-      await page.getByRole('button', { name: /^Filters/ }).click();
+      await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
       await expect(page).toHaveURL(/dripper=V60/);
@@ -4186,7 +4186,7 @@ export const STATES: State[] = [
       const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
       const all = await drippers.count();
       const pick = async (v: string) => {
-        await page.getByRole('button', { name: /^Filters/ }).click();
+        await page.locator('.filters-button').click();
         await page.getByRole('dialog', { name: 'Filters' }).getByLabel('Dripper', { exact: true }).selectOption(v);
         await page.keyboard.press('Escape');
       };
@@ -4207,7 +4207,7 @@ export const STATES: State[] = [
       await expect(chips).toHaveCount(2);
       await expect(chips.first()).not.toHaveClass(/muted/);
       await expect(chips.last()).toHaveClass(/muted/);
-      await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
+      await expect(page.locator('.filters-button')).toContainText('1');
       await chips.last().locator('.filter-chip-label').hover();
       await expect(page.getByText('Not used on this tab')).toBeVisible();
       await chips.last().locator('.filter-chip-label').click(); // muted: no dialog, no select to edit it
@@ -4712,6 +4712,12 @@ export const STATES: State[] = [
       await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
       await expectGridRowsFull(page, '.trophy-grid');
+      // The hierarchy: name > average > brews | grams.
+      const size = (l: Locator) => l.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+      const card = page.locator('.trophy-card[data-key="dripper-v60"]');
+      const [name, avg, small] = [await size(card.locator('.trophy-toggle')), await size(card.locator('.fig-avg b')), await size(card.locator('.fig-row b').first())];
+      expect(name).toBeGreaterThan(avg);
+      expect(avg).toBeGreaterThan(small);
     } },
   { name: 'insights-trophy-open', path: () => '/insights?tab=gear&card=grinder-zp6-special',
     act: async (page) => {
@@ -4768,6 +4774,40 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/retired=open/);
       expect(loads).toEqual([]);
     } },
+  // The kind toggle: URL, no refetch, the shelf count follows it, it combines with a pick.
+  { name: 'insights-trophy-kind', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const loads: string[] = [];
+      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
+      const kinds = page.getByRole('group', { name: 'Kind' });
+      await expect(kinds.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
+      await kinds.getByRole('button', { name: 'Drippers' }).click();
+      await expect(page).toHaveURL(/gear=dripper/);
+      await expect(page.locator('.trophy-card:not([data-key^="dripper-"])')).toHaveCount(0);
+      await expect(page.locator('button.retired-toggle')).toContainText('Retired (1)'); // Switch
+      await kinds.getByRole('button', { name: 'Grinders' }).click();
+      await expect(page).toHaveURL(/gear=grinder/);
+      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
+      await expect(page.locator('button.retired-toggle')).toHaveCount(0);
+      await expectGridRowsFull(page, '.trophy-grid');
+      await kinds.getByRole('button', { name: 'All' }).click();
+      await expect(page).not.toHaveURL(/gear=/);
+      expect(loads).toEqual([]);
+    } },
+  { name: 'insights-trophy-kind-pick', path: () => '/insights?tab=gear&gear=grinder&dripper=V60',
+    act: async (page) => {
+      await expect(page.locator('.trophy-card')).toHaveCount(2); // the dripper pick only rules out drippers, the toggle shows grinders only
+      await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
+    } },
+  // Cards follow the Period: gear with no brew in it has no card; All time shows every one.
+  { name: 'insights-trophy-period', viewports: 'two', path: () => '/insights?tab=gear&range=all',
+    act: async (page) => {
+      const all = await page.locator('.trophy-card').count();
+      await gotoReady(page, '/insights?tab=gear&range=1w');
+      const week = await page.locator('.trophy-card').count();
+      expect(week).toBeLessThan(all);
+      expect(week).toBeGreaterThan(0);
+    } },
   { name: 'insights-trophy-retired', path: () => '/insights?tab=gear&retired=open',
     act: async (page) => {
       await expect(page.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'true');
@@ -4788,14 +4828,14 @@ export const STATES: State[] = [
   { name: 'insights-trophy-grinder-pick', viewports: 'two', path: () => '/insights?tab=gear',
     act: async (page) => {
       await expect(page.locator('.tab-controls')).toHaveCount(0);
-      await page.getByRole('button', { name: /^Filters/ }).click();
+      await page.locator('.filters-button').click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await dlg.getByLabel('Grinder', { exact: true }).selectOption('a4z-femobook');
       await expect(page).toHaveURL(/grinder=a4z-femobook/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(1);
       await page.keyboard.press('Escape');
       await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/A4Z/]);
-      await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
+      await expect(page.locator('.filters-button')).toContainText('1');
       await page.getByRole('button', { name: 'Clear all' }).click();
       await expect(page).not.toHaveURL(/grinder=/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);

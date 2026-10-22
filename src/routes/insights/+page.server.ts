@@ -126,8 +126,11 @@ export const load: PageServerLoad = ({ url }) => {
           boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
-    // Gear tab only: every dripper, grinder and filter from all brews, unfiltered and all-time.
-    trophies: s.tab === 'gear' ? trophyCase(everyBrew, gearArchive(db), today) : null,
+    // Gear tab only: every dripper, grinder and filter with a brew in the Period; the Ratings and Brews switches reach only
+    // the ratings. Coffees filters, Compare, People and the other brew filters never apply.
+    trophies: s.tab === 'gear'
+      ? trophyCase(everyBrew, gearArchive(db), today, { period, ratings: s.ratings, scored: s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn) })
+      : null,
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'

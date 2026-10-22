@@ -3,7 +3,9 @@ import { GEAR_KINDS, type GearKind } from '$lib/gear';
 import { pooled, type Sample } from '$lib/sample';
 import { slugify } from '$lib/server/slug';
 import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
-import { daysBetween } from './time';
+import { countsForRating } from './ratings';
+import { daysBetween, inPeriod, type Period } from './time';
+import type { Ratings } from '$lib/insightsUrl';
 
 export const RETIRED_AFTER_DAYS = 90;
 
@@ -39,41 +41,59 @@ export interface Trophy {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
 
-// One card per dripper, grinder and filter, from all brews (raw ratings: no cutoffs, decaf included).
-export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, today: string): Trophy[] {
-  const groups = new Map<string, { kind: GearKind; name: string; xs: BrewFact[] }>();
+// What a card reads. Period scopes every count (brews, grams, bags, days, favorite) and the ratings; the Ratings and
+// Brews switches reach only the ratings: `scored` is the brews with Once dialed applied (or the same brews),
+// `ratings` the Calibrated / All cutoff (countsForRating). First/last used and Retired are lifetime. Coffees
+// filters and the other brew filters never apply. Defaults: all time, every raw rating.
+export interface TrophyScope { period?: Period; ratings?: Ratings; scored?: readonly BrewFact[] }
+
+// One card per dripper, grinder and filter with a brew in the Period.
+export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, today: string, scope: TrophyScope = {}): Trophy[] {
+  const period = scope.period ?? { start: null, end: today }, ratings = scope.ratings ?? 'all';
+  const scoredRating = new Map((scope.scored ?? brews).map((b) => [b.id, b] as const));
+  // A brew's rating for the cards: its scored copy's, if it counts under the Ratings setting.
+  const ratingOf = (b: BrewFact): number | null => {
+    const sb = scoredRating.get(b.id);
+    return sb && countsForRating(sb, ratings) && sb.rating! > 0 ? sb.rating! : null;
+  };
+  const groups = new Map<string, { kind: GearKind; name: string; all: BrewFact[]; xs: BrewFact[] }>();
   for (const b of brews)
     for (const kind of GEAR_KINDS) {
       const name = b[kind];
       if (!name || name === MIXED_FILTER) continue;
       const k = `${kind}\0${name}`;
-      if (!groups.has(k)) groups.set(k, { kind, name, xs: [] });
-      groups.get(k)!.xs.push(b);
+      if (!groups.has(k)) groups.set(k, { kind, name, all: [], xs: [] });
+      const g = groups.get(k)!;
+      g.all.push(b);
+      if (inPeriod(b.localDate, period)) g.xs.push(b);
     }
   const withKind = (kind: GearKind) => (kind === 'dripper' ? 'filter' : 'dripper') as 'filter' | 'dripper';
-  const out = [...groups.values()].map(({ kind, name, xs }): Trophy => {
-    const rated = xs.filter((b) => b.rating != null && b.rating > 0);
+  const out = [...groups.values()].filter((g) => g.xs.length).map(({ kind, name, all, xs }): Trophy => {
+    const ratedXs = xs.filter((b) => ratingOf(b) !== null);
     const dates = xs.map((b) => b.localDate).sort();
+    const life = all.map((b) => b.localDate).sort();
     const partners = new Map<string, number[]>();
     for (const b of xs) {
       const p = b[withKind(kind)];
       if (!p || p === MIXED_FILTER) continue;
       if (!partners.has(p)) partners.set(p, []);
-      if (b.rating != null && b.rating > 0) partners.get(p)!.push(b.rating);
+      const r = ratingOf(b);
+      if (r !== null) partners.get(p)!.push(r);
     }
     const count = new Map<string, number>();
     for (const b of xs) { const p = b[withKind(kind)]; if (p && p !== MIXED_FILTER) count.set(p, (count.get(p) ?? 0) + 1); }
     const fav = [...count].sort(([an, ac], [bn, bc]) =>
       bc - ac || (mean(partners.get(bn)!) ?? -1) - (mean(partners.get(an)!) ?? -1) || an.localeCompare(bn))[0];
-    const archived = archive[kind].has(name), lastUsed = dates.at(-1)!;
-    const ratedBags = new Set(rated.map((b) => b.coffeeId).filter((c) => c != null)).size;
+    const archived = archive[kind].has(name), lastUsed = life.at(-1)!;
+    const rs = ratedXs.map((b) => ratingOf(b)!);
+    const ratedBags = new Set(ratedXs.map((b) => b.coffeeId).filter((c) => c != null)).size;
     return {
       key: `${kind}-${slugify(name)}`, kind, name, brews: xs.length,
       grams: xs.reduce((s, b) => s + (b.dose ?? 0), 0),
-      rating: mean(rated.map((b) => b.rating!)), best: rated.length ? Math.max(...rated.map((b) => b.rating!)) : null,
-      sample: pooled(ratedBags, rated.length),
+      rating: mean(rs), best: rs.length ? Math.max(...rs) : null,
+      sample: pooled(ratedBags, rs.length),
       bags: new Set(xs.map((b) => b.coffeeId).filter((c) => c != null)).size,
-      days: new Set(dates).size, firstUsed: dates[0], lastUsed,
+      days: new Set(dates).size, firstUsed: life[0], lastUsed,
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
       archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };

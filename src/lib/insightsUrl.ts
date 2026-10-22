@@ -1,4 +1,5 @@
 import { pickOne } from '$lib/pageUrlState';
+import { GEAR_KINDS, type GearKind } from '$lib/gear';
 import { upsertFilter, type Filter } from '$lib/coffeeFilters';
 import { fromParams, toParams } from '$lib/coffeeViewState';
 
@@ -253,6 +254,7 @@ export interface InsightsUrlState {
   grind?: 'exact';
   card?: string; // Gear's open trophy card (key "kind-slug")
   retired?: 'open'; // Gear's retired shelf is open
+  gear?: GearKind; // Gear showcase's kind toggle: absent = All
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // only 'total' is ever explicit: average is the default
   dial?: Dial; // only 'all' is ever explicit
@@ -260,12 +262,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'retired';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'retired' | 'gear';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; retired?: 'open';
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; retired?: 'open'; gear?: GearKind;
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -414,7 +416,8 @@ export function parseInsightsUrl(
     ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
     pairs: parsePairs(p.get('pairs')),
     card: parseCard(p.get('card')),
-    retired: pickOne(p, 'retired', ['open'])
+    retired: pickOne(p, 'retired', ['open']),
+    gear: pickOne(p, 'gear', GEAR_KINDS)
   };
 }
 
@@ -470,6 +473,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   if (s.card) p.set('card', s.card);
   if (s.retired) p.set('retired', s.retired);
+  if (s.gear) p.set('gear', s.gear);
   return p;
 }
 
@@ -598,7 +602,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, retired: s.retired
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, retired: s.retired, gear: s.gear
   };
 }
 

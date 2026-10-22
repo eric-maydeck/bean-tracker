@@ -52,6 +52,44 @@ describe('trophyCase', () => {
   });
 });
 
+describe('trophyCase scope', () => {
+  const xs = () => [
+    brew({ id: 1, dripper: 'V60', filter: 'A', dose: 15, rating: 8, coffeeId: 1, localDate: '2026-06-01' }),
+    brew({ id: 2, dripper: 'V60', filter: 'A', dose: 15, rating: 6, coffeeId: 2, localDate: '2026-10-10' }),
+    brew({ id: 3, dripper: 'V60', filter: 'B', dose: 10, rating: 9, coffeeId: 2, localDate: '2026-10-20' }),
+    brew({ id: 4, dripper: 'Old', dose: 15, rating: 7, coffeeId: 3, localDate: '2026-05-01' })
+  ];
+  const month = { start: '2026-10-01', end: T };
+  it('Period scopes counts and ratings; first/last used and retired stay lifetime', () => {
+    const ts = trophyCase(xs(), none, T, { period: month });
+    const v60 = ts.find((t) => t.key === 'dripper-v60')!;
+    expect(v60).toMatchObject({ brews: 2, grams: 25, rating: 7.5, best: 9, bags: 1, days: 2, favorite: { name: 'B', brews: 1 }, // 1 brew each: the higher-rated partner
+      firstUsed: '2026-06-01', lastUsed: '2026-10-20', retired: false });
+  });
+  it('gear with no brew in the Period gets no card', () => {
+    const ts = trophyCase(xs(), none, T, { period: month });
+    expect(ts.map((t) => t.key)).not.toContain('dripper-old');
+    expect(trophyCase(xs(), none, T).map((t) => t.key)).toContain('dripper-old');
+  });
+  it('retired is judged on all brews even when the Period is short', () => {
+    const ts = trophyCase(xs(), none, T, { period: { start: '2026-05-01', end: '2026-05-31' } });
+    expect(ts.map((t) => t.key)).toEqual(['dripper-old']);
+    expect(ts[0].retired).toBe(true);
+    const v = trophyCase(xs(), none, T, { period: { start: '2026-06-01', end: '2026-06-30' } })[0];
+    expect(v).toMatchObject({ key: 'dripper-v60', brews: 1, retired: false, lastUsed: '2026-10-20' }); // last used is lifetime
+  });
+  it('the Ratings and Brews switches change only rating, best and sample', () => {
+    const base = trophyCase(xs(), none, T, { period: { start: null, end: T } }).find((t) => t.key === 'dripper-v60')!;
+    // Calibrated drops ratings before RATINGS_SETTLED_FROM; Once dialed nulls a brew's rating.
+    const dialed = xs().map((b) => (b.id === 3 ? { ...b, rating: null, dialRating: 9 } : b));
+    const sw = trophyCase(xs(), none, T, { ratings: 'all', scored: dialed }).find((t) => t.key === 'dripper-v60')!;
+    expect(sw).toMatchObject({ rating: 7, best: 8, brews: base.brews, grams: base.grams, bags: base.bags, days: base.days, favorite: base.favorite });
+    expect(sw.sample.brews).toBe(2);
+    const cal = trophyCase(xs(), none, T, { ratings: 'current' }).find((t) => t.key === 'dripper-old')!; // before the settled date
+    expect(cal).toMatchObject({ brews: 1, grams: 15, rating: null, best: null });
+  });
+});
+
 describe('gearArchive', () => {
   it('a grinder by its row; a dripper/filter only when every method parsing to it is archived', () => {
     const db = createDb(':memory:');
