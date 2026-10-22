@@ -533,7 +533,7 @@ const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString
 // Gate 3: a panel holding only an empty line (whole-tab .hl-empty, a board's empty note) is short: its blank
 // area is the line's own padding, not a chart's or a band's height (text may wrap to 3 lines at 360).
 async function expectShortEmpty(page: Page) {
-  const tall = await page.locator('section.chart-panel:has(> .hl-empty), .board:has(.board-note:not(.bag-only))').evaluateAll((ps) =>
+  const tall = await page.locator('section.chart-panel:has(> .hl-empty), .board:has(.board-note)').evaluateAll((ps) =>
     ps.filter((p) => {
       const note = p.querySelector('.hl-empty, .board-note')!;
       const lines = note.getBoundingClientRect().height / parseFloat(getComputedStyle(note).lineHeight);
@@ -2714,7 +2714,8 @@ export const STATES: State[] = [
     name: 'insights-leaderboards-spend-compare',
     path: () => '/insights?tab=leaderboards&rank=spend&range=12m&compare=1',
     act: async (page) => {
-      await expect(page.locator('.board-note.bag-only')).toHaveCount(4);
+      await expect(page.locator('.chart-note', { hasText: 'is per bag' })).toHaveCount(1);
+      await expect(page.locator('[data-board="dripper"]')).toHaveCount(0);
       await expect(page.locator('.board .move').first()).toBeVisible();
       await expectEqualBoardHeights(page);
     }
@@ -3956,6 +3957,8 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
       await chips.first().locator('.filter-chip-label').hover();
       await expect(page.getByText('Not used on this tab')).toBeVisible();
+      await chips.first().locator('.filter-chip-label').click(); // muted: no dialog, no select to edit it
+      await expect(page.getByRole('dialog', { name: 'Filters' })).toBeHidden();
       await expectChipsFit(page);
       await page.getByRole('button', { name: 'Remove filter: V60' }).click();
       await expect(page).not.toHaveURL(/dripper=/);
@@ -3983,14 +3986,19 @@ export const STATES: State[] = [
       await expect(note(/^Averages$/)).toHaveCount(0);
       await expect(page.locator('.chart-panel.recent .chart-note')).toHaveText("Whole bags: the dripper filter doesn't apply.");
     } },
-  { name: 'insights-brew-leaderboards', path: () => '/insights?tab=leaderboards&rank=spend&dripper=V60',
+  { name: 'insights-brew-leaderboards-spend', path: () => '/insights?tab=leaderboards&rank=spend&dripper=V60',
     act: async (page) => {
       await expect(page.locator('.chart-note', { hasText: "Whole bags: the dripper filter doesn't apply." })).toHaveCount(1);
-      // The Drippers board skips its own filter: V60 and Origami both still list.
+      // The per-bag line is one plain note under the boards, not an empty board per gear dimension.
+      await expect(page.locator('.chart-note', { hasText: 'is per bag' })).toHaveCount(1);
+      await expect(page.locator('[data-board="dripper"]')).toHaveCount(0);
+    } },
+  { name: 'insights-brew-leaderboards', path: () => '/insights?tab=leaderboards&dripper=V60',
+    act: async (page) => {
+      // Every board applies every filter, its own included: the Drippers board lists only V60.
       const board = page.locator('[data-board="dripper"]');
-      await gotoReady(page, '/insights?tab=leaderboards&dripper=V60');
       await expect(board).toContainText('V60');
-      await expect(board).toContainText('Origami');
+      await expect(board).not.toContainText('Origami');
       await expect(page.locator('.chart-note', { hasText: 'Whole bags' })).toHaveCount(0);
     } },
   { name: 'insights-brew-habits', path: () => '/insights?tab=habits&brewDose=15',
