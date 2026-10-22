@@ -2241,7 +2241,6 @@ html {
   .filter-chip-label,
   .filter-chip-remove {
     min-width: 44px;
-    padding-inline: 0.35rem;
   }
 }
 

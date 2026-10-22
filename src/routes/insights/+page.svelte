@@ -549,7 +549,7 @@
         {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
         {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
-          ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{value}</button
+          ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && coffeesDialog?.showModal()}>{value}</button
           ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
             aria-label="Remove filter: {value}" onclick={() => choose({ [k]: undefined })}>✕</button
           ></span
