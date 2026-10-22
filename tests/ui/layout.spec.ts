@@ -4150,19 +4150,18 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: /^Filters/ }).click();
       const dlg = page.getByRole('dialog', { name: 'Filters' });
       await expect(dlg).toBeVisible();
-      for (const l of ['Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
-      for (const l of ['Dripper', 'Filter']) await expect(dlg.getByLabel(l, { exact: true })).toHaveCount(0);
+      for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
-  { name: 'insights-brew-chips-muted', path: () => '/insights?tab=gear&dripper=V60&water=Lab%20Water%20A',
+  { name: 'insights-brew-chips-muted', path: () => '/insights?tab=habits&dripper=V60&water=Lab%20Water%20A',
     act: async (page) => {
       const chips = page.locator('.coffee-chips .filter-chip');
       await expect(chips).toHaveCount(2);
-      await expect(chips.first()).toHaveClass(/muted/);
-      await expect(chips.last()).not.toHaveClass(/muted/);
+      await expect(chips.first()).not.toHaveClass(/muted/);
+      await expect(chips.last()).toHaveClass(/muted/);
       await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
-      await chips.first().locator('.filter-chip-label').hover();
+      await chips.last().locator('.filter-chip-label').hover();
       await expect(page.getByText('Not used on this tab')).toBeVisible();
-      await chips.first().locator('.filter-chip-label').click(); // muted: no dialog, no select to edit it
+      await chips.last().locator('.filter-chip-label').click(); // muted: no dialog, no select to edit it
       await expect(page.getByRole('dialog', { name: 'Filters' })).toBeHidden();
       await expectChipsFit(page);
       await page.getByRole('button', { name: 'Remove filter: V60' }).click();

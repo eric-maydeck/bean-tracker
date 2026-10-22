@@ -690,4 +690,14 @@ describe('brew filters', () => {
     seedBrews();
     expect(run('?dripper=V60').brewOptions.drippers).toEqual(['Origami', 'V60']);
   });
+
+  it('trophies only on the gear tab, all-time and unfiltered', () => {
+    seed([[addDays(today, -400), 15], [today, 15]]);
+    const db = getDb();
+    db.exec(`INSERT OR REPLACE INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60', '${today}');
+      UPDATE beanconqueror_brews SET preparation_id = 'm1'`);
+    expect(run('?tab=overview').trophies).toBeNull();
+    const t = run('?tab=gear&range=1w&dripper=V60&ratings=current&dial=dialed&caffeine=decaf').trophies;
+    expect(t.find((x: { key: string }) => x.key === 'dripper-v60').brews).toBe(2);
+  });
 });

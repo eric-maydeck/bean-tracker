@@ -15,7 +15,7 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import {
-    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
+    PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
   import GrinderSelect from './GrinderSelect.svelte';
@@ -66,9 +66,9 @@
     dripper: data.brewOptions.drippers, filter: data.brewOptions.filters, water: data.brewOptions.waters,
     brewDose: data.brewOptions.doses, brewTemp: data.brewOptions.temps
   });
-  const brewSelects = $derived(BREW_FILTERS_ON[s.tab].filter((k) => BREW_OPTIONS[k].length));
+  const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
-  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => BREW_FILTERS_ON[s.tab].includes(k)).length);
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length);
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Custom range dialog; its draft is `draft` below.
@@ -377,7 +377,7 @@
   // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
   let tabBarOn = $derived(
     !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
-      (s.tab === 'sweetspots' && data.sweetSpots) || (s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1))
+      (s.tab === 'sweetspots' && data.sweetSpots) || ((s.tab === 'brewing' && data.brewing || s.tab === 'gear' && data.trophies) && (data.lab?.grinders.length ?? 0) > 1))
   );
   // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
   // The data-short attribute lets app.html's first-paint script show the short text before hydration.
@@ -552,7 +552,7 @@
   {#if tabBarOn}
     <div class="tab-controls">
       {#if s.tab === 'milestones'}<KindsBar kinds={s.kinds} {choose} />
-      {:else if s.tab === 'brewing'}<div class="insights-bar"><GrinderSelect grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
+      {:else if s.tab === 'brewing' || s.tab === 'gear'}<div class="insights-bar"><GrinderSelect all={s.tab === 'gear' ? 'All grinders' : undefined} grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
       {:else}{@render tab('bar')}{/if}
     </div>
   {/if}
@@ -568,7 +568,7 @@
         >
       {/each}
       {#each brewChips as k (k)}
-        {@const off = !BREW_FILTERS_ON[s.tab].includes(k)}
+        {@const off = !brewSelectsOn(s.tab).includes(k)}
         {@const value = brewFilterText(k, s[k]!)}
         <span class="filter-chip" class:muted={off}
           ><button type="button" class="filter-chip-label" use:labelTip={off ? 'Not used on this tab' : 'Edit in Filters'} onclick={() => !off && coffeesDialog?.showModal()}>{value}</button
