@@ -191,6 +191,8 @@ const method = db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_me
 method.run('m4', 'V60 - Cafec Abaca', now);
 method.run('m5', 'V60 - Sibarist Fast', now);
 method.run('m6', 'Origami - Cafec Abaca', now);
+// Four more drippers (used by 8 extra brews on the last lab bag, below): the Dripper board has 6 groups, so its Show all appears.
+['Kalita', 'Chemex', 'Clever', 'Switch'].forEach((d, i) => method.run(`m${7 + i}`, `${d} - Cafec Abaca`, now));
 const labBrew = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, ground_coffee_g, brew_temperature,
      water_amount_g, brew_time, bloom_time, grind_setting, rating, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
@@ -216,6 +218,8 @@ for (let k = 0; k < 8; k++) {
       TIMES[(j >> 2) % 4], BLOOMS[j % 2], zp6 ? String(5 + (j % 3) * 0.5) : `1.${6 - Math.floor(j / 8)}.0`, +Math.min(9.9, rating).toFixed(1), now);
   }
 }
+for (let j = 32; j < 40; j++) // after the bag's 32 brews, on the water it already uses
+  labBrew.run(atLocal(132 - 70 - j, 8, 15), 'bean-lab-7', `m${7 + (j % 4)}`, 'g2', WATERS[j % 3], 15, 92, 240, '150', '30', '1.4.0', 7.2, now);
 // Like-with-like dial-in (Part 4): 18 archived bags, 7 rated brews each, daily from `first` days ago. Two roasters
 // × two (roast, process) groups, 9 bags each. Only Light / Ultralight: the mixed-roast nudge needs exactly two levels. Ultralight / Washed bags are right on brew 1; Light / Natural bags (same average, so the mixed-roast nudge stays hidden) start
 // low (three 5s) and settle on brew 4, so dial-in by roast and by process both show a spread and some bags are

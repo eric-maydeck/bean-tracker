@@ -144,6 +144,7 @@
     return s[0].toUpperCase() + s.slice(1);
   };
   let help = $state<HTMLDialogElement>();
+  const footed = (band: Board[]) => band.some((x) => boards[x].length > SIZE(x) && !unranked(x));
   const unranked = (b: Board) => (rank === 'spend' || rank === 'ppg') && !BAG_BOARDS.includes(b);
   const emptyText = () =>
     rank === 'spend' || rank === 'ppg' ? 'No bags bought in this period.'
@@ -237,7 +238,8 @@
   {@const pick = switchable ? viewOf(b) : undefined}
   {@const view = pick ? 'time' : 'list'}
   {@const wide = pick === 'wide'}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}>
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}
+    data-lines={view === 'time' ? (isOpen ? series?.[b]?.lines.length : Math.min(size, series?.[b]?.lines.length ?? 0)) : undefined}>
     {#if switchable}
       <div class="board-head">
         <h2>{TITLE[b]}</h2>
@@ -257,7 +259,7 @@
       </div>
     {:else}<h2>{TITLE[b]}</h2>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
-    <div class="board-body">
+    <div class="board-body" class:time={view === 'time' && !isOpen}>
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
       {#if unranked(b)}
         <p class="board-note fill">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
@@ -265,10 +267,15 @@
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
       {:else if view === 'time'}
         {@const sr = series?.[b]}
-        {#if sr?.lines.length && sr.labels.length}
-          <Chart type="line" labels={sr.labels} values={sr.lines[0].values} datasetLabel={sr.lines[0].label}
-            series={sr.lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={260} />
-          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {sr.lines.length > 1 ? `top ${sr.lines.length} ` : ''}{BOARD_NOUN[b]}{#if sr.lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
+        <!-- The server sends every group's line, best first (colors follow that order, so Show all keeps the top ones'). -->
+        {@const lines = isOpen ? (sr?.lines ?? []) : (sr?.lines ?? []).slice(0, size)}
+        {#if sr && lines.length && sr.labels.length}
+          <!-- The chart fills the List's body height, so switching views never resizes the card; Show all may grow it. -->
+          <div class="time-chart">
+            <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
+              series={lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height={isOpen ? 360 : 'fill'} />
+          </div>
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === sr.lines.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `top ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
@@ -300,8 +307,8 @@
         </ol>
       {/if}
     </div>
-    <!-- The footer exists only for a Show all button; a band row stretches its cards level, so a board whose
-         neighbor has the button keeps that space (and one with none, none). -->
+    <!-- The footer exists only for a Show all button. A band with one reserves that space in its other cards (.has-foot,
+         CSS), so cards are level by their own content, not by stretching: a card that opens can't resize the others. -->
     {#if rows.length > size && !unranked(b)}
       <footer class="board-foot">
         <button class="button button-ghost" aria-expanded={isOpen} onclick={(e) => bottomInView(e.currentTarget.closest('.board-foot'), () => choose({ open: isOpen ? undefined : b }))}
@@ -325,7 +332,7 @@
   {#each BANDS as full, i (i)}
     {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}
-      <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))}>
+      <div class="board-band band-{band.length}" class:has-like={rank !== 'like' && band.some((b) => boards[b].some((r) => r.like))} class:has-foot={footed(band)}>
         {#each band as b (b)}{@render board(b)}{/each}
       </div>
     {/if}
@@ -542,6 +549,21 @@
   .placeholder {
     color: var(--color-text-muted);
     opacity: 0.45;
+  }
+  /* Over time: the body is the List's height (rows × row height), the chart takes what the caption leaves. */
+  .board-body.time {
+    display: flex;
+    flex-direction: column;
+    height: calc(var(--rows) * var(--row-h));
+  }
+  .time-chart {
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  .has-foot > .board:not(:has(.board-foot))::after {
+    content: '';
+    display: block;
+    height: 2.75rem;
   }
   .board-foot {
     display: flex;

@@ -2793,6 +2793,29 @@ export const STATES: State[] = [
       await gotoReady(page, page.url().replace('&rank=brews', ''));
       await expect(page.locator('.board .chart-note').filter({ hasText: /Dashed: \w+s with no data/ }).first()).toBeVisible();
     } },
+  { name: 'insights-board-time-size', path: () => '/insights?tab=leaderboards&range=all&avg=raw',
+    act: async (page) => {
+      // List and Over time are the same card size; Show all (Over time) adds lines and moves no other card.
+      const heights = () => page.locator('.board-band:has(.board[data-board=dripper]) > .board').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
+      const water = page.locator('.board[data-board=dripper]');
+      const list = await heights();
+      await water.getByRole('button', { name: 'Over time' }).click();
+      await expect(water.locator('canvas')).toBeVisible();
+      await expect(page).toHaveURL(/views=dripper-time/);
+      expect(await heights()).toEqual(list);
+      const lines = () => water.locator('canvas').evaluate((c) => c.closest('.board')!.getAttribute('data-lines'));
+      expect(await lines()).toBe('5');
+      await water.getByRole('button', { name: /^Show all/ }).click();
+      await expect(page).toHaveURL(/open=dripper/);
+      await expect.poll(lines).toBe('7');
+      const after = await heights();
+      const iw = await page.locator('.board-band:has(.board[data-board=dripper]) > .board').evaluateAll((els) => els.findIndex((e) => e.getAttribute('data-board') === 'dripper'));
+      after.forEach((h, k) => k !== iw && expect(Math.abs(h - list[k])).toBeLessThanOrEqual(1));
+      await expect(water.locator('.chart-note')).toContainText('all 7');
+      await water.getByRole('button', { name: /^Show top/ }).click();
+      await expect.poll(lines).toBe('5');
+      await expect.poll(heights).toEqual(list);
+    } },
   { name: 'insights-board-views-url', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       // The view is URL state: absent = List, a pick shows in the URL and survives a reload, List drops it again.

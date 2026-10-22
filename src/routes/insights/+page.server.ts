@@ -122,7 +122,7 @@ export const load: PageServerLoad = ({ url }) => {
     // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
     boardSeries: boards
       ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b]).map((b) => [b,
-          boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].slice(0, 5).map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
+          boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
       : null,
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,

@@ -67,7 +67,7 @@
     labels: string[];
     values: (number | null)[];
     datasetLabel?: string;
-    height?: number;
+    height?: number | 'fill'; // 'fill': the parent's height (a definite one)
     // Bar charts only: pins the value axis's upper bound so it doesn't
     // rescale as the data changes. A suggestedMax, not a hard max, so
     // Chart.js still rounds it up to a clean tick.
@@ -467,7 +467,7 @@
   });
 </script>
 
-<div class="chart-container" style="height: {height}px">
+<div class="chart-container" style="height: {height === 'fill' ? '100%' : `${height}px`}">
   <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}></canvas>
   <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px"></span>
   {#if tipAt && tipAnchor}
