@@ -19,7 +19,7 @@ const bag = (o: Partial<BagFact>): BagFact => ({
 });
 const ctx = (brews: BrewFact[], bags: BagFact[] = [], o: Partial<GenCtx> = {}): GenCtx => ({
   brews, bags, prevBrews: null, ratings: 'all', today: '2026-10-11', householdSize: 2, onHandG: 0, logged: loggedGrams(brews),
-  period: { from: '2026-09-01', to: '2026-09-30' }, dataStart: '2026-01-01', allBrews: brews, dialIn: new Set<number>(), ...o
+  period: { from: '2026-09-01', to: '2026-09-30' }, dataStart: '2026-01-01', allBrews: brews, wholeBrews: o.allBrews ?? brews, brewFilters: {}, dialIn: new Set<number>(), ...o
 });
 const all = (c: GenCtx) => GENERATORS.flatMap((g) => [g(c)].flat().filter((f) => f !== null));
 const gen = (key: string, brews: BrewFact[], bags: BagFact[] = [], o: Partial<GenCtx> = {}) =>

@@ -1,5 +1,5 @@
 import { usd } from '$lib/money';
-import { MON, type Ratings, type Theme } from '$lib/insightsUrl';
+import { MON, type BrewFilters, type Ratings, type Theme } from '$lib/insightsUrl';
 import { likeGap as gapText } from '$lib/components/deltaColor'; // like gaps read the same as on Leaderboards ("−0.1")
 import { formatGrams } from '$lib/grams';
 import type { WhatIf } from '$lib/insightsWhatIf';
@@ -47,6 +47,9 @@ export interface GenCtx {
   period: { from: string; to: string }; dataStart: string; // What-if defaults (Task 14)
   allBrews: readonly BrewFact[]; // in-period, every rating: the dial-in findings (Once dialed exempts them)
   dialIn: ReadonlySet<number>; // dialed.ts dialInIds over the whole history
+  // In-period, every rating, before the brew filters: whole-bag figures (What-if, runway) and, for now, the settle
+  // views read it. `brewFilters` is what applied.
+  wholeBrews: readonly BrewFact[]; brewFilters: BrewFilters;
 }
 export type Generator = (c: GenCtx) => Finding | Finding[] | null;
 
@@ -318,9 +321,9 @@ const MIN_RUNWAY_DAYS = 14;
 const backlogRunway: Generator = (c) => {
   const p = { start: c.period.from, end: c.period.to };
   const days = trackedDays(p, c.dataStart, c.today);
-  const { perDay, daysToClear } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);
+  const { perDay, daysToClear } = consumption(c.wholeBrews, p, c.dataStart, c.today, c.onHandG);
   if (days < MIN_RUNWAY_DAYS || perDay === null || daysToClear === null) return null;
-  const brewed = c.brews.filter((b) => inPeriod(b.localDate, p)).reduce((s, b) => s + (b.dose ?? 0), 0);
+  const brewed = c.wholeBrews.filter((b) => inPeriod(b.localDate, p)).reduce((s, b) => s + (b.dose ?? 0), 0);
   const bought = c.bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p)).reduce((s, b) => s + (b.amountG ?? 0), 0);
   const held = c.bags.filter((b) => b.status !== 'archive').map((b) => ({ b, g: remaining(b, c.logged) })).filter((x) => x.g > 0);
   return {
@@ -862,11 +865,11 @@ export function settleEvidence(f: Finding, z: number | null, tests: number): Fin
   return f.strength === 'early' ? { ...rest, progress: Math.min(1, (z / solidBar(tests)) ** 2) } : rest;
 }
 const dialinByGroup: Generator = (c) => {
-  const pos = settlePositions({ ...c, brews: c.allBrews });
+  const pos = settlePositions({ ...c, brews: c.wholeBrews });
   const allPos = pos.map((x) => x.pos);
   return (['roastLevel', 'processGroup'] as const).flatMap((dim) => {
     // Groups under the pooled bag rule are left out.
-    const groups = settleGroups({ ...c, brews: c.allBrews }, dim).filter((g) => g.bags >= POOLED_MIN_BAGS);
+    const groups = settleGroups({ ...c, brews: c.wholeBrews }, dim).filter((g) => g.bags >= POOLED_MIN_BAGS);
     if (groups.length < 2) return [];
     // Ties go to the group with more bags.
     const by = (dir: 1 | -1) => (a: (typeof groups)[0], b: (typeof groups)[0]) => dir * (a.value - b.value) || b.bags - a.bags || a.label.localeCompare(b.label);
@@ -946,6 +949,8 @@ const rescuedBags: Generator = (c) => {
 };
 
 export const DIAL_IN_GENERATORS: ReadonlySet<Generator> = new Set([dialinCurve, dialinSpeed, firstVsLater, settleTrend]);
+// The settle measures read whole bags, never a brew-filtered subset (Part 2 weights them).
+const SETTLE_WHOLE: ReadonlySet<Generator> = new Set([dialinSpeed, settleTrend]);
 
 export const GENERATORS: Generator[] = [
   dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
@@ -972,13 +977,13 @@ const negligible = (f: Finding) => (/^[-+]\d/.test(f.value ?? '') && Math.abs(pa
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
-  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: SETTLE_WHOLE.has(g) ? c.wholeBrews : c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early';
 
   const p = { start: c.period.from, end: c.period.to };
-  const { perDay } = consumption(c.brews, p, c.dataStart, c.today, c.onHandG);
+  const { perDay } = consumption(c.wholeBrews, p, c.dataStart, c.today, c.onHandG);
   const days = trackedDays(p, c.dataStart, c.today);
-  const doses = c.brews.filter((b) => inPeriod(b.localDate, p) && (b.dose ?? 0) > 0);
+  const doses = c.wholeBrews.filter((b) => inPeriod(b.localDate, p) && (b.dose ?? 0) > 0);
   const size = Math.max(c.householdSize, 0);
   const defaults: WhatIf = {
     drinkers: size,

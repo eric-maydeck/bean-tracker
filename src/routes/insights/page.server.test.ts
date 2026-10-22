@@ -606,3 +606,80 @@ describe('the mixed-roast nudge', () => {
     expect(run(`${q}&rank=like`).roastMix).toBeNull();
   });
 });
+
+describe('brew filters', () => {
+  // Bag A: 8 rated brews, the first 2 Origami then V60 (water W1). Bag B: 6 rated Origami brews (W2). All 15 g.
+  // Once dialed (dialed.ts) skips A's first 2 and B's first 1, by position over each bag's whole history.
+  const A = (i: number) => addDays(today, -20 + i);
+  const B = (i: number) => addDays(today, -10 + i);
+  function seedBrews() {
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees; DELETE FROM beanconqueror_methods;');
+    for (const m of ['V60', 'Origami']) db.prepare(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES (?, ?, ?)`).run(m, m, today);
+    const ins = db.prepare(
+      `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, water, ground_coffee_g, rating, imported_at)
+       VALUES (?, ?, ?, ?, 15, 8, ?)`
+    );
+    ['A', 'B'].forEach((n) => {
+      const { id } = createCoffee(db, {
+        roaster: 'R', coffee_name: n, origin: null, roast_level: null, processing: 'Washed', amount_g: 250, cost: 25,
+        roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null
+      });
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(`bean${n}`, n, today, id);
+    });
+    for (let i = 0; i < 8; i++) ins.run(`${A(i)}T15:00:00.000Z`, 'beanA', i < 2 ? 'Origami' : 'V60', 'W1', today);
+    for (let i = 0; i < 6; i++) ins.run(`${B(i)}T15:00:00.000Z`, 'beanB', 'Origami', 'W2', today);
+  }
+
+  it('brews narrow on Overview', () => {
+    seedBrews();
+    const d = run('?range=all&dripper=V60');
+    expect(d.tiles.brews).toBe(6);
+    expect(d.brewFilters).toEqual({ dripper: 'V60' });
+  });
+  it('whole-bag figures ignore brew filters', () => {
+    seedBrews();
+    const [u, f] = [run('?range=all'), run('?range=all&dripper=V60')];
+    expect(f.rightNow).toEqual(u.rightNow);
+    expect(f.consumption.daysToClear).toBe(u.consumption.daysToClear);
+    expect(f.consumption.daysToClear).not.toBeNull();
+    expect(f.tiles.spend).toBe(u.tiles.spend);
+    expect(f.tiles.bagsFinished).toBe(u.tiles.bagsFinished);
+    expect(f.consumption.perDay).toBeLessThan(u.consumption.perDay);
+    const [cu, cf] = [run('?range=all&tab=consumption'), run('?range=all&tab=consumption&dripper=V60')];
+    for (const k of ['onHand', 'net', 'daysToClear'] as const) expect(cf.consumptionTab.tiles[k]).toBe(cu.consumptionTab.tiles[k]);
+    expect(cf.consumptionTab.backlog).toEqual(cu.consumptionTab.backlog);
+    expect(cf.consumptionTab.tiles.brewed).toBeLessThan(cu.consumptionTab.tiles.brewed);
+  });
+  it('dial-in status is positional under a brew filter', () => {
+    seedBrews();
+    const hidden = (q: string) => run(`?range=all&ratings=all&tab=leaderboards${q}`);
+    // Unfiltered: A's first 2 and B's first 1 are dial-in.
+    expect(hidden('').hidden.brews).toBe(3);
+    // V60 is A's brews 3-8: none is a dial-in brew, so none is hidden (not re-numbered from 1 on the subset).
+    expect(hidden('&dripper=V60').hidden.brews).toBe(0);
+    expect(hidden('&dripper=V60').tiles.rated).toBe(6);
+    // Origami keeps A's first 2 and B's first as dial-in.
+    expect(hidden('&dripper=Origami').hidden.brews).toBe(3);
+    expect(hidden('&dripper=Origami').tiles.rated).toBe(5);
+  });
+  it('filters not offered on this tab do nothing', () => {
+    seedBrews();
+    expect(run('?tab=sweetspots&dripper=V60').sweetSpots.matching).toEqual(run('?tab=sweetspots').sweetSpots.matching);
+    const g = run('?tab=gear&dripper=V60');
+    expect(g.brewFilters).toEqual({});
+    expect(g.explicit.dripper).toBe('V60');
+  });
+  it('a brew filter that empties the period', () => {
+    seedBrews();
+    expect(run('?dripper=Nope').explicit.dripper).toBeUndefined();
+    const w = `?range=${A(0)}..${A(1)}&dripper=V60`; // only A's two Origami brews
+    const d = run(w);
+    expect(d.tiles).toMatchObject({ brews: 0, avgRating: null });
+    for (const tab of ['overview', 'consumption', 'records', 'insights']) expect(JSON.stringify(run(`${w}&tab=${tab}`))).not.toMatch(/NaN/);
+  });
+  it('brew options come from unfiltered data', () => {
+    seedBrews();
+    expect(run('?dripper=V60').brewOptions.drippers).toEqual(['Origami', 'V60']);
+  });
+});

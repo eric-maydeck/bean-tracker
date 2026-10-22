@@ -21,6 +21,8 @@ export interface ConsumptionTab {
 export interface ConsumptionCtx {
   period: Period; prev: Period | null; sameLength: boolean; unit: Unit; agg: Agg; by: By | undefined; size: number;
   dataStart: string | null; today: string; pace: boolean;
+  // Brews before the brew filters: on hand, time to clear, Net and the backlog are about whole bags. Default: `brews`.
+  whole?: readonly BrewFact[];
 }
 
 export const PER: Record<By, number> = { day: 1, week: 7, month: 30.44 };
@@ -133,15 +135,16 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   const by = c.by ?? autoBy(span);
   const bs = buckets(t, by);
   const { brewed, bought } = flows(brews, bags, bs, c);
-  const onHandG = gramsOnHand(bags, brews);
-  const use = consumption(brews, c.period, c.dataStart, c.today, onHandG, c.size);
+  const whole = c.whole ?? brews;
+  const onHandG = gramsOnHand(bags, whole);
+  const use = consumption(whole, c.period, c.dataStart, c.today, onHandG, c.size);
   // Average: the totals become per-day rates over the tracked span (0 when nothing is tracked).
   const rate = (v: { brewed: number; bought: number }, n: number) =>
     c.agg === 'average' ? { brewed: n ? v.brewed / n : 0, bought: n ? v.bought / n : 0 } : v;
   const raw = totals(brews, bags, c.period, c);
   const cur = rate(raw, span);
   const tiles: ConsumptionTiles = {
-    ...cur, net: cur.bought - cur.brewed, avg: avgOf(raw.brewed, span, by),
+    ...cur, net: cur.bought - rate(totals(whole, bags, c.period, c), span).brewed, avg: avgOf(raw.brewed, span, by),
     onHand: c.unit === 'grams' ? onHandG : bags.filter((g) => g.status !== 'archive').length,
     daysToClear: use.daysToClear
   };
@@ -162,7 +165,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
     deltas = {
       brewed: paceDelta(tiles.brewed, p.brewed, span, pspan, pace),
       bought: paceDelta(tiles.bought, p.bought, span, pspan, pace),
-      net: paceDelta(tiles.net, p.bought - p.brewed, span, pspan, pace),
+      net: paceDelta(tiles.net, p.bought - rate(totals(whole, bags, c.prev, c), pspan).brewed, span, pspan, pace),
       avg: paceDelta(tiles.avg, avgOf(praw.brewed, pspan, by), span, pspan, false)
     };
     prevBusiest = busiestDay(brews, c.prev);
@@ -176,6 +179,6 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   }
   return {
     by, tiles, clearBy: use.clearBy, busiest: busiestDay(brews, c.period), prevBusiest, deltas, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
-    backlog: backlogSeries(brews, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage
+    backlog: backlogSeries(whole, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage
   };
 }

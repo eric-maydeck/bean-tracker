@@ -411,6 +411,7 @@ const dial = (g: string | null) => grindKey(g)?.reduce((s, n, i) => s + n / 10 *
 export function brewingTab(brews: readonly BrewFact[], c: {
   period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: Partial<Record<BrewVar, boolean>>;
   all: readonly BrewFact[]; // every rating: the dial-in views (Once dialed exempts them)
+  whole?: readonly BrewFact[]; brewFilters?: BrewFilters; // before the brew filters, every rating: the settle charts. Default: `all`.
 }): BrewingTab {
   // Dial-in views (spec Part 2 exemptions) read every brew; the rest curve and variables follow Once dialed.
   const rows = ratedIn(brews, c.period, c.ratings);
@@ -457,7 +458,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     bestLater: BREW_NO_LABELS.slice(BEST_WINDOW).flatMap((label) => { const bags = later.filter((l) => l === label).length; return bags ? [{ label, bags }] : []; }),
     drift: drift.length >= 2 ? drift : [],
     settle: Object.fromEntries((['roast', 'process'] as const).map((k) => {
-      const g = settleGroups({ brews: c.all.filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
+      const g = settleGroups({ brews: (c.whole ?? c.all).filter((b) => inPeriod(b.localDate, c.period)), ratings: c.ratings }, k === 'roast' ? 'roastLevel' : 'processGroup')
         .sort((a, b) => a.value - b.value || b.bags - a.bags || a.label.localeCompare(b.label))
         .map(({ label, value, bags, brews, sample }) => ({ label, value, bags, brews, sample }));
       return [k, g.length >= 2 ? g : []];

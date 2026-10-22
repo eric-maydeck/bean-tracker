@@ -180,3 +180,19 @@ describe('backlog last point matches on hand', () => {
     expect(backlogSeries(brews, bags, ['2026-10-11'], 'grams')).toEqual([gramsOnHand(bags, brews)]));
   it('bags', () => expect(backlogSeries(brews, bags, ['2026-10-11'], 'bags')).toEqual([2]));
 });
+
+describe('whole is used for on hand and net', () => {
+  const bags = [bag({ id: 1, status: 'open', amountG: 250, purchaseDate: '2026-09-02' })];
+  const all = [brew('2026-09-10', 15), brew('2026-09-11', 15), brew('2026-09-12', 15)];
+  const subset = all.slice(0, 1);
+  it('on hand, net, time to clear and backlog come from whole; brewed from the subset', () => {
+    const w = consumptionTab(subset, bags, ctx({ whole: all }));
+    const full = consumptionTab(all, bags, ctx());
+    expect(w.tiles).toMatchObject({ onHand: full.tiles.onHand, net: full.tiles.net, daysToClear: full.tiles.daysToClear, brewed: 15 });
+    expect(w.backlog).toEqual(full.backlog);
+    expect(w.tiles.brewed).toBeLessThan(full.tiles.brewed);
+  });
+  it('whole = brews changes nothing', () => {
+    expect(consumptionTab(all, bags, ctx({ whole: all }))).toEqual(consumptionTab(all, bags, ctx()));
+  });
+});
