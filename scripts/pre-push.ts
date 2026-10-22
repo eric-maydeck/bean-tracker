@@ -32,6 +32,7 @@ if (import.meta.main) {
     }
   };
   // Typecheck must stay clean (zero errors): cheap, so it runs first on every push.
+  step('svelte-kit sync', 'npx', ['svelte-kit', 'sync']); // stale generated $types fail svelte-check after a branch fast-forward
   step('tsc', 'npx', ['tsc', '--noEmit']);
   step('svelte-check', 'npx', ['svelte-check', '--threshold', 'error']);
   if (pushesRelease(stdin)) {
