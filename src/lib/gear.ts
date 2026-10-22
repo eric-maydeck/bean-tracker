@@ -2,14 +2,16 @@ export const GEAR_KINDS = ['dripper', 'grinder', 'filter'] as const;
 export type GearKind = (typeof GEAR_KINDS)[number];
 export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', grinder: 'Grinder', filter: 'Filter' };
 
-// Which trophy cards show: no pick = the active ones plus the retired shelf; any pick = exactly the picked
-// cards (retired included), no shelf. Dripper/filter picks match a name; the grinder pick is a slug.
+// Which trophy cards show: a pick rules out the other cards of its own kind only (a dripper pick hides the other
+// drippers, grinders and filters stay). The retired shelf holds whichever retired cards survive. Dripper/filter
+// picks match a name; the grinder pick is a slug.
 export function shownTrophies<T extends { kind: GearKind; key: string; name: string; retired: boolean }>(
   list: readonly T[], pick: { dripper?: string; filter?: string; grinder?: string }
 ): { active: T[]; retired: T[] } {
-  if (!pick.dripper && !pick.filter && !pick.grinder) return { active: list.filter((t) => !t.retired), retired: list.filter((t) => t.retired) };
-  const hit = (t: T) =>
-    (t.kind === 'dripper' && t.name === pick.dripper) || (t.kind === 'filter' && t.name === pick.filter) ||
-    (!!pick.grinder && t.key === `grinder-${pick.grinder}`);
-  return { active: list.filter(hit), retired: [] };
+  const keep = (t: T) =>
+    t.kind === 'dripper' ? !pick.dripper || t.name === pick.dripper
+    : t.kind === 'filter' ? !pick.filter || t.name === pick.filter
+    : !pick.grinder || t.key === `grinder-${pick.grinder}`;
+  const kept = list.filter(keep);
+  return { active: kept.filter((t) => !t.retired), retired: kept.filter((t) => t.retired) };
 }

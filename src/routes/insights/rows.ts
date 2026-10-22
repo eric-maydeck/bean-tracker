@@ -54,17 +54,3 @@ export function packSpans(items: readonly (readonly [string, number])[], cols: n
   if (col && prev) out[prev] += cols - col;
   return out;
 }
-
-// Row vars for a grid with expanded cards: an expanded card spans its own row, each run of collapsed cards
-// between them fills its own rows.
-export function segmentVars(expanded: readonly boolean[]): string[] {
-  const out: string[] = [];
-  for (let i = 0; i < expanded.length; ) {
-    if (expanded[i]) { out.push('--q5:1;--q4:1;--q3:1;--q2:1'); i++; continue; }
-    let j = i;
-    while (j < expanded.length && !expanded[j]) j++;
-    out.push(...rowVars(j - i));
-    i = j;
-  }
-  return out;
-}

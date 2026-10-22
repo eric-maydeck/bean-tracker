@@ -41,7 +41,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'cards' | 'retired'> | null>(null);
+  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'card' | 'retired'> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
   provideCoffeeNote(() => coffeeNote(s));
@@ -68,7 +68,9 @@
   });
   const brewSelects = $derived(brewSelectsOn(s.tab).filter((k) => BREW_OPTIONS[k].length));
   const brewChips = $derived(BREW_FILTER_KEYS.filter((k) => s[k]));
-  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length);
+  // Gear's Grinder pick (a slug, not a BrewFilterKey: Brewing's own grinder select shares the param) lives in this dialog too.
+  const gearGrinder = $derived(s.tab === 'gear' && s.grinder ? (data.lab?.grinders.find((g) => g.slug === s.grinder)?.name ?? s.grinder) : undefined);
+  const badgeCount = $derived(coffeeChips.length + brewChips.filter((k) => brewSelectsOn(s.tab).includes(k)).length + (gearGrinder ? 1 : 0));
   const brewOff = Object.fromEntries(BREW_FILTER_KEYS.map((k) => [k, undefined]));
 
   // The Custom range dialog; its draft is `draft` below.
@@ -95,9 +97,9 @@
     const y = scrollY;
     const keep = () => { if (!change.tab) scrollTo(0, y); };
     const next = { ...explicit, ...change };
-    // Only open / views / cards / retired, and every Over time board already has its series: nothing to fetch.
-    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'cards' || k === 'retired') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
-      local = { open: next.open, views: next.views, cards: next.cards, retired: next.retired };
+    // Only open / views / card / retired, and every Over time board already has its series: nothing to fetch.
+    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'retired') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
+      local = { open: next.open, views: next.views, card: next.card, retired: next.retired };
       const qs = insightsParams(next).toString();
       replaceState(`${qs ? `?${qs}` : location.pathname}${location.hash}`, {});
       remember(qs);
@@ -377,7 +379,7 @@
   // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
   let tabBarOn = $derived(
     !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
-      (s.tab === 'sweetspots' && data.sweetSpots) || ((s.tab === 'brewing' && data.brewing || s.tab === 'gear' && data.trophies) && (data.lab?.grinders.length ?? 0) > 1))
+      (s.tab === 'sweetspots' && data.sweetSpots) || (s.tab === 'brewing' && data.brewing && (data.lab?.grinders.length ?? 0) > 1))
   );
   // Phones (≤480): the narrow Period and Compare selects read "Last 12 mo." instead of clipping "Last 12 months".
   // The data-short attribute lets app.html's first-paint script show the short text before hydration.
@@ -552,12 +554,12 @@
   {#if tabBarOn}
     <div class="tab-controls">
       {#if s.tab === 'milestones'}<KindsBar kinds={s.kinds} {choose} />
-      {:else if s.tab === 'brewing' || s.tab === 'gear'}<div class="insights-bar"><GrinderSelect all={s.tab === 'gear' ? 'All grinders' : undefined} grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
+      {:else if s.tab === 'brewing'}<div class="insights-bar"><GrinderSelect grinders={data.lab!.grinders} grinder={s.grinder} {choose} /></div>
       {:else}{@render tab('bar')}{/if}
     </div>
   {/if}
   <!-- The chips: the bar's last row (they stay in view while scrolling), one line that scrolls sideways, Clear all at its end. Sweet spots' Bag set Roast and Process, so dropping either (or Clear all) drops the Bag too. -->
-  {#if coffeeChips.length || brewChips.length}
+  {#if coffeeChips.length || brewChips.length || gearGrinder}
     <div class="filter-chips coffee-chips">
       {#each coffeeChips as [key, value] (key)}
         <span class="filter-chip"
@@ -577,8 +579,16 @@
           ></span
         >
       {/each}
+      {#if gearGrinder}
+        <span class="filter-chip"
+          ><button type="button" class="filter-chip-label" use:labelTip={'Edit in Filters'} onclick={() => coffeesDialog?.showModal()}>{gearGrinder}</button
+          ><button type="button" class="filter-chip-remove" use:labelTip={'Remove filter'}
+            aria-label="Remove filter: {gearGrinder}" onclick={() => choose({ grinder: undefined })}>✕</button
+          ></span
+        >
+      {/if}
       <button type="button" class="filter-clear-all"
-        onclick={() => choose({ ...brewOff, roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
+        onclick={() => choose({ ...brewOff, ...(s.tab === 'gear' ? { grinder: undefined } : {}), roast: undefined, process: undefined, origin: undefined, roaster: undefined, caffeine: undefined, bag: undefined })}>Clear all</button>
     </div>
   {/if}
 </div>
@@ -653,6 +663,16 @@
           </select>
         </label>
       {/each}
+      {#if s.tab === 'gear' && (data.lab?.grinders.length ?? 0) > 1}
+        <label class="form-field">
+          <span>Grinder</span>
+          <select class="ctl-select" aria-label="Grinder" value={s.grinder ?? ''}
+            onchange={(e) => choose({ grinder: e.currentTarget.value || undefined })}>
+            <option value="">Any</option>
+            {#each data.lab!.grinders as g (g.slug)}<option value={g.slug}>{g.name}</option>{/each}
+          </select>
+        </label>
+      {/if}
     </div>
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>

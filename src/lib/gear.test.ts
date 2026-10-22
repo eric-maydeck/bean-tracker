@@ -10,10 +10,15 @@ describe('shownTrophies', () => {
     expect(r.active.map((x) => x.key)).toEqual(['dripper-v60', 'filter-abaca']);
     expect(r.retired.map((x) => x.key)).toEqual(['dripper-old', 'grinder-zp6']);
   });
-  it('picks show only the picked cards, retired included, no shelf', () => {
-    const r = shownTrophies(list, { dripper: 'V60', grinder: 'zp6' });
-    expect(r.active.map((x) => x.key)).toEqual(['dripper-v60', 'grinder-zp6']);
-    expect(r.retired).toEqual([]);
+  it('a pick rules out only its own kind; the shelf keeps the surviving retired cards', () => {
+    const r = shownTrophies(list, { dripper: 'V60' });
+    expect(r.active.map((x) => x.key)).toEqual(['dripper-v60', 'filter-abaca']);
+    expect(r.retired.map((x) => x.key)).toEqual(['grinder-zp6']);
   });
-  it('a pick naming no card shows nothing', () => expect(shownTrophies(list, { filter: 'Nope' }).active).toEqual([]));
+  it('a pick can name a retired card', () => {
+    const r = shownTrophies(list, { dripper: 'Old', grinder: 'zp6' });
+    expect(r.active.map((x) => x.key)).toEqual(['filter-abaca']);
+    expect(r.retired.map((x) => x.key)).toEqual(['dripper-old', 'grinder-zp6']);
+  });
+  it('a pick naming no card empties its kind only', () => expect(shownTrophies(list, { filter: 'Nope' }).active.map((x) => x.key)).toEqual(['dripper-v60']));
 });

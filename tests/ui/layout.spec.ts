@@ -4152,6 +4152,55 @@ export const STATES: State[] = [
       await expect(dlg).toBeVisible();
       for (const l of ['Dripper', 'Filter', 'Water', 'Dose', 'Temp']) await expect(dlg.getByLabel(l, { exact: true })).toBeVisible();
     } },
+  // Regression: a Dripper pick set back to "Any" in the dialog drops the param and shows every dripper again.
+  { name: 'insights-trophy-pick-any', viewports: 'two', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
+      const all = await drippers.count();
+      expect(all).toBeGreaterThan(1);
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
+      await expect(page).toHaveURL(/dripper=V60/);
+      await expect(drippers).toHaveCount(1);
+      await dlg.getByLabel('Dripper', { exact: true }).selectOption('');
+      await expect(page).not.toHaveURL(/dripper=/);
+      await expect(drippers).toHaveCount(all);
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
+    } },
+  { name: 'insights-brew-pick-any', viewports: 'two', path: () => '/insights',
+    act: async (page) => {
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await dlg.getByLabel('Dripper', { exact: true }).selectOption('V60');
+      await expect(page).toHaveURL(/dripper=V60/);
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(1);
+      await dlg.getByLabel('Dripper', { exact: true }).selectOption('');
+      await expect(page).not.toHaveURL(/dripper=/);
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveCount(0);
+      await page.waitForTimeout(500);
+      await expect(page).not.toHaveURL(/dripper=/);
+    } },
+  { name: 'insights-trophy-pick-any-after-toggle', viewports: 'two', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const drippers = page.locator('.trophy-card[data-key^="dripper-"]');
+      const all = await drippers.count();
+      const pick = async (v: string) => {
+        await page.getByRole('button', { name: /^Filters/ }).click();
+        await page.getByRole('dialog', { name: 'Filters' }).getByLabel('Dripper', { exact: true }).selectOption(v);
+        await page.keyboard.press('Escape');
+      };
+      await page.locator('.trophy-card[data-key="dripper-origami"] .trophy-toggle').click(); // a shallow open and Esc first
+      await page.keyboard.press('Escape');
+      await pick('V60');
+      await expect(page).toHaveURL(/dripper=V60/);
+      await expect(drippers).toHaveCount(1);
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click(); // and another between the picks
+      await page.keyboard.press('Escape');
+      await pick('');
+      await expect(page).not.toHaveURL(/dripper=/);
+      await expect(drippers).toHaveCount(all);
+    } },
   { name: 'insights-brew-chips-muted', path: () => '/insights?tab=habits&dripper=V60&water=Lab%20Water%20A',
     act: async (page) => {
       const chips = page.locator('.coffee-chips .filter-chip');
@@ -4664,15 +4713,57 @@ export const STATES: State[] = [
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
       await expectGridRowsFull(page, '.trophy-grid');
     } },
-  { name: 'insights-trophy-expanded', path: () => '/insights?tab=gear&cards=dripper-v60,grinder-zp6-special',
+  { name: 'insights-trophy-open', path: () => '/insights?tab=gear&card=grinder-zp6-special',
     act: async (page) => {
-      const cards = page.locator('.trophy-grid:not(.retired) .trophy-card.open');
-      await expect(cards).toHaveCount(2);
-      await expect(page.locator('.trophy-details')).toHaveCount(2);
-      for (const d of await page.locator('.trophy-details').all()) await expect(d).toBeVisible();
-      const grid = (await page.locator('.trophy-grid:not(.retired)').boundingBox())!;
-      for (const c of await cards.all()) expect(Math.abs((await c.boundingBox())!.width - grid.width)).toBeLessThan(2);
-      await expectGridRowsFull(page, '.trophy-grid', true); // an expanded card is a lone row by design
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg).toBeVisible();
+      await expect(dlg.getByRole('heading', { name: 'ZP6 Special' })).toBeVisible();
+      await expect(dlg.locator('.trophy-details')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      // Inside the screen; the close button is a 44px target.
+      const box = (await dlg.boundingBox())!, vp = page.viewportSize()!;
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1);
+      expect(box.x + box.width).toBeLessThanOrEqual(vp.width + 1);
+      const close = (await dlg.getByRole('button', { name: 'Close' }).boundingBox())!;
+      expect(close.width).toBeGreaterThanOrEqual(43.5);
+      expect(close.height).toBeGreaterThanOrEqual(43.5);
+      // The facts fill their rows: every fact in a row is stretched to the row's right edge.
+      const rows = await dlg.locator('.trophy-details > div').evaluateAll((els) => {
+        const byTop = new Map<number, DOMRect[]>();
+        for (const e of els) { const r = e.getBoundingClientRect(); byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]); }
+        const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
+        return [...byTop.values()].map((rs) => Math.abs(Math.max(...rs.map((r) => r.right)) - right));
+      });
+      for (const gap of rows) expect(gap).toBeLessThan(2);
+    } },
+  { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const loads: string[] = [];
+      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg).toBeHidden();
+      // Open by the name, close by ✕, by the backdrop and by Esc; no refetch on any of it.
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
+      await expect(page).toHaveURL(/card=dripper-v60/);
+      await expect(dlg).toBeVisible();
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(page).not.toHaveURL(/card=/);
+      await expect(dlg).toBeHidden();
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-img').click(); // anywhere on the card
+      await expect(page).toHaveURL(/card=dripper-v60/);
+      // The backdrop (the dialog element itself); a phone's sheet is nearly full width, so its backdrop is too thin to hit there.
+      if (page.viewportSize()!.width > 640) await page.mouse.click(2, 2);
+      else await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(page).not.toHaveURL(/card=/);
+      await page.locator('.trophy-card[data-key="filter-cafec-abaca"] .trophy-toggle').click();
+      await expect(dlg).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(page).not.toHaveURL(/card=/);
+      await expect(dlg).toBeHidden();
+      await page.locator('button.retired-toggle').click();
+      await expect(page).toHaveURL(/retired=open/);
+      expect(loads).toEqual([]);
     } },
   { name: 'insights-trophy-retired', path: () => '/insights?tab=gear&retired=open',
     act: async (page) => {
@@ -4680,22 +4771,40 @@ export const STATES: State[] = [
       await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
       await expectGridRowsFull(page, '.trophy-grid');
     } },
-  { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
+  // A pick rules out only its own kind: the other drippers go, grinders and filters stay; the shelf keeps the rest.
+  { name: 'insights-trophy-picked', path: () => '/insights?tab=gear&dripper=V60&retired=open',
     act: async (page) => {
-      const loads: string[] = [];
-      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
-      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
-      await expect(page).toHaveURL(/cards=dripper-v60/);
-      await expect(page.locator('.trophy-card[data-key="dripper-v60"] .trophy-details')).toBeVisible();
-      await page.locator('button.retired-toggle').click();
-      await expect(page).toHaveURL(/retired=open/);
-      expect(loads).toEqual([]);
-    } },
-  { name: 'insights-trophy-picked', path: () => '/insights?tab=gear&dripper=V60&grinder=a4z-femobook',
-    act: async (page) => {
-      await expect(page.locator('.trophy-card')).toHaveCount(2);
+      await expect(page.locator('.trophy-card[data-key^="dripper-"]')).toHaveCount(1);
+      await expect(page.locator('.trophy-card[data-key="dripper-v60"]')).toHaveCount(1);
+      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
+      await expect(page.locator('.trophy-card[data-key^="filter-"]')).toHaveCount(3);
       await expect(page.locator('button.retired-toggle')).toHaveCount(0);
+      await expectGridRowsFull(page, '.trophy-grid');
     } },
+  // Grinder is in the Filters dialog on Gear (no tab-bar select): a chip, the badge, Clear all.
+  { name: 'insights-trophy-grinder-pick', viewports: 'two', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      await expect(page.locator('.tab-controls')).toHaveCount(0);
+      await page.getByRole('button', { name: /^Filters/ }).click();
+      const dlg = page.getByRole('dialog', { name: 'Filters' });
+      await dlg.getByLabel('Grinder', { exact: true }).selectOption('a4z-femobook');
+      await expect(page).toHaveURL(/grinder=a4z-femobook/);
+      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(1);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.coffee-chips .filter-chip')).toHaveText([/A4Z/]);
+      await expect(page.getByRole('button', { name: /^Filters/ })).toContainText('1');
+      await page.getByRole('button', { name: 'Clear all' }).click();
+      await expect(page).not.toHaveURL(/grinder=/);
+      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
+    } },
+  // TEMP: remove after the user picks a style.
+  ...(['a', 'b', 'c'] as const).map((st) => ({ name: `insights-trophy-style-${st}`, viewports: 'two' as const, path: () => `/insights?tab=gear&trophystyle=${st}&card=dripper-v60`,
+    act: async (page: Page) => {
+      await expectGridRowsFull(page, '.trophy-grid');
+      if (SHOTS) await page.screenshot({ path: `.ui-test/screenshots/trophy-style-${st}-open-${page.viewportSize()!.width}.png` });
+      await page.locator('dialog.trophy-dialog').getByRole('button', { name: 'Close' }).click();
+      await expectGridRowsFull(page, '.trophy-grid');
+    } })),
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {
       for (const h of ['Ratings by dripper', 'Ratings by filter', 'Filters within each dripper', 'Dripper × roast level', 'Gear usage over time'])
@@ -6037,8 +6146,8 @@ test.describe('signed out', () => {
     await checkLayout(page);
   });
   test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {
-    await gotoReady(page, '/insights?tab=gear&cards=dripper-v60');
-    await expect(page.locator('.trophy-card[data-key="dripper-v60"] .trophy-details')).toBeVisible();
+    await gotoReady(page, '/insights?tab=gear&card=dripper-v60');
+    await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     await checkLayout(page);
   });
 });

@@ -771,20 +771,23 @@ describe('brew filters', () => {
 });
 
 describe('gear trophy params', () => {
-  it('cards: lowercased, deduped, sorted, junk dropped', () => {
-    expect(parse('cards=Grinder-ZP6,dripper-v60,,bogus,dripper-v60,water-a').cards).toEqual(['dripper-v60', 'grinder-zp6']);
-    expect(parse('cards=').cards).toBeUndefined();
+  it('card: one key, lowercased, junk dropped, absent = closed', () => {
+    expect(parse('card=Grinder-ZP6').card).toBe('grinder-zp6');
+    expect(parse('card=dripper-v60,grinder-zp6').card).toBeUndefined();
+    expect(parse('card=bogus').card).toBeUndefined();
+    expect(parse('card=').card).toBeUndefined();
+    expect(parse('tab=gear').card).toBeUndefined();
   });
   it('retired takes only open', () => {
     expect(parse('retired=OPEN').retired).toBe('open');
     expect(parse('retired=yes').retired).toBeUndefined();
   });
   it('round-trips and is bare when collapsed', () => {
-    expect(insightsParams({ tab: 'gear', cards: ['dripper-v60'], retired: 'open' }).toString()).toBe('tab=gear&cards=dripper-v60&retired=open');
+    expect(insightsParams({ tab: 'gear', card: 'dripper-v60', retired: 'open' }).toString()).toBe('tab=gear&card=dripper-v60&retired=open');
     expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
-    expect(withDefaults(parse('tab=gear&cards=dripper-v60&retired=open'))).toMatchObject({ cards: ['dripper-v60'], retired: 'open' });
+    expect(withDefaults(parse('tab=gear&card=dripper-v60&retired=open'))).toMatchObject({ card: 'dripper-v60', retired: 'open' });
   });
-  it('reset drops cards and retired', () => expect(resetInsights({ tab: 'gear', cards: ['dripper-v60'], retired: 'open' })).toEqual({ tab: 'gear' }));
+  it('reset drops card and retired', () => expect(resetInsights({ tab: 'gear', card: 'dripper-v60', retired: 'open' })).toEqual({ tab: 'gear' }));
   it('gear offers dripper and filter selects without filtering the lab', () => {
     expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);
     expect(brewSelectsOn('water')).toEqual(BREW_FILTERS_ON.water);
