@@ -136,7 +136,7 @@
     }
   }
 
-  // Back to the defaults: first recipe, 1000 mL, no kettle, recipe mode; the saved state goes with it.
+  // Back to the defaults: first recipe, 800 mL, no kettle, recipe mode; the saved state goes with it.
   function reset() {
     mode = 'recipe';
     unit = undefined;

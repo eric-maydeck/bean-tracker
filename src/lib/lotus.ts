@@ -22,7 +22,7 @@ export const RECIPES: Recipe[] = [
   recipe('Ultralight (Mg + K)', 40, 0, 0, 10)
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-export const DEFAULT_ML = 1000;
+export const DEFAULT_ML = 800;
 export const MIN_ML = 100;
 export const MAX_ML = 2000;
 

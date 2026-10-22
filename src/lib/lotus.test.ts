@@ -34,7 +34,7 @@ describe('dropsFor (Lotus formula)', () => {
 describe('lotus url state', () => {
   it('bare is the default', () => {
     expect(parseLotus(p(''))).toEqual({});
-    expect(DEFAULT_ML).toBe(1000);
+    expect(DEFAULT_ML).toBe(800);
   });
   it('case-insensitive, bad values ignored', () => {
     expect(parseLotus(p('recipe=HOLY-water&ml=1200'))).toEqual({ recipe: 'holy-water', ml: 1200 });
@@ -42,7 +42,7 @@ describe('lotus url state', () => {
     expect(parseLotus(p('ml=99'))).toEqual({});
     expect(parseLotus(p('ml=2001'))).toEqual({});
     expect(parseLotus(p('ml=800.5'))).toEqual({});
-    expect(parseLotus(p('ml=1000'))).toEqual({ ml: 1000 }); // explicit default stays explicit
+    expect(parseLotus(p('ml=800'))).toEqual({ ml: 800 }); // explicit default stays explicit
   });
   it('kettle param: case-insensitive, bad ignored, slugs unique', () => {
     expect(parseLotus(p('kettle=PALATTI-Enso&ml=880'))).toEqual({ ml: 880, kettle: 'palatti-enso' });

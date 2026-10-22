@@ -803,9 +803,9 @@ export const STATES: State[] = [
     path: () => '/water',
     act: async (page) => {
       await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
-      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('800');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 800 mL' })).toBeVisible();
       await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
       await expect(page.getByRole('listitem', { name: '0 Calcium' })).toBeVisible();
@@ -1093,12 +1093,12 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Reset' }).click();
       await expect(page).toHaveURL(/\/water$/);
       await expect(page.getByRole('button', { name: 'Recipe', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('800');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
       await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
       await page.reload();
       await expect(page).toHaveURL(/\/water$/);
-      await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
+      await expect(page.getByLabel('Water (mL)')).toHaveValue('800');
       await expectGroupsLabelled(page);
     }
   },
