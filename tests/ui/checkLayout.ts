@@ -40,8 +40,8 @@ export async function checkLayout(page: Page): Promise<void> {
     for (const el of chips) {
       // A picker button is a form control, not an action: its meta line may wrap.
       // An expanded compact row shows its full name, wrapped, on purpose.
-      // A Suggest candidate row is content (title, notes), not a label. A text tip (TextTip) is a run of prose.
-      if (el.matches('[aria-haspopup="listbox"], .compact-row[aria-expanded="true"], .suggest-pick, .text-tip')) continue;
+      // A Suggest candidate row is content (title, notes), not a label. A text tip (TextTip) is a run of prose. A trophy card's name is content that may wrap.
+      if (el.matches('[aria-haspopup="listbox"], .compact-row[aria-expanded="true"], .suggest-pick, .text-tip, .trophy-toggle')) continue;
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         if (!n.textContent?.trim()) continue;

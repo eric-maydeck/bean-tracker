@@ -4,14 +4,16 @@
   import type { GearTab } from '$lib/server/insights/lab';
   import { SAMPLE_HELP } from '$lib/sample';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
+  import TrophyCase from './TrophyCase.svelte';
+  import type { Trophy } from '$lib/server/insights/trophies';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
 
-  let { t, s, placeTip, choose }: {
-    t: GearTab; s: InsightsView;
+  let { t, trophies, s, placeTip, choose }: {
+    t: GearTab; trophies: Trophy[] | null; s: InsightsView;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
@@ -40,6 +42,8 @@
     <div class="fit-body"><LabBoard {rows} slots={stack ? 0 : other.length} {noun} {placeTip} /></div>
   </section>
 {/snippet}
+
+{#if trophies}<TrophyCase list={trophies} {s} {choose} {placeTip} />{/if}
 
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with gear recorded in this period.')}</p></section>

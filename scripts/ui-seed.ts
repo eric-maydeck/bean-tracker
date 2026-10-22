@@ -193,6 +193,8 @@ method.run('m5', 'V60 - Sibarist Fast', now);
 method.run('m6', 'Origami - Cafec Abaca', now);
 // Four more drippers (used by 8 extra brews on the last lab bag, below): the Dripper board has 6 groups, so its Show all appears.
 ['Kalita', 'Chemex', 'Clever', 'Switch'].forEach((d, i) => method.run(`m${7 + i}`, `${d} - Cafec Abaca`, now));
+// Switch (m10) is archived in Bean Conqueror: the Gear trophy case's Retired shelf.
+db.prepare(`UPDATE beanconqueror_methods SET bc_archived = 1 WHERE id = 'm10'`).run();
 const labBrew = db.prepare(
   `INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, water_id, ground_coffee_g, brew_temperature,
      water_amount_g, brew_time, bloom_time, grind_setting, rating, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`

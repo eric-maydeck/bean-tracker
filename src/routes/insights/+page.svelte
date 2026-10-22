@@ -41,7 +41,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  let local = $state<Pick<InsightsUrlState, 'open' | 'views'> | null>(null);
+  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'cards' | 'retired'> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
   provideCoffeeNote(() => coffeeNote(s));
@@ -95,9 +95,9 @@
     const y = scrollY;
     const keep = () => { if (!change.tab) scrollTo(0, y); };
     const next = { ...explicit, ...change };
-    // Only open / views, and every Over time board already has its series: nothing to fetch.
-    if (Object.keys(change).every((k) => k === 'open' || k === 'views') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
-      local = { open: next.open, views: next.views };
+    // Only open / views / cards / retired, and every Over time board already has its series: nothing to fetch.
+    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'cards' || k === 'retired') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
+      local = { open: next.open, views: next.views, cards: next.cards, retired: next.retired };
       const qs = insightsParams(next).toString();
       replaceState(`${qs ? `?${qs}` : location.pathname}${location.hash}`, {});
       remember(qs);
@@ -794,7 +794,7 @@
 {:else if s.tab === 'water' && data.water}
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
-  <Gear t={data.gear} {s} {placeTip} {choose} />
+  <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}

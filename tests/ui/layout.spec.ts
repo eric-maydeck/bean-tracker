@@ -4656,6 +4656,46 @@ export const STATES: State[] = [
       await page.locator('[data-section="water-gh"] .bar-row .bar-label').first().click();
       await expect(page.locator('[data-section="water-gh"] .cell-tip')).toBeVisible();
     } },
+  { name: 'insights-trophy', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const sec = page.locator('[data-section="gear-trophies"]');
+      await expect(sec.getByRole('heading', { name: 'Trophy case' })).toBeVisible();
+      await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
+      await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
+      await expectGridRowsFull(page, '.trophy-grid');
+    } },
+  { name: 'insights-trophy-expanded', path: () => '/insights?tab=gear&cards=dripper-v60,grinder-zp6-special',
+    act: async (page) => {
+      const cards = page.locator('.trophy-grid:not(.retired) .trophy-card.open');
+      await expect(cards).toHaveCount(2);
+      await expect(page.locator('.trophy-details')).toHaveCount(2);
+      for (const d of await page.locator('.trophy-details').all()) await expect(d).toBeVisible();
+      const grid = (await page.locator('.trophy-grid:not(.retired)').boundingBox())!;
+      for (const c of await cards.all()) expect(Math.abs((await c.boundingBox())!.width - grid.width)).toBeLessThan(2);
+      await expectGridRowsFull(page, '.trophy-grid', true); // an expanded card is a lone row by design
+    } },
+  { name: 'insights-trophy-retired', path: () => '/insights?tab=gear&retired=open',
+    act: async (page) => {
+      await expect(page.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'true');
+      await expect(page.locator('.trophy-grid.retired .trophy-card[data-key="dripper-switch"]')).toBeVisible();
+      await expectGridRowsFull(page, '.trophy-grid');
+    } },
+  { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      const loads: string[] = [];
+      page.on('request', (r) => r.url().includes('__data.json') && loads.push(r.url()));
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
+      await expect(page).toHaveURL(/cards=dripper-v60/);
+      await expect(page.locator('.trophy-card[data-key="dripper-v60"] .trophy-details')).toBeVisible();
+      await page.locator('button.retired-toggle').click();
+      await expect(page).toHaveURL(/retired=open/);
+      expect(loads).toEqual([]);
+    } },
+  { name: 'insights-trophy-picked', path: () => '/insights?tab=gear&dripper=V60&grinder=a4z-femobook',
+    act: async (page) => {
+      await expect(page.locator('.trophy-card')).toHaveCount(2);
+      await expect(page.locator('button.retired-toggle')).toHaveCount(0);
+    } },
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {
       for (const h of ['Ratings by dripper', 'Ratings by filter', 'Filters within each dripper', 'Dripper × roast level', 'Gear usage over time'])
@@ -5994,6 +6034,11 @@ test.describe('signed out', () => {
     await expectContained(page.locator('a.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img'), WIDE_FILL);
     // Viewport only: the public card wall (every seeded bag) passes the 32767 px full-page screenshot cap at DPR 3.
     if (SHOTS) await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png` });
+    await checkLayout(page);
+  });
+  test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {
+    await gotoReady(page, '/insights?tab=gear&cards=dripper-v60');
+    await expect(page.locator('.trophy-card[data-key="dripper-v60"] .trophy-details')).toBeVisible();
     await checkLayout(page);
   });
 });
