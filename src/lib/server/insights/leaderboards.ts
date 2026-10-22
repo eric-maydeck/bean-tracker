@@ -1,7 +1,7 @@
 import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type BrewFilters, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey, Filter } from '$lib/coffeeFilters';
-import { exceptOwn, matchesBrew, type LabFilters } from './lab';
+import { matchesBrew, type LabFilters } from './lab';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
 import { inPeriod, type Period } from './time';
 import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
@@ -164,8 +164,8 @@ export function leaderboard(
   return (confident(rank, avg) ? out.filter((r) => !r.sample?.small) : out).sort(byRank);
 }
 
-// A board reads the brews before brew filters, minus the filter on its own dimension (dripper/filter/water).
-const forBoard = (brews: readonly BrewFact[], bf: BrewFilters, board: Board) => brews.filter(matchesBrew(exceptOwn(bf, board)));
+// Every board applies every active brew filter, its own dimension included (a dripper filter leaves one dripper).
+const forBoard = (brews: readonly BrewFact[], bf: BrewFilters) => brews.filter(matchesBrew(bf));
 
 // move = ranks climbed since the compare window (+ up, − down), 'new' if it wasn't ranked.
 export function withMovement(now: BoardRow[], prev: BoardRow[]): BoardRow[] {
@@ -184,7 +184,7 @@ export function leaderboards(
   return Object.fromEntries(
     BOARDS.map((board) => {
       const a = boardAvg(board, avg);
-      const mine = forBoard(brews, bf, board);
+      const mine = forBoard(brews, bf);
       let rows = leaderboard(mine, bags, p, board, rank, ratings, a);
       if (prev) rows = withMovement(rows, leaderboard(mine, bags, prev, board, rank, ratings, a, false));
       if (size > 1 && rank === 'ppg') rows = rows.map((r) => ({ ...r, cost: r.cost! / size, grams: r.grams! / size }));
@@ -199,7 +199,7 @@ export function leaderboards(
 export function cutBoards(
   boards: Record<Board, BoardRow[]>, brews: readonly BrewFact[], bags: readonly BagFact[], p: Period, rank: Rank, ratings: Ratings, avg: Avg | undefined, bf: BrewFilters = {}
 ): Board[] {
-  return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(forBoard(brews, bf, b), bags, p, b, rank, ratings, 'raw', false).length);
+  return BOARDS.filter((b) => confident(rank, boardAvg(b, avg)) && !boards[b].length && leaderboard(forBoard(brews, bf), bags, p, b, rank, ratings, 'raw', false).length);
 }
 
 // The See all note (gate 3): rows each board gains at avg=raw, ratings=all, dial=all, and which settings hid
@@ -215,7 +215,7 @@ export function hiddenRows(
   const rows: Partial<Record<Board, number>> = {}, by: Partial<Record<Board, RowWhy[]>> = {}, cut: Board[] = [];
   for (const b of BOARDS) {
     const n0 = boards[b].length;
-    const sc = forBoard(scored, bf, b), al = forBoard(all, bf, b);
+    const sc = forBoard(scored, bf), al = forBoard(all, bf);
     const n1 = leaderboard(sc, bags, p, b, rank, ratings, 'raw', false).length;
     const n2 = leaderboard(sc, bags, p, b, rank, 'all', 'raw', false).length;
     const n3 = leaderboard(al, bags, p, b, rank, 'all', 'raw', false).length;
