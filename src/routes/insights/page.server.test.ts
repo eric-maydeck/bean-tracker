@@ -663,6 +663,14 @@ describe('brew filters', () => {
     expect(hidden('&dripper=Origami').hidden.brews).toBe(3);
     expect(hidden('&dripper=Origami').tiles.rated).toBe(5);
   });
+  it('every leaderboard applies every brew filter, its own dimension included', () => {
+    seedBrews();
+    const d = run('?range=all&tab=leaderboards&rank=brews&dripper=V60&water=W1');
+    const counts = (rows: { label: string; value: number }[]) => Object.fromEntries(rows.map((r) => [r.label, r.value]));
+    expect(counts(d.boards.dripper)).toEqual({ V60: 6 });
+    expect(counts(d.boards.water)).toEqual({ W1: 6 });
+    expect(counts(run('?range=all&tab=leaderboards&rank=brews').boards.dripper)).toEqual({ V60: 6, Origami: 8 });
+  });
   it('filters not offered on this tab do nothing', () => {
     seedBrews();
     expect(run('?tab=sweetspots&dripper=V60').sweetSpots.matching).toEqual(run('?tab=sweetspots').sweetSpots.matching);
