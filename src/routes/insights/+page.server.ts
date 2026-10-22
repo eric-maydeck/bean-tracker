@@ -1,12 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { getDb, getHouseholdSize } from '$lib/server/db';
+import { getRoastLevels } from '$lib/server/roastLevels';
 import { loadFacts } from '$lib/server/insights/facts';
 import {
   localToday, periodBounds, previousPeriod, comparePeriod, compareFits, trackedDays, daysBetween, byFits, inPeriod, yearsSince, type Period
 } from '$lib/server/insights/time';
 import { RATINGS_SETTLED_FROM, roastMix } from '$lib/server/insights/ratings';
 import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, loggedGrams, tileDelta, rightNow, paceDelta, recent, TILE_KIND } from '$lib/server/insights/overview';
-import { cutBoards, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
+import { boardSeries, cutBoards, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
@@ -14,7 +15,7 @@ import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, matchesBrew, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
-import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
+import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
 
 // Public, like /stats.
 // Everything is computed from the URL, so toggles just navigate (goto).
@@ -119,6 +120,13 @@ export const load: PageServerLoad = ({ url }) => {
     previousPeriod: prev,
     byMenus: Object.fromEntries(menuRanges.map((r) => [r, BYS.filter((b) => fitsBy(r, b))])),
     boards,
+    // Over time: only the small boards switched to it (views=water-time); the others cost nothing.
+    boardSeries: boards
+      ? Object.fromEntries(VIEW_BOARDS.filter((b) => s.views?.[b] === 'time').map((b) => [b,
+          boardSeries(scored, bags, { period, dataStart, today }, b, boards[b].slice(0, 5).map((r) => r.key), s.rank, s.ratings, boardAvg(b, explicit.avg), size)]))
+      : null,
+    // The roast boards' Bars run lightest to darkest (the roast_levels scale).
+    roastOrder: s.tab === 'leaderboards' && s.views?.roast === 'bars' ? getRoastLevels(db).map((r) => r.roast_level) : [],
     boardsCut: h ? h.cut : boards ? cutBoards(boards, scored, bags, period, s.rank, s.ratings, explicit.avg) : [],
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:

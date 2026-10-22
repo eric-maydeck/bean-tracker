@@ -135,6 +135,23 @@ export type Board = (typeof BOARDS)[number];
 export const BAG_BOARDS: readonly Board[] = ['roasters', 'coffees', 'origins', 'process', 'roast'];
 // vs like coffees ranks coffees and their roasters only.
 export const LIKE_BOARDS: readonly Board[] = ['coffees', 'roasters'];
+// The small boards' List · Bars · Over time switch: views=roast-bars,water-time (absent = List; only non-List views).
+export const VIEW_BOARDS = ['process', 'roast', 'water', 'dripper', 'filter', 'grinder'] as const satisfies readonly Board[];
+export type ViewBoard = (typeof VIEW_BOARDS)[number];
+export const BOARD_VIEWS = ['bars', 'time'] as const;
+export type BoardView = (typeof BOARD_VIEWS)[number];
+export type BoardViews = Partial<Record<ViewBoard, BoardView>>;
+function parseViews(v: string | null): BoardViews | undefined {
+  const out: BoardViews = {};
+  for (const x of (v ?? '').toLowerCase().split(',')) {
+    const [b, w] = x.trim().split('-');
+    const board = VIEW_BOARDS.find((a) => a === b), view = BOARD_VIEWS.find((a) => a === w);
+    if (board && view) out[board] = view;
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+const viewsText = (v: BoardViews) => VIEW_BOARDS.filter((b) => v[b]).map((b) => `${b}-${v[b]}`).join(',');
+
 // Shared by /insights and /stats: the People switch's help text.
 export const peopleHelp = (size: number): Record<People, string> => ({
   household: "Everyone's brews together.",
@@ -194,6 +211,7 @@ export interface InsightsUrlState {
   tab?: Tab;
   rank?: Rank;
   open?: Board;
+  views?: BoardViews; // Leaderboards: each small board's view (absent = List)
   measure?: Measure;
   unit?: Unit;
   by?: By;
@@ -239,10 +257,10 @@ export interface InsightsUrlState {
 }
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
-type Optional = 'avg' | 'open' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'avg' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; open?: Board; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
+  avg?: Avg; open?: Board; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[];
@@ -356,6 +374,7 @@ export function parseInsightsUrl(
     // used on its own tab); a by the range doesn't offer is dropped.
     rank: pickOne(p, 'rank', RANKS),
     open: pickOne(p, 'open', BOARDS),
+    views: parseViews(p.get('views')),
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
     by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)),
@@ -422,6 +441,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.tab) p.set('tab', s.tab);
   if (s.rank) p.set('rank', s.rank);
   if (s.open) p.set('open', s.open);
+  if (s.views && Object.keys(s.views).length) p.set('views', viewsText(s.views));
   if (s.measure) p.set('measure', s.measure);
   if (s.unit) p.set('unit', s.unit);
   if (s.by) p.set('by', s.by);
@@ -540,6 +560,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     tab: s.tab ?? DEFAULTS.tab,
     rank: s.rank ?? DEFAULTS.rank,
     open: s.open,
+    views: s.views,
     measure: s.measure ?? DEFAULTS.measure,
     unit: s.unit ?? DEFAULTS.unit,
     by: s.by,

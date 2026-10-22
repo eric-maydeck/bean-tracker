@@ -290,7 +290,9 @@
           ...series.map((x, i) =>
             x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), borderWidth: 1 }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), borderWidth: 1,
+                // A multi-line chart: the first line's look (2px, dots, tension) for every line, in its own color.
+                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`) }) }
           )
         ]
       },

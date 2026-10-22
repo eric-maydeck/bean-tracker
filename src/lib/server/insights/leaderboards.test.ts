@@ -1,6 +1,6 @@
 import { dialInIds, onceDialed } from './dialed';
 import { describe, it, expect } from 'vitest';
-import { cutBoards, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
+import { boardSeries, cutBoards, hiddenRows, leaderboard, leaderboards, pageFilters, withMovement, type BoardRow } from './leaderboards';
 import { roastLevelLabels, type BrewFact, type BagFact } from './facts';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
@@ -331,5 +331,26 @@ describe('pageFilters', () => {
     expect(pageFilters({ caffeine: 'decaf' }, [])).toEqual([{ column: 'decaf', mode: 'bool', value: true }]);
     expect(pageFilters({ caffeine: 'all' }, [])).toEqual([]);
     expect(pageFilters({}, [])).toEqual([]);
+  });
+});
+
+describe('boardSeries', () => {
+  const ctx = { period: { start: '2026-09-01', end: '2026-09-10' }, dataStart: '2026-09-01', today: '2026-09-30' };
+  const bs = [
+    brew({ localDate: '2026-09-02', dripper: 'V60', dose: 15 }), brew({ localDate: '2026-09-02', dripper: 'V60', dose: 15 }),
+    brew({ localDate: '2026-09-04', dripper: 'Kalita', dose: 20 }), brew({ localDate: '2026-09-04', dripper: 'V60', dose: 10 }),
+    brew({ localDate: '2026-09-20', dripper: 'V60', dose: 99 }) // outside the period
+  ];
+  it('one line per top group, a point per day for a short period (autoBy)', () => {
+    const s = boardSeries(bs, [], ctx, 'dripper', ['V60', 'Kalita'], 'grams', 'all', 'raw');
+    expect(s.by).toBe('day');
+    expect(s.labels).toHaveLength(10);
+    expect(s.lines[0]).toEqual({ label: 'V60', values: [0, 30, 0, 10, 0, 0, 0, 0, 0, 0] });
+    expect(s.lines[1].values[3]).toBe(20);
+  });
+  it('rating: a bucket without the group is a gap; per person divides counts only', () => {
+    const rated = [brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 }), brew({ localDate: '2026-09-03', rating: 8 })];
+    expect(boardSeries(rated, [], ctx, 'dripper', ['V60'], 'rating', 'all', 'raw').lines[0].values.slice(1, 5)).toEqual([null, expect.any(Number), null, null]);
+    expect(boardSeries(bs, [], ctx, 'dripper', ['Kalita'], 'brews', 'all', 'raw', 2).lines[0].values[3]).toBe(0.5);
   });
 });

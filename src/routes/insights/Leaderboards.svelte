@@ -14,19 +14,25 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARD_NOUN, LIKE_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARD_NOUN, BOARD_VIEWS, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
+  import BarLabels from './BarLabels.svelte';
+  import Chart from '$lib/components/Chart.svelte';
+  import type { BoardSeries } from '$lib/server/insights/leaderboards';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
-    boards, wholeKeys, cut, rank, avg, open, comparing, perPerson, placeTip, choose, link, part
+    boards, wholeKeys, cut, rank, avg, open, views, series, roastOrder, comparing, perPerson, placeTip, choose, link, part
   }: {
     part?: 'bar'; // 'bar': only the Rank by / Score controls (rendered inside the sticky bar), else the boards
     // avg: the URL's Score; undefined = each board's default (boardAvg).
     boards: Rows; wholeKeys: BrewFilterKey[]; cut: Board[]; rank: Rank; avg: Avg | undefined; open: Board | undefined; comparing: boolean; perPerson: boolean;
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+    // views: the small boards' List / Bars / Over time pick (URL); series: Over time's lines (server, only boards on it);
+    // roastOrder: the roast levels lightest to darkest (Bars).
+    views: BoardViews | undefined; series: Record<string, BoardSeries> | null; roastOrder: string[];
     link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
 
@@ -38,6 +44,13 @@
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
+
+  const VIEW_LABEL: Record<'list' | BoardView, string> = { list: 'List', bars: 'Bars', time: 'Over time' };
+  const BARS = 10; // columns shown (the biggest list is 10)
+  const setView = (b: Board, v: 'list' | BoardView) => {
+    const next = { ...views, [b]: v === 'list' ? undefined : v };
+    choose({ views: Object.values(next).some(Boolean) ? next : undefined });
+  };
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   // `whole`: the board's money format (ui-rules 46: one per list).
@@ -217,8 +230,17 @@
   {@const shown = isOpen ? rows : rows.slice(0, size)}
   <!-- rank=like: a zero-centred bar, scaled to the board's largest |gap| (signed values, ui gate P4). -->
   {@const span = Math.max(...rows.map((r) => Math.abs(r.value)), 1e-9)}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} data-board={b} style:--rows={size}>
-    <h2>{TITLE[b]}</h2>
+  {@const switchable = (VIEW_BOARDS as readonly Board[]).includes(b) && !unranked(b) && rows.length > 0}
+  {@const view = switchable ? ((views as Partial<Record<Board, BoardView>> | undefined)?.[b] ?? 'list') : 'list'}
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:wide={view === 'time'} id="leaderboard-{b}" data-board={b} style:--rows={size}>
+    {#if switchable}
+      <div class="board-head">
+        <h2>{TITLE[b]}</h2>
+        <div class="tab-group tab-group-compact" role="group" aria-label="{TITLE[b]} view">
+          {#each ['list', ...BOARD_VIEWS] as const as v (v)}<button aria-pressed={view === v} onclick={() => setView(b, v)}>{VIEW_LABEL[v]}</button>{/each}
+        </div>
+      </div>
+    {:else}<h2>{TITLE[b]}</h2>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     <div class="board-body">
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
@@ -226,6 +248,24 @@
         <p class="board-note fill">Not ranked by {RANK_LABEL[rank]}: it's per bag.</p>
       {:else if !rows.length}
         <p class="board-note">{emptyLine(boardEmpty(b))}</p>
+      {:else if view === 'bars'}
+        <!-- Rank by per group, left to right; roast levels lightest to darkest, the rest in rank order. -->
+        {@const bars = (b === 'roast' ? [...rows].sort((x, y) => roastOrder.indexOf(x.key) - roastOrder.indexOf(y.key)) : rows).slice(0, BARS)}
+        {@const top = Math.max(...bars.map((r) => r.value), 1e-9)}
+        <div class="bars-view">
+          <div class="bar-cols" role="img" aria-label="{TITLE[b]} by {RANK_LABEL[rank]}: {bars.map((r) => `${r.label} ${fmt(r.value)}`).join(', ')}">
+            {#each bars as r (r.key)}<span class="col"><span class="bar" class:small-sample-mark={r.sample?.small} style:height="{Math.max(0, r.value / top) * 100}%"></span></span>{/each}
+          </div>
+          <BarLabels series={bars.map((r) => ({ label: r.label, value: r.value }))} full text={(v) => fmt(v)} />
+        </div>
+        {#if bars.some((r) => r.sample?.small)}<p class="chart-note">Striped bars are low confidence (a small sample).</p>{/if}
+      {:else if view === 'time'}
+        {@const sr = series?.[b]}
+        {#if sr?.lines.length && sr.labels.length}
+          <Chart type="line" labels={sr.labels} values={sr.lines[0].values} datasetLabel={sr.lines[0].label}
+            series={sr.lines.slice(1)} legend dots={sr.labels.length <= 40} integer={rank === 'brews'} format={(v) => fmt(v)} height={260} />
+          <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, top {sr.lines.length} {BOARD_NOUN[b]}</p>
+        {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}
       {:else}
         <ol class="board-rows" class:diverge={rank === 'like'}>
           {#each shown as r, i (r.key)}
@@ -274,6 +314,10 @@
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
+  <nav class="board-jump" aria-label="Jump to a board">
+    <span>Jump to</span>
+    {#each BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)) as b (b)}<a href="#leaderboard-{b}">{TITLE[b]}</a>{/each}
+  </nav>
   {#each BANDS as full, i (i)}
     {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}
@@ -348,6 +392,100 @@
   }
   .board {
     margin: 0;
+  }
+  /* Over time spans the band's whole row (dense: the cards after it fill the gap it leaves). */
+  .board.wide {
+    grid-column: 1 / -1;
+  }
+  .board-band:has(.board.wide) {
+    grid-auto-flow: dense;
+  }
+  .board-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+  .board-head h2 {
+    margin: 0;
+  }
+  .board-head :global(.tab-group) {
+    flex-wrap: nowrap;
+  }
+  .board-head :global(.tab-group button) {
+    min-height: 2.25rem;
+    margin: 0;
+  }
+  @media (max-width: 640px) {
+    .board-head :global(.tab-group button) {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  /* Jump links: one chip per board, landing on its card (the page's scroll-padding clears the sticky bar). */
+  .board-jump {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+    font-size: 0.85rem;
+  }
+  .board-jump span {
+    color: var(--color-text-muted);
+  }
+  .board-jump a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+  }
+  @media (hover: hover) {
+    .board-jump a:hover {
+      border-color: var(--color-accent);
+    }
+  }
+  @media (max-width: 640px) {
+    .board-jump a {
+      min-height: 44px;
+    }
+  }
+  /* Bars: columns on the shared small-sample look, names and values under them (BarLabels). */
+  .bars-view {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(var(--rows) * var(--row-h));
+  }
+  .bar-cols {
+    flex: 1 1 auto;
+    min-height: 8rem;
+    display: flex;
+    align-items: flex-end;
+    gap: 6%;
+    padding-inline: 3%;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .bar-cols .col {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+  }
+  .bar-cols .bar {
+    width: 100%;
+    min-height: 2px;
+    background: var(--series-brown-1);
+    border: 1px solid var(--series-brown-1-ink);
+    border-bottom: 0;
+    border-radius: 2px 2px 0 0;
   }
   /* A value's tip (TextTip) sits over the row's stretched link, so hover and tap reach it (ui-rules 41). */
   .board :global(.val .text-tip) {

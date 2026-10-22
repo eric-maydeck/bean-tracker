@@ -1,9 +1,10 @@
-import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
+import { BOARDS, LIKE_BOARDS, boardAvg, type Avg, type Board, type By, type Caffeine, type Rank, type Ratings, type RowWhy } from '$lib/insightsUrl';
 import { toParams } from '$lib/coffeeViewState';
 import type { ColumnKey, Filter } from '$lib/coffeeFilters';
 import type { LabFilters } from './lab';
 import { MIXED_FILTER, roastLevelLabels, type BrewFact, type BagFact } from './facts';
-import { inPeriod, type Period } from './time';
+import { autoBy, daysBetween, inPeriod, trackedBounds, type Period } from './time';
+import { bucketLabels, bucketTitles, buckets } from './consumption';
 import { ADJUSTED_K, bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, roasterLikes, twinKeys } from './likeGroup';
 import { groupBy } from './records';
@@ -219,4 +220,25 @@ export function hiddenRows(
     if (n3 > n0) { rows[b] = n3 - n0; by[b] = [n1 > n0 && 'avg', n2 > n1 && 'ratings', n3 > n2 && 'dial'].filter(Boolean) as RowWhy[]; }
   }
   return { rows, by, cut };
+}
+
+// Over time (a small board's third view): the board's top 5 groups, each one's Rank by value per bucket. Buckets follow the
+// Period like Consumption's grams over time (autoBy). A bucket is its own tiny Period, so every page setting applies.
+// A group missing from a bucket is 0 for brews / grams / spend, a gap otherwise; under Score "Average (3+ bags)" a bucket
+// ranks with the raw average (3+ bags in one bucket would leave almost nothing to plot).
+export interface BoardSeries { by: By; labels: string[]; titles: string[]; lines: { label: string; values: (number | null)[] }[] }
+export function boardSeries(
+  brews: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; dataStart: string | null; today: string }, board: Board,
+  top: readonly string[], rank: Rank, ratings: Ratings, avg: Avg, size = 1
+): BoardSeries {
+  const t = trackedBounds(c.period, c.dataStart, c.today);
+  const by = autoBy(t ? daysBetween(t.start, t.end) + 1 : 0);
+  const bs = buckets(t, by);
+  const split = size > 1 && (rank === 'brews' || rank === 'grams' || rank === 'spend') ? size : 1;
+  const empty = rank === 'brews' || rank === 'grams' || rank === 'spend' ? 0 : null;
+  const perBucket = bs.map((b) => new Map(leaderboard(brews, bags, { start: b.start, end: b.end }, board, rank, ratings, confident(rank, avg) ? 'raw' : avg, false).map((r) => [r.key, r.value])));
+  return {
+    by, labels: bucketLabels(bs, by), titles: bucketTitles(bs, by),
+    lines: top.map((k) => ({ label: k, values: perBucket.map((m) => (m.has(k) ? m.get(k)! / split : empty)) }))
+  };
 }

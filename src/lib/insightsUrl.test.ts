@@ -449,6 +449,13 @@ describe('highlights params', () => {
     expect(parse('kinds=bests,Firsts,junk').kinds).toEqual(['firsts', 'bests']);
     expect(parse('kinds=junk').kinds).toBeUndefined();
   });
+  it('views: per-board List/Bars/Over time, junk dropped, board order, round trip', () => {
+    expect(parse('views=water-time,Roast-BARS,roasters-bars,grinder-list,dripper-').views).toEqual({ roast: 'bars', water: 'time' });
+    expect(parse('views=junk').views).toBeUndefined();
+    expect(parse('').views).toBeUndefined();
+    expect(insightsParams(parse('views=water-time,roast-bars')).toString()).toBe('views=roast-bars%2Cwater-time');
+    expect(insightsParams({ views: {} }).toString()).toBe('');
+  });
   it('round-trips and omits defaults', () => {
     const s = parse('tab=records&brewer=soup&kinds=firsts,bests');
     expect(insightsParams(s).toString()).toBe('tab=records&brewer=soup&kinds=firsts%2Cbests');
