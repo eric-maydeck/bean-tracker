@@ -68,3 +68,13 @@ describe('scoredLine', () => {
     expect(scoredLine(undefined)).toBeNull();
   });
 });
+
+describe('fractional bag counts (settle shares)', () => {
+  it('show one decimal in the tip and chip; whole stays whole', () => {
+    const t = sampleTip(pooled(5 / 6, 5));
+    expect(t.lines[0]).toContain('only 0.8 bags');
+    expect(t.rows[0]).toEqual(['Bags', '0.8']);
+    expect(chipLabel(pooled(5 / 6, 5))).toBe('Only 0.8 bags');
+    expect(sampleTip(pooled(2, 5)).rows[0]).toEqual(['Bags', '2']);
+  });
+});

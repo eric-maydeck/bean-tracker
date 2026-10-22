@@ -4789,9 +4789,10 @@ export const STATES: State[] = [
     } },
   { name: 'insights-dialin-by-dripper', path: () => '/insights?tab=insights&theme=dialin&range=all',
     act: async (page) => {
+      // A graded finding is a grid card with the link; a Too early one is a row (no card, no link) in the list below.
       const card = page.locator('#insight-dialinBy-dripper');
-      await expect(card).toBeVisible();
-      await expect(card.locator('a[href$="#brewing-settle-dripper"]').first()).toBeVisible();
+      if (await card.count()) await expect(card.locator('a[href$="#brewing-settle-dripper"]').first()).toBeVisible();
+      else await expect(page.locator('.early .early-head', { hasText: /right on brew 1|settles by brew/ }).first()).toBeVisible();
     } },
   { name: 'insights-insights-theme-taste', path: () => '/insights?tab=insights&range=all&theme=taste',
     act: async (page) => { await expect(page.locator('#insight-likeRoaster')).toBeVisible(); } },

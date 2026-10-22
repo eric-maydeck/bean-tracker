@@ -30,7 +30,9 @@ export function withinNoise(rows: readonly { value: number; se?: number }[]): bo
 }
 // The tip's title, wherever a small sample is marked; the chip itself reads chipLabel (a short count).
 export const TIP_TITLE = 'Low confidence';
-const n = (k: number, w: string) => `${k} ${w}${k === 1 ? '' : 's'}`;
+// A count for text: whole stays whole, a fractional bag share (settle groups) shows one decimal.
+export const countText = (k: number): string => (Number.isInteger(k) ? String(k) : k.toFixed(1));
+const n = (k: number, w: string) => `${countText(k)} ${w}${k === 1 ? '' : 's'}`;
 // The chip's short count (2A): what is short, bags when they are, else brews; the tip says why and what is needed.
 export const chipLabel = (s: Sample) => `Only ${s.bags < POOLED_MIN_BAGS && !s.one ? n(s.bags, 'bag') : n(shownBrews(s), 'brew')}`;
 // The tip's count rows; with dial-in brews skipped, the rated count beside the scored one.
@@ -48,8 +50,8 @@ export const sampleTip = (s: Sample, paired = false): { lines: string[]; rows: [
   const bagsShort = s.bags < POOLED_MIN_BAGS;
   // A same-bag comparison counts only the bags brewed both ways (this recipe, grind, dripper ... and another).
   const rows: [string, string][] = paired
-    ? [['Bags brewed both ways', String(s.bags)], ['Rated brews in them', String(s.brews)]]
-    : [[cap('bags'), String(s.bags)], ...countRows(s)];
+    ? [['Bags brewed both ways', countText(s.bags)], ['Rated brews in them', String(s.brews)]]
+    : [[cap('bags'), countText(s.bags)], ...countRows(s)];
   const need = `Needs ${POOLED_MIN_BAGS}+ ${paired ? 'such ' : ''}bags and ${POOLED_MIN_BREWS}+ rated brews${paired ? ' in them' : ''}.`;
   const only = paired
     ? (bagsShort ? `${n(s.bags, 'bag')} ${s.bags === 1 ? 'was' : 'were'} brewed both this way and another way` : `${n(s.brews, 'rated brew')} in bags brewed both this way and another way`)
