@@ -3,6 +3,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
+  import { localDate } from '$lib/localDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
   import { hostOf } from '$lib/imageSuggest';
@@ -35,7 +36,11 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
-  $effect(() => { void current?.key; editing = false; }); // any card change (history back/forward) leaves edit mode
+  const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
+  $effect(() => { void curKey; editing = false; }); // any card change (history back/forward) leaves edit mode
+  // PREVIEW-TEMP: photoratio=square|card comparison latch (default square); sticks once seen. Remove after the pick.
+  let photoRatio = $state('square'); // PREVIEW-TEMP
+  $effect(() => { const r = page.url.searchParams.get('photoratio'); if (r === 'square' || r === 'card') photoRatio = r; }); // PREVIEW-TEMP
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -75,7 +80,7 @@
   <div class="trophy-grid hl-grid" class:retired>
     {#each items as t, i (t.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="hl-card trophy-card" data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
+      <div class="hl-card trophy-card" class:sq={photoRatio === 'square'} data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
         {@render img(t)}
         <div class="trophy-main">
           <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
@@ -117,21 +122,22 @@
       {#if current}
         {@const t = current}
         <div class="trophy-sheet">
-          <button type="button" class="trophy-close" aria-label="Close" disabled={editing} onclick={() => dlg?.close()}>✕</button>
+          <!-- The dialog's action group, top right by the close button (Part 3 adds Fill and Suggest). -->
+          <div class="trophy-top">
+            {#if page.data.isAdmin && !editing}
+              <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
+            {/if}
+            <button type="button" class="trophy-close" aria-label="Close" disabled={editing} onclick={() => dlg?.close()}>✕</button>
+          </div>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           <article class="detail trophy-detail">
             <div class="detail-media">
               {@render img(t)}
-              <!-- Under the photo: when the details were stored; the admin Edit button (and later actions) join here. -->
+              <!-- Under the photo: when the details were stored (the local calendar day). -->
               <div class="media-meta">
-                {#if t.createdAt}<span>Date added <b>{formatDate(t.createdAt)}</b></span>{/if}
-                {#if t.updatedAt}<span>Date updated <b>{formatDate(t.updatedAt)}</b></span>{/if}
+                {#if t.createdAt}<span>Added <b>{localDate(t.createdAt)}</b></span>{/if}
+                {#if t.updatedAt}<span>Updated <b>{localDate(t.updatedAt)}</b></span>{/if}
               </div>
-              {#if page.data.isAdmin && !editing}
-                <div class="media-actions">
-                  <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
-                </div>
-              {/if}
             </div>
             <div class="detail-body">
               <div class="detail-header">
@@ -159,20 +165,20 @@
                   <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
                 {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
               </div>
-              <section class="detail-section">
-                <h2>Usage</h2>
-                <div class="stat-grid">
-                  {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
-                  <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
-                  <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
-                  <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
-                  <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
-                  {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
-                </div>
-              </section>
               {/if}
             </div>
           </article>
+            <section class="detail-section usage">
+              <h2>Usage</h2>
+              <div class="stat-grid">
+                {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
+                <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
+                <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
+                <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
+                <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
+                {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
+              </div>
+            </section>
         </div>
       {/if}
     </dialog>
@@ -209,6 +215,12 @@
     object-fit: contain;
     background-color: var(--fill);
   }
+  /* PREVIEW-TEMP: photoratio=square (default) is a square box on the collapsed card; photoratio=card keeps the box
+     filling the card's spare height, i.e. the card's own aspect. Remove after the pick. */
+  .trophy-card.sq .trophy-img { /* PREVIEW-TEMP */
+    flex: 0 0 auto; /* PREVIEW-TEMP */
+    aspect-ratio: 1; /* PREVIEW-TEMP */
+  } /* PREVIEW-TEMP */
   .trophy-img :global(svg) {
     width: 2.5rem;
     height: 2.5rem;
@@ -401,11 +413,22 @@
     padding: var(--space-4);
     border-top: 4px solid var(--kc);
   }
+  /* The action group, top right: the admin actions (Edit; Fill and Suggest later) beside the close button. */
+  .trophy-top {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-2);
+    margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) var(--space-1) 0;
+  }
+  .trophy-top .button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 44px;
+    margin: 0;
+  }
   .trophy-close {
-    position: absolute;
-    top: var(--space-1);
-    right: var(--space-1);
-    z-index: 1;
     min-width: 44px;
     min-height: 44px;
     padding: 0;
@@ -437,43 +460,43 @@
   .trophy-name {
     margin: 0;
     font-size: 1.5rem; /* the coffee page's h1 size */
-    padding-right: 2.5rem;
     overflow-wrap: anywhere;
   }
   /* Facts wrap and stretch: every row is full, no orphaned empty cell (the coffee page's auto-fill grid leaves holes). */
-  .trophy-detail .stat-grid {
+  .trophy-dialog .stat-grid {
     display: flex;
     flex-wrap: wrap;
   }
   .media-meta {
     display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
+    flex-wrap: wrap;
+    gap: 0.15rem var(--space-2);
     margin-top: var(--space-2);
     font-size: 0.8rem;
     color: var(--color-text-muted);
+  }
+  /* Label over date, so both fit side by side in the narrow photo column. */
+  .media-meta span {
+    display: flex;
+    flex-direction: column;
   }
   .media-meta b {
     font-weight: 600;
     color: var(--color-text);
   }
-  .media-actions {
-    margin-top: var(--space-2);
+  /* Usage runs the dialog's full width under the photo and details. */
+  .usage {
+    margin-top: var(--space-4);
   }
-  .media-actions .button {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin: 0;
-  }
+
   .trophy-detail .specs {
     margin-bottom: var(--space-3);
   }
-  .trophy-detail .stat {
+  .trophy-dialog .stat {
     flex: 1 1 8.5rem;
     min-width: 0;
   }
-  .trophy-detail .stat-value {
+  .trophy-dialog .stat-value {
     overflow-wrap: anywhere;
   }
   @media (max-width: 640px) {
@@ -490,7 +513,7 @@
   /* Phone landscape (333px tall): picture beside the facts. */
   @media (max-width: 1100px) and (max-height: 500px) {
     .trophy-detail {
-      grid-template-columns: 8rem 1fr;
+      grid-template-columns: 9.5rem 1fr;
       gap: var(--space-3);
     }
     .trophy-detail .detail-media {

@@ -4732,6 +4732,11 @@ export const STATES: State[] = [
       expect(probs).toEqual([]);
       // The hierarchy: name > average > brews | grams.
       const size = (l: Locator) => l.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+      // The collapsed photo box is square (PREVIEW-TEMP: photoratio=card keeps the old fill-the-card shape).
+      for (const img of await page.locator('.trophy-card .trophy-img').all()) {
+        const b = (await img.boundingBox())!;
+        expect(Math.abs(b.width - b.height)).toBeLessThan(1.5);
+      }
       const card = page.locator('.trophy-card[data-key="dripper-v60"]');
       const [name, avg, small] = [await size(card.locator('.trophy-toggle')), await size(card.locator('.fig-avg b')), await size(card.locator('.fig-row b').first())];
       expect(name).toBeGreaterThan(avg);
@@ -4756,7 +4761,7 @@ export const STATES: State[] = [
       expect(close.width).toBeGreaterThanOrEqual(43.5);
       expect(close.height).toBeGreaterThanOrEqual(43.5);
       // The facts fill their rows: every fact in a row is stretched to the row's right edge.
-      const rows = await dlg.locator('.stat-grid .stat').evaluateAll((els) => {
+      const rows = await dlg.locator('.detail-body .stat-grid .stat').evaluateAll((els) => {
         const byTop = new Map<number, DOMRect[]>();
         for (const e of els) { const r = e.getBoundingClientRect(); byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]); }
         const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
@@ -4777,8 +4782,22 @@ export const STATES: State[] = [
       // Dates sit under the photo, inside the media column.
       const media = (await dlg.locator('.detail-media .trophy-img').boundingBox())!, meta = (await dlg.locator('.media-meta').boundingBox())!;
       expect(meta.y).toBeGreaterThanOrEqual(media.y + media.height - 1);
-      await expect(dlg.locator('.media-meta')).toContainText('Date added');
-      await expect(dlg.locator('.media-meta')).toContainText('Date updated');
+      await expect(dlg.locator('.media-meta')).toContainText('Added');
+      await expect(dlg.locator('.media-meta')).toContainText('Updated');
+      // Added and Updated share one row.
+      const tops = await dlg.locator('.media-meta span').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+      expect(new Set(tops).size).toBe(1);
+      // Usage spans the dialog under the photo and details: its facts fill the row, no empty tail.
+      const usage = (await dlg.locator('.usage').boundingBox())!, art = (await dlg.locator('article').boundingBox())!;
+      expect(usage.y).toBeGreaterThanOrEqual(art.y + art.height - 1);
+      expect(Math.abs(usage.width - art.width)).toBeLessThan(2);
+      const urows = await dlg.locator('.usage .stat').evaluateAll((els) => {
+        const byTop = new Map<number, DOMRect[]>();
+        for (const e of els) { const r = e.getBoundingClientRect(); byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]); }
+        const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
+        return [...byTop.values()].map((rs) => Math.abs(Math.max(...rs.map((r) => r.right)) - right));
+      });
+      for (const gap of urows) expect(gap).toBeLessThan(2);
       // The specs fill their rows, as the brew facts do.
       const gaps = await dlg.locator('.specs .stat').evaluateAll((els) => {
         const byTop = new Map<number, DOMRect[]>();
@@ -4804,10 +4823,12 @@ export const STATES: State[] = [
     act: async (page) => {
       const dlg = page.locator('dialog.trophy-dialog');
       await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
-      // Edit sits under the photo, next to the dates.
-      const edit = dlg.locator('.detail-media').getByRole('button', { name: 'Edit' });
-      const media = (await dlg.locator('.detail-media .trophy-img').boundingBox())!;
-      expect((await edit.boundingBox())!.y).toBeGreaterThanOrEqual(media.y + media.height - 1);
+      // Edit sits top right, in the close button's row, a 44px target.
+      const edit = dlg.locator('.trophy-top').getByRole('button', { name: 'Edit' });
+      const [eb, cb] = [(await edit.boundingBox())!, (await dlg.getByRole('button', { name: 'Close' }).boundingBox())!];
+      expect(Math.abs(eb.y + eb.height / 2 - (cb.y + cb.height / 2))).toBeLessThan(2);
+      expect(eb.x + eb.width).toBeLessThanOrEqual(cb.x + 1);
+      expect(eb.height).toBeGreaterThanOrEqual(43.5);
       await edit.click();
       const form = dlg.locator('form.gear-form');
       for (const f of fieldsFor('dripper')) await expect(form.getByLabel(f.label + (f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''), { exact: true })).toBeVisible();
@@ -4818,7 +4839,7 @@ export const STATES: State[] = [
       await expect(form.getByRole('button', { name: 'Discard image' })).toBeVisible();
       // Opening focuses no input; the form replaces the body (no brew facts), and nothing was saved or put in the URL.
       expect(await page.evaluate(() => document.activeElement?.closest('form.gear-form') ?? null)).toBeNull();
-      await expect(dlg.locator('.stat-grid')).toHaveCount(0);
+      await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
       // Esc (twice: Chrome only lets `cancel` be prevented once per activation) and the backdrop do not close it.
       await page.keyboard.press('Escape');
