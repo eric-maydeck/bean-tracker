@@ -204,3 +204,22 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
     await expect(toast).toHaveCount(0);
   });
 });
+
+test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@insights' }, async ({ page }) => {
+  const restore = () => {
+    const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
+    db.prepare(`UPDATE gear_details SET fields = ? WHERE kind = 'grinder' AND name = 'ZP6 Special'`).run(JSON.stringify({ brand: 'Timemore', burrSize: 64 }));
+    db.close();
+  };
+  try {
+    await gotoReady(page, '/insights?tab=gear&card=grinder-zp6-special');
+    const dlg = page.locator('dialog.trophy-dialog');
+    await dlg.getByRole('button', { name: 'Edit' }).click();
+    await dlg.getByLabel('Burr size (mm)').fill('54');
+    await dlg.getByRole('button', { name: 'Save' }).click();
+    await expect(dlg.locator('form.gear-form')).toHaveCount(0);
+    await expect(page).toHaveURL(/card=grinder-zp6-special$/);
+    await page.reload();
+    await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('54 mm');
+  } finally { restore(); }
+});

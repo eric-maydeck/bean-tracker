@@ -9,6 +9,8 @@
   import { usd } from '$lib/money';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { Trophy } from '$lib/server/insights/trophies';
+  import { page } from '$app/state';
+  import GearForm from './GearForm.svelte';
   import LabHead from './LabHead.svelte';
   import { rowVars } from './rows';
 
@@ -31,6 +33,9 @@
     if (current && !dlg.open) dlg.showModal();
     else if (!current && dlg.open) dlg.close();
   });
+  // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
+  let editing = $state(false);
+  $effect(() => { if (!current) editing = false; });
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -104,11 +109,12 @@
     <!-- svelte-ignore a11y_autofocus, a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <dialog bind:this={dlg} autofocus class="trophy-dialog" aria-labelledby="trophy-title" style={current ? kindVars(current) : ''}
       onclose={() => s.card && choose({ card: undefined })}
-      onclick={(e) => e.target === dlg && dlg.close()}>
+      oncancel={(e) => editing && e.preventDefault()}
+      onclick={(e) => e.target === dlg && !editing && dlg.close()}>
       {#if current}
         {@const t = current}
         <div class="trophy-sheet">
-          <button type="button" class="trophy-close" aria-label="Close" onclick={() => dlg?.close()}>✕</button>
+          <button type="button" class="trophy-close" aria-label="Close" disabled={editing} onclick={() => dlg?.close()}>✕</button>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           <article class="detail trophy-detail">
             <div class="detail-media">
@@ -118,6 +124,11 @@
                 {#if t.createdAt}<span>Date added <b>{formatDate(t.createdAt)}</b></span>{/if}
                 {#if t.updatedAt}<span>Date updated <b>{formatDate(t.updatedAt)}</b></span>{/if}
               </div>
+              {#if page.data.isAdmin && !editing}
+                <div class="media-actions">
+                  <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
+                </div>
+              {/if}
             </div>
             <div class="detail-body">
               <div class="detail-header">
@@ -126,6 +137,9 @@
                   {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
                 </h2>
               </div>
+              {#if editing}
+                <GearForm trophy={t} onclose={() => (editing = false)} />
+              {:else}
               {#if specs(t).length}
                 <div class="stat-grid specs">
                   {#each specs(t) as f (f.key)}
@@ -153,6 +167,7 @@
                   {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
                 </div>
               </section>
+              {/if}
             </div>
           </article>
         </div>
@@ -438,6 +453,15 @@
   .media-meta b {
     font-weight: 600;
     color: var(--color-text);
+  }
+  .media-actions {
+    margin-top: var(--space-2);
+  }
+  .media-actions .button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: 0;
   }
   .trophy-detail .specs {
     margin-bottom: var(--space-3);

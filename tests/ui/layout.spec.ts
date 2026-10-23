@@ -1,6 +1,7 @@
 import { test, expect, type Page, type Locator, type Route } from '@playwright/test';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
+import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
@@ -4799,6 +4800,51 @@ export const STATES: State[] = [
       await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64 mm');
       await expect(dlg.locator('.specs')).not.toContainText('Cone angle');
     } },
+  { name: 'insights-trophy-edit', path: () => '/insights?tab=gear&card=dripper-v60',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
+      // Edit sits under the photo, next to the dates.
+      const edit = dlg.locator('.detail-media').getByRole('button', { name: 'Edit' });
+      const media = (await dlg.locator('.detail-media .trophy-img').boundingBox())!;
+      expect((await edit.boundingBox())!.y).toBeGreaterThanOrEqual(media.y + media.height - 1);
+      await edit.click();
+      const form = dlg.locator('form.gear-form');
+      for (const f of fieldsFor('dripper')) await expect(form.getByLabel(f.label + (f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''), { exact: true })).toBeVisible();
+      await expect(form.getByLabel('Cone angle (°)')).toHaveValue('60');
+      await expect(form.getByLabel('Brand')).toHaveValue('Hario');
+      await expect(form.getByLabel('Cone angle (°)')).toHaveAttribute('inputmode', 'decimal');
+      await expect(form.getByRole('button', { name: 'Preview' })).toBeVisible();
+      await expect(form.getByRole('button', { name: 'Discard image' })).toBeVisible();
+      // Opening focuses no input; the form replaces the body (no brew facts), and nothing was saved or put in the URL.
+      expect(await page.evaluate(() => document.activeElement?.closest('form.gear-form') ?? null)).toBeNull();
+      await expect(dlg.locator('.stat-grid')).toHaveCount(0);
+      await expect(page).toHaveURL(/card=dripper-v60$/);
+      // Esc and the backdrop do not close it; Save and Cancel are reachable (the sheet scrolls) and 44px on a phone.
+      await page.keyboard.press('Escape');
+      if (page.viewportSize()!.width > 640) await page.mouse.click(2, 2);
+      await expect(dlg).toBeVisible();
+      const save = form.getByRole('button', { name: 'Save' }), cancel = form.getByRole('button', { name: 'Cancel' });
+      await save.scrollIntoViewIfNeeded();
+      for (const b of [save, cancel]) {
+        const r = (await b.boundingBox())!, d = (await dlg.boundingBox())!;
+        expect(r.y + r.height).toBeLessThanOrEqual(d.y + d.height + 1);
+        if (page.viewportSize()!.width <= 640) expect(r.height).toBeGreaterThanOrEqual(43);
+      }
+      await cancel.click();
+      await expect(form).toHaveCount(0);
+      await expect(dlg).toBeVisible();
+      await expect(dlg.locator('.specs .stat', { hasText: 'Cone angle' }).locator('.stat-value')).toHaveText('60°');
+      // A card with no stored row still gets Edit, with empty fields.
+      await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await expect(form.getByLabel('Burr size (mm)')).toHaveValue('');
+      // The server's error shows inline.
+      await form.getByLabel('Burr size (mm)').fill('5');
+      await save.click();
+      await expect(form.getByRole('alert')).toContainText('Burr size');
+      await expect(form).toBeVisible();
+    } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {
       const loads: string[] = [];
@@ -6236,6 +6282,7 @@ test.describe('signed out', () => {
   test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {
     await gotoReady(page, '/insights?tab=gear&card=dripper-v60');
     await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
     await checkLayout(page);
   });
 });
