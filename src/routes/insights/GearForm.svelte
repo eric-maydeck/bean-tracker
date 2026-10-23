@@ -19,10 +19,10 @@
   const last = $derived(Math.ceil(fields.length / 2)); // the last field row
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
   const act = $derived(fields.length % 2 ? last : last + 1);
-  // svelte-ignore state_referenced_locally
   // A number input binds a number (null when emptied), a text input or select a string.
   // Money shows cents ("24.00"); the unsaved-changes check compares numbers, so 24 and "24.00" agree.
   const shown = (key: string, v: string | number) => (fields.find((f) => f.key === key)?.type === 'money' && String(v).trim() !== '' && Number.isFinite(+v) ? (+v).toFixed(2) : String(v));
+  // svelte-ignore state_referenced_locally
   let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, shown(k, v)])));
   // svelte-ignore state_referenced_locally
   let imageUrl = $state(trophy.imageUrl ?? '');
