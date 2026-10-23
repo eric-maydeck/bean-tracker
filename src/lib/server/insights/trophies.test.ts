@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from '$lib/server/db';
 import { MIXED_FILTER, type BrewFact } from './facts';
+import type { GearDetail } from '$lib/server/gearDetails';
 import { gearArchive, trophyCase, type GearArchive } from './trophies';
 
 let n = 0;
@@ -105,5 +106,24 @@ describe('gearArchive', () => {
     expect([...a.dripper]).toEqual([]);
     expect([...a.filter]).toEqual(['Abaca']);
     expect([...a.grinder]).toEqual(['ZP6']);
+  });
+
+  describe('stored details', () => {
+    const detail = (o: Partial<GearDetail>): GearDetail => ({ kind: 'dripper', name: 'V60', values: { brand: 'Hario' }, imageUrl: null,
+      imageCopy: null, imageFill: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z', ...o });
+    const xs = [brew({ dripper: 'V60', grinder: 'ZP6', localDate: '2026-10-20' })];
+    it('ignores stored rows with no brews', () => {
+      const ts = trophyCase(xs, none, T, {}, [detail({ name: 'Old Name' })]);
+      expect(ts.map((t) => t.key)).toEqual(['dripper-v60', 'grinder-zp6']);
+      expect(ts.every((t) => Object.keys(t.values).length === 0 && t.image === null)).toBe(true);
+    });
+    it('attaches values and image by kind + name', () => {
+      const ts = trophyCase(xs, none, T, {}, [detail({ imageUrl: 'https://x/a.png', imageCopy: '/img/gear/a.webp', imageFill: '#112233' }),
+        detail({ name: 'v60' }), detail({ kind: 'grinder' })]);
+      const v60 = ts.find((t) => t.key === 'dripper-v60')!;
+      expect(v60).toMatchObject({ values: { brand: 'Hario' }, imageUrl: 'https://x/a.png', image: { src: '/img/gear/a.webp', fill: '#112233' },
+        createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z' });
+      expect(ts.find((t) => t.key === 'grinder-zp6')).toMatchObject({ values: {}, image: null, createdAt: null, updatedAt: null });
+    });
   });
 });

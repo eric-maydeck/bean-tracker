@@ -134,6 +134,13 @@ export function applySchema(db: DatabaseSync): void {
     db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('shoebox_logo_fill_2026_10_08', new Date().toISOString());
     db.exec('COMMIT');
   }
+  // image_copies' kind CHECK gained 'gear' (gear showcase): SQLite can't alter a CHECK, so rebuild an older table once.
+  if (!(db.prepare(`SELECT sql FROM sqlite_master WHERE name = 'image_copies'`).get() as { sql: string }).sql.includes("'gear'")) {
+    db.exec(`BEGIN; ALTER TABLE image_copies RENAME TO image_copies_old;
+      CREATE TABLE image_copies (url TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('coffees', 'roasters', 'gear')),
+        file TEXT NOT NULL, PRIMARY KEY (url, kind));
+      INSERT INTO image_copies SELECT url, kind, file FROM image_copies_old; DROP TABLE image_copies_old; COMMIT;`);
+  }
   dropColumnIfExists(db, 'subscriptions', 'purchased');
   // Bean Conqueror's default rating is 0, which it shows as "no rating";
   // imports now store it as NULL. Idempotent, so it just runs every boot.

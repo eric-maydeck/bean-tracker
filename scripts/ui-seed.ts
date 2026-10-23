@@ -236,6 +236,18 @@ for (let k = 0; k < 18; k++) {
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, `bean-dial-${k}`);
   for (let j = 0; j < 7; j++) timed.run(atLocal(first - j, 8, 30), `bean-dial-${k}`, slow ? 'm3' : 'm1', (slow ? (j < 3 ? 5 : 9) : 7.3) + up, null, now);
 }
+// Gear showcase: stored details for a dripper (many fields + photo on a backdrop) and a grinder (two fields), and a grinder
+// with a 2-line name and no rated brew (one unrated brew).
+const GEAR_IMG = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40"><rect width="160" height="40" fill="#7fb7a4"/></svg>');
+db.prepare(`INSERT INTO image_fills (url, fill) VALUES (?, ?)`).run(GEAR_IMG, '#7fb7a4');
+const gearRow = db.prepare(`INSERT INTO gear_details (kind, name, fields, image_url, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`);
+gearRow.run('dripper', 'V60', JSON.stringify({ brand: 'Hario', model: 'V60-02', cost: 24, website: 'https://www.hario.com/v60', shape: 'Conical',
+  coneAngle: 60, material: 'Ceramic' }), GEAR_IMG, '2026-09-01T12:00:00.000Z', '2026-10-10T12:00:00.000Z');
+gearRow.run('grinder', 'ZP6 Special', JSON.stringify({ brand: 'Timemore', burrSize: 64 }), null, '2026-09-02T12:00:00.000Z', '2026-09-02T12:00:00.000Z');
+db.prepare(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g3', 'Comandante C40 MK4', ?)`).run(now);
+db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, ground_coffee_g, brew_temperature,
+  water_amount_g, rating, imported_at) VALUES (?, 'bean-linked', 'm1', 'g3', 15, 93, 250, NULL, ?)`).run(isoDaysAgo(3), now);
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 

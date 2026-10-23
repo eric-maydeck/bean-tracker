@@ -1,10 +1,12 @@
 <script lang="ts">
   import Icon from '$lib/components/Icon.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { GEAR_KINDS, KIND_LABEL, shownTrophies } from '$lib/gear';
+  import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
+  import { hostOf } from '$lib/imageSuggest';
+import { usd } from '$lib/money';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { Trophy } from '$lib/server/insights/trophies';
   import LabHead from './LabHead.svelte';
@@ -35,6 +37,9 @@
     if (!(e.target as Element).closest('a, button, .sample-note')) open(key);
   }
   const reason = (t: Trophy) => (t.archived ? 'Archived in Bean Conqueror' : `No brew since ${formatDate(t.lastUsed)}`);
+  // Stored specs that are filled in, in the standard's order; blanks never show.
+  const specs = (t: Trophy) => fieldsFor(t.kind).filter((f) => t.values[f.key] !== undefined);
+  const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? `${v}${f.unit === '°' ? '' : ' '}${f.unit}` : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
 
@@ -52,8 +57,8 @@
 {/snippet}
 
 {#snippet img(t: Trophy)}
-  <div class="trophy-img" style:--fill={backdrop(null)}>
-    <Icon name="gear" />
+  <div class="trophy-img" style:--fill={t.image?.fill ?? backdrop(null)}>
+    {#if t.image}<img src={t.image.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
   </div>
 {/snippet}
 
@@ -106,7 +111,14 @@
           <button type="button" class="trophy-close" aria-label="Close" onclick={() => dlg?.close()}>✕</button>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           <article class="detail trophy-detail">
-            <div class="detail-media">{@render img(t)}</div>
+            <div class="detail-media">
+              {@render img(t)}
+              <!-- Under the photo: when the details were stored; the admin Edit button (and later actions) join here. -->
+              <div class="media-meta">
+                {#if t.createdAt}<span>Date added <b>{formatDate(t.createdAt)}</b></span>{/if}
+                {#if t.updatedAt}<span>Date updated <b>{formatDate(t.updatedAt)}</b></span>{/if}
+              </div>
+            </div>
             <div class="detail-body">
               <div class="detail-header">
                 <h2 id="trophy-title" class="trophy-name">{t.name}
@@ -114,6 +126,15 @@
                   {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
                 </h2>
               </div>
+              {#if specs(t).length}
+                <div class="stat-grid specs">
+                  {#each specs(t) as f (f.key)}
+                    {@const v = t.values[f.key]}
+                    <div class="stat"><span class="stat-label">{f.label}</span>
+                      <span class="stat-value">{#if f.type === 'url'}<a href={String(v)} target="_blank" rel="noopener">{hostOf(String(v))}</a>{:else}{specText(f, v)}{/if}</span></div>
+                  {/each}
+                </div>
+              {/if}
               <div class="stat-grid">
                 <div class="stat"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
                 <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
@@ -158,6 +179,19 @@
     border-radius: var(--radius);
     background: var(--fill);
     color: #7a6a5c;
+  }
+  .trophy-img {
+    position: relative;
+    overflow: hidden;
+  }
+  /* The photo contained on its backdrop (ui-rules 18), filling the box the icon would sit in. */
+  .trophy-img img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: var(--fill);
   }
   .trophy-img :global(svg) {
     width: 2.5rem;
@@ -394,6 +428,21 @@
   .trophy-detail .stat-grid {
     display: flex;
     flex-wrap: wrap;
+  }
+  .media-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin-top: var(--space-2);
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+  .media-meta b {
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .trophy-detail .specs {
+    margin-bottom: var(--space-3);
   }
   .trophy-detail .stat {
     flex: 1 1 8.5rem;

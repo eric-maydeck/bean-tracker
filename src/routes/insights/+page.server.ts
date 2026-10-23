@@ -12,6 +12,7 @@ import { consumptionTab } from '$lib/server/insights/consumption';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
+import { getGearDetails } from '$lib/server/gearDetails';
 import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
 import { labOptions, matchesBrew, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
@@ -129,7 +130,7 @@ export const load: PageServerLoad = ({ url }) => {
     // Gear tab only: every dripper, grinder and filter with a brew in the Period; the Ratings and Brews switches reach only
     // the ratings. Coffees filters, Compare, People and the other brew filters never apply.
     trophies: s.tab === 'gear'
-      ? trophyCase(everyBrew, gearArchive(db), today, { period, ratings: s.ratings, scored: s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn) })
+      ? trophyCase(everyBrew, gearArchive(db), today, { period, ratings: s.ratings, scored: s.dial === 'all' ? everyBrew : onceDialed(everyBrew, dialIn) }, getGearDetails(db))
       : null,
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:

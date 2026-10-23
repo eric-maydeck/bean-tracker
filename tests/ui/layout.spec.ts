@@ -4763,6 +4763,42 @@ export const STATES: State[] = [
       });
       for (const gap of rows) expect(gap).toBeLessThan(2);
     } },
+  { name: 'insights-trophy-specs', path: () => '/insights?tab=gear&card=dripper-v60',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
+      // Stored specs sit above the brew facts; the website shows its host; the photo is contained on its backdrop.
+      const spec = dlg.locator('.specs .stat', { hasText: 'Cone angle' });
+      await expect(spec.locator('.stat-value')).toHaveText('60°');
+      await expect(dlg.locator('.specs .stat', { hasText: 'Cost' }).locator('.stat-value')).toHaveText('$24.00');
+      await expect(dlg.locator('.specs a')).toHaveText('hario.com');
+      await expectContained(dlg.locator('.trophy-img img'), 'rgb(127, 183, 164)');
+      // Dates sit under the photo, inside the media column.
+      const media = (await dlg.locator('.detail-media .trophy-img').boundingBox())!, meta = (await dlg.locator('.media-meta').boundingBox())!;
+      expect(meta.y).toBeGreaterThanOrEqual(media.y + media.height - 1);
+      await expect(dlg.locator('.media-meta')).toContainText('Date added');
+      await expect(dlg.locator('.media-meta')).toContainText('Date updated');
+      // The specs fill their rows, as the brew facts do.
+      const gaps = await dlg.locator('.specs .stat').evaluateAll((els) => {
+        const byTop = new Map<number, DOMRect[]>();
+        for (const e of els) { const r = e.getBoundingClientRect(); byTop.set(Math.round(r.top), [...(byTop.get(Math.round(r.top)) ?? []), r]); }
+        const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
+        return [...byTop.values()].map((rs) => Math.abs(Math.max(...rs.map((r) => r.right)) - right));
+      });
+      for (const gap of gaps) expect(gap).toBeLessThan(2);
+      // The card behind it shows the photo too; a card with no stored row has no spec section, no dates and the icon.
+      await expectContained(page.locator('.trophy-card[data-key="dripper-v60"] img'), 'rgb(127, 183, 164)');
+      await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
+      await expect(dlg.getByRole('heading', { name: 'Comandante C40 MK4' })).toBeVisible();
+      await expect(dlg.locator('.specs')).toHaveCount(0);
+      await expect(dlg.locator('.media-meta span')).toHaveCount(0);
+      await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
+      // A few fields: ZP6 shows its two and no empty rows.
+      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await expect(dlg.locator('.specs .stat')).toHaveCount(2);
+      await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64 mm');
+      await expect(dlg.locator('.specs')).not.toContainText('Cone angle');
+    } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {
       const loads: string[] = [];
@@ -4813,7 +4849,7 @@ export const STATES: State[] = [
     } },
   { name: 'insights-trophy-kind-pick', path: () => '/insights?tab=gear&gear=grinder&dripper=V60',
     act: async (page) => {
-      await expect(page.locator('.trophy-card')).toHaveCount(2); // the dripper pick only rules out drippers, the toggle shows grinders only
+      await expect(page.locator('.trophy-card')).toHaveCount(3); // the dripper pick only rules out drippers, the toggle shows grinders only (ZP6, A4Z, Comandante)
       await expect(page.locator('.trophy-card:not([data-key^="grinder-"])')).toHaveCount(0);
     } },
   // Cards follow the Period: gear with no brew in it has no card; All time shows every one.
@@ -4836,7 +4872,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('.trophy-card[data-key^="dripper-"]')).toHaveCount(1);
       await expect(page.locator('.trophy-card[data-key="dripper-v60"]')).toHaveCount(1);
-      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
+      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(3);
       await expect(page.locator('.trophy-card[data-key^="filter-"]')).toHaveCount(3);
       await expect(page.locator('button.retired-toggle')).toHaveCount(0);
       await expectGridRowsFull(page, '.trophy-grid');
@@ -4855,7 +4891,7 @@ export const STATES: State[] = [
       await expect(page.locator('.filters-button')).toContainText('1');
       await page.getByRole('button', { name: 'Clear all' }).click();
       await expect(page).not.toHaveURL(/grinder=/);
-      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
+      await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(3);
     } },
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {

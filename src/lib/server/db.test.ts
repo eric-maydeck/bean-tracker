@@ -23,6 +23,7 @@ describe('createDb', () => {
       'beanconqueror_methods',
       'beanconqueror_waters',
       'coffees',
+      'gear_details',
       'image_copies',
       'image_fills',
       'roast_levels',
@@ -303,5 +304,17 @@ describe('Bean Conqueror JSON import schema', () => {
     expect(indexes).toEqual(['beanconqueror_brews_legacy_identity', 'beanconqueror_brews_uuid']);
     expect(db.prepare(`SELECT best_brew, has_flow_profile FROM beanconqueror_brews`).get()).toEqual({ best_brew: 0, has_flow_profile: 0 });
     applySchema(db); // idempotent on the next boot
+  });
+});
+
+describe('image_copies gear kind', () => {
+  it('rebuilds an older table (CHECK without gear) keeping its rows', () => {
+    const db = createDb(':memory:');
+    db.exec(`DROP TABLE image_copies; CREATE TABLE image_copies (url TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('coffees', 'roasters')), file TEXT NOT NULL, PRIMARY KEY (url, kind));
+      INSERT INTO image_copies VALUES ('u', 'coffees', 'f.webp')`);
+    applySchema(db);
+    db.prepare(`INSERT INTO image_copies VALUES ('g', 'gear', 'g.webp')`).run();
+    expect(db.prepare(`SELECT COUNT(*) AS n FROM image_copies`).get()).toEqual({ n: 2 });
   });
 });

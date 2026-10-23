@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS image_fills (
 -- server/imageCopies.ts; joined in coffees.ts LIST_SELECT as image_copy.
 CREATE TABLE IF NOT EXISTS image_copies (
   url TEXT NOT NULL,
-  kind TEXT NOT NULL CHECK (kind IN ('coffees', 'roasters')),
+  kind TEXT NOT NULL CHECK (kind IN ('coffees', 'roasters', 'gear')),
   file TEXT NOT NULL,
   PRIMARY KEY (url, kind)
 );
@@ -260,4 +260,17 @@ CREATE TABLE IF NOT EXISTS short_links (
   last_used_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_short_links_last_used ON short_links(last_used_at);
+
+-- Stored details of a piece of gear seen in the brew data, keyed by kind + the exact brew name. Every spec lives in
+-- fields (JSON, keys from lib/gear.ts), so a new field is a one-line change there. image_url joins image_fills and
+-- image_copies (kind 'gear') like a coffee's image does.
+CREATE TABLE IF NOT EXISTS gear_details (
+  kind TEXT NOT NULL CHECK (kind IN ('dripper', 'grinder', 'filter')),
+  name TEXT NOT NULL,
+  fields TEXT NOT NULL DEFAULT '{}',
+  image_url TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (kind, name)
+);
 `;

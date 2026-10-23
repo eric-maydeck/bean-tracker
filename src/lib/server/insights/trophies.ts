@@ -1,5 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { GEAR_KINDS, type GearKind } from '$lib/gear';
+import { GEAR_KINDS, type GearKind, type GearValues } from '$lib/gear';
+import { backdrop } from '$lib/imageBackdrop';
+import type { GearDetail } from '$lib/server/gearDetails';
 import { pooled, type Sample } from '$lib/sample';
 import { slugify } from '$lib/server/slug';
 import { MIXED_FILTER, parseMethod, type BrewFact } from './facts';
@@ -37,6 +39,9 @@ export interface Trophy {
   rating: number | null; best: number | null; sample: Sample; bags: number; days: number;
   firstUsed: string; lastUsed: string; favorite: { name: string; brews: number } | null;
   archived: boolean; retired: boolean;
+  // Stored details (exact kind + name match); the picture is our copy, else the original URL, on its backdrop.
+  values: GearValues; imageUrl: string | null; image: { src: string; fill: string } | null;
+  createdAt: string | null; updatedAt: string | null;
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
@@ -48,7 +53,8 @@ const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.l
 export interface TrophyScope { period?: Period; ratings?: Ratings; scored?: readonly BrewFact[] }
 
 // One card per dripper, grinder and filter with a brew in the Period.
-export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, today: string, scope: TrophyScope = {}): Trophy[] {
+export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, today: string, scope: TrophyScope = {}, details: readonly GearDetail[] = []): Trophy[] {
+  const stored = new Map(details.map((d) => [`${d.kind}\0${d.name}`, d] as const));
   const period = scope.period ?? { start: null, end: today }, ratings = scope.ratings ?? 'all';
   const scoredRating = new Map((scope.scored ?? brews).map((b) => [b.id, b] as const));
   // A brew's rating for the cards: its scored copy's, if it counts under the Ratings setting.
@@ -95,6 +101,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
     const rs = ratedXs.map((b) => ratingOf(b)!);
     const sizedXs = xs.filter(sized);
     const ratedBags = new Set(sizedXs.map((b) => b.coffeeId).filter((c) => c != null)).size;
+    const det = stored.get(`${kind}\0${name}`), src = det ? det.imageCopy ?? det.imageUrl : null;
     return {
       key: `${kind}-${slugify(name)}`, kind, name, brews: xs.length,
       grams: xs.reduce((s, b) => s + (b.dose ?? 0), 0),
@@ -103,6 +110,8 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       bags: new Set(xs.map((b) => b.coffeeId).filter((c) => c != null)).size,
       days: new Set(dates).size, firstUsed: life[0], lastUsed,
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
+      values: det?.values ?? {}, imageUrl: det?.imageUrl ?? null, image: src ? { src, fill: backdrop(det!.imageFill) } : null,
+      createdAt: det?.createdAt ?? null, updatedAt: det?.updatedAt ?? null,
       archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };
   });
