@@ -11,25 +11,28 @@ import type { Ratings } from '$lib/insightsUrl';
 
 export const RETIRED_AFTER_DAYS = 90;
 
-// Archived names per kind (Bean Conqueror's archive flag).
-export type GearArchive = Record<GearKind, Set<string>>;
+// Archived names per kind (Bean Conqueror's archive flag), plus `added`: `${kind}\0${name}` -> the earliest Bean Conqueror
+// created date (a wall-time 'YYYY-MM-DD...') of the gear's rows, the day we added that gear.
+export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string> };
 
 // A grinder is archived when every row of that name is; a dripper/filter when every method parsing to it is.
 export function gearArchive(db: DatabaseSync): GearArchive {
   const all = new Map<string, boolean>(); // `${kind}\0${name}` -> every row archived so far
-  const note = (kind: GearKind, name: string | null, archived: boolean) => {
+  const added = new Map<string, string>();
+  const note = (kind: GearKind, name: string | null, archived: boolean, created: string | null) => {
     if (!name) return;
     const k = `${kind}\0${name}`;
     all.set(k, (all.get(k) ?? true) && archived);
+    if (created && (!added.has(k) || created < added.get(k)!)) added.set(k, created);
   };
-  for (const r of db.prepare(`SELECT name, bc_archived AS a FROM beanconqueror_grinders`).all() as { name: string; a: number }[])
-    note('grinder', r.name, !!r.a);
-  for (const r of db.prepare(`SELECT name, preparation_tools AS tools, bc_archived AS a FROM beanconqueror_methods`).all() as { name: string; tools: string | null; a: number }[]) {
+  for (const r of db.prepare(`SELECT name, bc_archived AS a, bc_created_at AS c FROM beanconqueror_grinders`).all() as { name: string; a: number; c: string | null }[])
+    note('grinder', r.name, !!r.a, r.c);
+  for (const r of db.prepare(`SELECT name, preparation_tools AS tools, bc_archived AS a, bc_created_at AS c FROM beanconqueror_methods`).all() as { name: string; tools: string | null; a: number; c: string | null }[]) {
     const { dripper, filter } = parseMethod(r.name, r.tools);
-    note('dripper', dripper, !!r.a);
-    note('filter', filter, !!r.a);
+    note('dripper', dripper, !!r.a, r.c);
+    note('filter', filter, !!r.a, r.c);
   }
-  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set() };
+  const out: GearArchive = { dripper: new Set(), grinder: new Set(), filter: new Set(), added };
   for (const [k, v] of all) if (v) { const [kind, name] = k.split('\0'); out[kind as GearKind].add(name); }
   return out;
 }
@@ -41,7 +44,8 @@ export interface Trophy {
   archived: boolean; retired: boolean;
   // Stored details (exact kind + name match); the picture is our copy, else the original URL, on its backdrop.
   values: GearValues; imageUrl: string | null; image: { src: string; fill: string } | null;
-  createdAt: string | null; updatedAt: string | null;
+  // Added: the day the gear was added (Bean Conqueror's created date, else its first brew, lifetime); Updated: the stored row's last save.
+  added: string; updatedAt: string | null;
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
@@ -111,7 +115,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       days: new Set(dates).size, firstUsed: life[0], lastUsed,
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
       values: det?.values ?? {}, imageUrl: det?.imageUrl ?? null, image: src ? { src, fill: backdrop(det!.imageFill) } : null,
-      createdAt: det?.createdAt ?? null, updatedAt: det?.updatedAt ?? null,
+      added: archive.added?.get(`${kind}\0${name}`)?.slice(0, 10) ?? life[0], updatedAt: det?.updatedAt ?? null,
       archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };
   });

@@ -152,7 +152,7 @@
               {@render img(t, preview ?? t.image)}
               <!-- Under the photo: when the details were stored (the local calendar day). -->
               <div class="media-meta">
-                {#if t.createdAt}<span>Added <b>{localDate(t.createdAt)}</b></span>{/if}
+                <span>Added <b>{t.added}</b></span>
                 {#if t.updatedAt}<span>Updated <b>{localDate(t.updatedAt)}</b></span>{/if}
               </div>
             </div>

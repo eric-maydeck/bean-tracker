@@ -108,6 +108,33 @@ describe('gearArchive', () => {
     expect([...a.grinder]).toEqual(['ZP6']);
   });
 
+  describe('added', () => {
+    const xs = () => [brew({ dripper: 'V60', grinder: 'ZP6', localDate: '2026-05-10' }), brew({ dripper: 'V60', grinder: 'ZP6', localDate: '2026-10-20' })];
+    const withAdded = (e: [string, string][]): GearArchive => ({ ...none, added: new Map(e) });
+    it("is the Bean Conqueror created date, not the first brew's", () => {
+      const t = trophyCase(xs(), withAdded([['dripper\0V60', '2026-03-01T10:00:00.000Z']]), T).find((c) => c.key === 'dripper-v60')!;
+      expect(t.added).toBe('2026-03-01');
+    });
+    it('falls back to the lifetime first brew, even when the Period starts later', () => {
+      const t = trophyCase(xs(), none, T, { period: { start: '2026-10-01', end: T } }).find((c) => c.key === 'dripper-v60')!;
+      expect(t.firstUsed).toBe('2026-05-10');
+      expect(t.added).toBe('2026-05-10');
+    });
+    it('gearArchive takes the earliest of several methods, ignoring null dates', () => {
+      const db = createDb(':memory:');
+      const m = db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_style, preparation_tools, bc_created_at, imported_at) VALUES (?, ?, 'POUR OVER', '', ?, '2026-10-09')`);
+      m.run('m1', 'V60 - Abaca', '2026-04-02T09:00:00.000Z');
+      m.run('m2', 'V60 - Sibarist', '2026-02-11T09:00:00.000Z');
+      m.run('m3', 'V60 - Cloth', null);
+      db.prepare(`INSERT INTO beanconqueror_grinders (id, name, bc_created_at, imported_at) VALUES ('g1', 'ZP6', NULL, '2026-10-09')`).run();
+      const a = gearArchive(db);
+      expect(a.added!.get('dripper\0V60')).toBe('2026-02-11T09:00:00.000Z');
+      expect(a.added!.get('filter\0Abaca')).toBe('2026-04-02T09:00:00.000Z');
+      expect(a.added!.has('grinder\0ZP6')).toBe(false);
+      expect(trophyCase(xs(), a, T).find((c) => c.key === 'grinder-zp6')!.added).toBe('2026-05-10'); // null date: first brew
+    });
+  });
+
   describe('stored details', () => {
     const detail = (o: Partial<GearDetail>): GearDetail => ({ kind: 'dripper', name: 'V60', values: { brand: 'Hario' }, imageUrl: null,
       imageCopy: null, imageFill: null, createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z', ...o });
@@ -122,8 +149,8 @@ describe('gearArchive', () => {
         detail({ name: 'v60' }), detail({ kind: 'grinder' })]);
       const v60 = ts.find((t) => t.key === 'dripper-v60')!;
       expect(v60).toMatchObject({ values: { brand: 'Hario' }, imageUrl: 'https://x/a.png', image: { src: '/img/gear/a.webp', fill: '#112233' },
-        createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-02T00:00:00.000Z' });
-      expect(ts.find((t) => t.key === 'grinder-zp6')).toMatchObject({ values: {}, image: null, createdAt: null, updatedAt: null });
+        added: '2026-10-20', updatedAt: '2026-10-02T00:00:00.000Z' });
+      expect(ts.find((t) => t.key === 'grinder-zp6')).toMatchObject({ values: {}, image: null, added: '2026-10-20', updatedAt: null });
     });
   });
 });

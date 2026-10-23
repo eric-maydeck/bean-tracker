@@ -4874,7 +4874,11 @@ export const STATES: State[] = [
       await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
       await expect(dlg.getByRole('heading', { name: 'Comandante C40 MK4' })).toBeVisible();
       await expect(dlg.locator('.specs')).toHaveCount(0);
-      await expect(dlg.locator('.media-meta span')).toHaveCount(0);
+      // Added always shows (the gear's first brew when Bean Conqueror gave no date); Updated only with a stored row.
+      await expect(dlg.locator('.media-meta span')).toHaveCount(1);
+      await expect(dlg.locator('.media-meta')).toContainText('Added');
+      await expect(dlg.locator('.media-meta')).not.toContainText('Updated');
+      await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows its two and no empty rows.
       await page.goto('/insights?tab=gear&card=grinder-zp6-special');
