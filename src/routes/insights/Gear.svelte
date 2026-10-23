@@ -92,7 +92,7 @@
       <LabHead id="gear-eras" title="Gear usage over time" {placeTip}
         help={[`Each ${gearBy}'s share of the month's brews, rated or not.`, 'Shows when you switched.', 'Bars stack to 100%; Lines draw each one on its own.']}>
         <ChartToggle label="Gear" options={ERA_BY_OPTIONS} value={gearBy} pick={(v) => choose({ gearBy: v === 'grinder' ? 'grinder' : undefined })} />
-        <ChartToggle label="Usage view" options={ERA_VIEW_OPTIONS} value={s.gearView ?? 'bars'} pick={(v) => choose({ gearView: v === 'lines' ? 'lines' : undefined })} />
+        <ChartToggle label="Bars or lines" options={ERA_VIEW_OPTIONS} value={s.gearView ?? 'bars'} pick={(v) => choose({ gearView: v === 'lines' ? 'lines' : undefined })} />
       </LabHead>
       {#if eras}
         <UsageChart m={eras} view={s.gearView ?? 'bars'} ariaLabel="Gear usage over time: each {gearBy}'s share of brews by month" />

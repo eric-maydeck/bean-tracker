@@ -62,7 +62,8 @@
     integer = false,
     dashGaps = false,
     legend = false,
-    colors
+    colors,
+    thick = false
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -111,6 +112,8 @@
     legend?: boolean;
     // Lines: one color token per line (`var(--series-3)`, the page's per-name colors), in line order; else by position.
     colors?: string[];
+    // Lines: as thick as a trend line (3.5px).
+    thick?: boolean;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -123,9 +126,9 @@
   // One tip look (ui-rules 36, T1): Chart.js draws no tooltip of its own; its tooltip model renders as the shared
   // HTML tip (TipBody in a FloatTip) at the caret: the x label as the title, each "Series: value" line as a
   // label/value row (a line without a value stays a line).
-  let tipAt = $state<{ x: number; y: number; tip: Tip } | null>(null);
+  let tipAt = $state<{ x: number; y: number; h: number; tip: Tip } | null>(null);
   let tipAnchor: HTMLSpanElement | undefined = $state();
-  const external = ({ tooltip }: { tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: { datasetIndex: number; dataIndex: number }[] } }) => {
+  const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: { datasetIndex: number; dataIndex: number }[] } }) => {
     if (!tooltip.opacity) return (tipAt = null);
     const all = (tooltip.body ?? []).flatMap((b) => b.lines);
     const split = all.map((l) => [l, l.lastIndexOf(': ')] as const);
@@ -135,7 +138,9 @@
     // No title: one row's label is the title over its value; several rows keep all of them under no title.
     const dp = tooltip.dataPoints?.[0];
     const sample = dp && dp.datasetIndex === 0 && samples?.[dp.dataIndex] ? sampleField(samples[dp.dataIndex]) : {};
-    tipAt = { x: tooltip.caretX, y: tooltip.caretY, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
+    // The tip's anchor is the hovered x down the whole plot: the tip sits above the plot (below it when there's no room above),
+    // never over the hovered bar, point or trend line.
+    tipAt = { x: tooltip.caretX, y: chart.chartArea.top, h: chart.chartArea.bottom - chart.chartArea.top, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
   };
 
   // The site's palette by position (ui-rules 42); `ink`: the same slot's -ink token, which outlines pastel fills.
@@ -228,10 +233,9 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    // ui-rules 42: 1-3 colored series are the browns, 4+ the slots; 2+ colored lines take the slots (the browns' -ink
-    // strokes are nearly one color). A trend or dashed overlay is no category of its own.
-    const colored = 1 + series.filter((x) => !x.trend && !x.dashed).length;
-    const palette = type === 'line' && colored > 1 ? 14 : colored;
+    // ui-rules 42: 1-3 colored series are the browns (light, medium, dark), 4+ the slots. A trend or dashed overlay is no
+    // category of its own.
+    const palette = 1 + series.filter((x) => !x.trend && !x.dashed).length;
     const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
     const trendInk = themeColor('--series-8-ink'); // a mid blue against the browns, light and dark theme
     const hasTrend = series.some((x) => x.trend);
@@ -272,7 +276,7 @@
                 borderColor: lineInk,
                 backgroundColor: lineInk,
                 pointBackgroundColor: lineInk,
-                borderWidth: 2,
+                borderWidth: thick ? 3.5 : 2,
                 pointRadius: dots ? 3 : 0,
                 tension: 0.25,
                 ...(monotone && { cubicInterpolationMode: 'monotone' as const }),
@@ -306,12 +310,12 @@
             : []),
           ...series.map((x, i) =>
             x.trend
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: trendInk, backgroundColor: trendInk, pointBackgroundColor: trendInk, borderWidth: 3.5, pointRadius: 0, pointHoverRadius: 6, cubicInterpolationMode: 'monotone' as const, fill: false }
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: trendInk, backgroundColor: trendInk, pointBackgroundColor: trendInk, borderWidth: 3.5, pointRadius: 0, pointBorderWidth: 0, pointHoverRadius: 6, cubicInterpolationMode: 'monotone' as const, fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
               : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(i + 1))), borderColor: themeColor(`${tokAt(i + 1)}-ink`), borderWidth: 1,
                 // A multi-line chart: the first line's look (2px, dots, tension) for every line, in its own color.
-                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${tokAt(i + 1)}-ink`), backgroundColor: themeColor(`${tokAt(i + 1)}-ink`) }) }
+                ...(type === 'line' && { borderWidth: thick ? 3.5 : 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${tokAt(i + 1)}-ink`), backgroundColor: themeColor(`${tokAt(i + 1)}-ink`) }) }
           )
         ]
       },
@@ -459,7 +463,7 @@
   $effect(() => {
     void format;
     void tipFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend, colors]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend, colors, thick]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();
@@ -479,16 +483,16 @@
 
 <div class="chart-container" style="height: {height === 'fill' ? '100%' : `${height}px`}">
   <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}></canvas>
-  <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px"></span>
+  <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px" style:height="{tipAt?.h ?? 1}px"></span>
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
          left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
-    {#key `${tipAt.x},${tipAt.y}`}<FloatTip anchor={tipAnchor} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
+    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
   {/if}
 </div>
 
 <style>
-  /* The tooltip's anchor: a point at the caret (FloatTip places the tip from its rect). */
+  /* The tooltip's anchor: a 1px-wide strip at the hovered x down the plot (FloatTip places the tip from its rect). */
   .tip-anchor {
     position: absolute;
     width: 1px;

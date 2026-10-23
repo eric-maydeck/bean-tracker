@@ -131,7 +131,7 @@
   {#if t.eras}
     <section class="chart-panel" data-section="water-eras">
       <LabHead id="water-eras" title="Water usage over time" help={["Each recipe's share of the month's brews, rated or not.", 'Shows when you switched.', 'Bars stack to 100%; Lines draw each recipe on its own.']} {placeTip}>
-        <ChartToggle label="Usage view" options={ERA_VIEW_OPTIONS} value={s.waterView ?? 'bars'} pick={(v) => choose({ waterView: v === 'lines' ? 'lines' : undefined })} />
+        <ChartToggle label="Bars or lines" options={ERA_VIEW_OPTIONS} value={s.waterView ?? 'bars'} pick={(v) => choose({ waterView: v === 'lines' ? 'lines' : undefined })} />
       </LabHead>
       <UsageChart m={t.eras} view={s.waterView ?? 'bars'} colors={t.eras.lines.map((l) => colorOf(l.label))} ariaLabel="Water usage over time: each recipe's share of brews by month" />
     </section>

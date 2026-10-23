@@ -2108,6 +2108,8 @@ export const STATES: State[] = [
       const top = async () => { const b = (await row.boundingBox())!; return Math.round(b.y + b.height + (await page.evaluate(() => scrollY))); };
       await expect(note).toBeVisible();
       const before = await top();
+      const font = (l: Locator) => l.evaluate((e) => { const c = getComputedStyle(e); return [c.fontFamily, c.fontSize, c.fontWeight]; });
+      expect(await font(note), 'the note reads in the period line\'s type').toEqual(await font(row.locator('.insights-period')));
       const [r, n] = [(await row.boundingBox())!, (await note.boundingBox())!];
       if ((page.viewportSize()?.width ?? 0) >= 768) expect(n.y + n.height, 'note on the period line\'s row').toBeLessThanOrEqual(r.y + r.height + 1);
       // Toggling what it says (See all → Back to defaults) moves nothing.
@@ -2167,7 +2169,7 @@ export const STATES: State[] = [
       await expect(panel.locator('canvas')).toBeVisible();
       await expect(panel.locator('.stacked')).toHaveCount(0);
       // Both groups sit inside the panel, level with the heading's row when it fits.
-      const [p, a, b] = [(await panel.boundingBox())!, (await panel.getByRole('group', { name: 'Gear' }).boundingBox())!, (await panel.getByRole('group', { name: 'Usage view' }).boundingBox())!];
+      const [p, a, b] = [(await panel.boundingBox())!, (await panel.getByRole('group', { name: 'Gear' }).boundingBox())!, (await panel.getByRole('group', { name: 'Bars or lines' }).boundingBox())!];
       for (const x of [a, b]) {
         expect(x.x).toBeGreaterThanOrEqual(p.x + 8);
         expect(x.x + x.width).toBeLessThanOrEqual(p.x + p.width - 8);

@@ -1542,9 +1542,15 @@
     gap: 0 var(--space-3);
     margin: 0 0 var(--space-3);
   }
+  /* The note reads in the period line's own type (not the small chart-note's). */
   .period-row .see-all {
     margin: 0 0 0 auto;
     text-align: right;
+    font: inherit;
+    color: var(--color-text-muted);
+  }
+  .period-row .see-all .filter-clear-all {
+    font-size: inherit;
   }
   /* Phones: the note wraps to its own line; where it can show (the Ratings menu tabs) that line is held. */
   @media (max-width: 767px) {
