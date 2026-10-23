@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { buildGearFill } from './gearFill';
+import { buildGearFill, cleanBrand } from './gearFill';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 
 const fx = (n: string) => readFileSync(new URL(`./fixtures/gear-pages/${n}`, import.meta.url), 'utf8');
@@ -49,5 +49,13 @@ describe('buildGearFill', () => {
     p.attributes = { 'burr name': 'Anything goes' };
     expect(buildGearFill(p, { url: URL_, kind: 'grinder', rates: null }).values.burrName).toBe('Anything goes');
     expect(f.notes[0]).toBe(`Filled ${Object.keys(f.values).length} fields`);
+  });
+});
+
+describe('cleanBrand', () => {
+  it('trims store suffixes, never to empty or an all-caps brand', () => {
+    const cases: [string, string][] = [['Hario USA', 'Hario'], ['HarioWS', 'Hario'], ['HarioUSA', 'Hario'], ['Fellow Products Inc.', 'Fellow Products'],
+      ['SSP', 'SSP'], ['DF64', 'DF64'], ['Timemore', 'Timemore'], ['USA', 'USA'], ['Hario Store USA', 'Hario']];
+    for (const [i, o] of cases) expect(cleanBrand(i)).toBe(o);
   });
 });

@@ -4,11 +4,25 @@ import { stripSiteSuffix, toUsd, formatMoney, type UsdRates } from './productFil
 
 export interface GearFill { values: GearValues; imageUrl: string | null; notes: string[] }
 
+// Shopify vendors carry store/region tags ("Hario USA", "HarioWS"); strip them, never down to nothing, and leave
+// an all-caps brand (DF64, SSP) alone.
+export function cleanBrand(brand: string): string {
+  if (brand === brand.toUpperCase()) return brand;
+  let b = brand.trim(), prev;
+  do {
+    prev = b;
+    const t = b.replace(/\s+(?:USA|US|Inc\.?|LLC|Ltd\.?|Co\.?|Store|Shop|Official|Japan|JP|EU|UK)$/i, '').replace(/(?<=[a-z])[A-Z]{2,3}$/, '');
+    if (t) b = t;
+  } while (b !== prev);
+  return b;
+}
+
 // Turns a parsed product page into gear details. Every value is checked with parseGearValues, so the form never
 // receives something the save would reject; a field that fails is simply left out.
 export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind; rates: UsdRates | null }): GearFill {
-  const brand = p.brand ?? p.vendor ?? p.siteName;
-  let model = p.title ? stripSiteSuffix(p.title, [brand, p.vendor, p.siteName]) : '';
+  const rawBrand = p.brand ?? p.vendor ?? p.siteName;
+  const brand = rawBrand && cleanBrand(rawBrand);
+  let model = p.title ? stripSiteSuffix(p.title, [rawBrand, brand, p.vendor, p.siteName]) : '';
   if (brand && model.toLowerCase().startsWith(brand.toLowerCase() + ' ')) model = model.slice(brand.length).trim();
   const notes: string[] = [];
   const raw: Record<string, string | number> = { website: ctx.url };
