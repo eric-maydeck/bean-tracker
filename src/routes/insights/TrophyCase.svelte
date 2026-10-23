@@ -35,7 +35,7 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
-  $effect(() => { if (!current) editing = false; });
+  $effect(() => { void current?.key; editing = false; }); // any card change (history back/forward) leaves edit mode
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -47,6 +47,9 @@
   const specText = (f: GearField, v: string | number) => (f.type === 'money' ? usd(+v) : f.unit ? `${v}${f.unit === '°' ? '' : ' '}${f.unit}` : String(v));
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
+
+<!-- Focus is on the body once the Edit button is gone, so Esc is caught on the window. -->
+<svelte:window onkeydown={(e) => editing && e.key === 'Escape' && e.preventDefault()} />
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
@@ -138,7 +141,7 @@
                 </h2>
               </div>
               {#if editing}
-                <GearForm trophy={t} onclose={() => (editing = false)} />
+                {#key t.key}<GearForm trophy={t} onclose={() => (editing = false)} />{/key}
               {:else}
               {#if specs(t).length}
                 <div class="stat-grid specs">

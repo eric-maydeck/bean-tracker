@@ -91,6 +91,7 @@
   .form-actions .button, .inline-row-actions .button {
     margin: 0;
   }
+  /* Viewport media query on purpose: the dialog is in the top layer, so its width follows the viewport, not the insights container. */
   /* Phone: the buttons grow to share each line (ui-rules 17). */
   @media (max-width: 640px) {
     .form-actions .button, .inline-row-actions .button {

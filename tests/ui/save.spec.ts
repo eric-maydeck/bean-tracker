@@ -208,7 +208,7 @@ test.describe('coffee added popup', { tag: '@coffees' }, () => {
 test('trophy card: Edit the grinder burr size, Save, the card shows it after reload', { tag: '@insights' }, async ({ page }) => {
   const restore = () => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
-    db.prepare(`UPDATE gear_details SET fields = ? WHERE kind = 'grinder' AND name = 'ZP6 Special'`).run(JSON.stringify({ brand: 'Timemore', burrSize: 64 }));
+    db.prepare(`UPDATE gear_details SET fields = ?, created_at = ?, updated_at = ? WHERE kind = 'grinder' AND name = 'ZP6 Special'`).run(JSON.stringify({ brand: 'Timemore', burrSize: 64 }), '2026-09-02T12:00:00.000Z', '2026-09-02T12:00:00.000Z');
     db.close();
   };
   try {

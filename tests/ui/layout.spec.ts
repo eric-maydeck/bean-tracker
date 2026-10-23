@@ -4820,17 +4820,30 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.closest('form.gear-form') ?? null)).toBeNull();
       await expect(dlg.locator('.stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
-      // Esc and the backdrop do not close it; Save and Cancel are reachable (the sheet scrolls) and 44px on a phone.
+      // Esc (twice: Chrome only lets `cancel` be prevented once per activation) and the backdrop do not close it.
+      await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
       if (page.viewportSize()!.width > 640) await page.mouse.click(2, 2);
       await expect(dlg).toBeVisible();
+      // ui-rules 19: Save and Cancel sit below the image row, reachable by scrolling the sheet, 44px tall on a phone.
       const save = form.getByRole('button', { name: 'Save' }), cancel = form.getByRole('button', { name: 'Cancel' });
-      await save.scrollIntoViewIfNeeded();
       for (const b of [save, cancel]) {
-        const r = (await b.boundingBox())!, d = (await dlg.boundingBox())!;
-        expect(r.y + r.height).toBeLessThanOrEqual(d.y + d.height + 1);
+        await b.scrollIntoViewIfNeeded();
+        await expect(b).toBeInViewport();
+        const r = (await b.boundingBox())!, imageRow = (await form.getByRole('button', { name: 'Preview' }).boundingBox())!;
+        expect(r.y).toBeGreaterThan(imageRow.y);
         if (page.viewportSize()!.width <= 640) expect(r.height).toBeGreaterThanOrEqual(43);
       }
+      // History to another card closes the form (it never carries A's values to B).
+      await page.evaluate(() => { // a client-side navigation (SvelteKit takes anchor clicks), as back/forward between two card entries does
+        const a = document.createElement('a'); a.href = '?tab=gear&card=dripper-origami'; document.body.append(a); a.click(); a.remove();
+      });
+      await expect(dlg.getByRole('heading', { name: 'Origami' })).toBeVisible();
+      await expect(form).toHaveCount(0);
+      await page.goBack();
+      await expect(dlg.getByRole('heading', { name: 'V60' })).toBeVisible();
+      await expect(form).toHaveCount(0);
+      await dlg.getByRole('button', { name: 'Edit' }).click();
       await cancel.click();
       await expect(form).toHaveCount(0);
       await expect(dlg).toBeVisible();
