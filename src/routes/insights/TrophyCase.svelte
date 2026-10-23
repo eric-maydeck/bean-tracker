@@ -484,7 +484,7 @@
   .media-meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.15rem var(--space-2);
+    gap: 0.15rem var(--space-4);
     margin-top: var(--space-2);
     font-size: 0.8rem;
     color: var(--color-text-muted);

@@ -28,8 +28,8 @@ interface State {
   slow?: boolean;
 }
 
-// The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Image URL lines up with the last
-// field row and Preview/Discard with the row before it. Measured on the dripper's 9 fields (Size alone on the last row).
+// The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Preview/Discard share their row and
+// Image URL sits on the row above. Measured on the dripper's 9 fields (Size alone on the last row).
 async function expectEditAligned(page: Page) {
   const dlg = page.locator('dialog.trophy-dialog');
   const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -41,11 +41,17 @@ async function expectEditAligned(page: Page) {
   expect(Math.abs(cancel.y - size.y)).toBeLessThan(2);
   expect(Math.abs(save.y + save.height - (size.y + size.height)), 'Save bottom = Size input bottom').toBeLessThan(2);
   const url = await bx(dlg.getByLabel('Image URL'));
-  expect(Math.abs(url.y - size.y), 'Image URL input top = Size input top').toBeLessThan(2);
-  expect(Math.abs((await bx(dlg.getByText('Image URL', { exact: true }))).y - (await bx(dlg.getByText('Size', { exact: true }).first())).y), 'labels level').toBeLessThan(2);
-  const prev = await bx(dlg.getByRole('button', { name: 'Preview' }));
-  expect(Math.abs(prev.y - mat.y), 'Preview top = Material input top').toBeLessThan(2);
+  expect(Math.abs(url.y - mat.y), 'Image URL input top = Material input top').toBeLessThan(2);
+  expect(Math.abs((await bx(dlg.getByText('Image URL', { exact: true }))).y - (await bx(dlg.getByText('Material', { exact: true }).first())).y), 'labels level').toBeLessThan(2);
+  const [prev, disc] = [await bx(dlg.getByRole('button', { name: 'Preview' })), await bx(dlg.getByRole('button', { name: 'Discard image' }))];
+  expect(Math.abs(prev.y - size.y), 'Preview top = Size input top').toBeLessThan(2);
   expect(Math.abs(prev.x - url.x)).toBeLessThan(1.5);
+  expect(Math.abs(disc.x + disc.width - (url.x + url.width))).toBeLessThan(1.5);
+  // Compact: label to input ~4px, field to field ~10-12px, inputs at the site's normal height.
+  expect(size.height).toBeLessThan(42);
+  expect(size.y - mat.y, 'row pitch (label + input + gap)').toBeLessThan(74);
+  const lbl = await bx(dlg.getByText('Size', { exact: true }).first());
+  expect(size.y - (lbl.y + lbl.height), 'label to input').toBeLessThan(7);
 }
 
 // Stats → Not yet tracked → Link on the bean row containing `text`.
@@ -4831,7 +4837,9 @@ export const STATES: State[] = [
         const utops = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
         expect(new Set(utops).size).toBe(1);
       }
-      // Added and Updated share one row.
+      // Added and Updated share one row, with room between them.
+      const [ab, ub] = [await dlg.locator('.media-meta span').nth(0).boundingBox(), await dlg.locator('.media-meta span').nth(1).boundingBox()];
+      expect(ub!.x - (ab!.x + ab!.width)).toBeGreaterThanOrEqual(12);
       const tops = await dlg.locator('.media-meta span').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
       expect(new Set(tops).size).toBe(1);
       // Usage spans the dialog under the photo and details: its facts fill the row, no empty tail.
@@ -4946,22 +4954,24 @@ export const STATES: State[] = [
       const dlg = page.locator('dialog.trophy-dialog');
       const bx = async (l: Locator) => (await l.boundingBox())!;
       const input = (n: string) => dlg.getByLabel(n, { exact: true });
-      const check = async (last: string, before: string, saveBelowLast: boolean, saveX: string) => {
-        const [lastB, beforeB, saveB, urlB, prevB, xB] = [await bx(input(last)), await bx(input(before)), await bx(dlg.getByRole('button', { name: 'Save' })),
-          await bx(dlg.getByLabel('Image URL')), await bx(dlg.getByRole('button', { name: 'Preview' })), await bx(input(saveX))];
-        expect(Math.abs(urlB.y - lastB.y), 'Image URL = last field row').toBeLessThan(2);
-        expect(Math.abs(prevB.y - beforeB.y), 'Preview = row before').toBeLessThan(2);
-        expect(Math.abs(saveB.x - xB.x), 'Save left').toBeLessThan(1.5);
-        if (saveBelowLast) expect(saveB.y).toBeGreaterThan(lastB.y + lastB.height - 1);
-        else expect(Math.abs(saveB.y - lastB.y)).toBeLessThan(2);
+      // above: the field on the row Image URL shares; edge: the input whose left (grinder) or right (filter, own row) edge Save/Cancel follow.
+      const check = async (above: string, edge: string, own: boolean) => {
+        const [aboveB, edgeB, saveB, cancelB, urlB, prevB] = [await bx(input(above)), await bx(input(edge)), await bx(dlg.getByRole('button', { name: 'Save' })),
+          await bx(dlg.getByRole('button', { name: 'Cancel' })), await bx(dlg.getByLabel('Image URL')), await bx(dlg.getByRole('button', { name: 'Preview' }))];
+        expect(Math.abs(urlB.y - aboveB.y), 'Image URL on the row above Preview').toBeLessThan(2);
+        expect(Math.abs(saveB.y - prevB.y), 'Save level with Preview').toBeLessThan(2);
+        if (own) {
+          expect(saveB.y).toBeGreaterThan(edgeB.y + edgeB.height - 1);
+          expect(Math.abs(cancelB.x + cancelB.width - (edgeB.x + edgeB.width)), 'Cancel right = last input right').toBeLessThan(1.5);
+        } else expect(Math.abs(saveB.x - edgeB.x), 'Save left = neighbor input left').toBeLessThan(1.5);
       };
       // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      await check('Step size (µm)', 'Burr material', false, 'Adjustment');
+      await check('Burr material', 'Adjustment', false);
       // Filter: 8 fields, a full last row (Fits, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      await check('Fits', 'Shape', true, 'Flow');
+      await check('Fits', 'Flow', true); // saveat=a (default): Save/Cancel right-aligned on a row of their own, level with Preview
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {
