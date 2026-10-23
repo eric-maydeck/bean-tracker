@@ -5117,7 +5117,7 @@ export const STATES: State[] = [
       const fillBtn = top.getByRole('button', { name: 'Fill from URL' }), close = dlg.getByRole('button', { name: 'Close' });
       await expect(top.getByRole('button', { name: 'Edit' })).toHaveCount(0);
       // The group by the close button: Fill, Suggest, close on one row, clear of the heading, 44px targets on a phone.
-      const [fb, sb, cb, hb] = [await fillBtn.boundingBox(), await top.getByRole('button', { name: 'Suggest' }).boundingBox(), await close.boundingBox(), await dlg.locator('h2.trophy-name').boundingBox()];
+      const [fb, sb, cb] = [await fillBtn.boundingBox(), await top.getByRole('button', { name: 'Suggest' }).boundingBox(), await close.boundingBox()];
       expect(fb!.x + fb!.width).toBeLessThanOrEqual(sb!.x + 1);
       expect(sb!.x + sb!.width).toBeLessThanOrEqual(cb!.x + 1);
       expect(Math.abs(fb!.y + fb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(2);
@@ -5125,7 +5125,6 @@ export const STATES: State[] = [
       // The heading's text does not run under the group.
       const textRight = await dlg.locator('h2.trophy-name').evaluate((h) => { const r = document.createRange(); r.selectNodeContents(h); return Math.max(...[...r.getClientRects()].map((x) => x.right)); });
       expect(textRight, 'heading clear of Fill').toBeLessThanOrEqual(fb!.x + 1);
-      void hb;
       // Fill needs a valid Official website.
       const site = dlg.getByLabel('Official website', { exact: true });
       await site.fill('');
@@ -5147,6 +5146,21 @@ export const STATES: State[] = [
       await expect(leave).toContainText('Brand: Hario → Filled Brand');
       await expect(leave).toContainText('Cost');
       await leave.getByRole('button', { name: 'Keep editing' }).click();
+      // A reply with an image updates Image URL and its preview.
+      const img = 'https://example.com/filled.jpg';
+      await page.unroute('**/api/gear/fill-from-url');
+      await page.route('**/api/coffees/image-fill', (route) => route.fulfill({ json: { fill: '#eeeeee' } }));
+      await page.route(img, (route) => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>' }));
+      await page.route('**/api/gear/fill-from-url', (route) => route.fulfill({ json: { values: {}, imageUrl: img, notes: ['Filled 0 fields'] } }));
+      await fillBtn.click();
+      await expect(dlg.getByLabel('Image URL')).toHaveValue(img);
+      await expect(dlg.locator('.gear-form .trophy-img img')).toHaveAttribute('src', img);
+      // An error reply shows inline and changes no field.
+      await page.unroute('**/api/gear/fill-from-url');
+      await page.route('**/api/gear/fill-from-url', (route) => route.fulfill({ status: 422, json: { error: 'No product found on that page' } }));
+      await fillBtn.click();
+      await expect(dlg.getByRole('alert')).toHaveText('No product found on that page');
+      await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Filled Brand');
     } },
   { name: 'insights-trophy-suggest', path: () => '/insights?tab=gear&card=dripper-v60',
     act: async (page) => {

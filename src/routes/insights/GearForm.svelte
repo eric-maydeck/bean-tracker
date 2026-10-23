@@ -52,7 +52,7 @@
     }).catch(() => null);
     const data = await res?.json().catch(() => null);
     filling = false;
-    if (!res?.ok || !data?.values) { error = data?.error ?? "Couldn't reach the server"; return; }
+    if (!res?.ok || !data?.values) { error = data?.error ?? data?.message ?? "Couldn't reach the server"; return; }
     Object.assign(values, data.values);
     notes = data.notes ?? [];
     if (data.imageUrl) { imageUrl = data.imageUrl; showPreview(); }
@@ -146,7 +146,7 @@
       <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
     </div>
     <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row data-form-actions>
-      <button class="button" type="submit" disabled={saving}>Save</button>
+      <button class="button" type="submit" disabled={saving || filling}>Save</button>
       <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
     </div>
   </div>
