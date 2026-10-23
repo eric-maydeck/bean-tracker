@@ -124,6 +124,19 @@
   .form-field {
     margin-bottom: 0.65rem;
   }
+  /* A disabled field (Step size off a stepped grinder) looks it: dimmed label, dashed tinted input, not-allowed cursor; its "?" stays live. */
+  .form-field:has(input:disabled) label {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .form-field input:disabled {
+    opacity: 0.55;
+    color: var(--color-text-muted);
+    border-style: dashed;
+    background: color-mix(in srgb, var(--color-text-muted) 12%, var(--color-surface));
+    cursor: not-allowed;
+  }
   .label-row {
     display: flex;
     align-items: center;

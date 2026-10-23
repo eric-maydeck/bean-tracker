@@ -5002,6 +5002,18 @@ export const STATES: State[] = [
       await expect(input('Adjustment')).toHaveJSProperty('tagName', 'SELECT');
       await expect(input('Adjustment').locator('option').first()).toHaveText('Select one');
       await expect(input('Step size (µm)')).toBeDisabled();
+      // It looks disabled: dimmed, dashed, not-allowed, unlike an enabled input; its "?" still opens.
+      const look = (l: Locator) => l.evaluate((e) => { const c = getComputedStyle(e); return [c.opacity, c.color, c.borderTopStyle, c.cursor, c.backgroundColor]; });
+      const [off, on] = [await look(input('Step size (µm)')), await look(input('Burr size (mm)'))];
+      expect(off[0]).not.toBe(on[0]);
+      expect(off[1]).not.toBe(on[1]);
+      expect(off[2]).toBe('dashed');
+      expect(off[3]).toBe('not-allowed');
+      expect(off[4]).not.toBe(on[4]);
+      expect(await dlg.locator('label[for="gear-stepSize"]').evaluate((e) => getComputedStyle(e).opacity)).not.toBe('1');
+      await dlg.getByRole('button', { name: 'About Step size' }).click();
+      await expect(page.locator('#gear-tip-stepSize')).toBeVisible();
+      await page.keyboard.press('Escape');
       await input('Adjustment').selectOption('Stepless');
       await expect(input('Step size (µm)')).toBeDisabled();
       await input('Adjustment').selectOption('Stepped');
