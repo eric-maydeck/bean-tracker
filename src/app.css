@@ -2822,3 +2822,13 @@ button .sample-chip {
     min-height: 44px;
   }
 }
+
+/* A form's action row (Save/Cancel...): about 16px below the last field or button above it, in every view and on phones
+   (ui-rules 22, user 2026-10-23). Checked globally by checkLayout (rows marked .form-actions, data-form-actions,
+   .action-buttons or .sub-actions). */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}

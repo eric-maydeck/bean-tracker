@@ -151,6 +151,22 @@ export async function checkLayout(page: Page): Promise<void> {
         }
       }
     }
+    // 8b. (ui-rules 22) A form's action row (Save/Cancel...) sits about 16px below the nearest thing above it in its
+    // column, 14px at least (user 2026-10-23). Measured to the buttons themselves (a grid cell may hold a spacer).
+    for (const row of all('[data-form-actions], .form-actions, .action-buttons, .sub-actions')) {
+      const buttons = [...row.querySelectorAll('button, .button')].filter(shown);
+      if (!buttons.length) continue;
+      const top = Math.min(...buttons.map((b) => b.getBoundingClientRect().top));
+      const box = row.getBoundingClientRect();
+      const scope = row.closest('form, .card, .compact-row-wrap, tr, dialog') ?? document.body;
+      let above = -Infinity;
+      for (const el of scope.querySelectorAll('input, select, textarea, button, .button, img, p, label, h2, h3, .stat-grid, .form-field')) {
+        if (row.contains(el) || el.contains(row) || !shown(el)) continue;
+        const r = el.getBoundingClientRect();
+        if (r.bottom <= top + 0.5 && r.right > box.left + 1 && r.left < box.right - 1 && r.height > 0) above = Math.max(above, r.bottom);
+      }
+      if (above > -Infinity && top - above < 14) out.push(`action row only ${(top - above).toFixed(1)}px below the content above (16px, 14 at least): ${describe(row)}`);
+    }
     // 9. (ui-rules 18) Images are never cropped or stretched: an image whose
     // box shape differs from its own is contained, on a fill color.
     for (const img of all('img') as HTMLImageElement[]) {

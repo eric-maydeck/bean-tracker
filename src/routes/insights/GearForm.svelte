@@ -104,7 +104,7 @@
       <button class="button button-secondary" type="button" onclick={showPreview}>Preview</button>
       <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
     </div>
-    <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row>
+    <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row data-form-actions>
       <button class="button" type="submit" disabled={saving}>Save</button>
       <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
     </div>
@@ -212,7 +212,7 @@
     .photo { order: -3; }
     .grid > .image-url { order: -2; }
     .grid > .image-buttons { order: -1; }
-    .grid > .actions { order: 99; margin-top: 0.35rem; /* ui-rules 22: ~16px above the action row, with the field's own margin */ grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: normal; }
+    .grid > .actions { order: 99; margin-top: calc(var(--space-4) - 0.65rem); /* ui-rules 22: 16px above the action row, less the field's own margin */ grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: normal; }
     .cell-buttons::before {
       display: none;
     }
