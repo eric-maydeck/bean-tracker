@@ -1,6 +1,6 @@
-export const GEAR_KINDS = ['dripper', 'grinder', 'filter'] as const;
+export const GEAR_KINDS = ['dripper', 'filter', 'grinder'] as const;
 export type GearKind = (typeof GEAR_KINDS)[number];
-export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', grinder: 'Grinder', filter: 'Filter' };
+export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder' };
 
 // Which trophy cards show: a pick rules out the other cards of its own kind only (a dripper pick hides the other
 // drippers, grinders and filters stay). The retired shelf holds whichever retired cards survive. Dripper/filter

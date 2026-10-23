@@ -24,7 +24,7 @@ describe('trophyCase', () => {
     const v60 = trophyCase(xs, none, T).find((t) => t.key === 'dripper-v60')!;
     expect(v60).toMatchObject({ kind: 'dripper', name: 'V60', brews: 3, grams: 31, rating: 7, best: 8, bags: 2, days: 3,
       firstUsed: '2026-10-01', lastUsed: '2026-10-21', favorite: { name: 'Abaca', brews: 2 }, retired: false });
-    expect(trophyCase(xs, none, T).map((t) => t.key)).toEqual(['dripper-v60', 'grinder-zp6', 'filter-abaca', 'filter-sibarist']);
+    expect(trophyCase(xs, none, T).map((t) => t.key)).toEqual(['dripper-v60', 'filter-abaca', 'filter-sibarist', 'grinder-zp6']);
   });
   it('no rated brews: rating and best are null', () => {
     const t = trophyCase([brew({ dripper: 'V60', rating: null }), brew({ dripper: 'V60', rating: 0 })], none, T)[0];
@@ -84,7 +84,8 @@ describe('trophyCase scope', () => {
     const dialed = xs().map((b) => (b.id === 3 ? { ...b, rating: null, dialRating: 9 } : b));
     const sw = trophyCase(xs(), none, T, { ratings: 'all', scored: dialed }).find((t) => t.key === 'dripper-v60')!;
     expect(sw).toMatchObject({ rating: 7, best: 8, brews: base.brews, grams: base.grams, bags: base.bags, days: base.days, favorite: base.favorite });
-    expect(sw.sample.brews).toBe(2);
+    // The sample counts the dial-in brew (before the skip, like the other tabs); the average does not.
+    expect(sw.sample).toMatchObject({ brews: 3, scored: 2 });
     const cal = trophyCase(xs(), none, T, { ratings: 'current' }).find((t) => t.key === 'dripper-old')!; // before the settled date
     expect(cal).toMatchObject({ brews: 1, grams: 15, rating: null, best: null });
   });

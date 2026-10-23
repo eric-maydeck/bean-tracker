@@ -56,6 +56,13 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
     const sb = scoredRating.get(b.id);
     return sb && countsForRating(sb, ratings) && sb.rating! > 0 ? sb.rating! : null;
   };
+  // The sample counts rated brews before the dial-in skip (`rating ?? dialRating`, as bagSizes and the boards: user ruling
+  // 2026-10-17), so Once dialed never knocks a card under the pooled rule; the average itself skips them.
+  const sized = (b: BrewFact): boolean => {
+    const sb = scoredRating.get(b.id);
+    const r = sb ? (sb.rating ?? sb.dialRating ?? null) : null;
+    return r !== null && r > 0 && countsForRating({ ...sb!, rating: r }, ratings);
+  };
   const groups = new Map<string, { kind: GearKind; name: string; all: BrewFact[]; xs: BrewFact[] }>();
   for (const b of brews)
     for (const kind of GEAR_KINDS) {
@@ -86,12 +93,13 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       bc - ac || (mean(partners.get(bn)!) ?? -1) - (mean(partners.get(an)!) ?? -1) || an.localeCompare(bn))[0];
     const archived = archive[kind].has(name), lastUsed = life.at(-1)!;
     const rs = ratedXs.map((b) => ratingOf(b)!);
-    const ratedBags = new Set(ratedXs.map((b) => b.coffeeId).filter((c) => c != null)).size;
+    const sizedXs = xs.filter(sized);
+    const ratedBags = new Set(sizedXs.map((b) => b.coffeeId).filter((c) => c != null)).size;
     return {
       key: `${kind}-${slugify(name)}`, kind, name, brews: xs.length,
       grams: xs.reduce((s, b) => s + (b.dose ?? 0), 0),
       rating: mean(rs), best: rs.length ? Math.max(...rs) : null,
-      sample: pooled(ratedBags, rs.length),
+      sample: pooled(ratedBags, sizedXs.length, rs.length),
       bags: new Set(xs.map((b) => b.coffeeId).filter((c) => c != null)).size,
       days: new Set(dates).size, firstUsed: life[0], lastUsed,
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,

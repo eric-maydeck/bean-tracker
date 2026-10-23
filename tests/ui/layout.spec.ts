@@ -4712,6 +4712,23 @@ export const STATES: State[] = [
       await expect(sec.locator('.trophy-grid:not(.retired) .trophy-card[data-key="dripper-switch"]')).toHaveCount(0);
       await expect(sec.locator('button.retired-toggle')).toHaveAttribute('aria-expanded', 'false');
       await expectGridRowsFull(page, '.trophy-grid');
+      // The low-confidence chip sits centered between brews and grams without touching either, and never grows the row.
+      const chipCards = page.locator('.trophy-card:has(.sample-note)');
+      expect(await chipCards.count()).toBeGreaterThan(0);
+      const probs = await chipCards.evaluateAll((cs) => cs.flatMap((c) => {
+        const r = (sel: string) => c.querySelector(sel)!.getBoundingClientRect();
+        const [card, chip, row] = [c.getBoundingClientRect(), r('.sample-note'), r('.fig-row')];
+        const [a, b] = [c.querySelectorAll('.fig-row .fig')[0].getBoundingClientRect(), c.querySelectorAll('.fig-row .fig')[1].getBoundingClientRect()];
+        const out: string[] = [];
+        if (Math.abs(chip.left + chip.width / 2 - (card.left + card.width / 2)) > 2) out.push('chip off center');
+        // KNOWN LIMIT (round 5): a 2-up phone card (under ~260px wide) is too narrow for brews + chip + grams on one line,
+        // so there the chip may touch the labels; every wider card keeps them apart.
+        if (card.width >= 260 && (chip.left < a.right - 0.5 || chip.right > b.left + 0.5)) out.push(`chip overlaps a figure (${Math.round(a.right)}<${Math.round(chip.left)}..${Math.round(chip.right)}<${Math.round(b.left)})`);
+        if (card.width >= 260 && chip.height > Math.max(a.height, b.height) + 0.5) out.push('chip taller than the figures');
+        if (row.height > Math.max(a.height, b.height) + 20) out.push('row taller than its figures');
+        return out;
+      }));
+      expect(probs).toEqual([]);
       // The hierarchy: name > average > brews | grams.
       const size = (l: Locator) => l.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
       const card = page.locator('.trophy-card[data-key="dripper-v60"]');
@@ -4839,6 +4856,15 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Clear all' }).click();
       await expect(page).not.toHaveURL(/grinder=/);
       await expect(page.locator('.trophy-card[data-key^="grinder-"]')).toHaveCount(2);
+    } },
+  // TEMP: remove with the namecolor preview latch once the user picks.
+  { name: 'insights-trophy-namecolor', viewports: 'two', path: () => '/insights?tab=gear&namecolor=accent',
+    act: async (page) => {
+      const sec = page.locator('[data-section="gear-trophies"]');
+      await expect(sec).toHaveClass(/name-accent/);
+      await page.locator('.trophy-card[data-key="dripper-v60"] .trophy-toggle').click();
+      await expect(page).not.toHaveURL(/namecolor/);
+      await expect(sec).toHaveClass(/name-accent/); // latched past choose() rebuilding the query
     } },
   { name: 'insights-gear', path: () => '/insights?tab=gear',
     act: async (page) => {

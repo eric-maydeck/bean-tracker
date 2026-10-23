@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { page } from '$app/state';
   import Icon from '$lib/components/Icon.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, shownTrophies } from '$lib/gear';
@@ -16,6 +17,10 @@
   } = $props();
 
   // The kind toggle (absent = All) narrows both the grid and the shelf; the picks still choose cards within a kind.
+  // TEMP: remove after the user picks a name color. Preview-only: latched once on mount from ?namecolor=kind|accent
+  // (choose() rebuilds the query without it), never in the parser or URL state.
+  const accentName = page.url.searchParams.get('namecolor') === 'accent';
+
   let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
@@ -43,9 +48,9 @@
     <span class="fig fig-avg">
       {#if t.rating === null}<b class="none">No ratings</b>{:else}<b class="hl-value">{t.rating.toFixed(1)}</b><i>avg</i>{/if}
     </span>
-    {#if t.rating !== null && t.sample.small}<SampleNote s={t.sample} />{/if}
     <span class="fig-row">
       <span class="fig"><b>{t.brews}</b><i>{t.brews === 1 ? 'brew' : 'brews'}</i></span>
+      <span class="chip-slot">{#if t.rating !== null && t.sample.small}<SampleNote s={t.sample} />{/if}</span>
       <span class="fig"><b>{formatGrams(t.grams)}</b><i>brewed</i></span>
     </span>
   </div>
@@ -75,7 +80,7 @@
 {/snippet}
 
 {#if list.length}
-  <section class="chart-panel" data-section="gear-trophies">
+  <section class="chart-panel" class:name-accent={accentName} data-section="gear-trophies">
     <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
       help={['Every piece of gear you brewed with in the Period.', 'Period sets brews, grams, bags, days and favorite.',
         'Ratings and Brews set only the average and best rating.', 'First used, last used and Retired look at all your brews.',
@@ -193,9 +198,13 @@
     font-family: var(--font-display);
     font-size: 1.5rem;
     font-weight: 700;
+    color: var(--kc-ink); /* TEMP namecolor: kind (default) or accent, below */
     line-height: 1.2;
     max-height: max(44px, 2.4em); /* two lines, never a third peeking through */
     text-align: center;
+  }
+  .name-accent .trophy-toggle {
+    color: var(--color-accent); /* TEMP namecolor=accent */
   }
   .trophy-toggle:focus-visible,
   .trophy-close:focus-visible {
@@ -216,10 +225,9 @@
     align-items: center;
     line-height: 1.15;
   }
-  /* The headline: the average, in the insights tiles' .hl-value and the kind color. */
+  /* The average: the insights tiles' .hl-value, in the normal text color (the gear name carries the kind color). */
   .fig-avg b.hl-value {
     margin-top: 0;
-    color: var(--kc-ink);
   }
   .fig b {
     font-size: 1rem;
@@ -242,16 +250,26 @@
   }
   /* Brews left, grams right, under a rule: the room between them and the headline is the card's breathing space. */
   .fig-row {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
     width: 100%;
     margin-top: var(--space-2);
-    padding: var(--space-2) var(--space-2) 0;
+    padding: var(--space-2) 0 0;
     border-top: 1px solid var(--color-border);
     box-sizing: border-box;
   }
-  .trophy-card :global(.sample-note) {
-    align-self: center;
+  .fig-row .fig:first-child {
+    align-items: flex-start;
+  }
+  .fig-row .fig:last-child {
+    align-items: flex-end;
+  }
+  /* The low-confidence chip sits between brews and grams; it is shorter than the figures, so the row's height is theirs. */
+  .chip-slot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
   }
 
   /* The kind toggle, the Findings theme chips' look (.tab-group): four equal buttons; a 2×2 grid on phones. */
