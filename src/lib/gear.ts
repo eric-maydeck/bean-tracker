@@ -19,7 +19,7 @@ export function shownTrophies<T extends { kind: GearKind; key: string; name: str
 // The per-kind metadata standard. `options` are datalist suggestions (free text is the "other"); `aliases` are the
 // lowercased product-page labels the importer matches.
 export interface GearField {
-  key: string; label: string; type: 'text' | 'number' | 'money' | 'url';
+  key: string; label: string; type: 'text' | 'number' | 'money' | 'url' | 'select';
   unit?: string; min?: number; max?: number; options?: readonly string[]; aliases?: readonly string[];
   help?: string; // the edit form's "?" tip
 }
@@ -48,15 +48,15 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   ],
   grinder: [
     text('type', 'Type', ['Hand', 'Electric'], undefined,
-      'Hand grinders (1Zpresso, Comandante, Kingrinder) or electric (Baratza, Fellow, DF64).'),
+      'Hand (1Zpresso, Comandante, Kingrinder) or Electric (Baratza, Fellow, DF64).'),
     text('burrType', 'Burr type', ['Conical', 'Flat'], ['burr type', 'burr shape', 'burrs'],
-      'Conical burrs (most hand grinders) or flat burrs (many electric grinders; e.g. SSP, 64 mm flats).'),
+      'Conical burrs (most hand grinders) or flat burrs (many electric grinders, e.g. SSP 102 Brew).'),
     text('burrName', 'Burr name', undefined, ['burr name', 'burr set']),
     num('burrSize', 'Burr size', 'mm', 10, 150, ['burr size', 'burr diameter']),
-    text('burrCoating', 'Burr coating', ['Stainless steel', 'Hardened steel', 'Titanium (TiN)', 'DLC', 'Red Speed'], ['burr coating', 'coating', 'burr material'],
-      "The burr's finish: stainless or hardened steel, or a coating (titanium TiN, DLC, Red Speed) that mainly lasts longer."),
-    text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type'],
-      'Stepped grinders click between fixed settings; stepless ones turn smoothly to any setting.'),
+    text('burrCoating', 'Burr coating', ['Stainless steel', 'Hardened steel', 'Titanium (TiN)', 'DLC', 'Red Speed', 'Silver Knight'], ['burr coating', 'coating', 'burr material'],
+      "The burr's finish. Plain stainless or hardened steel, or a coating (Titanium TiN, DLC, Red Speed, Silver Knight) that mainly lasts longer."),
+    { ...text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type'],
+      'Stepped grinders click between fixed settings; stepless ones turn smoothly to any setting.'), type: 'select' },
     num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'],
       'How far one click moves the burrs, in microns (µm): ~12–25 µm on most hand grinders, smaller is finer control.')
   ],
@@ -65,10 +65,10 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
       'Paper is the norm (bleached or natural/unbleached); cloth gives more body; metal lets oils and fines through.'),
     text('shape', 'Shape', ['Cone', 'Wave', 'Flat-bottom basket'], undefined,
       "The paper's shape, matching the dripper. Cone (V60, Origami), wave (Kalita Wave, 155/185), flat-bottom basket (Melitta-style, batch brewers)."),
-    text('fits', 'Fits', ['01', '02', '155', '185'], ['fits', 'fit', 'compatibility', 'size'],
+    text('fits', 'Size', ['01', '02', '155', '185'], ['fits', 'fit', 'compatibility', 'size'],
       'The size code it fits: 01 or 02 for cones, 155 or 185 for wave filters.'),
     text('flow', 'Flow', ['Fast', 'Medium', 'Slow'], ['flow', 'flow rate'],
-      'How fast the paper drains, as the maker describes it. Fast (Sibarist Fast, Cafec T-90), medium (Hario), slow (thicker papers).')
+      'How fast the paper drains, as the maker describes it. Fast (Sibarist Fast, Cafec T-90), medium (Hario tabbed), slow (thicker papers).')
   ]
 };
 export const fieldsFor = (kind: GearKind): GearField[] => [...COMMON_FIELDS, ...KIND_FIELDS[kind]];
@@ -94,10 +94,14 @@ export function parseGearValues(kind: GearKind, raw: unknown): { values: GearVal
       try { ok = /^https?:$/.test(new URL(s).protocol); } catch { /* not a URL */ }
       if (!ok || s.length > 2000) return { error: `${f.label} isn't a web address` };
       values[f.key] = s;
+    } else if (f.type === 'select') {
+      if (!f.options?.includes(s)) return { error: `${f.label} must be one of ${f.options?.join(', ')}` };
+      values[f.key] = s;
     } else {
       if (s.length > MAX_TEXT) return { error: `${f.label} is too long (${MAX_TEXT} characters at most)` };
       values[f.key] = s;
     }
   }
+  if (kind === 'grinder' && values.adjustment !== 'Stepped') delete values.stepSize; // a step only means something on a stepped grinder
   return { values };
 }

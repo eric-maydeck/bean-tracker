@@ -4845,11 +4845,15 @@ export const STATES: State[] = [
         const utops = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
         expect(new Set(utops).size).toBe(1);
       }
-      // Added and Updated (date over time) share one row, with room between them, inside the photo column.
-      const [ab, ub] = [await dlg.locator('.media-meta span').nth(0).boundingBox(), await dlg.locator('.media-meta span').nth(1).boundingBox()];
-      expect(ub!.x - (ab!.x + ab!.width)).toBeGreaterThanOrEqual(12);
-      const tops = await dlg.locator('.media-meta span').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-      expect(new Set(tops).size).toBe(1);
+      // Added and Updated: each is one line (label, date, time), inside the photo's width, a gap between them when side by side.
+      const photoB = (await dlg.locator('.detail-media .trophy-img').boundingBox())!;
+      for (const sp of await dlg.locator('.media-meta span').all()) {
+        const r = (await sp.boundingBox())!;
+        if (page.viewportSize()!.width > 640) expect(r.x + r.width, 'within the photo column').toBeLessThanOrEqual(photoB.x + photoB.width + 1);
+        // Desktop: one line each (landscape's narrow column may wrap a stamp).
+        if (page.viewportSize()!.height > 500) expect(r.height, 'one line').toBeLessThan(20);
+      }
+      await expect(dlg.locator('.media-meta b').first()).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
       // Usage spans the dialog under the photo and details: its facts fill the row, no empty tail.
       const usage = (await dlg.locator('.usage').boundingBox())!, art = (await dlg.locator('article').boundingBox())!;
       expect(usage.y).toBeGreaterThanOrEqual(art.y + art.height - 1);
@@ -4878,8 +4882,7 @@ export const STATES: State[] = [
       await expect(dlg.locator('.media-meta span')).toHaveCount(1);
       await expect(dlg.locator('.media-meta')).toContainText('Added');
       await expect(dlg.locator('.media-meta')).not.toContainText('Updated');
-      await expect(dlg.locator('.media-meta b').nth(0)).toHaveText(/^\d{4}-\d\d-\d\d$/);
-      await expect(dlg.locator('.media-meta b').nth(1)).toHaveText(/^\d{1,2}:\d\d:\d\d [AP]M$/);
+      await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows its two and no empty rows.
       await page.goto('/insights?tab=gear&card=grinder-zp6-special');
@@ -4995,13 +4998,22 @@ export const STATES: State[] = [
       await dlg.getByRole('button', { name: 'Edit' }).click();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '']);
       for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      // Adjustment is a select; Step size works only on Stepped.
+      await expect(input('Adjustment')).toHaveJSProperty('tagName', 'SELECT');
+      await expect(input('Adjustment').locator('option').first()).toHaveText('Select one');
+      await expect(input('Step size (µm)')).toBeDisabled();
+      await input('Adjustment').selectOption('Stepless');
+      await expect(input('Step size (µm)')).toBeDisabled();
+      await input('Adjustment').selectOption('Stepped');
+      await expect(input('Step size (µm)')).toBeEnabled();
+      await input('Adjustment').selectOption('');
       await check('Burr coating', 'Adjustment', false);
-      // Filter: 8 fields, a full last row (Fits, Flow): Save is below Flow.
+      // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      for (const n of ['Shape', 'Material', 'Fits', 'Flow']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      for (const n of ['Shape', 'Material', 'Size', 'Flow']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
-      await check('Fits', 'Flow', true); // saveat=a (default): Save/Cancel right-aligned on a row of their own, level with Preview
+      await check('Size', 'Flow', true); // saveat=a (default): Save/Cancel right-aligned on a row of their own, level with Preview
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {

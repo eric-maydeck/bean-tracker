@@ -3,7 +3,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
-  import { formatStamp } from '$lib/localDate';
+  import { APP_TIME_ZONE, formatInstant } from '$lib/localDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
   import { hostOf } from '$lib/imageSuggest';
@@ -26,6 +26,10 @@
   let current = $derived(list.find((t) => t.key === s.card));
   const KIND_COLOR = { dripper: 1, grinder: 4, filter: 6 } as const;
   const kindVars = (t: Trophy) => `--kc:var(--series-${KIND_COLOR[t.kind]});--kc-ink:var(--series-${KIND_COLOR[t.kind]}-ink)`;
+
+  // Timestamps render in the app's zone on the server, then in the browser's once mounted (no hydration mismatch).
+  let zone = $state<string>(APP_TIME_ZONE);
+  $effect(() => { zone = Intl.DateTimeFormat().resolvedOptions().timeZone; });
 
   let dlg: HTMLDialogElement | undefined = $state();
   // The URL is the state: the dialog follows `card`, and its own closes (✕, Esc, backdrop) clear it.
@@ -74,10 +78,7 @@
   </div>
 {/snippet}
 
-{#snippet stamp(wall: string)}
-  {@const [d, ...t] = formatStamp(wall).split(' ')}
-  <b>{d}</b><b>{t.join(' ')}</b>
-{/snippet}
+{#snippet stamp(iso: string)}<b>{formatInstant(iso, zone)}</b>{/snippet}
 
 {#snippet heading(t: Trophy)}
   <div class="detail-header">
@@ -497,10 +498,9 @@
   .trophy-name.admin {
     padding-right: 9.5rem;
   }
-  /* Label over date, so both fit side by side in the narrow photo column. */
+  /* One line each (label, date, time); the two stack when they don't fit side by side. */
   .media-meta span {
-    display: flex;
-    flex-direction: column;
+    white-space: nowrap;
   }
   .media-meta b {
     font-weight: 600;
@@ -550,6 +550,10 @@
     }
     .trophy-detail .detail-media {
       width: auto;
+    }
+    /* The narrow photo column: a stamp wraps rather than overflowing it. */
+    .media-meta span {
+      white-space: normal;
     }
   }
 </style>

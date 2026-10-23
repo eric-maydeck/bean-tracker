@@ -66,12 +66,20 @@
             <button type="button" class="mode-tip-button" popovertarget="gear-tip-{f.key}" aria-label="About {f.label}" aria-describedby="gear-tip-{f.key}"><Icon name="question" /></button>
           {/if}
         </div>
-        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: f.help.split(/(?<=\.) /) }} /></div>{/if}
-        <input id="gear-{f.key}" bind:value={values[f.key]} list={f.options ? `gear-opts-${f.key}` : undefined} autocomplete="off"
-          type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
-          step={f.type === 'money' ? '0.01' : f.type === 'number' ? 'any' : undefined}
-          inputmode={f.type === 'number' || f.type === 'money' ? 'decimal' : undefined} min={f.min} max={f.max} />
-        {#if f.options}<datalist id="gear-opts-{f.key}">{#each f.options as o (o)}<option value={o}></option>{/each}</datalist>{/if}
+        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: f.help.split(/(?<=\.)(?<!e\.g\.) /) }} /></div>{/if}
+        {#if f.type === 'select'}
+          <select id="gear-{f.key}" bind:value={values[f.key]}>
+            <option value="">Select one</option>
+            {#each f.options ?? [] as o (o)}<option value={o}>{o}</option>{/each}
+          </select>
+        {:else}
+          <input id="gear-{f.key}" bind:value={values[f.key]} list={f.options ? `gear-opts-${f.key}` : undefined} autocomplete="off"
+            type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
+            step={f.type === 'money' ? '0.01' : f.type === 'number' ? 'any' : undefined}
+            inputmode={f.type === 'number' || f.type === 'money' ? 'decimal' : undefined} min={f.min} max={f.max}
+            disabled={f.key === 'stepSize' && values.adjustment !== 'Stepped'} />
+        {/if}
+        {#if f.options && f.type !== 'select'}<datalist id="gear-opts-{f.key}">{#each f.options as o (o)}<option value={o}></option>{/each}</datalist>{/if}
       </div>
     {/each}
     <div class="form-field image-url" style="--r:{act - 1};--c:1">
