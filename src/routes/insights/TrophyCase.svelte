@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { page } from '$app/state';
   import Icon from '$lib/components/Icon.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, shownTrophies } from '$lib/gear';
@@ -17,10 +16,6 @@
   } = $props();
 
   // The kind toggle (absent = All) narrows both the grid and the shelf; the picks still choose cards within a kind.
-  // TEMP: remove after the user picks a name color. Preview-only: latched once on mount from ?namecolor=kind|accent
-  // (choose() rebuilds the query without it), never in the parser or URL state.
-  const accentName = page.url.searchParams.get('namecolor') === 'accent';
-
   let shown = $derived(shownTrophies(s.gear ? list.filter((t) => t.kind === s.gear) : list, { dripper: s.dripper, filter: s.filter, grinder: s.grinder }));
   let shelf = $derived(s.retired === 'open');
   let current = $derived(list.find((t) => t.key === s.card));
@@ -80,7 +75,7 @@
 {/snippet}
 
 {#if list.length}
-  <section class="chart-panel" class:name-accent={accentName} data-section="gear-trophies">
+  <section class="chart-panel" data-section="gear-trophies">
     <LabHead id="gear-trophies" title="Gear showcase" {placeTip}
       help={['Every piece of gear you brewed with in the Period.', 'Period sets brews, grams, bags, days and favorite.',
         'Ratings and Brews set only the average and best rating.', 'First used, last used and Retired look at all your brews.',
@@ -148,6 +143,7 @@
 <style>
   /* Collapsed card: a kind-colored top edge and brew count (the number is the insights tiles' .hl-value), small figures under it. */
   .trophy-card {
+    container: trophy / inline-size;
     cursor: pointer;
     align-items: stretch;
     padding: var(--space-2);
@@ -175,7 +171,7 @@
     min-width: 0;
   }
   .trophy-kind {
-    color: var(--kc-ink);
+    color: var(--color-accent);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.06em;
@@ -198,13 +194,10 @@
     font-family: var(--font-display);
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--kc-ink); /* TEMP namecolor: kind (default) or accent, below */
+    color: var(--kc-ink); /* the name carries the kind color, the label above it the brown accent */
     line-height: 1.2;
     max-height: max(44px, 2.4em); /* two lines, never a third peeking through */
     text-align: center;
-  }
-  .name-accent .trophy-toggle {
-    color: var(--color-accent); /* TEMP namecolor=accent */
   }
   .trophy-toggle:focus-visible,
   .trophy-close:focus-visible {
@@ -261,11 +254,31 @@
   }
   .fig-row .fig:first-child {
     align-items: flex-start;
+    justify-self: start;
   }
   .fig-row .fig:last-child {
     align-items: flex-end;
+    justify-self: end;
   }
   /* The low-confidence chip sits between brews and grams; it is shorter than the figures, so the row's height is theirs. */
+  /* A narrow card (a 2-up phone card, by its own width) shows the chip's icon alone in the same pill; the words stay in the
+     button's aria-label and the tap/hover tip. */
+  @container trophy (max-width: 219px) {
+    .chip-slot :global(.sample-chip) {
+      font-size: 0;
+      gap: 0;
+      padding: 1px 4px;
+    }
+    /* The icon alone is under 44px wide: widen the hit area sideways, as the 16px/6px phone padding does vertically. */
+    .chip-slot :global(.sample-note) {
+      padding-inline: 14px;
+      margin-inline: -14px;
+    }
+    .chip-slot :global(.sample-chip .icon) {
+      width: 14px;
+      height: 14px;
+    }
+  }
   .chip-slot {
     display: flex;
     justify-content: center;
