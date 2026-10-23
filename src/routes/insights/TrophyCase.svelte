@@ -40,6 +40,7 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
+  let form: ReturnType<typeof GearForm> | undefined = $state(); // the edit form (its ✕ prompt)
   let preview = $state<{ src: string; fill?: string } | null>(null); // the edit form's previewed photo
   $effect(() => { if (!editing) preview = null; });
   const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
@@ -141,13 +142,13 @@
             {#if page.data.isAdmin && !editing}
               <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
             {/if}
-            <button type="button" class="trophy-close" aria-label="Close" disabled={editing} onclick={() => dlg?.close()}>✕</button>
+            <button type="button" class="trophy-close" aria-label="Close" onclick={() => { if (editing && !form?.leave()) return; dlg?.close(); }}>✕</button>
           </div>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           {#if editing}
             <!-- The edit form replaces the whole article: the photo (showing the preview), the fields and the image row share one grid. -->
             {#key t.key}
-              <GearForm trophy={t} bind:preview onclose={() => (editing = false)}>
+              <GearForm bind:this={form} trophy={t} bind:preview onclose={() => (editing = false)}>
                 {#snippet head()}{@render heading(t)}{/snippet}
                 {#snippet photo()}{@render img(t, preview ?? t.image)}{/snippet}
               </GearForm>

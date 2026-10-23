@@ -4947,6 +4947,8 @@ export const STATES: State[] = [
           expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43);
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByRole('button', { name: 'Preview' })));
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size', { exact: true })));
+          const sz = await box(dlg.getByLabel('Size', { exact: true }));
+          expect((await box(save)).y - (sz.y + sz.height), 'ui-rules 22: space above the action row').toBeGreaterThanOrEqual(14);
         }
       }
       void media; void box;
@@ -4973,15 +4975,54 @@ export const STATES: State[] = [
       await save.click();
       await expect(dlg.getByRole('alert')).toContainText('Burr size');
       await expect(form).toBeVisible();
+      // ✕ in edit mode is Cancel then close. No changes: it closes at once (no prompt) and the URL drops the card.
+      const prompts: string[] = [];
+      let answer = false;
+      page.on('dialog', (d) => { prompts.push(d.message()); void (answer ? d.accept() : d.dismiss()); });
+      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await expect(dlg.getByRole('button', { name: 'Close' })).toBeEnabled();
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(dlg).toBeHidden();
+      await expect(page).not.toHaveURL(/card=/);
+      expect(prompts).toEqual([]);
+      // A change: the prompt names it; declining keeps the form and the typed value; accepting closes without saving.
+      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await form.getByLabel('Brand').fill('Hario X');
+      await dlg.getByLabel('Image URL').fill('https://example.com/x.png');
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect.poll(() => prompts.length).toBe(1);
+      expect(prompts[0]).toContain('Brand: Hario → Hario X');
+      expect(prompts[0]).toContain('Image URL changed');
+      expect(prompts[0]).not.toContain('Model');
+      await expect(form).toBeVisible();
+      await expect(form.getByLabel('Brand')).toHaveValue('Hario X');
+      expect(await page.evaluate(() => document.activeElement?.matches('input, textarea') ?? false)).toBe(false);
+      answer = true;
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(dlg).toBeHidden();
+      await expect(page).not.toHaveURL(/card=/);
+      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await expect(dlg.locator('.specs .stat', { hasText: 'Brand' }).locator('.stat-value')).toHaveText('Hario'); // nothing saved
     } },
   // The other kinds' edit grids (wide dialogs): Save/Cancel take the cell after the last field (a full last row pushes them to the next
   // row's second cell); Image URL lines up with the last field row, Preview/Discard with the row before it.
   { name: 'insights-trophy-edit-kinds', path: () => '/insights?tab=gear&card=grinder-comandante-c40-mk4',
     act: async (page) => {
-      if (page.viewportSize()!.width <= 640) return;
       const dlg = page.locator('dialog.trophy-dialog');
       const bx = async (l: Locator) => (await l.boundingBox())!;
       const input = (n: string) => dlg.getByLabel(n, { exact: true });
+      if (page.viewportSize()!.width <= 640) {
+        // Stacked: the last field to Save/Cancel keeps ~16px (ui-rules 22), grinder and filter.
+        const gap = async (last: string) => { const l = await bx(input(last)); return (await bx(dlg.getByRole('button', { name: 'Save' }))).y - (l.y + l.height); };
+        await dlg.getByRole('button', { name: 'Edit' }).click();
+        expect(await gap('Step size (µm)')).toBeGreaterThanOrEqual(14);
+        await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
+        await dlg.getByRole('button', { name: 'Edit' }).click();
+        expect(await gap('Flow')).toBeGreaterThanOrEqual(14);
+        return;
+      }
       // above: the field on the row Image URL shares; edge: the input whose left (grinder) or right (filter, own row) edge Save/Cancel follow.
       const check = async (above: string, edge: string, own: boolean) => {
         const [aboveB, edgeB, saveB, cancelB, urlB, prevB] = [await bx(input(above)), await bx(input(edge)), await bx(dlg.getByRole('button', { name: 'Save' })),

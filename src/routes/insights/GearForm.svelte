@@ -37,6 +37,20 @@
     if (typeof data?.fill === 'string') fills[url] = data.fill;
   }
 
+  // Unsaved changes, named for the leave prompt: "Burr size: 64 → 54", "Image URL changed".
+  const changes = () => [
+    ...fields.flatMap((f) => {
+      const [was, now] = [String(trophy.values[f.key] ?? ''), (values[f.key] ?? '').trim()];
+      return was === now ? [] : [`${f.label}: ${was || 'empty'} → ${now || 'empty'}`];
+    }),
+    ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])
+  ];
+  // The dialog's ✕ (and nothing else) calls this: true = leave (no changes, or the user agrees to discard them).
+  export function leave(): boolean {
+    const c = changes();
+    return !c.length || confirm(`You have unsaved changes:\n${c.join('\n')}\nLeave without saving?`);
+  }
+
   async function save(e: SubmitEvent) {
     e.preventDefault();
     saving = true; error = '';
@@ -198,7 +212,7 @@
     .photo { order: -3; }
     .grid > .image-url { order: -2; }
     .grid > .image-buttons { order: -1; }
-    .grid > .actions { order: 99; grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: normal; }
+    .grid > .actions { order: 99; margin-top: 0.35rem; /* ui-rules 22: ~16px above the action row, with the field's own margin */ grid-template-columns: repeat(2, minmax(0, 1fr)); justify-content: normal; }
     .cell-buttons::before {
       display: none;
     }
