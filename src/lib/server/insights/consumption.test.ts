@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { gramsOnHand } from './overview';
-import { buckets, bucketLabels, bucketTitles, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
+import { RATINGS_SETTLED_FROM } from './ratings';
+import { rolling, TREND_WINDOW, buckets, bucketLabels, bucketTitles, backlogSeries, consumptionTab, type ConsumptionCtx } from './consumption';
 import type { BrewFact, BagFact } from './facts';
 
 const brew = (localDate: string, dose: number, coffeeId = 1): BrewFact => ({
@@ -104,7 +105,7 @@ describe('consumptionTab', () => {
   it('average: the compare series and deltas are per-day too', () => {
     const older = [...brews, brew('2026-08-10', 30, 1)];
     const a = consumptionTab(older, bags, ctx({ agg: 'average', by: 'week', prev: { start: '2026-08-01', end: '2026-08-31' } }));
-    expect(a.compareBrewed!.reduce((s, v) => s + v, 0)).toBeCloseTo(30 / 7);
+    expect(a.compareBrewed!.reduce((s, v) => s! + v!, 0)).toBeCloseTo(30 / 7);
     expect(a.deltas!.brewed).toMatchObject({ abs: expect.closeTo(50 / 30 - 30 / 31, 5) });
   });
 
@@ -194,5 +195,75 @@ describe('whole is used for on hand and net', () => {
   });
   it('whole = brews changes nothing', () => {
     expect(consumptionTab(all, bags, ctx({ whole: all }))).toEqual(consumptionTab(all, bags, ctx()));
+  });
+});
+
+describe('Show: Per brew day', () => {
+  // Two brews on Sep 7 (Mon), one on Sep 8: week of Sep 7 has 7 days, 2 brew days, 90 g.
+  const bs = [brew('2026-09-07', 30), brew('2026-09-07', 30), brew('2026-09-08', 30)];
+  const c = (o: Partial<ConsumptionCtx> = {}) => ctx({ by: 'week', period: { start: '2026-09-07', end: '2026-09-13' }, ...o });
+  it('divides each bucket by its brew days; Average by its days; Total not at all', () => {
+    expect(consumptionTab(bs, [], c({ agg: 'brewday' })).brewed).toEqual([45]);
+    expect(consumptionTab(bs, [], c({ agg: 'average' })).brewed[0]).toBeCloseTo(90 / 7);
+    expect(consumptionTab(bs, [], c({ agg: 'total' })).brewed).toEqual([90]);
+  });
+  it('the tiles follow: per brew day over the period\'s brew days', () => {
+    expect(consumptionTab(bs, [], c({ agg: 'brewday' })).tiles.brewed).toBe(45);
+  });
+  it('a bucket with no brews stays 0, not NaN', () => {
+    expect(consumptionTab(bs, [], c({ agg: 'brewday', period: { start: '2026-09-07', end: '2026-09-20' } })).brewed).toEqual([45, 0]);
+  });
+});
+
+describe('Brewed over time measures', () => {
+  const w = (d: string, waterG: number | null, rating: number | null): BrewFact => ({ ...brew(d, 20), waterG, rating });
+  const bs = [w('2026-09-07', 300, 8), w('2026-09-07', 320, 9), w('2026-09-14', null, null), w('2026-09-14', 250, 7)];
+  const c = (o: Partial<ConsumptionCtx> = {}) => ctx({ by: 'week', agg: 'total', period: { start: '2026-09-07', end: '2026-09-20' }, ...o });
+  it('brews: the count per bucket', () => expect(consumptionTab(bs, [], c({ trend: 'brews' })).brewed).toEqual([2, 2]));
+  it('water: litres from water_amount_g, a brew without it adds nothing', () => {
+    const t = consumptionTab(bs, [], c({ trend: 'water' })).brewed;
+    expect(t[0]).toBeCloseTo(0.62);
+    expect(t[1]).toBeCloseTo(0.25);
+  });
+  it('brews and water honor the household split', () => expect(consumptionTab(bs, [], c({ trend: 'brews', size: 2 })).brewed).toEqual([1, 1]));
+  it('water per brew day: litres ÷ brew days', () => expect(consumptionTab(bs, [], c({ trend: 'water', agg: 'brewday' })).brewed[0]).toBeCloseTo(0.62));
+  it('rating: the mean of counted ratings, null with none, and Show does not apply', () => {
+    const r = (o: Partial<ConsumptionCtx>) => consumptionTab(bs, [], c({ trend: 'rating', ratings: 'all', ...o })).brewed;
+    expect(r({})).toEqual([8.5, 7]);
+    expect(r({ agg: 'average' })).toEqual([8.5, 7]);
+    expect(consumptionTab([w('2026-09-14', 100, null)], [], c({ trend: 'rating', ratings: 'all' })).brewed).toEqual([null, null]);
+  });
+  it('rating uses the scored brews, not the filtered ones', () => {
+    const scored = bs.map((b) => ({ ...b, rating: b.rating === 9 ? null : b.rating }));
+    expect(consumptionTab(bs, [], c({ trend: 'rating', ratings: 'all', scored })).brewed).toEqual([8, 7]);
+  });
+  it('Calibrated ratings start at the first bucket reaching the calibration date', () => {
+    const run = (ratings: 'current' | 'all') => consumptionTab(bs, [], c({
+      trend: 'rating', ratings, period: { start: '2026-05-18', end: '2026-06-07' }, today: '2026-06-07',
+      dataStart: '2026-05-18'
+    }));
+    expect(RATINGS_SETTLED_FROM).toBe('2026-06-01');
+    expect(run('current').ratingFrom).toBe(2); // weeks of May 18, May 25 end before Jun 1
+    expect(run('all').ratingFrom).toBe(0);
+    expect(consumptionTab(bs, [], c({ trend: 'brews' })).ratingFrom).toBe(0);
+  });
+  it('the compare window follows the measure', () => {
+    const older = [...bs, w('2026-08-31', 100, 6)];
+    const t = consumptionTab(older, [], c({ trend: 'brews', prev: { start: '2026-08-24', end: '2026-09-06' } }));
+    expect(t.compareBrewed).toEqual([0, 1]);
+  });
+});
+
+describe('rolling', () => {
+  it('trailing mean, a shorter window at the start', () => expect(rolling([3, 6, 9, 12], 3)).toEqual([3, 4.5, 6, 9]));
+  it('a null counts for nothing; windows follow the grouping', () => {
+    expect(rolling([2, null, 4], 3)).toEqual([2, 2, 3]);
+    expect(TREND_WINDOW).toEqual({ day: 7, week: 4, month: 3 });
+  });
+  it('the tab carries it (none for a rating)', () => {
+    const bs = [brew('2026-09-07', 30), brew('2026-09-08', 60)];
+    const c = ctx({ by: 'day', agg: 'total', period: { start: '2026-09-07', end: '2026-09-08' } });
+    expect(consumptionTab(bs, [], c).trendLine).toEqual([30, 45]);
+    expect(consumptionTab(bs, [], { ...c, trend: 'rating' }).trendLine).toBeNull();
   });
 });

@@ -710,6 +710,17 @@ describe('gearTab', () => {
     for (let i = 0; i < 3; i++) expect(e.lines.reduce((s, l) => s + l.values[i]!, 0)).toBe(100);
     expect(e.lines.map((l) => l.values[0])).toEqual([34, 33, 33]);
   });
+  it('eras: a grinder\'s usage is the same shares over the grinder, and brews with no grinder are left out', () => {
+    const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
+    const r = months.flatMap((localDate) => [
+      ...many(10, 1, 92, 8, { dripper: 'V60', grinder: 'Comandante', localDate }),
+      ...many(10, 1, 92, 8, { dripper: 'V60', grinder: 'Timemore', localDate }),
+      ...many(10, 1, 92, 8, { dripper: 'V60', grinder: null, localDate })]);
+    const t = gearTab(r, { period: { start: null, end: '2026-09-30' }, ratings: 'all' });
+    expect(t.grinderEras!.lines.map((l) => [l.label, l.values[0]])).toEqual([['Comandante', 50], ['Timemore', 50]]);
+    expect(t.eras!.lines.map((l) => l.label)).toEqual(['V60']);
+    expect(gearTab(many(30, 1, 92, 8, { dripper: 'V60' }), { period: P, ratings: 'all' }).grinderEras).toBeNull();
+  });
   it('eras: "Other" lists what it holds each month, biggest share first', () => {
     const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
     const r = months.flatMap((localDate) => [['A', 40], ['B', 40], ['C', 40], ['D', 40], ['E', 20], ['F', 5]].flatMap(([dripper, n]) =>

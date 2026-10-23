@@ -135,7 +135,7 @@ export const load: PageServerLoad = ({ url }) => {
     habits: s.tab === 'habits' ? habits(scored, { ...ctx, measure: s.measure, ratings: s.ratings, agg: s.agg }) : null,
     consumptionTab:
       s.tab === 'consumption'
-        ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, sameLength: typeof s.compare === 'number' })
+        ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, trend: s.trend, scored, ratings: s.ratings, sameLength: typeof s.compare === 'number' })
         : null,
     records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, wholeUnscored: whole, whole: wholeScored, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
     milestones:

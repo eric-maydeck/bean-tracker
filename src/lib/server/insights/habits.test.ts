@@ -71,6 +71,15 @@ describe('habits', () => {
     expect(h.busiestAvg).toBe(1.5);
   });
 
+  it('per brew day: hour ÷ all brew days, weekday and heatmap ÷ the brew days on that weekday', () => {
+    const h = habits(brews, ctx({ agg: 'brewday' }));
+    expect(h.byHour[8]).toBe(3 / 3); // 3 brews at 8am over 3 brew days
+    expect(h.byWeekday[0]).toBe(3 / 2); // 3 Monday brews over 2 Mondays with a brew
+    expect(h.byWeekday[1]).toBe(1); // 1 brew on the 1 Tuesday with one
+    expect(h.heatmap[0][8]).toBe(3 / 2);
+    expect(h.byWeekday[2]).toBe(0); // no brew day: nothing to divide
+  });
+
   it('average: hour per tracked day, heatmap cell per occurrence of its weekday', () => {
     const h = habits(brews, ctx({ agg: 'average' }));
     expect(h.byHour[8]).toBe(3 / 14);

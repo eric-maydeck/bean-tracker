@@ -592,7 +592,7 @@ function waterPairs(rows: readonly BrewFact[], byId: Map<number, BagFact>): Wate
   }).sort((p, q) => q.bags.length - p.bags.length || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
 }
 
-export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; eras: Eras | null }
+export interface GearTab { drippers: BandStat[]; filters: BandStat[]; matrix: Breakdown | null; byRoast: Breakdown | null; eras: Eras | null; grinderEras: Eras | null }
 export function gearTab(brews: readonly BrewFact[], c: { period: Period; ratings: Ratings }): GearTab {
   const rows = ratedIn(brews, c.period, c.ratings);
   const filter = labFn('filter');
@@ -612,6 +612,7 @@ export function gearTab(brews: readonly BrewFact[], c: { period: Period; ratings
       cells: mRows.map((d) => mCols.map((f) => { const s = within.get(d)!.get(f); return s ? cellOf(s) : null; }))
     }) : null,
     byRoast: breakdown(rows, labFn('dripper'), SLICE_OF.roast, drippers.map((d) => d.label)),
-    eras: eraOf(brews, c.period, (b) => b.dripper)
+    eras: eraOf(brews, c.period, (b) => b.dripper),
+    grinderEras: eraOf(brews, c.period, (b) => b.grinder)
   };
 }

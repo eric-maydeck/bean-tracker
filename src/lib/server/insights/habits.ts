@@ -111,11 +111,18 @@ function windowStats(brews: readonly BrewFact[], p: Period, c: HabitsCtx) {
   const hours = group(timed, 24, hourOf);
   const days = group(inP, 7, (b) => weekday(b.localDate));
   // Avg per day: brews and grams per tracked day (hours) / per occurrence of the weekday (weekdays,
-  // heatmap). Rating is a plain mean, so the choice doesn't touch it.
-  const perDay = c.agg === 'average' && c.measure !== 'rating';
+  // heatmap). Per brew day: the same over the days with a brew (all of them / those on the weekday).
+  // Rating is a plain mean, so the choice doesn't touch it.
+  const perDay = c.agg !== 'total' && c.measure !== 'rating';
+  const brewDays = [...new Set(inP.map((b) => b.localDate))].sort();
+  const brewOccurrences = Array(7).fill(0);
+  for (const d of brewDays) brewOccurrences[weekday(d)]++;
+  const perBrewDay = c.agg === 'brewday';
+  // The weekday divisors (also the heatmap's rows) and the one the hours share.
+  const divisors: number[] = perBrewDay ? brewOccurrences : occurrences;
   const byHour = hours.map((g) => {
     const v = value(g, c);
-    return perDay && v !== null ? v / (tracked.length || 1) : v;
+    return perDay && v !== null ? v / ((perBrewDay ? brewDays.length : tracked.length) || 1) : v;
   });
   // The tiles always read the per-occurrence weekday values (the Show choice only changes the chart).
   const weekdayAvg = days.map((g, i) => {
@@ -123,19 +130,20 @@ function windowStats(brews: readonly BrewFact[], p: Period, c: HabitsCtx) {
     const v = value(g, c);
     return v === null || c.measure === 'rating' ? v : v / occurrences[i];
   });
-  const byWeekday = perDay || c.measure === 'rating' ? weekdayAvg : days.map((g, i) => (occurrences[i] ? value(g, c) : null));
-  const brewDays = [...new Set(inP.map((b) => b.localDate))].sort();
+  const byWeekday = perBrewDay && c.measure !== 'rating'
+    ? days.map((g, i) => { const v = value(g, c); return v !== null && divisors[i] ? v / divisors[i] : v; })
+    : perDay || c.measure === 'rating' ? weekdayAvg : days.map((g, i) => (occurrences[i] ? value(g, c) : null));
   return {
-    inP, timed, tracked, hours, days, byHour, byWeekday, weekdayAvg, occurrences, perDay, brewDays,
+    inP, timed, tracked, hours, days, byHour, byWeekday, weekdayAvg, occurrences, divisors, perDay, brewDays,
     activeDays: tracked.length ? brewDays.length / tracked.length : null,
     brewsPerBrewDay: brewDays.length ? inP.length / brewDays.length / c.size : null,
     peakHour: peak(byHour, hours, c), busiestWeekday: peak(weekdayAvg, days, c)
   };
 }
 
-// A heatmap cell per occurrence of its weekday under Avg per day.
-const cell = (v: number | null, w: { perDay: boolean; occurrences: number[] }, d: number) =>
-  v !== null && w.perDay && w.occurrences[d] ? v / w.occurrences[d] : v;
+// A heatmap cell per occurrence of its weekday under Avg per day (per brew day on it under Per brew day).
+const cell = (v: number | null, w: { perDay: boolean; divisors: number[] }, d: number) =>
+  v !== null && w.perDay && w.divisors[d] ? v / w.divisors[d] : v;
 
 export function habits(brews: readonly BrewFact[], c: HabitsCtx): Habits {
   const w = windowStats(brews, c.period, c);
