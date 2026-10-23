@@ -4912,6 +4912,18 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
+      // "?" tips on Shape, Material, Flow and Size only; one opens in the site's tip look and focuses no input.
+      for (const n of ['Shape', 'Material', 'Flow', 'Size']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
+      const tipBtn = dlg.getByRole('button', { name: 'About Flow' });
+      if (phone) expect((await tipBtn.boundingBox())!.width).toBeGreaterThanOrEqual(43);
+      await tipBtn.click();
+      await expect(page.locator('#gear-tip-flow')).toBeVisible();
+      await expect(page.locator('#gear-tip-flow')).toContainText('Valve / immersion');
+      expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#gear-tip-flow')).toBeHidden();
+      await expect(dlg).toBeVisible();
       // Esc (twice: Chrome only lets `cancel` be prevented once per activation) and the backdrop do not close it.
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
@@ -4926,7 +4938,7 @@ export const STATES: State[] = [
         if (phone) {
           expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43);
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByRole('button', { name: 'Preview' })));
-          expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size')));
+          expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size', { exact: true })));
         }
       }
       void media; void box;
@@ -4968,10 +4980,11 @@ export const STATES: State[] = [
           await bx(dlg.getByRole('button', { name: 'Cancel' })), await bx(dlg.getByLabel('Image URL')), await bx(dlg.getByRole('button', { name: 'Preview' }))];
         expect(Math.abs(urlB.y - aboveB.y), 'Image URL on the row above Preview').toBeLessThan(2);
         expect(Math.abs(saveB.y - prevB.y), 'Save level with Preview').toBeLessThan(2);
+        expect(Math.abs(saveB.x - edgeB.x), 'Save left = the input column left').toBeLessThan(1.5);
         if (own) {
           expect(saveB.y).toBeGreaterThan(edgeB.y + edgeB.height - 1);
           expect(Math.abs(cancelB.x + cancelB.width - (edgeB.x + edgeB.width)), 'Cancel right = last input right').toBeLessThan(1.5);
-        } else expect(Math.abs(saveB.x - edgeB.x), 'Save left = neighbor input left').toBeLessThan(1.5);
+        }
       };
       // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
       await dlg.getByRole('button', { name: 'Edit' }).click();

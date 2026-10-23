@@ -21,9 +21,10 @@ export function shownTrophies<T extends { kind: GearKind; key: string; name: str
 export interface GearField {
   key: string; label: string; type: 'text' | 'number' | 'money' | 'url';
   unit?: string; min?: number; max?: number; options?: readonly string[]; aliases?: readonly string[];
+  help?: string; // the edit form's "?" tip
 }
-const text = (key: string, label: string, options?: readonly string[], aliases: readonly string[] = [label.toLowerCase()]): GearField =>
-  ({ key, label, type: 'text', options, aliases });
+const text = (key: string, label: string, options?: readonly string[], aliases: readonly string[] = [label.toLowerCase()], help?: string): GearField =>
+  ({ key, label, type: 'text', options, aliases, help });
 const num = (key: string, label: string, unit: string, min: number, max: number, aliases: readonly string[] = [label.toLowerCase()]): GearField =>
   ({ key, label, type: 'number', unit, min, max, aliases });
 
@@ -35,11 +36,15 @@ export const COMMON_FIELDS: readonly GearField[] = [
 ];
 export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   dripper: [
-    text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid']),
+    text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid'], undefined,
+      "The dripper's bed shape. Conical (V60, Origami with cone filters) drains through one point; flat bottom (Kalita Wave, Orea) gives a flatter, even bed; wave/hybrid sits between."),
     num('coneAngle', 'Cone angle', '°', 0, 180, ['cone angle', 'angle']),
-    text('material', 'Material', ['Plastic', 'Tritan', 'Ceramic', 'Glass', 'Metal'], ['material', 'materials']),
-    text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate']),
-    text('size', 'Size', ['01', '02', '03'])
+    text('material', 'Material', ['Plastic', 'Tritan', 'Ceramic', 'Glass', 'Metal'], ['material', 'materials'],
+      'What the dripper is made of. Plastic and Tritan hold little heat; ceramic and glass need preheating; metal heats fast.'),
+    text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate'],
+      'How fast it drains on its own. Open: the grind and pour set the speed (V60). Restricted: small holes slow it (Kalita, Melitta). Valve / immersion: a valve holds the water until released (Hario Switch, Clever).'),
+    text('size', 'Size', ['01', '02', '03'], undefined,
+      "The maker's size code: 01 for 1–2 cups (~200–350 mL), 02 for 1–4 cups (~300–600 mL), 03 for larger batches.")
   ],
   grinder: [
     text('type', 'Type', ['Hand', 'Electric']),

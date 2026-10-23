@@ -1,7 +1,9 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import { page } from '$app/state'; // PREVIEW-TEMP
   import { fieldsFor } from '$lib/gear';
+  import Icon from '$lib/components/Icon.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
+  import { placeTip } from '$lib/components/modeTip';
   import { backdrop } from '$lib/imageBackdrop';
   import type { Snippet } from 'svelte';
   import type { Trophy } from '$lib/server/insights/trophies';
@@ -13,13 +15,8 @@
 
   const fields = $derived(fieldsFor(trophy.kind));
   const last = $derived(Math.ceil(fields.length / 2)); // the last field row
-  const full = $derived(fields.length % 2 === 0); // the last row is full: no empty cell for Save/Cancel
-  const act = $derived(full ? last + 1 : last); // the row Preview/Discard and Save/Cancel share; Image URL is the row above
-  // PREVIEW-TEMP: saveat=a|b comparison latch for a full last row (a: a right-aligned row of its own; b: under Preview/Discard); sticks once seen.
-  let saveAt = $state('a'); // PREVIEW-TEMP
-  $effect(() => { const v = page.url.searchParams.get('saveat'); if (v === 'a' || v === 'b') saveAt = v; }); // PREVIEW-TEMP
-  const own = $derived(full && saveAt === 'a'); // PREVIEW-TEMP
-  const below = $derived(full && saveAt === 'b'); // PREVIEW-TEMP
+  // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
+  const act = $derived(fields.length % 2 ? last : last + 1); // the row Preview/Discard and Save/Cancel share; Image URL is the row above
   // svelte-ignore state_referenced_locally
   let values = $state<Record<string, string>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
   // svelte-ignore state_referenced_locally
@@ -56,14 +53,20 @@
 <!-- One grid for photo and fields (wide dialogs): the fields run two to a row in the two right columns; the photo takes the
      left column over the rows above Image URL; Preview/Discard sit on the row before the last field row and the Image URL
      on the last, so their labels and inputs line up with those rows' fields; Save/Cancel fill the cell after the last field
-     (the second cell of the next row when the last row is full). Phones stack it all, Save/Cancel last (ui-rules 19). -->
+     (the cell under the last field when the last row is full: its width is that field's input, as Preview/Discard span Image URL). Phones stack it all, Save/Cancel last (ui-rules 19). -->
 <form class="gear-form" onsubmit={save} novalidate style="--a:{act}">
   {@render head()}
   <div class="grid">
     <div class="photo">{@render photo()}</div>
     {#each fields as f, i (f.key)}
       <div class="form-field" style="--r:{Math.floor(i / 2) + 1};--c:{2 + (i % 2)}">
-        <label for="gear-{f.key}">{f.label}{f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''}</label>
+        <div class="label-row">
+          <label for="gear-{f.key}">{f.label}{f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''}</label>
+          {#if f.help}
+            <button type="button" class="mode-tip-button" popovertarget="gear-tip-{f.key}" aria-label="About {f.label}" aria-describedby="gear-tip-{f.key}"><Icon name="question" /></button>
+          {/if}
+        </div>
+        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: [f.help] }} /></div>{/if}
         <input id="gear-{f.key}" bind:value={values[f.key]} list={f.options ? `gear-opts-${f.key}` : undefined} autocomplete="off"
           type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
           step={f.type === 'money' ? '0.01' : f.type === 'number' ? 'any' : undefined}
@@ -79,7 +82,7 @@
       <button class="button button-secondary" type="button" onclick={showPreview}>Preview</button>
       <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
     </div>
-    <div class="cell-buttons actions" class:own class:below style="--r:{below ? act + 1 : act};--c:{below ? 1 : 3}" data-button-row>
+    <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row>
       <button class="button" type="submit" disabled={saving}>Save</button>
       <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
     </div>
@@ -113,6 +116,14 @@
   .form-field {
     margin-bottom: 0.65rem;
   }
+  .label-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .label-row .mode-tip-button {
+    line-height: 1;
+  }
   .form-field label, .cell-buttons::before {
     line-height: 1.2;
   }
@@ -142,13 +153,6 @@
     justify-content: center;
     text-align: center;
   }
-  /* PREVIEW-TEMP: saveat=a, a full last row: Save/Cancel on a row of their own, right-aligned at natural width. */
-  .actions.own { /* PREVIEW-TEMP */
-    grid-column: 2 / 4; /* PREVIEW-TEMP */
-    grid-template-columns: auto auto; /* PREVIEW-TEMP */
-    justify-content: end; /* PREVIEW-TEMP */
-  } /* PREVIEW-TEMP */
-  /* PREVIEW-TEMP: saveat=b, a full last row: Save/Cancel under Preview/Discard (the `below` placement is in the markup). */
   /* Viewport media query on purpose: the dialog is in the top layer, so its width follows the viewport, not the insights container. */
   @media (max-width: 640px) {
     .grid {

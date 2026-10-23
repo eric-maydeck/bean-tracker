@@ -52,8 +52,8 @@
   const withLabel = (t: Trophy) => (t.kind === 'dripper' ? 'Favorite filter' : 'Favorite dripper');
 </script>
 
-<!-- Focus is on the body once the Edit button is gone, so Esc is caught on the window. -->
-<svelte:window onkeydown={(e) => editing && e.key === 'Escape' && e.preventDefault()} />
+<!-- Focus is on the body once the Edit button is gone, so Esc is caught on the window (an open help tip still closes on Esc). -->
+<svelte:window onkeydown={(e) => editing && e.key === 'Escape' && !document.querySelector(':popover-open') && e.preventDefault()} />
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
