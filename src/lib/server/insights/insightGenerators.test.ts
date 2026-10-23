@@ -1,7 +1,7 @@
 import { likeGap } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
-import { GENERATORS, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
+import { GENERATORS, monthlyMulti, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
@@ -417,9 +417,9 @@ describe('gear eras', () => {
     ] });
     expect(gen('gearEras:water', brews)).toBeNull(); // no water logged
   });
-  it('items under 20% in every month fold into Other', () => {
+  it('a lone item under 20% in every month keeps its own name (Other needs 2+)', () => {
     const f = gen('gearEras:dripper', [...month('04', 15, 2), ...month('05', 20, 0), ...month('06', 3, 17)])!;
-    expect(f.multi!.lines.map((l) => l.label)).toEqual(['Alpha Switch', 'CT62', 'Other']);
+    expect(f.multi!.lines.map((l) => l.label)).toEqual(['Alpha Switch', 'CT62', 'V60']);
     expect(f.multi!.lines[2].values).toEqual([15, 0, 0]);
   });
   it('no two eras but a moving mix: a share card', () => {
@@ -1006,4 +1006,20 @@ describe('rescuedBags under a brew filter', () => {
     const own = [1, 2, 3].flatMap((id) => mk(id, [5, 5.5, 8.5, 9, 9]).map((b) => ({ ...b, dripper: 'V60' })));
     expect(gen('rescuedBags', own, gb, { allBrews: own, wholeBrews: own, brewFilters: { dripper: 'V60' } })?.headline).toBe('3 bags rescued after a rough start');
   });
+});
+
+describe('monthlyMulti: when "Other" folds', () => {
+  const months = ['2026-07-10', '2026-08-10', '2026-09-10'];
+  const run = (sizes: [string, number][]) => monthlyMulti(
+    months.flatMap((localDate) => sizes.flatMap(([cat, n]) => Array.from({ length: n }, () => ({ localDate, cat })))),
+    (x) => x.cat, (g) => g.length, 'n', 1);
+  it('a lone leftover keeps its own name', () =>
+    expect(run([['A', 40], ['B', 40], ['C', 5]])!.lines.map((l) => l.label)).toEqual(['A', 'B', 'C']));
+  it('two or more leftovers fold into Other', () => {
+    const m = run([['A', 40], ['B', 40], ['C', 5], ['D', 5]])!;
+    expect(m.lines.map((l) => l.label)).toEqual(['A', 'B', 'Other']);
+    expect(m.lines[2].values[0]).toBe(10);
+  });
+  it('overflow past the line cap leaving one keeps it too', () =>
+    expect(run([['A', 20], ['B', 20], ['C', 20], ['D', 20], ['E', 20]])!.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'E']));
 });

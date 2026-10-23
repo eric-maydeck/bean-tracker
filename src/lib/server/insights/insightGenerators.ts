@@ -498,7 +498,10 @@ export function monthlyMulti<T extends { localDate: string }>(
   if (months.length < 3) return null;
   const totals = [...groupBy(months.flatMap(([, g]) => g), cat)].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
   const big = totals.map(([k]) => k).filter((k) => months.some(([, g]) => g.filter((x) => cat(x) === k).length >= MULTI_KEEP * g.length));
-  const names = fixed ?? (big.length === totals.length && big.length <= MULTI_LINES ? big : big.slice(0, MULTI_LINES - 1));
+  const kept = fixed ?? (big.length === totals.length && big.length <= MULTI_LINES ? big : big.slice(0, MULTI_LINES - 1));
+  // "Other" is for clutter: a lone leftover keeps its own name (it would take the same line), 2+ fold.
+  const rest = totals.map(([k]) => k).filter((k) => !kept.includes(k));
+  const names = !fixed && rest.length === 1 ? [...kept, rest[0]] : kept;
   const line = (x: T) => (names.includes(cat(x)!) ? cat(x)! : 'Other');
   const labels = !fixed && names.length < totals.length ? [...names, 'Other'] : names;
   return { x: months.map(([m]) => monthLabel(m)), unit, lines: labels.map((label) => ({ label, values: months.map(([, g]) => cell(g.filter((x) => line(x) === label), g)) })) };
