@@ -372,16 +372,19 @@ describe('habits and consumption params', () => {
     expect(insightsParams(parse('tab=consumption&agg=brewday')).toString()).toBe('tab=consumption&agg=brewday');
     expect(withDefaults({ agg: 'brewday' }).agg).toBe('brewday');
   });
-  it('trend (Brewed over time measure), eraBy and eraView: only the non-default values, junk dropped, round-trip', () => {
+  it('trend (Brewed over time measure), gearBy and gearView: only the non-default values, junk dropped, round-trip', () => {
     expect(parse('trend=brews').trend).toBe('brews');
     expect(parse('trend=Water').trend).toBe('water');
     expect(parse('trend=rating').trend).toBe('rating');
     expect(parse('trend=grams').trend).toBeUndefined();
-    expect(parse('eraBy=grinder').eraBy).toBe('grinder');
-    expect(parse('eraBy=dripper').eraBy).toBeUndefined();
-    expect(parse('eraView=lines').eraView).toBe('lines');
-    expect(parse('eraView=bars').eraView).toBeUndefined();
-    for (const q of ['tab=consumption&trend=water', 'tab=gear&eraBy=grinder&eraView=lines', 'tab=water&eraView=lines'])
+    expect(parse('gearBy=grinder').gearBy).toBe('grinder');
+    expect(parse('gearBy=dripper').gearBy).toBeUndefined();
+    expect(parse('gearView=lines').gearView).toBe('lines');
+    expect(parse('gearView=bars').gearView).toBeUndefined();
+    expect(parse('waterView=lines').waterView).toBe('lines');
+    expect(parse('waterView=lines').gearView).toBeUndefined(); // each chart keeps its own
+    expect(parse('gearView=lines').waterView).toBeUndefined();
+    for (const q of ['tab=consumption&trend=water', 'tab=gear&gearBy=grinder&gearView=lines', 'tab=water&waterView=lines'])
       expect(insightsParams(parse(q)).toString()).toBe(q);
     expect(insightsParams(parse('')).toString()).toBe('');
     expect(withDefaults({}).trend).toBeUndefined();
