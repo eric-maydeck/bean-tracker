@@ -16,15 +16,15 @@ export const SLOTS = Array.from({ length: 14 }, (_, i) => `var(--series-${i + 1}
 export const inkOf = (slot: string) => slot.replace(/\)$/, '-ink)');
 const OTHER = 'var(--series-other)';
 // 1-3 colored series take the browns (brown, tan, sand), 4+ the slots (ui-rules 42).
-export const slotsFor = (n: number) => (n <= 3 ? [1, 2, 3].map((i) => `var(--series-brown-${i})`) : SLOTS);
+// 1-3 series are the browns, light / medium / dark; two take the light and the dark (the best-separated pair); 4+ the slots.
+export const brownsFor = (n: number) => (n === 2 ? [1, 3] : [1, 2, 3]).map((i) => `var(--series-brown-${i})`);
+export const slotsFor = (n: number) => (n <= 3 ? brownsFor(n) : SLOTS);
 
-// Categorical slots in line order; "Other" is muted.
-// `strokes`: lines take the slots from 2 colored series up, because the browns' -ink tokens (the stroke colors) are nearly
-// the same brown; only a lone line stays brown.
-export function seriesColors(labels: string[], strokes = false) {
+// Categorical slots in line order, counted once over every series ("Other" included, so a chart's bars and lines agree);
+// "Other" is muted and takes no slot.
+export function seriesColors(labels: string[]) {
   let slot = 0;
-  const n = labels.filter((l) => l !== 'Other').length;
-  const slots = strokes && n > 1 ? SLOTS : slotsFor(n);
+  const slots = slotsFor(labels.length);
   return labels.map((l) => (l === 'Other' ? OTHER : slots[slot++ % slots.length]));
 }
 
@@ -75,7 +75,7 @@ export function smooth(p: [number, number][]): string {
 
 // Multi-line chart: one shared y scale over a 100×40 box; a null breaks its line. Each run is an SVG path.
 export function lines(m: Multi) {
-  const { py } = frame(m), n = m.x.length, colors = seriesColors(m.lines.map((l) => l.label), true);
+  const { py } = frame(m), n = m.x.length, colors = seriesColors(m.lines.map((l) => l.label));
   return m.lines.map((l, k) => {
     const runs: string[] = [];
     let run: [number, number][] = [];
@@ -85,6 +85,6 @@ export function lines(m: Multi) {
       if (run.length === 1 && (l.values[i + 1] ?? null) === null) run.push([px(i, n) + 0.8, py(v)]); // a lone point: a dash
     });
     if (run.length) runs.push(smooth(run));
-    return { label: l.label, runs, color: inkOf(colors[k]) }; // strokes use the -ink token: a pastel line alone fails 3:1
+    return { label: l.label, runs, color: inkOf(colors[k]) }; // strokes use the -ink token
   });
 }

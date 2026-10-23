@@ -86,13 +86,13 @@
   --series-14-ink: #06818c;
   --series-other: #a8a8a8;
   --series-other-ink: #6b6b6b;
-  /* The chart browns (ui-rules 42): 1-3 series take these in order (brown, tan, sand); 4+ take --series-*. */
-  --series-brown-1: #8a5a3b;
-  --series-brown-1-ink: #8a5a3b;
-  --series-brown-2: #c39a74;
-  --series-brown-2-ink: #8a6a48;
-  --series-brown-3: #d9c3a0;
-  --series-brown-3-ink: #7a6a4f;
+  /* The chart browns (ui-rules 42): 1-3 series take these in order (light, medium, dark); 4+ take --series-*. */
+  --series-brown-1: #d2a679;
+  --series-brown-1-ink: #d2a679;
+  --series-brown-2: #b0703f;
+  --series-brown-2-ink: #b0703f;
+  --series-brown-3: #73503a;
+  --series-brown-3-ink: #73503a;
   --div-low: #d8573c;
   --div-mid: #dcd9d4;
   --div-high: #1a9b7c;
@@ -192,12 +192,12 @@
     --series-14-ink: #07a3b2;
     --series-other: #b4b4b4;
     --series-other-ink: #a8a8a8;
-    --series-brown-1: #d99a6c;
-    --series-brown-1-ink: #d99a6c;
-    --series-brown-2: #8a6346;
-    --series-brown-2-ink: #b58d66;
-    --series-brown-3: #cdbba4;
-    --series-brown-3-ink: #cdbba4;
+    --series-brown-1: #f0c99a;
+    --series-brown-1-ink: #f0c99a;
+    --series-brown-2: #d0874e;
+    --series-brown-2-ink: #d0874e;
+    --series-brown-3: #a07458;
+    --series-brown-3-ink: #a07458;
     --div-low: #e5603f;
     --div-mid: #635d57;
     --div-high: #24a383;
@@ -284,12 +284,12 @@
   --series-14-ink: #07a3b2;
   --series-other: #b4b4b4;
   --series-other-ink: #a8a8a8;
-  --series-brown-1: #d99a6c;
-  --series-brown-1-ink: #d99a6c;
-  --series-brown-2: #8a6346;
-  --series-brown-2-ink: #b58d66;
-  --series-brown-3: #cdbba4;
-  --series-brown-3-ink: #cdbba4;
+  --series-brown-1: #f0c99a;
+  --series-brown-1-ink: #f0c99a;
+  --series-brown-2: #d0874e;
+  --series-brown-2-ink: #d0874e;
+  --series-brown-3: #a07458;
+  --series-brown-3-ink: #a07458;
   --div-low: #e5603f;
   --div-mid: #635d57;
   --div-high: #24a383;

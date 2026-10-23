@@ -68,12 +68,13 @@ describe('series palette', () => {
       });
     }
   });
-  it('the browns (1-3 series): brown, tan, sand apart, visible on the card, inks read as text', () => {
+  it('the browns (1-3 series): light, medium, dark apart and visible on the card; each ink is its base (user, 2026-10-23)', () => {
     themes.forEach(({ card }, t) => {
       const b = [1, 2, 3].map((n) => all(`--series-brown-${n}`)[t]), ink = [1, 2, 3].map((n) => all(`--series-brown-${n}-ink`)[t]);
       for (const [x, y] of pairs(b)) expect(dE(x, y), `${x} vs ${y}`).toBeGreaterThanOrEqual(8);
       b.forEach((c) => expect(dE(c, card), `${c} vs card`).toBeGreaterThanOrEqual(7));
-      ink.forEach((c) => expect(contrast(c, card), `ink ${c}`).toBeGreaterThanOrEqual(4.5));
+      expect(ink).toEqual(b);
+      expect(dE(b[0], b[2]), 'two series: light vs dark').toBeGreaterThanOrEqual(dE(b[0], b[1]));
     });
   });
 });

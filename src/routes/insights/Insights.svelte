@@ -713,8 +713,8 @@
     fill: var(--series-brown-1);
   }
   .bars rect.weekend {
-    fill: var(--series-brown-2);
-    stroke: var(--series-brown-2-ink);
+    fill: var(--series-brown-3);
+    stroke: var(--series-brown-3-ink);
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
   }

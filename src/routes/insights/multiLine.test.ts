@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { capList, inkOf, lines, nameColors, smooth, SLOTS } from './multiLine';
+import { capList, inkOf, lines, nameColors, seriesColors, smooth, SLOTS } from './multiLine';
 
 const m = (values: (number | null)[][], labels = values.map((_, i) => `L${i}`)) =>
   ({ x: values[0].map((_, i) => String(i)), lines: values.map((v, i) => ({ label: labels[i], values: v })) });
@@ -16,10 +16,11 @@ describe('multiLine', () => {
     expect(Math.max(...ys)).toBeLessThanOrEqual(10);
     expect(d.endsWith('100,0')).toBe(true);
   });
-  it('a lone line is brown; 2+ colored lines take the slots (the browns\' inks are nearly one color); Other muted', () => {
+  it('1-3 series are the browns (two: light and dark), counted with Other, which is muted', () => {
     expect(lines(m([[1, 2]]))[0].color).toBe('var(--series-brown-1-ink)');
+    expect(lines(m([[1, 2], [2, 3]])).map((l) => l.color)).toEqual(['var(--series-brown-1-ink)', 'var(--series-brown-3-ink)']);
     expect(lines(m([[1, 2], [2, 3], [3, 4]], ['A', 'Other', 'B'])).map((l) => l.color)).toEqual(
-      ['var(--series-1-ink)', 'var(--series-other-ink)', 'var(--series-2-ink)']);
+      ['var(--series-brown-1-ink)', 'var(--series-other-ink)', 'var(--series-brown-2-ink)']);
   });
   it('4+ colored series take the categorical slots in order', () =>
     expect(lines(m([[1, 2], [2, 3], [3, 4], [4, 5]], ['A', 'B', 'C', 'D'])).map((l) => l.color)).toEqual(
@@ -43,6 +44,8 @@ describe('nameColors', () => {
   it('up to 3 names are the browns', () => {
     expect([...nameColors(['A', 'B'], [{ a: 'A', b: 'C' }]).values()]).toEqual(['var(--series-brown-1)', 'var(--series-brown-2)', 'var(--series-brown-3)']);
   });
+  it('two names take the light and the dark brown', () =>
+    expect([...nameColors(['A', 'B'], []).values()]).toEqual(['var(--series-brown-1)', 'var(--series-brown-3)']));
   it('past the palette, a name reuses only a slot none of its bar or pair partners use', () => {
     const lines = Array.from({ length: 14 }, (_, i) => `L${i}`);
     const many = [{ a: 'L0', b: 'X' }, { a: 'X', b: 'Y' }, { a: 'Y', b: 'L1' }];
@@ -62,5 +65,13 @@ describe('capList (Other tips: 8 on desktop, 4 on phones)', () => {
     expect(capList(ten.slice(0, 9), 8)).toEqual({ shown: ten.slice(0, 9), more: 0 });
     expect(capList(ten.slice(0, 5), 4).more).toBe(0);
     expect(capList([], 4)).toEqual({ shown: [], more: 0 });
+  });
+});
+
+describe('seriesColors', () => {
+  it('counts every series once, Other included: 3 series are browns, 4 are the categorical set; Other stays gray', () => {
+    expect(seriesColors(['A', 'B', 'Other'])).toEqual(['var(--series-brown-1)', 'var(--series-brown-2)', 'var(--series-other)']);
+    expect(seriesColors(['A', 'Other'])).toEqual(['var(--series-brown-1)', 'var(--series-other)']);
+    expect(seriesColors(['A', 'B', 'C', 'Other'])).toEqual(['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-other)']);
   });
 });
