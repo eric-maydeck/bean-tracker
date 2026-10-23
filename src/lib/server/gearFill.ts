@@ -26,7 +26,8 @@ export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind
     const hit = attrs.find(([k]) => f.aliases?.includes(k))?.[1];
     if (!hit) continue;
     if (f.type === 'number') { const n = /\d+(?:\.\d+)?/.exec(hit); if (n) raw[f.key] = Number(n[0]); }
-    else if (f.type === 'select') { const o = f.options?.find((x) => x.toLowerCase() === hit.trim().toLowerCase()); if (o) raw[f.key] = o; }
+    // A field with options keeps only a match (a Size of "W108ｘD108" is dimensions, not a size code).
+    else if (f.options) { const o = f.options?.find((x) => x.toLowerCase() === hit.trim().toLowerCase()); if (o) raw[f.key] = o; }
     else raw[f.key] = hit;
   }
   const values: GearValues = {};

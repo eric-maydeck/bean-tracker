@@ -39,4 +39,15 @@ describe('buildGearFill', () => {
     expect(f.values).toEqual({ brand: 'Cafec', model: 'Abaca Filter 01', website: URL_ });
     expect(f.imageUrl).toBe('https://cdn.example.com/abaca.jpg');
   });
+  it('options fields keep only an option match, normalized; free text fields are unchanged', () => {
+    const p = parseHtmlProduct(fx('jsonld-dripper.html'))!;
+    p.attributes = { size: 'W108ｘD108ｘH86 millimeters', material: 'ceramic', flow: 'Gravity-fed' };
+    const f = buildGearFill(p, { url: URL_, kind: 'dripper', rates: null });
+    expect(f.values).not.toHaveProperty('size');
+    expect(f.values.material).toBe('Ceramic');
+    expect(f.values).not.toHaveProperty('flow');
+    p.attributes = { 'burr name': 'Anything goes' };
+    expect(buildGearFill(p, { url: URL_, kind: 'grinder', rates: null }).values.burrName).toBe('Anything goes');
+    expect(f.notes[0]).toBe(`Filled ${Object.keys(f.values).length} fields`);
+  });
 });
