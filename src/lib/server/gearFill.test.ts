@@ -12,15 +12,15 @@ describe('buildGearFill', () => {
     const f = buildGearFill(shopify(), { url: URL_, kind: 'grinder', rates: null });
     expect(f.values).toEqual({
       brand: 'Timemore', model: 'C3 Pro Hand Grinder', cost: 89, website: URL_,
-      burrType: 'Conical', burrSize: 38, burrCoating: 'Stainless steel', adjustment: 'Stepped', stepSize: 18
+      type: 'Hand', burrType: 'Conical', burrSize: 38, burrCoating: 'Stainless steel', adjustment: 'Stepped', stepSize: 18
     });
     expect(f.imageUrl).toBe('https://cdn.example.com/c3pro.jpg');
-    expect(f.notes[0]).toBe('Filled 9 fields');
+    expect(f.notes[0]).toBe('Filled 10 fields');
   });
   it('drops stepSize unless the grinder is Stepped, and unknown adjustment text', () => {
     const p = shopify(); p.attributes.adjustment = 'Stepless';
     expect(buildGearFill(p, { url: URL_, kind: 'grinder', rates: null }).values).not.toHaveProperty('stepSize');
-    p.attributes.adjustment = '40 clicks';
+    p.attributes.adjustment = '40 clicks'; p.description = '';
     expect(buildGearFill(p, { url: URL_, kind: 'grinder', rates: null }).values).not.toHaveProperty('adjustment');
   });
   it('JSON-LD page: brand from Brand.name', () => {
@@ -34,9 +34,9 @@ describe('buildGearFill', () => {
     expect(f.values).not.toHaveProperty('cost');
     expect(f.notes.join(' ')).toContain("couldn't convert to USD, cost left blank");
   });
-  it('no attributes: name, price and image only', () => {
+  it('no attributes: name, price, image and what the title says', () => {
     const f = buildGearFill(parseHtmlProduct(fx('og-only-filter.html'))!, { url: URL_, kind: 'filter', rates: null });
-    expect(f.values).toEqual({ brand: 'Cafec', model: 'Abaca Filter 01', website: URL_ });
+    expect(f.values).toEqual({ brand: 'Cafec', model: 'Abaca Filter 01', website: URL_, fits: '01' });
     expect(f.imageUrl).toBe('https://cdn.example.com/abaca.jpg');
   });
   it('options fields keep only an option match, normalized; free text fields are unchanged', () => {
@@ -49,6 +49,19 @@ describe('buildGearFill', () => {
     p.attributes = { 'burr name': 'Anything goes' };
     expect(buildGearFill(p, { url: URL_, kind: 'grinder', rates: null }).values.burrName).toBe('Anything goes');
     expect(f.notes[0]).toBe(`Filled ${Object.keys(f.values).length} fields`);
+  });
+
+  it('prose specs from the description when no labeled line has them (real Hario V60 page)', () => {
+    const p = parseShopifyProduct(JSON.parse(fx('shopify-hario-v60-ceramic.json')), { name: 'Hario USA', currency: 'USD' });
+    expect(buildGearFill(p, { url: URL_, kind: 'dripper', rates: null }).values).toEqual({
+      brand: 'Hario', model: 'V60 Ceramic Coffee Dripper 02 - Metallic Colors', cost: 50, website: URL_,
+      shape: 'Conical', coneAngle: 60, material: 'Ceramic', flow: 'Open', size: '02'
+    });
+  });
+  it('a labeled line that matches no option falls back to the prose', () => {
+    const p = parseShopifyProduct(JSON.parse(fx('shopify-hario-v60-ceramic.json')), null);
+    p.attributes.material = 'Arita porcelain with titanium';
+    expect(buildGearFill(p, { url: URL_, kind: 'dripper', rates: null }).values.material).toBe('Ceramic');
   });
 });
 

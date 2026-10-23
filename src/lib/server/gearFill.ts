@@ -17,6 +17,58 @@ export function cleanBrand(brand: string): string {
   return b;
 }
 
+// Prose cues for option fields that no labeled spec line filled ("its conical shape", "Porcelain", "lack of flow
+// restriction"). The option mentioned first in the title, then the description, wins.
+// ponytail: keyword regexes, not language understanding; add a cue when a real page misses one.
+const CUES: Partial<Record<GearKind, Record<string, Record<string, RegExp>>>> = {
+  dripper: {
+    shape: { Conical: /\bconical\b|\bcone[- ]shaped\b/i, 'Flat bottom': /\bflat[- ]bottom/i, Wave: /\bwave\b/i },
+    material: {
+      Ceramic: /\bceramic|\bporcelain|\barita/i, Glass: /\bglass\b/i, Tritan: /\btritan\b/i,
+      Plastic: /\bplastic\b|\bresin\b|\bpolypropylene\b/i, Metal: /\bstainless\b|\bcopper dripper\b/i
+    },
+    flow: {
+      // "flow restriction" alone reads as Restricted below; the negated phrases come first in the same text.
+      Open: /\b(?:no|lack of|without)\s+(?:a\s+)?flow restrict|\bunrestricted\b|\bopen flow\b/i,
+      'Valve / immersion': /\bvalve\b|\bimmersion\b/i, Restricted: /\brestricted\b|\bflow[- ]restrict/i
+    },
+    size: { '01': /\b01\b/, '02': /\b02\b/, '03': /\b03\b/ }
+  },
+  filter: {
+    material: { Paper: /\bpaper\b/i, Cloth: /\bcloth\b|\bflannel\b/i, Metal: /\bstainless\b|\bmetal\b/i },
+    shape: { Cone: /\bcone\b|\bconical\b|\bV60\b/i, Wave: /\bwave\b/i, 'Flat-bottom basket': /\bbasket\b|\bflat[- ]bottom/i },
+    fits: { '01': /\b01\b/, '02': /\b02\b/, '155': /\b155\b/, '185': /\b185\b/ }
+  },
+  grinder: {
+    type: { Hand: /\bhand grinder\b|\bmanual\b/i, Electric: /\belectric\b|\bmotor\b/i },
+    burrType: { Conical: /\bconical burr/i, Flat: /\bflat burr/i },
+    burrCoating: {
+      DLC: /\bDLC\b/, 'Red Speed': /\bred speed\b/i, 'Silver Knight': /\bsilver knight\b/i,
+      'Titanium (TiN)': /\btitanium nitride\b|\bTiN\b/, 'Hardened steel': /\bhardened steel\b/i, 'Stainless steel': /\bstainless steel burr/i
+    },
+    adjustment: { Stepless: /\bstepless\b/i, Stepped: /\bstepped\b/i }
+  }
+};
+// Number cues: the first capture group is the value. A V60 is named for its 60° cone.
+const NUM_CUES: Partial<Record<GearKind, Record<string, RegExp[]>>> = {
+  dripper: { coneAngle: [/(\d{2,3})\s*(?:°|-?\s*degrees?\b)/i, /\bV(60)\b/] },
+  grinder: {
+    burrSize: [/(\d{2,3})\s*mm\s+(?:conical |flat )?burrs?/i],
+    stepSize: [/(\d+(?:\.\d+)?)\s*(?:µm|μm|microns?)\s*(?:per|\/)\s*(?:click|step)/i]
+  }
+};
+
+function proseHit(cues: Record<string, RegExp>, texts: string[]): string | undefined {
+  for (const t of texts) {
+    let best: [number, string] | undefined;
+    for (const [opt, re] of Object.entries(cues)) {
+      const i = t.search(re);
+      if (i >= 0 && (!best || i < best[0])) best = [i, opt];
+    }
+    if (best) return best[1];
+  }
+}
+
 // Turns a parsed product page into gear details. Every value is checked with parseGearValues, so the form never
 // receives something the save would reject; a field that fails is simply left out.
 export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind; rates: UsdRates | null }): GearFill {
@@ -43,6 +95,14 @@ export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind
     // A field with options keeps only a match (a Size of "W108ｘD108" is dimensions, not a size code).
     else if (f.options) { const o = f.options?.find((x) => x.toLowerCase() === hit.trim().toLowerCase()); if (o) raw[f.key] = o; }
     else raw[f.key] = hit;
+  }
+  const texts = [p.title ?? '', p.description];
+  for (const [key, cues] of Object.entries(CUES[ctx.kind] ?? {})) if (!(key in raw)) {
+    const o = proseHit(cues, texts);
+    if (o) raw[key] = o;
+  }
+  for (const [key, res] of Object.entries(NUM_CUES[ctx.kind] ?? {})) if (!(key in raw)) {
+    for (const re of res) { const m = texts.map((t) => re.exec(t)).find(Boolean); if (m) { raw[key] = Number(m[1]); break; } }
   }
   const values: GearValues = {};
   for (const [key, val] of Object.entries(raw)) {
