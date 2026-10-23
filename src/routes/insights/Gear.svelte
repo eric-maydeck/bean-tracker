@@ -9,7 +9,8 @@
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
-  import StackedBars from './StackedBars.svelte';
+  import ChartToggle from './ChartToggle.svelte';
+  import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
   import JumpNav from './JumpNav.svelte';
   import { fitPairs } from './fitPairs';
 
@@ -18,7 +19,10 @@
     placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras);
+  let empty = $derived(!t.drippers.length && !t.filters.length && !t.matrix && !t.byRoast && !t.eras && !t.grinderEras);
+  const ERA_BY_OPTIONS = [['dripper', 'Dripper'], ['grinder', 'Grinder']] as const;
+  let eraBy = $derived(s.eraBy ?? 'dripper');
+  let eras = $derived(eraBy === 'grinder' ? t.grinderEras : t.eras);
   // The matrix fills the shorter board's column when both boards are there (ui-rules 40).
   let stack = $derived(!!t.matrix && t.drippers.length > 0 && t.filters.length > 0);
   let underDrippers = $derived(t.drippers.length < t.filters.length);
@@ -83,10 +87,18 @@
     </section>
   {/if}
 
-  {#if t.eras}
+  {#if t.eras || t.grinderEras}
     <section class="chart-panel" data-section="gear-eras">
-      <LabHead id="gear-eras" title="Gear usage over time" help={["Each dripper's share of the month's brews, rated or not.", 'Shows when you switched.']} {placeTip} />
-      <StackedBars m={t.eras} ariaLabel="Gear usage over time: each dripper's share of brews by month" />
+      <LabHead id="gear-eras" title="Gear usage over time" {placeTip}
+        help={[`Each ${eraBy}'s share of the month's brews, rated or not.`, 'Shows when you switched.', 'Bars stack to 100%; Lines draw each one on its own.']}>
+        <ChartToggle label="Gear" options={ERA_BY_OPTIONS} value={eraBy} pick={(v) => choose({ eraBy: v === 'grinder' ? 'grinder' : undefined })} />
+        <ChartToggle label="Usage view" options={ERA_VIEW_OPTIONS} value={s.eraView ?? 'bars'} pick={(v) => choose({ eraView: v === 'lines' ? 'lines' : undefined })} />
+      </LabHead>
+      {#if eras}
+        <UsageChart m={eras} view={s.eraView ?? 'bars'} ariaLabel="Gear usage over time: each {eraBy}'s share of brews by month" />
+      {:else}
+        <p class="hl-empty">{emptyLine(`No ${eraBy} with 20+ brews a month for 3 months in this period.`)}</p>
+      {/if}
     </section>
   {/if}
 {/if}

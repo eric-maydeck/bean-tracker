@@ -61,7 +61,8 @@
     monotone = false,
     integer = false,
     dashGaps = false,
-    legend = false
+    legend = false,
+    slots = false
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -83,10 +84,10 @@
     // Bar charts only: upright bars in one hue (a distribution, not ranked categories).
     vertical?: boolean;
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
-    // line overlay; otherwise a paired series in the next palette color.
+    // line overlay; trend = a bold solid rolling-average line over bars; otherwise a paired series in the next palette color.
     // `names`: per-bar dates for the tooltip when a series' bar covers other days than the axis label says.
-    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[] }[];
-    // Vertical bars: a fitted value axis floor (a 1–10 rating scale), instead of zero.
+    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; trend?: boolean; names?: (string | null)[] }[];
+    // Vertical bars and plain lines: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
     // The tooltip's value text, and horizontal bars' value labels.
     format?: (v: number) => string;
@@ -108,6 +109,8 @@
     samples?: Sample[];
     // Always show the legend, so paired charts' plot areas line up.
     legend?: boolean;
+    // Multi-line: the categorical slots from the first line, so 2-3 lines are told apart (else the browns, near-identical as strokes).
+    slots?: boolean;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -225,8 +228,9 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    const lineColor = themeColor(seriesToken(0, series.length + 1)); // brown up to 3 series, else the palette's first slot
-    const lineInk = themeColor(`${seriesToken(0, series.length + 1)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
+    const palette = slots ? 14 : series.length + 1; // `slots`: the categorical palette from the first line
+    const lineColor = themeColor(seriesToken(0, palette)); // brown up to 3 series, else the palette's first slot
+    const lineInk = themeColor(`${seriesToken(0, palette)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
     const bgColors = paletteColors(labels.length);
     const inkColors = paletteColors(labels.length, '-ink');
     const vbar = type === 'bar' && vertical;
@@ -293,11 +297,13 @@
               ]
             : []),
           ...series.map((x, i) =>
-            x.dashed
+            x.trend
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: themeColor('--color-text'), backgroundColor: themeColor('--color-text'), borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, fill: false }
+            : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, series.length + 1)), borderColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), borderWidth: 1,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, palette)), borderColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`), borderWidth: 1,
                 // A multi-line chart: the first line's look (2px, dots, tension) for every line, in its own color.
-                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, series.length + 1)}-ink`) }) }
+                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`) }) }
           )
         ]
       },
@@ -420,7 +426,8 @@
                     grid: { color: gridColor }
                   },
                   y: {
-                    beginAtZero: !!trendValues,
+                    beginAtZero: !!trendValues && yMin === undefined,
+                    min: yMin,
                     ticks: {
                       color: textColor,
                       ...(integer && { precision: 0 }),
@@ -443,7 +450,7 @@
   $effect(() => {
     void format;
     void tipFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend, slots]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();

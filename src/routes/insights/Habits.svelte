@@ -23,7 +23,8 @@
   const HOURS = Array.from({ length: 24 }, (_, i) => hour12(i, true));
   // Chart tooltips: averages to one decimal, grams with their unit.
   // Avg per day values are small fractions (0.31 brews): two decimals, with " avg" after the unit.
-  const avg = $derived(agg === 'average' && measure !== 'rating');
+  const avg = $derived(agg !== 'total' && measure !== 'rating');
+  const unitWord = $derived(agg === 'brewday' ? 'per brew day' : 'per day');
   const textOf = (avg: boolean) => (v: number | null) => {
     const num = (n: number) =>
       measure === 'grams' ? formatGrams(n) : measure === 'rating' || !Number.isInteger(n) ? n.toFixed(avg ? 2 : 1) : String(n);
@@ -84,14 +85,14 @@
       <h2 id="habits-hour">By hour of day</h2>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
+      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? unitWord : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
       <h2 id="habits-weekday">By day of week</h2>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? 'per weekday, averaged' : 'total'}`}</p>
+      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? (agg === 'brewday' ? 'per brew day, by weekday' : 'per weekday, averaged') : 'total'}`}</p>
     </section>
   </div>
   <section class="chart-panel">

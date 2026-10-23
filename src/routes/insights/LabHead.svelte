@@ -2,19 +2,21 @@
   import Icon from '$lib/components/Icon.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
+  import type { Snippet } from 'svelte';
   import { SAMPLE_HELP } from '$lib/sample';
   import HeadingAnchor from './HeadingAnchor.svelte';
 
   // A lab section's heading (an anchor link) and its `?` explanation popover (ui-rules 27): the section's
   // title in bold, then `help`, one short idea per line (ui-rules 36). `cut`: the chart drops data for practicality
   // (ui-rules 47): a top-right note "<lead> See all." whose See all opens a tip with what was dropped.
-  let { id, title, help, placeTip, level = 2, cut }: { id: string; title: string; help: string[]; placeTip: (e: ToggleEvent) => void; level?: 2 | 3; cut?: { lead: string; tip: Tip } } = $props();
+  let { id, title, help, placeTip, level = 2, cut, children }: { id: string; title: string; help: string[]; placeTip: (e: ToggleEvent) => void; level?: 2 | 3; cut?: { lead: string; tip: Tip }; children?: Snippet } = $props();
 </script>
 
 <div class="lab-head">
   <HeadingAnchor {id} {level}>{title}</HeadingAnchor>
   <button class="mode-tip-button" popovertarget="{id}-help" aria-label="About {title}" aria-describedby="{id}-help"><Icon name="question" /></button>
   <div class="mode-tip" id="{id}-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title, lines: help.filter((l) => l !== SAMPLE_HELP), sampleLegend: help.includes(SAMPLE_HELP) }} /></div>
+  {#if children}<div class="head-tools">{@render children()}</div>{/if}
   {#if cut}<p class="chart-note cut-note">{cut.lead} <TextTip label="See all" tip={cut.tip} />.</p>{/if}
 </div>
 
@@ -28,6 +30,14 @@
   }
   .lab-head :global(:is(h2, h3)) {
     margin: 0;
+  }
+  /* The panel's own toggles: top right, wrapping under the title on a narrow card (still right-aligned). */
+  .head-tools {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
   /* Top right; on a narrow card it wraps under the title, still right-aligned. */
   .cut-note {

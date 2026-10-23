@@ -15,7 +15,8 @@
   import MineralMap from './MineralMap.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { BAG_MIN_BREWS, single } from '$lib/sample';
-  import StackedBars from './StackedBars.svelte';
+  import ChartToggle from './ChartToggle.svelte';
+  import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
   import { inkOf, nameColors } from './multiLine';
   import { fitPairs } from './fitPairs';
 
@@ -129,8 +130,10 @@
 
   {#if t.eras}
     <section class="chart-panel" data-section="water-eras">
-      <LabHead id="water-eras" title="Water usage over time" help={["Each recipe's share of the month's brews, rated or not.", 'Shows when you switched.']} {placeTip} />
-      <StackedBars m={t.eras} colors={t.eras.lines.map((l) => colorOf(l.label))} ariaLabel="Water usage over time: each recipe's share of brews by month" />
+      <LabHead id="water-eras" title="Water usage over time" help={["Each recipe's share of the month's brews, rated or not.", 'Shows when you switched.', 'Bars stack to 100%; Lines draw each recipe on its own.']} {placeTip}>
+        <ChartToggle label="Usage view" options={ERA_VIEW_OPTIONS} value={s.eraView ?? 'bars'} pick={(v) => choose({ eraView: v === 'lines' ? 'lines' : undefined })} />
+      </LabHead>
+      <UsageChart m={t.eras} view={s.eraView ?? 'bars'} colors={t.eras.lines.map((l) => colorOf(l.label))} ariaLabel="Water usage over time: each recipe's share of brews by month" />
     </section>
   {/if}
 

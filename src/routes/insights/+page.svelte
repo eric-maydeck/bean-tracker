@@ -336,13 +336,14 @@
     data.consumptionTab
       ? (() => {
           const g = s.unit === 'grams';
-          const avg = s.agg === 'average';
+          const avg = s.agg !== 'total';
+          const per = s.agg === 'brewday' ? '/brew day' : '/day';
           // Per-day rates of bags are small fractions: two decimals.
           const f = g ? formatGrams : avg ? (n: number) => n.toFixed(2) : count;
           return [
-            { key: 'brewed', label: g ? 'Brewed' + (avg ? '/day' : '') : avg ? 'Finished/day' : 'Bags finished', fmt: f, split: true },
-            { key: 'bought', label: g ? 'Bought' + (avg ? '/day' : '') : avg ? 'Bought/day' : 'Bags bought', fmt: f, split: true },
-            { key: 'net', label: avg ? 'Net/day' : 'Net change', fmt: signed(f), split: true },
+            { key: 'brewed', label: g ? 'Brewed' + (avg ? per : '') : avg ? 'Finished' + per : 'Bags finished', fmt: f, split: true },
+            { key: 'bought', label: g ? 'Bought' + (avg ? per : '') : avg ? 'Bought' + per : 'Bags bought', fmt: f, split: true },
+            { key: 'net', label: avg ? 'Net' + per : 'Net change', fmt: signed(f), split: true },
             avg
               ? {
                   key: 'busiest', label: 'Busiest day', fmt: (n: number) => busyDay(n),
@@ -771,7 +772,7 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
+  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} trend={s.trend} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas, ['Bought', 'Net', 'On hand', 'Days to clear', ...(s.unit === 'bags' ? ['Bags finished'] : [])])}{/snippet}
   </Consumption>
 {:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}

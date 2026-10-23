@@ -2052,6 +2052,111 @@ export const STATES: State[] = [
       await expect(page.locator('.chart-panel canvas')).toHaveCount(3);
     }
   },
+  {
+    // D3: Brewed over time's in-chart Measure toggle (the Unit | Brews | Water | Rating), URL state, and the header's alignment.
+    name: 'insights-consumption-trend-toggle',
+    path: () => '/insights?tab=consumption&range=all&by=week',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.locator('#consumption-chart-brewed') });
+      const group = panel.getByRole('group', { name: 'Measure' });
+      await expect(group.getByRole('button')).toHaveText(['Grams', 'Brews', 'Water', 'Rating']);
+      // One row, inside the panel's content box (never crowded off its edge), every button the same height.
+      const [g, p] = [(await group.boundingBox())!, (await panel.boundingBox())!];
+      expect(g.x).toBeGreaterThanOrEqual(p.x + 8);
+      expect(g.x + g.width).toBeLessThanOrEqual(p.x + p.width - 8);
+      const ys = await group.getByRole('button').evaluateAll((bs) => bs.map((b) => Math.round(b.getBoundingClientRect().top)));
+      expect(new Set(ys).size, 'toggle buttons share a row').toBe(1);
+      // The Unit label follows the sticky Unit; Brews / Water switch the chart's title and the URL.
+      await page.getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags' }).click();
+      await expect(group.getByRole('button').first()).toHaveText('Bags');
+      await group.getByRole('button', { name: 'Brews' }).click();
+      await expect(page).toHaveURL(/trend=brews/);
+      await expect(panel.getByRole('heading', { name: 'Brews over time' })).toBeVisible();
+      await group.getByRole('button', { name: 'Water' }).click();
+      await expect(page).toHaveURL(/trend=water/);
+      await expect(panel.locator('.chart-note')).toContainText('Litres of water poured');
+      // Rating: the Ratings menu appears (the rating filters); the line drops the trend legend entry.
+      await group.getByRole('button', { name: 'Rating' }).click();
+      await expect(page).toHaveURL(/trend=rating/);
+      await expect(page.locator('.filter-bar').getByText(/calibrated ratings/i).first()).toBeVisible();
+      await expect(panel.locator('canvas')).toHaveCount(1);
+      // The first button is the Unit again: back to the sticky Unit, `trend` gone from the URL.
+      await group.getByRole('button').first().click();
+      await expect(page).not.toHaveURL(/trend=/);
+      await expect(page).toHaveURL(/unit=bags/);
+      await expect(panel.getByRole('heading', { name: 'Brewed over time' })).toBeVisible();
+    }
+  },
+  {
+    name: 'insights-consumption-trend-water-compare',
+    path: () => '/insights?tab=consumption&range=1m&compare=1&trend=water&by=day',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel').filter({ has: page.locator('#consumption-chart-brewed') });
+      await expect(panel.getByRole('button', { name: 'Water' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.locator('canvas')).toBeVisible();
+      await expect(panel.locator('.chart-note')).toContainText('per day');
+    }
+  },
+  {
+    // Show's third option: Per brew day, one URL value, tile labels follow.
+    name: 'insights-consumption-brewday',
+    path: () => '/insights?tab=consumption&range=all&agg=brewday',
+    act: async (page) => {
+      const show = page.getByRole('group', { name: 'Show' });
+      await expect(show.getByRole('button')).toHaveText(['Avg per day', 'Per brew day', 'Total']);
+      await expect(show.getByRole('button', { name: 'Per brew day' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.stat-label', { hasText: 'Brewed/brew day' })).toBeVisible();
+      await show.getByRole('button', { name: 'Total' }).click();
+      await expect(page).toHaveURL(/agg=total/);
+      await show.getByRole('button', { name: 'Avg per day' }).click();
+      await expect(page).not.toHaveURL(/agg=/);
+    }
+  },
+  {
+    name: 'insights-habits-brewday',
+    path: () => '/insights?tab=habits&agg=brewday',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Per brew day' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.locator('.chart-note').first()).toContainText('per brew day');
+    }
+  },
+  {
+    // D3: Gear usage over time: Dripper | Grinder and Bars | Lines in the panel header; Water's has Bars | Lines.
+    name: 'insights-usage-toggles',
+    path: () => '/insights?tab=gear&eraBy=grinder&eraView=lines',
+    act: async (page) => {
+      const panel = page.locator('[data-section="gear-eras"]');
+      await expect(panel.getByRole('button', { name: 'Grinder' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.getByRole('button', { name: 'Lines' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.locator('canvas')).toBeVisible();
+      await expect(panel.locator('.stacked')).toHaveCount(0);
+      // Both groups sit inside the panel, level with the heading's row when it fits.
+      const [p, a, b] = [(await panel.boundingBox())!, (await panel.getByRole('group', { name: 'Gear' }).boundingBox())!, (await panel.getByRole('group', { name: 'Usage view' }).boundingBox())!];
+      for (const x of [a, b]) {
+        expect(x.x).toBeGreaterThanOrEqual(p.x + 8);
+        expect(x.x + x.width).toBeLessThanOrEqual(p.x + p.width - 8);
+      }
+      await panel.getByRole('button', { name: 'Bars' }).click();
+      await expect(page).toHaveURL(/eraBy=grinder/);
+      await expect(page).not.toHaveURL(/eraView=/);
+      await expect(panel.locator('.stacked')).toBeVisible();
+      await panel.getByRole('button', { name: 'Dripper' }).click();
+      await expect(page).not.toHaveURL(/eraBy=/);
+      await expect(panel.getByRole('button', { name: 'Dripper' })).toHaveAttribute('aria-pressed', 'true');
+    }
+  },
+  {
+    name: 'insights-water-usage-lines',
+    path: () => '/insights?tab=water&eraView=lines',
+    act: async (page) => {
+      const panel = page.locator('[data-section="water-eras"]');
+      await expect(panel.getByRole('button', { name: 'Lines' })).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.locator('canvas')).toBeVisible();
+      await panel.getByRole('button', { name: 'Bars' }).click();
+      await expect(page).not.toHaveURL(/eraView=/);
+      await expect(panel.locator('.stacked')).toBeVisible();
+    }
+  },
   { name: 'insights-consumption-1w', path: () => '/insights?tab=consumption&range=1w',
     act: async (page) => expect(page.getByRole('button', { name: 'Month' })).toBeDisabled() },
   {
