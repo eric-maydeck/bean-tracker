@@ -2097,6 +2097,42 @@ export const STATES: State[] = [
       await expect(panel.locator('.chart-note')).toContainText('per day');
     }
   },
+  // The See all note shares the period line's row, so it appearing or changing moves nothing below it (desktop); phones hold its
+  // line (min-height) whenever the tab can show it. Every tab with the Ratings menu.
+  ...(['consumption&trend=rating', 'habits&measure=rating', 'gear', 'leaderboards', 'records', 'brewing', 'water', 'sweetspots'] as const).map((q) => ({
+    name: `insights-see-all-no-shift-${q.split('&')[0]}`,
+    path: () => `/insights?tab=${q}&range=all`,
+    act: async (page: Page) => {
+      const row = page.locator('.period-row');
+      const note = row.locator('.see-all');
+      const top = async () => { const b = (await row.boundingBox())!; return Math.round(b.y + b.height + (await page.evaluate(() => scrollY))); };
+      await expect(note).toBeVisible();
+      const before = await top();
+      const [r, n] = [(await row.boundingBox())!, (await note.boundingBox())!];
+      if ((page.viewportSize()?.width ?? 0) >= 768) expect(n.y + n.height, 'note on the period line\'s row').toBeLessThanOrEqual(r.y + r.height + 1);
+      // Toggling what it says (See all → Back to defaults) moves nothing.
+      await note.locator('.filter-clear-all').click();
+      await expect(note).toContainText(/Showing everything|hidden/);
+      await expect.poll(top).toBe(before);
+      await note.locator('.filter-clear-all').click();
+      await expect.poll(top).toBe(before);
+    }
+  })),
+  {
+    // The note appearing (Rating on) or going (Brews) leaves the first panel where it was (desktop; the filter bar's menu aside).
+    name: 'insights-see-all-appears-in-place',
+    path: () => '/insights?tab=consumption&range=all&by=week',
+    act: async (page) => {
+      if ((page.viewportSize()?.width ?? 0) < 768) return;
+      const row = () => page.locator('.period-row').boundingBox().then((b) => b!.height);
+      const first = async () => (await page.locator('.chart-panel').first().boundingBox())!.y + (await page.evaluate(() => scrollY));
+      const [y0, h0] = [await first(), await row()];
+      await page.getByRole('group', { name: 'Measure' }).getByRole('button', { name: 'Rating' }).click();
+      await expect(page.locator('.period-row .see-all')).toBeVisible();
+      expect(await row(), 'the row keeps its height').toBeCloseTo(h0, 0);
+      expect(await first(), 'content below stays put').toBeCloseTo(y0, 0);
+    }
+  },
   {
     // Show's third option: Per brew day, one URL value, tile labels follow.
     name: 'insights-consumption-brewday',
@@ -2123,7 +2159,7 @@ export const STATES: State[] = [
   {
     // D3: Gear usage over time: Dripper | Grinder and Bars | Lines in the panel header; Water's has Bars | Lines.
     name: 'insights-usage-toggles',
-    path: () => '/insights?tab=gear&eraBy=grinder&eraView=lines',
+    path: () => '/insights?tab=gear&gearBy=grinder&gearView=lines',
     act: async (page) => {
       const panel = page.locator('[data-section="gear-eras"]');
       await expect(panel.getByRole('button', { name: 'Grinder' })).toHaveAttribute('aria-pressed', 'true');
@@ -2137,23 +2173,32 @@ export const STATES: State[] = [
         expect(x.x + x.width).toBeLessThanOrEqual(p.x + p.width - 8);
       }
       await panel.getByRole('button', { name: 'Bars' }).click();
-      await expect(page).toHaveURL(/eraBy=grinder/);
-      await expect(page).not.toHaveURL(/eraView=/);
+      await expect(page).toHaveURL(/gearBy=grinder/);
+      await expect(page).not.toHaveURL(/gearView=/);
       await expect(panel.locator('.stacked')).toBeVisible();
       await panel.getByRole('button', { name: 'Dripper' }).click();
-      await expect(page).not.toHaveURL(/eraBy=/);
+      await expect(page).not.toHaveURL(/gearBy=/);
       await expect(panel.getByRole('button', { name: 'Dripper' })).toHaveAttribute('aria-pressed', 'true');
     }
   },
   {
+    // Each chart keeps its own Bars | Lines: Gear's Lines never reach Water's usage chart.
+    name: 'insights-usage-views-independent',
+    path: () => '/insights?tab=water&gearView=lines&gearBy=grinder',
+    act: async (page) => {
+      await expect(page.locator('[data-section="water-eras"] .stacked')).toBeVisible();
+      await expect(page.locator('[data-section="water-eras"]').getByRole('button', { name: 'Bars' })).toHaveAttribute('aria-pressed', 'true');
+    }
+  },
+  {
     name: 'insights-water-usage-lines',
-    path: () => '/insights?tab=water&eraView=lines',
+    path: () => '/insights?tab=water&waterView=lines',
     act: async (page) => {
       const panel = page.locator('[data-section="water-eras"]');
       await expect(panel.getByRole('button', { name: 'Lines' })).toHaveAttribute('aria-pressed', 'true');
       await expect(panel.locator('canvas')).toBeVisible();
       await panel.getByRole('button', { name: 'Bars' }).click();
-      await expect(page).not.toHaveURL(/eraView=/);
+      await expect(page).not.toHaveURL(/waterView=/);
       await expect(panel.locator('.stacked')).toBeVisible();
     }
   },

@@ -62,7 +62,7 @@
     integer = false,
     dashGaps = false,
     legend = false,
-    slots = false
+    colors
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -109,8 +109,8 @@
     samples?: Sample[];
     // Always show the legend, so paired charts' plot areas line up.
     legend?: boolean;
-    // Multi-line: the categorical slots from the first line, so 2-3 lines are told apart (else the browns, near-identical as strokes).
-    slots?: boolean;
+    // Lines: one color token per line (`var(--series-3)`, the page's per-name colors), in line order; else by position.
+    colors?: string[];
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -228,9 +228,17 @@
     // reads more naturally than the bar/doughnut per-category palette, and
     // filling the area under the line would visually overstate a rating
     // scale that doesn't start at 0.
-    const palette = slots ? 14 : series.length + 1; // `slots`: the categorical palette from the first line
-    const lineColor = themeColor(seriesToken(0, palette)); // brown up to 3 series, else the palette's first slot
-    const lineInk = themeColor(`${seriesToken(0, palette)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
+    // ui-rules 42: 1-3 colored series are the browns, 4+ the slots; 2+ colored lines take the slots (the browns' -ink
+    // strokes are nearly one color). A trend or dashed overlay is no category of its own.
+    const colored = 1 + series.filter((x) => !x.trend && !x.dashed).length;
+    const palette = type === 'line' && colored > 1 ? 14 : colored;
+    const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
+    const trendInk = themeColor('--series-8-ink'); // a mid blue against the browns, light and dark theme
+    const hasTrend = series.some((x) => x.trend);
+    // A trend chart's bars are a little see-through (the outline keeps the contrast), the trend line on top.
+    const soft = (c: string) => (hasTrend ? `${c}b3` : c);
+    const lineColor = themeColor(tokAt(0)); // brown up to 3 series, else the palette's first slot
+    const lineInk = themeColor(`${tokAt(0)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
     const bgColors = paletteColors(labels.length);
     const inkColors = paletteColors(labels.length, '-ink');
     const vbar = type === 'bar' && vertical;
@@ -272,7 +280,7 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : lineColor, borderColor: lineInk, borderWidth: 1 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: lineInk, borderWidth: 1 }
             : {
                 label: datasetLabel,
                 data: values,
@@ -298,12 +306,12 @@
             : []),
           ...series.map((x, i) =>
             x.trend
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: themeColor('--color-text'), backgroundColor: themeColor('--color-text'), borderWidth: 2.5, pointRadius: 0, pointHoverRadius: 4, tension: 0.25, fill: false }
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: trendInk, backgroundColor: trendInk, pointBackgroundColor: trendInk, borderWidth: 3.5, pointRadius: 0, pointHoverRadius: 6, cubicInterpolationMode: 'monotone' as const, fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : themeColor(seriesToken((i + 1) % 14, palette)), borderColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`), borderWidth: 1,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(i + 1))), borderColor: themeColor(`${tokAt(i + 1)}-ink`), borderWidth: 1,
                 // A multi-line chart: the first line's look (2px, dots, tension) for every line, in its own color.
-                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`), backgroundColor: themeColor(`${seriesToken((i + 1) % 14, palette)}-ink`) }) }
+                ...(type === 'line' && { borderWidth: 2, pointRadius: dots ? 3 : 0, tension: 0.25, ...gapped, pointBackgroundColor: themeColor(`${tokAt(i + 1)}-ink`), backgroundColor: themeColor(`${tokAt(i + 1)}-ink`) }) }
           )
         ]
       },
@@ -335,7 +343,8 @@
         },
         // A tip opens only on a mark (ui-rules 50): a bar, a slice, or within 8px of a line's point, never the
         // plot's empty space. On a line chart a point shows every series' value for its date (index mode).
-        interaction: { mode: type === 'line' ? 'index' : 'nearest', intersect: true },
+        // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
+        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: true },
         elements: { point: { hitRadius: 8 } },
         // The help cursor over a mark (every mark has a tip), the arrow elsewhere.
         onHover: (_e, els, c) => (c.canvas.style.cursor = els.length ? 'help' : ''),
@@ -450,7 +459,7 @@
   $effect(() => {
     void format;
     void tipFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend, slots]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, dots, monotone, integer, dashGaps, legend, colors]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();

@@ -601,17 +601,6 @@
   <p class="chart-note roast-nudge">{first.roast} averages {first.mean.toFixed(1)}{#each rest as r (r.roast)}, {r.roast.toLowerCase()} {r.mean.toFixed(1)}{/each}:
     <button type="button" class="filter-clear-all" onclick={() => coffeesDialog?.showModal()}>filter by roast</button></p>
 {/if}
-<!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back. -->
-{#if data.hidden}
-  {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
-    <p class="chart-note see-all">Showing everything, including low-confidence rows.
-      <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
-  {:else if hiddenNote(data.hidden)}
-    {@const note = hiddenNote(data.hidden)!}
-    <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={note.tip} />.
-      <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
-  {/if}
-{/if}
   <!-- Focus lands on the dialog, never a date input (no-autofocus rule). -->
   <!-- svelte-ignore a11y_autofocus -->
   <dialog bind:this={rangeDialog} autofocus class="range-dialog" aria-labelledby="range-title" onclose={() => (draft = null)}>
@@ -681,7 +670,21 @@
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
 
-<p class="insights-period">{periodText}</p>
+<div class="period-row" class:reserve={!!data.hidden}>
+  <p class="insights-period">{periodText}</p>
+<!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
+       It shares the period line's row (right-aligned), so it appearing moves nothing below; phones reserve its line. -->
+  {#if data.hidden}
+    {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
+      <p class="chart-note see-all">Showing everything, including low-confidence rows.
+        <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
+    {:else if hiddenNote(data.hidden)}
+      {@const note = hiddenNote(data.hidden)!}
+      <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={note.tip} />.
+        <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
+    {/if}
+  {/if}
+</div>
 <span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
@@ -1529,7 +1532,29 @@
   }
   :global(.insights-period) {
     color: var(--color-text-muted);
+    margin: 0;
+  }
+  .period-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0 var(--space-3);
     margin: 0 0 var(--space-3);
+  }
+  .period-row .see-all {
+    margin: 0 0 0 auto;
+    text-align: right;
+  }
+  /* Phones: the note wraps to its own line; where it can show (the Ratings menu tabs) that line is held. */
+  @media (max-width: 767px) {
+    .period-row.reserve {
+      min-height: 3.1em;
+    }
+    .period-row .see-all {
+      margin-left: 0;
+      text-align: left;
+    }
   }
 
   /* Stat rows with no empty cells. Tiles stay square (height --h = one regular tile); a
