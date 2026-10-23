@@ -137,7 +137,7 @@ export async function checkLayout(page: Page): Promise<void> {
       for (const row of all('[data-button-row]')) {
         const box = row.getBoundingClientRect();
         const lines = new Map<number, DOMRect[]>();
-        for (const b of [...row.querySelectorAll('button, .button')].filter((b) => !b.closest('dialog'))) { // a dialog inside the row (ImageSuggest) isn't part of it
+        for (const b of [...row.querySelectorAll('button, .button')].filter((b) => { const d = b.closest('dialog'); return !(d && row.contains(d)); })) { // a dialog nested in the row (ImageSuggest) isn't part of it
           const r = b.getBoundingClientRect();
           lines.set(Math.round(r.top), [...(lines.get(Math.round(r.top)) ?? []), r]);
         }

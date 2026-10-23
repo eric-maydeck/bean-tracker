@@ -36,6 +36,6 @@ export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind
   }
   const final = parseGearValues(ctx.kind, values); // drops stepSize unless Stepped
   const out = 'values' in final ? final.values : values;
-  notes.unshift(`Filled ${Object.keys(out).length} fields`);
+  notes.unshift(`Filled ${Object.keys(out).length} field${Object.keys(out).length === 1 ? '' : 's'}`);
   return { values: out, imageUrl: p.image, notes };
 }

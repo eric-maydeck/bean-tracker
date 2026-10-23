@@ -8,11 +8,12 @@
   // button and its results dialog. Inline state, never in the URL. The parent owns the fields: body() reads
   // them when a search starts, matching() describes the item as typed, onpick stages the pick (the dialog then
   // closes), onsite stages a site typed via "change" once a search on it worked.
-  let { endpoint, body, matching, siteLabel, disabled, onpick, onsite }: {
+  let { endpoint, body, matching, siteLabel, setSiteText = 'set roaster site', disabled, onpick, onsite }: {
     endpoint: string;
     body: () => Record<string, unknown>;
     matching: () => string[];
     siteLabel: string;
+    setSiteText?: string;
     disabled: boolean;
     onpick: (c: Candidate, r: SuggestResponse) => void;
     onsite?: (site: string) => void;
@@ -130,7 +131,7 @@
             onclick={() => {
               siteEditing = true;
               siteInput = r.site ?? '';
-            }}>{r.site ? 'change' : `set ${siteLabel.replace(/ website$/i, '').toLowerCase()} site`}</button
+            }}>{r.site ? 'change' : setSiteText}</button
           >
         </p>
         {#if siteEditing}

@@ -765,7 +765,7 @@
     .inline-row-actions {
       flex: 1 1 100%;
     }
-    .inline-row-actions :global(.button) {
+    .inline-row-actions > :global(.button) {
       flex: 1 1 auto;
       text-align: center;
     }
@@ -844,7 +844,7 @@
     gap: var(--space-2);
   }
   /* The gap spaces them; app.css .button's margin would double it. */
-  .inline-row-actions :global(.button) {
+  .inline-row-actions > :global(.button) {
     margin: 0;
   }
   .fill-note {
