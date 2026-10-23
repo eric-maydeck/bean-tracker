@@ -15,7 +15,9 @@
     trophy: Trophy; onclose: () => void; head: Snippet; photo: Snippet; top: Snippet<[Snippet]>; preview?: { src: string; fill?: string } | null;
   } = $props();
 
-  const fields = $derived(fieldsFor(trophy.kind));
+  // Two to a row: Brand | Official website (under Fill from URL), then Model | Cost.
+  const FIRST = ['brand', 'website', 'model', 'cost'];
+  const fields = $derived(fieldsFor(trophy.kind).sort((a, b) => (FIRST.indexOf(a.key) + 1 || 99) - (FIRST.indexOf(b.key) + 1 || 99)));
   const last = $derived(Math.ceil(fields.length / 2)); // the last field row
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
   const act = $derived(fields.length % 2 ? last : last + 1);
