@@ -36,7 +36,6 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
-  let mediaEl: HTMLElement | undefined = $state();
   let preview = $state<{ src: string; fill?: string } | null>(null); // the edit form's previewed photo
   $effect(() => { if (!editing) preview = null; });
   const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
@@ -72,6 +71,15 @@
 {#snippet img(t: Trophy, shown: { src: string; fill?: string } | null = t.image)}
   <div class="trophy-img" style:--fill={shown?.fill ?? backdrop(null)}>
     {#if shown}<img src={shown.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
+  </div>
+{/snippet}
+
+{#snippet heading(t: Trophy)}
+  <div class="detail-header">
+    <h2 id="trophy-title" class="trophy-name" class:admin={page.data.isAdmin}>{t.name}
+      <span class="badge badge-neutral">{KIND_LABEL[t.kind]}</span>
+      {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
+    </h2>
   </div>
 {/snippet}
 
@@ -130,10 +138,18 @@
             <button type="button" class="trophy-close" aria-label="Close" disabled={editing} onclick={() => dlg?.close()}>✕</button>
           </div>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
+          {#if editing}
+            <!-- The edit form replaces the whole article: the photo (showing the preview), the fields and the image row share one grid. -->
+            {#key t.key}
+              <GearForm trophy={t} bind:preview onclose={() => (editing = false)}>
+                {#snippet head()}{@render heading(t)}{/snippet}
+                {#snippet photo()}{@render img(t, preview ?? t.image)}{/snippet}
+              </GearForm>
+            {/key}
+          {:else}
           <article class="detail trophy-detail">
             <div class="detail-media">
               {@render img(t, preview ?? t.image)}
-              <div class="media-slot" bind:this={mediaEl}></div>
               <!-- Under the photo: when the details were stored (the local calendar day). -->
               <div class="media-meta">
                 {#if t.createdAt}<span>Added <b>{localDate(t.createdAt)}</b></span>{/if}
@@ -141,15 +157,7 @@
               </div>
             </div>
             <div class="detail-body">
-              <div class="detail-header">
-                <h2 id="trophy-title" class="trophy-name" class:admin={page.data.isAdmin}>{t.name}
-                  <span class="badge badge-neutral">{KIND_LABEL[t.kind]}</span>
-                  {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
-                </h2>
-              </div>
-              {#if editing}
-                {#key t.key}{#if mediaEl}<GearForm trophy={t} mediaTarget={mediaEl} bind:preview onclose={() => (editing = false)} />{/if}{/key}
-              {:else}
+              {@render heading(t)}
               {#if specs(t).length}
                 <div class="stat-grid specs">
                   {#each specs(t) as f (f.key)}
@@ -166,9 +174,9 @@
                   <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
                 {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
               </div>
-              {/if}
             </div>
           </article>
+          {/if}
             <section class="detail-section usage">
               <h2>Usage</h2>
               <div class="stat-grid">
@@ -446,12 +454,14 @@
     margin-top: 0;
   }
   /* The coffee page's image frame (.detail-media img): square on the picture's backdrop, border and shadow. */
-  .trophy-detail .trophy-img {
-    aspect-ratio: 1;
+  .trophy-dialog .trophy-img {
     border: 1px solid var(--color-border);
     box-shadow: var(--shadow);
   }
-  .trophy-detail .trophy-img :global(svg) {
+  .trophy-detail .trophy-img {
+    aspect-ratio: 1;
+  }
+  .trophy-dialog .trophy-img :global(svg) {
     width: 3.5rem;
     height: 3.5rem;
   }

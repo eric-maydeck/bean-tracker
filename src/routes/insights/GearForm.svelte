@@ -2,16 +2,16 @@
   import { invalidateAll } from '$app/navigation';
   import { fieldsFor } from '$lib/gear';
   import { backdrop } from '$lib/imageBackdrop';
+  import type { Snippet } from 'svelte';
   import type { Trophy } from '$lib/server/insights/trophies';
 
-  // `mediaTarget` is the dialog's media column: the image row and (wide) Save/Cancel render there, under the photo; `preview` is
-  // the previewed image, shown in the photo box.
-  let { trophy, onclose, mediaTarget, preview = $bindable(null) }: {
-    trophy: Trophy; onclose: () => void; mediaTarget: HTMLElement; preview?: { src: string; fill?: string } | null;
+  // Replaces the dialog's article: `head` is the title, `photo` the picture (showing the previewed image, `preview`).
+  let { trophy, onclose, head, photo, preview = $bindable(null) }: {
+    trophy: Trophy; onclose: () => void; head: Snippet; photo: Snippet; preview?: { src: string; fill?: string } | null;
   } = $props();
-  const into = (node: HTMLElement, target: HTMLElement) => { target.append(node); return { destroy: () => node.remove() }; };
 
   const fields = $derived(fieldsFor(trophy.kind));
+  const last = $derived(Math.ceil(fields.length / 2)); // the last field row
   // svelte-ignore state_referenced_locally
   let values = $state<Record<string, string>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
   // svelte-ignore state_referenced_locally
@@ -45,18 +45,16 @@
   }
 </script>
 
-{#snippet actions(cls: string)}
-  <div class="form-actions {cls}" data-button-row>
-    <button class="button" type="submit" form="gear-form" disabled={saving}>Save</button>
-    <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
-  </div>
-  {#if error}<p class="badge badge-urgent {cls}" role="alert">{error}</p>{/if}
-{/snippet}
-
-<form id="gear-form" class="gear-form" onsubmit={save} novalidate>
-  <div class="gear-fields">
-    {#each fields as f (f.key)}
-      <div class="form-field">
+<!-- One grid for photo and fields (wide dialogs): the fields run two to a row in the two right columns; the photo takes the
+     left column over the rows above the last two; Preview/Discard sit on the row before the last field row and the Image URL
+     on the last, so their labels and inputs line up with those rows' fields; Save/Cancel fill the cell after the last field
+     (the second cell of the next row when the last row is full). Phones stack it all, Save/Cancel last (ui-rules 19). -->
+<form class="gear-form" onsubmit={save} novalidate style="--last:{last}">
+  {@render head()}
+  <div class="grid">
+    <div class="photo">{@render photo()}</div>
+    {#each fields as f, i (f.key)}
+      <div class="form-field" style="--r:{Math.floor(i / 2) + 1};--c:{2 + (i % 2)}">
         <label for="gear-{f.key}">{f.label}{f.unit ? ` (${f.unit})` : f.type === 'money' ? ' ($)' : ''}</label>
         <input id="gear-{f.key}" bind:value={values[f.key]} list={f.options ? `gear-opts-${f.key}` : undefined} autocomplete="off"
           type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
@@ -65,60 +63,106 @@
         {#if f.options}<datalist id="gear-opts-{f.key}">{#each f.options as o (o)}<option value={o}></option>{/each}</datalist>{/if}
       </div>
     {/each}
-  </div>
-  <!-- Stacked phone layout: the actions go under the form (ui-rules 19). -->
-  {@render actions('under-form')}
-</form>
-
-<!-- Under the photo: the image row, and on wider dialogs Save and Cancel. -->
-<div class="media-edit" use:into={mediaTarget}>
-  <div class="form-field">
-    <label for="gear-image">Image URL</label>
-    <input id="gear-image" type="url" form="gear-form" bind:value={imageUrl} placeholder="Photo of the gear" autocomplete="off" />
-    <div class="inline-row-actions" data-button-row>
+    <div class="form-field image-url" style="--r:{last};--c:1">
+      <label for="gear-image">Image URL</label>
+      <input id="gear-image" type="url" bind:value={imageUrl} placeholder="Photo of the gear" autocomplete="off" />
+    </div>
+    <div class="cell-buttons image-buttons" style="--r:{last - 1};--c:1" data-button-row>
       <button class="button button-secondary" type="button" onclick={showPreview}>Preview</button>
       <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
     </div>
+    <div class="cell-buttons actions" style="--r:{fields.length % 2 ? last : last + 1};--c:3" data-button-row>
+      <button class="button" type="submit" disabled={saving}>Save</button>
+      <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
+    </div>
   </div>
-  {@render actions('under-photo')}
-</div>
+  {#if error}<p class="badge badge-urgent" role="alert">{error}</p>{/if}
+</form>
 
 <style>
-  .gear-fields {
+  .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-    column-gap: var(--space-3);
+    grid-template-columns: minmax(11rem, 17.5rem) repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-4);
+    align-items: start;
+  }
+  /* Placement by row/column from the markup; the photo spans the rows above the Preview row. */
+  .grid > :not(.photo) {
+    grid-row: var(--r);
+    grid-column: var(--c);
+    min-width: 0;
+  }
+  .photo {
+    grid-column: 1;
+    grid-row: 1 / calc(var(--last) - 1);
+    align-self: stretch;
+    margin-bottom: var(--space-3);
+  }
+  .photo :global(.trophy-img) {
+    height: 100%;
+    min-height: 9rem;
   }
   .form-field {
     margin-bottom: var(--space-3);
-    min-width: 0;
   }
-  .inline-row-actions, .form-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+  /* A label-less cell lined up with a neighbor's input: a spacer the label's height, then the buttons fill the rest. */
+  .cell-buttons {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    align-self: stretch;
+    margin-bottom: var(--space-3);
   }
-  .form-actions .button, .inline-row-actions .button {
+  .cell-buttons::before {
+    content: '\00a0';
+    font-size: 0.9rem;
+    margin-bottom: var(--space-1);
+  }
+  .cell-buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-2);
+  }
+  .cell-buttons::before {
+    grid-column: 1 / -1;
+  }
+  .cell-buttons .button {
     margin: 0;
+    padding-block: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
   /* Viewport media query on purpose: the dialog is in the top layer, so its width follows the viewport, not the insights container. */
-  /* Phone: the buttons grow to share each line (ui-rules 17). */
   @media (max-width: 640px) {
-    .form-actions .button, .inline-row-actions .button {
-      flex: 1 1 auto;
-      text-align: center;
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
     }
-  }
-  /* Save and Cancel sit under the photo on wide dialogs, under the form on the stacked phone layout. */
-  .under-form {
-    display: none;
-  }
-  @media (max-width: 640px) {
-    .under-form {
-      display: flex;
+    .grid > :not(.photo) {
+      grid-row: auto;
+      grid-column: auto;
     }
-    .under-photo {
+    .photo {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+    .photo :global(.trophy-img) {
+      height: auto;
+      max-width: 9.5rem;
+      aspect-ratio: 1;
+    }
+    .grid > .image-url, .grid > .cell-buttons {
+      grid-column: 1 / -1;
+    }
+    .photo { order: -3; }
+    .grid > .image-url { order: -2; }
+    .grid > .image-buttons { order: -1; }
+    .grid > .actions { order: 99; }
+    .cell-buttons::before {
       display: none;
+    }
+    .cell-buttons .button {
+      min-height: 44px;
     }
   }
 </style>

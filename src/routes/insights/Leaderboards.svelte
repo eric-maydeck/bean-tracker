@@ -465,39 +465,6 @@
       min-width: 44px;
     }
   }
-  /* Jump links: one chip per board, landing on its card (the page's scroll-padding clears the sticky bar). */
-  .board-jump {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-    font-size: 0.85rem;
-  }
-  .board-jump span {
-    color: var(--color-text-muted);
-  }
-  .board-jump a {
-    display: inline-flex;
-    align-items: center;
-    min-height: 2.25rem;
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    background: var(--color-surface);
-    color: inherit;
-    text-decoration: none;
-  }
-  @media (hover: hover) {
-    .board-jump a:hover {
-      border-color: var(--color-accent);
-    }
-  }
-  @media (max-width: 640px) {
-    .board-jump a {
-      min-height: 44px;
-    }
-  }
   /* A value's tip (TextTip) sits over the row's stretched link, so hover and tap reach it (ui-rules 41). */
   .board :global(.val .text-tip) {
     position: relative;

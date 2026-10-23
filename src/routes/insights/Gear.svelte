@@ -43,6 +43,25 @@
   </section>
 {/snippet}
 
+<!-- Jump links past the big showcase: one chip per section on the tab (the page's scroll-padding clears the sticky bar). -->
+{#snippet jump()}
+  {@const links = [
+    trophies ? ['gear-trophies', 'Gear showcase'] : null,
+    t.drippers.length ? ['gear-drippers', 'Dripper ratings'] : null,
+    t.filters.length ? ['gear-filters', 'Filter ratings'] : null,
+    t.matrix ? ['gear-matrix', 'Filters per dripper'] : null,
+    t.byRoast ? ['gear-roast', 'Dripper × roast'] : null,
+    t.eras ? ['gear-eras', 'Usage over time'] : null
+  ].filter((l) => l !== null)}
+  {#if links.length > 1}
+    <nav class="board-jump" aria-label="Jump to a section">
+      <span>Jump to</span>
+      {#each links as [id, label] (id)}<a href="#{id}">{label}</a>{/each}
+    </nav>
+  {/if}
+{/snippet}
+{@render jump()}
+
 {#if trophies}<TrophyCase list={trophies} {s} {choose} {placeTip} />{/if}
 
 {#if empty}

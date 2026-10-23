@@ -28,6 +28,26 @@ interface State {
   slow?: boolean;
 }
 
+// The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Image URL lines up with the last
+// field row and Preview/Discard with the row before it. Measured on the dripper's 9 fields (Size alone on the last row).
+async function expectEditAligned(page: Page) {
+  const dlg = page.locator('dialog.trophy-dialog');
+  const bx = async (l: Locator) => (await l.boundingBox())!;
+  const [flow, size, mat] = [await bx(dlg.getByLabel('Flow', { exact: true })), await bx(dlg.getByLabel('Size', { exact: true })), await bx(dlg.getByLabel('Material', { exact: true }))];
+  const [save, cancel] = [await bx(dlg.getByRole('button', { name: 'Save' })), await bx(dlg.getByRole('button', { name: 'Cancel' }))];
+  expect(Math.abs(save.x - flow.x), 'Save left = Flow input left').toBeLessThan(1.5);
+  expect(Math.abs(cancel.x + cancel.width - (flow.x + flow.width)), 'Cancel right = Flow input right').toBeLessThan(1.5);
+  expect(Math.abs(save.y - size.y), 'Save top = Size input top').toBeLessThan(2);
+  expect(Math.abs(cancel.y - size.y)).toBeLessThan(2);
+  expect(Math.abs(save.y + save.height - (size.y + size.height)), 'Save bottom = Size input bottom').toBeLessThan(2);
+  const url = await bx(dlg.getByLabel('Image URL'));
+  expect(Math.abs(url.y - size.y), 'Image URL input top = Size input top').toBeLessThan(2);
+  expect(Math.abs((await bx(dlg.getByText('Image URL', { exact: true }))).y - (await bx(dlg.getByText('Size', { exact: true }).first())).y), 'labels level').toBeLessThan(2);
+  const prev = await bx(dlg.getByRole('button', { name: 'Preview' }));
+  expect(Math.abs(prev.y - mat.y), 'Preview top = Material input top').toBeLessThan(2);
+  expect(Math.abs(prev.x - url.x)).toBeLessThan(1.5);
+}
+
 // Stats → Not yet tracked → Link on the bean row containing `text`.
 // A row's action buttons' boxes relative to the row, so scrolling the table
 // doesn't count as moving them.
@@ -2753,6 +2773,22 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  { name: 'insights-gear-jump', path: () => '/insights?tab=gear',
+    act: async (page) => {
+      // One chip per section on the tab; a click lands the section's heading just under the sticky bar.
+      const links = page.locator('.board-jump a');
+      await expect(links.first()).toHaveText('Gear showcase');
+      expect(await links.count()).toBeGreaterThan(2);
+      const gap = (id: string) => page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom, id);
+      const jump = links.nth(1);
+      await jump.click();
+      const id = (await jump.getAttribute('href'))!.slice(1);
+      await expect(page).toHaveURL(new RegExp(`#${id}$`));
+      await expect.poll(() => gap(id)).toBeGreaterThanOrEqual(-1);
+      // Under the bar, unless the page ends first (a short tab can't scroll its last sections to the top).
+      const atEnd = await page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1);
+      if (!atEnd) expect(await gap(id)).toBeLessThanOrEqual(16);
+    } },
   { name: 'insights-board-time', path: () => '/insights?tab=leaderboards&range=12m&views=dripper-time',
     act: async (page) => {
       const card = page.locator('.board[data-board=dripper]');
@@ -4846,14 +4882,16 @@ export const STATES: State[] = [
       await expect(form.getByLabel('Cone angle (°)')).toHaveValue('60');
       await expect(form.getByLabel('Brand')).toHaveValue('Hario');
       await expect(form.getByLabel('Cone angle (°)')).toHaveAttribute('inputmode', 'decimal');
-      // The image row (Preview, Discard) is under the photo, in the media column; Filter fit is gone.
-      const media = dlg.locator('.detail-media');
-      await expect(media.getByLabel('Image URL')).toBeVisible();
-      await expect(media.getByRole('button', { name: 'Preview' })).toBeVisible();
-      await expect(media.getByRole('button', { name: 'Discard image' })).toBeVisible();
+      // Filter fit is gone; the photo, Image URL and Preview/Discard are in the form's grid.
       await expect(dlg.getByLabel('Filter fit')).toHaveCount(0);
-      const photoBox = (await media.locator('.trophy-img').boundingBox())!, imgIn = (await media.getByLabel('Image URL').boundingBox())!;
-      expect(imgIn.y).toBeGreaterThanOrEqual(photoBox.y + photoBox.height - 1);
+      const media = form;
+      await expect(dlg.getByLabel('Image URL')).toBeVisible();
+      await expect(dlg.getByRole('button', { name: 'Preview' })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: 'Discard image' })).toBeVisible();
+      const phone = page.viewportSize()!.width <= 640;
+      const top = (l: Locator) => l.boundingBox().then((b) => b!.y);
+      const box = (l: Locator) => l.boundingBox().then((b) => b!);
+      if (!phone) await expectEditAligned(page);
       // Opening focuses no input; the form replaces the body (no brew facts), and nothing was saved or put in the URL.
       expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
@@ -4863,18 +4901,19 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       if (page.viewportSize()!.width > 640) await page.mouse.click(2, 2);
       await expect(dlg).toBeVisible();
-      // Save and Cancel: under the photo on wide dialogs, under the form on the stacked phone layout (ui-rules 19); reachable, 44px on a phone.
-      const phone = page.viewportSize()!.width <= 640;
+      // Save and Cancel are reachable, 44px tall on a phone and (stacked) the last thing in the form.
       const save = dlg.getByRole('button', { name: 'Save' }), cancel = dlg.getByRole('button', { name: 'Cancel' });
-      await expect(save).toHaveCount(1); // the other placement is display:none
-      await expect((phone ? form : media).getByRole('button', { name: 'Save' })).toBeVisible();
+      await expect(save).toHaveCount(1);
       for (const b of [save, cancel]) {
         await b.scrollIntoViewIfNeeded();
         await expect(b).toBeInViewport();
-        const r = (await b.boundingBox())!, imageRow = (await media.getByRole('button', { name: 'Preview' }).boundingBox())!;
-        expect(r.y).toBeGreaterThan(imageRow.y);
-        if (phone) expect(r.height).toBeGreaterThanOrEqual(43);
+        if (phone) {
+          expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43);
+          expect(await top(b)).toBeGreaterThan(await top(dlg.getByRole('button', { name: 'Preview' })));
+          expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size')));
+        }
       }
+      void media; void box;
       // History to another card closes the form (it never carries A's values to B).
       await page.evaluate(() => { // a client-side navigation (SvelteKit takes anchor clicks), as back/forward between two card entries does
         const a = document.createElement('a'); a.href = '?tab=gear&card=dripper-origami'; document.body.append(a); a.click(); a.remove();
@@ -4898,6 +4937,31 @@ export const STATES: State[] = [
       await save.click();
       await expect(dlg.getByRole('alert')).toContainText('Burr size');
       await expect(form).toBeVisible();
+    } },
+  // The other kinds' edit grids (wide dialogs): Save/Cancel take the cell after the last field (a full last row pushes them to the next
+  // row's second cell); Image URL lines up with the last field row, Preview/Discard with the row before it.
+  { name: 'insights-trophy-edit-kinds', path: () => '/insights?tab=gear&card=grinder-comandante-c40-mk4',
+    act: async (page) => {
+      if (page.viewportSize()!.width <= 640) return;
+      const dlg = page.locator('dialog.trophy-dialog');
+      const bx = async (l: Locator) => (await l.boundingBox())!;
+      const input = (n: string) => dlg.getByLabel(n, { exact: true });
+      const check = async (last: string, before: string, saveBelowLast: boolean, saveX: string) => {
+        const [lastB, beforeB, saveB, urlB, prevB, xB] = [await bx(input(last)), await bx(input(before)), await bx(dlg.getByRole('button', { name: 'Save' })),
+          await bx(dlg.getByLabel('Image URL')), await bx(dlg.getByRole('button', { name: 'Preview' })), await bx(input(saveX))];
+        expect(Math.abs(urlB.y - lastB.y), 'Image URL = last field row').toBeLessThan(2);
+        expect(Math.abs(prevB.y - beforeB.y), 'Preview = row before').toBeLessThan(2);
+        expect(Math.abs(saveB.x - xB.x), 'Save left').toBeLessThan(1.5);
+        if (saveBelowLast) expect(saveB.y).toBeGreaterThan(lastB.y + lastB.height - 1);
+        else expect(Math.abs(saveB.y - lastB.y)).toBeLessThan(2);
+      };
+      // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await check('Step size (µm)', 'Burr material', false, 'Adjustment');
+      // Filter: 8 fields, a full last row (Fits, Flow): Save is below Flow.
+      await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await check('Fits', 'Shape', true, 'Flow');
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {
