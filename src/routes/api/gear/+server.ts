@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
-import { GEAR_KINDS, parseGearValues, type GearKind } from '$lib/gear';
+import { GEAR_KINDS, isWebUrl, parseGearValues, type GearKind } from '$lib/gear';
 import { saveGearDetails } from '$lib/server/gearDetails';
 import { queueFillMissing } from '$lib/server/imageFills';
 
@@ -14,14 +14,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const bad = (error: string) => json({ error }, { status: 400 });
   const kind = GEAR_KINDS.find((k) => k === body?.kind) as GearKind | undefined;
   if (!kind) return bad('Unknown kind');
-  const name = typeof body?.name === 'string' ? body.name.trim() : '';
-  if (!name || name.length > 200) return bad('Name is required');
+  // Not trimmed: grinder names are matched raw against Bean Conqueror's.
+  const name = typeof body?.name === 'string' ? body.name : '';
+  if (!name.trim()) return bad('Name is required');
+  if (name.length > 200) return bad('Name is too long (200 characters at most)');
   const parsed = parseGearValues(kind, body?.values);
   if ('error' in parsed) return bad(parsed.error);
   const url = typeof body?.image_url === 'string' ? body.image_url.trim() : body?.image_url == null ? '' : null;
-  let web = url === '';
-  if (url) try { web = /^https?:$/.test(new URL(url).protocol) && url.length <= 2000; } catch { /* not a URL */ }
-  if (!web) return bad("That image isn't a web address");
+  if (url !== '' && !(url !== null && isWebUrl(url))) return bad("That image isn't a web address");
   const db = getDb();
   saveGearDetails(db, { kind, name, values: parsed.values, imageUrl: url || null });
   void queueFillMissing(db);

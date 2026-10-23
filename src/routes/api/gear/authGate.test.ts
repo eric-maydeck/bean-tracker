@@ -22,7 +22,7 @@ describe('POST /api/gear', () => {
       [undefined, 'Unknown kind'],
       [{ ...ok, kind: 'toaster' }, 'Unknown kind'],
       [{ ...ok, name: '  ' }, 'Name is required'],
-      [{ ...ok, name: 'x'.repeat(201) }, 'Name is required'],
+      [{ ...ok, name: 'x'.repeat(201) }, 'Name is too long (200 characters at most)'],
       [{ ...ok, values: [] }, 'Details must be an object'],
       [{ ...ok, image_url: 'javascript:x' }, "That image isn't a web address"]
     ] as const) {

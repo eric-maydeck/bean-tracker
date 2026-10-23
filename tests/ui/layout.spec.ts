@@ -5102,7 +5102,7 @@ export const STATES: State[] = [
       await dlg.getByRole('button', { name: 'Edit' }).click();
       for (const n of ['Shape', 'Material', 'Size', 'Flow']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
-      await check('Size', 'Flow', true); // saveat=a (default): Save/Cancel right-aligned on a row of their own, level with Preview
+      await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {

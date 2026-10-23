@@ -223,3 +223,15 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
     await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('54 mm');
   } finally { restore(); }
 });
+
+test('trophy card: unreadable text in a number field blocks Save and saves nothing', { tag: '@insights' }, async ({ page }) => {
+  await gotoReady(page, '/insights?tab=gear&card=grinder-zp6-special');
+  const dlg = page.locator('dialog.trophy-dialog');
+  await dlg.getByRole('button', { name: 'Edit' }).click();
+  const posts: string[] = [];
+  page.on('request', (r) => r.url().endsWith('/api/gear') && posts.push(r.url()));
+  await dlg.getByLabel('Burr size (mm)').pressSequentially('2e'); // "e" alone is not a number
+  await dlg.getByRole('button', { name: 'Save' }).click();
+  await expect(dlg.getByRole('alert')).toHaveText('Burr size must be a number');
+  expect(posts).toHaveLength(0);
+});

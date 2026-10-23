@@ -48,7 +48,7 @@
   let preview = $state<{ src: string; fill?: string } | null>(null); // the edit form's previewed photo
   $effect(() => { if (!editing) preview = null; });
   const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
-  $effect(() => { void curKey; editing = false; leaving = null; }); // any card change (history back/forward) leaves edit mode
+  $effect(() => { void curKey; editing = false; leaving = null; }); // any card change leaves edit mode
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -161,7 +161,7 @@
           <article class="detail trophy-detail">
             <div class="detail-media">
               {@render img(t, preview ?? t.image)}
-              <!-- Under the photo: when the details were stored (the local calendar day). -->
+              <!-- Under the photo: when the gear was added (BC created / first brew, with time) and last updated. -->
               <div class="media-meta">
                 <span>Added {@render stamp(t.added)}</span>
                 {#if t.updatedAt}<span>Updated {@render stamp(t.updatedAt)}</span>{/if}
@@ -312,16 +312,13 @@
     align-items: center;
     line-height: 1.15;
   }
-  /* The average: the insights tiles' .hl-value, in the normal text color (the gear name carries the kind color). */
+  /* The average: the insights tiles' .hl-value, in the normal text color (the gear name carries the kind color); the second step of the card's hierarchy: name > average > brews | grams (beats `.fig b`). */
   .fig-avg b.hl-value {
     margin-top: 0;
+    font-size: 1.25rem;
   }
   .fig b {
     font-size: 1rem;
-  }
-  /* Beats `.fig b` above (same specificity otherwise, and that rule comes first): the average is the second step of the card's hierarchy: name > average > brews | grams. */
-  .fig-avg b.hl-value {
-    font-size: 1.25rem;
   }
   .fig i {
     font-style: normal;

@@ -1,3 +1,8 @@
+// An http(s) address of sane length.
+export function isWebUrl(s: string): boolean {
+  try { return /^https?:$/.test(new URL(s).protocol) && s.length <= 2000; } catch { return false; }
+}
+
 export const GEAR_KINDS = ['dripper', 'filter', 'grinder'] as const;
 export type GearKind = (typeof GEAR_KINDS)[number];
 export const KIND_LABEL: Record<GearKind, string> = { dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder' };
@@ -90,9 +95,7 @@ export function parseGearValues(kind: GearKind, raw: unknown): { values: GearVal
         return { error: `${f.label} must be ${f.min}–${f.max}${f.unit ? ` ${f.unit}` : ''}` };
       values[f.key] = f.type === 'money' ? Math.round(n * 100) / 100 : n;
     } else if (f.type === 'url') {
-      let ok = false;
-      try { ok = /^https?:$/.test(new URL(s).protocol); } catch { /* not a URL */ }
-      if (!ok || s.length > 2000) return { error: `${f.label} isn't a web address` };
+      if (!isWebUrl(s)) return { error: `${f.label} isn't a web address` };
       values[f.key] = s;
     } else if (f.type === 'select') {
       if (!f.options?.includes(s)) return { error: `${f.label} must be one of ${f.options?.join(', ')}` };

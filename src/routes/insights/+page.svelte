@@ -7,7 +7,7 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import { afterNavigate, goto, replaceState } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
-  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState } from '$lib/insightsMemory';
+  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutCard } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
@@ -121,6 +121,7 @@
   // (Share keeps working). Any in-page navigation saves its own state, and a bare one removes it (bare is the
   // state), so a link with params wins and becomes the remembered state.
   function remember(qs: string) {
+    qs = withoutCard(qs);
     try {
       if (qs) localStorage.setItem(INSIGHTS_STORAGE_KEY, serializeInsightsState(qs, Date.now()));
       else localStorage.removeItem(INSIGHTS_STORAGE_KEY);

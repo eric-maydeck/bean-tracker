@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadInsightsState, serializeInsightsState } from './insightsMemory';
+import { loadInsightsState, serializeInsightsState, withoutCard } from './insightsMemory';
 import { CHOICE_TTL_MS } from './rememberedChoice';
 
 describe('remembered /insights state', () => {
@@ -23,5 +23,12 @@ describe('memory version', () => {
   it('memory v1 ignored, v2 loads', () => {
     expect(loadInsightsState(JSON.stringify({ version: 1, params: 'a=b', lastUsed: 5 }), 5)).toBeNull();
     expect(loadInsightsState(serializeInsightsState('a=b', 5), 5)).toBe('a=b');
+  });
+});
+
+describe('withoutCard', () => {
+  it('drops card= only', () => {
+    expect(withoutCard('tab=gear&card=grinder-niche&range=1w')).toBe('tab=gear&range=1w');
+    expect(withoutCard('card=grinder-niche')).toBe('');
   });
 });

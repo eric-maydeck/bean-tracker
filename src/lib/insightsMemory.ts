@@ -19,3 +19,10 @@ export function loadInsightsState(raw: string | null, now: number): string | nul
 
 export const serializeInsightsState = (params: string, now: number): string =>
   JSON.stringify({ version: VERSION, params, lastUsed: now });
+
+// An open card dialog is never remembered: a bare /insights visit must not reopen it.
+export const withoutCard = (qs: string): string => {
+  const p = new URLSearchParams(qs);
+  p.delete('card');
+  return p.toString();
+};

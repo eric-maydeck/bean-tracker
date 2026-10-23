@@ -16,7 +16,7 @@
   const fields = $derived(fieldsFor(trophy.kind));
   const last = $derived(Math.ceil(fields.length / 2)); // the last field row
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
-  const act = $derived(fields.length % 2 ? last : last + 1); // the row Preview/Discard and Save/Cancel share; Image URL is the row above
+  const act = $derived(fields.length % 2 ? last : last + 1);
   // svelte-ignore state_referenced_locally
   // A number input binds a number (null when emptied), a text input or select a string.
   let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
@@ -49,6 +49,8 @@
       const [was, now] = [norm(f, trophy.values[f.key]), norm(f, values[f.key])];
       return was === now ? [] : [`${f.label}: ${was || 'empty'} → ${now || 'empty'}`];
     }),
+    ...(values.adjustment !== 'Stepped' && norm({ type: 'number' }, trophy.values.stepSize) !== ''
+      ? [`Step size: ${norm({ type: 'number' }, trophy.values.stepSize)} → empty`] : []),
     ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])
   ]; }
   // The dialog's ✕ asks for these: the changes to leave behind, named (empty = nothing to lose).
@@ -56,6 +58,9 @@
 
   async function save(e: SubmitEvent) {
     e.preventDefault();
+    // Letters in a number input bind as empty, which Save would store as "no value": stop and name the field.
+    const badField = fields.find((f) => (document.getElementById(`gear-${f.key}`) as HTMLInputElement | null)?.validity?.badInput);
+    if (badField) { error = `${badField.label} must be a number`; return; }
     saving = true; error = '';
     const res = await fetch('/api/gear', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -162,26 +167,23 @@
   .label-row .mode-tip-button {
     line-height: 1;
   }
-  .form-field label, .cell-buttons::before {
+  .form-field label {
     line-height: 1.2;
   }
   /* A label-less cell lined up with a neighbor's input: a spacer the label's height, then the buttons fill the rest. */
   .cell-buttons {
     display: grid;
     grid-template-rows: auto 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--space-2);
     align-self: stretch;
     margin-bottom: 0.65rem;
   }
   .cell-buttons::before {
     content: '\00a0';
     font-size: 0.9rem;
+    line-height: 1.2;
     margin-bottom: var(--space-1);
-  }
-  .cell-buttons {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: var(--space-2);
-  }
-  .cell-buttons::before {
     grid-column: 1 / -1;
   }
   .cell-buttons .button {
