@@ -37,19 +37,16 @@
     if (typeof data?.fill === 'string') fills[url] = data.fill;
   }
 
-  // Unsaved changes, named for the leave prompt: "Burr size: 64 → 54", "Image URL changed".
-  const changes = () => [
+  // Unsaved changes, named for the leave panel: "Burr size: 64 → 54", "Image URL changed".
+  function changes(): string[] { return [
     ...fields.flatMap((f) => {
       const [was, now] = [String(trophy.values[f.key] ?? ''), (values[f.key] ?? '').trim()];
       return was === now ? [] : [`${f.label}: ${was || 'empty'} → ${now || 'empty'}`];
     }),
     ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])
-  ];
-  // The dialog's ✕ (and nothing else) calls this: true = leave (no changes, or the user agrees to discard them).
-  export function leave(): boolean {
-    const c = changes();
-    return !c.length || confirm(`You have unsaved changes:\n${c.join('\n')}\nLeave without saving?`);
-  }
+  ]; }
+  // The dialog's ✕ asks for these: the changes to leave behind, named (empty = nothing to lose).
+  export { changes };
 
   async function save(e: SubmitEvent) {
     e.preventDefault();

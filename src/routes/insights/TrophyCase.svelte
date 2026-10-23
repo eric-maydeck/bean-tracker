@@ -40,11 +40,15 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
-  let form: ReturnType<typeof GearForm> | undefined = $state(); // the edit form (its ✕ prompt)
+  let form: ReturnType<typeof GearForm> | undefined = $state(); // the edit form (its changes, for the leave panel)
+  let leaving = $state<string[] | null>(null); // the leave panel: the unsaved changes it lists
+  let keepBtn: HTMLButtonElement | undefined = $state();
+  $effect(() => { if (leaving) keepBtn?.focus(); });
+  const discard = () => { leaving = null; dlg?.close(); };
   let preview = $state<{ src: string; fill?: string } | null>(null); // the edit form's previewed photo
   $effect(() => { if (!editing) preview = null; });
   const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
-  $effect(() => { void curKey; editing = false; }); // any card change (history back/forward) leaves edit mode
+  $effect(() => { void curKey; editing = false; leaving = null; }); // any card change (history back/forward) leaves edit mode
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -58,7 +62,7 @@
 </script>
 
 <!-- Focus is on the body once the Edit button is gone, so Esc is caught on the window (an open help tip still closes on Esc). -->
-<svelte:window onkeydown={(e) => editing && e.key === 'Escape' && !document.querySelector(':popover-open') && e.preventDefault()} />
+<svelte:window onkeydown={(e) => { if (!editing || e.key !== 'Escape' || document.querySelector(':popover-open')) return; e.preventDefault(); leaving = null; }} />
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
@@ -142,7 +146,7 @@
             {#if page.data.isAdmin && !editing}
               <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
             {/if}
-            <button type="button" class="trophy-close" aria-label="Close" onclick={() => { if (editing && !form?.leave()) return; dlg?.close(); }}>✕</button>
+            <button type="button" class="trophy-close" aria-label="Close" onclick={() => { const c = editing ? form?.changes() ?? [] : []; if (c.length) leaving = c; else dlg?.close(); }}>✕</button>
           </div>
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           {#if editing}
@@ -196,6 +200,19 @@
               </div>
             </section>
         </div>
+        {#if leaving}
+          <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
+          <div class="leave-overlay">
+            <div class="leave-panel" role="alertdialog" aria-labelledby="leave-title">
+              <h3 id="leave-title">Unsaved changes</h3>
+              <ul>{#each leaving as c (c)}<li>{c}</li>{/each}</ul>
+              <div class="leave-actions" data-button-row>
+                <button type="button" class="button" bind:this={keepBtn} onclick={() => (leaving = null)}>Keep editing</button>
+                <button type="button" class="button button-danger" onclick={discard}>Discard changes</button>
+              </div>
+            </div>
+          </div>
+        {/if}
       {/if}
     </dialog>
   </section>
@@ -429,6 +446,44 @@
     border-top: 4px solid var(--kc);
   }
   /* The action group, top right: the admin actions (Edit; Fill and Suggest later) beside the close button. */
+  .leave-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: grid;
+    place-items: center;
+    overflow-y: auto;
+    padding: var(--space-3);
+    background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+    border-radius: var(--radius);
+  }
+  .leave-panel {
+    width: min(24rem, 100%);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface);
+    box-shadow: var(--shadow);
+  }
+  .leave-panel h3 {
+    margin: 0 0 var(--space-2);
+  }
+  .leave-panel ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    overflow-wrap: anywhere;
+  }
+  .leave-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+  }
+  .leave-actions .button {
+    flex: 1 1 auto;
+    margin: 0;
+    text-align: center;
+  }
   .trophy-top {
     display: flex;
     justify-content: flex-end;
