@@ -1,5 +1,6 @@
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
+  import JumpNav from './JumpNav.svelte';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
   import Chart from '$lib/components/Chart.svelte';
@@ -71,6 +72,7 @@
 {/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
+<JumpNav links={[['habits-habits', 'Habits'], !empty && ['habits-hour', 'By hour of day'], !empty && ['habits-weekday', 'By day of week'], !empty && ['habits-heatmap', 'Hour × weekday'], !empty && ['habits-calendar', 'Brew calendar']]} />
 {@render tiles()}
 
 <!-- A period with no brews is one empty panel, not four empty charts (rule 28). -->
@@ -79,13 +81,13 @@
 {:else}
   <div class="insights-charts">
     <section class="chart-panel">
-      <h2>By hour of day</h2>
+      <h2 id="habits-hour">By hour of day</h2>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
       <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? 'per day' : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
-      <h2>By day of week</h2>
+      <h2 id="habits-weekday">By day of week</h2>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
@@ -93,12 +95,12 @@
     </section>
   </div>
   <section class="chart-panel">
-    <h2>Hour × weekday</h2>
+    <h2 id="habits-heatmap">Hour × weekday</h2>
     <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSample?.map((r) => r.map((x) => x.small))} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
       tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)], ...(h.heatSample?.[r]?.[c] ? sampleField(h.heatSample[r][c]) : {}) })} />
   </section>
   <section class="chart-panel">
-    <h2>Brew calendar</h2>
+    <h2 id="habits-calendar">Brew calendar</h2>
     <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
   </section>
 {/if}

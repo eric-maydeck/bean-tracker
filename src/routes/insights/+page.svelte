@@ -33,6 +33,7 @@
   import Water from './Water.svelte';
   import Gear from './Gear.svelte';
   import Recent from './Recent.svelte';
+  import JumpNav from './JumpNav.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
   import { toParams, type StatusTab } from '$lib/coffeeViewState';
@@ -251,6 +252,7 @@
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
   };
   // A stat tile's own anchor, its caption links to it: avgRating on Overview → #overview-avg-rating.
+  const panelId = (title: string) => `${s.tab}-${title.toLowerCase().replace(/\s+/g, '-')}`;
   const tileId = (key: string) => `${s.tab}-${key.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`)}`;
   const shortDay = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -689,11 +691,11 @@
   <section class="chart-panel">
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
-        <h2>{title}</h2>
+        <h2 id={panelId(title)}>{title}</h2>
         <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
       </div>
     {:else}
-      <h2>{title}</h2>
+      <h2 id={panelId(title)}>{title}</h2>
     {/if}
     <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'}>
       {#each tiles as t (t.key)}
@@ -816,6 +818,7 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else}
+  <JumpNav links={[['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']]} />
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas, ['Time to clear'])}

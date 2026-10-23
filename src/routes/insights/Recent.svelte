@@ -29,7 +29,7 @@
 {/snippet}
 
 <section class="chart-panel recent">
-  <h2>Recent</h2>
+  <h2 id="overview-recent">Recent</h2>
   <div class="board-row board-head"><h3>Last {shownBrews.length} brews</h3><span class="val">Rating</span></div>
   {#if brews.length}
     <ol class="board-rows">

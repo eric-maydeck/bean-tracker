@@ -21,6 +21,7 @@
   import type { BoardSeries } from '$lib/server/insights/leaderboards';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
   import type { PageData } from './$types';
+  import JumpNav from './JumpNav.svelte';
 
   type Rows = NonNullable<PageData['boards']>;
   let {
@@ -332,10 +333,7 @@
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
-  <nav class="board-jump" aria-label="Jump to a board">
-    <span>Jump to</span>
-    {#each BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)) as b (b)}<a href="#leaderboard-{b}">{TITLE[b]}</a>{/each}
-  </nav>
+  <JumpNav label="Jump to a board" links={BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)).map((b) => [`leaderboard-${b}`, TITLE[b]] as const)} />
   {#each BANDS as full, i (i)}
     {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}

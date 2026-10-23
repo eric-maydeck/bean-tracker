@@ -13,6 +13,7 @@
   import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
+  import JumpNav from './JumpNav.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';
@@ -220,6 +221,7 @@
   <ShowMore count={rows.length} {n} {set} />
 {/snippet}
 
+<JumpNav links={sections.map((s) => [`records-${s.key}`, s.title] as const)} />
 {#if !sections.length}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No brews in this period.')}</p></section>
 {/if}

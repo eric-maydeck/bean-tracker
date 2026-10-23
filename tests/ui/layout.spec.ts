@@ -2779,22 +2779,29 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-gear-jump', path: () => '/insights?tab=gear',
-    act: async (page) => {
-      // One chip per section on the tab; a click lands the section's heading just under the sticky bar.
+  // Jump-to chips on every tab with 3+ sections (milestones has its own ruler; sweet spots has only two sections).
+  ...['overview', 'habits', 'consumption', 'records', 'insights', 'brewing', 'water', 'gear', 'milestones', 'sweetspots'].map((tab) => ({
+    name: `insights-jump-${tab}`, path: () => `/insights?tab=${tab}&range=all`,
+    act: async (page: Page) => {
       const links = page.locator('.board-jump a');
-      await expect(links.first()).toHaveText('Gear showcase');
+      if (tab === 'milestones' || tab === 'sweetspots') return void (await expect(links).toHaveCount(0));
+      // One chip per rendered section; a click is a hash jump (no reload) landing the section just under the sticky bar.
       expect(await links.count()).toBeGreaterThan(2);
+      await page.evaluate(() => ((window as unknown as { __jump: number }).__jump = 1));
       const gap = (id: string) => page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom, id);
-      const jump = links.nth(1);
-      await jump.click();
-      const id = (await jump.getAttribute('href'))!.slice(1);
-      await expect(page).toHaveURL(new RegExp(`#${id}$`));
-      await expect.poll(() => gap(id)).toBeGreaterThanOrEqual(-1);
-      // Under the bar, unless the page ends first (a short tab can't scroll its last sections to the top).
-      const atEnd = await page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1);
-      if (!atEnd) expect(await gap(id)).toBeLessThanOrEqual(16);
-    } },
+      for (const n of [1, (await links.count()) - 1]) {
+        const jump = links.nth(n);
+        await jump.click();
+        const id = (await jump.getAttribute('href'))!.slice(1);
+        await expect(page).toHaveURL(new RegExp(`#${id}$`));
+        await expect.poll(() => gap(id)).toBeGreaterThanOrEqual(-1);
+        // Under the bar, unless the page ends first (a short tab can't scroll its last sections to the top).
+        const atEnd = await page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1);
+        if (!atEnd) expect(await gap(id)).toBeLessThanOrEqual(16);
+      }
+      expect(await page.evaluate(() => (window as unknown as { __jump?: number }).__jump)).toBe(1);
+    }
+  })),
   { name: 'insights-board-time', path: () => '/insights?tab=leaderboards&range=12m&views=dripper-time',
     act: async (page) => {
       const card = page.locator('.board[data-board=dripper]');

@@ -8,6 +8,7 @@
   import { signed } from '$lib/components/deltaColor';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
+  import JumpNav from './JumpNav.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
@@ -44,6 +45,13 @@
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews in this period.')}</p></section>
 {:else}
+  <JumpNav links={[
+    t.rest && ['brewing-rest', 'Rest curve'],
+    t.dialIn.length && ['brewing-dialin', 'Dial-in'],
+    t.bestAt.length && ['brewing-best', 'Brews until dialed'],
+    ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Dialed in, by ${by}`] as const)),
+    slots.length && ['brewing-vars', 'Variables vs rating']
+  ]} />
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}
