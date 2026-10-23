@@ -39,8 +39,7 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     num('coneAngle', 'Cone angle', '°', 0, 180, ['cone angle', 'angle']),
     text('material', 'Material', ['Plastic', 'Tritan', 'Ceramic', 'Glass', 'Metal'], ['material', 'materials']),
     text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate']),
-    text('size', 'Size', ['01', '02', '03']),
-    text('filterFit', 'Filter fit', ['V60 cone', 'Kalita 155', 'Kalita 185'], ['filter fit', 'filter', 'filters', 'filter size'])
+    text('size', 'Size', ['01', '02', '03'])
   ],
   grinder: [
     text('type', 'Type', ['Hand', 'Electric']),

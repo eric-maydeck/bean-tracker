@@ -36,11 +36,11 @@
   });
   // The admin edit form replaces the detail body; Esc and the backdrop leave it alone (Cancel/Save only).
   let editing = $state(false);
+  let mediaEl: HTMLElement | undefined = $state();
+  let preview = $state<{ src: string; fill?: string } | null>(null); // the edit form's previewed photo
+  $effect(() => { if (!editing) preview = null; });
   const curKey = $derived(current?.key); // a key, not `current`: a list refresh mid-edit must not close the form
   $effect(() => { void curKey; editing = false; }); // any card change (history back/forward) leaves edit mode
-  // PREVIEW-TEMP: photoratio=square|card comparison latch (default square); sticks once seen. Remove after the pick.
-  let photoRatio = $state('square'); // PREVIEW-TEMP
-  $effect(() => { const r = page.url.searchParams.get('photoratio'); if (r === 'square' || r === 'card') photoRatio = r; }); // PREVIEW-TEMP
   const open = (key: string) => choose({ card: key });
   // The card is one big target; links, buttons and the low-confidence chip keep their own clicks.
   function cardClick(e: MouseEvent, key: string) {
@@ -69,9 +69,9 @@
   </div>
 {/snippet}
 
-{#snippet img(t: Trophy)}
-  <div class="trophy-img" style:--fill={t.image?.fill ?? backdrop(null)}>
-    {#if t.image}<img src={t.image.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
+{#snippet img(t: Trophy, shown: { src: string; fill?: string } | null = t.image)}
+  <div class="trophy-img" style:--fill={shown?.fill ?? backdrop(null)}>
+    {#if shown}<img src={shown.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
   </div>
 {/snippet}
 
@@ -80,7 +80,7 @@
   <div class="trophy-grid hl-grid" class:retired>
     {#each items as t, i (t.key)}
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-      <div class="hl-card trophy-card" class:sq={photoRatio === 'square'} data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
+      <div class="hl-card trophy-card" data-key={t.key} style="{vars[i]};{kindVars(t)}" onclick={(e) => cardClick(e, t.key)}>
         {@render img(t)}
         <div class="trophy-main">
           <span class="trophy-kind">{KIND_LABEL[t.kind]}</span>
@@ -132,7 +132,8 @@
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           <article class="detail trophy-detail">
             <div class="detail-media">
-              {@render img(t)}
+              {@render img(t, preview ?? t.image)}
+              <div class="media-slot" bind:this={mediaEl}></div>
               <!-- Under the photo: when the details were stored (the local calendar day). -->
               <div class="media-meta">
                 {#if t.createdAt}<span>Added <b>{localDate(t.createdAt)}</b></span>{/if}
@@ -141,13 +142,13 @@
             </div>
             <div class="detail-body">
               <div class="detail-header">
-                <h2 id="trophy-title" class="trophy-name">{t.name}
+                <h2 id="trophy-title" class="trophy-name" class:admin={page.data.isAdmin}>{t.name}
                   <span class="badge badge-neutral">{KIND_LABEL[t.kind]}</span>
                   {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
                 </h2>
               </div>
               {#if editing}
-                {#key t.key}<GearForm trophy={t} onclose={() => (editing = false)} />{/key}
+                {#key t.key}{#if mediaEl}<GearForm trophy={t} mediaTarget={mediaEl} bind:preview onclose={() => (editing = false)} />{/if}{/key}
               {:else}
               {#if specs(t).length}
                 <div class="stat-grid specs">
@@ -215,12 +216,11 @@
     object-fit: contain;
     background-color: var(--fill);
   }
-  /* PREVIEW-TEMP: photoratio=square (default) is a square box on the collapsed card; photoratio=card keeps the box
-     filling the card's spare height, i.e. the card's own aspect. Remove after the pick. */
-  .trophy-card.sq .trophy-img { /* PREVIEW-TEMP */
-    flex: 0 0 auto; /* PREVIEW-TEMP */
-    aspect-ratio: 1; /* PREVIEW-TEMP */
-  } /* PREVIEW-TEMP */
+  /* A square box on the collapsed card; the card's spare height goes below it. */
+  .trophy-card .trophy-img {
+    flex: 0 0 auto;
+    aspect-ratio: 1;
+  }
   .trophy-img :global(svg) {
     width: 2.5rem;
     height: 2.5rem;
@@ -419,7 +419,10 @@
     justify-content: flex-end;
     align-items: center;
     gap: var(--space-2);
-    margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) var(--space-1) 0;
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    z-index: 1;
   }
   .trophy-top .button {
     display: inline-flex;
@@ -460,6 +463,7 @@
   .trophy-name {
     margin: 0;
     font-size: 1.5rem; /* the coffee page's h1 size */
+    padding-right: 3rem; /* clear of the close button; admins' Edit button needs more, below */
     overflow-wrap: anywhere;
   }
   /* Facts wrap and stretch: every row is full, no orphaned empty cell (the coffee page's auto-fill grid leaves holes). */
@@ -474,6 +478,9 @@
     margin-top: var(--space-2);
     font-size: 0.8rem;
     color: var(--color-text-muted);
+  }
+  .trophy-name.admin {
+    padding-right: 9.5rem;
   }
   /* Label over date, so both fit side by side in the narrow photo column. */
   .media-meta span {
@@ -505,15 +512,25 @@
       width: calc(100% - 1rem);
       max-height: calc(100dvh - 1rem);
     }
-    .trophy-detail .detail-media {
-      width: min(100%, 11rem);
-      margin-inline: auto;
+    /* The picture sits left of the corner buttons, capped; the edit form's image row under it takes the full width. */
+    .trophy-detail .trophy-img {
+      max-width: 9.5rem;
+    }
+  }
+  /* Usage on one line where there is room (phones wrap, rows stay full). */
+  @media (min-width: 641px) {
+    .usage .stat-grid {
+      flex-wrap: nowrap;
+      gap: var(--space-3);
+    }
+    .usage .stat {
+      flex: 1 1 auto;
     }
   }
   /* Phone landscape (333px tall): picture beside the facts. */
   @media (max-width: 1100px) and (max-height: 500px) {
     .trophy-detail {
-      grid-template-columns: 9.5rem 1fr;
+      grid-template-columns: 11rem 1fr;
       gap: var(--space-3);
     }
     .trophy-detail .detail-media {

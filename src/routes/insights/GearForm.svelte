@@ -4,7 +4,12 @@
   import { backdrop } from '$lib/imageBackdrop';
   import type { Trophy } from '$lib/server/insights/trophies';
 
-  let { trophy, onclose }: { trophy: Trophy; onclose: () => void } = $props();
+  // `mediaTarget` is the dialog's media column: the image row and (wide) Save/Cancel render there, under the photo; `preview` is
+  // the previewed image, shown in the photo box.
+  let { trophy, onclose, mediaTarget, preview = $bindable(null) }: {
+    trophy: Trophy; onclose: () => void; mediaTarget: HTMLElement; preview?: { src: string; fill?: string } | null;
+  } = $props();
+  const into = (node: HTMLElement, target: HTMLElement) => { target.append(node); return { destroy: () => node.remove() }; };
 
   const fields = $derived(fieldsFor(trophy.kind));
   // svelte-ignore state_referenced_locally
@@ -14,12 +19,11 @@
   let error = $state('');
   let saving = $state(false);
   let previewSrc = $state<string | null>(null);
-  let previewFailed = $state(false);
   // Backdrop per previewed URL, as CoffeeForm's preview does (POST /api/coffees/image-fill).
   let fills = $state<Record<string, string>>({});
-  async function preview() {
+  $effect(() => { preview = previewSrc ? { src: previewSrc, fill: fills[previewSrc] } : null; });
+  async function showPreview() {
     const url = (previewSrc = imageUrl.trim() || null);
-    previewFailed = false;
     if (!url || !/^https?:\/\//i.test(url) || url in fills) return;
     const res = await fetch('/api/coffees/image-fill', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url })
@@ -41,7 +45,15 @@
   }
 </script>
 
-<form class="gear-form" onsubmit={save} novalidate>
+{#snippet actions(cls: string)}
+  <div class="form-actions {cls}" data-button-row>
+    <button class="button" type="submit" form="gear-form" disabled={saving}>Save</button>
+    <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
+  </div>
+  {#if error}<p class="badge badge-urgent {cls}" role="alert">{error}</p>{/if}
+{/snippet}
+
+<form id="gear-form" class="gear-form" onsubmit={save} novalidate>
   <div class="gear-fields">
     {#each fields as f (f.key)}
       <div class="form-field">
@@ -54,24 +66,22 @@
       </div>
     {/each}
   </div>
+  <!-- Stacked phone layout: the actions go under the form (ui-rules 19). -->
+  {@render actions('under-form')}
+</form>
+
+<!-- Under the photo: the image row, and on wider dialogs Save and Cancel. -->
+<div class="media-edit" use:into={mediaTarget}>
   <div class="form-field">
     <label for="gear-image">Image URL</label>
-    <input id="gear-image" type="url" bind:value={imageUrl} placeholder="Photo of the gear" autocomplete="off" />
+    <input id="gear-image" type="url" form="gear-form" bind:value={imageUrl} placeholder="Photo of the gear" autocomplete="off" />
     <div class="inline-row-actions" data-button-row>
-      <button class="button button-secondary" type="button" onclick={preview}>Preview</button>
+      <button class="button button-secondary" type="button" onclick={showPreview}>Preview</button>
       <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
     </div>
-    {#if previewSrc}
-      {#if previewFailed}<p class="text-muted fill-note">Couldn't load image</p>
-      {:else}<img class="image-preview" src={previewSrc} alt="Preview" style:background-color={backdrop(fills[previewSrc])} onerror={() => (previewFailed = true)} />{/if}
-    {/if}
   </div>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <div class="form-actions" data-button-row>
-    <button class="button" type="submit" disabled={saving}>Save</button>
-    <button class="button button-secondary" type="button" disabled={saving} onclick={onclose}>Cancel</button>
-  </div>
-</form>
+  {@render actions('under-photo')}
+</div>
 
 <style>
   .gear-fields {
@@ -99,16 +109,16 @@
       text-align: center;
     }
   }
-  .fill-note {
-    margin: var(--space-1) 0 0;
-    font-size: 0.85rem;
+  /* Save and Cancel sit under the photo on wide dialogs, under the form on the stacked phone layout. */
+  .under-form {
+    display: none;
   }
-  .image-preview {
-    display: block;
-    margin-top: var(--space-2);
-    width: 96px;
-    height: 96px;
-    object-fit: contain;
-    border-radius: var(--radius);
+  @media (max-width: 640px) {
+    .under-form {
+      display: flex;
+    }
+    .under-photo {
+      display: none;
+    }
   }
 </style>

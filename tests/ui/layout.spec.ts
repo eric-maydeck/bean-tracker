@@ -4732,7 +4732,7 @@ export const STATES: State[] = [
       expect(probs).toEqual([]);
       // The hierarchy: name > average > brews | grams.
       const size = (l: Locator) => l.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
-      // The collapsed photo box is square (PREVIEW-TEMP: photoratio=card keeps the old fill-the-card shape).
+      // The collapsed photo box is square.
       for (const img of await page.locator('.trophy-card .trophy-img').all()) {
         const b = (await img.boundingBox())!;
         expect(Math.abs(b.width - b.height)).toBeLessThan(1.5);
@@ -4784,6 +4784,17 @@ export const STATES: State[] = [
       expect(meta.y).toBeGreaterThanOrEqual(media.y + media.height - 1);
       await expect(dlg.locator('.media-meta')).toContainText('Added');
       await expect(dlg.locator('.media-meta')).toContainText('Updated');
+      // The corner buttons overlay: the heading starts where it would without them, and clears them.
+      const top = (await dlg.locator('.trophy-top').boundingBox())!, name = (await dlg.locator('.trophy-name').boundingBox())!;
+      expect(name.y).toBeLessThan(top.y + top.height + 400);
+      expect(await dlg.locator('.trophy-top').evaluate((e) => getComputedStyle(e).position)).toBe('absolute');
+      const nameText = (await dlg.locator('.trophy-name').evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); return [...r.getClientRects()].map((x) => x.right); }));
+      expect(Math.max(...nameText)).toBeLessThanOrEqual(top.x + 1);
+      // Usage is one line where it fits (wider than a phone).
+      if (page.viewportSize()!.width > 640) {
+        const utops = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
+        expect(new Set(utops).size).toBe(1);
+      }
       // Added and Updated share one row.
       const tops = await dlg.locator('.media-meta span').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
       expect(new Set(tops).size).toBe(1);
@@ -4835,10 +4846,16 @@ export const STATES: State[] = [
       await expect(form.getByLabel('Cone angle (°)')).toHaveValue('60');
       await expect(form.getByLabel('Brand')).toHaveValue('Hario');
       await expect(form.getByLabel('Cone angle (°)')).toHaveAttribute('inputmode', 'decimal');
-      await expect(form.getByRole('button', { name: 'Preview' })).toBeVisible();
-      await expect(form.getByRole('button', { name: 'Discard image' })).toBeVisible();
+      // The image row (Preview, Discard) is under the photo, in the media column; Filter fit is gone.
+      const media = dlg.locator('.detail-media');
+      await expect(media.getByLabel('Image URL')).toBeVisible();
+      await expect(media.getByRole('button', { name: 'Preview' })).toBeVisible();
+      await expect(media.getByRole('button', { name: 'Discard image' })).toBeVisible();
+      await expect(dlg.getByLabel('Filter fit')).toHaveCount(0);
+      const photoBox = (await media.locator('.trophy-img').boundingBox())!, imgIn = (await media.getByLabel('Image URL').boundingBox())!;
+      expect(imgIn.y).toBeGreaterThanOrEqual(photoBox.y + photoBox.height - 1);
       // Opening focuses no input; the form replaces the body (no brew facts), and nothing was saved or put in the URL.
-      expect(await page.evaluate(() => document.activeElement?.closest('form.gear-form') ?? null)).toBeNull();
+      expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
       // Esc (twice: Chrome only lets `cancel` be prevented once per activation) and the backdrop do not close it.
@@ -4846,14 +4863,17 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       if (page.viewportSize()!.width > 640) await page.mouse.click(2, 2);
       await expect(dlg).toBeVisible();
-      // ui-rules 19: Save and Cancel sit below the image row, reachable by scrolling the sheet, 44px tall on a phone.
-      const save = form.getByRole('button', { name: 'Save' }), cancel = form.getByRole('button', { name: 'Cancel' });
+      // Save and Cancel: under the photo on wide dialogs, under the form on the stacked phone layout (ui-rules 19); reachable, 44px on a phone.
+      const phone = page.viewportSize()!.width <= 640;
+      const save = dlg.getByRole('button', { name: 'Save' }), cancel = dlg.getByRole('button', { name: 'Cancel' });
+      await expect(save).toHaveCount(1); // the other placement is display:none
+      await expect((phone ? form : media).getByRole('button', { name: 'Save' })).toBeVisible();
       for (const b of [save, cancel]) {
         await b.scrollIntoViewIfNeeded();
         await expect(b).toBeInViewport();
-        const r = (await b.boundingBox())!, imageRow = (await form.getByRole('button', { name: 'Preview' }).boundingBox())!;
+        const r = (await b.boundingBox())!, imageRow = (await media.getByRole('button', { name: 'Preview' }).boundingBox())!;
         expect(r.y).toBeGreaterThan(imageRow.y);
-        if (page.viewportSize()!.width <= 640) expect(r.height).toBeGreaterThanOrEqual(43);
+        if (phone) expect(r.height).toBeGreaterThanOrEqual(43);
       }
       // History to another card closes the form (it never carries A's values to B).
       await page.evaluate(() => { // a client-side navigation (SvelteKit takes anchor clicks), as back/forward between two card entries does
@@ -4876,7 +4896,7 @@ export const STATES: State[] = [
       // The server's error shows inline.
       await form.getByLabel('Burr size (mm)').fill('5');
       await save.click();
-      await expect(form.getByRole('alert')).toContainText('Burr size');
+      await expect(dlg.getByRole('alert')).toContainText('Burr size');
       await expect(form).toBeVisible();
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
