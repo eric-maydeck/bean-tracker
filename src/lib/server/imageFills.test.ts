@@ -8,6 +8,7 @@ import { createDb } from './db';
 import { computeFill, getImageFill, setImageFill, fetchImageFill, missingFillUrls, queueFillMissing } from './imageFills';
 import { createCoffee, type NewCoffeeInput } from './coffees';
 import { setRoasterImage } from './roasterImages';
+import { saveGearDetails } from './gearDetails';
 import { FillError } from './productFetch';
 import { LIGHT_BACKDROP, DARK_BACKDROP, NEUTRAL_BACKDROP } from '../imageBackdrop';
 
@@ -153,6 +154,11 @@ describe('fetching fills', () => {
     setRoasterImage(db, 'Norml', 'https://img.example/logo.png');
     setImageFill(db, 'https://img.example/done.png', '#000000');
     expect(missingFillUrls(db).sort()).toEqual(['https://img.example/bag.png', 'https://img.example/logo.png']);
+  });
+
+  it('a gear image without a fill is missing', () => {
+    saveGearDetails(db, { kind: 'grinder', name: 'Niche', values: {}, imageUrl: 'https://img.example/niche.png' });
+    expect(missingFillUrls(db)).toEqual(['https://img.example/niche.png']);
   });
 
   it('queueFillMissing: fills what it can, logs and skips a failure, and never refetches it in this process', async () => {

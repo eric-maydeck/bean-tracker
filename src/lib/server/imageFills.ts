@@ -78,14 +78,15 @@ export async function fetchImageFill(db: DatabaseSync, url: string, fetchBytes: 
   return fill;
 }
 
-// Displayed http(s) image URLs with no fill yet: coffees' own images and
-// roaster defaults. data: URIs are never fetched (they show the neutral backdrop).
+// Displayed http(s) image URLs with no fill yet: coffees' own images,
+// roaster defaults and gear photos. data: URIs are never fetched (they show the neutral backdrop).
 export function missingFillUrls(db: DatabaseSync): string[] {
   const rows = db
     .prepare(
       `SELECT u.url FROM (
          SELECT image_url AS url FROM coffees WHERE image_url != ''
          UNION SELECT image_url FROM roaster_images
+         UNION SELECT image_url FROM gear_details WHERE image_url != ''
        ) u LEFT JOIN image_fills f ON f.url = u.url
        WHERE f.url IS NULL AND (u.url LIKE 'http://%' OR u.url LIKE 'https://%')`
     )

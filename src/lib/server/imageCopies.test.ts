@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { createDb } from './db';
 import { createCoffee, type NewCoffeeInput } from './coffees';
 import { setRoasterImage } from './roasterImages';
+import { saveGearDetails } from './gearDetails';
 import { imagesRoot, copyPath, storeImageCopy, missingCopies, COPY_FILE_RE } from './imageCopies';
 
 const png = (w: number, h: number, background = '#6b4f3a') =>
@@ -103,6 +104,11 @@ describe('missingCopies', () => {
     coffee({ image_url: 'https://x/logo.png' });
     setRoasterImage(db, 'Norml', 'https://x/logo.png');
     expect(missingCopies(db, root).map((m) => m.kind).sort()).toEqual(['coffees', 'roasters']);
+  });
+
+  it('a gear image without a copy is missing', () => {
+    saveGearDetails(db, { kind: 'grinder', name: 'Niche', values: {}, imageUrl: 'https://x/niche.png' });
+    expect(missingCopies(db, root)).toEqual([{ url: 'https://x/niche.png', kind: 'gear' }]);
   });
 
   it('an existing copy is not missing, unless its file is gone', async () => {

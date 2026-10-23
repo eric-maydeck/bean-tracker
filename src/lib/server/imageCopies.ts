@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import sharp from 'sharp';
 
-export const COPY_KINDS = ['coffees', 'roasters'] as const;
+export const COPY_KINDS = ['coffees', 'roasters', 'gear'] as const;
 export type CopyKind = (typeof COPY_KINDS)[number];
 export const COPY_FILE_RE = /^[0-9a-f]{64}\.webp$/;
 const MAX_SIDE = 800;
@@ -58,6 +58,7 @@ export function missingCopies(db: DatabaseSync, root: string): { url: string; ki
       `SELECT u.url, u.kind, ic.file FROM (
          SELECT image_url AS url, 'coffees' AS kind FROM coffees WHERE image_url != ''
          UNION SELECT image_url, 'roasters' FROM roaster_images
+         UNION SELECT image_url, 'gear' FROM gear_details WHERE image_url != ''
        ) u LEFT JOIN image_copies ic ON ic.url = u.url AND ic.kind = u.kind
        WHERE u.url LIKE 'http://%' OR u.url LIKE 'https://%'`
     )
