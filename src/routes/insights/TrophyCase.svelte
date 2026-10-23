@@ -10,6 +10,7 @@
   import { usd } from '$lib/money';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { Trophy } from '$lib/server/insights/trophies';
+  import type { Snippet } from 'svelte';
   import { page } from '$app/state';
   import GearForm from './GearForm.svelte';
   import LabHead from './LabHead.svelte';
@@ -62,7 +63,7 @@
 </script>
 
 <!-- Focus is on the body once the Edit button is gone, so Esc is caught on the window (an open help tip still closes on Esc). -->
-<svelte:window onkeydown={(e) => { if (!editing || e.key !== 'Escape' || document.querySelector(':popover-open')) return; e.preventDefault(); leaving = null; }} />
+<svelte:window onkeydown={(e) => { if (!editing || e.key !== 'Escape' || document.querySelector(':popover-open, .suggest-dialog[open]')) return; e.preventDefault(); leaving = null; }} />
 
 {#snippet figs(t: Trophy)}
   <div class="trophy-figs">
@@ -87,10 +88,21 @@
 
 {#snippet heading(t: Trophy)}
   <div class="detail-header">
-    <h2 id="trophy-title" class="trophy-name" class:admin={page.data.isAdmin}>{t.name}
+    <h2 id="trophy-title" class="trophy-name" class:admin={page.data.isAdmin} class:editing>{t.name}
       <span class="badge badge-neutral">{KIND_LABEL[t.kind]}</span>
       {#if t.retired}<span class="badge badge-warm">Retired</span>{/if}
     </h2>
+  </div>
+{/snippet}
+
+<!-- The dialog's action group, top right: the form's Fill and Suggest (while editing), Edit (when not), and the close button. -->
+{#snippet topbar(tools?: Snippet)}
+  <div class="trophy-top">
+    {#if tools}{@render tools()}{/if}
+    {#if page.data.isAdmin && !editing}
+      <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
+    {/if}
+    <button type="button" class="trophy-close" aria-label="Close" onclick={() => { const c = editing ? form?.changes() ?? [] : []; if (c.length) leaving = c; else dlg?.close(); }}>✕</button>
   </div>
 {/snippet}
 
@@ -141,18 +153,12 @@
       {#if current}
         {@const t = current}
         <div class="trophy-sheet">
-          <!-- The dialog's action group, top right by the close button (Part 3 adds Fill and Suggest). -->
-          <div class="trophy-top">
-            {#if page.data.isAdmin && !editing}
-              <button type="button" class="button button-secondary" onclick={() => (editing = true)}><Icon name="edit" /> Edit</button>
-            {/if}
-            <button type="button" class="trophy-close" aria-label="Close" onclick={() => { const c = editing ? form?.changes() ?? [] : []; if (c.length) leaving = c; else dlg?.close(); }}>✕</button>
-          </div>
+          {#if !editing}{@render topbar()}{/if}
           <!-- The coffee page's language (routes/coffees/[slug]): .detail media + body, h-title with badges, .stat-grid facts. -->
           {#if editing}
             <!-- The edit form replaces the whole article: the photo (showing the preview), the fields and the image row share one grid. -->
             {#key t.key}
-              <GearForm bind:this={form} trophy={t} bind:preview onclose={() => (editing = false)}>
+              <GearForm bind:this={form} trophy={t} bind:preview onclose={() => (editing = false)} top={topbar}>
                 {#snippet head()}{@render heading(t)}{/snippet}
                 {#snippet photo()}{@render img(t, preview ?? t.image)}{/snippet}
               </GearForm>
@@ -491,7 +497,7 @@
     right: var(--space-1);
     z-index: 1;
   }
-  .trophy-top .button {
+  .trophy-top :global(.button) {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
@@ -550,6 +556,15 @@
   }
   .trophy-name.admin {
     padding-right: 9.5rem;
+  }
+  /* While editing, Fill and Suggest join the group: more room (phones: Fill, Suggest and the close, ~13rem). */
+  .trophy-name.admin.editing {
+    padding-right: 20rem;
+  }
+  @media (max-width: 640px) {
+    .trophy-name.admin.editing {
+      padding-right: 13.5rem;
+    }
   }
   /* One line each (label, date, time); the two stack when they don't fit side by side. */
   .media-meta span {

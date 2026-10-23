@@ -1,16 +1,18 @@
 <script lang="ts">
   import { invalidateAll } from '$app/navigation';
-  import { fieldsFor } from '$lib/gear';
+  import { fieldsFor, isWebUrl } from '$lib/gear';
+  import ImageSuggest from '$lib/components/ImageSuggest.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import { labelTip } from '$lib/components/labelTip';
   import { placeTip } from '$lib/components/modeTip';
   import { backdrop } from '$lib/imageBackdrop';
   import type { Snippet } from 'svelte';
   import type { Trophy } from '$lib/server/insights/trophies';
 
   // Replaces the dialog's article: `head` is the title, `photo` the picture (showing the previewed image, `preview`).
-  let { trophy, onclose, head, photo, preview = $bindable(null) }: {
-    trophy: Trophy; onclose: () => void; head: Snippet; photo: Snippet; preview?: { src: string; fill?: string } | null;
+  let { trophy, onclose, head, photo, top, preview = $bindable(null) }: {
+    trophy: Trophy; onclose: () => void; head: Snippet; photo: Snippet; top: Snippet<[Snippet]>; preview?: { src: string; fill?: string } | null;
   } = $props();
 
   const fields = $derived(fieldsFor(trophy.kind));
@@ -23,6 +25,8 @@
   // svelte-ignore state_referenced_locally
   let imageUrl = $state(trophy.imageUrl ?? '');
   let error = $state('');
+  let notes = $state<string[]>([]); // what Fill from URL reports, in the message spot
+  let filling = $state(false);
   let saving = $state(false);
   let previewSrc = $state<string | null>(null);
   // Backdrop per previewed URL, as CoffeeForm's preview does (POST /api/coffees/image-fill).
@@ -37,6 +41,24 @@
     const data = res?.ok ? await res.json().catch(() => null) : null;
     if (typeof data?.fill === 'string') fills[url] = data.fill;
   }
+
+  // Fill from URL reads the Official website field and overwrites only the fields it finds; nothing saves.
+  const site = $derived(String(values.website ?? '').trim());
+  const ok = $derived(isWebUrl(site));
+  async function fill() {
+    filling = true; error = ''; notes = [];
+    const res = await fetch('/api/gear/fill-from-url', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: site, kind: trophy.kind })
+    }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    filling = false;
+    if (!res?.ok || !data?.values) { error = data?.error ?? "Couldn't reach the server"; return; }
+    Object.assign(values, data.values);
+    notes = data.notes ?? [];
+    if (data.imageUrl) { imageUrl = data.imageUrl; showPreview(); }
+  }
+  // Suggest's brand · model line, else the card's name.
+  const matching = () => [[values.brand, values.model].map((x) => String(x ?? '').trim()).filter(Boolean).join(' · ') || trophy.name];
 
   // Unsaved changes, named for the leave panel: "Burr size: 64 → 54", "Image URL changed".
   // A field value as comparable text: trimmed, a number as its own digits (so "24" and 24.00 agree), empty for null.
@@ -77,6 +99,17 @@
      on the last, so their labels and inputs line up with those rows' fields; Save/Cancel fill the cell after the last field
      (the cell under the last field when the last row is full: its width is that field's input, as Preview/Discard span Image URL). Phones stack it all, Save/Cancel last (ui-rules 19). -->
 <form class="gear-form" onsubmit={save} novalidate style="--a:{act}">
+  {#snippet tools()}
+    <!-- aria-disabled, not disabled, so its tip (the reason) still opens; re-keyed so labelTip re-reads the state. -->
+    {#key ok}
+      <button type="button" class="button button-secondary" aria-disabled={!ok || filling || saving} aria-label="Fill from URL"
+        use:labelTip={ok ? 'Fill from URL' : 'Enter the Official website first'} onclick={() => ok && !filling && !saving && fill()}>Fill<span class="long"> from URL</span></button>
+    {/key}
+    <ImageSuggest endpoint="/api/gear/image-suggest" siteLabel="Maker website" setSiteText="set maker site" disabled={saving}
+      body={() => ({ kind: trophy.kind, name: trophy.name, brand: String(values.brand ?? ''), model: String(values.model ?? ''), site: ok ? site : undefined })}
+      {matching} onpick={(c) => { imageUrl = c.image; showPreview(); }} />
+  {/snippet}
+  {@render top(tools)}
   {@render head()}
   <div class="grid">
     <div class="photo">{@render photo()}</div>
@@ -118,9 +151,20 @@
     </div>
   </div>
   {#if error}<p class="badge badge-urgent" role="alert">{error}</p>{/if}
+  {#each notes as n (n)}<p class="text-muted note" role="status">{n}</p>{/each}
 </form>
 
 <style>
+  .note {
+    margin: var(--space-1) 0 0;
+    font-size: 0.85rem;
+  }
+  /* Phones: the top-right group is Fill, Suggest and the close button, so Fill drops "from URL" (its label and title keep it). */
+  @media (max-width: 640px) {
+    .long {
+      display: none;
+    }
+  }
   .grid {
     display: grid;
     grid-template-columns: minmax(11rem, 17.5rem) repeat(2, minmax(0, 1fr));

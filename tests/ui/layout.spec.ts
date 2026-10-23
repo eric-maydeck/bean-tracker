@@ -5104,6 +5104,81 @@ export const STATES: State[] = [
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
+  { name: 'insights-trophy-fill', path: () => '/insights?tab=gear&card=dripper-v60',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      const posts: string[] = [];
+      await page.route('**/api/gear', (route) => { posts.push(route.request().method()); return route.abort(); });
+      let fills = 0;
+      await page.route('**/api/gear/fill-from-url', (route) => { fills++; return route.fulfill({ json: {
+        values: { brand: 'Filled Brand', model: 'Filled Model', cost: 31.5 }, imageUrl: null, notes: ['Filled 3 fields', 'Price converted from EUR'] } }); });
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      const top = dlg.locator('.trophy-top');
+      const fillBtn = top.getByRole('button', { name: 'Fill from URL' }), close = dlg.getByRole('button', { name: 'Close' });
+      await expect(top.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+      // The group by the close button: Fill, Suggest, close on one row, clear of the heading, 44px targets on a phone.
+      const [fb, sb, cb, hb] = [await fillBtn.boundingBox(), await top.getByRole('button', { name: 'Suggest' }).boundingBox(), await close.boundingBox(), await dlg.locator('h2.trophy-name').boundingBox()];
+      expect(fb!.x + fb!.width).toBeLessThanOrEqual(sb!.x + 1);
+      expect(sb!.x + sb!.width).toBeLessThanOrEqual(cb!.x + 1);
+      expect(Math.abs(fb!.y + fb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(2);
+      if (page.viewportSize()!.width <= 480) expect(fb!.height).toBeGreaterThanOrEqual(43.5);
+      // The heading's text does not run under the group.
+      const textRight = await dlg.locator('h2.trophy-name').evaluate((h) => { const r = document.createRange(); r.selectNodeContents(h); return Math.max(...[...r.getClientRects()].map((x) => x.right)); });
+      expect(textRight, 'heading clear of Fill').toBeLessThanOrEqual(fb!.x + 1);
+      void hb;
+      // Fill needs a valid Official website.
+      const site = dlg.getByLabel('Official website', { exact: true });
+      await site.fill('');
+      await expect(fillBtn).toHaveAttribute('aria-disabled', 'true');
+      await fillBtn.click({ force: true });
+      expect(fills).toBe(0);
+      await site.fill('https://example.com/v60');
+      await expect(fillBtn).toHaveAttribute('aria-disabled', 'false');
+      await fillBtn.click();
+      await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Filled Brand');
+      await expect(dlg.getByLabel('Model', { exact: true })).toHaveValue('Filled Model');
+      await expect(dlg.getByLabel('Cost ($)', { exact: true })).toHaveValue('31.5');
+      await expect(dlg.getByLabel('Cone angle (°)')).toHaveValue('60'); // a field the fill did not find is kept
+      await expect(dlg.locator('form.gear-form')).toContainText('Price converted from EUR');
+      // Nothing saved; the ✕ lists the filled fields as unsaved changes.
+      expect(posts).toEqual([]);
+      await close.click();
+      const leave = dlg.getByRole('alertdialog');
+      await expect(leave).toContainText('Brand: Hario → Filled Brand');
+      await expect(leave).toContainText('Cost');
+      await leave.getByRole('button', { name: 'Keep editing' }).click();
+    } },
+  { name: 'insights-trophy-suggest', path: () => '/insights?tab=gear&card=dripper-v60',
+    act: async (page) => {
+      const dlg = page.locator('dialog.trophy-dialog');
+      const asked: unknown[] = [];
+      const img = 'https://example.com/picked.jpg';
+      await page.route('**/api/gear/image-suggest', (route) => { asked.push(route.request().postDataJSON()); return route.fulfill({ json: {
+        status: 'ok', site: null, storedSite: null, notes: [],
+        candidates: [{ image: img, pageUrl: 'https://example.com/v60', pageTitle: 'Hario V60 dripper', excerpt: 'Ceramic cone', published: null, closest: false }] } }); });
+      await page.route('**/api/coffees/image-fill', (route) => route.fulfill({ json: { fill: '#eeeeee' } }));
+      await page.route(img, (route) => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>' }));
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await dlg.locator('.trophy-top').getByRole('button', { name: 'Suggest' }).click();
+      const sug = page.locator('dialog.suggest-dialog[open]');
+      await expect(sug.getByText('Hario V60 dripper')).toBeVisible();
+      expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+      expect(asked[0]).toMatchObject({ kind: 'dripper', name: 'V60' });
+      // Above the gear dialog; Esc closes only Suggest and returns to the form.
+      const top = await page.evaluate(() => { const b = document.querySelector('.suggest-dialog[open]')!.getBoundingClientRect(); const e = document.elementFromPoint(b.x + b.width / 2, b.y + 20); return !!e?.closest('.suggest-dialog'); });
+      expect(top).toBe(true);
+      await page.keyboard.press('Escape');
+      await expect(sug).toHaveCount(0);
+      await expect(dlg.locator('form.gear-form')).toBeVisible();
+      await expect(dlg).toBeVisible();
+      // A pick fills only the Image URL (and its preview).
+      await dlg.locator('.trophy-top').getByRole('button', { name: 'Suggest' }).click();
+      await page.locator('dialog.suggest-dialog[open]').getByRole('button', { name: /Hario V60 dripper/ }).click();
+      await expect(dlg.getByLabel('Image URL')).toHaveValue(img);
+      await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Hario');
+      await expect(dlg.locator('.gear-form .trophy-img img')).toHaveAttribute('src', img);
+      await expect(dlg).toBeVisible();
+    } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',
     act: async (page) => {
       const loads: string[] = [];
@@ -6542,6 +6617,7 @@ test.describe('signed out', () => {
     await gotoReady(page, '/insights?tab=gear&card=dripper-v60');
     await expect(page.locator('dialog.trophy-dialog')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^(Fill|Suggest)/ })).toHaveCount(0);
     await checkLayout(page);
   });
 });
