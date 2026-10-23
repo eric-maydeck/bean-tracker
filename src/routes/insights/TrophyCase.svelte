@@ -96,6 +96,27 @@
 {/snippet}
 
 <!-- The dialog's action group, top right: the form's Fill and Suggest (while editing), Edit (when not), and the close button. -->
+{#snippet usage(t: Trophy)}
+  <section class="detail-section usage">
+    <h2>Usage</h2>
+    <!-- One grid, so the brews/rating row lines up under the dates row (it starts its own row; gaps are fine). -->
+    <div class="stat-grid usage-grid" style="--n:{4 + (t.favorite ? 1 : 0) + (t.retired ? 1 : 0)}">
+      {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
+      <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
+      <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
+      <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
+      <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
+      {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
+      <div class="stat row-start"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
+      <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
+      <div class="stat"><span class="stat-label">Avg dose</span><span class="stat-value">{(t.grams / t.brews).toFixed(1)}g</span></div>
+      <div class="stat"><span class="stat-label">Average</span>
+        <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
+      {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
+    </div>
+  </section>
+{/snippet}
+
 {#snippet topbar(tools?: Snippet)}
   <div class="trophy-top">
     {#if tools}{@render tools()}{/if}
@@ -183,28 +204,13 @@
                       <span class="stat-value">{#if f.type === 'url'}<a href={String(v)} target="_blank" rel="noopener">{hostOf(String(v))}</a>{:else}{specText(f, v)}{/if}</span></div>
                   {/each}
                 </div>
+              {:else}
+                <p class="text-muted no-specs">No details yet.{#if page.data.isAdmin}{' '}Use Edit to add specs, cost and a photo.{/if}</p>
               {/if}
             </div>
           </article>
           {/if}
-            <section class="detail-section usage">
-              <h2>Usage</h2>
-              <!-- One grid, so the brews/rating row lines up under the dates row (it starts its own row; gaps are fine). -->
-              <div class="stat-grid usage-grid" style="--n:{4 + (t.favorite ? 1 : 0) + (t.retired ? 1 : 0)}">
-                {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
-                <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
-                <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
-                <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
-                <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
-                {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
-                <div class="stat row-start"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
-                <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
-                <div class="stat"><span class="stat-label">Avg dose</span><span class="stat-value">{(t.grams / t.brews).toFixed(1)}g</span></div>
-                <div class="stat"><span class="stat-label">Average</span>
-                  <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
-                {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
-              </div>
-            </section>
+            {@render usage(t)}
         </div>
         {#if leaving}
           <!-- Inside the dialog, so in the top layer; Escape = Keep editing (window keydown above). -->
@@ -583,6 +589,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--space-3);
   }
+  .no-specs { margin-top: var(--space-3); }
   .usage-grid .row-start {
     grid-column-start: 1;
   }

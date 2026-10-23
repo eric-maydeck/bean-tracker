@@ -4879,6 +4879,7 @@ export const STATES: State[] = [
       await page.goto('/insights?tab=gear&card=grinder-comandante-c40-mk4');
       await expect(dlg.getByRole('heading', { name: 'Comandante C40 MK4' })).toBeVisible();
       await expect(dlg.locator('.specs')).toHaveCount(0);
+      await expect(dlg.locator('.no-specs')).toHaveText('No details yet. Use Edit to add specs, cost and a photo.');
       // Added always shows (the gear's first brew when Bean Conqueror gave no date); Updated only with a stored row.
       await expect(dlg.locator('.media-meta span')).toHaveCount(1);
       await expect(dlg.locator('.media-meta')).toContainText('Added');
@@ -6646,6 +6647,8 @@ test.describe('signed out', () => {
     await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^(Fill|Suggest)/ })).toHaveCount(0);
     await checkLayout(page);
+    await gotoReady(page, '/insights?tab=gear&card=grinder-comandante-c40-mk4');
+    await expect(page.locator('dialog.trophy-dialog .no-specs')).toHaveText('No details yet.');
   });
 });
 
