@@ -2785,6 +2785,7 @@ export const STATES: State[] = [
     act: async (page: Page) => {
       const links = page.locator('.board-jump a');
       if (tab === 'milestones' || tab === 'sweetspots') return void (await expect(links).toHaveCount(0));
+      expect(await page.evaluate(() => { const seen = new Set<string>(); return [...document.querySelectorAll('[id]')].map((e) => e.id).filter((i) => seen.size === seen.add(i).size); })).toEqual([]);
       // One chip per rendered section; a click is a hash jump (no reload) landing the section just under the sticky bar.
       expect(await links.count()).toBeGreaterThan(2);
       await page.evaluate(() => ((window as unknown as { __jump: number }).__jump = 1));

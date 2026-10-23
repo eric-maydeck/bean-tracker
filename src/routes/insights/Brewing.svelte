@@ -49,7 +49,7 @@
     t.rest && ['brewing-rest', 'Rest curve'],
     t.dialIn.length && ['brewing-dialin', 'Dial-in'],
     t.bestAt.length && ['brewing-best', 'Brews until dialed'],
-    ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Dialed in, by ${by}`] as const)),
+    ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Brews until dialed in, by ${by}`] as const)),
     slots.length && ['brewing-vars', 'Variables vs rating']
   ]} />
   {#if t.rest}

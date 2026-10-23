@@ -72,7 +72,7 @@
 {/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
-<JumpNav links={[['habits-habits', 'Habits'], !empty && ['habits-hour', 'By hour of day'], !empty && ['habits-weekday', 'By day of week'], !empty && ['habits-heatmap', 'Hour × weekday'], !empty && ['habits-calendar', 'Brew calendar']]} />
+<JumpNav links={[!empty && ['habits-hour', 'By hour of day'], !empty && ['habits-weekday', 'By day of week'], !empty && ['habits-heatmap', 'Hour × weekday'], !empty && ['habits-calendar', 'Brew calendar']]} />
 {@render tiles()}
 
 <!-- A period with no brews is one empty panel, not four empty charts (rule 28). -->

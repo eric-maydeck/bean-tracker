@@ -74,10 +74,10 @@
   <JumpNav links={[
     t.recipes.length && ['water-recipes', 'Ratings by recipe'],
     t.gh.length && ['water-gh', 'GH vs rating'],
-    t.map && ['water-minerals', 'Mineral map'],
-    t.byRoast && ['water-roast', 'Water × roast'],
+    t.map && ['water-minerals', 'Recipe mineral map'],
+    t.byRoast && ['water-roast', 'Water × roast level'],
     t.byProcess && ['water-process', 'Water × process'],
-    t.eras && ['water-eras', 'Usage over time'],
+    t.eras && ['water-eras', 'Water usage over time'],
     t.pairs.length && ['water-pairs', 'Same bag, different water']
   ]} />
   {#if t.recipes.length || t.gh.length}

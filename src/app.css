@@ -2789,7 +2789,7 @@ button .sample-chip {
   translate: 0 calc(-100% - 0.5rem);
 }
 
-/* Jump links (Leaderboards boards, Gear sections): one chip per board, landing on its card (the page's scroll-padding clears the sticky bar). */
+/* Jump links (JumpNav.svelte, every insights tab with 3+ sections): one chip per section, landing on it (the page's scroll-padding clears the sticky bar). */
 .board-jump {
   display: flex;
   flex-wrap: wrap;
