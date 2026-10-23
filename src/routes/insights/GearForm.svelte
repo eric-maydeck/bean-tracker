@@ -18,7 +18,8 @@
   // The row Preview/Discard and Save/Cancel share (the one after a full last row); Image URL is the row above.
   const act = $derived(fields.length % 2 ? last : last + 1); // the row Preview/Discard and Save/Cancel share; Image URL is the row above
   // svelte-ignore state_referenced_locally
-  let values = $state<Record<string, string>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
+  // A number input binds a number (null when emptied), a text input or select a string.
+  let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
   // svelte-ignore state_referenced_locally
   let imageUrl = $state(trophy.imageUrl ?? '');
   let error = $state('');
@@ -38,9 +39,14 @@
   }
 
   // Unsaved changes, named for the leave panel: "Burr size: 64 → 54", "Image URL changed".
+  // A field value as comparable text: trimmed, a number as its own digits (so "24" and 24.00 agree), empty for null.
+  const norm = (f: { type: string }, v: unknown): string => {
+    const t = String(v ?? '').trim();
+    return t !== '' && (f.type === 'number' || f.type === 'money') && Number.isFinite(+t) ? String(+t) : t;
+  };
   function changes(): string[] { return [
     ...fields.flatMap((f) => {
-      const [was, now] = [String(trophy.values[f.key] ?? ''), (values[f.key] ?? '').trim()];
+      const [was, now] = [norm(f, trophy.values[f.key]), norm(f, values[f.key])];
       return was === now ? [] : [`${f.label}: ${was || 'empty'} → ${now || 'empty'}`];
     }),
     ...(imageUrl.trim() !== (trophy.imageUrl ?? '') ? ['Image URL changed'] : [])

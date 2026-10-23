@@ -4975,6 +4975,31 @@ export const STATES: State[] = [
       await save.click();
       await expect(dlg.getByRole('alert')).toContainText('Burr size');
       await expect(form).toBeVisible();
+      // Regression: a typed number (a number input binds a number, not a string) is a listed change, and nothing phantom
+      // appears for a stored number left alone (burr size 64).
+      await page.goto('/insights?tab=gear&card=dripper-v60');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await form.getByLabel('Cost ($)').click();
+      await page.keyboard.press('ControlOrMeta+a');
+      await page.keyboard.type('25');
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(dlg.getByRole('alertdialog')).toContainText('Cost: 24 → 25');
+      await dlg.getByRole('alertdialog').getByRole('button', { name: 'Keep editing' }).click();
+      await expect(form.getByLabel('Cost ($)')).toHaveValue('25');
+      await form.getByLabel('Cost ($)').fill('24.00'); // the stored 24 again: not a change
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(dlg).toBeHidden();
+      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await expect(form.getByLabel('Burr size (mm)')).toHaveValue('64');
+      await dlg.getByRole('button', { name: 'Close' }).click(); // no change: no panel
+      await expect(dlg).toBeHidden();
+      await page.goto('/insights?tab=gear&card=grinder-zp6-special');
+      await dlg.getByRole('button', { name: 'Edit' }).click();
+      await form.getByLabel('Burr size (mm)').fill(''); // emptied reads as empty
+      await dlg.getByRole('button', { name: 'Close' }).click();
+      await expect(dlg.getByRole('alertdialog')).toContainText('Burr size: 64 → empty');
+      await dlg.getByRole('alertdialog').getByRole('button', { name: 'Keep editing' }).click();
       // ✕ in edit mode is Cancel then close. No changes: it closes at once (no panel) and the URL drops the card.
       const panel = dlg.getByRole('alertdialog');
       await page.goto('/insights?tab=gear&card=dripper-v60');
