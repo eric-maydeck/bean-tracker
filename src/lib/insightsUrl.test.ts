@@ -367,6 +367,25 @@ describe('habits and consumption params', () => {
     expect(withDefaults({}).agg).toBe('average');
     expect(withDefaults({ agg: 'total' }).agg).toBe('total');
   });
+  it('agg=brewday (Per brew day) is explicit and round-trips', () => {
+    expect(parse('tab=consumption&agg=BrewDay').agg).toBe('brewday');
+    expect(insightsParams(parse('tab=consumption&agg=brewday')).toString()).toBe('tab=consumption&agg=brewday');
+    expect(withDefaults({ agg: 'brewday' }).agg).toBe('brewday');
+  });
+  it('trend (Brewed over time measure), eraBy and eraView: only the non-default values, junk dropped, round-trip', () => {
+    expect(parse('trend=brews').trend).toBe('brews');
+    expect(parse('trend=Water').trend).toBe('water');
+    expect(parse('trend=rating').trend).toBe('rating');
+    expect(parse('trend=grams').trend).toBeUndefined();
+    expect(parse('eraBy=grinder').eraBy).toBe('grinder');
+    expect(parse('eraBy=dripper').eraBy).toBeUndefined();
+    expect(parse('eraView=lines').eraView).toBe('lines');
+    expect(parse('eraView=bars').eraView).toBeUndefined();
+    for (const q of ['tab=consumption&trend=water', 'tab=gear&eraBy=grinder&eraView=lines', 'tab=water&eraView=lines'])
+      expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(insightsParams(parse('')).toString()).toBe('');
+    expect(withDefaults({}).trend).toBeUndefined();
+  });
   it('defaults: brews, grams, by auto', () => {
     expect(withDefaults({})).toMatchObject({ measure: 'brews', unit: 'grams' });
     expect(withDefaults({}).by).toBeUndefined();
@@ -654,6 +673,10 @@ describe('ratingsMenuOn', () => {
     expect(['tab=leaderboards&rank=rating', 'tab=leaderboards&rank=like', 'tab=habits&measure=rating'].map(on)).toEqual([true, true, true]);
     expect(['', 'tab=leaderboards&rank=brews', 'tab=habits&measure=brews', 'tab=consumption', 'tab=milestones'].map(on))
       .toEqual([false, false, false, false, false]);
+  });
+  it('Consumption shows it only while Brewed over time measures rating', () => {
+    expect(on('tab=consumption&trend=rating')).toBe(true);
+    expect(on('tab=consumption&trend=water')).toBe(false);
   });
 });
 

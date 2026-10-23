@@ -92,10 +92,19 @@ export const MEASURES = ['brews', 'grams', 'rating'] as const;
 export type Measure = (typeof MEASURES)[number];
 export const UNITS = ['grams', 'bags'] as const;
 export type Unit = (typeof UNITS)[number];
-// Consumption: per-day average within each bucket, or the bucket's total (URL carries only `total`).
-export const AGGS = ['average', 'total'] as const;
+// Show: per-day average within each bucket, the same per brew day (days with 1+ brew), or the bucket's total
+// (the URL carries only `brewday` / `total`; average is the default).
+export const AGGS = ['average', 'brewday', 'total'] as const;
 export type Agg = (typeof AGGS)[number];
-export const AGG_LABEL: Record<Agg, string> = { average: 'Avg per day', total: 'Total' };
+export const AGG_LABEL: Record<Agg, string> = { average: 'Avg per day', brewday: 'Per brew day', total: 'Total' };
+// Consumption's "Brewed over time" measure beyond the sticky Unit (absent = grams / bags, per Unit).
+export const TRENDS = ['brews', 'water', 'rating'] as const;
+export type Trend = (typeof TRENDS)[number];
+// Gear's "Gear usage over time" subject (absent = Dripper) and the usage charts' Bars | Lines view (absent = Bars).
+export const ERA_BYS = ['dripper', 'grinder'] as const;
+export type EraBy = (typeof ERA_BYS)[number];
+export const ERA_VIEWS = ['bars', 'lines'] as const;
+export type EraView = (typeof ERA_VIEWS)[number];
 // Once dialed (spec 2026-10-15 Part 2): rating views skip each bag's dial-in brews (dialed.ts). Only `all`
 // is ever in the URL (dial=all); absent = Once dialed.
 export const DIALS = ['dialed', 'all'] as const;
@@ -256,15 +265,18 @@ export interface InsightsUrlState {
   retired?: 'open'; // Gear's retired shelf is open
   gear?: GearKind; // Gear showcase's kind toggle: absent = All
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
-  agg?: Agg; // only 'total' is ever explicit: average is the default
+  agg?: Agg; // average is the default and never explicit
+  trend?: Trend; // Consumption: Brewed over time's measure (absent = the Unit)
+  eraBy?: 'grinder'; // Gear usage over time: Grinder (absent = Dripper)
+  eraView?: 'lines'; // Gear / Water usage over time: Lines (absent = Bars)
   dial?: Dial; // only 'all' is ever explicit
 }
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
-type Optional = 'avg' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
+type Optional = 'avg' | 'trend' | 'eraBy' | 'eraView' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
   | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'retired' | 'gear';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
-  avg?: Avg; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
+  avg?: Avg; trend?: Trend; eraBy?: 'grinder'; eraView?: 'lines'; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
   tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; retired?: 'open'; gear?: GearKind;
@@ -382,7 +394,10 @@ export function parseInsightsUrl(
     measure: pickOne(p, 'measure', MEASURES),
     unit: pickOne(p, 'unit', UNITS),
     by: ((b) => (b && byFits(r, b) ? b : undefined))(pickOne(p, 'by', BYS)),
-    agg: pickOne(p, 'agg', AGGS) === 'total' ? 'total' : undefined,
+    agg: ((a) => (a === 'brewday' || a === 'total' ? a : undefined))(pickOne(p, 'agg', AGGS)),
+    trend: pickOne(p, 'trend', TRENDS),
+    eraBy: pickOne(p, 'eraBy', ['grinder']),
+    eraView: pickOne(p, 'eraView', ['lines']),
     brewer: pickOne(p, 'brewer', brewerTypes),
     kinds: parseList(p, 'kinds', KINDS),
     caffeine: pickOne(p, 'caffeine', CAFFEINES),
@@ -459,7 +474,10 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.measure) p.set('measure', s.measure);
   if (s.unit) p.set('unit', s.unit);
   if (s.by) p.set('by', s.by);
-  if (s.agg === 'total') p.set('agg', 'total');
+  if (s.agg === 'brewday' || s.agg === 'total') p.set('agg', s.agg);
+  if (s.trend) p.set('trend', s.trend);
+  if (s.eraBy) p.set('eraBy', s.eraBy);
+  if (s.eraView) p.set('eraView', s.eraView);
   if (s.brewer) p.set('brewer', s.brewer);
   if (s.kinds) p.set('kinds', s.kinds.join(','));
   if (s.caffeine) p.set('caffeine', s.caffeine);
@@ -567,8 +585,9 @@ export function hiddenNote(h: Hidden): { lead: string; tip: { title: string; row
 }
 
 // The tabs and modes whose views read ratings: the Ratings/Brews menu shows there, and so does the roast nudge.
-export const ratingsMenuOn = (s: Pick<InsightsView, 'tab' | 'rank' | 'measure'>): boolean =>
-  ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && (s.rank === 'rating' || s.rank === 'like')) || (s.tab === 'habits' && s.measure === 'rating');
+export const ratingsMenuOn = (s: Pick<InsightsView, 'tab' | 'rank' | 'measure' | 'trend'>): boolean =>
+  ['sweetspots', 'brewing', 'water', 'gear', 'records'].includes(s.tab) || (s.tab === 'leaderboards' && (s.rank === 'rating' || s.rank === 'like')) || (s.tab === 'habits' && s.measure === 'rating')
+  || (s.tab === 'consumption' && s.trend === 'rating');
 
 export function withDefaults(s: InsightsUrlState): InsightsView {
   return {
@@ -585,6 +604,9 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     unit: s.unit ?? DEFAULTS.unit,
     by: s.by,
     agg: s.agg ?? DEFAULTS.agg,
+    trend: s.trend,
+    eraBy: s.eraBy,
+    eraView: s.eraView,
     dial: s.dial ?? DEFAULTS.dial,
     brewer: s.brewer,
     kinds: s.kinds,
