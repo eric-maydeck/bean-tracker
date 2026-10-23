@@ -194,7 +194,7 @@
     font-family: var(--font-display);
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--kc-ink); /* the name carries the kind color, the label above it the brown accent */
+    color: color-mix(in srgb, var(--color-accent) 55%, var(--color-text)); /* "Roast": between the accent label above and the text */
     line-height: 1.2;
     max-height: max(44px, 2.4em); /* two lines, never a third peeking through */
     text-align: center;
