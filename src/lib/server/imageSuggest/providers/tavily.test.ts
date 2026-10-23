@@ -47,6 +47,13 @@ describe('searchTavily', () => {
     ]);
   });
 
+  it('a term replaces coffee in the query', async () => {
+    const f = ok();
+    vi.stubGlobal('fetch', f);
+    await searchTavily({ ...Q, term: 'pour over dripper' }, signal, db, NOW);
+    expect(sent(f).query).toBe('"Ethiopia Gesha Village Lot 26/136 Oma Honey" The Picky Chemist pour over dripper');
+  });
+
   it('no site: one open-web call', async () => {
     const f = ok();
     vi.stubGlobal('fetch', f);

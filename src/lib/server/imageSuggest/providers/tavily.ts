@@ -51,7 +51,7 @@ async function call(query: string, domain: string | null, signal: AbortSignal, d
 
 // At most 2 calls: the roaster's site first, then the open web if it had nothing.
 export async function searchTavily(q: SuggestQuery, signal: AbortSignal, db: DatabaseSync = getDb(), now = new Date()): Promise<CandidatePage[]> {
-  const query = `"${q.name}" ${q.roaster} coffee`;
+  const query = `"${q.name}" ${q.roaster} ${q.term ?? 'coffee'}`;
   if (!q.site) return call(query, null, signal, db, now);
   const onSite = await call(query, new URL(q.site).hostname, signal, db, now);
   if (onSite.length || !underBudget(db, now)) return onSite;

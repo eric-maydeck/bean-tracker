@@ -1,5 +1,5 @@
 // Image Suggest's server-side shapes (spec "Server").
-export interface SuggestQuery { roaster: string; name: string; origin: string | null; roastDate: string | null; site: string | null }
+export interface SuggestQuery { roaster: string; name: string; origin: string | null; roastDate: string | null; site: string | null; term?: string }
 export interface CandidatePage { url: string; title: string; provider: string }
 export type FetchPage = (url: string, signal?: AbortSignal) => Promise<{ status: number; body: string; finalUrl: string }>;
 export interface Provider {
