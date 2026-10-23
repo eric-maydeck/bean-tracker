@@ -1,3 +1,67 @@
+# [1.85.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.84.0...v1.85.0) (2026-10-23)
+
+
+### Bug Fixes
+
+* **ci:** pin svelte-check as a devDependency
+* **gear:** disabled step size looks disabled
+* **gear:** fill errors read message, save waits for fill, cover image and error replies
+* **gear:** fill keeps an options field only when it matches an option
+* **gear:** fill never reads a brew temperature as the cone angle
+* **gear:** final review fixes (bad number input, raw names, remembered card, tidy)
+* **gear:** keep seeded coffee brew counts, tidy trophy styles
+* **gear:** keep the svelte-ignore on the values state
+* **gear:** number inputs no longer break the unsaved-changes check
+* **gear:** reset edit form on card change, block repeated escape
+* **gear:** suggest beside preview, disabled fill look, space above actions, money cents
+* **gear:** unsaved-changes panel inside the dialog instead of confirm
+* **images:** narrow the dialog skip in the button-row check, scope the suggest button rules
+* **insights:** latch the temp trophy style on mount
+* **insights:** trophy dialog heading scale matches the coffee page
+* **insights:** unique jump ids, heading-text chip labels
+* **stats:** link picker action row sits 16px below the picker
+* **tips:** a scroll under a still mouse never opens a help tip over the pinned headline tip
+* **tips:** ignore a pointerover only when the pointer has not moved, not a scroll time window
+
+
+### Features
+
+* **gear:** a card with no stored details says so
+* **gear:** added date defaults to Bean Conqueror created date or first brew
+* **gear:** admin edit form on trophy cards
+* **gear:** admin endpoint to save gear details
+* **gear:** aligned edit grid, gear tab jump links
+* **gear:** brew and rating facts join Usage as an aligned second row, with avg dose
+* **gear:** close button leaves edit mode with an unsaved-changes prompt
+* **gear:** compact edit grid, reordered image row, save placement latch
+* **gear:** field help tips, burr coating, earliest added with time
+* **gear:** fill from url and image suggest for gear
+* **gear:** fill gear details from a product page
+* **gear:** fill reads option specs from the page's prose when no spec line has them
+* **gear:** grinder adjustment select, one-line browser-zone stamps, tip wording
+* **gear:** local copies and backdrops for gear images
+* **gear:** official website sits under Fill from URL, cost beside model
+* **gear:** overlay dialog actions, edit image row under photo, one-line usage
+* **gear:** per-kind metadata standard and validation
+* **gear:** save pair spans last input, dripper field help tips
+* **gear:** stored gear details on trophy cards
+* **gear:** trim store suffixes from the filled brand
+* **gear:** trophy dialog header actions, full-width usage, square card photos
+* **insights:** cards and retired url params for the trophy case
+* **insights:** gear names in roast brown
+* **insights:** gear showcase cards lead with the average and the name
+* **insights:** gear showcase follows the period, kind toggle, name headline
+* **insights:** gear tab offers dripper, filter and grinder picks
+* **insights:** gear trophy cards from all brews
+* **insights:** gear trophy case cards and retired shelf
+* **insights:** jump-to section chips on every tab
+* **insights:** kind-colored gear name, icon-only chip on narrow cards
+* **insights:** name color preview, chip in the figures row, kind order, pre-skip sample
+* **insights:** trophy card dialog, per-kind picks, grinder in filters, style previews
+* **insights:** trophy card selection and row fill
+* **insights:** trophy style a only, coffee-page overlay design
+* **ui:** form action rows sit 16px below their content, checked globally
+
 # [1.84.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.83.0...v1.84.0) (2026-10-22)
 
 
