@@ -6,7 +6,7 @@
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
   import { hostOf } from '$lib/imageSuggest';
-import { usd } from '$lib/money';
+  import { usd } from '$lib/money';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
   import type { Trophy } from '$lib/server/insights/trophies';
   import LabHead from './LabHead.svelte';
@@ -179,8 +179,6 @@ import { usd } from '$lib/money';
     border-radius: var(--radius);
     background: var(--fill);
     color: #7a6a5c;
-  }
-  .trophy-img {
     position: relative;
     overflow: hidden;
   }
