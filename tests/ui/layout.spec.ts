@@ -5116,10 +5116,11 @@ export const STATES: State[] = [
       const top = dlg.locator('.trophy-top');
       const fillBtn = top.getByRole('button', { name: 'Fill from URL' }), close = dlg.getByRole('button', { name: 'Close' });
       await expect(top.getByRole('button', { name: 'Edit' })).toHaveCount(0);
-      // The group by the close button: Fill, Suggest, close on one row, clear of the heading, 44px targets on a phone.
-      const [fb, sb, cb] = [await fillBtn.boundingBox(), await top.getByRole('button', { name: 'Suggest' }).boundingBox(), await close.boundingBox()];
-      expect(fb!.x + fb!.width).toBeLessThanOrEqual(sb!.x + 1);
-      expect(sb!.x + sb!.width).toBeLessThanOrEqual(cb!.x + 1);
+      // The group by the close button: Fill and close on one row, clear of the heading, 44px targets on a phone; Suggest is not in it.
+      await expect(top.getByRole('button', { name: 'Suggest' })).toHaveCount(0);
+      const [fb, cb, db] = [await fillBtn.boundingBox(), await close.boundingBox(), await dlg.boundingBox()];
+      expect(fb!.x + fb!.width).toBeLessThanOrEqual(cb!.x + 1);
+      expect(fb!.y - db!.y, 'space above the action group').toBeGreaterThanOrEqual(10);
       expect(Math.abs(fb!.y + fb!.height / 2 - (cb!.y + cb!.height / 2))).toBeLessThan(2);
       if (page.viewportSize()!.width <= 480) expect(fb!.height).toBeGreaterThanOrEqual(43.5);
       // The heading's text does not run under the group.
@@ -5129,6 +5130,8 @@ export const STATES: State[] = [
       const site = dlg.getByLabel('Official website', { exact: true });
       await site.fill('');
       await expect(fillBtn).toHaveAttribute('aria-disabled', 'true');
+      await expect(fillBtn).toHaveCSS('cursor', 'not-allowed'); // not the tip's help cursor (ui-rules 50)
+      await expect(fillBtn).toHaveCSS('opacity', '0.5');
       await fillBtn.click({ force: true });
       expect(fills).toBe(0);
       await site.fill('https://example.com/v60');
@@ -5136,7 +5139,7 @@ export const STATES: State[] = [
       await fillBtn.click();
       await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Filled Brand');
       await expect(dlg.getByLabel('Model', { exact: true })).toHaveValue('Filled Model');
-      await expect(dlg.getByLabel('Cost ($)', { exact: true })).toHaveValue('31.5');
+      await expect(dlg.getByLabel('Cost ($)', { exact: true })).toHaveValue('31.50');
       await expect(dlg.getByLabel('Cone angle (°)')).toHaveValue('60'); // a field the fill did not find is kept
       await expect(dlg.locator('form.gear-form')).toContainText('Price converted from EUR');
       // Nothing saved; the ✕ lists the filled fields as unsaved changes.
@@ -5173,7 +5176,16 @@ export const STATES: State[] = [
       await page.route('**/api/coffees/image-fill', (route) => route.fulfill({ json: { fill: '#eeeeee' } }));
       await page.route(img, (route) => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>' }));
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      await dlg.locator('.trophy-top').getByRole('button', { name: 'Suggest' }).click();
+      // Suggest joins Preview and Discard image under the photo: one row, in the Image URL box's span.
+      const row = [await dlg.getByRole('button', { name: 'Preview' }).boundingBox(), await dlg.getByRole('button', { name: 'Suggest', exact: true }).boundingBox(), await dlg.getByRole('button', { name: 'Discard image' }).boundingBox()].map((b) => b!);
+      const url = (await dlg.getByLabel('Image URL').boundingBox())!;
+      expect(Math.abs(row[0].y - row[1].y) + Math.abs(row[1].y - row[2].y)).toBeLessThan(2);
+      expect(row[0].x + row[0].width).toBeLessThanOrEqual(row[1].x + 1);
+      expect(row[1].x + row[1].width).toBeLessThanOrEqual(row[2].x + 1);
+      expect(Math.abs(row[0].x - url.x)).toBeLessThan(1.5);
+      expect(Math.abs(row[2].x + row[2].width - (url.x + url.width))).toBeLessThan(1.5);
+      if (page.viewportSize()!.width <= 480) for (const b of row) expect(b.height).toBeGreaterThanOrEqual(43.5);
+      await dlg.getByRole('button', { name: 'Suggest', exact: true }).click();
       const sug = page.locator('dialog.suggest-dialog[open]');
       await expect(sug.getByText('Hario V60 dripper')).toBeVisible();
       expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
@@ -5186,7 +5198,7 @@ export const STATES: State[] = [
       await expect(dlg.locator('form.gear-form')).toBeVisible();
       await expect(dlg).toBeVisible();
       // A pick fills only the Image URL (and its preview).
-      await dlg.locator('.trophy-top').getByRole('button', { name: 'Suggest' }).click();
+      await dlg.getByRole('button', { name: 'Suggest', exact: true }).click();
       await page.locator('dialog.suggest-dialog[open]').getByRole('button', { name: /Hario V60 dripper/ }).click();
       await expect(dlg.getByLabel('Image URL')).toHaveValue(img);
       await expect(dlg.getByLabel('Brand', { exact: true })).toHaveValue('Hario');

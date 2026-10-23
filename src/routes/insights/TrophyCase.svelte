@@ -493,7 +493,7 @@
     align-items: center;
     gap: var(--space-2);
     position: absolute;
-    top: var(--space-1);
+    top: var(--space-3);
     right: var(--space-1);
     z-index: 1;
   }

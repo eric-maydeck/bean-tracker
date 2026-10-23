@@ -488,22 +488,23 @@ input:focus-visible {
 }
 
 @media (hover: hover) {
-  .button:hover:not(:disabled) {
+  .button:hover:not(:disabled, [aria-disabled='true']) {
     background: var(--button-hover-bg);
     color: var(--button-hover-fg);
     border-color: var(--button-color);
   }
 }
 
-.button:focus-visible:not(:disabled) {
+.button:focus-visible:not(:disabled, [aria-disabled='true']) {
   background: var(--button-hover-bg);
   color: var(--button-hover-fg);
   border-color: var(--button-color);
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled='true'] {
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: not-allowed !important; /* beats a label tip's inline help cursor: the tip says why it is off */
 }
 
 .nav-link-button {

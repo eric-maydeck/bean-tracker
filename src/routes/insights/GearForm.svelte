@@ -21,7 +21,9 @@
   const act = $derived(fields.length % 2 ? last : last + 1);
   // svelte-ignore state_referenced_locally
   // A number input binds a number (null when emptied), a text input or select a string.
-  let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, String(v)])));
+  // Money shows cents ("24.00"); the unsaved-changes check compares numbers, so 24 and "24.00" agree.
+  const shown = (key: string, v: string | number) => (fields.find((f) => f.key === key)?.type === 'money' && String(v).trim() !== '' && Number.isFinite(+v) ? (+v).toFixed(2) : String(v));
+  let values = $state<Record<string, string | number | null>>(Object.fromEntries(Object.entries(trophy.values).map(([k, v]) => [k, shown(k, v)])));
   // svelte-ignore state_referenced_locally
   let imageUrl = $state(trophy.imageUrl ?? '');
   let error = $state('');
@@ -53,7 +55,7 @@
     const data = await res?.json().catch(() => null);
     filling = false;
     if (!res?.ok || !data?.values) { error = data?.error ?? data?.message ?? "Couldn't reach the server"; return; }
-    Object.assign(values, data.values);
+    for (const [k, v] of Object.entries(data.values as Record<string, string | number>)) values[k] = shown(k, v);
     notes = data.notes ?? [];
     if (data.imageUrl) { imageUrl = data.imageUrl; showPreview(); }
   }
@@ -105,9 +107,6 @@
       <button type="button" class="button button-secondary" aria-disabled={!ok || filling || saving} aria-label="Fill from URL"
         use:labelTip={ok ? 'Fill from URL' : 'Enter the Official website first'} onclick={() => ok && !filling && !saving && fill()}>Fill<span class="long"> from URL</span></button>
     {/key}
-    <ImageSuggest endpoint="/api/gear/image-suggest" siteLabel="Maker website" setSiteText="set maker site" disabled={saving}
-      body={() => ({ kind: trophy.kind, name: trophy.name, brand: String(values.brand ?? ''), model: String(values.model ?? ''), site: ok ? site : undefined })}
-      {matching} onpick={(c) => { imageUrl = c.image; showPreview(); }} />
   {/snippet}
   {@render top(tools)}
   {@render head()}
@@ -143,7 +142,10 @@
     </div>
     <div class="cell-buttons image-buttons" style="--r:{act};--c:1" data-button-row>
       <button class="button button-secondary" type="button" onclick={showPreview}>Preview</button>
-      <button class="button button-ghost" type="button" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard image</button>
+      <ImageSuggest endpoint="/api/gear/image-suggest" label="Suggest" siteLabel="Maker website" setSiteText="set maker site" disabled={saving}
+        body={() => ({ kind: trophy.kind, name: trophy.name, brand: String(values.brand ?? ''), model: String(values.model ?? ''), site: ok ? site : undefined })}
+        {matching} onpick={(c) => { imageUrl = c.image; showPreview(); }} />
+      <button class="button button-ghost" type="button" aria-label="Discard image" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard</button>
     </div>
     <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row data-form-actions>
       <button class="button" type="submit" disabled={saving || filling}>Save</button>
@@ -230,8 +232,12 @@
     margin-bottom: var(--space-1);
     grid-column: 1 / -1;
   }
-  .cell-buttons .button {
+  .image-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cell-buttons > :global(.button) {
     margin: 0;
+    padding-inline: var(--space-2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -265,7 +271,7 @@
     .cell-buttons::before {
       display: none;
     }
-    .cell-buttons .button {
+    .cell-buttons > :global(.button) {
       min-height: 44px;
     }
   }
