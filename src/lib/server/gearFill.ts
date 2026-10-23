@@ -24,7 +24,7 @@ const CUES: Partial<Record<GearKind, Record<string, Record<string, RegExp>>>> = 
   dripper: {
     shape: { Conical: /\bconical\b|\bcone[- ]shaped\b/i, 'Flat bottom': /\bflat[- ]bottom/i, Wave: /\bwave\b/i },
     material: {
-      Ceramic: /\bceramic|\bporcelain|\barita/i, Glass: /\bglass\b/i, Tritan: /\btritan\b/i,
+      Ceramic: /\bceramic|\bporcelain|\barita/i, Glass: /\bglass\b(?!\s+(?:server|carafe|decanter))/i, Tritan: /\btritan\b/i,
       Plastic: /\bplastic\b|\bresin\b|\bpolypropylene\b/i, Metal: /\bstainless\b|\bcopper dripper\b/i
     },
     flow: {
@@ -40,7 +40,7 @@ const CUES: Partial<Record<GearKind, Record<string, Record<string, RegExp>>>> = 
     fits: { '01': /\b01\b/, '02': /\b02\b/, '155': /\b155\b/, '185': /\b185\b/ }
   },
   grinder: {
-    type: { Hand: /\bhand grinder\b|\bmanual\b/i, Electric: /\belectric\b|\bmotor\b/i },
+    type: { Hand: /\bhand grinder\b|\bmanual (?:coffee )?grinder\b/i, Electric: /\belectric\b|\bmotor\b/i },
     burrType: { Conical: /\bconical burr/i, Flat: /\bflat burr/i },
     burrCoating: {
       DLC: /\bDLC\b/, 'Red Speed': /\bred speed\b/i, 'Silver Knight': /\bsilver knight\b/i,
@@ -51,10 +51,11 @@ const CUES: Partial<Record<GearKind, Record<string, Record<string, RegExp>>>> = 
 };
 // Number cues: the first capture group is the value. A V60 is named for its 60° cone.
 const NUM_CUES: Partial<Record<GearKind, Record<string, RegExp[]>>> = {
-  dripper: { coneAngle: [/(\d{2,3})\s*(?:°|-?\s*degrees?\b)/i, /\bV(60)\b/] },
+  // A temperature ("93°C", "200 degrees Fahrenheit") is never an angle.
+  dripper: { coneAngle: [/(\d{2,3})\s*(?:°|-?\s*degrees?\b)(?!\s*(?:[CF]\b|celsius|fahrenheit))/gi, /\bV(60)\b/g] },
   grinder: {
-    burrSize: [/(\d{2,3})\s*mm\s+(?:conical |flat )?burrs?/i],
-    stepSize: [/(\d+(?:\.\d+)?)\s*(?:µm|μm|microns?)\s*(?:per|\/)\s*(?:click|step)/i]
+    burrSize: [/(\d{2,3})\s*mm\s+(?:conical |flat )?burrs?/gi],
+    stepSize: [/(\d+(?:\.\d+)?)\s*(?:µm|μm|microns?)\s*(?:per|\/)\s*(?:click|step)/gi]
   }
 };
 
@@ -101,8 +102,12 @@ export function buildGearFill(p: ProductData, ctx: { url: string; kind: GearKind
     const o = proseHit(cues, texts);
     if (o) raw[key] = o;
   }
+  // Title before description; within one, the first cue whose value is in the field's range.
   for (const [key, res] of Object.entries(NUM_CUES[ctx.kind] ?? {})) if (!(key in raw)) {
-    for (const re of res) { const m = texts.map((t) => re.exec(t)).find(Boolean); if (m) { raw[key] = Number(m[1]); break; } }
+    const f = KIND_FIELDS[ctx.kind].find((x) => x.key === key)!;
+    const n = texts.flatMap((t) => res.flatMap((re) => [...t.matchAll(re)].map((m) => Number(m[1]))))
+      .find((v) => v >= f.min! && v <= f.max!);
+    if (n !== undefined) raw[key] = n;
   }
   const values: GearValues = {};
   for (const [key, val] of Object.entries(raw)) {

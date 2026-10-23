@@ -65,6 +65,23 @@ describe('buildGearFill', () => {
   });
 });
 
+describe('prose cues', () => {
+  const hario = () => parseShopifyProduct(JSON.parse(fx('shopify-hario-v60-ceramic.json')), null);
+  it('a brew temperature is never the cone angle; V60 in the title still gives 60', () => {
+    for (const temp of ['Brew at 93°C.', 'Use water at 200°F.', 'Water at 93 degrees Celsius.']) {
+      const p = hario(); p.description = `${temp} ${p.description}`;
+      expect(buildGearFill(p, { url: URL_, kind: 'dripper', rates: null }).values.coneAngle).toBe(60);
+    }
+  });
+  it('a glass server or a user manual is not the gear', () => {
+    const p = hario(); p.description = 'Comes with a glass server and a user manual.';
+    expect(buildGearFill(p, { url: URL_, kind: 'dripper', rates: null }).values).toMatchObject({ material: 'Ceramic' });
+    const g = parseShopifyProduct(JSON.parse(fx('shopify-grinder.json')), null);
+    g.title = 'C3 Pro'; g.description = 'See the user manual.';
+    expect(buildGearFill(g, { url: URL_, kind: 'grinder', rates: null }).values).not.toHaveProperty('type');
+  });
+});
+
 describe('cleanBrand', () => {
   it('trims store suffixes, never to empty or an all-caps brand', () => {
     const cases: [string, string][] = [['Hario USA', 'Hario'], ['HarioWS', 'Hario'], ['HarioUSA', 'Hario'], ['Fellow Products Inc.', 'Fellow Products'],
