@@ -25,8 +25,8 @@ export interface GearField {
 }
 const text = (key: string, label: string, options?: readonly string[], aliases: readonly string[] = [label.toLowerCase()], help?: string): GearField =>
   ({ key, label, type: 'text', options, aliases, help });
-const num = (key: string, label: string, unit: string, min: number, max: number, aliases: readonly string[] = [label.toLowerCase()]): GearField =>
-  ({ key, label, type: 'number', unit, min, max, aliases });
+const num = (key: string, label: string, unit: string, min: number, max: number, aliases: readonly string[] = [label.toLowerCase()], help?: string): GearField =>
+  ({ key, label, type: 'number', unit, min, max, aliases, help });
 
 export const COMMON_FIELDS: readonly GearField[] = [
   text('brand', 'Brand', undefined, ['brand', 'manufacturer']),
@@ -37,29 +37,38 @@ export const COMMON_FIELDS: readonly GearField[] = [
 export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   dripper: [
     text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid'], undefined,
-      "The dripper's bed shape. Conical (V60, Origami with cone filters) drains through one point; flat bottom (Kalita Wave, Orea) gives a flatter, even bed; wave/hybrid sits between."),
+      "The dripper's bed shape. Conical (V60, Origami): one drain point. Flat bottom (Kalita Wave, Orea): an even bed. Wave/hybrid: between."),
     num('coneAngle', 'Cone angle', '°', 0, 180, ['cone angle', 'angle']),
     text('material', 'Material', ['Plastic', 'Tritan', 'Ceramic', 'Glass', 'Metal'], ['material', 'materials'],
       'What the dripper is made of. Plastic and Tritan hold little heat; ceramic and glass need preheating; metal heats fast.'),
     text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate'],
-      'How fast it drains on its own. Open: the grind and pour set the speed (V60). Restricted: small holes slow it (Kalita, Melitta). Valve / immersion: a valve holds the water until released (Hario Switch, Clever).'),
+      'How fast it drains on its own. Open: grind and pour set the speed (V60). Restricted: small holes slow it (Kalita, Melitta). Valve / immersion: a valve holds the water until released (Hario Switch, Clever).'),
     text('size', 'Size', ['01', '02', '03'], undefined,
       "The maker's size code: 01 for 1–2 cups (~200–350 mL), 02 for 1–4 cups (~300–600 mL), 03 for larger batches.")
   ],
   grinder: [
-    text('type', 'Type', ['Hand', 'Electric']),
-    text('burrType', 'Burr type', ['Conical', 'Flat'], ['burr type', 'burr shape', 'burrs']),
+    text('type', 'Type', ['Hand', 'Electric'], undefined,
+      'Hand grinders (1Zpresso, Comandante, Kingrinder) or electric (Baratza, Fellow, DF64).'),
+    text('burrType', 'Burr type', ['Conical', 'Flat'], ['burr type', 'burr shape', 'burrs'],
+      'Conical burrs (most hand grinders) or flat burrs (many electric grinders; e.g. SSP, 64 mm flats).'),
     text('burrName', 'Burr name', undefined, ['burr name', 'burr set']),
     num('burrSize', 'Burr size', 'mm', 10, 150, ['burr size', 'burr diameter']),
-    text('burrMaterial', 'Burr material', ['Stainless steel', 'Hardened steel', 'Titanium coated'], ['burr material']),
-    text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type']),
-    num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'])
+    text('burrCoating', 'Burr coating', ['Stainless steel', 'Hardened steel', 'Titanium (TiN)', 'DLC', 'Red Speed'], ['burr coating', 'coating', 'burr material'],
+      "The burr's finish: stainless or hardened steel, or a coating (titanium TiN, DLC, Red Speed) that mainly lasts longer."),
+    text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type'],
+      'Stepped grinders click between fixed settings; stepless ones turn smoothly to any setting.'),
+    num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'],
+      'How far one click moves the burrs, in microns (µm): ~12–25 µm on most hand grinders, smaller is finer control.')
   ],
   filter: [
-    text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials']),
-    text('shape', 'Shape', ['Cone', 'Wave', 'Flat-bottom basket']),
-    text('fits', 'Fits', ['01', '02', '155', '185'], ['fits', 'fit', 'compatibility', 'size']),
-    text('flow', 'Flow', ['Fast', 'Medium', 'Slow'], ['flow', 'flow rate'])
+    text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],
+      'Paper is the norm (bleached or natural/unbleached); cloth gives more body; metal lets oils and fines through.'),
+    text('shape', 'Shape', ['Cone', 'Wave', 'Flat-bottom basket'], undefined,
+      "The paper's shape, matching the dripper. Cone (V60, Origami), wave (Kalita Wave, 155/185), flat-bottom basket (Melitta-style, batch brewers)."),
+    text('fits', 'Fits', ['01', '02', '155', '185'], ['fits', 'fit', 'compatibility', 'size'],
+      'The size code it fits: 01 or 02 for cones, 155 or 185 for wave filters.'),
+    text('flow', 'Flow', ['Fast', 'Medium', 'Slow'], ['flow', 'flow rate'],
+      'How fast the paper drains, as the maker describes it. Fast (Sibarist Fast, Cafec T-90), medium (Hario), slow (thicker papers).')
   ]
 };
 export const fieldsFor = (kind: GearKind): GearField[] => [...COMMON_FIELDS, ...KIND_FIELDS[kind]];

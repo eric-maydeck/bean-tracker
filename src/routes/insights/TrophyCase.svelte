@@ -3,7 +3,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { GEAR_KINDS, KIND_LABEL, fieldsFor, shownTrophies, type GearField } from '$lib/gear';
   import { formatDate } from '$lib/formatDate';
-  import { localDate } from '$lib/localDate';
+  import { formatStamp } from '$lib/localDate';
   import { formatGrams } from '$lib/grams';
   import { backdrop } from '$lib/imageBackdrop';
   import { hostOf } from '$lib/imageSuggest';
@@ -72,6 +72,11 @@
   <div class="trophy-img" style:--fill={shown?.fill ?? backdrop(null)}>
     {#if shown}<img src={shown.src} alt="" loading="lazy" />{:else}<Icon name="gear" />{/if}
   </div>
+{/snippet}
+
+{#snippet stamp(wall: string)}
+  {@const [d, ...t] = formatStamp(wall).split(' ')}
+  <b>{d}</b><b>{t.join(' ')}</b>
 {/snippet}
 
 {#snippet heading(t: Trophy)}
@@ -152,8 +157,8 @@
               {@render img(t, preview ?? t.image)}
               <!-- Under the photo: when the details were stored (the local calendar day). -->
               <div class="media-meta">
-                <span>Added <b>{t.added}</b></span>
-                {#if t.updatedAt}<span>Updated <b>{localDate(t.updatedAt)}</b></span>{/if}
+                <span>Added {@render stamp(t.added)}</span>
+                {#if t.updatedAt}<span>Updated {@render stamp(t.updatedAt)}</span>{/if}
               </div>
             </div>
             <div class="detail-body">

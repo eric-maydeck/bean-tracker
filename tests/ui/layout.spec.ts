@@ -4845,7 +4845,7 @@ export const STATES: State[] = [
         const utops = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
         expect(new Set(utops).size).toBe(1);
       }
-      // Added and Updated share one row, with room between them.
+      // Added and Updated (date over time) share one row, with room between them, inside the photo column.
       const [ab, ub] = [await dlg.locator('.media-meta span').nth(0).boundingBox(), await dlg.locator('.media-meta span').nth(1).boundingBox()];
       expect(ub!.x - (ab!.x + ab!.width)).toBeGreaterThanOrEqual(12);
       const tops = await dlg.locator('.media-meta span').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
@@ -4878,7 +4878,8 @@ export const STATES: State[] = [
       await expect(dlg.locator('.media-meta span')).toHaveCount(1);
       await expect(dlg.locator('.media-meta')).toContainText('Added');
       await expect(dlg.locator('.media-meta')).not.toContainText('Updated');
-      await expect(dlg.locator('.media-meta b')).toHaveText(/^\d{4}-\d\d-\d\d$/);
+      await expect(dlg.locator('.media-meta b').nth(0)).toHaveText(/^\d{4}-\d\d-\d\d$/);
+      await expect(dlg.locator('.media-meta b').nth(1)).toHaveText(/^\d{1,2}:\d\d:\d\d [AP]M$/);
       await expect(dlg.locator('.trophy-img img')).toHaveCount(0);
       // A few fields: ZP6 shows its two and no empty rows.
       await page.goto('/insights?tab=gear&card=grinder-zp6-special');
@@ -4992,10 +4993,14 @@ export const STATES: State[] = [
       };
       // Grinder: 11 fields, the last row holds one (Step size); Save is its neighbor cell.
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      await check('Burr material', 'Adjustment', false);
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveText(['', '', '', '', '']);
+      for (const n of ['Type', 'Burr type', 'Burr coating', 'Adjustment', 'Step size']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      await check('Burr coating', 'Adjustment', false);
       // Filter: 8 fields, a full last row (Fits, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
+      for (const n of ['Shape', 'Material', 'Fits', 'Flow']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
       await check('Fits', 'Flow', true); // saveat=a (default): Save/Cancel right-aligned on a row of their own, level with Preview
     } },
   { name: 'insights-trophy-toggle', path: () => '/insights?tab=gear',

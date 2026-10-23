@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { GEAR_KINDS, type GearKind, type GearValues } from '$lib/gear';
 import { backdrop } from '$lib/imageBackdrop';
+import { localStamp } from '$lib/localDate';
 import type { GearDetail } from '$lib/server/gearDetails';
 import { pooled, type Sample } from '$lib/sample';
 import { slugify } from '$lib/server/slug';
@@ -12,7 +13,7 @@ import type { Ratings } from '$lib/insightsUrl';
 export const RETIRED_AFTER_DAYS = 90;
 
 // Archived names per kind (Bean Conqueror's archive flag), plus `added`: `${kind}\0${name}` -> the earliest Bean Conqueror
-// created date (a wall-time 'YYYY-MM-DD...') of the gear's rows, the day we added that gear.
+// created date (a wall-time 'YYYY-MM-DD...') of the gear's rows, the day we added that gear (a brew can predate it).
 export type GearArchive = Record<GearKind, Set<string>> & { added?: Map<string, string> };
 
 // A grinder is archived when every row of that name is; a dripper/filter when every method parsing to it is.
@@ -44,7 +45,7 @@ export interface Trophy {
   archived: boolean; retired: boolean;
   // Stored details (exact kind + name match); the picture is our copy, else the original URL, on its backdrop.
   values: GearValues; imageUrl: string | null; image: { src: string; fill: string } | null;
-  // Added: the day the gear was added (Bean Conqueror's created date, else its first brew, lifetime); Updated: the stored row's last save.
+  // local wall time 'YYYY-MM-DDTHH:mm:ss'. Added: the earlier of Bean Conqueror's created time and the lifetime first brew; Updated: the stored row's last save.
   added: string; updatedAt: string | null;
 }
 
@@ -89,6 +90,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
     const ratedXs = xs.filter((b) => ratingOf(b) !== null);
     const dates = xs.map((b) => b.localDate).sort();
     const life = all.map((b) => b.localDate).sort();
+    const firstBrew = all.map((b) => b.localTime).sort()[0]; // 'YYYY-MM-DDTHH:mm'
     const partners = new Map<string, number[]>();
     for (const b of xs) {
       const p = b[withKind(kind)];
@@ -115,7 +117,7 @@ export function trophyCase(brews: readonly BrewFact[], archive: GearArchive, tod
       days: new Set(dates).size, firstUsed: life[0], lastUsed,
       favorite: fav ? { name: fav[0], brews: fav[1] } : null,
       values: det?.values ?? {}, imageUrl: det?.imageUrl ?? null, image: src ? { src, fill: backdrop(det!.imageFill) } : null,
-      added: archive.added?.get(`${kind}\0${name}`)?.slice(0, 10) ?? life[0], updatedAt: det?.updatedAt ?? null,
+      added: [archive.added?.get(`${kind}\0${name}`)?.slice(0, 19), `${firstBrew}:00`].filter((d) => d).sort()[0]!, updatedAt: det ? localStamp(det.updatedAt) : null,
       archived, retired: archived || daysBetween(lastUsed, today) > RETIRED_AFTER_DAYS
     };
   });

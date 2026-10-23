@@ -66,7 +66,7 @@
             <button type="button" class="mode-tip-button" popovertarget="gear-tip-{f.key}" aria-label="About {f.label}" aria-describedby="gear-tip-{f.key}"><Icon name="question" /></button>
           {/if}
         </div>
-        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: [f.help] }} /></div>{/if}
+        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: f.help.split(/(?<=\.) /) }} /></div>{/if}
         <input id="gear-{f.key}" bind:value={values[f.key]} list={f.options ? `gear-opts-${f.key}` : undefined} autocomplete="off"
           type={f.type === 'number' || f.type === 'money' ? 'number' : f.type === 'url' ? 'url' : 'text'}
           step={f.type === 'money' ? '0.01' : f.type === 'number' ? 'any' : undefined}
