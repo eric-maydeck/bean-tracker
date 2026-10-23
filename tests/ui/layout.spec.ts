@@ -4840,11 +4840,12 @@ export const STATES: State[] = [
       expect(await dlg.locator('.trophy-top').evaluate((e) => getComputedStyle(e).position)).toBe('absolute');
       const nameText = (await dlg.locator('.trophy-name').evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); return [...r.getClientRects()].map((x) => x.right); }));
       expect(Math.max(...nameText)).toBeLessThanOrEqual(top.x + 1);
-      // Usage is one line where it fits (wider than a phone).
-      if (page.viewportSize()!.width > 640) {
-        const utops = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-        expect(new Set(utops).size).toBe(1);
-      }
+      // Usage: dates/bags row, then the brews/rating row starting under its first column; one line each wider than a phone.
+      const ustats = await dlg.locator('.usage .stat').evaluateAll((els) => els.map((e) => ({ l: Math.round(e.getBoundingClientRect().left), t: Math.round(e.getBoundingClientRect().top), brews: e.textContent!.startsWith('Brews') })));
+      const bi = ustats.findIndex((u) => u.brews);
+      expect(ustats[bi].l).toBe(ustats[0].l);
+      for (let i = bi + 1; i < ustats.length; i++) expect(ustats.slice(0, bi).map((u) => u.l)).toContain(ustats[i].l); // columns line up
+      if (page.viewportSize()!.width > 640) expect(new Set(ustats.slice(0, bi).map((u) => u.t)).size).toBe(1);
       // Added and Updated: each is one line (label, date, time), inside the photo's width, a gap between them when side by side.
       const photoB = (await dlg.locator('.detail-media .trophy-img').boundingBox())!;
       for (const sp of await dlg.locator('.media-meta span').all()) {
@@ -4854,7 +4855,7 @@ export const STATES: State[] = [
         if (page.viewportSize()!.height > 500) expect(r.height, 'one line').toBeLessThan(20);
       }
       await expect(dlg.locator('.media-meta b').first()).toHaveText(/^\d{4}-\d\d-\d\d \d{1,2}:\d\d:\d\d [AP]M$/);
-      // Usage spans the dialog under the photo and details: its facts fill the row, no empty tail.
+      // Usage spans the dialog under the photo and details: its first row fills it, no empty tail (later rows line up under it).
       const usage = (await dlg.locator('.usage').boundingBox())!, art = (await dlg.locator('article').boundingBox())!;
       expect(usage.y).toBeGreaterThanOrEqual(art.y + art.height - 1);
       expect(Math.abs(usage.width - art.width)).toBeLessThan(2);
@@ -4864,7 +4865,7 @@ export const STATES: State[] = [
         const right = Math.max(...els.map((e) => e.getBoundingClientRect().right));
         return [...byTop.values()].map((rs) => Math.abs(Math.max(...rs.map((r) => r.right)) - right));
       });
-      for (const gap of urows) expect(gap).toBeLessThan(2);
+      expect(urows[0]).toBeLessThan(2);
       // The specs fill their rows, as the brew facts do.
       const gaps = await dlg.locator('.specs .stat').evaluateAll((els) => {
         const byTop = new Map<number, DOMRect[]>();

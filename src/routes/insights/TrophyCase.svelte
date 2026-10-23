@@ -184,25 +184,25 @@
                   {/each}
                 </div>
               {/if}
-              <div class="stat-grid">
-                <div class="stat"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
-                <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
-                <div class="stat"><span class="stat-label">Average</span>
-                  <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
-                {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
-              </div>
             </div>
           </article>
           {/if}
             <section class="detail-section usage">
               <h2>Usage</h2>
-              <div class="stat-grid">
+              <!-- One grid, so the brews/rating row lines up under the dates row (it starts its own row; gaps are fine). -->
+              <div class="stat-grid usage-grid" style="--n:{4 + (t.favorite ? 1 : 0) + (t.retired ? 1 : 0)}">
                 {#if t.favorite}<div class="stat"><span class="stat-label">{withLabel(t)}</span><span class="stat-value">{t.favorite.name} ({t.favorite.brews})</span></div>{/if}
                 <div class="stat"><span class="stat-label">First used</span><span class="stat-value">{formatDate(t.firstUsed)}</span></div>
                 <div class="stat"><span class="stat-label">Last used</span><span class="stat-value">{formatDate(t.lastUsed)}</span></div>
                 <div class="stat"><span class="stat-label">Bags</span><span class="stat-value">{t.bags}</span></div>
                 <div class="stat"><span class="stat-label">Days brewed</span><span class="stat-value">{t.days}</span></div>
                 {#if t.retired}<div class="stat"><span class="stat-label">Retired</span><span class="stat-value">{reason(t)}</span></div>{/if}
+                <div class="stat row-start"><span class="stat-label">Brews</span><span class="stat-value">{t.brews}</span></div>
+                <div class="stat"><span class="stat-label">Brewed</span><span class="stat-value">{formatGrams(t.grams)}</span></div>
+                <div class="stat"><span class="stat-label">Avg dose</span><span class="stat-value">{(t.grams / t.brews).toFixed(1)}g</span></div>
+                <div class="stat"><span class="stat-label">Average</span>
+                  <span class="stat-value">{t.rating === null ? 'No ratings' : t.rating.toFixed(1)}{#if t.rating !== null && t.sample.small}{' '}<SampleNote s={t.sample} />{/if}</span></div>
+                {#if t.best !== null}<div class="stat"><span class="stat-label">Best rating</span><span class="stat-value">{t.best.toFixed(1)}</span></div>{/if}
               </div>
             </section>
         </div>
@@ -578,6 +578,14 @@
   .usage {
     margin-top: var(--space-4);
   }
+  .trophy-dialog .usage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+  .usage-grid .row-start {
+    grid-column-start: 1;
+  }
 
   .trophy-detail .specs {
     margin-bottom: var(--space-3);
@@ -602,12 +610,8 @@
   }
   /* Usage on one line where there is room (phones wrap, rows stay full). */
   @media (min-width: 641px) {
-    .usage .stat-grid {
-      flex-wrap: nowrap;
-      gap: var(--space-3);
-    }
-    .usage .stat {
-      flex: 1 1 auto;
+    .trophy-dialog .usage-grid {
+      grid-template-columns: repeat(var(--n), minmax(0, 1fr));
     }
   }
   /* Phone landscape (333px tall): picture beside the facts. */
