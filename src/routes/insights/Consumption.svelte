@@ -122,7 +122,7 @@
           <p class="hl-empty">{emptyLine('No rated brews in this period.')}</p>
         {:else}
           <Chart type="line" labels={t.labels.slice(from)} values={ratingValues} datasetLabel={periodLabel} series={ratingSeries} legend
-            dots={ratingValues.length <= 40} dashGaps yMin={ratingFloor} format={fmtRating} height={260} />
+            dashGaps yMin={ratingFloor} format={fmtRating} height={260} />
         {/if}
         <p class="chart-note">Mean rating per {t.by}{from ? ` from ${t.labels[from]}` : ''}{note}{ratingValues.some((v) => v === null) ? ' · Dashed: no rated brews' : ''}</p>
       {:else}
@@ -142,7 +142,7 @@
   </div>
   <section class="chart-panel">
     <h2 id="consumption-chart-on-hand">On hand over time</h2>
-    <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" dots={t.labels.length <= 40} monotone integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
+    <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
     <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
     {@render whole()}
   </section>

@@ -281,7 +281,7 @@
                inside it). -->
           <div class="time-chart">
             <Chart type="line" labels={sr.labels} values={lines[0].values} datasetLabel={lines[0].label}
-              series={lines.slice(1)} legend dots={sr.labels.length <= 40} dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
+              series={lines.slice(1)} legend dashGaps integer={rank === 'brews'} format={(v) => fmt(v)} height="fill" />
           </div>
           <p class="chart-note">{RANK_LABEL[rank]} per {sr.by}, {lines.length === sr.lines.length ? (lines.length > 1 ? `all ${lines.length} ` : '') : `top ${lines.length} `}{BOARD_NOUN[b]}{#if lines.some((l) => gappy(l.values))}{' · '}Dashed: {sr.by}s with no data{/if}</p>
         {:else}<p class="board-note">{emptyLine('No data in this period.')}</p>{/if}

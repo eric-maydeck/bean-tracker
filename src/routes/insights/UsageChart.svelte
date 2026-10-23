@@ -17,7 +17,7 @@
 
 {#if view === 'lines'}
   <Chart type="line" labels={m.x} values={m.lines[0].values} datasetLabel={m.lines[0].label} series={m.lines.slice(1)} legend
-    dots={false} thick yMin={0} colors={lineColors} unit="%" format={(v) => `${v}%`} height={250} />
+    yMin={0} colors={lineColors} unit="%" format={(v) => `${v}%`} height={250} />
 {:else}
   <StackedBars {m} {colors} {ariaLabel} />
 {/if}
