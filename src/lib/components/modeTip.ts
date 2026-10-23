@@ -23,12 +23,13 @@ function closeHover() {
   hoverTip = null;
 }
 // A scroll (the wheel, or a tip's own reveal/hash scroll) moves content under a still mouse, and the browser fires
-// pointerover on whatever lands there. That is not a hover: it must not open a help tip (which would close the
-// pinned headline tip that just caused the scroll).
-let scrolledAt = 0;
-if (typeof addEventListener === 'function') addEventListener('scroll', () => (scrolledAt = performance.now()), { capture: true, passive: true });
+// pointerover on whatever lands there at the pointer's unchanged coordinates. That is not a hover: it must not open
+// a help tip (which would close the pinned headline tip that caused the scroll). A real move changes the coordinates.
+let last = [NaN, NaN];
+if (typeof addEventListener === 'function') addEventListener('pointermove', (e) => (last = [e.clientX, e.clientY]), { capture: true, passive: true });
 export function tipOver(e: PointerEvent) {
-  if (e.pointerType !== 'mouse' || performance.now() - scrolledAt < 150) return;
+  if (e.pointerType !== 'mouse') return;
+  if (e.clientX === last[0] && e.clientY === last[1]) return;
   if (inHover(e.target)) return clearTimeout(closing);
   const tip = tipOf(e);
   if (!tip || tip.matches(':popover-open')) return;
