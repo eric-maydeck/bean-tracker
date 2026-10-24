@@ -1564,6 +1564,10 @@
   }
   /* Phones: the note shares the period line when it fits, else wraps to its own line (no held empty line). */
   @media (max-width: 767px) {
+    .period-row {
+      /* The note's tip is a 44px tap target (inline padding): this clears it from the period line above, whose taps it would cover. */
+      row-gap: 16px;
+    }
     .period-row .see-all {
       margin-left: 0;
       text-align: left;

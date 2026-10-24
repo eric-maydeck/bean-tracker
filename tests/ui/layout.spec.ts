@@ -2356,6 +2356,17 @@ export const STATES: State[] = [
       const font = (l: Locator) => l.evaluate((e) => { const c = getComputedStyle(e); return [c.fontFamily, c.fontSize, c.fontWeight]; });
       expect(await font(note), 'the note reads in the period line\'s type').toEqual(await font(row.locator('.insights-period')));
       const [r, n] = [(await row.boundingBox())!, (await note.boundingBox())!];
+      // Nothing covers another's taps: every point of the period line hit-tests to the period line, not to the note's tip
+      // (its inline padding is a 44px tap target) or the note.
+      const covered = await row.evaluate((el) => {
+        const per = el.querySelector('.insights-period')!, r = per.getBoundingClientRect(), out: string[] = [];
+        for (const fy of [0.1, 0.5, 0.9]) for (const fx of [0.05, 0.25, 0.5, 0.75, 0.95]) {
+          const hit = document.elementFromPoint(r.left + r.width * fx, r.top + r.height * fy);
+          if (hit && !per.contains(hit)) out.push(`${fx},${fy}: ${hit.className || hit.tagName}`);
+        }
+        return out;
+      });
+      expect(covered, 'the note never covers the period line').toEqual([]);
       if ((page.viewportSize()?.width ?? 0) >= 768) expect(n.y + n.height, 'note on the period line\'s row').toBeLessThanOrEqual(r.y + r.height + 1);
       // Toggling what it says (See all → Back to defaults) moves nothing.
       await note.locator('.filter-clear-all').click();
