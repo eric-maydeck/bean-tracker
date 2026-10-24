@@ -114,7 +114,9 @@
   <div class="insights-charts">
     <section class="chart-panel">
       <div class="chart-panel-header">
-        <HeadingAnchor id="consumption-chart-brewed">{trend ? TITLE[trend] : 'Brewed over time'}</HeadingAnchor>
+        <!-- Every measure's title stacked in one cell (only the current one visible): the heading keeps the longest one's
+             width, so switching measures never rewraps the header and moves the page. -->
+        <HeadingAnchor id="consumption-chart-brewed"><span class="title-stack"><span>{trend ? TITLE[trend] : 'Brewed over time'}</span>{#each ['Brewed over time', ...Object.values(TITLE)] as other}<span class="title-sizer" aria-hidden="true">{other}</span>{/each}</span></HeadingAnchor>
         <ChartToggle label="Measure" options={measures} value={trend ?? 'unit'} pick={(v) => choose({ trend: v === 'unit' ? undefined : (v as Trend) })} />
       </div>
       {#if trend === 'rating'}
@@ -152,5 +154,14 @@
 <style>
   .chart-panel-header :global(h2) {
     margin: 0;
+  }
+  .title-stack {
+    display: inline-grid;
+  }
+  .title-stack > span {
+    grid-area: 1 / 1;
+  }
+  .title-sizer {
+    visibility: hidden;
   }
 </style>
