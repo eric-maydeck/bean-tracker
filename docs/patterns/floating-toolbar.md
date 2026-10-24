@@ -1,7 +1,7 @@
 # Floating (collapsible sticky) toolbar
 
 Built for /coffees (backlog item "/coffees Sort by", 2026-10-24), seven tuning rounds. Reuse it for /insights and /stats
-(Open #3 "Collapsible sticky bars") and any later page. Follow the checklist and most of those rounds are not needed.
+(Open item "Collapsible sticky bars") and any later page. Follow the checklist and most of those rounds are not needed.
 
 ## What it is
 
