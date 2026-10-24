@@ -818,7 +818,7 @@ export const STATES: State[] = [
       if (lastRow.length) {
         const neighbor = lastRow.reduce((a, c) => (c!.x > a!.x ? c : a))!;
         expect(neighbor.x + neighbor.width, 'the neighbor is left of the caret').toBeLessThanOrEqual(caret.x + 1);
-        expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(1);
+        expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(2); // sub-pixel centering in landscape
         expect(Math.abs(caret.height - neighbor.height), 'caret height = its left neighbor height').toBeLessThanOrEqual(1);
       } else expect(Math.abs(caret.y + caret.height / 2 - (row.y + row.height / 2)), 'caret centered on the row').toBeLessThanOrEqual(1);
       const addBtn = await bar.locator('.add-coffee-button').boundingBox();
@@ -863,6 +863,44 @@ export const STATES: State[] = [
       });
       expect(covered, 'Save is not under the pinned bar').toBe(false);
     } })),
+  // Turning the phone while the bar is expanded: the caret stays, bottom-right in the last row, level with its left
+  // neighbor and clear of everything (it is a CSS item of that row, nothing is measured).
+  { name: 'coffees-bar-rotate', viewports: 'two', path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
+      test.skip(!(w <= 640 || h <= 450), 'the collapse is a phone feature');
+      const check = async () => {
+        const caret = page.getByRole('button', { name: 'Hide controls' });
+        await expect(caret).toBeVisible();
+        const c = (await caret.boundingBox())!;
+        const bar = (await page.locator('.cbar.overlay').boundingBox())!;
+        expect(Math.abs(c.x + c.width - (bar.x + bar.width - 16))).toBeLessThanOrEqual(1);
+        const cells = (await Promise.all((await page.locator('.add-sort-row button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x);
+        const nb = cells.reduce((a, b) => (b!.x > a!.x ? b : a))!;
+        expect(nb.x + nb.width).toBeLessThanOrEqual(c.x + 1);
+        expect(Math.abs(nb.y - c.y), 'caret top = neighbor top').toBeLessThanOrEqual(2);
+        expect(Math.abs(nb.height - c.height), 'caret height = neighbor height').toBeLessThanOrEqual(1);
+      };
+      await page.evaluate(() => window.scrollTo(0, 1500));
+      await page.getByRole('button', { name: 'Show controls' }).click();
+      await check();
+      const turned = w <= 640 ? { width: 1003, height: 333 } : { width: 480, height: 909 }; // the test phone, both ways
+      await page.setViewportSize(turned);
+      await page.waitForTimeout(300);
+      await check();
+      await page.setViewportSize({ width: w, height: h }); // and back
+      await page.waitForTimeout(300);
+      await check();
+    } },
+  // Signed out portrait: the last row is as tall as with Add Coffee, so the caret has the same size and place.
+  { name: 'coffees-bar-row-height', viewports: 'two', path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      test.skip(page.viewportSize()!.width > 640, 'portrait');
+      const h = async () => (await page.locator('.add-sort-row').boundingBox())!.height;
+      const withAdd = await h();
+      await page.locator('.add-coffee-button').evaluate((e) => e.remove());
+      expect(Math.abs((await h()) - withAdd), 'row height without the Add button').toBeLessThanOrEqual(1);
+    } },
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
   {

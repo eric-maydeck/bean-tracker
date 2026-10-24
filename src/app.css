@@ -1021,6 +1021,7 @@ nav.site-nav a[aria-current='page'] {
 
 .add-sort-row .results {
   grid-column: 1;
+  white-space: nowrap; /* one line: the row keeps its height, so the caret beside Add matches it */
 }
 
 .add-sort-row .add-coffee-button {
@@ -1029,6 +1030,7 @@ nav.site-nav a[aria-current='page'] {
 
 .add-sort-row .sort-in-row {
   grid-column: 3;
+  grid-row: 1;
   justify-self: end;
 }
 
@@ -1043,6 +1045,10 @@ nav.site-nav a[aria-current='page'] {
 
   .sort-in-row {
     display: none;
+  }
+
+  .add-sort-row {
+    min-height: 44px; /* signed out has no Add Coffee button: the row (and the caret in it) keeps the same height */
   }
 
   .show-field {

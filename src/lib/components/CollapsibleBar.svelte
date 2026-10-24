@@ -7,7 +7,8 @@
   // pinned row (`summary` + an expand button) takes over, and expanding shows the full bar pinned over the page (its
   // own scroll when taller than the screen) with a button to fold it back. Open/closed is transient chrome, never
   // view state: not in the URL, not remembered. The spacer keeps the bar's height while it floats, so nothing jumps.
-  let { children, summary }: { children: Snippet; summary: Snippet } = $props();
+  // `children` receives the fold-back caret to render as the last item of its last row (empty unless expanded).
+  let { children, summary }: { children: Snippet<[Snippet]>; summary: Snippet } = $props();
 
   let barEl: HTMLElement | undefined = $state();
   let spacerEl: HTMLElement | undefined = $state();
@@ -26,6 +27,7 @@
     };
     const onMq = () => {
       phone = mq.matches;
+      if (!phone) expanded = false; // desktop width: the full bar is always pinned
       onScroll();
     };
     onMq();
@@ -43,36 +45,23 @@
     return () => document.documentElement.style.removeProperty('scroll-padding-top');
   });
 
-  // Expanded: the caret takes the top and height of the rightmost button of the bar's last row (Add Coffee in portrait,
-  // Sort by's toggle in landscape), so it lines up with its left neighbor; with no button there (signed out, portrait)
-  // it is centered on the row.
-  let toggleEl: HTMLElement | undefined = $state();
-  $effect(() => {
-    if (!expanded || !barEl || !toggleEl) return;
-    const row = barEl.querySelector('.add-sort-row')!.getBoundingClientRect();
-    const btns = [...barEl.querySelectorAll<HTMLElement>('.add-sort-row button')].filter((b) => b.offsetParent && b !== toggleEl);
-    const edge = btns.reduce<HTMLElement | null>((a, b) => (!a || b.getBoundingClientRect().right > a.getBoundingClientRect().right ? b : a), null);
-    const r = edge?.getBoundingClientRect();
-    const h = r ? r.height : 44;
-    const top = r ? r.top : row.top + (row.height - h) / 2;
-    toggleEl.style.top = `${top - barEl.getBoundingClientRect().top + barEl.scrollTop}px`;
-    toggleEl.style.height = `${h}px`;
-  });
-
   function expand() {
     slotH = barEl!.offsetHeight;
     expanded = true;
   }
 </script>
 
+{#snippet caret()}
+  {#if expanded}
+    <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
+      <Icon name="caret-up" />
+    </button>
+  {/if}
+{/snippet}
+
 {#if expanded}<div bind:this={spacerEl} style:height="{slotH}px" style:margin-bottom="var(--space-3)"></div>{/if}
 <div class="cbar" class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
-    {#if expanded}
-      <button type="button" class="icon-button cbar-toggle" bind:this={toggleEl} aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
-        <Icon name="caret-up" />
-      </button>
-    {/if}
-    {@render children()}
+    {@render children(caret)}
 </div>
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
@@ -124,14 +113,23 @@
   .cbar-mini .cbar-toggle {
     margin-left: auto;
   }
-  /* Expanded: the right end of the bar's last row (results / Add / Sort by), placed by script below. */
-  .overlay .cbar-toggle {
-    position: absolute;
-    right: var(--space-4);
+  /* Expanded: the caret is the last item of the page's last row (results / Add / Sort by), in that row's right cell, so
+     the row's own alignment gives it its neighbor's top and height (ui-rules 5). Sort by gives up room beside it. */
+  .cbar :global(.add-sort-row > .cbar-toggle) {
+    grid-column: 3;
+    grid-row: 1; /* the same cell as Sort by in landscape */
+    justify-self: end;
+    align-self: stretch;
+    height: auto;
+    width: 44px;
   }
-  /* Landscape: the last row's Sort by shifts left to leave room for the caret (portrait has an empty cell there). */
   @media (min-width: 641px) {
-    .overlay :global(.add-sort-row .sort-in-row) {
+    /* Landscape: its neighbor is Sort by's 2.25rem toggle. */
+    .cbar :global(.add-sort-row > .cbar-toggle) {
+      align-self: center;
+      height: 2.25rem;
+    }
+    .cbar :global(.add-sort-row:has(> .cbar-toggle) .sort-in-row) {
       margin-right: calc(44px + var(--space-2));
     }
   }
