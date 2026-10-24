@@ -232,8 +232,8 @@
     const at = series.map((_, i) => 1 + series.slice(0, i).filter((y) => !y.dashed).length);
     const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
     const hasTrend = series.some((x) => x.trend);
-    // A trend chart's bars are a little see-through (the outline keeps the contrast), the trend line on top.
-    const soft = (c: string) => (hasTrend ? `${c}b3` : c);
+    // Bars are a little see-through with an opaque outline (ui-rules 42), a trend line on top.
+    const soft = (c: string) => `${c}b3`;
     const lineColor = themeColor(tokAt(0)); // brown up to 3 series, else the palette's first slot
     const lineInk = themeColor(`${tokAt(0)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
     const bgColors = paletteColors(labels.length);
@@ -265,6 +265,8 @@
                 // ponytail: assumes the color is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineInk}4d`,
+                borderColor: lineInk,
+                borderWidth: 1,
                 barPercentage: 1,
                 categoryPercentage: 1
               }
@@ -283,7 +285,7 @@
             : {
                 label: datasetLabel,
                 data: values,
-                backgroundColor: bgColors,
+                backgroundColor: type === 'doughnut' ? bgColors : bgColors.map(soft),
                 // Slices: a clear dark separator (--slice-line: a very dark brown, both themes).
                 borderWidth: type === 'doughnut' ? 1.5 : 1,
                 borderColor: type === 'doughnut' ? themeColor('--slice-line') : inkColors
