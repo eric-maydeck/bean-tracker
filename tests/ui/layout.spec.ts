@@ -740,6 +740,26 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
       await expectSearchRowButtons(page, true);
     } },
+  // The row under the search row: results far left, Add Coffee centered (signed in), Sort by far right (desktop);
+  // phones: results left, Add right, Sort by beside View.
+  { name: 'coffees-results-row', path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const row = page.locator('.add-sort-row');
+      const [rb, res, add] = [(await row.boundingBox())!, (await row.locator('.results').boundingBox())!, (await row.locator('.add-coffee-button').boundingBox())!];
+      expect(Math.abs(res.x - rb.x), 'results at the row start').toBeLessThanOrEqual(1);
+      expect(res.y + res.height / 2, 'results and Add share a line').toBeGreaterThan(add.y - 1);
+      expect(res.y + res.height / 2).toBeLessThan(add.y + add.height + 1);
+      expect(res.x + res.width, 'results do not run into Add').toBeLessThanOrEqual(add.x);
+      if (page.viewportSize()!.width <= 640) {
+        expect(Math.abs(add.x + add.width - (rb.x + rb.width)), 'Add at the row end').toBeLessThanOrEqual(1);
+        expect(await row.locator('.sort-in-row').isVisible()).toBe(false);
+      } else {
+        const sort = (await row.locator('.sort-in-row').boundingBox())!;
+        expect(Math.abs(sort.x + sort.width - (rb.x + rb.width)), 'Sort by at the row end').toBeLessThanOrEqual(1);
+        expect(Math.abs(add.x + add.width / 2 - (rb.x + rb.width / 2)), 'Add centered').toBeLessThanOrEqual(1);
+        expect(sort.x).toBeGreaterThanOrEqual(add.x + add.width);
+      }
+    } },
   // The control block under the h1 is pinned: desktop the full bar; phones (portrait and landscape) a short row with an
   // expand button, expanding pins the full bar over the page, and it folds back. Nothing here is in the URL.
   { name: 'coffees-bar-pinned', path: () => '/coffees?status=all&view=list',
@@ -769,6 +789,17 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
+      // the caret sits on the Show line, level with its buttons and clear of every control
+      const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
+      const show = (await bar.getByRole('group', { name: 'Show' }).getByRole('button').first().boundingBox())!;
+      expect(caret.y, 'caret on the Show line').toBeLessThan(show.y + show.height);
+      expect(caret.y + caret.height).toBeGreaterThan(show.y);
+      expect(caret.width).toBeGreaterThanOrEqual(44);
+      for (const c of await bar.locator('.toolbar button, .toolbar select').all()) {
+        const r = await c.boundingBox();
+        if (!r) continue; // the hidden copy of Sort by
+        expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps no control').toBe(true);
+      }
       // a control in the expanded bar works
       await bar.locator('select:visible', { has: page.locator('option[value=created_at]') }).selectOption('created_at');
       await expect(page).toHaveURL(/sort=created_at/);

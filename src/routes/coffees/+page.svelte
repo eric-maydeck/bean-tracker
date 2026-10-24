@@ -733,7 +733,7 @@
       <button class="button button-success button-solid" type="button" aria-label="Save changes" disabled={saving} onclick={() => saveChanges()}>
         {#if saving}Saving…{:else}Save<span class="more"> changes</span>{/if}
       </button>
-      <button class="button button-danger button-ghost" type="button" disabled={saving} aria-label="Discard changes" onclick={discardChanges}>
+      <button class="button button-danger" type="button" disabled={saving} aria-label="Discard changes" onclick={discardChanges}>
         Discard<span class="more"> changes</span>
       </button>
     {:else}
@@ -746,13 +746,12 @@
   {/if}
 </div>
 
-<p class="text-muted">
-  {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
-</p>
-
 <div class="search-row add-sort-row">
+  <span class="text-muted results">
+    {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
+  </span>
   {#if data.isAdmin && expandedId !== 'new'}
-    <button class="button" type="button" onclick={openAdd}>+ Add Coffee</button>
+    <button class="button add-coffee-button" type="button" onclick={openAdd}>+ Add Coffee</button>
   {/if}
   {@render sortControl('row')}
 </div>

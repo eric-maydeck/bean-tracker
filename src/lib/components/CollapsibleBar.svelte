@@ -105,9 +105,11 @@
     width: 44px;
     height: 44px;
   }
+  /* Floated: the Show/View toolbar beside it narrows to leave room, so the caret sits on the Show line, not above it. */
   .overlay .cbar-toggle {
     display: flex;
-    margin: 0 0 var(--space-2) auto;
+    float: right;
+    margin: 0 0 var(--space-2) var(--space-2);
   }
   @media (max-width: 640px), (max-height: 450px) {
     .cbar {

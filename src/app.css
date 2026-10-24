@@ -983,7 +983,23 @@ nav.site-nav a[aria-current='page'] {
 }
 
 .add-sort-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* results far left, Add centered, Sort by far right */
+  align-items: end;
   margin-bottom: var(--space-2);
+}
+
+.add-sort-row .results {
+  grid-column: 1;
+}
+
+.add-sort-row .add-coffee-button {
+  grid-column: 2;
+}
+
+.add-sort-row .sort-in-row {
+  grid-column: 3;
+  justify-self: end;
 }
 
 @media (max-width: 640px) {
@@ -999,9 +1015,14 @@ nav.site-nav a[aria-current='page'] {
     display: none;
   }
 
-  /* No Add Coffee button on a phone's signed-out view leaves an empty row: hide it. */
-  .add-sort-row:not(:has(> .button)) {
-    display: none;
+  /* Phones: results left, Add Coffee right (Sort by is beside View). */
+  .add-sort-row {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+  }
+
+  .add-sort-row .add-coffee-button {
+    grid-column: 2;
   }
 
   /* The button row under the search box spans the box exactly: each button grows from zero so a
