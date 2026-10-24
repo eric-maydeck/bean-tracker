@@ -266,7 +266,7 @@
                 // texture without competing with the trend line.
                 backgroundColor: `${lineInk}4d`,
                 borderColor: lineInk,
-                borderWidth: 1,
+                borderWidth: 0.75,
                 barPercentage: 1,
                 categoryPercentage: 1
               }
@@ -281,13 +281,13 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: lineInk, borderWidth: 1 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: lineInk, borderWidth: 0.75 }
             : {
                 label: datasetLabel,
                 data: values,
                 backgroundColor: type === 'doughnut' ? bgColors : bgColors.map(soft),
                 // Slices: a clear dark separator (--slice-line: a very dark brown, both themes).
-                borderWidth: type === 'doughnut' ? 1.5 : 1,
+                borderWidth: type === 'doughnut' ? 1.5 : 0.75,
                 borderColor: type === 'doughnut' ? themeColor('--slice-line') : inkColors
               },
           ...(type === 'line' && trendValues
@@ -311,7 +311,7 @@
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: themeColor(`${tokAt(at[i])}-ink`), borderWidth: 1,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: themeColor(`${tokAt(at[i])}-ink`), borderWidth: 0.75,
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
           )
