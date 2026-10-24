@@ -611,7 +611,7 @@ async function expectLinksInTiles(page: Page, links: Locator) {
 
 // /coffees button row under the search box: Share is the last button (rightmost on its line, ui-rules 51); on a phone
 // every line of buttons spans the search box exactly (left and right edges, ±1px), equal widths when the row is one line.
-async function expectSearchRowButtons(page: Page) {
+async function expectSearchRowButtons(page: Page, split33 = false) {
   const r = await page.evaluate(() => {
     const row = document.querySelector('.coffees-search-row')!;
     const box = row.querySelector('.search-input')!.getBoundingClientRect();
@@ -631,6 +631,7 @@ async function expectSearchRowButtons(page: Page) {
   });
   expect(r.shareLast, 'Share is the last, rightmost button').toBe(true);
   if (!r.phone) return;
+  if (split33) expect(r.lines.map((l) => l.widths.length), 'editing: three buttons and three').toEqual([3, 3]);
   for (const l of r.lines) {
     expect(Math.abs(l.left), 'button line left edge = search box left').toBeLessThanOrEqual(1);
     expect(Math.abs(l.right), 'button line right edge = search box right').toBeLessThanOrEqual(1);
@@ -699,7 +700,7 @@ export const STATES: State[] = [
   // /coffees Sort by: one state with the list headers; bare = Urgency, descending, nothing in the URL.
   { name: 'coffees-sort-by', viewports: 'two', path: () => '/coffees?status=all&view=cards',
     act: async (page) => {
-      const select = page.getByLabel('Sort by').first();
+      const select = page.locator('select:visible', { has: page.locator('option[value=created_at]') });
       const titles = () => page.locator('h2 a[href^="/coffees/"]').allTextContents();
       await expect(select).toHaveValue('urgency');
       await expect(page.getByRole('button', { name: 'Sort descending' })).toBeVisible();
@@ -723,12 +724,12 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('.sort-button', { hasText: 'Roaster' }).click();
       await expect(page).toHaveURL(/sort=roaster\.asc/);
-      await expect(page.getByLabel('Sort by').first()).toHaveValue('roaster');
+      await expect(page.locator('select:visible', { has: page.locator('option[value=created_at]') })).toHaveValue('roaster');
       await expect(page.getByRole('button', { name: 'Sort ascending' })).toBeVisible();
     } },
   { name: 'coffees-sort-by-url', viewports: 'two', path: () => '/coffees?status=all&view=compact&sort=Created_At.ASC',
     act: async (page) => {
-      await expect(page.getByLabel('Sort by').first()).toHaveValue('created_at');
+      await expect(page.locator('select:visible', { has: page.locator('option[value=created_at]') })).toHaveValue('created_at');
       await expect(page.getByRole('button', { name: 'Sort ascending' })).toBeVisible();
     } },
   // Share last (rightmost) and the phone button row spanning the search box, viewing and editing (Save/Discard).
@@ -737,8 +738,62 @@ export const STATES: State[] = [
       await expectSearchRowButtons(page);
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
-      await expectSearchRowButtons(page);
+      await expectSearchRowButtons(page, true);
     } },
+  // The control block under the h1 is pinned: desktop the full bar; phones (portrait and landscape) a short row with an
+  // expand button, expanding pins the full bar over the page, and it folds back. Nothing here is in the URL.
+  { name: 'coffees-bar-pinned', path: () => '/coffees?status=all&view=list',
+    act: async (page) => {
+      const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
+      const phone = w <= 640 || h <= 450;
+      const top = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
+      expect((await top('.cbar')).y, 'at the top the bar is in flow, below the h1').toBeGreaterThan(20);
+      await expect(page.locator('.cbar-mini')).toHaveCount(0);
+      await page.evaluate(() => window.scrollTo(0, 1500));
+      if (!phone) {
+        await expect.poll(async () => Math.abs((await top('.cbar')).y)).toBeLessThanOrEqual(1);
+        await expect(page.locator('.cbar-toggle')).toHaveCount(0);
+        return;
+      }
+      const mini = page.locator('.cbar-mini');
+      await expect(mini).toBeVisible();
+      const m = (await mini.boundingBox())!;
+      expect(Math.abs(m.y)).toBeLessThanOrEqual(1);
+      expect(m.height, 'collapsed bar is one short row').toBeLessThanOrEqual(56);
+      expect(m.x + m.width).toBeLessThanOrEqual(w + 1);
+      const url = page.url();
+      await mini.getByRole('button', { name: 'Show controls' }).click();
+      await expect(mini).toHaveCount(0);
+      const bar = page.locator('.cbar.overlay');
+      await expect(bar).toBeVisible();
+      const b = (await bar.boundingBox())!;
+      expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
+      expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
+      // a control in the expanded bar works
+      await bar.locator('select:visible', { has: page.locator('option[value=created_at]') }).selectOption('created_at');
+      await expect(page).toHaveURL(/sort=created_at/);
+      await bar.getByRole('button', { name: 'Hide controls' }).click();
+      await expect(page.locator('.cbar.overlay')).toHaveCount(0);
+      await expect(mini).toBeVisible();
+      expect(page.url().replace(/[?&]sort=[^&]*/, '')).toBe(url.replace(/[?&]sort=[^&]*/, ''));
+      expect(page.url()).not.toMatch(/expand|collapse|bar/);
+    } },
+  // A scrolled-to inline-edit action row lands below the pinned bar (ui-rules 19, 21).
+  ...(['cards', 'list', 'compact'] as const).map((view) => ({
+    name: `coffees-bar-inline-edit-${view}`, viewports: 'two' as const,
+    path: () => `/coffees?status=all&view=${view}`,
+    act: async (page: Page) => {
+      await openSoloEdit(page, view, 'Colombia Pink Bourbon');
+      const save = page.getByRole('button', { name: 'Save', exact: true });
+      await save.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+      await page.waitForTimeout(150);
+      const covered = await save.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !hit || !el.contains(hit);
+      });
+      expect(covered, 'Save is not under the pinned bar').toBe(false);
+    } })),
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
   {

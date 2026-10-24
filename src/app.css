@@ -975,11 +975,15 @@ nav.site-nav a[aria-current='page'] {
   margin-left: var(--space-4);
 }
 
-/* chore(preview): placement B (sort left of Filter in the search row) is desktop only. */
+/* Desktop: Sort by lives in the Add Coffee row; phones show the toolbar copy (right of View). */
 @media (min-width: 641px) {
-  .toolbar.sort-b .sort-in-toolbar {
+  .sort-in-toolbar {
     display: none;
   }
+}
+
+.add-sort-row {
+  margin-bottom: var(--space-2);
 }
 
 @media (max-width: 640px) {
@@ -992,6 +996,11 @@ nav.site-nav a[aria-current='page'] {
   }
 
   .sort-in-row {
+    display: none;
+  }
+
+  /* No Add Coffee button on a phone's signed-out view leaves an empty row: hide it. */
+  .add-sort-row:not(:has(> .button)) {
     display: none;
   }
 
@@ -1020,6 +1029,23 @@ nav.site-nav a[aria-current='page'] {
   .coffees-search-row > .button,
   .coffees-search-row > .filter-anchor > .button {
     padding-inline: 0.375rem;
+  }
+
+  /* Editing: six buttons, three and three (grid, so both lines are equal); labels shortened. */
+  .coffees-search-row.editing {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .coffees-search-row.editing > .search-input,
+  .coffees-search-row.editing > .filter-chips,
+  .coffees-search-row.editing > p {
+    grid-column: 1 / -1;
+  }
+
+  /* Three equal columns are too narrow for "Discard changes": phones show "Save" / "Discard" (aria-label keeps the full name). */
+  .coffees-search-row.editing .more {
+    display: none;
   }
 
   .coffees-search-row > .button.share-button {

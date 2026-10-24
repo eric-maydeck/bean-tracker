@@ -13,6 +13,7 @@
   import CoffeeForm from '$lib/components/CoffeeForm.svelte';
   import AddedToast from '$lib/components/AddedToast.svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
   import { defaultViewForWidth } from '$lib/defaultView';
   import { originWithFlag } from '$lib/countryFlags';
   import {
@@ -415,9 +416,6 @@
     )
   );
 
-  // chore(preview): temporary desktop-placement switch, server-rendered (ui-testing gotcha).
-  let sortPos = $derived(page.url.searchParams.get('_sortpos') === 'b' ? 'b' : 'a');
-
   let sortKey = $derived<SortKey>(explicit.sort?.key ?? 'urgency');
   let sortDir = $derived<SortDir>(explicit.sort?.dir ?? 'desc');
 
@@ -686,7 +684,16 @@
 
 <h1>Coffee Collection</h1>
 
-<div class="toolbar" class:sort-b={sortPos === 'b'}>
+{#if refreshState !== 'idle'}
+  <div class="refresh-toast" role="status">
+    {#if refreshState === 'busy'}<span class="spinner" aria-hidden="true"></span>Refreshing…{:else}Updated{/if}
+  </div>
+{/if}
+
+<AddedToast bind:slug={addedSlug} />
+
+<CollapsibleBar>
+<div class="toolbar">
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
@@ -712,31 +719,22 @@
     </div>
   </div>
 
-  <!-- chore(preview): _sortpos=a|b picks the desktop placement; b also renders here for phones. -->
+  <!-- Phones: Sort by sits right of View; desktop shows it in the Add Coffee row below. -->
   {@render sortControl('toolbar')}
 </div>
 
-{#if refreshState !== 'idle'}
-  <div class="refresh-toast" role="status">
-    {#if refreshState === 'busy'}<span class="spinner" aria-hidden="true"></span>Refreshing…{:else}Updated{/if}
-  </div>
-{/if}
-
-<AddedToast bind:slug={addedSlug} />
-
-<div class="search-row coffees-search-row">
+<div class="search-row coffees-search-row" class:editing={editAll}>
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
-  {#if sortPos === 'b'}{@render sortControl('row')}{/if}
   <FilterBar bind:filters={explicit.filters} coffees={source} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
   {#if data.isAdmin}
     {#if editAll}
-      <button class="button button-success button-solid" type="button" disabled={saving} onclick={() => saveChanges()}>
-        {saving ? 'Saving…' : 'Save changes'}
+      <button class="button button-success button-solid" type="button" aria-label="Save changes" disabled={saving} onclick={() => saveChanges()}>
+        {#if saving}Saving…{:else}Save<span class="more"> changes</span>{/if}
       </button>
-      <button class="button button-danger button-ghost" type="button" disabled={saving} onclick={discardChanges}>
-        Discard changes
+      <button class="button button-danger button-ghost" type="button" disabled={saving} aria-label="Discard changes" onclick={discardChanges}>
+        Discard<span class="more"> changes</span>
       </button>
     {:else}
       <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
@@ -751,6 +749,18 @@
 <p class="text-muted">
   {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {formatGrams(visibleTotalGrams)}
 </p>
+
+<div class="search-row add-sort-row">
+  {#if data.isAdmin && expandedId !== 'new'}
+    <button class="button" type="button" onclick={openAdd}>+ Add Coffee</button>
+  {/if}
+  {@render sortControl('row')}
+</div>
+
+{#snippet summary()}
+  {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {SORT_LABELS[sortKey]} {sortDir === 'asc' ? '↑' : '↓'}
+{/snippet}
+</CollapsibleBar>
 
 {#if data.isAdmin}
   {#if expandedId === 'new'}
@@ -771,10 +781,6 @@
         />
       </div>
     {/key}
-  {:else}
-    <div class="search-row">
-      <button class="button" type="button" onclick={openAdd}>+ Add Coffee</button>
-    </div>
   {/if}
 {/if}
 
