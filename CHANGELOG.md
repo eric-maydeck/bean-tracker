@@ -1,3 +1,33 @@
+# [1.86.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.85.0...v1.86.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **charts:** dark-mode dark brown between the two tried shades
+* **charts:** darker outline on brown bars
+* **charts:** deeper dark-mode dark brown so the trend line stands out
+* **charts:** draw trend lines above the bars
+* **charts:** near-black outline on dark-mode compare bars
+* **charts:** thinner bar outlines
+* **insights:** fold into Other only when 2+ items would go there
+* **insights:** greyed ratings menu and show stay put so switching modes never moves the page
+* **insights:** measure titles keep one header width so switching never rewraps
+* **insights:** rule 42 line colors, trend chart styling, see-all note in the period row
+* **insights:** see-all note shares the period line on phones, no held empty line
+* **insights:** tips above the plot, thick usage lines, see-all note type
+
+
+### Features
+
+* **charts:** legends below the plot on every chart
+* **charts:** see-through bars with an outline on every bar chart
+* **insights:** brewed-over-time measures, per brew day and grinder usage
+* **insights:** light, medium and dark browns for 1-3 series, lines included
+* **insights:** one line style for every chart, trend counted as a series
+* **insights:** one usage-chart view param per chart
+* **insights:** trend toggle, usage bars or lines and per brew day on the insights tabs
+* **insights:** url params for trend measure, per brew day and usage views
+
 # [1.85.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.84.0...v1.85.0) (2026-10-23)
 
 
