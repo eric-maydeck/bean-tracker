@@ -2245,11 +2245,14 @@ export const STATES: State[] = [
       // Swept from the right until a bar is under the pointer (bars hover by intersection); a few heights, as the legend
       // under the plot takes more lines on narrow screens.
       const tip = page.locator('.chart-container .cell-tip:popover-open');
-      for (const g of [0.75, 0.6, 0.45]) {
-        for (let f = 0.95; f > 0 && !(await tip.count()); f -= 0.05) {
-          await page.mouse.move(b.x + b.width * f, b.y + b.height * g);
-          await page.waitForTimeout(100);
-        }
+      // Marks first (colored pixels: a bar, not grey grid/text), so a narrow screen's extra legend rows don't cost dozens of
+      // misses; then the old sweep from the right, so a bar still drawing in is found too.
+      const sweep: (readonly [number, number])[] = [];
+      for (const g of [0.75, 0.6, 0.45]) for (let f = 0.95; f > 0; f -= 0.05) sweep.push([b.x + b.width * f, b.y + b.height * g]);
+      for (const [x, y] of [...(await chartPoints(c, false)).slice(0, 12), ...sweep]) {
+        await page.mouse.move(x, y);
+        // The tip renders a frame or two after the move: wait for it, up to the old 100 ms.
+        if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
       }
       await expectDataTip(tip);
       await expectTipInView(page, tip);
@@ -6797,9 +6800,9 @@ async function expectTapTip(page: Page, open: Locator | (() => Promise<unknown>)
 }
 // A Chart.js tip opens only on a mark (ui-rules 50), so the sweeps aim at marks: points on colored pixels (a bar,
 // slice or line: chroma, unlike gray grid lines and text), one per 8px column, then a coarse grid as a fallback.
-async function chartPoints(canvas: Locator) {
+async function chartPoints(canvas: Locator, settle = true) {
   await canvas.scrollIntoViewIfNeeded();
-  await canvas.page().waitForTimeout(450); // the 400ms draw animation: marks at their final size
+  if (settle) await canvas.page().waitForTimeout(450); // the 400ms draw animation: marks at their final size
   const b = (await canvas.boundingBox())!, vh = canvas.page().viewportSize()!.height;
   const marks = await canvas.evaluate((c) => {
     const cv = c as HTMLCanvasElement, k = cv.width / cv.getBoundingClientRect().width;
