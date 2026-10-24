@@ -297,7 +297,7 @@
     <button class="button button-success button-solid" type="button" disabled={saving} onclick={saveChanges}>
       {saving ? 'Saving…' : 'Save changes'}
     </button>
-    <button class="button button-danger button-ghost" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
+    <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
   </div>
 {/if}
 {#if data.isAdmin && commitError}

@@ -363,7 +363,7 @@
       <button class="button button-success button-solid" type="button" disabled={saving} onclick={saveChanges}>
         {saving ? 'Saving…' : 'Save changes'}
       </button>
-      <button class="button button-danger button-ghost" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
+      <button class="button button-danger" type="button" disabled={saving} onclick={discardChanges}>Discard changes</button>
     {:else}
       <button class="button button-secondary" type="button" onclick={() => (editMode = true)}>Edit</button>
     {/if}
