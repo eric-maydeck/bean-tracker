@@ -195,6 +195,8 @@ async function expectFoldCorners(page: Page) {
   }));
   expect(bad).toEqual([]);
 }
+// Two animation frames: what a scroll or resize needs to land its layout (a fixed sleep guessed at it).
+const frames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 // Height of the active tab's own controls row inside the sticky bar (0 when the tab has none).
 const tabRowHeight = (bar: Locator) =>
   bar.evaluate((el) => { const r = el.querySelector('.tab-controls')?.getBoundingClientRect().height; return r ? r + parseFloat(getComputedStyle(el).rowGap) : 0; });
@@ -203,7 +205,7 @@ async function expectStickyBar(page: Page, bar: Locator) {
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
   const target = page.locator('section.chart-panel').nth(1);
   await target.evaluate((el) => el.scrollIntoView());
-  await page.waitForTimeout(100);
+  await frames(page);
   const b = (await bar.boundingBox())!;
   const tabRow = await tabRowHeight(bar);
   expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
@@ -855,7 +857,7 @@ export const STATES: State[] = [
       await openSoloEdit(page, view, 'Colombia Pink Bourbon');
       const save = page.getByRole('button', { name: 'Save', exact: true });
       await save.evaluate((el) => el.scrollIntoView({ block: 'start' }));
-      await page.waitForTimeout(150);
+      await frames(page);
       const covered = await save.evaluate((el) => {
         const r = el.getBoundingClientRect();
         const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
@@ -886,10 +888,10 @@ export const STATES: State[] = [
       await check();
       const turned = w <= 640 ? { width: 1003, height: 333 } : { width: 480, height: 909 }; // the test phone, both ways
       await page.setViewportSize(turned);
-      await page.waitForTimeout(300);
+      await frames(page);
       await check();
       await page.setViewportSize({ width: w, height: h }); // and back
-      await page.waitForTimeout(300);
+      await frames(page);
       await check();
     } },
   // Signed out portrait: the last row is as tall as with Add Coffee, so the caret has the same size and place.
@@ -6708,7 +6710,7 @@ export const STATES: State[] = [
       await expect(ctl).toBeVisible();
       await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
       await page.evaluate(() => scrollTo(0, 700));
-      await page.waitForTimeout(150);
+      await frames(page);
       const bar = (await page.locator('.filter-bar').boundingBox())!, c = (await ctl.boundingBox())!;
       expect(Math.abs(bar.y)).toBeLessThanOrEqual(1);
       expect(c.y).toBeGreaterThanOrEqual(bar.y - 1);
@@ -6833,8 +6835,7 @@ async function tapChart(page: Page, canvas: Locator) {
   const tip = page.locator('.chart-container .cell-tip:popover-open');
   for (const [x, y] of await chartPoints(canvas)) {
     await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
-    await page.waitForTimeout(60);
-    if (await tip.count()) return [x, y] as const;
+    if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false)) return [x, y] as const;
   }
 }
 
@@ -6909,8 +6910,7 @@ async function hoverChart(page: Page, canvas: Locator) {
   const tip = page.locator('.chart-container .cell-tip:popover-open');
   for (const [x, y] of await chartPoints(canvas)) {
     await page.mouse.move(x, y);
-    await page.waitForTimeout(60);
-    if (await tip.count()) break;
+    if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false)) break;
   }
   return tip;
 }
