@@ -687,7 +687,7 @@
         <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
     {:else if hiddenNote(data.hidden)}
       {@const note = hiddenNote(data.hidden)!}
-      <p class="chart-note see-all">{note.lead} <TextTip label="hidden by your settings" tip={note.tip} />.
+      <p class="chart-note see-all"><span class="wide-only">{note.lead}</span><span class="phone-only">{note.short}</span> <TextTip label="hidden by your settings" tip={note.tip}>hidden<span class="wide-only">{' '}by your settings</span></TextTip>.
         <button type="button" class="filter-clear-all" onclick={() => choose({ avg: 'raw', ratings: 'all', dial: 'all' })}>See all</button></p>
     {/if}
   {/if}
@@ -1559,15 +1559,23 @@
   .period-row .see-all .filter-clear-all {
     font-size: inherit;
   }
+  .period-row .see-all .phone-only {
+    display: none;
+  }
   /* Phones: the note shares the period line when it fits, else wraps to its own line (no held empty line). */
   @media (max-width: 767px) {
     .period-row .see-all {
       margin-left: 0;
       text-align: left;
+      /* Its own line in both states: sharing the period's line fits one text and not the other, which moved the page when toggled. */
+      flex-basis: 100%;
     }
     /* Short enough to share the period line, and to keep the See all one's height when toggled. */
     .period-row .see-all .wide-only {
       display: none;
+    }
+    .period-row .see-all .phone-only {
+      display: inline;
     }
   }
 

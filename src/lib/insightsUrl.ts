@@ -566,7 +566,7 @@ const list = (xs: string[]) => (xs.length < 2 ? xs.join('') : xs.some((x) => x.i
 const HIDDEN_ROWS = 2;
 // One short line (user, gate P4): "75 rows and 703 brews" + "hidden by your settings", whose tip lists each board's
 // count ("Roasters 23"), then the brews', then the reasons once. null when nothing is hidden.
-export function hiddenNote(h: Hidden): { lead: string; tip: { title: string; rows: [string, string][]; note?: string } } | null {
+export function hiddenNote(h: Hidden): { lead: string; short: string; tip: { title: string; rows: [string, string][]; note?: string } } | null {
   const rows = Object.entries(h.rows) as [Board, number][];
   const n = rows.reduce((t, [, r]) => t + r, 0);
   if (!n && !h.brews) return null;
@@ -575,6 +575,8 @@ export function hiddenNote(h: Hidden): { lead: string; tip: { title: string; row
   const why = (Object.keys(WHY) as RowWhy[]).filter((w) => rows.some(([b]) => h.rowsBy?.[b]?.includes(w)) || (h.brews && (h.why as RowWhy[] | undefined)?.includes(w)));
   return {
     lead: [n && count(n, 'rows'), h.brews && count(h.brews, 'brews')].filter(Boolean).join(' and '),
+    // Phones: "12 rows, 50 brews hidden" (the note must fit one line beside the period, so See all doesn't move the page).
+    short: [n && count(n, 'rows'), h.brews && count(h.brews, 'brews')].filter(Boolean).join(', '),
     tip: {
       title: 'Hidden by your settings',
       rows: [

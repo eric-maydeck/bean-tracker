@@ -2362,9 +2362,6 @@ export const STATES: State[] = [
       // Wait for the click's navigation: /hidden/ matched the old note too, so the poll used to run (and pass) before
       // the note changed, until slow runs let it land (the flake).
       await expect(note).toContainText(/Showing everything/);
-      // Real shift (d3-leftovers): the leaderboards note ("12 rows and 50 brews hidden by your settings. See all") wraps
-      // to a second line at 360/480 and "Showing everything. Back to defaults" does not, so the page moves 21px.
-      test.fail(q === 'leaderboards' && [360, 480].includes(page.viewportSize()!.width), 'hidden-rows note wraps on phones');
       await expect.poll(top).toBe(before);
       await note.locator('.filter-clear-all').click();
       await expect(note).toContainText(/hidden/);
@@ -4871,7 +4868,9 @@ export const STATES: State[] = [
     act: async (page: Page) => {
       const note = page.locator('.see-all');
       // One short line (gate P4): "N rows and M brews hidden by your settings. See all".
-      await expect(note).toHaveText(/^\d+ rows?( and \d+ brews?)? hidden by your settings\. See all$/);
+      // Phones read the short form ("16 rows, 20 brews hidden. See all"): innerText skips the hidden half.
+      const phone = page.viewportSize()!.width < 768;
+      await expect(note).toHaveText(phone ? /^\d+ rows?(, \d+ brews?)? hidden\. See all$/ : /^\d+ rows?( and \d+ brews?)? hidden by your settings\. See all$/, { useInnerText: true });
       if (step !== 'note') {
         await note.getByRole('button', { name: 'See all' }).click();
         await expect(page).toHaveURL(/[?&]avg=raw/);
@@ -4907,7 +4906,7 @@ export const STATES: State[] = [
   { name: 'insights-see-all-tip', path: () => '/insights?tab=leaderboards&range=all',
     act: async (page) => {
       const btn = page.locator('.see-all .text-tip');
-      await expect(btn).toHaveText('hidden by your settings');
+      await expect(btn).toHaveText(page.viewportSize()!.width < 768 ? 'hidden' : 'hidden by your settings', { useInnerText: true });
       await expect(btn).toHaveAttribute('aria-label', /Hidden by your settings/);
       const tip = page.locator('.float-tip');
       if (page.viewportSize()!.width >= 1280) { // desktop: hover opens, leaving closes

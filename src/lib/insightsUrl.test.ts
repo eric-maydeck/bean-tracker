@@ -687,6 +687,8 @@ describe('hiddenNote', () => {
   const both = ['ratings', 'dial'] as ('ratings' | 'dial')[];
   it('one short line: rows and brews, rows only, brews only, singular; nothing hidden → null (gate P4)', () => {
     expect(hiddenNote({ rows: { roasters: 40, roast: 35 }, brews: 703, why: both })!.lead).toBe('75 rows and 703 brews');
+    expect(hiddenNote({ rows: { roasters: 40, roast: 35 }, brews: 703, why: both })!.short).toBe('75 rows, 703 brews');
+    expect(hiddenNote({ rows: { roasters: 1 }, brews: 0 })!.short).toBe('1 row');
     expect(hiddenNote({ rows: { roasters: 1 }, brews: 0 })!.lead).toBe('1 row');
     expect(hiddenNote({ rows: {}, brews: 1, why: ['ratings'] })!.lead).toBe('1 brew');
     expect(hiddenNote({ rows: {}, brews: 0 })).toBeNull();
