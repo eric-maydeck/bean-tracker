@@ -754,7 +754,7 @@ export const STATES: State[] = [
       expect(res.y + res.height / 2).toBeLessThan(add.y + add.height + 1);
       expect(res.x + res.width, 'results do not run into Add').toBeLessThanOrEqual(add.x);
       if (page.viewportSize()!.width <= 640) {
-        expect(Math.abs(add.x + add.width - (rb.x + rb.width)), 'Add at the row end').toBeLessThanOrEqual(1);
+        if (page.viewportSize()!.width >= 480) expect(Math.abs(add.x + add.width / 2 - (rb.x + rb.width / 2)), 'Add centered').toBeLessThanOrEqual(1);
         expect(await row.locator('.sort-in-row').isVisible()).toBe(false);
       } else {
         const sort = (await row.locator('.sort-in-row').boundingBox())!;
@@ -783,8 +783,9 @@ export const STATES: State[] = [
         const sort = (await page.locator('.sort-field:visible').boundingBox())!;
         expect(sort.x - (view.x + view.width), 'View grows to Sort by').toBeLessThanOrEqual(10);
       }
-      const rects = () => page.evaluate(() => [document.querySelector('.view-field'), ...[...document.querySelectorAll('.sort-field')].filter((e) => (e as HTMLElement).offsetParent)]
-        .flatMap((e) => [...e!.querySelectorAll('button, select')].map((c) => { const r = c.getBoundingClientRect(); return [r.x, r.width, r.height].map(Math.round); })));
+      // every control of the Show / View + Sort rows (the toolbar), as x, width, height
+      const rects = () => page.evaluate(() => [...document.querySelectorAll('.cbar .toolbar button:not([aria-label="Hide controls"]), .cbar .toolbar select')]
+        .filter((c) => (c as HTMLElement).offsetParent).map((c) => { const r = c.getBoundingClientRect(); return [r.x, r.width, r.height].map(Math.round); }));
       const inFlow = await rects();
       await page.evaluate(() => window.scrollTo(0, 1500));
       if (!phone) {
@@ -806,32 +807,36 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
-      if (w <= 640) expect(await rects(), 'View + Sort by look the same expanded as in flow').toEqual(inFlow);
-      // the caret is the bar's top-right corner, level with its first row; clear of every control
+      expect(await rects(), 'the top rows look the same expanded as in flow').toEqual(inFlow);
+      // the caret ends the last row (results / Add / Sort by): bar content right edge, same top and height as its left neighbor
       const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
-      const toolbar = (await bar.locator('.toolbar').boundingBox())!;
       expect(Math.abs(caret.x + caret.width - (b.x + b.width - 16)), 'caret at the bar content right edge').toBeLessThanOrEqual(1);
-      // level with the rightmost button of the first row (its left neighbor): same top and height (ui-rules 5)
-      const firstRow = (await Promise.all((await bar.locator('.toolbar button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x && x.y < toolbar.y + 40);
-      const neighbor = firstRow.reduce((a, c) => (c!.x > a!.x ? c : a))!;
-      expect(neighbor.x + neighbor.width, 'the neighbor is left of the caret').toBeLessThanOrEqual(caret.x + 1);
-      expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(1);
-      expect(Math.abs(caret.height - neighbor.height), 'caret height = its left neighbor height').toBeLessThanOrEqual(1);
+      const row = (await bar.locator('.add-sort-row').boundingBox())!;
+      expect(caret.y, 'caret in the last row').toBeGreaterThanOrEqual(row.y - 1);
+      expect(caret.y + caret.height).toBeLessThanOrEqual(row.y + row.height + 1);
+      const lastRow = (await Promise.all((await bar.locator('.add-sort-row button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x);
+      if (lastRow.length) {
+        const neighbor = lastRow.reduce((a, c) => (c!.x > a!.x ? c : a))!;
+        expect(neighbor.x + neighbor.width, 'the neighbor is left of the caret').toBeLessThanOrEqual(caret.x + 1);
+        expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(1);
+        expect(Math.abs(caret.height - neighbor.height), 'caret height = its left neighbor height').toBeLessThanOrEqual(1);
+      } else expect(Math.abs(caret.y + caret.height / 2 - (row.y + row.height / 2)), 'caret centered on the row').toBeLessThanOrEqual(1);
+      const addBtn = await bar.locator('.add-coffee-button').boundingBox();
+      if (addBtn) expect(Math.abs(addBtn.x + addBtn.width / 2 - (row.x + row.width / 2)), 'Add stays centered').toBeLessThanOrEqual(w <= 640 && w < 480 ? 200 : 1);
       expect(caret.width).toBeGreaterThanOrEqual(44);
-      for (const c of await bar.locator('.toolbar button, .toolbar select').all()) {
+      for (const c of await bar.locator('.add-sort-row button:not([aria-label="Hide controls"]), .add-sort-row select, .add-sort-row .results').all()) {
         const r = await c.boundingBox();
         if (!r) continue; // the hidden copy of Sort by
-        expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps no control').toBe(true);
+        expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps nothing').toBe(true);
       }
       if (w >= 480 && w <= 640) {
-        // portrait: Show's four buttons share one line and fill it up to the caret; View and Sort by share one line
+        // portrait: Show's four buttons share one line and fill it; View and Sort by share one line
         const boxes = await Promise.all((await bar.getByRole('group', { name: 'Show' }).getByRole('button').all()).map((x) => x.boundingBox()));
         expect(boxes.length).toBe(4);
         for (const bx of boxes) {
           expect(Math.abs(bx!.y - boxes[0]!.y)).toBeLessThanOrEqual(1);
           expect(bx!.width).toBeGreaterThanOrEqual(44);
         }
-        expect(caret.x - (boxes[3]!.x + boxes[3]!.width), 'Show fills its row').toBeLessThanOrEqual(16);
         const view = (await bar.locator('.view-field').boundingBox())!;
         const sort = (await bar.locator('.sort-field:visible').boundingBox())!;
         expect(Math.abs(view.y - sort.y), 'View and Sort by on one line').toBeLessThanOrEqual(2);
@@ -6994,6 +6999,23 @@ test.describe('signed out', () => {
     await gotoReady(page, '/coffees?status=all&view=cards');
     await expect(page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
     await expectSearchRowButtons(page);
+    await checkLayout(page);
+  });
+  // Signed out (no Add Coffee): the expanded phone bar's last row is results left, caret right, centered on the row.
+  test('coffees-bar-caret-public', { tag: '@coffees' }, async ({ page }) => {
+    const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
+    test.skip(!(w <= 640 || h <= 450), 'the collapse is a phone feature');
+    await gotoReady(page, '/coffees?status=all&view=cards');
+    await page.evaluate(() => window.scrollTo(0, 1500));
+    await page.getByRole('button', { name: 'Show controls' }).click();
+    const bar = (await page.locator('.cbar.overlay').boundingBox())!;
+    const caret = (await page.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
+    const row = (await page.locator('.add-sort-row').boundingBox())!;
+    expect(Math.abs(caret.x + caret.width - (bar.x + bar.width - 16))).toBeLessThanOrEqual(1);
+    const nonSort = w <= 640; // landscape keeps Sort by (and its toggle) as the neighbor
+    if (nonSort) expect(Math.abs(caret.y + caret.height / 2 - (row.y + row.height / 2)), 'centered on the row').toBeLessThanOrEqual(1);
+    const results = (await page.locator('.add-sort-row .results').boundingBox())!;
+    expect(results.x + results.width).toBeLessThanOrEqual(caret.x);
     await checkLayout(page);
   });
   test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {

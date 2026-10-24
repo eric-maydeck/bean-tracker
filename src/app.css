@@ -1066,15 +1066,6 @@ nav.site-nav a[aria-current='page'] {
     min-width: 44px; /* "All" stays a 44px target */
   }
 
-  /* Phones: results left, Add Coffee right (Sort by is beside View). */
-  .add-sort-row {
-    grid-template-columns: 1fr auto;
-    align-items: center;
-  }
-
-  .add-sort-row .add-coffee-button {
-    grid-column: 2;
-  }
 
   /* The button row under the search box spans the box exactly: each button grows from zero so a
      line's buttons are equal width and the line fills the row; labels stay on one line, so the row

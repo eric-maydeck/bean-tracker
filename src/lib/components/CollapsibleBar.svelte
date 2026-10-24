@@ -43,18 +43,20 @@
     return () => document.documentElement.style.removeProperty('scroll-padding-top');
   });
 
-  // Expanded: the caret takes the top and height of the rightmost button in the bar's first row (Show's last button on a
-  // portrait phone, View's last in landscape), so it lines up with its left neighbor instead of the bar's top edge.
+  // Expanded: the caret takes the top and height of the rightmost button of the bar's last row (Add Coffee in portrait,
+  // Sort by's toggle in landscape), so it lines up with its left neighbor; with no button there (signed out, portrait)
+  // it is centered on the row.
   let toggleEl: HTMLElement | undefined = $state();
   $effect(() => {
     if (!expanded || !barEl || !toggleEl) return;
-    const first = [...barEl.querySelectorAll<HTMLElement>('.toolbar button')].filter((b) => b.offsetParent && b !== toggleEl);
-    const top = Math.min(...first.map((b) => b.getBoundingClientRect().top));
-    const edge = first.filter((b) => Math.abs(b.getBoundingClientRect().top - top) < 2)
-      .reduce((a, b) => (b.getBoundingClientRect().right > a.getBoundingClientRect().right ? b : a));
-    const r = edge.getBoundingClientRect();
-    toggleEl.style.top = `${r.top - barEl.getBoundingClientRect().top + barEl.scrollTop}px`;
-    toggleEl.style.height = `${r.height}px`;
+    const row = barEl.querySelector('.add-sort-row')!.getBoundingClientRect();
+    const btns = [...barEl.querySelectorAll<HTMLElement>('.add-sort-row button')].filter((b) => b.offsetParent && b !== toggleEl);
+    const edge = btns.reduce<HTMLElement | null>((a, b) => (!a || b.getBoundingClientRect().right > a.getBoundingClientRect().right ? b : a), null);
+    const r = edge?.getBoundingClientRect();
+    const h = r ? r.height : 44;
+    const top = r ? r.top : row.top + (row.height - h) / 2;
+    toggleEl.style.top = `${top - barEl.getBoundingClientRect().top + barEl.scrollTop}px`;
+    toggleEl.style.height = `${h}px`;
   });
 
   function expand() {
@@ -122,21 +124,14 @@
   .cbar-mini .cbar-toggle {
     margin-left: auto;
   }
-  /* Expanded: the top-right corner of the bar, level with its first row; the toolbar leaves room for it. */
+  /* Expanded: the right end of the bar's last row (results / Add / Sort by), placed by script below. */
   .overlay .cbar-toggle {
     position: absolute;
-    top: var(--space-2);
     right: var(--space-4);
   }
-  /* Landscape: the toolbar is one row, so all of it leaves room. Portrait: only the Show row does, so View + Sort by
-     keep exactly the widths and positions they have in flow. */
+  /* Landscape: the last row's Sort by shifts left to leave room for the caret (portrait has an empty cell there). */
   @media (min-width: 641px) {
-    .overlay :global(.toolbar) {
-      padding-right: calc(44px + var(--space-2));
-    }
-  }
-  @media (max-width: 640px) {
-    .overlay :global(.show-field) {
+    .overlay :global(.add-sort-row .sort-in-row) {
       margin-right: calc(44px + var(--space-2));
     }
   }
