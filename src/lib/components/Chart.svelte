@@ -362,7 +362,7 @@
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
         plugins: {
-          legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, labels: { color: textColor } },
+          legend: { display: legend || type === 'doughnut' || !!trendValues || series.length > 0, position: 'bottom', labels: { color: textColor } },
           ...({ valueLabels: { format } } as object), // the horizontal-bar value labels' text (valueLabelsPlugin)
           // Trend charts: raw values are whole counts/grams, the average gets
           // one decimal — never a 15-digit float in the tooltip.
