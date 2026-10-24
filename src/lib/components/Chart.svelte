@@ -225,6 +225,8 @@
     const textColor = themeColor('--color-text');
     const gridColor = themeColor('--color-border');
     const surfaceColor = themeColor('--color-surface');
+    // Dark theme: a secondary (faded) bar's outline is a near-black brown, darker than its fill (user, 2026-10-23).
+    const dark = hexToHsl(surfaceColor).l < 0.5;
 
     // A line chart is a single trend over time, not a set of discrete
     // categories — one line color (for the line and its point markers)
@@ -317,7 +319,7 @@
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : edge(tokAt(at[i])), borderWidth: 0.75,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(tokAt(at[i])), borderWidth: 0.75,
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
           )
