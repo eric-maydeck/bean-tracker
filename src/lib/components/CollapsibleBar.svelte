@@ -43,6 +43,20 @@
     return () => document.documentElement.style.removeProperty('scroll-padding-top');
   });
 
+  // Expanded: the caret takes the top and height of the rightmost button in the bar's first row (Show's last button on a
+  // portrait phone, View's last in landscape), so it lines up with its left neighbor instead of the bar's top edge.
+  let toggleEl: HTMLElement | undefined = $state();
+  $effect(() => {
+    if (!expanded || !barEl || !toggleEl) return;
+    const first = [...barEl.querySelectorAll<HTMLElement>('.toolbar button')].filter((b) => b.offsetParent && b !== toggleEl);
+    const top = Math.min(...first.map((b) => b.getBoundingClientRect().top));
+    const edge = first.filter((b) => Math.abs(b.getBoundingClientRect().top - top) < 2)
+      .reduce((a, b) => (b.getBoundingClientRect().right > a.getBoundingClientRect().right ? b : a));
+    const r = edge.getBoundingClientRect();
+    toggleEl.style.top = `${r.top - barEl.getBoundingClientRect().top + barEl.scrollTop}px`;
+    toggleEl.style.height = `${r.height}px`;
+  });
+
   function expand() {
     slotH = barEl!.offsetHeight;
     expanded = true;
@@ -52,7 +66,7 @@
 {#if expanded}<div bind:this={spacerEl} style:height="{slotH}px" style:margin-bottom="var(--space-3)"></div>{/if}
 <div class="cbar" class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
     {#if expanded}
-      <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
+      <button type="button" class="icon-button cbar-toggle" bind:this={toggleEl} aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
         <Icon name="caret-up" />
       </button>
     {/if}

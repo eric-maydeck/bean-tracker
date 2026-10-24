@@ -807,7 +807,12 @@ export const STATES: State[] = [
       const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
       const toolbar = (await bar.locator('.toolbar').boundingBox())!;
       expect(Math.abs(caret.x + caret.width - (b.x + b.width - 16)), 'caret at the bar content right edge').toBeLessThanOrEqual(1);
-      expect(Math.abs(caret.y - toolbar.y), 'caret at the first row top').toBeLessThanOrEqual(1);
+      // level with the rightmost button of the first row (its left neighbor): same top and height (ui-rules 5)
+      const firstRow = (await Promise.all((await bar.locator('.toolbar button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x && x.y < toolbar.y + 40);
+      const neighbor = firstRow.reduce((a, c) => (c!.x > a!.x ? c : a))!;
+      expect(neighbor.x + neighbor.width, 'the neighbor is left of the caret').toBeLessThanOrEqual(caret.x + 1);
+      expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(1);
+      expect(Math.abs(caret.height - neighbor.height), 'caret height = its left neighbor height').toBeLessThanOrEqual(1);
       expect(caret.width).toBeGreaterThanOrEqual(44);
       for (const c of await bar.locator('.toolbar button, .toolbar select').all()) {
         const r = await c.boundingBox();
