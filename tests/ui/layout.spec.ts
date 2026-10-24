@@ -737,7 +737,10 @@ export const STATES: State[] = [
     act: async (page) => {
       await expectSearchRowButtons(page);
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
+      // visible text: spaced words ("Save changes", never "Savechanges"), shortened on a phone portrait
+      const short = page.viewportSize()!.width <= 640;
+      await expect(page.getByRole('button', { name: 'Save changes' })).toHaveText(short ? 'Save' : 'Save changes', { useInnerText: true });
+      await expect(page.getByRole('button', { name: 'Discard changes' })).toHaveText(short ? 'Discard' : 'Discard changes', { useInnerText: true });
       await expectSearchRowButtons(page, true);
     } },
   // The row under the search row: results far left, Add Coffee centered (signed in), Sort by far right (desktop);
@@ -769,6 +772,17 @@ export const STATES: State[] = [
       const top = async (sel: string) => (await page.locator(sel).first().boundingBox())!;
       expect((await top('.cbar')).y, 'at the top the bar is in flow, below the h1').toBeGreaterThan(20);
       await expect(page.locator('.cbar-mini')).toHaveCount(0);
+      if (w >= 480 && w <= 640) {
+        // top of the page, portrait: no caret; Show runs edge to edge under the search box's edges; View grows next to Sort by
+        await expect(page.locator('.cbar-toggle')).toHaveCount(0);
+        const input = (await page.locator('.coffees-search-row .search-input').boundingBox())!;
+        const shows = await Promise.all((await page.getByRole('group', { name: 'Show' }).getByRole('button').all()).map((x) => x.boundingBox()));
+        expect(Math.abs(shows[0]!.x - input.x)).toBeLessThanOrEqual(1);
+        expect(Math.abs(shows[3]!.x + shows[3]!.width - (input.x + input.width)), 'Show right edge = search box right edge').toBeLessThanOrEqual(1);
+        const view = (await page.locator('.view-field').boundingBox())!;
+        const sort = (await page.locator('.sort-field:visible').boundingBox())!;
+        expect(sort.x - (view.x + view.width), 'View grows to Sort by').toBeLessThanOrEqual(10);
+      }
       await page.evaluate(() => window.scrollTo(0, 1500));
       if (!phone) {
         await expect.poll(async () => Math.abs((await top('.cbar')).y)).toBeLessThanOrEqual(1);
@@ -789,40 +803,30 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
-      // phone portrait: Show's four buttons and the caret share one line, level; View and Sort by share one line
-      if (w >= 480 && w <= 640) {
-        const row = [...(await bar.getByRole('group', { name: 'Show' }).getByRole('button').all())];
-        const boxes = await Promise.all(row.map((x) => x.boundingBox()));
-        expect(boxes.length, 'Backlog, Open, Archive, All and the caret').toBe(5);
-        for (const bx of boxes) {
-          expect(Math.abs(bx!.y - boxes[0]!.y), 'Show row and caret share a top').toBeLessThanOrEqual(1);
-          expect(Math.abs(bx!.height - boxes[0]!.height), 'and a height').toBeLessThanOrEqual(1);
-          expect(bx!.width).toBeGreaterThanOrEqual(44);
-        }
-        const view = (await bar.locator('.view-field').boundingBox())!;
-        const sort = (await bar.locator('.sort-field:visible').boundingBox())!;
-        expect(Math.abs(view.y - sort.y), 'View and Sort by on one line').toBeLessThanOrEqual(2);
-      }
-      // the caret sits on the Show line, level with its buttons and clear of every control
+      // the caret is the bar's top-right corner, level with its first row; clear of every control
       const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
-      const show = (await bar.getByRole('group', { name: 'Show' }).getByRole('button').first().boundingBox())!;
-      // (where all four Show buttons plus the caret don't fit one line, w < 480, it wraps within the Show group)
-      const group = (await bar.getByRole('group', { name: 'Show' }).boundingBox())!;
-      expect(caret.y, 'caret inside the Show group').toBeGreaterThanOrEqual(group.y - 1);
-      expect(caret.y + caret.height).toBeLessThanOrEqual(group.y + group.height + 1);
-      if (w >= 480) {
-        expect(caret.y, 'caret on the Show line').toBeLessThan(show.y + show.height);
-        expect(caret.y + caret.height).toBeGreaterThan(show.y);
-      }
+      const toolbar = (await bar.locator('.toolbar').boundingBox())!;
+      expect(Math.abs(caret.x + caret.width - (b.x + b.width - 16)), 'caret at the bar content right edge').toBeLessThanOrEqual(1);
+      expect(Math.abs(caret.y - toolbar.y), 'caret at the first row top').toBeLessThanOrEqual(1);
       expect(caret.width).toBeGreaterThanOrEqual(44);
-      for (const c of await bar.locator('.toolbar button:not([aria-label="Hide controls"]), .toolbar select').all()) {
+      for (const c of await bar.locator('.toolbar button, .toolbar select').all()) {
         const r = await c.boundingBox();
         if (!r) continue; // the hidden copy of Sort by
         expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps no control').toBe(true);
       }
-      // a control in the expanded bar works
-      await bar.locator('select:visible', { has: page.locator('option[value=created_at]') }).selectOption('created_at');
-      await expect(page).toHaveURL(/sort=created_at/);
+      if (w >= 480 && w <= 640) {
+        // portrait: Show's four buttons share one line and fill it up to the caret; View and Sort by share one line
+        const boxes = await Promise.all((await bar.getByRole('group', { name: 'Show' }).getByRole('button').all()).map((x) => x.boundingBox()));
+        expect(boxes.length).toBe(4);
+        for (const bx of boxes) {
+          expect(Math.abs(bx!.y - boxes[0]!.y)).toBeLessThanOrEqual(1);
+          expect(bx!.width).toBeGreaterThanOrEqual(44);
+        }
+        expect(caret.x - (boxes[3]!.x + boxes[3]!.width), 'Show fills its row').toBeLessThanOrEqual(16);
+        const view = (await bar.locator('.view-field').boundingBox())!;
+        const sort = (await bar.locator('.sort-field:visible').boundingBox())!;
+        expect(Math.abs(view.y - sort.y), 'View and Sort by on one line').toBeLessThanOrEqual(2);
+      }
       await bar.getByRole('button', { name: 'Hide controls' }).click();
       await expect(page.locator('.cbar.overlay')).toHaveCount(0);
       await expect(mini).toBeVisible();

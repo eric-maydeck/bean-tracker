@@ -7,8 +7,7 @@
   // pinned row (`summary` + an expand button) takes over, and expanding shows the full bar pinned over the page (its
   // own scroll when taller than the screen) with a button to fold it back. Open/closed is transient chrome, never
   // view state: not in the URL, not remembered. The spacer keeps the bar's height while it floats, so nothing jumps.
-  // `children` gets the fold-back caret to place inside its first row (empty unless expanded on a phone).
-  let { children, summary }: { children: Snippet<[Snippet]>; summary: Snippet } = $props();
+  let { children, summary }: { children: Snippet; summary: Snippet } = $props();
 
   let barEl: HTMLElement | undefined = $state();
   let spacerEl: HTMLElement | undefined = $state();
@@ -50,17 +49,14 @@
   }
 </script>
 
-{#snippet caret()}
-  {#if expanded}
-    <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
-      <Icon name="caret-up" />
-    </button>
-  {/if}
-{/snippet}
-
 {#if expanded}<div bind:this={spacerEl} style:height="{slotH}px" style:margin-bottom="var(--space-3)"></div>{/if}
 <div class="cbar" class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
-    {@render children(caret)}
+    {#if expanded}
+      <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
+        <Icon name="caret-up" />
+      </button>
+    {/if}
+    {@render children()}
 </div>
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
@@ -109,9 +105,17 @@
     width: 44px;
     height: 44px;
   }
-  /* Sits last in the page's first row, pushed to its right end. */
-  .cbar-toggle {
+  .cbar-mini .cbar-toggle {
     margin-left: auto;
+  }
+  /* Expanded: the top-right corner of the bar, level with its first row; the toolbar leaves room for it. */
+  .overlay .cbar-toggle {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-4);
+  }
+  .overlay :global(.toolbar) {
+    padding-right: calc(44px + var(--space-2));
   }
   @media (max-width: 640px), (max-height: 450px) {
     .cbar {

@@ -1049,6 +1049,17 @@ nav.site-nav a[aria-current='page'] {
     flex-basis: 100%; /* Backlog, Open, Archive, All and the caret share one line where they fit; View + Sort follow */
   }
 
+  /* Show and View fill their rows: the buttons grow into the slack (labels never shrink), so at the page top Show
+     runs edge to edge and View takes the space left of Sort by. Wrapping is decided by content widths, unchanged. */
+  .show-field .tab-group button,
+  .view-field .tab-group button {
+    flex: 1 1 auto;
+  }
+
+  .view-field {
+    flex: 1 1 auto;
+  }
+
   /* Slack in the Show/View buttons' side padding keeps them (and Sort by) on fewer lines; tap height stays 44px. */
   .toolbar .tab-group button {
     padding-inline: 0.5rem;

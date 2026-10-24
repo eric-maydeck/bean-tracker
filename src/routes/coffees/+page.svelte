@@ -693,7 +693,6 @@
 <AddedToast bind:slug={addedSlug} />
 
 <CollapsibleBar>
-{#snippet children(caret)}
 <div class="toolbar">
   <div class="form-field group-field show-field">
     <span>Show</span>
@@ -708,7 +707,6 @@
         Archive ({data.archive.length})
       </button>
       <button aria-pressed={lit[0] === 'all'} onclick={() => tapStatus('all')}>All</button>
-      {@render caret()}
     </div>
   </div>
 
@@ -733,10 +731,10 @@
   {#if data.isAdmin}
     {#if editAll}
       <button class="button button-success button-solid" type="button" aria-label="Save changes" disabled={saving} onclick={() => saveChanges()}>
-        {#if saving}Saving…{:else}Save<span class="more"> changes</span>{/if}
+        {#if saving}Saving…{:else}Save <span class="more">changes</span>{/if}
       </button>
       <button class="button button-danger" type="button" disabled={saving} aria-label="Discard changes" onclick={discardChanges}>
-        Discard<span class="more"> changes</span>
+        Discard <span class="more">changes</span>
       </button>
     {:else}
       <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
@@ -757,8 +755,6 @@
   {/if}
   {@render sortControl('row')}
 </div>
-
-{/snippet}
 
 {#snippet summary()}
   {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {SORT_LABELS[sortKey]} {sortDir === 'asc' ? '↑' : '↓'}
