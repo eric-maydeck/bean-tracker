@@ -49,7 +49,7 @@ The page's control block (filters, view switches, search, buttons) pinned to the
    No orphan wraps where they fit; at 360/390 a wrapping Sort by or "All" is accepted (report it, don't clip text).
 8. Share is the rightmost button of its row (rule 51). Edit mode: 3 + 3 rows on phones, short labels ("Save", "Discard", aria-label keeps the full name).
 9. Collapsed row <= 56px with a summary; caret 44px target, `aria-expanded`, labels "Show controls" / "Hide controls".
-10. Caret color: visually distinct and neutral (no good/bad meaning, not the solid primary of rule 24). CARET-COLOR-TBD (filled in after the pick).
+10. Caret color: visually distinct and neutral (no good/bad meaning, not the solid primary of rule 24): fill `var(--color-text-muted)`, icon `var(--color-bg)`, border the fill color (user pick, 2026-10-24; 6.0:1 light, 7.3:1 dark).
 11. Tap targets 44px on phones; landscape (> 640 wide) buttons are 36px and the caret matches its neighbor.
 
 ## Bugs we hit
