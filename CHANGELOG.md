@@ -1,3 +1,27 @@
+# [1.87.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.86.0...v1.87.0) (2026-10-24)
+
+
+### Bug Fixes
+
+* **coffees:** expanded caret is a css item of the last row, no measuring
+* **coffees:** expanded caret lines up with its left neighbor button
+* **coffees:** only the show row gives up space for the caret in portrait
+* **coffees:** save and discard labels keep their space, show and view fill rows, caret top right
+* **coffees:** scope phone toolbar button padding to the coffees bar
+* **ui:** discard image is ghost red
+
+
+### Features
+
+* **coffees:** caret in muted gray-brown, preview params removed
+* **coffees:** expanded caret moves to the end of the last row, add centered on phones
+* **coffees:** pinned control bar with phone collapse, sort beside add, 3+3 edit row
+* **coffees:** sort at the row end beside results and add, caret on the show line
+* **coffees:** sort by dropdown with asc/desc toggle, share last, phone button row spans search box
+* **coffees:** sort by label inline left of the dropdown on desktop
+* **coffees:** tighter control bar gaps, caret in the show row, view and sort on one line
+* **ui:** discard changes is tonal red everywhere
+
 # [1.86.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.85.0...v1.86.0) (2026-10-24)
 
 
