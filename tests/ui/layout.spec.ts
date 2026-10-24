@@ -1101,7 +1101,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'water-ideal-hint',
+    name: 'water-ideal-hint', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&ml=800',
     act: async (page) => {
       await expect(page.locator('.water-ideal')).toContainText('The Lume High Clarity recipe is best used with 1000 mL of distilled water.');
@@ -1769,7 +1769,7 @@ export const STATES: State[] = [
     act: (page, s) => openPicker(page, s.names.long.slice(0, 20))
   },
   {
-    name: 'coffee-linked',
+    name: 'coffee-linked', viewports: 'two',
     path: (s) => `/coffees/${s.slugs.linked}`,
     act: async (page) => {
       await expect(page.getByText(/Bean Conqueror: .* · 8 brews/)).toBeVisible();
@@ -1895,7 +1895,7 @@ export const STATES: State[] = [
     }
   },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
-    name: `stats-${tab}`,
+    name: `stats-${tab}`, viewports: 'two' as const,
     path: () => `/stats?tab=bq&bc=${tab}`,
     // ui-rules 47: a top-N chart says how many it shows, only while it cuts something (never "top 4 of 4").
     act: async (page: Page) => {
@@ -2095,7 +2095,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'on-deck-view-next',
+    name: 'on-deck-view-next', viewports: 'two',
     path: () => '/on-deck?view=next',
     act: async (page) => {
       await expect(page.getByLabel('View')).toHaveValue('next');
@@ -2333,7 +2333,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-consumption-trend-water-compare',
+    name: 'insights-consumption-trend-water-compare', viewports: 'two',
     path: () => '/insights?tab=consumption&range=1m&compare=1&trend=water&by=day',
     act: async (page) => {
       const panel = page.locator('section.chart-panel').filter({ has: page.locator('#consumption-chart-brewed') });
@@ -2403,7 +2403,7 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-habits-brewday',
+    name: 'insights-habits-brewday', viewports: 'two',
     path: () => '/insights?tab=habits&agg=brewday',
     act: async (page) => {
       await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Per brew day' })).toHaveAttribute('aria-pressed', 'true');
@@ -2746,7 +2746,7 @@ export const STATES: State[] = [
   {
     // Per person: one switch drives `people`; total tiles get the suffix, averages don't;
     // a count under 10 keeps one decimal. Navigation only.
-    name: 'insights-people-person',
+    name: 'insights-people-person', viewports: 'two',
     path: () => '/insights?range=1w&compare=1',
     act: async (page) => {
       const people = page.getByRole('group', { name: 'People' });
@@ -3254,7 +3254,7 @@ export const STATES: State[] = [
       await expect.poll(widths).toEqual(before);
       await expect.poll(sharp).toBe(true); // the canvas redraws after its card shrinks; checkLayout ran mid-resize once (scrollWidth 1608)
     } },
-  { name: 'insights-board-dashed-gaps', path: () => '/insights?tab=leaderboards&range=1m&rank=brews&views=roast-time,water-time,dripper-time,filter-time,grinder-time,process-time',
+  { name: 'insights-board-dashed-gaps', viewports: 'two', path: () => '/insights?tab=leaderboards&range=1m&rank=brews&views=roast-time,water-time,dripper-time,filter-time,grinder-time,process-time',
     act: async (page) => {
       // Brews / Grams / Spend plot a no-data period as 0: no dashes, no note. Ratings bridge it with a dashed segment and say so.
       await expect(page.locator('.board canvas').first()).toBeVisible();
@@ -3597,10 +3597,10 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
-  { name: 'insights-records-soup', path: () => '/insights?tab=records&brewer=soup',
+  { name: 'insights-records-soup', viewports: 'two', path: () => '/insights?tab=records&brewer=soup',
     act: async (page) => expect(page.getByRole('button', { name: 'Soup', pressed: true })).toBeVisible() },
   { name: 'insights-records-compare', path: () => '/insights?tab=records&range=1w&compare=1' },
-  { name: 'insights-records-all-ratings', path: () => '/insights?tab=records&ratings=all',
+  { name: 'insights-records-all-ratings', viewports: 'two', path: () => '/insights?tab=records&ratings=all',
     act: async (page) => {
       await page.locator('.record-ties').first().click(); // tie tip opens on tap
       await expect(page.locator('.mode-tip:popover-open')).toBeVisible();
@@ -4469,7 +4469,7 @@ export const STATES: State[] = [
       if (await small.count()) await expect(small.first()).toHaveAttribute('aria-label', /[+−]?\d\.\d\d? \(Low confidence\)$/);
       await expect(hm.locator('.div-legend')).not.toContainText(/Striped:|few brews/i);
     } })),
-  { name: 'insights-brewing-exact', path: () => '/insights?tab=brewing&temp=exact',
+  { name: 'insights-brewing-exact', viewports: 'two', path: () => '/insights?tab=brewing&temp=exact',
     act: async (page) => {
       // Each chart's toggle is its own: temp=exact leaves Grind on bands.
       await expect(page.getByRole('group', { name: 'Temp bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
@@ -4773,7 +4773,7 @@ export const STATES: State[] = [
     } },
   // The mixed-roast nudge: never with a Roast filter set (one level left). The thin seed's two levels
   // rate alike, so it never shows here; prod copy shows it on /insights?tab=brewing&range=3m (T13b report).
-  { name: 'insights-roast-nudge-roast-set', path: () => '/insights?tab=brewing&range=all&roast=Light',
+  { name: 'insights-roast-nudge-roast-set', viewports: 'two', path: () => '/insights?tab=brewing&range=all&roast=Light',
     act: async (page) => {
       await expect(page.locator('.coffee-chips')).toBeVisible();
       await expect(page.locator('.roast-nudge')).toHaveCount(0);
@@ -4808,7 +4808,7 @@ export const STATES: State[] = [
       await expect(page.locator('.coffee-chips')).toHaveCount(0);
     } },
   ...(['brewing', 'leaderboards', 'habits'] as const).map((t) => ({
-    name: `insights-coffees-empty-${t}`, path: () => `/insights?tab=${t}&roaster=Lab%20Roasters&range=1w`,
+    name: `insights-coffees-empty-${t}`, viewports: 'two' as const, path: () => `/insights?tab=${t}&roaster=Lab%20Roasters&range=1w`,
     act: async (page: Page) => {
       await expect(page.getByText(/^No (rated )?brews matching Lab Roasters in this period\.$/)).toHaveCount(1);
       // A whole empty tab is one empty panel, not a stack of empty boards or charts (rule 28).
@@ -6010,7 +6010,7 @@ export const STATES: State[] = [
       expect(await page.locator('.deck').evaluate((e) => e.scrollLeft)).toBe(0);
     } },
   // Part 4 findings, each under its own theme: the cards render and nothing spills (checkLayout runs after).
-  { name: 'insights-insights-theme-dialin', path: () => '/insights?tab=insights&range=all&theme=dialin',
+  { name: 'insights-insights-theme-dialin', viewports: 'two', path: () => '/insights?tab=insights&range=all&theme=dialin',
     act: async (page) => {
       for (const id of ['dialinBy-roastLevel', 'dialinBy-processGroup', 'rescuedBags']) await expect(page.locator(`#insight-${id}`)).toBeVisible();
       // The seed grades the dripper finding into the grid (on a real DB it may sit in Too early, which has no card).
@@ -6018,7 +6018,7 @@ export const STATES: State[] = [
       await expect(card).toBeVisible();
       await expect(card.locator('a[href$="#brewing-settle-dripper"]').first()).toBeVisible();
     } },
-  { name: 'insights-insights-theme-taste', path: () => '/insights?tab=insights&range=all&theme=taste',
+  { name: 'insights-insights-theme-taste', viewports: 'two', path: () => '/insights?tab=insights&range=all&theme=taste',
     act: async (page) => { await expect(page.locator('#insight-likeRoaster')).toBeVisible(); } },
   { name: 'insights-insights-theme', path: () => '/insights?tab=insights&range=all&theme=money',
     act: async (page) => {
@@ -6026,7 +6026,7 @@ export const STATES: State[] = [
       await expectGridRowsFull(page, '.finding-grid');
     } },
   // A period with no brews: no measured brews/day or dose, so the spend card says so instead of "$0 a month".
-  { name: 'insights-insights-nobrews', path: () => '/insights?tab=insights&range=2000-01-01..2000-01-31',
+  { name: 'insights-insights-nobrews', viewports: 'two', path: () => '/insights?tab=insights&range=2000-01-01..2000-01-31',
     act: async (page) => {
       const spend = page.locator('#insights-spend');
       await expect(spend).toContainText('Not enough brews to measure your spend yet');
@@ -6672,7 +6672,7 @@ export const STATES: State[] = [
   { name: 'skip-name-coffees-cards', viewports: 'two', path: () => '/coffees?status=archive&view=cards', act: (page) => expectSkipColored(page, 2) },
   { name: 'skip-name-coffees-list', viewports: 'two', path: () => '/coffees?status=archive&view=list', act: (page) => expectSkipColored(page, 2) },
   { name: 'skip-name-coffees-compact', viewports: 'two', path: () => '/coffees?status=archive&view=compact', act: (page) => expectSkipColored(page, 2) },
-  { name: 'skip-name-coffee-detail', path: (s) => `/coffees/${s.slugs.skip}`, act: (page) => expectSkipColored(page, 2) },
+  { name: 'skip-name-coffee-detail', viewports: 'two', path: (s) => `/coffees/${s.slugs.skip}`, act: (page) => expectSkipColored(page, 2) },
   {
     // A coffees board row, and its value tip's title (TipBody).
     name: 'skip-name-insights-leaderboards', viewports: 'two',
