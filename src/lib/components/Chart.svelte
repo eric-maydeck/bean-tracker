@@ -293,6 +293,7 @@
                 {
                   label: trendLabel,
                   data: trendValues,
+                  order: -1,
                   borderColor: lineInk,
                   backgroundColor: lineInk,
                   borderWidth: 2.5,
@@ -305,7 +306,7 @@
             : []),
           ...series.map((x, i) =>
             x.trend
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
+              ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
               : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: themeColor(`${tokAt(at[i])}-ink`), borderWidth: 1,
