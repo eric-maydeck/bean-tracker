@@ -561,7 +561,7 @@
             onsite={(site) => (roasterWebsite = site)}
           />
           <button
-            class="button button-ghost"
+            class="button button-danger button-ghost"
             type="button"
             onclick={() => {
               setField('image_url', '');

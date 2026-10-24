@@ -147,7 +147,7 @@
       <ImageSuggest endpoint="/api/gear/image-suggest" label="Suggest" siteLabel="Maker website" setSiteText="set maker site" disabled={saving}
         body={() => ({ kind: trophy.kind, name: trophy.name, brand: String(values.brand ?? ''), model: String(values.model ?? ''), site: ok ? site : undefined })}
         {matching} onpick={(c) => { imageUrl = c.image; showPreview(); }} />
-      <button class="button button-ghost" type="button" aria-label="Discard image" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard</button>
+      <button class="button button-danger button-ghost" type="button" aria-label="Discard image" onclick={() => { imageUrl = ''; previewSrc = null; }}>Discard</button>
     </div>
     <div class="cell-buttons actions" style="--r:{act};--c:3" data-button-row data-form-actions>
       <button class="button" type="submit" disabled={saving || filling}>Save</button>
