@@ -60,6 +60,8 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 - **Signed-out row collapsed**: without the optional button the last row shrank to its text height and the caret lost its size. `min-height` on the row; results text `white-space: nowrap`.
 - **Grid auto-placement**: a second item in the same explicit column falls to the next row; give the caret and its sibling `grid-row: 1`.
 - **Sticky inside a one-child wrapper** never sticks (its containing block is the wrapper): the bar is a direct child of the page, the spacer is a sibling.
+- **CSS leaked to other pages**: a phone rule on `.toolbar .tab-group button` also hit the /insights and /stats `.toolbar`.
+  Scope every bar rule under `.cbar` or a page-only class.
 - Rotating to a width > 640 and height > 450 (e.g. 909x480) is not phone mode: the bar folds. Rotation tests use the real phone sizes.
 
 ## Tests to copy (`tests/ui/layout.spec.ts`)
