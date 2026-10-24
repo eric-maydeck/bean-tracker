@@ -975,6 +975,20 @@ nav.site-nav a[aria-current='page'] {
   margin-left: var(--space-4);
 }
 
+/* Desktop: the label sits left of the dropdown, on one line with it and the toggle. On phones it stays above so
+   Sort by still fits right of View at 480 (inline needs ~240px; View leaves 212). */
+@media (min-width: 641px) {
+  .sort-field {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .sort-field > label {
+    white-space: nowrap;
+  }
+}
+
 /* Desktop: Sort by lives in the Add Coffee row; phones show the toolbar copy (right of View). */
 @media (min-width: 641px) {
   .sort-in-toolbar {
@@ -985,7 +999,7 @@ nav.site-nav a[aria-current='page'] {
 .add-sort-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr; /* results far left, Add centered, Sort by far right */
-  align-items: end;
+  align-items: center;
   margin-bottom: var(--space-2);
 }
 
