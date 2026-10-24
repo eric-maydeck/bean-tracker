@@ -134,13 +134,20 @@
     tipAt = { x: tooltip.caretX, y: chart.chartArea.top, h: chart.chartArea.bottom - chart.chartArea.top, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
   };
 
-  // The site's palette by position (ui-rules 42); `ink`: the same slot's -ink token, which outlines pastel fills.
-  function paletteColors(count: number, ink = ''): string[] {
+  // The site's palette by position (ui-rules 42).
+  function paletteColors(count: number): string[] {
     const colors: string[] = [];
     for (let i = 0; i < count; i++) {
-      colors.push(themeColor(seriesToken(i % 14, count) + ink));
+      colors.push(themeColor(seriesToken(i % 14, count)));
     }
     return colors;
+  }
+
+  // A bar's outline: the slot's -ink, but a darker shade of a brown (their ink is the fill itself, user 2026-10-23).
+  function edge(token: string): string {
+    if (!token.startsWith('--series-brown')) return themeColor(`${token}-ink`);
+    const { h, s, l } = hexToHsl(themeColor(token));
+    return hslToHex(h, s, l * 0.75);
   }
 
   function hexToHsl(hex: string): { h: number; s: number; l: number } {
@@ -237,7 +244,6 @@
     const lineColor = themeColor(tokAt(0)); // brown up to 3 series, else the palette's first slot
     const lineInk = themeColor(`${tokAt(0)}-ink`); // strokes and outlines: pastel fills fail 3:1 alone
     const bgColors = paletteColors(labels.length);
-    const inkColors = paletteColors(labels.length, '-ink');
     const vbar = type === 'bar' && vertical;
     const gapped = dashGaps ? { spanGaps: true, segment: { borderDash: (c: { p0: { skip?: boolean }; p1: { skip?: boolean } }) => (c.p0.skip || c.p1.skip ? [6, 4] : undefined) } } : {};
     // The site's line style (ui-rules 42): smooth (monotone), 3.5px, no dots at rest (a hover point only); a line with one
@@ -265,7 +271,7 @@
                 // ponytail: assumes the color is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineInk}4d`,
-                borderColor: lineInk,
+                borderColor: edge(tokAt(0)),
                 borderWidth: 0.75,
                 barPercentage: 1,
                 categoryPercentage: 1
@@ -281,14 +287,14 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: lineInk, borderWidth: 0.75 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: edge(tokAt(0)), borderWidth: 0.75 }
             : {
                 label: datasetLabel,
                 data: values,
                 backgroundColor: type === 'doughnut' ? bgColors : bgColors.map(soft),
                 // Slices: a clear dark separator (--slice-line: a very dark brown, both themes).
                 borderWidth: type === 'doughnut' ? 1.5 : 0.75,
-                borderColor: type === 'doughnut' ? themeColor('--slice-line') : inkColors
+                borderColor: type === 'doughnut' ? themeColor('--slice-line') : labels.map((_, i) => edge(seriesToken(i % 14, labels.length)))
               },
           ...(type === 'line' && trendValues
             ? [
@@ -311,7 +317,7 @@
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: themeColor(`${tokAt(at[i])}-ink`), borderWidth: 0.75,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : edge(tokAt(at[i])), borderWidth: 0.75,
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
           )
