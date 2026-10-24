@@ -3754,18 +3754,25 @@ export const STATES: State[] = [
         await page.evaluate(() => document.querySelector('.timeline')!.scrollIntoView());
         await settle();
         const full = (await ruler.boundingBox())!.height;
-        const seen: { y: number; h: number; why: string }[] = [];
-        // Until the feed is off the top or the page can't scroll further: below the feed sit Next up and the
-        // footer, so on a tall screen the feed's end never leaves it and a feed-only exit ran all 400 steps.
-        for (let i = 0, y0 = -1; i < 400 && (await page.locator('.feed').boundingBox())!.y + (await page.locator('.feed').boundingBox())!.height > 0; i++) {
-          const y1 = await page.evaluate(() => (scrollBy(0, 250), scrollY));
-          await settle();
-          if (y1 === y0) break;
-          y0 = y1;
-          const b = (await ruler.boundingBox())!;
-          // What the height was computed from, so a failure says which input moved.
-          if (b.y + b.height > 0) seen.push({ y: b.y, h: b.height, why: await ruler.evaluate((e) => `inline ${(e as HTMLElement).style.height || 'none'}, innerHeight ${innerHeight}, bar ${document.querySelector<HTMLElement>('.filter-bar')!.offsetHeight}, scrollY ${scrollY}`) });
-        }
+        // The whole walk runs inside the page (a scroll, two frames, a measure per step): ~100 round trips otherwise.
+        const seen: { y: number; h: number; why: string }[] = await page.evaluate(async () => {
+          const frames = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+          const feed = document.querySelector('.feed')!, ruler = document.querySelector<HTMLElement>('nav.ruler')!;
+          const out: { y: number; h: number; why: string }[] = [];
+          // Until the feed is off the top or the page can't scroll further: below the feed sit Next up and the
+          // footer, so on a tall screen the feed's end never leaves it and a feed-only exit ran all 400 steps.
+          for (let i = 0, y0 = -1; i < 400 && feed.getBoundingClientRect().bottom > 0; i++) {
+            scrollBy(0, 250);
+            const y1 = scrollY;
+            await frames();
+            if (y1 === y0) break;
+            y0 = y1;
+            const b = ruler.getBoundingClientRect();
+            // What the height was computed from, so a failure says which input moved.
+            if (b.y + b.height > 0) out.push({ y: b.y, h: b.height, why: `inline ${ruler.style.height || 'none'}, innerHeight ${innerHeight}, bar ${document.querySelector<HTMLElement>('.filter-bar')!.offsetHeight}, scrollY ${scrollY}` });
+          }
+          return out;
+        });
         expect(seen.length).toBeGreaterThan(2);
         for (const r of seen) expect(Math.abs(r.h - full), `ruler height ${r.h} vs ${full} (${r.why})`).toBeLessThanOrEqual(1);
         expect(Math.min(...seen.map((r) => r.y)), 'ruler slides up with the feed end').toBeLessThan(0);
