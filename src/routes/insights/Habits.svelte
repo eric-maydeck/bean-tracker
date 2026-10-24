@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
   import JumpNav from './JumpNav.svelte';
   import type { Snippet } from 'svelte';
@@ -61,14 +62,15 @@
       {#each MEASURES as m (m)}<button aria-pressed={measure === m} onclick={() => choose({ measure: m })}>{LABEL[m]}</button>{/each}
     </div>
   </div>
-  {#if measure !== 'rating'}
-    <div class="form-field group-field">
-      <span>Show</span>
-      <div class="tab-group" role="group" aria-label="Show">
-        {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
-      </div>
+  <!-- On Rating, Show stays (greyed, its tip says when it applies) so the bar keeps its size (user, 2026-10-23). -->
+  <div class="form-field group-field">
+    <span>Show</span>
+    <div class="tab-group" role="group" aria-label="Show">
+      {#each AGGS as a (a)}<button aria-pressed={agg === a} aria-disabled={measure === 'rating'}
+        use:labelTip={measure === 'rating' ? 'Applies when the Measure is Brews or Grams' : undefined}
+        onclick={() => measure !== 'rating' && choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
     </div>
-  {/if}
+  </div>
 </div>
 {/snippet}
 

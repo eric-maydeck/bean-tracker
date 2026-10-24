@@ -380,6 +380,13 @@
   // People switch help (ui-rules 27): hover title + aria-describedby; the caption suffix's popover.
   const labTab = $derived((LAB_TABS as readonly string[]).includes(s.tab));
   let ratingsMenu = $derived(ratingsMenuOn(s));
+  // Tabs where it applies to some modes only keep it in the bar, greyed out with the reason, so switching modes never
+  // resizes the bar and moves the page (user, 2026-10-23).
+  const MENU_OFF: Partial<Record<Tab, string>> = {
+    consumption: 'Applies when the Measure is Rating', habits: 'Applies when the Measure is Rating',
+    leaderboards: 'Applies when ranking by Rating or vs like coffees'
+  };
+  let menuOff = $derived(ratingsMenu ? undefined : MENU_OFF[s.tab]);
   // The tab's own controls row: Leaderboards, Habits, Consumption, Milestones, Sweet spots, and Brewing with 2+ grinders.
   let tabBarOn = $derived(
     !!(data.boards || (s.tab === 'habits' && data.habits) || (s.tab === 'consumption' && data.consumptionTab) || (s.tab === 'milestones' && data.milestones) ||
@@ -395,7 +402,7 @@
   const barCells = (cols: 2 | 3) => packSpans([
     ['view', 1], ['period', 1], ...(isCustom(s.range) ? [['range-dates', 4 - cols]] : []),
     ...(labTab ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
-    ...(ratingsMenu ? [['menu', cols - 1]] : []), ['filters', 1], ...(peopleOn ? [['people', 2]] : [])
+    ...(ratingsMenu || menuOff ? [['menu', cols - 1]] : []), ['filters', 1], ...(peopleOn ? [['people', 2]] : [])
   ] as [string, number][], cols);
   let span2 = $derived(barCells(2));
   let span3 = $derived(barCells(3));
@@ -528,8 +535,8 @@
   {/if}
   {/if}
   <!-- Ratings and Brews, one menu for the tabs where they change most of the page (ui-rules 26/30), in the modes where they apply. -->
-  {#if ratingsMenu}
-    <div style={cell('menu')}><RatingsSwitch menu ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
+  {#if ratingsMenu || menuOff}
+    <div style={cell('menu')}><RatingsSwitch menu off={menuOff} ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} /></div>
   {/if}
   <div class="form-field group-field filters-field" style={cell('filters')}>
     <span>{FILTERS_LABEL}</span>

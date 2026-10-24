@@ -1879,7 +1879,8 @@ export const STATES: State[] = [
       await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Avg per day' }).click();
       await expect(page).not.toHaveURL(/agg=/);
       await page.getByRole('group', { name: 'Measure' }).getByRole('button', { name: 'Rating' }).click();
-      await expect(page.getByRole('group', { name: 'Show' })).toHaveCount(0);
+      // Show stays, greyed (it doesn't apply to a rating), so the bar keeps its size.
+      await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: 'Total' })).toHaveAttribute('aria-disabled', 'true');
     }
   },
   {
@@ -2272,14 +2273,18 @@ export const STATES: State[] = [
   { name: 'insights-dial-all-overview', path: () => '/insights?dial=all' },
   { name: 'insights-dial-all-records', path: () => '/insights?tab=records&dial=all' },
   { name: 'insights-dial-all-compare', path: () => '/insights?dial=all&compare=1' },
-  // ui-rules 26: Ratings and Brews are one menu button in the sticky bar, only where they apply (none in tiles or panels).
+  // ui-rules 26: Ratings and Brews are one menu button in the sticky bar, only where they apply (none in tiles or panels);
+  // on a tab where it applies to some modes only, it stays greyed in the others so the bar keeps its size.
   ...(['sweetspots', 'water', 'gear', 'brewing', 'records', 'leaderboards', 'habits&measure=rating',
     'leaderboards&rank=brews', 'habits', 'consumption', 'milestones', 'insights'] as const).map((t) => ({
     name: `insights-switch-placement-${t.replace(/\W+/g, '-')}`, path: () => `/insights?tab=${t}`,
     act: async (page: Page) => {
-      const on = !/rank=|^(habits|consumption|milestones|insights)$/.test(t);
+      const on = !/^(milestones|insights)$/.test(t);
+      const off = /rank=|^(habits|consumption)$/.test(t);
       const bar = page.locator('.filter-bar');
       await expect(bar.getByRole('button', { name: /^Ratings and brews/ })).toHaveCount(on ? 1 : 0);
+      if (off) await expect(bar.getByRole('button', { name: /^Ratings and brews/ })).toHaveAttribute('aria-disabled', 'true');
+      else if (on) await expect(bar.getByRole('button', { name: /^Ratings and brews/ })).not.toHaveAttribute('aria-disabled');
       await expect(page.getByRole('group', { name: 'Ratings', exact: true })).toHaveCount(0); // closed: not rendered
       const { width, height } = page.viewportSize()!;
       // The tab's own controls row (rendered inside the bar) is measured apart: these limits are for the shared controls.
@@ -2306,7 +2311,7 @@ export const STATES: State[] = [
           controls: rows(tops('select, .menu-button, .filters-button, .people-switch button')) };
       });
       for (const [k, v] of Object.entries(spreads)) expect(Math.max(...v), `${k} level per row`).toBeLessThanOrEqual(1);
-      if (!on) return;
+      if (!on || off) return;
       await openSwitches(page);
       for (const name of ['Ratings', 'Brews']) {
         const g = page.getByRole('group', { name, exact: true });

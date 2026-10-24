@@ -4,9 +4,10 @@
 
   // Labeled Ratings (Calibrated ratings | All ratings) and Brews (Once dialed | All brews) switches (ui-rules 26–27: a hover/focus help tip (labelTip) +
   // aria-describedby on each option; the #ratings-help-* / #dial-help-* spans live in +page.svelte).
-  // `menu`: one compact filter-bar button showing the state, the switches in a popover under it.
-  let { ratings, dial, ratingsHelp, choose, menu = false }: {
-    ratings: Ratings; dial: Dial; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; menu?: boolean;
+  // `menu`: one compact filter-bar button showing the state, the switches in a popover under it; `off`: the menu greyed
+  // out (it doesn't apply in this mode), its tip saying when it does.
+  let { ratings, dial, ratingsHelp, choose, menu = false, off }: {
+    ratings: Ratings; dial: Dial; ratingsHelp: Record<Ratings, string>; choose: (c: InsightsUrlState) => void; menu?: boolean; off?: string;
   } = $props();
   let pop = $state<HTMLElement>();
   let button = $state<HTMLElement>();
@@ -45,7 +46,11 @@
 {#if menu}
   <div class="form-field group-field menu-field">
     <span>Ratings and brews</span>
-    <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="Ratings and brews: {summary}">{summary}</button>
+    {#if off}
+      <button class="menu-button off" aria-disabled="true" use:labelTip={off} aria-label="Ratings and brews: {summary}. {off}">{summary}</button>
+    {:else}
+      <button bind:this={button} class="menu-button" popovertarget="switch-menu" aria-haspopup="dialog" aria-expanded={open} aria-label="Ratings and brews: {summary}">{summary}</button>
+    {/if}
   </div>
   <div bind:this={pop} id="switch-menu" class="switch-menu" popover onbeforetoggle={place} ontoggle={(e) => (open = e.newState === 'open')}>{@render pair()}</div>
 {:else}
@@ -65,6 +70,9 @@
   /* The menu: a select-like button (same height as the bar's selects) and the pair stacked under it. */
   .menu-field {
     min-width: 0;
+  }
+  .menu-button.off {
+    opacity: 0.5;
   }
   .menu-button {
     box-sizing: border-box;

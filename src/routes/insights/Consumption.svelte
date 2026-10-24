@@ -95,7 +95,9 @@
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
-      {#each AGGS as a (a)}<button aria-pressed={agg === a} onclick={() => choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
+      {#each AGGS as a (a)}<button aria-pressed={agg === a} aria-disabled={trend === 'rating'}
+        use:labelTip={trend === 'rating' ? 'Applies when the Measure is not Rating' : undefined}
+        onclick={() => trend !== 'rating' && choose({ agg: a })}>{AGG_LABEL[a]}</button>{/each}
     </div>
   </div>
 </div>
