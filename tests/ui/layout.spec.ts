@@ -789,13 +789,33 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
+      // phone portrait: Show's four buttons and the caret share one line, level; View and Sort by share one line
+      if (w >= 480 && w <= 640) {
+        const row = [...(await bar.getByRole('group', { name: 'Show' }).getByRole('button').all())];
+        const boxes = await Promise.all(row.map((x) => x.boundingBox()));
+        expect(boxes.length, 'Backlog, Open, Archive, All and the caret').toBe(5);
+        for (const bx of boxes) {
+          expect(Math.abs(bx!.y - boxes[0]!.y), 'Show row and caret share a top').toBeLessThanOrEqual(1);
+          expect(Math.abs(bx!.height - boxes[0]!.height), 'and a height').toBeLessThanOrEqual(1);
+          expect(bx!.width).toBeGreaterThanOrEqual(44);
+        }
+        const view = (await bar.locator('.view-field').boundingBox())!;
+        const sort = (await bar.locator('.sort-field:visible').boundingBox())!;
+        expect(Math.abs(view.y - sort.y), 'View and Sort by on one line').toBeLessThanOrEqual(2);
+      }
       // the caret sits on the Show line, level with its buttons and clear of every control
       const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
       const show = (await bar.getByRole('group', { name: 'Show' }).getByRole('button').first().boundingBox())!;
-      expect(caret.y, 'caret on the Show line').toBeLessThan(show.y + show.height);
-      expect(caret.y + caret.height).toBeGreaterThan(show.y);
+      // (where all four Show buttons plus the caret don't fit one line, w < 480, it wraps within the Show group)
+      const group = (await bar.getByRole('group', { name: 'Show' }).boundingBox())!;
+      expect(caret.y, 'caret inside the Show group').toBeGreaterThanOrEqual(group.y - 1);
+      expect(caret.y + caret.height).toBeLessThanOrEqual(group.y + group.height + 1);
+      if (w >= 480) {
+        expect(caret.y, 'caret on the Show line').toBeLessThan(show.y + show.height);
+        expect(caret.y + caret.height).toBeGreaterThan(show.y);
+      }
       expect(caret.width).toBeGreaterThanOrEqual(44);
-      for (const c of await bar.locator('.toolbar button, .toolbar select').all()) {
+      for (const c of await bar.locator('.toolbar button:not([aria-label="Hide controls"]), .toolbar select').all()) {
         const r = await c.boundingBox();
         if (!r) continue; // the hidden copy of Sort by
         expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps no control').toBe(true);

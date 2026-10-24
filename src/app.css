@@ -996,6 +996,22 @@ nav.site-nav a[aria-current='page'] {
   }
 }
 
+/* The /coffees control bar: every vertical gap between its rows is the gap between the Filter and Refresh buttons
+   (the search row's own `gap`, --space-2), at every width. */
+.tight-h1 {
+  margin-bottom: var(--space-2);
+}
+
+.cbar .toolbar,
+.cbar .search-row {
+  margin-bottom: var(--space-2);
+  row-gap: var(--space-2);
+}
+
+.show-field {
+  flex: 1 1 auto; /* the caret (expanded phone bar) sits at its right end */
+}
+
 .add-sort-row {
   display: grid;
   grid-template-columns: 1fr auto 1fr; /* results far left, Add centered, Sort by far right */
@@ -1027,6 +1043,16 @@ nav.site-nav a[aria-current='page'] {
 
   .sort-in-row {
     display: none;
+  }
+
+  .show-field {
+    flex-basis: 100%; /* Backlog, Open, Archive, All and the caret share one line where they fit; View + Sort follow */
+  }
+
+  /* Slack in the Show/View buttons' side padding keeps them (and Sort by) on fewer lines; tap height stays 44px. */
+  .toolbar .tab-group button {
+    padding-inline: 0.5rem;
+    min-width: 44px; /* "All" stays a 44px target */
   }
 
   /* Phones: results left, Add Coffee right (Sort by is beside View). */

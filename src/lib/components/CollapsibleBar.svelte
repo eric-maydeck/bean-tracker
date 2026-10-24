@@ -7,7 +7,8 @@
   // pinned row (`summary` + an expand button) takes over, and expanding shows the full bar pinned over the page (its
   // own scroll when taller than the screen) with a button to fold it back. Open/closed is transient chrome, never
   // view state: not in the URL, not remembered. The spacer keeps the bar's height while it floats, so nothing jumps.
-  let { children, summary }: { children: Snippet; summary: Snippet } = $props();
+  // `children` gets the fold-back caret to place inside its first row (empty unless expanded on a phone).
+  let { children, summary }: { children: Snippet<[Snippet]>; summary: Snippet } = $props();
 
   let barEl: HTMLElement | undefined = $state();
   let spacerEl: HTMLElement | undefined = $state();
@@ -49,14 +50,17 @@
   }
 </script>
 
+{#snippet caret()}
+  {#if expanded}
+    <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
+      <Icon name="caret-up" />
+    </button>
+  {/if}
+{/snippet}
+
 {#if expanded}<div bind:this={spacerEl} style:height="{slotH}px" style:margin-bottom="var(--space-3)"></div>{/if}
 <div class="cbar" class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
-    {#if expanded}
-      <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
-        <Icon name="caret-up" />
-      </button>
-    {/if}
-    {@render children()}
+    {@render children(caret)}
 </div>
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
@@ -74,7 +78,7 @@
     z-index: 30; /* above cards and rows, below the phone tab bar (40), toasts (90) and modals */
     background: var(--color-bg);
     padding-top: var(--space-2);
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
     border-bottom: 1px solid var(--color-border);
   }
   .cbar-mini {
@@ -105,11 +109,9 @@
     width: 44px;
     height: 44px;
   }
-  /* Floated: the Show/View toolbar beside it narrows to leave room, so the caret sits on the Show line, not above it. */
-  .overlay .cbar-toggle {
-    display: flex;
-    float: right;
-    margin: 0 0 var(--space-2) var(--space-2);
+  /* Sits last in the page's first row, pushed to its right end. */
+  .cbar-toggle {
+    margin-left: auto;
   }
   @media (max-width: 640px), (max-height: 450px) {
     .cbar {

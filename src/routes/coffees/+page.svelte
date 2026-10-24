@@ -682,7 +682,7 @@
   </div>
 {/snippet}
 
-<h1>Coffee Collection</h1>
+<h1 class="tight-h1">Coffee Collection</h1>
 
 {#if refreshState !== 'idle'}
   <div class="refresh-toast" role="status">
@@ -693,8 +693,9 @@
 <AddedToast bind:slug={addedSlug} />
 
 <CollapsibleBar>
+{#snippet children(caret)}
 <div class="toolbar">
-  <div class="form-field group-field">
+  <div class="form-field group-field show-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
       <button aria-pressed={lit.includes('backlog')} onclick={() => tapStatus('backlog')}>
@@ -707,6 +708,7 @@
         Archive ({data.archive.length})
       </button>
       <button aria-pressed={lit[0] === 'all'} onclick={() => tapStatus('all')}>All</button>
+      {@render caret()}
     </div>
   </div>
 
@@ -755,6 +757,8 @@
   {/if}
   {@render sortControl('row')}
 </div>
+
+{/snippet}
 
 {#snippet summary()}
   {sortedCoffees.length} coffee{sortedCoffees.length === 1 ? '' : 's'} · {SORT_LABELS[sortKey]} {sortDir === 'asc' ? '↑' : '↓'}
