@@ -2005,11 +2005,14 @@ export const STATES: State[] = [
       await c.scrollIntoViewIfNeeded();
       const b = (await c.boundingBox())!;
       // T1: a canvas chart's tip is the shared HTML tip: a bold title, then label/value rows (no "Label: value").
-      // Swept from the right until a bar is under the pointer (bars hover by intersection).
+      // Swept from the right until a bar is under the pointer (bars hover by intersection); a few heights, as the legend
+      // under the plot takes more lines on narrow screens.
       const tip = page.locator('.chart-container .cell-tip:popover-open');
-      for (let f = 0.95; f > 0 && !(await tip.count()); f -= 0.05) {
-        await page.mouse.move(b.x + b.width * f, b.y + b.height * 0.75);
-        await page.waitForTimeout(100);
+      for (const g of [0.75, 0.6, 0.45]) {
+        for (let f = 0.95; f > 0 && !(await tip.count()); f -= 0.05) {
+          await page.mouse.move(b.x + b.width * f, b.y + b.height * g);
+          await page.waitForTimeout(100);
+        }
       }
       await expectDataTip(tip);
       await expectTipInView(page, tip);
@@ -2097,8 +2100,8 @@ export const STATES: State[] = [
       await expect(panel.locator('.chart-note')).toContainText('per day');
     }
   },
-  // The See all note shares the period line's row, so it appearing or changing moves nothing below it (desktop); phones hold its
-  // line (min-height) whenever the tab can show it. Every tab with the Ratings menu.
+  // The See all note shares the period line's row, so it appearing or changing moves nothing below it (desktop); on phones it
+  // shares the line when it fits (no held empty line). Every tab with the Ratings menu.
   ...(['consumption&trend=rating', 'habits&measure=rating', 'gear', 'leaderboards', 'records', 'brewing', 'water', 'sweetspots'] as const).map((q) => ({
     name: `insights-see-all-no-shift-${q.split('&')[0]}`,
     path: () => `/insights?tab=${q}&range=all`,
@@ -2121,13 +2124,14 @@ export const STATES: State[] = [
     }
   })),
   {
-    // The note appearing (Rating on) or going (Brews) leaves the first panel where it was (desktop; the filter bar's menu aside).
+    // The note appearing (Rating on) or going (Brews) leaves the first panel where it was below the period line (where it
+    // shares the line; the filter bar's Ratings menu, which can add a row to the bar, aside).
     name: 'insights-see-all-appears-in-place',
     path: () => '/insights?tab=consumption&range=all&by=week',
     act: async (page) => {
       if ((page.viewportSize()?.width ?? 0) < 768) return;
       const row = () => page.locator('.period-row').boundingBox().then((b) => b!.height);
-      const first = async () => (await page.locator('.chart-panel').first().boundingBox())!.y + (await page.evaluate(() => scrollY));
+      const first = async () => (await page.locator('.chart-panel').first().boundingBox())!.y - (await page.locator('.period-row').boundingBox())!.y;
       const [y0, h0] = [await first(), await row()];
       await page.getByRole('group', { name: 'Measure' }).getByRole('button', { name: 'Rating' }).click();
       await expect(page.locator('.period-row .see-all')).toBeVisible();

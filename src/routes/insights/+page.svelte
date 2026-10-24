@@ -670,13 +670,13 @@
     <footer><button type="button" class="button" onclick={() => coffeesDialog?.close()}>Done</button></footer>
   </dialog>
 
-<div class="period-row" class:reserve={!!data.hidden}>
+<div class="period-row">
   <p class="insights-period">{periodText}</p>
 <!-- See all (gate 3): what the Score/Ratings/Brews settings hide on this tab; once everything shows, the way back.
-       It shares the period line's row (right-aligned), so it appearing moves nothing below; phones reserve its line. -->
+       It shares the period line's row (right-aligned), so it appearing moves nothing below; on a phone it wraps under it only when it does not fit. -->
   {#if data.hidden}
     {#if s.avg === 'raw' && s.ratings === 'all' && s.dial === 'all'}
-      <p class="chart-note see-all">Showing everything, including low-confidence rows.
+      <p class="chart-note see-all">Showing everything<span class="wide-only">, including low-confidence rows</span>.
         <button type="button" class="filter-clear-all" onclick={() => choose({ avg: undefined, ratings: undefined, dial: undefined })}>Back to defaults</button></p>
     {:else if hiddenNote(data.hidden)}
       {@const note = hiddenNote(data.hidden)!}
@@ -1552,14 +1552,15 @@
   .period-row .see-all .filter-clear-all {
     font-size: inherit;
   }
-  /* Phones: the note wraps to its own line; where it can show (the Ratings menu tabs) that line is held. */
+  /* Phones: the note shares the period line when it fits, else wraps to its own line (no held empty line). */
   @media (max-width: 767px) {
-    .period-row.reserve {
-      min-height: 3.1em;
-    }
     .period-row .see-all {
       margin-left: 0;
       text-align: left;
+    }
+    /* Short enough to share the period line, and to keep the See all one's height when toggled. */
+    .period-row .see-all .wide-only {
+      display: none;
     }
   }
 
