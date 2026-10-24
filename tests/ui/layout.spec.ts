@@ -783,6 +783,9 @@ export const STATES: State[] = [
         const sort = (await page.locator('.sort-field:visible').boundingBox())!;
         expect(sort.x - (view.x + view.width), 'View grows to Sort by').toBeLessThanOrEqual(10);
       }
+      const rects = () => page.evaluate(() => [document.querySelector('.view-field'), ...[...document.querySelectorAll('.sort-field')].filter((e) => (e as HTMLElement).offsetParent)]
+        .flatMap((e) => [...e!.querySelectorAll('button, select')].map((c) => { const r = c.getBoundingClientRect(); return [r.x, r.width, r.height].map(Math.round); })));
+      const inFlow = await rects();
       await page.evaluate(() => window.scrollTo(0, 1500));
       if (!phone) {
         await expect.poll(async () => Math.abs((await top('.cbar')).y)).toBeLessThanOrEqual(1);
@@ -803,6 +806,7 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
+      if (w <= 640) expect(await rects(), 'View + Sort by look the same expanded as in flow').toEqual(inFlow);
       // the caret is the bar's top-right corner, level with its first row; clear of every control
       const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
       const toolbar = (await bar.locator('.toolbar').boundingBox())!;

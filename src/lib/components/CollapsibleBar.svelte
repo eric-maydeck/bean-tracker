@@ -128,8 +128,17 @@
     top: var(--space-2);
     right: var(--space-4);
   }
-  .overlay :global(.toolbar) {
-    padding-right: calc(44px + var(--space-2));
+  /* Landscape: the toolbar is one row, so all of it leaves room. Portrait: only the Show row does, so View + Sort by
+     keep exactly the widths and positions they have in flow. */
+  @media (min-width: 641px) {
+    .overlay :global(.toolbar) {
+      padding-right: calc(44px + var(--space-2));
+    }
+  }
+  @media (max-width: 640px) {
+    .overlay :global(.show-field) {
+      margin-right: calc(44px + var(--space-2));
+    }
   }
   @media (max-width: 640px), (max-height: 450px) {
     .cbar {
