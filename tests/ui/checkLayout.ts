@@ -303,7 +303,8 @@ export async function expectTipInView(page: Page, tip: Locator, { inBar = false 
     const r = el.getBoundingClientRect(), out: string[] = [];
     const bar = document.querySelector('.filter-bar')?.getBoundingClientRect();
     if (!el.matches(':popover-open')) out.push('not in the top layer (an open popover)');
-    if (r.left < 0 || r.top < 0 || r.right > document.documentElement.clientWidth || r.bottom > innerHeight) out.push(`outside the viewport: ${JSON.stringify(r)}`);
+    // 1px slack: a tip clamped to an edge can land a float hair past it (333.00001 vs 333).
+    if (r.left < -1 || r.top < -1 || r.right > document.documentElement.clientWidth + 1 || r.bottom > innerHeight + 1) out.push(`outside the viewport: ${JSON.stringify(r)}`);
     if (!inBar && bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
     return out;
   }, inBar);
