@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import { page } from '$app/state';
 
   // A page's control block pinned to the top while scrolling (ui-rules 30). Desktop: the full bar sticks. Phones
   // (width <= 640 or height <= 450, so landscape too): the bar scrolls away normally; once it is off screen a short
@@ -17,6 +18,17 @@
   let phone = $state(false);
   let scrolled = $state(false);
   let expanded = $state(false);
+
+  // chore(preview): temporary caret-color candidates (?_caret=1..4) and ?_expand=1 (opens the bar scrolled and expanded
+  // on a phone). Server-rendered class; remove with the pick.
+  const caretVariant = $derived(['1', '2', '3', '4'].includes(page.url.searchParams.get('_caret') ?? '') ? `c${page.url.searchParams.get('_caret')}` : '');
+  let autoExpanded = false;
+  $effect(() => {
+    if (autoExpanded || !phone || !page.url.searchParams.has('_expand')) return;
+    autoExpanded = true;
+    window.scrollTo(0, 1500);
+    requestAnimationFrame(() => requestAnimationFrame(() => { scrolled = true; expand(); }));
+  });
 
   $effect(() => {
     const mq = matchMedia('(max-width: 640px), (max-height: 450px)');
@@ -53,7 +65,7 @@
 
 {#snippet caret()}
   {#if expanded}
-    <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
+    <button type="button" class="icon-button cbar-toggle {caretVariant}" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
       <Icon name="caret-up" />
     </button>
   {/if}
@@ -66,7 +78,7 @@
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
     <span class="cbar-summary">{@render summary()}</span>
-    <button type="button" class="icon-button cbar-toggle" aria-expanded="false" aria-label="Show controls" onclick={expand}>
+    <button type="button" class="icon-button cbar-toggle {caretVariant}" aria-expanded="false" aria-label="Show controls" onclick={expand}>
       <Icon name="caret-down" />
     </button>
   </div>
@@ -153,5 +165,35 @@
     .cbar.overlay {
       max-height: calc(100dvh - 56px); /* the phone tab bar */
     }
+  }
+
+  /* chore(preview): neutral caret candidates, tokens only (both themes follow the tokens). */
+  /* 1: inverted page ink: espresso fill with a light icon (dark mode: light fill, dark icon) */
+  .cbar-toggle.c1,
+  .cbar-toggle.c1:hover {
+    background: var(--color-text);
+    color: var(--color-bg);
+    border-color: var(--color-text);
+  }
+  /* 2: espresso outline, 2px, on the surface */
+  .cbar-toggle.c2,
+  .cbar-toggle.c2:hover {
+    background: var(--color-surface);
+    color: var(--color-label);
+    border: 2px solid var(--color-label);
+  }
+  /* 3: slate blue tint with a slate border and icon */
+  .cbar-toggle.c3,
+  .cbar-toggle.c3:hover {
+    background: color-mix(in srgb, var(--chart-color-4) 22%, var(--color-surface));
+    color: var(--chart-color-4);
+    border-color: var(--chart-color-4);
+  }
+  /* 4: muted gray-brown solid with a page-colored icon */
+  .cbar-toggle.c4,
+  .cbar-toggle.c4:hover {
+    background: var(--color-text-muted);
+    color: var(--color-bg);
+    border-color: var(--color-text-muted);
   }
 </style>
