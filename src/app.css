@@ -1067,7 +1067,7 @@ nav.site-nav a[aria-current='page'] {
   }
 
   /* Slack in the Show/View buttons' side padding keeps them (and Sort by) on fewer lines; tap height stays 44px. */
-  .toolbar .tab-group button {
+  .cbar .toolbar .tab-group button {
     padding-inline: 0.5rem;
     min-width: 44px; /* "All" stays a 44px target */
   }
