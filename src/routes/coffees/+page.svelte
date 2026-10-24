@@ -34,6 +34,7 @@
     fromParams,
     toParams,
     isUntouched,
+    SORT_KEYS,
     loadViewState,
     resetView,
     serializeViewState,
@@ -414,12 +415,24 @@
     )
   );
 
+  // chore(preview): temporary desktop-placement switch, server-rendered (ui-testing gotcha).
+  let sortPos = $derived(page.url.searchParams.get('_sortpos') === 'b' ? 'b' : 'a');
+
   let sortKey = $derived<SortKey>(explicit.sort?.key ?? 'urgency');
   let sortDir = $derived<SortDir>(explicit.sort?.dir ?? 'desc');
 
   function setSort(key: SortKey, dir: SortDir) {
     explicit.sort = { key, dir };
   }
+
+  // The Sort by dropdown's options: the list view's column headers, in the same order, plus the two dates.
+  const SORT_LABELS: Record<SortKey, string> = {
+    roaster: 'Roaster', coffee_name: 'Coffee', origin: 'Origin', roast_level: 'Roast', decaf: 'Decaf',
+    processing: 'Processing', cost_per_gram: 'Cost/g', amount_g: 'Amount', roast_date: 'Roasted',
+    frozen_start_date: 'Frozen', frozen_end_date: 'Unfrozen', rest_window: 'Rest window', urgency: 'Urgency',
+    created_at: 'Date added', updated_at: 'Date updated'
+  };
+  let dirLabel = $derived(sortDir === 'asc' ? 'Ascending' : 'Descending');
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -457,6 +470,10 @@
         return c.drink_after ?? '';
       case 'urgency':
         return typeof c.urgency_rating === 'number' ? c.urgency_rating : -Infinity;
+      case 'created_at':
+        return c.created_at;
+      case 'updated_at':
+        return c.updated_at;
     }
   }
 
@@ -640,9 +657,36 @@
   />
 {/snippet}
 
+{#snippet sortControl(where: 'toolbar' | 'row')}
+  <div class="form-field group-field sort-field sort-in-{where}">
+    <label for="sort-by-{where}">Sort by</label>
+    <div class="sort-controls">
+      <select
+        id="sort-by-{where}"
+        class="ctl-select"
+        value={sortKey}
+        onchange={(e) => setSort(e.currentTarget.value as SortKey, sortDir)}
+      >
+        {#each SORT_KEYS as k (k)}
+          <option value={k}>{SORT_LABELS[k]}</option>
+        {/each}
+      </select>
+      <button
+        type="button"
+        class="icon-button sort-dir"
+        aria-label="Sort {dirLabel.toLowerCase()}"
+        use:labelTip={`${dirLabel}: tap for ${sortDir === 'asc' ? 'descending' : 'ascending'}`}
+        onclick={() => setSort(sortKey, sortDir === 'asc' ? 'desc' : 'asc')}
+      >
+        <Icon name={sortDir === 'asc' ? 'sort-ascending' : 'sort-descending'} />
+      </button>
+    </div>
+  </div>
+{/snippet}
+
 <h1>Coffee Collection</h1>
 
-<div class="toolbar">
+<div class="toolbar" class:sort-b={sortPos === 'b'}>
   <div class="form-field group-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
@@ -659,7 +703,7 @@
     </div>
   </div>
 
-  <div class="form-field group-field">
+  <div class="form-field group-field view-field">
     <span>View</span>
     <div class="tab-group" role="group" aria-label="View">
       <button aria-pressed={view === 'compact'} onclick={() => setView('compact')}>Compact</button>
@@ -667,6 +711,9 @@
       <button aria-pressed={view === 'cards'} onclick={() => setView('cards')}>Cards</button>
     </div>
   </div>
+
+  <!-- chore(preview): _sortpos=a|b picks the desktop placement; b also renders here for phones. -->
+  {@render sortControl('toolbar')}
 </div>
 
 {#if refreshState !== 'idle'}
@@ -677,12 +724,12 @@
 
 <AddedToast bind:slug={addedSlug} />
 
-<div class="search-row">
+<div class="search-row coffees-search-row">
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
+  {#if sortPos === 'b'}{@render sortControl('row')}{/if}
   <FilterBar bind:filters={explicit.filters} coffees={source} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
-  <ShareButton />
   {#if data.isAdmin}
     {#if editAll}
       <button class="button button-success button-solid" type="button" disabled={saving} onclick={() => saveChanges()}>
@@ -695,6 +742,7 @@
       <button class="button button-secondary" type="button" onclick={enterEditMode}>Edit</button>
     {/if}
   {/if}
+  <ShareButton />
   {#if commitErrors.get(-1)}
     <p class="badge badge-urgent">{commitErrors.get(-1)}</p>
   {/if}
@@ -732,7 +780,7 @@
 
 {#if view === 'cards'}
   <section class="grid grid-max-3">
-    {#each coffees as coffee (coffee.id)}
+    {#each sortedCoffees as coffee (coffee.id)}
       {#if data.isAdmin}
         <div class="card">
           {#if canEdit(coffee.id) && openForms.has(coffee.id)}

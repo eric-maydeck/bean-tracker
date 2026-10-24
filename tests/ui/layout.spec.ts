@@ -609,6 +609,36 @@ async function expectLinksInTiles(page: Page, links: Locator) {
   expect(out, 'every See link inside its tile').not.toContain(false);
 }
 
+// /coffees button row under the search box: Share is the last button (rightmost on its line, ui-rules 51); on a phone
+// every line of buttons spans the search box exactly (left and right edges, ±1px), equal widths when the row is one line.
+async function expectSearchRowButtons(page: Page) {
+  const r = await page.evaluate(() => {
+    const row = document.querySelector('.coffees-search-row')!;
+    const box = row.querySelector('.search-input')!.getBoundingClientRect();
+    const btns = [...row.querySelectorAll(':scope > .filter-anchor > .button, :scope > .button')].map((b) => ({ t: b.textContent!.trim(), r: b.getBoundingClientRect() }));
+    const lines = new Map<number, typeof btns>();
+    for (const b of btns) lines.set(Math.round(b.r.top), [...(lines.get(Math.round(b.r.top)) ?? []), b]);
+    const last = btns[btns.length - 1];
+    return {
+      shareLast: last.t === 'Share' && btns.every((b) => b === last || b.r.top < last.r.top - 1 || b.r.left < last.r.left),
+      phone: innerWidth <= 640,
+      wide: innerWidth >= 480,
+      lines: [...lines.values()].map((l) => ({
+        left: Math.min(...l.map((b) => b.r.left)) - box.left, right: Math.max(...l.map((b) => b.r.right)) - box.right,
+        widths: l.map((b) => b.r.width)
+      }))
+    };
+  });
+  expect(r.shareLast, 'Share is the last, rightmost button').toBe(true);
+  if (!r.phone) return;
+  for (const l of r.lines) {
+    expect(Math.abs(l.left), 'button line left edge = search box left').toBeLessThanOrEqual(1);
+    expect(Math.abs(l.right), 'button line right edge = search box right').toBeLessThanOrEqual(1);
+    // Equal widths when the whole row fits one line from 480 up; narrower, a label's own width wins (lines still span).
+    if (r.lines.length === 1 && r.wide) expect(Math.max(...l.widths) - Math.min(...l.widths), 'equal widths in a single-line row').toBeLessThanOrEqual(1);
+  }
+}
+
 export const STATES: State[] = [
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',
@@ -665,6 +695,49 @@ export const STATES: State[] = [
       await tap('All');
       await expect(page).toHaveURL(/status=archive(&|$)/);
       expect(page.url()).not.toContain('status=all');
+    } },
+  // /coffees Sort by: one state with the list headers; bare = Urgency, descending, nothing in the URL.
+  { name: 'coffees-sort-by', viewports: 'two', path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const select = page.getByLabel('Sort by').first();
+      const titles = () => page.locator('h2 a[href^="/coffees/"]').allTextContents();
+      await expect(select).toHaveValue('urgency');
+      await expect(page.getByRole('button', { name: 'Sort descending' })).toBeVisible();
+      expect(page.url()).not.toContain('sort=');
+      await select.selectOption('created_at'); // keeps the current direction
+      await expect(page).toHaveURL(/sort=created_at\.desc/);
+      const newest = await titles();
+      await page.getByRole('button', { name: 'Sort descending' }).click();
+      await expect(page).toHaveURL(/sort=created_at\.asc/);
+      await expect(page.getByRole('button', { name: 'Sort ascending' })).toBeVisible();
+      expect(await titles()).not.toEqual(newest);
+      await select.selectOption('updated_at');
+      await expect(page).toHaveURL(/sort=updated_at\.asc/);
+      await page.getByRole('button', { name: 'Reset' }).click();
+      await expect(select).toHaveValue('urgency');
+      await expect(page.getByRole('button', { name: 'Sort descending' })).toBeVisible();
+      await expect.poll(() => page.url()).not.toContain('sort=');
+    } },
+  // The list headers and the dropdown are one state.
+  { name: 'coffees-sort-by-list-header', viewports: 'two', path: () => '/coffees?status=all&view=list',
+    act: async (page) => {
+      await page.locator('.sort-button', { hasText: 'Roaster' }).click();
+      await expect(page).toHaveURL(/sort=roaster\.asc/);
+      await expect(page.getByLabel('Sort by').first()).toHaveValue('roaster');
+      await expect(page.getByRole('button', { name: 'Sort ascending' })).toBeVisible();
+    } },
+  { name: 'coffees-sort-by-url', viewports: 'two', path: () => '/coffees?status=all&view=compact&sort=Created_At.ASC',
+    act: async (page) => {
+      await expect(page.getByLabel('Sort by').first()).toHaveValue('created_at');
+      await expect(page.getByRole('button', { name: 'Sort ascending' })).toBeVisible();
+    } },
+  // Share last (rightmost) and the phone button row spanning the search box, viewing and editing (Save/Discard).
+  { name: 'coffees-search-row-buttons', path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      await expectSearchRowButtons(page);
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
+      await expectSearchRowButtons(page);
     } },
   { name: 'coffees-compact', path: () => '/coffees?status=all&view=compact' },
   { name: 'coffees-list', path: () => '/coffees?status=all&view=list' },
@@ -6796,6 +6869,12 @@ test.describe('signed out', () => {
     await expectContained(page.locator('a.card').filter({ hasText: 'Rwanda Gitega Natural' }).locator('img'), WIDE_FILL);
     // Viewport only: the public card wall (every seeded bag) passes the 32767 px full-page screenshot cap at DPR 3.
     if (SHOTS) await page.screenshot({ path: `.ui-test/screenshots/coffees-cards-public-${info.project.name}.png` });
+    await checkLayout(page);
+  });
+  test('coffees-search-row-buttons-public', { tag: '@coffees' }, async ({ page }) => {
+    await gotoReady(page, '/coffees?status=all&view=cards');
+    await expect(page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+    await expectSearchRowButtons(page);
     await checkLayout(page);
   });
   test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {

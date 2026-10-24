@@ -64,6 +64,13 @@ describe('fromParams', () => {
     expect(s.sort).toEqual({ key: 'roast_date', dir: 'desc' });
     expect(s.filters).toEqual([{ column: 'decaf', mode: 'bool', value: true }]);
   });
+  it('parses the date-added and date-updated sorts, round-tripping', () => {
+    expect(fromParams(new URLSearchParams('sort=Created_At.DESC')).sort).toEqual({ key: 'created_at', dir: 'desc' });
+    const s = fromParams(new URLSearchParams('sort=updated_at.asc'));
+    expect(s.sort).toEqual({ key: 'updated_at', dir: 'asc' });
+    expect(toParams(s).get('sort')).toBe('updated_at.asc');
+    expect(fromParams(new URLSearchParams('sort=created_at.sideways')).sort).toBeUndefined();
+  });
   it('ignores unknown and invalid params', () => {
     const s = fromParams(new URLSearchParams('status=nope&view=grid&sort=bogus.asc&edit=1&expanded=5&decaf=maybe&roast_date=soon&cost_per_gram=between:1&rest_window=near:3&zzz=1'));
     expect(s).toEqual({ filters: [] });

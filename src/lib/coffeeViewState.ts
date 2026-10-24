@@ -14,7 +14,7 @@ export const VIEWS = ['cards', 'list', 'compact'] as const;
 export type CoffeeView = (typeof VIEWS)[number];
 export const SORT_KEYS = [
   'roaster', 'coffee_name', 'origin', 'roast_level', 'decaf', 'processing', 'cost_per_gram', 'amount_g',
-  'roast_date', 'frozen_start_date', 'frozen_end_date', 'rest_window', 'urgency'
+  'roast_date', 'frozen_start_date', 'frozen_end_date', 'rest_window', 'urgency', 'created_at', 'updated_at'
 ] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 export type SortDir = 'asc' | 'desc';
