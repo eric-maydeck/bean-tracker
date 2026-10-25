@@ -6252,7 +6252,9 @@ export const STATES: State[] = [
       await expect(zout).toBeDisabled();
       await expect(whole).toBeDisabled();
       await expect(zin).toBeEnabled();
-      const c = [m.x + m.width / 2, m.y + m.height / 2] as const;
+      await zin.scrollIntoViewIfNeeded(); // so the click doesn't scroll the page under the sampled point
+      const m2 = (await map.boundingBox())!;
+      const c = [m2.x + m2.width / 2, m2.y + m2.height / 2] as const;
       const vb0 = await vbAt(page, ...c);
       await zin.click();
       await expectZoom(page, 2);
@@ -6285,9 +6287,10 @@ export const STATES: State[] = [
       await expectZoom(page, 8);
       const m = (await map.boundingBox())!;
       // Pan in chunks from inside the map until Rwanda's center reaches the map center (it starts off-map at 8x).
-      for (let i = 0, d = [1, 1]; i < 30 && Math.hypot(d[0], d[1]) > 2; i++) {
+      for (let i = 0; i < 30; i++) {
         const [px, py] = await mapPoint(page, 'RW');
-        d = [m.x + m.width / 2 - px, m.y + m.height / 2 - py];
+        const d = [m.x + m.width / 2 - px, m.y + m.height / 2 - py];
+        if (Math.hypot(d[0], d[1]) <= 2) break; // a sub-4px drag would be a click (it pins)
         const [dx, dy] = [Math.max(-0.4 * m.width, Math.min(0.4 * m.width, d[0])), Math.max(-0.4 * m.height, Math.min(0.4 * m.height, d[1]))];
         const [sx, sy] = [m.x + m.width / 2 - dx / 2, m.y + m.height / 2 - dy / 2];
         await drag(page, [sx, sy], [sx + dx, sy + dy]);
