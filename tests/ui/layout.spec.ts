@@ -6276,6 +6276,14 @@ export const STATES: State[] = [
       await expect(whole).toBeDisabled();
       await zin.click(); // end zoomed: checkLayout covers a zoomed map
       await expectZoom(page, 2);
+      // The map's bottom edge at the viewport bottom: Back to top (if shown) never covers the buttons.
+      await page.evaluate(() => scrollBy(0, document.querySelector('.world-map')!.getBoundingClientRect().bottom - innerHeight));
+      await page.waitForTimeout(200);
+      const [bt, zg] = [page.locator('.back-to-top'), page.locator('.map-zoom')];
+      if (await bt.isVisible()) {
+        const [a, z] = [(await bt.boundingBox())!, (await zg.boundingBox())!];
+        expect(a.x < z.x + z.width && z.x < a.x + a.width && a.y < z.y + z.height && z.y < a.y + a.height, 'back-to-top clear of the buttons').toBe(false);
+      }
       expect(page.url()).toBe(url);
     }
   },

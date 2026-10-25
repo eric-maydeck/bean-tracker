@@ -32,6 +32,17 @@
   // Back to top: after one screenful of scrolling, on every page that scrolls that far.
   let scrollY = $state(0);
   let innerHeight = $state(0);
+  // Back to top steps aside while it would cover a map's zoom buttons.
+  let topBtn: HTMLButtonElement | undefined = $state();
+  let covers = $state(false);
+  $effect(() => {
+    void [scrollY, innerHeight]; // re-measure on scroll and resize
+    const b = topBtn?.getBoundingClientRect();
+    covers = !!b && [...document.querySelectorAll('.map-zoom')].some((z) => {
+      const r = z.getBoundingClientRect();
+      return b.left < r.right && r.left < b.right && b.top < r.bottom && r.top < b.bottom;
+    });
+  });
 
   let showAlerts = $state(false);
 
@@ -194,7 +205,7 @@
 </main>
 
 {#if scrollY > innerHeight}
-  <button class="back-to-top" data-layout-ignore="fixed overlay that floats over page content on purpose (peer review B, M4)" type="button" aria-label="Back to top" onclick={() => scrollTo({ top: 0, behavior: scrollBehavior() })}>
+  <button class="back-to-top" style:visibility={covers ? 'hidden' : null} bind:this={topBtn} data-layout-ignore="fixed overlay that floats over page content on purpose (peer review B, M4)" type="button" aria-label="Back to top" onclick={() => scrollTo({ top: 0, behavior: scrollBehavior() })}>
     <Icon name="arrow-up" />
   </button>
 {/if}
