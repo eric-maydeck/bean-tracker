@@ -9,6 +9,8 @@
   import { writeUrlParams } from '$lib/urlState';
   import { formatBag } from '$lib/grams';
   import ShareButton from '$lib/components/ShareButton.svelte';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { onDeckPreview } from '$lib/linkPreview';
   import { onDeckParams, parseOnDeckView, VIEWS, VIEW_LABEL, type OnDeckView } from './onDeckUrl';
 
   let { data } = $props();
@@ -65,6 +67,7 @@
 <svelte:head>
   <title>Bean Tracker - On Deck</title>
 </svelte:head>
+<PreviewMeta preview={onDeckPreview(view, filter, view === 'open' ? current.open : current.nextUp)} />
 
 <div class="toolbar">
   <h1>On Deck</h1>

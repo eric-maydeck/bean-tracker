@@ -30,7 +30,9 @@
   import FilterBar from '$lib/components/FilterBar.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { currentParams } from '$lib/pageUrlState';
-  import { applyFilters, COLUMNS, isFrozen, type ColumnKey } from '$lib/coffeeFilters';
+  import { applyFilters, chipLabel, COLUMNS, isFrozen, type ColumnKey } from '$lib/coffeeFilters';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { coffeesPreview } from '$lib/linkPreview';
   import {
     fromParams,
     toParams,
@@ -498,6 +500,7 @@
 <svelte:head>
   <title>Bean Tracker - Coffees</title>
 </svelte:head>
+<PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, status: lit, query, chips: explicit.filters.map(chipLabel) })} />
 
 {#snippet cloneButton(coffee: CoffeeRow, icons = false)}
   <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}

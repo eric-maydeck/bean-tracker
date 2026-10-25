@@ -1058,6 +1058,87 @@ export const STATES: State[] = [
       }
       expect(await page.title()).toBe(`Bean Tracker - ${s.names.long}`);
     } },
+  // Link previews for the list pages: SSR tags built from the values each page renders.
+  { name: 'link-preview-coffees', viewports: 'two', path: () => '/coffees',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      for (const [path, title, re] of [
+        ['/coffees', 'Coffee Collection', /^\d+ coffees? · Backlog$/],
+        ['/coffees?status=all&origin=Colombia', 'Coffee Collection', /^\d+ coffees? · All · Origin: Colombia$/]
+      ] as const) {
+        const t = await previewTags(page, path);
+        expect(t['og:title']).toBe(title);
+        expect(t['og:description']).toMatch(re);
+        expect(t.description).toBe(t['og:description']);
+        expect(t.description.length).toBeLessThanOrEqual(300);
+        expect(t['og:url']).toBe(origin + path);
+      }
+    } },
+  { name: 'link-preview-on-deck', viewports: 'two', path: () => '/on-deck',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const t = await previewTags(page, '/on-deck');
+      expect(t['og:title']).toBe('On Deck: Currently open');
+      const lines = t['og:description'].split('\n');
+      for (const [i, l] of lines.entries())
+        expect(l).toMatch(i === lines.length - 1 && /^…and/.test(l) ? /^…and \d+ more$/ : /^\d+\. .+ · .+$/);
+      expect(t.description).toBe(t['og:description']);
+      expect(t.description.length).toBeLessThanOrEqual(300);
+      expect(t['og:url']).toBe(`${origin}/on-deck`);
+      const n = await previewTags(page, '/on-deck?view=next&show=decaf');
+      expect(n['og:title']).toBe('On Deck: Next up · Decaf');
+      expect(n.description.length).toBeLessThanOrEqual(300);
+      expect(n['og:url']).toBe(`${origin}/on-deck?view=next&show=decaf`);
+    } },
+  { name: 'link-preview-subscriptions', viewports: 'two', path: () => '/subscriptions',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const t = await previewTags(page, '/subscriptions');
+      expect(t['og:title']).toBe('Subscriptions');
+      const d = t['og:description'];
+      expect(d.startsWith('3 subscriptions · 1 paused\n')).toBe(true);
+      expect(d).toContain('Paused Monthly · Ceto · 1 × 250g · $22.00 · Paused');
+      expect(d).toMatch(/\nSey · 1 × 250g · \$30\.00 · Renews \d{4}-\d{2}-\d{2}/);
+      expect(t.description).toBe(d);
+      expect(d.length).toBeLessThanOrEqual(300);
+      expect(t['og:url']).toBe(`${origin}/subscriptions`);
+    } },
+  { name: 'link-preview-stats', viewports: 'two', path: () => '/stats',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const t = await previewTags(page, '/stats');
+      expect(t['og:title']).toBe('Stats: General');
+      expect(t['og:description']).toMatch(/^\d+ open · \d+ unopened · [\d.]+k?g on hand · \d+ finished$/);
+      expect(t.description).toBe(t['og:description']);
+      expect(t.description.length).toBeLessThanOrEqual(300);
+      expect(t['og:url']).toBe(`${origin}/stats`);
+      expect((await previewTags(page, '/stats?tab=bq'))['og:title']).toBe('Stats: Bean Conqueror');
+    } },
+  { name: 'link-preview-water', viewports: 'two', path: () => '/water',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const cases: [string, string, string | RegExp][] = [
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\n800 mL: Ca 4 · Mg 4 · Na 2 · K 2 drops\nGH 80.4 · KH 20.1 ppm'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\n900 mL: Ca 0 · Mg 7 · Na 0 · K 4 drops\nGH 62.5 · KH 17.9 ppm'],
+        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\n900 mL: /],
+        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /800 mL: Ca 3 · Mg 5 · Na 0 · K 0 drops\nGH 80\.4 · KH 0 ppm/]
+      ];
+      for (const [path, title, desc] of cases) {
+        const t = await previewTags(page, path);
+        expect(t['og:title']).toBe(title);
+        if (typeof desc === 'string') expect(t['og:description']).toBe(desc);
+        else expect(t['og:description']).toMatch(desc);
+        expect(t.description).toBe(t['og:description']);
+        expect(t.description.length).toBeLessThanOrEqual(300);
+        expect(t['og:url']).toBe(origin + path);
+      }
+      // The rendered page shows the same drop counts as the preview for the same URL.
+      await gotoReady(page, '/water?recipe=holy-water&ml=900');
+      const shown = await page.locator('.wr-drops .wr-drop').evaluateAll((els) => Object.fromEntries(els.map((e) => [e.querySelector('span')!.textContent, e.querySelector('b')!.textContent])));
+      const m = (await previewTags(page, '/water?recipe=holy-water&ml=900'))['og:description'].match(/Ca (\d+) · Mg (\d+) · Na (\d+) · K (\d+) drops/)!;
+      expect(m.slice(1)).toEqual([shown.Ca, shown.Mg, shown.Na, shown.K]);
+      expect(m.slice(1).join(',')).toBe('0,7,0,4');
+    } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
   // Gate P4: a coffee with rated brews but no panel says why in one line; the tip has the counts; the link opens

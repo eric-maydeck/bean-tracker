@@ -2,6 +2,8 @@
   import { page } from '$app/state';
   import { afterNavigate } from '$app/navigation';
   import ShareButton from '$lib/components/ShareButton.svelte';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { waterPreview } from '$lib/linkPreview';
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import {
@@ -165,6 +167,7 @@
 <svelte:head>
   <title>Bean Tracker - Water</title>
 </svelte:head>
+<PreviewMeta preview={waterPreview({ mode, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : undefined })} />
 
 <div class="water-page">
 <div class="toolbar water-title">

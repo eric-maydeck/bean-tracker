@@ -303,11 +303,14 @@
   let totals = $derived(subscriptionTotals(data.subscriptions));
   // One money format for the price column and its total (ui-rules 46).
   let priceWhole = $derived(wholeUsd([...data.subscriptions.map((s) => s.price), totals.price]));
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { subscriptionsPreview } from '$lib/linkPreview';
 </script>
 
 <svelte:head>
   <title>Bean Tracker - Subscriptions</title>
 </svelte:head>
+<PreviewMeta preview={subscriptionsPreview(data.subscriptions)} />
 
 <!-- Solid "Fill from page" in a form; in the edit table (one per row) a tonal
      "Fill", so the rows don't stack primaries and the table still fits. -->
