@@ -823,11 +823,12 @@ describe('gear trophy params', () => {
     expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
     expect(withDefaults(parse('tab=gear&card=dripper-v60&retired=open'))).toMatchObject({ card: 'dripper-v60', retired: 'open' });
   });
-  it('chart: one id, lowercased, junk dropped, kept in the URL, dropped by reset', () => {
-    expect(parse('chart=Leaderboard-Origins').chart).toBe('leaderboard-origins');
+  it('chart: one id, case kept, junk dropped, kept in the URL, dropped by reset', () => {
+    expect(parse('chart=Leaderboard-Origins').chart).toBe('Leaderboard-Origins'); // case kept: tile ids are camelCase (record-oldestBrewed)
+    expect(parse('chart=record-oldestBrewed').chart).toBe('record-oldestBrewed');
     expect(parse('chart=a b').chart).toBeUndefined();
     expect(parse('chart=').chart).toBeUndefined();
-    expect(parse('chart=' + 'a'.repeat(65)).chart).toBeUndefined();
+    expect(parse('chart=' + 'a'.repeat(101)).chart).toBeUndefined();
     expect(insightsParams(parse('tab=leaderboards&chart=leaderboard-origins')).toString()).toContain('chart=leaderboard-origins');
     expect(withDefaults(parse('chart=gear-eras')).chart).toBe('gear-eras');
     expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });

@@ -81,6 +81,18 @@ interface PreviewInput {
   tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string;
   rank: Rank; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
 }
+// A Records tile's own element id (#record-…): keys like "grindFine:A4Z (Femobook)" slugged.
+export const recordAnchor = (key: string): string => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+// Header line, then one row per entry: a medal (top 3) or "4." and the value first.
+function ranked(header: string, rows: { value: string; name: string }[]): string {
+  const prefix = header + '\n';
+  const items = rows.slice(0, 5).map((r, i) => `${MEDAL[i] ?? `${i + 1}.`} ${r.value} · ${r.name}`);
+  return prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length);
+}
+const holderRow = (h: Holder) => [h.sub, h.label].filter(Boolean).join(' · ');
+
 export function insightsPreview(v: PreviewInput): Preview {
   const chart = v.chart ?? '';
   const board = BOARDS.find((b) => chart === `leaderboard-${b}`);
@@ -89,16 +101,33 @@ export function insightsPreview(v: PreviewInput): Preview {
   const shown = board && (v.rank !== 'like' || LIKE_BOARDS.includes(board)) && !((v.rank === 'spend' || v.rank === 'ppg') && !BAG_BOARDS.includes(board));
   if (board && rows?.length && shown) {
     const whole = (v.rank === 'spend' || v.rank === 'ppg') && wholeUsd(rows.map((r) => r.value));
-    const prefix = `${v.period} · ${RANK_LABEL[v.rank]}\n`;
-    const items = rows.slice(0, 5).map((r) => `${board === 'origins' ? originWithFlag(r.label) : r.label} · ${boardValue(r.value, v.rank, v.perPerson, whole)}`);
-    return { title: `Insights: ${BOARD_TITLE[board]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
+    const header = `${v.rank === 'rating' ? 'Avg rating' : RANK_LABEL[v.rank]} · ${v.period}`;
+    return {
+      title: `Insights: ${BOARD_TITLE[board]}`,
+      description: ranked(header, rows.map((r) => ({ value: boardValue(r.value, v.rank, v.perPerson, whole), name: board === 'origins' ? originWithFlag(r.label) : r.label })))
+    };
   }
-  const section = v.records?.sections.find((s) => chart === `records-${s.key}`);
+  const rec = v.records;
+  if (rec && chart === 'records-top-coffees' && rec.topCoffees.length) {
+    return { title: 'Insights: Top coffees', description: ranked(`Avg rating · ${v.period}`, rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }))) };
+  }
+  if (rec && chart === 'records-top-brews' && rec.topBrews.length) {
+    return { title: 'Insights: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: holderRow(b.holder) }))) };
+  }
+  const section = rec?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {
     const prefix = `${v.period}\n`;
-    // A bag holder's sub is its roaster; dates stay ISO like the other previews.
-    const items = section.tiles.slice(0, 5).map((t) => `${t.label}: ${[t.holder.sub, t.holder.label, recordValue(t, t.fmt)].filter(Boolean).join(' · ')}`);
+    const items = section.tiles.map((t) => `${t.label} · ${recordValue(t, t.fmt)}`);
     return { title: `Insights: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
+  }
+  const tile = rec?.sections.flatMap((s) => s.tiles).find((t) => chart === recordAnchor(t.key));
+  if (tile) {
+    // A date holder is its own ISO date; any other holder shows its date (when) on its own line.
+    const lines = [
+      v.period, recordValue(tile, tile.fmt), isDateHolder(tile.holder) ? tile.holder.label : holderRow(tile.holder),
+      !isDateHolder(tile.holder) && tile.holder.date, tile.ties.length > 0 && `Tied with ${tile.ties.length} more`
+    ].filter(Boolean) as string[];
+    return { title: `Insights: ${tile.label}`, description: fitList(lines, '\n', false) };
   }
   return {
     title: `Insights: ${v.tabLabel}`,

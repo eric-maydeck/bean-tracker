@@ -1096,9 +1096,10 @@ export const STATES: State[] = [
       const t = await previewTags(page, '/subscriptions');
       expect(t['og:title']).toBe('Subscriptions');
       const d = t['og:description'];
-      expect(d.startsWith('3 subscriptions · 1 paused\n')).toBe(true);
-      expect(d).toContain('Ceto · Paused Monthly · 1 × 250g · $22.00 · Paused');
-      expect(d).toMatch(/\nSey · 1 × 250g · \$30\.00 · Renews \d{4}-\d{2}-\d{2}/);
+      expect(d.startsWith('3 subscriptions\n')).toBe(true);
+      expect(d).toContain('\nCeto · Paused Monthly');
+      expect(d).toMatch(/\nSey$/m);
+      expect(d, 'no status, price or renewal').not.toMatch(/Paused$|\$|Renews| paused/m);
       expect(t.description).toBe(d);
       expect(d.length).toBeLessThanOrEqual(300);
       expect(t['og:url']).toBe(`${origin}/subscriptions`);
@@ -1144,10 +1145,10 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, string | RegExp][] = [
-        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\n800 mL: Ca 4 · Mg 4 · Na 2 · K 2 drops\nGH 80.4 · KH 20.1 ppm'],
-        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\n900 mL: Ca 0 · Mg 7 · Na 0 · K 4 drops\nGH 62.5 · KH 17.9 ppm'],
-        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\n900 mL: /],
-        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /800 mL: Ca 3 · Mg 5 · Na 0 · K 0 drops\nGH 80\.4 · KH 0 ppm/]
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800 mL\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4 ppm\nKH: 20.1 ppm'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900 mL\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5 ppm\nKH: 17.9 ppm'],
+        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900 mL\n/],
+        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800 mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4 ppm\nKH: 0 ppm/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -1161,7 +1162,7 @@ export const STATES: State[] = [
       // The rendered page shows the same drop counts as the preview for the same URL.
       await gotoReady(page, '/water?recipe=holy-water&ml=900');
       const shown = await page.locator('.wr-drops .wr-drop').evaluateAll((els) => Object.fromEntries(els.map((e) => [e.querySelector('span')!.textContent, e.querySelector('b')!.textContent])));
-      const m = (await previewTags(page, '/water?recipe=holy-water&ml=900'))['og:description'].match(/Ca (\d+) · Mg (\d+) · Na (\d+) · K (\d+) drops/)!;
+      const m = (await previewTags(page, '/water?recipe=holy-water&ml=900'))['og:description'].match(/Ca: (\d+) drops?\nMg: (\d+) drops?\nNa: (\d+) drops?\nK: (\d+) drops?/)!;
       expect(m.slice(1)).toEqual([shown.Ca, shown.Mg, shown.Na, shown.K]);
       expect(m.slice(1).join(',')).toBe('0,7,0,4');
     } },
@@ -1169,8 +1170,11 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, RegExp | null][] = [
-        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating\n(.+\n)*🇪🇹 Ethiopia · \d/],
-        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+: .+ · .+/],
+        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^Avg rating · All time\n🥇 \d\.\d · .+\n🥈 /],
+        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+ · .+/],
+        ['/insights?tab=records&range=all&chart=records-top-coffees', 'Insights: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/insights?tab=records&range=all&chart=records-top-brews', 'Insights: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
+        ['/insights?tab=records&range=all&chart=record-nightOwl', 'Insights: Night owl', /^All time\n.+\n/],
         ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^All time · \d+ brews/],
         ['/insights?chart=leaderboard-origins', 'Insights: Overview', null],
         ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', null]
@@ -3791,6 +3795,23 @@ export const STATES: State[] = [
       // The seed has under 11 coffees with 3+ ratings: the list shows them all, with no controls.
       await expect(page.locator('#records-top-coffees')).toBeVisible();
       await expect(page.locator('#records-top-coffees + ol li').first()).toBeVisible();
+    } },
+  { name: 'insights-records-tile-link', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      // A tile's caption links with its own id as chart (case kept) and as the hash; a click lands it under the bar.
+      const a = page.locator('#record-nightOwl a.caption-link');
+      expect(await a.getAttribute('href')).toMatch(/^\?(?=.*tab=records)(?=.*chart=record-nightOwl).*#record-nightOwl$/);
+      await a.click();
+      await expect(page).toHaveURL(/chart=record-nightOwl.*#record-nightOwl$/);
+      const gap = async () => (await page.evaluate(() => document.getElementById('record-nightOwl')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      // A load with only chart= (no hash) lands it too, and the tile previews under its own title.
+      await gotoReady(page, '/insights?tab=records&range=all&chart=record-nightOwl');
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      const label = ((await page.locator('#record-nightOwl .stat-label').textContent()) ?? '').replace(/\s*·.*$/s, '').trim();
+      expect((await previewTags(page, '/insights?tab=records&range=all&chart=record-nightOwl'))['og:title']).toBe(`Insights: ${label}`);
     } },
   { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
     act: async (page) => {

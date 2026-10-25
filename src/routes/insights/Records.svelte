@@ -30,7 +30,7 @@
   import { DIAL_HELP, RATINGS_LABEL, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordTile } from '$lib/server/insights/records';
   import { rowVars } from './rows';
-  import { holderDate, isDateHolder, holderName, recordParts, recordValue } from './chartLink';
+  import { holderDate, isDateHolder, holderName, recordAnchor, recordParts, recordValue } from './chartLink';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
@@ -45,8 +45,7 @@
   } = $props();
 
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
-  // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
-  const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
+  const anchor = recordAnchor;
   const date = holderDate, isDate = isDateHolder, name = holderName, parts = recordParts, plain = recordValue;
   // The record's inputs (what its value is made of), on their own line: a derived value shows its working.
   // Roaster money records count bags bought in the period: the line says which window.
@@ -99,8 +98,8 @@
   const emptyLine = useEmptyLine();
 </script>
 
-{#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, href: string)}
-  <TileCaption {href} {label}
+{#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, chart: string)}
+  <TileCaption {chart} {label}
     >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
         ><span class="tip-text">{every && dial === 'dialed' ? 'Always all brews' : RATINGS_LABEL[ratings]}</span><Icon name="question" /></button
       >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
@@ -171,7 +170,7 @@
         <div class="mode-tip" id="badge-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: b, lines: [BADGE_HELP[r.scope ?? 'record']] }} /></div>
       </div>
     {/if}
-    {@render caption(id, r.label, r.rating, r.dialIn, r.perDay && perPerson, `#${anchor(r.key)}`)}
+    {@render caption(id, r.label, r.rating, r.dialIn, r.perDay && perPerson, anchor(r.key))}
   </div>
 {/snippet}
 

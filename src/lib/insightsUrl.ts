@@ -448,10 +448,10 @@ function parsePairs(v: string | null): string[] | undefined {
   return xs.length ? xs : undefined;
 }
 
-// A heading id (HeadingAnchor): lowercase letters, digits and hyphens.
+// A heading or tile id (HeadingAnchor, a Records tile's record-oldestBrewed): letters, digits and hyphens, case kept (it is an element id).
 function parseChart(v: string | null): string | undefined {
-  const x = (v ?? '').trim().toLowerCase();
-  return /^[a-z0-9-]{1,64}$/.test(x) ? x : undefined;
+  const x = (v ?? '').trim();
+  return /^[A-Za-z0-9-]{1,100}$/.test(x) ? x : undefined;
 }
 
 // The open trophy card on Gear: one "kind-slug" key, lowercased; anything else is dropped.
