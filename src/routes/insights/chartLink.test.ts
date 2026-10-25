@@ -16,13 +16,13 @@ describe('insightsPreview', () => {
   it('Origins board under rating', () => {
     expect(insightsPreview({ ...base, chart: 'leaderboard-origins' })).toEqual({
       title: 'Insights: Origins',
-      description: 'All time · Rating: 🇪🇹 Ethiopia – 8.4 · 🇰🇪 Kenya – 8.1 · 🇨🇴 Colombia – 7.9 · 🇷🇼 Rwanda – 7.5 · 🇧🇮 Burundi – 7.0'
+      description: 'All time · Rating\n🇪🇹 Ethiopia · 8.4\n🇰🇪 Kenya · 8.1\n🇨🇴 Colombia · 7.9\n🇷🇼 Rwanda · 7.5\n🇧🇮 Burundi · 7.0'
     });
   });
   it('Origins board under brews', () => {
     const boards = { ...none, origins: rows([['Ethiopia', 34], ['Kenya', 21], ['Colombia', 12]]) };
     expect(insightsPreview({ ...base, boards, rank: 'brews', chart: 'leaderboard-origins' }).description).toBe(
-      'All time · Brews: 🇪🇹 Ethiopia – 34 · 🇰🇪 Kenya – 21 · 🇨🇴 Colombia – 12'
+      'All time · Brews\n🇪🇹 Ethiopia · 34\n🇰🇪 Kenya · 21\n🇨🇴 Colombia · 12'
     );
   });
   it('falls back to the page level', () => {
@@ -38,14 +38,14 @@ describe('insightsPreview', () => {
   });
   const records = {
     sections: [{ key: 'taste', tiles: [
-      { label: 'Best bag', fmt: 'rating', value: 9.2, holder: { label: 'Lab Bag 3', date: '2026-08-01' }, ties: [] },
+      { label: 'Best bag', fmt: 'rating', value: 9.2, holder: { label: 'Lab Bag 3', sub: 'Test Roaster', date: '2026-08-01' }, ties: [] },
       { label: 'Best day', fmt: 'rating', value: 9.0, holder: { label: '2026-10-03', date: '2026-10-03' }, ties: [] }
     ] }]
   } as unknown as RecordsTab;
   it('Records section', () => {
     const v = { ...base, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
     expect(insightsPreview({ ...v, chart: 'records-taste' })).toEqual({
-      title: 'Insights: Taste', description: 'Last 3 months: Best bag – 9.2 (Lab Bag 3) · Best day – 9.0 (Oct 3, 2026)'
+      title: 'Insights: Taste', description: 'Last 3 months\nBest bag: Test Roaster · Lab Bag 3 · 9.2\nBest day: 2026-10-03 · 9.0'
     });
     expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Insights: Records');
   });
@@ -53,6 +53,6 @@ describe('insightsPreview', () => {
     const long = rows([1, 2, 3, 4, 5].map((i) => ['x'.repeat(120) + i, 8] as [string, number]));
     const d = insightsPreview({ ...base, boards: { ...none, roasters: long }, chart: 'leaderboard-roasters' }).description;
     expect(d.length).toBeLessThanOrEqual(300);
-    expect(d.startsWith('All time · Rating: x')).toBe(true);
+    expect(d.startsWith('All time · Rating\nx')).toBe(true);
   });
 });

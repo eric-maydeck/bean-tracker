@@ -1143,8 +1143,8 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, RegExp | null][] = [
-        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating: .*🇪🇹 Ethiopia – \d/],
-        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time: .+ – .+ \(.+\)/],
+        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating\n(.+\n)*🇪🇹 Ethiopia · \d/],
+        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time\n.+: .+ · .+/],
         ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^All time · \d+ brews/],
         ['/insights?chart=leaderboard-origins', 'Insights: Overview', null],
         ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', null]

@@ -89,15 +89,16 @@ export function insightsPreview(v: PreviewInput): Preview {
   const shown = board && (v.rank !== 'like' || LIKE_BOARDS.includes(board)) && !((v.rank === 'spend' || v.rank === 'ppg') && !BAG_BOARDS.includes(board));
   if (board && rows?.length && shown) {
     const whole = (v.rank === 'spend' || v.rank === 'ppg') && wholeUsd(rows.map((r) => r.value));
-    const prefix = `${v.period} · ${RANK_LABEL[v.rank]}: `;
-    const items = rows.slice(0, 5).map((r) => `${board === 'origins' ? originWithFlag(r.label) : r.label} – ${boardValue(r.value, v.rank, v.perPerson, whole)}`);
-    return { title: `Insights: ${BOARD_TITLE[board]}`, description: prefix + fitList(items, ' · ', false, DESCRIPTION_MAX - prefix.length) };
+    const prefix = `${v.period} · ${RANK_LABEL[v.rank]}\n`;
+    const items = rows.slice(0, 5).map((r) => `${board === 'origins' ? originWithFlag(r.label) : r.label} · ${boardValue(r.value, v.rank, v.perPerson, whole)}`);
+    return { title: `Insights: ${BOARD_TITLE[board]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
   }
   const section = v.records?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {
-    const prefix = `${v.period}: `;
-    const items = section.tiles.slice(0, 5).map((t) => `${t.label} – ${recordValue(t, t.fmt)} (${holderName(t.holder)})`);
-    return { title: `Insights: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, ' · ', false, DESCRIPTION_MAX - prefix.length) };
+    const prefix = `${v.period}\n`;
+    // A bag holder's sub is its roaster; dates stay ISO like the other previews.
+    const items = section.tiles.slice(0, 5).map((t) => `${t.label}: ${[t.holder.sub, t.holder.label, recordValue(t, t.fmt)].filter(Boolean).join(' · ')}`);
+    return { title: `Insights: ${RECORD_TITLE[section.key]}`, description: prefix + fitList(items, '\n', false, DESCRIPTION_MAX - prefix.length) };
   }
   return {
     title: `Insights: ${v.tabLabel}`,
