@@ -2,7 +2,7 @@ import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expandBar, expectPullTab, pinnedBottomOf, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
+import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -198,15 +198,28 @@ async function expectFoldCorners(page: Page) {
 }
 // Two animation frames: what a scroll or resize needs to land its layout (a fixed sleep guessed at it).
 const frames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+// Jump to chips live in the bar's block (.cbar, once the page has one) and every chip's #id exists on the page.
+async function expectChipsInBar(page: Page, links: Locator) {
+  if (await page.locator('.cbar').count()) await expect(page.locator('.cbar .board-jump a')).toHaveCount(await links.count());
+  expect(await links.evaluateAll((as) => as.filter((a) => !document.getElementById(a.getAttribute('href')!.slice(1))).map((a) => a.getAttribute('href')))).toEqual([]);
+}
 // Height of the active tab's own controls row inside the sticky bar (0 when the tab has none).
 const tabRowHeight = (bar: Locator) =>
   bar.evaluate((el) => { const r = el.querySelector('.tab-controls')?.getBoundingClientRect().height; return r ? r + parseFloat(getComputedStyle(el).rowGap) : 0; });
+// A phone on a page with the collapsible bar (.cbar): what is pinned is the short row, not the full bar.
+const phoneBar = async (page: Page) => isPhone(page) && (await page.locator('.cbar').count()) > 0;
 async function expectStickyBar(page: Page, bar: Locator) {
   // Room to scroll on pages shorter than the viewport.
   await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
   const target = page.locator('section.chart-panel').nth(1);
   await target.evaluate((el) => el.scrollIntoView());
   await frames(page);
+  if (await phoneBar(page)) {
+    await expectShortRow(page);
+    const mini = (await page.locator('.cbar-mini').boundingBox())!;
+    expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(mini.y + mini.height - 1);
+    return;
+  }
   const b = (await bar.boundingBox())!;
   const tabRow = await tabRowHeight(bar);
   expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
@@ -3164,10 +3177,10 @@ export const STATES: State[] = [
       // One jump link per board; a click lands the card's top just under the sticky bar.
       const links = page.locator('.board-jump a');
       await expect(links).toHaveCount(9);
+      await expectChipsInBar(page, links);
       await links.filter({ hasText: 'Origins' }).click();
       await expect(page).toHaveURL(/#leaderboard-origins$/);
-      const gap = () => page.evaluate(() =>
-        document.getElementById('leaderboard-origins')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      const gap = async () => (await page.evaluate(() => document.getElementById('leaderboard-origins')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
@@ -3181,7 +3194,8 @@ export const STATES: State[] = [
       // One chip per rendered section; a click is a hash jump (no reload) landing the section just under the sticky bar.
       expect(await links.count()).toBeGreaterThan(2);
       await page.evaluate(() => ((window as unknown as { __jump: number }).__jump = 1));
-      const gap = (id: string) => page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom, id);
+      const gap = async (id: string) => (await page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top, id)) - (await pinnedBottomOf(page));
+      await expectChipsInBar(page, links);
       for (const n of [1, (await links.count()) - 1]) {
         const jump = links.nth(n);
         await jump.click();
@@ -3546,8 +3560,7 @@ export const STATES: State[] = [
   { name: 'insights-records-anchor', path: () => '/insights?tab=records#record-nightOwl',
     act: async (page) => {
       // The tile's top lands just under the sticky filter bar; a filter change keeps the hash.
-      const gap = () => page.evaluate(() =>
-        document.getElementById('record-nightOwl')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      const gap = async () => (await page.evaluate(() => document.getElementById('record-nightOwl')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
       await page.getByRole('button', { name: /^Filters/ }).click();
@@ -3558,8 +3571,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#overview-avg-brew-time a.caption-link')).toHaveAttribute('href', '#overview-avg-brew-time');
-      const gap = () => page.evaluate(() =>
-        document.getElementById('overview-avg-brew-time')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      const gap = async () => (await page.evaluate(() => document.getElementById('overview-avg-brew-time')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
@@ -3567,8 +3579,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#habits-current-streak a.caption-link')).toHaveAttribute('href', '#habits-current-streak');
-      const gap = () => page.evaluate(() =>
-        document.getElementById('habits-current-streak')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      const gap = async () => (await page.evaluate(() => document.getElementById('habits-current-streak')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
@@ -3576,8 +3587,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#consumption-brewed a.caption-link')).toHaveAttribute('href', '#consumption-brewed');
-      const gap = () => page.evaluate(() =>
-        document.getElementById('consumption-brewed')!.getBoundingClientRect().top - document.querySelector('.filter-bar')!.getBoundingClientRect().bottom);
+      const gap = async () => (await page.evaluate(() => document.getElementById('consumption-brewed')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
@@ -3755,7 +3765,7 @@ export const STATES: State[] = [
             y0 = y1;
             const b = ruler.getBoundingClientRect();
             // What the height was computed from, so a failure says which input moved.
-            if (b.y + b.height > 0) out.push({ y: b.y, h: b.height, why: `inline ${ruler.style.height || 'none'}, innerHeight ${innerHeight}, bar ${document.querySelector<HTMLElement>('.filter-bar')!.offsetHeight}, scrollY ${scrollY}` });
+            if (b.y + b.height > 0) out.push({ y: b.y, h: b.height, why: `inline ${ruler.style.height || 'none'}, innerHeight ${innerHeight}, --bar-h ${document.querySelector<HTMLElement>('.timeline')!.style.getPropertyValue('--bar-h')}, scrollY ${scrollY}` });
           }
           return out;
         });
@@ -3816,7 +3826,7 @@ export const STATES: State[] = [
       await settle();
       const head = await page.evaluate(() => {
         const r = document.querySelector('nav.ruler')!.getBoundingClientRect();
-        const top = r.width > r.height ? r.bottom : (document.querySelector('.filter-bar') as HTMLElement).offsetHeight;
+        const top = r.width > r.height ? r.bottom : parseFloat(getComputedStyle(document.querySelector('.timeline')!).getPropertyValue('--bar-h'));
         return document.querySelector('.feed .month')!.getBoundingClientRect().top - top;
       });
       expect(Math.abs(head), 'first month header under the bars').toBeLessThanOrEqual(2);
@@ -3855,7 +3865,7 @@ export const STATES: State[] = [
       await expect(head).toBeInViewport();
       await expect(head.locator('a')).toHaveAttribute('href', `#${id}`);
       // Polled: the on-load scroll and the ruler's rAF layout can land after the first read.
-      const barBottom = () => page.locator('.filter-bar').evaluate((e) => e.getBoundingClientRect().bottom);
+      const barBottom = () => pinnedBottomOf(page);
       const below = async (el: typeof head, max: number) => {
         const off = async () => (await el.boundingBox())!.y - (await barBottom());
         await expect.poll(off).toBeGreaterThanOrEqual(-1);
@@ -4373,7 +4383,11 @@ export const STATES: State[] = [
       for (const target of ['[data-section="brewing-bloom"] .bar-row >> nth=-1 >> .bar-label', '[data-section="brewing-rest"] .heat-cell:not(.none) >> nth=0']) {
         const el = page.locator(target);
         await el.evaluate((e) => {
-          const bar = document.querySelector('.filter-bar')!.getBoundingClientRect().bottom;
+          // the same as pinnedBottom() (floatTip.ts), inline: a serialized function can't call another
+          const pin = document.querySelector('.cbar-mini') ?? document.querySelector('.cbar.overlay');
+          const fb = document.querySelector('.filter-bar');
+          const sticky = fb && getComputedStyle(fb).position === 'sticky' ? fb.getBoundingClientRect().bottom : 0;
+          const bar = pin ? pin.getBoundingClientRect().bottom : Math.max(sticky, 0);
           scrollBy(0, e.getBoundingClientRect().top - bar - 4); // nothing above it in view: the tip must flip below
         });
         await el.click();
@@ -4753,7 +4767,10 @@ export const STATES: State[] = [
       // The chips are the bar's last row (gate r2 A3): still in view after scrolling.
       await expect(page.locator('.filter-bar .coffee-chips')).toBeVisible();
       await expectStickyBar(page, page.locator('.filter-bar'));
+      // phones: the chips are in the expanded bar (the short row has none)
+      if (await phoneBar(page)) await expandBar(page);
       await expect(page.locator('.filter-bar .coffee-chips')).toBeInViewport();
+      if (await phoneBar(page)) await expect(page.locator('.cbar.overlay .coffee-chips')).toBeInViewport();
     } },
   // The mixed-roast nudge: never with a Roast filter set (one level left). The thin seed's two levels
   // rate alike, so it never shows here; prod copy shows it on /insights?tab=brewing&range=3m (T13b report).
@@ -4921,7 +4938,10 @@ export const STATES: State[] = [
       expect(page.url()).not.toContain('tip');
     } },
   { name: 'insights-lab-anchor', path: () => '/insights?tab=water#water-gh',
-    act: async (page) => expect(page.locator('#water-gh')).toBeInViewport() },
+    act: async (page) => {
+      await expect(page.locator('#water-gh')).toBeInViewport();
+      await expect.poll(async () => (await page.evaluate(() => document.getElementById('water-gh')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page))).toBeGreaterThanOrEqual(-1);
+    } },
   { name: 'insights-water', path: () => '/insights?tab=water',
     act: async (page) => {
       for (const h of ['Ratings by recipe', 'Recipe mineral map', 'GH vs rating', 'Water × roast level', 'Water × process', 'Water usage over time', 'Same bag, different water'])
@@ -6694,6 +6714,14 @@ export const STATES: State[] = [
     act: async (page) => {
       const ctl = page.locator('.filter-bar .tab-controls').getByRole(tab === 'habits' || tab === 'consumption' || tab === 'milestones' ? 'group' : 'combobox', { name: label });
       await expect(ctl).toBeVisible();
+      if (await phoneBar(page)) {
+        // the short row has no tab controls: expanded, they are inside the overlay
+        await scrollPastBar(page);
+        await expandBar(page);
+        await expect(page.locator('.cbar.overlay').getByRole(tab === 'habits' || tab === 'consumption' || tab === 'milestones' ? 'group' : 'combobox', { name: label })).toBeInViewport();
+        await expect(page.locator('.rail-main > .rank-bar, .rail-main > .insights-bar, .rail-main > .kinds-bar')).toHaveCount(0);
+        return;
+      }
       await page.evaluate(() => (document.documentElement.style.paddingBottom = '200vh'));
       await page.evaluate(() => scrollTo(0, 700));
       await frames(page);
@@ -6769,7 +6797,7 @@ export const STATES: State[] = [
   { name: 'insights-tab-switch-ring', viewports: 'two', path: () => '/insights?range=all',
     act: async (page) => {
       const tabs = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', 'sweetspots', 'brewing', 'water', 'gear', 'consumption', 'records', 'overview'];
-      const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
+      const body = () => page.locator('.rail-main').evaluate((el) => [...el.children].filter((c) => !c.matches('.filter-bar, .toolbar, .chart-note, dialog, .cbar, .cbar-mini')).map((c) => (c as HTMLElement).innerText).join('|').slice(0, 4000));
       let before = await body();
       for (const t of tabs.slice(1)) {
         await page.getByRole('combobox', { name: 'View', exact: true }).selectOption(t);
@@ -7298,16 +7326,18 @@ test.describe('signed out', () => {
 
 // The sticky bar is the same height before hydration (the server HTML, no JS) as after it: a tab's own controls are
 // rendered with the bar, so nothing grows it on load (peer review B, round 2).
-for (const tab of ['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing']) {
+for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing']) {
   test(`insights-bar-first-paint-${tab}`, { tag: '@insights' }, async ({ browser, page }, info) => {
     const url = `/insights?tab=${tab}&range=all`;
     await gotoReady(page, url);
     const hydrated = (await page.locator('.filter-bar').boundingBox())!.height;
+    const cbarH = (await page.locator('.cbar').count()) ? (await page.locator('.cbar').first().boundingBox())!.height : null;
     const ctx = await browser.newContext({ javaScriptEnabled: false, viewport: info.project.use.viewport ?? undefined, baseURL: info.project.use.baseURL, deviceScaleFactor: info.project.use.deviceScaleFactor });
     try {
       const raw = await ctx.newPage();
       await raw.goto(url);
-      await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
+      if (['leaderboards', 'habits', 'consumption', 'milestones', 'sweetspots', 'brewing'].includes(tab)) await expect(raw.locator('.filter-bar .tab-controls')).toBeVisible();
+      if (cbarH !== null) expect(Math.abs((await raw.locator('.cbar').first().boundingBox())!.height - cbarH), '.cbar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
       expect(Math.abs((await raw.locator('.filter-bar').boundingBox())!.height - hydrated), 'bar height: server HTML vs hydrated').toBeLessThanOrEqual(1);
     } finally { await ctx.close(); }
   });

@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { pinnedBottom } from '../../src/lib/components/floatTip';
 
 // The automatable rules from docs/ui-rules.md. Anything inside an element with
 // data-layout-ignore="<why>" is skipped; an empty reason is itself a problem.
@@ -299,15 +300,15 @@ export async function expectPairsFilled(page: Page, selector: string) {
 // `inBar`: the tip of a control inside the sticky bar (a switch's help) may sit over the bar.
 export async function expectTipInView(page: Page, tip: Locator, { inBar = false } = {}) {
   await expect(tip).toBeVisible();
-  const bad = await tip.evaluate((el, inBar) => {
+  const barBottom = await page.evaluate(pinnedBottom); // what is pinned: the short row, the open overlay or the sticky bar
+  const bad = await tip.evaluate((el, [inBar, barBottom]) => {
     const r = el.getBoundingClientRect(), out: string[] = [];
-    const bar = document.querySelector('.filter-bar')?.getBoundingClientRect();
     if (!el.matches(':popover-open')) out.push('not in the top layer (an open popover)');
     // 1px slack: a tip clamped to an edge can land a float hair past it (333.00001 vs 333).
     if (r.left < -1 || r.top < -1 || r.right > document.documentElement.clientWidth + 1 || r.bottom > innerHeight + 1) out.push(`outside the viewport: ${JSON.stringify(r)}`);
-    if (!inBar && bar && bar.bottom > 0 && r.top < bar.bottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(bar.bottom)})`);
+    if (!inBar && barBottom > 0 && r.top < barBottom - 1) out.push(`under the sticky bar (${Math.round(r.top)} < ${Math.round(barBottom)})`);
     return out;
-  }, inBar);
+  }, [inBar, barBottom] as const);
   expect(bad).toEqual([]);
 }
 
