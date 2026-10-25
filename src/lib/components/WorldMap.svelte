@@ -3,6 +3,7 @@
   import { isoCode } from '$lib/countryFlags';
   import type { Rank } from '$lib/insightsUrl';
   import { onDestroy } from 'svelte';
+  import { fade } from 'svelte/transition';
   import FloatTip from './FloatTip.svelte';
   import Icon from './Icon.svelte';
   import { MAX_ZOOM, STEP, WHOLE, clampView, panBy, visibleBox, zoomAbout, type View } from './mapZoom';
@@ -67,14 +68,68 @@
     if (e.key === '+' || e.key === '=') zoomCentered(STEP);
     else if (e.key === '-' || e.key === '_') zoomCentered(1 / STEP);
   }
+  // One transient hint (wheel / one-finger), restarted by each new one.
+  let hint = $state('');
+  let hintTimer: ReturnType<typeof setTimeout> | undefined;
+  const showHint = (t: string) => ((hint = t), clearTimeout(hintTimer), (hintTimer = setTimeout(() => (hint = ''), 1500)));
+  onDestroy(() => clearTimeout(hintTimer));
+  const fadeMs = () => (matchMedia('(prefers-reduced-motion: no-preference)').matches ? 200 : 0);
+  const TOUCH_HINT = 'Use two fingers to move the map';
+  // client px -> viewBox units
+  const toVb = (px: number, py: number) => [vis.x + (px * vis.w) / cw, vis.y + (py * vis.h) / ch];
+  // Passive by default as attributes, so these two are added by hand: Ctrl/Cmd+wheel zooms (and must not zoom the
+  // page); a two-finger touchmove must not scroll it.
+  let svg: SVGSVGElement | undefined = $state();
+  $effect(() => {
+    if (!svg) return;
+    const wheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return showHint(`Hold ${/Mac/.test(navigator.platform) ? '⌘' : 'Ctrl'} to zoom the map`);
+      e.preventDefault();
+      const r = wrap!.getBoundingClientRect(), [cx, cy] = toVb(e.clientX - r.left, e.clientY - r.top);
+      setView(zoomAbout(view, Math.exp((-e.deltaY * (e.deltaMode === 1 ? 16 : 1)) / 300), cx, cy, vis, VB));
+    };
+    const tm = (e: TouchEvent) => e.touches.length >= 2 && e.preventDefault();
+    svg.addEventListener('wheel', wheel, { passive: false });
+    svg.addEventListener('touchmove', tm, { passive: false });
+    return () => (svg!.removeEventListener('wheel', wheel), svg!.removeEventListener('touchmove', tm));
+  });
+  // Touch: one finger scrolls the page (a hint past 10px or on cancel); two pinch and pan.
+  const touches = new Map<number, { x: number; y: number }>();
+  let start = { x: 0, y: 0 }, hinted = false;
+  function touchMove(e: PointerEvent) {
+    const p = touches.get(e.pointerId);
+    if (!p) return;
+    if (touches.size === 1) {
+      if (!hinted && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) (hinted = true), showHint(TOUCH_HINT);
+      (p.x = e.clientX), (p.y = e.clientY);
+      return;
+    }
+    const [a, b] = [...touches.values()], gauge = () => [(a.x + b.x) / 2, (a.y + b.y) / 2, Math.hypot(a.x - b.x, a.y - b.y)];
+    const [mx0, my0, d0] = gauge();
+    Object.assign(p, { x: e.clientX, y: e.clientY });
+    const [mx, my, d] = gauge(), r = wrap!.getBoundingClientRect();
+    const [cx, cy] = toVb(mx - r.left, my - r.top);
+    const z = d0 ? zoomAbout(view, d / d0, cx, cy, vis, VB) : view;
+    setView(panBy(z, ((mx - mx0) * vis.w) / cw, ((my - my0) * vis.h) / ch, vis, VB));
+  }
+  function touchEnd(e: PointerEvent) {
+    if (e.type === 'pointercancel' && touches.size === 1 && touches.has(e.pointerId)) showHint(TOUCH_HINT);
+    touches.delete(e.pointerId);
+  }
   // A mouse drag past 4px pans; the click that follows it must not pin. Touch is left to the page's scroll.
   let drag: { x: number; y: number; view: View; moved: boolean } | null = null;
   let dragged = false;
   function down(e: PointerEvent) {
     dragged = false;
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 1) (start = { x: e.clientX, y: e.clientY }), (hinted = false);
+      else dragged = true; // a two-finger gesture never ends in a pin
+    }
     drag = e.pointerType === 'mouse' && e.button === 0 ? { x: e.clientX, y: e.clientY, view, moved: false } : null;
   }
   function move(e: PointerEvent) {
+    if (e.pointerType === 'touch') return touchMove(e);
     if (!drag) return;
     const [dx, dy] = [e.clientX - drag.x, e.clientY - drag.y];
     if (!drag.moved) {
@@ -152,6 +207,7 @@
 <div class="world-map">
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events (each country is a focusable button; Escape is document-wide) -->
   <svg
+    bind:this={svg}
     viewBox={WORLD_VIEWBOX}
     style:--k={view.k}
     preserveAspectRatio="xMidYMid slice"
@@ -159,9 +215,9 @@
     aria-label="Coffees by origin country"
     onpointerdown={down}
     onpointermove={(e) => (move(e), hover(e))}
-    onpointerup={() => (drag = null)}
-    onpointercancel={() => (drag = null)}
-    onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()}
+    onpointerup={(e) => ((drag = null), touchEnd(e))}
+    onpointercancel={(e) => ((drag = null), touchEnd(e))}
+    onpointerleave={(e) => (touchEnd(e), e.pointerType === 'mouse' && !pinned && later())}
     onclick={pin}
   >
     <g transform="translate({view.x} {view.y}) scale({view.k})">
@@ -194,6 +250,7 @@
     <button type="button" class="icon-button" aria-label="Zoom out" disabled={view.k <= 1} onclick={() => zoomCentered(1 / STEP)}><Icon name="minus" /></button>
     <button type="button" class="icon-button" aria-label="Show whole world" disabled={view.k === 1 && !view.x && !view.y} onclick={() => setView(WHOLE)}><Icon name="globe" /></button>
   </div>
+  {#if hint}<p class="map-hint" role="status" aria-live="polite" out:fade={{ duration: fadeMs() }}>{hint}</p>{/if}
   {#if tip && anchor}
     {#key tip.iso}{@const href = byIso.get(tip.iso)?.href}<FloatTip {anchor} onclose={close} placeKey={`${ax},${ay}`}><!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events (the tip body is a mouse-only extra: Escape closes it, the link is a real link) --><div class="tip-hover" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !pinned && later()} onclick={(e) => !(e.target as Element).closest('a') && close()}><TipBody tip={{ title: tip.name, rows: byIso.get(tip.iso)?.rows ?? [] }} />{#if href}<a class="tip-link" href={href}>See coffees</a>{/if}</div></FloatTip>{/key}
   {/if}
@@ -263,6 +320,25 @@
   /* Three stacked 44px buttons would pass a quarter of a short map's height. */
   .map-zoom.row {
     flex-direction: row;
+  }
+  /* Top center: the zoom buttons sit at the bottom right, in a column or (short maps) a row. */
+  .map-hint {
+    position: absolute;
+    top: var(--space-2);
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 2 * var(--space-2));
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.35;
+    text-align: center;
+    pointer-events: none;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.18);
   }
   .tip-anchor {
     position: absolute;
