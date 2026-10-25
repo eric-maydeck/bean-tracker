@@ -1,3 +1,24 @@
+# [1.88.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.87.0...v1.88.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **insights:** clear the see-all tip's tap area from the period line on phones
+* **insights:** milestones, tips and ratings menu follow the pinned row
+* **insights:** no media-query gap for inner mode, untracked init, safe hash decode
+* **insights:** pull tab attached to the bar, Back to top stays tappable behind it
+* **insights:** pull tab is the expand caret's box, flush under the bar
+* **insights:** short see-all note on phones, on its own line so toggling moves nothing
+* **insights:** switched chart notes keep a fixed sentence and suffix line
+* **insights:** tap tips in the open bar don't scroll the page
+
+
+### Features
+
+* **coffees:** pull-tab fold caret; collapsible bar inner mode
+* **insights:** collapsible control block on phones
+* **insights:** escape folds the open control bar
+
 # [1.87.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.86.0...v1.87.0) (2026-10-24)
 
 
