@@ -1,3 +1,18 @@
+# [1.90.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.89.0...v1.90.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **share:** copy when an unsettled share sheet blocks the next share; each copy restarts the label
+
+
+### Features
+
+* **insights:** ranked previews, top lists, records sections and tiles; tile links own their id
+* **previews:** coffees preview as status, filters, then count and weight
+* **previews:** page-level insights and stats previews lead with an owner-named summary
+* **previews:** water and subscriptions as one fact per line; coffee shows amount left
+
 # [1.89.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.88.0...v1.89.0) (2026-10-25)
 
 
