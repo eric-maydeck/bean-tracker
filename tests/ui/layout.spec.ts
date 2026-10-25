@@ -7029,6 +7029,10 @@ export const STATES: State[] = [
       await frames(page);
       const overlay = page.locator('.cbar.overlay');
       if (!(await overlay.count())) expect((await page.locator('.cbar').first().boundingBox())!.y, 'folded: the bar is in flow at the top').toBeGreaterThanOrEqual(-1);
+      else {
+        expect(Math.abs((await overlay.boundingBox())!.y), 'still open: the overlay is at the top').toBeLessThanOrEqual(1);
+        await expectSpacerMatchesBody(page);
+      }
       expect(errors).toEqual([]);
     } },
   // Review focus 3: a 20px root font (larger text setting) keeps a jump landing clear of the short row.
