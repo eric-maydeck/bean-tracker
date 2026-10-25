@@ -4,7 +4,7 @@
 
   // A section heading that links to itself (#id), so its URL can be copied: the # mark shows on
   // hover and focus (faintly always on touch, which has no hover). A load or click on the hash
-  // scrolls the heading to just under the sticky filter bar (+page.svelte sets scroll-padding-top).
+  // scrolls the heading to just under the sticky filter bar (CollapsibleBar sets scroll-padding-top).
   let { id, level = 2, class: cls = '', children }: { id: string; level?: 2 | 3; class?: string; children: Snippet } = $props();
 </script>
 

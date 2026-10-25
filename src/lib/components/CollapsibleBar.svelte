@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, type Snippet } from 'svelte';
+  import { tick, untrack, type Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { pinnedBar } from '$lib/components/pinnedBar.svelte';
 
@@ -35,7 +35,7 @@
       if (!phone) expanded = false; // desktop width: the full bar is always pinned
       onScroll();
     };
-    onMq();
+    untrack(onMq); // its reads (expanded, the bar elements) are not this effect's deps: it would re-subscribe on every expand and fold
     mq.addEventListener('change', onMq);
     addEventListener('scroll', onScroll, { passive: true });
     return () => {
@@ -51,7 +51,9 @@
     document.documentElement.style.scrollPaddingTop = `${h}px`;
     if (h && !hashDone) {
       hashDone = true; // the browser's own hash scroll ran before this padding existed
-      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+      try {
+        document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+      } catch { /* a malformed hash (#%E0): no target, no scroll */ }
     }
   });
   // Cleared only on unmount: clearing on every re-run would flash 0 at whatever reads pinnedBar.h.
@@ -139,7 +141,20 @@
   .cbar-mini .cbar-toggle {
     margin-left: auto;
   }
+  /* Inner mode on desktop: the page pins its own part. Contents is the default and phone mode undoes it, so no width falls in a gap between the two queries. */
+  .cbar.inner,
+  .cbar.inner .cbar-scroll,
+  .cbar.inner .cbar-body {
+    display: contents;
+  }
   @media (max-width: 640px), (max-height: 450px) {
+    .cbar.inner,
+    .cbar.inner .cbar-scroll {
+      display: block;
+    }
+    .cbar.inner .cbar-body {
+      display: flow-root;
+    }
     .cbar {
       position: static;
     }
@@ -174,13 +189,6 @@
   @media (max-width: 640px) {
     .cbar.overlay {
       max-height: calc(100dvh - 64px - 44px - env(safe-area-inset-bottom, 0px)); /* the phone tab bar (about 60px tall, plus its safe-area padding), the pull tab */
-    }
-  }
-  @media (min-width: 641px) and (min-height: 451px) {
-    .cbar.inner,
-    .cbar.inner .cbar-scroll,
-    .cbar.inner .cbar-body {
-      display: contents; /* the page pins its own part */
     }
   }
   /* Back to top (35) stays tappable while the bar is expanded, but behind the overlay and its pull tab where they meet. */
