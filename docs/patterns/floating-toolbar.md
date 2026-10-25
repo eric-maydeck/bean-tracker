@@ -33,7 +33,7 @@ The page's control block (filters, view switches, search, buttons) pinned to the
   ruler and others read it; it and `scroll-padding-top` are reset only on unmount (a re-run never flashes 0).
 - One-shot `#hash` scroll on load after the first measure, landing below the pinned part (the component owns it; pages delete theirs).
 - A `#hash` link inside the bar (Jump to chips) folds it; focus then goes to the landed section (accepted). Popovers inside `.cbar`
-  (the Ratings menu) close when the overlay scrolls under them. Back to top is hidden while the overlay is open (it intercepted pull-tab taps).
+  (the Ratings menu) close when the overlay scrolls under them. Back to top stays visible and tappable while the overlay is open; it drops to z-index 29 (behind the overlay and pull tab) only while `.cbar.overlay` exists, and a tap folds the bar and scrolls to the top.
 - Focus: expand focuses the pull tab ("Hide controls"); fold focuses the short row's "Show controls".
 - Internals: `.cbar` (the bar; `.overlay` while expanded, with a `.cbar-scroll` box and the pull tab as its sibling), `.cbar-mini` (fixed mini row),
   a spacer `<div>` the height of the block while it floats (no page jump; it follows the content when it changes),
