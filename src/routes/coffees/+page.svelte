@@ -693,8 +693,8 @@
 <AddedToast bind:slug={addedSlug} />
 
 <CollapsibleBar>
-{#snippet children(caret)}
-<div class="toolbar">
+{#snippet children()}
+<div class="toolbar coffees-toolbar">
   <div class="form-field group-field show-field">
     <span>Show</span>
     <div class="tab-group" role="group" aria-label="Show">
@@ -755,7 +755,6 @@
     <button class="button add-coffee-button" type="button" onclick={openAdd}>+ Add Coffee</button>
   {/if}
   {@render sortControl('row')}
-  {@render caret()}
 </div>
 {/snippet}
 

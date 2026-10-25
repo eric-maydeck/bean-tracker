@@ -1002,14 +1002,14 @@ nav.site-nav a[aria-current='page'] {
   margin-bottom: var(--space-2);
 }
 
-.cbar .toolbar,
+.coffees-toolbar,
 .cbar .search-row {
   margin-bottom: var(--space-2);
   row-gap: var(--space-2);
 }
 
 .show-field {
-  flex: 1 1 auto; /* the caret (expanded phone bar) sits at its right end */
+  flex: 1 1 auto; /* the row is full width */
 }
 
 .add-sort-row {
@@ -1021,7 +1021,7 @@ nav.site-nav a[aria-current='page'] {
 
 .add-sort-row .results {
   grid-column: 1;
-  white-space: nowrap; /* one line: the row keeps its height, so the caret beside Add matches it */
+  white-space: nowrap; /* one line: the row keeps its height, so the Add button keeps its place */
 }
 
 .add-sort-row .add-coffee-button {
@@ -1048,11 +1048,11 @@ nav.site-nav a[aria-current='page'] {
   }
 
   .add-sort-row {
-    min-height: 44px; /* signed out has no Add Coffee button: the row (and the caret in it) keeps the same height */
+    min-height: 44px; /* signed out has no Add Coffee button: the row keeps the same height */
   }
 
   .show-field {
-    flex-basis: 100%; /* Backlog, Open, Archive, All and the caret share one line where they fit; View + Sort follow */
+    flex-basis: 100%; /* Backlog, Open, Archive and All share one line where they fit; View + Sort follow */
   }
 
   /* Show and View fill their rows: the buttons grow into the slack (labels never shrink), so at the page top Show
@@ -1067,7 +1067,7 @@ nav.site-nav a[aria-current='page'] {
   }
 
   /* Slack in the Show/View buttons' side padding keeps them (and Sort by) on fewer lines; tap height stays 44px. */
-  .cbar .toolbar .tab-group button {
+  .coffees-toolbar .tab-group button {
     padding-inline: 0.5rem;
     min-width: 44px; /* "All" stays a 44px target */
   }

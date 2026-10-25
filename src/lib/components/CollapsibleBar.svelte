@@ -1,23 +1,27 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { tick, type Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
+  import { pinnedBar } from '$lib/components/pinnedBar.svelte';
 
   // A page's control block pinned to the top while scrolling (ui-rules 30). Desktop: the full bar sticks. Phones
   // (width <= 640 or height <= 450, so landscape too): the bar scrolls away normally; once it is off screen a short
   // pinned row (`summary` + an expand button) takes over, and expanding shows the full bar pinned over the page (its
-  // own scroll when taller than the screen) with a button to fold it back. Open/closed is transient chrome, never
-  // view state: not in the URL, not remembered. The spacer keeps the bar's height while it floats, so nothing jumps.
-  // `children` receives the fold-back caret to render as the last item of its last row (empty unless expanded).
-  let { children, summary }: { children: Snippet<[Snippet]>; summary: Snippet } = $props();
+  // own scroll when taller than the screen) with a pull tab hanging off its bottom edge to fold it back. Open/closed
+  // is transient chrome, never view state: not in the URL, not remembered. The spacer keeps the block's height while
+  // the bar floats, so nothing jumps. `desktopPinned` (px) = inner mode: on desktop the page pins its own part of the
+  // block (this is its height) and the bar adds no chrome; on phones the in-flow bar has none either.
+  let { children, summary, desktopPinned }: { children: Snippet; summary: Snippet; desktopPinned?: number } = $props();
 
   let barEl: HTMLElement | undefined = $state();
   let spacerEl: HTMLElement | undefined = $state();
   let barH = $state(0);
-  let slotH = $state(0);
+  let bodyH = $state(0);
+  let chrome = $state(0);
+  let spacerMargin = $state('0px');
   let phone = $state(false);
   let scrolled = $state(false);
   let expanded = $state(false);
-
+  let hashDone = false;
 
   $effect(() => {
     const mq = matchMedia('(max-width: 640px), (max-height: 450px)');
@@ -40,29 +44,44 @@
     };
   });
 
-  // A scrolled-to target (the Add form, an inline edit's actions) lands below whatever is pinned.
+  // What is pinned, and a scrolled-to target (the Add form, an inline edit's actions, a Jump to chip) lands below it.
   $effect(() => {
-    document.documentElement.style.scrollPaddingTop = phone ? '3.5rem' : `${barH}px`;
-    return () => document.documentElement.style.removeProperty('scroll-padding-top');
+    const h = phone ? 3.5 * parseFloat(getComputedStyle(document.documentElement).fontSize) : (desktopPinned ?? barH);
+    pinnedBar.h = h;
+    document.documentElement.style.scrollPaddingTop = `${h}px`;
+    if (h && !hashDone) {
+      hashDone = true; // the browser's own hash scroll ran before this padding existed
+      document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+    }
+    return () => {
+      document.documentElement.style.removeProperty('scroll-padding-top');
+      pinnedBar.h = 0;
+    };
   });
 
-  function expand() {
-    slotH = barEl!.offsetHeight;
+  async function expand() {
+    chrome = barEl!.offsetHeight - bodyH;
+    spacerMargin = getComputedStyle(barEl!).marginBottom;
     expanded = true;
+    await tick();
+    barEl?.querySelector<HTMLElement>('.cbar-pull')?.focus();
+  }
+
+  async function fold() {
+    expanded = false;
+    await tick();
+    document.querySelector<HTMLElement>('.cbar-mini .cbar-toggle')?.focus();
   }
 </script>
 
-{#snippet caret()}
+{#if expanded}<div bind:this={spacerEl} style:height="{bodyH + chrome}px" style:margin-bottom={spacerMargin}></div>{/if}
+<div class="cbar" class:inner={desktopPinned !== undefined} class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
   {#if expanded}
-    <button type="button" class="icon-button cbar-toggle" aria-expanded="true" aria-label="Hide controls" onclick={() => (expanded = false)}>
-      <Icon name="caret-up" />
+    <button type="button" class="cbar-pull" aria-expanded="true" aria-label="Hide controls" onclick={fold}>
+      <span class="cbar-pull-tab"><Icon name="caret-up" /></span>
     </button>
   {/if}
-{/snippet}
-
-{#if expanded}<div bind:this={spacerEl} style:height="{slotH}px" style:margin-bottom="var(--space-3)"></div>{/if}
-<div class="cbar" class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
-    {@render children(caret)}
+  <div class="cbar-scroll"><div class="cbar-body" bind:offsetHeight={bodyH}>{@render children()}</div></div>
 </div>
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
@@ -114,29 +133,15 @@
   .cbar-mini .cbar-toggle {
     margin-left: auto;
   }
-  /* Expanded: the caret is the last item of the page's last row (results / Add / Sort by), in that row's right cell, so
-     the row's own alignment gives it its neighbor's top and height (ui-rules 5). Sort by gives up room beside it. */
-  .cbar :global(.add-sort-row > .cbar-toggle) {
-    grid-column: 3;
-    grid-row: 1; /* the same cell as Sort by in landscape */
-    justify-self: end;
-    align-self: stretch;
-    height: auto;
-    width: 44px;
-  }
-  @media (min-width: 641px) {
-    /* Landscape: its neighbor is Sort by's 2.25rem toggle. */
-    .cbar :global(.add-sort-row > .cbar-toggle) {
-      align-self: center;
-      height: 2.25rem;
-    }
-    .cbar :global(.add-sort-row:has(> .cbar-toggle) .sort-in-row) {
-      margin-right: calc(44px + var(--space-2));
-    }
-  }
   @media (max-width: 640px), (max-height: 450px) {
     .cbar {
       position: static;
+    }
+    .cbar.inner {
+      padding: 0;
+      margin: 0;
+      border: 0;
+      background: none;
     }
     .cbar.overlay {
       position: fixed;
@@ -144,21 +149,66 @@
       left: 0;
       right: 0;
       box-sizing: border-box;
-      max-height: 100dvh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100dvh - 44px); /* room for the pull tab below it */
       padding-inline: var(--space-4);
       margin-bottom: 0;
+    }
+    .cbar.inner.overlay {
+      background: var(--color-bg);
+      padding-top: var(--space-2);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .cbar.overlay > .cbar-scroll {
+      overflow-y: auto;
+      min-height: 0;
     }
   }
   @media (max-width: 640px) {
     .cbar.overlay {
-      max-height: calc(100dvh - 56px); /* the phone tab bar */
+      max-height: calc(100dvh - 56px - 44px); /* the phone tab bar, the pull tab */
     }
+  }
+  @media (min-width: 641px) and (min-height: 451px) {
+    .cbar.inner,
+    .cbar.inner .cbar-scroll,
+    .cbar.inner .cbar-body {
+      display: contents; /* the page pins its own part */
+    }
+  }
+  .cbar-body {
+    display: flow-root; /* its children's margins stay inside, so the spacer can match its height */
+  }
+  .cbar-pull {
+    position: absolute;
+    top: 100%;
+    right: var(--space-4);
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  .cbar-pull-tab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 32px;
+    box-sizing: border-box;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+  .cbar-pull:focus-visible {
+    outline: 2px solid var(--color-text);
+    outline-offset: -2px;
   }
 
   /* The caret is not a normal button: neutral muted gray-brown fill with a page-colored icon (>= 6:1 in both themes). */
   .cbar-toggle,
-  .cbar-toggle:hover {
+  .cbar-toggle:hover,
+  .cbar-pull-tab {
     background: var(--color-text-muted);
     color: var(--color-bg);
     border-color: var(--color-text-muted);
