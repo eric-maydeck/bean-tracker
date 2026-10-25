@@ -1,5 +1,7 @@
 <script lang="ts">
   import Usd from '$lib/components/Usd.svelte';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { coffeePreview } from '$lib/linkPreview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { untrack } from 'svelte';
   import { enhance } from '$app/forms';
@@ -254,6 +256,7 @@
 <svelte:head>
   <title>Bean Tracker - {data.coffee.coffee_name}</title>
 </svelte:head>
+<PreviewMeta preview={coffeePreview(data.coffee, detailImage)} />
 
 <div class="detail-actions">
   <a class="button button-ghost detail-back" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>

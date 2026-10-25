@@ -1,4 +1,4 @@
-import { expect, type Page, type Locator, type Route } from '@playwright/test';
+import { expect, request, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
@@ -663,6 +663,24 @@ async function expectSearchRowButtons(page: Page, split33 = false) {
   }
 }
 
+// The SSR head tags of `path`, read signed out through the request API and parsed in the page, so it holds in dev and prod builds.
+async function previewTags(page: Page, path: string): Promise<Record<string, string>> {
+  const ctx = await request.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    const res = await ctx.get(path);
+    expect(res.status()).toBe(200);
+    const html = await res.text();
+    return await page.evaluate((h) => {
+      const out: Record<string, string> = {};
+      for (const m of new DOMParser().parseFromString(h, 'text/html').head.querySelectorAll('meta[property], meta[name]'))
+        out[m.getAttribute('property') ?? m.getAttribute('name')!] = m.getAttribute('content') ?? '';
+      return out;
+    }, html);
+  } finally {
+    await ctx.dispose();
+  }
+}
+
 export const STATES: State[] = [
   // /coffees status is a multi-select: Backlog + Open lit together, the list is their union.
   { name: 'coffees-status-multi', viewports: 'two', path: () => '/coffees?status=backlog&status=open&view=cards',
@@ -1017,6 +1035,28 @@ export const STATES: State[] = [
       await expect(panel.getByRole('heading', { name: 'Vs like coffees' })).toBeVisible();
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
+    } },
+  // Link previews: the coffee page's SSR tags (text from coffeePreview; data: images give no og:image).
+  { name: 'link-preview-coffee', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page, s) => {
+      const origin = new URL(page.url()).origin;
+      const t = await previewTags(page, `/coffees/${s.slugs.long}`);
+      expect(t['og:title']).toBe(s.names.long);
+      expect(t['og:description']).toMatch(/^The Extraordinarily Long-Named Specialty Roasting Collective of Portland\n🇨🇴 Colombia · Double Anaerobic Thermal Shock Natural · 250g · Roasted \d{4}-\d{2}-\d{2}$/);
+      expect(t.description).toBe(t['og:description']);
+      expect(t.description.length).toBeLessThanOrEqual(300);
+      expect(t['og:url']).toBe(`${origin}/coffees/${s.slugs.long}`);
+      expect(t['og:site_name']).toBe('Bean Tracker');
+      expect(t['og:type']).toBe('website');
+      expect(t['theme-color']).toBe('#8a5a3b');
+      expect(t['twitter:card']).toBe('summary');
+      expect(t['og:image']).toBeUndefined();
+      for (const slug of [s.slugs.wide, s.slugs.frozen]) {
+        const d = await previewTags(page, `/coffees/${slug}`);
+        expect(d['og:image'], 'a data: image gives no og:image').toBeUndefined();
+        expect(d['twitter:card']).toBe('summary');
+      }
+      expect(await page.title()).toBe(`Bean Tracker - ${s.names.long}`);
     } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
