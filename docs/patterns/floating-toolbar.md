@@ -34,7 +34,8 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 - One-shot `#hash` scroll on load after the first measure, landing below the pinned part (the component owns it; pages delete theirs).
 - A `#hash` link inside the bar (Jump to chips) folds it; focus then goes to the landed section (accepted). Popovers inside `.cbar`
   (the Ratings menu) close when the overlay scrolls under them. Back to top stays visible and tappable while the overlay is open; it drops to z-index 29 (behind the overlay and pull tab) only while `.cbar.overlay` exists, and a tap folds the bar and scrolls to the top.
-- Focus: expand focuses the pull tab ("Hide controls"); fold focuses the short row's "Show controls".
+- Focus: expand focuses the pull tab ("Hide controls"); fold focuses the short row's "Show controls". Escape folds
+  too, unless a dialog or popover is open (Escape closes that first).
 - Internals: `.cbar` (the bar; `.overlay` while expanded, with a `.cbar-scroll` box and the pull tab as its sibling), `.cbar-mini` (fixed mini row),
   a spacer `<div>` the height of the block while it floats (no page jump; it follows the content when it changes),
   `scroll-padding-top` on `<html>` (bar height on desktop, 3.5rem on phones) so anchors, `scrollIntoView` and focus land below it.

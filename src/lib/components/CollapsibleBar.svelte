@@ -78,7 +78,14 @@
     await tick();
     document.querySelector<HTMLElement>('.cbar-mini .cbar-toggle')?.focus();
   }
+
+  // Escape folds the open bar, unless it is closing a dialog or popover first.
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && expanded && !e.defaultPrevented && !document.querySelector('dialog[open], :popover-open')) fold();
+  };
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 {#if expanded}<div bind:this={spacerEl} style:height="{bodyH + chrome}px" style:margin-bottom={spacerMargin}></div>{/if}
 <!-- A #hash link inside the bar (Jump to chips) folds it: the section lands below the short row. -->

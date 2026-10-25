@@ -6874,6 +6874,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
       await page.keyboard.press('Enter');
       await expect(page.locator('.cbar-pull')).toBeFocused();
+      await page.keyboard.press('Escape');
+      await expect(overlay).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
     } },
   // A Jump to chip in the expanded bar folds it and lands the section just under the short row (or the page ends first).
   { name: 'insights-cbar-jump-folds', path: () => '/insights?tab=records&range=all',
