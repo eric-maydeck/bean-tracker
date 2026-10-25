@@ -1,7 +1,11 @@
+<script lang="ts" module>
+  export type JumpLink = readonly [string, string] | null | false | undefined | 0;
+</script>
+
 <script lang="ts">
   // "Jump to" chips: one per section a tab renders, each a #hash link (no load; the page's scroll-padding clears the sticky bar).
   // Fewer than 3 sections: nothing to jump between. Styles: .board-jump in app.css.
-  let { links, label = 'Jump to a section' }: { links: (readonly [string, string] | null | false | undefined | 0)[]; label?: string } = $props();
+  let { links, label = 'Jump to a section' }: { links: JumpLink[]; label?: string } = $props();
   const items = $derived(links.filter((l): l is readonly [string, string] => !!l));
 </script>
 

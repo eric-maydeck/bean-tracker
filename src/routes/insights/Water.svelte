@@ -1,3 +1,19 @@
+<script lang="ts" module>
+  import type { WaterTab } from '$lib/server/insights/lab';
+  import type { JumpLink } from './JumpNav.svelte';
+  export function jumpLinks(t: WaterTab): JumpLink[] {
+    return [
+      t.recipes.length && ['water-recipes', 'Ratings by recipe'],
+      t.gh.length && ['water-gh', 'GH vs rating'],
+      t.map && ['water-minerals', 'Recipe mineral map'],
+      t.byRoast && ['water-roast', 'Water × roast level'],
+      t.byProcess && ['water-process', 'Water × process'],
+      t.eras && ['water-eras', 'Water usage over time'],
+      t.pairs.length && ['water-pairs', 'Same bag, different water']
+    ];
+  }
+</script>
+
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
   import { bottomInView } from '$lib/scrollToBottom';
@@ -5,12 +21,10 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import TipBody, { type Tip } from '$lib/components/TipBody.svelte';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import type { WaterTab } from '$lib/server/insights/lab';
   import { deltaInk, signed } from '$lib/components/deltaColor';
   import DeltaBars, { bandRows, SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
-  import JumpNav from './JumpNav.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import MineralMap from './MineralMap.svelte';
   import SampleNote from '$lib/components/SampleNote.svelte';
@@ -72,15 +86,6 @@
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews with a water recipe in this period.')}</p></section>
 {:else}
-  <JumpNav links={[
-    t.recipes.length && ['water-recipes', 'Ratings by recipe'],
-    t.gh.length && ['water-gh', 'GH vs rating'],
-    t.map && ['water-minerals', 'Recipe mineral map'],
-    t.byRoast && ['water-roast', 'Water × roast level'],
-    t.byProcess && ['water-process', 'Water × process'],
-    t.eras && ['water-eras', 'Water usage over time'],
-    t.pairs.length && ['water-pairs', 'Same bag, different water']
-  ]} />
   {#if t.recipes.length || t.gh.length}
     <!-- Ratings by recipe beside GH vs rating (W3): half slots, one height. -->
     <div class="insights-charts water-pair" use:fitPairs={t}>

@@ -1,3 +1,25 @@
+<script lang="ts" module>
+  import type { BrewerType } from '$lib/insightsUrl';
+  import type { RecordsTab, Section } from '$lib/server/insights/records';
+  import type { JumpLink } from './JumpNav.svelte';
+
+  const TITLE: Record<Section, string> = {
+    taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
+  };
+  function sectionList(t: RecordsTab, brewer: BrewerType | undefined) {
+    const out = t.sections.map((s) => ({ ...s, title: TITLE[s.key] }));
+    // The brewer switch lives in Brew extremes: keep the panel when a brewer has nothing here.
+    if (brewer && !out.some((s) => s.key === 'extremes')) {
+      const i = out.findIndex((s) => s.key === 'gentle');
+      out.splice(i < 0 ? out.length : i, 0, { key: 'extremes', tiles: [], title: TITLE.extremes });
+    }
+    return out;
+  }
+  export function jumpLinks(t: RecordsTab, brewer: BrewerType | undefined): JumpLink[] {
+    return sectionList(t, brewer).map((s) => [`records-${s.key}`, s.title] as const);
+  }
+</script>
+
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
   import { setting } from '$lib/settingName';
@@ -9,11 +31,10 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { formatGrams } from '$lib/grams';
   import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewFilterKey, type BrewerType, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
-  import type { Fmt, Holder, RecordPick, RecordsTab, RecordTile, Section } from '$lib/server/insights/records';
+  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import type { Fmt, Holder, RecordPick, RecordTile } from '$lib/server/insights/records';
   import { rowVars } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import JumpNav from './JumpNav.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';
@@ -26,9 +47,6 @@
     ratingsHelp: Record<Ratings, string>; personHelp: string; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  const TITLE: Record<Section, string> = {
-    taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
-  };
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
   const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
@@ -112,15 +130,7 @@
     return { destroy: () => { ro.disconnect(); hide(); for (const [e, f] of on) el.removeEventListener(e, f); } };
   }
 
-  let sections = $derived.by(() => {
-    const out = t.sections.map((s) => ({ ...s, title: TITLE[s.key] }));
-    // The brewer switch lives in Brew extremes: keep the panel when a brewer has nothing here.
-    if (brewer && !out.some((s) => s.key === 'extremes')) {
-      const i = out.findIndex((s) => s.key === 'gentle');
-      out.splice(i < 0 ? out.length : i, 0, { key: 'extremes', tiles: [], title: TITLE.extremes });
-    }
-    return out;
-  });
+  let sections = $derived(sectionList(t, brewer));
   const emptyLine = useEmptyLine();
 </script>
 
@@ -203,6 +213,8 @@
 <!-- A ranked list (top coffees, top brews): 10 → 20 → 50 and back a step at a time; Show less sits left. -->
 {#snippet topList(id: string, noun: string, rows: { score: number; holder: Holder; line: string; like?: { gap: number; label: string } }[], n: Top | undefined, set: (v: Top | undefined) => unknown)}
   {@const shown = rows.slice(0, n ?? 10)}
+  <!-- svelte-check hoists this snippet out of the instance (a module script exists) unless an expression names `full`; a bare use:fit does not count. -->
+  {@const fit = full}
   <HeadingAnchor {id} level={3} class="top-title">Top {shown.length} {noun}</HeadingAnchor>
   <ol class="top-brews">
     {#each shown as row, i (i)}
@@ -210,8 +222,8 @@
         <span class="rank">{i + 1}</span>
         <span class="top-rating">{row.score.toFixed(1)}</span>
         <span class="who">
-          {#if row.holder.href}<a href={row.holder.href} use:full><CoffeeName text={row.holder.label} /></a>{:else}<span use:full><CoffeeName text={row.holder.label} /></span>{/if}
-          <small use:full><CoffeeName text={row.line} /></small>
+          {#if row.holder.href}<a href={row.holder.href} use:fit><CoffeeName text={row.holder.label} /></a>{:else}<span use:fit><CoffeeName text={row.holder.label} /></span>{/if}
+          <small use:fit><CoffeeName text={row.line} /></small>
 
           {#if row.like}<LikeLine like={row.like} />{/if}
         </span>
@@ -221,7 +233,6 @@
   <ShowMore count={rows.length} {n} {set} />
 {/snippet}
 
-<JumpNav links={sections.map((s) => [`records-${s.key}`, s.title] as const)} />
 {#if !sections.length}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No brews in this period.')}</p></section>
 {/if}

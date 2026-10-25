@@ -1,15 +1,24 @@
+<script lang="ts" module>
+  import type { Trend } from '$lib/insightsUrl';
+  import type { ConsumptionTab } from '$lib/server/insights/consumption';
+  import type { JumpLink } from './JumpNav.svelte';
+  const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
+  export function jumpLinks(t: ConsumptionTab, trend: Trend | undefined): JumpLink[] {
+    const empty = t.buckets.length === 0;
+    return [!empty && ['consumption-chart-brewed', trend ? TITLE[trend] : 'Brewed over time'], !empty && ['consumption-chart-bought', 'Bought vs brewed'], !empty && ['consumption-chart-on-hand', 'On hand over time']];
+  }
+</script>
+
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
-  import JumpNav from './JumpNav.svelte';
   import type { Snippet } from 'svelte';
   import Chart from '$lib/components/Chart.svelte';
   import { formatGrams } from '$lib/grams';
-  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Trend, type Unit } from '$lib/insightsUrl';
+  import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
-  import type { ConsumptionTab } from '$lib/server/insights/consumption';
 
   let {
     t, wholeKeys, periodLabel, compareLabel, compareDates, unit, trend, agg, offered, choose, tiles, part
@@ -37,7 +46,6 @@
   // Brewed over time: the Unit's measure (grams / bags), or the toggle's Brews / Water / Rating.
   const TRENDS: [Trend | undefined, string][] = [[undefined, ''], ['brews', 'Brews'], ['water', 'Water'], ['rating', 'Rating']];
   const measures = $derived(TRENDS.map(([v, name]) => [v ?? 'unit', v ? name : CAP(unit)] as const));
-  const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
   const NOUN: Record<Trend, string> = { brews: 'Brews', water: 'Litres of water poured', rating: 'Mean rating' };
   const from = $derived(trend === 'rating' ? t.ratingFrom : 0);
   // compareBrewed lines up with brewed by index only (a clipped previous window can be shorter):
@@ -106,7 +114,6 @@
 {#snippet whole()}{#if wholeKeys.length}<WholeNote keys={wholeKeys} />{/if}{/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
-<JumpNav links={[!empty && ['consumption-chart-brewed', trend ? TITLE[trend] : 'Brewed over time'], !empty && ['consumption-chart-bought', 'Bought vs brewed'], !empty && ['consumption-chart-on-hand', 'On hand over time']]} />
 {@render tiles()}
 
 <!-- Nothing in the period: one short panel, not three tall blank charts (rule 28). -->

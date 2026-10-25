@@ -1,7 +1,15 @@
+<script lang="ts" module>
+  import type { Habits } from '$lib/server/insights/habits';
+  import type { JumpLink } from './JumpNav.svelte';
+  export function jumpLinks(h: Habits): JumpLink[] {
+    const empty = h.tiles.brewDays === 0;
+    return [!empty && ['habits-hour', 'By hour of day'], !empty && ['habits-weekday', 'By day of week'], !empty && ['habits-heatmap', 'Hour × weekday'], !empty && ['habits-calendar', 'Brew calendar']];
+  }
+</script>
+
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
-  import JumpNav from './JumpNav.svelte';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
   import Chart from '$lib/components/Chart.svelte';
@@ -10,7 +18,6 @@
   import { formatGrams } from '$lib/grams';
   import { hour12 } from '$lib/hours';
   import { AGG_LABEL, AGGS, MEASURES, WEEKDAYS, type Agg, type InsightsUrlState, type Measure } from '$lib/insightsUrl';
-  import type { Habits } from '$lib/server/insights/habits';
 
   let {
     h, measure, agg, comparing, periodLabel, compareLabel, choose, tiles, part
@@ -75,7 +82,6 @@
 {/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
-<JumpNav links={[!empty && ['habits-hour', 'By hour of day'], !empty && ['habits-weekday', 'By day of week'], !empty && ['habits-heatmap', 'Hour × weekday'], !empty && ['habits-calendar', 'Brew calendar']]} />
 {@render tiles()}
 
 <!-- A period with no brews is one empty panel, not four empty charts (rule 28). -->

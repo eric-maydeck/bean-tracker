@@ -22,18 +22,18 @@
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
   import { packSpans } from './rows';
-  import Leaderboards from './Leaderboards.svelte';
-  import Habits from './Habits.svelte';
-  import Consumption from './Consumption.svelte';
-  import Records from './Records.svelte';
+  import Leaderboards, { jumpLinks as boardsLinks } from './Leaderboards.svelte';
+  import Habits, { jumpLinks as habitsLinks } from './Habits.svelte';
+  import Consumption, { jumpLinks as consumptionLinks } from './Consumption.svelte';
+  import Records, { jumpLinks as recordsLinks } from './Records.svelte';
   import Milestones from './Milestones.svelte';
-  import Insights from './Insights.svelte';
+  import Insights, { jumpLinks as insightsLinks } from './Insights.svelte';
   import SweetSpots from './SweetSpots.svelte';
-  import Brewing from './Brewing.svelte';
-  import Water from './Water.svelte';
-  import Gear from './Gear.svelte';
+  import Brewing, { jumpLinks as brewingLinks } from './Brewing.svelte';
+  import Water, { jumpLinks as waterLinks } from './Water.svelte';
+  import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
   import Recent from './Recent.svelte';
-  import JumpNav from './JumpNav.svelte';
+  import JumpNav, { type JumpLink } from './JumpNav.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
   import { toParams, type StatusTab } from '$lib/coffeeViewState';
@@ -453,6 +453,20 @@
   let periodText = $derived(
     [span(data.period), data.previousPeriod && `vs ${span(data.previousPeriod)}`, 'Mountain Time'].filter(Boolean).join(' · ')
   );
+  // The Jump to chips: each tab's own jumpLinks, in the tab's own branch order (the overview is the fallthrough).
+  const jump = $derived.by((): JumpLink[] => {
+    if (data.boards) return boardsLinks(data.boards, data.boardsCut, s.rank);
+    if (s.tab === 'habits' && data.habits) return habitsLinks(data.habits);
+    if (s.tab === 'consumption' && data.consumptionTab) return consumptionLinks(data.consumptionTab, s.trend);
+    if (s.tab === 'sweetspots' && data.sweetSpots && data.lab) return [];
+    if (s.tab === 'records' && data.records) return recordsLinks(data.records, s.brewer);
+    if (s.tab === 'milestones' && data.milestones) return [];
+    if (s.tab === 'insights' && data.insights) return insightsLinks(data.insights);
+    if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
+    if (s.tab === 'water' && data.water) return waterLinks(data.water);
+    if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
+    return [['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']];
+  });
 </script>
 
 
@@ -692,6 +706,7 @@
     {/if}
   {/if}
 </div>
+<JumpNav links={jump} label={s.tab === 'leaderboards' ? 'Jump to a board' : undefined} />
 <span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
@@ -830,7 +845,6 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else}
-  <JumpNav links={[['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']]} />
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}
   {@render panel('Consumption', CONSUMPTION, data.consumption, data.consumptionDeltas, ['Time to clear'])}

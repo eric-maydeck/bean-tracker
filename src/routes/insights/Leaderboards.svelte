@@ -1,3 +1,21 @@
+<script lang="ts" module>
+  import { LIKE_BOARDS, type Board, type Rank } from '$lib/insightsUrl';
+  import type { PageData } from './$types';
+  import type { JumpLink } from './JumpNav.svelte';
+
+  type Rows = NonNullable<PageData['boards']>;
+  const TITLE: Record<Board, string> = {
+    roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', process: 'Process group', roast: 'Roast level',
+    water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
+  };
+  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
+  export function jumpLinks(boards: Rows, cut: Board[], rank: Rank): JumpLink[] {
+    // A whole tab with nothing to rank is one empty panel: no chips.
+    if (!cut.length && BANDS.flat().every((b) => !boards[b].length)) return [];
+    return BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)).map((b) => [`leaderboard-${b}`, TITLE[b]] as const);
+  }
+</script>
+
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
   import { bottomInView } from '$lib/scrollToBottom';
@@ -14,16 +32,13 @@
   import WorldMap from '$lib/components/WorldMap.svelte';
   import { BAG_MIN_BREWS, POOLED_MIN_BAGS, POOLED_MIN_BREWS, scoredLine, withinNoise } from '$lib/sample';
   import type { Tip } from '$lib/components/TipBody.svelte';
-  import { BAG_BOARDS, BOARDS, BOARD_NOUN, LIKE_BOARDS, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type Board, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState, type Rank } from '$lib/insightsUrl';
+  import { BAG_BOARDS, BOARDS, BOARD_NOUN, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import Chart from '$lib/components/Chart.svelte';
   import type { BoardSeries } from '$lib/server/insights/leaderboards';
   import { deltaColor, deltaInk, likeGap } from '$lib/components/deltaColor';
-  import type { PageData } from './$types';
-  import JumpNav from './JumpNav.svelte';
 
-  type Rows = NonNullable<PageData['boards']>;
   let {
     boards, wholeKeys, cut, rank, avg, open, views, series, comparing, perPerson, placeTip, choose, link, part
   }: {
@@ -37,14 +52,9 @@
     link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
 
-  const TITLE: Record<Board, string> = {
-    roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', process: 'Process group', roast: 'Roast level',
-    water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
-  };
   const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g', like: 'vs like coffees' };
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
-  const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
 
   // Each board's Show all is its own: toggling one leaves the others as they are.
   const toggle = (b: Board) => {
@@ -333,7 +343,6 @@
   <section class="chart-panel"><p class="hl-empty">{emptyLine(emptyText())}</p></section>
 {:else}
   <!-- Under like only coffees and roasters rank; the rest are left out, with one line saying so (no empty cards). -->
-  <JumpNav label="Jump to a board" links={BANDS.flat().filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b)).map((b) => [`leaderboard-${b}`, TITLE[b]] as const)} />
   {#each BANDS as full, i (i)}
     {@const band = full.filter((b) => rank !== 'like' || LIKE_BOARDS.includes(b))}
     {#if band.length}

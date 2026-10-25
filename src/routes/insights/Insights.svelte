@@ -3,6 +3,17 @@
   import { STRENGTH, STRENGTH_WHY, type Badge } from '$lib/strength';
   // The strength badges' words and explanations, shared with Sweet spots.
   export { STRENGTH };
+  import type { JumpLink } from './JumpNav.svelte';
+  import type { InsightsTab } from '$lib/server/insights/insightGenerators';
+  export function jumpLinks(t: InsightsTab): JumpLink[] {
+    return [
+      ['insights-findings', 'Findings'],
+      t.stories.length && ['insights-stories', 'Top stories'],
+      t.myths.length && ['insights-myths', 'Myth busters'],
+      (t.whatIf.onHandG > 0 || t.whatIf.avgPricePerG !== null) && ['insights-what-if', 'What if…'],
+      t.tooEarly.length && ['insights-too-early', 'Too early to tell']
+    ];
+  }
   // Their help popovers (ui-rules 36: a title, one idea per line).
   export const STRENGTH_TIP: Record<Badge, Tip> = {
     solid: { title: STRENGTH.solid, lines: [STRENGTH_WHY.solid] },
@@ -24,11 +35,10 @@
   import { formatGrams } from '$lib/grams';
   import { MON, THEMES, WHATIF_LIMITS as L, type BrewFilterKey, type InsightsUrlState, type Theme } from '$lib/insightsUrl';
   import { DAYS_PER_MONTH, runway, spend, type WhatIf } from '$lib/insightsWhatIf';
-  import type { Finding, InsightsTab } from '$lib/server/insights/insightGenerators';
+  import type { Finding } from '$lib/server/insights/insightGenerators';
   import { lines } from './multiLine';
   import { rowVars, sizedGrid } from './rows';
   import HeadingAnchor from './HeadingAnchor.svelte';
-  import JumpNav from './JumpNav.svelte';
   import TileCaption from './TileCaption.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
 
@@ -324,14 +334,6 @@
     </div>
   {/if}
 {/snippet}
-
-<JumpNav links={[
-  ['insights-findings', 'Findings'],
-  deck.length && ['insights-stories', 'Top stories'],
-  t.myths.length && ['insights-myths', 'Myth busters'],
-  (t.whatIf.onHandG > 0 || perMonth !== null) && ['insights-what-if', 'What if…'],
-  t.tooEarly.length && ['insights-too-early', 'Too early to tell']
-]} />
 
 <section class="chart-panel">
   <HeadingAnchor id="insights-findings">Findings</HeadingAnchor>

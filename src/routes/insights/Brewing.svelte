@@ -1,14 +1,32 @@
+<script lang="ts" module>
+  import type { BrewingTab, BrewVar } from '$lib/server/insights/lab';
+  import type { JumpLink } from './JumpNav.svelte';
+  // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
+  const SETTLE = [['roast', 'roast level'], ['process', 'process'], ['dripper', 'dripper'], ['water', 'water']] as const;
+  // time is full width; Grind drift sits beside Grind. A slot with no data leaves its partner the full row.
+  const SLOTS: (BrewVar | 'drift')[][] = [['temp', 'ratio'], ['dose', 'bloom'], ['time'], ['grind', 'drift']];
+  export function jumpLinks(t: BrewingTab): JumpLink[] {
+    const vars = SLOTS.some((row) => row.some((k) => (k === 'drift' ? t.drift.length : t.vars.some((v) => v.key === k))));
+    return [
+      t.rest && ['brewing-rest', 'Rest curve'],
+      t.dialIn.length && ['brewing-dialin', 'Dial-in'],
+      t.bestAt.length && ['brewing-best', 'Brews until dialed'],
+      ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Brews until dialed in, by ${by}`] as const)),
+      vars && ['brewing-vars', 'Variables vs rating']
+    ];
+  }
+</script>
+
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
   import Chart from '$lib/components/Chart.svelte';
   import { EXACT_PARAM, type InsightsUrlState, type InsightsView, type Slice } from '$lib/insightsUrl';
-  import type { BrewingTab, BrewVar, LabOptions } from '$lib/server/insights/lab';
+  import type { LabOptions } from '$lib/server/insights/lab';
   import { SAMPLE_HELP, sampleField } from '$lib/sample';
   import DeltaBars, { bandRows, SAME_BAG_HELP } from './DeltaBars.svelte';
   import { signed } from '$lib/components/deltaColor';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
-  import JumpNav from './JumpNav.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
@@ -23,12 +41,10 @@
 
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
   // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
-  const SETTLE = [['roast', 'roast level'], ['process', 'process'], ['dripper', 'dripper'], ['water', 'water']] as const;
   const PARTNER = { roast: 'process', process: 'roast', dripper: 'water', water: 'dripper' } as const;
   let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !SETTLE.some(([k]) => t.settle[k].length) && !t.drift.length && !t.vars.length);
   // Fixed slots (G9/B5): a toggle or Break down by never moves a chart. Pairs share a row (one height); Brew
   // time is full width; Grind drift sits beside Grind. A slot with no data leaves its partner the full row.
-  const SLOTS: (BrewVar | 'drift')[][] = [['temp', 'ratio'], ['dose', 'bloom'], ['time'], ['grind', 'drift']];
   let slots = $derived(SLOTS.map((row) => row.filter((k) => (k === 'drift' ? t.drift.length : t.vars.some((v) => v.key === k)))).filter((r) => r.length));
   const chartOf = (k: BrewVar) => t.vars.find((v) => v.key === k)!;
   // Brews until dialed's window (lab.ts BEST_WINDOW, server-only): one bar per brew number in it.
@@ -45,13 +61,6 @@
 {#if empty}
   <section class="chart-panel"><p class="hl-empty">{emptyLine('No rated brews in this period.')}</p></section>
 {:else}
-  <JumpNav links={[
-    t.rest && ['brewing-rest', 'Rest curve'],
-    t.dialIn.length && ['brewing-dialin', 'Dial-in'],
-    t.bestAt.length && ['brewing-best', 'Brews until dialed'],
-    ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Brews until dialed in, by ${by}`] as const)),
-    slots.length && ['brewing-vars', 'Variables vs rating']
-  ]} />
   {#if t.rest}
     <section class="chart-panel" data-section="brewing-rest">
       <LabHead id="brewing-rest" title="Rest curve" {placeTip}

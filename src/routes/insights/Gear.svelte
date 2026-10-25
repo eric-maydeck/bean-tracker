@@ -1,17 +1,30 @@
+<script lang="ts" module>
+  import type { GearTab } from '$lib/server/insights/lab';
+  import type { Trophy } from '$lib/server/insights/trophies';
+  import type { JumpLink } from './JumpNav.svelte';
+  export function jumpLinks(t: GearTab, trophies: Trophy[] | null): JumpLink[] {
+    return [
+      trophies && ['gear-trophies', 'Gear showcase'],
+      t.drippers.length && ['gear-drippers', 'Dripper ratings'],
+      t.filters.length && ['gear-filters', 'Filter ratings'],
+      t.matrix && ['gear-matrix', 'Filters per dripper'],
+      t.byRoast && ['gear-roast', 'Dripper × roast'],
+      t.eras && ['gear-eras', 'Usage over time']
+    ];
+  }
+</script>
+
 <script lang="ts">
   import { useEmptyLine } from './coffeeNote';
   import type { InsightsUrlState, InsightsView } from '$lib/insightsUrl';
-  import type { GearTab } from '$lib/server/insights/lab';
   import { SAMPLE_HELP } from '$lib/sample';
   import { SAME_BAG_HELP, STRENGTH_LINE } from './DeltaBars.svelte';
   import TrophyCase from './TrophyCase.svelte';
-  import type { Trophy } from '$lib/server/insights/trophies';
   import LabBoard from './LabBoard.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import UsageChart, { ERA_VIEW_OPTIONS } from './UsageChart.svelte';
-  import JumpNav from './JumpNav.svelte';
   import { fitPairs } from './fitPairs';
 
   let { t, trophies, s, placeTip, choose }: {
@@ -47,15 +60,6 @@
     <div class="fit-body"><LabBoard {rows} slots={stack ? 0 : other.length} {noun} {placeTip} /></div>
   </section>
 {/snippet}
-
-<JumpNav links={[
-  trophies && ['gear-trophies', 'Gear showcase'],
-  t.drippers.length && ['gear-drippers', 'Dripper ratings'],
-  t.filters.length && ['gear-filters', 'Filter ratings'],
-  t.matrix && ['gear-matrix', 'Filters per dripper'],
-  t.byRoast && ['gear-roast', 'Dripper × roast'],
-  t.eras && ['gear-eras', 'Usage over time']
-]} />
 
 {#if trophies}<TrophyCase list={trophies} {s} {choose} {placeTip} />{/if}
 
