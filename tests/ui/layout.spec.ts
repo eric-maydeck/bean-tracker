@@ -2,7 +2,7 @@ import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync } from 'node:fs';
-import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
+import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody, outerHeight } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -2573,7 +2573,11 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight / 3));
       const y = await page.evaluate(() => scrollY);
-      const menu = page.locator('.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
+      // Phones: the bar has scrolled into the short row; the menu is used from the expanded bar, which stays open across the changes.
+      const phone = isPhone(page) && (await page.locator('.cbar').count()) > 0;
+      if (phone) await expandBar(page);
+      const block0 = await outerHeight(page, '.cbar-body'); // 0 on desktop (display: contents)
+      const menu = page.locator(phone ? '.cbar.overlay' : '.filter-bar').getByRole('button', { name: /^Ratings and brews/ });
       await expect(menu).toBeInViewport();
       for (const [name, button, url, label] of [['Brews', 'All brews', /dial=all/, /Calibrated ratings · All brews/], ['Ratings', 'All ratings', /ratings=all/, /All ratings · All brews/]] as const) {
         await menu.click();
@@ -2581,7 +2585,10 @@ export const STATES: State[] = [
         await expect(page).toHaveURL(url);
         await expect(menu).toHaveAccessibleName(label);
         await page.waitForTimeout(600);
-        expect(Math.abs((await page.evaluate(() => scrollY)) - y)).toBeLessThanOrEqual(5);
+        // On phones the block above the content shrinks when the setting hides its "hidden by your settings" note; the page keeps what
+        // is on screen still, so the scroll moves by exactly that change.
+        const shift = (await page.evaluate(() => scrollY)) - y - ((await outerHeight(page, '.cbar-body')) - block0) * (phone ? 1 : 0);
+        expect(Math.abs(shift)).toBeLessThanOrEqual(5);
         await page.keyboard.press('Escape');
       }
     }
