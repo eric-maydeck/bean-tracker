@@ -2,7 +2,7 @@ import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
+import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -6935,6 +6935,38 @@ export const STATES: State[] = [
       expect(last.y + last.height, 'last chip above the pull tab').toBeLessThanOrEqual(tab.y + 1);
       expect(last.y + last.height, 'last chip in the viewport').toBeLessThanOrEqual(page.viewportSize()!.height);
       expect(Math.abs(tab.x - before.x) <= 1 && Math.abs(tab.y - before.y) <= 1, 'pull tab stays put').toBe(true);
+    } },
+  // Back to top stays visible and tappable while the bar is expanded (behind the overlay and pull tab where they meet);
+  // a tap folds the bar and ends at the normal block at the top. The pull tab stays tappable where they overlapped (w360 consumption).
+  { name: 'insights-cbar-back-to-top', viewports: 'two', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      await expandBar(page);
+      const btt = page.getByRole('button', { name: 'Back to top' });
+      await expect(btt).toBeVisible();
+      const hit = (sel: string) => page.evaluate((sel) => {
+        const el = document.querySelector(sel)!, r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return !!top && (el === top || el.contains(top));
+      }, sel);
+      const [b, o, pull] = await Promise.all([btt.boundingBox(), page.locator('.cbar.overlay').boundingBox(), page.locator('.cbar-pull').boundingBox()]);
+      const meets = (r: { x: number; y: number; width: number; height: number }) => b!.x < r.x + r.width && b!.x + b!.width > r.x && b!.y < r.y + r.height && b!.y + b!.height > r.y;
+      if (!meets(o!) && !meets(pull!)) expect(await hit('.back-to-top'), 'Back to top is on top where nothing overlaps it').toBe(true);
+      expect(await hit('.cbar-pull'), 'the pull tab wins its own tap').toBe(true);
+      if (await tapBackToTop(page)) await expectAtTopFolded(page);
+    } },
+  { name: 'insights-cbar-back-to-top-tap', viewports: 'two', path: () => '/insights?tab=consumption&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      await expandBar(page);
+      const btt = page.getByRole('button', { name: 'Back to top' });
+      await expect(btt).toBeVisible();
+      // w360 consumption: the overlay reaches the button; whichever spot is free is tapped, and the overlay always wins its own area.
+      const pull = (await page.locator('.cbar-pull').boundingBox())!;
+      expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('.cbar-pull'), [pull.x + pull.width / 2, pull.y + pull.height / 2])).toBe(true);
+      if (await tapBackToTop(page)) await expectAtTopFolded(page);
     } },
   // The Ratings and brews popover opens under its button and closes when the overlay scrolls under it.
   { name: 'insights-cbar-ratings-menu', path: () => '/insights?tab=records&range=all',

@@ -209,3 +209,18 @@ export const anchorGap = (page: Page, id: string): Promise<number> => page.evalu
   const bottom = pinned ? pinned.getBoundingClientRect().bottom : bar && getComputedStyle(bar).position === 'sticky' ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
   return top - bottom;
 }, id);
+
+// Tap Back to top where nothing covers it (a few spots on the button); false when the overlay or pull tab covers all of them.
+export async function tapBackToTop(page: Page): Promise<boolean> {
+  const b = (await page.getByRole('button', { name: 'Back to top' }).boundingBox())!;
+  const spots = [[0.5, 0.5], [0.5, 0.15], [0.15, 0.5], [0.85, 0.5], [0.5, 0.85]].map(([fx, fy]) => ({ x: b.x + b.width * fx, y: b.y + b.height * fy }));
+  const free = await page.evaluate((spots) => spots.find((p) => !!document.elementFromPoint(p.x, p.y)?.closest('.back-to-top')) ?? null, spots);
+  if (free) await page.mouse.click(free.x, free.y);
+  return !!free;
+}
+
+export async function expectAtTopFolded(page: Page) {
+  await expect.poll(() => page.evaluate(() => scrollY), { timeout: 8000 }).toBe(0);
+  await expect(page.locator('.cbar.overlay')).toHaveCount(0);
+  await expect(page.locator('.cbar-mini')).toHaveCount(0);
+}
