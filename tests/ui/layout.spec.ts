@@ -6224,6 +6224,253 @@ export const STATES: State[] = [
     }
   },
   {
+    // Zoom buttons (peer review D4): bottom-right inside the map, 44px, disabled at the limits; zoom is never in the URL.
+    name: 'insights-map-zoom-controls',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      const url = page.url();
+      const map = page.locator('.world-map');
+      await map.scrollIntoViewIfNeeded();
+      const btn = (n: string) => page.locator('.map-zoom').getByRole('button', { name: n, exact: true });
+      const [zin, zout, whole] = [btn('Zoom in'), btn('Zoom out'), btn('Show whole world')];
+      const m = (await map.boundingBox())!;
+      for (const b of [zin, zout, whole]) {
+        await expect(b).toBeVisible();
+        const r = (await b.boundingBox())!;
+        expect(r.width).toBeGreaterThanOrEqual(44);
+        expect(r.height).toBeGreaterThanOrEqual(44);
+        expect(r.x).toBeGreaterThanOrEqual(m.x);
+        expect(r.y).toBeGreaterThanOrEqual(m.y);
+        expect(r.x + r.width).toBeLessThanOrEqual(m.x + m.width + 0.5);
+        expect(r.y + r.height).toBeLessThanOrEqual(m.y + m.height + 0.5);
+      }
+      const g = (await page.locator('.map-zoom').boundingBox())!;
+      expect(m.x + m.width - (g.x + g.width), 'group right').toBeLessThanOrEqual(16);
+      expect(m.y + m.height - (g.y + g.height), 'group bottom').toBeLessThanOrEqual(16);
+      expect(g.height, 'group height').toBeLessThanOrEqual(0.25 * m.height);
+      expect(await mapView(page)).toEqual({ k: 1, x: 0, y: 0 });
+      await expect(zout).toBeDisabled();
+      await expect(whole).toBeDisabled();
+      await expect(zin).toBeEnabled();
+      const c = [m.x + m.width / 2, m.y + m.height / 2] as const;
+      const vb0 = await vbAt(page, ...c);
+      await zin.click();
+      await expectZoom(page, 2);
+      await expectSameVb(vb0, await vbAt(page, ...c));
+      await zin.click();
+      await zin.click();
+      await expectZoom(page, 8);
+      await expect(zin).toBeDisabled();
+      await zout.click();
+      await expectZoom(page, 4);
+      await whole.click();
+      expect(await mapView(page)).toEqual({ k: 1, x: 0, y: 0 });
+      await expect(zout).toBeDisabled();
+      await expect(whole).toBeDisabled();
+      await zin.click(); // end zoomed: checkLayout covers a zoomed map
+      await expectZoom(page, 2);
+      expect(page.url()).toBe(url);
+    }
+  },
+  {
+    // A small country (Rwanda) is reachable at 8x: a drag pans without pinning, a tap then pins, and the pinned tip
+    // follows its country and closes once the country leaves the map (Review Focus 3: a tap after a pan still pins).
+    name: 'insights-map-zoom-tip',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      const map = page.locator('.world-map');
+      await map.scrollIntoViewIfNeeded();
+      const zin = page.locator('.map-zoom').getByRole('button', { name: 'Zoom in', exact: true });
+      for (let i = 0; i < 3; i++) await zin.click();
+      await expectZoom(page, 8);
+      const m = (await map.boundingBox())!;
+      const [rx, ry] = await mapPoint(page, 'RW');
+      await drag(page, [rx, ry], [m.x + m.width / 2, m.y + m.height / 2]);
+      const tip = page.locator('.cell-tip:popover-open');
+      await expect(tip, 'a drag does not pin').toHaveCount(0);
+      const [x, y] = await mapPoint(page, 'RW');
+      await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+      await expectDataTip(tip);
+      await expect(tip.locator('.tip-title')).toHaveText('Rwanda');
+      await expect(tip.locator('dt')).toHaveText(['Coffees', 'Share', 'Brews']);
+      await expect(tip.getByRole('link', { name: 'See coffees' })).toBeVisible();
+      await expectTipInView(page, tip);
+      const pinned = await vbAt(page, x, y);
+      await drag(page, [m.x + 10, m.y + 10], [m.x + 50, m.y + 30]);
+      await expect(tip).toBeVisible();
+      await frames(page);
+      const [ex, ey] = await mapPoint(page, 'RW', [pinned.x, pinned.y]);
+      const a = (await page.locator('.world-map .tip-anchor').boundingBox())!;
+      expect(Math.hypot(a.x + a.width / 2 - ex, a.y + a.height / 2 - ey), 'anchor stays on Rwanda').toBeLessThanOrEqual(2);
+      await drag(page, [m.x + m.width - 5, m.y + 10], [m.x + 5, m.y + 10]); // Rwanda leaves the map
+      await expect(tip).toHaveCount(0);
+    }
+  },
+  {
+    // Desktop wheel: a plain wheel scrolls the page and shows the hint; Ctrl/Cmd+wheel zooms about the pointer.
+    name: 'insights-map-zoom-wheel',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      if (touch()) return;
+      const map = page.locator('.world-map');
+      const hint = page.locator('.map-hint');
+      const aim = async () => {
+        await map.scrollIntoViewIfNeeded();
+        const [x, y] = await mapPoint(page, 'ET');
+        await page.mouse.move(x, y);
+        return [x, y] as const;
+      };
+      await aim();
+      const s0 = await page.evaluate(() => scrollY);
+      await page.mouse.wheel(0, 200);
+      await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(s0);
+      expect((await mapView(page)).k).toBe(1);
+      await expect(hint).toBeVisible();
+      await expect(hint).toHaveText(/^Hold (⌘|Ctrl) to zoom the map$/);
+      await expect(hint).toBeHidden({ timeout: 3000 });
+      for (let i = 0; i < 5; i++) await page.mouse.wheel(0, 100);
+      expect(await hint.count()).toBeLessThanOrEqual(1);
+      if (await hint.count()) {
+        const [h, z] = [(await hint.boundingBox())!, (await page.locator('.map-zoom').boundingBox())!];
+        expect(h.x < z.x + z.width && z.x < h.x + h.width && h.y < z.y + z.height && z.y < h.y + h.height, 'hint clear of the buttons').toBe(false);
+      }
+      await expect(hint).toHaveCount(0, { timeout: 3000 });
+      const [x, y] = await aim();
+      const [vb0, s1] = [await vbAt(page, x, y), await page.evaluate(() => scrollY)];
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -200);
+      await page.keyboard.up('Control');
+      await expect.poll(async () => (await mapView(page)).k).toBeGreaterThan(1);
+      expect(await page.evaluate(() => scrollY), 'page did not scroll').toBe(s1);
+      await expectSameVb(vb0, await vbAt(page, x, y));
+      await expect(hint).toHaveCount(0);
+      // Review Focus 2: the Ctrl wheel listener is not passive (else the browser zooms the page).
+      const prevented = (ctrlKey: boolean) => page.evaluate(([x, y, ctrlKey]) => {
+        const e = new WheelEvent('wheel', { ctrlKey, deltaY: -100, clientX: x, clientY: y, bubbles: true, cancelable: true });
+        document.elementFromPoint(x, y)!.dispatchEvent(e);
+        return e.defaultPrevented;
+      }, [x, y, ctrlKey] as const);
+      expect(await prevented(true), 'ctrl wheel preventDefaulted').toBe(true);
+      expect(await prevented(false), 'plain wheel left alone').toBe(false);
+      // macOS wording.
+      await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'platform', { get: () => 'MacIntel' }));
+      await reloadReady(page);
+      await aim();
+      await page.mouse.wheel(0, 200);
+      await expect(hint).toHaveText('Hold ⌘ to zoom the map');
+    }
+  },
+  {
+    // Touch: one finger scrolls the page (hint, no pan); two fingers pinch and pan. Synthetic pointer events.
+    name: 'insights-map-zoom-touch',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      const map = page.locator('.world-map');
+      const hint = page.locator('.map-hint');
+      await map.scrollIntoViewIfNeeded();
+      expect(await page.locator('.world-map svg').evaluate((s) => getComputedStyle(s).touchAction)).toBe('pan-x pan-y');
+      const [x, y] = await mapPoint(page, 'ET');
+      await touchGesture(page, [[[x, y]]]); // a tap
+      await page.waitForTimeout(300);
+      await expect(hint, 'a tap shows no hint').toHaveCount(0);
+      await touchGesture(page, [[[x, y], [x, y + 10], [x, y + 20], [x, y + 30]]]);
+      expect(await mapView(page)).toEqual({ k: 1, x: 0, y: 0 });
+      await expect(hint).toHaveText('Use two fingers to move the map');
+      await touchGesture(page, [[[x, y], [x, y + 30]]]);
+      expect(await hint.count()).toBeLessThanOrEqual(1);
+      await expect(hint).toHaveCount(0, { timeout: 3000 });
+      await touchGesture(page, [[[x, y], [x, y + 6]]], 'pointercancel'); // the browser took it for a scroll
+      await expect(hint).toHaveText('Use two fingers to move the map');
+      await expect(hint).toHaveCount(0, { timeout: 3000 });
+      // Pinch: two fingers 100px apart about the map center move to 200px.
+      const m = (await map.boundingBox())!;
+      const [cx, cy] = [m.x + m.width / 2, m.y + m.height / 2];
+      const vb0 = await vbAt(page, cx, cy);
+      const steps = [1, 1.25, 1.5, 1.75, 2];
+      await touchGesture(page, [steps.map((s) => [cx - 50 * s, cy]), steps.map((s) => [cx + 50 * s, cy])]);
+      await expectZoom(page, 2, 0.1);
+      await expectSameVb(vb0, await vbAt(page, cx, cy));
+      // Both fingers +40px in x: the map follows.
+      const [ex0] = await mapPoint(page, 'ET', [582, 200]);
+      const mv = [0, 10, 20, 30, 40];
+      await touchGesture(page, [mv.map((d) => [cx - 50 + d, cy]), mv.map((d) => [cx + 50 + d, cy])]);
+      await expect.poll(async () => Math.abs((await mapPoint(page, 'ET', [582, 200]))[0] - ex0 - 40)).toBeLessThanOrEqual(2);
+      if (touch()) {
+        // Review Focus 1: a two-finger touchmove is preventDefaulted so the browser doesn't scroll/zoom the page.
+        const prevented = (n: number) => page.locator('.world-map svg').evaluate((svg, n) => {
+          const ts = [0, 1].slice(0, n).map((i) => new Touch({ identifier: i + 1, target: svg, clientX: 100 + i * 50, clientY: 100 }));
+          const e = new TouchEvent('touchmove', { touches: ts, targetTouches: ts, changedTouches: ts, cancelable: true, bubbles: true });
+          svg.dispatchEvent(e);
+          return e.defaultPrevented;
+        }, n);
+        expect(await prevented(2), 'two touches preventDefaulted').toBe(true);
+        expect(await prevented(1), 'one touch left to scroll').toBe(false);
+      }
+    }
+  },
+  {
+    // The sharper 1:50m outlines load on the first zoom-in (not before) and swap in without the view moving.
+    name: 'insights-map-zoom-detail',
+    viewports: 'two',
+    path: () => '/insights?tab=leaderboards&rank=brews',
+    act: async (page) => {
+      const url = page.url();
+      const urls: string[] = [];
+      page.on('request', (r) => urls.push(r.url()));
+      await reloadReady(page); // so the listener sees the load
+      const map = page.locator('.world-map');
+      await map.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(500);
+      expect(urls.filter((u) => /worldMap50/.test(u)), 'no 1:50m chunk before zooming').toEqual([]);
+      const [x, y] = await mapPoint(page, 'ET');
+      await page.mouse.click(x, y);
+      const tip = page.locator('.cell-tip:popover-open');
+      await expect(tip).toBeVisible();
+      const paths = () => page.locator('.world-map path').count();
+      const n1 = await paths();
+      await page.locator('.map-zoom').getByRole('button', { name: 'Zoom in', exact: true }).focus();
+      await page.keyboard.press('=');
+      await expectZoom(page, 2);
+      const ctm = () => page.locator('.world-map svg > g').evaluate((g) => { const m = (g as SVGGElement).getScreenCTM()!; return [m.a, m.e, m.f]; });
+      const before = await ctm();
+      await expect.poll(() => urls.some((u) => /worldMap50/.test(u))).toBe(true);
+      await expect.poll(paths).toBeGreaterThan(n1);
+      (await ctm()).forEach((v, i) => expect(Math.abs(v - before[i]), 'view unchanged across the swap').toBeLessThanOrEqual(0.01));
+      await expect(tip.locator('.tip-title')).toHaveText('Ethiopia');
+      // A focused country keeps focus across a zoom (same element).
+      const et = page.locator('.world-map path[data-iso="ET"]');
+      await et.focus();
+      await et.evaluate((el) => ((el as unknown as { __probe: number }).__probe = 1));
+      await page.keyboard.press('-');
+      await expectZoom(page, 1);
+      expect(await page.evaluate(() => (document.activeElement as unknown as { __probe?: number })?.__probe)).toBe(1);
+      // Review Focus 4: zoomed, panned to the world's right edge, then narrowed: the view re-clamps (no blank strip).
+      const zin = page.locator('.map-zoom').getByRole('button', { name: 'Zoom in', exact: true });
+      await zin.click();
+      await zin.click();
+      await expectZoom(page, 4);
+      const m = (await map.boundingBox())!;
+      for (let i = 0; i < 6; i++) await drag(page, [m.x + m.width - 10, m.y + 10], [m.x + 10, m.y + 10]);
+      const vp = page.viewportSize()!;
+      try {
+        await page.setViewportSize({ width: vp.width - 200, height: vp.height });
+        await frames(page);
+        const [right, mapRight] = await Promise.all([
+          page.locator('.world-map svg > g').evaluate((g) => { const s = (g as SVGGElement).ownerSVGElement!; const p = s.createSVGPoint(); p.x = 957; return p.matrixTransform((g as SVGGElement).getScreenCTM()!).x; }), // WORLD_VIEWBOX right edge
+          map.evaluate((e) => e.getBoundingClientRect().right)
+        ]);
+        expect(right, 'world still covers the map').toBeGreaterThanOrEqual(mapRight - 1);
+      } finally {
+        await page.setViewportSize(vp);
+      }
+      expect(page.url()).toBe(url);
+      await reloadReady(page);
+      expect(await mapView(page)).toEqual({ k: 1, x: 0, y: 0 });
+    }
+  },
+  {
     name: 'coffees-bc-yes',
     path: () => '/coffees?status=all&view=list&bc=yes',
     act: async (page: Page) => {
@@ -7118,6 +7365,60 @@ async function expectTapTip(page: Page, open: Locator | (() => Promise<unknown>)
   await tapOn(away);
   await expect(tip, 'a tap elsewhere closes it').toBeHidden();
 }
+// Zoomable origin map (WorldMap.svelte): `.world-map svg > g` carries the zoom/pan transform (identity when absent).
+async function mapView(page: Page) {
+  return page.evaluate(() => {
+    const m = document.querySelector<SVGGElement>('.world-map svg > g')?.transform.baseVal.consolidate()?.matrix;
+    return m ? { k: m.a, x: m.e, y: m.f } : { k: 1, x: 0, y: 0 };
+  });
+}
+const expectZoom = (page: Page, k: number, tol = 0.01) =>
+  expect.poll(async () => Math.abs((await mapView(page)).k - k) <= tol, { message: `map zoom ~${k}` }).toBe(true);
+// Client px of a viewBox point (default: the center of the country's bbox), through the <g>'s CTM; it must be inside the fill.
+async function mapPoint(page: Page, iso: string, at?: [number, number]): Promise<[number, number]> {
+  return page.evaluate(([iso, at]) => {
+    const path = document.querySelector<SVGPathElement>(`.world-map path[data-iso="${iso}"]`)!;
+    const g = document.querySelector<SVGGElement>('.world-map svg > g') ?? path.ownerSVGElement!;
+    const b = path.getBBox();
+    const pt = path.ownerSVGElement!.createSVGPoint();
+    [pt.x, pt.y] = at ?? [b.x + b.width / 2, b.y + b.height / 2];
+    if (!path.isPointInFill(pt)) throw new Error(`(${pt.x},${pt.y}) is not inside ${iso}`);
+    const c = pt.matrixTransform(g.getScreenCTM()!);
+    return [c.x, c.y] as [number, number];
+  }, [iso, at] as const);
+}
+// The viewBox point under a client point, plus the current screen px per viewBox unit.
+async function vbAt(page: Page, cx: number, cy: number) {
+  return page.evaluate(([cx, cy]) => {
+    const svg = document.querySelector<SVGSVGElement>('.world-map svg')!;
+    const g = svg.querySelector<SVGGElement>(':scope > g') ?? svg;
+    const m = g.getScreenCTM()!;
+    const p = new DOMPoint(cx, cy).matrixTransform(m.inverse());
+    return { x: p.x, y: p.y, s: m.a };
+  }, [cx, cy] as const);
+}
+const expectSameVb = (a: { x: number; y: number; s: number }, b: { x: number; y: number; s: number }) =>
+  expect(Math.hypot(a.x - b.x, a.y - b.y) * b.s, 'same map point (px)').toBeLessThanOrEqual(2);
+// Mouse drag in 10 steps.
+async function drag(page: Page, [x0, y0]: [number, number], [x1, y1]: [number, number]) {
+  await page.mouse.move(x0, y0);
+  await page.mouse.down();
+  await page.mouse.move(x1, y1, { steps: 10 });
+  await page.mouse.up();
+}
+// Synthetic touch pointers on the map's SVG (Playwright Firefox has no touch emulation): each finger is a list of
+// points; all go down, all move step by step, then all end.
+async function touchGesture(page: Page, fingers: [number, number][][], end: 'pointerup' | 'pointercancel' = 'pointerup') {
+  await page.evaluate(([fingers, end]) => {
+    const svg = document.querySelector('.world-map svg')!;
+    const fire = (type: string, i: number, [x, y]: number[]) =>
+      svg.dispatchEvent(new PointerEvent(type, { pointerId: 21 + i, pointerType: 'touch', isPrimary: i === 0, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+    fingers.forEach((f, i) => fire('pointerdown', i, f[0]));
+    for (let s = 1; s < Math.max(...fingers.map((f) => f.length)); s++) fingers.forEach((f, i) => f[s] && fire('pointermove', i, f[s]));
+    fingers.forEach((f, i) => fire(end, i, f[f.length - 1]));
+  }, [fingers, end] as const);
+}
+
 // A Chart.js tip opens only on a mark (ui-rules 50), so the sweeps aim at marks: points on colored pixels (a bar,
 // slice or line: chroma, unlike gray grid lines and text), one per 8px column, then a coarse grid as a fallback.
 async function chartPoints(canvas: Locator, settle = true) {
