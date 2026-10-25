@@ -1,8 +1,7 @@
 import type { CoffeeRow, SubscriptionRow } from './types';
 import type { Drops, Mode } from './lotus';
 import type { StatusTab } from './coffeeViewState';
-import { formatGrams } from './grams';
-import { usd } from './money';
+import { formatBag, formatGrams } from './grams';
 import { originWithFlag } from './countryFlags';
 
 export interface Preview { title: string; description: string; image?: { src: string; alt: string } | null }
@@ -31,13 +30,13 @@ export function fitList(items: string[], sep: string, more: boolean, max = DESCR
 }
 
 export function coffeePreview(
-  c: Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'amount_g' | 'roast_date'>,
+  c: Pick<CoffeeRow, 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'amount_g' | 'roast_date' | 'grams_left'>,
   image: { src: string; alt: string } | null
 ): Preview {
   const details = join([
     c.origin?.trim() && originWithFlag(c.origin.trim()),
     c.processing?.trim(),
-    c.amount_g != null && formatGrams(c.amount_g),
+    c.amount_g != null && formatBag(c.amount_g, c.grams_left != null && c.grams_left < c.amount_g ? c.grams_left : null),
     c.roast_date && `Roasted ${c.roast_date}`
   ]);
   return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image };
@@ -46,11 +45,13 @@ export function coffeePreview(
 export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number } }): Preview {
   const title = w.mode === 'recipe' ? `Water: ${w.recipe}` : w.mode === 'drops' ? 'Water: Custom drops' : 'Water: Custom target';
   const d = w.drops;
+  const drops = (n: number) => `${n} drop${n === 1 ? '' : 's'}`;
   const lines = [
     'Lotus drop calculator',
-    w.mode === 'target' && w.target && `Target GH ${f1(w.target.gh)} · KH ${f1(w.target.kh)} ppm`,
-    `${w.ml} mL: Ca ${d.ca} · Mg ${d.mg} · Na ${d.na} · K ${d.k} drops`,
-    `GH ${f1(w.gh)} · KH ${f1(w.kh)} ppm`
+    `Water: ${w.ml} mL`,
+    w.mode === 'target' && w.target && `Target: GH ${f1(w.target.gh)} · KH ${f1(w.target.kh)} ppm`,
+    `Ca: ${drops(d.ca)}`, `Mg: ${drops(d.mg)}`, `Na: ${drops(d.na)}`, `K: ${drops(d.k)}`,
+    `GH: ${f1(w.gh)} ppm`, `KH: ${f1(w.kh)} ppm`
   ].filter(Boolean) as string[];
   return { title, description: lines.join('\n') };
 }
@@ -61,19 +62,10 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
-export function subscriptionsPreview(
-  subs: (Pick<SubscriptionRow, 'roaster_service' | 'subscription_name' | 'price' | 'bag_count' | 'amount_per_bag_g' | 'paused'> & { next_renewal_date: string | null })[]
-): Preview {
+export function subscriptionsPreview(subs: Pick<SubscriptionRow, 'roaster_service' | 'subscription_name'>[]): Preview {
   if (!subs.length) return { title: 'Subscriptions', description: 'No subscriptions.' };
-  const paused = subs.filter((s) => s.paused).length;
-  const lines = subs.map((s) => join([
-    s.roaster_service,
-    s.subscription_name,
-    !!s.bag_count && !!s.amount_per_bag_g && `${s.bag_count} × ${formatGrams(s.amount_per_bag_g)}`,
-    s.price != null && usd(s.price),
-    s.paused ? 'Paused' : s.next_renewal_date && `Renews ${s.next_renewal_date}`
-  ]));
-  return { title: 'Subscriptions', description: fitList([join([plural(subs.length, 'subscription'), paused > 0 && `${paused} paused`]), ...lines], '\n', true) };
+  const lines = subs.map((s) => join([s.roaster_service, s.subscription_name]));
+  return { title: 'Subscriptions', description: fitList([plural(subs.length, 'subscription'), ...lines], '\n', true) };
 }
 
 const STATUS_LABEL: Record<StatusTab, string> = { backlog: 'Backlog', open: 'Open', archive: 'Archive', all: 'All' };

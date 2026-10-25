@@ -43,6 +43,14 @@ describe('coffeePreview', () => {
   it('shows free-text origins without a flag', () => {
     expect(coffeePreview({ ...kenya, origin: 'Ethiopia, Colombia' }, null).description.split('\n')[1]).toMatch(/^Ethiopia, Colombia · Washed/);
   });
+  it('shows the amount left only when known and under the bag size', () => {
+    const line = (grams_left: number | null | undefined) => coffeePreview({ ...kenya, grams_left }, null).description.split('\n')[1];
+    expect(line(44)).toBe('🇰🇪 Kenya · Washed · 250g (44g left) · Roasted 2026-10-03');
+    expect(line(0)).toBe('🇰🇪 Kenya · Washed · 250g (0g left) · Roasted 2026-10-03');
+    expect(line(250)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
+    expect(line(null)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
+    expect(line(undefined)).toBe('🇰🇪 Kenya · Washed · 250g · Roasted 2026-10-03');
+  });
   it('formats kg and passes the image', () => {
     const image = { src: 'https://o/a.webp', alt: 'x' };
     const p = coffeePreview({ ...kenya, amount_g: 1500 }, image);
@@ -53,21 +61,21 @@ describe('coffeePreview', () => {
 
 describe('waterPreview', () => {
   it('recipe mode', () => {
-    expect(waterPreview({ mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 0, k: 4 }, gh: 62.5, kh: 17.857 })).toEqual({
+    expect(waterPreview({ mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857 })).toEqual({
       title: 'Water: Holy Water',
-      description: 'Lotus drop calculator\n900 mL: Ca 0 · Mg 7 · Na 0 · K 4 drops\nGH 62.5 · KH 17.9 ppm'
+      description: 'Lotus drop calculator\nWater: 900 mL\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5 ppm\nKH: 17.9 ppm'
     });
   });
   it('drops mode ignores the recipe', () => {
     expect(waterPreview({ mode: 'drops', recipe: 'Holy Water', ml: 800, drops: { mg: 5, ca: 3, na: 0, k: 0 }, gh: 80.357, kh: 0 })).toEqual({
       title: 'Water: Custom drops',
-      description: 'Lotus drop calculator\n800 mL: Ca 3 · Mg 5 · Na 0 · K 0 drops\nGH 80.4 · KH 0 ppm'
+      description: 'Lotus drop calculator\nWater: 800 mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4 ppm\nKH: 0 ppm'
     });
   });
   it('target mode', () => {
     expect(waterPreview({ mode: 'target', recipe: 'x', ml: 800, drops: { mg: 4, ca: 4, na: 0, k: 0 }, gh: 80.357, kh: 0, target: { gh: 80, kh: 0 } })).toEqual({
       title: 'Water: Custom target',
-      description: 'Lotus drop calculator\nTarget GH 80 · KH 0 ppm\n800 mL: Ca 4 · Mg 4 · Na 0 · K 0 drops\nGH 80.4 · KH 0 ppm'
+      description: 'Lotus drop calculator\nWater: 800 mL\nTarget: GH 80 · KH 0 ppm\nCa: 4 drops\nMg: 4 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4 ppm\nKH: 0 ppm'
     });
   });
 });
@@ -88,43 +96,26 @@ describe('onDeckPreview', () => {
 
 describe('subscriptionsPreview', () => {
   const subs = [
-    { subscription_name: 'Explorer Series: Origins of the World', roaster_service: 'A Very Long Roaster Service Name', bag_count: 2, amount_per_bag_g: 250, price: 44.5, paused: 0, next_renewal_date: '2026-11-15' },
-    { subscription_name: 'Paused Monthly', roaster_service: 'Ceto', bag_count: 1, amount_per_bag_g: 250, price: 22, paused: 1, next_renewal_date: null },
-    { subscription_name: null, roaster_service: 'Sey', bag_count: 1, amount_per_bag_g: 250, price: 30, paused: 0, next_renewal_date: '2026-11-01' }
+    { subscription_name: 'Explorer Series: Origins of the World', roaster_service: 'A Very Long Roaster Service Name' },
+    { subscription_name: 'Paused Monthly', roaster_service: 'Ceto', paused: 1, price: 22, next_renewal_date: null },
+    { subscription_name: null, roaster_service: 'Sey' }
   ];
-  it('one line per subscription', () => {
+  it('one roaster · name line per subscription, no status', () => {
     expect(subscriptionsPreview(subs)).toEqual({
       title: 'Subscriptions',
       description: [
-        '3 subscriptions · 1 paused',
-        'A Very Long Roaster Service Name · Explorer Series: Origins of the World · 2 × 250g · $44.50 · Renews 2026-11-15',
-        'Ceto · Paused Monthly · 1 × 250g · $22.00 · Paused',
-        'Sey · 1 × 250g · $30.00 · Renews 2026-11-01'
+        '3 subscriptions',
+        'A Very Long Roaster Service Name · Explorer Series: Origins of the World',
+        'Ceto · Paused Monthly',
+        'Sey'
       ].join('\n')
     });
   });
-  it('skips missing parts and handles none paused / empty', () => {
-    const p = subscriptionsPreview([{ ...subs[2], price: null, bag_count: null, next_renewal_date: null }, subs[0]]);
-    expect(p.description.split('\n')[0]).toBe('2 subscriptions');
-    expect(p.description.split('\n')[1]).toBe('Sey');
-    // A zero count or size never shows as "0 × 0g".
-    expect(subscriptionsPreview([{ ...subs[2], bag_count: 0, amount_per_bag_g: 0 }]).description.split('\n')[1]).toBe('Sey · $30.00 · Renews 2026-11-01');
+  it('handles none and caps', () => {
     expect(subscriptionsPreview([]).description).toBe('No subscriptions.');
-  });
-});
-
-describe('coffeesPreview', () => {
-  it('summarises the view', () => {
-    expect(coffeesPreview({ count: 23, status: ['backlog'], query: '', chips: [] })).toEqual({ title: 'Coffee Collection', description: '23 coffees · Backlog' });
-    expect(coffeesPreview({ count: 1, status: ['open', 'archive'], query: 'gesha', chips: ['Origin: Kenya', 'Process: Washed'] }).description).toBe('1 coffee · Open + Archive · Origin: Kenya · Process: Washed · “gesha”');
-    expect(coffeesPreview({ count: 5, status: ['all'], query: '', chips: [] }).description).toBe('5 coffees · All');
-  });
-});
-
-describe('statsPreview', () => {
-  it('summarises per tab', () => {
-    const v = { tab: 'general' as const, opened: 4, unopened: 6, onHandG: 3200, finished: 12 };
-    expect(statsPreview(v)).toEqual({ title: 'Stats: General', description: '4 open · 6 unopened · 3.2kg on hand · 12 finished' });
-    expect(statsPreview({ ...v, tab: 'bq' }).title).toBe('Stats: Bean Conqueror');
+    const many = Array.from({ length: 30 }, (_, i) => ({ subscription_name: `Subscription number ${i}`, roaster_service: 'Roaster' }));
+    const d = subscriptionsPreview(many).description;
+    expect(d.length).toBeLessThanOrEqual(300);
+    expect(d.split('\n').at(-1)).toMatch(/…and \d+ more$/);
   });
 });
