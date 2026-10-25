@@ -204,7 +204,7 @@ export async function cbarAct(page: Page, filters = 0) {
 export const anchorGap = (page: Page, id: string): Promise<number> => page.evaluate((id) => {
   const cbar = document.querySelector('.cbar'), pinned = document.querySelector('.cbar-mini') ?? document.querySelector('.cbar.overlay');
   const top = document.getElementById(id)!.getBoundingClientRect().top;
-  if (!pinned && cbar && cbar.getBoundingClientRect().bottom > 0) return 0;
+  if (!pinned && cbar && cbar.getBoundingClientRect().bottom > 0 && top <= cbar.getBoundingClientRect().bottom + 56) return 0;
   const bar = document.querySelector('.filter-bar');
   const bottom = pinned ? pinned.getBoundingClientRect().bottom : bar && getComputedStyle(bar).position === 'sticky' ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
   return top - bottom;

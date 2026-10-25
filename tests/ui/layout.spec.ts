@@ -3865,9 +3865,9 @@ export const STATES: State[] = [
       await expect(head).toBeInViewport();
       await expect(head.locator('a')).toHaveAttribute('href', `#${id}`);
       // Polled: the on-load scroll and the ruler's rAF layout can land after the first read.
-      const barBottom = () => pinnedBottomOf(page);
       const below = async (el: typeof head, max: number) => {
-        const off = async () => (await el.boundingBox())!.y - (await barBottom());
+        const elId = (await el.getAttribute('id'))!;
+        const off = () => anchorGap(page, elId);
         await expect.poll(off).toBeGreaterThanOrEqual(-1);
         await expect.poll(off).toBeLessThan(max);
       };
