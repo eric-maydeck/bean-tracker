@@ -2,12 +2,10 @@
   import { LIKE_BOARDS, type Board, type Rank } from '$lib/insightsUrl';
   import type { PageData } from './$types';
   import type { JumpLink } from './JumpNav.svelte';
+  import { BOARD_TITLE } from './chartLink';
 
   type Rows = NonNullable<PageData['boards']>;
-  const TITLE: Record<Board, string> = {
-    roasters: 'Roasters', coffees: 'Coffees', origins: 'Origins', process: 'Process group', roast: 'Roast level',
-    water: 'Water', dripper: 'Dripper', filter: 'Filter', grinder: 'Grinder'
-  };
+  const TITLE = BOARD_TITLE;
   const BANDS: Board[][] = [['roasters', 'coffees'], ['origins'], ['process', 'roast', 'water', 'dripper', 'filter', 'grinder']];
   export function jumpLinks(boards: Rows, cut: Board[], rank: Rank): JumpLink[] {
     // A whole tab with nothing to rank is one empty panel: no chips.
@@ -35,6 +33,7 @@
   import type { Tip } from '$lib/components/TipBody.svelte';
   import { BAG_BOARDS, BOARDS, BOARD_NOUN, VIEW_BOARDS, COFFEES_AVG, DEFAULT_AVG, RANKS, boardAvg, type Avg, type BrewFilterKey, type BoardView, type BoardViews, type InsightsUrlState } from '$lib/insightsUrl';
   import LikeLine from './LikeLine.svelte';
+  import { RANK_LABEL, boardValue } from './chartLink';
   import { labelTip } from '$lib/components/labelTip';
   import Chart from '$lib/components/Chart.svelte';
   import type { BoardSeries } from '$lib/server/insights/leaderboards';
@@ -53,7 +52,6 @@
     link: (href: string) => string; // the page's Period, Ratings and Coffees filter carried onto a row's link
   } = $props();
 
-  const RANK_LABEL: Record<Rank, string> = { rating: 'Rating', brews: 'Brews', grams: 'Grams', spend: 'Spend', ppg: '$/g', like: 'vs like coffees' };
   // Top 10 where there are many items, top 5 for small sets (spec "Boards").
   const SIZE = (b: Board) => (b === 'roasters' || b === 'coffees' || b === 'origins' ? 10 : 5);
 
@@ -74,14 +72,7 @@
 
   const plural = (n: number, w: string) => `${n.toLocaleString('en-US')} ${w}${n === 1 ? '' : 's'}`;
   // `whole`: the board's money format (ui-rules 46: one per list).
-  function fmt(v: number, whole?: boolean): string {
-    if (rank === 'like') return likeGap(v);
-    if (rank === 'rating') return v.toFixed(1);
-    if (rank === 'grams') return formatGrams(v);
-    if (rank === 'spend') return usd(v, whole);
-    if (rank === 'ppg') return `${usd(v, whole)}/g`;
-    return perPerson && v < 10 ? v.toFixed(1) : Math.round(v).toLocaleString('en-US');
-  }
+  const fmt = (v: number, whole?: boolean) => boardValue(v, rank, perPerson, whole);
   type Row = Rows[Board][number];
   const detail = (r: Row, costWhole?: boolean) =>
     [

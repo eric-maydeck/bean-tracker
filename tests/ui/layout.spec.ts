@@ -1139,6 +1139,25 @@ export const STATES: State[] = [
       expect(m.slice(1)).toEqual([shown.Ca, shown.Mg, shown.Na, shown.K]);
       expect(m.slice(1).join(',')).toBe('0,7,0,4');
     } },
+  { name: 'link-preview-insights', viewports: 'two', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      const origin = new URL(page.url()).origin;
+      const cases: [string, string, RegExp | null][] = [
+        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating: .*🇪🇹 Ethiopia \d/],
+        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time: .+ \(.+\)/],
+        ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^All time · \d+ brews/],
+        ['/insights?chart=leaderboard-origins', 'Insights: Overview', null],
+        ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', null]
+      ];
+      for (const [path, title, desc] of cases) {
+        const t = await previewTags(page, path);
+        expect(t['og:title']).toBe(title);
+        if (desc) expect(t['og:description']).toMatch(desc);
+        expect(t.description).toBe(t['og:description']);
+        expect(t.description.length).toBeLessThanOrEqual(300);
+        expect(t['og:url']).toBe(origin + path);
+      }
+    } },
   { name: 'coffee-detail-no-like', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => expect(page.locator('[data-section="like"]')).toHaveCount(0) },
   // Gate P4: a coffee with rated brews but no panel says why in one line; the tip has the counts; the link opens

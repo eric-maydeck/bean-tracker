@@ -18,7 +18,8 @@
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
-  import { provideChartLink } from './chartLink';
+  import { provideChartLink, insightsPreview } from './chartLink';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import KindsBar from './KindsBar.svelte';
@@ -468,6 +469,13 @@
 <svelte:head>
   <title>Bean Tracker - Insights</title>
 </svelte:head>
+<PreviewMeta
+  preview={insightsPreview({
+    tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
+    filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
+    chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records
+  })}
+/>
 
 <!-- Wide screens: a side rail of every view beside the whole page (the View dropdown stays). The links
      navigate like choose({ tab }): replace the entry, keep the scroll and focus. -->

@@ -1,11 +1,10 @@
 <script lang="ts" module>
   import type { BrewerType } from '$lib/insightsUrl';
-  import type { RecordsTab, Section } from '$lib/server/insights/records';
+  import type { RecordsTab } from '$lib/server/insights/records';
   import type { JumpLink } from './JumpNav.svelte';
+  import { RECORD_TITLE } from './chartLink';
 
-  const TITLE: Record<Section, string> = {
-    taste: 'Taste', volume: 'Volume', freshness: 'Freshness & lifetime', money: 'Money', extremes: 'Brew extremes', gentle: 'Not quite your cup'
-  };
+  const TITLE = RECORD_TITLE;
   function sectionList(t: RecordsTab, brewer: BrewerType | undefined) {
     const out = t.sections.map((s) => ({ ...s, title: TITLE[s.key] }));
     // The brewer switch lives in Brew extremes: keep the panel when a brewer has nothing here.
@@ -24,16 +23,14 @@
   import WholeNote from './WholeNote.svelte';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
-  import { usd } from '$lib/money';
   import { useEmptyLine } from './coffeeNote';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { formatGrams } from '$lib/grams';
-  import { clock12 } from '$lib/hours';
-  import { DIAL_HELP, RATINGS_LABEL, MON, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
+  import { DIAL_HELP, RATINGS_LABEL, type BrewFilterKey, type InsightsUrlState, type Ratings, type Dial, type Top } from '$lib/insightsUrl';
   import type { Fmt, Holder, RecordPick, RecordTile } from '$lib/server/insights/records';
   import { rowVars } from './rows';
+  import { holderDate, isDateHolder, holderName, recordParts, recordValue } from './chartLink';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
@@ -50,39 +47,7 @@
   const BREWER: Record<BrewerType, string> = { pourover: 'Pour over', espresso: 'Espresso', immersion: 'Immersion', soup: 'Soup', other: 'Other' };
   // A tile's own anchor (#record-…), its caption links to it: keys like "grindFine:A4Z (Femobook)" slugged.
   const anchor = (key: string) => `record-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
-  // "Oct 3, 2026"; a month holder (biggest buying month) is "Mar 2026".
-  const date = (d: string) => (d.length === 7 ? `${MON[+d.slice(5, 7) - 1]} ${d.slice(0, 4)}` : `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`);
-  // Day and month records are held by the date itself.
-  const isDate = (h: Holder) => /^\d{4}-\d{2}(-\d{2})?$/.test(h.label);
-  const name = (h: Holder) => (isDate(h) ? date(h.label) : h.label);
-
-  const num = (n: number) => (Number.isInteger(n) ? n.toLocaleString('en-US') : n < 10 ? n.toFixed(1) : Math.round(n).toLocaleString('en-US'));
-  const grams = (n: number) => (n < 100 && !Number.isInteger(n) ? `${+n.toFixed(1)}g` : formatGrams(n));
-  const mss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
-  // [value, small unit after it, the context line when the format moves the detail into the value].
-  function parts(p: RecordPick, fmt: Fmt): [string, string?, string?] {
-    const n = p.value;
-    switch (fmt) {
-      case 'rating': return [n.toFixed(1)];
-      case 'count': return [num(n)];
-      case 'grams': case 'ml': return [grams(n)];
-      case 'days': return [num(n), n === 1 ? 'day' : 'days'];
-      case 'gpd': return [num(n), 'g/day'];
-      case 'money': return [usd(n)];
-      case 'per100': return [usd(n), '/ 100\u00a0g'];
-      case 'clock': { const [hm, ap] = clock12(n).split(' '); return [hm, ap]; }
-      case 'seconds': return [mss(n)];
-      case 'ratio': return [`1:${n.toFixed(1)}`];
-      case 'sd': return [`±${n.toFixed(2)}`];
-      // Ranked by the adjusted delta (value), shown as the raw one (mean).
-      case 'delta': return [`${p.mean! < 0 ? '−' : '+'}${Math.abs(p.mean!).toFixed(2)}`, undefined, 'Vs your average rating'];
-      // An encoded setting: the text is the value.
-      case 'grind': return [p.detail ?? ''];
-      // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
-      case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.per100!)}/100\u00a0g`];
-    }
-  }
-  const plain = (p: RecordPick, fmt: Fmt) => parts(p, fmt).filter(Boolean).join(' ');
+  const date = holderDate, isDate = isDateHolder, name = holderName, parts = recordParts, plain = recordValue;
   // The record's inputs (what its value is made of), on their own line: a derived value shows its working.
   // Roaster money records count bags bought in the period: the line says which window.
   const BOUGHT = new Set(['roasterSpend', 'roasterBags']);
