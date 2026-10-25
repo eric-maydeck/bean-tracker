@@ -74,7 +74,7 @@ describe('waterPreview', () => {
 
 describe('onDeckPreview', () => {
   it('lists, handles empties and caps', () => {
-    expect(onDeckPreview('open', 'all', [{ coffee_name: 'A', roaster: 'R1' }, { coffee_name: 'B', roaster: 'R2' }])).toEqual({ title: 'On Deck: Currently open', description: '1. A · R1\n2. B · R2' });
+    expect(onDeckPreview('open', 'all', [{ coffee_name: 'A', roaster: 'R1' }, { coffee_name: 'B', roaster: 'R2' }])).toEqual({ title: 'On Deck: Currently open', description: '1. R1 · A\n2. R2 · B' });
     expect(onDeckPreview('next', 'decaf', [])).toEqual({ title: 'On Deck: Next up · Decaf', description: 'Backlog is empty.' });
     expect(onDeckPreview('open', 'caffeinated', [])).toEqual({ title: 'On Deck: Currently open · Caffeinated', description: 'Nothing open right now.' });
     const many = Array.from({ length: 40 }, (_, i) => ({ coffee_name: `Coffee name number ${String(i + 1).padStart(2, '0')}`, roaster: 'R' }));
@@ -97,8 +97,8 @@ describe('subscriptionsPreview', () => {
       title: 'Subscriptions',
       description: [
         '3 subscriptions · 1 paused',
-        'Explorer Series: Origins of the World · A Very Long Roaster Service Name · 2 × 250g · $44.50 · Renews 2026-11-15',
-        'Paused Monthly · Ceto · 1 × 250g · $22.00 · Paused',
+        'A Very Long Roaster Service Name · Explorer Series: Origins of the World · 2 × 250g · $44.50 · Renews 2026-11-15',
+        'Ceto · Paused Monthly · 1 × 250g · $22.00 · Paused',
         'Sey · 1 × 250g · $30.00 · Renews 2026-11-01'
       ].join('\n')
     });
@@ -107,6 +107,8 @@ describe('subscriptionsPreview', () => {
     const p = subscriptionsPreview([{ ...subs[2], price: null, bag_count: null, next_renewal_date: null }, subs[0]]);
     expect(p.description.split('\n')[0]).toBe('2 subscriptions');
     expect(p.description.split('\n')[1]).toBe('Sey');
+    // A zero count or size never shows as "0 × 0g".
+    expect(subscriptionsPreview([{ ...subs[2], bag_count: 0, amount_per_bag_g: 0 }]).description.split('\n')[1]).toBe('Sey · $30.00 · Renews 2026-11-01');
     expect(subscriptionsPreview([]).description).toBe('No subscriptions.');
   });
 });

@@ -57,7 +57,7 @@ export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops:
 
 export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated' | 'decaf', coffees: Pick<CoffeeRow, 'coffee_name' | 'roaster'>[]): Preview {
   const title = join(['On Deck: ' + (view === 'open' ? 'Currently open' : 'Next up'), show === 'caffeinated' ? 'Caffeinated' : show === 'decaf' ? 'Decaf' : null]);
-  const lines = coffees.map((c, i) => `${i + 1}. ${c.coffee_name} · ${c.roaster}`);
+  const lines = coffees.map((c, i) => `${i + 1}. ${c.roaster} · ${c.coffee_name}`);
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
@@ -67,9 +67,9 @@ export function subscriptionsPreview(
   if (!subs.length) return { title: 'Subscriptions', description: 'No subscriptions.' };
   const paused = subs.filter((s) => s.paused).length;
   const lines = subs.map((s) => join([
-    s.subscription_name,
     s.roaster_service,
-    s.bag_count != null && s.amount_per_bag_g != null && `${s.bag_count} × ${formatGrams(s.amount_per_bag_g)}`,
+    s.subscription_name,
+    !!s.bag_count && !!s.amount_per_bag_g && `${s.bag_count} × ${formatGrams(s.amount_per_bag_g)}`,
     s.price != null && usd(s.price),
     s.paused ? 'Paused' : s.next_renewal_date && `Renews ${s.next_renewal_date}`
   ]));

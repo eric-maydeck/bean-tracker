@@ -16,13 +16,13 @@ describe('insightsPreview', () => {
   it('Origins board under rating', () => {
     expect(insightsPreview({ ...base, chart: 'leaderboard-origins' })).toEqual({
       title: 'Insights: Origins',
-      description: 'All time · Rating: 🇪🇹 Ethiopia 8.4 · 🇰🇪 Kenya 8.1 · 🇨🇴 Colombia 7.9 · 🇷🇼 Rwanda 7.5 · 🇧🇮 Burundi 7.0'
+      description: 'All time · Rating: 🇪🇹 Ethiopia – 8.4 · 🇰🇪 Kenya – 8.1 · 🇨🇴 Colombia – 7.9 · 🇷🇼 Rwanda – 7.5 · 🇧🇮 Burundi – 7.0'
     });
   });
   it('Origins board under brews', () => {
     const boards = { ...none, origins: rows([['Ethiopia', 34], ['Kenya', 21], ['Colombia', 12]]) };
     expect(insightsPreview({ ...base, boards, rank: 'brews', chart: 'leaderboard-origins' }).description).toBe(
-      'All time · Brews: 🇪🇹 Ethiopia 34 · 🇰🇪 Kenya 21 · 🇨🇴 Colombia 12'
+      'All time · Brews: 🇪🇹 Ethiopia – 34 · 🇰🇪 Kenya – 21 · 🇨🇴 Colombia – 12'
     );
   });
   it('falls back to the page level', () => {
@@ -45,7 +45,7 @@ describe('insightsPreview', () => {
   it('Records section', () => {
     const v = { ...base, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
     expect(insightsPreview({ ...v, chart: 'records-taste' })).toEqual({
-      title: 'Insights: Taste', description: 'Last 3 months: Best bag 9.2 (Lab Bag 3) · Best day 9.0 (Oct 3, 2026)'
+      title: 'Insights: Taste', description: 'Last 3 months: Best bag – 9.2 (Lab Bag 3) · Best day – 9.0 (Oct 3, 2026)'
     });
     expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Insights: Records');
   });

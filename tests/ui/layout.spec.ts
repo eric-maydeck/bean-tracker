@@ -1097,7 +1097,7 @@ export const STATES: State[] = [
       expect(t['og:title']).toBe('Subscriptions');
       const d = t['og:description'];
       expect(d.startsWith('3 subscriptions · 1 paused\n')).toBe(true);
-      expect(d).toContain('Paused Monthly · Ceto · 1 × 250g · $22.00 · Paused');
+      expect(d).toContain('Ceto · Paused Monthly · 1 × 250g · $22.00 · Paused');
       expect(d).toMatch(/\nSey · 1 × 250g · \$30\.00 · Renews \d{4}-\d{2}-\d{2}/);
       expect(t.description).toBe(d);
       expect(d.length).toBeLessThanOrEqual(300);
@@ -1143,8 +1143,8 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, RegExp | null][] = [
-        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating: .*🇪🇹 Ethiopia \d/],
-        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time: .+ \(.+\)/],
+        ['/insights?tab=leaderboards&range=all&chart=leaderboard-origins', 'Insights: Origins', /^All time · Rating: .*🇪🇹 Ethiopia – \d/],
+        ['/insights?tab=records&range=all&chart=records-taste', 'Insights: Taste', /^All time: .+ – .+ \(.+\)/],
         ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^All time · \d+ brews/],
         ['/insights?chart=leaderboard-origins', 'Insights: Overview', null],
         ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', null]
@@ -3380,6 +3380,11 @@ export const STATES: State[] = [
       await gotoReady(page, '/insights?tab=leaderboards&range=all&chart=leaderboard-origins');
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
+      // Any other view change (Rank by here) drops chart= as well.
+      await gotoReady(page, '/insights?tab=leaderboards&range=all&chart=leaderboard-roast');
+      await page.getByRole('combobox', { name: 'Rank by' }).selectOption('brews');
+      await expect(page).toHaveURL(/rank=brews/);
+      expect(page.url()).not.toContain('chart=');
       // A tab switch drops chart= and the hash; the new tab's headings link with their own chart=.
       await page.getByLabel('View').selectOption('habits');
       await expect(page).toHaveURL(/tab=habits/);
