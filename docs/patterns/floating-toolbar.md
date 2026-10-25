@@ -61,15 +61,17 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 8. Share is the rightmost button of its row (rule 51). Edit mode: 3 + 3 rows on phones, short labels ("Save", "Discard", aria-label keeps the full name).
 9. Collapsed row <= 56px with a one-line summary; caret 44px target at the content right edge, `aria-expanded`, labels "Show controls" / "Hide controls".
 10. Caret color: visually distinct and neutral (no good/bad meaning, not the solid primary of rule 24): fill `var(--color-text-muted)`, icon `var(--color-bg)`, border the fill color (user pick, 2026-10-24; 6.0:1 light, 7.3:1 dark).
-11. Tap targets 44px on phones; landscape (> 640 wide) buttons are 36px and the caret matches its neighbor.
+11. Tap targets 44px on phones; landscape (> 640 wide) buttons are 36px; both carets stay 44x44.
 
 ## Bugs we hit
 
+(Squeezed rows, Stale caret, Signed-out row and Grid auto-placement came from the old in-row /coffees caret, replaced by the pull tab; kept as warnings for anything placed inside a bar row.)
+
 - **"Savechanges"**: Svelte trims the leading space inside `<span> changes</span>`. Write `Save <span class="more">changes</span>`.
-- **Squeezed rows**: reserving caret room with float, `padding-right` on the toolbar or a margin on a row narrowed rows that must stay identical. Put the caret in its own row's cell instead.
+- **Squeezed rows**: reserving caret room with float, `padding-right` on the toolbar or a margin on a row narrowed rows that must stay identical. Keep such things out of the rows (the pull tab hangs outside them).
 - **Stale caret after rotating**: a one-off measured `top`/`height` never re-ran on a media-query flip. Use layout, not measurement.
 - **Signed-out row collapsed**: without the optional button the last row shrank to its text height and the caret lost its size. `min-height` on the row; results text `white-space: nowrap`.
-- **Grid auto-placement**: a second item in the same explicit column falls to the next row; give the caret and its sibling `grid-row: 1`.
+- **Grid auto-placement**: a second item in the same explicit column falls to the next row; give both items `grid-row: 1`.
 - **Spacer must follow the content while expanded**: tab switch, Reset, filters or custom dates change the block's height; the spacer is as tall as the block's in-flow height, so the page under the overlay never jumps.
 - **Sticky inside a one-child wrapper** never sticks (its containing block is the wrapper): the bar is a direct child of the page, the spacer is a sibling.
 - **CSS leaked to other pages**: a phone rule on `.toolbar .tab-group button` also hit the /insights and /stats `.toolbar` (and `.cbar .toolbar`
