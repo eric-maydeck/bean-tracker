@@ -6247,7 +6247,12 @@ export const STATES: State[] = [
       const g = (await page.locator('.map-zoom').boundingBox())!;
       expect(m.x + m.width - (g.x + g.width), 'group right').toBeLessThanOrEqual(16);
       expect(m.y + m.height - (g.y + g.height), 'group bottom').toBeLessThanOrEqual(16);
-      expect(g.height, 'group height').toBeLessThanOrEqual(0.25 * m.height);
+      // At most a quarter of the map, or a single row of buttons (44px), whichever is larger.
+      expect(g.height, 'group height').toBeLessThanOrEqual(Math.max(0.25 * m.height, 44));
+      if (0.25 * m.height < 3 * 44) {
+        const tops = await Promise.all([zin, zout, whole].map(async (b) => (await b.boundingBox())!.y));
+        tops.forEach((t) => expect(Math.abs(t - tops[0]), 'short map: one row').toBeLessThanOrEqual(1));
+      }
       expect(await mapView(page)).toEqual({ k: 1, x: 0, y: 0 });
       await expect(zout).toBeDisabled();
       await expect(whole).toBeDisabled();
