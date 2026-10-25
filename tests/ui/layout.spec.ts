@@ -6284,8 +6284,14 @@ export const STATES: State[] = [
       for (let i = 0; i < 3; i++) await zin.click();
       await expectZoom(page, 8);
       const m = (await map.boundingBox())!;
-      const [rx, ry] = await mapPoint(page, 'RW');
-      await drag(page, [rx, ry], [m.x + m.width / 2, m.y + m.height / 2]);
+      // Pan in chunks from inside the map until Rwanda's center reaches the map center (it starts off-map at 8x).
+      for (let i = 0, d = [1, 1]; i < 30 && Math.hypot(d[0], d[1]) > 2; i++) {
+        const [px, py] = await mapPoint(page, 'RW');
+        d = [m.x + m.width / 2 - px, m.y + m.height / 2 - py];
+        const [dx, dy] = [Math.max(-0.4 * m.width, Math.min(0.4 * m.width, d[0])), Math.max(-0.4 * m.height, Math.min(0.4 * m.height, d[1]))];
+        const [sx, sy] = [m.x + m.width / 2 - dx / 2, m.y + m.height / 2 - dy / 2];
+        await drag(page, [sx, sy], [sx + dx, sy + dy]);
+      }
       const tip = page.locator('.cell-tip:popover-open');
       await expect(tip, 'a drag does not pin').toHaveCount(0);
       const [x, y] = await mapPoint(page, 'RW');
@@ -6430,22 +6436,29 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       const paths = () => page.locator('.world-map path').count();
       const n1 = await paths();
-      await page.locator('.map-zoom').getByRole('button', { name: 'Zoom in', exact: true }).focus();
+      // Hold the 1:50m chunk until the "before" view is sampled, so the swap check can't pass vacuously.
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      await page.route(/worldMap50/, async (r) => { await gate; await r.continue(); });
+      const et = page.locator('.world-map path[data-iso="ET"]');
+      await et.focus();
+      await et.evaluate((el) => ((el as unknown as { __probe: number }).__probe = 1));
       await page.keyboard.press('=');
       await expectZoom(page, 2);
       const ctm = () => page.locator('.world-map svg > g').evaluate((g) => { const m = (g as SVGGElement).getScreenCTM()!; return [m.a, m.e, m.f]; });
       const before = await ctm();
+      expect(await paths(), 'still the 1:110m outlines').toBe(n1);
+      release();
       await expect.poll(() => urls.some((u) => /worldMap50/.test(u))).toBe(true);
       await expect.poll(paths).toBeGreaterThan(n1);
       (await ctm()).forEach((v, i) => expect(Math.abs(v - before[i]), 'view unchanged across the swap').toBeLessThanOrEqual(0.01));
       await expect(tip.locator('.tip-title')).toHaveText('Ethiopia');
-      // A focused country keeps focus across a zoom (same element).
-      const et = page.locator('.world-map path[data-iso="ET"]');
-      await et.focus();
-      await et.evaluate((el) => ((el as unknown as { __probe: number }).__probe = 1));
+      // The focused country kept focus across the swap (same element), and across a zoom out.
+      const focused = () => page.evaluate(() => (document.activeElement as unknown as { __probe?: number })?.__probe);
+      expect(await focused()).toBe(1);
       await page.keyboard.press('-');
       await expectZoom(page, 1);
-      expect(await page.evaluate(() => (document.activeElement as unknown as { __probe?: number })?.__probe)).toBe(1);
+      expect(await focused()).toBe(1);
       // Review Focus 4: zoomed, panned to the world's right edge, then narrowed: the view re-clamps (no blank strip).
       const zin = page.locator('.map-zoom').getByRole('button', { name: 'Zoom in', exact: true });
       await zin.click();
