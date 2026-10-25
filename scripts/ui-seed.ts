@@ -173,9 +173,9 @@ for (let k = 0; k < 6; k++) {
     }
   }
 }
-// A small origin for the zoomed-map checks (insights-map-zoom-tip): Rwanda, two brews.
+// A small origin for the zoomed-map checks (insights-map-zoom-tip): Rwanda, two brews (Medium: outside the Washed · Light filter insights-leaderboards-cut expects empty).
 {
-  const c = coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Nyamasheke Washed', origin: 'Rwanda', status: 'archive', roast_date: daysAgo(80) });
+  const c = coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Nyamasheke Washed', origin: 'Rwanda', roast_level: 'Medium', status: 'archive', roast_date: daysAgo(80) });
   bean.run('bean-rw', 'Rwanda Nyamasheke Washed', 'Flower Child', daysAgo(80), 250, 22, 0, isoDaysAgo(70), now);
   db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ?`).run(c.id, 'bean-rw');
   for (const d of [70, 69]) timed.run(atLocal(d, 8, 20), 'bean-rw', 'm1', 7.5, null, now);

@@ -6439,13 +6439,18 @@ export const STATES: State[] = [
     path: () => '/insights?tab=leaderboards&rank=brews',
     act: async (page) => {
       const url = page.url();
-      const urls: string[] = [];
-      page.on('request', (r) => urls.push(r.url()));
+      // The 1:50m module is the one big lazy script: its file name is `worldMap50` in dev but a bare hash in the
+      // prod build, so recognise it by size (> 500 kB), not name.
+      const BIG = 500_000, SCRIPT = /worldMap50|\/chunks\/[^/]+\.js$/;
+      const big: string[] = [];
+      page.on('response', async (r) => {
+        if (SCRIPT.test(r.url()) && (await r.body().catch(() => Buffer.alloc(0))).length > BIG) big.push(r.url());
+      });
       await reloadReady(page); // so the listener sees the load
       const map = page.locator('.world-map');
       await map.scrollIntoViewIfNeeded();
       await page.waitForTimeout(500);
-      expect(urls.filter((u) => /worldMap50/.test(u)), 'no 1:50m chunk before zooming').toEqual([]);
+      expect(big, 'no 1:50m chunk before zooming').toEqual([]);
       const [x, y] = await mapPoint(page, 'ET');
       await page.mouse.click(x, y);
       const tip = page.locator('.cell-tip:popover-open');
@@ -6455,7 +6460,11 @@ export const STATES: State[] = [
       // Hold the 1:50m chunk until the "before" view is sampled, so the swap check can't pass vacuously.
       let release!: () => void;
       const gate = new Promise<void>((r) => (release = r));
-      await page.route(/worldMap50/, async (r) => { await gate; await r.continue(); });
+      await page.route(SCRIPT, async (r) => {
+        const res = await r.fetch();
+        if ((await res.body()).length > BIG) await gate;
+        await r.fulfill({ response: res });
+      });
       const et = page.locator('.world-map path[data-iso="ET"]');
       await et.focus();
       await et.evaluate((el) => ((el as unknown as { __probe: number }).__probe = 1));
@@ -6465,7 +6474,7 @@ export const STATES: State[] = [
       const before = await ctm();
       expect(await paths(), 'still the 1:110m outlines').toBe(n1);
       release();
-      await expect.poll(() => urls.some((u) => /worldMap50/.test(u))).toBe(true);
+      await expect.poll(() => big.length).toBeGreaterThan(0);
       await expect.poll(paths).toBeGreaterThan(n1);
       (await ctm()).forEach((v, i) => expect(Math.abs(v - before[i]), 'view unchanged across the swap').toBeLessThanOrEqual(0.01));
       await expect(tip.locator('.tip-title')).toHaveText('Ethiopia');
