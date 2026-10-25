@@ -64,7 +64,9 @@ export async function scrollPastBar(page: Page) {
   // count) sooner: the pinned bar would leave with it. Phones pin a fixed row, so there it is always 1500.
   await page.evaluate(() => {
     document.documentElement.style.paddingBottom = '200vh';
-    const bar = document.querySelector('.filter-bar'), parent = bar?.parentElement;
+    const bar = document.querySelector('.filter-bar');
+    let parent = bar?.parentElement ?? null;
+    while (parent && getComputedStyle(parent).display === 'contents') parent = parent.parentElement; // .cbar wrappers are display: contents on desktop
     const desktop = innerWidth > 640 && innerHeight > 450;
     const room = bar && parent && desktop
       ? parent.getBoundingClientRect().bottom + scrollY - parseFloat(getComputedStyle(parent).paddingBottom) - bar.getBoundingClientRect().height - parseFloat(getComputedStyle(bar).marginBottom) - 1
@@ -195,3 +197,15 @@ export async function cbarAct(page: Page, filters = 0) {
   expect(page.url()).toBe(url);
   expect(page.url()).not.toMatch(/expand|collapse|cbar/);
 }
+
+// A tile's top minus what is pinned. A tile just below a short block can land (the scroll padding reserves the short
+// row's height) while the block's last pixels are still on screen and no short row shows yet: nothing covers the tile
+// then, so that stretch is not a gap.
+export const anchorGap = (page: Page, id: string): Promise<number> => page.evaluate((id) => {
+  const cbar = document.querySelector('.cbar'), pinned = document.querySelector('.cbar-mini') ?? document.querySelector('.cbar.overlay');
+  const top = document.getElementById(id)!.getBoundingClientRect().top;
+  if (!pinned && cbar && cbar.getBoundingClientRect().bottom > 0) return 0;
+  const bar = document.querySelector('.filter-bar');
+  const bottom = pinned ? pinned.getBoundingClientRect().bottom : bar && getComputedStyle(bar).position === 'sticky' ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+  return top - bottom;
+}, id);

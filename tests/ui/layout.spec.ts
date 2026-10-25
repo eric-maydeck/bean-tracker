@@ -2,7 +2,7 @@ import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
+import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -3194,7 +3194,7 @@ export const STATES: State[] = [
       // One chip per rendered section; a click is a hash jump (no reload) landing the section just under the sticky bar.
       expect(await links.count()).toBeGreaterThan(2);
       await page.evaluate(() => ((window as unknown as { __jump: number }).__jump = 1));
-      const gap = async (id: string) => (await page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top, id)) - (await pinnedBottomOf(page));
+      const gap = (id: string) => anchorGap(page, id);
       await expectChipsInBar(page, links);
       for (const n of [1, (await links.count()) - 1]) {
         const jump = links.nth(n);
@@ -3579,7 +3579,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#habits-current-streak a.caption-link')).toHaveAttribute('href', '#habits-current-streak');
-      const gap = async () => (await page.evaluate(() => document.getElementById('habits-current-streak')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
+      const gap = () => anchorGap(page, 'habits-current-streak');
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
@@ -3587,7 +3587,7 @@ export const STATES: State[] = [
     act: async (page) => {
       // The caption links to its tile; loading the hash puts the tile's top just under the sticky bar.
       await expect(page.locator('#consumption-brewed a.caption-link')).toHaveAttribute('href', '#consumption-brewed');
-      const gap = async () => (await page.evaluate(() => document.getElementById('consumption-brewed')!.getBoundingClientRect().top)) - (await pinnedBottomOf(page));
+      const gap = () => anchorGap(page, 'consumption-brewed');
       await expect.poll(gap).toBeGreaterThanOrEqual(0);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
