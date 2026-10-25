@@ -1,7 +1,6 @@
 <script lang="ts">
   import { tick, type Snippet } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import { page } from '$app/state';
   import { pinnedBar } from '$lib/components/pinnedBar.svelte';
 
   // A page's control block pinned to the top while scrolling (ui-rules 30). Desktop: the full bar sticks. Phones
@@ -23,7 +22,6 @@
   let scrolled = $state(false);
   let expanded = $state(false);
   let hashDone = false;
-  const pt = $derived(page.url.searchParams.get('pt') === 'b' ? 'b' : page.url.searchParams.get('pt') === 'c' ? 'c' : 'a'); // TEMP preview round 1: pull tab variants
 
   $effect(() => {
     const mq = matchMedia('(max-width: 640px), (max-height: 450px)');
@@ -85,7 +83,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="cbar" class:inner={desktopPinned !== undefined} class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH} onclick={(e) => { if (expanded && (e.target as Element).closest('a[href^="#"]')) expanded = false; }}>
   {#if expanded}
-    <button type="button" class="cbar-pull pt-{pt}" aria-expanded="true" aria-label="Hide controls" onclick={fold}>
+    <button type="button" class="cbar-pull" aria-expanded="true" aria-label="Hide controls" onclick={fold}>
       <span class="cbar-pull-tab"><Icon name="caret-up" /></span>
     </button>
   {/if}
@@ -205,17 +203,16 @@
     display: flex;
     align-items: flex-start; /* a button centers its content: without this the tab floats below the bar edge */
   }
+  /* The expand caret's own box (44x44, muted fill, page-colored icon), hung flush under the bar: it covers the bar's bottom
+     border under it, square top corners, rounded bottom ones. */
   .cbar-pull-tab {
-    border: 1px solid var(--color-border);
-    border-top: 0; /* merges into the bar: it covers the bar's bottom border under it, whose line carries on as the tab's sides and bottom */
-    background: var(--color-bg);
-    color: var(--color-text-muted);
     display: flex;
     align-items: center;
     justify-content: center;
     width: 44px;
-    height: 32px;
+    height: 44px;
     box-sizing: border-box;
+    border: 1px solid;
     border-radius: 0 0 var(--radius) var(--radius);
   }
   .cbar-pull:focus-visible {
@@ -225,7 +222,8 @@
 
   /* The caret is not a normal button: neutral muted gray-brown fill with a page-colored icon (>= 6:1 in both themes). */
   .cbar-toggle,
-  .cbar-toggle:hover {
+  .cbar-toggle:hover,
+  .cbar-pull-tab {
     background: var(--color-text-muted);
     color: var(--color-bg);
     border-color: var(--color-text-muted);
@@ -233,16 +231,5 @@
   .cbar-pull-tab :global(.icon) {
     width: 1.25rem; /* as the short row's caret icon (.icon-button .icon) */
     height: 1.25rem;
-  }
-  /* TEMP variants (preview round 1): a = folder tab (default), b = filled like the expand caret, c = tinted */
-  .pt-b .cbar-pull-tab {
-    height: 28px;
-    background: var(--color-text-muted);
-    color: var(--color-bg);
-  }
-  .pt-c .cbar-pull-tab {
-    background: color-mix(in srgb, var(--color-text-muted) 22%, var(--color-bg));
-    border-color: var(--color-text-muted);
-    color: var(--color-text);
   }
 </style>

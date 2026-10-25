@@ -96,9 +96,17 @@ export async function expectShortRow(page: Page) {
   expect(Math.abs(b.x + b.width - (vw - 16)), 'Show controls at the content right edge').toBeLessThanOrEqual(1);
 }
 
+// The short row caret's look, taken just before expanding; expectPullTab holds the pull tab to it.
+const CARET = new WeakMap<Page, { w: number; h: number; bg: string; border: string; icon: number; ink: string }>();
+const lookOf = (el: Element | null) => {
+  if (!el) return null;
+  const cs = getComputedStyle(el), r = el.getBoundingClientRect(), i = el.querySelector('.icon')!.getBoundingClientRect();
+  return { w: Math.round(r.width), h: Math.round(r.height), bg: cs.backgroundColor, border: `${cs.borderTopWidth} ${cs.borderTopColor}`, icon: Math.round(i.width), ink: cs.color };
+};
 export async function expandBar(page: Page): Promise<Locator> {
   const show = page.getByRole('button', { name: 'Show controls' });
   await expect(show).toBeVisible();
+  CARET.set(page, (await show.evaluate(lookOf))!);
   await show.click();
   const overlay = page.locator('.cbar.overlay');
   await expect(overlay).toBeVisible();
@@ -131,6 +139,11 @@ export async function expectPullTab(page: Page) {
     return out;
   });
   expect(bad, 'pull tab').toEqual([]);
+  const caret = CARET.get(page);
+  if (caret) {
+    const tab = await page.locator('.cbar-pull-tab').evaluate(lookOf);
+    expect(tab, 'the pull tab looks like the expand caret (size, fill, border, icon)').toEqual(caret);
+  }
 }
 
 export const pinnedBottomOf = (page: Page): Promise<number> => page.evaluate(pinnedBottom);

@@ -49,7 +49,7 @@ The page's control block (filters, view switches, search, buttons) pinned to the
 
 1. Rows in the expanded bar are **identical to in-flow**: same x, width, height, no exceptions.
 2. Fold caret = a **pull tab** hanging below the expanded bar's bottom border at its bottom-right, in no row: right edge = the short row
-   caret's right edge (viewport width - 16px), 44x44 tap target, visible tab 44 x 32 with `0 0 var(--radius) var(--radius)` corners,
+   caret's right edge (viewport width - 16px), 44x44 tap target, the visible tab is the expand caret's exact box (44x44, same fill, border and icon, `0 0 var(--radius) var(--radius)` corners), flush under the bar,
    pinned to the overlay's visible bottom (a sibling of the scroll box, never scrolled away), first focusable in the overlay.
    **No JS measuring** (the old measuring script went stale on rotation and overlapped the toggle).
 3. No caret in-flow (at the top of the page there is nothing to fold).
