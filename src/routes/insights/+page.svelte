@@ -52,7 +52,7 @@
   provideCoffeeNote(() => coffeeNote(s));
   provideChartLink({
     href: (id) => `?${insightsParams({ ...explicit, chart: id })}#${id}`,
-    go: (id) => { choose({ chart: id }); document.getElementById(id)?.scrollIntoView(); }
+    go: (id) => void choose({ chart: id }).then(() => document.getElementById(id)?.scrollIntoView())
   });
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
@@ -91,15 +91,17 @@
   function choose(change: InsightsUrlState) {
     // Keep the scroll position through the swap: the content can collapse while the new data loads.
     const y = scrollY;
-    const keep = () => { if (!change.tab) scrollTo(0, y); };
+    const keep = () => { if (!change.tab && !change.chart) scrollTo(0, y); };
     const next = { ...explicit, ...change };
     // Any change that does not itself set chart (filters, rank, views, tab, Reset) drops it; a heading click sets it again.
     if (!('chart' in change)) next.chart = undefined;
+    // The hash follows chart: a new chart's id, none when a tab switch or the dropped chart's own id (a reload would scroll back to it).
+    const hash = change.chart ? `#${change.chart}` : change.tab || (!('chart' in change) && location.hash === `#${explicit.chart}`) ? '' : location.hash;
     // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
     if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'chart' || k === 'retired' || k === 'gear') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = { open: next.open, views: next.views, card: next.card, chart: next.chart, retired: next.retired, gear: next.gear };
       const qs = insightsParams(next).toString();
-      replaceState(`${qs ? `?${qs}` : location.pathname}${change.chart ? `#${change.chart}` : location.hash}`, {});
+      replaceState(`${qs ? `?${qs}` : location.pathname}${hash}`, {});
       remember(qs);
       return Promise.resolve();
     }
@@ -110,8 +112,7 @@
     // A by the new range doesn't offer is dropped, like the compare.
     if (menu && next.by && !data.byMenus[change.range!].includes(next.by)) next.by = undefined;
     const qs = insightsParams(next).toString();
-    // A tab switch drops the old tab's #anchor: it names nothing on the new one.
-    return goto(`${qs ? `?${qs}` : location.pathname}${change.tab ? '' : location.hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
+    return goto(`${qs ? `?${qs}` : location.pathname}${hash}`, { replaceState: true, noScroll: true, keepFocus: true }).then(keep);
   }
 
   // Remembered view state (spec Part 3): a fresh entry to a bare /insights restores the saved query into the URL
