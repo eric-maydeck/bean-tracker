@@ -93,7 +93,8 @@
     const y = scrollY;
     const keep = () => { if (!change.tab) scrollTo(0, y); };
     const next = { ...explicit, ...change };
-    if (change.tab) next.chart = undefined;
+    // Any change that does not itself set chart (filters, rank, views, tab, Reset) drops it; a heading click sets it again.
+    if (!('chart' in change)) next.chart = undefined;
     // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
     if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'chart' || k === 'retired' || k === 'gear') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
       local = { open: next.open, views: next.views, card: next.card, chart: next.chart, retired: next.retired, gear: next.gear };
