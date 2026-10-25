@@ -8,6 +8,7 @@
   // doesn't follow replaceState (see urlState.ts).
   const SHORTEN_OVER = 60;
   let copied = $state(false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   async function share() {
     const path = location.pathname + location.search;
@@ -27,15 +28,18 @@
     if (navigator.share) {
       try {
         await navigator.share({ url: link });
-      } catch {
-        // user canceled
+        return;
+      } catch (e) {
+        // Canceled: done. InvalidStateError: an earlier sheet never settled and the
+        // browser refuses until it does, so copy instead (user, 2026-10-25).
+        if ((e as DOMException).name !== 'InvalidStateError') return;
       }
-      return;
     }
     try {
       await navigator.clipboard.writeText(link);
       copied = true;
-      setTimeout(() => (copied = false), 2000);
+      clearTimeout(timer);
+      timer = setTimeout(() => (copied = false), 2000);
     } catch {
       window.prompt('Copy this link', link);
     }
