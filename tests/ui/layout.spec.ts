@@ -1063,8 +1063,8 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       for (const [path, title, re] of [
-        ['/coffees', 'Coffee Collection', /^\d+ coffees? · Backlog$/],
-        ['/coffees?status=all&origin=Colombia', 'Coffee Collection', /^\d+ coffees? · All · Origin: Colombia$/]
+        ['/coffees', 'Coffee Collection', /^Backlog\n\d+ coffees? · [\d.]+k?g$/],
+        ['/coffees?status=all&origin=Colombia&decaf=false', 'Coffee Collection', /^All\nOrigin: Colombia · Caffeinated only\n\d+ coffees? · [\d.]+k?g$/]
       ] as const) {
         const t = await previewTags(page, path);
         expect(t['og:title']).toBe(title);

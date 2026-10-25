@@ -307,6 +307,10 @@ function num(key: ColumnKey, typed: string): string {
 
 const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)');
 
+// A preview line names a quick filter by its value alone ("Not frozen"); the value says it all.
+export const previewChip = (f: Filter): string =>
+  f.mode === 'bool' ? quickFilterSegment(f.column as QuickFilterKey, f.value).label : chipLabel(f);
+
 export function chipLabel(f: Filter): string {
   if (f.mode === 'bool') {
     const qf = quickFilter(f.column as QuickFilterKey);

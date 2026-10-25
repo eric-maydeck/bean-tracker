@@ -70,10 +70,10 @@ export function subscriptionsPreview(subs: Pick<SubscriptionRow, 'roaster_servic
 
 const STATUS_LABEL: Record<StatusTab, string> = { backlog: 'Backlog', open: 'Open', archive: 'Archive', all: 'All' };
 
-export function coffeesPreview(v: { count: number; status: StatusTab[]; query: string; chips: string[] }): Preview {
+export function coffeesPreview(v: { count: number; grams: number; status: StatusTab[]; query: string; chips: string[] }): Preview {
   const q = v.query.trim();
-  const line = join([plural(v.count, 'coffee'), v.status.map((s) => STATUS_LABEL[s]).join(' + '), ...v.chips, q && `“${q}”`]);
-  return { title: 'Coffee Collection', description: fitList([line], '\n', true) };
+  const lines = [v.status.map((s) => STATUS_LABEL[s]).join(' + '), join([...v.chips, q && `“${q}”`]), join([plural(v.count, 'coffee'), formatGrams(v.grams)])];
+  return { title: 'Coffee Collection', description: fitList(lines.filter(Boolean), '\n', false) };
 }
 
 export function statsPreview(v: { tab: 'general' | 'bq'; opened: number; unopened: number; onHandG: number; finished: number }): Preview {

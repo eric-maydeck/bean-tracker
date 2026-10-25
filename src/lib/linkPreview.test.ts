@@ -119,3 +119,15 @@ describe('subscriptionsPreview', () => {
     expect(d.split('\n').at(-1)).toMatch(/…and \d+ more$/);
   });
 });
+
+describe('coffeesPreview', () => {
+  it('status, then filters, then count and weight', () => {
+    expect(coffeesPreview({ count: 99, grams: 11300, status: ['backlog', 'open'], query: '', chips: ['Caffeinated only', 'Not frozen'] })).toEqual({
+      title: 'Coffee Collection', description: 'Backlog + Open\nCaffeinated only · Not frozen\n99 coffees · 11.3kg'
+    });
+  });
+  it('skips the filters line when there are none; keeps the search', () => {
+    expect(coffeesPreview({ count: 1, grams: 250, status: ['backlog'], query: '', chips: [] }).description).toBe('Backlog\n1 coffee · 250g');
+    expect(coffeesPreview({ count: 2, grams: 500, status: ['all'], query: ' gesha ', chips: ['Origin: Kenya'] }).description).toBe('All\nOrigin: Kenya · “gesha”\n2 coffees · 500g');
+  });
+});
