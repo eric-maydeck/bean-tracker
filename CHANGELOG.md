@@ -1,3 +1,28 @@
+# [1.89.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.88.0...v1.89.0) (2026-10-25)
+
+
+### Bug Fixes
+
+* **insights:** any view change drops chart from the url
+* **insights:** center the map hint above the zoom buttons
+* **insights:** chart hash follows the chart, scroll after the load settles
+* **previews:** dash between chart label and value, roaster first, no 0 x 0g
+* **previews:** one list item per line, middle dot between an item's details
+* **ui:** hide back to top while it would cover a map's zoom buttons
+
+
+### Features
+
+* **insights:** 1:50m world outlines aligned to the 110m map
+* **insights:** chain-link icon on heading links
+* **insights:** link previews with chart data as text
+* **insights:** pinch, two-finger pan, ctrl-wheel zoom and map hints
+* **insights:** section heading links carry chart= in the address bar
+* **insights:** zoom and pan the origin map with buttons and mouse drag
+* **previews:** link preview text builders
+* **previews:** open graph tags and the coffee page preview
+* **previews:** page previews for coffees, on deck, subscriptions, stats and water
+
 # [1.88.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.87.0...v1.88.0) (2026-10-25)
 
 
