@@ -53,11 +53,15 @@
       hashDone = true; // the browser's own hash scroll ran before this padding existed
       document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
     }
-    return () => {
-      document.documentElement.style.removeProperty('scroll-padding-top');
-      pinnedBar.h = 0;
-    };
   });
+  // Cleared only on unmount: clearing on every re-run would flash 0 at whatever reads pinnedBar.h.
+  $effect(() => () => {
+    document.documentElement.style.removeProperty('scroll-padding-top');
+    pinnedBar.h = 0;
+  });
+
+  // A popover opened from the bar (the Ratings menu) is placed from its button once; when the overlay scrolls under it, close it.
+  const closePopovers = () => barEl?.querySelectorAll<HTMLElement>(':popover-open').forEach((p) => p.hidePopover());
 
   async function expand() {
     chrome = barEl!.offsetHeight - bodyH;
@@ -83,7 +87,7 @@
       <span class="cbar-pull-tab"><Icon name="caret-up" /></span>
     </button>
   {/if}
-  <div class="cbar-scroll"><div class="cbar-body" bind:offsetHeight={bodyH}>{@render children()}</div></div>
+  <div class="cbar-scroll" onscroll={closePopovers}><div class="cbar-body" bind:offsetHeight={bodyH}>{@render children()}</div></div>
 </div>
 {#if phone && scrolled && !expanded}
   <div class="cbar-mini">
@@ -169,7 +173,7 @@
   }
   @media (max-width: 640px) {
     .cbar.overlay {
-      max-height: calc(100dvh - 64px - 44px); /* the phone tab bar (60px tall at 360 wide), the pull tab */
+      max-height: calc(100dvh - 64px - 44px - env(safe-area-inset-bottom, 0px)); /* the phone tab bar (about 60px tall, plus its safe-area padding), the pull tab */
     }
   }
   @media (min-width: 641px) and (min-height: 451px) {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
+  import { pinnedBar } from '$lib/components/pinnedBar.svelte';
   import { useEmptyLine } from './coffeeNote';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -35,7 +36,8 @@
   let tw = $state(0), th = $state(0);
   let innerW = $state(0);
   let vertical = $derived(innerW >= 700);
-  let barH = $state(0);
+  // What the page pins at the top: the phone short row (also while the bar is expanded), or the desktop filter bar.
+  let barH = $derived(pinnedBar.h);
   // The side bar's full height: the viewport under the filter bar, less its 0.75rem margins.
   let innerH = $state(0);
   let fullH = $derived(innerH - barH - 24);
@@ -164,14 +166,6 @@
   const lost = (e: PointerEvent) => e.target === nav && cancel();
   const jump = (ym: string) => document.getElementById(`m-${ym}`)?.scrollIntoView();
 
-  // The navigator sticks just under the page's sticky filter bar (barH, declared above).
-  $effect(() => {
-    const bar = document.querySelector<HTMLElement>('.filter-bar');
-    if (!bar) return;
-    const ro = new ResizeObserver(() => (barH = bar.offsetHeight));
-    ro.observe(bar);
-    return () => ro.disconnect();
-  });
   const emptyLine = useEmptyLine();
 </script>
 
