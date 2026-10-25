@@ -3374,7 +3374,8 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/views=roast-time/);
       await reloadReady(page);
       await expect(card().getByRole('button', { name: 'Over time', pressed: true })).toBeVisible();
-      await page.goto(page.url().replace('views=roast-time', 'views=roast-time-wide'));
+      // gotoReady, not goto: the List click below must not beat hydration.
+      await gotoReady(page, page.url().replace('views=roast-time', 'views=roast-time-wide'));
       await expect(card().getByRole('button', { name: 'Over time', pressed: true })).toBeVisible();
       await expect(card()).toHaveClass(/wide/);
       await card().getByRole('button', { name: 'List' }).click();
