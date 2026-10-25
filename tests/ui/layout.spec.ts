@@ -215,6 +215,13 @@ async function expectStickyBar(page: Page, bar: Locator) {
   await target.evaluate((el) => el.scrollIntoView());
   await frames(page);
   if (await phoneBar(page)) {
+    // The target can sit right under the block (phone landscape, first board): the block's tail is still on
+    // screen, so no short row yet; the target must just not be covered by it.
+    const cbarBottom = (await page.locator('.cbar').boundingBox())!;
+    if (cbarBottom.y + cbarBottom.height > 0 && !(await page.locator('.cbar-mini').count())) {
+      expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(cbarBottom.y + cbarBottom.height - 1);
+      return;
+    }
     await expectShortRow(page);
     const mini = (await page.locator('.cbar-mini').boundingBox())!;
     expect((await target.boundingBox())!.y).toBeGreaterThanOrEqual(mini.y + mini.height - 1);
