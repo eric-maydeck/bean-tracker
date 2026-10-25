@@ -26,7 +26,7 @@
   import { bcPerPerson, type RatedGroup, type PeriodWindow } from './beanConquerorStatsData';
   import type { CoffeeRow } from '$lib/types';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { statsPreview } from '$lib/linkPreview';
+  import { ownerName, statsPreview } from '$lib/linkPreview';
   import type { PageData, ActionData } from './$types';
 
   let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -368,7 +368,7 @@
 <svelte:head>
   <title>Bean Tracker - Stats</title>
 </svelte:head>
-<PreviewMeta preview={statsPreview({ tab, opened: data.stats.openedCount, unopened: data.stats.unopenedBacklogCount, onHandG: data.onHand, finished: data.stats.finishedCount })} />
+<PreviewMeta preview={statsPreview({ tab, owner: ownerName(page.url.host), opened: data.stats.openedCount, unopened: data.stats.unopenedBacklogCount, onHandG: data.onHand, finished: data.stats.finishedCount })} />
 
 <!-- One toggle state, shown in both the Brews and Grams panel headers. -->
 <!-- A per-person label's mode word opens its help (ui-rules 27, as on /insights); `id` keys its popover. -->

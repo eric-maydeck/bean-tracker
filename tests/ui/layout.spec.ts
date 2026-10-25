@@ -1109,11 +1109,13 @@ export const STATES: State[] = [
       const origin = new URL(page.url()).origin;
       const t = await previewTags(page, '/stats');
       expect(t['og:title']).toBe('Stats: General');
-      expect(t['og:description']).toMatch(/^\d+ open · \d+ unopened · [\d.]+k?g on hand · \d+ finished$/);
+      expect(t['og:description']).toMatch(/^fuhnoo's collection totals\n\d+ open · \d+ unopened · [\d.]+k?g on hand · \d+ finished$/);
       expect(t.description).toBe(t['og:description']);
       expect(t.description.length).toBeLessThanOrEqual(300);
       expect(t['og:url']).toBe(`${origin}/stats`);
-      expect((await previewTags(page, '/stats?tab=bq'))['og:title']).toBe('Stats: Bean Conqueror');
+      const bq = await previewTags(page, '/stats?tab=bq');
+      expect(bq['og:title']).toBe('Stats: Bean Conqueror');
+      expect(bq['og:description']).toMatch(/^fuhnoo's Bean Conqueror stats\n\d+ open/);
     } },
   // Share works on every click (user, 2026-10-25): a share sheet that never settled (the browser then refuses the
   // next share) falls back to copying, and a second copy restarts the "Link copied" label.
@@ -1175,9 +1177,9 @@ export const STATES: State[] = [
         ['/insights?tab=records&range=all&chart=records-top-coffees', 'Insights: Top coffees', /^Avg rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
         ['/insights?tab=records&range=all&chart=records-top-brews', 'Insights: Top brews', /^Rating · All time\n🥇 \d+\.\d · .+\n🥈 /],
         ['/insights?tab=records&range=all&chart=record-nightOwl', 'Insights: Night owl', /^All time\n.+\n/],
-        ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^All time · \d+ brews/],
-        ['/insights?chart=leaderboard-origins', 'Insights: Overview', null],
-        ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', null]
+        ['/insights?tab=habits&range=all&chart=habits-hour', 'Insights: Habits', /^When and how fuhnoo brews\nAll time\n[\d,]+ brews/],
+        ['/insights?chart=leaderboard-origins', 'Insights: Overview', /^fuhnoo's brewing at a glance\n/],
+        ['/insights?tab=leaderboards&range=all&rank=like&chart=leaderboard-origins', 'Insights: Leaderboards', /^fuhnoo's top roasters, coffees, origins and gear\nAll time\n[\d,]+ brews/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);

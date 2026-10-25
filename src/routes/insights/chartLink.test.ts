@@ -7,10 +7,10 @@ const rows = (vals: [string, number][]) => vals.map(([label, value]) => ({ key: 
 const ORIGINS = rows([['Ethiopia', 8.42], ['Kenya', 8.1], ['Colombia', 7.94], ['Rwanda', 7.5], ['Burundi', 7.0], ['Peru', 6.9]]);
 const none = { roasters: [], coffees: [], origins: ORIGINS, process: [], roast: [], water: rows([['Lab Water B', 12]]), dripper: [], filter: [], grinder: [] };
 const base = {
-  tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
+  tab: 'leaderboards' as const, owner: 'fuhnoo', tabLabel: 'Leaderboards', period: 'All time', brews: 412, avgRating: 7.94, filters: ['Kenya', 'Washed'],
   rank: 'rating' as const, perPerson: false, boards: none, records: null
 };
-const PAGE = { title: 'Insights: Leaderboards', description: 'All time · 412 brews · Avg rating 7.9 · Kenya · Washed' };
+const PAGE = { title: 'Insights: Leaderboards', description: "fuhnoo's top roasters, coffees, origins and gear\nAll time · Kenya · Washed\n412 brews · Avg rating 7.9" };
 
 describe('insightsPreview', () => {
   it('Origins board under rating', () => {
@@ -34,7 +34,12 @@ describe('insightsPreview', () => {
     expect(insightsPreview(base)).toEqual(PAGE);
   });
   it('skips Avg rating when there is none', () => {
-    expect(insightsPreview({ ...base, avgRating: null }).description).toBe('All time · 412 brews · Kenya · Washed');
+    expect(insightsPreview({ ...base, avgRating: null }).description.split('\n')[2]).toBe('412 brews');
+  });
+  it('page level: summary per tab and owner, filters optional', () => {
+    const d = insightsPreview({ ...base, owner: 'Eric', tab: 'water', tabLabel: 'Water', filters: [], brews: 1436, avgRating: 7.5 });
+    expect(d).toEqual({ title: 'Insights: Water', description: "How water affects Eric's ratings\nAll time\n1,436 brews · Avg rating 7.5" });
+    expect(insightsPreview({ ...base, tab: 'overview', tabLabel: 'Overview' }).description.split('\n')[0]).toBe("fuhnoo's brewing at a glance");
   });
   const records = {
     sections: [{ key: 'taste', tiles: [
@@ -47,12 +52,13 @@ describe('insightsPreview', () => {
     ],
     topBrews: [{ rating: 10, holder: { label: 'Lab Bag 3', sub: 'Test Roaster', date: '2026-08-01' }, brewer: 'V60' }]
   } as unknown as RecordsTab;
-  const v = { ...base, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
+  const v = { ...base, tab: 'records' as const, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
   it('Records section', () => {
     expect(insightsPreview({ ...v, chart: 'records-taste' })).toEqual({
       title: 'Insights: Taste', description: 'Last 3 months\nBest bag · 9.2\nBest day · 9.0'
     });
     expect(insightsPreview({ ...v, chart: 'records-money' }).title).toBe('Insights: Records');
+    expect(insightsPreview({ ...v, chart: 'records-money' }).description.split('\n')[0]).toBe("fuhnoo's bests and extremes");
   });
   it('Top coffees and Top brews', () => {
     expect(insightsPreview({ ...v, chart: 'records-top-coffees' })).toEqual({

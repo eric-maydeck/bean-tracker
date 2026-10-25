@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, type Board, type Rank } from '$lib/insightsUrl';
+import { BAG_BOARDS, BOARDS, LIKE_BOARDS, MON, type Board, type Rank, type Tab } from '$lib/insightsUrl';
 import { DESCRIPTION_MAX, fitList, plural, type Preview } from '$lib/linkPreview';
 import { originWithFlag } from '$lib/countryFlags';
 import { formatGrams } from '$lib/grams';
@@ -77,8 +77,23 @@ export const recordValue = (p: RecordPick, fmt: Fmt): string => recordParts(p, f
 
 // ---- The /insights link preview ----
 
+// What each tab is about, in the owner's name (ownerName(host)).
+const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
+  overview: (n) => `${n}'s brewing at a glance`,
+  leaderboards: (n) => `${n}'s top roasters, coffees, origins and gear`,
+  habits: (n) => `When and how ${n} brews`,
+  consumption: (n) => `How much coffee ${n} buys and drinks`,
+  records: (n) => `${n}'s bests and extremes`,
+  milestones: (n) => `${n}'s brewing milestones`,
+  insights: (n) => `Patterns in what ${n} rates highly`,
+  sweetspots: (n) => `The recipes ${n} rates best`,
+  brewing: (n) => `How ${n} dials in brews`,
+  water: (n) => `How water affects ${n}'s ratings`,
+  gear: (n) => `How ${n}'s gear compares`
+};
+
 interface PreviewInput {
-  tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string;
+  tab: Tab; owner: string; tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string;
   rank: Rank; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
 }
 // A Records tile's own element id (#record-…): keys like "grindFine:A4Z (Femobook)" slugged.
@@ -131,6 +146,10 @@ export function insightsPreview(v: PreviewInput): Preview {
   }
   return {
     title: `Insights: ${v.tabLabel}`,
-    description: [v.period, plural(v.brews, 'brew'), v.avgRating != null && `Avg rating ${v.avgRating.toFixed(1)}`, ...v.filters].filter(Boolean).join(' · ')
+    description: [
+      TAB_SUMMARY[v.tab](v.owner),
+      [v.period, ...v.filters].join(' · '),
+      [plural(v.brews, 'brew'), v.avgRating != null && `Avg rating ${v.avgRating.toFixed(1)}`].filter(Boolean).join(' · ')
+    ].join('\n')
   };
 }

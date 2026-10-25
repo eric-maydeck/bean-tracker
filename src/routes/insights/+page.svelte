@@ -20,6 +20,8 @@
   import { provideCoffeeNote } from './coffeeNote';
   import { provideChartLink, insightsPreview } from './chartLink';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { page } from '$app/state';
+  import { ownerName } from '$lib/linkPreview';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import KindsBar from './KindsBar.svelte';
@@ -473,7 +475,7 @@
 </svelte:head>
 <PreviewMeta
   preview={insightsPreview({
-    tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
+    tab: s.tab, owner: ownerName(page.url.host), tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
     chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records
   })}
