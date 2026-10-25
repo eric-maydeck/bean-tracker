@@ -93,14 +93,15 @@
       <h2 id="habits-hour">By hour of day</h2>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? unitWord : 'total'}`} · Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
+      <!-- Switched notes: sentence, then the suffix on its own line (blank placeholder when none), so a measure switch never moves the page. -->
+      <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? unitWord : 'total'}`}<br>Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
       <h2 id="habits-weekday">By day of week</h2>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
-      <p class="chart-note">{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? (agg === 'brewday' ? 'per brew day, by weekday' : 'per weekday, averaged') : 'total'}`}</p>
+      <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? (agg === 'brewday' ? 'per brew day, by weekday' : 'per weekday, averaged') : 'total'}`}<br>{'\u00a0'}</p>
     </section>
   </div>
   <section class="chart-panel">

@@ -2287,6 +2287,24 @@ export const STATES: State[] = [
     }
   },
   {
+    // Notes that change with a control are sentence + suffix line (blank when none): switching the measure never moves the page.
+    name: 'insights-note-steady',
+    path: () => '/insights?tab=consumption&range=all',
+    act: async (page) => {
+      const heights = () => page.locator('[data-switched-note]').evaluateAll((ns) => ns.map((n) => Math.round(n.getBoundingClientRect().height)));
+      for (const [a, b] of [['?tab=consumption&range=all', '?tab=consumption&range=all&trend=rating'], ['?tab=habits&range=all&measure=grams', '?tab=habits&range=all&measure=rating']]) {
+        await gotoReady(page, `/insights${a}`);
+        const before = await heights();
+        await gotoReady(page, `/insights${b}`);
+        const after = await heights();
+        expect(before.length).toBeGreaterThan(0);
+        expect(after[0]).toBe(before[0]);
+        expect(after.slice(-1)).toEqual(before.slice(-1));
+        expect(new Set([...before, ...after]).size).toBe(1);
+      }
+    }
+  },
+  {
     // D3: Brewed over time's in-chart Measure toggle (the Unit | Brews | Water | Rating), URL state, and the header's alignment.
     name: 'insights-consumption-trend-toggle',
     path: () => '/insights?tab=consumption&range=all&by=week',

@@ -111,6 +111,8 @@
 </div>
 {/snippet}
 
+<!-- Notes that change with a control: sentence, then the suffix on its own line (a blank one when there is none), so a switch never moves the page. -->
+{#snippet nwNote(main: string, suffix: string)}<p class="chart-note" data-switched-note>{main}<br>{suffix.replace(' · ', '') || '\u00a0'}</p>{/snippet}
 {#snippet whole()}{#if wholeKeys.length}<WholeNote keys={wholeKeys} />{/if}{/snippet}
 
 {#if part === 'bar'}{@render bar()}{:else}
@@ -135,11 +137,11 @@
           <Chart type="line" labels={t.labels.slice(from)} values={ratingValues} datasetLabel={periodLabel} series={ratingSeries} legend
             dashGaps yMin={ratingFloor} format={fmtRating} height={260} />
         {/if}
-        <p class="chart-note">Mean rating per {t.by}{from ? ` from ${t.labels[from]}` : ''}{note}{ratingValues.some((v) => v === null) ? ' · Dashed: no rated brews' : ''}</p>
+        {@render nwNote(`Mean rating per ${t.by}${from ? ` from ${t.labels[from]}` : ''}`, `${note}${ratingValues.some((v) => v === null) ? ' · Dashed: no rated brews' : ''}`)}
       {:else}
         <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={(!g || !!trend) && !avg && trend !== 'water'}
           format={trend === 'brews' ? fmtBrews : trend === 'water' ? fmtWater : fmt(k1)} unit={trend === 'water' ? ' L' : trend ? '' : axis(k1)} height={260} />
-        <p class="chart-note">{trend ? NOUN[trend] : g ? 'Grams brewed' : 'Bags finished'} {unitNote}{note}</p>
+        {@render nwNote(`${trend ? NOUN[trend] : g ? 'Grams brewed' : 'Bags finished'} ${unitNote}`, note)}
         {#if !g && !trend}{@render whole()}{/if}
       {/if}
     </section>
@@ -147,14 +149,14 @@
       <h2 id="consumption-chart-bought">Bought vs brewed</h2>
       <Chart type="bar" vertical labels={t.labels} values={div(t.bought, k2)} datasetLabel="Bought"
         series={[{ label: brewedLabel, values: div(t.brewed, k2) }]} legend integer={!g && !avg} format={fmt(k2)} unit={axis(k2)} height={260} />
-      <p class="chart-note">{g ? 'Grams' : 'Bags'} {unitNote}{note}</p>
+      {@render nwNote(`${g ? 'Grams' : 'Bags'} ${unitNote}`, note)}
       {@render whole()}
     </section>
   </div>
   <section class="chart-panel">
     <h2 id="consumption-chart-on-hand">On hand over time</h2>
     <Chart type="line" labels={t.labels} values={div(t.backlog, k3)} datasetLabel="On hand" integer={!g} format={fmt(k3)} unit={axis(k3)} height={260} />
-    <p class="chart-note">{g ? 'Grams left' : 'Bags'} on hand at the end of each {t.by}{note}</p>
+    {@render nwNote(`${g ? 'Grams left' : 'Bags'} on hand at the end of each ${t.by}`, note)}
     {@render whole()}
   </section>
 {/if}
