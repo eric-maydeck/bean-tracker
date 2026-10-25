@@ -6305,10 +6305,14 @@ export const STATES: State[] = [
         const d = [m.x + m.width / 2 - px, m.y + m.height / 2 - py];
         if (Math.hypot(d[0], d[1]) <= 2) break; // a sub-4px drag would be a click (it pins)
         const [dx, dy] = [Math.max(-0.4 * m.width, Math.min(0.4 * m.width, d[0])), Math.max(-0.4 * m.height, Math.min(0.4 * m.height, d[1]))];
-        const [sx, sy] = [m.x + m.width / 2 - dx / 2, m.y + m.height / 2 - dy / 2];
+        // Start in the map's top quarter: on a short map (360px) the zoom buttons sit over its middle and a press there is theirs.
+        const [sx, sy] = [m.x + m.width / 2 - dx / 2, m.y + m.height * 0.2];
         await drag(page, [sx, sy], [sx + dx, sy + dy]);
       }
       const tip = page.locator('.cell-tip:popover-open');
+      // The panned map can rest a country under the pointer (a legitimate hover tip, e.g. Côte d'Ivoire at 360px), so
+      // leave the map first: an unpinned hover tip then closes, a pinned one would stay.
+      if (!touch()) await page.mouse.move(m.x + m.width / 2, m.y - 20);
       await expect(tip, 'a drag does not pin').toHaveCount(0);
       const [x, y] = await mapPoint(page, 'RW');
       await (touch() ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
