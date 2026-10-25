@@ -6475,14 +6475,19 @@ export const STATES: State[] = [
       for (let i = 0; i < 3; i++) await zin.click();
       await expectZoom(page, 8);
       const m = (await map.boundingBox())!;
-      // Pan in chunks from inside the map until Rwanda's center reaches the map center (it starts off-map at 8x).
+      // Work in the map's visible part: on a short viewport (phone-landscape, 333px) the map is taller than the
+      // viewport and the pinned bar covers its top, so its own center and top quarter can be off-screen or under the bar.
+      const barBottom = await page.evaluate(() => Math.max(0, ...[...document.querySelectorAll('.cbar-mini')]
+        .map((e) => e.getBoundingClientRect()).filter((r) => Math.abs(r.top) <= 1).map((r) => r.bottom)));
+      const top = Math.max(m.y, barBottom), h = Math.min(m.y + m.height, page.viewportSize()!.height) - top;
+      // Pan in chunks from inside the map until Rwanda's center reaches the visible middle (it starts off-map at 8x).
       for (let i = 0; i < 30; i++) {
         const [px, py] = await mapPoint(page, 'RW');
-        const d = [m.x + m.width / 2 - px, m.y + m.height / 2 - py];
+        const d = [m.x + m.width / 2 - px, top + h / 2 - py];
         if (Math.hypot(d[0], d[1]) <= 2) break; // a sub-4px drag would be a click (it pins)
-        const [dx, dy] = [Math.max(-0.4 * m.width, Math.min(0.4 * m.width, d[0])), Math.max(-0.4 * m.height, Math.min(0.4 * m.height, d[1]))];
-        // Start in the map's top quarter: on a short map (360px) the zoom buttons sit over its middle and a press there is theirs.
-        const [sx, sy] = [m.x + m.width / 2 - dx / 2, m.y + m.height * 0.2];
+        const [dx, dy] = [Math.max(-0.4 * m.width, Math.min(0.4 * m.width, d[0])), Math.max(-0.4 * h, Math.min(0.4 * h, d[1]))];
+        // Start in the visible top quarter: on a short map (360px) the zoom buttons sit over its middle and a press there is theirs.
+        const [sx, sy] = [m.x + m.width / 2 - dx / 2, top + h * 0.2];
         await drag(page, [sx, sy], [sx + dx, sy + dy]);
       }
       const tip = page.locator('.cell-tip:popover-open');
@@ -6498,13 +6503,13 @@ export const STATES: State[] = [
       await expect(tip.getByRole('link', { name: 'See coffees' })).toBeVisible();
       await expectTipInView(page, tip);
       const pinned = await vbAt(page, x, y);
-      await drag(page, [m.x + 10, m.y + 10], [m.x + 50, m.y + 30]);
+      await drag(page, [m.x + 10, top + 10], [m.x + 50, top + 30]);
       await expect(tip).toBeVisible();
       await frames(page);
       const [ex, ey] = await mapPoint(page, 'RW', [pinned.x, pinned.y]);
       const a = (await page.locator('.world-map .tip-anchor').boundingBox())!;
       expect(Math.hypot(a.x + a.width / 2 - ex, a.y + a.height / 2 - ey), 'anchor stays on Rwanda').toBeLessThanOrEqual(2);
-      await drag(page, [m.x + m.width - 5, m.y + 10], [m.x + 5, m.y + 10]); // Rwanda leaves the map
+      await drag(page, [m.x + m.width - 5, top + 10], [m.x + 5, top + 10]); // Rwanda leaves the map
       await expect(tip).toHaveCount(0);
     }
   },
