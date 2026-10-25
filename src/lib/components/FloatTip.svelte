@@ -13,7 +13,7 @@
   // past the bottom of the visible band scrolls the page just enough to show it whole (ui-rules 39; the See all tip
   // under the sticky bar at 1003×333). ponytail: only the below-overflow case; a tip clamped over its anchor stays.
   // `tip`: the content as a Tip, in place of children (labelTip.ts mounts it with no snippet).
-  let { anchor, children, tip, onclose, reveal = false }: { anchor: Element; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
+  let { anchor, children, tip, onclose, reveal = false, placeKey }: { anchor: Element; placeKey?: unknown; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
 
   let el: HTMLDivElement | undefined = $state();
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
@@ -31,6 +31,11 @@
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
   }
+  // `placeKey`: changes when the anchor moves in place (a map zoom/pan): re-place without re-opening.
+  $effect(() => {
+    void placeKey;
+    place();
+  });
   $effect(() => {
     void anchor;
     if (openTip.current !== me) openTip.current?.dismiss();
