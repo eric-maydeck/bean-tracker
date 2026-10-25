@@ -26,3 +26,12 @@ export function closeFloatTip() {
   openTip.current?.dismiss();
   openTip.current = null;
 }
+// Viewport bottom of whatever is pinned to the top: the phone short row, the expanded bar overlay, or the sticky
+// .filter-bar (0 when none). Self-contained: tests serialize it into the page.
+export function pinnedBottom(): number {
+  const pinned = document.querySelector('.cbar-mini') ?? document.querySelector('.cbar.overlay');
+  if (pinned) return pinned.getBoundingClientRect().bottom;
+  const bar = document.querySelector('.filter-bar');
+  const bottom = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().bottom : 0;
+  return bottom > 0 ? bottom : 0;
+}

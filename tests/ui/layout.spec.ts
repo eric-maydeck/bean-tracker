@@ -1,7 +1,8 @@
 import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expandBar, expectPullTab, pinnedBottomOf, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -786,7 +787,8 @@ export const STATES: State[] = [
         expect(sort.x - (view.x + view.width), 'View grows to Sort by').toBeLessThanOrEqual(10);
       }
       // every control of the Show / View + Sort rows (the toolbar), as x, width, height
-      const rects = () => page.evaluate(() => [...document.querySelectorAll('.cbar .toolbar button:not([aria-label="Hide controls"]), .cbar .toolbar select')]
+      // plus the results / Add / Sort by row: it looks the same expanded as in flow (the fold caret is a pull tab outside it)
+      const rects = () => page.evaluate(() => [...document.querySelectorAll('.cbar .toolbar button, .cbar .toolbar select, .cbar .add-sort-row button, .cbar .add-sort-row select, .cbar .add-sort-row .results')]
         .filter((c) => (c as HTMLElement).offsetParent).map((c) => { const r = c.getBoundingClientRect(); return [r.x, r.width, r.height].map(Math.round); }));
       const inFlow = await rects();
       await page.evaluate(() => window.scrollTo(0, 1500));
@@ -802,6 +804,8 @@ export const STATES: State[] = [
       expect(m.height, 'collapsed bar is one short row').toBeLessThanOrEqual(56);
       expect(m.x + m.width).toBeLessThanOrEqual(w + 1);
       const url = page.url();
+      const rowY = () => page.locator('tbody tr').first().evaluate((el) => el.getBoundingClientRect().y);
+      const rowBefore = await rowY();
       await mini.getByRole('button', { name: 'Show controls' }).click();
       await expect(mini).toHaveCount(0);
       const bar = page.locator('.cbar.overlay');
@@ -809,28 +813,10 @@ export const STATES: State[] = [
       const b = (await bar.boundingBox())!;
       expect(Math.abs(b.y)).toBeLessThanOrEqual(1);
       expect(b.y + b.height, 'expanded bar stays inside the viewport').toBeLessThanOrEqual(h + 1);
-      expect(await rects(), 'the top rows look the same expanded as in flow').toEqual(inFlow);
-      // the caret ends the last row (results / Add / Sort by): bar content right edge, same top and height as its left neighbor
-      const caret = (await bar.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
-      expect(Math.abs(caret.x + caret.width - (b.x + b.width - 16)), 'caret at the bar content right edge').toBeLessThanOrEqual(1);
-      const row = (await bar.locator('.add-sort-row').boundingBox())!;
-      expect(caret.y, 'caret in the last row').toBeGreaterThanOrEqual(row.y - 1);
-      expect(caret.y + caret.height).toBeLessThanOrEqual(row.y + row.height + 1);
-      const lastRow = (await Promise.all((await bar.locator('.add-sort-row button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x);
-      if (lastRow.length) {
-        const neighbor = lastRow.reduce((a, c) => (c!.x > a!.x ? c : a))!;
-        expect(neighbor.x + neighbor.width, 'the neighbor is left of the caret').toBeLessThanOrEqual(caret.x + 1);
-        expect(Math.abs(caret.y - neighbor.y), 'caret top = its left neighbor top').toBeLessThanOrEqual(2); // sub-pixel centering in landscape
-        expect(Math.abs(caret.height - neighbor.height), 'caret height = its left neighbor height').toBeLessThanOrEqual(1);
-      } else expect(Math.abs(caret.y + caret.height / 2 - (row.y + row.height / 2)), 'caret centered on the row').toBeLessThanOrEqual(1);
-      const addBtn = await bar.locator('.add-coffee-button').boundingBox();
-      if (addBtn) expect(Math.abs(addBtn.x + addBtn.width / 2 - (row.x + row.width / 2)), 'Add stays centered').toBeLessThanOrEqual(w <= 640 && w < 480 ? 200 : 1);
-      expect(caret.width).toBeGreaterThanOrEqual(44);
-      for (const c of await bar.locator('.add-sort-row button:not([aria-label="Hide controls"]), .add-sort-row select, .add-sort-row .results').all()) {
-        const r = await c.boundingBox();
-        if (!r) continue; // the hidden copy of Sort by
-        expect(r.x >= caret.x + caret.width || r.x + r.width <= caret.x || r.y >= caret.y + caret.height || r.y + r.height <= caret.y, 'caret overlaps nothing').toBe(true);
-      }
+      expectRectsClose(await rects(), inFlow, 1);
+      await expect(bar.locator('.add-sort-row .cbar-toggle')).toHaveCount(0);
+      await expectPullTab(page);
+      expect(Math.abs((await rowY()) - rowBefore), 'the page does not jump').toBeLessThanOrEqual(1);
       if (w >= 480 && w <= 640) {
         // portrait: Show's four buttons share one line and fill it; View and Sort by share one line
         const boxes = await Promise.all((await bar.getByRole('group', { name: 'Show' }).getByRole('button').all()).map((x) => x.boundingBox()));
@@ -843,9 +829,10 @@ export const STATES: State[] = [
         const sort = (await bar.locator('.sort-field:visible').boundingBox())!;
         expect(Math.abs(view.y - sort.y), 'View and Sort by on one line').toBeLessThanOrEqual(2);
       }
-      await bar.getByRole('button', { name: 'Hide controls' }).click();
+      await page.locator('.cbar-pull').click();
       await expect(page.locator('.cbar.overlay')).toHaveCount(0);
       await expect(mini).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
       expect(page.url().replace(/[?&]sort=[^&]*/, '')).toBe(url.replace(/[?&]sort=[^&]*/, ''));
       expect(page.url()).not.toMatch(/expand|collapse|bar/);
     } },
@@ -865,24 +852,13 @@ export const STATES: State[] = [
       });
       expect(covered, 'Save is not under the pinned bar').toBe(false);
     } })),
-  // Turning the phone while the bar is expanded: the caret stays, bottom-right in the last row, level with its left
-  // neighbor and clear of everything (it is a CSS item of that row, nothing is measured).
+  // Turning the phone while the bar is expanded: the pull tab stays hanging off the bar's bottom-right edge, clear of
+  // everything (it is placed by CSS, nothing is measured).
   { name: 'coffees-bar-rotate', viewports: 'two', path: () => '/coffees?status=all&view=cards',
     act: async (page) => {
       const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
       test.skip(!(w <= 640 || h <= 450), 'the collapse is a phone feature');
-      const check = async () => {
-        const caret = page.getByRole('button', { name: 'Hide controls' });
-        await expect(caret).toBeVisible();
-        const c = (await caret.boundingBox())!;
-        const bar = (await page.locator('.cbar.overlay').boundingBox())!;
-        expect(Math.abs(c.x + c.width - (bar.x + bar.width - 16))).toBeLessThanOrEqual(1);
-        const cells = (await Promise.all((await page.locator('.add-sort-row button:not([aria-label="Hide controls"])').all()).map((x) => x.boundingBox()))).filter((x) => x);
-        const nb = cells.reduce((a, b) => (b!.x > a!.x ? b : a))!;
-        expect(nb.x + nb.width).toBeLessThanOrEqual(c.x + 1);
-        expect(Math.abs(nb.y - c.y), 'caret top = neighbor top').toBeLessThanOrEqual(2);
-        expect(Math.abs(nb.height - c.height), 'caret height = neighbor height').toBeLessThanOrEqual(1);
-      };
+      const check = () => expectPullTab(page);
       await page.evaluate(() => window.scrollTo(0, 1500));
       await page.getByRole('button', { name: 'Show controls' }).click();
       await check();
@@ -6802,7 +6778,232 @@ export const STATES: State[] = [
         before = await body();
       }
     } },
-
+  // The collapsible bar on /insights (docs/superpowers/specs/2026-10-24-insights-collapsible-bar-design.md): desktop pins only
+  // the controls; a phone gets the short row once the block is scrolled past, and the expanded overlay with its pull tab.
+  ...INSIGHTS_TABS.map((tab) => ({ name: `insights-cbar-${tab}`, path: () => `/insights?tab=${tab}&range=all`, act: (page: Page) => cbarAct(page) })),
+  { name: 'insights-cbar-chips', path: () => '/insights?tab=records&range=all&roast=Light&process=Washed&origin=Ethiopia&roaster=The%20Picky%20Chemist&caffeine=all',
+    act: (page) => cbarAct(page, 5) },
+  { name: 'insights-cbar-custom', path: () => `/insights?range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`, act: (page) => cbarAct(page) },
+  // Staying open: every change inside the expanded bar keeps it open, the spacer follows its height, a closed dialog
+  // returns focus into it; the pull tab and the short row's button work from the keyboard.
+  { name: 'insights-cbar-stays-open', path: () => '/insights?tab=habits&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      const overlay = await expandBar(page);
+      const combo = (name: string) => overlay.getByRole('combobox', { name, exact: true });
+      const check = async (url: RegExp | null, dialog = false) => {
+        if (url) await expect(page).toHaveURL(url);
+        await expect(overlay).toBeVisible();
+        await expectSpacerMatchesBody(page);
+        if (dialog) await expect.poll(() => overlay.evaluate((el) => el.contains(document.activeElement)), { message: 'focus back in the bar' }).toBe(true);
+      };
+      await combo('Period').selectOption('3m');
+      await check(/range=3m/);
+      await combo('View').selectOption('consumption');
+      await check(/tab=consumption/);
+      const first = await combo('Compare').evaluate((s: HTMLSelectElement) => [...s.options].map((o) => o.value).find((v) => v !== '0' && v !== 'custom')!);
+      await combo('Compare').selectOption(first);
+      await check(/compare=/);
+      await overlay.getByRole('button', { name: /^Filters/ }).click();
+      const filters = page.getByRole('dialog', { name: 'Filters' });
+      const roast = filters.getByRole('combobox', { name: 'Roast level' });
+      await roast.selectOption(await roast.evaluate((s: HTMLSelectElement) => [...s.options].map((o) => o.value).find((v) => v)!));
+      await filters.getByRole('button', { name: 'Done' }).click();
+      await expect(filters).toHaveCount(0);
+      await check(/roast=/, true);
+      // the Group by control (a tab control) is on Consumption, so it goes before leaving the tab
+      const by = overlay.getByRole('group', { name: 'Group by' }).locator('button[aria-pressed="false"]:not([aria-disabled="true"])').first();
+      const url = page.url();
+      await by.click();
+      await expect.poll(() => page.url()).not.toBe(url);
+      await check(null);
+      await combo('View').selectOption('records');
+      await check(/tab=records/);
+      await overlay.getByRole('button', { name: /^Ratings and brews/ }).click();
+      await page.locator('#switch-menu').getByRole('button', { name: 'All ratings' }).click();
+      await check(/ratings=all/);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#switch-menu:popover-open')).toHaveCount(0);
+      await check(null);
+      await combo('Period').selectOption('custom');
+      const dates = page.getByRole('dialog', { name: 'Custom range' });
+      await expect(dates).toBeVisible();
+      await dates.getByRole('button', { name: 'Apply' }).click();
+      await expect(dates).toHaveCount(0);
+      await check(/range=\d{4}-\d\d-\d\d\.\.\d{4}-\d\d-\d\d/, true);
+      await overlay.getByRole('button', { name: 'Reset' }).click();
+      await check(/\/insights\?tab=records$/);
+      await page.locator('.cbar-pull').focus();
+      await page.keyboard.press('Enter');
+      await expect(page.getByRole('button', { name: 'Show controls' })).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page.locator('.cbar-pull')).toBeFocused();
+    } },
+  // A Jump to chip in the expanded bar folds it and lands the section just under the short row (or the page ends first).
+  { name: 'insights-cbar-jump-folds', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      const overlay = await expandBar(page);
+      const jump = overlay.locator('.board-jump a').nth(1);
+      const id = (await jump.getAttribute('href'))!.slice(1);
+      await jump.click();
+      await expect(page.locator('.cbar.overlay')).toHaveCount(0);
+      await expect(page).toHaveURL(new RegExp(`#${id}$`));
+      await expect.poll(async () => {
+        const [top, pinned, atEnd] = await Promise.all([
+          page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top, id), pinnedBottomOf(page),
+          page.evaluate(() => Math.ceil(scrollY + innerHeight) >= document.documentElement.scrollHeight - 1)
+        ]);
+        return top - pinned >= -1 && (atEnd || top - pinned <= 16);
+      }, { message: 'section lands under the short row' }).toBe(true);
+    } },
+  { name: 'insights-cbar-top-folds', viewports: 'two', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      await expandBar(page);
+      await page.evaluate(() => scrollTo(0, 0));
+      await expect(page.locator('.cbar.overlay')).toHaveCount(0);
+      await expect(page.locator('.cbar-mini')).toHaveCount(0);
+    } },
+  // Turning the phone while expanded keeps the bar (and its pull tab) while it is still phone mode; desktop width folds it.
+  { name: 'insights-cbar-rotate', viewports: 'two', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      test.skip(!isPhone(page), 'the collapse is a phone feature');
+      const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
+      await scrollPastBar(page);
+      await expandBar(page);
+      await page.setViewportSize({ width: 1003, height: 333 });
+      await frames(page);
+      await expect(page.locator('.cbar.overlay')).toBeVisible();
+      await expectPullTab(page);
+      await page.setViewportSize({ width: w, height: h });
+      await frames(page);
+      await expect(page.locator('.cbar.overlay')).toBeVisible();
+      await expectPullTab(page);
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await frames(page);
+      await expect(page.locator('.cbar.overlay')).toHaveCount(0);
+      await expect(page.locator('.cbar-mini')).toHaveCount(0);
+      await scrollPastBar(page);
+      expect(Math.abs((await page.locator('.filter-bar').boundingBox())!.y), 'controls pinned at desktop width').toBeLessThanOrEqual(1);
+    } },
+  // An overlay taller than the screen scrolls inside; the pull tab stays at its visible bottom-right, clear of the last row.
+  { name: 'insights-cbar-overlay-scroll', path: () => '/insights?tab=brewing&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      await expandBar(page);
+      const scroller = page.locator('.cbar-scroll');
+      if (!(await scroller.evaluate((el) => el.scrollHeight > el.clientHeight + 1))) return;
+      await expectPullTab(page);
+      const pull = page.locator('.cbar-pull');
+      const before = (await pull.boundingBox())!;
+      await scroller.evaluate((el) => (el.scrollTop = el.scrollHeight));
+      await frames(page);
+      const [last, tab] = [(await page.locator('.cbar.overlay .board-jump a').last().boundingBox())!, (await pull.boundingBox())!];
+      expect(last.y + last.height, 'last chip above the pull tab').toBeLessThanOrEqual(tab.y + 1);
+      expect(last.y + last.height, 'last chip in the viewport').toBeLessThanOrEqual(page.viewportSize()!.height);
+      expect(Math.abs(tab.x - before.x) <= 1 && Math.abs(tab.y - before.y) <= 1, 'pull tab stays put').toBe(true);
+    } },
+  // The Ratings and brews popover opens under its button and closes when the overlay scrolls under it.
+  { name: 'insights-cbar-ratings-menu', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      const overlay = await expandBar(page);
+      const button = overlay.getByRole('button', { name: /^Ratings and brews/ });
+      await button.click();
+      const menu = page.locator('#switch-menu:popover-open');
+      await expect(menu).toBeVisible();
+      expect((await menu.boundingBox())!.y).toBeGreaterThanOrEqual((await button.boundingBox())!.y + (await button.boundingBox())!.height - 1);
+      await page.locator('.cbar-scroll').dispatchEvent('scroll');
+      await expect(menu).toHaveCount(0);
+      await expect(overlay).toBeVisible();
+    } },
+  // A tip in the expanded bar opens in view, over the bar's own controls (inBar).
+  { name: 'insights-cbar-tip', path: () => '/insights?range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await scrollPastBar(page);
+      const overlay = await expandBar(page);
+      await overlay.getByRole('button', { name: 'Household' }).focus();
+      await page.keyboard.press('Tab');
+      await expect(overlay.getByRole('button', { name: 'Per person' })).toBeFocused();
+      await expectTipInView(page, page.locator('.cell-tip:popover-open'), { inBar: true });
+    } },
+  // Milestones' sticky ruler sits under what is pinned: the short row on a phone (not the overlay), the controls on desktop.
+  { name: 'insights-cbar-milestones-bar-h', path: () => '/insights?tab=milestones&range=all',
+    act: async (page) => {
+      await scrollPastBar(page);
+      const barH = () => page.locator('.timeline').evaluate((el) => parseFloat(el.style.getPropertyValue('--bar-h')));
+      if (!isPhone(page)) {
+        expect(Math.abs((await barH()) - (await page.locator('.filter-bar').evaluate((el: HTMLElement) => el.offsetHeight)))).toBeLessThanOrEqual(1);
+        return;
+      }
+      const mini = (await page.locator('.cbar-mini').boundingBox())!.height;
+      expect(Math.abs((await barH()) - mini), '--bar-h = short row').toBeLessThanOrEqual(1);
+      await expandBar(page);
+      await frames(page);
+      expect(Math.abs((await barH()) - mini), '--bar-h unchanged expanded').toBeLessThanOrEqual(1);
+    } },
+  // Review focus 1: the page shrinking under an expanded bar (a short, empty tab at the page end) folds it or keeps it, never loses it.
+  { name: 'insights-cbar-short-tab', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      const errors: Error[] = [];
+      page.on('pageerror', (e) => errors.push(e));
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await frames(page);
+      await expandBar(page);
+      // a client-side link to the empty tab (a navigation would reload the page and drop the expanded bar)
+      await page.evaluate(() => {
+        const a = document.createElement('a');
+        a.href = '?tab=sweetspots&range=2000-01-01..2000-01-31';
+        document.body.append(a);
+        a.click();
+      });
+      await expect(page).toHaveURL(/tab=sweetspots/);
+      await frames(page);
+      const overlay = page.locator('.cbar.overlay');
+      if (!(await overlay.count())) expect((await page.locator('.cbar').first().boundingBox())!.y, 'folded: the bar is in flow at the top').toBeGreaterThanOrEqual(-1);
+      expect(errors).toEqual([]);
+    } },
+  // Review focus 3: a 20px root font (larger text setting) keeps a jump landing clear of the short row.
+  { name: 'insights-cbar-font-scale', viewports: 'two', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await page.addInitScript(() => {
+        const set = () => document.documentElement && (document.documentElement.style.fontSize = '20px');
+        set();
+        document.addEventListener('DOMContentLoaded', set);
+      });
+      await reloadReady(page);
+      const jump = page.locator('.board-jump a').nth(1);
+      const id = (await jump.getAttribute('href'))!.slice(1);
+      await jump.click();
+      await expect.poll(async () => {
+        const mini = page.locator('.cbar-mini');
+        if (!(await mini.count())) return false;
+        const gap = (await page.evaluate((i) => document.getElementById(i)!.getBoundingClientRect().top, id)) - (await pinnedBottomOf(page));
+        return gap >= -1 && gap <= 16;
+      }, { message: 'jump lands under the short row at 20px text' }).toBe(true);
+      const [pad, mini] = await Promise.all([
+        page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop)),
+        page.locator('.cbar-mini').evaluate((el) => el.getBoundingClientRect().height)
+      ]);
+      expect(Math.abs(pad - mini), 'scroll-padding-top = short row height').toBeLessThanOrEqual(1);
+    } },
+  // Review focus 4: a reload restores the scroll; if that is past the block, the short row is there without scrolling again.
+  { name: 'insights-cbar-restore', viewports: 'two', path: () => '/insights?tab=records&range=all',
+    act: async (page) => {
+      if (!isPhone(page)) return;
+      await page.evaluate(() => scrollTo(0, 1500));
+      await reloadReady(page);
+      if (await page.evaluate(() => scrollY) > 0) await expect(page.locator('.cbar-mini')).toBeVisible();
+    } },
 ];
 
 // A tip a hover opens also opens on a tap (a click without touch) and stays open until a tap elsewhere, one at a time
@@ -7065,21 +7266,23 @@ test.describe('signed out', () => {
     await expectSearchRowButtons(page);
     await checkLayout(page);
   });
-  // Signed out (no Add Coffee): the expanded phone bar's last row is results left, caret right, centered on the row.
+  // Signed out (no Add Coffee): the expanded phone bar hangs its pull tab off the bottom edge; the last row looks as in flow.
   test('coffees-bar-caret-public', { tag: '@coffees' }, async ({ page }) => {
     const [w, h] = [page.viewportSize()!.width, page.viewportSize()!.height];
     test.skip(!(w <= 640 || h <= 450), 'the collapse is a phone feature');
     await gotoReady(page, '/coffees?status=all&view=cards');
+    const inFlow = await controlRects(page, '.cbar .add-sort-row');
     await page.evaluate(() => window.scrollTo(0, 1500));
     await page.getByRole('button', { name: 'Show controls' }).click();
-    const bar = (await page.locator('.cbar.overlay').boundingBox())!;
-    const caret = (await page.getByRole('button', { name: 'Hide controls' }).boundingBox())!;
-    const row = (await page.locator('.add-sort-row').boundingBox())!;
-    expect(Math.abs(caret.x + caret.width - (bar.x + bar.width - 16))).toBeLessThanOrEqual(1);
-    const nonSort = w <= 640; // landscape keeps Sort by (and its toggle) as the neighbor
-    if (nonSort) expect(Math.abs(caret.y + caret.height / 2 - (row.y + row.height / 2)), 'centered on the row').toBeLessThanOrEqual(1);
-    const results = (await page.locator('.add-sort-row .results').boundingBox())!;
-    expect(results.x + results.width).toBeLessThanOrEqual(caret.x);
+    await expectPullTab(page);
+    expectRectsClose(await controlRects(page, '.cbar.overlay .add-sort-row'), inFlow, 1);
+    await checkLayout(page);
+  });
+  // The collapsible bar for a signed-out visitor: the same short row, overlay and pull tab.
+  test('insights-cbar-public', { tag: '@insights' }, async ({ page }) => {
+    test.skip(!isPhone(page), 'the collapse is a phone feature');
+    await gotoReady(page, '/insights?range=all');
+    await cbarAct(page);
     await checkLayout(page);
   });
   test('insights-gear-trophies-public', { tag: '@insights' }, async ({ page }) => {
@@ -7109,3 +7312,41 @@ for (const tab of ['leaderboards', 'habits', 'consumption', 'milestones', 'sweet
     } finally { await ctx.close(); }
   });
 }
+
+// The block above the content (heading, controls, chips, period row, Jump to chips) keeps its in-flow place at the top of
+// the page when it becomes the collapsible bar: x/y/w/h of each part vs the recording made on the code before it
+// (UI_BASELINE=record rewrites it: .ui-test/cbar-baseline/*.json merged into tests/ui/insights-cbar-baseline.json).
+const CBAR_BASELINE = 'tests/ui/insights-cbar-baseline.json';
+async function expectInflowBaseline(page: Page, name: string, variant: string, project: string) {
+  const key = `${project}/${name}/${variant}`;
+  const actual = await inflowRects(page);
+  if (process.env.UI_BASELINE === 'record') {
+    mkdirSync('.ui-test/cbar-baseline', { recursive: true });
+    const file = `.ui-test/cbar-baseline/${name}-${project}.json`;
+    let all: Record<string, unknown> = {};
+    try { all = JSON.parse(readFileSync(file, 'utf8')); } catch { /* first variant */ }
+    writeFileSync(file, JSON.stringify({ ...all, [key]: actual }));
+  } else {
+    const base = JSON.parse(readFileSync(CBAR_BASELINE, 'utf8'))[key];
+    expect(base, `no baseline for ${key}`).toBeTruthy();
+    expectRectsClose(actual, base, 1);
+  }
+}
+for (const tab of INSIGHTS_TABS) {
+  test(`insights-cbar-inflow-${tab}`, { tag: '@insights' }, async ({ page }, info) => {
+    const name = `insights-cbar-inflow-${tab}`;
+    const variants = {
+      base: `/insights?tab=${tab}&range=all`,
+      chips: `/insights?tab=${tab}&range=all&roast=Light&process=Washed`,
+      custom: `/insights?tab=${tab}&range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`
+    };
+    for (const [variant, url] of Object.entries(variants)) {
+      await gotoReady(page, url);
+      await expectInflowBaseline(page, name, variant, info.project.name);
+    }
+  });
+}
+test('coffees-cbar-inflow', { tag: '@coffees' }, async ({ page }, info) => {
+  await gotoReady(page, '/coffees?status=all&view=list');
+  await expectInflowBaseline(page, 'coffees-cbar-inflow', 'base', info.project.name);
+});
