@@ -5,7 +5,7 @@
 
   // A section heading that links to itself (?…&chart=<id>#<id>), so its URL can be copied and previews name it:
   // a plain click puts that URL in the address bar without a reload (the page's replaceState), a modified click
-  // follows the href. No hover preload (it would fetch the page data for a link that never navigates). Capture phase: SvelteKit's own link handler runs before a delegated onclick. The # mark shows
+  // follows the href. No hover preload (it would fetch the page data for a link that never navigates). Capture phase: SvelteKit's own link handler runs before a delegated onclick. The link icon shows
   // on hover and focus (faintly always on touch, which has no hover). A load or click on the hash scrolls the
   // heading to just under the sticky filter bar (CollapsibleBar sets scroll-padding-top).
   let { id, level = 2, class: cls = '', children }: { id: string; level?: 2 | 3; class?: string; children: Snippet } = $props();
@@ -18,7 +18,7 @@
 </script>
 
 <svelte:element this={`h${level}`} {id} class="heading-anchor {cls}">
-  <a href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="off">{@render children()}<Icon name="hash" /></a>
+  <a href={link.href(id)} onclickcapture={onclick} data-sveltekit-preload-data="off">{@render children()}<Icon name="link" /></a>
 </svelte:element>
 
 <style>
