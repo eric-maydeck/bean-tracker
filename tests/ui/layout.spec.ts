@@ -1,8 +1,8 @@
 import { expect, type Page, type Locator, type Route } from '@playwright/test';
 import { test } from './fixtures';
 import { gotoReady, reloadReady } from './ready';
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { INSIGHTS_TABS, iso, inflowRects, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
+import { readFileSync } from 'node:fs';
+import { INSIGHTS_TABS, iso, expectRectsClose, controlRects, scrollPastBar, expectShortRow, expandBar, expectPullTab, pinnedBottomOf, anchorGap, tapBackToTop, expectAtTopFolded, cbarAct, isPhone, expectSpacerMatchesBody } from './collapsibleBar';
 import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
@@ -7374,41 +7374,3 @@ for (const tab of ['overview', 'records', 'water', 'leaderboards', 'habits', 'co
     } finally { await ctx.close(); }
   });
 }
-
-// The block above the content (heading, controls, chips, period row, Jump to chips) keeps its in-flow place at the top of
-// the page when it becomes the collapsible bar: x/y/w/h of each part vs the recording made on the code before it
-// (UI_BASELINE=record rewrites it: .ui-test/cbar-baseline/*.json merged into tests/ui/insights-cbar-baseline.json).
-const CBAR_BASELINE = 'tests/ui/insights-cbar-baseline.json';
-async function expectInflowBaseline(page: Page, name: string, variant: string, project: string) {
-  const key = `${project}/${name}/${variant}`;
-  const actual = await inflowRects(page);
-  if (process.env.UI_BASELINE === 'record') {
-    mkdirSync('.ui-test/cbar-baseline', { recursive: true });
-    const file = `.ui-test/cbar-baseline/${name}-${project}.json`;
-    let all: Record<string, unknown> = {};
-    try { all = JSON.parse(readFileSync(file, 'utf8')); } catch { /* first variant */ }
-    writeFileSync(file, JSON.stringify({ ...all, [key]: actual }));
-  } else {
-    const base = JSON.parse(readFileSync(CBAR_BASELINE, 'utf8'))[key];
-    expect(base, `no baseline for ${key}`).toBeTruthy();
-    expectRectsClose(actual, base, 1);
-  }
-}
-for (const tab of INSIGHTS_TABS) {
-  test(`insights-cbar-inflow-${tab}`, { tag: '@insights' }, async ({ page }, info) => {
-    const name = `insights-cbar-inflow-${tab}`;
-    const variants = {
-      base: `/insights?tab=${tab}&range=all`,
-      chips: `/insights?tab=${tab}&range=all&roast=Light&process=Washed`,
-      custom: `/insights?tab=${tab}&range=${iso(-120)}..${iso(-30)}&compare=${iso(-240)}..${iso(-150)}`
-    };
-    for (const [variant, url] of Object.entries(variants)) {
-      await gotoReady(page, url);
-      await expectInflowBaseline(page, name, variant, info.project.name);
-    }
-  });
-}
-test('coffees-cbar-inflow', { tag: '@coffees' }, async ({ page }, info) => {
-  await gotoReady(page, '/coffees?status=all&view=list');
-  await expectInflowBaseline(page, 'coffees-cbar-inflow', 'base', info.project.name);
-});

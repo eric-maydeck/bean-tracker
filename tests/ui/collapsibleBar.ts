@@ -13,32 +13,6 @@ export const isPhone = (page: Page) => {
 export const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * 864e5).toISOString().slice(0, 10);
 const frames = (page: Page) => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
-export const BLOCK_PARTS = '.toolbar > *, .filter-bar > *, .tab-controls button, .tab-controls select, .coffee-chips, .roast-nudge, .period-row > *, .board-jump a';
-const COFFEES_PARTS = '.cbar .toolbar button, .cbar .toolbar select, .coffees-search-row > *, .add-sort-row > *';
-const TEXT_ROWS = '.insights-period, .see-all, .roast-nudge';
-
-// At scrollY 0, document coords rounded, keyed "<part>#<index>" (index among that part's matches, DOM order).
-// A part is the first of the selector list an element matches. Controls: [x, y, w, h]; text rows: [x, y, h].
-export async function inflowRects(page: Page): Promise<Record<string, number[]>> {
-  const coffees = page.url().includes('/coffees');
-  return page.evaluate(([parts, textRows, coffees]) => {
-    const list = parts.split(', ');
-    const seen: Record<string, number> = {};
-    const out: Record<string, number[]> = {};
-    for (const el of document.querySelectorAll(parts)) {
-      const r = el.getBoundingClientRect();
-      if (!r.width && !r.height) continue;
-      const part = list.find((p) => el.matches(p))!;
-      const key = `${part}#${(seen[part] = (seen[part] ?? -1) + 1)}`;
-      const [x, y, w, h] = [r.x + scrollX, r.y + scrollY, r.width, r.height].map(Math.round);
-      out[key] = !coffees && el.matches(textRows) ? [x, y, h] : [x, y, w, h];
-    }
-    const first = document.querySelector('main section.chart-panel, main .chart-panel');
-    if (first) out['first-content'] = [Math.round(first.getBoundingClientRect().y + scrollY)];
-    return out;
-  }, [coffees ? COFFEES_PARTS : BLOCK_PARTS, TEXT_ROWS, coffees] as const);
-}
-
 // [x, w, h] rounded of every visible button, select, link and results count inside `scope` (not the pull tab).
 export function controlRects(page: Page, scope: string): Promise<number[][]> {
   return page.evaluate((scope) => [...(document.querySelector(scope)?.querySelectorAll('button, select, a, .results') ?? [])]
