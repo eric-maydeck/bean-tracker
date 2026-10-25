@@ -33,6 +33,7 @@
   import Water, { jumpLinks as waterLinks } from './Water.svelte';
   import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
   import Recent from './Recent.svelte';
+  import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
   import type { Delta } from '$lib/server/insights/overview';
   import type { PageData } from './$types';
@@ -78,19 +79,6 @@
   let rangeDialog: HTMLDialogElement | undefined = $state();
 
   let barHeight = $state(0);
-  // A #anchor on load (a tile or section link) scrolls once the bar's height is known: the browser's
-  // own jump ran before scroll-padding-top was set, leaving the target under the sticky bar.
-  // ponytail: the hash scroll uses the first-measured bar height and never re-scrolls; if the bar's spare width
-  // shrinks enough that it wraps while loading, re-measure (scroll again when barHeight changes) instead.
-  let hashDone = false;
-  $effect(() => {
-    document.documentElement.style.scrollPaddingTop = `${barHeight}px`;
-    if (barHeight && !hashDone) {
-      hashDone = true;
-      if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
-    }
-    return () => document.documentElement.style.removeProperty('scroll-padding-top');
-  });
 
   // The server computes every tile from the URL, so a toggle is a navigation.
   function choose(change: InsightsUrlState) {
@@ -494,6 +482,8 @@
   {/each}
 </nav>
 <div class="rail-main">
+<CollapsibleBar desktopPinned={barHeight}>
+{#snippet children()}
 <div class="toolbar">
   <h1>Insights</h1>
   <button class="button button-secondary reset" type="button" onclick={reset}>Reset</button>
@@ -707,6 +697,9 @@
   {/if}
 </div>
 <JumpNav links={jump} label={s.tab === 'leaderboards' ? 'Jump to a board' : undefined} />
+{/snippet}
+{#snippet summary()}{TAB_LABEL[s.tab]}{' · '}{periodText}{#if badgeCount}{' · '}{badgeCount} {badgeCount === 1 ? 'filter' : 'filters'}{/if}{/snippet}
+</CollapsibleBar>
 <span id="ratings-help-current" hidden>{plainText(RATINGS_HELP.current)}</span>
 <span id="ratings-help-all" hidden>{RATINGS_HELP.all}</span>
 <span id="dial-help-dialed" hidden>{DIAL_HELP.dialed}</span>
@@ -774,6 +767,7 @@
   </section>
 {/snippet}
 
+<!-- The Jump to chips for this chain are the `jump` derived in the script (same branch order); keep them in step. -->
 {#snippet tab(part?: 'bar')}
 {#if data.boards}
   <Leaderboards
@@ -944,6 +938,12 @@
     .rail-layout :global(.timeline > .ruler) {
       grid-column: 2;
       grid-row: 1;
+    }
+  }
+  /* Phones: the bar scrolls with the page (CollapsibleBar pins a short row instead). */
+  @media (max-width: 640px), (max-height: 450px) {
+    .insights-controls.filter-bar {
+      position: static;
     }
   }
   /* Labeled controls, left-packed, one column each on wider screens. */

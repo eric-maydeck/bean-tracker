@@ -75,7 +75,9 @@
 </script>
 
 {#if expanded}<div bind:this={spacerEl} style:height="{bodyH + chrome}px" style:margin-bottom={spacerMargin}></div>{/if}
-<div class="cbar" class:inner={desktopPinned !== undefined} class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH}>
+<!-- A #hash link inside the bar (Jump to chips) folds it: the section lands below the short row. -->
+<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+<div class="cbar" class:inner={desktopPinned !== undefined} class:overlay={expanded} bind:this={barEl} bind:offsetHeight={barH} onclick={(e) => { if (expanded && (e.target as Element).closest('a[href^="#"]')) expanded = false; }}>
   {#if expanded}
     <button type="button" class="cbar-pull" aria-expanded="true" aria-label="Hide controls" onclick={fold}>
       <span class="cbar-pull-tab"><Icon name="caret-up" /></span>
@@ -167,7 +169,7 @@
   }
   @media (max-width: 640px) {
     .cbar.overlay {
-      max-height: calc(100dvh - 56px - 44px); /* the phone tab bar, the pull tab */
+      max-height: calc(100dvh - 64px - 44px); /* the phone tab bar (60px tall at 360 wide), the pull tab */
     }
   }
   @media (min-width: 641px) and (min-height: 451px) {
@@ -176,6 +178,10 @@
     .cbar.inner .cbar-body {
       display: contents; /* the page pins its own part */
     }
+  }
+  /* Back to top (35) would sit over the pull tab of a screen-tall overlay; the overlay covers the page anyway. */
+  :global(body:has(.cbar.overlay) .back-to-top) {
+    display: none;
   }
   .cbar-body {
     display: flow-root; /* its children's margins stay inside, so the spacer can match its height */
