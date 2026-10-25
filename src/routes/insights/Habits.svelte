@@ -10,6 +10,7 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { useEmptyLine } from './coffeeNote';
+  import HeadingAnchor from './HeadingAnchor.svelte';
   import type { Snippet } from 'svelte';
   import { sampleField } from '$lib/sample';
   import Chart from '$lib/components/Chart.svelte';
@@ -90,14 +91,14 @@
 {:else}
   <div class="insights-charts">
     <section class="chart-panel">
-      <h2 id="habits-hour">By hour of day</h2>
+      <HeadingAnchor id="habits-hour">By hour of day</HeadingAnchor>
       <Chart type="bar" vertical labels={HOURS} titles={HOURS.map((_, i) => hour12(i))} values={h.byHour} samples={h.bySampleHour ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareHour)} yMin={yMin(h.byHour, h.compareHour)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''} height={260} />
       <!-- Switched notes: sentence, then the suffix on its own line (blank placeholder when none), so a measure switch never moves the page. -->
       <p class="chart-note" data-switched-note>{measure === 'rating' ? 'Raw mean rating, not within a bag' : `${what} ${avg ? unitWord : 'total'}`}<br>Mountain Time{h.backfilledLeftOut ? ` · ${h.backfilledLeftOut} back-filled brews left out` : ''}</p>
     </section>
     <section class="chart-panel">
-      <h2 id="habits-weekday">By day of week</h2>
+      <HeadingAnchor id="habits-weekday">By day of week</HeadingAnchor>
       <Chart type="bar" vertical labels={WEEKDAYS} values={h.byWeekday} samples={h.bySampleWeekday ?? undefined} datasetLabel={periodLabel}
         series={compare(h.compareWeekday)} yMin={yMin(h.byWeekday, h.compareWeekday)} format={(v) => text(v)} integer={measure === 'brews' && !avg} unit={measure === 'grams' ? 'g' : ''}
         height={260} />
@@ -105,12 +106,12 @@
     </section>
   </div>
   <section class="chart-panel">
-    <h2 id="habits-heatmap">Hour × weekday</h2>
+    <HeadingAnchor id="habits-heatmap">Hour × weekday</HeadingAnchor>
     <Heatmap rows={WEEKDAYS} cols={HOURS} cells={h.heatmap} small={h.heatSample?.map((r) => r.map((x) => x.small))} {text} label={(r, c) => `${WEEKDAYS[r]} ${hour12(c)}`} ariaLabel="Hour by weekday"
       tip={(r, c) => ({ title: `${WEEKDAYS[r]} ${hour12(c)}`, rows: [rowOf(avg)(h.heatmap[r]?.[c] ?? null)], ...(h.heatSample?.[r]?.[c] ? sampleField(h.heatSample[r][c]) : {}) })} />
   </section>
   <section class="chart-panel">
-    <h2 id="habits-calendar">Brew calendar</h2>
+    <HeadingAnchor id="habits-calendar">Brew calendar</HeadingAnchor>
     <BrewCalendar days={h.calendar} text={dayText} row={rowOf(false)} />
   </section>
 {/if}

@@ -3337,6 +3337,37 @@ export const STATES: State[] = [
       await expect.poll(gap).toBeGreaterThanOrEqual(-1);
       expect(await gap()).toBeLessThanOrEqual(16);
     } },
+  { name: 'insights-chart-link', path: () => '/insights?tab=leaderboards&range=all',
+    act: async (page) => {
+      // A heading's link carries chart=<id> and the hash; a click puts both in the address bar without a reload.
+      const gap = () => anchorGap(page, 'leaderboard-origins');
+      const href = (id: string) => page.locator(`#${id} a`).getAttribute('href');
+      expect(await href('leaderboard-origins')).toMatch(/^\?(?=.*tab=leaderboards)(?=.*range=all)(?=.*chart=leaderboard-origins).*#leaderboard-origins$/);
+      const requests: string[] = [];
+      page.on('request', (r) => requests.push(r.url()));
+      await page.locator('#leaderboard-origins a').click();
+      await expect(page).toHaveURL(/chart=leaderboard-origins.*#leaderboard-origins$/);
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      await page.waitForTimeout(300);
+      expect(requests.filter((u) => /__data\.json/.test(u))).toEqual([]);
+      expect(await href('leaderboard-roasters')).toContain('chart=leaderboard-roasters');
+      // A reload, and a load with no hash (Share and short links drop it), land the heading under the bar.
+      const url = page.url();
+      await reloadReady(page);
+      expect(page.url()).toBe(url);
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      await gotoReady(page, '/insights?tab=leaderboards&range=all&chart=leaderboard-origins');
+      await expect.poll(gap).toBeGreaterThanOrEqual(-1);
+      expect(await gap()).toBeLessThanOrEqual(16);
+      // A tab switch drops chart= and the hash; the new tab's headings link with their own chart=.
+      await page.getByLabel('View').selectOption('habits');
+      await expect(page).toHaveURL(/tab=habits/);
+      expect(page.url()).toContain('range=all');
+      expect(page.url()).not.toMatch(/chart=|#/);
+      expect(await href('habits-hour')).toContain('chart=habits-hour');
+    } },
   // Jump-to chips on every tab with 3+ sections (milestones has its own ruler; sweet spots has only two sections).
   ...['overview', 'habits', 'consumption', 'records', 'insights', 'brewing', 'water', 'gear', 'milestones', 'sweetspots'].map((tab) => ({
     name: `insights-jump-${tab}`, viewports: tab === 'milestones' || tab === 'sweetspots' ? 'two' : 'all', path: () => `/insights?tab=${tab}&range=all`,
@@ -4017,7 +4048,7 @@ export const STATES: State[] = [
       await page.goto(`/insights?tab=milestones&range=all#${id}`);
       const head = page.locator(`[id="${id}"]`);
       await expect(head).toBeInViewport();
-      await expect(head.locator('a')).toHaveAttribute('href', `#${id}`);
+      await expect(head.locator('a')).toHaveAttribute('href', new RegExp(`chart=${id}#${id}$`));
       // Polled: the on-load scroll and the ruler's rAF layout can land after the first read.
       const below = async (el: typeof head, max: number) => {
         const elId = (await el.getAttribute('id'))!;

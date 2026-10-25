@@ -18,6 +18,7 @@
 
 <script lang="ts">
   import WholeNote from './WholeNote.svelte';
+  import HeadingAnchor from './HeadingAnchor.svelte';
   import { bottomInView } from '$lib/scrollToBottom';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
@@ -255,11 +256,11 @@
   {@const pick = switchable ? viewOf(b) : undefined}
   {@const view = pick ? 'time' : 'list'}
   {@const wide = pick === 'wide'}
-  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide id="leaderboard-{b}" data-board={b} style:--rows={size}
+  <section class="chart-panel board" class:fill={unranked(b)} class:open={isOpen} class:timeview={view === 'time'} class:wide data-board={b} style:--rows={size}
     data-lines={view === 'time' ? (isOpen ? series?.[b]?.lines.length : Math.min(size, series?.[b]?.lines.length ?? 0)) : undefined}>
     {#if switchable}
       <div class="board-head">
-        <h2>{TITLE[b]}</h2>
+        <HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>
         <div class="board-tools">
           <div class="form-field group-field">
             <span class="sr-only">Shown as</span>
@@ -274,7 +275,7 @@
           {/if}
         </div>
       </div>
-    {:else}<h2>{TITLE[b]}</h2>{/if}
+    {:else}<HeadingAnchor id="leaderboard-{b}">{TITLE[b]}</HeadingAnchor>{/if}
     {#if b === 'origins' && rows.length}<p class="like-note">Counts coffee you've consumed, not coffee you've bought.</p>{/if}
     <div class="board-body" class:time={view === 'time'}>
       {#if b === 'origins' && rows.length}<div class="board-map"><WorldMap rows={rows.map((r) => ({ ...r, href: r.href && link(r.href) }))} {rank} valueText={(v) => fmt(v, whole)} valueLabel={RANK_LABEL[rank]} /></div>{/if}
@@ -455,7 +456,7 @@
     gap: var(--space-2);
     margin-bottom: var(--space-3);
   }
-  .board-head h2,
+  .board-head :global(h2),
   .board-head :global(.form-field) {
     margin: 0;
   }

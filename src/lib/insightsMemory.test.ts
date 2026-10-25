@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loadInsightsState, serializeInsightsState, withoutCard } from './insightsMemory';
+import { loadInsightsState, serializeInsightsState, withoutDeepLinks } from './insightsMemory';
 import { CHOICE_TTL_MS } from './rememberedChoice';
 
 describe('remembered /insights state', () => {
@@ -26,9 +26,11 @@ describe('memory version', () => {
   });
 });
 
-describe('withoutCard', () => {
-  it('drops card= only', () => {
-    expect(withoutCard('tab=gear&card=grinder-niche&range=1w')).toBe('tab=gear&range=1w');
-    expect(withoutCard('card=grinder-niche')).toBe('');
+describe('withoutDeepLinks', () => {
+  it('drops card= and chart=', () => {
+    expect(withoutDeepLinks('tab=gear&card=grinder-niche&range=1w')).toBe('tab=gear&range=1w');
+    expect(withoutDeepLinks('card=grinder-niche')).toBe('');
+    expect(withoutDeepLinks('tab=gear&card=grinder-niche&chart=gear-eras&range=1w')).toBe('tab=gear&range=1w');
+    expect(withoutDeepLinks('chart=x')).toBe('');
   });
 });

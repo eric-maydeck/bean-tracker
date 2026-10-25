@@ -262,6 +262,7 @@ export interface InsightsUrlState {
   bloom?: 'exact';
   grind?: 'exact';
   card?: string; // Gear's open trophy card (key "kind-slug")
+  chart?: string; // a heading's id: the page scrolls to it on load (link previews name it)
   retired?: 'open'; // Gear's retired shelf is open
   gear?: GearKind; // Gear showcase's kind toggle: absent = All
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
@@ -275,12 +276,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'retired' | 'gear';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; retired?: 'open'; gear?: GearKind;
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind;
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -433,6 +434,7 @@ export function parseInsightsUrl(
     ...(Object.fromEntries(EXACT_PARAMS.map((k) => [k, p.get(k)?.toLowerCase() === 'exact' ? 'exact' : undefined])) as Partial<Record<ExactParam, 'exact'>>),
     pairs: parsePairs(p.get('pairs')),
     card: parseCard(p.get('card')),
+    chart: parseChart(p.get('chart')),
     retired: pickOne(p, 'retired', ['open']),
     gear: pickOne(p, 'gear', GEAR_KINDS)
   };
@@ -444,6 +446,12 @@ const PAIR = /^[a-z0-9]+(-[a-z0-9]+)*--[a-z0-9]+(-[a-z0-9]+)*$/;
 function parsePairs(v: string | null): string[] | undefined {
   const xs = [...new Set((v ?? '').toLowerCase().split(',').map((x) => x.trim()).filter((x) => PAIR.test(x)).map((x) => x.split('--').sort().join('--')))];
   return xs.length ? xs : undefined;
+}
+
+// A heading id (HeadingAnchor): lowercase letters, digits and hyphens.
+function parseChart(v: string | null): string | undefined {
+  const x = (v ?? '').trim().toLowerCase();
+  return /^[a-z0-9-]{1,64}$/.test(x) ? x : undefined;
 }
 
 // The open trophy card on Gear: one "kind-slug" key, lowercased; anything else is dropped.
@@ -493,6 +501,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   for (const k of ['bag', 'roast', 'process', 'origin', 'roaster', 'grinder', ...BREW_FILTER_KEYS, ...BY_PARAMS, ...EXACT_PARAMS] as const) if (s[k]) p.set(k, s[k]!);
   if (s.pairs?.length) p.set('pairs', s.pairs.join(','));
   if (s.card) p.set('card', s.card);
+  if (s.chart) p.set('chart', s.chart);
   if (s.retired) p.set('retired', s.retired);
   if (s.gear) p.set('gear', s.gear);
   return p;
@@ -630,7 +639,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     bag: s.bag, roast: s.roast, process: s.process, origin: s.origin, roaster: s.roaster, grinder: s.grinder,
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
-    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, retired: s.retired, gear: s.gear
+    temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, chart: s.chart, retired: s.retired, gear: s.gear
   };
 }
 

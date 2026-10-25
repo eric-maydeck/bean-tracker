@@ -823,6 +823,15 @@ describe('gear trophy params', () => {
     expect(insightsParams({ tab: 'gear' }).toString()).toBe('tab=gear');
     expect(withDefaults(parse('tab=gear&card=dripper-v60&retired=open'))).toMatchObject({ card: 'dripper-v60', retired: 'open' });
   });
+  it('chart: one id, lowercased, junk dropped, kept in the URL, dropped by reset', () => {
+    expect(parse('chart=Leaderboard-Origins').chart).toBe('leaderboard-origins');
+    expect(parse('chart=a b').chart).toBeUndefined();
+    expect(parse('chart=').chart).toBeUndefined();
+    expect(parse('chart=' + 'a'.repeat(65)).chart).toBeUndefined();
+    expect(insightsParams(parse('tab=leaderboards&chart=leaderboard-origins')).toString()).toContain('chart=leaderboard-origins');
+    expect(withDefaults(parse('chart=gear-eras')).chart).toBe('gear-eras');
+    expect(resetInsights(parse('tab=records&chart=records-taste&range=1m'))).toEqual({ tab: 'records' });
+  });
   it('reset drops card and retired', () => expect(resetInsights({ tab: 'gear', card: 'dripper-v60', retired: 'open' })).toEqual({ tab: 'gear' }));
   it('gear offers dripper and filter selects without filtering the lab', () => {
     expect(brewSelectsOn('gear')).toEqual(['dripper', 'filter', 'water', 'brewDose', 'brewTemp']);

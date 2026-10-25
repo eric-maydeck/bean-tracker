@@ -7,7 +7,7 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import { afterNavigate, goto, replaceState } from '$app/navigation';
   import { MediaQuery } from 'svelte/reactivity';
-  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutCard } from '$lib/insightsMemory';
+  import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
@@ -18,6 +18,8 @@
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TABS, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
   } from '$lib/insightsUrl';
   import { provideCoffeeNote } from './coffeeNote';
+  import { provideChartLink } from './chartLink';
+  import HeadingAnchor from './HeadingAnchor.svelte';
   import GrinderSelect from './GrinderSelect.svelte';
   import KindsBar from './KindsBar.svelte';
   import RatingsSwitch from './RatingsSwitch.svelte';
@@ -43,10 +45,14 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'card' | 'retired' | 'gear'> | null>(null);
+  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'card' | 'chart' | 'retired' | 'gear'> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
   provideCoffeeNote(() => coffeeNote(s));
+  provideChartLink({
+    href: (id) => `?${insightsParams({ ...explicit, chart: id })}#${id}`,
+    go: (id) => { choose({ chart: id }); document.getElementById(id)?.scrollIntoView(); }
+  });
 
   // The Coffees panel (spec Part 3): the page-wide filter; each set field is a chip under the bar.
   let coffeesDialog: HTMLDialogElement | undefined = $state();
@@ -86,11 +92,12 @@
     const y = scrollY;
     const keep = () => { if (!change.tab) scrollTo(0, y); };
     const next = { ...explicit, ...change };
-    // Only open / views / card / retired / gear, and every Over time board already has its series: nothing to fetch.
-    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'retired' || k === 'gear') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
-      local = { open: next.open, views: next.views, card: next.card, retired: next.retired, gear: next.gear };
+    if (change.tab) next.chart = undefined;
+    // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
+    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'chart' || k === 'retired' || k === 'gear') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
+      local = { open: next.open, views: next.views, card: next.card, chart: next.chart, retired: next.retired, gear: next.gear };
       const qs = insightsParams(next).toString();
-      replaceState(`${qs ? `?${qs}` : location.pathname}${location.hash}`, {});
+      replaceState(`${qs ? `?${qs}` : location.pathname}${change.chart ? `#${change.chart}` : location.hash}`, {});
       remember(qs);
       return Promise.resolve();
     }
@@ -109,7 +116,7 @@
   // (Share keeps working). Any in-page navigation saves its own state, and a bare one removes it (bare is the
   // state), so a link with params wins and becomes the remembered state.
   function remember(qs: string) {
-    qs = withoutCard(qs);
+    qs = withoutDeepLinks(qs);
     try {
       if (qs) localStorage.setItem(INSIGHTS_STORAGE_KEY, serializeInsightsState(qs, Date.now()));
       else localStorage.removeItem(INSIGHTS_STORAGE_KEY);
@@ -711,11 +718,11 @@
   <section class="chart-panel">
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
-        <h2 id={panelId(title)}>{title}</h2>
+        <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
         <RatingsSwitch ratings={s.ratings} dial={s.dial} ratingsHelp={RATINGS_HELP} {choose} />
       </div>
     {:else}
-      <h2 id={panelId(title)}>{title}</h2>
+      <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
     {/if}
     <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'}>
       {#each tiles as t (t.key)}

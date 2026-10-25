@@ -52,7 +52,7 @@
     if (h && !hashDone) {
       hashDone = true; // the browser's own hash scroll ran before this padding existed
       try {
-        document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+        document.getElementById(decodeURIComponent(location.hash.slice(1) || new URLSearchParams(location.search).get('chart') || ''))?.scrollIntoView();
       } catch { /* a malformed hash (#%E0): no target, no scroll */ }
     }
   });
