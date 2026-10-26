@@ -1,10 +1,10 @@
 import { computeDaysSinceRoast, computeDrinkAfter, computeUrgencyRating, diffDays, parseDate, type UrgencyInput } from '../urgency';
 import { consumption, gramsOnHand, loggedGrams, remaining } from './overview';
-import { WAIT_BUCKETS, waitBucket, windowState, type BagFact, type BrewFact } from './facts';
+import { WAIT_BUCKETS, roastLevelLabels, waitBucket, windowState, type BagFact, type BrewFact } from './facts';
 import type { Period } from './time';
-import { country } from './leaderboards';
+import { country, processLabels } from './leaderboards';
 import { groupBy } from './records';
-import { ageHref, freshHref, type AgeKey, type FreshKey } from './onHandLinks';
+import { ageHref, freshHref, waitHref, type AgeKey, type FreshKey } from './onHandLinks';
 import type { Filter } from '$lib/coffeeFilters';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
@@ -53,24 +53,30 @@ export type OnHandTiles = {
   frozenBags: number; frozenGrams: number; avgBagCost: number | null;
 };
 export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
-export type WaitRow = { label: string; grams: number; bags: number };
+export type WaitRow = { label: string; grams: number; bags: number; href: string | null };
 export interface Waiting { by: Record<'roaster' | 'origin' | 'process' | 'roast', WaitRow[]>; sub: number; oneOff: number }
 const TOP = 10;
 
 // Backlog grams on the shelf grouped four ways: biggest first, the top 10 then Other. A missing value is "Unknown".
 // Grams divide per person; the bag counts beside them don't. Sub + one-off add up to the grams waiting.
-export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, number>, size: number): Waiting {
+export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, number>, size: number, page: Filter[] = []): Waiting {
   const rows = bags.filter((b) => b.status === 'backlog').map((b) => ({ b, g: remaining(b, logged) / size }));
-  const by = (key: (b: BagFact) => string | null): WaitRow[] => {
+  // `filter`: the /coffees filter listing one group's bags (null label = Unknown); "Other" has none (no "is not" filter).
+  const by = (key: (b: BagFact) => string | null, filter: (label: string | null) => Filter | null): WaitRow[] => {
     const all = [...groupBy(rows, (r) => key(r.b) ?? 'Unknown')]
-      .map(([label, rs]) => ({ label, grams: rs.reduce((s, r) => s + r.g, 0), bags: rs.length }))
+      .map(([label, rs]) => ({ label, grams: rs.reduce((s, r) => s + r.g, 0), bags: rs.length, href: waitHref(filter(label === 'Unknown' ? null : label), page) }))
       .sort((a, b) => b.grams - a.grams || b.bags - a.bags || a.label.localeCompare(b.label));
     const rest = all.slice(TOP);
-    return rest.length ? [...all.slice(0, TOP), { label: 'Other', grams: rest.reduce((s, r) => s + r.grams, 0), bags: rest.reduce((s, r) => s + r.bags, 0) }] : all;
+    return rest.length ? [...all.slice(0, TOP), { label: 'Other', grams: rest.reduce((s, r) => s + r.grams, 0), bags: rest.reduce((s, r) => s + r.bags, 0), href: null }] : all;
   };
   const sub = rows.reduce((s, r) => s + (r.b.subscriptionId !== null ? r.g : 0), 0);
   return {
-    by: { roaster: by((b) => b.roaster), origin: by((b) => country(b.origin)), process: by((b) => b.processGroup), roast: by((b) => b.roastLevel) },
+    by: {
+      roaster: by((b) => b.roaster, (l) => ({ column: 'roaster', mode: 'any', values: [l] })),
+      origin: by((b) => country(b.origin), (l) => ({ column: 'origin', mode: 'any', values: l === null ? [null, 'N/A'] : [l] })),
+      process: by((b) => b.processGroup, (l) => { const v = processLabels(rows.map((r) => r.b), l ?? ''); return v.length ? { column: 'processing', mode: 'any', values: v } : null; }),
+      roast: by((b) => b.roastLevel, (l) => ({ column: 'roast_level', mode: 'any', values: l === null ? [null] : roastLevelLabels(l) }))
+    },
     sub, oneOff: rows.reduce((s, r) => s + r.g, 0) - sub
   };
 }
@@ -137,7 +143,7 @@ export function onHandTab(
     onHandG,
     runway: run(c.period),
     runwayAll: run({ start: null, end: c.today }),
-    waiting: whatsWaiting(bags, logged, c.size),
+    waiting: whatsWaiting(bags, logged, c.size, c.filters ?? []),
     age: ageProfile(waiting, logged, c.today, c.size, c.filters ?? []),
     freshness: withLinks(freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today), c.today, c.filters ?? [])
   };

@@ -40,10 +40,10 @@ describe('freshHref', () => {
   });
 });
 
-import { ageProfile } from './onHand';
+import { ageProfile, whatsWaiting } from './onHand';
 import type { BagFact } from './facts';
 
-describe('age links', () => {
+describe('age and waiting links', () => {
   const d = (n: number) => new Date(Date.UTC(2026, 8, 25 - n)).toISOString().slice(0, 10);
   const specs = [
     { id: 1, age: 3, low: 7, high: 21 }, // before
@@ -65,5 +65,11 @@ describe('age links', () => {
     expect(shown(a.links.inside[0])).toEqual([1, 2, 3]);
     expect(shown(a.links.past[1])).toEqual([4]);
     expect(shown(a.links.noWindow[4])).toEqual([5]);
+  });
+  it('a roaster or origin row lists its backlog bags; Other and an Unknown group follow the rule', () => {
+    const w = whatsWaiting(bags, new Map(), 1);
+    const beta = w.by.roaster.find((r) => r.label === 'Beta')!;
+    expect(shown(beta.href!)).toEqual([2, 3, 4, 5]);
+    expect(shown(w.by.origin.find((r) => r.label === 'Unknown')!.href!)).toEqual([2, 3, 4, 5]);
   });
 });

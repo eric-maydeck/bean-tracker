@@ -163,7 +163,7 @@ describe('whatsWaiting', () => {
   it('12 roasters: top 10 plus Other with the remainder', () => {
     expect(w.by.roaster).toHaveLength(11);
     expect(w.by.roaster[0].label).toBe('R11');
-    expect(w.by.roaster[10]).toEqual({ label: 'Other', grams: 100 + 110, bags: 2 });
+    expect(w.by.roaster[10]).toEqual({ label: 'Other', grams: 100 + 110, bags: 2, href: null }); // no "is not" filter
   });
   it('every grouping sums to the grams waiting, as do subscription + one-off', () => {
     for (const k of ['roaster', 'origin', 'process', 'roast'] as const) expect(w.by[k].reduce((s, r) => s + r.grams, 0)).toBe(grams);
@@ -174,6 +174,6 @@ describe('whatsWaiting', () => {
     const bags = [fact({ id: 1, origin: 'N/A', roastLevel: null }), fact({ id: 2, origin: 'Kenya', roastLevel: 'Light' })];
     const a = whatsWaiting(bags, new Map(), 2);
     expect(a.by.origin.map((r) => r.label).sort()).toEqual(['Kenya', 'Unknown']);
-    expect(a.by.roast.find((r) => r.label === 'Unknown')).toEqual({ label: 'Unknown', grams: 125, bags: 1 });
+    expect(a.by.roast.find((r) => r.label === 'Unknown')).toMatchObject({ label: 'Unknown', grams: 125, bags: 1 });
   });
 });

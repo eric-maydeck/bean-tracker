@@ -1,5 +1,5 @@
 import { toParams } from '$lib/coffeeViewState';
-import type { Filter } from '$lib/coffeeFilters';
+import { upsertFilter, type Filter } from '$lib/coffeeFilters';
 import { WAIT_BUCKETS } from './facts';
 import { addDays } from './time';
 import type { StatusTab } from '$lib/coffeeViewState';
@@ -24,6 +24,11 @@ export function ageHref(bucket: number, key: AgeKey, today: string, page: Filter
     ? { column: 'roast_date', mode: 'range', op: '<=', a: addDays(today, -lo), b: '' }
     : { column: 'roast_date', mode: 'range', op: 'between', a: addDays(today, -hi), b: addDays(today, -lo) };
   return href(['backlog'], [...page, roast, ...(key === 'before' ? [window(FAR_FUTURE), urgency('<', '0')] : [])]);
+}
+
+// What's waiting: backlog bags of one group (null: the group can't be listed with a filter).
+export function waitHref(filter: Filter | null, page: Filter[]): string | null {
+  return filter ? href(['backlog'], upsertFilter(page, filter)) : null;
 }
 
 export type FreshKey = 'ready' | 'drinkSoon' | 'resting' | 'frozen';

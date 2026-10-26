@@ -2829,6 +2829,7 @@ export const STATES: State[] = [
       await check('onhand-age');
       await page.locator('section.chart-panel:has(#onhand-age)').getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags', exact: true }).click();
       await check('onhand-age');
+      await check('onhand-waiting');
     }
   },
   {

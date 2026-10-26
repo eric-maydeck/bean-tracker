@@ -41,6 +41,7 @@
     // Only Before rest window is exact; the other states list the whole age range (no filter splits them).
     return { href: link(t.age.links[k][i]), label: k === 'before' ? 'See coffees' : 'See coffees of this age' };
   };
+  const waitLink = (_s: number, i: number) => (rows[i].href ? { href: link(rows[i].href!), label: 'See coffees' } : null);
   const grams = $derived(unit === 'grams');
   const split = $derived(grams ? t.age.grams : t.age.bags);
   const ageFmt = $derived((v: number) => (grams ? formatGrams(v) : `${+v.toFixed(1)} bag${v === 1 ? '' : 's'}`));
@@ -114,7 +115,7 @@
       <ChartToggle label="Group by" options={WAIT_BYS.map((k) => [k, BY_LABEL[k]] as const)} value={by} pick={(v) => choose({ waitBy: v === 'roaster' ? undefined : v })} />
     </LabHead>
     <Chart type="bar" labels={rows.map((r) => `${r.label} (${r.bags})`)} values={rows.map((r) => r.grams)} datasetLabel="Grams waiting" format={formatGrams}
-      tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} height={rows.length * 32 + 24} />
+      tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} tipLink={waitLink} height={rows.length * 32 + 24} />
     <p class="chart-note">Subscription {formatGrams(t.waiting.sub)} · One-off {formatGrams(t.waiting.oneOff)}</p>
   </section>
 {/if}
