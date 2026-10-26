@@ -2433,9 +2433,13 @@ export const STATES: State[] = [
         const panel = page.locator(`section[data-section="${id}"]`);
         await panel.scrollIntoViewIfNeeded();
         await expect(panel.getByRole('heading')).toBeVisible();
-        // Filled: figures/chart/rows, or the empty line.
-        await expect(panel.locator('.fig, canvas, .win li, .hl-empty').first()).toBeVisible();
       }
+      // The seed renders every section (empty states are covered in vitest).
+      // The seed has no bag with an opened date, so Time to open shows its empty line.
+      await expect(page.locator('section[data-section="spend-time-to-open"] .hl-empty')).toBeVisible();
+      await expect(page.locator('section[data-section="spend-time-to-open"] .fig')).toHaveCount(0);
+      await expect(page.locator('section[data-section="spend-rating-by-wait"] canvas')).toHaveCount(1);
+      await expect(page.locator('section[data-section="spend-rest-window"] .win li')).toHaveCount(3);
       const rest = page.locator('section[data-section="spend-rest-window"]');
       await expect(rest.locator('.chart-note', { hasText: /brews? without a rest window/ })).toBeVisible();
       await expect(rest.getByRole('link', { name: 'Brewing lab' })).toHaveAttribute('href', /tab=brewing.*chart=brewing-rest#brewing-rest/);

@@ -263,7 +263,7 @@ function fresh(scored: readonly BrewFact[], whole: readonly BrewFact[], bags: re
   const opened = bags.flatMap((b) => (b.openedDate ? [{ b, day: b.firstBrew && b.firstBrew < b.openedDate ? b.firstBrew : b.openedDate }] : []));
   const toOpen = opened.flatMap(({ b, day }) => {
     const days = inPeriod(day, c.period) ? restDays(b.purchaseDate, b.frozenStart ?? null, b.frozenEnd ?? null, day) : null;
-    return days === null ? [] : [{ b, days }];
+    return days === null || days < 0 ? [] : [{ b, days }];
   });
   const daysOpen = opened.filter(({ b }) => isFinished(b) && inPeriod(b.lastBrew!, c.period)).map(({ b, day }) => daysBetween(day, b.lastBrew!) + 1);
 
@@ -277,7 +277,8 @@ function fresh(scored: readonly BrewFact[], whole: readonly BrewFact[], bags: re
   const byId = new Map(bags.map((b) => [b.id, b]));
   const stateOf = (b: BrewFact) => { const g = b.coffeeId === null ? undefined : byId.get(b.coffeeId); return windowState(b.restDays, g?.restLow, g?.restHigh); };
   const classes = [['before', 'Before'], ['in', 'Inside'], ['past', 'After']] as const;
-  const counts = classes.map(([k]) => inP(whole).filter((b) => stateOf(b) === k).length);
+  const wholeP = inP(whole);
+  const counts = classes.map(([k]) => wholeP.filter((b) => stateOf(b) === k).length);
   const total = counts.reduce((a, b) => a + b, 0);
   const byState = new Map(ratedGroups(scoredP, (b) => { const k = stateOf(b); return k === 'none' ? null : k; }, c.ratings, 'adjusted').map((g) => [g.label, g]));
   return {
@@ -293,7 +294,7 @@ function fresh(scored: readonly BrewFact[], whole: readonly BrewFact[], bags: re
       const g = byState.get(k);
       return { label, share: total ? counts[i] / total : 0, brews: counts[i], rating: g?.adjusted ?? null, sample: g?.sample ?? pooled(0, 0) };
     }),
-    noWindow: inP(whole).length - total
+    noWindow: wholeP.length - total
   };
 }
 

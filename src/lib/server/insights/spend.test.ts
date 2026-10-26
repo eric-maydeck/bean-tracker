@@ -307,6 +307,10 @@ describe('spendTab fresh', () => {
     ]);
     expect(f.toOpen).toMatchObject({ median: 40, n: 1 }); // Aug 1 → Sep 10
   });
+  it('a bag opened before its roast date is left out of the median', () => {
+    const f = fresh([b({ id: 1, openedDate: '2026-09-10' }), b({ id: 2, purchaseDate: '2026-09-20', openedDate: '2026-09-10' })]);
+    expect(f.toOpen).toMatchObject({ median: 40, n: 1 });
+  });
   it('days open counts finished bags with the last brew in the Period, inclusive', () => {
     const f = fresh([
       b({ id: 1, status: 'archive', openedDate: '2026-09-01', firstBrew: '2026-09-02', lastBrew: '2026-09-10' }),
