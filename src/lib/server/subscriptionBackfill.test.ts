@@ -47,4 +47,16 @@ describe('subscriptionCandidates', () => {
     expect(likely.map((d) => d.planRoaster)).toEqual(['Shoebox', 'H&S']);
     expect(likely[1].bags).toHaveLength(2);
   });
+  it('merges every matched plan when a roaster matches more than one', () => {
+    const two: CandPlan[] = [{ id: 5, name: 'A', roaster: 'H&S' }, { id: 6, name: 'B', roaster: 'H&S Coffee' }];
+    const { likely } = subscriptionCandidates([bag('H&S', '2026-05-01', 9), bag('H&S Coffee Roasters', '2026-05-01', 9)], two);
+    expect(likely).toHaveLength(1);
+    expect(likely[0].planId).toBe(5);
+    expect(likely[0].plans.map((p) => p.id)).toEqual([5, 6]);
+  });
+  it('treats a null cost as unpriced', () => {
+    const { likely, other } = subscriptionCandidates([bag('Shoebox', '2026-05-01', null), bag('Shoebox', '2026-05-01', null)], plans);
+    expect(likely).toEqual([]);
+    expect(other).toHaveLength(2);
+  });
 });
