@@ -2764,12 +2764,12 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="onhand-freshness"] .text-tip')).toHaveCount(0);
     }
   },
-  // A chart's tip sits at the hovered mark, not at the chart's top: beside a stacked segment or a horizontal bar's end (sticky tips;
-  // above a plain vertical bar's top).
+  // A chart's tip sits at the hovered mark, not at the chart's top: beside a stacked segment (sticky tips), above a horizontal bar
+  // at the pointer's x (a short move to the link), above a plain vertical bar's top.
   {
     name: 'insights-chart-tip-position', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
-      for (const [panelId, beside] of [['onhand-age', true], ['onhand-waiting', true]] as const) {
+      for (const [panelId, beside] of [['onhand-age', true], ['onhand-waiting', false]] as const) {
         const panel = page.locator(`section.chart-panel:has(#${panelId})`);
         const c = panel.locator('canvas');
         await c.scrollIntoViewIfNeeded();
@@ -2786,7 +2786,10 @@ export const STATES: State[] = [
         const a = (await panel.locator('.tip-anchor').boundingBox())!;
         const t = (await tip.boundingBox())!;
         if (beside) expect(t.x >= a.x - 1 || t.x + t.width <= a.x + 1, 'beside the bar end (right, or left when it does not fit)').toBe(true);
-        else expect(t.y + t.height, 'above the bar top').toBeLessThanOrEqual(a.y + 2);
+        else {
+          expect(t.y + t.height, 'above the bar top').toBeLessThanOrEqual(a.y + 2);
+          expect(a.x >= t.x - 1 && a.x <= t.x + t.width + 1, 'at the pointer x').toBe(true);
+        }
         // Next to the mark, not up at the chart's top: the tip is within a tip's height of the anchor (or the page edge).
         expect(Math.abs(t.y + t.height / 2 - (a.y + (beside ? 0 : -t.height / 2))), panelId).toBeLessThan(a.height + t.height);
       }

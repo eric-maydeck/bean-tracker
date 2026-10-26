@@ -147,20 +147,23 @@
   type Hit = { datasetIndex: number; dataIndex: number; element?: { getProps?: (k: string[], final: boolean) => Record<string, number> } };
   // Where the tip points: at the hovered mark, never the chart's top. A vertical bar (or stack segment): the strip is the bar,
   // so the tip sits just above its top; a horizontal bar: beside its end; a line's point: at the pointer's height.
-  function anchorOf(tooltip: { caretX: number; caretY: number; dataPoints?: Hit[] }, chartArea: { top: number; bottom: number }) {
+  let pointerX = 0; // the pointer's x on the canvas (onHover): a sticky tip on a horizontal bar sits at the pointer, not at the bar's end
+  function anchorOf(tooltip: { caretX: number; caretY: number; dataPoints?: Hit[] }, chartArea: { top: number; bottom: number; left?: number; right?: number }) {
     const dp = tooltip.dataPoints?.[0];
-    const p = type === 'bar' ? dp?.element?.getProps?.(['x', 'y', 'base', 'width'], true) : undefined;
+    const p = type === 'bar' ? dp?.element?.getProps?.(['x', 'y', 'base', 'width', 'height'], true) : undefined;
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
       // A sticky tip on a stacked bar sits beside the hovered segment: the pointer reaches it without crossing the
       // segments above (which would retarget the tip).
       if (vertical && stacked && tipLink) return { x: p.x - p.width / 2, y: (p.y + p.base) / 2, h: 1, w: p.width, beside: true };
       if (vertical) return { x: p.x, y: Math.min(p.y, p.base), h: Math.abs(p.base - p.y) || 1 };
+      // A sticky tip on a horizontal bar: just above the bar, at the pointer's x (clamped to the plot), so the link is a short move away.
+      if (tipLink) return { x: Math.min(Math.max(pointerX, chartArea.left ?? 0), chartArea.right ?? pointerX), y: p.y - p.height / 2, h: p.height };
       return { x: p.x, y: p.y, h: 1, beside: true };
     }
     if (type === 'line') return { x: tooltip.caretX, y: tooltip.caretY, h: 1 };
     return { x: tooltip.caretX, y: chartArea.top, h: chartArea.bottom - chartArea.top };
   }
-  const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: Hit[] } }) => {
+  const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number; left: number; right: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: Hit[] } }) => {
     const hit = tooltip.dataPoints?.[0];
     const key = hit ? `${hit.datasetIndex}:${hit.dataIndex}` : undefined;
     if (tipLink) {
@@ -417,6 +420,7 @@
           if (els.length && tipAt?.link) pinned = !pinned;
           else (pinned = false), (tipAt = null);
         },
+        onHover: (e) => { if (e.x != null) pointerX = e.x; },
         // The arrow everywhere on a chart: the help cursor is for help text and icons (user, 2026-10-26).
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
