@@ -1,6 +1,6 @@
 <script lang="ts">
   import { usd } from '$lib/money';
-  import { planBagCost, type SubscriptionOption } from '$lib/planBagCost';
+  import { costAfterPlanChange, type CostMemo, type SubscriptionOption } from '$lib/planBagCost';
   import { onMount, tick } from 'svelte';
   import ImageSuggest from './ImageSuggest.svelte';
   import { enhance } from '$app/forms';
@@ -155,10 +155,13 @@
   }
 
   // Only on a user change of the select, never on load: an existing bag's cost stays put.
+  // None puts back the cost from before the first plan fill (see costAfterPlanChange).
+  let costMemo: CostMemo | null = null;
   function fillCostFromPlan(e: Event) {
-    const plan = subscriptions?.find((p) => String(p.id) === (e.currentTarget as HTMLSelectElement).value);
-    const cost = plan && planBagCost(plan);
-    if (cost != null) setField('cost', cost);
+    const plan = subscriptions?.find((p) => String(p.id) === (e.currentTarget as HTMLSelectElement).value) ?? null;
+    const r = costAfterPlanChange(costMemo, fieldValue('cost'), plan);
+    costMemo = r.memo;
+    if (r.cost != null) setField('cost', r.cost);
   }
 
   function fieldValue(name: string): string {

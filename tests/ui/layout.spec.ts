@@ -1080,10 +1080,14 @@ export const STATES: State[] = [
         await expect(cost).toHaveValue('22.25');
         await cost.fill('23');
         await sel.selectOption({ label: 'None' });
-        await expect(cost).toHaveValue('23');
+        await expect(cost).toHaveValue('23'); // edited after the fill: left alone
         await sel.selectOption({ label: 'Sey' });
         await expect(cost).toHaveValue('30');
         expect(before).not.toBe('30');
+        await sel.selectOption({ label: 'Explorer Series: Two Rotating Single Origins Every Other Week' });
+        await expect(cost).toHaveValue('22.25');
+        await sel.selectOption({ label: 'None' });
+        await expect(cost).toHaveValue('23'); // Sey -> Explorer -> None: back to the cost from before the first fill (23)
         await modal.getByRole('button', { name: 'Cancel' }).click();
         await expect(modal).toHaveCount(0);
       }
