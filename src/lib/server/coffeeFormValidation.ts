@@ -90,7 +90,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
   let subscriptionId: number | null | undefined;
   if (formData.has('subscription_id')) {
     const raw = textField(formData, 'subscription_id');
-    subscriptionId = raw == null ? null : /^\d+$/.test(raw) ? Number(raw) : undefined;
+    subscriptionId = raw == null ? null : /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
     if (subscriptionId === undefined) throw new CoffeeFormError('Pick a subscription from the list');
   }
 

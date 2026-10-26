@@ -1035,6 +1035,13 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const sel = page.getByLabel('Subscription', { exact: true });
       await expect(sel).toBeVisible();
+      // Right under Cost, as a full-width row.
+      const [c, f] = await Promise.all([page.locator('.field-cost').boundingBox(), page.locator('.field-subscription').boundingBox()]);
+      expect(f!.y).toBeGreaterThan(c!.y);
+      expect(f!.y - (c!.y + c!.height)).toBeLessThan(40);
+      const g = await page.locator('.form-grid').boundingBox();
+      expect(Math.abs(f!.width - g!.width)).toBeLessThan(2); // a full-width row: nothing beside it to leave empty
+      await checkLayout(page);
       await expect(sel.locator('option')).toHaveText([
         'None', 'Explorer Series: Two Rotating Single Origins Every Other Week', 'Paused Monthly (paused)', 'Sey']);
       await expect(sel.locator('option:checked')).toHaveText('Sey');

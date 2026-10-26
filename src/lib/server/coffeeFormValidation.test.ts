@@ -155,7 +155,7 @@ describe('parseCoffeeForm subscription_id', () => {
     expect(parseCoffeeForm(formData({ ...base, subscription_id: '' })).subscription_id).toBeNull();
     expect(parseCoffeeForm(formData({ ...base, subscription_id: '3' })).subscription_id).toBe(3);
   });
-  it.each(['x', '-1', '1.5'])('rejects %s', (v) => {
+  it.each(['x', '-1', '1.5', '0'])('rejects %s', (v) => {
     expect(() => parseCoffeeForm(formData({ ...base, subscription_id: v }))).toThrow('Pick a subscription from the list');
   });
 });

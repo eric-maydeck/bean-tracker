@@ -372,7 +372,7 @@
     </div>
   {/snippet}
 
-  <div class="form-grid">
+  <div class="form-grid" class:has-sub={subscriptions && coffee}>
   <div class="form-field product-url-field">
     <label for="product_url">Product page URL</label>
     <div class="inline-row">
@@ -472,8 +472,7 @@
   </div>
 
   {#if subscriptions && coffee}
-    <!-- No grid-area: auto-places in the row after the template's last one. -->
-    <div class="form-field">
+    <div class="form-field field-subscription">
       <label for="subscription_id">Subscription</label>
       <select id="subscription_id" name="subscription_id">
         <option value="">None</option>
@@ -700,7 +699,16 @@
       'roaster coffee origin'
       'roastlevel processing amount'
       'cost roastdate frozenstart'
+      var(--sub-row, )
       'image rest frozenend';
+  }
+  /* The Subscription field (admin edit only) is a full-width row right under Cost; each
+     breakpoint below sets --sub-row to its own column count, so no row is ever left half empty. */
+  .has-sub {
+    --sub-row: 'subscription subscription subscription';
+  }
+  .field-subscription {
+    grid-area: subscription;
   }
   /* Grid items default to min-width: auto (their content's natural size),
      which fights the equal-column floor above — this lets each field
@@ -734,11 +742,20 @@
         'origin roastlevel'
         'processing amount'
         'cost roastdate'
+        var(--sub-row, )
         'frozenstart frozenend'
         'image rest';
     }
   }
+  @container card (width < 500px) {
+    .has-sub {
+      --sub-row: 'subscription subscription';
+    }
+  }
   @container card (width < 330px) {
+    .has-sub {
+      --sub-row: 'subscription';
+    }
     .form-grid {
       grid-template-columns: 1fr;
       grid-template-areas:
@@ -750,6 +767,7 @@
         'processing'
         'amount'
         'cost'
+        var(--sub-row, )
         'roastdate'
         'rest'
         'frozenstart'
@@ -758,6 +776,9 @@
     }
   }
   @media (max-width: 640px) {
+    .has-sub {
+      --sub-row: 'subscription';
+    }
     .form-grid {
       grid-template-columns: 1fr;
       grid-template-areas:
@@ -769,6 +790,7 @@
         'processing'
         'amount'
         'cost'
+        var(--sub-row, )
         'roastdate'
         'rest'
         'frozenstart'
