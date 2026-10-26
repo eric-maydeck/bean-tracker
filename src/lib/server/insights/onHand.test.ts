@@ -177,3 +177,21 @@ describe('whatsWaiting', () => {
     expect(a.by.roast.find((r) => r.label === 'Unknown')).toMatchObject({ label: 'Unknown', grams: 125, bags: 1 });
   });
 });
+
+describe('review fixes', () => {
+  it('a junk roast date is treated as no roast date (no crash, no NaN age)', () => {
+    const t = onHandTab([], [fact({ id: 1, purchaseDate: 'junk', restLow: 7, restHigh: 21 }), fact({ id: 2, purchaseDate: '2026-09-15', restLow: 7, restHigh: 21 })], ctx);
+    expect(t.tiles.avgAge).toBe(10);
+    expect(t.freshness.unknown).toBe(1);
+  });
+  it('the Unknown origin link covers every raw value country() maps to no country', () => {
+    const origins = [null, '', 'n/a', ' N/A ', 'N/A', '  ', 'Kenya'];
+    const bags = origins.map((o, i) => fact({ id: i + 1, origin: o }));
+    const w = whatsWaiting(bags, new Map(), 1);
+    const unknown = w.by.origin.find((r) => r.label === 'Unknown')!;
+    expect(unknown.bags).toBe(6);
+    const values = (new URL(unknown.href!, 'http://x').searchParams.getAll('origin'));
+    // every raw value in the bar is in the link ('' reads as none, so it shares "(none)" with null)
+    for (const o of origins.slice(0, 6)) expect(values).toContain(o === null || o === '' ? '(none)' : o);
+  });
+});

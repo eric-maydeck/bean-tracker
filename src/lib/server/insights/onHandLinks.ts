@@ -33,7 +33,8 @@ export function waitHref(filter: Filter | null, page: Filter[]): string | null {
 export type FreshKey = 'ready' | 'drinkSoon' | 'resting' | 'frozen';
 // Freshness groups. Ready = drink-after today or earlier (a window that overlaps up to today) with urgency under 40;
 // Drink soon the same with urgency 40+; Still resting = urgency below 0 (a bag short of its minimum rest) with a window;
-// In the freezer = Frozen. The Coffees page rounds urgency to a whole number, so a bag at 39.5-39.99 reads as 40 there.
+// In the freezer = Frozen. The Coffees page rounds urgency to a whole number, so a bag at 39.5-39.99 reads as 40 there. A bag whose
+// thaw date is still ahead counts as Still resting here, but its urgency can already be 0 or more, so it is in no group's link.
 export function freshHref(key: FreshKey, today: string, page: Filter[]): string {
   const own: Record<FreshKey, Filter[]> = {
     ready: [frozen(false), window(today), urgency('<', '40')],

@@ -25,7 +25,7 @@ const frozenNow = (b: UrgencyInput) => validDate(b.frozen_start_date) && !b.froz
 const cleanFreeze = <T extends UrgencyInput>(b: T): T => (validDate(b.frozen_start_date) ? b : { ...b, frozen_start_date: null, frozen_end_date: null });
 
 export const freshBag = (b: BagFact, logged: Map<number, number>): FreshBag => cleanFreeze({
-  roast_date: b.purchaseDate, frozen_start_date: b.frozenStart ?? null, frozen_end_date: b.frozenEnd ?? null,
+  roast_date: validDate(b.purchaseDate) ? b.purchaseDate : null, frozen_start_date: b.frozenStart ?? null, frozen_end_date: b.frozenEnd ?? null,
   rest_days_low: b.restLow ?? null, rest_days_high: b.restHigh ?? null, drank: 0,
   name: b.name, roaster: b.roaster, slug: b.slug, grams: remaining(b, logged)
 });
@@ -73,7 +73,8 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
   return {
     by: {
       roaster: by((b) => b.roaster, (l) => ({ column: 'roaster', mode: 'any', values: [l] })),
-      origin: by((b) => country(b.origin), (l) => ({ column: 'origin', mode: 'any', values: l === null ? [null, 'N/A'] : [l] })),
+      // Unknown = whatever country() maps to no country: the group's own raw values (blank, "n/a", " N/A "), as processLabels does.
+      origin: by((b) => country(b.origin), (l) => ({ column: 'origin', mode: 'any', values: l === null ? [...new Set(rows.filter((r) => country(r.b.origin) === null).map((r) => r.b.origin || null))] : [l] })),
       process: by((b) => b.processGroup, (l) => { const v = processLabels(rows.map((r) => r.b), l ?? ''); return v.length ? { column: 'processing', mode: 'any', values: v } : null; }),
       roast: by((b) => b.roastLevel, (l) => ({ column: 'roast_level', mode: 'any', values: l === null ? [null] : roastLevelLabels(l) }))
     },
