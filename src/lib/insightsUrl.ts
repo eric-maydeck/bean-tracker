@@ -19,6 +19,9 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 // How people abbreviate on a phone ("Last 12 months" → "Last 12 mo."); the narrow selects use it, and app.html's
 // first-paint script applies the same data-short text before hydration (no flash of the long words).
 export const phoneWords = (s: string): string => s.replace(/\bmonths\b/g, 'mo.').replace(/\byears\b/g, 'yr.').replace(/^Previous /, 'Prev. ');
+// Over time's chart series: absent = One-off vs sub (the split).
+export const SPEND_SERIES = ['overall', 'oneoff', 'sub', 'all'] as const;
+export type SpendSeries = (typeof SPEND_SERIES)[number];
 export const RATINGS = ['current', 'all'] as const;
 export type Ratings = (typeof RATINGS)[number];
 // Option names, used verbatim wherever a setting is shown (the URL values stay current / all).
@@ -270,6 +273,7 @@ export interface InsightsUrlState {
   retired?: 'open'; // Gear's retired shelf is open
   gear?: GearKind; // Gear showcase's kind toggle: absent = All
   spendView?: 'ppg'; // Over time: price per gram chart (absent = Spend)
+  spendSeries?: SpendSeries; // Over time: which series the chart draws (absent = One-off vs sub)
   rcSort?: RcCol; // Over time: Report card sort column (absent = Bags)
   rcDir?: 'asc' | 'desc'; // Roaster comparison sort direction
   rcTop?: Top; // Roaster comparison rows shown (absent = 10)
@@ -284,12 +288,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'rcSort' | 'rcDir' | 'rcTop';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -446,6 +450,7 @@ export function parseInsightsUrl(
     retired: pickOne(p, 'retired', ['open']),
     gear: pickOne(p, 'gear', GEAR_KINDS),
     spendView: pickOne(p, 'spendView', ['ppg']),
+    spendSeries: pickOne(p, 'spendSeries', SPEND_SERIES),
     rcSort: pickOne(p, 'rcSort', RC_COLS),
     rcDir: pickOne(p, 'rcDir', ['asc', 'desc']),
     rcTop: TOPS.find((n) => String(n) === p.get('rcTop'))
@@ -517,6 +522,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.retired) p.set('retired', s.retired);
   if (s.gear) p.set('gear', s.gear);
   if (s.spendView) p.set('spendView', s.spendView);
+  if (s.spendSeries) p.set('spendSeries', s.spendSeries);
   if (s.rcSort) p.set('rcSort', s.rcSort);
   if (s.rcDir) p.set('rcDir', s.rcDir);
   if (s.rcTop) p.set('rcTop', String(s.rcTop));
@@ -656,7 +662,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
     temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, chart: s.chart, retired: s.retired, gear: s.gear,
-    spendView: s.spendView, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop
+    spendView: s.spendView, spendSeries: s.spendSeries, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop
   };
 }
 

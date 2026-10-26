@@ -2301,6 +2301,28 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'insights-spend-series', viewports: 'two', path: () => '/insights?tab=spend&range=3m&compare=1',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#spend-chart)');
+      const pick = panel.getByRole('combobox', { name: 'Series' });
+      await panel.scrollIntoViewIfNeeded();
+      await expect(pick).toHaveValue('split');
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      for (const [v, url] of [['oneoff', /spendSeries=oneoff/], ['all', /spendSeries=all/], ['overall', /spendSeries=overall/], ['sub', /spendSeries=sub/]] as const) {
+        await pick.selectOption(v);
+        await expect(page).toHaveURL(url);
+        await expect(panel.locator('canvas')).toHaveCount(1);
+      }
+      await panel.getByRole('group', { name: 'Show' }).getByRole('button', { name: '$ per g' }).click();
+      await expect(page).toHaveURL(/spendView=ppg/);
+      await pick.selectOption('split');
+      await expect(page).not.toHaveURL(/spendSeries/);
+      expect(fetched).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    }
+  },
+  {
     name: 'insights-spend-value-map', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const svg = page.locator('.value-map svg.plot');

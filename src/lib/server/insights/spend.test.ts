@@ -106,10 +106,19 @@ describe('spendTab series', () => {
     expect(t.series.comparePpg).toEqual([null, 0.09, 0.12]);
     expect(t.series.compareAverage).toBeNull();
   });
+  it('the compare window is split one-off vs plan too, and its pieces add up to the total', () => {
+    const c = t.series.compareSplit!;
+    expect(c.oneOff).toEqual([0, 9, 12]);
+    expect(c.sub).toEqual([0, 0, 0]);
+    expect(t.series.comparePpgSplit!.oneOff).toEqual([null, 0.09, 0.12]);
+    expect(t.series.comparePpgSplit!.sub).toEqual([null, null, null]);
+    expect(t.series.compareAverageSplit).toBeNull();
+  });
   it('a longer compare gives the mean $ per bucket', () => {
     const l = spendTab([], [], fx, { ...ctx, sameLength: false }).series;
     expect(l.compare).toBeNull();
     expect(l.compareAverage).toBeCloseTo(21 / 3);
+    expect(l.compareAverageSplit!.oneOff + l.compareAverageSplit!.sub).toBeCloseTo(21 / 3);
   });
 });
 

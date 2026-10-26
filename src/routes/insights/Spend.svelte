@@ -10,7 +10,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { useEmptyLine } from './coffeeNote';
-  import type { InsightsUrlState, RcCol, Top } from '$lib/insightsUrl';
+  import type { InsightsUrlState, RcCol, SpendSeries, Top } from '$lib/insightsUrl';
   import Chart from '$lib/components/Chart.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
@@ -25,8 +25,8 @@
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
 
-  let { t, choose, tiles, spendView, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
-    t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg'; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
+  let { t, choose, tiles, spendView, spendSeries, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
+    t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
     placeTip: (e: ToggleEvent) => void;
     compareLabel: string; compareDates: string; link: (href: string) => string;
   } = $props();
@@ -36,15 +36,38 @@
 
   const sr = $derived(t.series);
   const ppg = $derived(spendView === 'ppg');
-  // Spend: One-off at the bottom of each stack, Subscription on top, the compare window's total beside it.
-  const amounts = $derived([...sr.sub.map((v, i) => v + sr.oneOff[i]), ...(sr.compare ?? []), sr.compareAverage]);
+  // The series selector: Overall, the split (default), One-off, Subscription, or All (overall beside the split).
+  type Kind = 'oneOff' | 'sub' | 'overall';
+  const SERIES_OPTIONS: readonly (readonly [SpendSeries | 'split', string])[] = [['overall', 'Overall'], ['split', 'One-off vs sub'], ['oneoff', 'One-off'], ['sub', 'Subscription'], ['all', 'All']];
+  const NAME: Record<Kind, string> = { oneOff: 'One-off', sub: 'Subscription', overall: 'Overall' };
+  // One color per entity in every view (ui-rules 42: color follows the entity): light, medium and dark brown.
+  const TONE: Record<Kind, string> = { oneOff: 'var(--series-brown-1)', sub: 'var(--series-brown-2)', overall: 'var(--series-brown-3)' };
+  const kinds = $derived<Kind[]>(spendSeries === 'overall' ? ['overall'] : spendSeries === 'oneoff' ? ['oneOff'] : spendSeries === 'sub' ? ['sub'] : spendSeries === 'all' ? ['oneOff', 'sub', 'overall'] : ['oneOff', 'sub']);
+  const sum = (a: (number | null)[], b: (number | null)[]) => a.map((v, i) => (v ?? 0) + (b[i] ?? 0));
+  type Series = { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[]; hue?: string; stack?: string };
+  // The chart's datasets for the selection: the current window's series, then the compare window's, each in its own entity's hue.
+  function plan(cur: Record<Kind, (number | null)[]>, cmp: Record<Kind, (number | null)[]> | null, avg: Record<Kind, number | null> | null, dashed: boolean) {
+    const one = kinds.length === 1;
+    const own = kinds.map((k): Series => ({ label: NAME[k], values: cur[k], ...(k === 'overall' && !one ? { stack: 'overall' } : {}) }));
+    const past: Series[] = cmp
+      ? kinds.flatMap((k) => (cmp[k].some((v) => v) ? [{ label: one ? compareLabel : `${compareLabel} · ${NAME[k]}`, values: cmp[k], hue: TONE[k], names: sr.compareTitles ?? undefined,
+        ...(dashed ? { dashed: true } : { faded: true, ...(k === 'overall' && !one ? { stack: 'compare-overall' } : {}) }) }] : []))
+      : avg ? [(() => { const k: Kind = spendSeries === 'oneoff' ? 'oneOff' : spendSeries === 'sub' ? 'sub' : 'overall';
+          return { label: `${compareLabel} (avg)`, values: sr.labels.map(() => avg[k]), dashed: true, hue: TONE[k], names: sr.labels.map(() => compareDates) }; })()] : [];
+    return { first: own[0], rest: [...own.slice(1), ...past], colors: [...kinds.map((k) => TONE[k]), ...past.filter((x) => !x.dashed).map((x) => x.hue!)] };
+  }
+  const total = $derived(sum(sr.sub, sr.oneOff));
+  const bars = $derived(plan(
+    { oneOff: sr.oneOff, sub: sr.sub, overall: total },
+    sr.compareSplit ? { oneOff: sr.compareSplit.oneOff, sub: sr.compareSplit.sub, overall: sr.compare ?? [] } : null,
+    sr.compareAverageSplit ? { oneOff: sr.compareAverageSplit.oneOff, sub: sr.compareAverageSplit.sub, overall: sr.compareAverage } : null, false));
+  const lines = $derived(plan(
+    { oneOff: sr.ppg.oneOff, sub: sr.ppg.sub, overall: sr.ppg.all },
+    sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, true));
+  // Money axis: whole dollars when any amount shown (either window, any series) is $1,000 or more.
+  const amounts = $derived([...total, ...(sr.compare ?? []), sr.compareAverage]);
   const whole = $derived(wholeUsd(amounts));
   const money = (v: number) => usd(v, whole);
-  const spendCompare = $derived(
-    sr.compare?.some((v) => v) ? [{ label: compareLabel, values: sr.compare, faded: true, names: sr.compareTitles ?? undefined }]
-    : sr.compareAverage ? [{ label: `${compareLabel} (avg)`, values: sr.labels.map(() => sr.compareAverage), dashed: true, names: sr.labels.map(() => compareDates) }] : []
-  );
-  const ppgCompare = $derived(sr.comparePpg?.some((v) => v !== null) ? [{ label: compareLabel, values: sr.comparePpg, dashed: true, names: sr.compareTitles ?? undefined }] : []);
   const perG = (v: number) => `${usd(v)}/g`;
   const perGTip = (v: number) => `${usdPrecise(v) ?? usd(v)}/g`;
   const noPrice = $derived(sr.ppg.all.every((v) => v === null));
@@ -67,16 +90,21 @@
   <section class="chart-panel">
     <div class="chart-panel-header">
       <HeadingAnchor id="spend-chart">Spend over time</HeadingAnchor>
-      <ChartToggle label="Show" options={[['spend', 'Spend'], ['ppg', '$ per g']]} value={ppg ? 'ppg' : 'spend'} pick={(v) => choose({ spendView: v === 'ppg' ? 'ppg' : undefined })} />
+      <div class="chart-ctls">
+        <select class="ctl-select" aria-label="Series" value={spendSeries ?? 'split'} onchange={(e) => { const v = e.currentTarget.value; choose({ spendSeries: v === 'split' ? undefined : (v as SpendSeries) }); }}>
+          {#each SERIES_OPTIONS as [v, name] (v)}<option value={v}>{name}</option>{/each}
+        </select>
+        <ChartToggle label="Show" options={[['spend', 'Spend'], ['ppg', '$ per g']]} value={ppg ? 'ppg' : 'spend'} pick={(v) => choose({ spendView: v === 'ppg' ? 'ppg' : undefined })} />
+      </div>
     </div>
     {#if ppg && noPrice}
       <p class="hl-empty">{emptyLine('No priced bags in this period.')}</p>
     {:else if ppg}
-      <Chart type="line" labels={sr.labels} values={sr.ppg.all} datasetLabel="All" legend dashGaps format={perG} tickFormat={(v) => usd(v)} tipFormat={perGTip} titles={sr.titles}
-        series={[{ label: 'Subscription', values: sr.ppg.sub }, { label: 'One-off', values: sr.ppg.oneOff }, ...ppgCompare]} height={260} />
+      <Chart type="line" labels={sr.labels} values={lines.first.values} datasetLabel={lines.first.label} legend dashGaps format={perG} tickFormat={(v) => usd(v)} tipFormat={perGTip} titles={sr.titles}
+        series={lines.rest} colors={lines.colors} height={260} />
     {:else}
-      <Chart type="bar" vertical stacked labels={sr.labels} values={sr.oneOff} datasetLabel="One-off" legend format={money} tickFormat={money} tipFormat={(v) => usd(v, false)} titles={sr.titles}
-        series={[{ label: 'Subscription', values: sr.sub }, ...spendCompare]} height={260} />
+      <Chart type="bar" vertical stacked labels={sr.labels} values={bars.first.values} datasetLabel={bars.first.label} legend format={money} tickFormat={money} tipFormat={(v) => usd(v, false)} titles={sr.titles}
+        series={bars.rest} colors={bars.colors} height={260} />
     {/if}
     <p class="chart-note" data-switched-note>{note}<br>{partial}</p>
     <p class="chart-note">By roaster or coffee: <a href={link('/insights?tab=leaderboards&rank=spend&chart=leaderboard-roasters#leaderboard-roasters')}>Leaderboards</a></p>
@@ -156,6 +184,12 @@
 {/if}
 
 <style>
+  .chart-ctls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
   .repeat {
     font-size: 0.9rem;
     color: var(--color-text-muted);

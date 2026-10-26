@@ -648,6 +648,11 @@ describe('spend tab params', () => {
     expect(parse('tab=SPEND').tab).toBe('spend');
     expect(parse('spendView=PPG').spendView).toBe('ppg');
     expect(parse('spendView=spend').spendView).toBeUndefined();
+    expect(parse('spendSeries=ONEOFF').spendSeries).toBe('oneoff');
+    expect(parse('spendSeries=split').spendSeries).toBeUndefined(); // the default is absent
+    expect(parse('spendSeries=junk').spendSeries).toBeUndefined();
+    expect(insightsParams({ tab: 'spend', spendSeries: 'all' }).get('spendSeries')).toBe('all');
+    expect(insightsParams(withDefaults(parse('tab=spend'))).has('spendSeries')).toBe(false);
     expect(parse('rcSort=Rating').rcSort).toBe('rating');
     expect(parse('rcSort=foo').rcSort).toBeUndefined();
     expect(parse('rcDir=asc').rcDir).toBe('asc');
@@ -658,11 +663,11 @@ describe('spend tab params', () => {
     expect(parse('rcTop=10').rcTop).toBeUndefined();
   });
   it('round-trips, omitted when undefined, dropped by reset', () => {
-    const q = 'tab=spend&spendView=ppg&rcSort=ppg&rcDir=asc&rcTop=50';
+    const q = 'tab=spend&spendView=ppg&spendSeries=all&rcSort=ppg&rcDir=asc&rcTop=50';
     expect(insightsParams(parse(q)).toString()).toBe(q);
-    expect(withDefaults(parse(q))).toMatchObject({ spendView: 'ppg', rcSort: 'ppg', rcDir: 'asc', rcTop: 50 });
+    expect(withDefaults(parse(q))).toMatchObject({ spendView: 'ppg', spendSeries: 'all', rcSort: 'ppg', rcDir: 'asc', rcTop: 50 });
     expect(insightsParams({ tab: 'spend' }).toString()).toBe('tab=spend');
-    expect(resetInsights({ tab: 'spend', rcSort: 'ppg' })).toEqual({ tab: 'spend' });
+    expect(resetInsights({ tab: 'spend', rcSort: 'ppg', spendSeries: 'sub' })).toEqual({ tab: 'spend' });
   });
   it('Spend group sits between Highlights and Lab; ratings menu on', () => {
     expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Spend', 'Lab']);

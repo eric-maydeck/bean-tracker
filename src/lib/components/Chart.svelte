@@ -86,8 +86,10 @@
     vertical?: boolean;
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
     // line overlay; trend = a bold solid rolling-average line over bars; otherwise a paired series in the next palette color.
+    // `hue` ("var(--series-brown-2)"): a faded or dashed series in that series' color, not the first one's; `stack`: a vertical
+    // bar's own stack group (a column beside the others).
     // `names`: per-bar dates for the tooltip when a series' bar covers other days than the axis label says.
-    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; trend?: boolean; names?: (string | null)[] }[];
+    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; trend?: boolean; names?: (string | null)[]; hue?: string; stack?: string }[];
     // Vertical bars and plain lines: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
     // The tooltip's value text, and horizontal bars' value labels.
@@ -249,6 +251,7 @@
     // Each series' color position: the colored series before it, plus the first (a dashed overlay takes none).
     const at = series.map((_, i) => 1 + series.slice(0, i).filter((y) => !y.dashed).length);
     const tokAt = (k: number) => (colors?.[k] ? colors[k].slice(4, -1) : seriesToken(k % 14, palette));
+    const hueTok = (x: { hue?: string }) => x.hue!.slice(4, -1);
     const hasTrend = series.some((x) => x.trend);
     // Bars are a little see-through with an opaque outline (ui-rules 42), a trend line on top.
     const soft = (c: string) => `${c}b3`;
@@ -327,8 +330,8 @@
             x.trend
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(x.hue ? hueTok(x) : tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.stack ?? (x.faded ? 'compare' : 'main') }),
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
           )

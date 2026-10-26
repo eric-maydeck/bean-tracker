@@ -66,6 +66,10 @@ export interface SpendSeries {
   sub: number[]; oneOff: number[]; // $ per bucket (÷ size), by roast date
   ppg: { all: (number | null)[]; sub: (number | null)[]; oneOff: (number | null)[] }; // grams-weighted; null = no priced bag
   compare: (number | null)[] | null; compareTitles: (string | null)[] | null; compareAverage: number | null; comparePpg: (number | null)[] | null;
+  // The compare window split the same way (same shapes as the totals above, one per plan kind).
+  compareSplit: { sub: (number | null)[]; oneOff: (number | null)[] } | null;
+  comparePpgSplit: { sub: (number | null)[]; oneOff: (number | null)[] } | null;
+  compareAverageSplit: { sub: number; oneOff: number } | null;
 }
 
 // Per bucket: $ split by plan, and $/g (All / plan / one-off). Bags land in the bucket holding their roast date.
@@ -94,6 +98,7 @@ function spendSeries(bags: readonly BagFact[], c: SpendCtx): SpendSeries {
   const f = flows(bags, bs, c.size);
   let compare: SpendSeries['compare'] = null, comparePpg: SpendSeries['comparePpg'] = null;
   let compareTitles: SpendSeries['compareTitles'] = null, compareAverage: number | null = null;
+  let compareSplit: SpendSeries['compareSplit'] = null, comparePpgSplit: SpendSeries['comparePpgSplit'] = null, compareAverageSplit: SpendSeries['compareAverageSplit'] = null;
   if (c.prev) {
     const pb = buckets(trackedBounds(c.prev, origin(bags, c), c.today), by);
     const pf = flows(bags, pb, c.size);
@@ -104,9 +109,16 @@ function spendSeries(bags: readonly BagFact[], c: SpendCtx): SpendSeries {
       compare = bs.map((_, i) => total[i] ?? null);
       comparePpg = bs.map((_, i) => pf.ppg.all[i] ?? null);
       compareTitles = bs.map((_, i) => names[i] ?? null);
-    } else compareAverage = pb.length ? total.reduce((a, b) => a + b, 0) / pb.length : null;
+      const pad = <T,>(xs: T[]) => bs.map((_, i) => xs[i] ?? null);
+      compareSplit = { sub: pad(pf.sub), oneOff: pad(pf.oneOff) };
+      comparePpgSplit = { sub: pad(pf.ppg.sub), oneOff: pad(pf.ppg.oneOff) };
+    } else if (pb.length) {
+      const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / pb.length;
+      compareAverage = avg(total);
+      compareAverageSplit = { sub: avg(pf.sub), oneOff: avg(pf.oneOff) };
+    }
   }
-  return { by, labels: bucketLabels(bs, by), titles: bucketTitles(bs, by), partial: bs.some((b) => b.partial), ...f, compare, compareTitles, compareAverage, comparePpg };
+  return { by, labels: bucketLabels(bs, by), titles: bucketTitles(bs, by), partial: bs.some((b) => b.partial), ...f, compare, compareTitles, compareAverage, comparePpg, compareSplit, comparePpgSplit, compareAverageSplit };
 }
 
 export interface ValuePoint {
