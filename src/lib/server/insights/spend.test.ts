@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { spendTiles, spendTab, ppgOf, pricedPpg, type Plan, type SpendCtx } from './spend';
-import type { BagFact } from './facts';
+import type { BagFact, BrewFact } from './facts';
 
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 0, status: 'open', purchaseDate: '2026-09-10', cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
@@ -110,5 +110,44 @@ describe('spendTab series', () => {
     const l = spendTab([], [], fx, { ...ctx, sameLength: false }).series;
     expect(l.compare).toBeNull();
     expect(l.compareAverage).toBeCloseTo(21 / 3);
+  });
+});
+
+describe('spendTab valueMap', () => {
+  const P = { start: '2026-09-01', end: '2026-09-30' };
+  const ctx: SpendCtx = {
+    period: P, prev: null, sameLength: false, pace: false, size: 1,
+    dataStart: '2026-01-01', today: '2026-10-26', by: undefined, ratings: 'all', plans: []
+  };
+  const brewsOf = (id: number, n: number, rating: number): BrewFact[] =>
+    Array.from({ length: n }, (_, i) => ({ id: id * 100 + i, coffeeId: id, localDate: '2026-09-10', rating, dose: 18 }) as BrewFact);
+  // 25 coffees: coffee i costs (i+1)¢/g, the last one is the outlier.
+  const many = Array.from({ length: 25 }, (_, i) => bag({ id: i + 1, name: `C${i + 1}`, cost: (i + 1) * (i === 24 ? 100 : 1), amountG: 100 }));
+  const brews25 = many.flatMap((b) => brewsOf(b.id, 4, 8));
+  it('cuts the outlier above the 95th percentile (24th of 25)', () => {
+    const m = spendTab(brews25, brews25, many, ctx).valueMap;
+    expect(m.points).toHaveLength(25);
+    expect(m.cap).toBeCloseTo(0.24);
+    expect(m.cut.map((p) => p.name)).toEqual(['C25']);
+  });
+  it('pools two bags of one coffee; a $0-only coffee has no point; one point: medians null', () => {
+    const bs = [
+      bag({ id: 1, name: 'A', cost: 10, amountG: 100 }), bag({ id: 2, name: 'a', cost: 30, amountG: 100, subscriptionId: 1 }),
+      bag({ id: 3, name: 'Free', cost: 0, amountG: 100 })
+    ];
+    const br = [...brewsOf(1, 2, 8), ...brewsOf(2, 2, 8), ...brewsOf(3, 4, 9)];
+    const m = spendTab(br, br, bs, ctx).valueMap;
+    expect(m.points).toHaveLength(1);
+    expect(m.points[0].ppg).toBeCloseTo(0.2);
+    expect(m.points[0].sub).toBe(true);
+    expect(m.points[0].sample.brews).toBe(4);
+    expect([m.medianPpg, m.medianRating]).toEqual([null, null]);
+  });
+  it('best skips a 3-brew coffee and orders by rating ÷ $ per 100 g', () => {
+    const bs = [bag({ id: 1, name: 'Cheap', cost: 10, amountG: 100 }), bag({ id: 2, name: 'Dear', cost: 20, amountG: 100 }), bag({ id: 3, name: 'Few', cost: 5, amountG: 100 })];
+    const br = [...brewsOf(1, 4, 8), ...brewsOf(2, 4, 9), ...brewsOf(3, 3, 10)];
+    const m = spendTab(br, br, bs, ctx).valueMap;
+    expect(m.points).toHaveLength(3);
+    expect(m.best.map((p) => p.name)).toEqual(['Cheap', 'Dear']);
   });
 });

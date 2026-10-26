@@ -213,13 +213,15 @@ const cups = (c: RecCtx): Candidate[] =>
     const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100\u00a0g` : null;
     return { value: b.costPerBrew!, ...(per100 && b.dose ? { detail: `${g(b.dose)} at ${per100}` } : {}), holder: brewHolder(c, b) };
   });
+// Value score: mean rating ÷ $ per 100 g (the Records pick and the Spend tab's Best value share it).
+export const valueScore = (mean: number, ppg: number): number => mean / (ppg * 100);
 // Mean rating ÷ $ per 100 g, for bags with ≥4 counted rated brews and a known price.
 const value = (c: RecCtx): Candidate[] =>
   perBag(c, BAG_MIN_BREWS, (s, id) => {
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
     const p = (bag.cost / bag.amountG) * 100;
-    return { value: s.mean! / p, mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100\u00a0g` };
+    return { value: valueScore(s.mean!, bag.cost / bag.amountG), mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100\u00a0g` };
   });
 const spent = (bs: BagFact[]) => bs.reduce((s, b) => s + (b.cost ?? 0), 0);
 const roasters = (c: RecCtx, f: (bs: BagFact[]) => number, detail: (bs: BagFact[]) => string): Candidate[] =>

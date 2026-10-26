@@ -2257,7 +2257,7 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
       // No blank chart frame: the Spend over time panel is not rendered at all.
-      await expect(page.locator('#spend-chart, .chart-container')).toHaveCount(0);
+      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, .value-map svg.plot')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
       await expectShortEmpty(page);
     }
@@ -2292,6 +2292,34 @@ export const STATES: State[] = [
       await expectDataTip(tip);
       await expectTipInView(page, tip);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-spend-value-map', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const svg = page.locator('.value-map svg.plot');
+      await svg.scrollIntoViewIfNeeded();
+      await expect(svg).toBeVisible();
+      const box = (await svg.boundingBox())!;
+      const pts = await page.locator('.value-map .pt .mark').evaluateAll((ms) => ms.map((m) => m.getBoundingClientRect()));
+      expect(pts.length).toBeGreaterThan(0);
+      for (const r of pts) expect(r.x >= box.x - 1 && r.x + r.width <= box.x + box.width + 1 && r.y >= box.y - 1 && r.y + r.height <= box.y + box.height + 1).toBe(true);
+      expect(await page.locator('[data-section="spend-best-value"] .board-row').count()).toBeLessThanOrEqual(5);
+      await expectColumnsFilled(page, '.insights-charts:has([data-section="spend-value-map"])');
+    }
+  },
+  {
+    name: 'insights-spend-value-map-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const dot = page.locator('.value-map .pt .hit').first();
+      await dot.scrollIntoViewIfNeeded();
+      const tip = page.locator('.vm-tip').locator('xpath=ancestor::*[@popover]');
+      if (touch()) await dot.tap(); else await dot.hover();
+      await expect(tip).toBeVisible();
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
+      await expect(tip.locator('.tip-title')).not.toBeEmpty();
+      if (touch()) await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
     }
   },
   {

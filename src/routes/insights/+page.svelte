@@ -882,7 +882,7 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else if s.tab === 'spend' && data.spend}
-  <Spend t={data.spend} {choose} spendView={s.spendView} {compareLabel} {compareDates} {link}>
+  <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} {compareLabel} {compareDates} {link}>
     {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}
   </Spend>
 {:else}

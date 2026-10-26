@@ -75,6 +75,8 @@ export async function checkLayout(page: Page): Promise<void> {
         // A 100% stacked bar's segment is as tall as its share; a tap anywhere picks the segment under it, the
         // arrow keys reach every one, and the legend names each series.
         if (el.matches('.stacked .seg')) continue;
+        // Value map dots overlap by design (a coffee per dot); arrow keys reach each one and Best value lists the top picks with 44px rows.
+        if (el.matches('.value-map .pt')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
