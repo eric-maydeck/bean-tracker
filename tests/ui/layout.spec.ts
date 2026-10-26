@@ -2350,10 +2350,24 @@ export const STATES: State[] = [
       // A click or tap pins the tip with the coffee's link (a click no longer navigates); Escape or a click elsewhere closes it.
       if (touch()) await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
       else {
+        // The hover tip has the link too, and stays open while the pointer crosses from the dot onto it.
+        await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
+        const before = (await tip.boundingBox())!;
+        const body = (await page.locator('.vm-tip').boundingBox())!;
+        await page.mouse.move(body.x + body.width / 2, body.y + body.height / 2, { steps: 6 });
+        await page.waitForTimeout(300);
+        await expect(tip).toBeVisible();
+        const d = (await dot.boundingBox())!;
+        await page.mouse.move(d.x + d.width / 2, d.y + d.height / 2, { steps: 6 });
+        await expect(tip).toBeVisible();
+        const hovered = (await tip.boundingBox())!;
         const url = page.url();
         await dot.click();
         await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
         expect(page.url()).toBe(url);
+        // Pinning leaves the tip exactly where the hover put it.
+        const pinned = (await tip.boundingBox())!;
+        expect([pinned.x, pinned.y]).toEqual([hovered.x, hovered.y]);
       }
       await page.mouse.move(0, 0);
       await expect(tip.getByRole('link', { name: 'Open coffee' })).toBeVisible(); // pinned: leaving the dot keeps it

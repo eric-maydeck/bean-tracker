@@ -33,11 +33,17 @@
     ...sampleField(p.sample)
   });
 
-  let tip = $state<{ p: ValuePoint; el: Element; pinned: boolean } | null>(null);
+  // `reveal`: the page may scroll to show a tip opened by a click, tap or key; a hover tip that a click pins stays put.
+  let tip = $state<{ p: ValuePoint; el: Element; pinned: boolean; reveal?: boolean } | null>(null);
   $effect(() => {
     void m;
     tip = null;
   });
+  // A hover tip closes after a short delay, so the mouse can cross the gap from the dot onto the tip (its link is
+  // clickable); entering either cancels it (as the origin map).
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const keep = () => clearTimeout(timer);
+  const later = () => (keep(), (timer = setTimeout(() => !tip?.pinned && (tip = null), 100)));
   const at = (e: Event) => {
     const el = (e.target as Element).closest<SVGGElement>('.pt');
     return el ? { el, p: shown[+el.dataset.i!] } : null;
@@ -46,12 +52,14 @@
   function hover(e: PointerEvent) {
     if (e.pointerType !== 'mouse' || tip?.pinned) return;
     const t = at(e);
-    tip = t ? { ...t, pinned: false } : null;
+    if (t) (keep(), (tip = { ...t, pinned: false }));
+    else later();
   }
   function click(e: MouseEvent) {
     const t = at(e);
     if (!t) return void (tip = null);
-    tip = tip?.pinned && tip.p === t.p ? null : { ...t, pinned: true };
+    keep();
+    tip = tip?.pinned && tip.p === t.p ? null : { ...t, pinned: true, reveal: tip?.p !== t.p };
   }
   const focusTip = (e: FocusEvent) => (takeFocus(e), (tip = { ...at(e)!, pinned: false }));
 </script>
@@ -61,7 +69,7 @@
 <div class="value-map" bind:clientWidth={width}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <div class="vm-plot" style:height="{H}px" role="group" aria-label="Value map: price per gram against rating, one point per coffee"
-    onpointermove={hover} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && (tip = null)} onclick={click}
+    onpointermove={hover} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()} onclick={click}
     onkeydown={(e) => (e.key === 'Escape' ? (tip = null) : rove(e, '.pt'))}>
     {#if width}
       <svg class="plot" {width} height={H}>
@@ -85,7 +93,7 @@
           {@const cy = y(p.rating)}
           <g class="pt" class:small-sample={p.sample.small} class:sub={p.sub} role="button" tabindex={i ? -1 : 0} data-i={i} aria-label={tipText(tipOf(p))}
             onfocus={focusTip} onblur={() => !tip?.pinned && (tip = null)}
-            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (tip = { ...at(e)!, pinned: true }))}>
+            onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), (tip = { ...at(e)!, pinned: true, reveal: true }))}>
             <circle class="hit" {cx} {cy} r="14" />
             {#if p.sub}<path class="mark" d="M{cx} {cy - 7}L{cx + 7} {cy}L{cx} {cy + 7}L{cx - 7} {cy}Z" />{:else}<circle class="mark" {cx} {cy} r="5" />{/if}
           </g>
@@ -99,8 +107,9 @@
     <li class="chip-note"><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>
   </ul>
   {#if tip}
-    <FloatTip anchor={tip.el} onclose={() => (tip = null)} reveal={tip.pinned}>
-      <div class="vm-tip"><TipBody tip={tipOf(tip.p)} />{#if tip.pinned && href(tip.p)}<a class="tip-link" href={href(tip.p)}>Open coffee</a>{/if}</div>
+    <FloatTip anchor={tip.el} onclose={() => (tip = null)} reveal={!!tip.reveal}>
+      <!-- svelte-ignore a11y_no_static_element_interactions (a mouse-only bridge from the dot onto the tip; the link is a real link) -->
+      <div class="vm-tip" onpointerenter={keep} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()}><TipBody tip={tipOf(tip.p)} />{#if href(tip.p)}<a class="tip-link" href={href(tip.p)}>Open coffee</a>{/if}</div>
     </FloatTip>
   {/if}
 </div>
@@ -190,6 +199,14 @@
     justify-content: center;
     text-align: center;
     color: var(--color-text-muted);
+  }
+  /* The tip is pointer-events: none (a hover tip); this wrapper fills it (cancelling its padding) so the mouse can
+     rest on it and click the link (as the origin map). */
+  .vm-tip {
+    margin: -0.5rem -0.75rem;
+    padding: 0.5rem 0.75rem;
+    pointer-events: auto;
+    cursor: default;
   }
   .tip-link {
     display: block;
