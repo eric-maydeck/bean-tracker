@@ -3,14 +3,14 @@
   import type { JumpLink } from './JumpNav.svelte';
   // Each panel task adds its section here.
   export function jumpLinks(t: SpendTab): JumpLink[] {
-    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value']];
+    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card']];
   }
 </script>
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { useEmptyLine } from './coffeeNote';
-  import type { InsightsUrlState } from '$lib/insightsUrl';
+  import type { InsightsUrlState, RcCol, Top } from '$lib/insightsUrl';
   import Chart from '$lib/components/Chart.svelte';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
@@ -18,11 +18,12 @@
   import { usd, usdPrecise, wholeUsd } from '$lib/money';
   import LabHead from './LabHead.svelte';
   import ValueMap from './ValueMap.svelte';
+  import ReportCard from './ReportCard.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { fitPairs } from './fitPairs';
 
-  let { t, choose, tiles, spendView, compareLabel, compareDates, link, placeTip }: {
-    t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg';
+  let { t, choose, tiles, spendView, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
+    t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg'; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
     placeTip: (e: ToggleEvent) => void;
     compareLabel: string; compareDates: string; link: (href: string) => string;
   } = $props();
@@ -109,6 +110,13 @@
         </div>
       </section>
     </div>
+  {/if}
+
+  {#if t.reportCard.length}
+    <section class="chart-panel" data-section="spend-report-card">
+      <div class="chart-panel-header"><HeadingAnchor id="spend-report-card">Roaster report card</HeadingAnchor></div>
+      <ReportCard rows={t.reportCard} sort={rcSort} dir={rcDir} top={rcTop} {choose} {link} />
+    </section>
   {/if}
 {/if}
 

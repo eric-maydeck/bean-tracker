@@ -2257,7 +2257,7 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
       // No blank chart frame: the Spend over time panel is not rendered at all.
-      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, .value-map svg.plot')).toHaveCount(0);
+      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, #spend-report-card, .value-map svg.plot')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
       await expectShortEmpty(page);
     }
@@ -2328,6 +2328,54 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.getAttribute('data-i'))).not.toBe(first);
       await page.keyboard.press('Enter');
       await expect(tip.getByRole('link', { name: 'Open coffee' })).toBeVisible();
+    }
+  },
+  {
+    name: 'insights-spend-report-card', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const panel = page.locator('section[data-section="spend-report-card"]');
+      await panel.scrollIntoViewIfNeeded();
+      await expect(panel.getByRole('heading', { name: 'Roaster report card' })).toBeVisible();
+      const wide = ((await panel.boundingBox())?.width ?? 0) >= 520;
+      await expect(panel.locator('table')).toBeVisible({ visible: wide });
+      await expect(panel.locator('.rc-list')).toBeVisible({ visible: !wide });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      expect(await panel.locator(wide ? 'tbody tr' : '.rc-list li').count()).toBeLessThanOrEqual(10);
+      await expect(panel.getByRole('link', { name: 'Leaderboards' })).toHaveAttribute('href', /tab=leaderboards.*rank=ppg/);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-spend-report-card-sort', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const panel = page.locator('section[data-section="spend-report-card"]');
+      await panel.scrollIntoViewIfNeeded();
+      const wide = ((await panel.boundingBox())?.width ?? 0) >= 520;
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      const rows = panel.locator(wide ? 'tbody tr' : '.rc-list li');
+      const ppgs = async () => (await rows.evaluateAll((rs, w) => rs.map((r) => (r.textContent ?? '').match(w ? /\$(\d+\.\d+)\/g/ : /\$(\d+\.\d+)\/g/)?.[1] ?? null), wide)).map((v) => (v === null ? null : Number(v)));
+      const sorted = (xs: (number | null)[], dir: 1 | -1) => {
+        const v = xs.filter((x): x is number => x !== null);
+        return v.every((x, i) => i === 0 || (x - v[i - 1]) * dir >= 0) && xs.slice(v.length).every((x) => x === null) && xs.slice(0, v.length).every((x) => x !== null);
+      };
+      if (wide) await panel.getByRole('button', { name: '$/g' }).click();
+      else await panel.getByLabel('Sort by').selectOption('ppg');
+      await expect(page).toHaveURL(/rcSort=ppg/);
+      await expect(page).not.toHaveURL(/rcDir/);
+      expect(sorted(await ppgs(), -1)).toBe(true);
+      if (wide) {
+        await expect(panel.locator('th[aria-sort="descending"]')).toContainText('$/g');
+        await panel.getByRole('button', { name: '$/g' }).click();
+      } else await panel.getByRole('group', { name: 'Direction' }).getByRole('button', { name: 'Asc' }).click();
+      await expect(page).toHaveURL(/rcDir=asc/);
+      expect(sorted(await ppgs(), 1)).toBe(true);
+      const more = panel.getByRole('button', { name: 'Show more' });
+      if (await more.count()) {
+        await more.click();
+        await expect(page).toHaveURL(/rcTop=20/);
+      }
+      expect(fetched).toEqual([]);
     }
   },
   {

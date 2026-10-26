@@ -8,6 +8,8 @@ import { groupBy, valueScore } from './records';
 import { weightedMedian } from './stats';
 import { BAG_MIN_BREWS, single, type Sample } from '$lib/sample';
 import { compareTiles, type Delta } from './overview';
+import { leaderboard, listHref } from './leaderboards';
+import type { RcRow } from '../../../routes/insights/reportCard';
 
 export interface Plan { id: number; name: string; roaster: string; price: number | null; paused: boolean }
 export interface SpendCtx {
@@ -134,8 +136,22 @@ function valueMap(scored: readonly BrewFact[], whole: readonly BrewFact[], bags:
   };
 }
 
+// One row per roaster with a bag bought in the Period. Rating and vs like come from the Leaderboards roaster rows (raw average).
+function reportCard(scored: readonly BrewFact[], bags: readonly BagFact[], c: SpendCtx): RcRow[] {
+  const board = (rank: 'rating' | 'like') => new Map(leaderboard(scored, bags, c.period, 'roasters', rank, c.ratings, 'raw', false).map((r) => [r.key, r]));
+  const rating = board('rating'), like = board('like');
+  const mine = groupBy(bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, c.period)), (b) => b.roaster);
+  return [...mine].map(([roaster, inP]) => ({
+    roaster, bags: inP.length / c.size, spent: inP.reduce((s, b) => s + (b.cost ?? 0), 0) / c.size, ppg: pricedPpg(inP),
+    rating: rating.get(roaster)?.value ?? null, ratingSample: rating.get(roaster)?.sample,
+    like: like.get(roaster)?.value ?? null, likeSample: like.get(roaster)?.sample,
+    last: bags.reduce((m, b) => (b.roaster === roaster && b.purchaseDate && b.purchaseDate <= c.period.end && b.purchaseDate > m ? b.purchaseDate : m), ''),
+    href: listHref('roaster', [roaster])
+  }));
+}
+
 export interface SpendTab {
-  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap;
+  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[];
   deltas: Partial<Record<keyof SpendTiles, Delta>> | null; scaled: boolean;
 }
 
@@ -147,5 +163,5 @@ export function spendTab(scored: readonly BrewFact[], whole: readonly BrewFact[]
   );
   // Plans are current-state: no delta.
   const { plansPerMonth: _now, ...deltas } = cmp?.deltas ?? ({} as Record<keyof SpendTiles, Delta>);
-  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
+  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
 }

@@ -120,7 +120,7 @@ describe('spendTab valueMap', () => {
     dataStart: '2026-01-01', today: '2026-10-26', by: undefined, ratings: 'all', plans: []
   };
   const brewsOf = (id: number, n: number, rating: number): BrewFact[] =>
-    Array.from({ length: n }, (_, i) => ({ id: id * 100 + i, coffeeId: id, localDate: '2026-09-10', rating, dose: 18 }) as BrewFact);
+    Array.from({ length: n }, (_, i) => ({ id: id * 100 + i, coffeeId: id, roaster: 'R', localDate: '2026-09-10', rating, dose: 18 }) as BrewFact);
   // 25 coffees: coffee i costs (i+1)¢/g, the last one is the outlier.
   const many = Array.from({ length: 25 }, (_, i) => bag({ id: i + 1, name: `C${i + 1}`, cost: (i + 1) * (i === 24 ? 100 : 1), amountG: 100 }));
   const brews25 = many.flatMap((b) => brewsOf(b.id, 4, 8));
@@ -154,5 +154,35 @@ describe('spendTab valueMap', () => {
     const bs = [bag({ id: 1, name: 'Zed', cost: 10, amountG: 100 }), bag({ id: 2, name: 'Abe', cost: 10, amountG: 100 })];
     const br = [...brewsOf(1, 4, 8), ...brewsOf(2, 4, 8)];
     expect(spendTab(br, br, bs, ctx).valueMap.best.map((p) => p.name)).toEqual(['Abe', 'Zed']);
+  });
+});
+
+describe('spendTab reportCard', () => {
+  const P = { start: '2026-09-01', end: '2026-09-30' };
+  const ctx: SpendCtx = {
+    period: P, prev: null, sameLength: false, pace: false, size: 1,
+    dataStart: '2026-01-01', today: '2026-10-26', by: undefined, ratings: 'all', plans: []
+  };
+  const bs = [
+    bag({ id: 1, roaster: 'A', cost: 20, amountG: 200, purchaseDate: '2026-09-05' }),
+    bag({ id: 2, roaster: 'A', cost: 30, amountG: 300, purchaseDate: '2026-09-20' }),
+    bag({ id: 3, roaster: 'A', cost: 99, amountG: 100, purchaseDate: '2026-10-05' }), // after the Period
+    bag({ id: 4, roaster: 'Free', cost: 0, amountG: 100, purchaseDate: '2026-09-10' }),
+    bag({ id: 5, roaster: 'Old', cost: 10, amountG: 100, purchaseDate: '2026-08-10' }) // not bought in the Period
+  ];
+  const rows = (c = ctx) => spendTab([], [], bs, c).reportCard;
+  it('one row per roaster bought from in the Period; a $0-only roaster has no $/g', () => {
+    expect(rows().map((r) => r.roaster).sort()).toEqual(['A', 'Free']);
+    expect(rows().find((r) => r.roaster === 'Free')).toMatchObject({ bags: 1, spent: 0, ppg: null, rating: null, like: null });
+  });
+  it('last ignores a bag after the Period end; $/g is grams-weighted', () => {
+    const a = rows().find((r) => r.roaster === 'A')!;
+    expect(a.last).toBe('2026-09-20');
+    expect(a.ppg).toBeCloseTo(0.1);
+    expect(a.href).toContain('/coffees?');
+  });
+  it('per person halves bags and spent only', () => {
+    const a = rows({ ...ctx, size: 2 }).find((r) => r.roaster === 'A')!;
+    expect([a.bags, a.spent, a.ppg]).toEqual([1, 25, expect.closeTo(0.1)]);
   });
 });
