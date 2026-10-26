@@ -2257,7 +2257,7 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
       // No blank chart frame: the Spend over time panel is not rendered at all.
-      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, #spend-report-card, #spend-discovery, #spend-share, .value-map svg.plot')).toHaveCount(0);
+      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, #spend-report-card, #spend-discovery, #spend-share, #spend-subscriptions, .value-map svg.plot')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
       await expectShortEmpty(page);
     }
@@ -2402,6 +2402,27 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       await expectDataTip(tip);
       await expectTipInView(page, tip);
+    }
+  },
+  {
+    name: 'insights-spend-subscriptions', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const panel = page.locator('section[data-section="spend-subscriptions"]');
+      await panel.scrollIntoViewIfNeeded();
+      expect(await panel.locator('li:not(.total)').count()).toBeGreaterThanOrEqual(3);
+      await expect(panel.locator('li.total')).toBeVisible();
+      await expect(panel.locator('.badge', { hasText: 'Paused' })).toHaveCount(1);
+      expect(await panel.locator('.bar').count()).toBeGreaterThan(0);
+      // A paused plan with no bags shows its price only.
+      await expect(panel.locator('li', { hasText: 'Paused' }).locator('.track')).toHaveCount(0);
+      // Badges and figures never wrap; the page never scrolls sideways.
+      for (const el of await panel.locator('.badge, .money, .bags').all()) {
+        const h = await el.evaluate((n) => ({ h: n.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(n).lineHeight) || 20 }));
+        expect(h.h).toBeLessThan(h.lh * 2);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(panel.getByRole('link', { name: 'Manage plans' })).toHaveAttribute('href', /\/subscriptions/);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
   {

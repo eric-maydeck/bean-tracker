@@ -3,7 +3,7 @@
   import type { JumpLink } from './JumpNav.svelte';
   // Each panel task adds its section here.
   export function jumpLinks(t: SpendTab): JumpLink[] {
-    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card'], t.discovery.cumulative.length > 1 && ['spend-discovery', 'Roaster discovery'], t.discovery.share !== null && ['spend-share', 'Share of spend']];
+    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card'], t.discovery.cumulative.length > 1 && ['spend-discovery', 'Roaster discovery'], t.discovery.share !== null && ['spend-share', 'Share of spend'], t.tiles.bags > 0 && ['spend-subscriptions', 'Subscriptions']];
   }
 </script>
 
@@ -19,6 +19,7 @@
   import LabHead from './LabHead.svelte';
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
+  import PlanPanel from './PlanPanel.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
@@ -139,6 +140,16 @@
       <StackedBars m={dc.share} ariaLabel="Share of spend by roaster each {sr.by}" />
     </section>
   {/if}
+
+  <section class="chart-panel" data-section="spend-subscriptions">
+    <LabHead id="spend-subscriptions" title="Subscriptions" {placeTip}
+      help={['Each plan\'s price per month, and what its bags bought this period cost per gram and scored, against your one-off bags.', 'The line on a bar is the one-off $/g. Lower $/g is better; a plan that has bought no bags shows its price only.', 'Paused plans are left out of the monthly total.', '', SAMPLE_HELP]} />
+    {#if t.plans.rows.length}
+      <PlanPanel p={t.plans} {link} />
+    {:else}
+      <p class="hl-empty">{emptyLine('No subscriptions yet.')} <a href={link('/subscriptions')}>Manage plans</a></p>
+    {/if}
+  </section>
 {/if}
 
 <style>

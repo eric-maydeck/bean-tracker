@@ -239,3 +239,41 @@ describe('spendTab discovery', () => {
   });
   it('no spend: no share', () => expect(spendTab([], [], [bag({ cost: 0 })], ctx).discovery.share).toBeNull());
 });
+
+describe('spendTab plans', () => {
+  const P = { start: '2026-09-01', end: '2026-09-30' };
+  const ps: Plan[] = [
+    { id: 1, name: 'Box', roaster: 'B', price: 60, paused: false },
+    { id: 2, name: 'Old', roaster: 'D', price: 22, paused: true },
+    { id: 3, name: 'Club', roaster: 'E', price: null, paused: false }
+  ];
+  const fx = [
+    bag({ id: 1, cost: 20, amountG: 250, subscriptionId: 1 }), bag({ id: 2, cost: 30, amountG: 250, subscriptionId: 1 }),
+    bag({ id: 3, cost: 10, amountG: 100 }), bag({ id: 4, cost: 40, amountG: 400, purchaseDate: '2026-08-01', subscriptionId: 1 })
+  ];
+  const rate = (id: number, rating: number): BrewFact => ({ id: id * 10, coffeeId: id, roaster: 'R', localDate: '2026-09-10', rating, dose: 18 }) as BrewFact;
+  const brews = [rate(1, 8), rate(1, 8), rate(2, 6), rate(3, 7)];
+  const ctx = (o: Partial<SpendCtx> = {}): SpendCtx => ({
+    period: P, prev: null, sameLength: false, pace: false, size: 1, dataStart: '2026-01-01', today: '2026-10-26', by: undefined, ratings: 'all', plans: ps, ...o
+  });
+  const run = (o?: Partial<SpendCtx>) => spendTab(brews, brews, fx, ctx(o)).plans;
+
+  it('a paused plan with no bags has only $/month; no price gives null', () => {
+    const [, old, club] = run().rows;
+    expect(old).toMatchObject({ paused: true, perMonth: 22, bags: 0, ppg: null, rating: null });
+    expect(club).toMatchObject({ perMonth: null, bags: 0 });
+  });
+  it('a plan counts its linked bags in the Period; one-off excludes them', () => {
+    const p = run();
+    expect(p.rows[0]).toMatchObject({ bags: 2, perMonth: 60 });
+    expect(p.rows[0].ppg).toBeCloseTo(50 / 500);
+    expect(p.rows[0].rating).toBeCloseTo((8 * 2 / 4 + 6 * 1 / 3) / (2 / 4 + 1 / 3), 5);
+    expect(p.oneOffPpg).toBeCloseTo(0.1);
+    expect(p.oneOffRating).toBeCloseTo(7);
+  });
+  it('per person halves $/month and bags; total $/month skips the paused plan', () => {
+    const p = run({ size: 2 });
+    expect([p.rows[0].perMonth, p.rows[0].bags, p.total.perMonth]).toEqual([30, 1, 30]);
+    expect(run().total).toMatchObject({ perMonth: 60, bags: 2 });
+  });
+});

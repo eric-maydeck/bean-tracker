@@ -214,8 +214,35 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
   };
 }
 
+export interface PlanRow { id: number; name: string; paused: boolean; perMonth: number | null; bags: number; ppg: number | null; rating: number | null; sample?: Sample }
+export interface PlanPanel {
+  rows: PlanRow[]; oneOffPpg: number | null; oneOffRating: number | null; oneOffSample?: Sample;
+  total: { perMonth: number | null; bags: number; ppg: number | null; rating: number | null };
+}
+
+// Every plan (paused too) with the figures of its linked bags bought in the Period, against the one-off bags.
+// Rating: all counted rated brews of those bags in the Period, bag-weighted (ratedGroups raw). Totals: $/month over active plans only.
+function plansPanel(scored: readonly BrewFact[], bags: readonly BagFact[], c: SpendCtx): PlanPanel {
+  const inP = bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, c.period));
+  const brews = scored.filter((b) => inPeriod(b.localDate, c.period));
+  const figures = (mine: readonly BagFact[]) => {
+    const ids = new Set(mine.map((b) => b.id));
+    const g = ratedGroups(brews.filter((b) => b.coffeeId !== null && ids.has(b.coffeeId)), () => 'x', c.ratings, 'raw')[0];
+    return { bags: mine.length / c.size, ppg: pricedPpg(mine), rating: g?.mean ?? null, sample: g?.sample };
+  };
+  const perMonth = (p: Plan) => (p.price === null ? null : p.price / c.size);
+  const rows = c.plans.map((p) => ({ id: p.id, name: p.name, paused: p.paused, perMonth: perMonth(p), ...figures(inP.filter((b) => b.subscriptionId === p.id)) }));
+  const one = figures(inP.filter((b) => b.subscriptionId === null));
+  const all = figures(inP.filter((b) => b.subscriptionId !== null));
+  const active = c.plans.filter((p) => !p.paused && p.price !== null);
+  return {
+    rows, oneOffPpg: one.ppg, oneOffRating: one.rating, oneOffSample: one.sample,
+    total: { perMonth: active.length ? active.reduce((s, p) => s + perMonth(p)!, 0) : null, bags: all.bags, ppg: all.ppg, rating: all.rating }
+  };
+}
+
 export interface SpendTab {
-  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[]; discovery: Discovery;
+  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[]; discovery: Discovery; plans: PlanPanel;
   deltas: Partial<Record<keyof SpendTiles, Delta>> | null; scaled: boolean;
 }
 
@@ -227,5 +254,5 @@ export function spendTab(scored: readonly BrewFact[], whole: readonly BrewFact[]
   );
   // Plans are current-state: no delta.
   const { plansPerMonth: _now, ...deltas } = cmp?.deltas ?? ({} as Record<keyof SpendTiles, Delta>);
-  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), discovery: discovery(bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
+  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), discovery: discovery(bags, c), plans: plansPanel(scored, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
 }
