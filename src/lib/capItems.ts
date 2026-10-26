@@ -4,9 +4,10 @@
 //     " · " in that list's own font (measured in em), so the dot (the item's ::before) fills the gap with a space each side.
 //  2. `data-start` on an item that starts a line hides its dot (visibility only: no reflow, so no loop).
 // Dots stay hidden until a list has been placed (`data-ready`), so the server render shows none. Each list has its own
-// ResizeObserver (any size change, including a hidden ancestor showing); one MutationObserver only notices lists added or removed.
+// ResizeObserver (any size change, including a hidden ancestor showing) and MutationObserver (items or text changing inside the
+// list without changing its box), both scheduling a placement in the next frame; one body MutationObserver notices lists added or removed.
 export function captionItems(): () => void {
-  const lists = new Map<HTMLElement, ResizeObserver>();
+  const lists = new Map<HTMLElement, { ro: ResizeObserver; mo: MutationObserver; frame: number }>();
 
   const probe = (list: HTMLElement, text: string) => {
     const span = document.createElement('span');
@@ -35,26 +36,34 @@ export function captionItems(): () => void {
     list.setAttribute('data-ready', '');
   }
 
+  // Place a list in the next frame; its own probe spans are discarded from its mutation queue (the attribute writes aren't observed).
+  const replace = (list: HTMLElement) => {
+    const e = lists.get(list);
+    if (!e || e.frame) return;
+    e.frame = requestAnimationFrame(() => { e.frame = 0; place(list); e.mo.takeRecords(); });
+  };
+  const stop = (e: { ro: ResizeObserver; mo: MutationObserver; frame: number }) => (e.ro.disconnect(), e.mo.disconnect(), cancelAnimationFrame(e.frame));
   let frame = 0;
   const sync = () => {
     frame = 0;
     for (const list of document.querySelectorAll<HTMLElement>('.cap-list')) {
       if (lists.has(list)) continue;
-      const ro = new ResizeObserver(() => place(list)); // also fires once on observe
-      ro.observe(list);
-      lists.set(list, ro);
+      const entry = { ro: new ResizeObserver(() => replace(list)), mo: new MutationObserver(() => replace(list)), frame: 0 }; // the RO also fires once on observe
+      entry.ro.observe(list);
+      entry.mo.observe(list, { childList: true, characterData: true, subtree: true });
+      lists.set(list, entry);
     }
-    for (const [list, ro] of lists) if (!list.isConnected) (ro.disconnect(), lists.delete(list));
+    for (const [list, e] of lists) if (!list.isConnected) (stop(e), lists.delete(list));
   };
   const schedule = () => { frame ||= requestAnimationFrame(sync); };
   const mutations = new MutationObserver(schedule);
   mutations.observe(document.body, { childList: true, subtree: true });
-  void document.fonts?.ready.then(() => { for (const list of lists.keys()) place(list); });
+  void document.fonts?.ready.then(() => { for (const list of lists.keys()) replace(list); });
   sync();
   return () => {
     mutations.disconnect();
     cancelAnimationFrame(frame);
-    for (const ro of lists.values()) ro.disconnect();
+    for (const e of lists.values()) stop(e);
     lists.clear();
   };
 }

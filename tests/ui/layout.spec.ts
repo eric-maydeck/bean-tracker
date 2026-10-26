@@ -2949,6 +2949,20 @@ export const STATES: State[] = [
     name: 'insights-tile-captions', path: () => '/insights?tab=overview&range=3m&people=person&dial=all',
     act: async (page) => {
       await expectNoEdgeDelimiters(page);
+      // A list whose items or text change without its box changing is re-placed (a per-list MutationObserver): clear its mark and
+      // touch a text node in place; it comes back.
+      const list = page.locator('.cap-list').first();
+      await list.evaluate((l) => { l.removeAttribute('data-ready'); const w = document.createTreeWalker(l, NodeFilter.SHOW_TEXT); const n = w.nextNode() as Text; n.data = n.data; });
+      await expect(list).toHaveAttribute('data-ready', '');
+      // A people toggle (no navigation) changes the caption items in place.
+      await page.goto('/insights?tab=onhand&range=3m');
+      const toggle = page.getByRole('button', { name: 'Per person', exact: true });
+      if (await toggle.isVisible()) { // (the bar is collapsed on phones, and People is hidden in a one-person household)
+        await toggle.click();
+        await expect(page).toHaveURL(/people=person/);
+        await expect(page.locator('#onhand-grams-waiting .cap-list')).toHaveAttribute('data-ready', '');
+        await expectNoEdgeDelimiters(page);
+      }
       for (const url of ['/insights?tab=onhand&range=3m&people=person', '/insights?tab=spend&range=3m&people=person', '/insights?tab=consumption&range=3m&people=person', '/insights?tab=habits&range=3m&people=person', '/insights?tab=records&range=3m&people=person&dial=all', '/stats?people=person']) {
         await page.goto(url);
         await expect(page.locator('.stat-label').first()).toBeVisible();
