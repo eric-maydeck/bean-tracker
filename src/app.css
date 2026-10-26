@@ -2721,6 +2721,9 @@ select.quick-filter-select {
   display: block;
   font-weight: 700;
 }
+.tip-group:not(:first-child) {
+  margin-top: 0.5rem;
+}
 .tip-rows {
   display: grid;
   grid-template-columns: auto auto;

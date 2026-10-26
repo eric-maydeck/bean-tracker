@@ -23,6 +23,8 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
+  import { seriesToken } from '$lib/components/chartColor';
+  import type { Tip } from '$lib/components/TipBody.svelte';
 
   let { t, choose, tiles, spendView, spendSeries, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
     t: SpendTab; choose: (c: InsightsUrlState) => void; tiles: Snippet; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top;
@@ -39,39 +41,61 @@
   type Kind = 'oneOff' | 'sub' | 'overall';
   const SERIES_OPTIONS: readonly (readonly [SpendSeries | 'split', string])[] = [['overall', 'Overall'], ['split', 'One-off vs sub'], ['oneoff', 'One-off'], ['sub', 'Subscription'], ['all', 'All']];
   const NAME: Record<Kind, string> = { oneOff: 'One-off', sub: 'Subscription', overall: 'Overall' };
-  // One color per entity in every view (ui-rules 42: color follows the entity): light, medium and dark brown.
-  const TONE: Record<Kind, string> = { oneOff: 'var(--series-brown-1)', sub: 'var(--series-brown-2)', overall: 'var(--series-brown-3)' };
-  const kinds = $derived<Kind[]>(spendSeries === 'overall' ? ['overall'] : spendSeries === 'oneoff' ? ['oneOff'] : spendSeries === 'sub' ? ['sub'] : spendSeries === 'all' ? ['oneOff', 'sub', 'overall'] : ['oneOff', 'sub']);
+  // The chart's colors are its dataset order, applied fresh to each selection (ui-rules 42: the first series is the primary
+  // brown, then the next ones); a compare series takes its current partner's color.
+  // Bars: All is the stacked split (its tip adds the overall total); the $/g lines of All add the overall line.
+  const kindsOf = (lineChart: boolean): Kind[] => spendSeries === 'overall' ? ['overall'] : spendSeries === 'oneoff' ? ['oneOff'] : spendSeries === 'sub' ? ['sub'] : spendSeries === 'all' && lineChart ? ['oneOff', 'sub', 'overall'] : ['oneOff', 'sub'];
   const sum = (a: (number | null)[], b: (number | null)[]) => a.map((v, i) => (v ?? 0) + (b[i] ?? 0));
-  type Series = { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[]; hue?: string; stack?: string };
-  // The chart's datasets for the selection: the current window's series, then the compare window's, each in its own entity's hue.
-  function plan(cur: Record<Kind, (number | null)[]>, cmp: Record<Kind, (number | null)[]> | null, avg: Record<Kind, number | null> | null, dashed: boolean) {
+  type Series = { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; names?: (string | null)[]; hue?: string };
+  type Vals = Record<Kind, (number | null)[]>;
+  // The chart's datasets for the selection: the current window's series, then the compare window's, each in its partner's color.
+  function plan(kinds: Kind[], cur: Vals, cmp: Vals | null, avg: Record<Kind, number | null> | null) {
     const one = kinds.length === 1;
-    const own = kinds.map((k): Series => ({ label: NAME[k], values: cur[k], ...(k === 'overall' && !one ? { stack: 'overall' } : {}) }));
+    const tone = (k: Kind) => `var(${seriesToken(kinds.indexOf(k), kinds.length)})`;
+    const own = kinds.map((k): Series => ({ label: NAME[k], values: cur[k] }));
     const past: Series[] = cmp
-      ? kinds.flatMap((k) => (cmp[k].some((v) => v) ? [{ label: one ? compareLabel : `${compareLabel} · ${NAME[k]}`, values: cmp[k], hue: TONE[k], names: sr.compareTitles ?? undefined,
-        ...(dashed ? { dashed: true } : { faded: true, ...(k === 'overall' && !one ? { stack: 'compare-overall' } : {}) }) }] : []))
+      ? kinds.flatMap((k) => (cmp[k].some((v) => v) ? [{ label: one ? compareLabel : `${compareLabel} · ${NAME[k]}`, values: cmp[k], hue: tone(k), faded: true }] : []))
       : avg ? [(() => { const k: Kind = spendSeries === 'oneoff' ? 'oneOff' : spendSeries === 'sub' ? 'sub' : 'overall';
-          return { label: `${compareLabel} (avg)`, values: sr.labels.map(() => avg[k]), dashed: true, hue: TONE[k], names: sr.labels.map(() => compareDates) }; })()] : [];
-    return { first: own[0], rest: [...own.slice(1), ...past], colors: [...kinds.map((k) => TONE[k]), ...past.filter((x) => !x.dashed).map((x) => x.hue!)] };
+          return { label: `${compareLabel} (avg)`, values: sr.labels.map(() => avg[k]), dashed: true, hue: tone(k) }; })()] : [];
+    return { kinds, compared: past.length > 0, first: own[0], rest: [...own.slice(1), ...past], colors: [...kinds.map(tone), ...past.filter((x) => !x.dashed).map((x) => x.hue!)] };
   }
   const total = $derived(sum(sr.sub, sr.oneOff));
-  const bars = $derived(plan(
+  const bars = $derived(plan(kindsOf(false),
     { oneOff: sr.oneOff, sub: sr.sub, overall: total },
     sr.compareSplit ? { oneOff: sr.compareSplit.oneOff, sub: sr.compareSplit.sub, overall: sr.compare ?? [] } : null,
-    sr.compareAverageSplit ? { oneOff: sr.compareAverageSplit.oneOff, sub: sr.compareAverageSplit.sub, overall: sr.compareAverage } : null, false));
-  const lines = $derived(plan(
+    sr.compareAverageSplit ? { oneOff: sr.compareAverageSplit.oneOff, sub: sr.compareAverageSplit.sub, overall: sr.compareAverage } : null));
+  const lines = $derived(plan(kindsOf(true),
     { oneOff: sr.ppg.oneOff, sub: sr.ppg.sub, overall: sr.ppg.all },
-    sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, true));
+    sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null));
+  // The tip of a bucket: its rows under the bucket's dates; with a compare window, one group per period, each titled with its dates
+  // (the previous one with the Compare label, "previous 3 months") and the same rows (All's bars add the overall total).
+  const lower = (t: string) => (compareDates ? t.charAt(0).toLowerCase() + t.slice(1) : t);
+  function tipper(pl: ReturnType<typeof plan>, cur: Vals, cmp: Vals | null, avg: Record<Kind, number | null> | null, fmt: (v: number) => string, withTotal: boolean) {
+    const rows = (get: (k: Kind) => number | null | undefined): [string, string][] => {
+      const got = pl.kinds.flatMap((k) => { const v = get(k); return v == null ? [] : [[k, v] as const]; });
+      return [...got.map(([k, v]): [string, string] => [NAME[k], fmt(v)]), ...(withTotal && got.length > 1 ? [['Total', fmt(got.reduce((a, [, v]) => a + v, 0))] as [string, string]] : [])];
+    };
+    return (i: number): Tip => {
+      const now = rows((k) => cur[k][i]);
+      if (!pl.compared) return { title: sr.titles[i], rows: now };
+      const past = cmp ? rows((k) => cmp[k][i]) : rows((k) => avg?.[k]);
+      const title = cmp ? `${sr.compareTitles?.[i] ?? ''}${compareDates ? ` (${lower(compareLabel)})` : ''}`
+        : `${compareDates || compareLabel} (average per ${sr.by}${compareDates ? `, ${lower(compareLabel)}` : ''})`;
+      return { title: '', groups: [{ title: `${sr.titles[i]} (current period)`, rows: now }, { title, rows: past }] };
+    };
+  }
+  const barTip = $derived(tipper(bars, { oneOff: sr.oneOff, sub: sr.sub, overall: total }, sr.compareSplit ? { oneOff: sr.compareSplit.oneOff, sub: sr.compareSplit.sub, overall: sr.compare ?? [] } : null,
+    sr.compareAverageSplit ? { oneOff: sr.compareAverageSplit.oneOff, sub: sr.compareAverageSplit.sub, overall: sr.compareAverage } : null, (v) => usd(v, false), spendSeries === 'all'));
+  const lineTip = $derived(tipper(lines, { oneOff: sr.ppg.oneOff, sub: sr.ppg.sub, overall: sr.ppg.all }, sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, (v) => `${usd(v)}/g`, false));
   // Money axis: whole dollars when any amount shown (either window, any series) is $1,000 or more.
   const amounts = $derived([...total, ...(sr.compare ?? []), sr.compareAverage]);
   const whole = $derived(wholeUsd(amounts));
   const money = (v: number) => usd(v, whole);
   const perG = (v: number) => `${usd(v)}/g`;
-  const perGTip = (v: number) => `${usdPrecise(v) ?? usd(v)}/g`;
   const noPrice = $derived(sr.ppg.all.every((v) => v === null));
   // Two lines, the second blank when there is no suffix, so switching the view never moves the page.
-  const note = $derived(`${ppg ? `$ per g in each ${sr.by}` : `$ per ${sr.by}`} · counted by roast date`);
+  const gaps = $derived(ppg && [lines.first, ...lines.rest].some((x) => x.values.some((v) => v === null)));
+  const note = $derived(`${ppg ? `$ per g in each ${sr.by}` : `$ per ${sr.by}`} · counted by roast date${gaps ? ' · Dashed: no priced bags' : ''}`);
   const vm = $derived(t.valueMap);
   const cutTip = $derived({
     title: 'Not shown', rows: vm.cut.map((p): [string, string] => [p.name, `${usdPrecise(p.ppg) ? usdPrecise(p.ppg) : usd(p.ppg)}/g`])
@@ -99,10 +123,10 @@
     {#if ppg && noPrice}
       <p class="hl-empty">{emptyLine('No priced bags in this period.')}</p>
     {:else if ppg}
-      <Chart type="line" labels={sr.labels} values={lines.first.values} datasetLabel={lines.first.label} legend dashGaps format={perG} tickFormat={(v) => usd(v)} tipFormat={perGTip} titles={sr.titles}
+      <Chart type="line" labels={sr.labels} values={lines.first.values} datasetLabel={lines.first.label} legend dashGaps format={perG} tickFormat={(v) => usd(v)} nearestX tipOf={lineTip}
         series={lines.rest} colors={lines.colors} height={260} />
     {:else}
-      <Chart type="bar" vertical stacked labels={sr.labels} values={bars.first.values} datasetLabel={bars.first.label} legend format={money} tickFormat={money} tipFormat={(v) => usd(v, false)} titles={sr.titles}
+      <Chart type="bar" vertical stacked labels={sr.labels} values={bars.first.values} datasetLabel={bars.first.label} legend format={money} tickFormat={money} tipOf={barTip}
         series={bars.rest} colors={bars.colors} height={260} />
     {/if}
     <p class="chart-note" data-switched-note>{note}<br>{partial}</p>

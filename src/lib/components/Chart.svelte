@@ -57,6 +57,7 @@
     format,
     tickFormat,
     nearestX = false,
+    tipOf,
     tipFormat,
     titles,
     integer = false,
@@ -87,10 +88,9 @@
     vertical?: boolean;
     // Extra series after `values`: faded = the compare window in the same hue; dashed = a
     // line overlay; trend = a bold solid rolling-average line over bars; otherwise a paired series in the next palette color.
-    // `hue` ("var(--series-brown-2)"): a faded or dashed series in that series' color, not the first one's; `stack`: a vertical
-    // bar's own stack group (a column beside the others).
+    // `hue` ("var(--series-brown-2)"): a faded or dashed series in that series' color, not the first one's.
     // `names`: per-bar dates for the tooltip when a series' bar covers other days than the axis label says.
-    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; trend?: boolean; names?: (string | null)[]; hue?: string; stack?: string }[];
+    series?: { label: string; values: (number | null)[]; faded?: boolean; dashed?: boolean; trend?: boolean; names?: (string | null)[]; hue?: string }[];
     // Vertical bars and plain lines: a fitted value axis floor (a 1–10 rating scale), instead of zero.
     yMin?: number;
     // The tooltip's value text, and horizontal bars' value labels.
@@ -99,6 +99,8 @@
     tickFormat?: (v: number) => string;
     // A line chart's tip opens for the nearest x anywhere in the plot, not only on a point (a sparse line, Roaster discovery).
     nearestX?: boolean;
+    // The tip's whole content for a hovered index, in place of the one built from the datasets' lines (a tip grouped by period).
+    tipOf?: (i: number) => Tip;
     // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
     // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
     // (ui-rules 36).
@@ -142,6 +144,7 @@
     const title = (tooltip.title ?? []).join(' ');
     // No title: one row's label is the title over its value; several rows keep all of them under no title.
     const dp = tooltip.dataPoints?.[0];
+    if (tipOf && dp) return (tipAt = { x: tooltip.caretX, y: chart.chartArea.top, h: chart.chartArea.bottom - chart.chartArea.top, tip: tipOf(dp.dataIndex) });
     const sample = dp && dp.datasetIndex === 0 && samples?.[dp.dataIndex] ? sampleField(samples[dp.dataIndex]) : {};
     // The tip's anchor is the hovered x down the whole plot: the tip sits above the plot (below it when there's no room above),
     // never over the hovered bar, point or trend line.
@@ -333,10 +336,10 @@
             x.trend
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(x.hue ? hueTok(x) : tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.stack ?? (x.faded ? 'compare' : 'main') }),
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, fill: false }
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark && !x.hue ? '#120d09' : edge(x.hue ? hueTok(x) : tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
                 // A multi-line chart: the first line's look for every line, in its own color.
-                ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
+                ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...(x.faded && { borderColor: `${themeColor(`${tokAt(at[i])}-ink`)}8c`, pointBackgroundColor: `${themeColor(`${tokAt(at[i])}-ink`)}8c` }) }) }
           )
         ]
       },
@@ -498,7 +501,7 @@
     void format;
     void tipFormat;
     void tickFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, nearestX]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, nearestX, !!tipOf]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();
