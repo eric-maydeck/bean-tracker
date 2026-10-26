@@ -317,6 +317,7 @@
     origins={data.origins}
     processingMethods={data.processingMethods}
     restHistory={data.restHistory}
+    subscriptions={data.subscriptions}
     onstage={stageFields}
     onclone={(prefill) => openModal(prefill)}
     showSubmit={false}

@@ -21,6 +21,7 @@
     origins = [],
     processingMethods = [],
     restHistory = [],
+    subscriptions = null,
     formError = null,
     beanConquerorId = null,
     oncancel = null,
@@ -39,6 +40,8 @@
     origins?: string[];
     processingMethods?: string[];
     restHistory?: RestHistoryRow[];
+    // Edit mode on the detail page only: the plans this bag can be linked to.
+    subscriptions?: { id: number; label: string; paused: boolean }[] | null;
     formError?: string | null;
     // Stats "Not yet tracked" → Create: the bean to link once the coffee exists.
     beanConquerorId?: string | null;
@@ -467,6 +470,19 @@
     <label for="cost">Cost</label>
     <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
   </div>
+
+  {#if subscriptions && coffee}
+    <!-- No grid-area: auto-places in the row after the template's last one. -->
+    <div class="form-field">
+      <label for="subscription_id">Subscription</label>
+      <select id="subscription_id" name="subscription_id">
+        <option value="">None</option>
+        {#each subscriptions as sub (sub.id)}
+          <option value={sub.id} selected={Number(coffee.subscription_id) === sub.id}>{sub.label}</option>
+        {/each}
+      </select>
+    </div>
+  {/if}
 
   <div class="form-field field-roastdate">
     <label for="roast_date">Roast date</label>

@@ -24,6 +24,7 @@ import {
   type NewCoffeeInput
 } from './coffees';
 import { withComputedFields } from './urgency';
+import { createSubscription } from './subscriptions';
 import { setRoasterImage } from './roasterImages';
 
 function sampleInput(overrides: Partial<NewCoffeeInput> = {}): NewCoffeeInput {
@@ -90,6 +91,19 @@ describe('getCoffeeBySlug', () => {
 
   it('returns undefined for an unknown slug', () => {
     expect(getCoffeeBySlug(db, 'nope')).toBeUndefined();
+  });
+});
+
+describe('updateCoffee subscription_id', () => {
+  it('sets it, keeps it when not sent, and clears it with null', () => {
+    const sub = createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1 });
+    const { id, slug } = createCoffee(db, sampleInput());
+    updateCoffee(db, id, sampleInput({ subscription_id: sub }), slug);
+    expect(getCoffeeById(db, id)?.subscription_id).toBe(sub);
+    updateCoffee(db, id, sampleInput({ cost: 30 }), slug);
+    expect(getCoffeeById(db, id)?.subscription_id).toBe(sub);
+    updateCoffee(db, id, sampleInput({ subscription_id: null }), slug);
+    expect(getCoffeeById(db, id)?.subscription_id).toBeNull();
   });
 });
 

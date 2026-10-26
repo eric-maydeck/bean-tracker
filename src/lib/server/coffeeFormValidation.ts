@@ -20,6 +20,8 @@ export interface ValidatedCoffeeInput {
   set_roaster_default: boolean;
   // Image Suggest pick: the roaster's website, written on save (hidden field).
   roaster_website: string | null;
+  // Absent = the form didn't send the field (list inline edit, Add): leave the column alone.
+  subscription_id?: number | null;
 }
 
 export class CoffeeFormError extends Error {}
@@ -85,6 +87,13 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
 
   const imageUrl = textField(formData, 'image_url');
 
+  let subscriptionId: number | null | undefined;
+  if (formData.has('subscription_id')) {
+    const raw = textField(formData, 'subscription_id');
+    subscriptionId = raw == null ? null : /^\d+$/.test(raw) ? Number(raw) : undefined;
+    if (subscriptionId === undefined) throw new CoffeeFormError('Pick a subscription from the list');
+  }
+
   return {
     roaster,
     coffee_name: coffeeName,
@@ -105,6 +114,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     // Meaningless without an image; the roaster is already required above.
     set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null,
     // Machine-set hidden field: an unusable value is dropped, not an error.
-    roaster_website: toOrigin(textField(formData, 'roaster_website'))
+    roaster_website: toOrigin(textField(formData, 'roaster_website')),
+    ...(subscriptionId !== undefined && { subscription_id: subscriptionId })
   };
 }

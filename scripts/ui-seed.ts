@@ -53,7 +53,7 @@ function coffee(over: Partial<NewCoffeeInput> & Pick<NewCoffeeInput, 'roaster' |
 const long = coffee({ roaster: LONG_ROASTER, coffee_name: LONG_NAME, status: 'open', roast_date: daysAgo(12),
   origin: 'Colombia', processing: 'Double Anaerobic Thermal Shock Natural' });
 const decaf = coffee({ roaster: 'Onyx', coffee_name: 'Swiss Water Decaf Colombia Huila', decaf: true, roast_date: daysAgo(5) });
-coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
+const sey = coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
 coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
 const frozen = coffee({ roaster: 'Moonwake', coffee_name: 'Ethiopia Bensa Bombe', roast_date: daysAgo(40),
   frozen_start_date: daysAgo(30) });
@@ -82,13 +82,16 @@ const grams = {
   part: coffee({ roaster: 'Passenger Coffee', coffee_name: GRAMS_NAMES.part, status: 'open', amount_g: 1500 })
 };
 
-createSubscription(db, { roaster_service: 'A Very Long Subscription Service Name That Keeps Going', subscription_name:
+const longPlan = createSubscription(db, { roaster_service: 'A Very Long Subscription Service Name That Keeps Going', subscription_name:
   'Explorer Series: Two Rotating Single Origins Every Other Week', price: 44.5, bag_count: 2, amount_per_bag_g: 250, renewal_day: 15,
   subscription_url: 'https://www.averylongsubscriptionservice.example.com/pages/subscriptions/explorer-series-two-rotating-single-origins' });
 createSubscription(db, { roaster_service: 'Ceto', subscription_name: 'Paused Monthly', price: 22, bag_count: 1, amount_per_bag_g: 250,
   renewal_day: 9, subscription_url: 'https://ceto.coffee/products/subscription', paused: 1 });
-createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250,
+const seyPlan = createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250,
   renewal_day: 1 });
+const link = db.prepare(`UPDATE coffees SET subscription_id = ? WHERE id = ?`);
+link.run(seyPlan, sey.id);
+link.run(longPlan, long.id);
 
 const now = new Date().toISOString();
 const bean = db.prepare(
@@ -259,7 +262,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
-  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], big: grams.big.slug,
+  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], sey: sey.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug, skip: skipSlug },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));

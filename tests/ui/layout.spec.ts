@@ -7,7 +7,7 @@ import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; skip: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; sey: string; skip: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
@@ -1029,6 +1029,28 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(new RegExp(`/coffees/${s.slugs.long}$`));
     }
   },
+  // Admin edit mode: the bag's subscription plan; saved through the staged batch; the list's inline edit has none.
+  { name: 'coffees-detail-subscription-select', viewports: 'two', path: (s) => `/coffees/${s.slugs.sey}`,
+    act: async (page, s) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const sel = page.getByLabel('Subscription', { exact: true });
+      await expect(sel).toBeVisible();
+      await expect(sel.locator('option')).toHaveText([
+        'None', 'Explorer Series: Two Rotating Single Origins Every Other Week', 'Paused Monthly (paused)', 'Sey']);
+      await expect(sel.locator('option:checked')).toHaveText('Sey');
+      await sel.selectOption({ label: 'Paused Monthly (paused)' });
+      await page.getByRole('button', { name: 'Save changes' }).click();
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
+      await page.reload();
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Paused Monthly (paused)');
+      await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey' }); // restore for other states
+      await page.getByRole('button', { name: 'Save changes' }).click();
+      await page.goto('/coffees?view=list&status=all');
+      await page.getByRole('row', { name: /Kenya Kiambu/ }).first().getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.locator('#coffee_name')).toBeVisible();
+      await expect(page.getByLabel('Subscription', { exact: true })).toHaveCount(0);
+    } },
   { name: 'coffee-detail-like', path: (s) => `/coffees/${s.slugs.lab}`,
     act: async (page) => {
       const panel = page.locator('[data-section="like"]');

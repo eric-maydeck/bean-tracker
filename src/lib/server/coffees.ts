@@ -6,6 +6,7 @@ import { hostMatchesRoaster } from '../imageSuggest.ts';
 import { localToday } from './localToday.ts';
 
 export interface NewCoffeeInput {
+  subscription_id?: number | null;
   roaster: string;
   coffee_name: string;
   origin: string | null;
@@ -194,6 +195,10 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     now,
     id
   );
+  // undefined = not sent: keep the link. The FK rejects a plan that doesn't exist.
+  if (input.subscription_id !== undefined) {
+    db.prepare(`UPDATE coffees SET subscription_id = ? WHERE id = ?`).run(input.subscription_id, id);
+  }
   if (oldSlug && oldSlug !== slug) {
     // Renaming back to one of this coffee's own old slugs reclaims it.
     db.prepare(`DELETE FROM slug_redirects WHERE old_slug = ? AND coffee_id = ?`).run(slug, id);

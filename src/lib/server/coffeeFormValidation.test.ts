@@ -145,3 +145,17 @@ describe('parseCoffeeForm: roaster_website', () => {
     expect(parseCoffeeForm(formData({ ...base, roaster_website: 'javascript:alert(1)' })).roaster_website).toBeNull();
   });
 });
+
+describe('parseCoffeeForm subscription_id', () => {
+  const base = { roaster: 'R', coffee_name: 'C' };
+  it('is absent when the field is not sent', () => {
+    expect('subscription_id' in parseCoffeeForm(formData(base))).toBe(false);
+  });
+  it("parses '' as null and '3' as 3", () => {
+    expect(parseCoffeeForm(formData({ ...base, subscription_id: '' })).subscription_id).toBeNull();
+    expect(parseCoffeeForm(formData({ ...base, subscription_id: '3' })).subscription_id).toBe(3);
+  });
+  it.each(['x', '-1', '1.5'])('rejects %s', (v) => {
+    expect(() => parseCoffeeForm(formData({ ...base, subscription_id: v }))).toThrow('Pick a subscription from the list');
+  });
+});
