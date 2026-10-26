@@ -669,6 +669,14 @@ describe('spend tab params', () => {
     expect(insightsParams({ tab: 'spend' }).toString()).toBe('tab=spend');
     expect(resetInsights({ tab: 'spend', rcSort: 'ppg', spendSeries: 'sub' })).toEqual({ tab: 'spend' });
   });
+  it('On hand: tab, waitBy parsed case-insensitively, junk dropped, round-trips', () => {
+    expect(parse('tab=OnHand').tab).toBe('onhand');
+    expect(parse('waitBy=Origin').waitBy).toBe('origin');
+    expect(parse('waitBy=junk').waitBy).toBeUndefined();
+    expect(parse('waitBy=roaster').waitBy).toBe('roaster'); // the default is dropped by the page, not the parser
+    expect(insightsParams(parse('tab=onhand&waitBy=process')).toString()).toBe('tab=onhand&waitBy=process');
+    expect(resetInsights({ tab: 'onhand', waitBy: 'roast' })).toEqual({ tab: 'onhand' });
+  });
   it('Spend group sits between Highlights and Lab; ratings menu on', () => {
     expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Spend', 'Lab']);
     expect(ratingsMenuOn({ tab: 'spend', rank: 'rating', measure: 'brews', trend: undefined })).toBe(true);

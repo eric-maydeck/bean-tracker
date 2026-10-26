@@ -1,6 +1,7 @@
-import { computeDrinkAfter, computeUrgencyRating, diffDays, parseDate, type UrgencyInput } from '../urgency';
-import { remaining } from './overview';
-import type { BagFact } from './facts';
+import { computeDaysSinceRoast, computeDrinkAfter, computeUrgencyRating, diffDays, parseDate, type UrgencyInput } from '../urgency';
+import { consumption, gramsOnHand, loggedGrams, remaining } from './overview';
+import type { BagFact, BrewFact } from './facts';
+import type { Period } from './time';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
 export interface FreshGroup { count: number; grams: number; bags: { name: string; roaster: string; slug: string | null }[] }
@@ -34,4 +35,46 @@ export function freshness(bags: readonly FreshBag[], today: string): Freshness {
     add(typeof u === 'number' && u >= DRINK_SOON_URGENCY ? f.drinkSoon : f.ready, b);
   }
   return f;
+}
+
+export type OnHandTiles = {
+  bagsWaiting: number; gramsWaiting: number; tiedUp: number; avgAge: number | null;
+  frozenBags: number; frozenGrams: number; avgBagCost: number | null;
+};
+export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
+export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; freshness: Freshness }
+
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+
+// What sits on the shelf now (backlog + open bags). `size` divides grams and dollars only: bags are shared in the
+// household (user, 2026-10-26), as are ages and averages.
+export function onHandTab(
+  whole: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; size: number; dataStart: string | null; today: string }
+): OnHandTab {
+  const logged = loggedGrams(whole);
+  const live = bags.filter((b) => b.status !== 'archive');
+  const waiting = live.filter((b) => b.status === 'backlog');
+  const fresh = live.map((b) => freshBag(b, logged));
+  const t = parseDate(c.today);
+  const frozen = fresh.filter((b) => b.frozen_start_date && !b.frozen_end_date);
+  const tiedUp = live.reduce((s, b) => s + (b.status === 'backlog' ? (b.cost ?? 0) : b.cost && b.amountG ? (b.cost * remaining(b, logged)) / b.amountG : 0), 0);
+  const onHandG = gramsOnHand(bags, whole);
+  const run = (p: Period): Runway => {
+    const u = consumption(whole, p, c.dataStart, c.today, onHandG, c.size);
+    return { days: u.daysToClear, clearBy: u.clearBy, perDay: u.perDay };
+  };
+  return {
+    tiles: {
+      bagsWaiting: waiting.length,
+      gramsWaiting: waiting.reduce((s, b) => s + remaining(b, logged), 0) / c.size,
+      tiedUp: tiedUp / c.size,
+      avgAge: mean(fresh.flatMap((b) => computeDaysSinceRoast(b, t) ?? [])),
+      frozenBags: frozen.length,
+      frozenGrams: frozen.reduce((s, b) => s + b.grams, 0) / c.size,
+      avgBagCost: mean(live.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : [])))
+    },
+    runway: run(c.period),
+    runwayAll: run({ start: null, end: c.today }),
+    freshness: freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today)
+  };
 }

@@ -2724,6 +2724,39 @@ export const STATES: State[] = [
       expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },
+  // On hand: six tiles and no Compare control (a snapshot has nothing to compare); the runway and freshness cards fill their rows.
+  {
+    name: 'insights-onhand', path: () => '/insights?tab=onhand&range=3m',
+    act: async (page) => {
+      await expect(page.locator('.stat-item .stat-label')).toHaveText(
+        ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost'], { useInnerText: true, ignoreCase: true }
+      );
+      await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
+      await expect(page.getByLabel('Period', { exact: true })).toBeVisible();
+      await expect(page.locator('#onhand-runway, #onhand-freshness')).toHaveCount(2);
+      await expectGridRowsFull(page, '[data-section="onhand-freshness"] .cards');
+      await expectGridRowsFull(page, '[data-section="onhand-runway"] .cards');
+      await expect(page.locator('[data-section="onhand-freshness"] .oh-card')).toHaveCount(4);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      await page.getByRole('button', { name: 'About Avg age' }).click();
+      const tip = page.locator('.mode-tip:popover-open');
+      await expectTipInView(page, tip);
+      await expect(tip).toContainText('Counted by roast date, minus days in the freezer.');
+    }
+  },
+  {
+    name: 'insights-onhand-preview', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      const t = await previewTags(page, '/insights?tab=onhand');
+      expect(t['og:title']).toBe('Insights: On hand');
+      expect(t['og:description']).toMatch(/^What's on fuhnoo's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
+    }
+  },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare', viewports: 'two',

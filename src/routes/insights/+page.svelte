@@ -40,6 +40,7 @@
   import Water, { jumpLinks as waterLinks } from './Water.svelte';
   import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
+  import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
   import Recent from './Recent.svelte';
   import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
@@ -51,7 +52,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop'] as const;
+  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy'] as const;
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
@@ -221,7 +222,7 @@
     rangeDialog?.close();
   }
 
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', spend: 'Over time', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Over time', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
     const qs = insightsParams({ ...explicit, tab }).toString();
@@ -318,6 +319,15 @@
     { key: 'newRoasters', label: 'New roasters', fmt: count, up: 'good' },
     { key: 'subShare', label: 'Subscription share', fmt: pct },
     { key: 'plansPerMonth', split: true, label: 'Plans per month', fmt: usd, sub: () => 'this month' }
+  ]);
+  // On hand: grams and dollars divide per person, bag counts never do (bags are shared in the household).
+  let ONHAND = $derived<Tile[]>([
+    { key: 'bagsWaiting', label: 'Bags waiting', fmt: count },
+    { key: 'gramsWaiting', split: true, label: 'Grams waiting', fmt: formatGrams },
+    { key: 'tiedUp', split: true, label: '$ tied up', fmt: usd },
+    { key: 'avgAge', label: 'Avg age', fmt: count, suffix: 'days', help: 'Counted by roast date, minus days in the freezer.' },
+    { key: 'frozenBags', split: true, label: 'In the freezer', fmt: count, sub: () => (data.onHand ? formatGrams(data.onHand.tiles.frozenGrams) : null) },
+    { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd }
   ]);
   let HABITS = $derived<Tile[]>(
     data.habits
@@ -425,10 +435,12 @@
   const phoneText = (long: string) => (phone.current ? phoneWords(long) : long);
   // The bar's phone grid (gate r2 A3): 3 cells per row up to 480px, 2 up to 640px; packSpans widens controls so every
   // row is full. The menu takes two cells at 3 per row (its label is long); People always two; Dates… a cell, or a row at 2.
+  // Compare shows on every tab but the lab and On hand (a snapshot of the shelf has nothing to compare).
+  const noCompare = $derived(labTab || s.tab === 'onhand');
   const peopleOn = $derived(data.householdSize > 1 && s.tab !== 'milestones' && !labTab);
   const barCells = (cols: 2 | 3) => packSpans([
     ['view', 1], ['period', 1], ...(isCustom(s.range) ? [['range-dates', 4 - cols]] : []),
-    ...(labTab ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
+    ...(noCompare ? [] : [['compare', 1], ...(isCustom(s.compare) ? [['compare-dates', 4 - cols]] : [])]),
     ...(ratingsMenu || menuOff ? [['menu', cols - 1]] : []), ['filters', 1], ...(peopleOn ? [['people', 2]] : [])
   ] as [string, number][], cols);
   let span2 = $derived(barCells(2));
@@ -492,6 +504,7 @@
     if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
     if (s.tab === 'water' && data.water) return waterLinks(data.water);
     if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
+    if (s.tab === 'onhand' && data.onHand) return onHandLinks(data.onHand);
     if (s.tab === 'spend' && data.spend) return spendLinks(data.spend);
     return [['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']];
   });
@@ -506,7 +519,7 @@
     tab: s.tab, owner: ownerName(page.url.host), tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
     chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records,
-    line: !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
+    line: data.onHand ? `${plural(data.onHand.tiles.bagsWaiting, 'bag')} waiting · ${formatGrams(data.onHand.tiles.gramsWaiting)} · ${usd(data.onHand.tiles.tiedUp)} tied up` : !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
   })}
 />
 
@@ -566,7 +579,7 @@
   {#if isCustom(s.range)}
     <button class="button button-ghost" style={cell('range-dates')} aria-label="Period dates" onclick={() => openDates('range')}>Dates…</button>
   {/if}
-  {#if !labTab}
+  {#if !noCompare}
   <label class="form-field group-field" style={cell('compare')}>
     <span>Compare</span>
     <select
@@ -892,6 +905,10 @@
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
+{:else if s.tab === 'onhand' && data.onHand}
+  <OnHand t={data.onHand} {link} {periodLabel} allTime={s.range === 'all'} {placeTip}>
+    {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
+  </OnHand>
 {:else if s.tab === 'spend' && data.spend}
   <Spend t={data.spend} {choose} {placeTip} spendView={s.spendView} spendSeries={s.spendSeries} rcSort={s.rcSort} rcDir={s.rcDir} rcTop={s.rcTop} {compareLabel} {compareDates} {link}>
     {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}

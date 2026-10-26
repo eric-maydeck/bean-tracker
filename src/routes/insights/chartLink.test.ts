@@ -39,6 +39,9 @@ describe('insightsPreview', () => {
   it('page level: a given line replaces the brews and rating line', () =>
     expect(insightsPreview({ ...base, tab: 'spend', tabLabel: 'Over time', filters: [], line: 'Spent $82.50 · 6 bags · $0.11/g avg' }).description.split('\n')[2])
       .toBe('Spent $82.50 · 6 bags · $0.11/g avg'));
+  it('page level: On hand names the shelf', () =>
+    expect(insightsPreview({ ...base, tab: 'onhand', tabLabel: 'On hand', filters: [], line: '4 bags waiting · 1.2kg · $52 tied up' }).description)
+      .toBe("What's on fuhnoo's shelf right now\nAll time\n4 bags waiting · 1.2kg · $52 tied up"));
   it('page level: summary per tab and owner, filters optional', () => {
     const d = insightsPreview({ ...base, owner: 'Eric', tab: 'water', tabLabel: 'Water', filters: [], brews: 1436, avgRating: 7.5 });
     expect(d).toEqual({ title: 'Insights: Water', description: "How water affects Eric's ratings\nAll time\n1,436 brews · Avg rating 7.5" });

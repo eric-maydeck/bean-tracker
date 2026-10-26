@@ -10,6 +10,7 @@ import { boardSeries, cutBoards, hiddenRows, leaderboards, pageFilters } from '$
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
 import { spendTab } from '$lib/server/insights/spend';
+import { onHandTab } from '$lib/server/insights/onHand';
 import { getSubscriptions } from '$lib/server/subscriptions';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
@@ -139,6 +140,7 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, trend: s.trend, scored, ratings: s.ratings, sameLength: typeof s.compare === 'number' })
         : null,
+    onHand: s.tab === 'onhand' ? onHandTab(whole, bags, { period, size, dataStart, today }) : null,
     spend: s.tab === 'spend'
       ? spendTab(scored, whole, bags, {
           period, prev, sameLength: typeof s.compare === 'number', pace, size, dataStart, today, by: s.by, ratings: s.ratings,

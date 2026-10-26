@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { freshness, freshBag, type FreshBag } from './onHand';
-import type { BagFact } from './facts';
+import { freshness, freshBag, onHandTab, type FreshBag } from './onHand';
+import type { BagFact, BrewFact } from './facts';
 
 const today = '2026-09-25';
 const bag = (o: Partial<FreshBag> = {}): FreshBag => ({
@@ -45,5 +45,47 @@ describe('freshBag', () => {
   it('uses remaining grams', () => {
     const b = { id: 1, amountG: 250, purchaseDate: '2026-09-01', name: 'N', roaster: 'R', slug: null } as BagFact;
     expect(freshBag(b, new Map([[1, 100]])).grams).toBe(150);
+  });
+});
+
+const fact = (o: Partial<BagFact>): BagFact => ({
+  id: 0, status: 'backlog', purchaseDate: '2026-09-15', cost: null, amountG: 250, roaster: 'R', name: 'C', slug: null, processing: null,
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null,
+  subscriptionId: null, ...o
+});
+const dose = (coffeeId: number, localDate: string, d: number) => ({ coffeeId, localDate, dose: d } as BrewFact);
+const ctx = { period: { start: '2026-09-18', end: today }, size: 1, dataStart: '2026-08-01', today };
+
+describe('onHandTab', () => {
+  it('ties up the unused share of an open bag and the whole price of a backlog bag', () => {
+    const t = onHandTab([dose(1, '2026-09-10', 125)], [fact({ id: 1, status: 'open', cost: 20 }), fact({ id: 2, cost: 12 })], ctx).tiles;
+    expect(t.tiedUp).toBe(22);
+    expect(t.bagsWaiting).toBe(1);
+    expect(t.gramsWaiting).toBe(250);
+    expect(t.avgBagCost).toBe(16);
+  });
+  it('stops an open-freeze bag\'s age at its freeze, and skips a bag without a roast date for age only', () => {
+    const t = onHandTab([], [
+      fact({ id: 1, purchaseDate: '2026-09-05', frozenStart: '2026-09-15', amountG: 100 }), // age 10
+      fact({ id: 2, purchaseDate: '2026-09-15' }), // age 10
+      fact({ id: 3, purchaseDate: null })
+    ], ctx).tiles;
+    expect(t).toMatchObject({ avgAge: 10, bagsWaiting: 3, frozenBags: 1, frozenGrams: 100 });
+  });
+  it('a size of 2 halves grams and dollars only', () => {
+    const bags = [fact({ id: 1, cost: 20, purchaseDate: '2026-09-15' }), fact({ id: 2, cost: 10, frozenStart: '2026-09-20' })];
+    const one = onHandTab([], bags, ctx).tiles;
+    const two = onHandTab([], bags, { ...ctx, size: 2 }).tiles;
+    expect(two).toEqual({ ...one, gramsWaiting: one.gramsWaiting / 2, tiedUp: one.tiedUp / 2, frozenGrams: one.frozenGrams / 2 });
+  });
+  it('has zeros and nulls without bags', () => {
+    expect(onHandTab([], [], ctx).tiles).toEqual({ bagsWaiting: 0, gramsWaiting: 0, tiedUp: 0, avgAge: null, frozenBags: 0, frozenGrams: 0, avgBagCost: null });
+  });
+  it('an all-time pace runs out at a different day than a one-week pace', () => {
+    const brews = [dose(9, '2026-08-05', 300), dose(9, '2026-09-24', 30)];
+    const r = onHandTab(brews, [fact({ id: 1, amountG: 500 })], { ...ctx, period: { start: '2026-09-18', end: today } });
+    expect(r.runway.days).not.toBeNull();
+    expect(r.runwayAll.days).not.toBeNull();
+    expect(r.runway.days).not.toBe(r.runwayAll.days);
   });
 });
