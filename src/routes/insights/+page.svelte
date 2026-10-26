@@ -795,7 +795,7 @@
       <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
     {/if}
     {#each tiles.some((x) => x.row) ? [...new Set(tiles.map((x) => x.row))].map((r) => ({ row: r, tiles: tiles.filter((x) => x.row === r) })) : [{ row: undefined, tiles }] as g (g.row ?? '')}
-    {#if g.row}<p class="row-label">{g.row}</p>{/if}
+    {#if g.row}<h3 class="row-label">{g.row}</h3>{/if}
     <div class="stat-row fit n{g.tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'} class:runway-row={!!g.row}>
       {#each g.tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
@@ -1279,10 +1279,10 @@
     overflow: visible;
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
+  /* A subheading under a panel title (the app's h3, as Time to open's lists): smaller than the h2. */
   .row-label {
     margin: var(--space-3) 0 var(--space-2);
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
+    font-size: 1rem;
   }
   .row-label:first-of-type {
     margin-top: 0;
