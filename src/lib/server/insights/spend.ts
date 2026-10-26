@@ -9,6 +9,7 @@ import { weightedMedian } from './stats';
 import { BAG_MIN_BREWS, single, type Sample } from '$lib/sample';
 import { compareTiles, type Delta } from './overview';
 import { leaderboard, listHref } from './leaderboards';
+import type { Multi } from './insightGenerators';
 import type { RcRow } from '../../../routes/insights/reportCard';
 
 export interface Plan { id: number; name: string; roaster: string; price: number | null; paused: boolean }
@@ -76,10 +77,15 @@ function flows(bags: readonly BagFact[], bs: readonly Bucket[], size: number) {
   return { sub: subs.map(cost), oneOff: ones.map(cost), ppg: { all: per.map(pricedPpg), sub: subs.map(pricedPpg), oneOff: ones.map(pricedPpg) } };
 }
 
-function spendSeries(bags: readonly BagFact[], c: SpendCtx): SpendSeries {
+// The Period's buckets (Spend over time and Share of spend use the same ones).
+function periodBuckets(c: SpendCtx) {
   const t = trackedBounds(c.period, c.dataStart, c.today);
   const by = c.by ?? autoBy(t ? daysBetween(t.start, t.end) + 1 : 0);
-  const bs = buckets(t, by);
+  return { by, bs: buckets(t, by) };
+}
+
+function spendSeries(bags: readonly BagFact[], c: SpendCtx): SpendSeries {
+  const { by, bs } = periodBuckets(c);
   const f = flows(bags, bs, c.size);
   let compare: SpendSeries['compare'] = null, comparePpg: SpendSeries['comparePpg'] = null;
   let compareTitles: SpendSeries['compareTitles'] = null, compareAverage: number | null = null;
@@ -150,8 +156,66 @@ function reportCard(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
   }));
 }
 
+export interface Discovery {
+  labels: string[]; titles: string[]; cumulative: number[]; band: [number, number] | null;
+  share: (Multi & { other: [string, number][][] }) | null; repeatRate: number | null; roasters: number;
+}
+const SHARE_TOP = 5;
+
+// Integer percents of `vals` that add up to exactly 100 (largest remainder); all zeros when there is nothing.
+function percents(vals: readonly number[]): number[] {
+  const total = vals.reduce((a, b) => a + b, 0);
+  if (!total) return vals.map(() => 0);
+  const exact = vals.map((v) => (100 * v) / total), out = exact.map(Math.floor);
+  const order = exact.map((e, i) => [e - out[i], i]).sort((a, b) => b[0] - a[0] || a[1] - b[1]);
+  const left = 100 - out.reduce((a, b) => a + b, 0);
+  for (let k = 0; k < left; k++) out[order[k][1]]++;
+  return out;
+}
+
+// Cumulative distinct roasters over all history; the Period's roaster spend shares; the repeat-buy rate.
+function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
+  const dated = bags.filter((b) => b.purchaseDate);
+  const first = new Map<string, string>();
+  for (const b of dated) if ((first.get(b.roaster) ?? '9') > b.purchaseDate!) first.set(b.roaster, b.purchaseDate!);
+  const start = [...first.values()].sort()[0];
+  const by = autoBy(start ? daysBetween(start, c.today) + 1 : 0);
+  const all = buckets(start ? { start, end: c.today } : null, by);
+  const hit = all.flatMap((b, i) => (b.end >= (c.period.start ?? '') && b.start <= c.period.end ? [i] : []));
+  const inP = dated.filter((b) => inPeriod(b.purchaseDate!, c.period));
+  const mine = new Set(inP.map((b) => b.roaster));
+  const repeat = [...mine].filter((r) => c.period.start !== null && first.get(r)! < c.period.start).length;
+
+  const spend = new Map<string, number>();
+  for (const b of inP) spend.set(b.roaster, (spend.get(b.roaster) ?? 0) + (b.cost ?? 0));
+  const ranked = [...spend].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([r]) => r);
+  const top = ranked.slice(0, SHARE_TOP), rest = ranked.slice(SHARE_TOP);
+  const { by: sBy, bs } = periodBuckets(c);
+  const per = bs.map((b) => {
+    const m = new Map<string, number>();
+    for (const g of inP) if (g.purchaseDate! >= b.start && g.purchaseDate! <= b.end) m.set(g.roaster, (m.get(g.roaster) ?? 0) + (g.cost ?? 0));
+    return m;
+  });
+  const names = rest.length ? [...top, 'Other'] : top;
+  const cols = per.map((m) => percents([...top.map((r) => m.get(r) ?? 0), ...(rest.length ? [rest.reduce((s, r) => s + (m.get(r) ?? 0), 0)] : [])]));
+  const share = [...spend.values()].some((v) => v > 0) ? {
+    x: bucketLabels(bs, sBy), unit: '%',
+    lines: names.map((label, k) => ({ label, values: cols.map((p) => p[k]) })),
+    other: per.map((m) => {
+      const total = [...m.values()].reduce((a, b) => a + b, 0);
+      return rest.filter((r) => (m.get(r) ?? 0) > 0).sort((a, b) => m.get(b)! - m.get(a)!).map((r): [string, number] => [r, Math.round((100 * m.get(r)!) / total)]);
+    })
+  } : null;
+  return {
+    labels: bucketLabels(all, by), titles: bucketTitles(all, by),
+    cumulative: all.map((b) => [...first.values()].filter((d) => d <= b.end).length),
+    band: c.period.start === null || !hit.length ? null : [hit[0], hit.at(-1)!],
+    share, repeatRate: mine.size && c.period.start !== null ? repeat / mine.size : null, roasters: mine.size
+  };
+}
+
 export interface SpendTab {
-  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[];
+  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[]; discovery: Discovery;
   deltas: Partial<Record<keyof SpendTiles, Delta>> | null; scaled: boolean;
 }
 
@@ -163,5 +227,5 @@ export function spendTab(scored: readonly BrewFact[], whole: readonly BrewFact[]
   );
   // Plans are current-state: no delta.
   const { plansPerMonth: _now, ...deltas } = cmp?.deltas ?? ({} as Record<keyof SpendTiles, Delta>);
-  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
+  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), discovery: discovery(bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
 }

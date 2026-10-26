@@ -2257,7 +2257,7 @@ export const STATES: State[] = [
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
       // No blank chart frame: the Spend over time panel is not rendered at all.
-      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, #spend-report-card, .value-map svg.plot')).toHaveCount(0);
+      await expect(page.locator('#spend-chart, .chart-container, #spend-value-map, #spend-best-value, #spend-report-card, #spend-discovery, #spend-share, .value-map svg.plot')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
       await expectShortEmpty(page);
     }
@@ -2374,6 +2374,34 @@ export const STATES: State[] = [
       await panel.getByRole('button', { name: 'Show more' }).click();
       await expect(page).toHaveURL(/rcTop=20/);
       expect(fetched).toEqual([]);
+    }
+  },
+  {
+    name: 'insights-spend-discovery', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const disc = page.locator('section[data-section="spend-discovery"]');
+      await disc.scrollIntoViewIfNeeded();
+      await expect(disc.getByRole('heading', { name: 'Roaster discovery' })).toBeVisible();
+      await expect(disc.locator('canvas')).toHaveCount(1);
+      await expect(disc.locator('.repeat')).toContainText(/Repeat-buy rate \d+% · of \d+ roasters/);
+      const share = page.locator('section[data-section="spend-share"]');
+      await share.scrollIntoViewIfNeeded();
+      await expect(share.getByRole('heading', { name: 'Share of spend' })).toBeVisible();
+      await expect(share.getByRole('group', { name: /Share of spend by roaster/ })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const seg = page.locator('section[data-section="spend-share"] .seg').first();
+      await seg.scrollIntoViewIfNeeded();
+      const tip = page.locator('[popover]:popover-open', { has: page.locator('.tip-title') });
+      if (touch()) await seg.tap(); else await seg.hover();
+      await expect(tip).toBeVisible();
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
     }
   },
   {

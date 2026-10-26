@@ -200,3 +200,42 @@ describe('spendTab reportCard', () => {
     expect(a.likeSample).toBeDefined();
   });
 });
+
+describe('spendTab discovery', () => {
+  const P = { start: '2026-09-01', end: '2026-09-30' };
+  const ctx: SpendCtx = {
+    period: P, prev: null, sameLength: false, pace: false, size: 1,
+    dataStart: '2026-01-01', today: '2026-10-26', by: undefined, ratings: 'all', plans: []
+  };
+  const fx = [
+    bag({ id: 1, roaster: 'A', cost: 10, purchaseDate: '2026-03-10' }),
+    bag({ id: 2, roaster: 'B', cost: 10, purchaseDate: '2026-06-10' }),
+    ...'ABCDEFG'.split('').map((r, i) => bag({ id: 10 + i, roaster: r, cost: 7 * (7 - i) + 1, purchaseDate: i % 2 ? '2026-09-05' : '2026-09-20' }))
+  ];
+  const d = spendTab([], [], fx, ctx).discovery;
+  it('cumulative never drops and ends at the distinct roaster count', () => {
+    expect(d.cumulative.every((v, i) => i === 0 || v >= d.cumulative[i - 1])).toBe(true);
+    expect(d.cumulative.at(-1)).toBe(7);
+    expect(d.cumulative[0]).toBe(1);
+  });
+  it('band covers the Period; null for all time', () => {
+    expect(d.band).not.toBeNull();
+    expect(spendTab([], [], fx, { ...ctx, period: { start: null, end: ctx.today } }).discovery.band).toBeNull();
+  });
+  it('share sums to exactly 100 per bucket; the 6th and 7th roasters are Other', () => {
+    const s = d.share!;
+    expect(s.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'E', 'Other']);
+    for (let i = 0; i < s.x.length; i++) {
+      const sum = s.lines.reduce((a, l) => a + (l.values[i] ?? 0), 0);
+      expect(sum === 100 || sum === 0).toBe(true);
+    }
+    const i = s.x.findIndex((_, k) => s.other[k].length > 0);
+    expect(s.other[i].map(([r]) => r)).toEqual(expect.arrayContaining(['F']));
+    expect(s.other[i].every(([, p]) => p > 0)).toBe(true);
+  });
+  it('repeat rate: roasters in the Period with an earlier bag', () => {
+    expect(d.roasters).toBe(7);
+    expect(d.repeatRate).toBeCloseTo(2 / 7); // A and B were bought before September
+  });
+  it('no spend: no share', () => expect(spendTab([], [], [bag({ cost: 0 })], ctx).discovery.share).toBeNull());
+});

@@ -3,7 +3,7 @@
   import type { JumpLink } from './JumpNav.svelte';
   // Each panel task adds its section here.
   export function jumpLinks(t: SpendTab): JumpLink[] {
-    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card']];
+    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card'], t.discovery.cumulative.length > 1 && ['spend-discovery', 'Roaster discovery'], t.discovery.share !== null && ['spend-share', 'Share of spend']];
   }
 </script>
 
@@ -20,6 +20,7 @@
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
 
   let { t, choose, tiles, spendView, rcSort, rcDir, rcTop, compareLabel, compareDates, link, placeTip }: {
@@ -51,6 +52,7 @@
   const cutTip = $derived({
     title: 'Not shown', rows: vm.cut.map((p): [string, string] => [p.name, `${usdPrecise(p.ppg) ? usdPrecise(p.ppg) : usd(p.ppg)}/g`])
   });
+  const dc = $derived(t.discovery);
   const partial = $derived(sr.partial ? `* partial ${sr.by}` : '\u00a0');
 </script>
 
@@ -118,9 +120,35 @@
       <ReportCard rows={t.reportCard} sort={rcSort} dir={rcDir} top={rcTop} {choose} {link} />
     </section>
   {/if}
+
+  {#if dc.cumulative.length > 1}
+    <section class="chart-panel" data-section="spend-discovery">
+      <LabHead id="spend-discovery" title="Roaster discovery" {placeTip}
+        help={['Roasters you have bought from, added up over all your history.', 'The shaded stretch is this period.', 'Repeat-buy rate: the share of this period\'s roasters you had bought from before it began.']}>
+        {#if dc.repeatRate !== null}<span class="repeat">Repeat-buy rate <strong>{Math.round(100 * dc.repeatRate)}%</strong> · of {dc.roasters} roasters</span>{/if}
+      </LabHead>
+      <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} band={dc.band ?? undefined}
+        format={(v) => `${v}`} tipFormat={(v) => `${v} ${v === 1 ? 'roaster' : 'roasters'}`} height={220} />
+    </section>
+  {/if}
+
+  {#if dc.share}
+    <section class="chart-panel" data-section="spend-share">
+      <LabHead id="spend-share" title="Share of spend" {placeTip}
+        help={['Each bar is 100% of what you spent in that ' + sr.by + ', split by roaster.', 'The five roasters you spent most with this period; the rest are Other.', 'Counted by roast date.']} />
+      <StackedBars m={dc.share} ariaLabel="Share of spend by roaster each {sr.by}" />
+    </section>
+  {/if}
 {/if}
 
 <style>
+  .repeat {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+  }
+  .repeat strong {
+    color: var(--color-text);
+  }
   .value-pair > .chart-panel {
     display: flex;
     flex-direction: column;

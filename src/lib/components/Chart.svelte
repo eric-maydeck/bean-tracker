@@ -61,7 +61,8 @@
     dashGaps = false,
     legend = false,
     colors,
-    stacked = false
+    stacked = false,
+    band
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -108,6 +109,8 @@
     colors?: string[];
     // Vertical bars: the plain series stack in one column; a `faded` series stands in its own column beside it.
     stacked?: boolean;
+    // Lines: shade the plot behind these category indexes (first, last), e.g. the selected Period within all history.
+    band?: [number, number];
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -330,7 +333,18 @@
       },
       // The amber corner fold of a small-sample bar (top left, 9px like the HTML .small-sample-mark; ui-rules 29): the
       // bar's top edge, its base for a bar below 0.
-      plugins: samples && vbar ? [{
+      plugins: [...(band && type === 'line' ? [{
+        id: 'band',
+        beforeDatasetsDraw(c) {
+          const { ctx, chartArea: a, scales: { x } } = c;
+          const half = (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2 || 0;
+          const l = Math.max(a.left, x.getPixelForValue(band[0]) - half), r = Math.min(a.right, x.getPixelForValue(band[1]) + half);
+          ctx.save();
+          ctx.fillStyle = `${themeColor('--series-other')}40`; // the muted gray, see-through, in both themes
+          ctx.fillRect(l, a.top, r - l, a.bottom - a.top);
+          ctx.restore();
+        }
+      } as Plugin] : []), ...(samples && vbar ? [<Plugin>{
         id: 'sampleFold',
         afterDatasetsDraw(c) {
           const ctx = c.ctx, chip = themeColor('--chip');
@@ -344,7 +358,7 @@
             ctx.restore();
           });
         }
-      }] : [],
+      }] : [])],
       options: {
         indexAxis: type === 'bar' && !vertical ? 'y' : undefined,
         responsive: true,
@@ -473,7 +487,7 @@
   $effect(() => {
     void format;
     void tipFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();
