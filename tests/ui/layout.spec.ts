@@ -2738,7 +2738,8 @@ export const STATES: State[] = [
       // The runway: its tiles are the shelf tiles' size, and a chart of the projection fills the rest.
       const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
       await expect(runway.locator('canvas')).toHaveCount(1);
-      expect((await runway.locator('.stat-item').first().boundingBox())!.height).toBeLessThan(220);
+      const shelfH = (await page.locator('.stat-item').first().boundingBox())!.height;
+      expect((await runway.locator('.stat-item').first().boundingBox())!.height, 'runway tiles are the shelf tiles\' size').toBeLessThanOrEqual(shelfH + 2);
       await expectGridRowsFull(page, '[data-section="onhand-freshness"] .cards');
       await expect(page.locator('[data-section="onhand-freshness"] .oh-card')).toHaveCount(4);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
@@ -2750,7 +2751,8 @@ export const STATES: State[] = [
       const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
       await expect(runway.locator('.stat-item')).toHaveCount(3);
       await expect(runway.locator('canvas')).toHaveCount(1);
-      expect((await runway.locator('.stat-item').first().boundingBox())!.height).toBeLessThan(260);
+      const shelfH = (await page.locator('.stat-item').first().boundingBox())!.height;
+      expect((await runway.locator('.stat-item').first().boundingBox())!.height, 'runway tiles are the shelf tiles\' size').toBeLessThanOrEqual(shelfH + 2);
       await expect(runway.getByRole('link', { name: 'Plan it: What if' })).toHaveAttribute('href', /insights-what-if/);
     }
   },

@@ -1779,6 +1779,13 @@
     .fit.n4 .stat-item:last-child {
       --q: var(--c);
     }
+    /* The runway's rows of three stay three across (2 columns would leave the third alone on a full-width row, its caption past the bottom). */
+    .fit.runway-row {
+      --c: 3;
+    }
+    .fit.runway-row .stat-item {
+      --q: 3;
+    }
   }
   @media (min-width: 641px) {
     .fit.n4,
