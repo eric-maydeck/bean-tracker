@@ -1274,10 +1274,6 @@
     white-space: normal;
     line-height: 1.1;
   }
-  /* ", all brews" wraps as one piece, not mid-phrase. */
-  .dial-part {
-    display: inline-block;
-  }
   /* Every caption with a tip button lets the button's 44px tap area overflow. */
   .stat-caption:has(.mode-tip-button) {
     overflow: visible;
