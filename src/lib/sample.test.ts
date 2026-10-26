@@ -55,7 +55,7 @@ describe('small-sample rule', () => {
     expect([chipLabel(pooled(2, 14)), chipLabel(pooled(5, 7)), chipLabel(single(3)), chipLabel(single(1)), chipLabel(pooled(1, 1))]).toEqual(['Only 2 bags', 'Only 7 brews', 'Only 3 brews', 'Only 1 brew', 'Only 1 bag']);
     // Dial-in skipped: the chip says the row's (scored) count; the tip gives both; no scored when they match.
     expect(chipLabel(pooled(5, 8, 6))).toBe('Only 6 brews');
-    expect(sampleTip(pooled(5, 8, 6)).rows).toEqual([['Bags', '5'], ['Rated brews', '8'], ['Scored once dialed', '6']]);
+    expect(sampleTip(pooled(5, 8, 6)).rows).toEqual([['Bags', '5'], ['Rated brews', '8'], ['Brews scored once dialed', '6']]);
     expect(pooled(5, 8, 8)).not.toHaveProperty('scored');
     expect(SAMPLE_HELP).toBe('Only 2 bags: low confidence, under 3 bags or 10 rated brews (one coffee: under 4), so one bag or brew can swing it.');
   });

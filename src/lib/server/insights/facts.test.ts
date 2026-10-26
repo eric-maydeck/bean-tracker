@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER } from './facts';
+import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER, waitBucket, windowState } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
 import { createSubscription } from '$lib/server/subscriptions';
@@ -226,4 +226,15 @@ describe('loadFacts', () => {
   });
 
   it('an empty database has no facts', () => expect(loadFacts(createDb(':memory:'))).toEqual({ brews: [], bags: [] }));
+});
+
+describe('waitBucket / windowState', () => {
+  it('bucket edges', () => {
+    expect([14, 15, 30, 31, 90, 91, 0].map(waitBucket)).toEqual([0, 1, 1, 2, 3, 4, 0]);
+    expect([-2, null].map(waitBucket)).toEqual([null, null]);
+  });
+  it('window state', () => {
+    expect([3, 7, 21, 22].map((d) => windowState(d, 7, 21))).toEqual(['before', 'in', 'in', 'past']);
+    expect([windowState(null, 7, 21), windowState(5, null, 21), windowState(5, 7, undefined)]).toEqual(['none', 'none', 'none']);
+  });
 });

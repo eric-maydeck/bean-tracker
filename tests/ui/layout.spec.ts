@@ -2426,6 +2426,40 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'insights-spend-freshness', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      for (const id of ['spend-time-to-open', 'spend-rating-by-wait', 'spend-rest-window']) {
+        const panel = page.locator(`section[data-section="${id}"]`);
+        await panel.scrollIntoViewIfNeeded();
+        await expect(panel.getByRole('heading')).toBeVisible();
+        // Filled: figures/chart/rows, or the empty line.
+        await expect(panel.locator('.fig, canvas, .win li, .hl-empty').first()).toBeVisible();
+      }
+      const rest = page.locator('section[data-section="spend-rest-window"]');
+      await expect(rest.locator('.chart-note', { hasText: /brews? without a rest window/ })).toBeVisible();
+      await expect(rest.getByRole('link', { name: 'Brewing lab' })).toHaveAttribute('href', /tab=brewing.*chart=brewing-rest#brewing-rest/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-spend-freshness-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const c = page.locator('section[data-section="spend-rating-by-wait"] canvas');
+      await c.scrollIntoViewIfNeeded();
+      const b = (await c.boundingBox())!;
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      const sweep: (readonly [number, number])[] = [];
+      for (const g of [0.9, 0.75, 0.6, 0.45]) for (let f = 0.95; f > 0; f -= 0.05) sweep.push([b.x + b.width * f, b.y + b.height * g]);
+      for (const [x, y] of sweep) {
+        await page.mouse.move(x, y);
+        if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
+      }
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
+    }
+  },
+  {
     name: 'insights-spend-preview', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const t = await previewTags(page, '/insights?tab=spend&range=12m');

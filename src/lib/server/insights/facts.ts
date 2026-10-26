@@ -55,6 +55,19 @@ export function restDays(roastDate: string | null, frozenStart: string | null, f
   return rest;
 }
 
+// Rest-day buckets (days since roast, freezer-net): Rating by wait, and the On hand age profile.
+export const WAIT_BUCKETS: readonly { label: string; max: number }[] = [
+  { label: '0–14', max: 14 }, { label: '15–30', max: 30 }, { label: '31–60', max: 60 }, { label: '61–90', max: 90 }, { label: '90+', max: Infinity }
+];
+// The bucket index of a rest in days; null for no rest or a negative one.
+export const waitBucket = (days: number | null): number | null =>
+  days === null || days < 0 ? null : WAIT_BUCKETS.findIndex((b) => days <= b.max);
+
+// Where a rest sits against the roaster's suggested window; 'none' without a rest or either end.
+export type WindowState = 'before' | 'in' | 'past' | 'none';
+export const windowState = (rest: number | null, low: number | null | undefined, high: number | null | undefined): WindowState =>
+  rest === null || low == null || high == null ? 'none' : rest < low ? 'before' : rest > high ? 'past' : 'in';
+
 export const costPerBrew = (dose: number | null, cost: number | null, amountG: number | null): number | null =>
   dose && cost && amountG ? (dose * cost) / amountG : null;
 

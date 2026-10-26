@@ -37,7 +37,7 @@ const n = (k: number, w: string) => `${countText(k)} ${w}${k === 1 ? '' : 's'}`;
 export const chipLabel = (s: Sample) => `Only ${s.bags < POOLED_MIN_BAGS && !s.one ? n(s.bags, 'bag') : n(shownBrews(s), 'brew')}`;
 // The tip's count rows; with dial-in brews skipped, the rated count beside the scored one.
 const countRows = (s: Sample, rated = 'Rated brews'): [string, string][] =>
-  s.scored === undefined ? [[rated, String(s.brews)]] : [[rated, String(s.brews)], ['Scored once dialed', String(s.scored)]];
+  s.scored === undefined ? [[rated, String(s.brews)]] : [[rated, String(s.brews)], ['Brews scored once dialed', String(s.scored)]];
 // "12 rated brews, 9 scored once dialed": a row tip's line when the two differ; else null.
 export const scoredLine = (s: Sample | undefined): string | null =>
   s?.scored === undefined ? null : `${n(s.brews, 'rated brew')}, ${s.scored} scored ${setting('once dialed')}`;

@@ -1,13 +1,13 @@
 import type { By, Ratings } from '$lib/insightsUrl';
-import type { BrewFact, BagFact } from './facts';
+import { restDays, waitBucket, WAIT_BUCKETS, windowState, type BrewFact, type BagFact } from './facts';
 import { autoBy, daysBetween, inPeriod, trackedBounds, trackedDays, type Period } from './time';
 import { buckets, bucketLabels, bucketTitles, type Bucket } from './consumption';
 import { ratedGroups, bagSizes } from './ratings';
 import { twinKeys } from './likeGroup';
 import { groupBy, valueScore } from './records';
 import { weightedMedian } from './stats';
-import { BAG_MIN_BREWS, single, type Sample } from '$lib/sample';
-import { compareTiles, type Delta } from './overview';
+import { BAG_MIN_BREWS, pooled, single, type Sample } from '$lib/sample';
+import { compareTiles, isFinished, type Delta } from './overview';
 import { leaderboard, listHref } from './leaderboards';
 import type { Multi } from './insightGenerators';
 import type { RcRow } from '../../../routes/insights/reportCard';
@@ -241,8 +241,65 @@ function plansPanel(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
   };
 }
 
+export interface Wait { median: number | null; n: number; sample: Sample }
+export interface WaitRow extends Wait { key: string }
+export interface Fresh {
+  toOpen: Wait; byRoaster: WaitRow[]; byProcess: WaitRow[]; daysOpen: Wait;
+  byWait: { label: string; rating: number | null; sample: Sample; bags: number }[];
+  window: { label: 'Before' | 'Inside' | 'After'; share: number; brews: number; rating: number | null; sample: Sample }[];
+  noWindow: number;
+}
+const FRESH_TOP = 5;
+
+const wait = (xs: number[]): Wait => ({ median: xs.length ? weightedMedian(xs, xs.map(() => 1)) : null, n: xs.length, sample: pooled(xs.length, xs.length) });
+function waitRows(items: readonly { key: string; days: number }[]): WaitRow[] {
+  return [...groupBy(items, (i) => i.key)].map(([key, xs]) => ({ key, ...wait(xs.map((i) => i.days)) }))
+    .sort((a, b) => b.n - a.n || a.key.localeCompare(b.key)).slice(0, FRESH_TOP);
+}
+
+// Freshness history. Open day = the earlier of openedDate and the first brew (opened_date lags it), only for bags that
+// have an openedDate: no fallback for the rest. Time to open: roast → open (freezer-net) for bags opened in the Period.
+// Days open: open day → last brew, inclusive, for finished bags whose last brew is in the Period.
+function fresh(scored: readonly BrewFact[], whole: readonly BrewFact[], bags: readonly BagFact[], c: SpendCtx): Fresh {
+  const opened = bags.flatMap((b) => (b.openedDate ? [{ b, day: b.firstBrew && b.firstBrew < b.openedDate ? b.firstBrew : b.openedDate }] : []));
+  const toOpen = opened.flatMap(({ b, day }) => {
+    const days = inPeriod(day, c.period) ? restDays(b.purchaseDate, b.frozenStart ?? null, b.frozenEnd ?? null, day) : null;
+    return days === null ? [] : [{ b, days }];
+  });
+  const daysOpen = opened.filter(({ b }) => isFinished(b) && inPeriod(b.lastBrew!, c.period)).map(({ b, day }) => daysBetween(day, b.lastBrew!) + 1);
+
+  const inP = (xs: readonly BrewFact[]) => xs.filter((b) => inPeriod(b.localDate, c.period));
+  const scoredP = inP(scored);
+  // Rating by wait: each bag's first brew places the bag in a bucket.
+  const bucketOf = new Map<number, number>();
+  for (const b of whole) if (b.brewIndex === 1 && b.coffeeId !== null) { const i = waitBucket(b.restDays); if (i !== null) bucketOf.set(b.coffeeId, i); }
+  const byBucket = new Map(ratedGroups(scoredP, (b) => (b.coffeeId === null || !bucketOf.has(b.coffeeId) ? null : String(bucketOf.get(b.coffeeId))), c.ratings, 'adjusted').map((g) => [g.label, g]));
+  // Rest window: every Period brew with a rest and its bag's window.
+  const byId = new Map(bags.map((b) => [b.id, b]));
+  const stateOf = (b: BrewFact) => { const g = b.coffeeId === null ? undefined : byId.get(b.coffeeId); return windowState(b.restDays, g?.restLow, g?.restHigh); };
+  const classes = [['before', 'Before'], ['in', 'Inside'], ['past', 'After']] as const;
+  const counts = classes.map(([k]) => inP(whole).filter((b) => stateOf(b) === k).length);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const byState = new Map(ratedGroups(scoredP, (b) => { const k = stateOf(b); return k === 'none' ? null : k; }, c.ratings, 'adjusted').map((g) => [g.label, g]));
+  return {
+    toOpen: wait(toOpen.map((x) => x.days)),
+    byRoaster: waitRows(toOpen.map((x) => ({ key: x.b.roaster, days: x.days }))),
+    byProcess: waitRows(toOpen.map((x) => ({ key: x.b.processGroup, days: x.days }))),
+    daysOpen: wait(daysOpen),
+    byWait: WAIT_BUCKETS.map((w, i) => {
+      const g = byBucket.get(String(i));
+      return { label: w.label, rating: g?.adjusted ?? null, sample: g?.sample ?? pooled(0, 0), bags: g?.bags ?? 0 };
+    }),
+    window: classes.map(([k, label], i) => {
+      const g = byState.get(k);
+      return { label, share: total ? counts[i] / total : 0, brews: counts[i], rating: g?.adjusted ?? null, sample: g?.sample ?? pooled(0, 0) };
+    }),
+    noWindow: inP(whole).length - total
+  };
+}
+
 export interface SpendTab {
-  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[]; discovery: Discovery; plans: PlanPanel;
+  tiles: SpendTiles; free: number; series: SpendSeries; valueMap: ValueMap; reportCard: RcRow[]; discovery: Discovery; plans: PlanPanel; fresh: Fresh;
   deltas: Partial<Record<keyof SpendTiles, Delta>> | null; scaled: boolean;
 }
 
@@ -254,5 +311,5 @@ export function spendTab(scored: readonly BrewFact[], whole: readonly BrewFact[]
   );
   // Plans are current-state: no delta.
   const { plansPerMonth: _now, ...deltas } = cmp?.deltas ?? ({} as Record<keyof SpendTiles, Delta>);
-  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), discovery: discovery(bags, c), plans: plansPanel(scored, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
+  return { tiles, free, series: spendSeries(bags, c), valueMap: valueMap(scored, whole, bags, c), reportCard: reportCard(scored, bags, c), discovery: discovery(bags, c), plans: plansPanel(scored, bags, c), fresh: fresh(scored, whole, bags, c), deltas: cmp ? deltas : null, scaled: cmp ? cmp.scaled : false };
 }
