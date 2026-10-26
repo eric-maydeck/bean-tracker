@@ -2041,7 +2041,7 @@ export const STATES: State[] = [
       await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews per person', { useInnerText: true, ignoreCase: true });
       await expect(page.locator('.stat-label', { hasText: 'Average rating' })).toHaveText('Average rating');
       await expect(page.locator('.stat-label', { hasText: 'Total beans' })).toHaveText('Total beans');
-      await expect(page.locator('h2', { hasText: /Brews per day\s+per person/i })).toBeVisible();
+      await expect(page.locator('h2', { hasText: /Brews per day\s+·\s+per person/i })).toBeVisible();
       await expect(page.locator('.stat-item', { hasText: 'Total brews' }).locator('.stat-value')).toHaveText(/^\d+(\.\d)?$/);
     }
   },
@@ -3458,7 +3458,7 @@ export const STATES: State[] = [
       await brews.last().getByRole('button', { name: 'All brews', exact: true }).click();
       await expect(page).toHaveURL(/dial=all/);
       for (const g of await brews.all()) await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings All brews', 'All ratings All brews']);
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings', 'All brews', 'All ratings', 'All brews']);
     }
   },
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
@@ -3717,10 +3717,10 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/people=person/);
       await expect(people.getByRole('button', { name: 'Per person', exact: true })).toHaveAttribute('aria-pressed', 'true');
       const tile = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) });
-      await expect(tile(/^Brews per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
-      await expect(tile(/^Rated (Calibrated|All) ratings per person$/)).toHaveCount(1);
+      await expect(tile(/^Brews\s+per person\s*$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
+      await expect(tile(/^Rated\s+(Calibrated|All) ratings\s+per person\s*$/)).toHaveCount(1);
       await expect(tile(/^Avg dose$/)).toHaveCount(1);
-      await tile(/^Grams per person$/).getByRole('button', { name: 'per person' }).click();
+      await tile(/^Grams\s+per person\s*$/).getByRole('button', { name: 'per person' }).click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('even split');
     }
   },
@@ -8595,12 +8595,12 @@ async function expectNoHoles(card: Locator, max = 0.25) {
 }
 
 // Hovers a Chart.js canvas on its marks until its tip opens; returns the tip.
-// No visible line of a tile title or caption starts or ends with "," or "·" (ui-rules 55). The caption items' dots are
-// generated (`.cap-item::before`): one is a problem when it is not hidden and its item starts a line (no other label text
-// sits left of the item on its first line). Literal delimiters in the text are checked too.
+// Tile titles and captions (ui-rules 55): no visible line starts or ends with "," or "·", and every dot has one space on each
+// side. The caption items' dots are generated (`.cap-item::before`, " · " as pre text) and hang left of their item inside a
+// block that clips overflow-x: an item that starts a line sits at the block's left edge, so its dot is cut off.
 async function expectNoEdgeDelimiters(page: Page) {
   const find = () => page.locator('.stat-label').evaluateAll((labels) => labels.flatMap((label) => {
-    const chars: { ch: string; y: number; x: number; node: Node }[] = [];
+    const chars: { ch: string; y: number; x: number }[] = [];
     const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT);
     for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
       const el = n.parentElement!;
@@ -8611,12 +8611,13 @@ async function expectNoEdgeDelimiters(page: Page) {
         r.setStart(n, i);
         r.setEnd(n, i + 1);
         const rect = r.getBoundingClientRect();
-        chars.push({ ch: n.data[i], y: rect.top + rect.height / 2, x: rect.left, node: n });
+        chars.push({ ch: n.data[i], y: rect.top + rect.height / 2, x: rect.left });
       }
     }
     const out: string[] = [];
     const name = label.textContent!.trim().replace(/\s+/g, ' ');
-    // Literal delimiters: the first and last character of each line.
+    // Literal delimiters in the text: never at a line edge, and one space on each side.
+    if (/\S·|·\S/.test(label.textContent!)) out.push(`${name}: a dot without a space on each side`);
     const sorted = [...chars].sort((p, q) => p.y - q.y);
     const lines: typeof chars[] = [];
     for (const c of sorted) {
@@ -8628,17 +8629,25 @@ async function expectNoEdgeDelimiters(page: Page) {
       cs.sort((p, q) => p.x - q.x);
       if ([cs[0].ch, cs[cs.length - 1].ch].some((c) => c === ',' || c === '·')) out.push(`${name}: a line starts or ends with a delimiter`);
     }
-    // Caption items: a visible dot must have text to its left on the item's first line.
-    for (const item of label.querySelectorAll<HTMLElement>('.cap-item')) {
-      if (getComputedStyle(item, '::before').visibility === 'hidden' || !item.getClientRects().length) continue;
-      const r = item.getClientRects()[0];
-      const mid = r.top + Math.min(r.height, 14) / 2;
-      const left = chars.some((c) => !item.contains(c.node) && Math.abs(c.y - mid) <= 5 && c.x < r.left);
-      if (!left) out.push(`${name}: a dot starts a line`);
+    // Caption items: the generated dot is " · " (pre), hangs out of the flow, and the block clips it at its left edge.
+    const block = label.querySelector<HTMLElement>('.cap-block');
+    if (block) {
+      if (getComputedStyle(block).overflowX !== 'clip') out.push(`${name}: the caption block does not clip`);
+      const edge = block.getBoundingClientRect().left;
+      const items = [...block.querySelectorAll<HTMLElement>('.cap-item')];
+      for (const item of items) {
+        const pseudo = getComputedStyle(item, '::before');
+        if (item === items[0]) { if (pseudo.content !== 'none' && pseudo.content !== 'normal') out.push(`${name}: the first item has a dot`); continue; }
+        if (pseudo.content !== '" · "' || pseudo.whiteSpace !== 'pre' || pseudo.position !== 'absolute') out.push(`${name}: a dot is not a hanging " · "`);
+        const r = item.getClientRects()[0];
+        const mid = r.top + Math.min(r.height, 14) / 2;
+        const left = chars.some((c) => Math.abs(c.y - mid) <= 5 && c.x < r.left - 1 && c.x >= edge - 1);
+        // Starting a line: the item sits at the block's left edge (so its dot is clipped); otherwise something is left of it.
+        if (!left && Math.abs(r.left - edge) > 3) out.push(`${name}: an item that starts a line is not at the block's left edge`);
+      }
     }
     return out;
   }));
-  // Polled: a wrapped item's dot is hidden by CapItem's script once the page has hydrated and laid out.
   await expect.poll(find).toEqual([]);
 }
 

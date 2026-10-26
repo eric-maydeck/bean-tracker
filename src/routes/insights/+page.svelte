@@ -826,13 +826,15 @@
             <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
-            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch}
-              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<CapItem>{DIAL_LABEL.all}</CapItem>{/if}</span><Icon name="question" /></button
-                ></CapItem>{/if}{#if pp}<CapItem><button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
+            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch} class:has-cap={pp || t.ratingSwitch}
+              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
+                >{/if}{#if pp || t.ratingSwitch}{' '}<span class="cap-block"><span class="cap-list">{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+                  ><span class="tip-text">{RATINGS_LABEL[s.ratings]}</span>{#if s.dial !== 'all'}<Icon name="question" />{/if}</button
+                ></CapItem>{#if s.dial === 'all'}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+                  ><span class="tip-text">{DIAL_LABEL.all}</span><Icon name="question" /></button
+                ></CapItem>{/if}{/if}{#if pp}<CapItem><button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
-                ></CapItem>{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
-                >{/if}</span
+                ></CapItem>{/if}</span></span>{/if}</span
             >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
           </div>
           {#if t.ratingSwitch}

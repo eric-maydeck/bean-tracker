@@ -12,7 +12,7 @@
   // `chart`: the tile's id, linked like a heading (?…&chart=<id>#<id>, a plain click only updates the address bar).
   let { href, chart, label, head, children }: { href?: string; chart?: string; label: string; head?: string; children?: Snippet } = $props();
   const link = useChartLink();
-  // A name made of parts ("Coarsest grind · A4Z") shows them as caption items (ui-rules 55): the dot hides when a part starts a line.
+  // A name made of parts ("Coarsest grind · A4Z"): its parts are caption items, so the dot hangs and no line starts or ends with it.
   const parts = $derived(label.split(' · '));
   function onclick(e: MouseEvent) {
     if (!chart || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -22,6 +22,6 @@
 </script>
 
 <div class="hl-caption">
-  <span class="stat-label" data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'off' : undefined}><CoffeeName text={parts[0]} />{#each parts.slice(1) as part (part)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</a>
-{@render children?.()}</span>
+  <span class="stat-label" class:has-cap={!!children} data-head={head}><a class="caption-link" href={chart ? link.href(chart) : href} onclickcapture={onclick} data-sveltekit-preload-data={chart ? 'off' : undefined}>{#if parts.length > 1}<span class="cap-block"><span class="cap-list">{#each parts as part (part)}<CapItem><CoffeeName text={part} /></CapItem>{/each}</span></span>{:else}<CoffeeName text={label} />{/if}</a>
+{#if children}{' '}<span class="cap-block"><span class="cap-list">{@render children()}</span></span>{/if}</span>
 </div>

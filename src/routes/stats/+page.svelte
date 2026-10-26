@@ -376,7 +376,10 @@
 {#snippet ppButton(id: string)}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
     ><span class="tip-text">per person</span><Icon name="question" /></button
   >{/snippet}
-{#snippet pp(label: string, id: string, sep = ' · ')}{label}{#if people === 'person'}{#if sep === ' · '}<CapItem>{@render ppButton(id)}</CapItem>{:else}{sep}{@render ppButton(id)}{/if}<span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/if}{/snippet}
+{#snippet ppTip(id: string)}<span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/snippet}
+<!-- A tile caption: the per person item sits in a caption block below the title (ui-rules 55); a heading keeps it inline after a " · ". -->
+{#snippet pp(label: string, id: string, sep = ' · ')}{label}{#if people === 'person'}{#if sep === ' · '}{' '}<span class="cap-block"><span class="cap-list"><CapItem>{@render ppButton(id)}</CapItem></span></span>{:else}{sep}{@render ppButton(id)}{/if}{@render ppTip(id)}{/if}{/snippet}
+{#snippet ppInline(label: string, id: string)}{label}{#if people === 'person'}{' · '}{@render ppButton(id)}{@render ppTip(id)}{/if}{/snippet}
 
 <!-- A weight; where formatGrams drops the decimal (100 kg and up), the exact grams in the shared text tip (like Usd). -->
 {#snippet grams(g: number)}{#if g >= 100000}<TextTip value label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
@@ -612,12 +615,12 @@
     <div class="stat-item">
       <span class="stat-value">{use.daysToClear === null ? '—' : `${use.daysToClear}d`}</span>
       {#if use.clearBy}<span class="stat-unit">by {formatClearBy(use.clearBy)}</span>{/if}
-      <div class="stat-caption"><span class="stat-label">{@render pp('Time to clear', 'clear')}</span></div>
+      <div class="stat-caption"><span class="stat-label" class:has-cap={people === 'person'}>{@render pp('Time to clear', 'clear')}</span></div>
     </div>
     {#each [['Per day', use.perDay], ['Per week', use.perWeek], ['Per month', use.perMonth]] as const as [label, g] (label)}
       <div class="stat-item">
         <span class="stat-value">{g === null ? '—' : formatGrams(g)}</span>
-        <div class="stat-caption"><span class="stat-label">{@render pp(label, label)}</span></div>
+        <div class="stat-caption"><span class="stat-label" class:has-cap={people === 'person'}>{@render pp(label, label)}</span></div>
       </div>
     {/each}
   </div>
@@ -966,7 +969,7 @@
         <div class="stat-item">
           <span class="stat-value">{tenth(bc.totalBrews)}</span>
           <div class="stat-caption">
-            <span class="stat-label">{@render pp('Total brews', 'brews')}</span>
+            <span class="stat-label" class:has-cap={people === 'person'}>{@render pp('Total brews', 'brews')}</span>
           </div>
         </div>
         <div class="stat-item">
@@ -988,13 +991,13 @@
               : formatGrams(bc.totalGramsBrewed)}</span
           >
           <div class="stat-caption">
-            <span class="stat-label">{@render pp('Total brewed', 'brewed')}</span>
+            <span class="stat-label" class:has-cap={people === 'person'}>{@render pp('Total brewed', 'brewed')}</span>
           </div>
         </div>
       </div>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>{@render pp('Brews per day', 'brews-day')}</h2>
+          <h2>{@render ppInline('Brews per day', 'brews-day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
@@ -1023,7 +1026,7 @@
       </section>
       <section class="chart-panel">
         <div class="chart-panel-header">
-          <h2>{@render pp('Grams per day', 'grams-day')}</h2>
+          <h2>{@render ppInline('Grams per day', 'grams-day')}</h2>
           {@render bcAverageToggle()}
         </div>
         <div class="stat-row stat-row-compact">
