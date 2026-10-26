@@ -756,7 +756,7 @@
     {:else}
       <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
     {/if}
-    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'}>
+    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'}>
       {#each tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
@@ -767,7 +767,7 @@
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd) && !d.paced} use:labelTip={deltaTitle(d, t)}
+            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd || title === 'Spending') && !d.paced} use:labelTip={deltaTitle(d, t)}
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
@@ -1750,5 +1750,29 @@
     .fit.n8 .stat-item {
       --c: 2;
     }
+    /* Spending: 3 across like Consumption's tiles (2 across made 229px squares on a phone); the last two share a row. */
+    .fit.n8.spending .stat-item {
+      --c: 3;
+    }
+    .fit.n8.spending .stat-item:nth-last-child(-n + 2) {
+      --q: 2;
+    }
+  }
+  @container (max-width: 380px) {
+    .fit.n8.spending .stat-item {
+      --c: 2;
+      --q: 2;
+    }
+  }
+  /* "9 free bags not in $/g" is wider than a 3-up phone tile: wrap it, never cut it off with an ellipsis. */
+  .fit.spending .stat-item .stat-unit:not(.insights-delta) {
+    white-space: normal;
+    line-height: 1.1;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  /* A money value is an underlined tip trigger: keep its dotted line below the digits at the tile's big font. */
+  .stat-value :global(.text-tip) {
+    text-underline-offset: 0.12em;
   }
 </style>
