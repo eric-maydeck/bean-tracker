@@ -2236,6 +2236,8 @@ export const STATES: State[] = [
         ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'Avg bag size', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
       );
       await expect(page.locator('#spend-plans-per-month .stat-unit')).toHaveText('right now');
+      // Phone tiles: 3 across like Consumption's (2 across made them 229px squares).
+      if ((page.viewportSize()?.width ?? 1000) <= 520) for (const t of await page.locator('.stat-item').all()) expect((await t.boundingBox())!.height).toBeLessThan(180);
       await page.getByRole('button', { name: 'About Spent' }).click();
       await expectTipInView(page, page.locator('.mode-tip:popover-open'));
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Counted by roast date');
@@ -2424,6 +2426,10 @@ export const STATES: State[] = [
       }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await expect(panel.getByRole('link', { name: 'Manage plans' })).toHaveAttribute('href', /\/subscriptions/);
+      // "vs" is a word of its own: "$0.12/g vs $0.17/g one-off", never "$0.12/gvs".
+      const text = await panel.innerText();
+      expect(text).toMatch(/\d\/g vs \$\d/);
+      expect(text).not.toMatch(/[\dg]vs /);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },

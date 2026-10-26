@@ -20,10 +20,10 @@
 {#snippet vs(r: { ppg: number | null; rating: number | null; sample?: import('$lib/sample').Sample })}
   <span class="vs">
     {#if r.ppg !== null}
-      <span>{usd(r.ppg)}/g{#if p.oneOffPpg !== null} <span class={ppgInk(r.ppg, p.oneOffPpg)}>vs {usd(p.oneOffPpg)}/g one-off ({ppgGap(r.ppg, p.oneOffPpg)})</span>{/if}</span>
+      <span>{usd(r.ppg)}/g{#if p.oneOffPpg !== null}{' '}<span class={ppgInk(r.ppg, p.oneOffPpg)}>vs {usd(p.oneOffPpg)}/g one-off ({ppgGap(r.ppg, p.oneOffPpg)})</span>{/if}</span>
     {/if}
     {#if r.rating !== null}
-      <span class:small-sample={r.sample?.small}>{r.rating.toFixed(1)}{#if p.oneOffRating !== null} <span class={r.sample?.small ? '' : deltaInk(r.rating - p.oneOffRating)}>vs {p.oneOffRating.toFixed(1)} one-off ({signed(r.rating - p.oneOffRating, 1)})</span>{/if}</span>
+      <span class:small-sample={r.sample?.small}>{r.rating.toFixed(1)}{#if p.oneOffRating !== null}{' '}<span class={r.sample?.small ? '' : deltaInk(r.rating - p.oneOffRating)}>vs {p.oneOffRating.toFixed(1)} one-off ({signed(r.rating - p.oneOffRating, 1)})</span>{/if}</span>
       {#if r.sample?.small}<SampleNote s={r.sample} />{/if}
     {/if}
   </span>
