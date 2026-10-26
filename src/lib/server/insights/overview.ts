@@ -195,7 +195,7 @@ export function recent(brews: readonly BrewFact[], bags: readonly BagFact[], n =
     }),
     bags: bags
       .flatMap((g) => {
-        const from = [g.openedDate, g.firstBrew].filter((d): d is string => !!d).sort()[0];
+        const from = g.firstBrew; // open day is always the first brew (user): status 'open' isn't a physical opening
         return isFinished(g) && from
           ? [{ id: g.id, name: g.name, slug: g.slug, finished: g.lastBrew!, days: Math.max(1, daysBetween(from, g.lastBrew!) + 1), rating: g.bagRating }]
           : [];
