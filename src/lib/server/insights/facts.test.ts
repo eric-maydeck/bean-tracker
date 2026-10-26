@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { parseMethod, normalizeRoastLevel, restDays, costPerBrew, seconds, loadFacts, brewerType, grindKey, grindValue, MIXED_FILTER } from './facts';
 import { createDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
+import { createSubscription } from '$lib/server/subscriptions';
 
 // [name, preparation_tools, dripper, filter]: every prod method on 2026-10-09.
 const METHODS: [string, string, string, string][] = [
@@ -112,6 +113,17 @@ describe('grindKey', () => {
 });
 
 describe('loadFacts', () => {
+  it('loads a bag\'s subscription link, null when unlinked', () => {
+    const db = createDb(':memory:');
+    const planId = createSubscription(db, {
+      roaster_service: 'S', subscription_name: null, price: 20, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1
+    });
+    const ins = db.prepare(`INSERT INTO coffees (roaster, coffee_name, slug, subscription_id, created_at, updated_at) VALUES ('R', ?, ?, ?, '2026-01-01', '2026-01-01')`);
+    ins.run('A', 'r-a', planId);
+    ins.run('B', 'r-b', null);
+    expect(loadFacts(db).bags.map((b) => b.subscriptionId)).toEqual([planId, null]);
+  });
+
   function seed() {
     const db = createDb(':memory:');
     const now = '2026-10-09T00:00:00.000Z';

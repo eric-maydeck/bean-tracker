@@ -20,6 +20,7 @@ export interface CoffeeRow {
   status: 'backlog' | 'open' | 'archive';
   moved_date: string | null;
   decaf: number;
+  subscription_id: number | null;
   // List queries only (coffees.ts): 1 when a Bean Conqueror bean is linked.
   in_bean_conqueror?: number;
   // List queries + getCoffeeBySlug: bag minus linked bean's brews (open only), else null.

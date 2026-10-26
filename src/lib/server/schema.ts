@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS coffees (
   status TEXT NOT NULL DEFAULT 'backlog',
   moved_date TEXT,
   decaf INTEGER NOT NULL DEFAULT 0,
+  subscription_id INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

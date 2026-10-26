@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createDb, applySchema, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
+import { schema } from './schema';
+import { createSubscription, deleteSubscription } from './subscriptions';
 
 describe('createDb', () => {
   it('creates all expected tables', () => {
@@ -93,6 +95,28 @@ describe('legacy data migration', () => {
       (r) => r.slug
     );
     expect(slugs).toEqual(['2026-lume-same-name', '2026-lume-same-name-2']);
+  });
+
+  it('adds coffees.subscription_id to an older DB, null by default', () => {
+    const db = new DatabaseSync(':memory:');
+    // the current coffees table minus the new column
+    db.exec(schema.match(/CREATE TABLE IF NOT EXISTS coffees \([\s\S]*?\n\);/)![0].replace(/.*subscription_id.*\n/, ''));
+    db.exec(`INSERT INTO coffees (roaster, coffee_name, slug, created_at, updated_at) VALUES ('R', 'C', 'r-c', '2026-01-01', '2026-01-01')`);
+    applySchema(db);
+    const cols = (db.prepare(`PRAGMA table_info(coffees)`).all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toContain('subscription_id');
+    expect(db.prepare(`SELECT subscription_id FROM coffees`).get()).toEqual({ subscription_id: null });
+  });
+
+  it("nulls a coffee's subscription_id when its plan is deleted", () => {
+    const db = createDb(':memory:');
+    const planId = createSubscription(db, {
+      roaster_service: 'S', subscription_name: null, price: 20, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1
+    });
+    db.exec(`INSERT INTO coffees (roaster, coffee_name, slug, subscription_id, created_at, updated_at)
+             VALUES ('R', 'C', 'r-c', ${planId}, '2026-01-01', '2026-01-01')`);
+    deleteSubscription(db, planId);
+    expect(db.prepare(`SELECT subscription_id FROM coffees`).get()).toEqual({ subscription_id: null });
   });
 
   it('is idempotent — running applySchema again does not change already-migrated data', () => {

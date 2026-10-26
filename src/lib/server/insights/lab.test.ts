@@ -350,7 +350,7 @@ describe('breakdown', () => {
 
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 1, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
-  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, subscriptionId: null, ...o
 });
 describe('labOptions', () => {
   const bags = [1, 2, 3, 4].map((id) => bag({ id, slug: `s${id}`, roastLevel: id < 4 ? 'Light' : 'Medium', processGroup: 'Natural',

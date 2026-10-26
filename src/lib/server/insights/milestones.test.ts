@@ -10,7 +10,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 });
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 0, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
-  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
+  origin: null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, subscriptionId: null, ...o
 });
 // n brews, one per day from 2026-01-01 (day i is Jan i+1 .. rolled via Date).
 const day = (i: number) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10);

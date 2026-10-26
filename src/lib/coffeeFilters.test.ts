@@ -40,6 +40,7 @@ function coffee(over: Partial<CoffeeWithComputed> = {}): CoffeeWithComputed {
     status: 'backlog',
     moved_date: null,
     decaf: 0,
+    subscription_id: null,
     in_bean_conqueror: 0,
     created_at: '2026-09-01',
     updated_at: '2026-09-01',

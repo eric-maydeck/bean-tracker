@@ -71,6 +71,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');
   ensureColumn(db, 'coffees', 'product_url', 'TEXT');
+  ensureColumn(db, 'coffees', 'subscription_id', 'INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');

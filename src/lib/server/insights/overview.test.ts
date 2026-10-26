@@ -12,7 +12,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 0, status: 'open', purchaseDate: null, cost: null, amountG: null, roaster: 'R', name: 'C', slug: null, processing: null,
   origin: null, processGroup: 'Washed',
-  roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, ...o
+  roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, subscriptionId: null, ...o
 });
 const SEPT = { start: '2026-09-01', end: '2026-09-30' };
 

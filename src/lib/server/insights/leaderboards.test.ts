@@ -12,7 +12,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 const bag = (o: Partial<BagFact>): BagFact => ({
   id: 1, status: 'open', purchaseDate: '2026-09-10', cost: 25, amountG: 250, roaster: 'Sey', name: 'Kiambu', slug: 'sey-kiambu',
   processing: 'Washed', origin: 'Kenya', processGroup: 'Washed', roastLevel: 'Light', decaf: false, firstBrew: null,
-  lastBrew: null, bagRating: null, ...o
+  lastBrew: null, bagRating: null, subscriptionId: null, ...o
 });
 const SEPT = { start: '2026-09-01', end: '2026-09-30' };
 const AUG = { start: '2026-08-01', end: '2026-08-31' };
