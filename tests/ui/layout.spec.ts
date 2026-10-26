@@ -2850,6 +2850,23 @@ export const STATES: State[] = [
       await expectTipInView(page, tip);
     }
   },
+  // Bags are shared in the household: In the freezer's count never says "per person"; only the grams under it do (per person mode).
+  {
+    name: 'insights-onhand-people', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    act: async (page) => {
+      const tile = page.locator('#onhand-frozen-bags');
+      await expect(tile.locator('.stat-unit')).not.toContainText(/per person/i);
+      const bags = await tile.locator('.stat-value').innerText();
+      await page.goto('/insights?tab=onhand&range=3m&people=person');
+      const person = page.locator('#onhand-frozen-bags');
+      await expect(person.locator('.stat-value')).toHaveText(bags);
+      await expect(person.locator('.stat-unit')).toContainText(/per person/i);
+      await expect(person.locator('.stat-label .mode-tip-button')).toHaveCount(0);
+      // Grams and dollars tiles keep their per person caption; Bags waiting never had one.
+      await expect(page.locator('#onhand-grams-waiting .stat-label .mode-tip-button', { hasText: 'per person' })).toHaveCount(1);
+      await expect(page.locator('#onhand-bags-waiting .stat-label .mode-tip-button')).toHaveCount(0);
+    }
+  },
   {
     name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {

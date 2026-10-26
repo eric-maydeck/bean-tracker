@@ -330,7 +330,8 @@
     { key: 'gramsWaiting', split: true, label: 'Grams waiting', fmt: formatGrams },
     { key: 'tiedUp', split: true, label: '$ tied up', fmt: usd },
     { key: 'avgAge', label: 'Avg age', fmt: count, suffix: 'days', help: 'Counted by roast date, minus days in the freezer.' },
-    { key: 'frozenBags', split: true, label: 'In the freezer', fmt: count, sub: () => (data.onHand ? formatGrams(data.onHand.tiles.frozenGrams) : null) },
+    // The count is the household's bags (never divided); only the grams under it divide, and its line says so.
+    { key: 'frozenBags', label: 'In the freezer', fmt: count, sub: () => (data.onHand ? `${formatGrams(data.onHand.tiles.frozenGrams)}${perPersonOn ? ' per person' : ''}` : null) },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd }
   ]);
   // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
