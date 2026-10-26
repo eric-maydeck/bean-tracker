@@ -50,7 +50,7 @@ describe('insightsPreview', () => {
       { mean: 8.94, brews: 5, holder: { label: 'Lab Bag 3', sub: 'Test Roaster', date: '2026-08-01' } },
       { mean: 8.5, brews: 4, holder: { label: 'Orphan', date: '2026-08-02' } }
     ],
-    topBrews: [{ rating: 10, holder: { label: 'Lab Bag 3', sub: 'Test Roaster', date: '2026-08-01' }, brewer: 'V60' }]
+    topBrews: [{ rating: 10, holder: { label: 'Lab Bag 3', sub: 'Test Roaster · V60 - Abaca', date: '2026-08-01' }, brewer: 'V60 - Abaca', roaster: 'Test Roaster' }]
   } as unknown as RecordsTab;
   const v = { ...base, tab: 'records' as const, tabLabel: 'Records', period: 'Last 3 months', boards: null, records };
   it('Records section', () => {

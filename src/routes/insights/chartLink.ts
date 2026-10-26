@@ -126,8 +126,9 @@ export function insightsPreview(v: PreviewInput): Preview {
   if (rec && chart === 'records-top-coffees' && rec.topCoffees.length) {
     return { title: 'Insights: Top coffees', description: ranked(`Avg rating · ${v.period}`, rec.topCoffees.map((c) => ({ value: c.mean.toFixed(1), name: holderRow(c.holder) }))) };
   }
+  // Roaster and coffee only: the brewer and filter would leave room for 3 rows, not 5 (user, 2026-10-25).
   if (rec && chart === 'records-top-brews' && rec.topBrews.length) {
-    return { title: 'Insights: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: holderRow(b.holder) }))) };
+    return { title: 'Insights: Top brews', description: ranked(`Rating · ${v.period}`, rec.topBrews.map((b) => ({ value: b.rating.toFixed(1), name: [b.roaster, b.holder.label].filter(Boolean).join(' · ') }))) };
   }
   const section = rec?.sections.find((s) => chart === `records-${s.key}`);
   if (section?.tiles.length) {

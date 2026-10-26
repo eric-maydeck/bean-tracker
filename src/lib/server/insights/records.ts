@@ -43,7 +43,7 @@ export interface RecordTile extends RecordPick {
 }
 export interface RecordsTab {
   sections: { key: Section; tiles: RecordTile[] }[]; // empty sections omitted
-  topBrews: { rating: number; holder: Holder; brewer: string | null }[]; // ≤ 50, best first (10 shown, or top=20|50)
+  topBrews: { rating: number; holder: Holder; brewer: string | null; roaster: string | null }[]; // ≤ 50, best first (10 shown, or top=20|50)
   topCoffees: { mean: number; brews: number; holder: Holder; like?: { gap: number; label: string } }[]; // ≤ 50 bags by mean rating, like Best bag (topc)
   perfectTens: { holder: Holder; count: number }[]; // every bag with a counted 10 in the period, most first
   brewerTypes: BrewerType[]; // types present in all-time data, for the switch
@@ -441,7 +441,7 @@ export function recordsTab(allBrews: readonly BrewFact[], allBags: readonly BagF
   // Only what the like line renders goes to the client.
   const likeLine = (l: Like | undefined) => l && { gap: l.gap, label: l.label };
   const top = [...rated].sort((a, b) => b.rating! - a.rating! || a.localDate.localeCompare(b.localDate));
-  const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer });
+  const row = (b: BrewFact) => ({ holder: brewHolder(inP, b), brewer: b.brewer, roaster: b.roaster ?? null });
   return {
     sections: SECTIONS.map((key) => ({ key, tiles: tiles.filter((t) => t.section === key) })).filter((s) => s.tiles.length),
     topBrews: top.slice(0, 50).map((b) => ({ rating: b.rating!, ...row(b) })),
