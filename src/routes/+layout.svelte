@@ -8,11 +8,12 @@
   import Icon, { type IconName } from '$lib/components/Icon.svelte';
   import { formatUpdated } from '$lib/formatDate';
   import { onMount } from 'svelte';
+  import { captionItems } from '$lib/capItems';
   import { tipOver, tipOut, tipClick } from '$lib/components/modeTip';
   import { scrollBehavior } from '$lib/scrollToBottom';
   let { children, data } = $props();
   // Root layout mounts last, so this marks the whole page as hydrated (tests/ui/ready.ts).
-  onMount(() => { document.documentElement.dataset.hydrated = ''; });
+  onMount(() => { document.documentElement.dataset.hydrated = ''; return captionItems(); });
 
   const links = [
     { href: '/coffees', label: 'Coffees' },

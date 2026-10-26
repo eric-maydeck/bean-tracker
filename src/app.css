@@ -3057,29 +3057,24 @@ button .sample-chip {
   margin-top: var(--space-4);
 }
 
-/* Tile caption block (ui-rules 55; CapItem.svelte): below the title, lines left-aligned inside a shrink-wrapped, centered block.
-   Each item has a margin-left of --cap-w (the width of " · ") and the list is pulled left by the same amount, so the first item
-   on every line sits at the block's left edge and its " · " (the item's ::before, right-aligned in that margin) hangs outside
-   it, where overflow-x: clip cuts it; mid-line the margin holds the dot with a space on each side. No script. */
+/* Tile caption block (ui-rules 55; CapItem.svelte, capItems.ts): below the title, lines centered. Items are inline-blocks separated
+   by a collapsible space whose word-spacing (--cap-ws, measured in capItems.ts; 0.6em until then) makes it as wide as " · ", so a
+   break removes it. The dot is the item's ::before, real " · " text hanging in that gap; it is hidden until the script has placed
+   the list (data-ready) and for an item that starts a line (data-start). */
 .cap-block {
-  --cap-w: 0.85em;
   display: block;
-  width: fit-content;
   max-width: 100%;
-  margin-inline: auto;
-  text-align: left;
-  overflow-x: clip;
-  overflow-clip-margin: 3px; /* room for a focus ring on a button at the left edge; narrower than the dot's reach */
 }
 .cap-list {
   display: block;
-  margin-left: calc(-1 * var(--cap-w));
+}
+.cap-gap {
+  word-spacing: var(--cap-ws, 0.6em);
 }
 .cap-item {
   display: inline-block;
   position: relative;
   max-width: 100%;
-  margin-left: var(--cap-w);
   text-decoration: inherit; /* an inline-block would drop the tip's dotted underline */
 }
 .cap-item:not(:first-child)::before {
@@ -3087,10 +3082,11 @@ button .sample-chip {
   white-space: pre;
   position: absolute;
   right: 100%;
-  width: var(--cap-w);
-  display: flex;
-  justify-content: center;
   text-decoration: none;
+}
+.cap-list:not([data-ready]) .cap-item::before,
+.cap-item[data-start]::before {
+  visibility: hidden;
 }
 /* A tile label with a caption block: the title keeps its two-line clamp, the block is its own line below. */
 .stat-label.has-cap {

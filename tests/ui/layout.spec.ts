@@ -8595,9 +8595,9 @@ async function expectNoHoles(card: Locator, max = 0.25) {
 }
 
 // Hovers a Chart.js canvas on its marks until its tip opens; returns the tip.
-// Tile titles and captions (ui-rules 55): no visible line starts or ends with "," or "·", and every dot has one space on each
-// side. The caption items' dots are generated (`.cap-item::before`, " · " as pre text) and hang left of their item inside a
-// block that clips overflow-x: an item that starts a line sits at the block's left edge, so its dot is cut off.
+// Tile titles and captions (ui-rules 55): no visible line starts or ends with "," or "·", every dot has one space on each side,
+// and every caption line is centered in its tile. The caption items' dots are generated (`.cap-item::before`, " · " as pre text)
+// and capItems.ts hides the dot of an item that starts a line.
 async function expectNoEdgeDelimiters(page: Page) {
   const find = () => page.locator('.stat-label').evaluateAll((labels) => labels.flatMap((label) => {
     const chars: { ch: string; y: number; x: number }[] = [];
@@ -8629,21 +8629,31 @@ async function expectNoEdgeDelimiters(page: Page) {
       cs.sort((p, q) => p.x - q.x);
       if ([cs[0].ch, cs[cs.length - 1].ch].some((c) => c === ',' || c === '·')) out.push(`${name}: a line starts or ends with a delimiter`);
     }
-    // Caption items: the generated dot is " · " (pre), hangs out of the flow, and the block clips it at its left edge.
+    // Caption items: the generated dot is a real " · " (pre) hanging in the gap before the item; the script hides it for an item
+    // that starts a line, so a visible dot always has an item to its left on the same line. Every caption line is centered in
+    // its tile (within 2px).
     const block = label.querySelector<HTMLElement>('.cap-block');
     if (block) {
-      if (getComputedStyle(block).overflowX !== 'clip') out.push(`${name}: the caption block does not clip`);
-      const edge = block.getBoundingClientRect().left;
+      const tile = label.closest('.stat-item, .hl-card, .stat-item-hero') ?? block;
+      const tileMid = tile.getBoundingClientRect().left + tile.getBoundingClientRect().width / 2;
+      const rows = new Map<number, DOMRect[]>();
+      for (const item of block.querySelectorAll<HTMLElement>('.cap-item')) {
+        const r = item.getClientRects()[0];
+        if (!r) continue;
+        const key = [...rows.keys()].find((k) => Math.abs(k - r.top) <= 4) ?? r.top;
+        rows.set(key, [...(rows.get(key) ?? []), r]);
+      }
+      for (const rs of rows.values()) {
+        const mid = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2;
+        if (Math.abs(mid - tileMid) > 2) out.push(`${name}: a caption line is off-center by ${Math.round(mid - tileMid)}px`);
+      }
       const items = [...block.querySelectorAll<HTMLElement>('.cap-item')];
       for (const item of items) {
         const pseudo = getComputedStyle(item, '::before');
-        if (item === items[0]) { if (pseudo.content !== 'none' && pseudo.content !== 'normal') out.push(`${name}: the first item has a dot`); continue; }
-        if (pseudo.content !== '" · "' || pseudo.whiteSpace !== 'pre' || pseudo.position !== 'absolute') out.push(`${name}: a dot is not a hanging " · "`);
         const r = item.getClientRects()[0];
-        const mid = r.top + Math.min(r.height, 14) / 2;
-        const left = chars.some((c) => Math.abs(c.y - mid) <= 5 && c.x < r.left - 1 && c.x >= edge - 1);
-        // Starting a line: the item sits at the block's left edge (so its dot is clipped); otherwise something is left of it.
-        if (!left && Math.abs(r.left - edge) > 3) out.push(`${name}: an item that starts a line is not at the block's left edge`);
+        const startsLine = !items.some((o) => o !== item && o.getClientRects()[0] && Math.abs(o.getClientRects()[0].top - r.top) <= 4 && o.getClientRects()[0].left < r.left - 1);
+        if (item !== items[0] && (pseudo.content !== '" · "' || pseudo.whiteSpace !== 'pre' || pseudo.position !== 'absolute')) out.push(`${name}: a dot is not a hanging " · "`);
+        if (startsLine && pseudo.visibility !== 'hidden') out.push(`${name}: the dot of an item that starts a line is visible`);
       }
     }
     return out;
