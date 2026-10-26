@@ -57,8 +57,7 @@
     const own = kinds.map((k): Series => ({ label: NAME[k], values: cur[k] }));
     const past: Series[] = cmp
       ? kinds.flatMap((k) => (cmp[k].some((v) => v) ? [{ label: one ? compareLabel : `${compareLabel} · ${NAME[k]}`, values: cmp[k], hue: tone(k), ...(lineChart ? { dashed: true } : { faded: true }) }] : []))
-      : avg ? [(() => { const k: Kind = spendSeries === 'oneoff' ? 'oneOff' : spendSeries === 'sub' ? 'sub' : 'overall';
-          return { label: `${compareLabel} (avg)`, values: sr.labels.map(() => avg[k]), dashed: true, hue: tone(k) }; })()] : [];
+      : avg ? kinds.flatMap((k) => (avg[k] == null ? [] : [{ label: one ? `${compareLabel} (avg)` : `${compareLabel} (avg) · ${NAME[k]}`, values: sr.labels.map(() => avg[k]), dashed: true, hue: tone(k) }])) : [];
     return { kinds, cur, cmp, avg, lineChart, token, compared: past.length > 0, first: own[0], rest: [...own.slice(1), ...past], colors: [...kinds.map(tone), ...past.filter((x) => !x.dashed).map((x) => x.hue!)] };
   }
   const total = $derived(sum(sr.sub, sr.oneOff));
@@ -71,11 +70,11 @@
     sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, true));
   // The Compare label as an offset, "3 months prior" ("Previous 3 months" is the same-length window right before the Period);
   // labels that already say "ago" become "prior", and a year stays as it is.
-  const ago = (l: string) => l.replace(/^Previous (\d+ )?(week|month|year)s?$/, (_, n, u) => `${n ?? '1 '}${u}${(n ?? '1 ') === '1 ' ? '' : 's'} prior`).replace(/ ago$/, ' prior');
+  const prior = (l: string) => l.replace(/^Previous (\d+ )?(week|month|year)s?$/, (_, n, u) => `${n ?? '1 '}${u}${(n ?? '1 ') === '1 ' ? '' : 's'} prior`).replace(/ ago$/, ' prior');
   const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
   // The tip of a bucket: every series' row (a missing value says "No data"), a swatch (bars) or line sample (lines, dashed for the
   // previous period) before each label; with a compare window, one group per period, each titled with its dates and, for the
-  // previous one, its offset ("Jun 8–14, 2026 (3 months ago)"). All's bars add the overall total.
+  // previous one, its offset ("Jun 8–14, 2026 (3 months prior)"). All's bars add the overall total.
   function tipper(pl: ReturnType<typeof plan>, fmt: (v: number) => string, withTotal: boolean) {
     const group = (title: string, get: (k: Kind) => number | null | undefined, past: boolean) => {
       const got = pl.kinds.map((k) => get(k) ?? null);
@@ -89,8 +88,8 @@
       const now = group(pl.compared ? `${sr.titles[i]} (current period)` : sr.titles[i], (k) => pl.cur[k][i], false);
       if (!pl.compared) return { title: now.title, rows: now.rows, marks: now.marks };
       const cmp = pl.cmp, avg = pl.avg;
-      const head = cmp ? `${sr.compareTitles?.[i] ?? ''}${compareDates ? ` (${lower(ago(compareLabel))})` : ''}`
-        : `${compareDates || compareLabel} (average per ${sr.by}${compareDates ? `, ${lower(ago(compareLabel))}` : ''})`;
+      const head = cmp ? `${sr.compareTitles?.[i] ?? ''}${compareDates ? ` (${lower(prior(compareLabel))})` : ''}`
+        : `${compareDates || compareLabel} (average per ${sr.by}${compareDates ? `, ${lower(prior(compareLabel))}` : ''})`;
       return { title: '', groups: [now, group(head, cmp ? (k) => cmp[k][i] : (k) => avg?.[k], true)] };
     };
   }

@@ -2541,6 +2541,22 @@ export const STATES: State[] = [
     }
   },
   {
+    // Compare with a window of another length draws one dashed average per drawn series, each in a real color, and the tip says so.
+    name: 'insights-spend-compare-average', viewports: 'two', path: () => '/insights?tab=spend&range=3m&compare=before',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#spend-chart)');
+      const c = panel.locator('canvas');
+      await c.scrollIntoViewIfNeeded();
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      for (const [x, y] of (await chartPoints(c, false)).slice(0, 12)) { if (touch()) await page.touchscreen.tap(x, y); else await page.mouse.move(x, y); if (await tip.waitFor({ timeout: 300 }).then(() => true, () => false)) break; }
+      await expect(tip.locator('.tip-group').nth(1)).toContainText(/average per/);
+      const colors = await tip.locator('.tip-mark').evaluateAll((ms) => ms.map((m) => getComputedStyle(m).backgroundColor));
+      expect(colors.length).toBeGreaterThanOrEqual(4); // two series, now and the average
+      for (const col of colors) expect(col).not.toBe('rgba(0, 0, 0, 0)'); // a valid series color, not an unset variable
+      await expect(tip.locator('dl.tip-rows').nth(1).locator('dd').first()).not.toHaveText('No data');
+    }
+  },
+  {
     name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const seg = page.locator('section[data-section="spend-share"] .seg').first();

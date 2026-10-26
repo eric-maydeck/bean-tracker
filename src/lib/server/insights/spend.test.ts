@@ -249,6 +249,10 @@ describe('spendTab discovery', () => {
     expect(s.other[i].map(([r]) => r)).toEqual(['C']);
     expect(s.other[i][0]).toEqual(['C', Math.round((100 * 40) / 121), 40]);
   });
+  it('share is null when no roaster has bags in 2+ buckets (no all-Other bars)', () => {
+    const sx = [bag({ id: 1, roaster: 'A', cost: 50, purchaseDate: '2026-09-01' }), bag({ id: 2, roaster: 'B', cost: 30, purchaseDate: '2026-09-16' })];
+    expect(spendTab([], [], sx, { ...ctx, by: 'week' }).discovery.share).toBeNull();
+  });
   it('share names at most 14 roasters; the rest are Other', () => {
     const sx = Array.from({ length: 16 }, (_, k) => [
       bag({ id: 2 * k + 1, roaster: `R${k}`, cost: 10 + k, purchaseDate: '2026-09-01' }), bag({ id: 2 * k + 2, roaster: `R${k}`, cost: 10 + k, purchaseDate: '2026-09-15' })

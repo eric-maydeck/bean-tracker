@@ -92,7 +92,7 @@
       {#each [100, 75, 50, 25, 0] as v (v)}<span style:top="{100 - v}%">{v}%</span>{/each}
     </div>
     <div class="plot">
-      {#each m.x as x, i (i)}
+      {#each m.x as _, i (i)}
         <div class="col"><div class="stack">
           {#each m.lines as l, k (k)}
             {@const v = l.values[i] ?? 0}

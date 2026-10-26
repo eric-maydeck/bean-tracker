@@ -226,7 +226,7 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
   const names = rest.length ? [...top, 'Other'] : top;
   const dollars = per.map((m) => [...top.map((r) => m.get(r) ?? 0), ...(rest.length ? [rest.reduce((s, r) => s + (m.get(r) ?? 0), 0)] : [])]);
   const cols = dollars.map(percents);
-  const share = spendTotal > 0 ? {
+  const share = spendTotal > 0 && top.length ? {
     x: bucketLabels(bs, sBy), unit: '%',
     lines: names.map((label, k) => ({ label, values: cols.map((p) => p[k]) })),
     dollars: names.map((_, k) => dollars.map((d) => d[k] / c.size)),

@@ -140,11 +140,10 @@
   beforeNavigate(({ from, to }) => {
     if (from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url)) scrollOf.set(tabOf(from.url), scrollY);
   });
-  afterNavigate(({ from, to }) => {
-    const back = from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
+  afterNavigate(({ from, to, type }) => {
+    // (a back/forward step: SvelteKit restores the scroll itself)
+    const back = type !== 'popstate' && from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
     if (back !== undefined) void tick().then(() => scrollTo(0, back));
-  });
-  afterNavigate(({ from }) => {
     local = null;
     const qs = insightsParams(data.explicit).toString();
     try {
