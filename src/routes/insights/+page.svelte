@@ -1274,15 +1274,38 @@
     white-space: normal;
     line-height: 1.1;
   }
+  /* Caption parts joined by a comma stay together while they fit; the comma is out of the flow (right edge at the space before the
+     part), hidden once the part starts a line (startsLine). Inline-blocks lose the tip's dotted underline, so it is re-inherited. */
+  .cap-part {
+    display: inline-block;
+    white-space: nowrap;
+    text-decoration: inherit;
+  }
+  .cap-next {
+    position: relative;
+  }
+  .cap-sep {
+    position: absolute;
+    right: 100%;
+    margin-right: 0.28em;
+    font-style: normal;
+    text-decoration: none;
+  }
+  .cap-next:global([data-start]) .cap-sep {
+    visibility: hidden;
+  }
   /* Every caption with a tip button lets the button's 44px tap area overflow. */
   .stat-caption:has(.mode-tip-button) {
     overflow: visible;
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
-  /* A subheading under a panel title (the app's h3, as Time to open's lists): smaller than the h2. */
+  /* A small section label under a panel title: muted, semibold, 0.85rem (the app has no smaller heading class). */
   .row-label {
     margin: var(--space-3) 0 var(--space-2);
-    font-size: 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
   }
   .row-label:first-of-type {
     margin-top: 0;
