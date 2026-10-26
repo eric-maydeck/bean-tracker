@@ -2468,6 +2468,9 @@ export const STATES: State[] = [
       if (touch()) await page.touchscreen.tap(x, y); else await page.mouse.move(x, y);
       await expect(near).toBeVisible();
       await expectDataTip(near);
+      // The label says it: "Roasters 48", no unit after the count; the plot keeps the arrow.
+      await expect(near.locator('.tip-rows dd').first()).toHaveText(/^\d+$/);
+      if (!touch()) expect(await c.evaluate((n) => (n as HTMLElement).style.cursor)).not.toBe('help');
     }
   },
   {

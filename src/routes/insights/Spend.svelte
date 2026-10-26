@@ -157,7 +157,7 @@
         {#if dc.repeatRate !== null}<span class="repeat">Repeat-buy rate <strong>{Math.round(100 * dc.repeatRate)}%</strong> · of {dc.roasters} roasters</span>{/if}
       </LabHead>
       <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} nearestX band={dc.band ?? undefined}
-        format={(v) => `${v}`} tipFormat={(v) => `${v} ${v === 1 ? 'roaster' : 'roasters'}`} height={220} />
+        format={(v) => `${v}`} height={220} />
     </section>
   {/if}
 

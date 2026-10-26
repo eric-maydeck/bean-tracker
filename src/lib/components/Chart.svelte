@@ -382,8 +382,8 @@
         // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
         interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: !(nearestX && type === 'line') },
         elements: { point: { hitRadius: 8 } },
-        // The help cursor over a mark (every mark has a tip), the arrow elsewhere.
-        onHover: (_e, els, c) => (c.canvas.style.cursor = els.length ? 'help' : ''),
+        // The help cursor over a mark (every mark has a tip), the arrow elsewhere; nearestX has a tip everywhere, so the arrow.
+        onHover: (_e, els, c) => (c.canvas.style.cursor = els.length && !nearestX ? 'help' : ''),
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
