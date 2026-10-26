@@ -643,6 +643,33 @@ describe('TAB_GROUPS', () => {
   });
 });
 
+describe('spend tab params', () => {
+  it('tab and the view params: case-insensitive, junk dropped', () => {
+    expect(parse('tab=SPEND').tab).toBe('spend');
+    expect(parse('spendView=PPG').spendView).toBe('ppg');
+    expect(parse('spendView=spend').spendView).toBeUndefined();
+    expect(parse('rcSort=Rating').rcSort).toBe('rating');
+    expect(parse('rcSort=foo').rcSort).toBeUndefined();
+    expect(parse('rcDir=asc').rcDir).toBe('asc');
+    expect(parse('rcDir=DESC').rcDir).toBe('desc');
+    expect(parse('rcDir=up').rcDir).toBeUndefined();
+    expect(parse('rcTop=20').rcTop).toBe(20);
+    expect(parse('rcTop=50').rcTop).toBe(50);
+    expect(parse('rcTop=10').rcTop).toBeUndefined();
+  });
+  it('round-trips, omitted when undefined, dropped by reset', () => {
+    const q = 'tab=spend&spendView=ppg&rcSort=ppg&rcDir=asc&rcTop=50';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(withDefaults(parse(q))).toMatchObject({ spendView: 'ppg', rcSort: 'ppg', rcDir: 'asc', rcTop: 50 });
+    expect(insightsParams({ tab: 'spend' }).toString()).toBe('tab=spend');
+    expect(resetInsights({ tab: 'spend', rcSort: 'ppg' })).toEqual({ tab: 'spend' });
+  });
+  it('Spend group sits between Highlights and Lab; ratings menu on', () => {
+    expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Spend', 'Lab']);
+    expect(ratingsMenuOn({ tab: 'spend', rank: 'rating', measure: 'brews', trend: undefined })).toBe(true);
+  });
+});
+
 describe('dial', () => {
   it('dial: only all (absent = Once dialed); junk and the default are dropped', () => {
     expect(parse('dial=ALL').dial).toBe('all');

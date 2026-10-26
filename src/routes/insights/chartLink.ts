@@ -86,6 +86,7 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
   records: (n) => `${n}'s bests and extremes`,
   milestones: (n) => `${n}'s brewing milestones`,
   insights: (n) => `Patterns in what ${n} rates highly`,
+  spend: (n) => `What ${n} spends on coffee, and on what`,
   sweetspots: (n) => `The recipes ${n} rates best`,
   brewing: (n) => `How ${n} dials in brews`,
   water: (n) => `How water affects ${n}'s ratings`,

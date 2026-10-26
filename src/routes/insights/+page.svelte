@@ -48,7 +48,8 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  let local = $state<Pick<InsightsUrlState, 'open' | 'views' | 'card' | 'chart' | 'retired' | 'gear'> | null>(null);
+  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'rcSort', 'rcDir', 'rcTop'] as const;
+  let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
   provideCoffeeNote(() => coffeeNote(s));
@@ -100,8 +101,8 @@
     // The hash follows chart: a new chart's id, none when a tab switch or the dropped chart's own id (a reload would scroll back to it).
     const hash = change.chart ? `#${change.chart}` : change.tab || (!('chart' in change) && location.hash === `#${explicit.chart}`) ? '' : location.hash;
     // Only open / views / card / chart / retired / gear, and every Over time board already has its series: nothing to fetch.
-    if (Object.keys(change).every((k) => k === 'open' || k === 'views' || k === 'card' || k === 'chart' || k === 'retired' || k === 'gear') && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
-      local = { open: next.open, views: next.views, card: next.card, chart: next.chart, retired: next.retired, gear: next.gear };
+    if (Object.keys(change).every((k) => (LOCAL_KEYS as readonly string[]).includes(k)) && Object.keys(next.views ?? {}).every((b) => data.boardSeries?.[b])) {
+      local = Object.fromEntries(LOCAL_KEYS.map((k) => [k, next[k]]));
       const qs = insightsParams(next).toString();
       replaceState(`${qs ? `?${qs}` : location.pathname}${hash}`, {});
       remember(qs);
@@ -207,7 +208,7 @@
     rangeDialog?.close();
   }
 
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', spend: 'Over time', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
     const qs = insightsParams({ ...explicit, tab }).toString();
@@ -513,7 +514,9 @@
   <label class="form-field group-field" style={cell('view')}>
     <span>View</span>
     <select class="ctl-select" aria-label="View" value={s.tab} onchange={(e) => choose({ tab: e.currentTarget.value as Tab })}>
-      {#each TABS as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}
+      {#each TAB_GROUPS as g (g.label)}
+        <optgroup label={g.label}>{#each g.tabs as t (t)}<option value={t}>{TAB_LABEL[t]}</option>{/each}</optgroup>
+      {/each}
     </select>
   </label>
   <label class="form-field group-field" style={cell('period')}>
