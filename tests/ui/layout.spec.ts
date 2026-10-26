@@ -5463,9 +5463,9 @@ export const STATES: State[] = [
       await expect(notes.first()).toBeVisible();
       await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Consumption', exact: true }) }).locator('.chart-note'))
         .toHaveText("Bought, Net, On hand and Days to clear count whole bags: the dripper filter doesn't apply.");
-      // Bought vs brewed and On hand over time; Brewed over time (grams) follows the filter.
+      // Bought vs brewed, On hand over time and Time to open; Brewed over time (grams) follows the filter.
       await expect(page.locator('.chart-panel', { has: page.getByRole('heading', { name: 'Brewed over time' }) }).locator('.chart-note')).toHaveCount(1);
-      await expect(notes).toHaveCount(3);
+      await expect(notes).toHaveCount(4);
     } },
   { name: 'insights-brew-records', path: () => '/insights?tab=records&dripper=V60',
     act: async (page) => {
