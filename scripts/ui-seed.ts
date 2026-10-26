@@ -52,7 +52,8 @@ function coffee(over: Partial<NewCoffeeInput> & Pick<NewCoffeeInput, 'roaster' |
 // action button (Open, Freeze, Thaw, Unopen, Archive, Restore, Delete) shows up somewhere.
 const long = coffee({ roaster: LONG_ROASTER, coffee_name: LONG_NAME, status: 'open', roast_date: daysAgo(12),
   origin: 'Colombia', processing: 'Double Anaerobic Thermal Shock Natural' });
-const decaf = coffee({ roaster: 'Onyx', coffee_name: 'Swiss Water Decaf Colombia Huila', decaf: true, roast_date: daysAgo(5) });
+const decaf = coffee({ roaster: 'Onyx', coffee_name: 'Swiss Water Decaf Colombia Huila', decaf: true, roast_date: daysAgo(5),
+  cost: 0 }); // the seed's free bag (Over time names it: "1 free bag not in $/g")
 const sey = coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
 coffee({ roaster: 'Sey', coffee_name: 'Kenya Kiambu Karindundu AA', roast_date: daysAgo(20) });
 const frozen = coffee({ roaster: 'Moonwake', coffee_name: 'Ethiopia Bensa Bombe', roast_date: daysAgo(40),

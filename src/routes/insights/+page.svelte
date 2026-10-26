@@ -300,7 +300,7 @@
     { key: 'spent', split: true, label: 'Spent', fmt: usd, up: 'bad',
       help: 'Counted by roast date: bags bought in the Period, at their listed price; subscription bags at plan price ÷ bags.' },
     { key: 'bags', split: true, label: 'Bags bought', fmt: count },
-    { key: 'avgPpg', label: 'Avg $/g', fmt: (n) => `${usd(n)}/g`, up: 'bad',
+    { key: 'avgPpg', label: 'Avg $/g', fmt: (n) => `${usd(n)}/g`, up: 'bad', keepSub: true,
       sub: () => { const f = data.spend?.free ?? 0; return f ? `${f} free bag${f === 1 ? '' : 's'} not in $/g` : null; } },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd, up: 'bad' },
     { key: 'avgBagSize', label: 'Avg bag size', fmt: formatGrams },
@@ -790,7 +790,7 @@
                   ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<span class="dial-part">, {DIAL_LABEL.all}</span>{/if}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
-                >{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
+                >{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}</span
             >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
           </div>

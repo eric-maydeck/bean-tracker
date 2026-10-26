@@ -2240,6 +2240,8 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('#spend-spent .insights-delta')).toBeVisible();
       await expect(page.locator('#spend-plans-per-month .insights-delta')).toHaveCount(0);
+      // The free-bag caption stays under the $/g delta.
+      await expect(page.locator('#spend-avg-ppg')).toContainText(/\d+ free bags? not in \$\/g/);
       await expectDeltasFit(page);
     }
   },
