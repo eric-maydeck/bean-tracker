@@ -4,7 +4,7 @@ import { WAIT_BUCKETS, waitBucket, windowState, type BagFact, type BrewFact } fr
 import type { Period } from './time';
 import { country } from './leaderboards';
 import { groupBy } from './records';
-import { freshHref, type FreshKey } from './onHandLinks';
+import { ageHref, freshHref, type AgeKey, type FreshKey } from './onHandLinks';
 import type { Filter } from '$lib/coffeeFilters';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
@@ -76,11 +76,11 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
 }
 
 export type AgeSplit = { before: number[]; inside: number[]; past: number[]; noWindow: number[] };
-export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; onHandG: number; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit } }
+export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; onHandG: number; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit; links: Record<AgeKey, string[]> } }
 
 // Waiting (backlog) bags by freezer-net days since roast, split by where that age sits against the roaster's rest
 // window. Bags are counted whole (shared in the household); grams divide per person.
-export function ageProfile(waiting: readonly BagFact[], logged: Map<number, number>, today: string, size: number) {
+export function ageProfile(waiting: readonly BagFact[], logged: Map<number, number>, today: string, size: number, page: Filter[] = []) {
   const t = parseDate(today);
   const zeros = (): AgeSplit => { const z = () => WAIT_BUCKETS.map(() => 0); return { before: z(), inside: z(), past: z(), noWindow: z() }; };
   const bags = zeros(), grams = zeros();
@@ -94,7 +94,9 @@ export function ageProfile(waiting: readonly BagFact[], logged: Map<number, numb
     bags[k][i] += 1;
     grams[k][i] += f.grams / size;
   }
-  return { labels: WAIT_BUCKETS.map((w) => w.label), bags, grams };
+  // The /coffees list behind each bar segment (ageHref): links[state][bucket].
+  const links = Object.fromEntries((['before', 'inside', 'past', 'noWindow'] as AgeKey[]).map((k) => [k, WAIT_BUCKETS.map((_, i) => ageHref(i, k, today, page))])) as Record<AgeKey, string[]>;
+  return { labels: WAIT_BUCKETS.map((w) => w.label), bags, grams, links };
 }
 
 // Each freshness group's /coffees link (the page's Coffees filter included).
@@ -136,7 +138,7 @@ export function onHandTab(
     runway: run(c.period),
     runwayAll: run({ start: null, end: c.today }),
     waiting: whatsWaiting(bags, logged, c.size),
-    age: ageProfile(waiting, logged, c.today, c.size),
+    age: ageProfile(waiting, logged, c.today, c.size, c.filters ?? []),
     freshness: withLinks(freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today), c.today, c.filters ?? [])
   };
 }

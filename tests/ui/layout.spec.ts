@@ -2764,11 +2764,12 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="onhand-freshness"] .text-tip')).toHaveCount(0);
     }
   },
-  // A chart's tip sits at the hovered mark: above a vertical bar's top, beside a horizontal bar's end (not at the chart's top).
+  // A chart's tip sits at the hovered mark, not at the chart's top: beside a stacked segment or a horizontal bar's end (sticky tips;
+  // above a plain vertical bar's top).
   {
     name: 'insights-chart-tip-position', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
-      for (const [panelId, beside] of [['onhand-age', false], ['onhand-waiting', true]] as const) {
+      for (const [panelId, beside] of [['onhand-age', true], ['onhand-waiting', true]] as const) {
         const panel = page.locator(`section.chart-panel:has(#${panelId})`);
         const c = panel.locator('canvas');
         await c.scrollIntoViewIfNeeded();
@@ -2789,6 +2790,45 @@ export const STATES: State[] = [
         // Next to the mark, not up at the chart's top: the tip is within a tip's height of the anchor (or the page edge).
         expect(Math.abs(t.y + t.height / 2 - (a.y + (beside ? 0 : -t.height / 2))), panelId).toBeLessThan(a.height + t.height);
       }
+    }
+  },
+  // Sticky tooltips (ui-rules 54) on the Age profile and What's waiting bars: a "See coffees" link to a filtered /coffees list;
+  // the pointer can cross onto the tip; a click on the mark pins it until Escape. Both Age profile units.
+  {
+    name: 'insights-onhand-sticky-tips', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      const check = async (panelId: string) => {
+        const canvas = page.locator(`section.chart-panel:has(#${panelId}) canvas`);
+        await canvas.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(450);
+        let at: readonly [number, number] | null = null;
+        for (const pt of await chartPoints(canvas)) {
+          await page.mouse.move(pt[0], pt[1]);
+          if (await tip.waitFor({ timeout: 60 }).then(() => true, () => false) && (await tip.getByRole('link', { name: /See coffees/ }).count())) { at = pt; break; }
+        }
+        expect(at, `${panelId}: a mark whose tip has a link`).not.toBeNull();
+        await expect(tip.getByRole('link', { name: /See coffees/ })).toHaveAttribute('href', /\/coffees\?status=backlog/);
+        await expectDataTip(tip);
+        if (!touch()) {
+          // The pointer crosses from the mark onto the tip and it stays open.
+          const t = (await tip.boundingBox())!;
+          await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 8 });
+          await page.waitForTimeout(300);
+          await expect(tip).toBeVisible();
+          await page.mouse.move(at![0], at![1]);
+        }
+        // A click pins it: moving away keeps it open; Escape closes it.
+        await page.mouse.click(at![0], at![1]);
+        await page.mouse.move(2, 2);
+        await page.waitForTimeout(300);
+        await expect(tip).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(tip).toBeHidden();
+      };
+      await check('onhand-age');
+      await page.locator('section.chart-panel:has(#onhand-age)').getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags', exact: true }).click();
+      await check('onhand-age');
     }
   },
   {

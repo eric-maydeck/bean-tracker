@@ -58,6 +58,7 @@
     tickFormat,
     nearestX = false,
     tipOf,
+    tipLink,
     tipFormat,
     titles,
     integer = false,
@@ -101,6 +102,9 @@
     nearestX?: boolean;
     // The tip's whole content for a hovered index, in place of the one built from the datasets' lines (a tip grouped by period).
     tipOf?: (i: number) => Tip;
+    // A sticky tooltip (ui-rules 54): a link under the hovered mark's tip (series, bucket). The tip then stays open while the
+    // pointer moves onto it, and a click or tap on the mark pins it until a click outside, Escape or the link.
+    tipLink?: (series: number, i: number) => { href: string; label: string } | null;
     // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
     // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
     // (ui-rules 36).
@@ -133,15 +137,23 @@
   // One tip look (ui-rules 36, T1): Chart.js draws no tooltip of its own; its tooltip model renders as the shared
   // HTML tip (TipBody in a FloatTip) at the caret: the x label as the title, each "Series: value" line as a
   // label/value row (a line without a value stays a line).
-  let tipAt = $state<{ x: number; y: number; h: number; tip: Tip; beside?: boolean } | null>(null);
+  let tipAt = $state<{ x: number; y: number; h: number; w?: number; tip: Tip; beside?: boolean; link?: { href: string; label: string }; key?: string } | null>(null);
+  let pinned = $state(false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let overTip = false; // the pointer is on the tip: Chart.js's repeated "no mark" updates must not close it
+  const keep = () => clearTimeout(timer);
+  const later = () => (keep(), overTip || (timer = setTimeout(() => !pinned && !overTip && (tipAt = null), 100)));
   let tipAnchor: HTMLSpanElement | undefined = $state();
   type Hit = { datasetIndex: number; dataIndex: number; element?: { getProps?: (k: string[], final: boolean) => Record<string, number> } };
   // Where the tip points: at the hovered mark, never the chart's top. A vertical bar (or stack segment): the strip is the bar,
   // so the tip sits just above its top; a horizontal bar: beside its end; a line's point: at the pointer's height.
   function anchorOf(tooltip: { caretX: number; caretY: number; dataPoints?: Hit[] }, chartArea: { top: number; bottom: number }) {
     const dp = tooltip.dataPoints?.[0];
-    const p = type === 'bar' ? dp?.element?.getProps?.(['x', 'y', 'base'], true) : undefined;
+    const p = type === 'bar' ? dp?.element?.getProps?.(['x', 'y', 'base', 'width'], true) : undefined;
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+      // A sticky tip on a stacked bar sits beside the hovered segment: the pointer reaches it without crossing the
+      // segments above (which would retarget the tip).
+      if (vertical && stacked && tipLink) return { x: p.x - p.width / 2, y: (p.y + p.base) / 2, h: 1, w: p.width, beside: true };
       if (vertical) return { x: p.x, y: Math.min(p.y, p.base), h: Math.abs(p.base - p.y) || 1 };
       return { x: p.x, y: p.y, h: 1, beside: true };
     }
@@ -149,8 +161,16 @@
     return { x: tooltip.caretX, y: chartArea.top, h: chartArea.bottom - chartArea.top };
   }
   const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: Hit[] } }) => {
-    if (!tooltip.opacity) return (tipAt = null);
-    const at = anchorOf(tooltip, chart.chartArea);
+    const hit = tooltip.dataPoints?.[0];
+    const key = hit ? `${hit.datasetIndex}:${hit.dataIndex}` : undefined;
+    if (tipLink) {
+      // A sticky tip: leaving the mark closes it after a beat (so the pointer can cross onto the tip); pinned, it holds.
+      if (!tooltip.opacity) return later();
+      if (pinned && tipAt?.key === key) return;
+      keep();
+      pinned = false;
+    } else if (!tooltip.opacity) return (tipAt = null);
+    const at = { ...anchorOf(tooltip, chart.chartArea), key, link: hit && tipLink ? (tipLink(hit.datasetIndex, hit.dataIndex) ?? undefined) : undefined };
     const all = (tooltip.body ?? []).flatMap((b) => b.lines);
     const split = all.map((l) => [l, l.lastIndexOf(': ')] as const);
     const rows = split.filter(([, i]) => i > 0).map(([l, i]): [string, string] => [l.slice(0, i), l.slice(i + 2)]);
@@ -281,6 +301,7 @@
 
     chart?.destroy();
     tipAt = null; // a rebuilt chart never fires the old hover's close
+    pinned = false;
     chart = new ChartJS(canvasEl, {
       type,
       data: {
@@ -391,6 +412,11 @@
         // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
         interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: !(nearestX && type === 'line') },
         elements: { point: { hitRadius: 8 } },
+        onClick: (_e, els) => {
+          if (!tipLink) return;
+          if (els.length && tipAt?.link) pinned = !pinned;
+          else (pinned = false), (tipAt = null);
+        },
         // The arrow everywhere on a chart: the help cursor is for help text and icons (user, 2026-10-26).
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
@@ -526,15 +552,33 @@
 
 <div class="chart-container" style="height: {height === 'fill' ? '100%' : `${height}px`}">
   <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}></canvas>
-  <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px" style:height="{tipAt?.h ?? 1}px"></span>
+  <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px" style:height="{tipAt?.h ?? 1}px" style:width="{tipAt?.w ?? 1}px"></span>
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
          left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
-    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
+    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} onclose={() => ((tipAt = null), (pinned = false))}>
+      {#if tipAt.link}
+        <!-- svelte-ignore a11y_no_static_element_interactions (a mouse-only bridge from the mark onto the tip; the link is a real link) -->
+        <div class="chart-tip-body" onclick={() => (pinned = true)} onpointerenter={() => ((overTip = true), keep())} onpointerleave={(e) => ((overTip = false), e.pointerType === 'mouse' && !pinned && later())}><TipBody tip={tipAt.tip} /><a class="tip-link" href={tipAt.link.href} onclick={(e) => (e.stopPropagation(), (pinned = false), (tipAt = null))}>{tipAt.link.label}</a></div>
+      {:else}<TipBody tip={tipAt.tip} />{/if}
+    </FloatTip>{/key}
   {/if}
 </div>
+<svelte:document onclick={(e) => pinned && e.target !== canvasEl && !(e.target as Element).closest('.chart-tip-body') && ((pinned = false), (tipAt = null))} onkeydown={(e) => e.key === 'Escape' && pinned && ((pinned = false), (tipAt = null))} />
 
 <style>
+  /* A sticky tip's body takes the pointer (the popover itself is click-through): the whole tip box is the bridge. */
+  .chart-tip-body {
+    margin: -0.5rem -0.75rem;
+    padding: 0.5rem 0.75rem;
+    pointer-events: auto;
+    cursor: default;
+  }
+  .tip-link {
+    display: block;
+    margin-top: 0.35rem;
+    color: var(--color-accent);
+  }
   /* The tooltip's anchor: a 1px-wide strip at the hovered x down the plot (FloatTip places the tip from its rect). */
   .tip-anchor {
     position: absolute;

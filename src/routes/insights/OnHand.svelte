@@ -19,7 +19,6 @@
   import type { FreshGroup } from '$lib/server/insights/onHand';
   import Chart from '$lib/components/Chart.svelte';
   import ChartToggle from './ChartToggle.svelte';
-  import { seriesToken } from '$lib/components/chartColor';
   import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '$lib/insightsUrl';
   import type { Tip } from '$lib/components/TipBody.svelte';
 
@@ -35,13 +34,20 @@
   ]);
   // Age profile: waiting bags by days since roast, split by where that age sits in the roaster's rest window.
   const AGE_SERIES = [['before', 'Before rest window'], ['inside', 'In rest window'], ['past', 'Past rest window'], ['noWindow', 'No rest window']] as const;
+  // The series' palette slots: Past rest window takes a red slot, clearly apart from the purple of In rest window.
+  const AGE_TOKENS = ['--series-1', '--series-2', '--series-10', '--series-4'] as const;
+  const ageLink = (s: number, i: number) => {
+    const k = AGE_SERIES[s][0];
+    // Only Before rest window is exact; the other states list the whole age range (no filter splits them).
+    return { href: link(t.age.links[k][i]), label: k === 'before' ? 'See coffees' : 'See coffees of this age' };
+  };
   const grams = $derived(unit === 'grams');
   const split = $derived(grams ? t.age.grams : t.age.bags);
   const ageFmt = $derived((v: number) => (grams ? formatGrams(v) : `${+v.toFixed(1)} bag${v === 1 ? '' : 's'}`));
   const ageTip = $derived((i: number): Tip => {
     const rows = AGE_SERIES.map(([k, name]): [string, string] => [name, ageFmt(split[k][i])]);
     const total = AGE_SERIES.reduce((a, [k]) => a + split[k][i], 0);
-    return { title: `${t.age.labels[i]} days since roast`, rows: [...rows, ['Total', ageFmt(total)]], marks: [...AGE_SERIES.map((_, j) => ({ color: `var(${seriesToken(j, 4)}-ink)` })), null] };
+    return { title: `${t.age.labels[i]} days since roast`, rows: [...rows, ['Total', ageFmt(total)]], marks: [...AGE_SERIES.map((_, j) => ({ color: `var(${AGE_TOKENS[j]}-ink)` })), null] };
   });
   // What's waiting: backlog grams grouped by roaster, origin, process or roast level.
   const by = $derived(waitBy ?? 'roaster');
@@ -95,7 +101,7 @@
       <ChartToggle label="Unit" options={[['grams', 'Grams'], ['bags', 'Bags']]} value={unit} pick={(v) => choose({ unit: v })} />
     </LabHead>
     <Chart type="bar" vertical stacked labels={t.age.labels} values={split.before} datasetLabel={AGE_SERIES[0][1]} legend format={ageFmt} tickFormat={ageFmt} tipOf={ageTip}
-      series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_SERIES.map((_, j) => `var(${seriesToken(j, 4)})`)} height={260} />
+      series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_TOKENS.map((k) => `var(${k})`)} tipLink={ageLink} height={260} />
     <p class="chart-note">Waiting bags by days since roast, minus freezer days</p>
     <p class="chart-note">On hand over time: <a href={link('/insights?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
   </section>

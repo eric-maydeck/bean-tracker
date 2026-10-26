@@ -39,3 +39,31 @@ describe('freshHref', () => {
     expect(freshHref('frozen', today, [{ column: 'decaf', mode: 'bool', value: true }])).toContain('decaf=true');
   });
 });
+
+import { ageProfile } from './onHand';
+import type { BagFact } from './facts';
+
+describe('age links', () => {
+  const d = (n: number) => new Date(Date.UTC(2026, 8, 25 - n)).toISOString().slice(0, 10);
+  const specs = [
+    { id: 1, age: 3, low: 7, high: 21 }, // before
+    { id: 2, age: 10, low: 7, high: 21 }, // inside
+    { id: 3, age: 10, low: null, high: null }, // no window
+    { id: 4, age: 25, low: 7, high: 21 }, // past
+    { id: 5, age: 100, low: 7, high: 21 } // 90+
+  ];
+  const coffees = specs.map((s) => row({ id: s.id, roast_date: d(s.age), rest_days_low: s.low, rest_days_high: s.high, roaster: s.id === 1 ? 'Alpha' : 'Beta', origin: s.id === 1 ? 'Kenya' : null }));
+  const bags = specs.map((s) => ({ id: s.id, status: 'backlog', purchaseDate: d(s.age), restLow: s.low, restHigh: s.high, amountG: 100, cost: null, roaster: s.id === 1 ? 'Alpha' : 'Beta', name: 'n', slug: null,
+    processing: 'Washed', origin: s.id === 1 ? 'Kenya' : null, processGroup: 'Washed', roastLevel: null, decaf: false, firstBrew: null, lastBrew: null, bagRating: null, subscriptionId: null }) as BagFact);
+  const shown = (href: string) => {
+    const st = fromParams(new URL(href, 'http://x').searchParams);
+    return applyFilters(coffees.map((r) => withComputedFields(r, parseDate(today))), st.filters).map((r) => r.id).sort();
+  };
+  const a = ageProfile(bags, new Map(), today, 1);
+  it('Before rest window lists exactly its bucket\'s short-of-rest bags', () => expect(shown(a.links.before[0])).toEqual([1]));
+  it('the other states list their whole bucket (no filter tells them apart)', () => {
+    expect(shown(a.links.inside[0])).toEqual([1, 2, 3]);
+    expect(shown(a.links.past[1])).toEqual([4]);
+    expect(shown(a.links.noWindow[4])).toEqual([5]);
+  });
+});
