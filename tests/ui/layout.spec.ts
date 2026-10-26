@@ -2221,6 +2221,45 @@ export const STATES: State[] = [
       await expectDataTip(page.locator('.cell-tip'));
     }
   },
+  // Over time: eight tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
+  {
+    name: 'insights-spend', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      await expect(page.locator('.stat-item .stat-label')).toHaveText(
+        ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'Avg bag size', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
+      );
+      await expect(page.locator('#spend-plans-per-month .stat-unit')).toHaveText('right now');
+      await page.getByRole('button', { name: 'About Spent' }).click();
+      await expectTipInView(page, page.locator('.mode-tip:popover-open'));
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Counted by roast date');
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-spend-compare', viewports: 'two', path: () => '/insights?tab=spend&range=1m&compare=1',
+    act: async (page) => {
+      await expect(page.locator('#spend-spent .insights-delta')).toBeVisible();
+      await expect(page.locator('#spend-plans-per-month .insights-delta')).toHaveCount(0);
+      await expectDeltasFit(page);
+    }
+  },
+  {
+    name: 'insights-spend-empty', viewports: 'two', path: () => '/insights?tab=spend&range=2000-01-01..2000-01-31',
+    act: async (page) => {
+      await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
+      await expect(page.locator('canvas')).toHaveCount(0);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+      await expectShortEmpty(page);
+    }
+  },
+  {
+    name: 'insights-spend-preview', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const t = await previewTags(page, '/insights?tab=spend&range=12m');
+      expect(t['og:title']).toBe('Insights: Over time');
+      expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
+    }
+  },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare', viewports: 'two',

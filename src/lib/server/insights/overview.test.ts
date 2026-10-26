@@ -131,6 +131,13 @@ describe('compareTiles', () => {
     expect(d.grams).toEqual({ abs: 105, pct: 100, base: 105, paced: true });
     expect(d.avgDose).toEqual({ abs: 3, pct: 25, base: 12 });
   });
+  it('a custom kind map paces only its total keys', () => {
+    const kind = { n: 'total', avg: 'average' } as const;
+    const { deltas, scaled } = compareTiles({ n: 14, avg: 5 }, { n: 90, avg: 4 }, 7, 90, true, kind);
+    expect(scaled).toBe(true);
+    expect(deltas.n).toEqual({ abs: 7, pct: 100, base: 7, paced: true });
+    expect(deltas.avg).toEqual({ abs: 1, pct: 25, base: 4 });
+  });
   it('a paced base of 0 shows no change', () =>
     expect(compareTiles(t, { ...t, bagsFinished: 0 }, 7, 90).deltas.bagsFinished).toBeNull());
   it('a baseline with no tracked days has no total to pace (no ∞)', () => {

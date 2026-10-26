@@ -94,7 +94,7 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
 };
 
 interface PreviewInput {
-  tab: Tab; owner: string; tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string;
+  tab: Tab; owner: string; tabLabel: string; period: string; brews: number; avgRating: number | null; filters: string[]; chart?: string; line?: string; // line: replaces the brews/rating line
   rank: Rank; perPerson: boolean; boards: Record<Board, BoardRow[]> | null; records: RecordsTab | null;
 }
 // A Records tile's own element id (#record-…): keys like "grindFine:A4Z (Femobook)" slugged.
@@ -151,7 +151,7 @@ export function insightsPreview(v: PreviewInput): Preview {
     description: [
       TAB_SUMMARY[v.tab](v.owner),
       [v.period, ...v.filters].join(' · '),
-      [plural(v.brews, 'brew'), v.avgRating != null && `Avg rating ${v.avgRating.toFixed(1)}`].filter(Boolean).join(' · ')
+      v.line ?? [plural(v.brews, 'brew'), v.avgRating != null && `Avg rating ${v.avgRating.toFixed(1)}`].filter(Boolean).join(' · ')
     ].join('\n')
   };
 }

@@ -13,6 +13,7 @@
   import { placeTip } from '$lib/components/modeTip';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { formatGrams } from '$lib/grams';
+  import { plural } from '$lib/linkPreview';
   import { hour12 } from '$lib/hours';
   import {
     PEOPLE, RANGES, RANGE_LABELS, withPageWide, customRange, peopleHelp, insightsParams, isCustom, keepCompare, resetInsights, withDefaults, TAB_GROUPS, LAB_TABS, WEEKDAYS, periodLabel as periodName, compareLabel as compareName, windowLabel, type Tab, type InsightsUrlState, DIAL_HELP, DIAL_LABEL, RATINGS_LABEL, coffeeNote, ratingsMenuOn, hiddenNote, phoneWords, type Caffeine, BREW_FILTER_KEYS, BREW_FILTERS_ON, brewSelectsOn, BREW_FILTER_LABEL, brewFilterText, type BrewFilterKey
@@ -37,6 +38,7 @@
   import Brewing, { jumpLinks as brewingLinks } from './Brewing.svelte';
   import Water, { jumpLinks as waterLinks } from './Water.svelte';
   import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
+  import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import Recent from './Recent.svelte';
   import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
@@ -252,6 +254,7 @@
     was?: () => string | null; // a neutral line in the delta slot ("was Thu")
     stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
+    help?: string; // an explanation in a caption ? popover
   };
   // A stat tile's own anchor, its caption links to it: avgRating on Overview → #overview-avg-rating.
   const panelId = (title: string) => `${s.tab}-${title.toLowerCase().replace(/\s+/g, '-')}`;
@@ -293,6 +296,18 @@
     { key: 'finished', label: 'Bags finished', fmt: count, split: true, up: 'good' }
   ];
   const pct = (n: number) => `${Math.round(n * 100)}%`;
+  let SPEND = $derived<Tile[]>([
+    { key: 'spent', split: true, label: 'Spent', fmt: usd, up: 'bad',
+      help: 'Counted by roast date: bags bought in the Period, at their listed price; subscription bags at plan price ÷ bags.' },
+    { key: 'bags', split: true, label: 'Bags bought', fmt: count },
+    { key: 'avgPpg', label: 'Avg $/g', fmt: (n) => `${usd(n)}/g`, up: 'bad',
+      sub: () => { const f = data.spend?.free ?? 0; return f ? `${f} free bag${f === 1 ? '' : 's'} not in $/g` : null; } },
+    { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd, up: 'bad' },
+    { key: 'avgBagSize', label: 'Avg bag size', fmt: formatGrams },
+    { key: 'newRoasters', label: 'New roasters', fmt: count, up: 'good' },
+    { key: 'subShare', label: 'Subscription share', fmt: pct },
+    { key: 'plansPerMonth', split: true, label: 'Plans per month', fmt: usd, sub: () => 'right now' }
+  ]);
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
@@ -466,6 +481,7 @@
     if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
     if (s.tab === 'water' && data.water) return waterLinks(data.water);
     if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
+    if (s.tab === 'spend' && data.spend) return spendLinks(data.spend);
     return [['overview-totals', 'Totals'], ['overview-averages', 'Averages'], ['overview-consumption', 'Consumption'], ['overview-right-now', 'Right now'], data.recent && ['overview-recent', 'Recent']];
   });
 </script>
@@ -478,7 +494,8 @@
   preview={insightsPreview({
     tab: s.tab, owner: ownerName(page.url.host), tabLabel: TAB_LABEL[s.tab], period: periodLabel, brews: data.tiles.brews, avgRating: data.tiles.avgRating,
     filters: [...coffeeChips.map(([, v]) => v), ...brewChips.map((k) => brewFilterText(k, s[k]!))],
-    chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records
+    chart: s.chart, rank: s.rank, perPerson: perPersonOn, boards: data.boards, records: data.records,
+    line: !data.spend ? undefined : `Spent ${usd(data.spend.tiles.spent)} · ${plural(data.spend.tiles.bags, 'bag')}${data.spend.tiles.avgPpg === null ? '' : ` · ${usd(data.spend.tiles.avgPpg)}/g avg`}`
   })}
 />
 
@@ -773,11 +790,15 @@
                   ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<span class="dial-part">, {DIAL_LABEL.all}</span>{/if}</span><Icon name="question" /></button
                 >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
+                >{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}</span
             >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
           </div>
           {#if t.ratingSwitch}
             <div class="mode-tip" id="tip-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[s.ratings], lines: [RATINGS_HELP[s.ratings], DIAL_HELP[s.dial]] }} /></div>
+          {/if}
+          {#if t.help}
+            <div class="mode-tip" id="tip-help-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: t.label, lines: [t.help] }} /></div>
           {/if}
           {#if pp}
             <div class="mode-tip" id="tip-pp-{t.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></div>
@@ -860,6 +881,10 @@
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
+{:else if s.tab === 'spend' && data.spend}
+  <Spend t={data.spend} {choose}>
+    {#snippet tiles()}{@render panel('Spending', SPEND, data.spend!.tiles, data.spend!.deltas)}{/snippet}
+  </Spend>
 {:else}
   {@render panel('Totals', TOTALS, data.tiles, data.deltas, ['Spend', 'Bags finished'])}
   {@render panel('Averages', AVERAGES, data.tiles, data.deltas)}

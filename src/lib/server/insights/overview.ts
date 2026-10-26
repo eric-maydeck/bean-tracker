@@ -88,18 +88,19 @@ export function tileDelta(cur: number | null, prev: number | null): Delta {
 // Windows of different tracked lengths (trackedDays): a total's baseline becomes its
 // pace over the period's days, total × curDays / prevDays; averages compare as they are.
 // `pace` false compares totals raw regardless (same-length windows that are fully tracked).
-export function compareTiles(
-  cur: OverviewTiles, prev: OverviewTiles, curDays: number, prevDays: number, pace = true
-): { deltas: Record<keyof OverviewTiles, Delta>; scaled: boolean } {
+export function compareTiles<K extends string = keyof OverviewTiles>(
+  cur: Record<K, number | null>, prev: Record<K, number | null>, curDays: number, prevDays: number, pace = true,
+  kind: Record<K, 'total' | 'average'> = TILE_KIND as unknown as Record<K, 'total' | 'average'>
+): { deltas: Record<K, Delta>; scaled: boolean } {
   const scaled = pace && curDays !== prevDays;
-  const base = (k: keyof OverviewTiles) =>
-    !scaled || TILE_KIND[k] === 'average' ? prev[k] : prevDays ? ((prev[k] ?? 0) * curDays) / prevDays : null;
-  const keys = Object.keys(cur) as (keyof OverviewTiles)[];
+  const base = (k: K) =>
+    !scaled || kind[k] === 'average' ? prev[k] : prevDays ? ((prev[k] ?? 0) * curDays) / prevDays : null;
+  const keys = Object.keys(cur) as K[];
   const deltas = Object.fromEntries(keys.map((k) => {
     const d = tileDelta(cur[k], base(k));
-    return [k, d && scaled && TILE_KIND[k] !== 'average' ? { ...d, paced: true } : d];
+    return [k, d && scaled && kind[k] !== 'average' ? { ...d, paced: true } : d];
   }));
-  return { deltas: deltas as Record<keyof OverviewTiles, Delta>, scaled };
+  return { deltas: deltas as Record<K, Delta>, scaled };
 }
 
 export interface Consumption {

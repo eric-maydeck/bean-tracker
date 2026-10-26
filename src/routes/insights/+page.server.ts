@@ -9,6 +9,8 @@ import { overviewTiles, compareTiles, perPerson, consumption, gramsOnHand, logge
 import { boardSeries, cutBoards, hiddenRows, leaderboards, pageFilters } from '$lib/server/insights/leaderboards';
 import { habits } from '$lib/server/insights/habits';
 import { consumptionTab } from '$lib/server/insights/consumption';
+import { spendTab } from '$lib/server/insights/spend';
+import { getSubscriptions } from '$lib/server/subscriptions';
 import { recordsTab } from '$lib/server/insights/records';
 import { milestonesTab } from '$lib/server/insights/milestones';
 import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
@@ -137,6 +139,12 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, trend: s.trend, scored, ratings: s.ratings, sameLength: typeof s.compare === 'number' })
         : null,
+    spend: s.tab === 'spend'
+      ? spendTab(scored, whole, bags, {
+          period, prev, sameLength: typeof s.compare === 'number', pace, size, dataStart, today, by: s.by, ratings: s.ratings,
+          plans: getSubscriptions(db).map((p) => ({ id: p.id, name: p.subscription_name ?? p.roaster_service, roaster: p.roaster_service, price: p.price, paused: !!p.paused }))
+        })
+      : null,
     records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, wholeUnscored: whole, whole: wholeScored, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,
     milestones:
       s.tab === 'milestones' ? milestonesTab(brews, bags, { period, prev, ratings: s.ratings, kinds: s.kinds, today }) : null,
