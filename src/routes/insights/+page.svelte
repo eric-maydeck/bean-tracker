@@ -269,6 +269,7 @@
     stack?: () => { head: string; tail: string; said: string } | null; // two-line "vs Oct 4:" / "3 brews · 48g" there
     from?: () => string | null; // a ratio tile's previous count ("31 days"): the delta reads "from 31 days (100%)"
     help?: string; // an explanation in a caption ? popover
+    row?: string; // tiles sharing a row name sit in their own labelled row (the runway's two paces)
   };
   // A stat tile's own anchor, its caption links to it: avgRating on Overview → #overview-avg-rating.
   const panelId = (title: string) => `${s.tab}-${title.toLowerCase().replace(/\s+/g, '-')}`;
@@ -337,11 +338,11 @@
   // Per pace: days left, the run-out date (the value is the days; its format is the date) and the daily grams.
   const outDate = (n: number) => shortDay(new Date(Date.parse(`${data.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10));
   const paceTiles = (k: 'pace' | 'all', name: string): Tile[] => [
-    { key: `${k}Days`, split: true, label: `Days left, ${name}`, fmt: count, suffix: 'days' },
-    { key: `${k}Out`, split: true, label: `Runs out, ${name}`, fmt: outDate },
-    { key: `${k}PerDay`, split: true, label: `A day, ${name}`, fmt: formatGrams }
+    { key: `${k}Days`, row: name, split: true, label: 'Days left', fmt: count, suffix: 'days' },
+    { key: `${k}Out`, row: name, split: true, label: 'Runs out', fmt: outDate },
+    { key: `${k}PerDay`, row: name, split: true, label: 'A day', fmt: formatGrams }
   ];
-  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', paceName)), ...paceTiles('all', 'all time')]);
+  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', `At your ${paceName} pace`)), ...paceTiles('all', 'At your all-time pace')]);
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
@@ -793,8 +794,10 @@
     {:else}
       <HeadingAnchor id={panelId(title)}>{title}</HeadingAnchor>
     {/if}
-    <div class="stat-row fit n{tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'}>
-      {#each tiles as t (t.key)}
+    {#each tiles.some((x) => x.row) ? [...new Set(tiles.map((x) => x.row))].map((r) => ({ row: r, tiles: tiles.filter((x) => x.row === r) })) : [{ row: undefined, tiles }] as g (g.row ?? '')}
+    {#if g.row}<p class="row-label">{g.row}</p>{/if}
+    <div class="stat-row fit n{g.tiles.length} {deltas ? 'comparing' : ''}" class:right-now={title === 'Right now'} class:spending={title === 'Spending'} class:runway-row={!!g.row}>
+      {#each g.tiles as t (t.key)}
         {@const v = (values as Record<string, number | null>)[t.key] ?? null}
         {@const d = (deltas as Record<string, D> | null)?.[t.key]}
         {@const pp = t.split && perPersonOn}
@@ -843,6 +846,7 @@
         </div>
       {/each}
     </div>
+    {/each}
     {#if whole && wholeKeys.length}<WholeNote keys={wholeKeys} items={whole} />{/if}
     {@render after?.()}
   </section>
@@ -1279,6 +1283,14 @@
     overflow: visible;
   }
   /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
+  .row-label {
+    margin: var(--space-3) 0 var(--space-2);
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+  }
+  .row-label:first-of-type {
+    margin-top: 0;
+  }
   .stat-label.wrap.mode-caption {
     letter-spacing: 0; /* Rated · Calibrated ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
   }
@@ -1787,12 +1799,14 @@
   }
   /* viewport 1000px (no rail; the rail narrows it) */
   @container insights (min-width: 968px) {
-    .fit.n6,
-    .fit.n3 {
+    .fit.n6 {
       --c: 6;
     }
-    /* Three tiles stretch to thirds of the row but keep a sixth's height (content centered, like n4 and n5). */
-    .fit.n3 .stat-item {
+    /* The runway's rows of three stretch to thirds but keep a sixth's height (content centered, like n4 and n5). */
+    .fit.runway-row {
+      --c: 6;
+    }
+    .fit.runway-row .stat-item {
       --q: 3;
     }
   }

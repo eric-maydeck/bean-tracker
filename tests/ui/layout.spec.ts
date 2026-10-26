@@ -2730,7 +2730,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const shelf = ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost'];
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
-        [...shelf, 'Days left, last 3 months', 'Runs out, last 3 months', 'A day, last 3 months', 'Days left, all time', 'Runs out, all time', 'A day, all time'], { useInnerText: true, ignoreCase: true }
+        [...shelf, 'Days left', 'Runs out', 'A day', 'Days left', 'Runs out', 'A day'], { useInnerText: true, ignoreCase: true }
       );
       await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
       await expect(page.getByLabel('Period', { exact: true })).toBeVisible();
