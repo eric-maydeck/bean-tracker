@@ -1,3 +1,88 @@
+# [1.92.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.91.0...v1.92.0) (2026-10-26)
+
+
+### Bug Fixes
+
+* **charts:** arrow cursor on chart marks, tips sit at the hovered bar or point
+* **charts:** sticky tips on horizontal bars sit above the bar at the pointer
+* **charts:** tip anchor skips line points, reset over-tip state, keep tip on link-less click
+* **coffees:** a cost typed between plan fills is the new original
+* **coffees:** place the subscription field in the form grid
+* **insights:** align time to open list columns
+* **insights:** cap value map x ticks at 5, keyboard test, honest exemption note
+* **insights:** freshness review fixes
+* **insights:** in the freezer count never reads per person, only its grams
+* **insights:** keep the free-bag caption under the compare delta
+* **insights:** money ticks on the spend chart
+* **insights:** on hand junk roast dates, unknown origin link, thaw note
+* **insights:** on hand waitBy default stays out of the url, runway help text
+* **insights:** overview days open count from the first brew
+* **insights:** per-series average compare lines, no all-Other share, popstate keeps its scroll
+* **insights:** plan rating counts all brews of Period bags
+* **insights:** prior wording, thicker dashed lines, sorted share legend and tips, tab scroll restore
+* **insights:** rating tile caption keeps calibrated ratings, all brews together
+* **insights:** report card columns keep their widths across sorts
+* **insights:** report card review fixes
+* **insights:** roaster discovery tip drops the unit, plot keeps the arrow cursor
+* **insights:** runway rows stay three across at 360, tile size check vs the shelf
+* **insights:** space before vs in plan figures, with ui assertions
+* **insights:** spend chart buckets start at the first roast date
+* **insights:** spend tiles: no tip on no change, value tips keep the arrow, bags never divide
+* **insights:** spending tiles three across on phones, underline clear of digits
+* **insights:** tile caption keys, runway note only per person, stale comments
+* **insights:** tile caption parts on their own line, titles never move
+* **insights:** tile titles stay put when per person adds a caption part
+* **insights:** value map rounds money to cents; shorter low-confidence note
+* short subscription comparison lines on phones, pill legend, coffee Back is history back
+* **stats:** keep rested and ready, validate freeze dates, sort undated bags last
+* **subscriptions:** log how many subscription links applied
+* **subscriptions:** pre-migration-safe candidate query, multi-plan merge, clearer lines
+* **ui:** caption lists re-place when their items or text change in place
+* **ui:** per-list caption observers and dot width, drop dead caption css
+
+
+### Features
+
+* **coffees:** fill a bag's cost from its subscription plan
+* **coffees:** none restores the cost from before the plan filled it
+* **coffees:** pick a bag's subscription on the edit form
+* **coffees:** rest state and age filters, exact age profile links
+* **coffees:** subscription filter and bag-count links from the spend subscriptions panel
+* **coffees:** subscription label shows roaster and size, plus a view-mode stat
+* **insights:** age profile of waiting bags
+* **insights:** age profile tips link to the segment's coffees, contrasting past color
+* **insights:** freshness history on over time
+* **insights:** freshness overflow links to the group's coffees
+* **insights:** on hand second in summary, spend in habits, no spend group
+* **insights:** on hand tab with tiles, runway and freshness
+* **insights:** over time tab and its url state
+* **insights:** over time tab with spend tiles
+* **insights:** repeat-buy by 2+ bags, wider share of spend with dollars, nearest-x discovery tip
+* **insights:** roaster discovery and share of spend
+* **insights:** runway as stat tiles with a projection chart
+* **insights:** runway as two labelled rows of three tiles
+* **insights:** share of spend names every repeat roaster the palette allows
+* **insights:** share of spend tips list every roaster; legend isolates one
+* **insights:** sortable roaster report card
+* **insights:** spend chart colors per selection, period-grouped tips, nearest x on lines
+* **insights:** spend chart series selector, split compare window, entity colors
+* **insights:** spend over time by subscription and one-off
+* **insights:** spend tips with offset headers, row symbols and No data; true gaps in the $/g lines
+* **insights:** subscriptions panel: roaster in the name, labeled cost and rating lines
+* **insights:** subscriptions value panel
+* **insights:** value map and best value coffees
+* **insights:** value map click pins the tip instead of navigating
+* **insights:** value map hover tip has the link, stays open for the pointer, pins in place
+* **insights:** what's waiting by roaster, origin, process, roast
+* **insights:** what's waiting tips link to the group's coffees
+* **subscriptions:** boot migration that links confirmed subscription bags
+* **subscriptions:** link the confirmed subscription bags
+* **subscriptions:** list likely subscription bags for the backfill
+* **subscriptions:** store which plan a bag came from
+* **ui:** caption block below the title, css-only hanging dots with exact spaces
+* **ui:** centered caption lines, shared script hides line-start dots
+* **ui:** tile caption items flow inline with a hanging dot, none starts a line
+
 # [1.91.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.90.0...v1.91.0) (2026-10-26)
 
 
