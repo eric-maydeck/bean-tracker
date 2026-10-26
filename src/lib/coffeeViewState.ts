@@ -59,6 +59,8 @@ function encodeFilter(f: Filter): string[] {
       return [`includes:${f.a}`];
     case 'overlaps':
       return [`overlaps:${f.a}..${f.b}`];
+    case 'plan':
+      return [String(f.value)];
   }
 }
 
@@ -107,6 +109,10 @@ function decodeFilter(key: ColumnKey, raw: string[], known: string[] | undefined
       }
       const m = RANGE_OP.exec(first);
       return m ? { column: key, mode: 'range', op: m[1] as Op, a: m[2], b: '' } : null;
+    }
+    case 'plan': {
+      const v = first === 'any' || first === 'none' ? first : /^\d+$/.test(first) ? Number(first) : null;
+      return v === null ? null : { column: key, mode: 'plan', value: v };
     }
     case 'window': {
       const inc = withPrefix(first, 'includes:');

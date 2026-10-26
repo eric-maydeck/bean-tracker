@@ -23,6 +23,7 @@ export const load: PageServerLoad = ({ locals }) => {
     archive,
     roastLevels,
     subscriptions: locals.isAdmin ? getSubscriptionOptions(db) : [],
+    plans: getSubscriptionOptions(db).map(({ id, label }) => ({ id, label })), // public: the Subscription filter
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
     processingMethods: getDistinctFieldValues(db, 'processing'),

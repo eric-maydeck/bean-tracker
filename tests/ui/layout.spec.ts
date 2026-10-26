@@ -2471,6 +2471,25 @@ export const STATES: State[] = [
     }
   },
   {
+    // A plan's bag count links to its /coffees list: every status, roast dates in the Period; the list has that many bags.
+    name: 'insights-spend-subscription-link', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const panel = page.locator('section[data-section="spend-subscriptions"]');
+      const row = panel.locator('li:not(.total)', { hasText: /^Sey/ });
+      const link = row.locator('a.bags');
+      const n = Number((await link.innerText()).match(/\d+/)![0]);
+      expect(n).toBeGreaterThan(0);
+      await expect(link).toHaveAttribute('href', /^\/coffees\?(?=.*status=all)(?=.*subscription=\d+)(?=.*roast_date=between)/);
+      // A plan with no bags has no link, and the total row isn't one.
+      await expect(panel.locator('li:not(.total) span.bags')).not.toHaveCount(0);
+      await expect(panel.locator('li.total a')).toHaveCount(0);
+      await link.click();
+      await expect(page).toHaveURL(/\/coffees\?/);
+      await expect(page.locator('.filter-chip-label').first()).toBeVisible();
+      await expect(page.getByText(/^\d+ coffees?/).first()).toHaveText(new RegExp(`^${n} coffee${n === 1 ? '' : 's'}`));
+    }
+  },
+  {
     name: 'insights-spend-subscriptions', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-subscriptions"]');
@@ -7151,6 +7170,31 @@ export const STATES: State[] = [
     }
   },
   { name: 'coffees-bc-no', path: () => '/coffees?status=all&view=compact&bc=no' },
+  {
+    // The Subscription select: a plan, Any plan, No plan, All. The list follows, the URL carries the id (bare on All).
+    name: 'coffees-filter-subscription',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const count = async () => Number((await page.getByText(/^\d+ coffees?/).first().innerText()).match(/^\d+/)![0]);
+      const total = await count();
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      const select = page.getByRole('combobox', { name: 'Subscription' });
+      await select.selectOption({ label: 'Any plan' });
+      await expect(page).toHaveURL(/subscription=any/);
+      const any = await count();
+      expect(any).toBeGreaterThanOrEqual(2);
+      await select.selectOption({ label: 'No plan' });
+      await expect(page).toHaveURL(/subscription=none/);
+      expect(await count()).toBe(total - any);
+      await select.selectOption({ label: 'Sey · 1x250g' });
+      await expect(page).toHaveURL(/subscription=\d+/);
+      expect(await count()).toBe(1);
+      await expect(page.locator('.filter-chip-label')).toHaveText(/^Plan: Sey/);
+      await select.selectOption({ label: 'All' });
+      expect(page.url()).not.toContain('subscription');
+      await select.selectOption({ label: 'Sey · 1x250g' }); // end with the filter on, editor open
+    }
+  },
   {
     name: 'coffees-filter-editor',
     path: () => '/coffees?status=all&view=compact',

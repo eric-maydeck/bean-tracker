@@ -11,6 +11,10 @@
     isComplete,
     normalizeFilter,
     QUICK_FILTERS,
+    PLAN_ANY,
+    PLAN_NONE,
+    type PlanOption,
+    type PlanValue,
     type Column,
     type ColumnKey,
     type ColumnKind,
@@ -30,7 +34,9 @@
     onapply,
     onclear,
     onclose,
-    onquickset
+    onquickset,
+    onplanset,
+    plans = []
   }: {
     coffees: CoffeeWithComputed[]; // current status tab: source of the "Is any of" list
     filters: Filter[]; // active filters: picking a column that has one reopens it
@@ -39,6 +45,8 @@
     onclear: (key: ColumnKey) => void;
     onclose: () => void;
     onquickset: (key: ColumnKey, value: boolean | null) => void; // Decaf/Frozen quick filters: applies without closing
+    onplanset: (value: PlanValue | null) => void; // the Subscription select: applies without closing
+    plans?: PlanOption[];
   } = $props();
 
   const GROUPS: [string, ColumnKind[]][] = [
@@ -63,7 +71,7 @@
   // is a no-op; `start` can still name one (chip click) and just leaves the
   // picker screen showing, switches included.
   function pick(k: ColumnKey) {
-    if (column(k).kind === 'bool') return;
+    if (column(k).kind === 'bool' || column(k).kind === 'plan') return;
     const f = existing(k);
     key = k;
     mode = column(k).kind === 'window' ? 'includes' : 'any';
@@ -239,6 +247,25 @@
         </div>
       </div>
     {/each}
+    {#if plans.length}
+      {@const cur = existing('subscription')}
+      <label class="quick-filter">
+        <span class="quick-filter-label">Subscription</span>
+        <select
+          class="search-input quick-filter-select"
+          value={cur?.mode === 'plan' ? String(cur.value) : ''}
+          onchange={(e) => {
+            const v = e.currentTarget.value;
+            onplanset(v === '' ? null : v === 'any' || v === 'none' ? v : Number(v));
+          }}
+        >
+          <option value="">All</option>
+          <option value="any">{PLAN_ANY}</option>
+          <option value="none">{PLAN_NONE}</option>
+          {#each plans as p (p.id)}<option value={String(p.id)}>{p.label}</option>{/each}
+        </select>
+      </label>
+    {/if}
   {:else}
     {@const k = key}
     {@const kind = column(k).kind}

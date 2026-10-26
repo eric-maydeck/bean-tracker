@@ -500,7 +500,7 @@
 <svelte:head>
   <title>Bean Tracker - Coffees</title>
 </svelte:head>
-<PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, grams: visibleTotalGrams, status: lit, query, chips: explicit.filters.map(previewChip) })} />
+<PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, grams: visibleTotalGrams, status: lit, query, chips: explicit.filters.map((f) => previewChip(f, data.plans)) })} />
 
 {#snippet cloneButton(coffee: CoffeeRow, icons = false)}
   <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}
@@ -729,7 +729,7 @@
 
 <div class="search-row coffees-search-row" class:editing={editAll}>
   <input class="search-input" placeholder="Search roaster, coffee, origin…" bind:value={explicit.query} />
-  <FilterBar bind:filters={explicit.filters} coffees={source} />
+  <FilterBar bind:filters={explicit.filters} coffees={source} plans={data.plans} />
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
   <button class="button button-secondary" type="button" onclick={reset}>Reset</button>
   {#if data.isAdmin}

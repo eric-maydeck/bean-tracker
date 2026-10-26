@@ -38,7 +38,7 @@
         <span class="name">{r.name}</span>
         {#if r.paused}<span class="badge badge-neutral">Paused</span>{/if}
         <span class="money">{r.perMonth === null ? '—' : `${usd(r.perMonth, whole)}/mo`}<span class="sr-only"> per month</span></span>
-        <span class="bags">{bagsText(r.bags)}</span>
+        {#if r.bags > 0}<a class="bags" href={link(r.href)}>{bagsText(r.bags)}</a>{:else}<span class="bags">{bagsText(r.bags)}</span>{/if}
       </div>
       {#if r.bags > 0}
         {#if r.ppg !== null && max > 0}
@@ -103,6 +103,9 @@
     text-align: right;
     white-space: nowrap;
     color: var(--color-text-muted);
+  }
+  a.bags {
+    text-decoration: underline;
   }
   .track {
     position: relative;

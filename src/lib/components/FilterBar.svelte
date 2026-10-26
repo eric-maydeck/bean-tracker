@@ -2,15 +2,17 @@
   import { labelTip } from '$lib/components/labelTip';
   import { tick } from 'svelte';
   import FilterEditor from './FilterEditor.svelte';
-  import { chipLabel, chipTitle, upsertFilter, type ColumnKey, type Filter } from '$lib/coffeeFilters';
+  import { chipLabel, chipTitle, upsertFilter, type ColumnKey, type Filter, type PlanOption, type PlanValue } from '$lib/coffeeFilters';
   import type { CoffeeWithComputed } from '$lib/server/urgency';
 
   let {
     filters = $bindable(),
-    coffees
+    coffees,
+    plans = []
   }: {
     filters: Filter[];
     coffees: CoffeeWithComputed[]; // lit statuses, for the "Is any of" counts
+    plans?: PlanOption[]; // the Subscription filter's plans
   } = $props();
 
   // 'new' = the "+ Filter" picker; a column key = that chip's editor.
@@ -49,6 +51,11 @@
     filters = value === null ? filters.filter((f) => f.column !== key) : upsertFilter(filters, { column: key, mode: 'bool', value });
   }
 
+  // The Subscription select: applies immediately, like the quick filters.
+  function setPlan(value: PlanValue | null) {
+    filters = value === null ? filters.filter((f) => f.column !== 'subscription') : upsertFilter(filters, { column: 'subscription', mode: 'plan', value });
+  }
+
   function remove(key: ColumnKey) {
     filters = filters.filter((f) => f.column !== key);
     // Only steal focus when this removal is actually closing an open editor
@@ -72,7 +79,7 @@
     onclick={(e) => (open === 'new' ? close() : openEditor('new', e.currentTarget))}>+ Filter</button
   >
   {#if open === 'new'}
-    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} onquickset={setQuickFilter} />
+    <FilterEditor {coffees} {filters} onapply={apply} onclear={remove} onclose={close} onquickset={setQuickFilter} onplanset={setPlan} {plans} />
   {/if}
 </div>
 
@@ -84,17 +91,17 @@
           <button
             type="button"
             class="filter-chip-label"
-            use:labelTip={chipTitle(f)}
+            use:labelTip={chipTitle(f, plans)}
             aria-describedby="filter-chip-desc-{f.column}"
             aria-expanded={open === f.column}
-            onclick={(e) => openEditor(f.column, e.currentTarget)}>{chipLabel(f)}</button
+            onclick={(e) => openEditor(f.column, e.currentTarget)}>{chipLabel(f, plans)}</button
           >
-          <span id="filter-chip-desc-{f.column}" class="sr-only">{chipTitle(f)}</span>
+          <span id="filter-chip-desc-{f.column}" class="sr-only">{chipTitle(f, plans)}</span>
           <button
             type="button"
             class="filter-chip-remove"
             use:labelTip={'Remove filter'}
-            aria-label={`Remove filter: ${chipTitle(f)}`}
+            aria-label={`Remove filter: ${chipTitle(f, plans)}`}
             onclick={() => remove(f.column)}>✕</button
           >
         </span>
@@ -107,6 +114,8 @@
             onclear={remove}
             onclose={close}
             onquickset={setQuickFilter}
+            onplanset={setPlan}
+            {plans}
           />
         {/if}
       </span>

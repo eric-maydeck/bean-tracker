@@ -9,6 +9,8 @@ import { weightedMedian } from './stats';
 import { BAG_MIN_BREWS, single, type Sample } from '$lib/sample';
 import { compareTiles, type Delta } from './overview';
 import { leaderboard, listHref } from './leaderboards';
+import { toParams } from '$lib/coffeeViewState';
+import type { Filter } from '$lib/coffeeFilters';
 import type { Multi } from './insightGenerators';
 import type { RcRow } from '../../../routes/insights/reportCard';
 
@@ -241,7 +243,7 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
   };
 }
 
-export interface PlanRow { id: number; name: string; paused: boolean; perMonth: number | null; bags: number; ppg: number | null; rating: number | null; sample?: Sample }
+export interface PlanRow { id: number; name: string; paused: boolean; perMonth: number | null; bags: number; ppg: number | null; rating: number | null; sample?: Sample; href: string }
 export interface PlanPanel {
   rows: PlanRow[]; oneOffPpg: number | null; oneOffRating: number | null; oneOffSample?: Sample;
   total: { perMonth: number | null; bags: number; ppg: number | null; rating: number | null };
@@ -257,7 +259,11 @@ function plansPanel(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
     return { bags: mine.length, ppg: pricedPpg(mine), rating: g?.mean ?? null, sample: g?.sample };
   };
   const perMonth = (p: Plan) => (p.price === null ? null : p.price / c.size);
-  const rows = c.plans.map((p) => ({ id: p.id, name: p.name, paused: p.paused, perMonth: perMonth(p), ...figures(inP.filter((b) => b.subscriptionId === p.id)) }));
+  // The /coffees list of the plan's bags the count counts: every status, roast dates in the Period.
+  const { start, end } = c.period;
+  const roast: Filter = start === null ? { column: 'roast_date', mode: 'range', op: '<=', a: end, b: '' } : { column: 'roast_date', mode: 'range', op: 'between', a: start, b: end };
+  const href = (id: number) => `/coffees?${toParams({ status: ['all'], filters: [{ column: 'subscription', mode: 'plan', value: id }, roast] })}`;
+  const rows = c.plans.map((p) => ({ id: p.id, name: p.name, paused: p.paused, perMonth: perMonth(p), href: href(p.id), ...figures(inP.filter((b) => b.subscriptionId === p.id)) }));
   const one = figures(inP.filter((b) => b.subscriptionId === null));
   const all = figures(inP.filter((b) => b.subscriptionId !== null));
   const active = c.plans.filter((p) => !p.paused && p.price !== null);

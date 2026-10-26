@@ -2592,6 +2592,18 @@ html {
    equal columns (column buttons and Quick filter segments alike) keep their
    labels on one line down to ~360px wide; grid-auto-rows keeps any extra
    rows the same height. */
+/* The Subscription select: full width, so a long plan label truncates inside it. */
+select.quick-filter-select {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  select.quick-filter-select {
+    min-height: 44px;
+  }
+}
+
 @media (max-width: 640px) {
   .filter-columns,
   .quick-filter-switch {

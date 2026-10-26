@@ -7,6 +7,7 @@ import {
   isComplete,
   upsertFilter,
   chipLabel,
+  isValidFilter,
   chipTitle,
   QUICK_FILTERS,
   quickFilter,
@@ -437,5 +438,24 @@ describe('In Bean Conqueror quick filter', () => {
     expect(chipLabel({ column: 'bc', mode: 'bool', value: true })).toBe('BQ: Yes');
     expect(chipLabel({ column: 'bc', mode: 'bool', value: false })).toBe('BQ: No');
     expect(chipTitle({ column: 'bc', mode: 'bool', value: false })).toBe('Showing coffees not in Bean Conqueror');
+  });
+});
+
+describe('subscription filter', () => {
+  const plan = (value: 'any' | 'none' | number): Filter => ({ column: 'subscription', mode: 'plan', value });
+  const list = [coffee({ id: 1, subscription_id: 7 }), coffee({ id: 2, subscription_id: 8 }), coffee({ id: 3 })];
+  const ids = (v: 'any' | 'none' | number) => applyFilters(list, [plan(v)]).map((c) => c.id);
+  it('any, none, and one plan', () => {
+    expect(ids('any')).toEqual([1, 2]);
+    expect(ids('none')).toEqual([3]);
+    expect(ids(8)).toEqual([2]);
+  });
+  it('validates and labels', () => {
+    expect(isValidFilter(plan(7))).toBe(true);
+    expect(isValidFilter(plan(0))).toBe(false);
+    expect(isValidFilter({ column: 'subscription', mode: 'plan', value: 'x' })).toBe(false);
+    expect(isValidFilter({ column: 'origin', mode: 'plan', value: 'any' })).toBe(false);
+    expect(chipLabel(plan('any'))).toBe('Plan: Any plan');
+    expect(chipLabel(plan(7), [{ id: 7, label: 'Sey · Box' }])).toBe('Plan: Sey · Box');
   });
 });

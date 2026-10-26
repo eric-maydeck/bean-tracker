@@ -180,3 +180,15 @@ describe('litStatuses', () => {
     expect(litStatuses(['open', 'archive'])).toEqual(['open', 'archive']);
   });
 });
+
+describe('subscription param', () => {
+  const st = (value: 'any' | 'none' | number): CoffeeViewState => ({ filters: [{ column: 'subscription', mode: 'plan', value }] });
+  it('round-trips any, none and an id', () => {
+    for (const v of ['any', 'none', 12] as const) expect(roundTrip(st(v))).toEqual(st(v));
+    expect(toParams(st(12)).toString()).toBe('subscription=12');
+  });
+  it('drops junk', () => {
+    expect(fromParams(new URLSearchParams('subscription=bogus')).filters).toEqual([]);
+    expect(fromParams(new URLSearchParams('subscription=0')).filters).toEqual([]);
+  });
+});

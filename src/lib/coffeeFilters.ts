@@ -17,9 +17,10 @@ export type ColumnKey =
   | 'frozen_start_date'
   | 'frozen_end_date'
   | 'rest_window'
-  | 'urgency';
+  | 'urgency'
+  | 'subscription';
 
-export type ColumnKind = 'text' | 'bool' | 'number' | 'date' | 'window';
+export type ColumnKind = 'text' | 'bool' | 'number' | 'date' | 'window' | 'plan';
 
 export interface Column {
   key: ColumnKey;
@@ -44,7 +45,8 @@ export const COLUMNS: readonly Column[] = [
   { key: 'frozen_start_date', label: 'Frozen date', short: 'Frozen on', kind: 'date' },
   { key: 'frozen_end_date', label: 'Unfrozen date', short: 'Thawed', kind: 'date' },
   { key: 'rest_window', label: 'Rest window', short: 'Rest', kind: 'window' },
-  { key: 'urgency', label: 'Urgency', short: 'Urgency', kind: 'number' }
+  { key: 'urgency', label: 'Urgency', short: 'Urgency', kind: 'number' },
+  { key: 'subscription', label: 'Subscription', short: 'Plan', kind: 'plan' }
 ];
 
 export function column(key: ColumnKey): Column {
@@ -109,6 +111,13 @@ function quickFilterSegment(key: QuickFilterKey, value: boolean): QuickFilterSeg
   return quickFilter(key).segments.find((s) => s.value === value)!;
 }
 
+// The Subscription filter's value: any plan, no plan, or one plan by id.
+export type PlanValue = 'any' | 'none' | number;
+export interface PlanOption {
+  id: number;
+  label: string;
+}
+
 export type Op = '>' | '>=' | '=' | '<=' | '<' | 'between';
 export const OPS: readonly Op[] = ['>', '>=', '=', '<=', '<', 'between'];
 export const OP_LABELS: Record<Op, string> = { '>': '>', '>=': '≥', '=': '=', '<=': '≤', '<': '<', between: 'between' };
@@ -129,7 +138,8 @@ export type Filter =
   | { column: ColumnKey; mode: 'bool'; value: boolean }
   | { column: ColumnKey; mode: 'range'; op: Op; a: string; b: string }
   | { column: ColumnKey; mode: 'includes'; a: string }
-  | { column: ColumnKey; mode: 'overlaps'; a: string; b: string };
+  | { column: ColumnKey; mode: 'overlaps'; a: string; b: string }
+  | { column: ColumnKey; mode: 'plan'; value: PlanValue };
 
 type TextKey = 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level';
 type DateKey = 'roast_date' | 'frozen_start_date' | 'frozen_end_date';
@@ -188,6 +198,8 @@ function matches(c: CoffeeWithComputed, f: Filter): boolean {
     }
     case 'bool':
       return boolValue(c, f.column) === f.value;
+    case 'plan':
+      return f.value === 'any' ? c.subscription_id != null : f.value === 'none' ? c.subscription_id == null : c.subscription_id === f.value;
     case 'range': {
       if (column(f.column).kind === 'date') {
         const v = c[f.column as DateKey];
@@ -252,6 +264,7 @@ export function isComplete(f: Filter): boolean {
     case 'contains':
       return f.text.trim() !== '';
     case 'bool':
+    case 'plan':
       return true;
     case 'range':
       return f.a !== '' && (f.op !== 'between' || f.b !== '');
@@ -308,10 +321,17 @@ function num(key: ColumnKey, typed: string): string {
 const valueNames = (values: (string | null)[]) => values.map((v) => v ?? '(none)');
 
 // A preview line names a quick filter by its value alone ("Not frozen"); the value says it all.
-export const previewChip = (f: Filter): string =>
-  f.mode === 'bool' ? quickFilterSegment(f.column as QuickFilterKey, f.value).label : chipLabel(f);
+export const previewChip = (f: Filter, plans?: readonly PlanOption[]): string =>
+  f.mode === 'bool' ? quickFilterSegment(f.column as QuickFilterKey, f.value).label : chipLabel(f, plans);
 
-export function chipLabel(f: Filter): string {
+export const PLAN_ANY = 'Any plan';
+export const PLAN_NONE = 'No plan';
+// `plans` names a plan by id; an id with no match (a deleted plan) reads "Plan".
+export const planName = (v: PlanValue, plans: readonly PlanOption[] = []): string =>
+  v === 'any' ? PLAN_ANY : v === 'none' ? PLAN_NONE : (plans.find((p) => p.id === v)?.label ?? 'Plan');
+
+export function chipLabel(f: Filter, plans?: readonly PlanOption[]): string {
+  if (f.mode === 'plan') return `${column(f.column).short}: ${planName(f.value, plans)}`;
   if (f.mode === 'bool') {
     const qf = quickFilter(f.column as QuickFilterKey);
     return `${qf.chipLabel ?? qf.switchLabel}: ${quickFilterSegment(f.column as QuickFilterKey, f.value).label}`;
@@ -319,7 +339,7 @@ export function chipLabel(f: Filter): string {
   return `${column(f.column).short}: ${chipValue(f)}`;
 }
 
-function chipValue(f: Exclude<Filter, { mode: 'bool' }>): string {
+function chipValue(f: Exclude<Filter, { mode: 'bool' | 'plan' }>): string {
   switch (f.mode) {
     case 'any': {
       const names = valueNames(f.values);
@@ -349,7 +369,8 @@ const NUMBER_OP_WORDS: Record<Op, string> = {
   between: 'between'
 };
 
-export function chipTitle(f: Filter): string {
+export function chipTitle(f: Filter, plans?: readonly PlanOption[]): string {
+  if (f.mode === 'plan') return `Subscription: ${planName(f.value, plans)}`;
   if (f.mode === 'bool') return quickFilterSegment(f.column as QuickFilterKey, f.value).chipTitle!;
   const name = column(f.column).label;
   switch (f.mode) {
@@ -408,6 +429,8 @@ export function isValidFilter(f: unknown): f is Filter {
       return kind === 'window' && typeof o.a === 'string';
     case 'overlaps':
       return kind === 'window' && typeof o.a === 'string' && typeof o.b === 'string';
+    case 'plan':
+      return kind === 'plan' && (o.value === 'any' || o.value === 'none' || (Number.isInteger(o.value) && (o.value as number) > 0));
     default:
       return false;
   }

@@ -289,6 +289,10 @@ describe('spendTab plans', () => {
     expect(old).toMatchObject({ paused: true, perMonth: 22, bags: 0, ppg: null, rating: null });
     expect(club).toMatchObject({ perMonth: null, bags: 0 });
   });
+  it('a row links to its /coffees list: every status, roast dates in the Period', () => {
+    expect(run().rows[0].href).toBe('/coffees?status=all&subscription=1&roast_date=between%3A2026-09-01..2026-09-30');
+    expect(run({ period: { start: null, end: '2026-10-26' } }).rows[0].href).toBe('/coffees?status=all&subscription=1&roast_date=%3C%3D2026-10-26');
+  });
   it('a plan counts its linked bags in the Period; one-off excludes them', () => {
     const p = run();
     expect(p.rows[0]).toMatchObject({ bags: 2, perMonth: 60 });
