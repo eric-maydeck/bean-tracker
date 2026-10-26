@@ -377,7 +377,7 @@ export async function expectTipsFormatted(page: Page) {
       // passes. Chart tips only: a lab or text tip's count row names its noun ("Roasters 5", "Plain average 7.80").
       for (const dd of t.matches('.chart-container .cell-tip') ? t.querySelectorAll('.tip-rows dd') : []) {
         const v = dd.textContent!.trim(), label = dd.previousElementSibling?.textContent ?? '';
-        if (/^[-+−]?[\d.,]+$/.test(v) && !/\b(bags?|brews?|grams?|coffees?|ratings?|days?|count|cups?)\b/i.test(label)) out.push(`${id}: bare number "${label} ${v}"`);
+        if (/^[-+−]?[\d.,]+$/.test(v) && !/\b(bags?|brews?|grams?|coffees?|ratings?|roasters?|days?|count|cups?)\b/i.test(label)) out.push(`${id}: bare number "${label} ${v}"`);
       }
     } else {
       if (!first?.classList.contains('tip-title') || !first.textContent?.trim()) out.push(`${id}: no bold title first`);
