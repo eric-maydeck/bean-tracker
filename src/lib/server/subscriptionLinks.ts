@@ -29,5 +29,6 @@ export function applySubscriptionLinks(db: DatabaseSync, links: readonly Subscri
     db.exec('ROLLBACK');
     throw e;
   }
+  console.log(`subscription links (${marker}): applied ${set}, skipped ${links.length - set}`);
   return set;
 }
