@@ -221,13 +221,12 @@ export interface PlanPanel {
 }
 
 // Every plan (paused too) with the figures of its linked bags bought in the Period, against the one-off bags.
-// Rating: all counted rated brews of those bags in the Period, bag-weighted (ratedGroups raw). Totals: $/month over active plans only.
+// Rating: all counted rated brews of those bags bought in the Period (any brew date; `scored` is not range-limited), bag-weighted (ratedGroups raw). Totals: $/month over active plans only.
 function plansPanel(scored: readonly BrewFact[], bags: readonly BagFact[], c: SpendCtx): PlanPanel {
   const inP = bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, c.period));
-  const brews = scored.filter((b) => inPeriod(b.localDate, c.period));
   const figures = (mine: readonly BagFact[]) => {
     const ids = new Set(mine.map((b) => b.id));
-    const g = ratedGroups(brews.filter((b) => b.coffeeId !== null && ids.has(b.coffeeId)), () => 'x', c.ratings, 'raw')[0];
+    const g = ratedGroups(scored.filter((b) => b.coffeeId !== null && ids.has(b.coffeeId)), () => 'x', c.ratings, 'raw')[0];
     return { bags: mine.length / c.size, ppg: pricedPpg(mine), rating: g?.mean ?? null, sample: g?.sample };
   };
   const perMonth = (p: Plan) => (p.price === null ? null : p.price / c.size);

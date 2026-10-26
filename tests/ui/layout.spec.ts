@@ -2413,6 +2413,7 @@ export const STATES: State[] = [
       await expect(panel.locator('li.total')).toBeVisible();
       await expect(panel.locator('.badge', { hasText: 'Paused' })).toHaveCount(1);
       expect(await panel.locator('.bar').count()).toBeGreaterThan(0);
+      expect(await panel.locator('.ref').count()).toBeGreaterThan(0);
       // A paused plan with no bags shows its price only.
       await expect(panel.locator('li', { hasText: 'Paused' }).locator('.track')).toHaveCount(0);
       // Badges and figures never wrap; the page never scrolls sideways.

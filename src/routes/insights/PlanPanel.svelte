@@ -11,14 +11,16 @@
   const max = $derived(Math.max(0, ...p.rows.map((r) => r.ppg ?? 0), p.oneOffPpg ?? 0));
   const whole = $derived(wholeUsd([...p.rows.map((r) => r.perMonth), p.total.perMonth]));
   const bagsText = (n: number) => `${countText(n)} bag${n === 1 ? '' : 's'}`;
-  // $/g: lower is better.
-  const ppgInk = (v: number, one: number) => (Math.abs(v - one) < 0.0005 ? '' : v < one ? 'ink-better' : 'ink-worse');
+  // $/g: lower is better; a gap under 2% of the one-off price is plain ink.
+  const PPG_NOISE = 0.02;
+  const ppgInk = (v: number, one: number) => (Math.abs(v - one) < PPG_NOISE * one ? '' : v < one ? 'ink-better' : 'ink-worse');
+  const ppgGap = (v: number, one: number) => `${v < one ? '−' : '+'}${usd(Math.abs(v - one))}`;
 </script>
 
 {#snippet vs(r: { ppg: number | null; rating: number | null; sample?: import('$lib/sample').Sample })}
   <span class="vs">
     {#if r.ppg !== null}
-      <span>{usd(r.ppg)}/g{#if p.oneOffPpg !== null} <span class={ppgInk(r.ppg, p.oneOffPpg)}>vs {usd(p.oneOffPpg)}/g one-off</span>{/if}</span>
+      <span>{usd(r.ppg)}/g{#if p.oneOffPpg !== null} <span class={ppgInk(r.ppg, p.oneOffPpg)}>vs {usd(p.oneOffPpg)}/g one-off ({ppgGap(r.ppg, p.oneOffPpg)})</span>{/if}</span>
     {/if}
     {#if r.rating !== null}
       <span class:small-sample={r.sample?.small}>{r.rating.toFixed(1)}{#if p.oneOffRating !== null} <span class={r.sample?.small ? '' : deltaInk(r.rating - p.oneOffRating)}>vs {p.oneOffRating.toFixed(1)} one-off ({signed(r.rating - p.oneOffRating, 1)})</span>{/if}</span>

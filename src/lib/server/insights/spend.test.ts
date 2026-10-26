@@ -271,6 +271,11 @@ describe('spendTab plans', () => {
     expect(p.oneOffPpg).toBeCloseTo(0.1);
     expect(p.oneOffRating).toBeCloseTo(7);
   });
+  it('a Period bag\'s brews count on any date, even after the Period', () => {
+    const late = [{ ...rate(1, 9), localDate: '2026-10-20' }, { ...rate(1, 9), id: 99, localDate: '2026-10-21' }];
+    const p = spendTab(late, late, fx, ctx()).plans;
+    expect(p.rows[0].rating).toBeCloseTo(9);
+  });
   it('per person halves $/month and bags; total $/month skips the paused plan', () => {
     const p = run({ size: 2 });
     expect([p.rows[0].perMonth, p.rows[0].bags, p.total.perMonth]).toEqual([30, 1, 30]);
