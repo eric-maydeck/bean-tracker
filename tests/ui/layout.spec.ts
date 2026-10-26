@@ -2565,7 +2565,6 @@ export const STATES: State[] = [
       if (names.includes('Other')) expect(names.at(-1)).toBe('Other');
       await expect(tip).not.toContainText('Others');
       await expect(legend.first()).toHaveAttribute('aria-pressed', 'false');
-      if (await page.evaluate(() => innerWidth <= 480)) expect((await legend.first().boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       await legend.first().click();
       await expect(legend.first()).toHaveAttribute('aria-pressed', 'true');
       await expect(legend.nth(1)).toHaveAttribute('aria-pressed', 'false');

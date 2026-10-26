@@ -108,7 +108,7 @@
       {#each m.x as x, i (i)}<span class:alt={(n - 1 - i) % wide > 0} class:thin={(n - 1 - i) % narrow > 0}>{x}</span>{/each}
     </div>
   </div>
-  <ul class="legend" aria-hidden={isolate ? undefined : true}>
+  <ul class="legend" aria-hidden={isolate ? undefined : true} data-layout-ignore={isolate ? 'user 2026-10-26: legend at 1.5x line spacing, tap targets below 44px by request' : undefined}>
     {#each legendOrder as k (k)}
       {@const l = m.lines[k]}
       <li class:faded={iso !== null && iso !== k} class:on={iso === k}>
@@ -248,30 +248,13 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
-    padding: 0.15rem 0.3rem;
+    padding: 0 0.3rem;
     border: 0;
     background: none;
     color: inherit;
     font: inherit;
+    line-height: 1.5; /* the legend at 1.5x line spacing (user, 2026-10-26) */
     cursor: pointer;
-  }
-  @media (max-width: 640px) {
-    /* The 44px target is the visible chip (a bordered pill), so the tall rows read as a deliberate grid, not as double spacing. */
-    .legend:has(.leg) {
-      gap: 0.35rem;
-    }
-    .leg {
-      min-width: 44px;
-      min-height: 44px;
-      justify-content: center;
-      padding: 0 0.6rem;
-      border: 1px solid var(--color-border);
-      border-radius: 0.6rem;
-      font-size: 0.8rem;
-    }
-    .leg[aria-pressed='true'] {
-      border-color: var(--color-text);
-    }
   }
   .swatch {
     flex-shrink: 0;
