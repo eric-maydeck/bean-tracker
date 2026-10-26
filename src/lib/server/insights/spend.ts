@@ -180,9 +180,9 @@ export interface Discovery {
   // `dollars[k][i]`: line k's $ in bucket i (÷ size); `other[i]`: what bucket i's Other holds, [name, %, $].
   share: (Multi & { other: [string, number, number][][]; dollars: number[][] }) | null; repeatRate: number | null; roasters: number;
 }
-// Share of spend names a roaster with at least this share of the Period's spend and a bag in 2+ buckets, up to the
-// categorical palette's 14 slots (ui-rules 42); everything else is Other.
-const SHARE_MIN = 0.05, SHARE_SLOTS = 14;
+// Share of spend names the roasters with a bag in 2+ buckets, biggest Period spend first, up to the categorical
+// palette's 14 slots (ui-rules 42); everything else is Other.
+const SHARE_SLOTS = 14;
 
 // Integer percents of `vals` that add up to exactly 100 (largest remainder); all zeros when there is nothing.
 function percents(vals: readonly number[]): number[] {
@@ -220,7 +220,7 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
     return m;
   });
   const spendTotal = [...spend.values()].reduce((a, b) => a + b, 0);
-  const top = [...spend].filter(([r, v]) => v >= SHARE_MIN * spendTotal && per.filter((m) => (m.get(r) ?? 0) > 0).length >= 2)
+  const top = [...spend].filter(([r]) => per.filter((m) => (m.get(r) ?? 0) > 0).length >= 2)
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, SHARE_SLOTS).map(([r]) => r);
   const rest = [...spend.keys()].filter((r) => !top.includes(r));
   const names = rest.length ? [...top, 'Other'] : top;
