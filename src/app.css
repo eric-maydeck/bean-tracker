@@ -3060,7 +3060,7 @@ button .sample-chip {
 /* Tile caption block (ui-rules 55; CapItem.svelte, capItems.ts): below the title, lines centered. Items are inline-blocks separated
    by a collapsible space whose word-spacing (--cap-ws, measured in capItems.ts; 0.6em until then) makes it as wide as " · ", so a
    break removes it. The dot is the item's ::before, real " · " text hanging in that gap; it is hidden until the script has placed
-   the list (data-ready) and for an item that starts a line (data-start). */
+   the list (data-ready) and for an item that starts a line (data-start), which includes the list's first item. */
 .cap-block {
   display: block;
   max-width: 100%;
@@ -3077,7 +3077,7 @@ button .sample-chip {
   max-width: 100%;
   text-decoration: inherit; /* an inline-block would drop the tip's dotted underline */
 }
-.cap-item:not(:first-child)::before {
+.cap-item::before {
   content: ' · ';
   white-space: pre;
   position: absolute;
@@ -3088,8 +3088,9 @@ button .sample-chip {
 .cap-item[data-start]::before {
   visibility: hidden;
 }
-/* A tile label with a caption block: the title keeps its two-line clamp, the block is its own line below. */
+/* A tile label with a caption block: the title and the block are box items, centered, the block on its own line below the title
+   (the label keeps its box type, so the title does not move; the two-line clamp is off so the block is not cut). */
 .stat-label.has-cap {
-  -webkit-box-align: center; /* the title and the caption block are box items, centered; the label keeps its box type */
+  -webkit-box-align: center;
   -webkit-line-clamp: unset;
 }
