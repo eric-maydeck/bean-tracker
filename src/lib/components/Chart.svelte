@@ -55,6 +55,7 @@
     yMin,
     samples,
     format,
+    tickFormat,
     tipFormat,
     titles,
     integer = false,
@@ -91,6 +92,8 @@
     yMin?: number;
     // The tooltip's value text, and horizontal bars' value labels.
     format?: (v: number) => string;
+    // The value axis's tick text of a vertical bar or a line chart (money: "$1,200", ui-rules 46); `unit` applies when unset.
+    tickFormat?: (v: number) => string;
     // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
     // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
     // (ui-rules 36).
@@ -426,7 +429,7 @@
                 stacked,
                 beginAtZero: yMin === undefined,
                 min: yMin,
-                ticks: { color: textColor, ...(integer && { precision: 0 }), ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
+                ticks: { color: textColor, ...(integer && { precision: 0 }), ...(unit && { callback: (v: string | number) => `${v}${unit}` }), ...(tickFormat && { callback: (v: string | number) => tickFormat(Number(v)) }) },
                 grid: { color: gridColor }
               }
             }
@@ -468,7 +471,8 @@
                     ticks: {
                       color: textColor,
                       ...(integer && { precision: 0 }),
-                      ...(unit && { callback: (value: string | number) => `${value}${unit}` })
+                      ...(unit && { callback: (value: string | number) => `${value}${unit}` }),
+                      ...(tickFormat && { callback: (value: string | number) => tickFormat(Number(value)) })
                     },
                     grid: { color: gridColor }
                   }
@@ -487,6 +491,7 @@
   $effect(() => {
     void format;
     void tipFormat;
+    void tickFormat;
     const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band]);
     if (chart && sig === lastSig) return;
     lastSig = sig;

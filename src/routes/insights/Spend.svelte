@@ -72,10 +72,10 @@
     {#if ppg && noPrice}
       <p class="hl-empty">{emptyLine('No priced bags in this period.')}</p>
     {:else if ppg}
-      <Chart type="line" labels={sr.labels} values={sr.ppg.all} datasetLabel="All" legend dashGaps format={perG} tipFormat={perGTip} titles={sr.titles}
+      <Chart type="line" labels={sr.labels} values={sr.ppg.all} datasetLabel="All" legend dashGaps format={perG} tickFormat={(v) => usd(v)} tipFormat={perGTip} titles={sr.titles}
         series={[{ label: 'Subscription', values: sr.ppg.sub }, { label: 'One-off', values: sr.ppg.oneOff }, ...ppgCompare]} height={260} />
     {:else}
-      <Chart type="bar" vertical stacked labels={sr.labels} values={sr.oneOff} datasetLabel="One-off" legend format={money} tipFormat={(v) => usd(v, false)} titles={sr.titles}
+      <Chart type="bar" vertical stacked labels={sr.labels} values={sr.oneOff} datasetLabel="One-off" legend format={money} tickFormat={money} tipFormat={(v) => usd(v, false)} titles={sr.titles}
         series={[{ label: 'Subscription', values: sr.sub }, ...spendCompare]} height={260} />
     {/if}
     <p class="chart-note" data-switched-note>{note}<br>{partial}</p>
