@@ -6,7 +6,7 @@
   const shelf = (t: OnHandTab) => t.tiles.bagsWaiting + t.tiles.frozenBags > 0 || Object.values(t.freshness).some((g) => typeof g === 'object' && g && g.count > 0);
   // Each panel task adds its section here.
   export function jumpLinks(t: OnHandTab): JumpLink[] {
-    return [['onhand-runway', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile']];
+    return [['onhand-runway', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
   }
 </script>
 
@@ -21,11 +21,11 @@
   import Chart from '$lib/components/Chart.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { seriesToken } from '$lib/components/chartColor';
-  import type { InsightsUrlState, Unit } from '$lib/insightsUrl';
+  import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '$lib/insightsUrl';
   import type { Tip } from '$lib/components/TipBody.svelte';
 
-  let { t, tiles, link, periodLabel, allTime, placeTip, unit, choose }: {
-    unit: Unit; choose: (c: InsightsUrlState) => void;
+  let { t, tiles, link, periodLabel, allTime, placeTip, unit, waitBy, choose }: {
+    unit: Unit; waitBy?: WaitBy; choose: (c: InsightsUrlState) => void;
     t: OnHandTab; tiles: Snippet; link: (href: string) => string; periodLabel: string; allTime: boolean; placeTip: (e: ToggleEvent) => void;
   } = $props();
   const emptyLine = useEmptyLine();
@@ -49,6 +49,10 @@
     const total = AGE_SERIES.reduce((a, [k]) => a + split[k][i], 0);
     return { title: `${t.age.labels[i]} days since roast`, rows: [...rows, ['Total', ageFmt(total)]], marks: [...AGE_SERIES.map((_, j) => ({ color: `var(${seriesToken(j, 4)}-ink)` })), null] };
   });
+  // What's waiting: backlog grams grouped by roaster, origin, process or roast level.
+  const by = $derived(waitBy ?? 'roaster');
+  const rows = $derived(t.waiting.by[by]);
+  const BY_LABEL: Record<WaitBy, string> = { roaster: 'Roaster', origin: 'Origin', process: 'Process', roast: 'Roast' };
   const empty = $derived(!shelf(t) && t.freshness.unknown === 0);
 </script>
 
@@ -114,6 +118,18 @@
       series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_SERIES.map((_, j) => `var(${seriesToken(j, 4)})`)} height={260} />
     <p class="chart-note">Waiting bags by days since roast, minus freezer days</p>
     <p class="chart-note">On hand over time: <a href={link('/insights?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
+  </section>
+{/if}
+
+{#if t.tiles.bagsWaiting > 0}
+  <section class="chart-panel" data-section="onhand-waiting">
+    <LabHead id="onhand-waiting" title="What's waiting" {placeTip}
+      help={['Grams in unopened (backlog) bags, grouped.', 'The number in brackets is the bags.', 'Biggest first: the top 10, then Other.', 'Per person divides grams, not bags.']}>
+      <ChartToggle label="Group by" options={WAIT_BYS.map((k) => [k, BY_LABEL[k]] as const)} value={by} pick={(v) => choose({ waitBy: v === 'roaster' ? undefined : v })} />
+    </LabHead>
+    <Chart type="bar" labels={rows.map((r) => `${r.label} (${r.bags})`)} values={rows.map((r) => r.grams)} datasetLabel="Grams waiting" format={formatGrams}
+      tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} height={rows.length * 32 + 24} />
+    <p class="chart-note">Subscription {formatGrams(t.waiting.sub)} · One-off {formatGrams(t.waiting.oneOff)}</p>
   </section>
 {/if}
 

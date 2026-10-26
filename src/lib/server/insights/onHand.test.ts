@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ageProfile, freshness, freshBag, onHandTab, type FreshBag } from './onHand';
+import { ageProfile, whatsWaiting, freshness, freshBag, onHandTab, type FreshBag } from './onHand';
 import type { BagFact, BrewFact } from './facts';
 
 const today = '2026-09-25';
@@ -123,5 +123,27 @@ describe('ageProfile', () => {
     const a = age([fact({ id: 1, purchaseDate: at(40), frozenStart: at(30) }), fact({ id: 2, purchaseDate: null })]);
     expect(a.bags.noWindow[0]).toBe(1); // aged 10 days
     expect(a.bags.noWindow.reduce((x, y) => x + y)).toBe(1);
+  });
+});
+
+describe('whatsWaiting', () => {
+  const twelve = Array.from({ length: 12 }, (_, i) => fact({ id: i + 1, roaster: `R${String(i).padStart(2, '0')}`, amountG: 100 + i * 10, subscriptionId: i < 3 ? 7 : null }));
+  const w = whatsWaiting([...twelve, fact({ id: 99, status: 'open' })], new Map(), 1);
+  const grams = twelve.reduce((s, b) => s + b.amountG!, 0);
+  it('12 roasters: top 10 plus Other with the remainder', () => {
+    expect(w.by.roaster).toHaveLength(11);
+    expect(w.by.roaster[0].label).toBe('R11');
+    expect(w.by.roaster[10]).toEqual({ label: 'Other', grams: 100 + 110, bags: 2 });
+  });
+  it('every grouping sums to the grams waiting, as do subscription + one-off', () => {
+    for (const k of ['roaster', 'origin', 'process', 'roast'] as const) expect(w.by[k].reduce((s, r) => s + r.grams, 0)).toBe(grams);
+    expect(w.sub + w.oneOff).toBe(grams);
+    expect(w.sub).toBe(100 + 110 + 120);
+  });
+  it('missing origin and roast are Unknown, N/A origin too; grams halve per person, bag counts do not', () => {
+    const bags = [fact({ id: 1, origin: 'N/A', roastLevel: null }), fact({ id: 2, origin: 'Kenya', roastLevel: 'Light' })];
+    const a = whatsWaiting(bags, new Map(), 2);
+    expect(a.by.origin.map((r) => r.label).sort()).toEqual(['Kenya', 'Unknown']);
+    expect(a.by.roast.find((r) => r.label === 'Unknown')).toEqual({ label: 'Unknown', grams: 125, bags: 1 });
   });
 });

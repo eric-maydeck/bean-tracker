@@ -2764,7 +2764,7 @@ export const STATES: State[] = [
       await panel.scrollIntoViewIfNeeded();
       await panel.getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags', exact: true }).click();
       await expect(page).toHaveURL(/unit=bags/);
-      await expect(page.locator('canvas')).toHaveCount(1);
+      await expect(panel.locator('canvas')).toHaveCount(1);
       const c = panel.locator('canvas');
       const b = (await c.boundingBox())!;
       const tip = page.locator('.chart-container .cell-tip:popover-open');
@@ -2777,6 +2777,28 @@ export const STATES: State[] = [
       await expectDataTip(tip);
       await panel.getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Grams', exact: true }).click();
       await expect(page).not.toHaveURL(/unit=bags/);
+    }
+  },
+  {
+    name: 'insights-onhand-waiting', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#onhand-waiting)');
+      await panel.scrollIntoViewIfNeeded();
+      const labels = () => panel.locator('canvas').evaluate((c) => (c as HTMLCanvasElement).toDataURL()); // the drawn labels change with the grouping
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      const by = panel.getByRole('group', { name: 'Group by' });
+      await expect(by.getByRole('button', { name: 'Roaster', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      const before = await labels();
+      await by.getByRole('button', { name: 'Origin', exact: true }).click();
+      await expect(page).toHaveURL(/waitBy=origin/);
+      await expect(by.getByRole('button', { name: 'Origin', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect.poll(labels).not.toBe(before);
+      expect(fetched).toEqual([]);
+      await expect(panel.locator('.chart-note').first()).toHaveText(/^Subscription .+ · One-off /);
+      await by.getByRole('button', { name: 'Roaster', exact: true }).click();
+      await expect(page).not.toHaveURL(/waitBy/);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },

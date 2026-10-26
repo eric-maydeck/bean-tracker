@@ -2,6 +2,8 @@ import { computeDaysSinceRoast, computeDrinkAfter, computeUrgencyRating, diffDay
 import { consumption, gramsOnHand, loggedGrams, remaining } from './overview';
 import { WAIT_BUCKETS, waitBucket, windowState, type BagFact, type BrewFact } from './facts';
 import type { Period } from './time';
+import { country } from './leaderboards';
+import { groupBy } from './records';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
 export interface FreshGroup { count: number; grams: number; bags: { name: string; roaster: string; slug: string | null }[] }
@@ -42,8 +44,30 @@ export type OnHandTiles = {
   frozenBags: number; frozenGrams: number; avgBagCost: number | null;
 };
 export interface Runway { days: number | null; clearBy: string | null; perDay: number | null }
+export type WaitRow = { label: string; grams: number; bags: number };
+export interface Waiting { by: Record<'roaster' | 'origin' | 'process' | 'roast', WaitRow[]>; sub: number; oneOff: number }
+const TOP = 10;
+
+// Backlog grams on the shelf grouped four ways: biggest first, the top 10 then Other. A missing value is "Unknown".
+// Grams divide per person; the bag counts beside them don't. Sub + one-off add up to the grams waiting.
+export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, number>, size: number): Waiting {
+  const rows = bags.filter((b) => b.status === 'backlog').map((b) => ({ b, g: remaining(b, logged) / size }));
+  const by = (key: (b: BagFact) => string | null): WaitRow[] => {
+    const all = [...groupBy(rows, (r) => key(r.b) ?? 'Unknown')]
+      .map(([label, rs]) => ({ label, grams: rs.reduce((s, r) => s + r.g, 0), bags: rs.length }))
+      .sort((a, b) => b.grams - a.grams || b.bags - a.bags || a.label.localeCompare(b.label));
+    const rest = all.slice(TOP);
+    return rest.length ? [...all.slice(0, TOP), { label: 'Other', grams: rest.reduce((s, r) => s + r.grams, 0), bags: rest.reduce((s, r) => s + r.bags, 0) }] : all;
+  };
+  const sub = rows.reduce((s, r) => s + (r.b.subscriptionId !== null ? r.g : 0), 0);
+  return {
+    by: { roaster: by((b) => b.roaster), origin: by((b) => country(b.origin)), process: by((b) => b.processGroup), roast: by((b) => b.roastLevel) },
+    sub, oneOff: rows.reduce((s, r) => s + r.g, 0) - sub
+  };
+}
+
 export type AgeSplit = { before: number[]; inside: number[]; past: number[]; noWindow: number[] };
-export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; freshness: Freshness; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit } }
+export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit } }
 
 // Waiting (backlog) bags by freezer-net days since roast, split by where that age sits against the roaster's rest
 // window. Bags are counted whole (shared in the household); grams divide per person.
@@ -95,6 +119,7 @@ export function onHandTab(
     },
     runway: run(c.period),
     runwayAll: run({ start: null, end: c.today }),
+    waiting: whatsWaiting(bags, logged, c.size),
     age: ageProfile(waiting, logged, c.today, c.size),
     freshness: freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today)
   };

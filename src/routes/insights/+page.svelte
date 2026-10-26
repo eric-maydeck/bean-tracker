@@ -906,7 +906,7 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else if s.tab === 'onhand' && data.onHand}
-  <OnHand t={data.onHand} {link} {periodLabel} allTime={s.range === 'all'} {placeTip} unit={s.unit} {choose}>
+  <OnHand t={data.onHand} {link} {periodLabel} allTime={s.range === 'all'} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
     {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
   </OnHand>
 {:else if s.tab === 'spend' && data.spend}

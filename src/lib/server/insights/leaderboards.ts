@@ -31,7 +31,7 @@ export interface BoardRow {
 }
 
 // "N/A" is how a blend/unknown origin was typed; it's no country.
-const country = (o: string | null) => (o && o.trim() && o.trim().toUpperCase() !== 'N/A' ? o : null);
+export const country = (o: string | null) => (o && o.trim() && o.trim().toUpperCase() !== 'N/A' ? o : null);
 
 // What a brew is grouped by on each board (null = not on that board).
 export const BREW_KEY: Record<Board, (b: BrewFact) => string | null> = {
