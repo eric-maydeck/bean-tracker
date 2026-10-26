@@ -2038,10 +2038,10 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await page.getByRole('button', { name: 'Bean Conqueror', exact: true }).click();
       await expect(page).toHaveURL(/people=person/);
-      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews · per person', { useInnerText: true, ignoreCase: true });
+      await expect(page.locator('.stat-label', { hasText: 'Total brews' })).toHaveText('Total brews per person', { useInnerText: true, ignoreCase: true });
       await expect(page.locator('.stat-label', { hasText: 'Average rating' })).toHaveText('Average rating');
       await expect(page.locator('.stat-label', { hasText: 'Total beans' })).toHaveText('Total beans');
-      await expect(page.getByRole('heading', { name: 'Brews per day · per person' })).toBeVisible();
+      await expect(page.locator('h2', { hasText: /Brews per day\s+per person/i })).toBeVisible();
       await expect(page.locator('.stat-item', { hasText: 'Total brews' }).locator('.stat-value')).toHaveText(/^\d+(\.\d)?$/);
     }
   },
@@ -2103,7 +2103,7 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/range=1m/);
       await expect(page).toHaveURL(/people=person/);
       await expect(panel.locator('.stat-label')).toHaveText([
-        'Time to clear · per person', 'Per day · per person', 'Per week · per person', 'Per month · per person'
+        'Time to clear per person', 'Per day per person', 'Per week per person', 'Per month per person'
       ], { useInnerText: true, ignoreCase: true });
       await expect(page.locator('.stat-label', { hasText: 'To clear' }).first()).toHaveText('To clear per person', { useInnerText: true, ignoreCase: true });
     }
@@ -2908,6 +2908,19 @@ export const STATES: State[] = [
         await page.goto(`/insights?tab=${tab}&range=3m&people=person`);
         await expect(page.locator('.stat-item .mode-tip-button', { hasText: 'per person' }).first()).toBeVisible();
         expect(await tops(), tab).toEqual(before);
+        await expectNoEdgeDelimiters(page);
+      }
+    }
+  },
+  // Tile captions never start or end a line with a delimiter (ui-rules 55), at every width: Insights, Records and /stats tiles.
+  {
+    name: 'insights-tile-captions', path: () => '/insights?tab=overview&range=3m&people=person&dial=all',
+    act: async (page) => {
+      await expectNoEdgeDelimiters(page);
+      for (const url of ['/insights?tab=onhand&range=3m&people=person', '/insights?tab=spend&range=3m&people=person', '/insights?tab=consumption&range=3m&people=person', '/insights?tab=habits&range=3m&people=person', '/insights?tab=records&range=3m&people=person&dial=all', '/stats?people=person']) {
+        await page.goto(url);
+        await expect(page.locator('.stat-label').first()).toBeVisible();
+        await expectNoEdgeDelimiters(page);
       }
     }
   },
@@ -3445,7 +3458,7 @@ export const STATES: State[] = [
       await brews.last().getByRole('button', { name: 'All brews', exact: true }).click();
       await expect(page).toHaveURL(/dial=all/);
       for (const g of await brews.all()) await expect(g.getByRole('button', { name: 'All brews', exact: true })).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings, All brews', 'All ratings, All brews']);
+      await expect(page.locator('.mode-tip-button')).toHaveText(['All ratings All brews', 'All ratings All brews']);
     }
   },
   ...(['leaderboards', 'habits&measure=rating', 'records', 'sweetspots', 'brewing', 'water', 'gear'] as const).map((t) => ({
@@ -3704,10 +3717,10 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/people=person/);
       await expect(people.getByRole('button', { name: 'Per person', exact: true })).toHaveAttribute('aria-pressed', 'true');
       const tile = (label: RegExp) => page.locator('.stat-item').filter({ has: page.locator('.stat-label', { hasText: label }) });
-      await expect(tile(/^Brews · per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
-      await expect(tile(/^Rated · (Calibrated|All) ratings · per person$/)).toHaveCount(1);
+      await expect(tile(/^Brews per person$/).locator('.stat-value')).toHaveText(/^(\d\.\d|\d{2,}[\d,]*)$/);
+      await expect(tile(/^Rated (Calibrated|All) ratings per person$/)).toHaveCount(1);
       await expect(tile(/^Avg dose$/)).toHaveCount(1);
-      await tile(/^Grams · per person$/).getByRole('button', { name: 'per person' }).click();
+      await tile(/^Grams per person$/).getByRole('button', { name: 'per person' }).click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('even split');
     }
   },
@@ -5508,7 +5521,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByLabel('Grind for:')).toHaveValue('zp6-special');
       const name = await page.getByLabel('Grind for:').locator('option:checked').innerText();
-      await expect(page.locator('#spot-grind .hl-caption')).toContainText(`Grind · ${name}`); // only this card follows the grinder
+      await expect(page.locator('#spot-grind .hl-caption')).toContainText(`Grind ${name}`); // only this card follows the grinder
       await expect(page.locator('#spot-temp .hl-caption')).not.toContainText(name);
       await expectGridRowsFull(page, '.spot-grid');
     } },
@@ -8582,6 +8595,53 @@ async function expectNoHoles(card: Locator, max = 0.25) {
 }
 
 // Hovers a Chart.js canvas on its marks until its tip opens; returns the tip.
+// No visible line of a tile title or caption starts or ends with "," or "·" (ui-rules 55). The caption items' dots are
+// generated (`.cap-item::before`): one is a problem when it is not hidden and its item starts a line (no other label text
+// sits left of the item on its first line). Literal delimiters in the text are checked too.
+async function expectNoEdgeDelimiters(page: Page) {
+  const find = () => page.locator('.stat-label').evaluateAll((labels) => labels.flatMap((label) => {
+    const chars: { ch: string; y: number; x: number; node: Node }[] = [];
+    const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+      const el = n.parentElement!;
+      if (getComputedStyle(el).visibility === 'hidden' || el.closest('.sr-only')) continue;
+      for (let i = 0; i < n.length; i++) {
+        if (!n.data[i].trim()) continue;
+        const r = document.createRange();
+        r.setStart(n, i);
+        r.setEnd(n, i + 1);
+        const rect = r.getBoundingClientRect();
+        chars.push({ ch: n.data[i], y: rect.top + rect.height / 2, x: rect.left, node: n });
+      }
+    }
+    const out: string[] = [];
+    const name = label.textContent!.trim().replace(/\s+/g, ' ');
+    // Literal delimiters: the first and last character of each line.
+    const sorted = [...chars].sort((p, q) => p.y - q.y);
+    const lines: typeof chars[] = [];
+    for (const c of sorted) {
+      const last = lines[lines.length - 1];
+      if (last && Math.abs(c.y - last[0].y) <= 4) last.push(c);
+      else lines.push([c]);
+    }
+    for (const cs of lines) {
+      cs.sort((p, q) => p.x - q.x);
+      if ([cs[0].ch, cs[cs.length - 1].ch].some((c) => c === ',' || c === '·')) out.push(`${name}: a line starts or ends with a delimiter`);
+    }
+    // Caption items: a visible dot must have text to its left on the item's first line.
+    for (const item of label.querySelectorAll<HTMLElement>('.cap-item')) {
+      if (getComputedStyle(item, '::before').visibility === 'hidden' || !item.getClientRects().length) continue;
+      const r = item.getClientRects()[0];
+      const mid = r.top + Math.min(r.height, 14) / 2;
+      const left = chars.some((c) => !item.contains(c.node) && Math.abs(c.y - mid) <= 5 && c.x < r.left);
+      if (!left) out.push(`${name}: a dot starts a line`);
+    }
+    return out;
+  }));
+  // Polled: a wrapped item's dot is hidden by CapItem's script once the page has hydrated and laid out.
+  await expect.poll(find).toEqual([]);
+}
+
 async function hoverChart(page: Page, canvas: Locator) {
   const tip = page.locator('.chart-container .cell-tip:popover-open');
   for (const [x, y] of await chartPoints(canvas)) {

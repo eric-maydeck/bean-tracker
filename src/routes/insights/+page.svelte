@@ -42,6 +42,7 @@
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
   import RunwayChart from './RunwayChart.svelte';
+  import CapItem from '$lib/components/CapItem.svelte';
   import type { Snippet } from 'svelte';
   import Recent from './Recent.svelte';
   import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
@@ -826,11 +827,11 @@
           {/if}
           <div class="stat-caption">
             <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch}
-              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}<br><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
-                  ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<span class="dial-part">, {DIAL_LABEL.all}</span>{/if}</span><Icon name="question" /></button
-                >{/if}{#if pp}<br><button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
+              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}<CapItem><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+                  ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<CapItem>{DIAL_LABEL.all}</CapItem>{/if}</span><Icon name="question" /></button
+                ></CapItem>{/if}{#if pp}<CapItem><button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
-                >{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
+                ></CapItem>{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}</span
             >{#if SEE[t.key]}<a class="tile-link" href={link(`/coffees?${toParams({ status: SEE[t.key]!.status, filters: [] })}`)}>{SEE[t.key]!.label}</a>{/if}
           </div>
@@ -1273,26 +1274,6 @@
     overflow: visible;
     white-space: normal;
     line-height: 1.1;
-  }
-  /* Caption parts joined by a comma stay together while they fit; the comma is out of the flow (right edge at the space before the
-     part), hidden once the part starts a line (startsLine). Inline-blocks lose the tip's dotted underline, so it is re-inherited. */
-  .cap-part {
-    display: inline-block;
-    white-space: nowrap;
-    text-decoration: inherit;
-  }
-  .cap-next {
-    position: relative;
-  }
-  .cap-sep {
-    position: absolute;
-    right: 100%;
-    margin-right: 0.28em;
-    font-style: normal;
-    text-decoration: none;
-  }
-  .cap-next:global([data-start]) .cap-sep {
-    visibility: hidden;
   }
   /* Every caption with a tip button lets the button's 44px tap area overflow. */
   .stat-caption:has(.mode-tip-button) {

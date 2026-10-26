@@ -3056,3 +3056,26 @@ button .sample-chip {
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
+
+/* Tile caption subtext items (CapItem.svelte, ui-rules 55): inline after the title, each moving to the next line whole (it
+   wraps inside only when it alone is wider than the tile); the " · " (generated, so not in the text) hangs left of it and is hidden by the
+   layout script (data-start) when the item starts a line. The gap is a space with extra word spacing, so a break removes it. */
+.cap-gap {
+  word-spacing: 0.7em;
+}
+.cap-item {
+  display: inline-block;
+  position: relative;
+  max-width: 100%;
+  text-decoration: inherit; /* an inline-block would drop the tip's dotted underline */
+}
+.cap-item::before {
+  content: '·';
+  position: absolute;
+  right: 100%;
+  margin-right: 0.18em;
+  text-decoration: none;
+}
+.cap-item[data-start]::before {
+  visibility: hidden;
+}

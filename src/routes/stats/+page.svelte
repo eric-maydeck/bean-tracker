@@ -2,6 +2,7 @@
   import { labelTip } from '$lib/components/labelTip';
   import Usd from '$lib/components/Usd.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
+  import CapItem from '$lib/components/CapItem.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { placeTip } from '$lib/components/modeTip';
@@ -372,9 +373,10 @@
 
 <!-- One toggle state, shown in both the Brews and Grams panel headers. -->
 <!-- A per-person label's mode word opens its help (ui-rules 27, as on /insights); `id` keys its popover. -->
-{#snippet pp(label: string, id: string, sep = ' · ')}{label}{#if people === 'person'}{sep}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
+{#snippet ppButton(id: string)}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
     ><span class="tip-text">per person</span><Icon name="question" /></button
-  ><span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/if}{/snippet}
+  >{/snippet}
+{#snippet pp(label: string, id: string, sep = ' · ')}{label}{#if people === 'person'}{#if sep === ' · '}<CapItem>{@render ppButton(id)}</CapItem>{:else}{sep}{@render ppButton(id)}{/if}<span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/if}{/snippet}
 
 <!-- A weight; where formatGrams drops the decimal (100 kg and up), the exact grams in the shared text tip (like Usd). -->
 {#snippet grams(g: number)}{#if g >= 100000}<TextTip value label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}

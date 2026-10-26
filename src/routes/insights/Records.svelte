@@ -35,6 +35,7 @@
   import LikeLine from './LikeLine.svelte';
   import ShowMore from './ShowMore.svelte';
   import TileCaption from './TileCaption.svelte';
+  import CapItem from '$lib/components/CapItem.svelte';
 
   let {
     t, wholeKeys, ratings, dial, brewer, top, topc, perPerson, allRange, compareLabel, ratingsHelp, personHelp, placeTip, choose
@@ -100,11 +101,11 @@
 
 {#snippet caption(id: string, label: string, rating: boolean, every: boolean, pp: boolean, chart: string)}
   <TileCaption {chart} {label}
-    >{#if rating}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
+    >{#if rating}<CapItem><button class="mode-tip-button" popovertarget="tip-{id}" aria-describedby="tip-{id}"
         ><span class="tip-text">{every && dial === 'dialed' ? 'Always all brews' : RATINGS_LABEL[ratings]}</span><Icon name="question" /></button
-      >{/if}{#if pp}{'\u00a0· '}<button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
+      ></CapItem>{/if}{#if pp}<CapItem><button class="mode-tip-button" popovertarget="tip-pp-{id}" aria-describedby="tip-pp-{id}"
         ><span class="tip-text">per person</span><Icon name="question" /></button
-      >{/if}</TileCaption
+      ></CapItem>{/if}</TileCaption
   >
   {#if rating}<div class="mode-tip" id="tip-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: RATINGS_LABEL[ratings], lines: [ratingsHelp[ratings], every ? `${setting('Always all brews')}: this record is about dial-in.` : DIAL_HELP[dial]] }} /></div>{/if}
   {#if pp}<div class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [personHelp] }} /></div>{/if}
