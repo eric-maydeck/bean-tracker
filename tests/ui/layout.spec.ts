@@ -2347,7 +2347,22 @@ export const STATES: State[] = [
       await expectDataTip(tip);
       await expectTipInView(page, tip);
       await expect(tip.locator('.tip-title')).not.toBeEmpty();
+      // A click or tap pins the tip with the coffee's link (a click no longer navigates); Escape or a click elsewhere closes it.
       if (touch()) await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
+      else {
+        const url = page.url();
+        await dot.click();
+        await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
+        expect(page.url()).toBe(url);
+      }
+      await page.mouse.move(0, 0);
+      await expect(tip.getByRole('link', { name: 'Open coffee' })).toBeVisible(); // pinned: leaving the dot keeps it
+      await page.keyboard.press('Escape');
+      await expect(tip).toBeHidden();
+      if (touch()) await dot.tap(); else await dot.click();
+      await expect(tip).toBeVisible();
+      await page.locator('[data-section="spend-value-map"] .lab-head').click({ position: { x: 5, y: 5 } });
+      await expect(tip).toBeHidden();
       // Keyboard: one tab stop, an arrow moves focus to another dot, Enter pins its tip with the link.
       const pts = page.locator('.value-map .pt');
       await pts.locator('xpath=self::*[@tabindex="0"]').focus();

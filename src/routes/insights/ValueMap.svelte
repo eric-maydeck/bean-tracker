@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
@@ -10,8 +9,8 @@
 
   // Price vs rating, one dot per coffee (a diamond when any of its bags came from a subscription), the dashed lines
   // the medians. The x axis stops at `m.cap` (the cut coffees are listed in the heading's See all). One tab stop,
-  // arrows move by position. Mouse: hover shows the tip, a click opens the coffee. Tap / Enter / Space pin the tip,
-  // whose "Open coffee" link goes there (ui-rules 49).
+  // arrows move by position. Hover shows the tip; a click, tap, Enter or Space pins it, and its "Open coffee" link goes
+  // to the coffee. A click elsewhere or Escape closes it (ui-rules 49).
   let { m, link }: { m: ValueMap; link: (href: string) => string } = $props();
 
   let width = $state(0);
@@ -52,14 +51,12 @@
   function click(e: MouseEvent) {
     const t = at(e);
     if (!t) return void (tip = null);
-    // A mouse click goes to the coffee; a tap (touch, or Enter from the keyboard's synthesized click: detail 0) pins the tip.
-    if ((e as PointerEvent).pointerType === 'mouse' && e.detail > 0 && href(t.p)) return void goto(href(t.p)!);
     tip = tip?.pinned && tip.p === t.p ? null : { ...t, pinned: true };
   }
   const focusTip = (e: FocusEvent) => (takeFocus(e), (tip = { ...at(e)!, pinned: false }));
 </script>
 
-<svelte:document onclick={(e) => tip?.pinned && !(e.target as Element).closest('.vm-plot, .vm-tip') && (tip = null)} />
+<svelte:document onclick={(e) => tip?.pinned && !(e.target as Element).closest('.vm-plot, .vm-tip') && (tip = null)} onkeydown={(e) => e.key === 'Escape' && tip?.pinned && (tip = null)} />
 
 <div class="value-map" bind:clientWidth={width}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
