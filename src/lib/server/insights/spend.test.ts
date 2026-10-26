@@ -347,3 +347,16 @@ describe('spendTab fresh', () => {
     expect(cal.window.every((w) => w.rating === null)).toBe(true);
   });
 });
+
+describe('spendTab series before the first brew', () => {
+  it('a bag roasted before the first brew still lands in a bucket, so the chart adds up to the tile', () => {
+    const fx = [bag({ id: 1, cost: 20, amountG: 100, purchaseDate: '2026-01-20' }), bag({ id: 2, cost: 10, amountG: 100, purchaseDate: '2026-03-05' })];
+    const c: SpendCtx = {
+      period: { start: '2025-10-01', end: '2026-03-31' }, prev: null, sameLength: false, pace: false, size: 1,
+      dataStart: '2026-02-03', today: '2026-10-26', by: 'month', ratings: 'all', plans: []
+    };
+    const t = spendTab([], [], fx, c);
+    expect(t.series.labels[0]).toMatch(/^Jan/);
+    expect([...t.series.oneOff, ...t.series.sub].reduce((a, b) => a + b, 0)).toBe(t.tiles.spent);
+  });
+});

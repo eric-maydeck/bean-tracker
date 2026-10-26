@@ -77,20 +77,25 @@ function flows(bags: readonly BagFact[], bs: readonly Bucket[], size: number) {
   return { sub: subs.map(cost), oneOff: ones.map(cost), ppg: { all: per.map(pricedPpg), sub: subs.map(pricedPpg), oneOff: ones.map(pricedPpg) } };
 }
 
+// Money is counted by roast date, and a bag can be roasted before the first brew: the buckets start at the earlier of
+// the first brew and the first roast date, so the chart adds up to the tiles.
+const origin = (bags: readonly BagFact[], c: SpendCtx): string | null =>
+  bags.reduce<string | null>((m, b) => (b.purchaseDate && (m === null || b.purchaseDate < m) ? b.purchaseDate : m), c.dataStart);
+
 // The Period's buckets (Spend over time and Share of spend use the same ones).
-function periodBuckets(c: SpendCtx) {
-  const t = trackedBounds(c.period, c.dataStart, c.today);
+function periodBuckets(bags: readonly BagFact[], c: SpendCtx) {
+  const t = trackedBounds(c.period, origin(bags, c), c.today);
   const by = c.by ?? autoBy(t ? daysBetween(t.start, t.end) + 1 : 0);
   return { by, bs: buckets(t, by) };
 }
 
 function spendSeries(bags: readonly BagFact[], c: SpendCtx): SpendSeries {
-  const { by, bs } = periodBuckets(c);
+  const { by, bs } = periodBuckets(bags, c);
   const f = flows(bags, bs, c.size);
   let compare: SpendSeries['compare'] = null, comparePpg: SpendSeries['comparePpg'] = null;
   let compareTitles: SpendSeries['compareTitles'] = null, compareAverage: number | null = null;
   if (c.prev) {
-    const pb = buckets(trackedBounds(c.prev, c.dataStart, c.today), by);
+    const pb = buckets(trackedBounds(c.prev, origin(bags, c), c.today), by);
     const pf = flows(bags, pb, c.size);
     const total = pf.sub.map((v, i) => v + pf.oneOff[i]);
     if (c.sameLength) {
@@ -190,7 +195,7 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
   for (const b of inP) spend.set(b.roaster, (spend.get(b.roaster) ?? 0) + (b.cost ?? 0));
   const ranked = [...spend].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([r]) => r);
   const top = ranked.slice(0, SHARE_TOP), rest = ranked.slice(SHARE_TOP);
-  const { by: sBy, bs } = periodBuckets(c);
+  const { by: sBy, bs } = periodBuckets(bags, c);
   const per = bs.map((b) => {
     const m = new Map<string, number>();
     for (const g of inP) if (g.purchaseDate! >= b.start && g.purchaseDate! <= b.end) m.set(g.roaster, (m.get(g.roaster) ?? 0) + (g.cost ?? 0));
