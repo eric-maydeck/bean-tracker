@@ -1,5 +1,6 @@
 import type { CoffeeRow, RoastLevelRow } from '$lib/types';
-import { parseDate, diffDays, withComputedFields } from '$lib/server/urgency';
+import { parseDate, diffDays, formatDate } from '$lib/server/urgency';
+import { freshness, type FreshBag, type Freshness } from '$lib/server/insights/onHand';
 import { localDate } from '$lib/localDate';
 
 export interface BreakdownEntry {
@@ -45,51 +46,9 @@ export interface BacklogStats {
   breakdowns: Record<string, Breakdowns>;
 }
 
-// Open + backlog bags by where they sit in their rest window. Frozen bags
-// (no thaw date yet) are only counted as frozen, and bags missing a roast
-// date or rest days are counted nowhere.
-export interface Freshness {
-  readyCount: number;
-  // Ready bags with an urgency rating of at least DRINK_SOON_URGENCY.
-  drinkSoonCount: number;
-  restingCount: number;
-  nextReadyInDays: number | null;
-  frozenCount: number;
-  frozenGrams: number;
-}
-
-const DRINK_SOON_URGENCY = 40;
-
-function buildFreshness(rows: CoffeeRow[], today: Date): Freshness {
-  const freshness: Freshness = {
-    readyCount: 0,
-    drinkSoonCount: 0,
-    restingCount: 0,
-    nextReadyInDays: null,
-    frozenCount: 0,
-    frozenGrams: 0
-  };
-  for (const row of rows) {
-    if (isValidDateString(row.frozen_start_date) && !row.frozen_end_date) {
-      freshness.frozenCount += 1;
-      freshness.frozenGrams += row.amount_g ?? 0;
-      continue;
-    }
-    if (!isValidDateString(row.roast_date) || row.rest_days_low == null || row.rest_days_high == null) continue;
-    const computed = withComputedFields(row, today);
-    const daysUntilReady = diffDays(parseDate(computed.drink_after!), today);
-    if (daysUntilReady <= 0) {
-      freshness.readyCount += 1;
-      if (typeof computed.urgency_rating === 'number' && computed.urgency_rating >= DRINK_SOON_URGENCY) {
-        freshness.drinkSoonCount += 1;
-      }
-    } else {
-      freshness.restingCount += 1;
-      freshness.nextReadyInDays = Math.min(freshness.nextReadyInDays ?? Infinity, daysUntilReady);
-    }
-  }
-  return freshness;
-}
+const toFresh = (r: CoffeeRow): FreshBag => ({
+  ...r, roast_date: isValidDateString(r.roast_date) ? r.roast_date : null, drank: 0, name: r.coffee_name, roaster: r.roaster, slug: r.slug, grams: r.grams_left ?? r.amount_g ?? 0
+});
 
 export interface Breakdowns {
   roaster: BreakdownEntry[];
@@ -282,7 +241,7 @@ export function buildBacklogStats(
     averageDaysToOpen,
     averageDaysToFinish,
     averageBagCost,
-    freshness: buildFreshness(allRows, today),
+    freshness: freshness(allRows.map(toFresh), formatDate(today)),
     breakdowns
   };
 }

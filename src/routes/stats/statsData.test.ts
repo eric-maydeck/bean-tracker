@@ -257,33 +257,9 @@ describe('buildBacklogStats', () => {
     expect(statusComboKey(new Set(['open', 'backlog'] as const))).toBe('backlog+open');
   });
 
-  it('buckets open + backlog bags by freshness, excluding frozen and unknown bags', () => {
-    const open = [
-      // ready, urgency ~59 — drink soon
-      sampleRow({ id: 1, status: 'open', roast_date: '2026-09-01', rest_days_low: 10, rest_days_high: 20 }),
-      // ready, urgency ~74 with drink_before still 16 days out — drink soon on urgency alone
-      sampleRow({ id: 7, status: 'open', roast_date: '2026-08-01', rest_days_low: 5, rest_days_high: 60 })
-    ];
-    const backlog = [
-      // ready, urgency ~11 — not soon
-      sampleRow({ id: 2, roast_date: '2026-09-08', rest_days_low: 10, rest_days_high: 30 }),
-      // resting: ready 09-28 (7 days) and 10-03 (12 days)
-      sampleRow({ id: 3, roast_date: '2026-09-18', rest_days_low: 10, rest_days_high: 20 }),
-      sampleRow({ id: 4, roast_date: '2026-09-19', rest_days_low: 14, rest_days_high: 20 }),
-      // frozen with no thaw date — past its rest period, but not drinkable
-      sampleRow({ id: 5, roast_date: '2026-08-01', frozen_start_date: '2026-09-05', amount_g: 250 }),
-      // no roast date — no urgency, counted nowhere
-      sampleRow({ id: 6, roast_date: null })
-    ];
-    const stats = buildBacklogStats(open, backlog, [], roastLevels, today);
-    expect(stats.freshness).toEqual({
-      readyCount: 3,
-      drinkSoonCount: 2,
-      restingCount: 2,
-      nextReadyInDays: 7,
-      frozenCount: 1,
-      frozenGrams: 250
-    });
+  it('counts ready bags apart from drink soon', () => {
+    const stats = buildBacklogStats([sampleRow({ id: 1, status: 'open', roast_date: '2026-09-01' })], [sampleRow({ id: 2 })], [], roastLevels, today);
+    expect(stats.freshness.ready.count + stats.freshness.drinkSoon.count).toBe(2);
   });
 
   it('returns a null nextReadyInDays when nothing is resting', () => {

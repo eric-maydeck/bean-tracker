@@ -494,21 +494,21 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value">{data.stats.freshness.readyCount}</span>
+      <span class="stat-value">{data.stats.freshness.ready.count}</span>
       <span class="stat-unit">of {data.stats.totalBacklogCount} bags</span>
       <div class="stat-caption">
         <span class="stat-label">Rested &amp; ready</span>
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value">{data.stats.freshness.drinkSoonCount}</span>
+      <span class="stat-value">{data.stats.freshness.drinkSoon.count}</span>
       <span class="stat-unit">urgency 40+</span>
       <div class="stat-caption">
         <span class="stat-label">Drink soon</span>
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value">{data.stats.freshness.restingCount}</span>
+      <span class="stat-value">{data.stats.freshness.resting.count}</span>
       {#if data.stats.freshness.nextReadyInDays !== null}
         <span class="stat-unit">next ready in {data.stats.freshness.nextReadyInDays}d</span>
       {/if}
@@ -517,9 +517,9 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value">{data.stats.freshness.frozenCount}</span>
-      {#if data.stats.freshness.frozenGrams > 0}
-        <span class="stat-unit">{formatGrams(data.stats.freshness.frozenGrams)}</span>
+      <span class="stat-value">{data.stats.freshness.frozen.count}</span>
+      {#if data.stats.freshness.frozen.grams > 0}
+        <span class="stat-unit">{formatGrams(data.stats.freshness.frozen.grams)}</span>
       {/if}
       <div class="stat-caption">
         <span class="stat-label">In the freezer</span>
