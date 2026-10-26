@@ -38,6 +38,10 @@
 <div class="rc">
   <div class="rc-table">
     <table class="data-table compact">
+      <!-- Fixed widths: a sort reorders rows, never resizes a column. -->
+      <colgroup>
+        <col style:width="20%" /><col style:width="8%" /><col style:width="11%" /><col style:width="11%" /><col style:width="18%" /><col style:width="18%" /><col style:width="14%" />
+      </colgroup>
       <thead>
         <tr>
           {#each RC_COLS as c (c)}
@@ -98,7 +102,7 @@
   .rc-cards {
     display: none;
   }
-  @container (width < 520px) {
+  @container (width < 600px) {
     .rc-table {
       display: none;
     }
@@ -106,16 +110,26 @@
       display: block;
     }
   }
+  table {
+    table-layout: fixed;
+    width: 100%;
+  }
+  .who {
+    overflow-wrap: anywhere;
+  }
   .num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+  td:last-child {
     white-space: nowrap;
   }
   .cell {
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
     justify-content: flex-end;
-    gap: var(--space-2);
+    gap: var(--space-1) var(--space-2);
   }
   .na {
     display: inline-block;

@@ -2379,7 +2379,7 @@ export const STATES: State[] = [
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
       await expect(panel.getByRole('heading', { name: 'Roaster report card' })).toBeVisible();
-      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 520; // what the container query measures
+      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 600; // what the container query measures
       await expect(panel.locator('table')).toBeVisible({ visible: wide });
       await expect(panel.locator('.rc-list')).toBeVisible({ visible: !wide });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -2393,7 +2393,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
-      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 520; // what the container query measures
+      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 600; // what the container query measures
       const fetched: string[] = [];
       page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
       const rows = panel.locator(wide ? 'tbody tr' : '.rc-list li');
@@ -2402,6 +2402,9 @@ export const STATES: State[] = [
         const v = xs.filter((x): x is number => x !== null);
         return v.every((x, i) => i === 0 || (x - v[i - 1]) * dir >= 0) && xs.slice(v.length).every((x) => x === null) && xs.slice(0, v.length).every((x) => x !== null);
       };
+      // Sorting reorders rows, never resizes a column: the header cells keep their widths across every sort.
+      const widths = () => panel.locator('thead th').evaluateAll((hs) => hs.map((h) => Math.round(h.getBoundingClientRect().width)));
+      const before = wide ? await widths() : [];
       if (wide) await panel.getByRole('button', { name: '$/g' }).click();
       else await panel.getByLabel('Sort by').selectOption('ppg');
       await expect(page).toHaveURL(/rcSort=ppg/);
@@ -2413,6 +2416,15 @@ export const STATES: State[] = [
       } else await panel.getByRole('group', { name: 'Direction' }).getByRole('button', { name: 'Asc' }).click();
       await expect(page).toHaveURL(/rcDir=asc/);
       expect(sorted(await ppgs(), 1)).toBe(true);
+      if (wide) {
+        expect(await widths()).toEqual(before);
+        await panel.getByRole('button', { name: 'Rating' }).click();
+        await expect(page).toHaveURL(/rcSort=rating/);
+        expect(await widths()).toEqual(before);
+        await panel.getByRole('button', { name: 'Roaster' }).click();
+        await expect(page).toHaveURL(/rcSort=roaster/);
+        expect(await widths()).toEqual(before);
+      }
       // The seed has more than 10 roasters bought from in 12m.
       await panel.getByRole('button', { name: 'Show more' }).click();
       await expect(page).toHaveURL(/rcTop=20/);
