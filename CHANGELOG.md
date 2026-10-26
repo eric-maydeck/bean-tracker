@@ -1,3 +1,10 @@
+# [1.91.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.90.0...v1.91.0) (2026-10-26)
+
+
+### Features
+
+* **previews:** top brews show roaster and coffee only, fitting five
+
 # [1.90.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.89.0...v1.90.0) (2026-10-25)
 
 
