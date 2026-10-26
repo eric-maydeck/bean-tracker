@@ -1052,6 +1052,8 @@ export const STATES: State[] = [
       await page.reload();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Paused Monthly (paused)');
+      await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'None' });
+      await expect(page.locator('#cost')).toHaveValue('22'); // no fill since this mount: None changes nothing
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey' }); // restore for other states
       await page.locator('#cost').fill('22');
       await page.getByRole('button', { name: 'Save changes' }).click();

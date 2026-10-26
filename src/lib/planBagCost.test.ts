@@ -33,6 +33,11 @@ describe('costAfterPlanChange', () => {
     expect(r2.cost).toBe('22');
     expect(costAfterPlanChange(r2.memo, '22', null).cost).toBe('20');
   });
+  it('a cost typed between two fills becomes the new original', () => {
+    const r1 = costAfterPlanChange(null, '20', a);
+    const r2 = costAfterPlanChange(r1.memo, '18', b);
+    expect(costAfterPlanChange(r2.memo, r2.cost!, null).cost).toBe('18');
+  });
   it('leaves a cost the user edited after the fill', () => {
     const r = costAfterPlanChange(null, '20', a);
     expect(costAfterPlanChange(r.memo, '18', null).cost).toBeNull();

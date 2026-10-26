@@ -157,6 +157,11 @@
   // Only on a user change of the select, never on load: an existing bag's cost stays put.
   // None puts back the cost from before the first plan fill (see costAfterPlanChange).
   let costMemo: CostMemo | null = null;
+  // A different coffee or a changed saved/staged cost starts a fresh session: no stale restore.
+  $effect(() => {
+    void [coffee?.id, coffee?.cost];
+    costMemo = null;
+  });
   function fillCostFromPlan(e: Event) {
     const plan = subscriptions?.find((p) => String(p.id) === (e.currentTarget as HTMLSelectElement).value) ?? null;
     const r = costAfterPlanChange(costMemo, fieldValue('cost'), plan);
