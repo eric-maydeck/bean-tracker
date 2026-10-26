@@ -60,7 +60,8 @@
     integer = false,
     dashGaps = false,
     legend = false,
-    colors
+    colors,
+    stacked = false
   }: {
     type: 'bar' | 'doughnut' | 'line';
     labels: string[];
@@ -105,6 +106,8 @@
     legend?: boolean;
     // Lines: one color token per line (`var(--series-3)`, the page's per-name colors), in line order; else by position.
     colors?: string[];
+    // Vertical bars: the plain series stack in one column; a `faded` series stands in its own column beside it.
+    stacked?: boolean;
   } = $props();
 
   let canvasEl: HTMLCanvasElement;
@@ -289,7 +292,7 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: edge(tokAt(0)), borderWidth: 0.75 }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: edge(tokAt(0)), borderWidth: 0.75, ...(stacked && { stack: 'main' }) }
             : {
                 label: datasetLabel,
                 data: values,
@@ -319,7 +322,7 @@
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(tokAt(at[i])), borderWidth: 0.75,
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark ? '#120d09' : edge(tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }
           )
@@ -404,8 +407,9 @@
         },
         scales: vbar
           ? {
-              x: { ticks: { color: textColor, maxRotation: 0, autoSkipPadding: 8 }, grid: { display: false } },
+              x: { stacked, ticks: { color: textColor, maxRotation: 0, autoSkipPadding: 8 }, grid: { display: false } },
               y: {
+                stacked,
                 beginAtZero: yMin === undefined,
                 min: yMin,
                 ticks: { color: textColor, ...(integer && { precision: 0 }), ...(unit && { callback: (v: string | number) => `${v}${unit}` }) },
@@ -469,7 +473,7 @@
   $effect(() => {
     void format;
     void tipFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();

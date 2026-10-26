@@ -73,3 +73,42 @@ describe('spendTab', () => {
   });
   it('no compare: no deltas', () => expect(spendTab([], [], bags, { ...ctx, prev: null }).deltas).toBeNull());
 });
+
+describe('spendTab series', () => {
+  const W = { start: '2026-09-07', end: '2026-09-27' }; // three Monday weeks
+  const fx = [
+    bag({ id: 1, cost: 20, amountG: 250, purchaseDate: '2026-09-08' }),
+    bag({ id: 2, cost: 15, amountG: 150, purchaseDate: '2026-09-09', subscriptionId: 1 }),
+    bag({ id: 3, cost: 0, amountG: 100, purchaseDate: '2026-09-15' }), // only a $0 bag
+    bag({ id: 4, cost: 30, amountG: 300, purchaseDate: '2026-09-22', subscriptionId: 1 }),
+    bag({ id: 5, cost: 12, amountG: 100, purchaseDate: '2026-08-31' }), // compare window (prev week)
+    bag({ id: 6, cost: 9, amountG: 100, purchaseDate: '2026-08-25' })
+  ];
+  const ctx: SpendCtx = {
+    period: W, prev: { start: '2026-08-17', end: '2026-09-06' }, sameLength: true, pace: false, size: 1,
+    dataStart: '2026-01-01', today: '2026-10-26', by: 'week', ratings: 'all', plans
+  };
+  const t = spendTab([], [], fx, ctx);
+  it('splits $ per week; sums equal the tile', () => {
+    expect(t.series.sub).toEqual([15, 0, 30]);
+    expect(t.series.oneOff).toEqual([20, 0, 0]);
+    expect([...t.series.sub, ...t.series.oneOff].reduce((a, b) => a + b, 0)).toBe(t.tiles.spent);
+    expect(t.series.by).toBe('week');
+  });
+  it('a bucket with only a $0 bag has no $/g', () => {
+    expect(t.series.ppg.all[1]).toBeNull();
+    expect(t.series.ppg.all[0]).toBeCloseTo(35 / 400);
+    expect(t.series.ppg.sub).toEqual([0.1, null, 0.1]);
+    expect(t.series.ppg.oneOff).toEqual([0.08, null, null]);
+  });
+  it('same-length compare is bucket for bucket', () => {
+    expect(t.series.compare).toEqual([0, 9, 12]);
+    expect(t.series.comparePpg).toEqual([null, 0.09, 0.12]);
+    expect(t.series.compareAverage).toBeNull();
+  });
+  it('a longer compare gives the mean $ per bucket', () => {
+    const l = spendTab([], [], fx, { ...ctx, sameLength: false }).series;
+    expect(l.compare).toBeNull();
+    expect(l.compareAverage).toBeCloseTo(21 / 3);
+  });
+});

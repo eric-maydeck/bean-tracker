@@ -2250,8 +2250,42 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('section.chart-panel:has(.hl-empty)')).toHaveCount(1);
       await expect(page.locator('canvas')).toHaveCount(0);
+      // No blank chart frame: the Spend over time panel is not rendered at all.
+      await expect(page.locator('#spend-chart, .chart-container')).toHaveCount(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
       await expectShortEmpty(page);
+    }
+  },
+  {
+    name: 'insights-spend-chart', viewports: 'two', path: () => '/insights?tab=spend&range=12m&compare=1',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#spend-chart)');
+      const toggle = (name: string) => panel.getByRole('group', { name: 'Show' }).getByRole('button', { name, exact: true });
+      await expect(panel.locator('canvas')).toHaveCount(1);
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      await toggle('$ per g').click();
+      await expect(page).toHaveURL(/spendView=ppg/);
+      await expect(toggle('$ per g')).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.locator('canvas')).toHaveCount(1);
+      await toggle('Spend').click();
+      await expect(page).not.toHaveURL(/spendView/);
+      expect(fetched).toEqual([]);
+      await expect(panel.getByRole('link', { name: 'Leaderboards' })).toHaveAttribute('href', /tab=leaderboards.*rank=spend.*#leaderboard-roasters/);
+      // A bar's tip (the sweep of insights-consumption-compare-tooltip).
+      const c = panel.locator('canvas');
+      await c.scrollIntoViewIfNeeded();
+      const b = (await c.boundingBox())!;
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      const sweep: (readonly [number, number])[] = [];
+      for (const g of [0.75, 0.6, 0.45]) for (let f = 0.95; f > 0; f -= 0.05) sweep.push([b.x + b.width * f, b.y + b.height * g]);
+      for (const [x, y] of [...(await chartPoints(c, false)).slice(0, 12), ...sweep]) {
+        await page.mouse.move(x, y);
+        if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
+      }
+      await expectDataTip(tip);
+      await expectTipInView(page, tip);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
   {
