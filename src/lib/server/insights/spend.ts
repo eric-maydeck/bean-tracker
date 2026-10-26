@@ -175,9 +175,12 @@ function reportCard(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
 
 export interface Discovery {
   labels: string[]; titles: string[]; cumulative: number[]; band: [number, number] | null;
-  share: (Multi & { other: [string, number][][] }) | null; repeatRate: number | null; roasters: number;
+  // `dollars[k][i]`: line k's $ in bucket i (÷ size); `other[i]`: what bucket i's Other holds, [name, %, $].
+  share: (Multi & { other: [string, number, number][][]; dollars: number[][] }) | null; repeatRate: number | null; roasters: number;
 }
-const SHARE_TOP = 5;
+// Share of spend names a roaster with at least this share of the Period's spend and a bag in 2+ buckets, up to the
+// categorical palette's 14 slots (ui-rules 42); everything else is Other.
+const SHARE_MIN = 0.05, SHARE_SLOTS = 14;
 
 // Integer percents of `vals` that add up to exactly 100 (largest remainder); all zeros when there is nothing.
 function percents(vals: readonly number[]): number[] {
@@ -201,33 +204,40 @@ function discovery(bags: readonly BagFact[], c: SpendCtx): Discovery {
   const hit = all.flatMap((b, i) => (b.end >= (c.period.start ?? '') && b.start <= c.period.end ? [i] : []));
   const inP = dated.filter((b) => inPeriod(b.purchaseDate!, c.period));
   const mine = new Set(inP.map((b) => b.roaster));
-  const repeat = [...mine].filter((r) => c.period.start !== null && first.get(r)! < c.period.start).length;
+  // Repeat-buy: roasters of the Period you have bought 2+ bags from by its end.
+  const bagCount = new Map<string, number>();
+  for (const b of dated) if (b.purchaseDate! <= c.period.end) bagCount.set(b.roaster, (bagCount.get(b.roaster) ?? 0) + 1);
+  const repeat = [...mine].filter((r) => (bagCount.get(r) ?? 0) >= 2).length;
 
   const spend = new Map<string, number>();
   for (const b of inP) spend.set(b.roaster, (spend.get(b.roaster) ?? 0) + (b.cost ?? 0));
-  const ranked = [...spend].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([r]) => r);
-  const top = ranked.slice(0, SHARE_TOP), rest = ranked.slice(SHARE_TOP);
   const { by: sBy, bs } = periodBuckets(bags, c);
   const per = bs.map((b) => {
     const m = new Map<string, number>();
     for (const g of inP) if (g.purchaseDate! >= b.start && g.purchaseDate! <= b.end) m.set(g.roaster, (m.get(g.roaster) ?? 0) + (g.cost ?? 0));
     return m;
   });
+  const spendTotal = [...spend.values()].reduce((a, b) => a + b, 0);
+  const top = [...spend].filter(([r, v]) => v >= SHARE_MIN * spendTotal && per.filter((m) => (m.get(r) ?? 0) > 0).length >= 2)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, SHARE_SLOTS).map(([r]) => r);
+  const rest = [...spend.keys()].filter((r) => !top.includes(r));
   const names = rest.length ? [...top, 'Other'] : top;
-  const cols = per.map((m) => percents([...top.map((r) => m.get(r) ?? 0), ...(rest.length ? [rest.reduce((s, r) => s + (m.get(r) ?? 0), 0)] : [])]));
-  const share = [...spend.values()].some((v) => v > 0) ? {
+  const dollars = per.map((m) => [...top.map((r) => m.get(r) ?? 0), ...(rest.length ? [rest.reduce((s, r) => s + (m.get(r) ?? 0), 0)] : [])]);
+  const cols = dollars.map(percents);
+  const share = spendTotal > 0 ? {
     x: bucketLabels(bs, sBy), unit: '%',
     lines: names.map((label, k) => ({ label, values: cols.map((p) => p[k]) })),
+    dollars: names.map((_, k) => dollars.map((d) => d[k] / c.size)),
     other: per.map((m) => {
       const total = [...m.values()].reduce((a, b) => a + b, 0);
-      return rest.filter((r) => (m.get(r) ?? 0) > 0).sort((a, b) => m.get(b)! - m.get(a)!).map((r): [string, number] => [r, Math.round((100 * m.get(r)!) / total)]);
+      return rest.filter((r) => (m.get(r) ?? 0) > 0).sort((a, b) => m.get(b)! - m.get(a)!).map((r): [string, number, number] => [r, Math.round((100 * m.get(r)!) / total), m.get(r)! / c.size]);
     })
   } : null;
   return {
     labels: bucketLabels(all, by), titles: bucketTitles(all, by),
     cumulative: all.map((b) => [...first.values()].filter((d) => d <= b.end).length),
     band: c.period.start === null || !hit.length ? null : [hit[0], hit.at(-1)!],
-    share, repeatRate: mine.size && c.period.start !== null ? repeat / mine.size : null, roasters: mine.size
+    share, repeatRate: mine.size ? repeat / mine.size : null, roasters: mine.size
   };
 }
 

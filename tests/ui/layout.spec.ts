@@ -2457,6 +2457,17 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       await expectDataTip(tip);
       await expectTipInView(page, tip);
+      // A segment's tip gives dollars with the share: "$412.00 (18%)".
+      await expect(tip.locator('.tip-rows dd').first()).toHaveText(/^\$[\d,.]+ \(\d+%\)$/);
+      // Roaster discovery: the nearest x's tip opens anywhere in the plot, not only on the line.
+      const c = page.locator('section[data-section="spend-discovery"] canvas');
+      await c.scrollIntoViewIfNeeded();
+      const b = (await c.boundingBox())!;
+      const near = page.locator('.chart-container .cell-tip:popover-open');
+      const [x, y] = [b.x + b.width * 0.5, b.y + b.height * 0.12]; // well above the rising line
+      if (touch()) await page.touchscreen.tap(x, y); else await page.mouse.move(x, y);
+      await expect(near).toBeVisible();
+      await expectDataTip(near);
     }
   },
   {

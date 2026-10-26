@@ -231,20 +231,37 @@ describe('spendTab discovery', () => {
     expect(d.band).not.toBeNull();
     expect(spendTab([], [], fx, { ...ctx, period: { start: null, end: ctx.today } }).discovery.band).toBeNull();
   });
-  it('share sums to exactly 100 per bucket; the 6th and 7th roasters are Other', () => {
-    const s = d.share!;
-    expect(s.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'E', 'Other']);
+  it('share names roasters with 5%+ of the spend in 2+ buckets; the rest are Other; sums to 100 per bucket', () => {
+    const sx = [
+      bag({ id: 1, roaster: 'A', cost: 50, purchaseDate: '2026-09-01' }), bag({ id: 2, roaster: 'A', cost: 50, purchaseDate: '2026-09-15' }),
+      bag({ id: 3, roaster: 'B', cost: 30, purchaseDate: '2026-09-02' }), bag({ id: 4, roaster: 'B', cost: 30, purchaseDate: '2026-09-16' }),
+      bag({ id: 5, roaster: 'C', cost: 40, purchaseDate: '2026-09-03' }), // 20% but one bucket
+      bag({ id: 6, roaster: 'D', cost: 1, purchaseDate: '2026-09-04' }), bag({ id: 7, roaster: 'D', cost: 1, purchaseDate: '2026-09-17' }) // two buckets, under 5%
+    ];
+    const s = spendTab([], [], sx, { ...ctx, by: 'week' }).discovery.share!;
+    expect(s.lines.map((l) => l.label)).toEqual(['A', 'B', 'Other']);
     for (let i = 0; i < s.x.length; i++) {
       const sum = s.lines.reduce((a, l) => a + (l.values[i] ?? 0), 0);
       expect(sum === 100 || sum === 0).toBe(true);
     }
+    expect(s.dollars[0].filter(Boolean)).toEqual([50, 50]);
     const i = s.x.findIndex((_, k) => s.other[k].length > 0);
-    expect(s.other[i].map(([r]) => r)).toEqual(expect.arrayContaining(['F']));
-    expect(s.other[i].every(([, p]) => p > 0)).toBe(true);
+    expect(s.other[i].map(([r]) => r)).toEqual(['C', 'D']);
+    expect(s.other[i][0]).toEqual(['C', Math.round((100 * 40) / 121), 40]);
   });
-  it('repeat rate: roasters in the Period with an earlier bag', () => {
+  it('per person halves the dollars, not the percents', () => {
+    const sx = [bag({ id: 1, roaster: 'A', cost: 50, purchaseDate: '2026-09-01' }), bag({ id: 2, roaster: 'A', cost: 50, purchaseDate: '2026-09-15' })];
+    const s = spendTab([], [], sx, { ...ctx, by: 'week', size: 2 }).discovery.share!;
+    expect(s.dollars[0].filter(Boolean)).toEqual([25, 25]);
+    expect(s.lines[0].values.filter(Boolean)).toEqual([100, 100]);
+  });
+  it('repeat rate: roasters of the Period you have bought 2+ bags from by its end', () => {
     expect(d.roasters).toBe(7);
-    expect(d.repeatRate).toBeCloseTo(2 / 7); // A and B were bought before September
+    expect(d.repeatRate).toBeCloseTo(2 / 7); // A and B have 2 bags each
+    // Two bags in the Period itself count; a second bag after the Period's end does not.
+    const two = [bag({ id: 1, roaster: 'X', cost: 1, purchaseDate: '2026-09-02' }), bag({ id: 2, roaster: 'X', cost: 1, purchaseDate: '2026-09-09' }), bag({ id: 3, roaster: 'Y', cost: 1, purchaseDate: '2026-09-05' }), bag({ id: 4, roaster: 'Y', cost: 1, purchaseDate: '2026-10-05' })];
+    expect(spendTab([], [], two, ctx).discovery.repeatRate).toBe(0.5);
+    expect(spendTab([], [], two, { ...ctx, period: { start: null, end: ctx.today } }).discovery.repeatRate).toBe(1);
   });
   it('no spend: no share', () => expect(spendTab([], [], [bag({ cost: 0 })], ctx).discovery.share).toBeNull());
 });

@@ -154,10 +154,10 @@
   {#if dc.cumulative.length > 1}
     <section class="chart-panel" data-section="spend-discovery">
       <LabHead id="spend-discovery" title="Roaster discovery" {placeTip}
-        help={['Roasters you have bought from, added up over all your history.', 'The shaded stretch is this period.', 'Repeat-buy rate: the share of this period\'s roasters you had bought from before it began.']}>
+        help={['Roasters you have bought from, added up over all your history.', 'The shaded stretch is this period.', 'Repeat-buy rate: the share of this period\'s roasters you have bought 2 or more bags from by its end.']}>
         {#if dc.repeatRate !== null}<span class="repeat">Repeat-buy rate <strong>{Math.round(100 * dc.repeatRate)}%</strong> · of {dc.roasters} roasters</span>{/if}
       </LabHead>
-      <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} band={dc.band ?? undefined}
+      <Chart type="line" labels={dc.labels} values={dc.cumulative} datasetLabel="Roasters" titles={dc.titles} integer yMin={0} nearestX band={dc.band ?? undefined}
         format={(v) => `${v}`} tipFormat={(v) => `${v} ${v === 1 ? 'roaster' : 'roasters'}`} height={220} />
     </section>
   {/if}
@@ -165,7 +165,7 @@
   {#if dc.share}
     <section class="chart-panel" data-section="spend-share">
       <LabHead id="spend-share" title="Share of spend" {placeTip}
-        help={['Each bar is 100% of what you spent in that ' + sr.by + ', split by roaster.', 'The five roasters you spent most with this period; the rest are Other.', 'Counted by roast date.']} />
+        help={['Each bar is 100% of what you spent in that ' + sr.by + ', split by roaster.', 'A roaster with at least 5% of this period\'s spend and bags in 2+ bars is named, up to 14, biggest first.', 'The rest are Other.', 'Counted by roast date.']} />
       <StackedBars m={dc.share} ariaLabel="Share of spend by roaster each {sr.by}" />
     </section>
   {/if}

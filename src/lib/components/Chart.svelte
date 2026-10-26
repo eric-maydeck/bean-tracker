@@ -56,6 +56,7 @@
     samples,
     format,
     tickFormat,
+    nearestX = false,
     tipFormat,
     titles,
     integer = false,
@@ -96,6 +97,8 @@
     format?: (v: number) => string;
     // The value axis's tick text of a vertical bar or a line chart (money: "$1,200", ui-rules 46); `unit` applies when unset.
     tickFormat?: (v: number) => string;
+    // A line chart's tip opens for the nearest x anywhere in the plot, not only on a point (a sparse line, Roaster discovery).
+    nearestX?: boolean;
     // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
     // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
     // (ui-rules 36).
@@ -377,7 +380,7 @@
         // A tip opens only on a mark (ui-rules 50): a bar, a slice, or within 8px of a line's point, never the
         // plot's empty space. On a line chart a point shows every series' value for its date (index mode).
         // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
-        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: true },
+        interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: !(nearestX && type === 'line') },
         elements: { point: { hitRadius: 8 } },
         // The help cursor over a mark (every mark has a tip), the arrow elsewhere.
         onHover: (_e, els, c) => (c.canvas.style.cursor = els.length ? 'help' : ''),
@@ -495,7 +498,7 @@
     void format;
     void tipFormat;
     void tickFormat;
-    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band]);
+    const sig = JSON.stringify([type, labels, values, datasetLabel, valueAxisMax, trendValues, trendLabel, unit, vertical, series, yMin, samples, integer, dashGaps, legend, colors, stacked, band, nearestX]);
     if (chart && sig === lastSig) return;
     lastSig = sig;
     render();

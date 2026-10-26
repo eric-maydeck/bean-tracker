@@ -4,25 +4,28 @@
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import type { Multi } from '$lib/server/insights/insightGenerators';
   import { capList, inkOf, seriesColors } from './multiLine';
+  import { usd } from '$lib/money';
 
   // Shares that sum to 100% per month (the lab's "usage over time", G6): one 100% stacked bar per month,
   // the first line at the bottom, "Other" muted; each segment is a tap/keyboard target with its own tip.
-  // `m.other[i]`: what month i's "Other" holds ([name, %], biggest first), listed in its tip (C4).
+  // `m.other[i]`: what month i's "Other" holds ([name, %, $?], biggest first), listed in its tip (C4). `m.dollars[k][i]`:
+  // the amount behind a share (Share of spend), shown with it: "$412.00 (18%)".
   // `colors`: a page-wide color per line (Water's recipe map); else the slots in line order.
-  let { m, ariaLabel, colors: given }: { m: Multi & { other?: [string, number][][] }; ariaLabel: string; colors?: string[] } = $props();
+  let { m, ariaLabel, colors: given }: { m: Multi & { other?: [string, number, number?][][]; dollars?: number[][] }; ariaLabel: string; colors?: string[] } = $props();
 
   let colors = $derived(given ?? seriesColors(m.lines.map((l) => l.label)));
   let n = $derived(m.x.length);
   // Month labels counted back from the last: up to 8 wide, up to 4 in a narrow container.
   let [wide, narrow] = $derived([Math.ceil(n / 8), Math.ceil(n / 4)]);
   const pct = (v: number) => (v ? `${v}%` : '<1%');
+  const amount = (p: number, d?: number) => (d === undefined ? pct(p) : `${usd(d)} (${pct(p)})`);
   // A segment's tip (round 3): the month as the title, then the series and its share as one row ("V60  38%");
   // "Other" lists what it holds, up to 8 on desktop (≥ 768px) and 4 on phones, then "+N more". `max`: the
   // aria-label names every member.
   const otherRows = () => (typeof matchMedia === 'function' && matchMedia('(min-width: 768px)').matches ? 8 : 4);
   const tipOf = (k: number, i: number, max = otherRows()): Tip => {
     const { shown, more } = capList(m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [], max);
-    return { title: m.x[i], rows: [[m.lines[k].label, `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v]): [string, string, string] => [name, pct(v), 'sub'])],
+    return { title: m.x[i], rows: [[m.lines[k].label, m.dollars ? amount(m.lines[k].values[i] ?? 0, m.dollars[k][i]) : `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v, d]): [string, string, string] => [name, amount(v, d), 'sub'])],
       note: more ? `+${more} more` : undefined };
   };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
