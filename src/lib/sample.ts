@@ -61,5 +61,5 @@ export const sampleTip = (s: Sample, paired = false): { lines: string[]; rows: [
 // A tip's `sample` field: the one block every marker shows (TipBody): the title, the reason, the counts.
 export const sampleField = (s: Sample, paired = false) => (s.small ? { sample: { s, paired } } : {});
 // The one legend line, wherever a help popover explains the chip (TipBody renders the chip and the swatch).
-export const SAMPLE_HELP =
-  `${CHIP_EXAMPLE}: low confidence, under ${POOLED_MIN_BAGS} bags or ${POOLED_MIN_BREWS} rated brews (one coffee: under ${BAG_MIN_BREWS}), so one bag or brew can swing it.`;
+export const SAMPLE_NOTE = `Low confidence: under ${POOLED_MIN_BAGS} bags or ${POOLED_MIN_BREWS} rated brews (${BAG_MIN_BREWS} for one coffee).`;
+export const SAMPLE_HELP = `${CHIP_EXAMPLE}: ${SAMPLE_NOTE}`; // the chip's text follows its first ": " (LabHead, TipBody, ValueMap show the chip itself)

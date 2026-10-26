@@ -26,7 +26,7 @@ export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; ro
 <script lang="ts">
   import Icon from './Icon.svelte';
   import CoffeeName from './CoffeeName.svelte';
-  import { CHIP_EXAMPLE, SAMPLE_HELP } from '$lib/sample';
+  import { CHIP_EXAMPLE, SAMPLE_NOTE } from '$lib/sample';
   let { tip }: { tip: Tip } = $props();
   let caution = $derived(tip.caution ?? (tip.sample ? sampleTip(tip.sample.s, tip.sample.paired) : null));
 </script>
@@ -39,7 +39,7 @@ export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; ro
 
 {#each tip.groups ?? [] as g, gi (gi)}<strong class="tip-title tip-group">{g.title}</strong><dl class="tip-rows">{#each g.rows as [l, v, ink], i (i)}<dt>{@render mark(g.marks?.[i])}{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/each}
 {#if tip.points?.length}<ul class="tip-lines tip-points">{#each tip.points as [l, v], i (i)}<li><b class="tip-label">{@render text(l)}:</b> {@render text(v)}</li>{/each}</ul>{/if}
-{#if tip.lines?.length || tip.sampleLegend}<ul class="tip-lines">{#each tip.lines ?? [] as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{@render text(line)}</li>{/each}{#if tip.sampleLegend}<li><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> <i class="sample-swatch small-sample-mark"></i> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>{/if}</ul>{/if}
+{#if tip.lines?.length || tip.sampleLegend}<ul class="tip-lines">{#each tip.lines ?? [] as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{@render text(line)}</li>{/each}{#if tip.sampleLegend}<li><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> <i class="sample-swatch small-sample-mark"></i> {SAMPLE_NOTE}</li>{/if}</ul>{/if}
 {#if tip.note}<span class="tip-note">{@render text(tip.note)}</span>{/if}
 {#if caution}<dl class="tip-rows tip-counts">{#each caution.rows as [l, v] (l)}<dt>{l}</dt><dd>{v}</dd>{/each}</dl>{/if}
 {#if tip.strength}

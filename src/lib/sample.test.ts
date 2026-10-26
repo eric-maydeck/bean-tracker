@@ -57,7 +57,7 @@ describe('small-sample rule', () => {
     expect(chipLabel(pooled(5, 8, 6))).toBe('Only 6 brews');
     expect(sampleTip(pooled(5, 8, 6)).rows).toEqual([['Bags', '5'], ['Rated brews', '8'], ['Brews scored once dialed', '6']]);
     expect(pooled(5, 8, 8)).not.toHaveProperty('scored');
-    expect(SAMPLE_HELP).toBe('Only 2 bags: low confidence, under 3 bags or 10 rated brews (one coffee: under 4), so one bag or brew can swing it.');
+    expect(SAMPLE_HELP).toBe('Only 2 bags: Low confidence: under 3 bags or 10 rated brews (4 for one coffee).');
   });
 });
 

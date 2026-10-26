@@ -2354,6 +2354,18 @@ export const STATES: State[] = [
       for (const r of pts) expect(r.x >= box.x - 1 && r.x + r.width <= box.x + box.width + 1 && r.y >= box.y - 1 && r.y + r.height <= box.y + box.height + 1).toBe(true);
       expect(await page.locator('[data-section="spend-best-value"] .board-row').count()).toBeLessThanOrEqual(5);
       await expectColumnsFilled(page, '.insights-charts:has([data-section="spend-value-map"])');
+      // The small-sample note: the shared wording, on one line at desktop, centered on the chip beside it.
+      const note = page.locator('.value-map .chip-note');
+      await expect(note).toContainText('Low confidence: under 3 bags or 10 rated brews (4 for one coffee).');
+      const m = await note.evaluate((li) => {
+        const tn = [...li.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())!;
+        const rg = document.createRange();
+        rg.selectNodeContents(tn);
+        const t = rg.getBoundingClientRect(), c = li.querySelector('.sample-chip')!.getBoundingClientRect();
+        return { lines: rg.getClientRects().length, dy: Math.abs((t.top + t.bottom) / 2 - (c.top + c.bottom) / 2), w: innerWidth };
+      });
+      if (m.w >= 1000) expect(m.lines).toBe(1);
+      if (m.lines === 1) expect(m.dy).toBeLessThan(2);
     }
   },
   {
@@ -3592,7 +3604,7 @@ export const STATES: State[] = [
     act: async (page) => {
       await page.locator('[data-section="brewing-rest"] .mode-tip-button').first().click();
       await expect(page.locator('.mode-tip:popover-open')).toContainText('Only 2 bags');
-      await expect(page.locator('.mode-tip:popover-open')).toContainText('low confidence, under 3 bags or 10 rated brews');
+      await expect(page.locator('.mode-tip:popover-open')).toContainText('Low confidence: under 3 bags or 10 rated brews (4 for one coffee).');
       await expect(page.locator('.mode-tip:popover-open .sample-chip')).toBeVisible();
     } },
   { name: 'insights-strength-badges', viewports: 'two', path: () => '/insights?tab=sweetspots',

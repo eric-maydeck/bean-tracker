@@ -15,7 +15,7 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { SAMPLE_HELP } from '$lib/sample';
-  import { usd, usdPrecise, wholeUsd } from '$lib/money';
+  import { usd, wholeUsd } from '$lib/money';
   import LabHead from './LabHead.svelte';
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
@@ -106,7 +106,7 @@
   const note = $derived(`${ppg ? `$ per g in each ${sr.by}` : `$ per ${sr.by}`} · counted by roast date`);
   const vm = $derived(t.valueMap);
   const cutTip = $derived({
-    title: 'Not shown', rows: vm.cut.map((p): [string, string] => [p.name, `${usdPrecise(p.ppg) ? usdPrecise(p.ppg) : usd(p.ppg)}/g`])
+    title: 'Not shown', rows: vm.cut.map((p): [string, string] => [p.name, `${usd(p.ppg)}/g`])
   });
   const dc = $derived(t.discovery);
   const partial = $derived(sr.partial ? `* partial ${sr.by}` : '\u00a0');

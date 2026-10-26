@@ -3,8 +3,8 @@
   import { rove, takeFocus } from '$lib/components/Heatmap.svelte';
   import TipBody, { tipText, type Tip } from '$lib/components/TipBody.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import { CHIP_EXAMPLE, SAMPLE_HELP, sampleField } from '$lib/sample';
-  import { usd, usdPrecise } from '$lib/money';
+  import { CHIP_EXAMPLE, SAMPLE_NOTE, sampleField } from '$lib/sample';
+  import { usd } from '$lib/money';
   import type { ValueMap, ValuePoint } from '$lib/server/insights/spend';
 
   // Price vs rating, one dot per coffee (a diamond when any of its bags came from a subscription), the dashed lines
@@ -29,7 +29,7 @@
 
   const tipOf = (p: ValuePoint): Tip => ({
     title: p.name,
-    rows: [['Roaster', p.roaster], ['$/g', usdPrecise(p.ppg) ? `${usd(p.ppg)}/g (${usdPrecise(p.ppg)})` : perG(p.ppg)], ['Rating', p.rating.toFixed(2)], ['Brews', String(p.brews)]],
+    rows: [['Roaster', p.roaster], ['$/g', perG(p.ppg)], ['Rating', p.rating.toFixed(2)], ['Brews', String(p.brews)]],
     ...sampleField(p.sample)
   });
 
@@ -104,7 +104,7 @@
   <ul class="legend">
     <li><svg width="12" height="12" aria-hidden="true"><path class="mark" d="M6 0L12 6L6 12L0 6Z" /></svg>Subscription</li>
     <li><svg width="12" height="12" aria-hidden="true"><circle class="mark" cx="6" cy="6" r="5" /></svg>One-off</li>
-    <li class="chip-note"><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>
+    <li class="chip-note"><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> {SAMPLE_NOTE}</li>
   </ul>
   {#if tip}
     <FloatTip anchor={tip.el} onclose={() => (tip = null)} reveal={!!tip.reveal}>
