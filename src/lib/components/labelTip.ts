@@ -14,7 +14,7 @@ export function labelTip(node: HTMLElement, label: Label) {
   let tip: ReturnType<typeof mount> | null = null;
   let pinned = false;
   const passive = !node.matches('a[href], button:not([aria-disabled="true"]), input, select, [role="button"]');
-  if (passive) node.style.cursor = 'help';
+  if (passive && label) node.style.cursor = 'help';
   const away = (e: Event) => !node.contains(e.target as Node) && close();
   const close = () => {
     if (tip) void unmount(tip);
@@ -45,6 +45,7 @@ export function labelTip(node: HTMLElement, label: Label) {
     update(next: Label) {
       if (next === label || (typeof next === 'object' && JSON.stringify(next) === JSON.stringify(label))) return;
       label = next;
+      if (passive) node.style.cursor = next ? 'help' : '';
       if (tip) (close(), node.matches(':focus-visible, :hover') && open());
     },
     destroy() {

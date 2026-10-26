@@ -299,14 +299,14 @@
   let SPEND = $derived<Tile[]>([
     { key: 'spent', split: true, label: 'Spent', fmt: usd, up: 'bad',
       help: 'Counted by roast date: bags bought in the Period, at their listed price; subscription bags at plan price ÷ bags.' },
-    { key: 'bags', split: true, label: 'Bags bought', fmt: count },
+    { key: 'bags', label: 'Bags bought', fmt: count },
     { key: 'avgPpg', label: 'Avg $/g', fmt: (n) => `${usd(n)}/g`, up: 'bad', keepSub: true,
       sub: () => { const f = data.spend?.free ?? 0; return f ? `${f} free bag${f === 1 ? '' : 's'} not in $/g` : null; } },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd, up: 'bad' },
     { key: 'avgBagSize', label: 'Avg bag size', fmt: formatGrams },
     { key: 'newRoasters', label: 'New roasters', fmt: count, up: 'good' },
     { key: 'subShare', label: 'Subscription share', fmt: pct },
-    { key: 'plansPerMonth', split: true, label: 'Plans per month', fmt: usd, sub: () => 'right now' }
+    { key: 'plansPerMonth', split: true, label: 'Plans per month', fmt: usd, sub: () => 'this month' }
   ]);
   let HABITS = $derived<Tile[]>(
     data.habits
@@ -767,7 +767,7 @@
           >
           {#if d}
             <!-- The visible line is for eyes; the sentence (with the %) is for screen readers and the hover tip. -->
-            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd || title === 'Spending') && !d.paced} use:labelTip={deltaTitle(d, t)}
+            <span class="stat-unit insights-delta {trend(d, t)}" class:ratio={(t.from || t.fmt === usd || title === 'Spending') && !d.paced} use:labelTip={deltaText(d, t) === 'No change' ? undefined : deltaTitle(d, t)}
               ><span aria-hidden="true">{deltaText(d, t)}</span><span class="sr-only">{deltaTitle(d, t)}</span></span
             >
             {#if paceText(d, t)}<span class="insights-pace">{paceText(d, t)}</span>{/if}
@@ -1770,6 +1770,11 @@
     line-height: 1.1;
     overflow: visible;
     text-overflow: clip;
+  }
+  /* A change line's tip explains a value, so it keeps the arrow (ui-rules 50; labelTip sets help inline). */
+  .stat-item :global(.insights-delta),
+  .stat-item :global(.insights-pace.compare) {
+    cursor: default !important;
   }
   /* A money value is an underlined tip trigger: keep its dotted line below the digits at the tile's big font. */
   .stat-value :global(.text-tip) {

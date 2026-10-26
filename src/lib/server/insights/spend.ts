@@ -40,7 +40,7 @@ export const SPEND_KIND: Record<keyof SpendTiles, 'total' | 'average'> = {
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
-// Bags bought (roast date) in `p`. `size`: per person divides spent, bags and plans per month only.
+// Bags bought (roast date) in `p`. `size`: per person divides spent and plans per month only (bags are shared in the household, user 2026-10-26).
 export function spendTiles(bags: readonly BagFact[], plans: readonly Plan[], p: Period, size = 1): SpendTiles & { free: number } {
   const inP = bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, p));
   const first = new Map<string, string>(); // roaster → earliest purchase date over all bags
@@ -50,7 +50,7 @@ export function spendTiles(bags: readonly BagFact[], plans: readonly Plan[], p: 
   const monthly = plans.filter((x) => !x.paused && x.price !== null);
   return {
     spent: inP.reduce((s, b) => s + (b.cost ?? 0), 0) / size,
-    bags: inP.length / size,
+    bags: inP.length,
     avgPpg: pricedPpg(inP),
     avgBagCost: mean(inP.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : []))),
     avgBagSize: mean(inP.flatMap((b) => (b.amountG !== null && b.amountG > 0 ? [b.amountG] : []))),
@@ -153,7 +153,7 @@ function reportCard(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
   const rating = board('rating'), like = board('like');
   const mine = groupBy(bags.filter((b) => b.purchaseDate && inPeriod(b.purchaseDate, c.period)), (b) => b.roaster);
   return [...mine].map(([roaster, inP]) => ({
-    roaster, bags: inP.length / c.size, spent: inP.reduce((s, b) => s + (b.cost ?? 0), 0) / c.size, ppg: pricedPpg(inP),
+    roaster, bags: inP.length, spent: inP.reduce((s, b) => s + (b.cost ?? 0), 0) / c.size, ppg: pricedPpg(inP),
     rating: rating.get(roaster)?.value ?? null, ratingSample: rating.get(roaster)?.sample,
     like: like.get(roaster)?.value ?? null, likeSample: like.get(roaster)?.sample,
     last: bags.reduce((m, b) => (b.roaster === roaster && b.purchaseDate && b.purchaseDate <= c.period.end && b.purchaseDate > m ? b.purchaseDate : m), ''),
@@ -232,7 +232,7 @@ function plansPanel(scored: readonly BrewFact[], bags: readonly BagFact[], c: Sp
   const figures = (mine: readonly BagFact[]) => {
     const ids = new Set(mine.map((b) => b.id));
     const g = ratedGroups(scored.filter((b) => b.coffeeId !== null && ids.has(b.coffeeId)), () => 'x', c.ratings, 'raw')[0];
-    return { bags: mine.length / c.size, ppg: pricedPpg(mine), rating: g?.mean ?? null, sample: g?.sample };
+    return { bags: mine.length, ppg: pricedPpg(mine), rating: g?.mean ?? null, sample: g?.sample };
   };
   const perMonth = (p: Plan) => (p.price === null ? null : p.price / c.size);
   const rows = c.plans.map((p) => ({ id: p.id, name: p.name, paused: p.paused, perMonth: perMonth(p), ...figures(inP.filter((b) => b.subscriptionId === p.id)) }));

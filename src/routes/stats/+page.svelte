@@ -377,7 +377,7 @@
   ><span class="mode-tip" id="tip-pp-{id}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Per person', lines: [PEOPLE_HELP.person] }} /></span>{/if}{/snippet}
 
 <!-- A weight; where formatGrams drops the decimal (100 kg and up), the exact grams in the shared text tip (like Usd). -->
-{#snippet grams(g: number)}{#if g >= 100000}<TextTip label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
+{#snippet grams(g: number)}{#if g >= 100000}<TextTip value label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
 
 {#snippet bcAverageToggle()}
   <div class="form-field group-field">

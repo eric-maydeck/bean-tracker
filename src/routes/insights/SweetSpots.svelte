@@ -246,7 +246,7 @@
               <div class="mode-tip" id="{id}-badge" popover onbeforetoggle={placeTip}><TipBody tip={STRENGTH_TIP[b]} /></div>
             {/if}
           </div>
-          <span class="hl-value" class:long={say.length > 9}>{#if tight[id] || v === 'Not enough data'}<TextTip label={say} tip={full} />{:else}{say}{/if}</span>
+          <span class="hl-value" class:long={say.length > 9}>{#if tight[id] || v === 'Not enough data'}<TextTip value label={say} tip={full} />{:else}{say}{/if}</span>
           {#if p.bands.length > 1}
             {@const ch = chart(p)}
             <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (focusable for its band tips; the bands are in aria-label, the card's full text in its description) -->
@@ -274,7 +274,7 @@
           {/if}
           <!-- The result line, one line at any width: a short phrase, its numbers in a tip on it (user, 2026-10-17), so it never wraps and squeezes the chart above. A result (a same-bag delta, a group's
                highest) is in the standout ink; a same-bag delta number keeps its green or red (T4). -->
-          {#if r || evidence(p)}<span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<TextTip label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>{/if}
+          {#if r || evidence(p)}<span class="hl-line evidence" class:result={!!r?.result}>{#if r}{#if r.delta}<TextTip value label="{r.delta} {r.label}" tip={r.tip}>{#snippet children()}<span class={inkOf(r.delta!)}>{r.delta}</span>{' '}{r.label}{/snippet}</TextTip>{:else}<TextTip value label={r.label} tip={r.tip} />{/if}{:else}{evidence(p)}{/if}</span>{/if}
           {#if thin(p)}<span class="hl-line thin">{thin(p)}</span>{/if}
           {#if usually(p)}<span class="hl-line usually">{usually(p)}</span>{/if}
           <TileCaption href="#{id}" label={c.key === 'grind' && grinderName ? `${c.name} · ${grinderName}` : c.name} />

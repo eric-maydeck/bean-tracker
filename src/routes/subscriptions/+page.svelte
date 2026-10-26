@@ -541,7 +541,7 @@
               </div>
               <!-- Pending: the row's left accent and this chip; its tip (and its accessible name) lists what.
                    Always rendered (hidden when empty), so staging never grows the row. -->
-              <span class="badge badge-neutral pending-chip" class:empty={!pendingParts(pending.get(sub.id)).length}><TextTip label="Pending"
+              <span class="badge badge-neutral pending-chip" class:empty={!pendingParts(pending.get(sub.id)).length}><TextTip value label="Pending"
                 tip={{ title: 'Pending changes', lines: pendingParts(pending.get(sub.id)).map((p) => p[0].toUpperCase() + p.slice(1)) }} /></span>
               {#if commitErrors.get(sub.id)}
                 <p class="badge badge-urgent">{commitErrors.get(sub.id)}</p>

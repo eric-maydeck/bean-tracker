@@ -15,7 +15,7 @@
   const fills = $derived(Array.from({ length: 5 }, (_, i) => Math.max(0, Math.min(1, degrees - i))));
 </script>
 
-{#if label}<TextTip label="Roast level" tip={{ title: label }}>{@render beans()}</TextTip>{:else}{@render beans()}{/if}
+{#if label}<TextTip value label="Roast level" tip={{ title: label }}>{@render beans()}</TextTip>{:else}{@render beans()}{/if}
 
 {#snippet beans()}
 <span class="roast-beans">

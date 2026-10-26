@@ -47,9 +47,9 @@ describe('spendTiles', () => {
   it('subscription share is grams over grams bought', () => expect(t.subShare).toBeCloseTo(125 / 925));
   it('new roasters: first bag ever in the period', () => expect(t.newRoasters).toBe(2)); // A, B; C was bought in August
   it('plans per month: active plans only', () => expect(t.plansPerMonth).toBe(58));
-  it('per person halves spent, bags and plans per month only', () => {
+  it('per person halves spent and plans per month; bags stay whole', () => {
     const h = spendTiles(bags, plans, SEPT, 2);
-    expect([h.spent, h.bags, h.plansPerMonth]).toEqual([41.25, 3, 29]);
+    expect([h.spent, h.bags, h.plansPerMonth]).toEqual([41.25, 6, 29]);
     expect([h.avgPpg, h.avgBagCost, h.subShare, h.newRoasters]).toEqual([t.avgPpg, t.avgBagCost, t.subShare, t.newRoasters]);
   });
   it('empty', () => {
@@ -181,9 +181,9 @@ describe('spendTab reportCard', () => {
     expect(a.ppg).toBeCloseTo(0.1);
     expect(a.href).toContain('/coffees?');
   });
-  it('per person halves bags and spent only', () => {
+  it('per person halves spent only; bags stay whole', () => {
     const a = rows({ ...ctx, size: 2 }).find((r) => r.roaster === 'A')!;
-    expect([a.bags, a.spent, a.ppg]).toEqual([1, 25, expect.closeTo(0.1)]);
+    expect([a.bags, a.spent, a.ppg]).toEqual([2, 25, expect.closeTo(0.1)]);
   });
   it('rating is the bag-weighted raw mean and like the gap to other roasters, each with a sample', () => {
     const mk = (id: number, roaster: string) => bag({ id, roaster, name: `C${id}`, cost: 10, amountG: 100, roastLevel: 'Light', purchaseDate: '2026-09-05' });
@@ -276,9 +276,9 @@ describe('spendTab plans', () => {
     const p = spendTab(late, late, fx, ctx()).plans;
     expect(p.rows[0].rating).toBeCloseTo(9);
   });
-  it('per person halves $/month and bags; total $/month skips the paused plan', () => {
+  it('per person halves $/month, not bags; total $/month skips the paused plan', () => {
     const p = run({ size: 2 });
-    expect([p.rows[0].perMonth, p.rows[0].bags, p.total.perMonth]).toEqual([30, 1, 30]);
+    expect([p.rows[0].perMonth, p.rows[0].bags, p.total.perMonth]).toEqual([30, 2, 30]);
     expect(run().total).toMatchObject({ perMonth: 60, bags: 2 });
   });
 });

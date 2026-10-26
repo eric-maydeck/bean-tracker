@@ -10,7 +10,7 @@
   let precise = $derived(usdPrecise(n, whole));
 </script>
 
-{#if precise}<span class="usd"><TextTip label={usd(n, whole) + suffix} tip={{ title: 'Before rounding', rows: [[whole ? 'To the cent' : 'To 4 decimals', precise + tipSuffix]] }} /></span>{:else}{usd(n, whole) + suffix}{/if}
+{#if precise}<span class="usd"><TextTip value label={usd(n, whole) + suffix} tip={{ title: 'Before rounding', rows: [[whole ? 'To the cent' : 'To 4 decimals', precise + tipSuffix]] }} /></span>{:else}{usd(n, whole) + suffix}{/if}
 
 <style>
   /* Phones: "$1.05" is ~33px wide; side padding, pulled back by the margin so nothing moves, grows its target to 44

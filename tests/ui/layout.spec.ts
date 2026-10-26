@@ -2235,7 +2235,7 @@ export const STATES: State[] = [
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
         ['Spent', 'Bags bought', 'Avg $/g', 'Avg bag cost', 'Avg bag size', 'New roasters', 'Subscription share', 'Plans per month'], { useInnerText: true, ignoreCase: true }
       );
-      await expect(page.locator('#spend-plans-per-month .stat-unit')).toHaveText('right now');
+      await expect(page.locator('#spend-plans-per-month .stat-unit')).toHaveText('this month');
       // Phone tiles: 3 across like Consumption's (2 across made them 229px squares).
       if ((page.viewportSize()?.width ?? 1000) <= 520) for (const t of await page.locator('.stat-item').all()) expect((await t.boundingBox())!.height).toBeLessThan(180);
       await page.getByRole('button', { name: 'About Spent' }).click();
@@ -2249,6 +2249,9 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.locator('#spend-spent .insights-delta')).toBeVisible();
       await expect(page.locator('#spend-plans-per-month .insights-delta')).toHaveCount(0);
+      // A value's tip (the exact cents) and a change line keep the arrow; a "No change" line has no tip at all.
+      for (const e of await page.locator('#spend-spent .text-tip, #spend-spent .insights-delta').all()) expect(await e.evaluate((n) => getComputedStyle(n).cursor)).toBe('default');
+      for (const e of await page.locator('.stat-item .insights-delta', { hasText: 'No change' }).all()) expect(await e.evaluate((n) => n.style.cursor)).toBe('');
       // The free-bag caption stays under the $/g delta.
       await expect(page.locator('#spend-avg-ppg')).toContainText(/\d+ free bags? not in \$\/g/);
       await expectDeltasFit(page);
