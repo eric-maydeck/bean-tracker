@@ -215,6 +215,7 @@
     min-width: 2px;
     translate: 0 -50%;
     border-radius: 4px 0 0 4px;
+    box-shadow: inset 0 0 0 0.75px var(--slice-line); /* the one dark bar outline (ui-rules 42) */
   }
   .bar.up {
     right: auto;

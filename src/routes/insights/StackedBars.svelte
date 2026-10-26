@@ -172,7 +172,7 @@
     flex-basis: 0;
     box-sizing: border-box;
     cursor: help; /* a click opens only the tip (ui-rules 50) */
-    box-shadow: inset 0 0 0 1px var(--ink); /* pastel fills: the outline carries the 3:1 (ui-rules 42) */
+    box-shadow: inset 0 0 0 0.75px var(--slice-line); /* the one dark bar outline (ui-rules 42) */
   }
   .seg:not(:last-child) {
     border-top: 2px solid var(--color-surface);
@@ -258,6 +258,6 @@
     width: 0.6rem;
     height: 0.6rem;
     border-radius: 2px;
-    box-shadow: inset 0 0 0 1px var(--ink); /* pastel fills: the outline carries the 3:1 (ui-rules 42) */
+    box-shadow: inset 0 0 0 0.75px var(--slice-line); /* the one dark bar outline (ui-rules 42) */
   }
 </style>
