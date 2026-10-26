@@ -4,7 +4,6 @@
   const AGE_KEYS = ['before', 'inside', 'past', 'noWindow'] as const;
   const hasAge = (t: OnHandTab) => AGE_KEYS.some((k) => t.age.bags[k].some((n) => n > 0));
   const shelf = (t: OnHandTab) => t.tiles.bagsWaiting + t.tiles.frozenBags > 0 || Object.values(t.freshness).some((g) => typeof g === 'object' && g && g.count > 0);
-  // Each panel task adds its section here.
   export function jumpLinks(t: OnHandTab): JumpLink[] {
     return [['onhand-runway-at-your-pace', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
   }
@@ -119,7 +118,7 @@
 {/if}
 
 <style>
-  /* Card grids fill their rows (ui-rules 33): 2 across, 4 on a wide panel; the runway's one card spans the row. */
+  /* Card grids fill their rows (ui-rules 33): 2 across, 4 on a wide panel; the runway is tiles. */
   .cards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

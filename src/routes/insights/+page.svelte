@@ -929,8 +929,7 @@
 {:else if s.tab === 'onhand' && data.onHand}
   {#snippet runwayChart()}
     <RunwayChart t={data.onHand!} today={data.today} paces={[...(s.range === 'all' ? [] : [{ name: paceName, days: data.onHand!.runway.days }]), { name: 'all-time pace', days: data.onHand!.runwayAll.days }]} />
-    <p class="chart-note">Per person divides the pace, so the same shelf lasts longer.
-      <a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
+    <p class="chart-note">{#if perPersonOn}Per person divides the pace, so the same shelf lasts longer. {/if}<a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
   {/snippet}
   {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}
   <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
@@ -1281,7 +1280,6 @@
   .stat-caption:has(.mode-tip-button) {
     overflow: visible;
   }
-  /* A split tile's caption gets a per-person part (the rating tiles a third part); let it wrap to a second line. */
   /* A small section label under a panel title: muted, semibold, 0.85rem (the app has no smaller heading class). */
   .row-label {
     margin: var(--space-3) 0 var(--space-2);
@@ -1293,13 +1291,8 @@
   .row-label:first-of-type {
     margin-top: 0;
   }
-  .stat-label.wrap.mode-caption {
-    letter-spacing: 0; /* Rated · Calibrated ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
-  }
   .stat-label.wrap {
-    -webkit-line-clamp: 3; /* the label, then its mode and per person parts, each on its own line */
-    white-space: normal;
-    line-height: 1.1; /* two lines end flush with the tile; keep them inside */
+    white-space: normal; /* a caption block's items wrap (ui-rules 55) */
   }
   /* Records and Milestones card grids (ui-rules 33): each card's row length comes from rows.ts
      (--q4 / --q3 / --q2), picked here by the grid's width, so every row runs edge to edge. Findings

@@ -17,14 +17,13 @@ describe('tipPlace', () => {
   });
 });
 
-import { tipPlace as place } from './floatTip';
 describe('tipPlace beside', () => {
   const view = { w: 1000, top: 0, bottom: 800 };
   it('sits to the right of the anchor, centered on it', () => {
-    expect(place({ left: 300, right: 301, top: 100, bottom: 101 }, { w: 200, h: 60 }, view, 6, true)).toEqual({ x: 307, y: 70.5 });
+    expect(tipPlace({ left: 300, right: 301, top: 100, bottom: 101 }, { w: 200, h: 60 }, view, 6, true)).toEqual({ x: 307, y: 70.5 });
   });
   it('flips left when the right has no room, and stays in the band', () => {
-    const p = place({ left: 900, right: 901, top: 5, bottom: 6 }, { w: 200, h: 60 }, view, 6, true);
+    const p = tipPlace({ left: 900, right: 901, top: 5, bottom: 6 }, { w: 200, h: 60 }, view, 6, true);
     expect(p.x).toBe(694);
     expect(p.y).toBe(0);
   });
