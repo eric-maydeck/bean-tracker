@@ -74,7 +74,7 @@ export function whatsWaiting(bags: readonly BagFact[], logged: Map<number, numbe
 }
 
 export type AgeSplit = { before: number[]; inside: number[]; past: number[]; noWindow: number[] };
-export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit } }
+export interface OnHandTab { tiles: OnHandTiles; runway: Runway; runwayAll: Runway; onHandG: number; freshness: Freshness; waiting: Waiting; age: { labels: string[]; bags: AgeSplit; grams: AgeSplit } }
 
 // Waiting (backlog) bags by freezer-net days since roast, split by where that age sits against the roaster's rest
 // window. Bags are counted whole (shared in the household); grams divide per person.
@@ -124,6 +124,7 @@ export function onHandTab(
       frozenGrams: frozen.reduce((s, b) => s + b.grams, 0) / c.size,
       avgBagCost: mean(live.flatMap((b) => (b.cost !== null && b.cost > 0 ? [b.cost] : [])))
     },
+    onHandG,
     runway: run(c.period),
     runwayAll: run({ start: null, end: c.today }),
     waiting: whatsWaiting(bags, logged, c.size),

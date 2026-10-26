@@ -6,7 +6,7 @@
   const shelf = (t: OnHandTab) => t.tiles.bagsWaiting + t.tiles.frozenBags > 0 || Object.values(t.freshness).some((g) => typeof g === 'object' && g && g.count > 0);
   // Each panel task adds its section here.
   export function jumpLinks(t: OnHandTab): JumpLink[] {
-    return [['onhand-runway', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
+    return [['onhand-runway-at-your-pace', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile'], t.tiles.bagsWaiting > 0 && ['onhand-waiting', "What's waiting"]];
   }
 </script>
 
@@ -17,23 +17,18 @@
   import LabHead from './LabHead.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import type { FreshGroup, Runway } from '$lib/server/insights/onHand';
+  import type { FreshGroup } from '$lib/server/insights/onHand';
   import Chart from '$lib/components/Chart.svelte';
   import ChartToggle from './ChartToggle.svelte';
   import { seriesToken } from '$lib/components/chartColor';
   import { WAIT_BYS, type InsightsUrlState, type Unit, type WaitBy } from '$lib/insightsUrl';
   import type { Tip } from '$lib/components/TipBody.svelte';
 
-  let { t, tiles, link, periodLabel, allTime, placeTip, unit, waitBy, choose }: {
+  let { t, tiles, runway, link, placeTip, unit, waitBy, choose }: {
     unit: Unit; waitBy?: WaitBy; choose: (c: InsightsUrlState) => void;
-    t: OnHandTab; tiles: Snippet; link: (href: string) => string; periodLabel: string; allTime: boolean; placeTip: (e: ToggleEvent) => void;
+    t: OnHandTab; tiles: Snippet; runway: Snippet; link: (href: string) => string; placeTip: (e: ToggleEvent) => void;
   } = $props();
   const emptyLine = useEmptyLine();
-
-  const day = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-  // "last 12 months pace"; a custom window's dates stay as they are.
-  const pace = $derived(allTime || /^[A-Z][a-z]{2} \d/.test(periodLabel) ? periodLabel : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
-  const runs = $derived<[string, Runway][]>(allTime ? [['all-time', t.runwayAll]] : [[pace, t.runway], ['all-time', t.runwayAll]]);
 
   const CAP = 5;
   const GROUPS = $derived<[string, FreshGroup][]>([
@@ -58,21 +53,7 @@
 
 {@render tiles()}
 
-<section class="chart-panel" data-section="onhand-runway">
-  <LabHead id="onhand-runway" title="Runway at your pace" {placeTip}
-    help={['How long the backlog and open bags last at the grams a day you brew.', 'Once at the pace of the Period, once at your all-time pace.', 'Per person divides the pace, so the same shelf lasts longer.']} />
-  <div class="cards runs" class:one={runs.length === 1}>
-    {#each runs as [name, r] (name)}
-      <div class="oh-card">
-        <span class="k">At your {name} pace</span>
-        <strong class="big">{r.days === null ? '—' : r.days.toLocaleString('en-US')}{#if r.days !== null}<small>{` day${r.days === 1 ? '' : 's'}`}</small>{/if}</strong>
-        <span class="sub">{r.clearBy ? `runs out ${day(r.clearBy)}` : 'No brews to pace it'}{r.perDay === null ? '' : ` · ${formatGrams(r.perDay)} a day`}</span>
-      </div>
-    {/each}
-  </div>
-  <p class="chart-note">Everything on the shelf, backlog and open bags, against how fast you brew.
-    <a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
-</section>
+{@render runway()}
 
 <section class="chart-panel" data-section="onhand-freshness">
   <LabHead id="onhand-freshness" title="Freshness now" {placeTip}
@@ -140,9 +121,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3);
     container-type: inline-size;
-  }
-  .cards.one {
-    grid-template-columns: minmax(0, 1fr);
   }
   @container (min-width: 56rem) {
     .fresh {

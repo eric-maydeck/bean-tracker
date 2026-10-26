@@ -41,6 +41,8 @@
   import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
   import OnHand, { jumpLinks as onHandLinks } from './OnHand.svelte';
+  import RunwayChart from './RunwayChart.svelte';
+  import type { Snippet } from 'svelte';
   import Recent from './Recent.svelte';
   import CollapsibleBar from '$lib/components/CollapsibleBar.svelte';
   import JumpNav, { type JumpLink } from './JumpNav.svelte';
@@ -329,6 +331,17 @@
     { key: 'frozenBags', split: true, label: 'In the freezer', fmt: count, sub: () => (data.onHand ? formatGrams(data.onHand.tiles.frozenGrams) : null) },
     { key: 'avgBagCost', label: 'Avg bag cost', fmt: usd }
   ]);
+  // Runway: the days left at the Period's pace and at the all-time pace (one tile when the Period is all time).
+  // "last 12 months pace"; a custom window's dates stay as they are.
+  const paceName = $derived(s.range === 'all' || /^[A-Z][a-z]{2} \d/.test(periodLabel) ? periodLabel : periodLabel.replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase()));
+  // Per pace: days left, the run-out date (the value is the days; its format is the date) and the daily grams.
+  const outDate = (n: number) => shortDay(new Date(Date.parse(`${data.today}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10));
+  const paceTiles = (k: 'pace' | 'all', name: string): Tile[] => [
+    { key: `${k}Days`, split: true, label: `Days left, ${name}`, fmt: count, suffix: 'days' },
+    { key: `${k}Out`, split: true, label: `Runs out, ${name}`, fmt: outDate },
+    { key: `${k}PerDay`, split: true, label: `A day, ${name}`, fmt: formatGrams }
+  ];
+  let RUNWAY = $derived<Tile[]>([...(s.range === 'all' ? [] : paceTiles('pace', paceName)), ...paceTiles('all', 'all time')]);
   let HABITS = $derived<Tile[]>(
     data.habits
       ? [
@@ -770,7 +783,7 @@
 <span id="people-help-household" hidden>{PEOPLE_HELP.household}</span>
 <span id="people-help-person" hidden>{PEOPLE_HELP.person}</span>
 
-{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, whole?: string[])}
+{#snippet panel(title: string, tiles: Tile[], values: object, deltas: object | null, whole?: string[], after?: Snippet)}
   <section class="chart-panel">
     {#if tiles.some((t) => t.ratingSwitch)}
       <div class="chart-panel-header">
@@ -831,6 +844,7 @@
       {/each}
     </div>
     {#if whole && wholeKeys.length}<WholeNote keys={wholeKeys} items={whole} />{/if}
+    {@render after?.()}
   </section>
 {/snippet}
 
@@ -906,7 +920,13 @@
 {:else if s.tab === 'gear' && data.gear}
   <Gear t={data.gear} trophies={data.trophies} {s} {placeTip} {choose} />
 {:else if s.tab === 'onhand' && data.onHand}
-  <OnHand t={data.onHand} {link} {periodLabel} allTime={s.range === 'all'} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
+  {#snippet runwayChart()}
+    <RunwayChart t={data.onHand!} today={data.today} paces={[...(s.range === 'all' ? [] : [{ name: paceName, days: data.onHand!.runway.days }]), { name: 'all-time pace', days: data.onHand!.runwayAll.days }]} />
+    <p class="chart-note">Per person divides the pace, so the same shelf lasts longer.
+      <a href={link('/insights?tab=insights&chart=insights-what-if#insights-what-if')}>Plan it: What if</a></p>
+  {/snippet}
+  {#snippet runwayPanel()}{@render panel('Runway at your pace', RUNWAY, { paceDays: data.onHand!.runway.days, paceOut: data.onHand!.runway.days, pacePerDay: data.onHand!.runway.perDay, allDays: data.onHand!.runwayAll.days, allOut: data.onHand!.runwayAll.days, allPerDay: data.onHand!.runwayAll.perDay }, null, undefined, runwayChart)}{/snippet}
+  <OnHand t={data.onHand} {link} runway={runwayPanel} {placeTip} unit={s.unit} waitBy={s.waitBy} {choose}>
     {#snippet tiles()}{@render panel('On the shelf', ONHAND, data.onHand!.tiles, null)}{/snippet}
   </OnHand>
 {:else if s.tab === 'spend' && data.spend}
@@ -1766,8 +1786,13 @@
   }
   /* viewport 1000px (no rail; the rail narrows it) */
   @container insights (min-width: 968px) {
-    .fit.n6 {
+    .fit.n6,
+    .fit.n3 {
       --c: 6;
+    }
+    /* Three tiles stretch to thirds of the row but keep a sixth's height (content centered, like n4 and n5). */
+    .fit.n3 .stat-item {
+      --q: 3;
     }
   }
   /* Right now: two rows of four; two columns below 520px (4 columns leave two-line captions spilling at ~100px tiles). */

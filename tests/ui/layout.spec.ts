@@ -2728,16 +2728,30 @@ export const STATES: State[] = [
   {
     name: 'insights-onhand', path: () => '/insights?tab=onhand&range=3m',
     act: async (page) => {
+      const shelf = ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost'];
       await expect(page.locator('.stat-item .stat-label')).toHaveText(
-        ['Bags waiting', 'Grams waiting', '$ tied up', 'Avg age', 'In the freezer', 'Avg bag cost'], { useInnerText: true, ignoreCase: true }
+        [...shelf, 'Days left, last 3 months', 'Runs out, last 3 months', 'A day, last 3 months', 'Days left, all time', 'Runs out, all time', 'A day, all time'], { useInnerText: true, ignoreCase: true }
       );
       await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
       await expect(page.getByLabel('Period', { exact: true })).toBeVisible();
-      await expect(page.locator('#onhand-runway, #onhand-freshness')).toHaveCount(2);
+      await expect(page.locator('#onhand-runway-at-your-pace, #onhand-freshness')).toHaveCount(2);
+      // The runway: its tiles are the shelf tiles' size, and a chart of the projection fills the rest.
+      const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
+      await expect(runway.locator('canvas')).toHaveCount(1);
+      expect((await runway.locator('.stat-item').first().boundingBox())!.height).toBeLessThan(220);
       await expectGridRowsFull(page, '[data-section="onhand-freshness"] .cards');
-      await expectGridRowsFull(page, '[data-section="onhand-runway"] .cards');
       await expect(page.locator('[data-section="onhand-freshness"] .oh-card')).toHaveCount(4);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-onhand-runway-all', viewports: 'two', path: () => '/insights?tab=onhand&range=all',
+    act: async (page) => {
+      const runway = page.locator('section.chart-panel:has(#onhand-runway-at-your-pace)');
+      await expect(runway.locator('.stat-item')).toHaveCount(3);
+      await expect(runway.locator('canvas')).toHaveCount(1);
+      expect((await runway.locator('.stat-item').first().boundingBox())!.height).toBeLessThan(260);
+      await expect(runway.getByRole('link', { name: 'Plan it: What if' })).toHaveAttribute('href', /insights-what-if/);
     }
   },
   {
