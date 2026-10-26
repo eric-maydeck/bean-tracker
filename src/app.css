@@ -2734,6 +2734,30 @@ select.quick-filter-select {
 .tip-rows dt {
   color: var(--color-text-muted);
 }
+.tip-mark {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.35rem;
+  vertical-align: -0.05rem;
+  box-sizing: border-box;
+  background: var(--mark);
+  border: 0.75px solid var(--slice-line);
+}
+.tip-mark.faded {
+  background: color-mix(in srgb, var(--mark) 30%, transparent);
+}
+.tip-mark.line {
+  width: 1rem;
+  height: 0;
+  border: 0;
+  border-top: 3px solid var(--mark);
+  background: none;
+  vertical-align: 0.2rem;
+}
+.tip-mark.line.dashed {
+  border-top-style: dashed;
+}
 .tip-rows dt:has(+ dd.sub) {
   padding-left: var(--space-3); /* an Other tip's members, indented under Other */
 }

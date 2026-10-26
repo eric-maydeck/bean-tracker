@@ -2326,14 +2326,16 @@ export const STATES: State[] = [
       await c.scrollIntoViewIfNeeded();
       for (const [x, y] of (await chartPoints(c, false)).slice(0, 12)) { if (touch()) await page.touchscreen.tap(x, y); else await page.mouse.move(x, y); if (await tip.waitFor({ timeout: 300 }).then(() => true, () => false)) break; } // a bar
       await expect(tip.locator('.tip-group').nth(0)).toContainText('(current period)');
-      await expect(tip.locator('.tip-group').nth(1)).toContainText(/\(previous /i);
+      await expect(tip.locator('.tip-group').nth(1)).toContainText(/\(\d+ months? ago\)/); // an offset, not "previous 3 months"
+      expect(await tip.locator('.tip-mark').count()).toBeGreaterThanOrEqual(4); // a swatch before every series row
       await expect(tip.locator('.tip-rows').first()).toContainText('Total'); // All: the overall total beside the split
       await panel.getByRole('group', { name: 'Show' }).getByRole('button', { name: '$ per g' }).click();
       await expect(page).toHaveURL(/spendView=ppg/);
       await c.scrollIntoViewIfNeeded();
       for (const [fx, fy] of [[0.5, 0.2], [0.45, 0.1], [0.6, 0.15], [0.7, 0.1]]) { await poke(fx, fy); if (await tip.waitFor({ timeout: 300 }).then(() => true, () => false)) break; }
       await expect(tip.locator('.tip-group')).toHaveCount(2); // the nearest x anywhere, not only on a line
-      for (const v of await tip.locator('.tip-rows dd').allInnerTexts()) expect(v).toMatch(/^\$\d[\d,]*\.\d\d\/g$/); // to the cent
+      await expect(tip.locator('.tip-mark.line.dashed').first()).toBeVisible(); // the previous period's rows have a dashed sample
+      for (const v of await tip.locator('.tip-rows dd').allInnerTexts()) expect(v).toMatch(/^(\$\d[\d,]*\.\d\d\/g|No data)$/); // to the cent, never $0.00/g for a missing bucket
       await pick.selectOption('split');
       await expect(page).not.toHaveURL(/spendSeries/);
       expect(fetched).toEqual([]);

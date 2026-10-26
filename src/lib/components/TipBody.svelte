@@ -13,7 +13,9 @@
 // `points`: labeled facts, one per line: a bold label, then a concise value that may wrap ("Before: Lotus - Light and
 // Bright (49% as of Mar 26)"); related facts merge into one point (ui-rules 36). Numbers to compare go in `rows`.
 // `groups`: titled row sets (a chart tip's current and previous period), each a bold title over its own rows.
-export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; rows: TipRow[] }[]; points?: [string, string][]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
+// A row's legend symbol: a swatch (bars; faded for a previous period) or a short line sample (lines; dashed for a previous period).
+export type Mark = { color: string; line?: boolean; dashed?: boolean; faded?: boolean };
+export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; rows: TipRow[]; marks?: (Mark | null)[] }[]; marks?: (Mark | null)[]; points?: [string, string][]; lines?: string[]; note?: string; sample?: { s: Sample; paired?: boolean }; sampleLegend?: boolean; strength?: Badge; caution?: { lines: string[]; rows: [string, string][] } };
   // The same tip as one line, for an aria-label.
   export const tipText = (t: Tip) => {
     const st = t.caution ?? (t.sample && sampleTip(t.sample.s, t.sample.paired));
@@ -31,10 +33,11 @@ export type Tip = { title: string; rows?: TipRow[]; groups?: { title: string; ro
 
 <!-- Text with setting names (settingName.ts) marked: the names bold brown; coffee names in their keyword color. -->
 {#snippet text(s: string)}{#each settingRuns(s) as [t, name], i (i)}{#if name}<span class="setting-name">{t}</span>{:else}<CoffeeName text={t} />{/if}{/each}{/snippet}
+{#snippet mark(m: Mark | null | undefined)}{#if m}<i class="tip-mark" class:line={m.line} class:dashed={m.dashed} class:faded={m.faded} style:--mark={m.color} aria-hidden="true"></i>{/if}{/snippet}
 {#if tip.title}<strong class="tip-title"><CoffeeName text={plainText(tip.title)} /></strong>{/if}
-{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/if}
+{#if tip.rows?.length}<dl class="tip-rows">{#each tip.rows as [l, v, ink], i (i)}<dt>{@render mark(tip.marks?.[i])}{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/if}
 
-{#each tip.groups ?? [] as g, gi (gi)}<strong class="tip-title tip-group">{g.title}</strong><dl class="tip-rows">{#each g.rows as [l, v, ink], i (i)}<dt>{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/each}
+{#each tip.groups ?? [] as g, gi (gi)}<strong class="tip-title tip-group">{g.title}</strong><dl class="tip-rows">{#each g.rows as [l, v, ink], i (i)}<dt>{@render mark(g.marks?.[i])}{@render text(l)}</dt><dd class={ink}><CoffeeName text={v} /></dd>{/each}</dl>{/each}
 {#if tip.points?.length}<ul class="tip-lines tip-points">{#each tip.points as [l, v], i (i)}<li><b class="tip-label">{@render text(l)}:</b> {@render text(v)}</li>{/each}</ul>{/if}
 {#if tip.lines?.length || tip.sampleLegend}<ul class="tip-lines">{#each tip.lines ?? [] as line, i (i)}<li class:gap={!line} aria-hidden={line ? undefined : true}>{@render text(line)}</li>{/each}{#if tip.sampleLegend}<li><span class="sample-chip"><Icon name="warning" />{CHIP_EXAMPLE}</span> <i class="sample-swatch small-sample-mark"></i> {SAMPLE_HELP.slice(CHIP_EXAMPLE.length + 2)}</li>{/if}</ul>{/if}
 {#if tip.note}<span class="tip-note">{@render text(tip.note)}</span>{/if}
