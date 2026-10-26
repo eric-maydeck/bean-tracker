@@ -18,6 +18,8 @@ export type ColumnKey =
   | 'frozen_end_date'
   | 'rest_window'
   | 'urgency'
+  | 'age'
+  | 'rest_state'
   | 'subscription';
 
 export type ColumnKind = 'text' | 'bool' | 'number' | 'date' | 'window' | 'plan';
@@ -46,6 +48,10 @@ export const COLUMNS: readonly Column[] = [
   { key: 'frozen_end_date', label: 'Unfrozen date', short: 'Thawed', kind: 'date' },
   { key: 'rest_window', label: 'Rest window', short: 'Rest', kind: 'window' },
   { key: 'urgency', label: 'Urgency', short: 'Urgency', kind: 'number' },
+  // Days since roast minus freezer days (an open freeze stops the count): the On hand age profile's age.
+  { key: 'age', label: 'Age', short: 'Age', kind: 'number', unit: 'days' },
+  // Open and backlog bags against the roaster's rest window, on that same age.
+  { key: 'rest_state', label: 'Rest state', short: 'Rest state', kind: 'text' },
   { key: 'subscription', label: 'Subscription', short: 'Plan', kind: 'plan' }
 ];
 
@@ -141,7 +147,7 @@ export type Filter =
   | { column: ColumnKey; mode: 'overlaps'; a: string; b: string }
   | { column: ColumnKey; mode: 'plan'; value: PlanValue };
 
-type TextKey = 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level';
+type TextKey = 'roaster' | 'coffee_name' | 'origin' | 'processing' | 'roast_level' | 'rest_state';
 type DateKey = 'roast_date' | 'frozen_start_date' | 'frozen_end_date';
 
 export function isFrozen(c: Pick<CoffeeWithComputed, 'frozen_start_date' | 'frozen_end_date'>): boolean {
@@ -156,6 +162,7 @@ export function textValue(c: CoffeeWithComputed, key: ColumnKey): string | null 
 function numberValue(c: CoffeeWithComputed, key: ColumnKey): number | null {
   if (key === 'cost_per_gram') return c.cost_per_gram;
   if (key === 'amount_g') return c.amount_g;
+  if (key === 'age') return c.days_since_roast;
   return typeof c.urgency_rating === 'number' ? c.urgency_rating : null; // 'Done' never matches
 }
 
@@ -315,6 +322,7 @@ function num(key: ColumnKey, typed: string): string {
   const v = Number(typed);
   if (key === 'cost_per_gram') return CURRENCY.format(v);
   if (key === 'amount_g') return `${Math.round(v)}g`; // whole grams, matching the comparison precision
+  if (key === 'age') return `${Math.round(v)}d`;
   return `${Math.round(v)}`; // urgency: whole number
 }
 

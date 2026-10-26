@@ -7525,6 +7525,24 @@ export const STATES: State[] = [
     }
   },
   {
+    // Rest state (Before / In / Past / No rest window, freezer-net age) and Age (days) are normal filter columns, and
+    // the On hand age profile's links use them. Pick a state: the URL carries it, a chip names it.
+    name: 'coffees-filter-rest-state',
+    path: () => '/coffees?status=backlog&view=compact&age=between:0..4000',
+    act: async (page) => {
+      await expect(page.locator('.filter-chip-label').first()).toHaveText(/^Age: 0d–4000d$/);
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await page.getByRole('button', { name: 'Rest state', exact: true }).click();
+      const options = page.locator('.filter-values label');
+      expect(await options.count()).toBeGreaterThan(0);
+      await expect(options.first()).toContainText(/rest window/i);
+      await options.first().locator('input').check();
+      await page.getByRole('button', { name: /^Apply/ }).click();
+      await expect(page).toHaveURL(/rest_state=/);
+      await expect(page.locator('.filter-chip-label').filter({ hasText: /^Rest state: .*rest window$/i })).toHaveCount(1);
+    }
+  },
+  {
     name: 'coffees-filter-editor',
     path: () => '/coffees?status=all&view=compact',
     act: async (page) => {

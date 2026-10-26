@@ -49,6 +49,19 @@ describe('fromParams', () => {
     };
     expect(roundTrip(s)).toEqual(s);
   });
+  it('round-trips the Age and Rest window state filters; neither adds anything when unset', () => {
+    const s: CoffeeViewState = {
+      status: ['backlog'],
+      filters: [
+        { column: 'age', mode: 'range', op: 'between', a: '15', b: '30' },
+        { column: 'rest_state', mode: 'any', values: ['Before rest window', 'No rest window'] }
+      ]
+    };
+    expect(toParams(s).toString()).toBe('status=backlog&age=between%3A15..30&rest_state=Before+rest+window&rest_state=No+rest+window');
+    expect(roundTrip(s)).toEqual(s);
+    expect(roundTrip({ filters: [{ column: 'age', mode: 'range', op: '>=', a: '91', b: '' }] }).filters).toEqual([{ column: 'age', mode: 'range', op: '>=', a: '91', b: '' }]);
+    expect(toParams({ filters: [] }).toString()).toBe('');
+  });
   it('escapes values that look like syntax', () => {
     const s: CoffeeViewState = { filters: [{ column: 'coffee_name', mode: 'any', values: ['~tilde', '\\slash', '(none)', 'a..b: c & d'] }] };
     expect(roundTrip(s)).toEqual(s);

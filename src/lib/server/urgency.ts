@@ -15,7 +15,15 @@ export interface ComputedFields {
   drink_after: string | null;
   drink_before: string | null;
   urgency_rating: number | 'Done';
+  rest_state: string | null;
 }
+
+// Where a rest sits against the roaster's suggested window; 'none' without a rest or either end.
+export type WindowState = 'before' | 'in' | 'past' | 'none';
+export const windowState = (rest: number | null, low: number | null | undefined, high: number | null | undefined): WindowState =>
+  rest === null || low == null || high == null ? 'none' : rest < low ? 'before' : rest > high ? 'past' : 'in';
+// The Coffees page's Rest state filter values, by window state.
+export const REST_STATE: Record<WindowState, string> = { before: 'Before rest window', in: 'In rest window', past: 'Past rest window', none: 'No rest window' };
 
 export type CoffeeWithComputed = CoffeeRow & ComputedFields;
 
@@ -134,6 +142,8 @@ export function withComputedFields(row: CoffeeRow, today: Date): CoffeeWithCompu
     days_since_roast: computeDaysSinceRoast(row, today),
     drink_after: computeDrinkAfter(row, today),
     drink_before: computeDrinkBefore(row, today),
-    urgency_rating: computeUrgencyRating(row, today)
+    urgency_rating: computeUrgencyRating(row, today),
+    // Open and backlog bags only, on freezer-net age: the On hand age profile's own state.
+    rest_state: row.status === 'archive' ? null : REST_STATE[windowState(computeDaysSinceRoast(row, today), row.rest_days_low, row.rest_days_high)]
   };
 }

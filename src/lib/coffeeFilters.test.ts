@@ -47,6 +47,7 @@ function coffee(over: Partial<CoffeeWithComputed> = {}): CoffeeWithComputed {
     updated_at: '2026-09-01',
     cost_per_gram: 0.08,
     days_since_roast: 10,
+    rest_state: 'In rest window',
     drink_after: '2026-10-01',
     drink_before: '2026-10-10',
     urgency_rating: 50,
@@ -457,5 +458,18 @@ describe('subscription filter', () => {
     expect(isValidFilter({ column: 'origin', mode: 'plan', value: 'any' })).toBe(false);
     expect(chipLabel(plan('any'))).toBe('Plan: Any plan');
     expect(chipLabel(plan(7), [{ id: 7, label: 'Sey · Box' }])).toBe('Plan: Sey · Box');
+  });
+});
+
+describe('Age and Rest window state columns', () => {
+  const a = coffee({ days_since_roast: 10, rest_state: 'In rest window' });
+  const b = coffee({ days_since_roast: 40, rest_state: 'Past rest window' });
+  const c = coffee({ days_since_roast: null, rest_state: 'No rest window' });
+  it('Age filters on freezer-net days since roast', () => {
+    expect(applyFilters([a, b, c], [{ column: 'age', mode: 'range', op: 'between', a: '0', b: '14' }])).toEqual([a]);
+    expect(applyFilters([a, b, c], [{ column: 'age', mode: 'range', op: '>=', a: '31', b: '' }])).toEqual([b]);
+  });
+  it('Rest window state is an is-any-of filter on the computed state', () => {
+    expect(applyFilters([a, b, c], [{ column: 'rest_state', mode: 'any', values: ['Past rest window', 'No rest window'] }])).toEqual([b, c]);
   });
 });

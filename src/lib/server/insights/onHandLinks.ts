@@ -1,7 +1,7 @@
 import { toParams } from '$lib/coffeeViewState';
 import { upsertFilter, type Filter } from '$lib/coffeeFilters';
 import { WAIT_BUCKETS } from './facts';
-import { addDays } from './time';
+import { REST_STATE } from '../urgency';
 import type { StatusTab } from '$lib/coffeeViewState';
 
 // /coffees links for On hand's groups: the page's Coffees filter plus the group's own filters, from the existing filters.
@@ -14,16 +14,15 @@ const urgency = (op: '<' | '>=', a: string): Filter => ({ column: 'urgency', mod
 const window = (b: string): Filter => ({ column: 'rest_window', mode: 'overlaps', a: FAR_PAST, b });
 
 export type AgeKey = 'before' | 'inside' | 'past' | 'noWindow';
-// An Age profile segment: waiting (backlog) bags whose roast date falls in the bucket's days (the Coffees page counts
-// calendar days, so freezer days are not netted off), and for "Before rest window" the exact rest state (urgency below 0
-// with a rest window = short of its minimum rest). Inside, past and no window can't be told apart with existing filters
-// (no "past the window" or "no window" filter), so those lists show the whole bucket.
-export function ageHref(bucket: number, key: AgeKey, today: string, page: Filter[]): string {
+const STATE_LABEL: Record<AgeKey, string> = { before: REST_STATE.before, inside: REST_STATE.in, past: REST_STATE.past, noWindow: REST_STATE.none };
+// An Age profile segment, exactly: waiting (backlog) bags whose freezer-net age (the Coffees page's Age filter, days since
+// roast minus freezer days) is in the bucket, in that rest window state (the Rest window state filter).
+export function ageHref(bucket: number, key: AgeKey, page: Filter[]): string {
   const lo = bucket ? WAIT_BUCKETS[bucket - 1].max + 1 : 0, hi = WAIT_BUCKETS[bucket].max;
-  const roast: Filter = hi === Infinity
-    ? { column: 'roast_date', mode: 'range', op: '<=', a: addDays(today, -lo), b: '' }
-    : { column: 'roast_date', mode: 'range', op: 'between', a: addDays(today, -hi), b: addDays(today, -lo) };
-  return href(['backlog'], [...page, roast, ...(key === 'before' ? [window(FAR_FUTURE), urgency('<', '0')] : [])]);
+  const age: Filter = hi === Infinity
+    ? { column: 'age', mode: 'range', op: '>=', a: String(lo), b: '' }
+    : { column: 'age', mode: 'range', op: 'between', a: String(lo), b: String(hi) };
+  return href(['backlog'], [...page, age, { column: 'rest_state', mode: 'any', values: [STATE_LABEL[key]] }]);
 }
 
 // What's waiting: backlog bags of one group (null: the group can't be listed with a filter).

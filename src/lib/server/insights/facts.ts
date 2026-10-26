@@ -63,10 +63,8 @@ export const WAIT_BUCKETS: readonly { label: string; max: number }[] = [
 export const waitBucket = (days: number | null): number | null =>
   days === null || days < 0 ? null : WAIT_BUCKETS.findIndex((b) => days <= b.max);
 
-// Where a rest sits against the roaster's suggested window; 'none' without a rest or either end.
-export type WindowState = 'before' | 'in' | 'past' | 'none';
-export const windowState = (rest: number | null, low: number | null | undefined, high: number | null | undefined): WindowState =>
-  rest === null || low == null || high == null ? 'none' : rest < low ? 'before' : rest > high ? 'past' : 'in';
+// Where a rest sits against the roaster's suggested window (urgency.ts, shared with the Coffees page's Rest state filter).
+export { windowState, type WindowState } from '../urgency';
 
 export const costPerBrew = (dose: number | null, cost: number | null, amountG: number | null): number | null =>
   dose && cost && amountG ? (dose * cost) / amountG : null;

@@ -101,7 +101,7 @@ export function ageProfile(waiting: readonly BagFact[], logged: Map<number, numb
     grams[k][i] += f.grams / size;
   }
   // The /coffees list behind each bar segment (ageHref): links[state][bucket].
-  const links = Object.fromEntries((['before', 'inside', 'past', 'noWindow'] as AgeKey[]).map((k) => [k, WAIT_BUCKETS.map((_, i) => ageHref(i, k, today, page))])) as Record<AgeKey, string[]>;
+  const links = Object.fromEntries((['before', 'inside', 'past', 'noWindow'] as AgeKey[]).map((k) => [k, WAIT_BUCKETS.map((_, i) => ageHref(i, k, page))])) as Record<AgeKey, string[]>;
   return { labels: WAIT_BUCKETS.map((w) => w.label), bags, grams, links };
 }
 

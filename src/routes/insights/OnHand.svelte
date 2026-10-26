@@ -37,9 +37,7 @@
   // The series' palette slots: Past rest window takes a red slot, clearly apart from the purple of In rest window.
   const AGE_TOKENS = ['--series-1', '--series-2', '--series-10', '--series-4'] as const;
   const ageLink = (s: number, i: number) => {
-    const k = AGE_SERIES[s][0];
-    // Only Before rest window is exact; the other states list the whole age range (no filter splits them).
-    return { href: link(t.age.links[k][i]), label: k === 'before' ? 'See coffees' : 'See coffees of this age' };
+    return { href: link(t.age.links[AGE_SERIES[s][0]][i]), label: 'See coffees' };
   };
   const waitLink = (_s: number, i: number) => (rows[i].href ? { href: link(rows[i].href!), label: 'See coffees' } : null);
   const grams = $derived(unit === 'grams');
