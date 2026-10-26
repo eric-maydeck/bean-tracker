@@ -2756,7 +2756,10 @@ select.quick-filter-select {
   vertical-align: 0.2rem;
 }
 .tip-mark.line.dashed {
-  border-top-style: dashed;
+  /* A border's dashes are as long as it is thick (3px): too sparse, two dots. Draw tight 4/2px dashes. */
+  height: 3px;
+  border-top: 0;
+  background: repeating-linear-gradient(90deg, var(--mark) 0 4px, transparent 4px 6px);
 }
 .tip-rows dt:has(+ dd.sub) {
   padding-left: var(--space-3); /* an Other tip's members, indented under Other */
