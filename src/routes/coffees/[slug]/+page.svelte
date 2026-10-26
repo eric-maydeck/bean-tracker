@@ -227,16 +227,16 @@
     }
   });
 
-  // Coming from the list, "Back to collection" is a real history back so
-  // SvelteKit restores the list's scroll position. Otherwise (direct link,
-  // reload, new tab) it stays a plain link to /coffees.
-  let cameFromList = $state(false);
+  // "Back" is the browser's back whenever an in-app page came before (the list, Insights, a roaster's coffees...), so the
+  // page we left returns with its scroll position and its URL state. Otherwise (direct link, reload, new tab) it stays a
+  // plain link to /coffees. `from` is SvelteKit's navigation info: null on the first load, never document.referrer.
+  let cameFromApp = $state(false);
   afterNavigate(({ from }) => {
-    cameFromList = from?.url.pathname === '/coffees';
+    cameFromApp = !!from;
   });
 
-  function backToCollection(e: MouseEvent) {
-    if (!cameFromList || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  function back(e: MouseEvent) {
+    if (!cameFromApp || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
     history.back();
   }
@@ -259,7 +259,7 @@
 <PreviewMeta preview={coffeePreview(data.coffee, detailImage)} />
 
 <div class="detail-actions">
-  <a class="button button-ghost detail-back" href="/coffees" onclick={backToCollection}>&larr; Back to collection</a>
+  <a class="button button-ghost detail-back" href="/coffees" onclick={back}>&larr; Back</a>
   <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
   </button>

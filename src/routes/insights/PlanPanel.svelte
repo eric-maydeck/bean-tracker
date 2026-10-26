@@ -20,12 +20,13 @@
 </script>
 
 {#snippet vs(r: { ppg: number | null; rating: number | null; sample?: import('$lib/sample').Sample })}
+  <!-- The short form ("Cost: $0.12/g vs $0.17/g one-off (−$0.05)") on a portrait phone, so each line fits one line. -->
   <span class="vs">
     {#if r.ppg !== null}
-      <span class="line">Cost comparison: <strong>{usd(r.ppg)}/g</strong>{#if p.oneOffPpg !== null}{' '}vs <strong>{usd(p.oneOffPpg)}/g</strong> one-off bags (avg){' '}<span class={ppgInk(r.ppg, p.oneOffPpg)}>({money(r.ppg - p.oneOffPpg)})</span>{/if}</span>
+      <span class="line"><span class="full">Cost comparison</span><span class="short">Cost</span>: <strong>{usd(r.ppg)}/g</strong>{#if p.oneOffPpg !== null}{' '}vs <strong>{usd(p.oneOffPpg)}/g</strong> one-off<span class="full">{' '}bags (avg)</span>{' '}<span class={ppgInk(r.ppg, p.oneOffPpg)}>({money(r.ppg - p.oneOffPpg)})</span>{/if}</span>
     {/if}
     {#if r.rating !== null}
-      <span class="line" class:small-sample={r.sample?.small}>Rating comparison: <strong>{r.rating.toFixed(1)}</strong>{#if p.oneOffRating !== null}{' '}vs <strong>{p.oneOffRating.toFixed(1)}</strong> one-off bags (avg){' '}<span class={r.sample?.small ? '' : deltaInk(r.rating - p.oneOffRating)}>({signed(r.rating - p.oneOffRating, 1)})</span>{/if}</span>
+      <span class="line" class:small-sample={r.sample?.small}><span class="full">Rating comparison</span><span class="short">Rating</span>: <strong>{r.rating.toFixed(1)}</strong>{#if p.oneOffRating !== null}{' '}vs <strong>{p.oneOffRating.toFixed(1)}</strong> one-off<span class="full">{' '}bags (avg)</span>{' '}<span class={r.sample?.small ? '' : deltaInk(r.rating - p.oneOffRating)}>({signed(r.rating - p.oneOffRating, 1)})</span>{/if}</span>
       {#if r.sample?.small}<SampleNote s={r.sample} />{/if}
     {/if}
   </span>
@@ -123,6 +124,20 @@
     width: 2px;
     margin-left: -1px;
     background: var(--color-text);
+  }
+  .short {
+    display: none;
+  }
+  @media (max-width: 520px) {
+    .full {
+      display: none;
+    }
+    .short {
+      display: inline;
+    }
+    .line {
+      white-space: nowrap;
+    }
   }
   .vs {
     display: flex;

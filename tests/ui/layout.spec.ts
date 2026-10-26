@@ -2517,6 +2517,30 @@ export const STATES: State[] = [
     }
   },
   {
+    // The coffee page's Back is the browser's back: Insights returns with its URL and scroll; a direct visit falls back to /coffees.
+    name: 'coffee-back-history', viewports: 'two', path: () => '/insights?tab=spend&range=12m&spendSeries=all',
+    act: async (page) => {
+      const best = page.locator('section[data-section="spend-best-value"]');
+      await best.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      const [url0, y0] = [page.url(), await page.evaluate(() => scrollY)];
+      await best.locator('a[href^="/coffees/"]').first().click();
+      await expect(page).toHaveURL(/\/coffees\/[^/?]+/);
+      const coffee = page.url();
+      const back = page.getByRole('link', { name: /Back$/ });
+      await expect(back).toHaveText(/^\W*Back$/);
+      await back.click();
+      await expect(page).toHaveURL(url0);
+      await expect(best).toBeVisible();
+      await page.waitForTimeout(500);
+      expect(Math.abs((await page.evaluate(() => scrollY)) - y0)).toBeLessThanOrEqual(2);
+      // Opened directly: the link's own href, the collection.
+      await page.goto(coffee);
+      await page.getByRole('link', { name: /Back$/ }).click();
+      await expect(page).toHaveURL(/\/coffees(\?.*)?$/);
+    }
+  },
+  {
     name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const seg = page.locator('section[data-section="spend-share"] .seg').first();
@@ -2608,9 +2632,16 @@ export const STATES: State[] = [
       // "vs" is a word of its own: "$0.12/g vs $0.17/g one-off", never "$0.12/gvs".
       const text = await panel.innerText();
       expect(text).toMatch(/\d\/g vs \$\d/);
-      expect(text).toMatch(/Cost comparison: \$[\d.]+\/g vs \$[\d.]+\/g one-off bags \(avg\) \([−+]\$[\d.]+\)/);
+      // Full wording wide; a portrait phone (<= 520px) gets "Cost: $0.12/g vs $0.17/g one-off (−$0.05)", one line each.
+      const narrow = await page.evaluate(() => innerWidth <= 520);
+      expect(text).toMatch(narrow ? /Cost: \$[\d.]+\/g vs \$[\d.]+\/g one-off \([−+]\$[\d.]+\)/ : /Cost comparison: \$[\d.]+\/g vs \$[\d.]+\/g one-off bags \(avg\) \([−+]\$[\d.]+\)/);
       // The seed has no rated brews of plan bags; where a rating line exists it has the same shape.
-      if (text.includes('Rating comparison')) expect(text).toMatch(/Rating comparison: [\d.]+ vs [\d.]+ one-off bags \(avg\) \([−+]?[\d.]+\)/);
+      if (text.includes('Rating')) expect(text).toMatch(narrow ? /Rating: [\d.]+ vs [\d.]+ one-off \([−+]?[\d.]+\)/ : /Rating comparison: [\d.]+ vs [\d.]+ one-off bags \(avg\) \([−+]?[\d.]+\)/);
+      // No comparison line wraps on a phone: its height is one line.
+      if (narrow) for (const l of await panel.locator('.vs .line').all()) {
+        const h = await l.evaluate((n) => ({ h: n.getBoundingClientRect().height, lh: parseFloat(getComputedStyle(n).lineHeight) || 20 }));
+        expect(h.h).toBeLessThan(h.lh * 1.5);
+      }
       // The plan's name carries its roaster ("Roaster · Plan name"), not the plan name alone.
       expect(await panel.locator('li:not(.total) .name').first().innerText()).toMatch(/\S/);
       expect(text).not.toMatch(/[\dg]vs /);

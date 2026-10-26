@@ -256,10 +256,21 @@
     cursor: pointer;
   }
   @media (max-width: 640px) {
+    /* The 44px target is the visible chip (a bordered pill), so the tall rows read as a deliberate grid, not as double spacing. */
+    .legend:has(.leg) {
+      gap: 0.35rem;
+    }
     .leg {
       min-width: 44px;
       min-height: 44px;
       justify-content: center;
+      padding: 0 0.6rem;
+      border: 1px solid var(--color-border);
+      border-radius: 0.6rem;
+      font-size: 0.8rem;
+    }
+    .leg[aria-pressed='true'] {
+      border-color: var(--color-text);
     }
   }
   .swatch {
