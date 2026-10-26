@@ -2835,6 +2835,21 @@ export const STATES: State[] = [
       await check('onhand-waiting');
     }
   },
+  // A bar chart with a line overlay (Consumption's trend line, Spend's compare average): the tip anchors at the bar, never NaN.
+  {
+    name: 'insights-chart-tip-trend', viewports: 'two', path: () => '/insights?tab=consumption&range=3m',
+    act: async (page) => {
+      const canvas = page.locator('.chart-container canvas').first();
+      await canvas.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(450);
+      const tip = await hoverChart(page, canvas);
+      await expect(tip).toBeVisible();
+      const anchor = page.locator('.chart-container .tip-anchor').first();
+      const [top, left, height] = await anchor.evaluate((e) => { const st = (e as HTMLElement).style; return [st.top, st.left, st.height]; });
+      for (const v of [top, left, height]) expect(Number.isFinite(parseFloat(v)), `anchor ${v}`).toBe(true);
+      await expectTipInView(page, tip);
+    }
+  },
   {
     name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
