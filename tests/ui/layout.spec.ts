@@ -2517,6 +2517,8 @@ export const STATES: State[] = [
       // The plan's name carries its roaster ("Roaster · Plan name"), not the plan name alone.
       expect(await panel.locator('li:not(.total) .name').first().innerText()).toMatch(/\S/);
       expect(text).not.toMatch(/[\dg]vs /);
+      // Every value in the comparison lines is bold (the figures, not the words).
+      expect(await panel.locator('li:not(.total) .line strong').count()).toBeGreaterThanOrEqual(2);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
