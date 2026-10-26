@@ -270,7 +270,7 @@ export interface InsightsUrlState {
   retired?: 'open'; // Gear's retired shelf is open
   gear?: GearKind; // Gear showcase's kind toggle: absent = All
   spendView?: 'ppg'; // Over time: price per gram chart (absent = Spend)
-  rcSort?: RcCol; // Over time: Roaster comparison sort column (absent = Spent)
+  rcSort?: RcCol; // Over time: Report card sort column (absent = Bags)
   rcDir?: 'asc' | 'desc'; // Roaster comparison sort direction
   rcTop?: Top; // Roaster comparison rows shown (absent = 10)
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")

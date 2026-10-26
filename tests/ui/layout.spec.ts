@@ -2336,7 +2336,7 @@ export const STATES: State[] = [
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
       await expect(panel.getByRole('heading', { name: 'Roaster report card' })).toBeVisible();
-      const wide = ((await panel.boundingBox())?.width ?? 0) >= 520;
+      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 520; // what the container query measures
       await expect(panel.locator('table')).toBeVisible({ visible: wide });
       await expect(panel.locator('.rc-list')).toBeVisible({ visible: !wide });
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
@@ -2350,11 +2350,11 @@ export const STATES: State[] = [
     act: async (page) => {
       const panel = page.locator('section[data-section="spend-report-card"]');
       await panel.scrollIntoViewIfNeeded();
-      const wide = ((await panel.boundingBox())?.width ?? 0) >= 520;
+      const wide = ((await panel.locator('.rc').boundingBox())?.width ?? 0) >= 520; // what the container query measures
       const fetched: string[] = [];
       page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
       const rows = panel.locator(wide ? 'tbody tr' : '.rc-list li');
-      const ppgs = async () => (await rows.evaluateAll((rs, w) => rs.map((r) => (r.textContent ?? '').match(w ? /\$(\d+\.\d+)\/g/ : /\$(\d+\.\d+)\/g/)?.[1] ?? null), wide)).map((v) => (v === null ? null : Number(v)));
+      const ppgs = async () => (await rows.evaluateAll((rs) => rs.map((r) => (r.textContent ?? '').match(/\$(\d+\.\d+)\/g/)?.[1] ?? null))).map((v) => (v === null ? null : Number(v)));
       const sorted = (xs: (number | null)[], dir: 1 | -1) => {
         const v = xs.filter((x): x is number => x !== null);
         return v.every((x, i) => i === 0 || (x - v[i - 1]) * dir >= 0) && xs.slice(v.length).every((x) => x === null) && xs.slice(0, v.length).every((x) => x !== null);
@@ -2370,11 +2370,9 @@ export const STATES: State[] = [
       } else await panel.getByRole('group', { name: 'Direction' }).getByRole('button', { name: 'Asc' }).click();
       await expect(page).toHaveURL(/rcDir=asc/);
       expect(sorted(await ppgs(), 1)).toBe(true);
-      const more = panel.getByRole('button', { name: 'Show more' });
-      if (await more.count()) {
-        await more.click();
-        await expect(page).toHaveURL(/rcTop=20/);
-      }
+      // The seed has more than 10 roasters bought from in 12m.
+      await panel.getByRole('button', { name: 'Show more' }).click();
+      await expect(page).toHaveURL(/rcTop=20/);
       expect(fetched).toEqual([]);
     }
   },

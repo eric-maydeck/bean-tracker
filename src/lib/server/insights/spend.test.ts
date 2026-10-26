@@ -185,4 +185,18 @@ describe('spendTab reportCard', () => {
     const a = rows({ ...ctx, size: 2 }).find((r) => r.roaster === 'A')!;
     expect([a.bags, a.spent, a.ppg]).toEqual([1, 25, expect.closeTo(0.1)]);
   });
+  it('rating is the bag-weighted raw mean and like the gap to other roasters, each with a sample', () => {
+    const mk = (id: number, roaster: string) => bag({ id, roaster, name: `C${id}`, cost: 10, amountG: 100, roastLevel: 'Light', purchaseDate: '2026-09-05' });
+    const brews = (id: number, roaster: string, n: number, rating: number) =>
+      Array.from({ length: n }, (_, i) => ({ id: id * 100 + i, coffeeId: id, roaster, roastLevel: 'Light', processGroup: 'Washed', origin: null, localDate: '2026-09-10', rating, dose: 18 }) as BrewFact);
+    const bs2 = [mk(1, 'A'), mk(2, 'A'), mk(10, 'X'), mk(11, 'X'), mk(12, 'X')];
+    const br = [...brews(1, 'A', 4, 8), ...brews(2, 'A', 2, 6), ...brews(10, 'X', 4, 7), ...brews(11, 'X', 4, 7), ...brews(12, 'X', 4, 7)];
+    const a = spendTab(br, br, bs2, ctx).reportCard.find((r) => r.roaster === 'A')!;
+    // bag weights n/(n+2): 4/6 for the 8s, 2/4 for the 6s
+    expect(a.rating).toBeCloseTo((8 * (4 / 6) + 6 * 0.5) / (4 / 6 + 0.5));
+    expect(a.ratingSample).toMatchObject({ bags: 2, brews: 6 });
+    expect(a.like).not.toBeNull();
+    expect(a.like!).toBeCloseTo(a.rating! - 7, 0);
+    expect(a.likeSample).toBeDefined();
+  });
 });

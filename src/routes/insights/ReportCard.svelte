@@ -27,7 +27,7 @@
   const press = (c: RcCol) => set(c, c === col ? (way === 'asc' ? 'desc' : 'asc') : NATURAL_DIR[c]);
 </script>
 
-{#snippet na()}<span class="na" aria-label="none">–</span>{/snippet}
+{#snippet na()}<span class="na" aria-hidden="true">—</span><span class="sr-only">none</span>{/snippet}
 {#snippet rating(r: RcRow)}
   {#if r.rating === null}{@render na()}{:else}<span class:small-sample={r.ratingSample?.small}>{r.rating.toFixed(1)}</span>{#if r.ratingSample?.small}<SampleNote s={r.ratingSample} />{/if}{/if}
 {/snippet}
