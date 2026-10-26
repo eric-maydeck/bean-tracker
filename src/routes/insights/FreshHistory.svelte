@@ -116,6 +116,16 @@
     margin: 0;
     padding: 0;
   }
+  /* One grid per list, rows on its columns (subgrid), so a row with no chip still lines up with one that has it. */
+  .list ul {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+  }
+  .list ul li {
+    display: grid;
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
+  }
   .list li, .win li {
     display: flex;
     align-items: center;
