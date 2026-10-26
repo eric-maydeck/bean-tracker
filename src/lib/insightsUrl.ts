@@ -457,7 +457,7 @@ export function parseInsightsUrl(
     rcSort: pickOne(p, 'rcSort', RC_COLS),
     rcDir: pickOne(p, 'rcDir', ['asc', 'desc']),
     rcTop: TOPS.find((n) => String(n) === p.get('rcTop')),
-    waitBy: pickOne(p, 'waitBy', WAIT_BYS)
+    waitBy: pickOne(p, 'waitBy', WAIT_BYS.filter((k) => k !== 'roaster')) // the default stays out of the URL
   };
 }
 

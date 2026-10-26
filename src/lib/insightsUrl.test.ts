@@ -673,7 +673,7 @@ describe('spend tab params', () => {
     expect(parse('tab=OnHand').tab).toBe('onhand');
     expect(parse('waitBy=Origin').waitBy).toBe('origin');
     expect(parse('waitBy=junk').waitBy).toBeUndefined();
-    expect(parse('waitBy=roaster').waitBy).toBe('roaster'); // the default is dropped by the page, not the parser
+    expect(parse('waitBy=roaster').waitBy).toBeUndefined(); // the default is absent
     expect(insightsParams(parse('tab=onhand&waitBy=process')).toString()).toBe('tab=onhand&waitBy=process');
     expect(resetInsights({ tab: 'onhand', waitBy: 'roast' })).toEqual({ tab: 'onhand' });
   });

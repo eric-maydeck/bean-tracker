@@ -60,7 +60,7 @@
 
 <section class="chart-panel" data-section="onhand-runway">
   <LabHead id="onhand-runway" title="Runway at your pace" {placeTip}
-    help={['How long the backlog and open bags last at the grams a day you brew.', 'Once at the pace of the Period, once at your all-time pace.', 'Per person divides the daily grams.']} />
+    help={['How long the backlog and open bags last at the grams a day you brew.', 'Once at the pace of the Period, once at your all-time pace.', 'Per person divides the pace, so the same shelf lasts longer.']} />
   <div class="cards runs" class:one={runs.length === 1}>
     {#each runs as [name, r] (name)}
       <div class="oh-card">
