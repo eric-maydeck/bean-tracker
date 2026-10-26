@@ -15,7 +15,6 @@
   import { useEmptyLine } from './coffeeNote';
   import { formatGrams } from '$lib/grams';
   import LabHead from './LabHead.svelte';
-  import TextTip from '$lib/components/TextTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import type { FreshGroup } from '$lib/server/insights/onHand';
   import Chart from '$lib/components/Chart.svelte';
@@ -73,8 +72,8 @@
                 <li>{#if b.slug}<a href={link(`/coffees/${b.slug}`)}><CoffeeName text={b.name} /></a>{:else}<CoffeeName text={b.name} />{/if}<small>{b.roaster}</small></li>
               {/each}
             </ul>
-            {#if g.bags.length > CAP}
-              <span class="more">and <TextTip label="{g.bags.length - CAP} more" value tip={{ title: name, rows: g.bags.slice(CAP).map((b): [string, string] => [b.name, b.roaster]) }}>{g.bags.length - CAP} more</TextTip></span>
+            {#if g.bags.length > CAP && g.href}
+              <a class="more" href={link(g.href)}>and {g.bags.length - CAP} more</a>
             {/if}
           {/if}
         </div>
@@ -168,13 +167,6 @@
   }
   .more {
     font-size: 0.9rem;
-    color: var(--color-text-muted);
   }
-  /* Phones: side padding (pulled back by the margin) grows the "N more" target to 44 (rule 4). */
-  @media (max-width: 640px) {
-    .more :global(.text-tip) {
-      padding-inline: 6px;
-      margin-inline: -6px;
-    }
-  }
+
 </style>

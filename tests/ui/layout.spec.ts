@@ -2755,6 +2755,16 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'insights-onhand-freshness-links', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      // A group longer than 5 bags ends in "and N more": a /coffees link filtered to exactly that group (no tooltip).
+      const more = page.locator('[data-section="onhand-freshness"] a.more');
+      expect(await more.count()).toBeGreaterThan(0);
+      for (const a of await more.all()) await expect(a).toHaveAttribute('href', /\/coffees\?status=backlog&status=open&.*(frozen=(true|false))/);
+      await expect(page.locator('[data-section="onhand-freshness"] .text-tip')).toHaveCount(0);
+    }
+  },
+  {
     name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
       await page.getByRole('button', { name: 'About Avg age' }).click();

@@ -140,7 +140,7 @@ export const load: PageServerLoad = ({ url }) => {
       s.tab === 'consumption'
         ? consumptionTab(brews, bags, { ...ctx, whole, unit: s.unit, agg: s.agg, by: s.by, trend: s.trend, scored, ratings: s.ratings, sameLength: typeof s.compare === 'number' })
         : null,
-    onHand: s.tab === 'onhand' ? onHandTab(whole, bags, { period, size, dataStart, today }) : null,
+    onHand: s.tab === 'onhand' ? onHandTab(whole, bags, { period, size, dataStart, today, filters: pageFilters({ ...coffees, caffeine: s.caffeine }, everyBag) }) : null,
     spend: s.tab === 'spend'
       ? spendTab(scored, whole, bags, {
           period, prev, sameLength: typeof s.compare === 'number', pace, size, dataStart, today, by: s.by, ratings: s.ratings,

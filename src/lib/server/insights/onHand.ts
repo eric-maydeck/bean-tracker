@@ -4,9 +4,11 @@ import { WAIT_BUCKETS, waitBucket, windowState, type BagFact, type BrewFact } fr
 import type { Period } from './time';
 import { country } from './leaderboards';
 import { groupBy } from './records';
+import { freshHref, type FreshKey } from './onHandLinks';
+import type { Filter } from '$lib/coffeeFilters';
 
 export interface FreshBag extends UrgencyInput { name: string; roaster: string; slug: string | null; grams: number }
-export interface FreshGroup { count: number; grams: number; bags: { name: string; roaster: string; slug: string | null }[] }
+export interface FreshGroup { count: number; grams: number; bags: { name: string; roaster: string; slug: string | null }[]; href?: string }
 export interface Freshness {
   ready: FreshGroup; drinkSoon: FreshGroup; resting: FreshGroup; frozen: FreshGroup;
   nextReadyInDays: number | null; unknown: number;
@@ -95,12 +97,18 @@ export function ageProfile(waiting: readonly BagFact[], logged: Map<number, numb
   return { labels: WAIT_BUCKETS.map((w) => w.label), bags, grams };
 }
 
+// Each freshness group's /coffees link (the page's Coffees filter included).
+function withLinks(f: Freshness, today: string, page: Filter[]): Freshness {
+  for (const k of ['ready', 'drinkSoon', 'resting', 'frozen'] as FreshKey[]) f[k].href = freshHref(k, today, page);
+  return f;
+}
+
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 // What sits on the shelf now (backlog + open bags). `size` divides grams and dollars only: bags are shared in the
 // household (user, 2026-10-26), as are ages and averages.
 export function onHandTab(
-  whole: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; size: number; dataStart: string | null; today: string }
+  whole: readonly BrewFact[], bags: readonly BagFact[], c: { period: Period; size: number; dataStart: string | null; today: string; filters?: Filter[] }
 ): OnHandTab {
   const logged = loggedGrams(whole);
   const live = bags.filter((b) => b.status !== 'archive');
@@ -129,6 +137,6 @@ export function onHandTab(
     runwayAll: run({ start: null, end: c.today }),
     waiting: whatsWaiting(bags, logged, c.size),
     age: ageProfile(waiting, logged, c.today, c.size),
-    freshness: freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today)
+    freshness: withLinks(freshness(fresh.map((b) => ({ ...b, grams: b.grams / c.size })), c.today), c.today, c.filters ?? [])
   };
 }
