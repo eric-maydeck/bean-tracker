@@ -2801,6 +2801,21 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
+  // A tile's title never moves when per person adds its caption part (shared tile layout), on On hand and Spend.
+  {
+    name: 'insights-tile-titles-people', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
+    act: async (page) => {
+      const tops = async () => (await page.locator('.stat-item .stat-label a').evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top))));
+      for (const tab of ['onhand', 'spend']) {
+        await page.goto(`/insights?tab=${tab}&range=3m`);
+        await expect(page.locator('.stat-item').first()).toBeVisible();
+        const before = await tops();
+        await page.goto(`/insights?tab=${tab}&range=3m&people=person`);
+        await expect(page.locator('.stat-item .mode-tip-button', { hasText: 'per person' }).first()).toBeVisible();
+        expect(await tops(), tab).toEqual(before);
+      }
+    }
+  },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare', viewports: 'two',

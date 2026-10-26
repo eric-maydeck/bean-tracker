@@ -1974,6 +1974,9 @@ html {
 .stat-item .stat-label {
   color: var(--color-text-muted);
   font-size: max(0.7rem, 6.71cqw);
+  /* One line height for every label: a caption that gains a per-person or mode part (.wrap) must not move its first
+     line (the title) by changing the line box. */
+  line-height: 1.1;
 }
 
 /* Caps the label at 2 lines — a longer label spills to a second line
