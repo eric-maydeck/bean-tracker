@@ -142,7 +142,7 @@ export const load: PageServerLoad = ({ url }) => {
     spend: s.tab === 'spend'
       ? spendTab(scored, whole, bags, {
           period, prev, sameLength: typeof s.compare === 'number', pace, size, dataStart, today, by: s.by, ratings: s.ratings,
-          plans: getSubscriptions(db).map((p) => ({ id: p.id, name: p.subscription_name ?? p.roaster_service, roaster: p.roaster_service, price: p.price, paused: !!p.paused }))
+          plans: getSubscriptions(db).map((p) => ({ id: p.id, name: [p.roaster_service, p.subscription_name].filter(Boolean).join(' · '), roaster: p.roaster_service, price: p.price, paused: !!p.paused }))
         })
       : null,
     records: s.tab === 'records' ? recordsTab(scored, bags, { unscored: brews, wholeUnscored: whole, whole: wholeScored, period, prev, ratings: s.ratings, brewer: s.brewer, size, today }) : null,

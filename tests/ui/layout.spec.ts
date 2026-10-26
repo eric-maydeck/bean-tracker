@@ -2492,6 +2492,11 @@ export const STATES: State[] = [
       // "vs" is a word of its own: "$0.12/g vs $0.17/g one-off", never "$0.12/gvs".
       const text = await panel.innerText();
       expect(text).toMatch(/\d\/g vs \$\d/);
+      expect(text).toMatch(/Cost comparison: \$[\d.]+\/g vs \$[\d.]+\/g one-off bags \(avg\) \([−+]\$[\d.]+\)/);
+      // The seed has no rated brews of plan bags; where a rating line exists it has the same shape.
+      if (text.includes('Rating comparison')) expect(text).toMatch(/Rating comparison: [\d.]+ vs [\d.]+ one-off bags \(avg\) \([−+]?[\d.]+\)/);
+      // The plan's name carries its roaster ("Roaster · Plan name"), not the plan name alone.
+      expect(await panel.locator('li:not(.total) .name').first().innerText()).toMatch(/\S/);
       expect(text).not.toMatch(/[\dg]vs /);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
