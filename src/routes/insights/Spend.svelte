@@ -69,9 +69,9 @@
   const lines = $derived(plan(kindsOf(true),
     { oneOff: sr.ppg.oneOff, sub: sr.ppg.sub, overall: sr.ppg.all },
     sr.comparePpgSplit ? { oneOff: sr.comparePpgSplit.oneOff, sub: sr.comparePpgSplit.sub, overall: sr.comparePpg ?? [] } : null, null, true));
-  // The Compare label as an offset, "3 months ago" ("Previous 3 months" is the same-length window right before the Period);
-  // labels that already say "ago" or name a year stay as they are.
-  const ago = (l: string) => l.replace(/^Previous (\d+ )?(week|month|year)s?$/, (_, n, u) => `${n ?? '1 '}${u}${(n ?? '1 ') === '1 ' ? '' : 's'} ago`);
+  // The Compare label as an offset, "3 months prior" ("Previous 3 months" is the same-length window right before the Period);
+  // labels that already say "ago" become "prior", and a year stays as it is.
+  const ago = (l: string) => l.replace(/^Previous (\d+ )?(week|month|year)s?$/, (_, n, u) => `${n ?? '1 '}${u}${(n ?? '1 ') === '1 ' ? '' : 's'} prior`).replace(/ ago$/, ' prior');
   const lower = (t: string) => t.charAt(0).toLowerCase() + t.slice(1);
   // The tip of a bucket: every series' row (a missing value says "No data"), a swatch (bars) or line sample (lines, dashed for the
   // previous period) before each label; with a compare window, one group per period, each titled with its dates and, for the

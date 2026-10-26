@@ -329,7 +329,7 @@
             x.trend
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
-              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, pointBackgroundColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, fill: false }
+              ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, pointBackgroundColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: type === 'line' ? 2.5 : 1.5, pointRadius: 0, pointHoverRadius: 4, fill: false }
               : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : barLine, borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`) }) }

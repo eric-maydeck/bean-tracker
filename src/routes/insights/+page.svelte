@@ -5,7 +5,8 @@
   import Usd from '$lib/components/Usd.svelte';
   import { usd } from '$lib/money';
   import TextTip from '$lib/components/TextTip.svelte';
-  import { afterNavigate, goto, replaceState } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto, replaceState } from '$app/navigation';
+  import { tick } from 'svelte';
   import { MediaQuery } from 'svelte/reactivity';
   import { INSIGHTS_STORAGE_KEY, loadInsightsState, serializeInsightsState, withoutDeepLinks } from '$lib/insightsMemory';
   import Icon from '$lib/components/Icon.svelte';
@@ -132,6 +133,17 @@
       // localStorage unavailable (private window): the page works, it just isn't remembered.
     }
   }
+  // A tab keeps the scroll you left it at. Tab links keep the scroll (noscroll), so a shorter tab in between clamped it and
+  // coming back landed higher ("scrolled up a little"); every tab switch, link or choose(), routes through here.
+  const tabOf = (u: URL | undefined) => u?.searchParams.get('tab') ?? 'overview';
+  const scrollOf = new Map<string, number>();
+  beforeNavigate(({ from, to }) => {
+    if (from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url)) scrollOf.set(tabOf(from.url), scrollY);
+  });
+  afterNavigate(({ from, to }) => {
+    const back = from && to && from.url.pathname === to.url.pathname && tabOf(from.url) !== tabOf(to.url) ? scrollOf.get(tabOf(to.url)) : undefined;
+    if (back !== undefined) void tick().then(() => scrollTo(0, back));
+  });
   afterNavigate(({ from }) => {
     local = null;
     const qs = insightsParams(data.explicit).toString();

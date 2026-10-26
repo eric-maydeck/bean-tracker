@@ -12,7 +12,7 @@
   // the amount behind a share (Share of spend), shown with it: "$412.00 (18%)".
   // `colors`: a page-wide color per line (Water's recipe map); else the slots in line order.
   // `all` (Share of spend): a named segment's tip lists every named series of its month, the hovered row bold, then the rest as
-  // "Others"; `isolate`: a legend click picks one series and fades the rest (a button per entry, aria-pressed).
+  // "Other"; `isolate`: a legend click picks one series and fades the rest (a button per entry, aria-pressed).
   let { m, ariaLabel, colors: given, all = false, isolate = false }: { m: Multi & { other?: [string, number, number?][][]; dollars?: number[][] }; ariaLabel: string; colors?: string[]; all?: boolean; isolate?: boolean } = $props();
   // Ephemeral by the user's request (2026-10-26): not in the URL, not stored, gone on navigation. A deliberate exception to the
   // shareable-URL-state rule.
@@ -41,10 +41,18 @@
   const shownTip = (k: number, i: number): Tip => {
     if (!all || m.lines[k].label === 'Other') return tipOf(k, i);
     const row = (j: number): [string, string, string] => [m.lines[j].label, m.dollars ? amount(m.lines[j].values[i] ?? 0, m.dollars[j][i]) : `${m.lines[j].values[i] ?? 0}%`, j === k ? 'hl' : ''];
-    const named = m.lines.flatMap((l, j) => (l.label !== 'Other' && (l.values[i] ?? 0) > 0 ? [row(j)] : []));
+    // Biggest $ first, "Other" last.
+    const named = m.lines.flatMap((l, j) => (l.label !== 'Other' && (l.values[i] ?? 0) > 0 ? [j] : []))
+      .sort((a, b) => (m.dollars ? m.dollars[b][i] - m.dollars[a][i] : (m.lines[b].values[i] ?? 0) - (m.lines[a].values[i] ?? 0))).map(row);
     const o = m.lines.findIndex((l) => l.label === 'Other');
-    return { title: m.x[i], rows: [...named, ...(o >= 0 && (m.lines[o].values[i] ?? 0) > 0 ? [[`Others`, row(o)[1], ''] as [string, string, string]] : [])] };
+    return { title: m.x[i], rows: [...named, ...(o >= 0 && (m.lines[o].values[i] ?? 0) > 0 ? [[`Other`, row(o)[1], ''] as [string, string, string]] : [])] };
   };
+  // The legend's order: alphabetical with Other last for Share of spend (`all`); a roaster's color stays its own (by line).
+  const legendOrder = $derived(m.lines.map((_, k) => k).sort((a, b) => {
+    if (!all) return a - b;
+    const [x, y] = [m.lines[a].label, m.lines[b].label];
+    return x === 'Other' ? 1 : y === 'Other' ? -1 : x.localeCompare(y, 'en', { sensitivity: 'base' });
+  }));
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
   let stop = $derived.by(() => {
     for (let i = 0; i < n; i++) for (let k = 0; k < m.lines.length; k++) if ((m.lines[k].values[i] ?? 0) > 0) return `${i}:${k}`;
@@ -101,7 +109,8 @@
     </div>
   </div>
   <ul class="legend" aria-hidden={isolate ? undefined : true}>
-    {#each m.lines as l, k (k)}
+    {#each legendOrder as k (k)}
+      {@const l = m.lines[k]}
       <li class:faded={iso !== null && iso !== k} class:on={iso === k}>
         {#if isolate}<button type="button" class="leg" aria-pressed={iso === k} onclick={() => (iso = iso === k ? null : k)}><span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}</button>
         {:else}<span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}{/if}

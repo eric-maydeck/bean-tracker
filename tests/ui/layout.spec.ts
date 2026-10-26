@@ -2326,7 +2326,7 @@ export const STATES: State[] = [
       await c.scrollIntoViewIfNeeded();
       for (const [x, y] of (await chartPoints(c, false)).slice(0, 12)) { if (touch()) await page.touchscreen.tap(x, y); else await page.mouse.move(x, y); if (await tip.waitFor({ timeout: 300 }).then(() => true, () => false)) break; } // a bar
       await expect(tip.locator('.tip-group').nth(0)).toContainText('(current period)');
-      await expect(tip.locator('.tip-group').nth(1)).toContainText(/\(\d+ months? ago\)/); // an offset, not "previous 3 months"
+      await expect(tip.locator('.tip-group').nth(1)).toContainText(/\(\d+ months? prior\)/); // an offset, not "previous 3 months"
       expect(await tip.locator('.tip-mark').count()).toBeGreaterThanOrEqual(4); // a swatch before every series row
       await expect(tip.locator('.tip-rows').first()).toContainText('Total'); // All: the overall total beside the split
       await panel.getByRole('group', { name: 'Show' }).getByRole('button', { name: '$ per g' }).click();
@@ -2494,6 +2494,29 @@ export const STATES: State[] = [
     }
   },
   {
+    // Leaving for a shorter tab and coming back (or isolating a legend entry) never moves the page: the scroll stays where it was.
+    name: 'insights-spend-scroll-return', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    act: async (page) => {
+      const share = page.locator('section[data-section="spend-share"]');
+      await share.scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+      const y0 = await page.evaluate(() => scrollY);
+      const still = async () => expect(Math.abs((await page.evaluate(() => scrollY)) - y0)).toBeLessThanOrEqual(2);
+      const legend = share.locator('.legend .leg');
+      await legend.nth(1).click();
+      await legend.nth(2).click();
+      await legend.nth(2).click();
+      await still();
+      await page.getByLabel('View').selectOption('consumption'); // a much shorter page
+      await expect(page).toHaveURL(/tab=consumption/);
+      await expect(page.locator('section[data-section="consumption-time-to-open"]')).toBeVisible();
+      await page.getByLabel('View').selectOption('spend');
+      await expect(share).toBeVisible();
+      await page.waitForTimeout(300);
+      await still();
+    }
+  },
+  {
     name: 'insights-spend-discovery-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const seg = page.locator('section[data-section="spend-share"] .seg').first();
@@ -2511,6 +2534,12 @@ export const STATES: State[] = [
       const legend = page.locator('section[data-section="spend-share"] .legend .leg');
       const n = await legend.count();
       expect(n).toBeGreaterThan(1);
+      // Alphabetical (case-insensitive), Other last; the tip never says "Others".
+      const names = (await legend.allInnerTexts()).map((t) => t.trim());
+      const named = names.filter((t) => t !== 'Other');
+      expect(named).toEqual([...named].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })));
+      if (names.includes('Other')) expect(names.at(-1)).toBe('Other');
+      await expect(tip).not.toContainText('Others');
       await expect(legend.first()).toHaveAttribute('aria-pressed', 'false');
       if (await page.evaluate(() => innerWidth <= 480)) expect((await legend.first().boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       await legend.first().click();
