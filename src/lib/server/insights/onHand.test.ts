@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { freshness, freshBag, onHandTab, type FreshBag } from './onHand';
+import { ageProfile, freshness, freshBag, onHandTab, type FreshBag } from './onHand';
 import type { BagFact, BrewFact } from './facts';
 
 const today = '2026-09-25';
@@ -87,5 +87,41 @@ describe('onHandTab', () => {
     expect(r.runway.days).not.toBeNull();
     expect(r.runwayAll.days).not.toBeNull();
     expect(r.runway.days).not.toBe(r.runwayAll.days);
+  });
+});
+
+describe('ageProfile', () => {
+  const at = (days: number) => new Date(Date.UTC(2026, 8, 25 - days)).toISOString().slice(0, 10); // roast date `days` before today
+  const age = (bags: BagFact[], size = 1) => ageProfile(bags, new Map(), today, size);
+  it('puts ages in the bucket edges: 14 / 15, 30 / 31, 60 / 61, 90 / 91 days', () => {
+    const edges = [14, 15, 30, 31, 60, 61, 90, 91];
+    const a = age(edges.map((d, i) => fact({ id: i + 1, purchaseDate: at(d) })));
+    expect(a.labels).toEqual(['0–14', '15–30', '31–60', '61–90', '90+']);
+    expect(a.bags.noWindow).toEqual([1, 2, 2, 2, 1]);
+  });
+  it('splits by the rest window at that age', () => {
+    const a = age([
+      fact({ id: 1, purchaseDate: at(10), restLow: 7, restHigh: 21 }), // inside
+      fact({ id: 2, purchaseDate: at(25), restLow: 7, restHigh: 21 }), // past
+      fact({ id: 3, purchaseDate: at(3), restLow: 7, restHigh: 21 }), // before
+      fact({ id: 4, purchaseDate: at(10) }) // no window
+    ]);
+    expect(a.bags.inside[0]).toBe(1);
+    expect(a.bags.past[1]).toBe(1);
+    expect(a.bags.before[0]).toBe(1);
+    expect(a.bags.noWindow[0]).toBe(1);
+  });
+  it('grams are remaining grams, halved per person; bags are not', () => {
+    const bags = [fact({ id: 1, purchaseDate: at(10), amountG: 250 })];
+    const one = ageProfile(bags, new Map([[1, 50]]), today, 1);
+    const two = ageProfile(bags, new Map([[1, 50]]), today, 2);
+    expect(one.grams.noWindow[0]).toBe(200);
+    expect(two.grams.noWindow[0]).toBe(100);
+    expect(two.bags.noWindow[0]).toBe(1);
+  });
+  it('a frozen bag stops aging at its freeze; a bag without a roast date is left out', () => {
+    const a = age([fact({ id: 1, purchaseDate: at(40), frozenStart: at(30) }), fact({ id: 2, purchaseDate: null })]);
+    expect(a.bags.noWindow[0]).toBe(1); // aged 10 days
+    expect(a.bags.noWindow.reduce((x, y) => x + y)).toBe(1);
   });
 });

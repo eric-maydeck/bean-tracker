@@ -1,10 +1,12 @@
 <script lang="ts" module>
   import type { OnHandTab } from '$lib/server/insights/onHand';
   import type { JumpLink } from './JumpNav.svelte';
+  const AGE_KEYS = ['before', 'inside', 'past', 'noWindow'] as const;
+  const hasAge = (t: OnHandTab) => AGE_KEYS.some((k) => t.age.bags[k].some((n) => n > 0));
   const shelf = (t: OnHandTab) => t.tiles.bagsWaiting + t.tiles.frozenBags > 0 || Object.values(t.freshness).some((g) => typeof g === 'object' && g && g.count > 0);
   // Each panel task adds its section here.
   export function jumpLinks(t: OnHandTab): JumpLink[] {
-    return [['onhand-runway', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now']];
+    return [['onhand-runway', 'Runway at your pace'], shelf(t) && ['onhand-freshness', 'Freshness now'], hasAge(t) && ['onhand-age', 'Age profile']];
   }
 </script>
 
@@ -16,8 +18,14 @@
   import TextTip from '$lib/components/TextTip.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import type { FreshGroup, Runway } from '$lib/server/insights/onHand';
+  import Chart from '$lib/components/Chart.svelte';
+  import ChartToggle from './ChartToggle.svelte';
+  import { seriesToken } from '$lib/components/chartColor';
+  import type { InsightsUrlState, Unit } from '$lib/insightsUrl';
+  import type { Tip } from '$lib/components/TipBody.svelte';
 
-  let { t, tiles, link, periodLabel, allTime, placeTip }: {
+  let { t, tiles, link, periodLabel, allTime, placeTip, unit, choose }: {
+    unit: Unit; choose: (c: InsightsUrlState) => void;
     t: OnHandTab; tiles: Snippet; link: (href: string) => string; periodLabel: string; allTime: boolean; placeTip: (e: ToggleEvent) => void;
   } = $props();
   const emptyLine = useEmptyLine();
@@ -31,6 +39,16 @@
   const GROUPS = $derived<[string, FreshGroup][]>([
     ['Ready', t.freshness.ready], ['Drink soon', t.freshness.drinkSoon], ['Still resting', t.freshness.resting], ['In the freezer', t.freshness.frozen]
   ]);
+  // Age profile: waiting bags by days since roast, split by where that age sits in the roaster's rest window.
+  const AGE_SERIES = [['before', 'Before rest window'], ['inside', 'In rest window'], ['past', 'Past rest window'], ['noWindow', 'No rest window']] as const;
+  const grams = $derived(unit === 'grams');
+  const split = $derived(grams ? t.age.grams : t.age.bags);
+  const ageFmt = $derived((v: number) => (grams ? formatGrams(v) : `${+v.toFixed(1)} bag${v === 1 ? '' : 's'}`));
+  const ageTip = $derived((i: number): Tip => {
+    const rows = AGE_SERIES.map(([k, name]): [string, string] => [name, ageFmt(split[k][i])]);
+    const total = AGE_SERIES.reduce((a, [k]) => a + split[k][i], 0);
+    return { title: `${t.age.labels[i]} days since roast`, rows: [...rows, ['Total', ageFmt(total)]], marks: [...AGE_SERIES.map((_, j) => ({ color: `var(${seriesToken(j, 4)}-ink)` })), null] };
+  });
   const empty = $derived(!shelf(t) && t.freshness.unknown === 0);
 </script>
 
@@ -85,6 +103,19 @@
     {/if}
   {/if}
 </section>
+
+{#if hasAge(t)}
+  <section class="chart-panel" data-section="onhand-age">
+    <LabHead id="onhand-age" title="Age profile" {placeTip}
+      help={['Waiting bags by days since roast, minus freezer days.', 'Each bar splits by where that age sits in the roaster\'s rest window.', 'Bags with no roast date are left out.', 'Per person divides grams, not bags.']}>
+      <ChartToggle label="Unit" options={[['grams', 'Grams'], ['bags', 'Bags']]} value={unit} pick={(v) => choose({ unit: v })} />
+    </LabHead>
+    <Chart type="bar" vertical stacked labels={t.age.labels} values={split.before} datasetLabel={AGE_SERIES[0][1]} legend format={ageFmt} tickFormat={ageFmt} tipOf={ageTip}
+      series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_SERIES.map((_, j) => `var(${seriesToken(j, 4)})`)} height={260} />
+    <p class="chart-note">Waiting bags by days since roast, minus freezer days</p>
+    <p class="chart-note">On hand over time: <a href={link('/insights?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
+  </section>
+{/if}
 
 <style>
   /* Card grids fill their rows (ui-rules 33): 2 across, 4 on a wide panel; the runway's one card spans the row. */

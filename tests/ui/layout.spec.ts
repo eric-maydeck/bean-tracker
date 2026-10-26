@@ -2757,6 +2757,28 @@ export const STATES: State[] = [
       expect(t['og:description']).toMatch(/^What's on fuhnoo's shelf right now\n.+\n\d+ bags? waiting · .+ · \$[\d,.]+ tied up$/);
     }
   },
+  {
+    name: 'insights-onhand-age', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel:has(#onhand-age)');
+      await panel.scrollIntoViewIfNeeded();
+      await panel.getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Bags', exact: true }).click();
+      await expect(page).toHaveURL(/unit=bags/);
+      await expect(page.locator('canvas')).toHaveCount(1);
+      const c = panel.locator('canvas');
+      const b = (await c.boundingBox())!;
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      const sweep: (readonly [number, number])[] = [];
+      for (const g of [0.9, 0.75, 0.6, 0.45]) for (let f = 0.95; f > 0; f -= 0.05) sweep.push([b.x + b.width * f, b.y + b.height * g]);
+      for (const [x, y] of [...(await chartPoints(c, false)).slice(0, 12), ...sweep]) {
+        await page.mouse.move(x, y);
+        if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
+      }
+      await expectDataTip(tip);
+      await panel.getByRole('group', { name: 'Unit' }).getByRole('button', { name: 'Grams', exact: true }).click();
+      await expect(page).not.toHaveURL(/unit=bags/);
+    }
+  },
   { name: 'insights-habits-1w', path: () => '/insights?tab=habits&range=1w' },
   {
     name: 'insights-habits-rating-compare', viewports: 'two',
