@@ -2228,7 +2228,7 @@ export const STATES: State[] = [
       await expectDataTip(page.locator('.cell-tip'));
     }
   },
-  // Over time: eight tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
+  // Spend: eight tiles; the Spent ? tip says the date rule. Later panels extend insights-spend-empty and add their own states.
   {
     name: 'insights-spend', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
@@ -2720,7 +2720,7 @@ export const STATES: State[] = [
     name: 'insights-spend-preview', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
     act: async (page) => {
       const t = await previewTags(page, '/insights?tab=spend&range=12m');
-      expect(t['og:title']).toBe('Insights: Over time');
+      expect(t['og:title']).toBe('Insights: Spend');
       expect(t['og:description']).toMatch(/^What fuhnoo spends on coffee, and on what\n.+\nSpent \$[\d,.]+ · [\d,.]+ bags?( · \$\d+\.\d\d\/g avg)?$/);
     }
   },

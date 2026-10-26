@@ -37,7 +37,7 @@ describe('insightsPreview', () => {
     expect(insightsPreview({ ...base, avgRating: null }).description.split('\n')[2]).toBe('412 brews');
   });
   it('page level: a given line replaces the brews and rating line', () =>
-    expect(insightsPreview({ ...base, tab: 'spend', tabLabel: 'Over time', filters: [], line: 'Spent $82.50 · 6 bags · $0.11/g avg' }).description.split('\n')[2])
+    expect(insightsPreview({ ...base, tab: 'spend', tabLabel: 'Spend', filters: [], line: 'Spent $82.50 · 6 bags · $0.11/g avg' }).description.split('\n')[2])
       .toBe('Spent $82.50 · 6 bags · $0.11/g avg'));
   it('page level: On hand names the shelf', () =>
     expect(insightsPreview({ ...base, tab: 'onhand', tabLabel: 'On hand', filters: [], line: '4 bags waiting · 1.2kg · $52 tied up' }).description)

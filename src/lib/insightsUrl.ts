@@ -19,7 +19,7 @@ export const RANGE_LABELS: Record<(typeof RANGES)[number], string> = {
 // How people abbreviate on a phone ("Last 12 months" → "Last 12 mo."); the narrow selects use it, and app.html's
 // first-paint script applies the same data-short text before hydration (no flash of the long words).
 export const phoneWords = (s: string): string => s.replace(/\bmonths\b/g, 'mo.').replace(/\byears\b/g, 'yr.').replace(/^Previous /, 'Prev. ');
-// Over time's chart series: absent = One-off vs sub (the split).
+// Spend's chart series: absent = One-off vs sub (the split).
 export const SPEND_SERIES = ['overall', 'oneoff', 'sub', 'all'] as const;
 export type SpendSeries = (typeof SPEND_SERIES)[number];
 export const RATINGS = ['current', 'all'] as const;
@@ -80,19 +80,17 @@ export interface LabValues {
 }
 export const NO_LAB: LabValues = { bags: [], roasts: [], processes: [], origins: [], roasters: [], grinders: [], drippers: [], filters: [], waters: [], doses: [], temps: [] };
 
-export const SPEND_TABS = ['onhand', 'spend'] as const; // the Spend rail group
 export const WAIT_BYS = ['roaster', 'origin', 'process', 'roast'] as const;
 export type WaitBy = (typeof WAIT_BYS)[number];
-export const TABS = ['overview', 'leaderboards', 'habits', 'consumption', 'records', 'milestones', 'insights', ...SPEND_TABS, ...LAB_TABS] as const;
+export const TABS = ['overview', 'onhand', 'leaderboards', 'habits', 'consumption', 'spend', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
 export const RC_COLS = ['roaster', 'bags', 'spent', 'ppg', 'rating', 'like', 'last'] as const;
 export type RcCol = (typeof RC_COLS)[number];
 export type Tab = (typeof TABS)[number];
 // The desktop side rail's groups, in TABS order: a new tab joins one group here (a test checks every tab is in one).
 export const TAB_GROUPS: readonly { label: string; tabs: readonly Tab[] }[] = [
-  { label: 'Summary', tabs: ['overview', 'leaderboards'] },
-  { label: 'Habits', tabs: ['habits', 'consumption'] },
+  { label: 'Summary', tabs: ['overview', 'onhand', 'leaderboards'] },
+  { label: 'Habits', tabs: ['habits', 'consumption', 'spend'] },
   { label: 'Highlights', tabs: ['records', 'milestones', 'insights'] },
-  { label: 'Spend', tabs: SPEND_TABS },
   { label: 'Lab', tabs: LAB_TABS }
 ];
 // Habits: one Measure for every chart. Consumption: grams or bags, bucketed by day/week/month
@@ -274,9 +272,9 @@ export interface InsightsUrlState {
   chart?: string; // a heading's id: the page scrolls to it on load (link previews name it)
   retired?: 'open'; // Gear's retired shelf is open
   gear?: GearKind; // Gear showcase's kind toggle: absent = All
-  spendView?: 'ppg'; // Over time: price per gram chart (absent = Spend)
-  spendSeries?: SpendSeries; // Over time: which series the chart draws (absent = One-off vs sub)
-  rcSort?: RcCol; // Over time: Report card sort column (absent = Bags)
+  spendView?: 'ppg'; // Spend: price per gram chart (absent = Spend)
+  spendSeries?: SpendSeries; // Spend: which series the chart draws (absent = One-off vs sub)
+  rcSort?: RcCol; // Spend: Report card sort column (absent = Bags)
   rcDir?: 'asc' | 'desc'; // Roaster comparison sort direction
   rcTop?: Top; // Roaster comparison rows shown (absent = 10)
   waitBy?: WaitBy; // On hand's What's waiting grouping (absent = Roaster)

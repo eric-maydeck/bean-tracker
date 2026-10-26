@@ -677,8 +677,10 @@ describe('spend tab params', () => {
     expect(insightsParams(parse('tab=onhand&waitBy=process')).toString()).toBe('tab=onhand&waitBy=process');
     expect(resetInsights({ tab: 'onhand', waitBy: 'roast' })).toEqual({ tab: 'onhand' });
   });
-  it('Spend group sits between Highlights and Lab; ratings menu on', () => {
-    expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Spend', 'Lab']);
+  it('On hand is second in Summary, Spend last in Habits (no Spend group); ratings menu on', () => {
+    expect(TAB_GROUPS.map((g) => g.label)).toEqual(['Summary', 'Habits', 'Highlights', 'Lab']);
+    expect(TAB_GROUPS[0].tabs).toEqual(['overview', 'onhand', 'leaderboards']);
+    expect(TAB_GROUPS[1].tabs).toEqual(['habits', 'consumption', 'spend']);
     expect(ratingsMenuOn({ tab: 'spend', rank: 'rating', measure: 'brews', trend: undefined })).toBe(true);
   });
 });
