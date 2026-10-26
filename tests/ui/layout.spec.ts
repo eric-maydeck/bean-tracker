@@ -1032,6 +1032,7 @@ export const STATES: State[] = [
   // Admin edit mode: the bag's subscription plan; saved through the staged batch; the list's inline edit has none.
   { name: 'coffees-detail-subscription-select', viewports: 'two', path: (s) => `/coffees/${s.slugs.sey}`,
     act: async (page, s) => {
+      await expect(page.locator('.stat', { hasText: 'Subscription' }).getByRole('link')).toHaveText('Sey · 1x250g');
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       const sel = page.getByLabel('Subscription', { exact: true });
       await expect(sel).toBeVisible();
@@ -1043,18 +1044,18 @@ export const STATES: State[] = [
       expect(Math.abs(f!.width - g!.width)).toBeLessThan(2); // a full-width row: nothing beside it to leave empty
       await checkLayout(page);
       await expect(sel.locator('option')).toHaveText([
-        'None', 'Explorer Series: Two Rotating Single Origins Every Other Week', 'Paused Monthly (paused)', 'Sey']);
-      await expect(sel.locator('option:checked')).toHaveText('Sey');
+        'None', 'A Very Long Subscription Service Name That Keeps Going · Explorer Series: Two Rotating Single Origins Every Other Week · 2x250g', 'Ceto · Paused Monthly · 1x250g (paused)', 'Sey · 1x250g']);
+      await expect(sel.locator('option:checked')).toHaveText('Sey · 1x250g');
       await expect(page.locator('#cost')).toHaveValue('22'); // opening edit on a linked bag leaves its cost alone
-      await sel.selectOption({ label: 'Paused Monthly (paused)' });
+      await sel.selectOption({ label: 'Ceto · Paused Monthly · 1x250g (paused)' });
       await page.getByRole('button', { name: 'Save changes' }).click();
       await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
       await page.reload();
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Paused Monthly (paused)');
+      await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Ceto · Paused Monthly · 1x250g (paused)');
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'None' });
       await expect(page.locator('#cost')).toHaveValue('22'); // no fill since this mount: None changes nothing
-      await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey' }); // restore for other states
+      await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey · 1x250g' }); // restore for other states
       await page.locator('#cost').fill('22');
       await page.getByRole('button', { name: 'Save changes' }).click();
       await page.goto('/coffees?view=list&status=all');
@@ -1078,15 +1079,15 @@ export const STATES: State[] = [
         await checkLayout(page);
         const cost = modal.locator('#cost');
         const before = await cost.inputValue();
-        await sel.selectOption({ label: 'Explorer Series: Two Rotating Single Origins Every Other Week' });
+        await sel.selectOption({ label: 'A Very Long Subscription Service Name That Keeps Going · Explorer Series: Two Rotating Single Origins Every Other Week · 2x250g' });
         await expect(cost).toHaveValue('22.25');
         await cost.fill('23');
         await sel.selectOption({ label: 'None' });
         await expect(cost).toHaveValue('23'); // edited after the fill: left alone
-        await sel.selectOption({ label: 'Sey' });
+        await sel.selectOption({ label: 'Sey · 1x250g' });
         await expect(cost).toHaveValue('30');
         expect(before).not.toBe('30');
-        await sel.selectOption({ label: 'Explorer Series: Two Rotating Single Origins Every Other Week' });
+        await sel.selectOption({ label: 'A Very Long Subscription Service Name That Keeps Going · Explorer Series: Two Rotating Single Origins Every Other Week · 2x250g' });
         await expect(cost).toHaveValue('22.25');
         await sel.selectOption({ label: 'None' });
         await expect(cost).toHaveValue('23'); // Sey -> Explorer -> None: back to the cost from before the first fill (23)

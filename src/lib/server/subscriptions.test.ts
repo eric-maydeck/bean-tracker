@@ -12,6 +12,7 @@ import {
   withNextRenewalDate,
   applySubscriptionUrls,
   SUBSCRIPTION_URLS_2026_10_08,
+  subscriptionOf,
   type NewSubscriptionInput
 } from './subscriptions';
 
@@ -167,5 +168,15 @@ describe('applySubscriptionUrls', () => {
     expect(SUBSCRIPTION_URLS_2026_10_08.map((f) => [f.id, f.roaster_service])).toEqual([
       [1, 'Airworks'], [2, 'H&S Coffee Roasters'], [3, 'Shoebox Coffee Roaster'], [4, 'norml'], [5, 'Scenery'], [6, 'Ceto']
     ]);
+  });
+});
+
+describe('subscription labels', () => {
+  it('reads roaster · name · size, with paused last and missing parts dropped', () => {
+    const full = createSubscription(db, sampleInput({ paused: 1 }));
+    const bare = createSubscription(db, sampleInput({ subscription_name: null, amount_per_bag_g: null, bag_count: 1 }));
+    expect(subscriptionOf(db, full)).toBe('Airworks · Ultralight Subscription · 3x200g (paused)');
+    expect(subscriptionOf(db, bare)).toBe('Airworks · 1 bag');
+    expect(subscriptionOf(db, null)).toBeNull();
   });
 });

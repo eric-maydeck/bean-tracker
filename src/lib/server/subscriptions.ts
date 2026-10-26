@@ -19,15 +19,28 @@ export function getSubscriptions(db: DatabaseSync): SubscriptionRow[] {
     .all() as unknown as SubscriptionRow[];
 }
 
+// "H&S · Roaster's Choice · 2x250g (paused)": roaster first so plans group, then size.
+export function subscriptionLabel(s: SubscriptionRow): string {
+  const b = s.bag_count, g = s.amount_per_bag_g;
+  const size = b && g ? `${b}x${g}g` : b ? `${b} bag${b === 1 ? '' : 's'}` : g ? `${g}g` : null;
+  return [s.roaster_service, s.subscription_name, size].filter(Boolean).join(' · ') + (s.paused ? ' (paused)' : '');
+}
+
 // The coffee form's Subscription select options (admins only; callers pass [] otherwise).
 export function getSubscriptionOptions(db: DatabaseSync): SubscriptionOption[] {
   return getSubscriptions(db).map((s) => ({
     id: s.id,
-    label: (s.subscription_name ?? s.roaster_service) + (s.paused ? ' (paused)' : ''),
+    label: subscriptionLabel(s),
     paused: !!s.paused,
     price: s.price,
     bag_count: s.bag_count
   }));
+}
+
+// The coffee page's Subscription stat: its plan's label, null when not a sub bag.
+export function subscriptionOf(db: DatabaseSync, id: number | null): string | null {
+  const s = id === null ? undefined : getSubscriptionById(db, id);
+  return s ? subscriptionLabel(s) : null;
 }
 
 export function getSubscriptionById(db: DatabaseSync, id: number): SubscriptionRow | undefined {

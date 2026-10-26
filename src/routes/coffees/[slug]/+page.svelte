@@ -411,6 +411,10 @@
           </span>
         </div>
         <div class="stat">
+          <span class="stat-label">Subscription</span>
+          <span class="stat-value">{#if data.subscription}<a href="/subscriptions">{data.subscription}</a>{:else}—{/if}</span>
+        </div>
+        <div class="stat">
           <span class="stat-label">Urgency</span>
           <span class="stat-value" style={urgencyColorStyle(data.coffee.urgency_rating)}>
             {data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}

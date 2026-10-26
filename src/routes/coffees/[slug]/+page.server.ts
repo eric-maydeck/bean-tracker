@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { localTodayDate } from '$lib/server/localToday';
 import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
-import { getSubscriptionOptions } from '$lib/server/subscriptions';
+import { getSubscriptionOptions, subscriptionOf } from '$lib/server/subscriptions';
 import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
@@ -43,7 +43,8 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     noLike: r && !('like' in r) ? r : null,
     likeView,
     restHistory: locals.isAdmin ? getFillHistory(db) : [],
-    subscriptions: locals.isAdmin ? getSubscriptionOptions(db) : []
+    subscriptions: locals.isAdmin ? getSubscriptionOptions(db) : [],
+    subscription: subscriptionOf(db, coffee.subscription_id)
   };
 };
 
