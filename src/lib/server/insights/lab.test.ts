@@ -544,7 +544,7 @@ describe('brewingTab', () => {
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { all: rows, period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
-    expect(e).toEqual({ rest: null, dialIn: [], bestAt: [], bestLater: [], drift: [], settle: { roast: [], process: [], dripper: [], water: [] }, vars: [] });
+    expect(e).toEqual({ wait: null, rest: null, dialIn: [], bestAt: [], bestLater: [], drift: [], settle: { roast: [], process: [], dripper: [], water: [] }, vars: [] });
   });
   const bag1 = (ratings: number[], ids = [1]) => ids.flatMap((coffeeId) => ratings.map((rating, i) => brew({ coffeeId, rating, brewIndex: i + 1, grinder: 'A4Z', grind: `1.${6 - i}.0` })));
   const c1 = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };
@@ -799,5 +799,18 @@ describe('labOptions brew values', () => {
     expect(o.waters).toEqual(['A']);
     expect(o.doses).toEqual(['15', '20']);
     expect(o.temps).toEqual(['92.5', '93']);
+  });
+});
+
+describe('brewingTab wait', () => {
+  const P = { start: '2026-09-01', end: '2026-09-30' };
+  const b = (o: Partial<BrewFact>): BrewFact => ({ id: 1, coffeeId: 1, roaster: 'R', localDate: '2026-09-10', rating: 8, dose: 18, brewIndex: 1, restDays: 10, grinder: 'A4Z', ...o }) as BrewFact;
+  const bags = [{ id: 1, restLow: 7, restHigh: 21 }] as BagFact[];
+  const c = { period: P, ratings: 'all' as const, grinder: 'A4Z', by: {}, exact: {} };
+  it('is the freshness figures when bags are passed, null otherwise or with nothing to show', () => {
+    const rows = [b({}), b({ id: 2, brewIndex: 2, restDays: 12 })];
+    expect(brewingTab(rows, { ...c, all: rows }).wait).toBeNull();
+    expect(brewingTab(rows, { ...c, all: rows, bags }).wait?.byWait[0]).toMatchObject({ bags: 1 });
+    expect(brewingTab([], { ...c, all: [], bags }).wait).toBeNull();
   });
 });

@@ -2502,30 +2502,43 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-spend-freshness', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-consumption-time-to-open', path: () => '/insights?tab=consumption&range=12m',
     act: async (page) => {
-      for (const id of ['spend-time-to-open', 'spend-rating-by-wait', 'spend-rest-window']) {
-        const panel = page.locator(`section[data-section="${id}"]`);
-        await panel.scrollIntoViewIfNeeded();
-        await expect(panel.getByRole('heading')).toBeVisible();
-      }
-      // The seed renders every section (empty states are covered in vitest).
-      // The seed has no bag with an opened date, so Time to open shows its empty line.
-      await expect(page.locator('section[data-section="spend-time-to-open"] .hl-empty')).toBeVisible();
-      await expect(page.locator('section[data-section="spend-time-to-open"] .fig')).toHaveCount(0);
-      await expect(page.locator('section[data-section="spend-rating-by-wait"] canvas')).toHaveCount(1);
-      await expect(page.locator('section[data-section="spend-rest-window"] .win li')).toHaveCount(3);
-      const rest = page.locator('section[data-section="spend-rest-window"]');
-      await expect(rest.locator('.chart-note', { hasText: /brews? without a rest window/ })).toBeVisible();
-      await expect(rest.getByRole('link', { name: 'Brewing lab' })).toHaveAttribute('href', /tab=brewing.*chart=brewing-rest#brewing-rest/);
+      const panel = page.locator('section[data-section="consumption-time-to-open"]');
+      await panel.scrollIntoViewIfNeeded();
+      await expect(panel.getByRole('heading', { name: 'Time to open' })).toBeVisible();
+      // The first brew is the open day, so every bag with a brew counts: both figures and both lists are there.
+      await expect(panel.locator('.fig')).toHaveCount(2);
+      await expect(panel.locator('.fig-val').first()).toContainText(/\d+ days/);
+      await expect(panel.locator('.list h3')).toHaveText(['By roaster', 'By process']);
+      expect(await panel.locator('.list li').count()).toBeGreaterThan(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      await expect(page.locator('nav.board-jump').getByRole('link', { name: 'Time to open' })).toBeVisible();
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-brewing-wait', path: () => '/insights?tab=brewing&range=12m',
+    act: async (page) => {
+      const rest = page.locator('section[data-section="brewing-rest"]');
+      const rate = page.locator('section[data-section="brewing-rating-by-wait"]');
+      const win = page.locator('section[data-section="brewing-rest-window"]');
+      await rate.scrollIntoViewIfNeeded();
+      await expect(rate.locator('canvas')).toHaveCount(1);
+      await expect(win.locator('.win li')).toHaveCount(3);
+      await expect(win.locator('.chart-note', { hasText: /brews? without a rest window/ })).toBeVisible();
+      // They sit right after the rest curve they belong with.
+      const y = async (l: Locator) => (await l.boundingBox())!.y;
+      expect(await y(rest)).toBeLessThan(await y(rate));
+      expect(await y(rate)).toBeLessThan(await y(win));
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
   {
-    name: 'insights-spend-freshness-tip', viewports: 'two', path: () => '/insights?tab=spend&range=12m',
+    name: 'insights-brewing-wait-tip', viewports: 'two', path: () => '/insights?tab=brewing&range=12m',
     act: async (page) => {
-      const c = page.locator('section[data-section="spend-rating-by-wait"] canvas');
+      const c = page.locator('section[data-section="brewing-rating-by-wait"] canvas');
       await c.scrollIntoViewIfNeeded();
       const b = (await c.boundingBox())!;
       const tip = page.locator('.chart-container .cell-tip:popover-open');

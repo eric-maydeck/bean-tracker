@@ -3,6 +3,7 @@ import type { BrewFact, BagFact } from './facts';
 import { addDays, addMonths, autoBy, daysBetween, inPeriod, trackedBounds, weekday, type Period } from './time';
 import { countsForRating, RATINGS_SETTLED_FROM } from './ratings';
 import { consumption, gramsOnHand, isFinished, loggedGrams, paceDelta, remaining, type Delta } from './overview';
+import { timeToOpen, type TimeToOpen } from './freshness';
 
 export interface Bucket { start: string; end: string; partial: boolean }
 export type ConsumptionTiles = {
@@ -22,6 +23,7 @@ export interface ConsumptionTab {
   compareBrewed: (number | null)[] | null; // same-length compare: bucket for bucket
   compareTitles: (string | null)[] | null; // the compare bars' real dates, bucket for bucket with `brewed`
   compareAverage: number | null; // longer/custom compare: its per-bucket average (dashed line)
+  timeToOpen: TimeToOpen; // roast → first brew and first → last brew, the Period's bags (freshness.ts)
 }
 export interface ConsumptionCtx {
   period: Period; prev: Period | null; sameLength: boolean; unit: Unit; agg: Agg; by: By | undefined; size: number;
@@ -223,6 +225,7 @@ export function consumptionTab(brews: readonly BrewFact[], bags: readonly BagFac
   return {
     by, tiles, trendLine: c.trend === 'rating' ? null : rolling(brewed, TREND_WINDOW[by]),
     trendLabel: c.trend === 'rating' ? null : `${TREND_WINDOW[by]}-${by} average`, clearBy: use.clearBy, busiest: busiestDay(brews, c.period), prevBusiest, deltas, ratingFrom, buckets: bs, labels: bucketLabels(bs, by), brewed, bought,
-    backlog: backlogSeries(whole, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage
+    backlog: backlogSeries(whole, bags, bs.map((b) => b.end), c.unit), compareBrewed, compareTitles, compareAverage,
+    timeToOpen: timeToOpen(bags, c.period)
   };
 }

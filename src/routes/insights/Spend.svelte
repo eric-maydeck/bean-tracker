@@ -3,7 +3,7 @@
   import type { JumpLink } from './JumpNav.svelte';
   // Each panel task adds its section here.
   export function jumpLinks(t: SpendTab): JumpLink[] {
-    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card'], t.discovery.cumulative.length > 1 && ['spend-discovery', 'Roaster discovery'], t.discovery.share !== null && ['spend-share', 'Share of spend'], t.tiles.bags > 0 && ['spend-subscriptions', 'Subscriptions'], t.tiles.bags > 0 && ['spend-time-to-open', 'Time to open'], t.tiles.bags > 0 && ['spend-rating-by-wait', 'Rating by wait'], t.tiles.bags > 0 && ['spend-rest-window', 'Rest window']];
+    return [t.tiles.bags > 0 && ['spend-chart', 'Spend over time'], t.valueMap.points.length > 0 && ['spend-value-map', 'Value map'], t.valueMap.points.length > 0 && ['spend-best-value', 'Best value'], t.reportCard.length > 0 && ['spend-report-card', 'Roaster report card'], t.discovery.cumulative.length > 1 && ['spend-discovery', 'Roaster discovery'], t.discovery.share !== null && ['spend-share', 'Share of spend'], t.tiles.bags > 0 && ['spend-subscriptions', 'Subscriptions']];
   }
 </script>
 
@@ -20,7 +20,6 @@
   import ValueMap from './ValueMap.svelte';
   import ReportCard from './ReportCard.svelte';
   import PlanPanel from './PlanPanel.svelte';
-  import FreshHistory from './FreshHistory.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import StackedBars from './StackedBars.svelte';
   import { fitPairs } from './fitPairs';
@@ -179,8 +178,6 @@
       <p class="hl-empty">{emptyLine('No subscriptions yet.')} <a href={link('/subscriptions')}>Manage plans</a></p>
     {/if}
   </section>
-
-  <FreshHistory f={t.fresh} {link} {placeTip} />
 {/if}
 
 <style>

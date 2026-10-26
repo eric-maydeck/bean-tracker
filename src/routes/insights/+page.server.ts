@@ -189,7 +189,7 @@ export const load: PageServerLoad = ({ url }) => {
       ? sweetSpotsTab(scored, bags, { ...labCtx, grinder, filters: coffees, all: s.dial === 'all' ? pool : onceDialed(pool, dialIn) })
       : null,
     brewing: s.tab === 'brewing'
-      ? brewingTab(scored, { ...labCtx, all: brews, whole, brewFilters: bf, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
+      ? brewingTab(scored, { ...labCtx, all: brews, whole, bags, brewFilters: bf, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
           by: { temp: s.tempBy, ratio: s.ratioBy, dose: s.doseBy, time: s.timeBy, bloom: s.bloomBy, grind: s.grindBy } })
       : null,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,

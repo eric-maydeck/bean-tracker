@@ -834,7 +834,7 @@
     {#snippet tiles()}{@render panel('Habits', HABITS, data.habits!.tiles, data.habits!.deltas)}{/snippet}
   </Habits>
 {:else if s.tab === 'consumption' && data.consumptionTab}
-  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} trend={s.trend} agg={s.agg} offered={data.byMenus[s.range]} {choose}>
+  <Consumption {part} {wholeKeys} t={data.consumptionTab} {periodLabel} {compareLabel} {compareDates} unit={s.unit} trend={s.trend} agg={s.agg} offered={data.byMenus[s.range]} {choose} {placeTip}>
     {#snippet tiles()}{@render panel('Consumption', FLOW, consumptionValues, data.consumptionTab!.deltas, ['Bought', 'Net', 'On hand', 'Days to clear', ...(s.unit === 'bags' ? ['Bags finished'] : [])])}{/snippet}
   </Consumption>
 {:else if s.tab === 'sweetspots' && data.sweetSpots && data.lab}

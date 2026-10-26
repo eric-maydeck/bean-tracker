@@ -5,7 +5,7 @@
   const TITLE: Record<Trend, string> = { brews: 'Brews over time', water: 'Water over time', rating: 'Rating over time' };
   export function jumpLinks(t: ConsumptionTab, trend: Trend | undefined): JumpLink[] {
     const empty = t.buckets.length === 0;
-    return [!empty && ['consumption-chart-brewed', trend ? TITLE[trend] : 'Brewed over time'], !empty && ['consumption-chart-bought', 'Bought vs brewed'], !empty && ['consumption-chart-on-hand', 'On hand over time']];
+    return [!empty && ['consumption-chart-brewed', trend ? TITLE[trend] : 'Brewed over time'], !empty && ['consumption-chart-bought', 'Bought vs brewed'], !empty && ['consumption-chart-on-hand', 'On hand over time'], !empty && (t.timeToOpen.toOpen.n > 0 || t.timeToOpen.daysOpen.n > 0) && ['consumption-time-to-open', 'Time to open']];
   }
 </script>
 
@@ -19,13 +19,14 @@
   import { AGG_LABEL, AGGS, BYS, UNITS, type Agg, type BrewFilterKey, type By, type InsightsUrlState, type Unit } from '$lib/insightsUrl';
   import HeadingAnchor from './HeadingAnchor.svelte';
   import ChartToggle from './ChartToggle.svelte';
+  import TimeToOpen from './TimeToOpen.svelte';
 
   let {
-    t, wholeKeys, periodLabel, compareLabel, compareDates, unit, trend, agg, offered, choose, tiles, part
+    t, wholeKeys, periodLabel, compareLabel, compareDates, unit, trend, agg, offered, choose, tiles, part, placeTip
   }: {
     part?: 'bar'; // 'bar': only the controls (rendered inside the sticky bar), else the tab
     t: ConsumptionTab; wholeKeys: BrewFilterKey[]; periodLabel: string; compareLabel: string; compareDates: string; unit: Unit; trend?: Trend; agg: Agg; offered: By[];
-    choose: (c: InsightsUrlState) => void; tiles: Snippet;
+    choose: (c: InsightsUrlState) => void; tiles: Snippet; placeTip: (e: ToggleEvent) => void;
   } = $props();
 
   const CAP = (s: string) => s[0].toUpperCase() + s.slice(1);
@@ -159,6 +160,10 @@
     {@render nwNote(`${g ? 'Grams left' : 'Bags'} on hand at the end of each ${t.by}`, note)}
     {@render whole()}
   </section>
+  {#if t.timeToOpen.toOpen.n > 0 || t.timeToOpen.daysOpen.n > 0}
+    {#snippet wholeFoot()}{@render whole()}{/snippet}
+    <TimeToOpen t={t.timeToOpen} {placeTip} foot={wholeFoot} />
+  {/if}
 {/if}
 {/if}
 

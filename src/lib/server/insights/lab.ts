@@ -7,6 +7,7 @@ import { BREW_NO_LABELS, MINERALS, REST_LABELS, bandOf, doseBand, grindSteps, mi
 import { bagSizes, countsForRating, ratedGroups } from './ratings';
 import { likeGaps, twinKeys } from './likeGroup';
 import { groupBy } from './records';
+import { waitWindow, type WaitWindow } from './freshness';
 import { demeaned, mean, MIN_BAGS, MIN_BREWS, restZ, sd, strengthOf, tCrit, type Strength } from './stats';
 import { inPeriod, type Period } from './time';
 
@@ -403,6 +404,8 @@ export interface BrewingTab {
   // findings' measure), fastest first; empty under 2 groups.
   settle: Record<'roast' | 'process' | 'dripper' | 'water', { label: string; value: number; bags: number; brews: number; sample: Sample }[]>;
   vars: VarChart[];
+  // Rating by wait and Rest window (freshness.ts), beside the rest curve; null with no bags passed or nothing to show.
+  wait: WaitWindow | null;
 }
 const round2 = (x: number) => Math.round(x * 100) / 100;
 // A grind setting read as a decimal (1.3.5 → 1.35, 6.2 → 6.2), so drift reads in the grinder's own steps.
@@ -413,6 +416,7 @@ export function brewingTab(brews: readonly BrewFact[], c: {
   period: Period; ratings: Ratings; grinder: string | null; by: Partial<Record<BrewVar, Slice>>; exact: Partial<Record<BrewVar, boolean>>;
   all: readonly BrewFact[]; // every rating: the dial-in views (Once dialed exempts them)
   whole?: readonly BrewFact[]; brewFilters?: BrewFilters; // before the brew filters, every rating: the settle charts. Default: `all`.
+  bags?: readonly BagFact[]; // for Rating by wait and Rest window (each bag's rest window)
 }): BrewingTab {
   // Dial-in views (spec Part 2 exemptions) read every brew; the rest curve and variables follow Once dialed.
   const rows = ratedIn(brews, c.period, c.ratings);
@@ -452,7 +456,9 @@ export function brewingTab(brews: readonly BrewFact[], c: {
     return { label, value: round2(mean(g.map((b) => dial(b.grind)! - first.get(b.coffeeId!)!))), bags, sample: pooled(bags, g.length) };
   }).sort((a, b) => BREW_NO_LABELS.indexOf(a.label) - BREW_NO_LABELS.indexOf(b.label));
   const VARS: BrewVar[] = ['temp', 'ratio', 'dose', 'time', 'bloom', 'grind'];
+  const ww = c.bags ? waitWindow(brews, c.whole ?? c.all, c.bags, c) : null;
   return {
+    wait: ww && (ww.byWait.some((w) => w.rating !== null) || ww.window.some((w) => w.brews > 0) ? ww : null),
     rest: restMap && { ...restMap, best: restMap.cells.map(bestOf) },
     dialIn: pairedDeltas(every, labFn('brewNo'), 1),
     bestAt: best.length ? BREW_NO_LABELS.slice(0, BEST_WINDOW).map((label) => ({ label, bags: best.filter((l) => l === label).length })) : [],

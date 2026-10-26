@@ -9,6 +9,8 @@
     const vars = SLOTS.some((row) => row.some((k) => (k === 'drift' ? t.drift.length : t.vars.some((v) => v.key === k))));
     return [
       t.rest && ['brewing-rest', 'Rest curve'],
+      t.wait && ['brewing-rating-by-wait', 'Rating by wait'],
+      t.wait && ['brewing-rest-window', 'Rest window'],
       t.dialIn.length && ['brewing-dialin', 'Dial-in'],
       t.bestAt.length && ['brewing-best', 'Brews until dialed'],
       ...SETTLE.map(([k, by]) => t.settle[k].length && ([`brewing-settle-${k}`, `Brews until dialed in, by ${by}`] as const)),
@@ -28,6 +30,7 @@
   import HeadingAnchor from './HeadingAnchor.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
+  import WaitWindow from './WaitWindow.svelte';
   import { fitPairs } from './fitPairs';
   import BarLabels from './BarLabels.svelte';
   import { settleTip } from './settleTip';
@@ -42,7 +45,7 @@
   let grinderName = $derived((lab.grinders.find((g) => g.slug === s.grinder) ?? lab.grinders[0])?.name ?? '');
   // Brews until dialed in, by roast level and by process (gate P4): a pair under Dial-in; a lone one spans the row.
   const PARTNER = { roast: 'process', process: 'roast', dripper: 'water', water: 'dripper' } as const;
-  let empty = $derived(!t.rest && !t.dialIn.length && !t.bestAt.length && !SETTLE.some(([k]) => t.settle[k].length) && !t.drift.length && !t.vars.length);
+  let empty = $derived(!t.rest && !t.wait && !t.dialIn.length && !t.bestAt.length && !SETTLE.some(([k]) => t.settle[k].length) && !t.drift.length && !t.vars.length);
   // Fixed slots (G9/B5): a toggle or Break down by never moves a chart. Pairs share a row (one height); Brew
   // time is full width; Grind drift sits beside Grind. A slot with no data leaves its partner the full row.
   let slots = $derived(SLOTS.map((row) => row.filter((k) => (k === 'drift' ? t.drift.length : t.vars.some((v) => v.key === k)))).filter((r) => r.length));
@@ -71,6 +74,8 @@
         ariaLabel="Rest curve: rating vs the roast level's usual by days off roast, one row per roast level" />
     </section>
   {/if}
+
+  {#if t.wait}<WaitWindow w={t.wait} {placeTip} />{/if}
 
   {#if t.dialIn.length || t.bestAt.length || SETTLE.some(([k]) => t.settle[k].length)}
     <div class="lab-grid" use:fitPairs={t}>
