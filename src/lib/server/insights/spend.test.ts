@@ -150,4 +150,9 @@ describe('spendTab valueMap', () => {
     expect(m.points).toHaveLength(3);
     expect(m.best.map((p) => p.name)).toEqual(['Cheap', 'Dear']);
   });
+  it('best ties on score go to the name', () => {
+    const bs = [bag({ id: 1, name: 'Zed', cost: 10, amountG: 100 }), bag({ id: 2, name: 'Abe', cost: 10, amountG: 100 })];
+    const br = [...brewsOf(1, 4, 8), ...brewsOf(2, 4, 8)];
+    expect(spendTab(br, br, bs, ctx).valueMap.best.map((p) => p.name)).toEqual(['Abe', 'Zed']);
+  });
 });

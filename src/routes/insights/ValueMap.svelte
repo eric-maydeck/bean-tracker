@@ -21,7 +21,7 @@
   const xMax = $derived((m.cap ?? 0.1) * 1.04);
   const floor = $derived(Math.max(0, Math.floor(Math.min(...m.points.map((p) => p.rating)) - 0.5)));
   // ponytail: ticks at 1-2-5 steps of a cent, so labels stay whole cents ("$0.10/g").
-  const step = $derived([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5].find((s) => xMax / s <= 5) ?? 5);
+  const step = $derived([0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5].find((s) => Math.floor(xMax / s + 1e-9) + 1 <= 5) ?? 5);
   const xTicks = $derived(Array.from({ length: Math.floor(xMax / step + 1e-9) + 1 }, (_, i) => +(i * step).toFixed(2)));
   const yTicks = $derived(Array.from({ length: 10 - floor + 1 }, (_, i) => floor + i).filter((v) => (10 - floor <= 6 ? true : v % 2 === 0)));
   const x = (v: number) => L + (v / xMax) * Math.max(0, width - L - R);

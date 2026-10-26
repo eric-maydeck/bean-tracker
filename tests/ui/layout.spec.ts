@@ -2320,6 +2320,14 @@ export const STATES: State[] = [
       await expectTipInView(page, tip);
       await expect(tip.locator('.tip-title')).not.toBeEmpty();
       if (touch()) await expect(tip.getByRole('link', { name: 'Open coffee' })).toHaveAttribute('href', /\/coffees\//);
+      // Keyboard: one tab stop, an arrow moves focus to another dot, Enter pins its tip with the link.
+      const pts = page.locator('.value-map .pt');
+      await pts.locator('xpath=self::*[@tabindex="0"]').focus();
+      const first = await page.evaluate(() => document.activeElement?.getAttribute('data-i'));
+      await page.keyboard.press('ArrowRight');
+      expect(await page.evaluate(() => document.activeElement?.getAttribute('data-i'))).not.toBe(first);
+      await page.keyboard.press('Enter');
+      await expect(tip.getByRole('link', { name: 'Open coffee' })).toBeVisible();
     }
   },
   {

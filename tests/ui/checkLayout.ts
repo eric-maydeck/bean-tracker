@@ -75,7 +75,7 @@ export async function checkLayout(page: Page): Promise<void> {
         // A 100% stacked bar's segment is as tall as its share; a tap anywhere picks the segment under it, the
         // arrow keys reach every one, and the legend names each series.
         if (el.matches('.stacked .seg')) continue;
-        // Value map dots overlap by design (a coffee per dot); arrow keys reach each one and Best value lists the top picks with 44px rows.
+        // Value map dots can't all be 44px and may overlap; an overlapped dot may be reachable by keyboard only (Best value lists just the top 5). Whether that is acceptable is a user call at the preview.
         if (el.matches('.value-map .pt')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
