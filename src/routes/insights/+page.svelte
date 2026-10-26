@@ -822,10 +822,10 @@
             <span class={d || t.was?.() ? 'insights-pace' : 'stat-unit'}>{t.sub?.()}</span>
           {/if}
           <div class="stat-caption">
-            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || (t.ratingSwitch && s.dial === 'all')}
-              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}{' · '}<button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
+            <span class="stat-label" class:mode-caption={t.ratingSwitch} class:wrap={pp || t.ratingSwitch}
+              ><a class="caption-link" href="#{tileId(t.key)}">{t.label}</a>{#if t.ratingSwitch}<br><button class="mode-tip-button" popovertarget="tip-{t.key}" aria-describedby="tip-{t.key}"
                   ><span class="tip-text">{RATINGS_LABEL[s.ratings]}{#if s.dial === 'all'}<span class="dial-part">, {DIAL_LABEL.all}</span>{/if}</span><Icon name="question" /></button
-                >{/if}{#if pp}{' · '}<button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
+                >{/if}{#if pp}<br><button class="mode-tip-button" popovertarget="tip-pp-{t.key}" aria-describedby="tip-pp-{t.key}"
                   ><span class="tip-text">per person</span><Icon name="question" /></button
                 >{/if}{#if t.help}{' '}<button class="mode-tip-button" popovertarget="tip-help-{t.key}" aria-describedby="tip-help-{t.key}" aria-label="About {t.label}"><Icon name="question" /></button
                 >{/if}</span
@@ -1283,6 +1283,7 @@
     letter-spacing: 0; /* Rated · Calibrated ratings ⓘ · per person ⓘ must stay on one line in a 3-up tile */
   }
   .stat-label.wrap {
+    -webkit-line-clamp: 3; /* the label, then its mode and per person parts, each on its own line */
     white-space: normal;
     line-height: 1.1; /* two lines end flush with the tile; keep them inside */
   }

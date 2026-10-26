@@ -2893,12 +2893,12 @@ export const STATES: State[] = [
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
-  // A tile's title never moves when per person adds its caption part (shared tile layout), on On hand and Spend.
+  // A tile's title never moves when per person adds its caption part: secondary parts sit on their own line (shared tile layout).
   {
     name: 'insights-tile-titles-people', viewports: 'two', path: () => '/insights?tab=onhand&range=3m',
     act: async (page) => {
       const tops = async () => (await page.locator('.stat-item .stat-label a').evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top))));
-      for (const tab of ['onhand', 'spend']) {
+      for (const tab of ['onhand', 'spend', 'overview', 'consumption', 'habits']) {
         await page.goto(`/insights?tab=${tab}&range=3m`);
         await expect(page.locator('.stat-item').first()).toBeVisible();
         const before = await tops();
