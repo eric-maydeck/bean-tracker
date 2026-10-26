@@ -160,13 +160,6 @@
     return colors;
   }
 
-  // A bar's outline: the slot's -ink, but a darker shade of a brown (their ink is the fill itself, user 2026-10-23).
-  function edge(token: string): string {
-    if (!token.startsWith('--series-brown')) return themeColor(`${token}-ink`);
-    const { h, s, l } = hexToHsl(themeColor(token));
-    return hslToHex(h, s, l * 0.75);
-  }
-
   function hexToHsl(hex: string): { h: number; s: number; l: number } {
     const clean = hex.replace('#', '');
     const r = parseInt(clean.slice(0, 2), 16) / 255;
@@ -242,8 +235,8 @@
     const textColor = themeColor('--color-text');
     const gridColor = themeColor('--color-border');
     const surfaceColor = themeColor('--color-surface');
-    // Dark theme: a secondary (faded) bar's outline is a near-black brown, darker than its fill (user, 2026-10-23).
-    const dark = hexToHsl(surfaceColor).l < 0.5;
+    // Every bar's outline, current and compare alike: the dark brown of the doughnut separators (user, 2026-10-26).
+    const barLine = themeColor('--slice-line');
 
     // A line chart is a single trend over time, not a set of discrete
     // categories — one line color (for the line and its point markers)
@@ -291,7 +284,7 @@
                 // ponytail: assumes the color is 6-digit hex. 7-digit hex + alpha byte: the raw series stays visible as
                 // texture without competing with the trend line.
                 backgroundColor: `${lineInk}4d`,
-                borderColor: edge(tokAt(0)),
+                borderColor: barLine,
                 borderWidth: 0.75,
                 barPercentage: 1,
                 categoryPercentage: 1
@@ -307,14 +300,14 @@
                 fill: false
               }
             : vbar
-            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: edge(tokAt(0)), borderWidth: 0.75, ...(stacked && { stack: 'main' }) }
+            ? { label: datasetLabel, data: values, backgroundColor: samples ? values.map((_, i) => (samples[i]?.small ? hatch(lineColor, surfaceColor) : lineColor)) : soft(lineColor), borderColor: barLine, borderWidth: 0.75, ...(stacked && { stack: 'main' }) }
             : {
                 label: datasetLabel,
                 data: values,
                 backgroundColor: type === 'doughnut' ? bgColors : bgColors.map(soft),
                 // Slices: a clear dark separator (--slice-line: a very dark brown, both themes).
                 borderWidth: type === 'doughnut' ? 1.5 : 0.75,
-                borderColor: type === 'doughnut' ? themeColor('--slice-line') : labels.map((_, i) => edge(seriesToken(i % 14, labels.length)))
+                borderColor: type === 'doughnut' ? themeColor('--slice-line') : labels.map(() => barLine)
               },
           ...(type === 'line' && trendValues
             ? [
@@ -337,7 +330,7 @@
               ? { type: 'line' as const, order: -1, label: x.label, data: x.values, borderColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...look([]), fill: false }
             : x.dashed
               ? { type: 'line' as const, label: x.label, data: x.values, borderColor: x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk, borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, pointHoverRadius: 4, fill: false }
-              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : x.faded && dark && !x.hue ? '#120d09' : edge(x.hue ? hueTok(x) : tokAt(at[i])), borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
+              : { label: x.label, data: x.values, backgroundColor: x.faded ? `${x.hue ? themeColor(`${hueTok(x)}-ink`) : lineInk}4d` : soft(themeColor(tokAt(at[i]))), borderColor: type === 'line' ? themeColor(`${tokAt(at[i])}-ink`) : barLine, borderWidth: 0.75, ...(stacked && vbar && { stack: x.faded ? 'compare' : 'main' }),
                 // A multi-line chart: the first line's look for every line, in its own color.
                 ...(type === 'line' && { ...look(x.values), pointBackgroundColor: themeColor(`${tokAt(at[i])}-ink`), backgroundColor: themeColor(`${tokAt(at[i])}-ink`), ...(x.faded && { borderColor: `${themeColor(`${tokAt(at[i])}-ink`)}8c`, pointBackgroundColor: `${themeColor(`${tokAt(at[i])}-ink`)}8c` }) }) }
           )
