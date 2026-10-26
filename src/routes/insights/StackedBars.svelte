@@ -11,7 +11,16 @@
   // `m.other[i]`: what month i's "Other" holds ([name, %, $?], biggest first), listed in its tip (C4). `m.dollars[k][i]`:
   // the amount behind a share (Share of spend), shown with it: "$412.00 (18%)".
   // `colors`: a page-wide color per line (Water's recipe map); else the slots in line order.
-  let { m, ariaLabel, colors: given }: { m: Multi & { other?: [string, number, number?][][]; dollars?: number[][] }; ariaLabel: string; colors?: string[] } = $props();
+  // `all` (Share of spend): a named segment's tip lists every named series of its month, the hovered row bold, then the rest as
+  // "Others"; `isolate`: a legend click picks one series and fades the rest (a button per entry, aria-pressed).
+  let { m, ariaLabel, colors: given, all = false, isolate = false }: { m: Multi & { other?: [string, number, number?][][]; dollars?: number[][] }; ariaLabel: string; colors?: string[]; all?: boolean; isolate?: boolean } = $props();
+  // Ephemeral by the user's request (2026-10-26): not in the URL, not stored, gone on navigation. A deliberate exception to the
+  // shareable-URL-state rule.
+  let iso = $state<number | null>(null);
+  $effect(() => {
+    void m;
+    iso = null;
+  });
 
   let colors = $derived(given ?? seriesColors(m.lines.map((l) => l.label)));
   let n = $derived(m.x.length);
@@ -27,6 +36,14 @@
     const { shown, more } = capList(m.lines[k].label === 'Other' ? (m.other?.[i] ?? []) : [], max);
     return { title: m.x[i], rows: [[m.lines[k].label, m.dollars ? amount(m.lines[k].values[i] ?? 0, m.dollars[k][i]) : `${m.lines[k].values[i] ?? 0}%`], ...shown.map(([name, v, d]): [string, string, string] => [name, amount(v, d), 'sub'])],
       note: more ? `+${more} more` : undefined };
+  };
+  // The tip shown: the segment's own, or (`all`, a named series) every named series of the month with the hovered one bold.
+  const shownTip = (k: number, i: number): Tip => {
+    if (!all || m.lines[k].label === 'Other') return tipOf(k, i);
+    const row = (j: number): [string, string, string] => [m.lines[j].label, m.dollars ? amount(m.lines[j].values[i] ?? 0, m.dollars[j][i]) : `${m.lines[j].values[i] ?? 0}%`, j === k ? 'hl' : ''];
+    const named = m.lines.flatMap((l, j) => (l.label !== 'Other' && (l.values[i] ?? 0) > 0 ? [row(j)] : []));
+    const o = m.lines.findIndex((l) => l.label === 'Other');
+    return { title: m.x[i], rows: [...named, ...(o >= 0 && (m.lines[o].values[i] ?? 0) > 0 ? [[`Others`, row(o)[1], ''] as [string, string, string]] : [])] };
   };
   // The tab stop: the first drawn segment (a 0% share draws nothing), so the chart is always reachable.
   let stop = $derived.by(() => {
@@ -72,7 +89,7 @@
           {#each m.lines as l, k (k)}
             {@const v = l.values[i] ?? 0}
             {#if v > 0}
-              <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]} style:--ink={inkOf(colors[k])}
+              <div class="seg" role="button" tabindex={stop === `${i}:${k}` ? 0 : -1} data-k={k} data-i={i} style:flex-grow={v} style:background={colors[k]} style:--ink={inkOf(colors[k])} class:faded={iso !== null && iso !== k}
                 aria-label={tipText(tipOf(k, i, Infinity))} onfocus={(e) => (takeFocus(e), showSeg(e.currentTarget))} onblur={() => (tip = null)}></div>
             {/if}
           {/each}
@@ -83,11 +100,16 @@
       {#each m.x as x, i (i)}<span class:alt={(n - 1 - i) % wide > 0} class:thin={(n - 1 - i) % narrow > 0}>{x}</span>{/each}
     </div>
   </div>
-  <ul class="legend" aria-hidden="true">
-    {#each m.lines as l, k (k)}<li><span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}</li>{/each}
+  <ul class="legend" aria-hidden={isolate ? undefined : true}>
+    {#each m.lines as l, k (k)}
+      <li class:faded={iso !== null && iso !== k} class:on={iso === k}>
+        {#if isolate}<button type="button" class="leg" aria-pressed={iso === k} onclick={() => (iso = iso === k ? null : k)}><span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}</button>
+        {:else}<span class="swatch" style:background={colors[k]} style:--ink={inkOf(colors[k])}></span>{l.label}{/if}
+      </li>
+    {/each}
   </ul>
   {#if tip && m.lines[tip.k]}
-    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={tipOf(tip.k, tip.i)} /></FloatTip>
+    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={shownTip(tip.k, tip.i)} /></FloatTip>
   {/if}
 </div>
 
@@ -163,6 +185,9 @@
       filter: brightness(1.12);
     }
   }
+  .seg.faded {
+    opacity: 0.25;
+  }
   .seg:focus-visible {
     outline: 2px solid var(--color-text);
     outline-offset: 1px;
@@ -203,6 +228,30 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+  }
+  .legend li.faded {
+    opacity: 0.45;
+  }
+  .legend li.on {
+    font-weight: 700;
+  }
+  .leg {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.3rem;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  @media (max-width: 640px) {
+    .leg {
+      min-width: 44px;
+      min-height: 44px;
+      justify-content: center;
+    }
   }
   .swatch {
     flex-shrink: 0;

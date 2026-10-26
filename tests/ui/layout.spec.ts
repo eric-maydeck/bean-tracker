@@ -2505,6 +2505,25 @@ export const STATES: State[] = [
       await expectTipInView(page, tip);
       // A segment's tip gives dollars with the share: "$412.00 (18%)".
       await expect(tip.locator('.tip-rows dd').first()).toHaveText(/^\$[\d,.]+ \(\d+%\)$/);
+      // Hovering a named roaster lists the month's named roasters (the hovered one bold); Other keeps its own breakdown.
+      if (await tip.locator('.tip-rows dd.hl').count()) expect(await tip.locator('.tip-rows dd.hl').count()).toBe(1);
+      // The legend isolates one roaster: aria-pressed, the others fade; the same entry again resets; another switches.
+      const legend = page.locator('section[data-section="spend-share"] .legend .leg');
+      const n = await legend.count();
+      expect(n).toBeGreaterThan(1);
+      await expect(legend.first()).toHaveAttribute('aria-pressed', 'false');
+      if (await page.evaluate(() => innerWidth <= 480)) expect((await legend.first().boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+      await legend.first().click();
+      await expect(legend.first()).toHaveAttribute('aria-pressed', 'true');
+      await expect(legend.nth(1)).toHaveAttribute('aria-pressed', 'false');
+      expect(await page.locator('section[data-section="spend-share"] .seg.faded').count()).toBeGreaterThan(0);
+      await legend.nth(1).click();
+      await expect(legend.first()).toHaveAttribute('aria-pressed', 'false');
+      await expect(legend.nth(1)).toHaveAttribute('aria-pressed', 'true');
+      await legend.nth(1).click();
+      await expect(legend.nth(1)).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.locator('section[data-section="spend-share"] .seg.faded')).toHaveCount(0);
+      expect(page.url()).not.toMatch(/iso|isolate/); // ephemeral: nothing in the URL
       // Roaster discovery: the nearest x's tip opens anywhere in the plot, not only on the line.
       const c = page.locator('section[data-section="spend-discovery"] canvas');
       await c.scrollIntoViewIfNeeded();

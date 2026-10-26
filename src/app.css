@@ -2761,6 +2761,11 @@ select.quick-filter-select {
 .tip-rows dt:has(+ dd.sub) {
   padding-left: var(--space-3); /* an Other tip's members, indented under Other */
 }
+.tip-rows dd.hl,
+.tip-rows dt:has(+ dd.hl) {
+  font-weight: 700; /* the hovered series' row */
+  color: var(--color-text);
+}
 .tip-rows dd {
   margin: 0;
   text-align: right;

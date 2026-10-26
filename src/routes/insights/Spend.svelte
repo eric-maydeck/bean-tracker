@@ -197,7 +197,7 @@
     <section class="chart-panel" data-section="spend-share">
       <LabHead id="spend-share" title="Share of spend" {placeTip}
         help={['Each bar is 100% of what you spent in that ' + sr.by + ', split by roaster.', 'Roasters with bags in 2+ bars are named, up to 14, biggest spend this period first.', 'The rest are Other.', 'Counted by roast date.']} />
-      <StackedBars m={dc.share} ariaLabel="Share of spend by roaster each {sr.by}" />
+      <StackedBars m={dc.share} all isolate ariaLabel="Share of spend by roaster each {sr.by}" />
     </section>
   {/if}
 
