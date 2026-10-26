@@ -257,9 +257,28 @@ describe('buildBacklogStats', () => {
     expect(statusComboKey(new Set(['open', 'backlog'] as const))).toBe('backlog+open');
   });
 
-  it('counts ready bags apart from drink soon', () => {
-    const stats = buildBacklogStats([sampleRow({ id: 1, status: 'open', roast_date: '2026-09-01' })], [sampleRow({ id: 2 })], [], roastLevels, today);
-    expect(stats.freshness.ready.count + stats.freshness.drinkSoon.count).toBe(2);
+  it('buckets open + backlog bags by freshness, excluding frozen and unknown bags', () => {
+    const open = [
+      // ready, urgency ~59: drink soon
+      sampleRow({ id: 1, status: 'open', roast_date: '2026-09-01', rest_days_low: 10, rest_days_high: 20 }),
+      // ready, urgency ~74: drink soon on urgency alone
+      sampleRow({ id: 7, status: 'open', roast_date: '2026-08-01', rest_days_low: 5, rest_days_high: 60 })
+    ];
+    const backlog = [
+      sampleRow({ id: 2, roast_date: '2026-09-08', rest_days_low: 10, rest_days_high: 30 }), // ready, urgency ~11
+      sampleRow({ id: 3, roast_date: '2026-09-18', rest_days_low: 10, rest_days_high: 20 }), // resting, ready in 7 days
+      sampleRow({ id: 4, roast_date: '2026-09-19', rest_days_low: 14, rest_days_high: 20 }), // resting, 12 days
+      sampleRow({ id: 5, roast_date: '2026-08-01', frozen_start_date: '2026-09-05', amount_g: 250 }), // frozen, no thaw date
+      sampleRow({ id: 6, roast_date: null }) // no roast date: counted nowhere
+    ];
+    const f = buildBacklogStats(open, backlog, [], roastLevels, today).freshness;
+    // The /stats "Rested & ready" tile shows ready + drink soon (3); On hand keeps them apart.
+    expect([f.ready.count + f.drinkSoon.count, f.ready.count, f.drinkSoon.count]).toEqual([3, 1, 2]);
+    expect([f.resting.count, f.nextReadyInDays, f.frozen.count, f.frozen.grams, f.unknown]).toEqual([2, 7, 1, 250, 1]);
+  });
+  it('frozen grams are the remaining grams of an open bag', () => {
+    const f = buildBacklogStats([sampleRow({ id: 1, status: 'open', frozen_start_date: '2026-09-05', amount_g: 250, grams_left: 100 })], [], [], roastLevels, today).freshness;
+    expect(f.frozen.grams).toBe(100);
   });
 
   it('returns a null nextReadyInDays when nothing is resting', () => {

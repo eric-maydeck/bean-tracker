@@ -36,6 +36,16 @@ describe('freshness', () => {
   it('sorts group bags by roast date', () => {
     expect(f.drinkSoon.bags.map((b) => b.name)).toEqual(['soon2', 'soon1']);
   });
+  it('treats a junk freeze date as no freeze', () => {
+    const j = freshness([bag({ frozen_start_date: 'junk' })], today);
+    expect(j.frozen.count).toBe(0);
+    expect(j.ready.count + j.drinkSoon.count).toBe(1);
+  });
+  it('sorts a bag without a roast date last', () => {
+    expect(freshness([bag({ name: 'none', roast_date: null, rest_days_low: null }), bag({ name: 'dated' })], today).unknown).toBe(1);
+    const f = freshness([bag({ name: 'a', roast_date: null, frozen_start_date: '2026-09-01' }), bag({ name: 'b', roast_date: '2026-09-01', frozen_start_date: '2026-09-10' })], today);
+    expect(f.frozen.bags.map((b) => b.name)).toEqual(['b', 'a']);
+  });
   it('has no next-ready day when nothing rests', () => {
     expect(freshness([], today).nextReadyInDays).toBeNull();
   });
@@ -78,6 +88,15 @@ describe('onHandTab', () => {
     const two = onHandTab([], bags, { ...ctx, size: 2 }).tiles;
     expect(two).toEqual({ ...one, gramsWaiting: one.gramsWaiting / 2, tiedUp: one.tiedUp / 2, frozenGrams: one.frozenGrams / 2 });
   });
+  it('a size of 2 halves the daily grams, so the shelf (not divided) lasts twice as long', () => {
+    const brews = [dose(9, '2026-09-20', 300)];
+    const bags = [fact({ id: 1, amountG: 500 })];
+    const one = onHandTab(brews, bags, ctx).runway;
+    const two = onHandTab(brews, bags, { ...ctx, size: 2 }).runway;
+    expect(one.days).not.toBeNull();
+    expect([one.days, two.days]).toEqual([14, 27]); // 500 g at 37.5 g/day, then at 18.75 g/day (the Consumption rule)
+    expect(two.perDay).toBe(one.perDay! / 2);
+  });
   it('has zeros and nulls without bags', () => {
     expect(onHandTab([], [], ctx).tiles).toEqual({ bagsWaiting: 0, gramsWaiting: 0, tiedUp: 0, avgAge: null, frozenBags: 0, frozenGrams: 0, avgBagCost: null });
   });
@@ -91,6 +110,17 @@ describe('onHandTab', () => {
 });
 
 describe('ageProfile', () => {
+  it('a window edge is inside; one day either side is not; a negative age is skipped', () => {
+    const d = (n: number) => new Date(Date.UTC(2026, 8, 25 - n)).toISOString().slice(0, 10);
+    const a = ageProfile([
+      fact({ id: 1, purchaseDate: d(7), restLow: 7, restHigh: 21 }), fact({ id: 2, purchaseDate: d(21), restLow: 7, restHigh: 21 }),
+      fact({ id: 3, purchaseDate: d(6), restLow: 7, restHigh: 21 }), fact({ id: 4, purchaseDate: d(22), restLow: 7, restHigh: 21 }),
+      fact({ id: 5, purchaseDate: '2026-09-28', restLow: 7, restHigh: 21 })
+    ], new Map(), today, 1);
+    const sum = (x: number[]) => x.reduce((p, q) => p + q, 0);
+    expect([sum(a.bags.before), sum(a.bags.inside), sum(a.bags.past)]).toEqual([1, 2, 1]);
+    expect(sum(a.bags.noWindow)).toBe(0);
+  });
   const at = (days: number) => new Date(Date.UTC(2026, 8, 25 - days)).toISOString().slice(0, 10); // roast date `days` before today
   const age = (bags: BagFact[], size = 1) => ageProfile(bags, new Map(), today, size);
   it('puts ages in the bucket edges: 14 / 15, 30 / 31, 60 / 61, 90 / 91 days', () => {

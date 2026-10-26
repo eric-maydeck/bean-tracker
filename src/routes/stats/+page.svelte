@@ -494,7 +494,7 @@
       </div>
     </div>
     <div class="stat-item stat-item-hero">
-      <span class="stat-value">{data.stats.freshness.ready.count}</span>
+      <span class="stat-value">{data.stats.freshness.ready.count + data.stats.freshness.drinkSoon.count}</span>
       <span class="stat-unit">of {data.stats.totalBacklogCount} bags</span>
       <div class="stat-caption">
         <span class="stat-label">Rested &amp; ready</span>

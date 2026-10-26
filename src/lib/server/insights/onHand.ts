@@ -15,7 +15,14 @@ export interface Freshness {
 // Ready bags with an urgency rating of at least this are "Drink soon".
 export const DRINK_SOON_URGENCY = 40;
 
-export const freshBag = (b: BagFact, logged: Map<number, number>): FreshBag => ({
+const validDate = (d: string | null): d is string => d != null && Number.isFinite(parseDate(d).getTime());
+// An open freeze: started (a real date) and not ended.
+const frozenNow = (b: UrgencyInput) => validDate(b.frozen_start_date) && !b.frozen_end_date;
+
+// A junk freeze start is no freeze.
+const cleanFreeze = <T extends UrgencyInput>(b: T): T => (validDate(b.frozen_start_date) ? b : { ...b, frozen_start_date: null, frozen_end_date: null });
+
+export const freshBag = (b: BagFact, logged: Map<number, number>): FreshBag => cleanFreeze({
   roast_date: b.purchaseDate, frozen_start_date: b.frozenStart ?? null, frozen_end_date: b.frozenEnd ?? null,
   rest_days_low: b.restLow ?? null, rest_days_high: b.restHigh ?? null, drank: 0,
   name: b.name, roaster: b.roaster, slug: b.slug, grams: remaining(b, logged)
@@ -28,8 +35,8 @@ export function freshness(bags: readonly FreshBag[], today: string): Freshness {
   const group = (): FreshGroup => ({ count: 0, grams: 0, bags: [] });
   const f: Freshness = { ready: group(), drinkSoon: group(), resting: group(), frozen: group(), nextReadyInDays: null, unknown: 0 };
   const add = (g: FreshGroup, b: FreshBag) => { g.count++; g.grams += b.grams; g.bags.push({ name: b.name, roaster: b.roaster, slug: b.slug }); };
-  for (const b of [...bags].sort((x, y) => (x.roast_date ?? '').localeCompare(y.roast_date ?? ''))) {
-    if (b.frozen_start_date && !b.frozen_end_date) { add(f.frozen, b); continue; }
+  for (const b of bags.map(cleanFreeze).sort((x, y) => (x.roast_date ?? '9').localeCompare(y.roast_date ?? '9'))) {
+    if (frozenNow(b)) { add(f.frozen, b); continue; }
     if (!b.roast_date || b.rest_days_low == null || b.rest_days_high == null) { f.unknown++; continue; }
     const until = diffDays(parseDate(computeDrinkAfter(b, t)!), t);
     if (until > 0) { add(f.resting, b); f.nextReadyInDays = Math.min(f.nextReadyInDays ?? Infinity, until); continue; }
@@ -100,7 +107,7 @@ export function onHandTab(
   const waiting = live.filter((b) => b.status === 'backlog');
   const fresh = live.map((b) => freshBag(b, logged));
   const t = parseDate(c.today);
-  const frozen = fresh.filter((b) => b.frozen_start_date && !b.frozen_end_date);
+  const frozen = fresh.filter(frozenNow);
   const tiedUp = live.reduce((s, b) => s + (b.status === 'backlog' ? (b.cost ?? 0) : b.cost && b.amountG ? (b.cost * remaining(b, logged)) / b.amountG : 0), 0);
   const onHandG = gramsOnHand(bags, whole);
   const run = (p: Period): Runway => {
