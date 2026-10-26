@@ -158,9 +158,8 @@
     min-height: var(--cell-h);
     border-radius: 2px;
   }
-  /* The tip's marks (ui-rules 50): help over them; a label or value is its text's width, not its column's. */
+  /* The tip's text (ui-rules 50): help over it (the bars keep the arrow); a label or value is its text's width, not its column's. */
   .bar-label,
-  .bar,
   .bar-value {
     cursor: help;
   }

@@ -2,7 +2,14 @@
 // when there isn't room above (under the sticky filter bar); whichever side has more room when neither fits, clamped into the visible band (over the anchor).
 // `view.top` / `view.bottom`: the visible band between the sticky bar and any bottom tab bar.
 type Box = { left: number; top: number; right: number; bottom: number };
-export function tipPlace(a: Box, tip: { w: number; h: number }, view: { w: number; top: number; bottom: number }, gap = 6) {
+// `beside`: next to the anchor, vertically centered on it (a horizontal bar's end): to the right, or to the left when the
+// right has no room (and the left has more), clamped into the band.
+export function tipPlace(a: Box, tip: { w: number; h: number }, view: { w: number; top: number; bottom: number }, gap = 6, beside = false) {
+  if (beside) {
+    const right = a.right + gap, left = a.left - gap - tip.w;
+    const x = right + tip.w <= view.w - 8 || left < 8 ? Math.min(right, Math.max(8, view.w - tip.w - 8)) : left;
+    return { x, y: Math.max(view.top, Math.min((a.top + a.bottom) / 2 - tip.h / 2, view.bottom - tip.h)) };
+  }
   const x = Math.min(Math.max((a.left + a.right) / 2 - tip.w / 2, 8), Math.max(8, view.w - tip.w - 8));
   const above = a.top - gap - tip.h, below = a.bottom + gap;
   const side = above >= view.top ? above : below + tip.h <= view.bottom ? below : a.top - view.top > view.bottom - a.bottom ? above : below;

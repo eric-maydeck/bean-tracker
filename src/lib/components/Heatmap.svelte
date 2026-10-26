@@ -262,7 +262,6 @@
   }
   .heat-cell {
     border-radius: 2px;
-    cursor: help; /* a click opens only the tip (ui-rules 50) */
   }
   .heat-cell.marked {
     outline: 2px solid var(--color-text);

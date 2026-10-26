@@ -278,9 +278,9 @@
     stroke: var(--color-surface);
     stroke-width: calc(0.5px / var(--k, 1)); /* constant on screen at any zoom */
   }
-  /* Every country opens a tip (its name; with data, its numbers too), and a click only pins it (ui-rules 50). */
+  /* Every country opens a tip (its name; with data, its numbers too), and a click pins it: the hand (ui-rules 50). */
   path {
-    cursor: help;
+    cursor: pointer;
   }
   path:focus-visible {
     outline: none;

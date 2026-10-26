@@ -12,8 +12,9 @@
   // `reveal`: a tip opened by a click, tap or keyboard (never by hover: the page would slide out from under it) that runs
   // past the bottom of the visible band scrolls the page just enough to show it whole (ui-rules 39; the See all tip
   // under the sticky bar at 1003×333). ponytail: only the below-overflow case; a tip clamped over its anchor stays.
+  // `beside`: placed to the side of the anchor, not above it (a horizontal bar's end).
   // `tip`: the content as a Tip, in place of children (labelTip.ts mounts it with no snippet).
-  let { anchor, children, tip, onclose, reveal = false, placeKey }: { anchor: Element; placeKey?: unknown; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
+  let { anchor, children, tip, onclose, reveal = false, placeKey, beside = false }: { anchor: Element; placeKey?: unknown; beside?: boolean; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
 
   let el: HTMLDivElement | undefined = $state();
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
@@ -27,7 +28,7 @@
     // A control in the sticky bar itself (a switch's help tip) is never "under" it: its band starts at the top.
     const a = anchor.getBoundingClientRect(), band = viewBand(), view = anchor.closest('.filter-bar, .cbar.overlay') ? { ...band, top: 0 } : band;
     away = a.bottom <= view.top || a.top >= view.bottom;
-    const { x, y } = tipPlace(a, { w: t.width, h: t.height }, view);
+    const { x, y } = tipPlace(a, { w: t.width, h: t.height }, view, 6, beside);
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
   }

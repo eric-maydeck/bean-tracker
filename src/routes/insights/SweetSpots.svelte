@@ -469,10 +469,8 @@
     position: absolute;
     inset: -4px 0;
   }
-  .bar,
-  .usual-dot,
   .ends span {
-    cursor: help; /* the band's tip (ui-rules 50); the column's empty space keeps the arrow */
+    cursor: help; /* the band's end labels' tip (ui-rules 50) */
   }
   /* No match (grind brewed there, never paired): a dotted mark on the zero line keeps the setting in range. */
   .bar.none {

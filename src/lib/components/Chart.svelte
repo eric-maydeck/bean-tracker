@@ -133,10 +133,24 @@
   // One tip look (ui-rules 36, T1): Chart.js draws no tooltip of its own; its tooltip model renders as the shared
   // HTML tip (TipBody in a FloatTip) at the caret: the x label as the title, each "Series: value" line as a
   // label/value row (a line without a value stays a line).
-  let tipAt = $state<{ x: number; y: number; h: number; tip: Tip } | null>(null);
+  let tipAt = $state<{ x: number; y: number; h: number; tip: Tip; beside?: boolean } | null>(null);
   let tipAnchor: HTMLSpanElement | undefined = $state();
-  const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: { datasetIndex: number; dataIndex: number }[] } }) => {
+  type Hit = { datasetIndex: number; dataIndex: number; element?: { getProps?: (k: string[], final: boolean) => Record<string, number> } };
+  // Where the tip points: at the hovered mark, never the chart's top. A vertical bar (or stack segment): the strip is the bar,
+  // so the tip sits just above its top; a horizontal bar: beside its end; a line's point: at the pointer's height.
+  function anchorOf(tooltip: { caretX: number; caretY: number; dataPoints?: Hit[] }, chartArea: { top: number; bottom: number }) {
+    const dp = tooltip.dataPoints?.[0];
+    const p = type === 'bar' ? dp?.element?.getProps?.(['x', 'y', 'base'], true) : undefined;
+    if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) {
+      if (vertical) return { x: p.x, y: Math.min(p.y, p.base), h: Math.abs(p.base - p.y) || 1 };
+      return { x: p.x, y: p.y, h: 1, beside: true };
+    }
+    if (type === 'line') return { x: tooltip.caretX, y: tooltip.caretY, h: 1 };
+    return { x: tooltip.caretX, y: chartArea.top, h: chartArea.bottom - chartArea.top };
+  }
+  const external = ({ chart, tooltip }: { chart: { chartArea: { top: number; bottom: number } }; tooltip: { opacity: number; caretX: number; caretY: number; title?: string[]; body?: { lines: string[] }[]; dataPoints?: Hit[] } }) => {
     if (!tooltip.opacity) return (tipAt = null);
+    const at = anchorOf(tooltip, chart.chartArea);
     const all = (tooltip.body ?? []).flatMap((b) => b.lines);
     const split = all.map((l) => [l, l.lastIndexOf(': ')] as const);
     const rows = split.filter(([, i]) => i > 0).map(([l, i]): [string, string] => [l.slice(0, i), l.slice(i + 2)]);
@@ -144,11 +158,10 @@
     const title = (tooltip.title ?? []).join(' ');
     // No title: one row's label is the title over its value; several rows keep all of them under no title.
     const dp = tooltip.dataPoints?.[0];
-    if (tipOf && dp) return (tipAt = { x: tooltip.caretX, y: chart.chartArea.top, h: chart.chartArea.bottom - chart.chartArea.top, tip: tipOf(dp.dataIndex) });
+    if (tipOf && dp) return (tipAt = { ...at, tip: tipOf(dp.dataIndex) });
     const sample = dp && dp.datasetIndex === 0 && samples?.[dp.dataIndex] ? sampleField(samples[dp.dataIndex]) : {};
-    // The tip's anchor is the hovered x down the whole plot: the tip sits above the plot (below it when there's no room above),
-    // never over the hovered bar, point or trend line.
-    tipAt = { x: tooltip.caretX, y: chart.chartArea.top, h: chart.chartArea.bottom - chart.chartArea.top, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
+    // The tip's anchor is the hovered mark (anchorOf): above it (below when there's no room above), never over it.
+    tipAt = { ...at, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
   };
 
   // The site's palette by position (ui-rules 42).
@@ -378,8 +391,7 @@
         // A trend chart's bar also lights the trend line's point at its bucket (index mode), the compare bar's value in its tip.
         interaction: { mode: type === 'line' || hasTrend ? 'index' : 'nearest', intersect: !(nearestX && type === 'line') },
         elements: { point: { hitRadius: 8 } },
-        // The help cursor over a mark (every mark has a tip), the arrow elsewhere; nearestX has a tip everywhere, so the arrow.
-        onHover: (_e, els, c) => (c.canvas.style.cursor = els.length && !nearestX ? 'help' : ''),
+        // The arrow everywhere on a chart: the help cursor is for help text and icons (user, 2026-10-26).
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
         layout: type === 'bar' && !vertical ? { padding: { right: 48 } } : undefined,
@@ -518,7 +530,7 @@
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
          left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
-    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
+    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} onclose={() => (tipAt = null)}><TipBody tip={tipAt.tip} /></FloatTip>{/key}
   {/if}
 </div>
 

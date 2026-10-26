@@ -2764,6 +2764,33 @@ export const STATES: State[] = [
       await expect(page.locator('[data-section="onhand-freshness"] .text-tip')).toHaveCount(0);
     }
   },
+  // A chart's tip sits at the hovered mark: above a vertical bar's top, beside a horizontal bar's end (not at the chart's top).
+  {
+    name: 'insights-chart-tip-position', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      for (const [panelId, beside] of [['onhand-age', false], ['onhand-waiting', true]] as const) {
+        const panel = page.locator(`section.chart-panel:has(#${panelId})`);
+        const c = panel.locator('canvas');
+        await c.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(450);
+        const b = (await c.boundingBox())!;
+        const tip = page.locator('.chart-container .cell-tip:popover-open');
+        const pts: (readonly [number, number])[] = [];
+        for (const g of [0.85, 0.7, 0.55, 0.4]) for (let f = 0.9; f > 0.1; f -= 0.1) pts.push([b.x + b.width * f, b.y + b.height * g]);
+        for (const [x, y] of pts) {
+          await page.mouse.move(x, y);
+          if (await tip.waitFor({ timeout: 100 }).then(() => true, () => false)) break;
+        }
+        await expect(tip).toBeVisible();
+        const a = (await panel.locator('.tip-anchor').boundingBox())!;
+        const t = (await tip.boundingBox())!;
+        if (beside) expect(t.x >= a.x - 1 || t.x + t.width <= a.x + 1, 'beside the bar end (right, or left when it does not fit)').toBe(true);
+        else expect(t.y + t.height, 'above the bar top').toBeLessThanOrEqual(a.y + 2);
+        // Next to the mark, not up at the chart's top: the tip is within a tip's height of the anchor (or the page edge).
+        expect(Math.abs(t.y + t.height / 2 - (a.y + (beside ? 0 : -t.height / 2))), panelId).toBeLessThan(a.height + t.height);
+      }
+    }
+  },
   {
     name: 'insights-onhand-tip', viewports: 'two', path: () => '/insights?tab=onhand',
     act: async (page) => {
@@ -5006,7 +5033,7 @@ export const STATES: State[] = [
       const css = (sel: string) => page.locator(sel).first().evaluate((e) => [getComputedStyle(e).cursor, getComputedStyle(e).userSelect]);
       expect(await css('.stat-item .stat-value')).toEqual(['default', 'auto']);
       expect(await css('h1')).toEqual(['default', 'auto']);
-      for (const sel of ['.heatmap .heat-cell', '.brew-calendar .cal-cell']) expect((await css(sel))[0], sel).toBe('help');
+      for (const sel of ['.heatmap .heat-cell', '.brew-calendar .cal-cell']) expect((await css(sel))[0], sel).toBe('default'); // chart marks keep the arrow (user, 2026-10-26)
     } },
   { name: 'cursor-rules-fields', viewports: 'two', path: () => '/subscriptions?view=list',
     act: async (page) => {
@@ -8502,7 +8529,7 @@ async function hoverChart(page: Page, canvas: Locator) {
   return tip;
 }
 
-// A tip opens only on its mark (ui-rules 50): the help cursor and the tip over the mark, neither over the empty space
+// A tip opens only on its mark (ui-rules 50): the tip over the mark, none over the empty space
 // beside it. `boxes`: the areas a mark sits in (a column, a row's track); `mark`: its selector inside them. Uses the
 // first box with a gap of 12px or more beside its mark (a mark's hit area may reach 4px past it).
 async function expectMarkOnly(page: Page, boxes: Locator, mark: string, tip: Locator) {
@@ -8530,13 +8557,13 @@ async function expectMarkOnly(page: Page, boxes: Locator, mark: string, tip: Loc
   expect(await cursor(ex, ey), 'the arrow over empty space').toBe('default');
   await page.mouse.move(mx, my);
   await expect(tip, 'its mark opens the tip').toBeVisible();
-  expect(await cursor(mx, my)).toBe('help');
+  expect(['default', 'pointer'], 'never the help cursor over a chart mark (the hand only where a click acts)').toContain(await cursor(mx, my));
   await page.mouse.move(0, 0);
   await expect(tip).toBeHidden();
 }
 
 // The same on a Chart.js canvas: an unpainted spot with no mark within 10px opens no tip and keeps
-// the arrow; a mark opens the tip with the help cursor.
+// the arrow; a mark opens the tip, still with the arrow (the help cursor is for help text and icons).
 async function expectChartMarkOnly(page: Page, canvas: Locator) {
   await canvas.scrollIntoViewIfNeeded();
   await page.waitForTimeout(450); // the 400ms draw animation
@@ -8564,7 +8591,7 @@ async function expectChartMarkOnly(page: Page, canvas: Locator) {
   await expect(tip, 'empty chart space opens no tip').toHaveCount(0);
   expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'the arrow over empty chart space').toBe('default');
   await expect(await hoverChart(page, canvas), 'a mark opens the tip').toBeVisible();
-  expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'help over a mark').toBe('help');
+  expect(await canvas.evaluate((c) => getComputedStyle(c).cursor), 'the arrow over a mark too').toBe('default');
 }
 
 // Every text node naming the seed's skip coffee sits in a .coffee-name span in the --color-skip color (hidden tips and

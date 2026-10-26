@@ -256,7 +256,6 @@
   /* One series, no categories: the lone-highlight brown (ui-rules 42). */
   .settle-cols .bar {
     pointer-events: auto;
-    cursor: help;
     width: min(100%, 3rem);
     border-radius: 3px 3px 0 0;
     background-color: var(--chart-color-1);
