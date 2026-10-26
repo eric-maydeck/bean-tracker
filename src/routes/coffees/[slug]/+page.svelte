@@ -514,6 +514,7 @@
         origins={data.origins}
         processingMethods={data.processingMethods}
         restHistory={data.restHistory}
+        subscriptions={data.subscriptions}
         formError={form?.error ?? null}
         oncancel={() => (clonePrefillData = null)}
         onsuccess={cloneCreated}

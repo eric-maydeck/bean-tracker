@@ -1,3 +1,4 @@
+import { getSubscriptionOptions } from '$lib/server/subscriptions';
 import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from '$lib/server/db';
@@ -69,7 +70,8 @@ export const load: PageServerLoad = ({ locals }) => {
     origins: getDistinctFieldValues(db, 'origin'),
     processingMethods: getDistinctFieldValues(db, 'processing'),
     roasterImages: getRoasterImages(db),
-    restHistory: locals.isAdmin ? getFillHistory(db) : []
+    restHistory: locals.isAdmin ? getFillHistory(db) : [],
+    subscriptions: locals.isAdmin ? getSubscriptionOptions(db) : []
   };
 };
 

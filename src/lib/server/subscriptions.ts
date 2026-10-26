@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { SubscriptionRow } from '../types';
+import type { SubscriptionOption } from '../planBagCost';
 
 export interface NewSubscriptionInput {
   roaster_service: string;
@@ -16,6 +17,17 @@ export function getSubscriptions(db: DatabaseSync): SubscriptionRow[] {
   return db
     .prepare(`SELECT * FROM subscriptions ORDER BY roaster_service COLLATE NOCASE ASC`)
     .all() as unknown as SubscriptionRow[];
+}
+
+// The coffee form's Subscription select options (admins only; callers pass [] otherwise).
+export function getSubscriptionOptions(db: DatabaseSync): SubscriptionOption[] {
+  return getSubscriptions(db).map((s) => ({
+    id: s.id,
+    label: (s.subscription_name ?? s.roaster_service) + (s.paused ? ' (paused)' : ''),
+    paused: !!s.paused,
+    price: s.price,
+    bag_count: s.bag_count
+  }));
 }
 
 export function getSubscriptionById(db: DatabaseSync, id: number): SubscriptionRow | undefined {

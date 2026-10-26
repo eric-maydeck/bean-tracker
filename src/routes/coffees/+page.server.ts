@@ -1,3 +1,4 @@
+import { getSubscriptionOptions } from '$lib/server/subscriptions';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { localTodayDate } from '$lib/server/localToday';
@@ -9,7 +10,7 @@ import { requireAdmin } from '$lib/server/auth';
 import { handleCoffeeCreate } from '$lib/server/coffeeFormActions';
 import { queueFillMissing } from '$lib/server/imageFills';
 
-export const load: PageServerLoad = () => {
+export const load: PageServerLoad = ({ locals }) => {
   const db = getDb();
   const today = localTodayDate();
   const backlog = getBacklogCoffees(db).map((c) => withComputedFields(c, today));
@@ -21,6 +22,7 @@ export const load: PageServerLoad = () => {
     open,
     archive,
     roastLevels,
+    subscriptions: locals.isAdmin ? getSubscriptionOptions(db) : [],
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),
     processingMethods: getDistinctFieldValues(db, 'processing'),

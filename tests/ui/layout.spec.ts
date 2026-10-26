@@ -1045,6 +1045,7 @@ export const STATES: State[] = [
       await expect(sel.locator('option')).toHaveText([
         'None', 'Explorer Series: Two Rotating Single Origins Every Other Week', 'Paused Monthly (paused)', 'Sey']);
       await expect(sel.locator('option:checked')).toHaveText('Sey');
+      await expect(page.locator('#cost')).toHaveValue('22'); // opening edit on a linked bag leaves its cost alone
       await sel.selectOption({ label: 'Paused Monthly (paused)' });
       await page.getByRole('button', { name: 'Save changes' }).click();
       await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeVisible();
@@ -1052,11 +1053,40 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByLabel('Subscription', { exact: true }).locator('option:checked')).toHaveText('Paused Monthly (paused)');
       await page.getByLabel('Subscription', { exact: true }).selectOption({ label: 'Sey' }); // restore for other states
+      await page.locator('#cost').fill('22');
       await page.getByRole('button', { name: 'Save changes' }).click();
       await page.goto('/coffees?view=list&status=all');
       await page.getByRole('row', { name: /Kenya Kiambu/ }).first().getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.locator('#coffee_name')).toBeVisible();
       await expect(page.getByLabel('Subscription', { exact: true })).toHaveCount(0);
+    } },
+  // Add and Clone: the select starts on None; picking a plan fills Cost with price / bags, still editable.
+  { name: 'coffees-add-subscription', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page) => {
+      for (const open of [() => page.getByRole('button', { name: '+ Add Coffee' }).click(), () => page.locator('.detail-clone').click()]) {
+        await open();
+        const modal = page.locator('.modal');
+        const sel = modal.getByLabel('Subscription', { exact: true });
+        await expect(sel.locator('option:checked')).toHaveText('None');
+        const [c, f, g] = await Promise.all([modal.locator('.field-cost').boundingBox(), modal.locator('.field-subscription').boundingBox(),
+          modal.locator('.form-grid').boundingBox()]);
+        expect(f!.y).toBeGreaterThan(c!.y);
+        expect(f!.y - (c!.y + c!.height)).toBeLessThan(40);
+        expect(Math.abs(f!.width - g!.width)).toBeLessThan(2);
+        await checkLayout(page);
+        const cost = modal.locator('#cost');
+        const before = await cost.inputValue();
+        await sel.selectOption({ label: 'Explorer Series: Two Rotating Single Origins Every Other Week' });
+        await expect(cost).toHaveValue('22.25');
+        await cost.fill('23');
+        await sel.selectOption({ label: 'None' });
+        await expect(cost).toHaveValue('23');
+        await sel.selectOption({ label: 'Sey' });
+        await expect(cost).toHaveValue('30');
+        expect(before).not.toBe('30');
+        await modal.getByRole('button', { name: 'Cancel' }).click();
+        await expect(modal).toHaveCount(0);
+      }
     } },
   { name: 'coffee-detail-like', path: (s) => `/coffees/${s.slugs.lab}`,
     act: async (page) => {

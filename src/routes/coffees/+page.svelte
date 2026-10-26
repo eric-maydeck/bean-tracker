@@ -779,6 +779,7 @@
           origins={data.origins}
           processingMethods={data.processingMethods}
           restHistory={[...data.backlog, ...data.open, ...data.archive]}
+          subscriptions={data.subscriptions}
           formError={form?.error ?? null}
           oncancel={closeExpanded}
           onsuccess={added}

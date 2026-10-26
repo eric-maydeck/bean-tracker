@@ -1,5 +1,6 @@
 <script lang="ts">
   import { usd } from '$lib/money';
+  import { planBagCost, type SubscriptionOption } from '$lib/planBagCost';
   import { onMount, tick } from 'svelte';
   import ImageSuggest from './ImageSuggest.svelte';
   import { enhance } from '$app/forms';
@@ -40,8 +41,8 @@
     origins?: string[];
     processingMethods?: string[];
     restHistory?: RestHistoryRow[];
-    // Edit mode on the detail page only: the plans this bag can be linked to.
-    subscriptions?: { id: number; label: string; paused: boolean }[] | null;
+    // Admin edit, Add and Clone (not the list's inline edit): the plans this bag can be linked to.
+    subscriptions?: SubscriptionOption[] | null;
     formError?: string | null;
     // Stats "Not yet tracked" → Create: the bean to link once the coffee exists.
     beanConquerorId?: string | null;
@@ -151,6 +152,13 @@
     const el = formEl.elements.namedItem(name);
     if (el instanceof HTMLInputElement || el instanceof HTMLSelectElement) el.value = String(value);
     if (name === 'roaster' || name === 'image_url' || name === 'coffee_name') syncImageFields();
+  }
+
+  // Only on a user change of the select, never on load: an existing bag's cost stays put.
+  function fillCostFromPlan(e: Event) {
+    const plan = subscriptions?.find((p) => String(p.id) === (e.currentTarget as HTMLSelectElement).value);
+    const cost = plan && planBagCost(plan);
+    if (cost != null) setField('cost', cost);
   }
 
   function fieldValue(name: string): string {
@@ -372,7 +380,7 @@
     </div>
   {/snippet}
 
-  <div class="form-grid" class:has-sub={subscriptions && coffee}>
+  <div class="form-grid" class:has-sub={subscriptions}>
   <div class="form-field product-url-field">
     <label for="product_url">Product page URL</label>
     <div class="inline-row">
@@ -471,13 +479,13 @@
     <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
   </div>
 
-  {#if subscriptions && coffee}
+  {#if subscriptions}
     <div class="form-field field-subscription">
       <label for="subscription_id">Subscription</label>
-      <select id="subscription_id" name="subscription_id">
+      <select id="subscription_id" name="subscription_id" onchange={fillCostFromPlan}>
         <option value="">None</option>
         {#each subscriptions as sub (sub.id)}
-          <option value={sub.id} selected={Number(coffee.subscription_id) === sub.id}>{sub.label}</option>
+          <option value={sub.id} selected={Number(coffee?.subscription_id) === sub.id}>{sub.label}</option>
         {/each}
       </select>
     </div>

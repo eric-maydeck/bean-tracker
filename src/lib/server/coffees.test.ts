@@ -94,6 +94,14 @@ describe('getCoffeeBySlug', () => {
   });
 });
 
+describe('createCoffee subscription_id', () => {
+  it('stores the plan when sent, null otherwise', () => {
+    const sub = createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1 });
+    expect(getCoffeeById(db, createCoffee(db, sampleInput({ subscription_id: sub })).id)?.subscription_id).toBe(sub);
+    expect(getCoffeeById(db, createCoffee(db, sampleInput()).id)?.subscription_id).toBeNull();
+  });
+});
+
 describe('updateCoffee subscription_id', () => {
   it('sets it, keeps it when not sent, and clears it with null', () => {
     const sub = createSubscription(db, { roaster_service: 'Sey', subscription_name: null, price: 30, bag_count: 1, amount_per_bag_g: 250, renewal_day: 1 });

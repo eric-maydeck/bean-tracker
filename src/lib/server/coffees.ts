@@ -135,8 +135,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, image_url, product_url, slug, drank, status, moved_date, decaf, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        rest_days_low, rest_days_high, image_url, product_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       input.roaster,
@@ -158,6 +158,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       status,
       movedDate,
       decaf,
+      input.subscription_id ?? null,
       now,
       now
     );
