@@ -21,25 +21,26 @@ const num = (x: unknown): number | null => {
 
 /**
  * brew_time is "<second>.<index within that second>" (NOT a decimal): '0.8','0.9','0.10','0.11' are
- * the 4 samples of second 0, at 0, .25, .5, .75. The `timestamp` field is ignored.
+ * the 4 samples of second 0, at 0, .25, .5, .75. Samples are ranked in file order (the index number is
+ * not used). The `timestamp` field is ignored.
  */
 export function flowSamples(weight: unknown): { t: number[]; g: number[] } {
-  const bySec = new Map<number, { i: number; g: number }[]>();
+  const bySec = new Map<number, number[]>();
   for (const s of Array.isArray(weight) ? weight : []) {
     const m = /^(\d+)\.(\d+)$/.exec(String((s as { brew_time?: unknown })?.brew_time ?? ''));
     const g = num((s as { actual_smoothed_weight?: unknown })?.actual_smoothed_weight);
     if (!m || g === null) continue;
     const sec = Number(m[1]);
     if (!bySec.has(sec)) bySec.set(sec, []);
-    bySec.get(sec)!.push({ i: Number(m[2]), g });
+    bySec.get(sec)!.push(g);
   }
   const t: number[] = [];
   const g: number[] = [];
   for (const sec of [...bySec.keys()].sort((a, b) => a - b)) {
-    const l = bySec.get(sec)!.sort((a, b) => a.i - b.i);
-    l.forEach((s, k) => {
+    const l = bySec.get(sec)!;
+    l.forEach((v, k) => {
       t.push(sec + k / l.length);
-      g.push(s.g);
+      g.push(v);
     });
   }
   return { t, g };

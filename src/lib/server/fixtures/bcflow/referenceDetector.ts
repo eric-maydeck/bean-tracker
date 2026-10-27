@@ -1,5 +1,5 @@
 // Test-only reference reading of a weight series. Every measure uses time windows over linearly
-// interpolated weight (never sample-to-sample), so it agrees on 0.05 s raw and 0.1 s compact grids.
+// interpolated weight (never sample-to-sample), so it agrees on the raw and the 0.05 s compact grids.
 export function referenceReading(
   t: number[],
   g: number[]
@@ -22,7 +22,7 @@ export function referenceReading(
     const f = t[hi] === t[lo] ? 0 : (x - t[lo]) / (t[hi] - t[lo]);
     return g[lo] + f * (g[hi] - g[lo]);
   };
-  const xs: number[] = [];
+  const xs: number[] = []; // evaluation times, a fixed 0.1 s step independent of the input grid
   for (let i = 0; i * 0.1 <= end + 1e-9; i++) xs.push(i / 10);
   const merge = (runs: [number, number][], gap: number) => {
     const out: [number, number][] = [];

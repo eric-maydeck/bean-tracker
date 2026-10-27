@@ -31,12 +31,29 @@ describe('flowSamples', () => {
 });
 
 describe('compactFlow', () => {
+  it('ranks samples within a second by file order, not by the index number', () => {
+    const w = entries([
+      ['0.3', 1],
+      ['0.1', 2],
+      ['0.2', 3]
+    ]);
+    const s = flowSamples(w);
+    expect(s.g).toEqual([1, 2, 3]);
+    expect(s.t).toEqual([0, 1 / 3, 2 / 3]);
+  });
+  it('expandFlow(compactFlow) is exact to 0.1 g, with negative deltas', () => {
+    const vals = [0, 1.26, 1.24, -3.55, -3.5, 10.04, 0.01];
+    const w = entries(vals.map((v, i) => [`${i}.0`, v]));
+    const c = expandFlow(compactFlow({ weight: w })!);
+    const at = (s: number) => c.g[Math.round((s * 1000) / FLOW_STEP_MS)];
+    vals.forEach((v, i) => expect(at(i)).toBeCloseTo(Math.round(v * 10) / 10, 9));
+  });
   it('returns null for no usable samples', () => {
     expect(compactFlow({ weight: [] })).toBeNull();
     expect(compactFlow({})).toBeNull();
     expect(compactFlow({ weight: entries([['0.0', 'x']]) })).toBeNull();
   });
-  it('keeps a one-sample 0.1 s spike (two 0.05 s buckets)', () => {
+  it('keeps a one-sample 0.1 s spike (bucket 29 is interpolated, not repeated)', () => {
     const w = entries(
       Array.from({ length: 30 }, (_, i) => [
         `${Math.floor(i / 10)}.${i % 10}`,
@@ -48,6 +65,8 @@ describe('compactFlow', () => {
     const per = 1000 / FLOW_STEP_MS;
     expect(c.g[Math.round(1.4 * per)]).toBe(400);
     expect(c.g[Math.round(1.5 * per)]).toBe(100);
+    // the neighbouring bucket is the interpolation between spike and flat, not a repeat of 400
+    expect(c.g[Math.round(1.4 * per) + 1]).toBeLessThan(400);
   });
   it('caps at MAX_FLOW_POINTS', () => {
     const c = compactFlow({
@@ -59,13 +78,13 @@ describe('compactFlow', () => {
     expect(c.w.length).toBe(MAX_FLOW_POINTS);
   });
   for (const name of ['bbs', 'swirl', 'tare']) {
-    it(`round-trips ${name}: every raw sample is within 30 g of its bucket, nearly all within 0.5 g`, () => {
+    it(`${name}: a raw sample is never more than the 20 g override bound from its bucket`, () => {
       const raw = flowSamples(fixture(name).weight);
       const c = expandFlow(compactFlow(fixture(name))!);
       let close = 0;
       raw.t.forEach((t, i) => {
         const err = Math.abs(c.g[Math.floor((t * 1000) / FLOW_STEP_MS + 1e-9)] - raw.g[i]);
-        expect(err, `sample ${i} t=${t}`).toBeLessThanOrEqual(30);
+        expect(err, `sample ${i} t=${t}`).toBeLessThanOrEqual(20);
         if (err <= 0.5) close++;
       });
       expect(close / raw.t.length).toBeGreaterThan(0.9);
