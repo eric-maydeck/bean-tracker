@@ -554,7 +554,7 @@
   }
   @container (min-width: 44rem) {
     .has-fave {
-      grid-template-columns: repeat(3, minmax(7.5rem, 1fr)) minmax(15rem, 1.8fr);
+      grid-template-columns: repeat(3, max-content) minmax(0, 1fr); /* the dates size to their content; the favorite column takes the rest */
     }
     .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2; }
   }

@@ -47,11 +47,11 @@
   <ul class="stat-value fave-list">
     {#each items as g (g.grinder)}
       <li>
-        <strong class="g">{g.grinder}</strong>
+        <strong class="g">{g.grinder}</strong>&nbsp;·{' '}
         {#if g.best}
-          <span class="seg">· <TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} /></span> <span class="seg">· <TextTip label={String(g.best.rating)} tip={RATING_TIP} /></span>{#if g.best.dripper}{' '}<span class="seg">· {g.best.dripper}{g.best.filter ? ` · ${g.best.filter}` : ''}</span>{/if}
+          <span class="seg"><TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} />&nbsp;·</span>{' '}<span class="seg"><TextTip label={String(g.best.rating)} tip={RATING_TIP} />{#if g.best.dripper}&nbsp;·{/if}</span>{#if g.best.dripper}{' '}<span class="seg">{g.best.dripper}{#if g.best.filter}&nbsp;·{/if}</span>{#if g.best.filter}{' '}<span class="seg">{g.best.filter}</span>{/if}{/if}
         {:else}
-          <span class="seg">· {g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
+          <span class="seg">{g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
         {#if g.other}<div class="own">{@render other(g)}</div>{/if}
       </li>
@@ -77,9 +77,15 @@
     flex-direction: column;
     gap: 0.25rem;
   }
+  /* A "·" ends the segment before it (never starts a line); a wrapped line hangs 1rem in from the grinder name. */
   .fave-list li {
     font-weight: 400;
     overflow-wrap: anywhere;
+    padding-left: 1rem;
+    text-indent: -1rem;
+  }
+  .own {
+    text-indent: 0;
   }
   .g {
     font-weight: 600;
@@ -149,5 +155,6 @@
   .seg {
     display: inline-block;
     max-width: 100%;
+    text-indent: 0;
   }
 </style>

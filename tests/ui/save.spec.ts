@@ -307,7 +307,7 @@ test.describe('favorite grind: other bag', () => {
       await a.focus();
       await page.keyboard.press('Enter');
       await expect(tip, 'Enter pins it').toBeVisible();
-      await page.locator('.timing h2').click();
+      await page.mouse.click(1, 1);
       await expect(tip, 'a click elsewhere closes it').toBeHidden();
     });
   });

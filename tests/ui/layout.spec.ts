@@ -1107,7 +1107,7 @@ export const STATES: State[] = [
   { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,
     act: async (page, s) => {
       const block = page.locator('[data-testid="favorite-grind"]');
-      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d+(\.\d)?( ·|$)/, /^ZP6 Special · .+ · \d+(\.\d)?( ·|$)/]);
+      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\)\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/, /^ZP6 Special\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/]);
       const grid = page.locator('.timing-grid');
       const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
       const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
@@ -1125,21 +1125,24 @@ export const STATES: State[] = [
         expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);
         expect(Math.abs(b.x - g.x) < 2 && Math.abs(b.width - g.width) < 2, 'full width').toBe(true);
       }
-      // The tip anchors have zero layout effect: the gap after each "·" is the same beside a tip as beside plain text.
+      // The tip anchors have zero layout effect: the gap from the text to its trailing "·" is the same beside a tip as beside plain text.
       const gaps = await block.locator('li').first().evaluate((li) => {
-        const gap = (node: Node, i: number, next: Element | Node | null) => {
-          const a = document.createRange(), b = document.createRange();
-          a.setStart(node, i); a.setEnd(node, i + 1);
-          if (next instanceof Element) b.selectNodeContents(next);
-          else if (next) { b.setStart(next, 2); b.setEnd(next, 3); }
-          return b.getBoundingClientRect().left - a.getBoundingClientRect().right;
-        };
+        const rect = (n: Node, i: number, j: number) => { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, j); return r.getBoundingClientRect(); };
         const segs = [...li.querySelectorAll('.seg')];
-        const [set, rate, plain] = [segs[0], segs[1], segs[2]];
-        return [gap(set.firstChild!, 0, set.querySelector('.text-tip')), gap(rate.firstChild!, 0, rate.querySelector('.text-tip')), gap(plain.firstChild!, 0, plain.firstChild)];
+        const texts = (e: Element) => { const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT), ns: Node[] = []; for (let n = w.nextNode(); n; n = w.nextNode()) if (n.textContent) ns.push(n); return ns; };
+        const viaTip = (seg: Element) => { const t = seg.querySelector('.text-tip')!, d = [...texts(seg)].pop()!; const r = document.createRange(); r.selectNodeContents(t); return rect(d, d.textContent!.length - 1, d.textContent!.length).left - r.getBoundingClientRect().right; };
+        // A plain segment: the dot is the last glyph, the nbsp before it, the text glyph before that.
+        const plain = () => { const ns = texts(segs[2]);
+          const dot = ns[ns.length - 1], len = dot.textContent!.length, before = len >= 3 ? dot : ns[ns.length - 2];
+          const bl = before.textContent!.length, g = len >= 3 ? bl - 3 : bl - 1;
+          return rect(dot, len - 1, len).left - rect(before, g, g + 1).right; };
+        return [viaTip(segs[0]), viaTip(segs[1]), plain()];
       });
       expect(Math.abs(gaps[0] - gaps[2]), `setting gap ${gaps}`).toBeLessThanOrEqual(1);
       expect(Math.abs(gaps[1] - gaps[2]), `rating gap ${gaps}`).toBeLessThanOrEqual(1);
+      // The dates size to their content: no label or value wraps (a stat is one label line over one value line).
+      const wrapped = await grid.locator('.stat:not(.fave)').evaluateAll((ss) => ss.filter((e) => e.getBoundingClientRect().height > 70).map((e) => e.textContent));
+      expect(wrapped, 'no date wraps').toEqual([]);
       // The setting and the rating each explain themselves in a help tip (the help cursor); one tip open at a time.
       const tips = block.locator('li').first().locator('.text-tip'), open = page.locator('.cell-tip:popover-open');
       await expect(tips).toHaveCount(2);
@@ -1155,13 +1158,45 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await tapOn(page.locator('.timing h2'));
       await expect(open).toHaveCount(0);
+      // The real prod row (A4Z, 1.4.2, 8.5, Alpha Switch · Cafec Abaca) is one line at w1280.
+      const oneLine = await block.locator('ul').evaluate((ul) => {
+        const li = ul.querySelector('li')!.cloneNode(true) as HTMLElement, segs = li.querySelectorAll('.seg');
+        segs[0].querySelector('.text-tip')!.textContent = '1.4.2';
+        segs[1].querySelector('.text-tip')!.textContent = '8.5';
+        segs[2].textContent = 'Alpha Switch\u00a0·';
+        segs[3].textContent = 'Cafec Abaca';
+        ul.append(li);
+        const h = li.getBoundingClientRect().height, lh = parseFloat(getComputedStyle(li).lineHeight === 'normal' ? getComputedStyle(li).fontSize : getComputedStyle(li).lineHeight);
+        li.remove();
+        return h < 1.5 * lh;
+      });
+      if (page.viewportSize()!.width >= 1280) expect(oneLine, 'A4Z · 1.4.2 · 8.5 · Alpha Switch · Cafec Abaca on one line').toBe(true);
       // Any grinder count and name length: six grinders, one with a very long name and dripper, wrap without overflow.
       await block.locator('ul').evaluate((ul) => {
         const li = ul.querySelector('li')!;
         for (let i = 0; i < 4; i++) ul.append(li.cloneNode(true));
         ul.querySelector('li')!.querySelector('.g')!.textContent = 'The Extraordinarily Long-Named Hand Grinder Collective Edition';
-        ul.querySelector('li')!.querySelectorAll('.seg')[1].textContent = '· An Extraordinarily Long Dripper · Name Of Many Words';
+        const segs = ul.querySelector('li')!.querySelectorAll('.seg');
+        segs[2].textContent = 'An Extraordinarily Long Dripper\u00a0·';
+        segs[3].textContent = 'Name Of Many Words';
       });
+      // A wrapped line never starts with "·", and every continuation line hangs in from the grinder name.
+      const lines = await block.locator('li').evaluateAll((lis) => lis.flatMap((li) => {
+        const out: string[] = [], w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT), left = li.getBoundingClientRect().left;
+        let top = NaN;
+        for (let n = w.nextNode(); n; n = w.nextNode()) {
+          const t = n.textContent!;
+          for (let i = 0; i < t.length; i++) {
+            if (!t[i].trim()) continue;
+            const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 1);
+            const b = r.getBoundingClientRect();
+            if (Number.isNaN(top)) top = b.top;
+            else if (b.top > top + 4) { top = b.top; if (t[i] === '·') out.push('starts with a dot'); if (b.left < left + 14) out.push(`not indented (${Math.round(b.left - left)}px)`); }
+          }
+        }
+        return out;
+      }));
+      expect(lines, 'wrapped lines').toEqual([]);
       const bad = await block.evaluate((el) => [...el.querySelectorAll('li, .seg')].filter((n) => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1).map((n) => n.textContent));
       expect(bad, 'no overflow').toEqual([]);
       const gb = await grid.boundingBox();
@@ -1169,7 +1204,7 @@ export const STATES: State[] = [
     } },
   { name: 'coffee-favorite-grind-single', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}`,
     act: async (page) => {
-      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d+(\.\d)?( ·|$)/]);
+      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/]);
     } },
   { name: 'coffee-favorite-grind-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
