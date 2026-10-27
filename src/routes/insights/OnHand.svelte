@@ -99,7 +99,7 @@
       <ChartToggle label="Unit" options={[['grams', 'Grams'], ['bags', 'Bags']]} value={unit} pick={(v) => choose({ unit: v })} />
     </LabHead>
     <Chart type="bar" vertical stacked labels={t.age.labels} values={split.before} datasetLabel={AGE_SERIES[0][1]} legend format={ageFmt} tickFormat={ageFmt} tipOf={ageTip}
-      series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_TOKENS.map((k) => `var(${k})`)} tipLink={ageLink} height={260} />
+      series={AGE_SERIES.slice(1).map(([k, name]) => ({ label: name, values: split[k] }))} colors={AGE_TOKENS.map((k) => `var(${k})`)} tipLink={ageLink} label="Age profile" height={260} />
     <p class="chart-note">Waiting bags by days since roast, minus freezer days</p>
     <p class="chart-note">On hand over time: <a href={link('/insights?tab=consumption&chart=consumption-chart-on-hand#consumption-chart-on-hand')}>Consumption</a></p>
   </section>
@@ -112,7 +112,7 @@
       <ChartToggle label="Group by" options={WAIT_BYS.map((k) => [k, BY_LABEL[k]] as const)} value={by} pick={(v) => choose({ waitBy: v === 'roaster' ? undefined : v })} />
     </LabHead>
     <Chart type="bar" labels={rows.map((r) => `${r.label} (${r.bags})`)} values={rows.map((r) => r.grams)} datasetLabel="Grams waiting" format={formatGrams}
-      tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} tipLink={waitLink} height={rows.length * 32 + 24} />
+      tipFormat={(v, i) => `${formatGrams(v)} · ${rows[i].bags} bag${rows[i].bags === 1 ? '' : 's'}`} tipLink={waitLink} label="What's waiting" height={rows.length * 32 + 24} />
     <p class="chart-note">Subscription {formatGrams(t.waiting.sub)} · One-off {formatGrams(t.waiting.oneOff)}</p>
   </section>
 {/if}

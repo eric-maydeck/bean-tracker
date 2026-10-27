@@ -2952,6 +2952,52 @@ export const STATES: State[] = [
       await check('onhand-waiting');
     }
   },
+  // Keyboard reach for the sticky tips (ui-rules 54): the canvas is one tab stop; arrows step the marks and the tip follows
+  // (announced through a live region); Tab reaches "See coffees", Shift+Tab returns; Escape closes and keeps focus on the chart.
+  {
+    name: 'insights-onhand-chart-keyboard', viewports: 'two', path: () => '/insights?tab=onhand',
+    act: async (page) => {
+      const tip = page.locator('.chart-container .cell-tip:popover-open');
+      for (const [panelId, name] of [['onhand-age', 'Age profile'], ['onhand-waiting', "What's waiting"]] as const) {
+        const canvas = page.locator(`section.chart-panel:has(#${panelId}) canvas`);
+        await canvas.scrollIntoViewIfNeeded();
+        await page.waitForTimeout(450);
+        await expect(canvas).toHaveAttribute('aria-label', new RegExp(`^${name}\\.`));
+        await canvas.focus();
+        await page.keyboard.press('ArrowRight');
+        await expect(tip).toBeVisible();
+        const first = await tip.innerText();
+        await expectTipInView(page, tip);
+        const live = page.locator(`section.chart-panel:has(#${panelId}) [aria-live="polite"]`);
+        await expect(live).not.toHaveText('');
+        // Arrow steps change the tip; ArrowLeft returns to the first mark.
+        await page.keyboard.press('ArrowRight');
+        await expect.poll(() => tip.innerText()).not.toBe(first);
+        await expectTipInView(page, tip);
+        await page.keyboard.press('ArrowLeft');
+        await expect.poll(() => tip.innerText()).toBe(first);
+        // The canvas takes the focus ring; Tab reaches the link, Shift+Tab goes back.
+        await page.keyboard.press('Tab');
+        const link = tip.getByRole('link', { name: /See coffees/ });
+        await expect(link).toBeFocused();
+        await page.keyboard.press('Shift+Tab');
+        await expect(canvas).toBeFocused();
+        await expect(tip).toBeVisible();
+        await page.keyboard.press('Tab');
+        await expect(link).toBeFocused();
+        // Escape closes the tip and puts the focus back on the chart.
+        await page.keyboard.press('Escape');
+        await expect(tip).toBeHidden();
+        await expect(canvas).toBeFocused();
+        // Tabbing past an open tip closes it.
+        await page.keyboard.press('ArrowRight');
+        await expect(tip).toBeVisible();
+        await page.keyboard.press('Tab');
+        await page.keyboard.press('Tab');
+        await expect(tip).toBeHidden();
+      }
+    }
+  },
   // A bar chart with a line overlay (Consumption's trend line, Spend's compare average): the tip anchors at the bar, never NaN.
   {
     name: 'insights-chart-tip-trend', viewports: 'two', path: () => '/insights?tab=consumption&range=3m',
@@ -7701,6 +7747,18 @@ export const STATES: State[] = [
       await select.selectOption({ label: 'All' });
       expect(page.url()).not.toContain('subscription');
       await select.selectOption({ label: 'Sey · 1x250g' }); // end with the filter on, editor open
+    }
+  },
+  {
+    // A URL naming a deleted plan: no blank select, no chip, no filtering; the param leaves the address bar.
+    name: 'coffees-filter-subscription-stale', viewports: 'two',
+    path: () => '/coffees?status=all&view=cards&subscription=999999',
+    act: async (page) => {
+      await expect(page).not.toHaveURL(/subscription=/);
+      await expect(page.locator('.filter-chip-label')).toHaveCount(0);
+      await page.getByRole('button', { name: '+ Filter' }).click();
+      await expect(page.getByRole('combobox', { name: 'Subscription' })).toHaveValue('');
+      await expect(page.getByRole('combobox', { name: 'Subscription' }).locator('option:checked')).toHaveText('All');
     }
   },
   {

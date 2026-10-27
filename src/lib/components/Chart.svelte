@@ -5,7 +5,7 @@
   import { sampleField, type Sample } from '$lib/sample';
   import { anchorOf, type Hit } from './chartAnchor';
   import FloatTip from './FloatTip.svelte';
-  import TipBody, { type Tip } from './TipBody.svelte';
+  import TipBody, { tipText, type Tip } from './TipBody.svelte';
 
   // Only draws for horizontal bar charts (this app's composition breakdown) —
   // Chart.js has no built-in "show the value next to each bar" option, and
@@ -39,7 +39,25 @@
     }
   };
 
-  ChartJS.register(...registerables, valueLabelsPlugin, ChartDataLabels);
+  // A keyboard-stepped bar gets an outline in the text color (Chart.js's own hover tint is too faint on the pastel bars).
+  const keyMarkPlugin: Plugin = {
+    id: 'keyMark',
+    afterDatasetsDraw(chart) {
+      if (!chart.canvas.dataset.kbd) return;
+      for (const { element } of chart.getActiveElements()) {
+        const { x, y, base, width, height } = element.getProps(['x', 'y', 'base', 'width', 'height'], true) as Record<string, number>;
+        if (![x, y, base].every(Number.isFinite)) continue;
+        chart.ctx.save();
+        chart.ctx.strokeStyle = getComputedStyle(chart.canvas).getPropertyValue('--color-text').trim() || '#000';
+        chart.ctx.lineWidth = 2;
+        if (!(element as unknown as { horizontal?: boolean }).horizontal) chart.ctx.strokeRect(x - width / 2, Math.min(y, base), width, Math.abs(base - y));
+        else chart.ctx.strokeRect(Math.min(x, base), y - height / 2, Math.abs(base - x), height);
+        chart.ctx.restore();
+      }
+    }
+  };
+
+  ChartJS.register(...registerables, valueLabelsPlugin, keyMarkPlugin, ChartDataLabels);
 
   let {
     type,
@@ -60,6 +78,7 @@
     nearestX = false,
     tipOf,
     tipLink,
+    label = '',
     tipFormat,
     titles,
     integer = false,
@@ -106,6 +125,8 @@
     // A sticky tooltip (ui-rules 54): a link under the hovered mark's tip (series, bucket). The tip then stays open while the
     // pointer moves onto it, and a click or tap on the mark pins it until a click outside, Escape or the link.
     tipLink?: (series: number, i: number) => { href: string; label: string } | null;
+    // The chart's accessible name; with `tipLink` the canvas is also one tab stop that arrow keys step through the marks of.
+    label?: string;
     // The tooltip's value text when it differs from the label's (money: the label rounds, the tip has the cents; a
     // second unit in parentheses, "1,750 g (14 bags)", from the bar's index `i`). A tip value carries its unit
     // (ui-rules 36).
@@ -140,6 +161,9 @@
   // label/value row (a line without a value stays a line).
   let tipAt = $state<{ x: number; y: number; h: number; w?: number; tip: Tip; beside?: boolean; link?: { href: string; label: string }; key?: string } | null>(null);
   let pinned = $state(false);
+  let kbd = $state(false); // the tip was opened from the keyboard: it is announced, and focus leaving the chart closes it
+  let reveal = $state(false); // ...and may scroll the page to show itself whole (FloatTip)
+  let box: HTMLDivElement | undefined = $state();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let overTip = false; // the pointer is on the tip: Chart.js's repeated "no mark" updates must not close it
   const keep = () => clearTimeout(timer);
@@ -173,6 +197,36 @@
     // The tip's anchor is the hovered mark (anchorOf): above it (below when there's no room above), never over it.
     tipAt = { ...at, tip: { ...(title ? { title, rows, lines } : rows.length > 1 ? { title: '', rows, lines } : { title: rows[0]?.[0] ?? lines[0] ?? '', rows: [], lines: rows[0] ? [rows[0][1]] : lines.slice(1) }), ...sample } };
   };
+
+  // Keyboard reach for a sticky-tip chart: the marks in reading order (bucket, then series; empty ones skipped), the current
+  // one in Chart.js's active state (its hover look) with its tip open and pinned. ponytail: the canvas holds the one tab stop
+  // and keeps the keys itself, so the Spend value map's DOM-focus `rove` has no elements to move over.
+  function step(by: number, to?: 'home' | 'end') {
+    if (!chart || !chart.tooltip) return;
+    const marks: [number, number][] = [];
+    for (let i = 0; i < chart.data.datasets[0].data.length; i++) chart.data.datasets.forEach((d, s) => !chart!.getDatasetMeta(s).hidden && Number(d.data[i]) > 0 && marks.push([s, i]));
+    if (!marks.length) return;
+    const at = marks.findIndex(([s, i]) => `${s}:${i}` === tipAt?.key);
+    const [s, i] = marks[to === 'home' ? 0 : to === 'end' ? marks.length - 1 : Math.min(marks.length - 1, Math.max(0, at < 0 ? (by > 0 ? 0 : marks.length - 1) : at + by))];
+    const active = [{ datasetIndex: s, index: i }];
+    const pos = chart.getDatasetMeta(s).data[i].tooltipPosition(true);
+    pointerX = pos.x as number;
+    kbd = reveal = true;
+    canvasEl.dataset.kbd = '1';
+    chart.setActiveElements(active);
+    chart.tooltip.setActiveElements(active, { x: pos.x as number, y: pos.y as number });
+    chart.render();
+    pinned = true;
+  }
+  function keys(e: KeyboardEvent) {
+    const by = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    const edge = ({ Home: 'home', End: 'end' } as const)[e.key as 'Home' | 'End'];
+    if (by) step(by);
+    else if (edge) step(0, edge);
+    else if (e.key === 'Enter' || e.key === ' ') step(tipAt ? 0 : 1);
+    else return;
+    e.preventDefault();
+  }
 
   // The site's palette by position (ui-rules 42).
   function paletteColors(count: number): string[] {
@@ -291,7 +345,7 @@
 
     chart?.destroy();
     tipAt = null; // a rebuilt chart never fires the old hover's close
-    pinned = false;
+    pinned = kbd = reveal = false;
     chart = new ChartJS(canvasEl, {
       type,
       data: {
@@ -407,7 +461,7 @@
           if (!els.length) (pinned = false), (tipAt = null); // a click on empty plot closes it; on a mark without a link it leaves the tip alone
           else if (tipAt?.link) pinned = !pinned;
         },
-        onHover: (e) => { if (e.x != null) pointerX = e.x; },
+        onHover: (e) => { if (e.x != null) (pointerX = e.x), (kbd = reveal = false), delete canvasEl.dataset.kbd; },
         // The arrow everywhere on a chart: the help cursor is for help text and icons (user, 2026-10-26).
         // Leaves room on the right so the value-label plugin's text doesn't
         // get clipped when a bar's own value already reaches the chart edge.
@@ -541,13 +595,22 @@
   });
 </script>
 
-<div class="chart-container" style="height: {height === 'fill' ? '100%' : `${height}px`}">
-  <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}></canvas>
+<div class="chart-container" bind:this={box} style="height: {height === 'fill' ? '100%' : `${height}px`}"
+  onfocusout={(e) => kbd && !box?.contains(e.relatedTarget as Node | null) && ((pinned = kbd = false), (tipAt = null))}>
+  <!-- With a sticky-tip link, the canvas is one tab stop (as the Spend value map): arrows step through the marks, Enter or
+       Space shows the tip, Tab moves on to its link (the tip follows the canvas in the DOM), Escape closes. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+  <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}
+    role={tipLink ? 'group' : undefined} tabindex={tipLink ? 0 : undefined}
+    aria-label={tipLink ? `${label || 'Chart'}. Arrow keys step through the bars; Tab reaches the link.` : undefined}
+    onfocus={tipLink ? () => !tipAt && canvasEl.matches(':focus-visible') && step(1) : undefined}
+    onkeydown={tipLink ? keys : undefined}></canvas>
+  {#if tipLink}<span class="sr-only" aria-live="polite">{kbd && tipAt ? `${tipText(tipAt.tip)}${tipAt.link ? `. ${tipAt.link.label}` : ''}` : ''}</span>{/if}
   <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px" style:height="{tipAt?.h ?? 1}px" style:width="{tipAt?.w ?? 1}px"></span>
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
          left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
-    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} onclose={() => ((tipAt = null), (pinned = false))}>
+    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} {reveal} onclose={() => ((tipAt = null), (pinned = false))}>
       {#if tipAt.link}
         <!-- svelte-ignore a11y_no_static_element_interactions (a mouse-only bridge from the mark onto the tip; the link is a real link) -->
         <div class="chart-tip-body" onclick={() => (pinned = true)} onpointerenter={() => ((overTip = true), keep())} onpointerleave={(e) => ((overTip = false), e.pointerType === 'mouse' && !pinned && later())}><TipBody tip={tipAt.tip} /><a class="tip-link" href={tipAt.link.href} onclick={(e) => (e.stopPropagation(), (pinned = false), (tipAt = null))}>{tipAt.link.label}</a></div>
@@ -555,7 +618,7 @@
     </FloatTip>{/key}
   {/if}
 </div>
-<svelte:document onclick={(e) => pinned && e.target !== canvasEl && !(e.target as Element).closest('.chart-tip-body') && ((pinned = false), (tipAt = null))} onkeydown={(e) => e.key === 'Escape' && pinned && ((pinned = false), (tipAt = null))} />
+<svelte:document onclick={(e) => pinned && e.target !== canvasEl && !(e.target as Element).closest('.chart-tip-body') && ((pinned = false), (tipAt = null))} onkeydown={(e) => e.key === 'Escape' && pinned && (box?.contains(document.activeElement) && canvasEl.focus(), (pinned = kbd = false), (tipAt = null))} />
 
 <style>
   /* A sticky tip's body takes the pointer (the popover itself is click-through): the whole tip box is the bridge. */
@@ -564,6 +627,10 @@
     padding: 0.5rem 0.75rem;
     pointer-events: auto;
     cursor: default;
+  }
+  canvas:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
   }
   .tip-link {
     display: block;
