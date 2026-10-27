@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { compactFlow, expandFlow, flowSamples, FLOW_STEP_MS, MAX_FLOW_POINTS } from './bcFlow';
-import { referenceReading } from './fixtures/bcflow/referenceDetector';
+import { readPours } from './pourDetector';
 
 const fixture = (name: string) =>
   JSON.parse(readFileSync(new URL(`./fixtures/bcflow/${name}.json`, import.meta.url), 'utf8'));
@@ -92,30 +92,43 @@ describe('compactFlow', () => {
   }
 });
 
+const LOGGED: Record<string, [number, number, number]> = {
+  bbs: [295.3, 18, 117],
+  bbj: [244.7, 15.8, 96],
+  bbf: [324, 18, 130],
+  '4sy': [303.3, 18.1, 88],
+  '5sy': [304, 20.2, 70],
+  swirl: [272, 18.1, 114],
+  tare: [325.8, 18.1, 125]
+};
+const logged = (n: string) => {
+  const [waterG, doseG, brewTimeS] = LOGGED[n];
+  return { waterG, doseG, brewTimeS };
+};
+
 describe('detection parity (compact vs raw)', () => {
-  for (const name of ['bbs', 'bbj', 'bbf', '4sy', '5sy', 'swirl', 'tare']) {
+  for (const name of Object.keys(LOGGED)) {
     it(`detection on compact matches raw: ${name}`, () => {
       const raw = flowSamples(fixture(name).weight);
       const c = expandFlow(compactFlow(fixture(name))!);
-      const a = referenceReading(raw.t, raw.g);
-      const b = referenceReading(c.t, c.g);
-      expect(b.pours.length).toBe(a.pours.length);
+      const a = readPours(raw.t, raw.g, logged(name));
+      const b = readPours(c.t, c.g, logged(name));
+      expect(b.pattern).toBe(a.pattern);
       b.pours.forEach((p, i) => {
-        expect(Math.abs(p.start - a.pours[i].start)).toBeLessThanOrEqual(0.3);
+        expect(Math.abs(p.startS - a.pours[i].startS)).toBeLessThanOrEqual(0.3);
         expect(Math.abs(p.grams - a.pours[i].grams)).toBeLessThanOrEqual(2);
       });
-      expect(b.spikes.length).toBe(a.spikes.length);
-      b.spikes.forEach((s, i) => expect(Math.abs(s - a.spikes[i])).toBeLessThanOrEqual(0.3));
+      expect(b.swirls.length).toBe(a.swirls.length);
       expect(b.tares.length).toBe(a.tares.length);
       b.tares.forEach((s, i) => expect(Math.abs(s - a.tares[i])).toBeLessThanOrEqual(0.3));
     });
   }
-  it('the swirl fixture has a spike and the tare fixture a tare (parity is not vacuous)', () => {
+  it('the swirl fixture has a swirl and the tare fixture a tare (parity is not vacuous)', () => {
     const r = (n: string) => {
       const s = flowSamples(fixture(n).weight);
-      return referenceReading(s.t, s.g);
+      return readPours(s.t, s.g, logged(n));
     };
-    expect(r('swirl').spikes.length).toBeGreaterThanOrEqual(1);
+    expect(r('swirl').swirls.length).toBeGreaterThanOrEqual(1);
     expect(r('tare').tares.length).toBeGreaterThanOrEqual(1);
     expect(r('bbs').pours.length).toBeGreaterThanOrEqual(1);
   });
