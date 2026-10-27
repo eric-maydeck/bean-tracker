@@ -1107,13 +1107,14 @@ export const STATES: State[] = [
   { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,
     act: async (page, s) => {
       const block = page.locator('[data-testid="favorite-grind"]');
-      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d/, /^ZP6 Special · .+ · \d/]);
+      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d+(\.\d)?\/10/, /^ZP6 Special · .+ · \d+(\.\d)?\/10/]);
       const grid = page.locator('.timing-grid');
       const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
       const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
       expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
-      const segTops = await block.locator('li').evaluateAll((lis) => lis.map((li) => new Set([...li.querySelectorAll('.seg')].map((e) => Math.round(e.getBoundingClientRect().top))).size));
-      if (page.viewportSize()!.width >= 1280) expect(segTops, 'each line stays on one row').toEqual([1, 1]);
+      // A row breaks only between its segments, never inside one (at w1280 the seed's names).
+      const broken = await block.locator('.seg').evaluateAll((segs) => segs.filter((e) => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1; }).map((e) => e.textContent));
+      if (page.viewportSize()!.width >= 1280) expect(broken, 'no segment is broken').toEqual([]);
       if (b.x > roast.x + 20) {
         expect(Math.abs(b.y - roast.y), 'block top = first row top').toBeLessThan(2);
         expect(b.y + b.height, 'block spans both rows').toBeGreaterThanOrEqual(Math.max(rest.y + rest.height, before.y + before.height) - 2);
@@ -1129,7 +1130,7 @@ export const STATES: State[] = [
         const li = ul.querySelector('li')!;
         for (let i = 0; i < 4; i++) ul.append(li.cloneNode(true));
         ul.querySelector('li')!.querySelector('.g')!.textContent = 'The Extraordinarily Long-Named Hand Grinder Collective Edition';
-        ul.querySelector('li')!.querySelectorAll('.seg')[1].textContent = '· 9.5 (An Extraordinarily Long Dripper Name Of Many Words)';
+        ul.querySelector('li')!.querySelectorAll('.seg')[1].textContent = '· An Extraordinarily Long Dripper · Name Of Many Words';
       });
       const bad = await block.evaluate((el) => [el, ...el.querySelectorAll('li, .seg')].filter((n) => n.scrollWidth > n.clientWidth + 1).map((n) => n.textContent));
       expect(bad, 'no overflow').toEqual([]);
@@ -1138,7 +1139,7 @@ export const STATES: State[] = [
     } },
   { name: 'coffee-favorite-grind-single', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}`,
     act: async (page) => {
-      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d/]);
+      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d+(\.\d)?\/10/]);
     } },
   { name: 'coffee-favorite-grind-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {

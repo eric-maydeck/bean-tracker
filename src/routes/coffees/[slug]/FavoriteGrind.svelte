@@ -8,7 +8,13 @@
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.
   let { items }: { items: FavoriteGrind[] } = $props();
 
-  const pv = $derived(page.url.searchParams.get('pv') === 'b' ? 'b' : 'a'); // PREVIEW-TEMP: a = second line, b = chip
+  const pv = $derived(page.url.searchParams.get('pv') === 'd' ? 'd' : 'c'); // PREVIEW-TEMP: c = last inline segment, d = own line
+
+  // Bean Conqueror's rating scale (as insights/Recent.svelte: its settings aren't in the import, so it is fixed at 10).
+  const RATING_MAX = 10;
+  const rate = (n: number) => `${n}/${RATING_MAX}`;
+  // A method's name reads "CT62 - Cafec Abaca" (dripper - filter); shown with a dot, as the line's other separators.
+  const dot = (s: string) => s.replaceAll(' - ', ' · ');
 
   // The other bag's tip is sticky (ui-rules 54, the Spend value map's pattern): hover opens it, the mouse can cross
   // onto it, a click or tap (Enter/Space) pins it until a click outside, Escape or its "See coffee" link.
@@ -26,33 +32,33 @@
     tip = tip?.pinned && tip.o === o ? null : { o, el: e.currentTarget as Element, pinned: true, reveal: tip?.o !== o };
   };
   const tipOf = (o: OtherBag) => ({
-    title: 'Same coffee, another bag',
-    rows: [['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ?? '—'], ['Brewed', o.date]] as [string, string][]
+    title: 'Another bag of the same coffee',
+    rows: [['Grind setting', o.setting ?? '—'], ['Rating', rate(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ? dot(o.dripper) : '—'], ['Brewed', o.date]] as [string, string][]
   });
 </script>
 
 <svelte:document onclick={(e) => tip?.pinned && !(e.target as Element).closest('.fg-other, .fg-tip') && (tip = null)} onkeydown={(e) => e.key === 'Escape' && tip?.pinned && (tip = null)} />
 
-{#snippet other(g: FavoriteGrind, chip: boolean)}
+{#snippet other(g: FavoriteGrind)}
   {#if g.other}
     {@const o = g.other}
-    <button type="button" class="fg-other" class:chip aria-label="Other bag: setting {o.setting ?? 'none'}, rating {o.rating}" onpointerenter={(e) => hover(e, o)}
-      onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()} onclick={(e) => click(e, o)}>{#if chip}<span class="pill">↑ {o.rating}</span>{:else}Other bag: {o.setting ?? '—'} · {o.rating}{/if}</button>
+    <button type="button" class="fg-other" onpointerenter={(e) => hover(e, o)} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()}
+      onclick={(e) => click(e, o)}>Another bag scored higher ({o.setting ?? '—'} · {rate(o.rating)})</button>
   {/if}
 {/snippet}
 
 <div class="stat fave" data-testid="favorite-grind">
-  <span class="stat-label">Favorite grind</span>
+  <span class="stat-label">Favorite grind setting</span>
   <ul class="stat-value fave-list">
     {#each items as g (g.grinder)}
       <li>
         <strong class="g">{g.grinder}</strong>
         {#if g.best}
-          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {g.best.rating}{#if pv === 'b'}{' '}{@render other(g, true)}{/if}</span>{#if g.best.dripper}{' '}<span class="seg">({g.best.dripper})</span>{/if}
+          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {rate(g.best.rating)}</span>{#if g.best.dripper}{' '}<span class="seg">· {dot(g.best.dripper)}</span>{/if}
         {:else}
           <span class="seg">· {g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
-        {#if pv === 'a'}{@render other(g, false)}{/if}
+        {#if g.other}{#if pv === 'c'}{' '}<span class="seg nb">· {@render other(g)}</span>{:else}<div class="own">{@render other(g)}</div>{/if}{/if}
       </li>
     {/each}
   </ul>
@@ -83,54 +89,42 @@
   .g {
     font-weight: 600;
   }
-  /* PREVIEW-TEMP: a = a muted line under the row, b = a chip after the rating. */
+  /* PREVIEW-TEMP: c = the link is the row's last inline segment, whole (never broken mid-phrase); d = on its own line. */
   .fg-other {
-    display: block;
+    display: inline-block;
+    max-width: 100%;
     margin: 0;
     padding: 0;
     border: 0;
     background: none;
     font: inherit;
-    font-size: 0.85em;
-    color: var(--color-text-muted);
-    text-align: left;
-    cursor: pointer;
-    text-decoration: underline dotted;
-    text-underline-offset: 2px;
-  }
-  .fg-other.chip {
-    display: inline-block;
-    text-decoration: none;
-  }
-  .pill {
-    display: inline-block;
-    padding: 0 0.4rem;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    font-size: 0.75em;
     color: var(--color-accent);
+    text-align: left;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .nb {
+    white-space: nowrap;
+  }
+  .own {
+    display: flex;
   }
   .fg-other:hover,
   .fg-other:focus-visible {
     color: var(--color-text);
   }
-  /* Phones: a 44px tap target, its extra height pulled back with a negative margin so the rows keep their spacing. */
+  /* Phones: a 44px tap target; the extra height is pulled back with a negative margin so the rows keep their height. */
   @media (max-width: 640px) {
     .fg-other {
-      display: flex;
-      align-items: center;
-      min-height: 44px;
-      margin-block: -0.65rem;
-    }
-    /* The chip's 44px area is the transparent button around the small pill. */
-    .fg-other.chip {
       display: inline-flex;
       align-items: center;
-      justify-content: center;
-      min-width: 44px;
-      margin: -10px -6px;
-      vertical-align: middle;
+      min-height: 44px;
+      margin-block: -10px;
     }
   }
   /* The tip is pointer-events: none (a hover tip); this fills it so the mouse can rest on it and click the link. */

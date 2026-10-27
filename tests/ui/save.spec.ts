@@ -236,7 +236,7 @@ test('trophy card: unreadable text in a number field blocks Save and saves nothi
   expect(posts).toHaveLength(0);
 });
 
-// Favorite grind's other-bag indicator (PREVIEW-TEMP variants ?pv=a|b): a twin of El Dorado (same roaster + name) with a
+// Favorite grind's other-bag indicator (PREVIEW-TEMP variants ?pv=c|d): a twin of El Dorado (same roaster + name) with a
 // 9.8 on the ZP6, added here and removed after (the seed has no same-name pair). The tip is sticky (ui-rules 54).
 test.describe('favorite grind: other bag', () => {
   const TWIN = 'favgrind-twin';
@@ -258,21 +258,22 @@ test.describe('favorite grind: other bag', () => {
     db.close();
   });
   const anchor = (page: Page, pv: string) => page.locator('[data-testid="favorite-grind"] .fg-other');
-  const label = { a: /^Other bag: 4\.2 · 9\.8$/, b: /^↑ 9\.8$/ };
+  const label = /^Another bag scored higher \(4\.2 · 9\.8\/10\)$/;
 
-  for (const pv of ['a', 'b'] as const) {
+  for (const pv of ['c', 'd'] as const) {
     test(`tap-tip-favorite-grind ${pv}: a tap opens and pins it, a tap elsewhere closes it, See coffee goes to the bag`, async ({ page }) => {
       await gotoReady(page, `${ELDORADO}?pv=${pv}`);
       const a = anchor(page, pv), tip = page.locator('.cell-tip:popover-open');
-      await expect(a).toHaveText(label[pv]);
-      expect(await a.evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e.querySelector('.pill') ?? e); return r.getClientRects().length; }), 'one line of text').toBe(1);
+      await expect(a).toHaveText(label);
+      expect(await a.evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length; }), 'one line of text').toBe(1);
       await checkLayout(page);
       await a.tap();
       await expect(tip).toBeVisible();
       await expectTipInView(page, tip);
-      await expect(tip).toContainText('2026-08-01');
-      await expect(tip).toContainText('V60');
-      await expect(tip).toContainText('2026-08-10');
+      await expect(tip.locator('.tip-title')).toHaveText('Another bag of the same coffee');
+      await expect(tip.locator('dt')).toHaveText(['Grind setting', 'Rating', 'Roasted', 'Dripper', 'Brewed']);
+      await expect(tip.locator('dd')).toHaveText(['4.2', '9.8/10', '2026-08-01', 'V60', '2026-08-10']);
+      if (pv === 'd') expect((await a.boundingBox())!.y, 'D: under the row').toBeGreaterThan((await page.locator('[data-testid="favorite-grind"] li .seg').last().boundingBox())!.y + 10);
       await page.waitForTimeout(700);
       await expect(tip, 'still open a moment after the tap').toBeVisible();
       await page.locator('.timing h2').tap();
@@ -286,9 +287,8 @@ test.describe('favorite grind: other bag', () => {
   test.describe('mouse', () => {
     test.use({ viewport: { width: 1280, height: 800 }, hasTouch: false });
     test('hover opens, the mouse can cross onto the tip, a click pins it, Escape or a click elsewhere closes it', async ({ page }) => {
-      await gotoReady(page, `${ELDORADO}?pv=b`);
-      const a = anchor(page, 'b'), tip = page.locator('.cell-tip:popover-open');
-      expect(await page.locator('[data-testid="favorite-grind"] li').evaluateAll((lis) => lis.map((li) => new Set([...li.querySelectorAll('.seg')].map((e) => Math.round(e.getBoundingClientRect().top))).size)), 'chip: line stays on one row').toEqual([1]);
+      await gotoReady(page, `${ELDORADO}?pv=c`);
+      const a = anchor(page, 'c'), tip = page.locator('.cell-tip:popover-open');
       await a.hover();
       await expect(tip).toBeVisible();
       await expectTipInView(page, tip);
