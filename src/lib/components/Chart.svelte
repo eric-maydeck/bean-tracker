@@ -164,6 +164,7 @@
   let kbd = $state(false); // the tip was opened from the keyboard: it is announced, and focus leaving the chart closes it
   let reveal = $state(false); // ...and may scroll the page to show itself whole (FloatTip)
   let box: HTMLDivElement | undefined = $state();
+  let cur: { s: number; i: number; name: string } | null = null; // the last-stepped mark: arrows resume from it after Escape or a re-focus; its name goes stale with the data
   let timer: ReturnType<typeof setTimeout> | undefined;
   let overTip = false; // the pointer is on the tip: Chart.js's repeated "no mark" updates must not close it
   const keep = () => clearTimeout(timer);
@@ -206,13 +207,17 @@
     const marks: [number, number][] = [];
     for (let i = 0; i < chart.data.datasets[0].data.length; i++) chart.data.datasets.forEach((d, s) => !chart!.getDatasetMeta(s).hidden && Number(d.data[i]) > 0 && marks.push([s, i]));
     if (!marks.length) return;
-    const at = marks.findIndex(([s, i]) => `${s}:${i}` === tipAt?.key);
-    const [s, i] = marks[to === 'home' ? 0 : to === 'end' ? marks.length - 1 : Math.min(marks.length - 1, Math.max(0, at < 0 ? (by > 0 ? 0 : marks.length - 1) : at + by))];
+    const nameOf = (s: number, i: number) => `${chart!.data.labels?.[i]}|${chart!.data.datasets[s].label}`;
+    const at = marks.findIndex(([s, i]) => cur?.s === s && cur.i === i && cur.name === nameOf(s, i));
+    const [s, i] = marks[to === 'home' ? 0 : to === 'end' ? marks.length - 1 : Math.min(marks.length - 1, Math.max(0, at < 0 ? (by >= 0 ? 0 : marks.length - 1) : at + by))];
+    cur = { s, i, name: nameOf(s, i) };
     const active = [{ datasetIndex: s, index: i }];
     const pos = chart.getDatasetMeta(s).data[i].tooltipPosition(true);
     pointerX = pos.x as number;
     kbd = reveal = true;
     canvasEl.dataset.kbd = '1';
+    // A closed tip (Escape) leaves its mark active, and Chart.js only re-renders its tooltip for a changed one: clear it first.
+    if (!tipAt) (chart.tooltip.setActiveElements([], { x: 0, y: 0 }), keep());
     chart.setActiveElements(active);
     chart.tooltip.setActiveElements(active, { x: pos.x as number, y: pos.y as number });
     chart.render();
@@ -223,7 +228,7 @@
     const edge = ({ Home: 'home', End: 'end' } as const)[e.key as 'Home' | 'End'];
     if (by) step(by);
     else if (edge) step(0, edge);
-    else if (e.key === 'Enter' || e.key === ' ') step(tipAt ? 0 : 1);
+    else if (e.key === 'Enter' || e.key === ' ') step(0);
     else return;
     e.preventDefault();
   }
@@ -603,7 +608,7 @@
   <canvas bind:this={canvasEl} data-dash-gaps={dashGaps || undefined}
     role={tipLink ? 'group' : undefined} tabindex={tipLink ? 0 : undefined}
     aria-label={tipLink ? `${label || 'Chart'}. Arrow keys step through the bars; Tab reaches the link.` : undefined}
-    onfocus={tipLink ? () => !tipAt && canvasEl.matches(':focus-visible') && step(1) : undefined}
+    onfocus={tipLink ? () => !tipAt && canvasEl.matches(':focus-visible') && step(cur ? 0 : 1) : undefined}
     onkeydown={tipLink ? keys : undefined}></canvas>
   {#if tipLink}<span class="sr-only" aria-live="polite">{kbd && tipAt ? `${tipText(tipAt.tip)}${tipAt.link ? `. ${tipAt.link.label}` : ''}` : ''}</span>{/if}
   <span class="tip-anchor" bind:this={tipAnchor} style:left="{tipAt?.x ?? 0}px" style:top="{tipAt?.y ?? 0}px" style:height="{tipAt?.h ?? 1}px" style:width="{tipAt?.w ?? 1}px"></span>

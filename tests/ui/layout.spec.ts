@@ -2960,22 +2960,24 @@ export const STATES: State[] = [
       const tip = page.locator('.chart-container .cell-tip:popover-open');
       for (const [panelId, name] of [['onhand-age', 'Age profile'], ['onhand-waiting', "What's waiting"]] as const) {
         const canvas = page.locator(`section.chart-panel:has(#${panelId}) canvas`);
+        // A stacked bar's tip repeats for each segment: the mark is told apart by where the tip points (the anchor).
+        const sig = async () => (await tip.innerText()) + (await page.locator(`section.chart-panel:has(#${panelId}) .tip-anchor`).evaluate((e) => `${(e as HTMLElement).style.left},${(e as HTMLElement).style.top}`));
         await canvas.scrollIntoViewIfNeeded();
         await page.waitForTimeout(450);
         await expect(canvas).toHaveAttribute('aria-label', new RegExp(`^${name}\\.`));
         await canvas.focus();
         await page.keyboard.press('ArrowRight');
         await expect(tip).toBeVisible();
-        const first = await tip.innerText();
+        const first = await sig();
         await expectTipInView(page, tip);
         const live = page.locator(`section.chart-panel:has(#${panelId}) [aria-live="polite"]`);
         await expect(live).not.toHaveText('');
         // Arrow steps change the tip; ArrowLeft returns to the first mark.
         await page.keyboard.press('ArrowRight');
-        await expect.poll(() => tip.innerText()).not.toBe(first);
+        await expect.poll(() => sig()).not.toBe(first);
         await expectTipInView(page, tip);
         await page.keyboard.press('ArrowLeft');
-        await expect.poll(() => tip.innerText()).toBe(first);
+        await expect.poll(() => sig()).toBe(first);
         // The canvas takes the focus ring; Tab reaches the link, Shift+Tab goes back.
         await page.keyboard.press('Tab');
         const link = tip.getByRole('link', { name: /See coffees/ });
@@ -2989,13 +2991,51 @@ export const STATES: State[] = [
         await page.keyboard.press('Escape');
         await expect(tip).toBeHidden();
         await expect(canvas).toBeFocused();
-        // Tabbing past an open tip closes it.
+        // Escape keeps the position: the next arrow continues from it (never restarting at the first mark).
+        await page.keyboard.press('Home');
+        await expect(tip).toBeVisible();
+        const home = await sig();
+        await page.keyboard.press('ArrowRight');
+        await expect.poll(() => sig()).not.toBe(home);
+        const second = await sig();
+        await page.keyboard.press('Escape');
+        await expect(tip).toBeHidden();
         await page.keyboard.press('ArrowRight');
         await expect(tip).toBeVisible();
+        const third = await sig();
+        expect(third, 'continues past the second mark').not.toBe(second);
+        expect(third, 'not back at the first').not.toBe(home);
+        await page.keyboard.press('Escape');
+        await page.keyboard.press('ArrowLeft');
+        await expect.poll(() => sig()).toBe(second);
+        await page.keyboard.press('ArrowRight');
+        await expect.poll(() => sig()).toBe(third);
+        // Tabbing past an open tip closes it; coming back reopens at the last-stepped mark.
         await page.keyboard.press('Tab');
         await page.keyboard.press('Tab');
         await expect(tip).toBeHidden();
+        await page.keyboard.press('Shift+Tab');
+        await expect(canvas).toBeFocused();
+        await expect(tip).toBeVisible();
+        expect(await sig()).toBe(third);
+        await page.keyboard.press('Escape');
       }
+      // New data (Group by Origin): the old position no longer maps to the same mark, so stepping starts at the first.
+      const panel = page.locator('section.chart-panel:has(#onhand-waiting)');
+      const canvas = panel.locator('canvas');
+      await canvas.focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(tip).toBeVisible();
+      const roasterThird = await tip.innerText();
+      await page.keyboard.press('Escape');
+      await panel.getByRole('group', { name: 'Group by' }).getByRole('button', { name: 'Origin', exact: true }).click();
+      await canvas.focus();
+      await page.keyboard.press('ArrowRight');
+      await expect(tip).toBeVisible();
+      const originFirst = await tip.innerText();
+      await page.keyboard.press('ArrowLeft');
+      expect(await tip.innerText(), 'one step back from the first mark stays on it').toBe(originFirst);
+      expect(originFirst).not.toBe(roasterThird);
     }
   },
   // A bar chart with a line overlay (Consumption's trend line, Spend's compare average): the tip anchors at the bar, never NaN.
