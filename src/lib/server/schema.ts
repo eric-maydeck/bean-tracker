@@ -285,4 +285,28 @@ CREATE TABLE IF NOT EXISTS beanconqueror_brew_flows (
   weights TEXT NOT NULL,      -- JSON array, CompactFlow.w
   uploaded_at TEXT NOT NULL
 );
+
+-- One pour reading per Bean Conqueror brew with flow (plan 2026-10-27-pour-reading-recipes). Inputs are
+-- kept so a stale-row query finds what to re-read; columns are what Parts C/D group on, reading = detail.
+CREATE TABLE IF NOT EXISTS brew_pour_readings (
+  bc_uuid TEXT PRIMARY KEY,
+  detector_version INTEGER NOT NULL,
+  flow_uploaded_at TEXT NOT NULL,   -- beanconqueror_brew_flows.uploaded_at it was read from
+  water_g REAL, dose_g REAL, logged_brew_time TEXT,  -- BC's logged inputs, as read
+  structure_key TEXT,
+  pattern TEXT NOT NULL,
+  pour_count INTEGER NOT NULL,
+  bloom_count INTEGER NOT NULL,
+  bloom_hold_s REAL,
+  ratio REAL,
+  ratio_source TEXT,
+  total_s REAL,
+  drawdown_s REAL,
+  swirl_count INTEGER NOT NULL,
+  low_confidence INTEGER NOT NULL,
+  immersion INTEGER NOT NULL,
+  reading TEXT NOT NULL,            -- JSON PourReading
+  read_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_pour_readings_key ON brew_pour_readings(structure_key);
 `;

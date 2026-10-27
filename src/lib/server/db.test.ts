@@ -25,6 +25,7 @@ describe('createDb', () => {
       'beanconqueror_grinders',
       'beanconqueror_methods',
       'beanconqueror_waters',
+      'brew_pour_readings',
       'coffees',
       'gear_details',
       'image_copies',

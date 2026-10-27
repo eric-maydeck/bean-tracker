@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { verifyPassword } from './auth';
 import { compactFlow, type CompactFlow } from './bcFlow';
+import { readBrew } from './pourReadings';
 
 export const MAX_SHOT_BYTES = 5 * 1024 * 1024;
 /** Shown on the page; the server ignores the username. */
@@ -57,6 +58,7 @@ export function saveShot(db: DatabaseSync, shot: { uuid: string; flow: CompactFl
        weights = excluded.weights, uploaded_at = excluded.uploaded_at`
   ).run(shot.uuid, shot.flow.v, shot.flow.stepMs, shot.flow.w.length, JSON.stringify(shot.flow.w), now);
   setMeta(db, LAST_UPLOAD_KEY, now);
+  readBrew(db, shot.uuid);
   return { id: shot.uuid };
 }
 

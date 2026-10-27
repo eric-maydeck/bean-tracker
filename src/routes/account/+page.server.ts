@@ -4,6 +4,7 @@ import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
+import { queueReadings } from '$lib/server/pourReadings';
 import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -35,7 +36,9 @@ export const actions: Actions = {
     } catch (err) {
       return fail(400, { error: err instanceof Error ? err.message : 'Could not parse that Bean Conqueror export' });
     }
-    importBeanConquerorData(getDb(), parsed);
+    const db = getDb();
+    importBeanConquerorData(db, parsed);
+    void queueReadings(db);
     return {
       success: true as const,
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }

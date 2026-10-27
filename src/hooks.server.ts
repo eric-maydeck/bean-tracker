@@ -3,6 +3,7 @@ import { crossSiteFormBlocked } from '$lib/server/csrf';
 import { SESSION_COOKIE_NAME, verifySessionCookieValue } from '$lib/server/auth';
 import { getDb } from '$lib/server/db';
 import { queueFillMissing } from '$lib/server/imageFills';
+import { queueReadings } from '$lib/server/pourReadings';
 import { backfillRoasterWebsites } from '$lib/server/roasterWebsites';
 
 // Backdrop fills for images that have none yet (saved before fills existed,
@@ -12,6 +13,7 @@ export const init: ServerInit = () => {
   // Sync and local: roaster sites from known product URLs (image Suggest).
   backfillRoasterWebsites(db);
   void queueFillMissing(db);
+  void queueReadings(db);
 };
 
 export const handle: Handle = async ({ event, resolve }) => {
