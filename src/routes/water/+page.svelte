@@ -167,7 +167,7 @@
 <svelte:head>
   <title>Bean Tracker - Water</title>
 </svelte:head>
-<PreviewMeta preview={waterPreview({ mode, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : undefined })} />
+<PreviewMeta preview={waterPreview({ mode, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideal })} />
 
 <div class="water-page">
 <div class="toolbar water-title">

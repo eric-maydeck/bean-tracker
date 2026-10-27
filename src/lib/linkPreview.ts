@@ -42,17 +42,19 @@ export function coffeePreview(
   return { title: c.coffee_name, description: fitList([c.roaster, details].filter(Boolean), '\n', false), image };
 }
 
-export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number } }): Preview {
+export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops: Drops; gh: number; kh: number; target?: { gh: number; kh: number }; idealMl?: number }): Preview {
   const title = w.mode === 'recipe' ? `Water: ${w.recipe}` : w.mode === 'drops' ? 'Water: Custom drops' : 'Water: Custom target';
   const d = w.drops;
   const drops = (n: number) => `${n} drop${n === 1 ? '' : 's'}`;
+  // What each value is aiming for, after it: the recipe's (its ideal mL, `idealMl`) or the typed-in target.
+  const word = w.mode === 'recipe' ? 'recipe' : 'target';
+  const aim = (n: number | undefined) => (w.mode !== 'drops' && n != null ? ` (${word} ${f1(n)})` : '');
   const lines = [
     'Lotus drop calculator',
-    `Water: ${w.ml} mL`,
-    w.mode === 'target' && w.target && `Target: GH ${f1(w.target.gh)} · KH ${f1(w.target.kh)} ppm`,
+    `Water: ${w.ml} mL${w.mode === 'recipe' ? aim(w.idealMl) : ''}`,
     `Ca: ${drops(d.ca)}`, `Mg: ${drops(d.mg)}`, `Na: ${drops(d.na)}`, `K: ${drops(d.k)}`,
-    `GH: ${f1(w.gh)} ppm`, `KH: ${f1(w.kh)} ppm`
-  ].filter(Boolean) as string[];
+    `GH: ${f1(w.gh)} ppm${aim(w.target?.gh)}`, `KH: ${f1(w.kh)} ppm${aim(w.target?.kh)}`
+  ];
   return { title, description: lines.join('\n') };
 }
 

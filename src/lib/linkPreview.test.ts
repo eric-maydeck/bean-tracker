@@ -61,9 +61,9 @@ describe('coffeePreview', () => {
 
 describe('waterPreview', () => {
   it('recipe mode', () => {
-    expect(waterPreview({ mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857 })).toEqual({
+    expect(waterPreview({ mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857, target: { gh: 60, kh: 20 }, idealMl: 800 })).toEqual({
       title: 'Water: Holy Water',
-      description: 'Lotus drop calculator\nWater: 900 mL\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5 ppm\nKH: 17.9 ppm'
+      description: 'Lotus drop calculator\nWater: 900 mL (recipe 800)\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5 ppm (recipe 60)\nKH: 17.9 ppm (recipe 20)'
     });
   });
   it('drops mode ignores the recipe', () => {
@@ -75,7 +75,7 @@ describe('waterPreview', () => {
   it('target mode', () => {
     expect(waterPreview({ mode: 'target', recipe: 'x', ml: 800, drops: { mg: 4, ca: 4, na: 0, k: 0 }, gh: 80.357, kh: 0, target: { gh: 80, kh: 0 } })).toEqual({
       title: 'Water: Custom target',
-      description: 'Lotus drop calculator\nWater: 800 mL\nTarget: GH 80 · KH 0 ppm\nCa: 4 drops\nMg: 4 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4 ppm\nKH: 0 ppm'
+      description: 'Lotus drop calculator\nWater: 800 mL\nCa: 4 drops\nMg: 4 drops\nNa: 0 drops\nK: 0 drops\nGH: 80.4 ppm (target 80)\nKH: 0 ppm (target 0)'
     });
   });
 });
