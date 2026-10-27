@@ -97,6 +97,25 @@ describe('recipes page', () => {
     expect(listRecipes(db)).toEqual([]);
   });
 
+  it('saveRecipe with an id updates in place and rematches; each def error reaches the form verbatim', async () => {
+    const reading = JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings LIMIT 1`).get() as { reading: string }).reading) as PourReading;
+    const def = draftFromReadings([reading], [null]);
+    const id = (await actions.saveRecipe(event(true, '', { name: 'Edit me', tags: '', definition: JSON.stringify(def) }))) as { saved: number };
+    const save = (d: unknown, extra: Record<string, string> = {}) =>
+      actions.saveRecipe(event(true, '', { id: String(id.saved), name: 'Edited', tags: 'ed', definition: JSON.stringify(d), ...extra }));
+    expect(await save(def)).toMatchObject({ saved: id.saved });
+    expect(listRecipes(db)).toMatchObject([{ id: id.saved, name: 'Edited', tags: ['ed'] }]);
+    const bad = (d: unknown, error: string) => expect(save(d)).resolves.toMatchObject({ status: 400, data: { error } });
+    await bad({ ...def, pours: [] }, 'Add at least one pour');
+    await bad({ ...def, pours: def.pours.map((p, i) => ({ ...p, bloom: i === 1 })) }, 'Blooms come first');
+    await bad({ ...def, pourCount: { min: 1, max: 1 } }, 'Pour count range must include the pours listed');
+    await bad({ ...def, ratio: { target: 40, tol: 0.7 } }, 'Ratio must be between 1:5 and 1:30');
+    await bad({ ...def, tempC: 120 }, 'Temperature must be 60-100 °C');
+    await bad({ v: 2 }, 'Invalid recipe');
+    expect(listRecipes(db)).toHaveLength(1);
+    await actions.deleteRecipe(event(true, '', { id: String(id.saved) }));
+  });
+
   it('dismiss hides a structure, undismiss brings it back', async () => {
     await actions.dismiss(event(true, '', { key }));
     let d = load(event(true, '?view=hidden')) as Data;

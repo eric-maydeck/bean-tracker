@@ -2353,6 +2353,63 @@ export const STATES: State[] = [
           expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
           expect(page.url()).toBe(before);
         }
+      },
+      {
+        // Edit on the bbs group opens the full editor: its 4 pours (2 blooms), add/remove/move, live preview, nothing focused or in the URL.
+        name: 'recipes-edit',
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          const before = page.url();
+          await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
+          const pours = page.locator('fieldset.pour');
+          await expect(pours).toHaveCount(4);
+          await expect(pours.getByLabel('Bloom', { exact: true }).and(page.locator(':checked'))).toHaveCount(2);
+          expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+          expect(page.url()).toBe(before);
+          const desc = page.getByTestId('editor-description');
+          await page.getByRole('button', { name: 'Add pour' }).click();
+          await expect(pours).toHaveCount(5);
+          await pours.nth(4).getByRole('button', { name: 'Remove' }).click();
+          await expect(pours).toHaveCount(4);
+          // Move up on pour 3 swaps rows 2 and 3 (their Speed values trade places).
+          const speeds = () => pours.getByLabel('Speed').evaluateAll((els) => els.map((e) => (e as HTMLSelectElement).value));
+          const grams = () => pours.getByLabel('Grams').evaluateAll((els) => els.map((e) => (e as HTMLInputElement).value));
+          const g0 = await grams();
+          const s0 = await speeds();
+          await pours.nth(2).getByRole('button', { name: 'Move up' }).click();
+          const g1 = await grams();
+          expect([g1[1], g1[2]]).toEqual([g0[2], g0[1]]);
+          expect(await speeds()).toEqual([s0[0], s0[2], s0[1], s0[3]]);
+          // A number field by keyboard: Ratio 1: becomes 15.5 and the description follows.
+          const ratio = page.getByLabel('Ratio 1:', { exact: true });
+          await ratio.focus();
+          await page.keyboard.press('ControlOrMeta+a');
+          await page.keyboard.type('15.5');
+          await expect(desc).toContainText('~1:15.5');
+          // Speed to Fast on the last pour changes the wording.
+          const descBefore = await desc.textContent();
+          await pours.nth(3).getByLabel('Speed').selectOption('fast');
+          await expect(desc).not.toHaveText(descBefore!);
+          expect(new URL(page.url()).search).toBe('');
+        }
+      },
+      {
+        // A ratio outside 1:5-1:30 is rejected with the exact message; the editor stays open and nothing is saved.
+        name: 'recipes-edit-error', viewports: 'two' as const,
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
+          const ratio = page.getByLabel('Ratio 1:', { exact: true });
+          await ratio.focus();
+          await page.keyboard.press('ControlOrMeta+a');
+          await page.keyboard.type('40');
+          await page.getByLabel('Name', { exact: true }).fill('Should not save');
+          await page.getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(page.getByRole('alert')).toHaveText('Ratio must be between 1:5 and 1:30');
+          await expect(page.locator('fieldset.pour')).toHaveCount(4);
+          await expect(panel(page, 'Your recipes').locator('li.item')).toHaveCount(1);
+          await expect(panel(page, 'Your recipes')).not.toContainText('Should not save');
+        }
       }
     ];
   })(),

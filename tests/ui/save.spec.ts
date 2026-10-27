@@ -313,3 +313,44 @@ test.describe('favorite grind: other bag', () => {
     });
   });
 });
+
+test.describe('recipes', { tag: '@account' }, () => {
+  test.afterAll(() => {
+    const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
+    db.prepare(`DELETE FROM recipes WHERE name = 'Test joocy'`).run();
+    db.prepare(`DELETE FROM brew_recipe_matches WHERE recipe_id NOT IN (SELECT id FROM recipes)`).run(); // the app's rematchBrews, for a test that died midway
+    db.close();
+  });
+
+  test('recipes-save-edit-delete: name a group, edit its tags, delete it', async ({ page }) => {
+    const mine = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Your recipes', level: 2 }) });
+    const found = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Found in your brews', level: 2 }) });
+    const joocy = mine.locator('li.item').filter({ hasText: 'Test joocy' });
+    await gotoReady(page, '/account/recipes');
+    const bbj = found.locator('li.item').filter({ hasText: 'Mostly' }).nth(1); // bbs is first, bbj second
+    const before = await found.locator('li.item').count();
+    await bbj.getByRole('button', { name: 'Name & save' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Test joocy');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(joocy).toHaveCount(1);
+    await expect(found.locator('li.item')).toHaveCount(before - 1);
+    // The 10 bbj brews are all accounted for: logged from notes + look like it (the seed has no bbj notes tagged "Test joocy").
+    await expect(joocy).toContainText('0 from notes · 10 look like it');
+    await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByLabel('Note tags').fill('TJ');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByLabel('Note tags')).toHaveCount(0);
+    await page.reload();
+    await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
+    await expect(page.getByLabel('Note tags')).toHaveValue('TJ');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await joocy.getByRole('button', { name: 'Delete', exact: true }).click();
+    const confirm = joocy.locator('form.panel');
+    await confirm.getByRole('button', { name: 'Cancel' }).click();
+    await expect(joocy).toHaveCount(1);
+    await joocy.getByRole('button', { name: 'Delete', exact: true }).click();
+    await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(joocy).toHaveCount(0);
+    await expect(found.locator('li.item')).toHaveCount(before);
+  });
+});

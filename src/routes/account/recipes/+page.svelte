@@ -2,12 +2,15 @@
   import { enhance } from '$app/forms';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
+  import RecipeEditor from './RecipeEditor.svelte';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
 
   // Inline editor state: never in the URL.
   let naming = $state<string | null>(null);
   let deleting = $state<number | null>(null);
+  let editing = $state<string | null>(null); // 'r<id>' or 's<structure key>'
+  const formError = $derived(form && 'error' in form && form.error ? String(form.error) : undefined);
 
   const avg = (r: number | null) => (r == null ? 'no ratings' : `avg ${r.toFixed(1)}`);
   // The link that opens an item's brews, or closes them when it is already open.
@@ -72,7 +75,7 @@
   {/if}
 {/snippet}
 
-{#if form && 'error' in form && form.error && naming === null}
+{#if form && 'error' in form && form.error && naming === null && editing === null}
   <p class="badge badge-urgent" role="alert">{form.error}</p>
 {/if}
 
@@ -112,8 +115,12 @@
             </div>
             <div class="row-actions" data-button-row>
               <a class="button button-secondary" href={brewsHref({ recipe: r.recipe.id })} data-sveltekit-noscroll>See brews</a>
+              <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
               <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
             </div>
+            {#if editing === 'r' + r.recipe.id}
+              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} error={formError} ondone={() => (editing = null)} />
+            {/if}
             {#if deleting === r.recipe.id}
               <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ update }) => { deleting = null; await update(); }} class="panel">
                 <p>Delete {r.recipe.name}? Its brews stay; they just lose the label.</p>
@@ -162,11 +169,15 @@
             <div class="row-actions" data-button-row>
               <button class="button" type="button" onclick={() => (naming = g.key)}>Name &amp; save</button>
               <a class="button button-secondary" href={brewsHref({ key: g.key })} data-sveltekit-noscroll>See brews</a>
+              <button class="button button-secondary" type="button" onclick={() => (editing = 's' + g.key)}>Edit</button>
               <form method="POST" action="?/dismiss" use:enhance class="inline">
                 <input type="hidden" name="key" value={g.key} />
                 <button class="button button-ghost" type="submit">Not a recipe</button>
               </form>
             </div>
+            {#if editing === 's' + g.key}
+              <RecipeEditor name={g.suggestedName ?? ''} tags={g.suggestedPhrase ? [g.suggestedPhrase] : []} def={g.draft} error={formError} ondone={() => (editing = null)} />
+            {/if}
             {#if naming === g.key}
               <form
                 method="POST"
