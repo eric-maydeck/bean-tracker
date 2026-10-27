@@ -265,7 +265,7 @@ test.describe('favorite grind: other bag', () => {
       await gotoReady(page, `${ELDORADO}?pv=${pv}`);
       const a = anchor(page, pv), tip = page.locator('.cell-tip:popover-open');
       await expect(a).toHaveText(label[pv]);
-      expect(await a.evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length; }), 'one line of text').toBe(1);
+      expect(await a.evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e.querySelector('.pill') ?? e); return r.getClientRects().length; }), 'one line of text').toBe(1);
       await checkLayout(page);
       await a.tap();
       await expect(tip).toBeVisible();
@@ -288,6 +288,7 @@ test.describe('favorite grind: other bag', () => {
     test('hover opens, the mouse can cross onto the tip, a click pins it, Escape or a click elsewhere closes it', async ({ page }) => {
       await gotoReady(page, `${ELDORADO}?pv=b`);
       const a = anchor(page, 'b'), tip = page.locator('.cell-tip:popover-open');
+      expect(await page.locator('[data-testid="favorite-grind"] li').evaluateAll((lis) => lis.map((li) => new Set([...li.querySelectorAll('.seg')].map((e) => Math.round(e.getBoundingClientRect().top))).size)), 'chip: line stays on one row').toEqual([1]);
       await a.hover();
       await expect(tip).toBeVisible();
       await expectTipInView(page, tip);

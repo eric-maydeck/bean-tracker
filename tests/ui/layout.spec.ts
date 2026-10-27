@@ -1111,6 +1111,9 @@ export const STATES: State[] = [
       const grid = page.locator('.timing-grid');
       const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
       const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
+      expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
+      const segTops = await block.locator('li').evaluateAll((lis) => lis.map((li) => new Set([...li.querySelectorAll('.seg')].map((e) => Math.round(e.getBoundingClientRect().top))).size));
+      if (page.viewportSize()!.width >= 1280) expect(segTops, 'each line stays on one row').toEqual([1, 1]);
       if (b.x > roast.x + 20) {
         expect(Math.abs(b.y - roast.y), 'block top = first row top').toBeLessThan(2);
         expect(b.y + b.height, 'block spans both rows').toBeGreaterThanOrEqual(Math.max(rest.y + rest.height, before.y + before.height) - 2);

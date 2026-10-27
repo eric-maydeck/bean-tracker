@@ -37,7 +37,7 @@
   {#if g.other}
     {@const o = g.other}
     <button type="button" class="fg-other" class:chip aria-label="Other bag: setting {o.setting ?? 'none'}, rating {o.rating}" onpointerenter={(e) => hover(e, o)}
-      onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()} onclick={(e) => click(e, o)}>{#if chip}↑ {o.rating}{:else}Other bag: {o.setting ?? '—'} · {o.rating}{/if}</button>
+      onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()} onclick={(e) => click(e, o)}>{#if chip}<span class="pill">↑ {o.rating}</span>{:else}Other bag: {o.setting ?? '—'} · {o.rating}{/if}</button>
   {/if}
 {/snippet}
 
@@ -48,7 +48,7 @@
       <li>
         <strong class="g">{g.grinder}</strong>
         {#if g.best}
-          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {g.best.rating}{#if g.best.dripper}{' '}({g.best.dripper}){/if}{#if pv === 'b'}{' '}{@render other(g, true)}{/if}</span>
+          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {g.best.rating}{#if pv === 'b'}{' '}{@render other(g, true)}{/if}</span>{#if g.best.dripper}{' '}<span class="seg">({g.best.dripper})</span>{/if}
         {:else}
           <span class="seg">· {g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
@@ -100,11 +100,14 @@
   }
   .fg-other.chip {
     display: inline-block;
+    text-decoration: none;
+  }
+  .pill {
+    display: inline-block;
     padding: 0 0.4rem;
     border: 1px solid var(--color-border);
     border-radius: 999px;
     font-size: 0.75em;
-    text-decoration: none;
     color: var(--color-accent);
     white-space: nowrap;
   }
@@ -120,11 +123,13 @@
       min-height: 44px;
       margin-block: -0.65rem;
     }
+    /* The chip's 44px area is the transparent button around the small pill. */
     .fg-other.chip {
       display: inline-flex;
+      align-items: center;
       justify-content: center;
       min-width: 44px;
-      margin-block: -1rem;
+      margin: -10px -6px;
       vertical-align: middle;
     }
   }

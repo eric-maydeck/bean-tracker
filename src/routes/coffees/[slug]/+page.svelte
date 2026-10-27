@@ -437,14 +437,14 @@
             </span>
           </div>
           <div class="stat">
+            <span class="stat-label">Drink after</span>
+            <span class="stat-value">{data.coffee.drink_after ?? '—'}</span>
+          </div>
+          <div class="stat">
             <span class="stat-label">Recommended rest</span>
             <span class="stat-value">
               {data.coffee.rest_days_low ?? '—'}–{data.coffee.rest_days_high ?? '—'} days
             </span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Drink after</span>
-            <span class="stat-value">{data.coffee.drink_after ?? '—'}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Drink before</span>
@@ -532,30 +532,31 @@
 <AddedToast bind:slug={addedSlug} />
 
 <style>
-  /* Timing: wide, an explicit grid: Roast date | Days since roast over Recommended rest | Drink after over Drink
-     before | the Favorite grind block over both rows of the last column (children 1-5 are those stats, in that
-     DOM order; the Frozen/Opened/Archived extras flow after them, the first into the cell under Roast date).
-     Narrow, the plain stat-grid, with the block last at full width. */
+  /* Timing: children 1-5 are Roast date, Days since roast, Drink after, Recommended rest, Drink before, so two columns
+     read Roast | Days / After | Rest / Before. From 30rem, three columns with Recommended rest under Days since roast and
+     Drink before under Drink after (the cell under Roast date takes the first Frozen/Opened/Archived extra). From 44rem
+     the Favorite grind block takes the last column over both rows. Below that it is last, at full width. */
   .timing {
     container-type: inline-size;
   }
   .timing-grid > :global(.fave) {
     grid-column: 1 / -1;
   }
+  @container (min-width: 30rem) {
+    .timing-grid {
+      grid-template-columns: repeat(3, minmax(7.5rem, 1fr));
+    }
+    .timing-grid > :nth-child(1) { grid-area: 1 / 1; }
+    .timing-grid > :nth-child(2) { grid-area: 1 / 2; }
+    .timing-grid > :nth-child(3) { grid-area: 1 / 3; }
+    .timing-grid > :nth-child(4) { grid-area: 2 / 2; }
+    .timing-grid > :nth-child(5) { grid-area: 2 / 3; }
+  }
   @container (min-width: 44rem) {
     .has-fave {
       grid-template-columns: repeat(3, minmax(7.5rem, 1fr)) minmax(15rem, 1.8fr);
     }
-    .has-fave > :nth-child(1) { grid-area: 1 / 1; }
-    .has-fave > :nth-child(2) { grid-area: 1 / 2; }
-    .has-fave > :nth-child(3) { grid-area: 2 / 2; }
-    .has-fave > :nth-child(4) { grid-area: 1 / 3; }
-    .has-fave > :nth-child(5) { grid-area: 2 / 3; }
     .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2; }
-  }
-  /* Four stats: auto-fit so a wide screen has no blank fifth track. */
-  [data-section='like'] .stat-grid {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
   .like-none {
     margin: 0;
