@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Locator } from '@playwright/test';
-import { gotoReady } from './ready';
+import { gotoReady, reloadReady } from './ready';
 import { DatabaseSync } from 'node:sqlite';
 import { VIEWPORTS } from './viewports';
 import { checkLayout, expectStatRowsFull, expectTipInView } from './checkLayout';
@@ -27,6 +27,7 @@ test.afterAll(() => {
   db.prepare(`DELETE FROM roaster_images WHERE roaster = 'Hydrangea'`).run();
   db.prepare(`UPDATE coffees SET processing = ? WHERE coffee_name = ?`).run(aProcessing.processing, A);
   db.prepare(`DELETE FROM app_meta WHERE key = 'household_size'`).run();
+  db.prepare(`DELETE FROM app_meta WHERE key LIKE 'visualizer_upload_password_%'`).run();
   db.close();
 });
 
@@ -312,4 +313,26 @@ test.describe('favorite grind: other bag', () => {
       await expect(tip, 'a click elsewhere closes it').toBeHidden();
     });
   });
+});
+
+test('account-upload-password', { tag: '@stats' }, async ({ page }) => {
+  await gotoReady(page, '/account');
+  await page.getByRole('button', { name: 'Create upload password' }).click();
+  const code = page.locator('p > code').last();
+  await expect(code).toHaveText(/^.{24}$/);
+  const pw = (await code.textContent())!;
+  const basic = (p: string) => ({ Authorization: 'Basic ' + Buffer.from('x:' + p).toString('base64') });
+  expect((await page.request.get('/api/me', { headers: basic(pw) })).status()).toBe(200);
+  await reloadReady(page);
+  await expect(page.getByText(pw)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Replace upload password' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  expect((await page.request.get('/api/me', { headers: basic(pw) })).status()).toBe(200);
+  await page.getByRole('button', { name: 'Replace upload password' }).click();
+  await checkLayout(page);
+  await page.getByRole('button', { name: 'Replace', exact: true }).click();
+  const next = (await page.locator('p > code').last().textContent())!;
+  await expect(page.locator('p > code').last()).not.toHaveText(pw);
+  expect((await page.request.get('/api/me', { headers: basic(pw) })).status()).toBe(401);
+  expect((await page.request.get('/api/me', { headers: basic(next) })).status()).toBe(200);
 });

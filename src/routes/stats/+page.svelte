@@ -791,36 +791,7 @@
       : 'never'}
   </p>
   {#if data.isAdmin}
-    <form method="POST" action="?/importBeanConqueror&tab=bq" enctype="multipart/form-data" use:enhance>
-      <label>
-        Bean Conqueror export (.zip)
-        <!-- The server drops bodies over 20 MB (BODY_SIZE_LIMIT) with a bare error: stop them here.
-             Must match MAX_UPLOAD_BYTES in src/lib/server/beanConquerorJson.ts. -->
-        <input
-          type="file"
-          name="file"
-          accept=".zip"
-          required
-          onchange={(e) => {
-            const input = e.currentTarget;
-            input.setCustomValidity(
-              (input.files?.[0]?.size ?? 0) > 20 * 1024 * 1024
-                ? 'Over 20 MB: upload Beanconqueror.zip (the regular export, not the one with photos)'
-                : ''
-            );
-          }}
-        />
-      </label>
-      <button class="button" type="submit">Import</button>
-    </form>
-    {#if form?.error}
-      <p class="badge badge-urgent"><CoffeeName text={form.error} /></p>
-
-    {:else if form && 'imported' in form && form.imported}
-      <p class="text-muted">
-        Imported {form.imported.beans} beans, {form.imported.brews} brews, {form.imported.waters} waters.
-      </p>
-    {/if}
+    <p class="text-muted">Import moved to <a href="/account">Account</a>.</p>
   {/if}
 
   {#snippet candidateActions(bean: UnmatchedBean)}

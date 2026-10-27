@@ -2234,13 +2234,47 @@ export const STATES: State[] = [
     }
   },
   {
+    name: 'account',
+    path: () => '/account',
+    act: async (page) => {
+      await expect(page.getByText('Flow data for 1 of 3 brews')).toBeVisible();
+      await expect(page.getByText('1 waiting for a Bean Conqueror import')).toBeVisible();
+      await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
+      await expect(page.getByRole('button', { name: 'Replace upload password' })).toBeHidden();
+      await expect(page.getByRole('button', { name: 'Create upload password' })).toBeVisible();
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
-    name: 'stats-import-too-big', viewports: 'two',
-    path: () => '/stats?tab=bq',
+    name: 'account-zip-too-big', viewports: 'two',
+    path: () => '/account',
     act: async (page) => {
       const input = page.locator('input[name="file"]');
       await input.setInputFiles({ name: 'Beanconqueror.zip', mimeType: 'application/zip', buffer: Buffer.alloc(21 * 1024 * 1024) });
       expect(await input.evaluate((el: HTMLInputElement) => el.validationMessage)).toContain('Over 20 MB');
+    }
+  },
+  {
+    // The import form moved to Account; /stats keeps a pointer.
+    name: 'stats-bq-import-link', viewports: 'two',
+    path: () => '/stats?tab=bq',
+    act: async (page) => {
+      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account');
+      await expect(page.locator('input[name="file"]')).toHaveCount(0);
+    }
+  },
+  {
+    // Desktop: the nav link; phone: the More panel. Each lands on /account.
+    name: 'account-nav', viewports: 'two',
+    path: () => '/coffees',
+    act: async (page) => {
+      if (isPhone(page)) {
+        await page.getByRole('button', { name: 'More' }).click();
+        await page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' }).click();
+      } else {
+        await page.locator('.nav-links').getByRole('link', { name: 'Account' }).click();
+      }
+      await expect(page).toHaveURL(/\/account$/);
     }
   },
   ...(['overview', 'favorites', 'brewing', 'economics'] as const).map((tab) => ({
@@ -9055,6 +9089,11 @@ for (const state of STATES) {
 // Public cards (signed out) with only a roaster default show it, alt "<roaster> logo".
 test.describe('signed out', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
+  test('account-signed-out', async ({ page }) => {
+    await page.goto('/account');
+    await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);
+    await expect(page.getByRole('link', { name: 'Account', exact: true })).toHaveCount(0);
+  });
   test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');
     const img = page.getByRole('img', { name: 'Moonwake logo', exact: true });

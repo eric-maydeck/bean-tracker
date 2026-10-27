@@ -1,0 +1,93 @@
+import { describe, it, expect } from 'vitest';
+import { isActionFailure } from '@sveltejs/kit';
+
+// Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
+process.env.DB_PATH = ':memory:';
+
+import { getDb } from '$lib/server/db';
+import ExcelJS from 'exceljs';
+import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
+import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
+import { verifyUploadAuth } from '$lib/server/visualizerUpload';
+import { actions, load } from './+page.server';
+
+const event = (isAdmin: boolean) =>
+  ({ locals: { isAdmin }, url: new URL('https://beans.example/account'), request: new Request('http://localhost/account', { method: 'POST', body: new FormData() }) }) as never;
+
+describe('account load', () => {
+  it('redirects a signed-out visitor to sign in', () => {
+    try {
+      load(event(false));
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toMatchObject({ status: 303, location: '/login?redirectTo=%2Faccount' });
+    }
+  });
+
+  it('returns the upload status and this request\'s origin for an admin', () => {
+    const db = getDb();
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_uuid, has_flow_profile, bc_created_at, imported_at) VALUES ('11111111-1111-1111-1111-111111111111', 1, '2026-10-01T00:00:00Z', 'x')`).run();
+    db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES ('11111111-1111-1111-1111-111111111111', 1, 100, 1, '[1]', 'x'), ('22222222-2222-2222-2222-222222222222', 1, 100, 1, '[1]', 'x')`).run();
+    const data = load(event(true)) as { status: Record<string, unknown>; uploadUrl: string; lastImportedAt: string | null };
+    expect(data.status).toMatchObject({ flows: 2, waiting: 1, brewsWithFlow: 1, hasPassword: false });
+    expect(data.uploadUrl).toBe('https://beans.example/');
+    expect(data.lastImportedAt).toBeNull();
+    db.prepare(`DELETE FROM beanconqueror_brews`).run(); // the import test below counts rows
+  });
+});
+
+describe('?/createUploadPassword', () => {
+  it('rejects a signed-out request with 401', async () => {
+    await expect(actions.createUploadPassword(event(false))).rejects.toMatchObject({ status: 401 });
+    await expect(actions.importBeanConqueror(event(false))).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('returns a 24-character password that the upload check accepts', async () => {
+    const r = (await actions.createUploadPassword(event(true))) as { uploadPassword: string };
+    expect(r.uploadPassword).toHaveLength(24);
+    const header = 'Basic ' + Buffer.from(`bean-tracker:${r.uploadPassword}`).toString('base64');
+    expect(verifyUploadAuth(getDb(), header)).toBe(true);
+    expect(((load(event(true)) as { status: { hasPassword: boolean } }).status.hasPassword)).toBe(true);
+  });
+});
+
+function upload(bytes: Uint8Array, name = 'Beanconqueror.zip') {
+  const body = new FormData();
+  body.set('file', new File([bytes as BlobPart], name));
+  return { request: new Request('http://localhost/account', { method: 'POST', body }), locals: { isAdmin: true } } as never;
+}
+function failure(result: unknown) {
+  expect(isActionFailure(result)).toBe(true);
+  return isActionFailure(result) ? { status: result.status, data: result.data } : null;
+}
+
+describe('?/importBeanConqueror', () => {
+  it('rejects an .xlsx export with a clear message', async () => {
+    const wb = new ExcelJS.Workbook();
+    wb.addWorksheet('Beans').addRow(['Name']);
+    const xlsx = new Uint8Array(await wb.xlsx.writeBuffer());
+    const f = failure(await actions.importBeanConqueror(upload(xlsx, 'export.xlsx')));
+    expect(f?.status).toBe(400);
+    expect((f?.data as unknown as { error: string }).error).toMatch(/isn't a Bean Conqueror export/);
+  });
+
+  it('imports the .zip export and reports what it read', async () => {
+    expect(await actions.importBeanConqueror(upload(await fixtureZip()))).toEqual({
+      success: true, imported: { beans: 10, brews: 68, waters: 17 }
+    });
+    const n = getDb().prepare(`SELECT COUNT(*) n FROM beanconqueror_brews WHERE bc_uuid IS NOT NULL`).get() as { n: number };
+    expect(n.n).toBe(68);
+  });
+
+  it('400s on a file that is not a zip', async () => {
+    expect(failure(await actions.importBeanConqueror(upload(new TextEncoder().encode('hi'), 'x.txt')))).toEqual({
+      status: 400, data: { error: 'Could not read that file as a .zip' }
+    });
+  });
+
+  it('400s on an upload over 20 MB without reading it', async () => {
+    const f = failure(await actions.importBeanConqueror(upload(new Uint8Array(MAX_UPLOAD_BYTES + 1))));
+    expect(f?.status).toBe(400);
+    expect((f?.data as unknown as { error: string }).error).toMatch(/over 20 MB/);
+  });
+});

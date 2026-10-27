@@ -262,6 +262,14 @@ db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
+// Account page: 3 brews with flow data, one flow stored for the first and one for a brew not imported yet ("waiting").
+const FLOW_UUIDS = ['aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000003'];
+FLOW_UUIDS.forEach((u, i) => db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = ?, has_flow_profile = 1 WHERE id = ?`).run(u, i + 1));
+const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, 100, 3, '[0,1,2]', ?)`);
+flow.run(FLOW_UUIDS[0], now);
+flow.run('bbbbbbbb-0000-4000-8000-000000000009', now);
+db.prepare(`INSERT INTO app_meta (key, value) VALUES ('visualizer_last_upload_at', ?)`).run(now);
+
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug, skip: skipSlug },

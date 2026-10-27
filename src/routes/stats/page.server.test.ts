@@ -6,9 +6,6 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb, getHouseholdSize, setHouseholdSize } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import ExcelJS from 'exceljs';
-import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
-import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
 import { actions, load } from './+page.server';
 
 function post(fields: Record<string, string>, isAdmin = true) {
@@ -29,7 +26,7 @@ function addBeanAndCoffee(name: string) {
 }
 
 describe('stats actions: auth', () => {
-  for (const name of ['linkBeanConqueror', 'create', 'importBeanConqueror', 'updateHouseholdSize'] as const) {
+  for (const name of ['linkBeanConqueror', 'create', 'updateHouseholdSize'] as const) {
     it(`${name} rejects a signed-out request with 401`, async () => {
       await expect(actions[name](post({}, false))).rejects.toMatchObject({ status: 401 });
     });
@@ -52,47 +49,6 @@ describe('?/linkBeanConqueror', () => {
   it('400s on a missing or bad coffee id', async () => {
     const r = await actions.linkBeanConqueror(post({ beanId: 'bean-x', coffeeId: 'abc' }));
     expect(isActionFailure(r) && r.status).toBe(400);
-  });
-});
-
-function upload(bytes: Uint8Array, name = 'Beanconqueror.zip') {
-  const body = new FormData();
-  body.set('file', new File([bytes as BlobPart], name));
-  return { request: new Request('http://localhost/stats', { method: 'POST', body }), locals: { isAdmin: true } } as never;
-}
-function failure(result: unknown) {
-  expect(isActionFailure(result)).toBe(true);
-  return isActionFailure(result) ? { status: result.status, data: result.data } : null;
-}
-
-describe('?/importBeanConqueror', () => {
-  it('rejects an .xlsx export with a clear message', async () => {
-    const wb = new ExcelJS.Workbook();
-    wb.addWorksheet('Beans').addRow(['Name']);
-    const xlsx = new Uint8Array(await wb.xlsx.writeBuffer());
-    const f = failure(await actions.importBeanConqueror(upload(xlsx, 'export.xlsx')));
-    expect(f?.status).toBe(400);
-    expect((f?.data as unknown as { error: string }).error).toMatch(/isn't a Bean Conqueror export/);
-  });
-
-  it('imports the .zip export and reports what it read', async () => {
-    expect(await actions.importBeanConqueror(upload(await fixtureZip()))).toEqual({
-      success: true, imported: { beans: 10, brews: 68, waters: 17 }
-    });
-    const n = getDb().prepare(`SELECT COUNT(*) n FROM beanconqueror_brews WHERE bc_uuid IS NOT NULL`).get() as { n: number };
-    expect(n.n).toBe(68);
-  });
-
-  it('400s on a file that is not a zip', async () => {
-    expect(failure(await actions.importBeanConqueror(upload(new TextEncoder().encode('hi'), 'x.txt')))).toEqual({
-      status: 400, data: { error: 'Could not read that file as a .zip' }
-    });
-  });
-
-  it('400s on an upload over 20 MB without reading it', async () => {
-    const f = failure(await actions.importBeanConqueror(upload(new Uint8Array(MAX_UPLOAD_BYTES + 1))));
-    expect(f?.status).toBe(400);
-    expect((f?.data as unknown as { error: string }).error).toMatch(/over 20 MB/);
   });
 });
 
