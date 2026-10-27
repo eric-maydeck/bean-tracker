@@ -425,7 +425,8 @@
 
       <section class="detail-section timing" data-section="timing">
         <h2>Timing</h2>
-        <div class="stat-grid timing-grid" class:has-fave={data.favoriteGrind.length}>
+        <div class="stat-grid timing-grid" class:has-fave={data.favoriteGrind.length}
+          class:has-extra={data.coffee.frozen_start_date || data.coffee.frozen_end_date || data.coffee.opened_date || (data.coffee.status === 'archive' && data.coffee.moved_date)}>
           <div class="stat">
             <span class="stat-label">Roast date</span>
             <span class="stat-value">{data.coffee.roast_date ?? '—'}</span>
@@ -534,8 +535,8 @@
 <style>
   /* Timing: children 1-5 are Roast date, Days since roast, Drink after, Recommended rest, Drink before, so two columns
      read Roast | Days / After | Rest / Before. From 30rem, three columns with Recommended rest under Days since roast and
-     Drink before under Drink after (the cell under Roast date takes the first Frozen/Opened/Archived extra). From 44rem
-     the Favorite grind block takes the last column over both rows. Below that it is last, at full width. */
+     Drink before under Drink after (the cell under Roast date takes the first Frozen/Opened/Archived extra). From 48rem
+     the Favorite grind block takes the 4th column on over both rows. Below that it is last, at full width. */
   .timing {
     container-type: inline-size;
   }
@@ -552,11 +553,22 @@
     .timing-grid > :nth-child(4) { grid-area: 2 / 2; }
     .timing-grid > :nth-child(5) { grid-area: 2 / 3; }
   }
-  @container (min-width: 44rem) {
+  /* From 48rem the facts grid above has 5+ columns (auto-fill, 140px); Timing uses the same tracks so the columns line
+     up, with the Favorite grind block over both rows from the 4th column to the end. */
+  @container (min-width: 48rem) {
     .has-fave {
-      grid-template-columns: repeat(3, max-content) minmax(0, 1fr); /* the dates size to their content; the favorite column takes the rest */
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     }
-    .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2; }
+    /* The block may be taller than the dates: the last row absorbs the extra height (an extra stat sits in the third row),
+       so the dates above stay together. */
+    .has-fave {
+      grid-template-rows: auto 1fr;
+    }
+    .has-fave.has-extra {
+      grid-template-rows: auto auto 1fr;
+    }
+    .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2 / -1; }
+    .has-extra > :global(.fave) { grid-area: 1 / 4 / span 3 / -1; }
   }
   .like-none {
     margin: 0;

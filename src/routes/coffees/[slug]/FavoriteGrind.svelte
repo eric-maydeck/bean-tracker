@@ -47,12 +47,14 @@
   <ul class="stat-value fave-list">
     {#each items as g (g.grinder)}
       <li>
-        <strong class="g">{g.grinder}</strong>&nbsp;·{' '}
+        <strong class="g">{g.grinder}</strong>
+        <div class="data">
         {#if g.best}
           <span class="seg"><TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} />&nbsp;·</span>{' '}<span class="seg"><TextTip label={String(g.best.rating)} tip={RATING_TIP} />{#if g.best.dripper}&nbsp;·{/if}</span>{#if g.best.dripper}{' '}<span class="seg">{g.best.dripper}{#if g.best.filter}&nbsp;·{/if}</span>{#if g.best.filter}{' '}<span class="seg">{g.best.filter}</span>{/if}{/if}
         {:else}
           <span class="seg">{g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
+        </div>
         {#if g.other}<div class="own">{@render other(g)}</div>{/if}
       </li>
     {/each}
@@ -75,17 +77,20 @@
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.75rem;
   }
-  /* A "·" ends the segment before it (never starts a line); a wrapped line hangs 1rem in from the grinder name. */
+  /* Each grinder is a group: its name as a bold sub-header, then its data line (and the other-bag link) flush under it. */
   .fave-list li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
     font-weight: 400;
     overflow-wrap: anywhere;
+  }
+  /* A "·" ends the segment before it (never starts a line); a wrapped data line hangs 1rem in. */
+  .data {
     padding-left: 1rem;
     text-indent: -1rem;
-  }
-  .own {
-    text-indent: 0;
   }
   .g {
     font-weight: 600;

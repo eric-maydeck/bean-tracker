@@ -1107,7 +1107,7 @@ export const STATES: State[] = [
   { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,
     act: async (page, s) => {
       const block = page.locator('[data-testid="favorite-grind"]');
-      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\)\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/, /^ZP6 Special\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/]);
+      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\)\s*.+\s·\s\d+(\.\d)?(\s·|$)/, /^ZP6 Special\s*.+\s·\s\d+(\.\d)?(\s·|$)/]);
       const grid = page.locator('.timing-grid');
       const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
       const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
@@ -1121,6 +1121,10 @@ export const STATES: State[] = [
         expect(b.x + b.width, 'block reaches the grid right').toBeGreaterThan(g.x + g.width - 2);
         expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
         expect(Math.abs(before.x - after.x) < 2 && before.y > after.y, 'Drink before under Drink after').toBe(true);
+        // The columns line up with the facts grid above (Origin, Roast level, Processing, Amount), the block starting at the 4th.
+        const fx = async (t: string) => (await page.locator('.stat-grid .stat', { hasText: t }).first().boundingBox())!.x;
+        for (const [x, t] of [[roast.x, 'Origin'], [days.x, 'Roast level'], [after.x, 'Processing'], [b.x, 'Amount']] as const)
+          expect(Math.abs(x - (await fx(t))), `Timing column of ${t} lines up with the facts grid`).toBeLessThan(1.5);
       } else {
         expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);
         expect(Math.abs(b.x - g.x) < 2 && Math.abs(b.width - g.width) < 2, 'full width').toBe(true);
@@ -1158,7 +1162,7 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await tapOn(page.locator('.timing h2'));
       await expect(open).toHaveCount(0);
-      // The real prod row (A4Z, 1.4.2, 8.5, Alpha Switch · Cafec Abaca) is one line at w1280.
+      // The real prod row (A4Z, 1.4.2, 8.5, Alpha Switch · Cafec Abaca): its header and its data line are each one line at w1280.
       const oneLine = await block.locator('ul').evaluate((ul) => {
         const li = ul.querySelector('li')!.cloneNode(true) as HTMLElement, segs = li.querySelectorAll('.seg');
         segs[0].querySelector('.text-tip')!.textContent = '1.4.2';
@@ -1166,11 +1170,12 @@ export const STATES: State[] = [
         segs[2].textContent = 'Alpha Switch\u00a0·';
         segs[3].textContent = 'Cafec Abaca';
         ul.append(li);
-        const h = li.getBoundingClientRect().height, lh = parseFloat(getComputedStyle(li).lineHeight === 'normal' ? getComputedStyle(li).fontSize : getComputedStyle(li).lineHeight);
+        const one = (e: Element) => { const cs = getComputedStyle(e), lh = parseFloat(cs.lineHeight === 'normal' ? cs.fontSize : cs.lineHeight); return e.getBoundingClientRect().height < 1.5 * lh; };
+        const out = [one(li.querySelector('.g')!), one(li.querySelector('.data')!)];
         li.remove();
-        return h < 1.5 * lh;
+        return out;
       });
-      if (page.viewportSize()!.width >= 1280) expect(oneLine, 'A4Z · 1.4.2 · 8.5 · Alpha Switch · Cafec Abaca on one line').toBe(true);
+      if (page.viewportSize()!.width >= 1280) expect(oneLine, 'header and data line: one line each').toEqual([true, true]);
       // Any grinder count and name length: six grinders, one with a very long name and dripper, wrap without overflow.
       await block.locator('ul').evaluate((ul) => {
         const li = ul.querySelector('li')!;
@@ -1180,9 +1185,9 @@ export const STATES: State[] = [
         segs[2].textContent = 'An Extraordinarily Long Dripper\u00a0·';
         segs[3].textContent = 'Name Of Many Words';
       });
-      // A wrapped line never starts with "·", and every continuation line hangs in from the grinder name.
-      const lines = await block.locator('li').evaluateAll((lis) => lis.flatMap((li) => {
-        const out: string[] = [], w = document.createTreeWalker(li, NodeFilter.SHOW_TEXT), left = li.getBoundingClientRect().left;
+      // A wrapped data line never starts with "·", and its continuation lines hang in from the first.
+      const lines = await block.locator('.data').evaluateAll((ds) => ds.flatMap((d) => {
+        const out: string[] = [], w = document.createTreeWalker(d, NodeFilter.SHOW_TEXT), left = d.getBoundingClientRect().left;
         let top = NaN;
         for (let n = w.nextNode(); n; n = w.nextNode()) {
           const t = n.textContent!;
@@ -1204,7 +1209,7 @@ export const STATES: State[] = [
     } },
   { name: 'coffee-favorite-grind-single', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}`,
     act: async (page) => {
-      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special\s·\s.+\s·\s\d+(\.\d)?(\s·|$)/]);
+      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special\s*.+\s·\s\d+(\.\d)?(\s·|$)/]);
     } },
   { name: 'coffee-favorite-grind-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {
