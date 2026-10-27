@@ -258,7 +258,7 @@ test.describe('favorite grind: other bag', () => {
     db.close();
   });
   const anchor = (page: Page) => page.locator('[data-testid="favorite-grind"] .fg-other');
-  const label = /^Another bag scored higher \(4\.2 · 9\.8\)$/;
+  const label = /^Higher-rated bag$/;
 
   {
     test(`tap-tip-favorite-grind: a tap opens and pins it, a tap elsewhere closes it, See coffee goes to the bag`, async ({ page }) => {
@@ -273,7 +273,8 @@ test.describe('favorite grind: other bag', () => {
       await expect(tip.locator('.tip-title')).toHaveText('Another bag of the same coffee');
       await expect(tip.locator('dt')).toHaveText(['Grind setting', 'Rating', 'Roasted', 'Dripper', 'Brewed']);
       await expect(tip.locator('dd')).toHaveText(['4.2', '9.8', '2026-08-01', 'V60', '2026-08-10']);
-      expect((await a.boundingBox())!.y, 'under the row').toBeGreaterThan((await page.locator('[data-testid="favorite-grind"] li .seg').last().boundingBox())!.y + 10);
+      await expect(a.locator('xpath=ancestor::*[contains(@class, "data")]'), 'inline in the data line').toHaveCount(1);
+      expect(await page.locator('[data-testid="favorite-grind"] li .seg').last().evaluate((e) => e.querySelector('.fg-other') !== null), 'the last segment').toBe(true);
       await page.waitForTimeout(700);
       await expect(tip, 'still open a moment after the tap').toBeVisible();
       await page.locator('.timing h2').tap();

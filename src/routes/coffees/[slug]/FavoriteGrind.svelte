@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { FavoriteGrind, OtherBag } from '$lib/server/favoriteGrind';
   import { RATING_MAX } from '$lib/rating';
-  import { page } from '$app/state'; // PREVIEW-TEMP
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
@@ -10,7 +9,6 @@
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.
   let { items }: { items: FavoriteGrind[] } = $props();
 
-  const pv = $derived(page.url.searchParams.get('pv') === 'f2' ? 'f2' : 'f1'); // PREVIEW-TEMP: title fonts f1 (display) | f2 (sans)
   const SETTING_TIP = { title: 'Grind setting', lines: ['Grind setting of the best-rated brew on this grinder'] };
   const RATING_TIP = { title: 'Rating', lines: [`Best rating on this grinder, out of ${RATING_MAX} (Bean Conqueror's scale)`] };
   // The other bag's tip is sticky (ui-rules 54, the Spend value map's pattern): hover opens it, the mouse can cross
@@ -40,7 +38,7 @@
   {#if g.other}
     {@const o = g.other}
     <button type="button" class="fg-other" onpointerenter={(e) => hover(e, o)} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()}
-      onclick={(e) => click(e, o)}>Another bag scored higher ({o.setting ?? '—'} · {o.rating})</button>
+      onclick={(e) => click(e, o)}>Higher-rated bag</button>
   {/if}
 {/snippet}
 
@@ -48,16 +46,16 @@
   <span class="stat-label">Favorite grind setting</span>
   <ul class="stat-value fave-list">
     {#each items as g (g.grinder)}
-      <li class={pv}>
+      <li>
         <h3 class="g">{g.grinder}</h3>
         <div class="data">
         {#if g.best}
-          <span class="seg"><TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} />&nbsp;·</span>{' '}<span class="seg"><TextTip label={String(g.best.rating)} tip={RATING_TIP} />{#if g.best.dripper}&nbsp;·{/if}</span>{#if g.best.dripper}{' '}<span class="seg">{g.best.dripper}{#if g.best.filter}&nbsp;·{/if}</span>{#if g.best.filter}{' '}<span class="seg">{g.best.filter}</span>{/if}{/if}
+          <span class="seg"><TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} />&nbsp;·</span>{' '}<span class="seg"><TextTip label={String(g.best.rating)} tip={RATING_TIP} />{#if g.best.dripper || g.other}&nbsp;·{/if}</span>{#if g.best.dripper}{' '}<span class="seg">{g.best.dripper}{#if g.best.filter || g.other}&nbsp;·{/if}</span>{#if g.best.filter}{' '}<span class="seg">{g.best.filter}{#if g.other}&nbsp;·{/if}</span>{/if}{/if}
         {:else}
-          <span class="seg">{g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
+          <span class="seg">{g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings{#if g.other}&nbsp;·{/if}</span>
         {/if}
+        {#if g.other}{' '}<span class="seg">{@render other(g)}</span>{/if}
         </div>
-        {#if g.other}<div class="own">{@render other(g)}</div>{/if}
       </li>
     {/each}
   </ul>
@@ -94,19 +92,15 @@
     padding-left: 1rem;
     text-indent: -1rem;
   }
-  /* The grinder's name is a sub-heading at the data line's size (PREVIEW-TEMP: f1 the display font, f2 the sans bold). */
+  /* The grinder's name is a sub-heading at the data line's size. */
   .g {
     margin: 0;
     font-size: inherit;
-    font-weight: 600;
-    font-family: var(--font-display);
+    font-weight: 700;
+    font-family: var(--font-sans);
     color: var(--color-label);
   }
-  .f2 .g { /* PREVIEW-TEMP */
-    font-family: var(--font-sans);
-    font-weight: 700;
-  }
-  /* The other-bag link: on its own line under the row. */
+  /* The other-bag link: the data line's last segment, one unbreakable unit. */
   .fg-other {
     display: inline-block;
     max-width: 100%;
@@ -124,9 +118,6 @@
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
-  }
-  .own {
-    display: flex;
   }
   .fg-other:hover,
   .fg-other:focus-visible {
