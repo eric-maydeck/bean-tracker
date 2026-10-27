@@ -1,3 +1,30 @@
+# [1.93.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.92.0...v1.93.0) (2026-10-27)
+
+
+### Bug Fixes
+
+* **coffee:** favorite grind chip, tap target and timing order
+* **coffee:** favorite grind column widens, wraps keep dots trailing with a hanging indent
+* **coffee:** favorite grind phone tip anchors keep their natural size
+* **coffee:** restore the like-coffees grid's auto-fit lost in the timing grid rewrite
+* **coffees:** drop a deleted plan's id from the subscription filter
+* **insights:** chart keyboard stepping resumes from the last mark
+
+
+### Features
+
+* **coffee:** favorite grind drops /10, setting and rating get help tips
+* **coffee:** favorite grind entries as a header and a data line, columns align with the facts grid
+* **coffee:** favorite grind per grinder in the timing section
+* **coffee:** favorite grind setting lines as /10 with a text link for the other bag
+* **coffee:** favorite grind title in Karla 700, "Higher-rated bag" inline as the last segment
+* **coffee:** favorite grind title variants f1 and f2 at the data line's size
+* **coffee:** favorite grind title variants t1 t2 t3 for the grinder names
+* **coffee:** other-bag indicator on favorite grind, preview variants a and b
+* **insights:** keyboard and screen-reader reach for chart tip links
+* **water:** link previews show the recipe's or target's values
+* **water:** recipe and target notes in link previews carry their units
+
 # [1.92.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.91.0...v1.92.0) (2026-10-26)
 
 
