@@ -337,12 +337,15 @@ test.describe('recipes', { tag: '@account' }, () => {
     // The 10 bbj brews are all accounted for: logged from notes + look like it (the seed has no bbj notes tagged "Test joocy").
     await expect(joocy).toContainText('0 from notes · 10 look like it');
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
+    const pourCount = await page.locator('fieldset.pour').count();
     await page.getByLabel('Note tags').fill('TJ');
+    await page.getByRole('button', { name: 'Add pour' }).click(); // the pour-count range widens, so Save still validates
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByLabel('Note tags')).toHaveCount(0);
     await page.reload();
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(page.getByLabel('Note tags')).toHaveValue('TJ');
+    await expect(page.locator('fieldset.pour')).toHaveCount(pourCount + 1);
     await page.getByRole('button', { name: 'Cancel' }).click();
     await joocy.getByRole('button', { name: 'Delete', exact: true }).click();
     const confirm = joocy.locator('form.panel');

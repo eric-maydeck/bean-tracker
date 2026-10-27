@@ -44,10 +44,16 @@
       p.speed = m as 'fast' | 'slow';
     }
   }
+  // The pour-count range always includes the pours listed, so Add/Remove then Save never trips the parser.
+  const fit = () => {
+    copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
+    copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
+  };
   function add() {
     const last = copy.pours.at(-1);
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
     copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20 });
+    fit();
   }
   function move(i: number, d: -1 | 1) {
     const [a, b] = [copy.pours[i], copy.pours[i + d]];
@@ -57,7 +63,6 @@
   }
 
   // The timeline needs grams: a % pour is drawn at 100 g per 100 %.
-  const preview = $derived({ ...copy, pours: copy.pours.map((p) => ({ ...p, grams: p.grams ?? (p.share ?? 0) * 100 })) });
   // What is saved: only the fields of the chosen unit, so a stale value never lingers.
   const payload = $derived({ ...copy, pours: copy.pours.map((p) => (unit === 'g' ? { ...p, share: p.grams == null ? p.share : null } : { ...p, grams: p.share == null ? p.grams : null })) });
 </script>
@@ -101,7 +106,7 @@
         <span class="tools">
           <button class="icon-button" type="button" aria-label="Move up" disabled={i === 0} onclick={() => move(i, -1)}><Icon name="arrow-up" /></button>
           <button class="icon-button" type="button" aria-label="Move down" disabled={i === copy.pours.length - 1} onclick={() => move(i, 1)}><Icon name="arrow-down" /></button>
-          <button class="icon-button" type="button" aria-label="Remove" onclick={() => copy.pours.splice(i, 1)}><Icon name="x" /></button>
+          <button class="icon-button" type="button" aria-label="Remove" onclick={() => { copy.pours.splice(i, 1); fit(); }}><Icon name="x" /></button>
         </span>
       </div>
       <div class="grid">
@@ -146,8 +151,8 @@
   </div>
 
   <div class="grid">
-    <div class="form-field"><label for="re-cmin">Pour count min</label><input id="re-cmin" type="number" min="1" step="any" bind:value={copy.pourCount.min} /></div>
-    <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="any" bind:value={copy.pourCount.max} /></div>
+    <div class="form-field"><label for="re-cmin">Pour count min</label><input id="re-cmin" type="number" min="1" step="1" bind:value={copy.pourCount.min} /></div>
+    <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="1" bind:value={copy.pourCount.max} /></div>
     <div class="form-field"><label for="re-ratio">Ratio 1:</label><input id="re-ratio" type="number" step="any" bind:value={copy.ratio.target} /></div>
     <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
     <div class="form-field"><label for="re-temp">Temperature (°C)</label><input id="re-temp" type="number" step="any" bind:value={copy.tempC} /></div>
@@ -158,7 +163,7 @@
   </div>
 
   <div class="preview">
-    <PourTimeline timeline={recipeTimeline(preview)} label={describeRecipe(copy)} />
+    <PourTimeline timeline={recipeTimeline(copy)} label={describeRecipe(copy)} />
     <div data-testid="editor-description">{describeRecipe(copy)}</div>
   </div>
   {#if tried && error}<p class="badge badge-urgent" role="alert">{error}</p>{/if}

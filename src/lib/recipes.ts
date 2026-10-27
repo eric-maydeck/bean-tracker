@@ -20,7 +20,8 @@ export interface RecipeDef {
   pourCount: { min: number; max: number };
   bloomHoldS: number | null;
   bloomHoldTolS: number;
-  ratio: { target: number; tol: number };
+  /** null only in a draft whose brews have no ratio; the parser rejects it on save. */
+  ratio: { target: number | null; tol: number };
   tempC: number | null;
   totalS: number | null;
   notes: string | null;
@@ -82,7 +83,7 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     const pours = json.pours.map(parsePour);
     const { min, max } = json.pourCount;
     const { target, tol } = json.ratio;
-    if (!isNum(min) || !isNum(max) || !isNum(target) || !isNum(tol) || !isNum(json.bloomHoldTolS))
+    if (!isNum(min) || !isNum(max) || !Number.isInteger(min) || !Number.isInteger(max) || !isNum(target) || !isNum(tol) || !isNum(json.bloomHoldTolS))
       throw new Error(INVALID);
     const bloomHoldS = numOrNull(json.bloomHoldS);
     const tempC = numOrNull(json.tempC, -Infinity);
@@ -163,7 +164,7 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     pourCount: { min: n, max: n },
     bloomHoldS: round(median(rs.map((r) => r.bloomHoldS).filter(isNum))),
     bloomHoldTolS: 5,
-    ratio: { target: round(ratio) ?? 16, tol: 0.7 },
+    ratio: { target: round(ratio), tol: 0.7 },
     tempC: round(median(tempsC.filter(isNum))),
     totalS: round(median(rs.map((r) => r.totalS)), 0),
     notes: null
@@ -214,7 +215,7 @@ export function describeRecipe(def: RecipeDef): string {
   const hold = def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)} s `;
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
-  else if (blooms > 1) parts.push(`two ${hold}blooms`);
+  else if (blooms > 1) parts.push(`${['', '', 'two', 'three'][blooms] ?? blooms} ${hold}blooms`);
   const kinds: { kind: 'fast' | 'slow'; n: number }[] = [];
   for (const p of def.pours.slice(blooms)) {
     const kind = recipeSpeed(p);
@@ -237,7 +238,7 @@ export function describeRecipe(def: RecipeDef): string {
   if (sw.length > 2) out.push(`${sw.length} swirls`);
   else if (sw.length)
     out.push(sw.map((i) => (i < blooms ? 'swirl after bloom' : `swirl after pour ${i + 1}`)).join(', '));
-  out.push(`~1:${+def.ratio.target.toFixed(1)}`);
+  out.push(isNum(def.ratio.target) ? `~1:${+def.ratio.target.toFixed(1)}` : 'ratio unknown');
   if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
   return capital(out.join(' · '));
 }
@@ -251,7 +252,7 @@ export function recipeTimeline(def: RecipeDef): Timeline {
     return {
       startS,
       durationS,
-      grams: p.grams ?? 0,
+      grams: p.grams ?? (p.share ?? 0) * 100, // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
       kind: p.bloom ? ('bloom' as const) : recipeSpeed(p)
     };
   });
@@ -321,10 +322,11 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[]): Match | null {
     const speeds = def.pours.map(recipeSpeed);
     const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
     if (aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase()) continue;
-    if (Math.abs(r.ratio - def.ratio.target) > def.ratio.tol) continue;
+    const target = def.ratio.target;
+    if (target == null || Math.abs(r.ratio - target) > def.ratio.tol) continue;
     const diffs = diffsOf(def, r, brew.tempC);
     const mods = diffs.filter((d) => d.modified).length;
-    const distance = Math.abs(r.ratio - def.ratio.target) / def.ratio.tol + 0.5 * mods;
+    const distance = Math.abs(r.ratio - target) / def.ratio.tol + 0.5 * mods;
     if (!best || distance < best.distance || (distance === best.distance && id < best.recipeId))
       best = { recipeId: id, how: mods ? 'modified' : 'match', diffs, distance };
   }

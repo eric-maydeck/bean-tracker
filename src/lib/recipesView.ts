@@ -30,7 +30,7 @@ export function itemParam(i: RecipesItem): string {
 export function recipesParams(v: RecipesView): URLSearchParams {
   const p = new URLSearchParams();
   if (v.brews) p.set('brews', itemParam(v.brews));
-  if (v.order) p.set('order', v.order);
+  if (v.order && v.brews) p.set('order', v.order);
   if (v.view) p.set('view', v.view);
   return p;
 }

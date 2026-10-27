@@ -27,5 +27,6 @@ describe('parseRecipesView', () => {
     for (const q of ['brews=r12', 'brews=s2b-fffs-17&view=hidden', 'view=hidden', 'brews=r3&order=top', 'brews=s1b-ss-16&order=top&view=hidden'])
       expect(recipesParams(parse(q)).toString()).toBe(q);
     expect(recipesParams(parse('')).toString()).toBe('');
+    expect(recipesParams(parse('order=top')).toString()).toBe(''); // order only means something with brews=
   });
 });

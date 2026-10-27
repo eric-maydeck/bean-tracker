@@ -192,3 +192,21 @@ describe('convertAmounts', () => {
     expect(b.pours.map((p) => [p.grams, p.share])).toEqual([[null, 0.25], [null, 0.75]]);
   });
 });
+
+describe('editor-facing recipe edge cases', () => {
+  const base = def('BFS');
+  it('describes an unknown ratio and three blooms honestly', () => {
+    expect(describeRecipe({ ...base, ratio: { target: null, tol: 0.7 } })).toContain('ratio unknown');
+    expect(describeRecipe({ ...base, ratio: { target: null, tol: 0.7 } })).not.toContain('~1:');
+    const three = { ...base, bloomHoldS: 20, pours: [rp('fast', true), rp('fast', true), rp('fast', true), rp('slow')], pourCount: { min: 4, max: 4 } };
+    expect(describeRecipe(three)).toMatch(/^Three 20 s blooms/);
+  });
+  it('draws a % recipe in proportion, not flat', () => {
+    const tl = recipeTimeline({ ...base, pours: [rp('fast', false, { grams: null, share: 0.25 }), rp('slow', false, { grams: null, share: 0.75 })] });
+    expect(tl.pours.map((p) => p.grams)).toEqual([25, 75]);
+  });
+  it('rejects a fractional pour count', () => {
+    expect(parseRecipeDef({ ...base, pourCount: { min: 1.5, max: 3 } })).toHaveProperty('error');
+    expect(parseRecipeDef({ ...base, pourCount: { min: 1, max: 2.5 } })).toHaveProperty('error');
+  });
+});
