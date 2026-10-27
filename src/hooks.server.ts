@@ -17,6 +17,9 @@ export const init: ServerInit = () => {
 export const handle: Handle = async ({ event, resolve }) => {
   if (crossSiteFormBlocked(event.request, event.url)) {
     const message = `Cross-site ${event.request.method} form submissions are forbidden`;
+    // use:enhance only shows an ActionResult; a bare 403 left the form silently doing nothing.
+    if (event.request.headers.get('x-sveltekit-action') === 'true')
+      return json({ type: 'error', error: { message } }, { status: 403 });
     return event.request.headers.get('accept') === 'application/json'
       ? json({ message }, { status: 403 })
       : text(message, { status: 403 });
