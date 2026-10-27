@@ -263,7 +263,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
-  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], sey: sey.slug, big: grams.big.slug,
+  slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug, skip: skipSlug },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));

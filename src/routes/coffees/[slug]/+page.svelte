@@ -29,6 +29,7 @@
   import { formatBag } from '$lib/grams';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, likeGap } from '$lib/components/deltaColor';
+  import FavoriteGrind from './FavoriteGrind.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
   import { DIAL_LABEL, RATINGS_LABEL, insightsParams, type LikeView } from '$lib/insightsUrl';
 
@@ -422,9 +423,9 @@
         </div>
       </div>
 
-      <section class="detail-section">
+      <section class="detail-section timing" data-section="timing">
         <h2>Timing</h2>
-        <div class="stat-grid">
+        <div class="stat-grid timing-grid" class:has-fave={data.favoriteGrind.length}>
           <div class="stat">
             <span class="stat-label">Roast date</span>
             <span class="stat-value">{data.coffee.roast_date ?? '—'}</span>
@@ -436,18 +437,18 @@
             </span>
           </div>
           <div class="stat">
+            <span class="stat-label">Recommended rest</span>
+            <span class="stat-value">
+              {data.coffee.rest_days_low ?? '—'}–{data.coffee.rest_days_high ?? '—'} days
+            </span>
+          </div>
+          <div class="stat">
             <span class="stat-label">Drink after</span>
             <span class="stat-value">{data.coffee.drink_after ?? '—'}</span>
           </div>
           <div class="stat">
             <span class="stat-label">Drink before</span>
             <span class="stat-value">{data.coffee.drink_before ?? '—'}</span>
-          </div>
-          <div class="stat">
-            <span class="stat-label">Recommended rest</span>
-            <span class="stat-value">
-              {data.coffee.rest_days_low ?? '—'}–{data.coffee.rest_days_high ?? '—'} days
-            </span>
           </div>
           {#if data.coffee.frozen_start_date}
             <div class="stat">
@@ -473,6 +474,7 @@
               <span class="stat-value">{localDate(data.coffee.moved_date)}</span>
             </div>
           {/if}
+          {#if data.favoriteGrind.length}<FavoriteGrind items={data.favoriteGrind} />{/if}
         </div>
       </section>
       {#if data.like}
@@ -530,6 +532,27 @@
 <AddedToast bind:slug={addedSlug} />
 
 <style>
+  /* Timing: wide, an explicit grid: Roast date | Days since roast over Recommended rest | Drink after over Drink
+     before | the Favorite grind block over both rows of the last column (children 1-5 are those stats, in that
+     DOM order; the Frozen/Opened/Archived extras flow after them, the first into the cell under Roast date).
+     Narrow, the plain stat-grid, with the block last at full width. */
+  .timing {
+    container-type: inline-size;
+  }
+  .timing-grid > :global(.fave) {
+    grid-column: 1 / -1;
+  }
+  @container (min-width: 44rem) {
+    .has-fave {
+      grid-template-columns: repeat(3, minmax(7.5rem, 1fr)) minmax(15rem, 1.8fr);
+    }
+    .has-fave > :nth-child(1) { grid-area: 1 / 1; }
+    .has-fave > :nth-child(2) { grid-area: 1 / 2; }
+    .has-fave > :nth-child(3) { grid-area: 2 / 2; }
+    .has-fave > :nth-child(4) { grid-area: 1 / 3; }
+    .has-fave > :nth-child(5) { grid-area: 2 / 3; }
+    .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2; }
+  }
   /* Four stats: auto-fit so a wide screen has no blank fifth track. */
   [data-section='like'] .stat-grid {
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

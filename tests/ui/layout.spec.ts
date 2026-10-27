@@ -7,7 +7,7 @@ import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; sey: string; skip: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
@@ -1101,6 +1101,46 @@ export const STATES: State[] = [
       await expect(panel.getByRole('heading', { name: 'Vs like coffees' })).toBeVisible();
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
+    } },
+  // Favorite grind (Timing): one line per grinder, A to Z; wide it fills the last column over both stat rows, narrow it
+  // sits below the grid at full width. Lab Bag 8 has two grinders, El Dorado one, the long-named Lab Bag none rated.
+  { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,
+    act: async (page, s) => {
+      const block = page.locator('[data-testid="favorite-grind"]');
+      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d/, /^ZP6 Special · .+ · \d/]);
+      const grid = page.locator('.timing-grid');
+      const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
+      const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
+      if (b.x > roast.x + 20) {
+        expect(Math.abs(b.y - roast.y), 'block top = first row top').toBeLessThan(2);
+        expect(b.y + b.height, 'block spans both rows').toBeGreaterThanOrEqual(Math.max(rest.y + rest.height, before.y + before.height) - 2);
+        expect(b.x + b.width, 'block reaches the grid right').toBeGreaterThan(g.x + g.width - 2);
+        expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
+        expect(Math.abs(before.x - after.x) < 2 && before.y > after.y, 'Drink before under Drink after').toBe(true);
+      } else {
+        expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);
+        expect(Math.abs(b.x - g.x) < 2 && Math.abs(b.width - g.width) < 2, 'full width').toBe(true);
+      }
+      // Any grinder count and name length: six grinders, one with a very long name and dripper, wrap without overflow.
+      await block.locator('ul').evaluate((ul) => {
+        const li = ul.querySelector('li')!;
+        for (let i = 0; i < 4; i++) ul.append(li.cloneNode(true));
+        ul.querySelector('li')!.querySelector('.g')!.textContent = 'The Extraordinarily Long-Named Hand Grinder Collective Edition';
+        ul.querySelector('li')!.querySelectorAll('.seg')[1].textContent = '· 9.5 (An Extraordinarily Long Dripper Name Of Many Words)';
+      });
+      const bad = await block.evaluate((el) => [el, ...el.querySelectorAll('li, .seg')].filter((n) => n.scrollWidth > n.clientWidth + 1).map((n) => n.textContent));
+      expect(bad, 'no overflow').toEqual([]);
+      const gb = await grid.boundingBox();
+      expect((await block.boundingBox())!.x + (await block.boundingBox())!.width).toBeLessThanOrEqual(gb!.x + gb!.width + 1);
+    } },
+  { name: 'coffee-favorite-grind-single', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}`,
+    act: async (page) => {
+      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d/]);
+    } },
+  { name: 'coffee-favorite-grind-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
+    act: async (page) => {
+      await expect(page.locator('[data-testid="favorite-grind"]')).toHaveCount(0);
+      await expect(page.getByText('Recommended rest')).toBeVisible();
     } },
   // Link previews: the coffee page's SSR tags (text from coffeePreview; data: images give no og:image).
   { name: 'link-preview-coffee', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,

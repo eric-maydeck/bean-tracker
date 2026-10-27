@@ -13,6 +13,7 @@ import { queueFillMissing } from '$lib/server/imageFills';
 import { getLinkedBean, unlinkBeanConquerorBean } from '$lib/server/beanConquerorLinks';
 import { coffeeLike } from '$lib/server/insights/likeGroup';
 import { ordinal } from '$lib/server/insights/milestones';
+import { favoriteGrind } from '$lib/server/favoriteGrind';
 import { parseLikeView } from '$lib/insightsUrl';
 
 export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
@@ -39,6 +40,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     processingMethods: getDistinctFieldValues(db, 'processing'),
     roasterImages: getRoasterImages(db),
     beanConqueror: getLinkedBean(db, coffee.id),
+    favoriteGrind: favoriteGrind(db, coffee.id),
     like: like && { ...like, place: `${ordinal(like.rank)} of ${like.of}` },
     noLike: r && !('like' in r) ? r : null,
     likeView,
