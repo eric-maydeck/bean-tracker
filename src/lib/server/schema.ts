@@ -274,4 +274,15 @@ CREATE TABLE IF NOT EXISTS gear_details (
   updated_at TEXT NOT NULL,
   PRIMARY KEY (kind, name)
 );
+
+-- One compact flow series per Bean Conqueror brew, from BC's Visualizer upload (plan 2026-10-27-bc-phone-import).
+-- No FK: a flow may arrive before the zip import brings its brew; join on bc_uuid.
+CREATE TABLE IF NOT EXISTS beanconqueror_brew_flows (
+  bc_uuid TEXT PRIMARY KEY,
+  format INTEGER NOT NULL,
+  step_ms INTEGER NOT NULL,
+  points INTEGER NOT NULL,
+  weights TEXT NOT NULL,      -- JSON array, CompactFlow.w
+  uploaded_at TEXT NOT NULL
+);
 `;

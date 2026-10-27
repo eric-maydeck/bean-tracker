@@ -20,6 +20,7 @@ describe('createDb', () => {
       'app_meta',
       'beanconqueror_bean_origins',
       'beanconqueror_beans',
+      'beanconqueror_brew_flows',
       'beanconqueror_brews',
       'beanconqueror_grinders',
       'beanconqueror_methods',
