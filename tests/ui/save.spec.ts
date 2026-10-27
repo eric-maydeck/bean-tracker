@@ -2,7 +2,7 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
 import { gotoReady } from './ready';
 import { DatabaseSync } from 'node:sqlite';
 import { VIEWPORTS } from './viewports';
-import { checkLayout, expectStatRowsFull } from './checkLayout';
+import { checkLayout, expectStatRowsFull, expectTipInView } from './checkLayout';
 
 // Saves for real, so it runs last (playwright.config.ts: after perf, which runs
 // after every layout check) and puts the DB back afterwards.
@@ -234,4 +234,80 @@ test('trophy card: unreadable text in a number field blocks Save and saves nothi
   await dlg.getByRole('button', { name: 'Save' }).click();
   await expect(dlg.getByRole('alert')).toHaveText('Burr size must be a number');
   expect(posts).toHaveLength(0);
+});
+
+// Favorite grind's other-bag indicator (PREVIEW-TEMP variants ?pv=a|b): a twin of El Dorado (same roaster + name) with a
+// 9.8 on the ZP6, added here and removed after (the seed has no same-name pair). The tip is sticky (ui-rules 54).
+test.describe('favorite grind: other bag', () => {
+  const TWIN = 'favgrind-twin';
+  const ELDORADO = '/coffees/2026-the-picky-chemist-el-dorado-double-ferment-gesha';
+  test.beforeAll(() => {
+    const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
+    const at = '2026-08-01T00:00:00.000Z';
+    db.prepare(`INSERT INTO coffees (roaster, coffee_name, roast_date, slug, status, created_at, updated_at) VALUES ('The Picky Chemist', 'El Dorado Double Ferment Gesha', '2026-08-01', ?, 'archive', ?, ?)`).run(TWIN, at, at);
+    const id = (db.prepare(`SELECT id FROM coffees WHERE slug = ?`).get(TWIN) as { id: number }).id;
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, roaster, imported_at, coffee_id) VALUES ('bean-fave-twin', 'El Dorado Double Ferment Gesha', 'The Picky Chemist', ?, ?)`).run(at, id);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at) VALUES ('2026-08-10T08:00:00.000Z', 'bean-fave-twin', 'm1', 'g1', '4.2', 9.8, ?)`).run(at);
+    db.close();
+  });
+  test.afterAll(() => {
+    const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE bean_id = 'bean-fave-twin'`).run();
+    db.prepare(`DELETE FROM beanconqueror_beans WHERE id = 'bean-fave-twin'`).run();
+    db.prepare(`DELETE FROM coffees WHERE slug = ?`).run(TWIN);
+    db.close();
+  });
+  const anchor = (page: Page, pv: string) => page.locator('[data-testid="favorite-grind"] .fg-other');
+  const label = { a: /^Other bag: 4\.2 · 9\.8$/, b: /^↑ 9\.8$/ };
+
+  for (const pv of ['a', 'b'] as const) {
+    test(`tap-tip-favorite-grind ${pv}: a tap opens and pins it, a tap elsewhere closes it, See coffee goes to the bag`, async ({ page }) => {
+      await gotoReady(page, `${ELDORADO}?pv=${pv}`);
+      const a = anchor(page, pv), tip = page.locator('.cell-tip:popover-open');
+      await expect(a).toHaveText(label[pv]);
+      expect(await a.evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects().length; }), 'one line of text').toBe(1);
+      await checkLayout(page);
+      await a.tap();
+      await expect(tip).toBeVisible();
+      await expectTipInView(page, tip);
+      await expect(tip).toContainText('2026-08-01');
+      await expect(tip).toContainText('V60');
+      await expect(tip).toContainText('2026-08-10');
+      await page.waitForTimeout(700);
+      await expect(tip, 'still open a moment after the tap').toBeVisible();
+      await page.locator('.timing h2').tap();
+      await expect(tip, 'a tap elsewhere closes it').toBeHidden();
+      await a.tap();
+      await tip.getByRole('link', { name: 'See coffee' }).tap();
+      await expect(page).toHaveURL(new RegExp(`/coffees/${TWIN}$`));
+    });
+  }
+
+  test.describe('mouse', () => {
+    test.use({ viewport: { width: 1280, height: 800 }, hasTouch: false });
+    test('hover opens, the mouse can cross onto the tip, a click pins it, Escape or a click elsewhere closes it', async ({ page }) => {
+      await gotoReady(page, `${ELDORADO}?pv=b`);
+      const a = anchor(page, 'b'), tip = page.locator('.cell-tip:popover-open');
+      await a.hover();
+      await expect(tip).toBeVisible();
+      await expectTipInView(page, tip);
+      const t = (await tip.boundingBox())!;
+      await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 5 });
+      await page.waitForTimeout(300);
+      await expect(tip, 'stays open while over the tip').toBeVisible();
+      await page.mouse.move(1, 1);
+      await expect(tip, 'closes when the pointer leaves both').toBeHidden();
+      await a.click();
+      await page.mouse.move(1, 1);
+      await page.waitForTimeout(300);
+      await expect(tip, 'a click pins it').toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(tip).toBeHidden();
+      await a.focus();
+      await page.keyboard.press('Enter');
+      await expect(tip, 'Enter pins it').toBeVisible();
+      await page.locator('.timing h2').click();
+      await expect(tip, 'a click elsewhere closes it').toBeHidden();
+    });
+  });
 });
