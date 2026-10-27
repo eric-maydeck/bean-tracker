@@ -55,7 +55,7 @@
 
   <h3>Flow data (automatic upload)</h3>
   <p>
-    Flow data for {s.flows - s.waiting} of {s.brewsWithFlow} brews · last upload {when(s.lastUploadAt)}{#if s.waiting > 0}
+    Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload {when(s.lastUploadAt)}{#if s.waiting > 0}
       · {s.waiting} waiting for a Bean Conqueror import{/if}
   </p>
   <ol>
@@ -91,8 +91,10 @@
       {/if}
     </form>
   {/if}
-  {#if form && 'uploadPassword' in form && form.uploadPassword}
-    <p><code>{form.uploadPassword}</code></p>
-    <p class="text-muted">Copy it into Bean Conqueror now; it won't be shown again. Replacing it stops the old one from working.</p>
+  {#if !confirming && form && 'uploadPassword' in form && form.uploadPassword}
+    <div role="status">
+      <p><code>{form.uploadPassword}</code></p>
+      <p class="text-muted">Copy it into Bean Conqueror now; it won't be shown again. Replacing it stops the old one from working.</p>
+    </div>
   {/if}
 </section>

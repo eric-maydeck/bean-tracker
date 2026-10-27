@@ -50,10 +50,10 @@ describe('saveShot / uploadStatus', () => {
   it('counts a flow without a brew as waiting until the zip import brings the brew', () => {
     const db = createDb(':memory:');
     saveShot(db, shot(1));
-    expect(uploadStatus(db)).toMatchObject({ flows: 1, waiting: 1, brewsWithFlow: 0, hasPassword: false });
+    expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 0, waiting: 1, brewsWithFlow: 0, hasPassword: false });
     const brew = { bcUuid: UUID, bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null, hasFlowProfile: true };
     importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
-    expect(uploadStatus(db)).toMatchObject({ flows: 1, waiting: 0, brewsWithFlow: 1 });
+    expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 1, waiting: 0, brewsWithFlow: 1 });
   });
 
   it('boot migration keeps flows when createDb runs again on the same file', () => {

@@ -7,6 +7,7 @@ import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts'
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
 import { bcTimestamp } from '../src/lib/server/beanConquerorJson.ts';
+import { FLOW_STEP_MS } from '../src/lib/server/bcFlow.ts';
 
 const path = process.argv[2] ?? '';
 if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
@@ -265,7 +266,7 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_import
 // Account page: 3 brews with flow data, one flow stored for the first and one for a brew not imported yet ("waiting").
 const FLOW_UUIDS = ['aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000003'];
 FLOW_UUIDS.forEach((u, i) => db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = ?, has_flow_profile = 1 WHERE id = ?`).run(u, i + 1));
-const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, 100, 3, '[0,1,2]', ?)`);
+const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, ${FLOW_STEP_MS}, 3, '[0,1,2]', ?)`);
 flow.run(FLOW_UUIDS[0], now);
 flow.run('bbbbbbbb-0000-4000-8000-000000000009', now);
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('visualizer_last_upload_at', ?)`).run(now);

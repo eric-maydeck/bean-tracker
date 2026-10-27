@@ -29,7 +29,7 @@ describe('account load', () => {
     db.prepare(`INSERT INTO beanconqueror_brews (bc_uuid, has_flow_profile, bc_created_at, imported_at) VALUES ('11111111-1111-1111-1111-111111111111', 1, '2026-10-01T00:00:00Z', 'x')`).run();
     db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES ('11111111-1111-1111-1111-111111111111', 1, 100, 1, '[1]', 'x'), ('22222222-2222-2222-2222-222222222222', 1, 100, 1, '[1]', 'x')`).run();
     const data = load(event(true)) as { status: Record<string, unknown>; uploadUrl: string; lastImportedAt: string | null };
-    expect(data.status).toMatchObject({ flows: 2, waiting: 1, brewsWithFlow: 1, hasPassword: false });
+    expect(data.status).toMatchObject({ flows: 2, joined: 1, waiting: 1, brewsWithFlow: 1, hasPassword: false });
     expect(data.uploadUrl).toBe('https://beans.example/');
     expect(data.lastImportedAt).toBeNull();
     db.prepare(`DELETE FROM beanconqueror_brews`).run(); // the import test below counts rows

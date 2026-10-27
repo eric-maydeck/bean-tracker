@@ -75,6 +75,7 @@ export function uploadStatus(db: DatabaseSync) {
   return {
     lastUploadAt: getMeta(db, LAST_UPLOAD_KEY),
     flows: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows`),
+    joined: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows f JOIN beanconqueror_brews b ON b.bc_uuid = f.bc_uuid WHERE b.has_flow_profile = 1`),
     waiting: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows f WHERE NOT EXISTS (SELECT 1 FROM beanconqueror_brews b WHERE b.bc_uuid = f.bc_uuid)`),
     brewsWithFlow: one(`SELECT SUM(has_flow_profile) n FROM beanconqueror_brews`),
     hasPassword: getMeta(db, HASH_KEY) !== null
