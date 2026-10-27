@@ -1,3 +1,24 @@
+# [1.94.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.93.0...v1.94.0) (2026-10-27)
+
+
+### Bug Fixes
+
+* **account:** pin csrf hook wiring, clamp flow status, seed step and reveal a11y
+* **account:** say waiting flows need the bean conqueror zip import
+* **account:** waiting flows on their own line
+* **bc:** case-insensitive basic scheme, strict brew uuid shape
+* **bc:** rank flow samples in file order, tighten flow tests
+* **csrf:** exempt the visualizer upload from the form origin check
+
+
+### Features
+
+* **account:** account page with bean conqueror import and flow upload setup
+* **bc:** 50 ms interpolated flow grid with spike keep, 99.3% raw parity
+* **bc:** compact flow series with raw-parity tests
+* **bc:** store uploaded flow series and the upload password
+* **bc:** visualizer upload, me and shot redirect endpoints
+
 # [1.93.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.92.0...v1.93.0) (2026-10-27)
 
 
