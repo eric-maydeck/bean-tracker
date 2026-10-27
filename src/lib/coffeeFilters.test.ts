@@ -11,6 +11,7 @@ import {
   chipTitle,
   QUICK_FILTERS,
   quickFilter,
+  withoutStalePlans,
   type Filter,
   type Op
 } from './coffeeFilters';
@@ -471,5 +472,21 @@ describe('Age and Rest window state columns', () => {
   });
   it('Rest window state is an is-any-of filter on the computed state', () => {
     expect(applyFilters([a, b, c], [{ column: 'rest_state', mode: 'any', values: ['Past rest window', 'No rest window'] }])).toEqual([b, c]);
+  });
+});
+
+describe('withoutStalePlans', () => {
+  const plans = [{ id: 3, label: 'Sey · Monthly' }];
+  const plan = (value: 'any' | 'none' | number): Filter => ({ column: 'subscription', mode: 'plan', value });
+  const decaf: Filter = { column: 'decaf', mode: 'bool', value: true };
+  it('drops a plan id that no longer exists, keeping the other filters', () => {
+    expect(withoutStalePlans({ filters: [plan(99), decaf] }, plans).filters).toEqual([decaf]);
+    expect(withoutStalePlans({ filters: [plan(99)] }, []).filters).toEqual([]);
+  });
+  it('keeps any, none and a live plan (same object back)', () => {
+    for (const v of ['any', 'none', 3] as const) {
+      const s = { filters: [plan(v)] };
+      expect(withoutStalePlans(s, plans)).toBe(s);
+    }
   });
 });

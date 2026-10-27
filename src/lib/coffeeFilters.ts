@@ -124,6 +124,13 @@ export interface PlanOption {
   label: string;
 }
 
+// A Subscription filter naming a plan that no longer exists (a deleted plan in an old URL or remembered view) would
+// show a blank select and match nothing: it is dropped, so the select reads its default and the URL loses the param.
+export const withoutStalePlans = <S extends { filters: Filter[] }>(s: S, plans: readonly PlanOption[]): S =>
+  s.filters.some((f) => f.mode === 'plan' && typeof f.value === 'number' && !plans.some((p) => p.id === f.value))
+    ? { ...s, filters: s.filters.filter((f) => !(f.mode === 'plan' && typeof f.value === 'number' && !plans.some((p) => p.id === f.value))) }
+    : s;
+
 export type Op = '>' | '>=' | '=' | '<=' | '<' | 'between';
 export const OPS: readonly Op[] = ['>', '>=', '=', '<=', '<', 'between'];
 export const OP_LABELS: Record<Op, string> = { '>': '>', '>=': '≥', '=': '=', '<=': '≤', '<': '<', between: 'between' };

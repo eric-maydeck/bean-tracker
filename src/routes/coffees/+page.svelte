@@ -30,7 +30,7 @@
   import FilterBar from '$lib/components/FilterBar.svelte';
   import ShareButton from '$lib/components/ShareButton.svelte';
   import { currentParams } from '$lib/pageUrlState';
-  import { applyFilters, COLUMNS, previewChip, isFrozen, type ColumnKey } from '$lib/coffeeFilters';
+  import { applyFilters, COLUMNS, previewChip, isFrozen, withoutStalePlans, type ColumnKey } from '$lib/coffeeFilters';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { coffeesPreview } from '$lib/linkPreview';
   import {
@@ -83,7 +83,7 @@
   // history back to this page reports the URL it was first loaded with,
   // not the one we rewrote since -- reading that would put stale state
   // back in the URL.
-  let explicit = $state<CoffeeViewState>(fromParams(currentParams(page.url), knownValues()));
+  let explicit = $state<CoffeeViewState>(withoutStalePlans(fromParams(currentParams(page.url), knownValues()), data.plans));
   // Writing the URL/storage waits until the remembered state has been read,
   // so a bare URL can't overwrite it with the empty initial state.
   let viewStateLoaded = $state(false);
@@ -345,9 +345,9 @@
   // remembered state, which the effect below then writes into the URL.
   afterNavigate(() => {
     widthView = defaultViewForWidth(window.innerWidth);
-    const fromUrl = fromParams(currentParams(page.url), knownValues());
+    const fromUrl = withoutStalePlans(fromParams(currentParams(page.url), knownValues()), data.plans);
     try {
-      const saved = loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now());
+      const saved = withoutStalePlans(loadViewState(localStorage.getItem(VIEW_STORAGE_KEY), Date.now()), data.plans);
       explicit = isUntouched(fromUrl) ? saved : fromUrl;
       // A linked ?status=all keeps the remembered All-off restore.
       if (explicit.status?.[0] === 'all' && saved.prev) explicit.prev = saved.prev;
