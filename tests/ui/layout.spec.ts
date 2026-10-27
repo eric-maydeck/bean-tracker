@@ -1327,10 +1327,10 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, string | RegExp][] = [
-        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800 mL (recipe 800)\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4 ppm (recipe 80)\nKH: 20.1 ppm (recipe 20)'],
-        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900 mL (recipe 800)\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5 ppm (recipe 60)\nKH: 17.9 ppm (recipe 20)'],
-        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880 mL \(recipe 800\)\n[\s\S]*\nGH: 18\.3 ppm \(recipe 20\)\nKH: 4\.6 ppm \(recipe 5\)$/],
-        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900 mL \(recipe 800\)\n/],
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800 mL (recipe 800 mL)\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4 ppm (recipe 80 ppm)\nKH: 20.1 ppm (recipe 20 ppm)'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900 mL (recipe 800 mL)\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5 ppm (recipe 60 ppm)\nKH: 17.9 ppm (recipe 20 ppm)'],
+        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880 mL \(recipe 800 mL\)\n[\s\S]*\nGH: 18\.3 ppm \(recipe 20 ppm\)\nKH: 4\.6 ppm \(recipe 5 ppm\)$/],
+        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900 mL \(recipe 800 mL\)\n/],
         ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800 mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4 ppm\nKH: 0 ppm/]
       ];
       for (const [path, title, desc] of cases) {
