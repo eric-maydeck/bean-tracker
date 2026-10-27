@@ -570,6 +570,10 @@
     .has-fave > :global(.fave) { grid-area: 1 / 4 / span 2 / -1; }
     .has-extra > :global(.fave) { grid-area: 1 / 4 / span 3 / -1; }
   }
+  /* Four stats: auto-fit so a wide screen has no blank fifth track. */
+  [data-section='like'] .stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
   .like-none {
     margin: 0;
   }
