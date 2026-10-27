@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { RATING_MAX } from '$lib/rating';
   import WholeNote from './WholeNote.svelte';
   import { labelTip } from '$lib/components/labelTip';
   import { type BrewFilterKey, type InsightsUrlState, type Top } from '$lib/insightsUrl';
@@ -10,7 +11,6 @@
     wholeKeys: BrewFilterKey[]; brews: RecentBrew[]; bags: RecentBag[]; n: Top | undefined; nc: Top | undefined; choose: (c: InsightsUrlState) => void;
   } = $props();
 
-  const RATING_MAX = 10; // Bean Conqueror's rating scale
   const day = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
   const rating = (r: number | null) => (r === null ? '—' : r.toFixed(1));

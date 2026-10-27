@@ -12,7 +12,7 @@ const coffee = (roaster: string, name: string, roast = '2026-09-01') => {
   return id;
 };
 db.exec(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('gz', 'ZP6', 'x'), ('ga', 'A4Z', 'x');
-  INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('v60', 'V60', 'x'), ('orig', 'Origami', 'x')`);
+  INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('v60', 'V60', 'x'), ('orig', 'Origami', 'x'), ('ct', 'CT62 - Cafec Abaca', 'x')`);
 const brew = (coffeeId: number, mill: string, setting: string, rating: number | null, at: string, method = 'v60') =>
   db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at)
     VALUES (?, ?, ?, ?, ?, ?, 'x')`).run(`${at}T08:00:${String(n++).padStart(2, '0')}.000Z`, `bean${coffeeId}`, method, mill, setting, rating);
@@ -29,9 +29,15 @@ describe('favoriteGrind', () => {
     brew(c, 'gz', '6', 9, '2026-09-04');
     brew(c, 'ga', '1.2', 7, '2026-09-05');
     expect(favoriteGrind(db, c)).toEqual([
-      { grinder: 'A4Z', brews: 1, best: { setting: '1.2', rating: 7, dripper: 'V60', date: '2026-09-05' }, other: null },
-      { grinder: 'ZP6', brews: 3, best: { setting: '6', rating: 9, dripper: 'V60', date: '2026-09-04' }, other: null }
+      { grinder: 'A4Z', brews: 1, best: { setting: '1.2', rating: 7, dripper: 'V60', filter: null, date: '2026-09-05' }, other: null },
+      { grinder: 'ZP6', brews: 3, best: { setting: '6', rating: 9, dripper: 'V60', filter: null, date: '2026-09-04' }, other: null }
     ]);
+  });
+
+  it('splits a "Dripper - Filter" method name into dripper and filter', () => {
+    const c = coffee('R6', 'Split');
+    brew(c, 'gz', '5', 8, '2026-09-02', 'ct');
+    expect(favoriteGrind(db, c)[0].best).toMatchObject({ dripper: 'CT62', filter: 'Cafec Abaca' });
   });
 
   it('a grinder with brews but no ratings has a count and no best', () => {
@@ -53,7 +59,7 @@ describe('favoriteGrind', () => {
     const r = favoriteGrind(db, a);
     expect(r.map((g) => g.other)).toEqual([
       null,
-      { setting: '4.5', rating: 9, dripper: 'Origami', date: '2026-08-10', slug: expect.any(String), roastDate: '2026-08-01' }
+      { setting: '4.5', rating: 9, dripper: 'Origami', filter: null, date: '2026-08-10', slug: expect.any(String), roastDate: '2026-08-01' }
     ]);
     expect(r[1].other!.slug).toBe((db.prepare(`SELECT slug FROM coffees WHERE id = ?`).get(b) as { slug: string }).slug);
     expect(favoriteGrind(db, b)[1].other).toBeNull(); // the first bag is lower, so nothing to show there

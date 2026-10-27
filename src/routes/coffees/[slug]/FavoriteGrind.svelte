@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FavoriteGrind, OtherBag } from '$lib/server/favoriteGrind';
-  import { page } from '$app/state'; // PREVIEW-TEMP
+  import { RATING_MAX } from '$lib/rating';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
 
@@ -8,14 +8,7 @@
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.
   let { items }: { items: FavoriteGrind[] } = $props();
 
-  const pv = $derived(page.url.searchParams.get('pv') === 'd' ? 'd' : 'c'); // PREVIEW-TEMP: c = last inline segment, d = own line
-
-  // Bean Conqueror's rating scale (as insights/Recent.svelte: its settings aren't in the import, so it is fixed at 10).
-  const RATING_MAX = 10;
   const rate = (n: number) => `${n}/${RATING_MAX}`;
-  // A method's name reads "CT62 - Cafec Abaca" (dripper - filter); shown with a dot, as the line's other separators.
-  const dot = (s: string) => s.replaceAll(' - ', ' · ');
-
   // The other bag's tip is sticky (ui-rules 54, the Spend value map's pattern): hover opens it, the mouse can cross
   // onto it, a click or tap (Enter/Space) pins it until a click outside, Escape or its "See coffee" link.
   let tip = $state<{ o: OtherBag; el: Element; pinned: boolean; reveal?: boolean } | null>(null);
@@ -33,7 +26,7 @@
   };
   const tipOf = (o: OtherBag) => ({
     title: 'Another bag of the same coffee',
-    rows: [['Grind setting', o.setting ?? '—'], ['Rating', rate(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ? dot(o.dripper) : '—'], ['Brewed', o.date]] as [string, string][]
+    rows: [['Grind setting', o.setting ?? '—'], ['Rating', rate(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ?? '—'], ...(o.filter ? [['Filter', o.filter]] : []), ['Brewed', o.date]] as [string, string][]
   });
 </script>
 
@@ -54,11 +47,11 @@
       <li>
         <strong class="g">{g.grinder}</strong>
         {#if g.best}
-          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {rate(g.best.rating)}</span>{#if g.best.dripper}{' '}<span class="seg">· {dot(g.best.dripper)}</span>{/if}
+          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {rate(g.best.rating)}</span>{#if g.best.dripper}{' '}<span class="seg">· {g.best.dripper}{g.best.filter ? ` · ${g.best.filter}` : ''}</span>{/if}
         {:else}
           <span class="seg">· {g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
-        {#if g.other}{#if pv === 'c'}{' '}<span class="seg nb">· {@render other(g)}</span>{:else}<div class="own">{@render other(g)}</div>{/if}{/if}
+        {#if g.other}<div class="own">{@render other(g)}</div>{/if}
       </li>
     {/each}
   </ul>
@@ -89,7 +82,7 @@
   .g {
     font-weight: 600;
   }
-  /* PREVIEW-TEMP: c = the link is the row's last inline segment, whole (never broken mid-phrase); d = on its own line. */
+  /* The other-bag link: on its own line under the row. */
   .fg-other {
     display: inline-block;
     max-width: 100%;
@@ -107,9 +100,6 @@
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
-  }
-  .nb {
-    white-space: nowrap;
   }
   .own {
     display: flex;

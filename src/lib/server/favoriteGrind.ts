@@ -1,15 +1,16 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { parseMethod } from './insights/facts';
 
 // The coffee page's "Favorite grind": per grinder used on a coffee's brews, the highest-rated brew's setting (ties: the
 // latest brew), and a better-rated brew on that grinder from another bag of the same roaster + name (trimmed,
 // case-insensitive), when there is one. Archived brews count, as everywhere else (insights/facts.ts).
-export type GrindBrew = { setting: string | null; rating: number; dripper: string | null; date: string };
+export type GrindBrew = { setting: string | null; rating: number; dripper: string | null; filter: string | null; date: string };
 export type OtherBag = GrindBrew & { slug: string; roastDate: string | null };
 export type FavoriteGrind = { grinder: string; brews: number; best: GrindBrew | null; other: OtherBag | null };
 
-type Row = { mill: string; grinder: string | null; setting: string | null; rating: number | null; dripper: string | null; at: string; slug: string; roastDate: string | null };
+type Row = { mill: string; grinder: string | null; setting: string | null; rating: number | null; method: string | null; tools: string | null; at: string; slug: string; roastDate: string | null };
 
-const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS setting, b.rating, m.name AS dripper,
+const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS setting, b.rating, m.name AS method, m.preparation_tools AS tools,
     b.bc_created_at AS at, c.slug, c.roast_date AS roastDate
   FROM beanconqueror_brews b
   JOIN beanconqueror_beans bean ON bean.id = b.bean_id
@@ -18,7 +19,7 @@ const BREWS = `SELECT b.mill_id AS mill, g.name AS grinder, b.grind_setting AS s
   LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id
   WHERE b.mill_id IS NOT NULL AND `;
 
-const brewOf = (r: Row): GrindBrew => ({ setting: r.setting, rating: r.rating!, dripper: r.dripper, date: r.at.slice(0, 10) });
+const brewOf = (r: Row): GrindBrew => ({ setting: r.setting, rating: r.rating!, ...parseMethod(r.method, r.tools), date: r.at.slice(0, 10) });
 // Highest rating; the latest brew breaks a tie.
 const better = (a: Row, b: Row) => b.rating! > a.rating! || (b.rating === a.rating && b.at > a.at);
 const bestOf = (rows: Row[]) => rows.reduce<Row | null>((m, r) => (r.rating! > 0 && (!m || better(m, r)) ? r : m), null);
