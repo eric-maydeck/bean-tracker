@@ -2,7 +2,14 @@
 // over the linearly interpolated curve at a fixed 0.1 s step, never sample-to-sample, so the raw
 // series and the compact 0.05 s one read alike (bcFlow.test.ts). Thresholds were set against the
 // user's tagged brews: see fixtures/bcflow/README.md.
-import { FAST_GPS, structureKey, type Pour, type PourReading, type Swirl } from '$lib/pours';
+import {
+  FAST_GPS,
+  FAST_MIN_AVG_GPS,
+  structureKey,
+  type Pour,
+  type PourReading,
+  type Swirl
+} from '$lib/pours';
 
 type Run = [number, number];
 const SETTLE = 3;
@@ -152,7 +159,7 @@ export function readPours(
       grams: p.grams,
       avgGps,
       peakGps: peak,
-      speed: peak >= FAST_GPS ? 'fast' : 'slow',
+      speed: peak >= FAST_GPS && avgGps >= FAST_MIN_AVG_GPS ? 'fast' : 'slow',
       bloom: false,
       contactS: (raw[i + 1]?.a ?? totalS) - p.a
     };

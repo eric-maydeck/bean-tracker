@@ -1,6 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { describeReading, structureKey, timelineOf, type PourReading } from '$lib/pours';
+import {
+  FAST_GPS,
+  FAST_MIN_AVG_GPS,
+  describeReading,
+  structureKey,
+  timelineOf,
+  type PourReading
+} from '$lib/pours';
 import { compactFlow, expandFlow } from './bcFlow';
 import { readPours } from './pourDetector';
 
@@ -91,6 +98,18 @@ it('flat series: no pours, structureKey null, "no pours found"', () => {
   expect(r.structureKey).toBeNull();
   expect(r.drawdownS).toBeNull();
   expect(describeReading(r)).toBe('no pours found');
+});
+it('a slow pour ending in a swirl-like spike reads slow (peak is high, average is low)', () => {
+  const s = synth([
+    [2, 100, 6],
+    [40, 15, 1],
+    [41, 45, 40]
+  ]);
+  const r = readPours(s.t, s.g, NONE);
+  expect(r.pours).toHaveLength(2);
+  expect(r.pours[1].peakGps).toBeGreaterThanOrEqual(FAST_GPS);
+  expect(r.pours[1].avgGps).toBeLessThan(FAST_MIN_AVG_GPS);
+  expect(r.pattern).toBe('FS');
 });
 it('single pour: bloomCount 0', () => {
   const s = synth([[2, 100, 6]]);

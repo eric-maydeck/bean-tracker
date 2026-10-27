@@ -1,7 +1,9 @@
 // Pour reading types and wording, shared by the server detector and the pages (no server imports).
-export const DETECTOR_VERSION = 1; // bump on any detector change; boot re-reads stale rows
+export const DETECTOR_VERSION = 2; // bump on any detector change; boot re-reads stale rows
 // g/s (calibrated, see fixtures/bcflow/README.md): a pour whose 1 s peak is >= FAST_GPS reads fast.
 export const FAST_GPS = 13;
+// ...and its average is >= FAST_MIN_AVG_GPS: a slow pour ending in a swirl-like spike peaks high but averages low.
+export const FAST_MIN_AVG_GPS = 5;
 
 export interface Pour {
   startS: number;
