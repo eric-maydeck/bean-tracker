@@ -16,7 +16,7 @@ const call = (authorization?: string) => {
     body: 'not multipart'
   });
   const formData = vi.spyOn(request, 'formData');
-  return POST({ request, getClientAddress: () => '1.2.3.4' } as Parameters<typeof POST>[0]).then((res) => ({
+  return Promise.resolve(POST({ request, getClientAddress: () => '1.2.3.4' } as Parameters<typeof POST>[0])).then((res) => ({
     res,
     read: formData.mock.calls.length > 0 || request.bodyUsed
   }));
