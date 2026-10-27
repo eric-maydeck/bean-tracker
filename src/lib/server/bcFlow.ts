@@ -1,11 +1,15 @@
 // Compact per-brew weight series from a Bean Conqueror flow profile (see docs/gotchas/bean-conqueror.md).
 export const FLOW_FORMAT = 1;
-export const FLOW_STEP_MS = 100;
-export const MAX_FLOW_POINTS = 36_000; // 1 h
+export const FLOW_STEP_MS = 50;
+// A bucket takes its sample farthest from the interpolated grid value only when that sample is more
+// than this far away (20 g, in 0.1 g units); otherwise the interpolated value. See the README.
+const SPIKE_DEV = 200;
+const PER_S = 1000 / FLOW_STEP_MS;
+export const MAX_FLOW_POINTS = 3600 * PER_S; // 1 h
 
 export interface CompactFlow {
   v: 1;
-  stepMs: 100;
+  stepMs: 50;
   /** w[0] = first point in decigrams, w[i] = delta from point i-1 (integers). */
   w: number[];
 }
@@ -42,30 +46,35 @@ export function flowSamples(weight: unknown): { t: number[]; g: number[] } {
 }
 
 /**
- * 0.1 s buckets from t=0; each holds the sample farthest from the previous bucket's value (keeps
- * one-sample swirl/shake spikes); empty buckets repeat the previous value. Rounded to 0.1 g, delta-coded.
+ * 0.05 s grid from t=0. Each point is the raw curve linearly interpolated at the grid time (no time
+ * bias on ramps), except that a bucket holding a sample > 20 g away from that keeps the farthest one, so
+ * one-sample swirl/shake spikes and tare snaps survive. Rounded to 0.1 g, delta-coded.
  */
 export function compactFlow(brewFlow: unknown): CompactFlow | null {
   const { t, g } = flowSamples((brewFlow as { weight?: unknown })?.weight);
   if (!t.length) return null;
-  const n = Math.min(Math.floor(t[t.length - 1] * 10 + 1e-9) + 1, MAX_FLOW_POINTS);
+  const n = Math.min(Math.floor(t[t.length - 1] * PER_S + 1e-9) + 1, MAX_FLOW_POINTS);
   const pts: number[] = [];
-  let prev = Math.round(g[0] * 10);
   let k = 0;
+  let j = 0;
   for (let b = 0; b < n; b++) {
-    let best: number | null = null;
-    for (; k < t.length && Math.floor(t[k] * 10 + 1e-9) <= b; k++) {
+    const T = b / PER_S;
+    while (j + 1 < t.length && t[j + 1] <= T) j++;
+    let at = g[j];
+    if (T > t[j] && j + 1 < t.length) at += ((T - t[j]) / (t[j + 1] - t[j])) * (g[j + 1] - g[j]);
+    const v0 = Math.round(at * 10);
+    let far = v0;
+    for (; k < t.length && Math.floor(t[k] * PER_S + 1e-9) <= b; k++) {
       const d = Math.round(g[k] * 10);
-      if (best === null || Math.abs(d - prev) > Math.abs(best - prev)) best = d;
+      if (Math.abs(d - v0) > Math.abs(far - v0)) far = d;
     }
-    if (best !== null) prev = best;
-    pts.push(prev);
+    pts.push(Math.abs(far - v0) > SPIKE_DEV ? far : v0);
   }
-  return { v: 1, stepMs: 100, w: pts.map((p, i) => (i ? p - pts[i - 1] : p)) };
+  return { v: 1, stepMs: 50, w: pts.map((p, i) => (i ? p - pts[i - 1] : p)) };
 }
 
 export function expandFlow(c: CompactFlow): { t: number[]; g: number[] } {
   let acc = 0;
   const g = c.w.map((d) => (acc += d) / 10);
-  return { t: g.map((_, i) => i * 0.1), g };
+  return { t: g.map((_, i) => i / PER_S), g };
 }

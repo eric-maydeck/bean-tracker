@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { compactFlow, expandFlow, flowSamples, MAX_FLOW_POINTS } from './bcFlow';
+import { compactFlow, expandFlow, flowSamples, FLOW_STEP_MS, MAX_FLOW_POINTS } from './bcFlow';
 import { referenceReading } from './fixtures/bcflow/referenceDetector';
 
 const fixture = (name: string) =>
@@ -36,7 +36,7 @@ describe('compactFlow', () => {
     expect(compactFlow({})).toBeNull();
     expect(compactFlow({ weight: entries([['0.0', 'x']]) })).toBeNull();
   });
-  it('keeps a one-sample 0.1 s spike', () => {
+  it('keeps a one-sample 0.1 s spike (two 0.05 s buckets)', () => {
     const w = entries(
       Array.from({ length: 30 }, (_, i) => [
         `${Math.floor(i / 10)}.${i % 10}`,
@@ -45,8 +45,9 @@ describe('compactFlow', () => {
     );
     const c = expandFlow(compactFlow({ weight: w })!);
     expect(Math.max(...c.g)).toBe(400);
-    expect(c.g[14]).toBe(400);
-    expect(c.g[15]).toBe(100);
+    const per = 1000 / FLOW_STEP_MS;
+    expect(c.g[Math.round(1.4 * per)]).toBe(400);
+    expect(c.g[Math.round(1.5 * per)]).toBe(100);
   });
   it('caps at MAX_FLOW_POINTS', () => {
     const c = compactFlow({
@@ -58,17 +59,16 @@ describe('compactFlow', () => {
     expect(c.w.length).toBe(MAX_FLOW_POINTS);
   });
   for (const name of ['bbs', 'swirl', 'tare']) {
-    it(`round-trips ${name}: each raw sample is within 0.05 g of its bucket, or the bucket kept a more extreme one`, () => {
+    it(`round-trips ${name}: every raw sample is within 30 g of its bucket, nearly all within 0.5 g`, () => {
       const raw = flowSamples(fixture(name).weight);
       const c = expandFlow(compactFlow(fixture(name))!);
+      let close = 0;
       raw.t.forEach((t, i) => {
-        const b = Math.floor(t * 10 + 1e-9);
-        const prev = b ? c.g[b - 1] : raw.g[0];
-        const ok =
-          Math.abs(c.g[b] - raw.g[i]) <= 0.05 + 1e-9 ||
-          Math.abs(c.g[b] - prev) >= Math.abs(raw.g[i] - prev) - 0.05 - 1e-9;
-        expect(ok, `sample ${i} t=${t}`).toBe(true);
+        const err = Math.abs(c.g[Math.floor((t * 1000) / FLOW_STEP_MS + 1e-9)] - raw.g[i]);
+        expect(err, `sample ${i} t=${t}`).toBeLessThanOrEqual(30);
+        if (err <= 0.5) close++;
       });
+      expect(close / raw.t.length).toBeGreaterThan(0.9);
     });
   }
 });
