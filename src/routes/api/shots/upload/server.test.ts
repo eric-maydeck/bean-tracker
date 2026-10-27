@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createDb } from '$lib/server/db';
-import { createUploadPassword } from '$lib/server/visualizerUpload';
+import { createUploadPassword, MAX_SHOT_BYTES } from '$lib/server/visualizerUpload';
 import { _resetForTests, isLockedOut } from '$lib/server/loginRateLimit';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
@@ -49,6 +49,19 @@ describe('POST /api/shots/upload', () => {
     expect(rows().n).toBe(1);
   });
 
+  it('ignores a visualizerId we never issued and keys on the brew uuid', async () => {
+    const res = await call(payload({ visualizerId: '7f3c9a52-1d4e-4b86-9a0f-2e5d8c1b6a37' }));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ id: UUID });
+    expect(rows().n).toBe(1);
+  });
+
+  it('413s an oversized file even when content-length does not say so', async () => {
+    const res = await call(payload({ pad: 'x'.repeat(MAX_SHOT_BYTES) }), { headers: { 'content-length': '10' } });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toEqual({ error: 'Upload is too large' });
+  });
+
   it('400s other applications, missing flow, and bad JSON', async () => {
     for (const [body, error] of [
       [payload({ application: 'VISUALIZER' }), 'Not a Bean Conqueror upload'],
@@ -85,6 +98,7 @@ describe('POST /api/shots/upload', () => {
     expect(sixth.status).toBe(429);
     expect(await sixth.json()).toEqual({ error: 'Too many failed uploads; try again later' });
     expect((await call(payload(), { ip: '2.2.2.2' })).status).toBe(200);
+    expect(isLockedOut('upload:1.1.1.1')).toBe(true);
     expect(isLockedOut('1.1.1.1')).toBe(false);
   });
 });
