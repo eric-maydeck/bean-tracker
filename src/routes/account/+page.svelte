@@ -71,3 +71,9 @@
   </p>
   <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
 </section>
+
+<section class="chart-panel">
+  <h2>Recipes</h2>
+  <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
+  <p><a class="button button-secondary" href="/account/recipes">Open recipes</a></p>
+</section>

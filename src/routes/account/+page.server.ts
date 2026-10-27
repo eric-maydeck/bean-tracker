@@ -5,6 +5,7 @@ import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { queueReadings } from '$lib/server/pourReadings';
+import { discoverGroups, listRecipes } from '$lib/server/recipes';
 import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -14,7 +15,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
     .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
-  return { status: uploadStatus(db), lastImportedAt: lastImported?.value ?? null, uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
+  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
 };
 
 export const actions: Actions = {

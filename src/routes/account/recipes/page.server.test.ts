@@ -1,0 +1,98 @@
+import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+
+// Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
+process.env.DB_PATH = ':memory:';
+
+import { getDb } from '$lib/server/db';
+import { compactFlow } from '$lib/server/bcFlow';
+import { saveShot } from '$lib/server/visualizerUpload';
+import { readStale } from '$lib/server/pourReadings';
+import { listRecipes } from '$lib/server/recipes';
+import { draftFromReadings } from '$lib/recipes';
+import type { PourReading } from '$lib/pours';
+import { actions, load } from './+page.server';
+
+const flow = compactFlow(JSON.parse(readFileSync(new URL('../../../lib/server/fixtures/bcflow/bbs.json', import.meta.url), 'utf8')))!;
+const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+const event = (isAdmin: boolean, query = '', fields: Record<string, string> = {}) => {
+  const body = new FormData();
+  for (const [k, v] of Object.entries(fields)) body.set(k, v);
+  return {
+    locals: { isAdmin },
+    url: new URL(`https://beans.example/account/recipes${query}`),
+    request: new Request('http://localhost/account/recipes', { method: 'POST', body })
+  } as never;
+};
+type Data = Awaited<ReturnType<typeof load>> & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+describe('recipes page', () => {
+  const db = getDb();
+  for (let i = 1; i <= 3; i++) {
+    db.prepare(
+      `INSERT INTO beanconqueror_brews (bc_created_at, bc_uuid, water_amount_g, ground_coffee_g, brew_time, notes, rating, has_flow_profile, imported_at)
+       VALUES (?, ?, 295.3, 18, '117', ?, 8, 1, 'x')`
+    ).run(`2026-02-0${i}T08:30:00Z`, uuid(i), i < 3 ? 'BBS.' : null);
+    saveShot(db, { uuid: uuid(i), flow });
+  }
+  readStale(db, -1);
+  const key = (db.prepare(`SELECT structure_key k FROM brew_pour_readings LIMIT 1`).get() as { k: string }).k;
+
+  it('redirects a signed-out visitor to sign in', () => {
+    try {
+      load(event(false));
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toMatchObject({ status: 303, location: '/login?redirectTo=%2Faccount%2Frecipes' });
+    }
+  });
+
+  it('lists groups, and brews only for a ?brews= URL, never touching the raw flows', () => {
+    const spy = vi.spyOn(db, 'prepare');
+    const d = load(event(true)) as Data;
+    expect(d.groups).toHaveLength(1);
+    expect(d.groups[0]).toMatchObject({ key, count: 3, tagged: 2, suggestedName: 'BBS' });
+    expect(d.brews).toBeNull();
+    expect(d.totals).toEqual({ read: 3, lowConfidence: 0, notesOnly: 0 });
+    const withBrews = load(event(true, `?brews=s${key}`)) as Data;
+    expect(withBrews.brews).toHaveLength(3);
+    expect(load(event(true, '?brews=zzz&view=nope')) as Data).toMatchObject({ brews: null, hidden: null });
+    expect(spy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes('brew_flows'))).toEqual([]);
+    spy.mockRestore();
+  });
+
+  it('every action rejects a signed-out request', async () => {
+    for (const a of [actions.saveRecipe, actions.deleteRecipe, actions.dismiss, actions.undismiss])
+      await expect(a(event(false))).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('saveRecipe: bad JSON, duplicate name, then a valid save rematches brews', async () => {
+    const def = draftFromReadings(
+      [JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings LIMIT 1`).get() as { reading: string }).reading) as PourReading],
+      [null]
+    );
+    const bad = await actions.saveRecipe(event(true, '', { name: 'R', tags: '', definition: '{nope' }));
+    expect(bad).toMatchObject({ status: 400, data: { error: 'Invalid recipe' } });
+    const ok = await actions.saveRecipe(event(true, '', { name: 'Mine', tags: 'bbs, b', definition: JSON.stringify(def) }));
+    expect(ok).toMatchObject({ saved: expect.any(Number) });
+    expect(listRecipes(db)).toMatchObject([{ name: 'Mine', tags: ['bbs', 'b'] }]);
+    expect(db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get()).toMatchObject({ n: 3 });
+    const dup = await actions.saveRecipe(event(true, '', { name: 'mine', tags: '', definition: JSON.stringify(def) }));
+    expect(dup).toMatchObject({ status: 400, data: { error: 'A recipe with that name exists' } });
+    const d = load(event(true)) as Data;
+    expect(d.recipes[0]).toMatchObject({ counts: { logged: 2, match: 1, modified: 0 } });
+    await actions.deleteRecipe(event(true, '', { id: String((ok as { saved: number }).saved) }));
+    expect(listRecipes(db)).toEqual([]);
+  });
+
+  it('dismiss hides a structure, undismiss brings it back', async () => {
+    await actions.dismiss(event(true, '', { key }));
+    let d = load(event(true, '?view=hidden')) as Data;
+    expect(d.groups).toEqual([]);
+    expect(d.hidden).toMatchObject([{ key, count: 3 }]);
+    await actions.undismiss(event(true, '', { key }));
+    d = load(event(true, '?view=hidden')) as Data;
+    expect(d.groups).toHaveLength(1);
+    expect(d.hidden).toEqual([]);
+  });
+});

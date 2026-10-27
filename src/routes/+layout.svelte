@@ -48,6 +48,7 @@
   let showAlerts = $state(false);
 
   const unreadAlertCount = $derived(data.alerts.filter((a: AlertRow) => a.read_at === null).length);
+  const onAccount = $derived(page.url.pathname === '/account' || page.url.pathname.startsWith('/account/'));
 
   async function markAlertReadClick(id: number) {
     await fetch('/api/alerts/mark-read', {
@@ -126,7 +127,7 @@
       </a>
     {/each}
     {#if data.isAdmin}
-      <a href="/account" aria-current={page.url.pathname === '/account' ? 'page' : undefined}>Account</a>
+      <a href="/account" aria-current={onAccount ? 'page' : undefined}>Account</a>
       <form method="POST" action="/login?/logout" use:enhance>
         <button class="nav-link-button" type="submit">Sign out</button>
       </form>
@@ -180,8 +181,8 @@
       ><Icon name="drop" /> Water</a
     >
     {#if data.isAdmin}
-      <a class="nav-link-button" href="/account" aria-current={page.url.pathname === '/account' ? 'page' : undefined}
-        ><Icon name={page.url.pathname === '/account' ? 'user-circle-fill' : 'user-circle'} /> Account</a
+      <a class="nav-link-button" href="/account" aria-current={onAccount ? 'page' : undefined}
+        ><Icon name={onAccount ? 'user-circle-fill' : 'user-circle'} /> Account</a
       >
       <form method="POST" action="/login?/logout" use:enhance>
         <button class="nav-link-button" type="submit"><Icon name="sign-out" /> Sign out</button>

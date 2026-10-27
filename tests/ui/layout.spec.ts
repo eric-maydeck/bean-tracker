@@ -9,6 +9,7 @@ import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
+  recipes: { bbsKey: string; bbjKey: string; recipeId: number };
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
 // asserts each stays on one line).
@@ -2237,13 +2238,106 @@ export const STATES: State[] = [
     name: 'account',
     path: () => '/account',
     act: async (page) => {
-      await expect(page.getByText('Flow data for 1 of 3 brews')).toBeVisible();
+      await expect(page.getByText('Flow data for 10 of 10 brews')).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
       await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
       await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();
       // Bean Conqueror's Basic auth takes the sign-in password (the UI tests' is `test`, playwright.config.ts).
       const basic = 'Basic ' + Buffer.from('x:test').toString('base64');
       expect((await page.request.get('/api/me', { headers: { Authorization: basic } })).status()).toBe(200);
+    }
+  },
+  ...(() => {
+    // /account/recipes: seeded with 10 flow brews (3 bbs, 3 bbj, 3 4sy, 1 bbf), the recipe "Seed equal pours" (the 4sy
+    // brews) and the bbf structure dismissed. `item` finds a list item by text inside one panel.
+    const panel = (page: Page, h: string) => page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: h, level: 2 }) });
+    const rows = (page: Page) => page.locator('.brew-row');
+    return [
+      {
+        name: 'recipes',
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          const mine = panel(page, 'Your recipes').locator('li.item');
+          await expect(mine).toHaveCount(1);
+          await expect(mine).toContainText('Seed equal pours');
+          const found = panel(page, 'Found in your brews').locator('li.item');
+          await expect(found).toHaveCount(2);
+          await expect(found.first()).toContainText('2 tagged in notes (mostly BBS)');
+          for (const li of await panel(page, 'Your recipes').locator('li.item').all().then(async (a) => [...a, ...(await found.all())])) {
+            const svg = li.locator('svg[role="img"]').first();
+            await expect(svg).toBeVisible();
+            expect(await svg.getAttribute('aria-label')).toBeTruthy();
+            await expect(li.locator('[data-button-row]').first()).toBeVisible();
+          }
+          await expect(page.getByText('1 other structure')).toHaveCount(0);
+          await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
+          await expect(page.getByText('Read from 10 brews with flow data · 0 low confidence · 0 with notes only')).toBeVisible();
+        }
+      },
+      {
+        name: 'recipes-see-brews',
+        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbsKey}`,
+        act: async (page: Page, s: Seed) => {
+          await expect(rows(page)).toHaveCount(3);
+          for (const r of await rows(page).all()) {
+            await expect(r.locator('svg[role="img"]')).toBeVisible();
+            await expect(r).toContainText('bloom');
+            await expect(r).not.toContainText('looks like');
+          }
+          expect(new URL(page.url()).search).toBe(`?brews=s${s.recipes.bbsKey}`);
+        }
+      },
+      {
+        name: 'recipes-see-recipe-brews', viewports: 'two' as const,
+        path: (s: Seed) => `/account/recipes?brews=r${s.recipes.recipeId}`,
+        act: async (page: Page) => {
+          await expect(rows(page)).toHaveCount(3);
+          for (const r of await rows(page).all()) await expect(r).toContainText('looks like Seed equal pours');
+        }
+      },
+      {
+        name: 'recipes-hidden', viewports: 'two' as const,
+        path: () => '/account/recipes?view=hidden',
+        act: async (page: Page) => {
+          await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
+        }
+      },
+      {
+        name: 'recipes-bad-params', viewports: 'two' as const,
+        path: () => '/account/recipes?brews=zzz&view=nope',
+        act: async (page: Page) => {
+          await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
+          await expect(rows(page)).toHaveCount(0);
+          await expect(page.getByRole('heading', { name: 'Hidden structures' })).toHaveCount(0);
+        }
+      },
+      {
+        // Name & save opens the form with the suggested name, nothing focused, nothing in the URL.
+        name: 'recipes-name-save-open', viewports: 'two' as const,
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          const before = page.url();
+          await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Name & save' }).click();
+          await expect(page.getByLabel('Name', { exact: true })).toHaveValue('BBS');
+          expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+          expect(page.url()).toBe(before);
+        }
+      }
+    ];
+  })(),
+  {
+    // From /account/recipes the Account nav item is current (desktop nav, phone More panel).
+    name: 'recipes-account-nav', viewports: 'two',
+    path: () => '/account/recipes',
+    act: async (page) => {
+      if (isPhone(page)) {
+        await page.getByRole('button', { name: 'More' }).click();
+        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+      } else {
+        await expect(page.locator('.nav-links').getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+      }
     }
   },
   {
@@ -9095,6 +9189,10 @@ test.describe('signed out', () => {
     await page.goto('/account');
     await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);
     await expect(page.getByRole('link', { name: 'Account', exact: true })).toHaveCount(0);
+  });
+  test('recipes-signed-out', async ({ page }) => {
+    await page.goto('/account/recipes');
+    await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount%2Frecipes/);
   });
   test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');

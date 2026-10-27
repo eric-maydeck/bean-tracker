@@ -1,13 +1,33 @@
 // Builds the throwaway DB the UI layout checks run against. Never real data:
 // it refuses any path outside .ui-test/. Usage: node scripts/ui-seed.ts .ui-test/ui.db
-import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createDb } from '../src/lib/server/db.ts';
 import { createCoffee, type NewCoffeeInput } from '../src/lib/server/coffees.ts';
 import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
 import { bcTimestamp } from '../src/lib/server/beanConquerorJson.ts';
-import { FLOW_STEP_MS } from '../src/lib/server/bcFlow.ts';
+import { FLOW_STEP_MS, compactFlow } from '../src/lib/server/bcFlow.ts';
+import type { PourReading } from '../src/lib/pours.ts';
+import { registerHooks } from 'node:module';
+import { pathToFileURL } from 'node:url';
+
+// The pour/recipe modules import through SvelteKit's `$lib` alias and extensionless paths, which plain node can't
+// resolve: a small resolve hook maps both, then they load dynamically.
+registerHooks({
+  resolve(s, c, next) {
+    if (s.startsWith('$lib/')) s = pathToFileURL(resolve('src/lib', s.slice(5))).href;
+    try {
+      return next(s, c);
+    } catch (e) {
+      if ((e as { code?: string }).code === 'ERR_MODULE_NOT_FOUND' && !/\.\w+$/.test(s)) return next(s + '.ts', c);
+      throw e;
+    }
+  }
+});
+const { readStale } = await import('../src/lib/server/pourReadings.ts');
+const { dismissStructure, rematchBrews, saveRecipe } = await import('../src/lib/server/recipes.ts');
+const { draftFromReadings } = await import('../src/lib/recipes.ts');
 
 const path = process.argv[2] ?? '';
 if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
@@ -263,17 +283,37 @@ db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
-// Account page: 3 brews with flow data, one flow stored for the first and one for a brew not imported yet ("waiting").
-const FLOW_UUIDS = ['aaaaaaaa-0000-4000-8000-000000000001', 'aaaaaaaa-0000-4000-8000-000000000002', 'aaaaaaaa-0000-4000-8000-000000000003'];
-FLOW_UUIDS.forEach((u, i) => db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = ?, has_flow_profile = 1 WHERE id = ?`).run(u, i + 1));
-const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, ${FLOW_STEP_MS}, 3, '[0,1,2]', ?)`);
-flow.run(FLOW_UUIDS[0], now);
-flow.run('bbbbbbbb-0000-4000-8000-000000000009', now);
+// Account page + recipes: 10 brews (ids 1-10) with real flows from the fixtures (3 bbs, 3 bbj, 3 4sy, 1 bbf), each with its
+// fixture's logged water / dose / time so the readings are confident; one orphan flow waits for its brew ("waiting").
+const fixture = (n: string) =>
+  compactFlow(JSON.parse(readFileSync(new URL(`../src/lib/server/fixtures/bcflow/${n}.json`, import.meta.url), 'utf8')))!;
+const LOGGED = { bbs: [295.3, 18, '117'], bbj: [244.7, 15.8, '96'], bbf: [324, 18, '130'], '4sy': [303.3, 18.1, '88'] } as const;
+const PLAN = ['bbs', 'bbs', 'bbs', 'bbj', 'bbj', 'bbj', '4sy', '4sy', '4sy', 'bbf'] as const;
+const FLOW_UUIDS = PLAN.map((_, i) => `aaaaaaaa-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
+const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, ${FLOW_STEP_MS}, ?, ?, ?)`);
+PLAN.forEach((tag, i) => {
+  const [water, dose, time] = LOGGED[tag];
+  db.prepare(`UPDATE beanconqueror_brews SET bc_uuid = ?, has_flow_profile = 1, water_amount_g = ?, ground_coffee_g = ?, brew_time = ? WHERE id = ?`)
+    .run(FLOW_UUIDS[i], water, dose, time, i + 1);
+  const w = fixture(tag).w;
+  flow.run(FLOW_UUIDS[i], w.length, JSON.stringify(w), now);
+});
+// Two of the bbs brews carry the user's tag in their notes (only where the seed left them empty).
+db.prepare(`UPDATE beanconqueror_brews SET notes = 'BBS.' WHERE id IN (1, 2) AND notes IS NULL`).run();
+flow.run('bbbbbbbb-0000-4000-8000-000000000009', 3, '[0,1,2]', now);
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('visualizer_last_upload_at', ?)`).run(now);
+// Recipes: "Seed equal pours" from the 4sy readings (its 3 brews then match it), and the bbf structure dismissed.
+readStale(db, -1);
+const readingOf = (i: number) => JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { reading: string }).reading) as PourReading;
+const keyOf = (i: number) => (db.prepare(`SELECT structure_key k FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { k: string }).k;
+const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: draftFromReadings([6, 7, 8].map(readingOf), [null, null, null]) });
+dismissStructure(db, keyOf(9));
+rematchBrews(db);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug, skip: skipSlug },
+  recipes: { bbsKey: keyOf(0), bbjKey: keyOf(3), recipeId },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));
 db.close();
