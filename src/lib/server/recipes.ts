@@ -12,7 +12,7 @@ import {
 import { parseMethod } from './insights/facts';
 
 export class RecipeError extends Error {}
-export const MIN_GROUP = 3;
+export const MIN_GROUP = 10;
 
 export function listRecipes(db: DatabaseSync): Recipe[] {
   const rows = db.prepare(`SELECT id, name, tags, definition FROM recipes ORDER BY name`).all() as {

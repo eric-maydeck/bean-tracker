@@ -28,11 +28,12 @@ type Data = Awaited<ReturnType<typeof load>> & Record<string, any>; // eslint-di
 
 describe('recipes page', () => {
   const db = getDb();
-  for (let i = 1; i <= 3; i++) {
+  const N = 10; // MIN_GROUP
+  for (let i = 1; i <= N; i++) {
     db.prepare(
       `INSERT INTO beanconqueror_brews (bc_created_at, bc_uuid, water_amount_g, ground_coffee_g, brew_time, notes, rating, has_flow_profile, imported_at)
        VALUES (?, ?, 295.3, 18, '117', ?, 8, 1, 'x')`
-    ).run(`2026-02-0${i}T08:30:00Z`, uuid(i), i < 3 ? 'BBS.' : null);
+    ).run(`2026-02-${String(i).padStart(2, '0')}T08:30:00Z`, uuid(i), i < 3 ? 'BBS.' : null);
     saveShot(db, { uuid: uuid(i), flow });
   }
   readStale(db, -1);
@@ -51,11 +52,11 @@ describe('recipes page', () => {
     const spy = vi.spyOn(db, 'prepare');
     const d = load(event(true)) as Data;
     expect(d.groups).toHaveLength(1);
-    expect(d.groups[0]).toMatchObject({ key, count: 3, tagged: 2, suggestedName: 'BBS' });
+    expect(d.groups[0]).toMatchObject({ key, count: N, tagged: 2, suggestedName: 'BBS' });
     expect(d.brews).toBeNull();
-    expect(d.totals).toEqual({ read: 3, lowConfidence: 0, notesOnly: 0 });
+    expect(d.totals).toEqual({ read: N, lowConfidence: 0, notesOnly: 0 });
     const withBrews = load(event(true, `?brews=s${key}`)) as Data;
-    expect(withBrews.brews).toHaveLength(3);
+    expect(withBrews.brews).toHaveLength(N);
     expect(load(event(true, '?brews=zzz&view=nope')) as Data).toMatchObject({ brews: null, hidden: null });
     expect(spy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes('brew_flows'))).toEqual([]);
     spy.mockRestore();
@@ -76,11 +77,11 @@ describe('recipes page', () => {
     const ok = await actions.saveRecipe(event(true, '', { name: 'Mine', tags: 'bbs, b', definition: JSON.stringify(def) }));
     expect(ok).toMatchObject({ saved: expect.any(Number) });
     expect(listRecipes(db)).toMatchObject([{ name: 'Mine', tags: ['bbs', 'b'] }]);
-    expect(db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get()).toMatchObject({ n: 3 });
+    expect(db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get()).toMatchObject({ n: N });
     const dup = await actions.saveRecipe(event(true, '', { name: 'mine', tags: '', definition: JSON.stringify(def) }));
     expect(dup).toMatchObject({ status: 400, data: { error: 'A recipe with that name exists' } });
     const d = load(event(true)) as Data;
-    expect(d.recipes[0]).toMatchObject({ counts: { logged: 2, match: 1, modified: 0 } });
+    expect(d.recipes[0]).toMatchObject({ counts: { logged: 2, match: N - 2, modified: 0 } });
     await actions.deleteRecipe(event(true, '', { id: String((ok as { saved: number }).saved) }));
     expect(listRecipes(db)).toEqual([]);
   });
@@ -89,7 +90,7 @@ describe('recipes page', () => {
     await actions.dismiss(event(true, '', { key }));
     let d = load(event(true, '?view=hidden')) as Data;
     expect(d.groups).toEqual([]);
-    expect(d.hidden).toMatchObject([{ key, count: 3 }]);
+    expect(d.hidden).toMatchObject([{ key, count: N }]);
     await actions.undismiss(event(true, '', { key }));
     d = load(event(true, '?view=hidden')) as Data;
     expect(d.groups).toHaveLength(1);

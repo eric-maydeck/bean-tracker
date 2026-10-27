@@ -1,5 +1,5 @@
 // Recipes as data: definition, parser, wording and brew matching (client-safe, no server imports).
-import { FAST_GPS, YEET_GPS, type PourReading, type Timeline } from './pours';
+import { FAST_GPS, capital, type PourReading, type Timeline } from './pours';
 
 export interface RecipePour {
   bloom: boolean;
@@ -181,15 +181,14 @@ export function describeRecipe(def: RecipeDef): string {
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
   else if (blooms > 1) parts.push(`two ${hold}blooms`);
-  const kinds: { kind: 'yeet' | 'fast' | 'slow'; n: number }[] = [];
+  const kinds: { kind: 'fast' | 'slow'; n: number }[] = [];
   for (const p of def.pours.slice(blooms)) {
-    const kind =
-      recipeSpeed(p) === 'slow' ? 'slow' : p.rateGps && p.rateGps[0] >= YEET_GPS ? 'yeet' : 'fast';
+    const kind = recipeSpeed(p);
     const l = kinds[kinds.length - 1];
     if (l?.kind === kind) l.n++;
     else kinds.push({ kind, n: 1 });
   }
-  const names = { yeet: ['yeet', 'yeets'], fast: ['fast pour', 'fast pours'], slow: ['slow pour', 'slow pours'] };
+  const names = { fast: ['fast pour', 'fast pours'], slow: ['slow pour', 'slow pours'] };
   kinds.forEach((k, i) => {
     let lo = k.n;
     let hi = k.n;
@@ -199,13 +198,14 @@ export function describeRecipe(def: RecipeDef): string {
     }
     parts.push(`${lo === hi ? lo : `${lo}-${hi}`} ${names[k.kind][hi === 1 ? 0 : 1]}`);
   });
-  const out = [parts.join(' + '), `~1:${+def.ratio.target.toFixed(1)}`];
-  if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
+  const out = [parts.join(' + ')];
   const sw = def.pours.flatMap((p, i) => (p.swirlAfter ? [i] : []));
   if (sw.length > 2) out.push(`${sw.length} swirls`);
   else if (sw.length)
     out.push(sw.map((i) => (i < blooms ? 'swirl after bloom' : `swirl after pour ${i + 1}`)).join(', '));
-  return out.join(' · ');
+  out.push(`~1:${+def.ratio.target.toFixed(1)}`);
+  if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
+  return capital(out.join(' · '));
 }
 
 export function recipeTimeline(def: RecipeDef): Timeline {

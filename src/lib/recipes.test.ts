@@ -150,11 +150,11 @@ describe('describeRecipe', () => {
     const d = def('BFFF', { pourCount: { min: 4, max: 5 }, ratio: { target: 16.7, tol: 0.7 }, totalS: 150 });
     expect(describeRecipe(d)).toBe('30 s bloom + 3-4 fast pours · ~1:16.7 · 2:30 total');
   });
-  it('yeet only when the rate minimum reaches YEET_GPS', () => {
-    const d = def('FF');
-    d.pours[0].rateGps = [12, 20];
-    d.pours[1].rateGps = [11, 20];
-    expect(describeRecipe(d)).toBe('1 yeet + 1 fast pour · ~1:16.7');
+  it('fast pours stay fast pours whatever the rate, and a swirl follows the pours', () => {
+    const d = def('BFF');
+    d.pours[0].swirlAfter = true;
+    d.pours[2].rateGps = [20, 25];
+    expect(describeRecipe(d)).toBe('30 s bloom + 2 fast pours · swirl after bloom · ~1:16.7');
   });
 });
 

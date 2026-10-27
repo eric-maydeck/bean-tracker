@@ -164,7 +164,7 @@ it('describeReading matches the spec example', () => {
     pours: [pour('fast', 10, true), pour('fast', 10, true), pour('fast', 8), pour('slow', 4)]
   };
   expect(describeReading(r)).toBe(
-    'two 30 s blooms + 1 fast pour + 1 slow pour · ~1:17.3 · 2:30 total'
+    'Two 30 s blooms + 1 fast pour + 1 slow pour · ~1:17.3 · 2:30 total'
   );
   const y = {
     ...base,
@@ -179,7 +179,7 @@ it('describeReading matches the spec example', () => {
     pours: [pour('fast', 15, true), pour('fast', 16), pour('fast', 15), pour('slow', 4)]
   };
   expect(describeReading(y)).toBe(
-    '30 s bloom + 2 yeets + 1 slow pour · ratio unknown · 2:30 total · swirl after bloom, swirl after pour 3 · immersion · low confidence'
+    '30 s bloom + 2 fast pours + 1 slow pour · swirl after bloom, swirl after pour 3 · ratio unknown · 2:30 total · immersion · low confidence'
   );
   expect(
     describeReading({

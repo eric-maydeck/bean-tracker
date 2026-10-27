@@ -1,9 +1,7 @@
 // Pour reading types and wording, shared by the server detector and the pages (no server imports).
 export const DETECTOR_VERSION = 1; // bump on any detector change; boot re-reads stale rows
-// g/s (calibrated, see fixtures/bcflow/README.md): a pour whose 1 s peak is >= FAST_GPS reads fast;
-// a fast pour whose average is >= YEET_GPS is a yeet.
+// g/s (calibrated, see fixtures/bcflow/README.md): a pour whose 1 s peak is >= FAST_GPS reads fast.
 export const FAST_GPS = 13;
-export const YEET_GPS = 12;
 
 export interface Pour {
   startS: number;
@@ -43,6 +41,7 @@ export function structureKey(bloomCount: number, pattern: string, ratio: number 
   return `${bloomCount}b-${pattern.toLowerCase()}-${ratio == null ? 'x' : Math.round(ratio)}`;
 }
 
+export const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function describeReading(r: PourReading): string {
@@ -52,26 +51,14 @@ export function describeReading(r: PourReading): string {
   const bloom = hold == null ? 'bloom' : `${hold} s bloom`;
   if (r.bloomCount === 1) parts.push(bloom);
   else if (r.bloomCount === 2) parts.push(`two ${hold == null ? '' : `${hold} s `}blooms`);
-  const kinds: { kind: 'yeet' | 'fast' | 'slow'; n: number }[] = [];
+  const kinds: { kind: 'fast' | 'slow'; n: number }[] = [];
   for (const p of r.pours.slice(r.bloomCount)) {
-    const kind = p.speed === 'slow' ? 'slow' : p.avgGps >= YEET_GPS ? 'yeet' : 'fast';
     const l = kinds[kinds.length - 1];
-    if (l?.kind === kind) l.n++;
-    else kinds.push({ kind, n: 1 });
+    if (l?.kind === p.speed) l.n++;
+    else kinds.push({ kind: p.speed, n: 1 });
   }
-  const names = {
-    yeet: ['yeet', 'yeets'],
-    fast: ['fast pour', 'fast pours'],
-    slow: ['slow pour', 'slow pours']
-  };
-  const pourPart = [
-    ...parts,
-    ...kinds.map((k) => plural(k.n, names[k.kind][0], names[k.kind][1]))
-  ].join(' + ');
-  const out = [pourPart];
-  out.push(r.ratio == null ? 'ratio unknown' : `~1:${+r.ratio.toFixed(1)}`);
-  const s = Math.round(r.totalS);
-  out.push(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} total`);
+  const names = { fast: ['fast pour', 'fast pours'], slow: ['slow pour', 'slow pours'] };
+  const out = [[...parts, ...kinds.map((k) => plural(k.n, names[k.kind][0], names[k.kind][1]))].join(' + ')];
   if (r.swirls.length > 2) out.push(`${r.swirls.length} swirls`);
   else if (r.swirls.length)
     out.push(
@@ -85,9 +72,12 @@ export function describeReading(r: PourReading): string {
         )
         .join(', ')
     );
+  out.push(r.ratio == null ? 'ratio unknown' : `~1:${+r.ratio.toFixed(1)}`);
+  const s = Math.round(r.totalS);
+  out.push(`${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} total`);
   if (r.immersion) out.push('immersion');
   if (r.lowConfidence) out.push('low confidence');
-  return out.join(' · ');
+  return capital(out.join(' · '));
 }
 
 export interface Timeline {

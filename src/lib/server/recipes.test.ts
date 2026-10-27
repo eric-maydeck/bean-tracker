@@ -73,11 +73,11 @@ describe('recipes', () => {
 
   it('brews without ratio or key never match by identity and group under -x', () => {
     const db = fresh();
-    for (let k = 0; k < 3; k++) {
+    for (let k = 0; k < MIN_GROUP; k++) {
       const i = addBrew(db);
       db.prepare(`UPDATE beanconqueror_brews SET water_amount_g = 0, ground_coffee_g = 0 WHERE id = ?`).run(i);
     }
-    expect(readStale(db)).toBe(3);
+    expect(readStale(db)).toBe(MIN_GROUP);
     const draft = draftFromReadings([reading(db, 1)], [null]);
     saveRecipe(db, { name: 'R1', tags: [], def: draft });
     expect(matches(db)).toEqual([]);
@@ -86,32 +86,32 @@ describe('recipes', () => {
 });
 
 describe('discoverGroups', () => {
-  it('groups of 3+, biggest first, with tags, phrase and shared gear', () => {
+  it('groups of MIN_GROUP+, biggest first, with tags, phrase and shared gear', () => {
     const db = fresh();
-    for (let k = 0; k < 3; k++) addBrew(db, { notes: 'BBS. sweet', method: 'm1', rating: 8 });
-    for (let k = 0; k < 4; k++) addBrew(db, { flow: BBJ, notes: k < 2 ? '2 yeets, 1 MD. Sweet' : null, method: 'm1' });
-    addBrew(db, { flow: load('5sy') });
+    for (let k = 0; k < MIN_GROUP; k++) addBrew(db, { notes: 'BBS. sweet', method: 'm1', rating: 8 });
+    for (let k = 0; k < MIN_GROUP + 1; k++) addBrew(db, { flow: BBJ, notes: k < 2 ? '2 yeets, 1 MD. Sweet' : null, method: 'm1' });
+    for (let k = 0; k < MIN_GROUP - 1; k++) addBrew(db, { flow: load('5sy') });
     const g = discoverGroups(db);
     expect(g).toHaveLength(2);
-    expect(g[0].count).toBe(4);
+    expect(g[0].count).toBe(MIN_GROUP + 1);
     expect(g[0]).toMatchObject({ tagged: 0, suggestedPhrase: '2 yeets, 1 MD', common: ['V60', 'Abaca'] });
-    expect(g[1]).toMatchObject({ count: 3, tagged: 3, suggestedName: 'BBS', avgRating: 8 });
-    expect(g[1].description).toMatch(/^two 20 s blooms/);
+    expect(g[1]).toMatchObject({ count: MIN_GROUP, tagged: MIN_GROUP, suggestedName: 'BBS', avgRating: 8 });
+    expect(g[1].description).toMatch(/^Two 20 s blooms/);
     expect(g[1].timeline.pours.length).toBeGreaterThan(0);
-    expect(MIN_GROUP).toBe(3);
+    expect(MIN_GROUP).toBe(10);
     expect(smallGroupCount(db)).toBe(1);
   });
 
   it('ties on count put more tagged first, then key order', () => {
     const db = fresh();
-    for (let k = 0; k < 3; k++) addBrew(db, { flow: BBJ });
-    for (let k = 0; k < 3; k++) addBrew(db, { notes: 'BBS' });
-    expect(discoverGroups(db).map((x) => x.tagged)).toEqual([3, 0]);
+    for (let k = 0; k < MIN_GROUP; k++) addBrew(db, { flow: BBJ });
+    for (let k = 0; k < MIN_GROUP; k++) addBrew(db, { notes: 'BBS' });
+    expect(discoverGroups(db).map((x) => x.tagged)).toEqual([MIN_GROUP, 0]);
   });
 
   it('dismissed keys disappear and come back', () => {
     const db = fresh();
-    for (let k = 0; k < 3; k++) addBrew(db);
+    for (let k = 0; k < MIN_GROUP; k++) addBrew(db);
     const key = discoverGroups(db)[0].key;
     dismissStructure(db, key);
     expect(discoverGroups(db)).toEqual([]);
@@ -122,7 +122,7 @@ describe('discoverGroups', () => {
 
   it('a group mostly matched by a saved recipe is gone', () => {
     const db = fresh();
-    for (let k = 0; k < 3; k++) addBrew(db);
+    for (let k = 0; k < MIN_GROUP; k++) addBrew(db);
     saveRecipe(db, { name: 'R1', tags: [], def: draftFromReadings([reading(db, 1)], [null]) });
     expect(discoverGroups(db)).toEqual([]);
   });
