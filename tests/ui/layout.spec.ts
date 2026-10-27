@@ -1107,13 +1107,13 @@ export const STATES: State[] = [
   { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,
     act: async (page, s) => {
       const block = page.locator('[data-testid="favorite-grind"]');
-      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d+(\.\d)?\/10/, /^ZP6 Special · .+ · \d+(\.\d)?\/10/]);
+      await expect(block.locator('li')).toHaveText([/^A4Z \(Femobook\) · .+ · \d+(\.\d)?( ·|$)/, /^ZP6 Special · .+ · \d+(\.\d)?( ·|$)/]);
       const grid = page.locator('.timing-grid');
       const box = async (t: string) => (await grid.locator('.stat', { hasText: t }).first().boundingBox())!;
       const [g, b, roast, days, rest, after, before] = [(await grid.boundingBox())!, (await block.boundingBox())!, await box('Roast date'), await box('Days since roast'), await box('Recommended rest'), await box('Drink after'), await box('Drink before')];
       expect(Math.abs(rest.x - days.x) < 2 && rest.y > days.y, 'Recommended rest under Days since roast').toBe(true);
       // A row breaks only between its segments, never inside one (at w1280 the seed's names).
-      const broken = await block.locator('.seg').evaluateAll((segs) => segs.filter((e) => { const r = document.createRange(); r.selectNodeContents(e); return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size > 1; }).map((e) => e.textContent));
+      const broken = await block.locator('.seg').evaluateAll((segs) => segs.filter((e) => e.getBoundingClientRect().height > 1.5 * parseFloat(getComputedStyle(e).lineHeight === 'normal' ? getComputedStyle(e).fontSize : getComputedStyle(e).lineHeight) + 1).map((e) => e.textContent));
       if (page.viewportSize()!.width >= 1280) expect(broken, 'no segment is broken').toEqual([]);
       if (b.x > roast.x + 20) {
         expect(Math.abs(b.y - roast.y), 'block top = first row top').toBeLessThan(2);
@@ -1125,6 +1125,21 @@ export const STATES: State[] = [
         expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);
         expect(Math.abs(b.x - g.x) < 2 && Math.abs(b.width - g.width) < 2, 'full width').toBe(true);
       }
+      // The setting and the rating each explain themselves in a help tip (the help cursor); one tip open at a time.
+      const tips = block.locator('li').first().locator('.text-tip'), open = page.locator('.cell-tip:popover-open');
+      await expect(tips).toHaveCount(2);
+      expect(await tips.first().evaluate((e) => getComputedStyle(e).cursor)).toBe('help');
+      await tapOn(tips.first());
+      await expect(open).toHaveCount(1);
+      await expect(open).toContainText('Grind setting of the best-rated brew on this grinder');
+      await expectTipInView(page, open);
+      await tapOn(tips.nth(1));
+      await expect(open).toHaveCount(1);
+      await expect(open).toContainText("out of 10 (Bean Conqueror's scale)");
+      await expectTipInView(page, open);
+      await page.keyboard.press('Escape');
+      await tapOn(page.locator('.timing h2'));
+      await expect(open).toHaveCount(0);
       // Any grinder count and name length: six grinders, one with a very long name and dripper, wrap without overflow.
       await block.locator('ul').evaluate((ul) => {
         const li = ul.querySelector('li')!;
@@ -1132,14 +1147,14 @@ export const STATES: State[] = [
         ul.querySelector('li')!.querySelector('.g')!.textContent = 'The Extraordinarily Long-Named Hand Grinder Collective Edition';
         ul.querySelector('li')!.querySelectorAll('.seg')[1].textContent = '· An Extraordinarily Long Dripper · Name Of Many Words';
       });
-      const bad = await block.evaluate((el) => [el, ...el.querySelectorAll('li, .seg')].filter((n) => n.scrollWidth > n.clientWidth + 1).map((n) => n.textContent));
+      const bad = await block.evaluate((el) => [...el.querySelectorAll('li, .seg')].filter((n) => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1).map((n) => n.textContent));
       expect(bad, 'no overflow').toEqual([]);
       const gb = await grid.boundingBox();
       expect((await block.boundingBox())!.x + (await block.boundingBox())!.width).toBeLessThanOrEqual(gb!.x + gb!.width + 1);
     } },
   { name: 'coffee-favorite-grind-single', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}`,
     act: async (page) => {
-      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d+(\.\d)?\/10/]);
+      await expect(page.locator('[data-testid="favorite-grind"] li')).toHaveText([/^ZP6 Special · .+ · \d+(\.\d)?( ·|$)/]);
     } },
   { name: 'coffee-favorite-grind-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.frozen}`,
     act: async (page) => {

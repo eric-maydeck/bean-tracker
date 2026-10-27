@@ -3,12 +3,14 @@
   import { RATING_MAX } from '$lib/rating';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import TextTip from '$lib/components/TextTip.svelte';
 
   // The Timing section's "Favorite grind": per grinder used on this bag, the setting of its highest-rated brew
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.
   let { items }: { items: FavoriteGrind[] } = $props();
 
-  const rate = (n: number) => `${n}/${RATING_MAX}`;
+  const SETTING_TIP = { title: 'Grind setting', lines: ['Grind setting of the best-rated brew on this grinder'] };
+  const RATING_TIP = { title: 'Rating', lines: [`Best rating on this grinder, out of ${RATING_MAX} (Bean Conqueror's scale)`] };
   // The other bag's tip is sticky (ui-rules 54, the Spend value map's pattern): hover opens it, the mouse can cross
   // onto it, a click or tap (Enter/Space) pins it until a click outside, Escape or its "See coffee" link.
   let tip = $state<{ o: OtherBag; el: Element; pinned: boolean; reveal?: boolean } | null>(null);
@@ -26,7 +28,7 @@
   };
   const tipOf = (o: OtherBag) => ({
     title: 'Another bag of the same coffee',
-    rows: [['Grind setting', o.setting ?? '—'], ['Rating', rate(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ?? '—'], ...(o.filter ? [['Filter', o.filter]] : []), ['Brewed', o.date]] as [string, string][]
+    rows: [['Grind setting', o.setting ?? '—'], ['Rating', String(o.rating)], ['Roasted', o.roastDate ?? '—'], ['Dripper', o.dripper ?? '—'], ...(o.filter ? [['Filter', o.filter]] : []), ['Brewed', o.date]] as [string, string][]
   });
 </script>
 
@@ -36,7 +38,7 @@
   {#if g.other}
     {@const o = g.other}
     <button type="button" class="fg-other" onpointerenter={(e) => hover(e, o)} onpointerleave={(e) => e.pointerType === 'mouse' && !tip?.pinned && later()}
-      onclick={(e) => click(e, o)}>Another bag scored higher ({o.setting ?? '—'} · {rate(o.rating)})</button>
+      onclick={(e) => click(e, o)}>Another bag scored higher ({o.setting ?? '—'} · {o.rating})</button>
   {/if}
 {/snippet}
 
@@ -47,7 +49,7 @@
       <li>
         <strong class="g">{g.grinder}</strong>
         {#if g.best}
-          <span class="seg">· {g.best.setting ?? '—'}</span> <span class="seg">· {rate(g.best.rating)}</span>{#if g.best.dripper}{' '}<span class="seg">· {g.best.dripper}{g.best.filter ? ` · ${g.best.filter}` : ''}</span>{/if}
+          <span class="seg">· <TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} /></span> <span class="seg">· <TextTip label={String(g.best.rating)} tip={RATING_TIP} /></span>{#if g.best.dripper}{' '}<span class="seg">· {g.best.dripper}{g.best.filter ? ` · ${g.best.filter}` : ''}</span>{/if}
         {:else}
           <span class="seg">· {g.brews} {g.brews === 1 ? 'brew' : 'brews'}, no ratings</span>
         {/if}
@@ -110,6 +112,18 @@
   }
   /* Phones: a 44px tap target; the extra height is pulled back with a negative margin so the rows keep their height. */
   @media (max-width: 640px) {
+    /* The setting and rating tips (TextTip): the same invisible 44px box, pulled back so the rows keep their size. */
+    .seg :global(.text-tip) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      margin: -10px -9px;
+      vertical-align: middle;
+    }
     .fg-other {
       display: inline-flex;
       align-items: center;
