@@ -18,8 +18,13 @@ describe('parseRecipesView', () => {
   it('reads view=hidden in any case', () => {
     expect(parse('view=HIDDEN')).toEqual({ view: 'hidden' });
   });
+  it('reads order=top in any case and ignores other values', () => {
+    expect(parse('order=TOP')).toEqual({ order: 'top' });
+    expect(parse('brews=r1&order=top')).toEqual({ brews: { recipe: 1 }, order: 'top' });
+    for (const q of ['order=latest', 'order=', 'order=best']) expect(parse(q), q).toEqual({});
+  });
   it('round-trips and omits defaults', () => {
-    for (const q of ['brews=r12', 'brews=s2b-fffs-17&view=hidden', 'view=hidden'])
+    for (const q of ['brews=r12', 'brews=s2b-fffs-17&view=hidden', 'view=hidden', 'brews=r3&order=top', 'brews=s1b-ss-16&order=top&view=hidden'])
       expect(recipesParams(parse(q)).toString()).toBe(q);
     expect(recipesParams(parse('')).toString()).toBe('');
   });

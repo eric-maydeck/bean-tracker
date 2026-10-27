@@ -226,8 +226,25 @@ export interface BrewRow {
   timeline: Timeline | null;
 }
 
-export function brewsFor(db: DatabaseSync, item: { recipe: number } | { key: string }): BrewRow[] {
+export const BREW_ROWS = 10;
+type Item = { recipe: number } | { key: string };
+
+/** How many brews an item's list draws from. */
+export function brewCount(db: DatabaseSync, item: Item): number {
+  const [from, arg] =
+    'recipe' in item
+      ? ['brew_recipe_matches WHERE recipe_id = ?', item.recipe]
+      : ['brew_pour_readings WHERE structure_key = ?', item.key];
+  return (db.prepare(`SELECT COUNT(*) n FROM ${from}`).get(arg) as { n: number }).n;
+}
+
+/** The newest BREW_ROWS brews, or the top-rated ones (rating desc, then newest). */
+export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' = 'latest'): BrewRow[] {
   const [where, arg] = 'recipe' in item ? ['x.recipe_id = ?', item.recipe] : ['r.structure_key = ?', item.key];
+  const sort =
+    order === 'top'
+      ? `COALESCE(b.rating, 0) DESC, b.bc_created_at DESC, b.id DESC`
+      : `b.bc_created_at DESC, b.id DESC`;
   const rows = db
     .prepare(
       `SELECT b.bc_created_at at, COALESCE(c.coffee_name, bean.name) coffee, c.slug, b.rating,
@@ -240,7 +257,7 @@ export function brewsFor(db: DatabaseSync, item: { recipe: number } | { key: str
        LEFT JOIN beanconqueror_beans bean ON bean.id = b.bean_id
        LEFT JOIN coffees c ON c.id = bean.coffee_id
        LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id
-       WHERE ${where} ORDER BY b.bc_created_at DESC, b.id DESC`
+       WHERE ${where} ORDER BY ${sort} LIMIT ${BREW_ROWS}`
     )
     .all(arg) as unknown as {
     at: string;

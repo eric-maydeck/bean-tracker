@@ -56,10 +56,21 @@ describe('recipes page', () => {
     expect(d.brews).toBeNull();
     expect(d.totals).toEqual({ read: N, lowConfidence: 0, notesOnly: 0 });
     const withBrews = load(event(true, `?brews=s${key}`)) as Data;
-    expect(withBrews.brews).toHaveLength(N);
+    expect(withBrews.brews).toHaveLength(10);
+    expect(withBrews.unlisted).toBeNull(); // it is a listed group
     expect(load(event(true, '?brews=zzz&view=nope')) as Data).toMatchObject({ brews: null, hidden: null });
     expect(spy.mock.calls.map((c) => String(c[0])).filter((s) => s.includes('brew_flows'))).toEqual([]);
     spy.mockRestore();
+  });
+
+  it('order=top lists the best rated first, newest first among equals', () => {
+    db.prepare(`UPDATE beanconqueror_brews SET rating = 10 WHERE bc_uuid = ?`).run(uuid(2));
+    const top = (load(event(true, `?brews=s${key}&order=top`)) as Data).brews as { date: string; rating: number }[];
+    expect(top.map((b) => b.rating).slice(0, 2)).toEqual([10, 8]);
+    expect(top[1].date).toBe('2026-02-10'); // newest of the 8s
+    const latest = (load(event(true, `?brews=s${key}`)) as Data).brews as { date: string }[];
+    expect(latest[0].date).toBe('2026-02-10');
+    db.prepare(`UPDATE beanconqueror_brews SET rating = 8 WHERE bc_uuid = ?`).run(uuid(2));
   });
 
   it('every action rejects a signed-out request', async () => {
@@ -91,6 +102,11 @@ describe('recipes page', () => {
     let d = load(event(true, '?view=hidden')) as Data;
     expect(d.groups).toEqual([]);
     expect(d.hidden).toMatchObject([{ key, count: N }]);
+    // A dismissed key still opens its list, in its own panel with its description and count.
+    const open = load(event(true, `?brews=s${key}`)) as Data;
+    expect(open.unlisted).toMatchObject({ key, count: N, description: expect.stringMatching(/total/) });
+    expect(open.brews).toHaveLength(10);
+    expect(open.brewsTotal).toBe(N);
     await actions.undismiss(event(true, '', { key }));
     d = load(event(true, '?view=hidden')) as Data;
     expect(d.groups).toHaveLength(1);

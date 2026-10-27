@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  RecipeError, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listRecipes, saveRecipe,
+  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listRecipes, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
@@ -75,13 +75,32 @@ export const load: PageServerLoad = ({ locals, url }) => {
     }));
   }
 
+  const groups = discoverGroups(db);
+  // A ?brews=s<key> that isn't listed as a group (too small, dismissed, matched by a recipe) still opens, in its own panel.
+  let unlisted: { key: string; description: string; count: number } | null = null;
+  const item = view.brews;
+  if (item && 'key' in item && !groups.some((g) => g.key === item.key)) {
+    const row = db
+      .prepare(`SELECT reading FROM brew_pour_readings WHERE structure_key = ? AND pour_count > 0 LIMIT 1`)
+      .get(item.key) as { reading: string } | undefined;
+    if (row)
+      unlisted = {
+        key: item.key,
+        description: describeReading(JSON.parse(row.reading) as PourReading),
+        count: brewCount(db, item)
+      };
+  }
+
   return {
     recipes,
-    groups: discoverGroups(db),
+    groups,
+    unlisted,
+    minGroup: MIN_GROUP,
+    brewsTotal: view.brews ? brewCount(db, view.brews) : 0,
     smallGroups: smallGroupCount(db),
     hiddenCount: (db.prepare(`SELECT COUNT(*) n FROM dismissed_structures`).get() as { n: number }).n,
     hidden,
-    brews: view.brews ? brewsFor(db, view.brews) : null,
+    brews: view.brews ? brewsFor(db, view.brews, view.order) : null,
     view,
     totals: { read: t.read, lowConfidence: t.low, notesOnly }
   };

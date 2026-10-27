@@ -9,7 +9,7 @@ import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, 
 interface Seed {
   slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
-  recipes: { bbsKey: string; bbjKey: string; recipeId: number };
+  recipes: { bbsKey: string; bbjKey: string; bbfKey: string; recipeId: number };
 }
 // Seeded open coffees with a linked bean, and their bag text (checkLayout rule 6
 // asserts each stays on one line).
@@ -2238,7 +2238,7 @@ export const STATES: State[] = [
     name: 'account',
     path: () => '/account',
     act: async (page) => {
-      await expect(page.getByText('Flow data for 10 of 10 brews')).toBeVisible();
+      await expect(page.getByText('Flow data for 24 of 24 brews')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
       await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
@@ -2249,8 +2249,8 @@ export const STATES: State[] = [
     }
   },
   ...(() => {
-    // /account/recipes: seeded with 10 flow brews (3 bbs, 3 bbj, 3 4sy, 1 bbf), the recipe "Seed equal pours" (the 4sy
-    // brews) and the bbf structure dismissed. `item` finds a list item by text inside one panel.
+    // /account/recipes: seeded with 24 flow brews (10 bbs, 10 bbj, 3 4sy, 1 bbf), the recipe "Seed equal pours" (the 4sy
+    // brews, 3 of 24 flow brews) and the bbf structure dismissed; bbs and bbj have MIN_GROUP (10) brews each. `item` finds a list item by text inside one panel.
     const panel = (page: Page, h: string) => page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: h, level: 2 }) });
     const rows = (page: Page) => page.locator('.brew-row');
     return [
@@ -2270,22 +2270,51 @@ export const STATES: State[] = [
             expect(await svg.getAttribute('aria-label')).toBeTruthy();
             await expect(li.locator('[data-button-row]').first()).toBeVisible();
           }
-          await expect(page.getByText('1 other structure')).toHaveCount(0);
+          // The 4sy structure (3 brews, all the recipe's) is below the group minimum; bbf is dismissed, so not counted.
+          await expect(page.getByText('1 other structure with fewer than 10 brews')).toBeVisible();
           await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
-          await expect(page.getByText('Read from 10 brews with flow data · 0 low confidence · 0 with notes only')).toBeVisible();
+          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 0 with notes only')).toBeVisible();
         }
       },
       {
         name: 'recipes-see-brews',
         path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbsKey}`,
         act: async (page: Page, s: Seed) => {
-          await expect(rows(page)).toHaveCount(3);
+          await expect(rows(page)).toHaveCount(10);
+          await expect(page.getByRole('link', { name: 'Latest' })).toHaveAttribute('aria-current', 'true');
+          await expect(page.getByRole('link', { name: 'Top rated' })).toHaveAttribute('href', `?brews=s${s.recipes.bbsKey}&order=top`);
           for (const r of await rows(page).all()) {
             await expect(r.locator('svg[role="img"]')).toBeVisible();
             await expect(r).toContainText('bloom');
             await expect(r).not.toContainText('looks like');
           }
           expect(new URL(page.url()).search).toBe(`?brews=s${s.recipes.bbsKey}`);
+        }
+      },
+      {
+        // Top rated: 10 rows, rating never rises down the list; the toggle keeps brews=.
+        name: 'recipes-see-brews-top', viewports: 'two' as const,
+        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbsKey}&order=top`,
+        act: async (page: Page, s: Seed) => {
+          await expect(rows(page)).toHaveCount(10);
+          await expect(page.getByRole('link', { name: 'Top rated' })).toHaveAttribute('aria-current', 'true');
+          await expect(page.getByRole('link', { name: 'Latest' })).toHaveAttribute('href', `?brews=s${s.recipes.bbsKey}`);
+          const ratings = (await rows(page).locator('.brew-head span:nth-child(3)').allInnerTexts()).map(Number);
+          expect(ratings).toEqual([...ratings].sort((a, b) => b - a));
+          expect(ratings[0]).toBeGreaterThan(ratings[9]);
+        }
+      },
+      {
+        // A key that is not shown as a group (here the dismissed bbf structure) still opens, in its own panel.
+        name: 'recipes-unlisted-key', viewports: 'two' as const,
+        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbfKey}`,
+        act: async (page: Page) => {
+          const open = panel(page, 'Found in your brews').locator('li.item.open');
+          await expect(open).toHaveCount(1);
+          await expect(open).toContainText('1 brew');
+          await expect(open).toContainText('total');
+          await expect(rows(page)).toHaveCount(1);
+          await expect(open.getByRole('link', { name: 'Close' })).toHaveAttribute('href', '?');
         }
       },
       {

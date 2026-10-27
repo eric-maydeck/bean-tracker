@@ -4,6 +4,7 @@ import { pickOne } from './pageUrlState';
 export type RecipesItem = { recipe: number } | { key: string };
 export interface RecipesView {
   brews?: RecipesItem;
+  order?: 'top';
   view?: 'hidden';
 }
 
@@ -15,6 +16,8 @@ export function parseRecipesView(p: URLSearchParams): RecipesView {
   const b = p.get('brews')?.toLowerCase() ?? '';
   if (/^r[1-9]\d{0,8}$/.test(b)) out.brews = { recipe: Number(b.slice(1)) };
   else if (b[0] === 's' && KEY.test(b.slice(1))) out.brews = { key: b.slice(1) };
+  const order = pickOne(p, 'order', ['top'] as const);
+  if (order) out.order = order;
   const view = pickOne(p, 'view', ['hidden'] as const);
   if (view) out.view = view;
   return out;
@@ -27,6 +30,7 @@ export function itemParam(i: RecipesItem): string {
 export function recipesParams(v: RecipesView): URLSearchParams {
   const p = new URLSearchParams();
   if (v.brews) p.set('brews', itemParam(v.brews));
+  if (v.order) p.set('order', v.order);
   if (v.view) p.set('view', v.view);
   return p;
 }

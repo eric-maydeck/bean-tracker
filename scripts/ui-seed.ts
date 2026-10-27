@@ -267,12 +267,14 @@ db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation
 db.prepare(`INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
   ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(now);
 
-// Account page + recipes: 10 brews (ids 1-10) with real flows from the fixtures (3 bbs, 3 bbj, 3 4sy, 1 bbf), each with its
+// Account page + recipes: 24 brews (ids 1-24) with real flows from the fixtures (10 bbs, 10 bbj, 3 4sy, 1 bbf), each with its
 // fixture's logged water / dose / time so the readings are confident; one orphan flow waits for its brew ("waiting").
 const fixture = (n: string) =>
   compactFlow(JSON.parse(readFileSync(new URL(`../src/lib/server/fixtures/bcflow/${n}.json`, import.meta.url), 'utf8')))!;
 const LOGGED = { bbs: [295.3, 18, '117'], bbj: [244.7, 15.8, '96'], bbf: [324, 18, '130'], '4sy': [303.3, 18.1, '88'] } as const;
-const PLAN = ['bbs', 'bbs', 'bbs', 'bbj', 'bbj', 'bbj', '4sy', '4sy', '4sy', 'bbf'] as const;
+// ids 1-10 bbs, 11-20 bbj (each group needs MIN_GROUP = 10 brews), 21-23 4sy (the recipe's), 24 bbf (dismissed). Brews 1-24 are
+// the first linked / twin / likely / Costa Rica brews, none in the Brewing lab's or Dial-in's data.
+const PLAN = [...Array(10).fill('bbs'), ...Array(10).fill('bbj'), '4sy', '4sy', '4sy', 'bbf'] as ('bbs' | 'bbj' | '4sy' | 'bbf')[];
 const FLOW_UUIDS = PLAN.map((_, i) => `aaaaaaaa-0000-4000-8000-${String(i + 1).padStart(12, '0')}`);
 const flow = db.prepare(`INSERT INTO beanconqueror_brew_flows (bc_uuid, format, step_ms, points, weights, uploaded_at) VALUES (?, 1, ${FLOW_STEP_MS}, ?, ?, ?)`);
 PLAN.forEach((tag, i) => {
@@ -290,14 +292,14 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('visualizer_last_upload_at
 readStale(db, -1);
 const readingOf = (i: number) => JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { reading: string }).reading) as PourReading;
 const keyOf = (i: number) => (db.prepare(`SELECT structure_key k FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { k: string }).k;
-const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: draftFromReadings([6, 7, 8].map(readingOf), [null, null, null]) });
-dismissStructure(db, keyOf(9));
+const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]) });
+dismissStructure(db, keyOf(23));
 rematchBrews(db);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, big: grams.big.slug,
     under: grams.under.slug, part: grams.part.slug, skip: skipSlug },
-  recipes: { bbsKey: keyOf(0), bbjKey: keyOf(3), recipeId },
+  recipes: { bbsKey: keyOf(0), bbjKey: keyOf(10), bbfKey: keyOf(23), recipeId },
   names: { long: LONG_NAME, everyAction: 'Ethiopia Bensa Bombe', ...GRAMS_NAMES }
 }));
 db.close();
