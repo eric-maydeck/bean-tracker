@@ -65,7 +65,7 @@
   {/if}
 {/snippet}
 
-{#if form && 'error' in form && form.error}
+{#if form && 'error' in form && form.error && naming === null}
   <p class="badge badge-urgent" role="alert">{form.error}</p>
 {/if}
 
@@ -161,6 +161,7 @@
                 <input type="hidden" name="definition" value={JSON.stringify(g.draft)} />
                 <label>Name <input name="name" value={g.suggestedName ?? ''} maxlength="40" required /></label>
                 <label>Note tags <input name="tags" value={g.suggestedPhrase ?? ''} /></label>
+                {#if form && 'error' in form && form.error}<p class="badge badge-urgent" role="alert">{form.error}</p>{/if}
                 <div class="form-actions" data-button-row>
                   <button class="button" type="submit">Save</button>
                   <button class="button button-ghost" type="button" onclick={() => (naming = null)}>Cancel</button>
@@ -222,6 +223,9 @@
   }
   .items {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+  }
+  .items:has(> .item:only-child) {
+    grid-template-columns: 1fr;
   }
   .item {
     border: 1px solid var(--color-border);

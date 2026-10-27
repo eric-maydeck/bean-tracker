@@ -33,7 +33,7 @@ export default defineConfig({
   webServer: {
     // Fresh seed every run; never reuse a server (it could be on a real DB).
     // UI_BUILD=prod: a production build (adapter-node assumes https without ORIGIN, failing CSRF).
-    command: `node scripts/ui-seed.ts .ui-test/ui.db && ${
+    command: `npx vite-node --config scripts/vite-node.config.mjs scripts/ui-seed.ts .ui-test/ui.db && ${
       process.env.UI_BUILD === 'prod'
         ? `npx vite build && PORT=${PORT} ORIGIN=http://localhost:${PORT} node build`
         : `npx vite dev --port ${PORT} --strictPort`

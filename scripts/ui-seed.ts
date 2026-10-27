@@ -1,5 +1,5 @@
 // Builds the throwaway DB the UI layout checks run against. Never real data:
-// it refuses any path outside .ui-test/. Usage: node scripts/ui-seed.ts .ui-test/ui.db
+// it refuses any path outside .ui-test/. Usage: npx vite-node --config scripts/vite-node.config.mjs scripts/ui-seed.ts .ui-test/ui.db
 import { rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createDb } from '../src/lib/server/db.ts';
@@ -8,26 +8,10 @@ import { createSubscription } from '../src/lib/server/subscriptions.ts';
 import { setRoasterImage } from '../src/lib/server/roasterImages.ts';
 import { bcTimestamp } from '../src/lib/server/beanConquerorJson.ts';
 import { FLOW_STEP_MS, compactFlow } from '../src/lib/server/bcFlow.ts';
+import { readStale } from '../src/lib/server/pourReadings.ts';
+import { dismissStructure, rematchBrews, saveRecipe } from '../src/lib/server/recipes.ts';
+import { draftFromReadings } from '../src/lib/recipes.ts';
 import type { PourReading } from '../src/lib/pours.ts';
-import { registerHooks } from 'node:module';
-import { pathToFileURL } from 'node:url';
-
-// The pour/recipe modules import through SvelteKit's `$lib` alias and extensionless paths, which plain node can't
-// resolve: a small resolve hook maps both, then they load dynamically.
-registerHooks({
-  resolve(s, c, next) {
-    if (s.startsWith('$lib/')) s = pathToFileURL(resolve('src/lib', s.slice(5))).href;
-    try {
-      return next(s, c);
-    } catch (e) {
-      if ((e as { code?: string }).code === 'ERR_MODULE_NOT_FOUND' && !/\.\w+$/.test(s)) return next(s + '.ts', c);
-      throw e;
-    }
-  }
-});
-const { readStale } = await import('../src/lib/server/pourReadings.ts');
-const { dismissStructure, rematchBrews, saveRecipe } = await import('../src/lib/server/recipes.ts');
-const { draftFromReadings } = await import('../src/lib/recipes.ts');
 
 const path = process.argv[2] ?? '';
 if (!resolve(path).startsWith(resolve('.ui-test') + sep)) {
