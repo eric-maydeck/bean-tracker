@@ -2238,7 +2238,7 @@ export const STATES: State[] = [
     path: () => '/account',
     act: async (page) => {
       await expect(page.getByText('Flow data for 1 of 3 brews')).toBeVisible();
-      await expect(page.getByText('1 waiting for a Bean Conqueror import')).toBeVisible();
+      await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
       await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();
       // Bean Conqueror's Basic auth takes the sign-in password (the UI tests' is `test`, playwright.config.ts).

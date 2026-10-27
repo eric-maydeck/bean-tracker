@@ -55,7 +55,8 @@
   <h3>Flow data (automatic upload)</h3>
   <p>
     Flow data for {s.joined} of {s.brewsWithFlow} brews · last upload {when(s.lastUploadAt)}{#if s.waiting > 0}
-      · {s.waiting} waiting for a Bean Conqueror import{/if}
+      · {s.waiting} {s.waiting === 1 ? 'brew' : 'brews'} not on the site yet: import the Bean Conqueror .zip above to
+      add {s.waiting === 1 ? 'it and its coffee' : 'them and their coffees'}{/if}
   </p>
   <ol>
     <li>In Bean Conqueror, open Settings → Visualizer.</li>
