@@ -14,13 +14,14 @@
   const brewsHref = (item: RecipesItem) => {
     const cur = data.view.brews;
     const open = cur && ('recipe' in item ? 'recipe' in cur && cur.recipe === item.recipe : 'key' in cur && cur.key === item.key);
-    const q = recipesParams({ ...data.view, brews: open ? undefined : item }).toString();
+    const q = recipesParams({ ...data.view, brews: open ? undefined : item, order: open ? undefined : data.view.order }).toString();
     return q ? `?${q}` : '?';
   };
   const isOpen = (item: RecipesItem) => {
     const cur = data.view.brews;
     return !!cur && ('recipe' in item ? 'recipe' in cur && cur.recipe === item.recipe : 'key' in cur && cur.key === item.key);
   };
+  const orderHref = (order?: 'top') => `?${recipesParams({ ...data.view, order })}`;
   const n = (c: number, one: string, many: string) => `${c} ${c === 1 ? one : many}`;
 </script>
 
@@ -45,6 +46,11 @@
 
 {#snippet brewList()}
   {#if data.brews}
+    <div class="order" data-button-row>
+      <a class="button {data.view.order ? 'button-secondary' : ''}" href={orderHref()} aria-current={data.view.order ? undefined : 'true'} data-sveltekit-noscroll>Latest</a>
+      <a class="button {data.view.order ? '' : 'button-secondary'}" href={orderHref('top')} aria-current={data.view.order ? 'true' : undefined} data-sveltekit-noscroll>Top rated</a>
+    </div>
+    {#if data.brewsTotal > data.brews.length}<p class="text-muted">Showing {data.brews.length} of {data.brewsTotal}.</p>{/if}
     <ul class="brew-rows">
       {#each data.brews as b, i (i)}
         <li class="brew-row">
@@ -128,6 +134,18 @@
 
   <section class="chart-panel">
     <h2>Found in your brews</h2>
+    {#if data.unlisted}
+      <ul class="items">
+        <li class="item open">
+          <div>{data.unlisted.description}</div>
+          <div class="text-muted">{n(data.unlisted.count, 'brew', 'brews')}</div>
+          <div class="row-actions" data-button-row>
+            <a class="button button-secondary" href={brewsHref({ key: data.unlisted.key })} data-sveltekit-noscroll>Close</a>
+          </div>
+          {@render brewList()}
+        </li>
+      </ul>
+    {/if}
     {#if data.groups.length}
       <ul class="items">
         {#each data.groups as g (g.key)}
@@ -173,10 +191,10 @@
         {/each}
       </ul>
     {:else}
-      <p class="text-muted">No repeated structures yet: brews with flow data show up here once 3 share a structure.</p>
+      <p class="text-muted">No repeated structures yet: brews with flow data show up here once {data.minGroup} share a structure.</p>
     {/if}
     {#if data.smallGroups > 0}
-      <p class="text-muted">{n(data.smallGroups, 'other structure', 'other structures')} with fewer than 3 brews</p>
+      <p class="text-muted">{n(data.smallGroups, 'other structure', 'other structures')} with fewer than {data.minGroup} brews</p>
     {/if}
     {#if data.hiddenCount > 0}
       <p><a href="?view=hidden">Hidden ({data.hiddenCount})</a></p>
@@ -209,9 +227,22 @@
   .swatch.fast { background: var(--series-1-ink); }
   .swatch.slow { background: var(--series-6); }
   .swatch.swirl {
-    width: 10px;
-    background: var(--color-text);
-    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    width: 0;
+    height: 14px;
+    border-radius: 0;
+    background: none;
+    border-left: 2px dashed var(--color-text);
+  }
+  .order {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+  .order .button {
+    flex: 1 1 auto;
+    margin: 0;
+    text-align: center;
   }
   .items,
   .brew-rows {
@@ -224,7 +255,8 @@
   .items {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
   }
-  .items:has(> .item:only-child) {
+  .items:has(> .item:only-child),
+  .items:has(> .item.open) {
     grid-template-columns: 1fr;
   }
   .item {
