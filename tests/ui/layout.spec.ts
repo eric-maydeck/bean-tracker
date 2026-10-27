@@ -1125,6 +1125,21 @@ export const STATES: State[] = [
         expect(b.y, 'block below the stats').toBeGreaterThanOrEqual(Math.max(before.y + before.height, rest.y + rest.height) - 1);
         expect(Math.abs(b.x - g.x) < 2 && Math.abs(b.width - g.width) < 2, 'full width').toBe(true);
       }
+      // The tip anchors have zero layout effect: the gap after each "·" is the same beside a tip as beside plain text.
+      const gaps = await block.locator('li').first().evaluate((li) => {
+        const gap = (node: Node, i: number, next: Element | Node | null) => {
+          const a = document.createRange(), b = document.createRange();
+          a.setStart(node, i); a.setEnd(node, i + 1);
+          if (next instanceof Element) b.selectNodeContents(next);
+          else if (next) { b.setStart(next, 2); b.setEnd(next, 3); }
+          return b.getBoundingClientRect().left - a.getBoundingClientRect().right;
+        };
+        const segs = [...li.querySelectorAll('.seg')];
+        const [set, rate, plain] = [segs[0], segs[1], segs[2]];
+        return [gap(set.firstChild!, 0, set.querySelector('.text-tip')), gap(rate.firstChild!, 0, rate.querySelector('.text-tip')), gap(plain.firstChild!, 0, plain.firstChild)];
+      });
+      expect(Math.abs(gaps[0] - gaps[2]), `setting gap ${gaps}`).toBeLessThanOrEqual(1);
+      expect(Math.abs(gaps[1] - gaps[2]), `rating gap ${gaps}`).toBeLessThanOrEqual(1);
       // The setting and the rating each explain themselves in a help tip (the help cursor); one tip open at a time.
       const tips = block.locator('li').first().locator('.text-tip'), open = page.locator('.cell-tip:popover-open');
       await expect(tips).toHaveCount(2);

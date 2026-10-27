@@ -112,17 +112,20 @@
   }
   /* Phones: a 44px tap target; the extra height is pulled back with a negative margin so the rows keep their height. */
   @media (max-width: 640px) {
-    /* The setting and rating tips (TextTip): the same invisible 44px box, pulled back so the rows keep their size. */
+    /* The setting and rating tips (TextTip): natural size, so spacing matches desktop; the 44px target is a centered
+       pseudo-element around the text. */
     .seg :global(.text-tip) {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      box-sizing: border-box;
-      min-width: 44px;
-      min-height: 44px;
+      position: relative;
       padding: 0;
-      margin: -10px -9px;
-      vertical-align: middle;
+    }
+    .seg :global(.text-tip)::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 44px;
+      height: 44px;
+      transform: translate(-50%, -50%);
     }
     .fg-other {
       display: inline-flex;

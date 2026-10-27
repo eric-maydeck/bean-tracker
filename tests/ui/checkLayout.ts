@@ -79,6 +79,8 @@ export async function checkLayout(page: Page): Promise<void> {
         if (el.matches('.stacked .leg')) continue;
         // Value map dots can't all be 44px and may overlap; an overlapped dot may be reachable by keyboard only (Best value lists just the top 5). Whether that is acceptable is a user call at the preview.
         if (el.matches('.value-map .pt')) continue;
+        // Favorite grind's setting and rating tips keep their natural size (spacing as on desktop); a centered 44px ::before is the target.
+        if (el.matches('.fave .text-tip')) continue;
         const r = el.getBoundingClientRect();
         if (r.width < 43.5 || r.height < 43.5) {
           out.push(`tap target ${Math.round(r.width)}×${Math.round(r.height)} < 44×44: ${describe(el)}`);
