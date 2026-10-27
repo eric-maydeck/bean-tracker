@@ -2270,8 +2270,8 @@ export const STATES: State[] = [
             expect(await svg.getAttribute('aria-label')).toBeTruthy();
             await expect(li.locator('[data-button-row]').first()).toBeVisible();
           }
-          // The 4sy structure (3 brews, all the recipe's) is below the group minimum; bbf is dismissed, so not counted.
-          await expect(page.getByText('1 other structure with fewer than 10 brews')).toBeVisible();
+          // The only small structures are the recipe's 4sy (matched) and the dismissed bbf: neither counts as "other".
+          await expect(page.getByText(/other structures? with fewer than/)).toHaveCount(0);
           await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
           await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 0 with notes only')).toBeVisible();
         }
@@ -2299,7 +2299,7 @@ export const STATES: State[] = [
           await expect(rows(page)).toHaveCount(10);
           await expect(page.getByRole('link', { name: 'Top rated' })).toHaveAttribute('aria-current', 'true');
           await expect(page.getByRole('link', { name: 'Latest' })).toHaveAttribute('href', `?brews=s${s.recipes.bbsKey}`);
-          const ratings = (await rows(page).locator('.brew-head span:nth-child(3)').allInnerTexts()).map(Number);
+          const ratings = (await rows(page).locator('.brew-head span:nth-child(3)').allInnerTexts()).map((t) => Number(t) || 0); // "unrated" counts as 0
           expect(ratings).toEqual([...ratings].sort((a, b) => b - a));
           expect(ratings[0]).toBeGreaterThan(ratings[9]);
         }

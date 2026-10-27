@@ -29,6 +29,7 @@
   <title>Bean Tracker - Recipes</title>
 </svelte:head>
 
+<div class="recipes">
 <h1>Recipes</h1>
 <p><a class="button button-ghost" href="/account">Account</a></p>
 
@@ -201,6 +202,7 @@
     {/if}
   </section>
 {/if}
+</div>
 
 <style>
   .legend {
@@ -231,7 +233,7 @@
     height: 14px;
     border-radius: 0;
     background: none;
-    border-left: 2px dashed var(--color-text);
+    border-left: 3px dashed var(--color-text);
   }
   .order {
     display: flex;
@@ -239,10 +241,19 @@
     gap: var(--space-2);
     margin-top: var(--space-2);
   }
-  .order .button {
-    flex: 1 1 auto;
+  .order .button,
+  .row-actions .button,
+  .panel .button {
     margin: 0;
-    text-align: center;
+  }
+  /* Phones: a button row's buttons share its width (ui-rules 17); desktop keeps them their own size. */
+  @media (max-width: 640px) {
+    .order .button,
+    .row-actions .button,
+    .panel .button {
+      flex: 1 1 auto;
+      text-align: center;
+    }
   }
   .items,
   .brew-rows {
@@ -252,12 +263,8 @@
     display: grid;
     gap: var(--space-4);
   }
-  .items {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
-  }
-  .items:has(> .item:only-child),
-  .items:has(> .item.open) {
-    grid-template-columns: 1fr;
+  .recipes {
+    max-width: 720px; /* the repo's width for form-like content (.form-grid, subscriptions' actions) */
   }
   .item {
     border: 1px solid var(--color-border);
@@ -269,7 +276,6 @@
     min-width: 0;
   }
   .item h3 { margin: 0; }
-  .item.open { grid-column: 1 / -1; }
   .row-actions {
     display: flex;
     flex-wrap: wrap;
@@ -277,20 +283,10 @@
     gap: var(--space-2);
     margin-top: auto;
   }
-  .row-actions .button {
-    flex: 1 1 auto;
-    margin: 0;
-    text-align: center;
-  }
   .row-actions .inline { display: contents; }
   .panel {
     display: grid;
     gap: var(--space-2);
-  }
-  .panel .button {
-    flex: 1 1 auto;
-    margin: 0;
-    text-align: center;
   }
   .panel label { display: grid; gap: var(--space-1); }
   .brew-rows { gap: var(--space-3); margin-top: var(--space-2); }

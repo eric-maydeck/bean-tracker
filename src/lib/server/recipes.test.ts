@@ -120,6 +120,15 @@ describe('discoverGroups', () => {
     expect(discoverGroups(db)).toHaveLength(1);
   });
 
+  it('a small structure mostly matched by a recipe is not an "other structure"', () => {
+    const db = fresh();
+    for (let k = 0; k < 3; k++) addBrew(db);
+    for (let k = 0; k < 2; k++) addBrew(db, { flow: BBJ });
+    expect(smallGroupCount(db)).toBe(2);
+    saveRecipe(db, { name: 'R1', tags: [], def: draftFromReadings([reading(db, 1)], [null]) });
+    expect(smallGroupCount(db)).toBe(1);
+  });
+
   it('a group mostly matched by a saved recipe is gone', () => {
     const db = fresh();
     for (let k = 0; k < MIN_GROUP; k++) addBrew(db);

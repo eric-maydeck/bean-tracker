@@ -10,6 +10,7 @@
   const total = $derived(Math.max(timeline.totalS, ...timeline.pours.map((p) => p.startS + p.durationS), 1));
   const water = $derived(Math.max(timeline.pours.reduce((s, p) => s + p.grams, 0), 1));
   const x = (s: number) => (s / total) * W;
+  const edge = (px: number) => Math.min(W - 6, Math.max(6, px)); // keep a swirl at either end inside the box
   const y = (g: number) => H - 1 - (g / water) * (H - 4);
   const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 
@@ -41,7 +42,8 @@
       <polygon class="seg {sh.kind}" points={sh.points} />
     {/each}
     {#each timeline.swirls as s, i (i)}
-      <line class="swirl" x1={x(s)} x2={x(s)} y1="0" y2={H} vector-effect="non-scaling-stroke" />
+      <line class="halo" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" />
+      <line class="swirl" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" />
     {/each}
   </svg>
   {#if !compact}
@@ -72,10 +74,15 @@
   .seg.slow {
     fill: var(--series-6);
   }
+  /* Drawn over the fills: a surface-colored halo under a heavy dashed line, so it reads on any segment in both themes. */
+  .halo {
+    stroke: var(--color-surface);
+    stroke-width: 6;
+  }
   .swirl {
     stroke: var(--color-text);
-    stroke-width: 1.5;
-    stroke-dasharray: 3 3;
+    stroke-width: 3;
+    stroke-dasharray: 5 3;
   }
   .axis {
     display: flex;

@@ -135,6 +135,9 @@ interface GroupRow {
   matched: number;
 }
 
+/** Mostly matched by a saved recipe (the structure is already named). */
+const mostlyMatched = (rows: GroupRow[]) => rows.filter((r) => r.matched).length * 2 >= rows.length;
+
 const TAG = /^\s*([A-Z0-9]*[A-Z][A-Z0-9]*)(?=[\s.,;:!]|$)/;
 const PHRASE = /\b(\d+|one|two|three|four|five)\s+(yeets?|pours?|blooms?)\b/i;
 
@@ -180,7 +183,7 @@ function commonOf(rows: GroupRow[]): string[] {
 export function discoverGroups(db: DatabaseSync): Group[] {
   const out: Group[] = [];
   for (const [key, rows] of groupRows(db)) {
-    if (rows.length < MIN_GROUP || rows.filter((r) => r.matched).length * 2 >= rows.length) continue;
+    if (rows.length < MIN_GROUP || mostlyMatched(rows)) continue;
     const words = rows.flatMap((r) => {
       const m = TAG.exec(r.notes ?? '');
       return m && m[1].length >= 2 && m[1].length <= 6 ? [m[1]] : [];
@@ -211,7 +214,7 @@ export function discoverGroups(db: DatabaseSync): Group[] {
 }
 
 export function smallGroupCount(db: DatabaseSync): number {
-  return [...groupRows(db).values()].filter((rows) => rows.length < MIN_GROUP).length;
+  return [...groupRows(db).values()].filter((rows) => rows.length < MIN_GROUP && !mostlyMatched(rows)).length;
 }
 
 export interface BrewRow {
