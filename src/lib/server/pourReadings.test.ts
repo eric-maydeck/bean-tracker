@@ -77,7 +77,12 @@ describe('pour readings', () => {
       db.prepare(`INSERT INTO beanconqueror_brew_flows VALUES (?, 1, 50, ?, ?, 't')`).run(uuid(i), flow.w.length, w);
     }
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const prepare = vi.spyOn(db, 'prepare');
     const [a, b] = await Promise.all([pr.queueReadings(db), pr.queueReadings(db)]);
+    // 25 per batch: 25 + 25 + 10, then the empty one that ends the loop
+    const batches = prepare.mock.calls.filter(([sql]) => /LIMIT \?/.test(sql)).length;
+    prepare.mockRestore();
+    expect(batches).toBeGreaterThanOrEqual(3);
     expect(a).toBe(60);
     expect(b).toBe(60);
     expect(readings(db)).toHaveLength(60);

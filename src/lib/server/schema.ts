@@ -309,4 +309,21 @@ CREATE TABLE IF NOT EXISTS brew_pour_readings (
   read_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_pour_readings_key ON brew_pour_readings(structure_key);
+-- User-defined recipes (plan 2026-10-27-pour-reading-recipes); none seeded. definition = JSON RecipeDef.
+CREATE TABLE IF NOT EXISTS recipes (
+  id INTEGER PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  tags TEXT NOT NULL DEFAULT '[]',   -- JSON string[]: note aliases
+  definition TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS dismissed_structures (structure_key TEXT PRIMARY KEY, dismissed_at TEXT NOT NULL);
+-- One recipe label per brew, rebuilt by rematchBrews. Brews without flow can only be 'logged'.
+CREATE TABLE IF NOT EXISTS brew_recipe_matches (
+  brew_id INTEGER PRIMARY KEY REFERENCES beanconqueror_brews(id) ON DELETE CASCADE,
+  recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  how TEXT NOT NULL CHECK (how IN ('logged', 'match', 'modified')),
+  diffs TEXT NOT NULL DEFAULT '[]'   -- JSON { text: string; modified: boolean }[]
+);
 `;

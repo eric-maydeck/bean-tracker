@@ -13,7 +13,7 @@ export const init: ServerInit = () => {
   // Sync and local: roaster sites from known product URLs (image Suggest).
   backfillRoasterWebsites(db);
   void queueFillMissing(db);
-  void queueReadings(db);
+  queueReadings(db).catch((e) => console.error('pour readings failed', e));
 };
 
 export const handle: Handle = async ({ event, resolve }) => {

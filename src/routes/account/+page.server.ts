@@ -38,7 +38,7 @@ export const actions: Actions = {
     }
     const db = getDb();
     importBeanConquerorData(db, parsed);
-    void queueReadings(db);
+    queueReadings(db).catch((e) => console.error('pour readings failed', e));
     return {
       success: true as const,
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }

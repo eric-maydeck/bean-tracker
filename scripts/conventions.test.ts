@@ -32,4 +32,11 @@ describe('conventions', () => {
       .filter((t) => !existsSync(t));
     expect(missing).toEqual([]);
   });
+
+  it('no seeded recipe names in src (tests and fixtures excepted)', () => {
+    const hits = walk('src', (f) => /\.(ts|svelte)$/.test(f) && !f.endsWith('.test.ts') && !f.includes('/fixtures/')).filter(
+      (f) => /\b(BBS|BBJ|BBF|4SY|5SY)\b/.test(readFileSync(f, 'utf8'))
+    );
+    expect(hits).toEqual([]);
+  });
 });

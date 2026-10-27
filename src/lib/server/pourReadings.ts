@@ -3,6 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { DETECTOR_VERSION, type PourReading } from '$lib/pours';
 import { expandFlow } from './bcFlow';
 import { readPours } from './pourDetector';
+import { rematchBrews } from './recipes';
 
 interface Row {
   bc_uuid: string;
@@ -59,6 +60,8 @@ export function readBrew(db: DatabaseSync, bcUuid: string): boolean {
   const row = db.prepare(`SELECT ${COLS} ${FROM} WHERE f.bc_uuid = ?`).get(bcUuid) as Row | undefined;
   if (!row) return false;
   store(db, row);
+  const brew = db.prepare(`SELECT id FROM beanconqueror_brews WHERE bc_uuid = ?`).get(bcUuid) as { id: number } | undefined;
+  if (brew) rematchBrews(db, [brew.id]);
   return true;
 }
 
@@ -96,6 +99,7 @@ export function queueReadings(db: DatabaseSync): Promise<number> {
         await new Promise((r) => setImmediate(r));
       }
     } while (again);
+    rematchBrews(db); // an import can change notes without changing a reading
     if (total) console.log(`pour readings: ${total} read in ${Date.now() - t0} ms`);
     return total;
   })().finally(() => (running = null));
