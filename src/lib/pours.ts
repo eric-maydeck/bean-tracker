@@ -1,9 +1,12 @@
 // Pour reading types and wording, shared by the server detector and the pages (no server imports).
-export const DETECTOR_VERSION = 2; // bump on any detector change; boot re-reads stale rows
+export const DETECTOR_VERSION = 3; // bump on any detector change; boot re-reads stale rows
 // g/s (calibrated, see fixtures/bcflow/README.md): a pour whose 1 s peak is >= FAST_GPS reads fast.
 export const FAST_GPS = 13;
 // ...and its average is >= FAST_MIN_AVG_GPS: a slow pour ending in a swirl-like spike peaks high but averages low.
 export const FAST_MIN_AVG_GPS = 5;
+// A fast non-bloom pour is slow when the brew has >= 2 other fast pours and it averages under FAST_REL_AVG x
+// their median AND runs over 3x their median duration: far slower than the brew's own fast pours.
+export const FAST_REL_AVG = 0.5;
 
 export interface Pour {
   startS: number;

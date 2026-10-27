@@ -5,6 +5,7 @@
 import {
   FAST_GPS,
   FAST_MIN_AVG_GPS,
+  FAST_REL_AVG,
   structureKey,
   type Pour,
   type PourReading,
@@ -109,14 +110,23 @@ export function readPours(
   const xs: number[] = [];
   for (let i = 0; i * 0.1 <= end + 1e-9; i++) xs.push(i / 10);
 
-  const swirlTimes = swingsOf(t, at, 40).map((s) => s[0]);
-  const spans = swingsOf(t, at, 25);
   const PRE = 0.5;
   const POST = 2;
+  const swirlTimes = swingsOf(t, at, 40).map((s) => s[0]);
+  // swings whose padded ends overlap (a dip then its recoil) bridge as one, not into each other (but
+  // never into a span so long it would swallow a pour)
+  const spans: Run[] = [];
+  for (const sp of swingsOf(t, at, 25)) {
+    const l = spans[spans.length - 1];
+    if (l && sp[0] - l[1] < PRE + POST && sp[1] - l[0] <= 10) l[1] = Math.max(l[1], sp[1]);
+    else spans.push([sp[0], sp[1]]);
+  }
   const masked = (x: number) => {
     const s = spans.find((s) => x >= s[0] - PRE && x <= s[1] + POST);
     if (!s) return at(x);
-    const a = at(s[0] - PRE);
+    // a swing that starts as a slow dip would anchor the bridge too low (a phantom rise): take the
+    // higher of the level 0.5 s and 2 s before
+    const a = Math.max(at(s[0] - PRE), at(s[0] - 2));
     return a + ((x - (s[0] - PRE)) / (s[1] - s[0] + PRE + POST)) * (at(s[1] + POST) - a);
   };
 
@@ -134,13 +144,22 @@ export function readPours(
   const merged = merge(runs, 2);
   // grams are read SETTLE s after the run ends (or at the next run), once the impact overshoot of a
   // fast pour has died away
+  // a rise that only climbs back to a level the brew already reached (a lifted dripper put back, a
+  // dip recovering) is not new water
+  let top = -Infinity;
+  const topBefore = xs.map((x) => (top = Math.max(top, masked(x))));
   const raw = merged
-    .map(([a, b], i) => ({
-      a,
-      b,
-      grams: masked(Math.min(b + SETTLE, merged[i + 1]?.[0] ?? Infinity)) - masked(a)
-    }))
-    .filter((p) => p.grams >= 10);
+    .map(([a, b], i) => {
+      const to = Math.min(b + SETTLE, merged[i + 1]?.[0] ?? Infinity);
+      return {
+        a,
+        b,
+        grams: masked(to) - masked(a),
+        fresh: masked(to) - (topBefore[Math.round(a * 10)] ?? 0)
+      };
+    })
+    .filter((p) => p.grams >= 10 && (p.a < 1 || p.fresh >= 10))
+    .map(({ a, b, grams }) => ({ a, b, grams }));
 
   // total time: logged, else the last >= 40 g drop in the final 5 s (dripper lifted), else the last point
   let totalS = end;
@@ -182,6 +201,25 @@ export function readPours(
     immersion = bloomHoldS >= 90 && pours.length <= 2;
   }
   pours.slice(0, bloomCount).forEach((p) => (p.bloom = true));
+
+  // within the brew: a fast pour that is both much slower and over 3x as long as the median of the
+  // others is slow (blooms are left alone: a bloom is often a long gentle pour)
+  const fast = pours.filter((p) => p.speed === 'fast');
+  const later = fast.filter((p) => !p.bloom);
+  if (fast.length >= 3) {
+    const med = (a: number[]) => {
+      const s = a.slice().sort((x, y) => x - y);
+      return s.length % 2 ? s[s.length >> 1] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
+    };
+    for (const p of later) {
+      const others = fast.filter((q) => q !== p);
+      if (
+        p.avgGps < FAST_REL_AVG * med(others.map((q) => q.avgGps)) &&
+        p.durationS > 3 * med(others.map((q) => q.durationS))
+      )
+        p.speed = 'slow';
+    }
+  }
 
   const swirls: Swirl[] = swirlTimes.map((atS) => ({
     atS,

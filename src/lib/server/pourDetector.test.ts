@@ -111,6 +111,71 @@ it('a slow pour ending in a swirl-like spike reads slow (peak is high, average i
   expect(r.pours[1].avgGps).toBeLessThan(FAST_MIN_AVG_GPS);
   expect(r.pattern).toBe('FS');
 });
+/** Piecewise-linear series through (time, grams) points, on a 0.1 s grid. */
+const curve = (pts: [number, number][]) => {
+  const t: number[] = [];
+  const g: number[] = [];
+  for (let x = 0; x <= pts[pts.length - 1][0] + 1e-9; x += 0.1) {
+    const k = Math.max(
+      1,
+      pts.findIndex((p) => p[0] >= x - 1e-9)
+    );
+    const [x0, y0] = pts[k - 1];
+    const [x1, y1] = pts[k];
+    t.push(x);
+    g.push(y0 + ((x - x0) / (x1 - x0)) * (y1 - y0));
+  }
+  return { t, g };
+};
+it('a dip that climbs back to the level already reached is not a pour', () => {
+  const c = curve([
+    [0, 0],
+    [4, 60],
+    [20, 60],
+    [21, 40],
+    [22, 40],
+    [23, 60],
+    [40, 60],
+    [44, 120],
+    [60, 120]
+  ]);
+  const r = readPours(c.t, c.g, NONE);
+  expect(r.pours).toHaveLength(2);
+  expect(r.pours[1].startS).toBeGreaterThan(38);
+});
+it('a slow-dip-then-recoil swirl does not stretch the pour before it', () => {
+  const c = curve([
+    [0, 0],
+    [3.5, 62],
+    [6.5, 62],
+    [7.5, 40],
+    [8.3, -120],
+    [9.3, -250],
+    [11, 44],
+    [12, 134],
+    [13, 68],
+    [15, 62],
+    [40, 62]
+  ]);
+  const r = readPours(c.t, c.g, NONE);
+  expect(r.pours).toHaveLength(1);
+  expect(r.pours[0].durationS).toBeLessThan(8);
+  expect(r.pours[0].speed).toBe('fast');
+});
+it('a long pour far slower than the other fast pours reads slow even above the lines', () => {
+  const s = synth([
+    [2, 60, 4],
+    [20, 60, 4],
+    [40, 60, 4],
+    [60, 15, 1],
+    [61, 100, 18]
+  ]);
+  const r = readPours(s.t, s.g, NONE);
+  const last = r.pours[r.pours.length - 1];
+  expect(last.peakGps).toBeGreaterThanOrEqual(FAST_GPS);
+  expect(last.avgGps).toBeGreaterThanOrEqual(FAST_MIN_AVG_GPS);
+  expect(r.pattern).toBe('FFFS');
+});
 it('single pour: bloomCount 0', () => {
   const s = synth([[2, 100, 6]]);
   const r = readPours(s.t, s.g, NONE);
