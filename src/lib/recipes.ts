@@ -170,6 +170,40 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
   };
 }
 
+/**
+ * Switch every pour between grams and shares of the water. g to %: each pour's share of the summed grams (to 0.1 %,
+ * the last pour absorbing rounding so shares sum to 1). % to g: shares times `totalG`, the water remembered from the
+ * last grams state; with no total the grams stay null (never invent one) and the shares are kept.
+ */
+export function convertAmounts(
+  pours: RecipePour[],
+  to: 'g' | '%',
+  totalG: number | null
+): { pours: RecipePour[]; totalG: number | null } {
+  if (to === '%') {
+    const sum = pours.reduce((t, p) => t + (p.grams ?? 0), 0);
+    if (sum <= 0) return { pours: pours.map((p) => ({ ...p })), totalG };
+    const withGrams = pours.flatMap((p, i) => (p.grams != null ? [i] : []));
+    const last = withGrams[withGrams.length - 1];
+    let used = 0;
+    const out = pours.map((p, i) => {
+      if (p.grams == null) return { ...p };
+      const share = i === last ? +(1 - used).toFixed(3) : +(Math.round((p.grams / sum) * 1000) / 1000).toFixed(3);
+      used += share;
+      return { ...p, share, grams: null };
+    });
+    return { pours: out, totalG: sum };
+  }
+  return {
+    pours: pours.map((p) => ({
+      ...p,
+      grams: p.share != null && totalG != null ? round(p.share * totalG) : p.grams,
+      share: p.share != null && totalG != null ? null : p.share
+    })),
+    totalG
+  };
+}
+
 const recipeSpeed = (p: RecipePour): 'fast' | 'slow' =>
   p.rateGps ? ((p.rateGps[0] + p.rateGps[1]) / 2 >= FAST_GPS ? 'fast' : 'slow') : p.speed;
 const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;

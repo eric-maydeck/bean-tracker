@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Pour, PourReading } from './pours';
 import {
-  describeRecipe, draftFromReadings, matchBrew, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
+  convertAmounts, describeRecipe, draftFromReadings, matchBrew, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
   type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
@@ -170,5 +170,25 @@ describe('draftFromReadings + recipeTimeline', () => {
     expect(d.pours[0].swirlAfter).toBe(false);
     expect(parseRecipeDef(d)).toEqual({ def: d });
     expect(recipeTimeline(d).pours).toHaveLength(4);
+  });
+});
+
+describe('convertAmounts', () => {
+  const pour = (grams: number | null, share: number | null = null) =>
+    ({ bloom: false, grams, share, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: null, durationS: null }) as const;
+  it('g to % sums to 100 and % to g restores the grams from the remembered total', () => {
+    const a = convertAmounts([pour(60), pour(120), pour(120)], '%', null);
+    expect(a.totalG).toBe(300);
+    expect(a.pours.map((p) => p.share)).toEqual([0.2, 0.4, 0.4]);
+    expect(a.pours.every((p) => p.grams == null)).toBe(true);
+    const thirds = convertAmounts([pour(100), pour(100), pour(100)], '%', null).pours.map((p) => p.share!);
+    expect(+thirds.reduce((x, y) => x + y, 0).toFixed(3)).toBe(1);
+    const b = convertAmounts(a.pours, 'g', a.totalG);
+    expect(b.pours.map((p) => p.grams)).toEqual([60, 120, 120]);
+    expect(b.pours.every((p) => p.share == null)).toBe(true);
+  });
+  it('% to g with no remembered total keeps shares and invents no grams', () => {
+    const b = convertAmounts([pour(null, 0.25), pour(null, 0.75)], 'g', null);
+    expect(b.pours.map((p) => [p.grams, p.share])).toEqual([[null, 0.25], [null, 0.75]]);
   });
 });

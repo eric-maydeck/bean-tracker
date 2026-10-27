@@ -2,7 +2,7 @@
   import { enhance } from '$app/forms';
   import Icon from '$lib/components/Icon.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
-  import { describeRecipe, recipeTimeline, type RecipeDef } from '$lib/recipes';
+  import { convertAmounts, describeRecipe, recipeTimeline, type RecipeDef } from '$lib/recipes';
 
   let {
     name,
@@ -23,8 +23,18 @@
 
   let tried = $state(false); // show only the error of a save this editor sent
   const mode = (p: RecipeDef['pours'][number]) => (p.rateGps ? 'range' : p.speed);
-  const unit = (p: RecipeDef['pours'][number]) => (p.grams == null && p.share != null ? '%' : 'g');
-  const sum = () => copy.pours.reduce((s, p) => s + (p.grams ?? 0), 0);
+  // One unit for the whole recipe. `totalG` is the water remembered from the last grams state (null: never known).
+  /* svelte-ignore state_referenced_locally */
+  let unit = $state<'g' | '%'>(def.pours.some((p) => p.grams == null && p.share != null) ? '%' : 'g');
+  /* svelte-ignore state_referenced_locally */
+  let totalG = $state<number | null>(def.pours.every((p) => p.grams != null) ? def.pours.reduce((t, p) => t + p.grams!, 0) : null);
+  function setUnit(u: 'g' | '%') {
+    if (u === unit) return;
+    const c = convertAmounts($state.snapshot(copy.pours) as RecipeDef['pours'], u, totalG);
+    copy.pours = c.pours;
+    totalG = c.totalG;
+    unit = u;
+  }
 
   function setMode(i: number, m: string) {
     const p = copy.pours[i];
@@ -34,21 +44,10 @@
       p.speed = m as 'fast' | 'slow';
     }
   }
-  function setUnit(i: number, u: string) {
-    const p = copy.pours[i];
-    if (u === unit(p)) return;
-    if (u === '%') {
-      p.share = p.grams != null && sum() > 0 ? +(p.grams / sum()).toFixed(2) : p.share;
-      p.grams = null;
-    } else {
-      p.grams = p.share != null && p.share > 0 ? Math.round(p.share * 300) : p.grams; // ~300 g of water
-      p.share = null;
-    }
-  }
   function add() {
     const last = copy.pours.at(-1);
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
-    copy.pours.push({ bloom: false, grams: 50, share: null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20 });
+    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20 });
   }
   function move(i: number, d: -1 | 1) {
     const [a, b] = [copy.pours[i], copy.pours[i + d]];
@@ -59,6 +58,8 @@
 
   // The timeline needs grams: a % pour is drawn at 100 g per 100 %.
   const preview = $derived({ ...copy, pours: copy.pours.map((p) => ({ ...p, grams: p.grams ?? (p.share ?? 0) * 100 })) });
+  // What is saved: only the fields of the chosen unit, so a stale value never lingers.
+  const payload = $derived({ ...copy, pours: copy.pours.map((p) => (unit === 'g' ? { ...p, share: p.grams == null ? p.share : null } : { ...p, grams: p.share == null ? p.grams : null })) });
 </script>
 
 <form
@@ -73,13 +74,20 @@
   };
   }}
 >
-  <input type="hidden" name="definition" value={JSON.stringify(copy)} />
+  <input type="hidden" name="definition" value={JSON.stringify(payload)} />
   {#if id != null}<input type="hidden" name="id" value={id} />{/if}
   <div class="grid">
     <div class="form-field"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
     <div class="form-field">
       <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
       <small class="text-muted">A note containing one of these as a word is logged as this recipe.</small>
+    </div>
+    <div class="form-field">
+      <label for="re-unit">Pour amounts in</label>
+      <select id="re-unit" value={unit} onchange={(e) => setUnit(e.currentTarget.value as 'g' | '%')}>
+        <option value="g">Grams</option>
+        <option value="%">% of water</option>
+      </select>
     </div>
     <div class="form-field"><label for="re-hold">Bloom hold (s)</label><input id="re-hold" type="number" min="0" step="any" bind:value={copy.bloomHoldS} /></div>
     <div class="form-field"><label for="re-holdtol">± (s)</label><input id="re-holdtol" type="number" min="0" step="any" bind:value={copy.bloomHoldTolS} /></div>
@@ -98,14 +106,7 @@
       </div>
       <div class="grid">
         <div class="form-field">
-          <label for="re-u{i}">Amount in</label>
-          <select id="re-u{i}" value={unit(p)} onchange={(e) => setUnit(i, e.currentTarget.value)}>
-            <option value="g">Grams</option>
-            <option value="%">% of water</option>
-          </select>
-        </div>
-        <div class="form-field">
-          {#if unit(p) === 'g'}
+          {#if unit === 'g'}
             <label for="re-a{i}">Grams</label><input id="re-a{i}" type="number" min="0" step="any" bind:value={p.grams} />
           {:else}
             <label for="re-a{i}">% of water</label>
@@ -179,6 +180,8 @@
   .editor :global(.form-actions) { margin-top: 0; }
   .editor :global(.button) { margin: 0; }
   @media (max-width: 640px) {
+    .form-field input:not([type='checkbox']),
+    .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
 </style>

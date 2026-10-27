@@ -2380,6 +2380,23 @@ export const STATES: State[] = [
           const g1 = await grams();
           expect([g1[1], g1[2]]).toEqual([g0[2], g0[1]]);
           expect(await speeds()).toEqual([s0[0], s0[2], s0[1], s0[3]]);
+          // Unit toggle round trip: % shows each pour's share of the water; typing 50 in pour 1 and going back to Grams
+          // gives half the remembered total (the sum of the grams above).
+          const total = g1.reduce((t, v) => t + Number(v), 0);
+          await page.getByLabel('Pour amounts in').selectOption('%');
+          await expect(pours.getByLabel('% of water')).toHaveCount(4);
+          await expect(pours.getByLabel('Grams')).toHaveCount(0);
+          const pct = pours.nth(0).getByLabel('% of water');
+          await pct.focus();
+          await page.keyboard.press('ControlOrMeta+a');
+          await page.keyboard.type('50');
+          await page.getByLabel('Pour amounts in').selectOption('g');
+          await expect(pours.nth(0).getByLabel('Grams')).toHaveValue(String(+(total * 0.5).toFixed(1)));
+          // Phone tap targets: icon buttons, selects and number inputs are at least 44 px tall.
+          if ((page.viewportSize()?.width ?? 1000) <= 480) {
+            for (const el of [pours.nth(0).getByRole('button', { name: 'Move down' }), pours.nth(0).getByRole('button', { name: 'Remove' }), pours.nth(0).getByLabel('Speed'), pours.nth(0).getByLabel('Grams'), page.getByLabel('Ratio 1:', { exact: true })])
+              expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+          }
           // A number field by keyboard: Ratio 1: becomes 15.5 and the description follows.
           const ratio = page.getByLabel('Ratio 1:', { exact: true });
           await ratio.focus();
