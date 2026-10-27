@@ -58,7 +58,11 @@ export function saveShot(db: DatabaseSync, shot: { uuid: string; flow: CompactFl
        weights = excluded.weights, uploaded_at = excluded.uploaded_at`
   ).run(shot.uuid, shot.flow.v, shot.flow.stepMs, shot.flow.w.length, JSON.stringify(shot.flow.w), now);
   setMeta(db, LAST_UPLOAD_KEY, now);
-  readBrew(db, shot.uuid);
+  try {
+    readBrew(db, shot.uuid);
+  } catch (e) {
+    console.warn(`pour readings: could not read ${shot.uuid}: ${e instanceof Error ? e.message : e}`); // the flow is stored; the next boot's stale pass retries
+  }
   return { id: shot.uuid };
 }
 

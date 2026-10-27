@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,6 +32,16 @@ const shot = (k: number, uuid = UUID) => {
 };
 
 describe('saveShot / uploadStatus', () => {
+  it('a reading failure does not fail an upload whose flow is stored', () => {
+    const db = createDb(':memory:');
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bc_uuid, water_amount_g, ground_coffee_g, has_flow_profile, imported_at) VALUES ('2026-01-01T00:00:00Z', ?, 300, 18, 1, 'x')`).run(UUID);
+    db.exec('DROP TABLE brew_pour_readings');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(saveShot(db, shot(1))).toEqual({ id: UUID });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+    expect(db.prepare('SELECT COUNT(*) n FROM beanconqueror_brew_flows').get()).toEqual({ n: 1 });
+  });
   it('upserts one row per uuid, second weights win, same id returned', () => {
     const db = createDb(':memory:');
     const a = saveShot(db, shot(1));

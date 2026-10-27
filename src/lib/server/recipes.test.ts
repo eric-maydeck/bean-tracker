@@ -62,8 +62,9 @@ describe('recipes', () => {
     const draft = draftFromReadings([reading(db, addBrew(db))], [null]);
     saveRecipe(db, { name: 'R1', tags: [], def: draft });
     const noFlow = addBrew(db, { flow: null, notes: 'R1. good' });
-    const withFlow = addBrew(db, { notes: 'r1 again' });
-    rematchBrews(db); // the import path: queueReadings ends with this
+    const withFlow = addBrew(db, { notes: 'r1 again' }); // saveShot -> readBrew labels it, no explicit rematch
+    expect(matches(db).filter((m) => m.brew_id !== 1)).toEqual([{ brew_id: withFlow, recipe_id: 1, how: 'logged' }]);
+    rematchBrews(db); // the import path: queueReadings ends with this; picks up the brew without a flow
     expect(matches(db).filter((m) => m.brew_id !== 1)).toEqual([
       { brew_id: noFlow, recipe_id: 1, how: 'logged' },
       { brew_id: withFlow, recipe_id: 1, how: 'logged' }

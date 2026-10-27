@@ -50,6 +50,8 @@ describe('pour readings', () => {
     expect(pr.readStale(db)).toBe(1);
     db.prepare(`UPDATE beanconqueror_brews SET water_amount_g = 300 WHERE bc_uuid = ?`).run(uuid(2));
     expect(pr.readStale(db)).toBe(1);
+    db.prepare(`UPDATE beanconqueror_brews SET brew_time = '130' WHERE bc_uuid = ?`).run(uuid(3));
+    expect(pr.readStale(db)).toBe(1);
     expect(pr.readStale(db)).toBe(0);
     db.prepare(`UPDATE brew_pour_readings SET detector_version = ?`).run(DETECTOR_VERSION - 1);
     expect(pr.readStale(db, -1)).toBe(3);
