@@ -3,7 +3,6 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   let { data, form } = $props();
 
-  let confirming = $state(false);
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'never');
   const s = $derived(data.status);
 </script>
@@ -61,7 +60,7 @@
   <ol>
     <li>In Bean Conqueror, open Settings → Visualizer.</li>
     <li>Choose a custom server and enter the URL <code>{data.uploadUrl}</code>.</li>
-    <li>Username: <code>{data.username}</code>. Password: the upload password from this page.</li>
+    <li>Username: <code>{data.username}</code>. Password: your Bean Tracker sign-in password.</li>
     <li>Turn on "Upload each brewing automatically".</li>
     <li>Tap "Upload all brews" once to send your past brews.</li>
   </ol>
@@ -69,32 +68,5 @@
     "Upload all" sends only brews Bean Conqueror hasn't uploaded before. If you tried another server first, those brews
     won't be sent again; edit and save a brew to resend it.
   </p>
-
-  {#if confirming}
-    <p>Replacing the upload password stops the old one from working.</p>
-    <form
-      method="POST"
-      action="?/createUploadPassword"
-      use:enhance={() => async ({ update }) => { confirming = false; await update({ reset: false }); }}
-    >
-      <div data-button-row>
-        <button class="button" type="submit">Replace</button>
-        <button class="button button-secondary" type="button" onclick={() => (confirming = false)}>Cancel</button>
-      </div>
-    </form>
-  {:else}
-    <form method="POST" action="?/createUploadPassword" use:enhance>
-      {#if s.hasPassword}
-        <button class="button button-secondary" type="button" onclick={() => (confirming = true)}>Replace upload password</button>
-      {:else}
-        <button class="button button-secondary" type="submit">Create upload password</button>
-      {/if}
-    </form>
-  {/if}
-  {#if !confirming && form && 'uploadPassword' in form && form.uploadPassword}
-    <div role="status">
-      <p><code>{form.uploadPassword}</code></p>
-      <p class="text-muted">Copy it into Bean Conqueror now; it won't be shown again. Replacing it stops the old one from working.</p>
-    </div>
-  {/if}
+  <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
 </section>

@@ -2240,8 +2240,10 @@ export const STATES: State[] = [
       await expect(page.getByText('Flow data for 1 of 3 brews')).toBeVisible();
       await expect(page.getByText('1 waiting for a Bean Conqueror import')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
-      await expect(page.getByRole('button', { name: 'Replace upload password' })).toBeHidden();
-      await expect(page.getByRole('button', { name: 'Create upload password' })).toBeVisible();
+      await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();
+      // Bean Conqueror's Basic auth takes the sign-in password (the UI tests' is `test`, playwright.config.ts).
+      const basic = 'Basic ' + Buffer.from('x:test').toString('base64');
+      expect((await page.request.get('/api/me', { headers: { Authorization: basic } })).status()).toBe(200);
     }
   },
   {

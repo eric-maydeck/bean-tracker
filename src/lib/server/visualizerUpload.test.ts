@@ -1,12 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createDb } from './db';
 import { importBeanConquerorData } from './beanconqueror';
 import { compactFlow } from './bcFlow';
+import { hashPassword } from './auth';
 import {
-  createUploadPassword,
   verifyUploadAuth,
   parseShot,
   saveShot,
@@ -50,7 +50,7 @@ describe('saveShot / uploadStatus', () => {
   it('counts a flow without a brew as waiting until the zip import brings the brew', () => {
     const db = createDb(':memory:');
     saveShot(db, shot(1));
-    expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 0, waiting: 1, brewsWithFlow: 0, hasPassword: false });
+    expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 0, waiting: 1, brewsWithFlow: 0 });
     const brew = { bcUuid: UUID, bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null, hasFlowProfile: true };
     importBeanConquerorData(db, { beans: [], beanOrigins: [], methods: [], grinders: [], brews: [brew] });
     expect(uploadStatus(db)).toMatchObject({ flows: 1, joined: 1, waiting: 0, brewsWithFlow: 1 });
@@ -100,35 +100,37 @@ describe('parseShot', () => {
 });
 
 describe('verifyUploadAuth', () => {
-  it('is false when no password exists', () => {
-    const db = createDb(':memory:');
-    expect(verifyUploadAuth(db, basic('bean-tracker', 'x'))).toBe(false);
-    expect(uploadStatus(db).hasPassword).toBe(false);
+  const saved = process.env.ADMIN_PASSWORD_HASH;
+  afterEach(() => {
+    if (saved === undefined) delete process.env.ADMIN_PASSWORD_HASH;
+    else process.env.ADMIN_PASSWORD_HASH = saved;
   });
 
-  it('accepts any username with the right password, rejects the rest', () => {
-    const db = createDb(':memory:');
-    const pw = createUploadPassword(db);
-    expect(uploadStatus(db).hasPassword).toBe(true);
-    expect(verifyUploadAuth(db, basic('bean-tracker', pw))).toBe(true);
-    expect(verifyUploadAuth(db, basic('anyone', pw))).toBe(true);
-    expect(verifyUploadAuth(db, basic('anyone', pw))).toBe(true); // memo hit
-    expect(verifyUploadAuth(db, basic('bean-tracker', 'wrong'))).toBe(false);
-    expect(verifyUploadAuth(db, 'Basic !!!')).toBe(false);
-    expect(verifyUploadAuth(db, 'Basic ' + Buffer.from('nocolon').toString('base64'))).toBe(false);
-    expect(verifyUploadAuth(db, basic('u', pw).replace('Basic', 'basic'))).toBe(true);
-    expect(verifyUploadAuth(db, basic('u', ''))).toBe(false);
-    expect(verifyUploadAuth(db, 'Bearer ' + pw)).toBe(false);
-    expect(verifyUploadAuth(db, null)).toBe(false);
+  it('is false when no sign-in password is configured', () => {
+    delete process.env.ADMIN_PASSWORD_HASH;
+    expect(verifyUploadAuth(basic('bean-tracker', 'x'))).toBe(false);
   });
 
-  it('rotating invalidates the old password even after a memoized success', () => {
-    const db = createDb(':memory:');
-    const old = createUploadPassword(db);
-    expect(verifyUploadAuth(db, basic('u', old))).toBe(true);
-    const fresh = createUploadPassword(db);
-    expect(fresh).not.toBe(old);
-    expect(verifyUploadAuth(db, basic('u', old))).toBe(false);
-    expect(verifyUploadAuth(db, basic('u', fresh))).toBe(true);
+  it('accepts any username with the sign-in password, rejects the rest', () => {
+    const pw = 'sign-in-pw';
+    process.env.ADMIN_PASSWORD_HASH = hashPassword(pw);
+    expect(verifyUploadAuth(basic('bean-tracker', pw))).toBe(true);
+    expect(verifyUploadAuth(basic('anyone', pw))).toBe(true);
+    expect(verifyUploadAuth(basic('anyone', pw))).toBe(true); // memo hit
+    expect(verifyUploadAuth(basic('bean-tracker', 'wrong'))).toBe(false);
+    expect(verifyUploadAuth('Basic !!!')).toBe(false);
+    expect(verifyUploadAuth('Basic ' + Buffer.from('nocolon').toString('base64'))).toBe(false);
+    expect(verifyUploadAuth(basic('u', pw).replace('Basic', 'basic'))).toBe(true);
+    expect(verifyUploadAuth(basic('u', ''))).toBe(false);
+    expect(verifyUploadAuth('Bearer ' + pw)).toBe(false);
+    expect(verifyUploadAuth(null)).toBe(false);
+  });
+
+  it('a new hash invalidates the old password even after a memoized success', () => {
+    process.env.ADMIN_PASSWORD_HASH = hashPassword('old');
+    expect(verifyUploadAuth(basic('u', 'old'))).toBe(true);
+    process.env.ADMIN_PASSWORD_HASH = hashPassword('fresh');
+    expect(verifyUploadAuth(basic('u', 'old'))).toBe(false);
+    expect(verifyUploadAuth(basic('u', 'fresh'))).toBe(true);
   });
 });

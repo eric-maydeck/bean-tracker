@@ -4,7 +4,7 @@ import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
-import { createUploadPassword, uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
+import { uploadStatus, UPLOAD_USERNAME } from '$lib/server/visualizerUpload';
 
 export const load: PageServerLoad = ({ locals, url }) => {
   if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount');
@@ -40,9 +40,5 @@ export const actions: Actions = {
       success: true as const,
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }
     };
-  },
-  createUploadPassword: async ({ locals }) => {
-    requireAdmin(locals);
-    return { uploadPassword: createUploadPassword(getDb()) };
   }
 };

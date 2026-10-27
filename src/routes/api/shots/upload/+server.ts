@@ -8,7 +8,7 @@ import { MAX_SHOT_BYTES, parseShot, saveShot, ShotError } from '$lib/server/visu
 // password gate must run before anything else, and before the body is read.
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
   const db = getDb();
-  const refused = uploadGate(db, request, getClientAddress);
+  const refused = uploadGate(request, getClientAddress);
   if (refused) return refused;
   const bad = (error: string, status = 400) => json({ error }, { status });
   if (Number(request.headers.get('content-length')) > MAX_SHOT_BYTES) return bad('Upload is too large', 413);

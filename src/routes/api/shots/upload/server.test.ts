@@ -1,7 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { createDb } from '$lib/server/db';
-import { createUploadPassword, MAX_SHOT_BYTES } from '$lib/server/visualizerUpload';
+import { hashPassword } from '$lib/server/auth';
+import { MAX_SHOT_BYTES } from '$lib/server/visualizerUpload';
 import { _resetForTests, isLockedOut } from '$lib/server/loginRateLimit';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
@@ -17,7 +18,12 @@ const payload = (over: Record<string, unknown> = {}) => ({
   ...over
 });
 const basic = (pw: string) => 'Basic ' + Buffer.from(`bean-tracker:${pw}`).toString('base64');
-let pw = '';
+const pw = 'sign-in-pw';
+const savedHash = process.env.ADMIN_PASSWORD_HASH;
+afterAll(() => {
+  if (savedHash === undefined) delete process.env.ADMIN_PASSWORD_HASH;
+  else process.env.ADMIN_PASSWORD_HASH = savedHash;
+});
 const call = (body: unknown, { auth = basic(pw), ip = '1.1.1.1', headers = {} as Record<string, string> } = {}) => {
   const form = new FormData();
   form.set('file', new Blob([typeof body === 'string' ? body : JSON.stringify(body)]), 'visualizer.json');
@@ -35,7 +41,7 @@ const rows = () => (h.db as ReturnType<typeof createDb>).prepare(`SELECT COUNT(*
 describe('POST /api/shots/upload', () => {
   beforeEach(() => {
     h.db = createDb(':memory:');
-    pw = createUploadPassword(h.db as never);
+    process.env.ADMIN_PASSWORD_HASH = hashPassword(pw);
     _resetForTests();
   });
 

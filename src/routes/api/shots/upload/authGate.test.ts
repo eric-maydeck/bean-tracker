@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { createDb } from '$lib/server/db';
-import { createUploadPassword } from '$lib/server/visualizerUpload';
+import { hashPassword } from '$lib/server/auth';
 import { _resetForTests } from '$lib/server/loginRateLimit';
 
 const h = vi.hoisted(() => ({ db: null as unknown }));
@@ -22,20 +22,27 @@ const call = (authorization?: string) => {
   }));
 };
 
+const savedHash = process.env.ADMIN_PASSWORD_HASH;
+afterAll(() => {
+  if (savedHash === undefined) delete process.env.ADMIN_PASSWORD_HASH;
+  else process.env.ADMIN_PASSWORD_HASH = savedHash;
+});
+
 describe('POST /api/shots/upload', () => {
   beforeEach(() => {
+    process.env.ADMIN_PASSWORD_HASH = hashPassword('sign-in-pw');
     h.db = createDb(':memory:');
     _resetForTests();
   });
 
-  it('401s with no header, a wrong password, or no password created, without reading the body', async () => {
+  it('401s with no header, a wrong password, or no sign-in password configured, without reading the body', async () => {
     for (const auth of [undefined, basic('nope')]) {
       const { res, read } = await call(auth);
       expect(res.status).toBe(401);
       expect(read).toBe(false);
     }
-    createUploadPassword(h.db as never);
-    const { res, read } = await call(basic('nope'));
+    delete process.env.ADMIN_PASSWORD_HASH;
+    const { res, read } = await call(basic('sign-in-pw'));
     expect(res.status).toBe(401);
     expect(read).toBe(false);
   });

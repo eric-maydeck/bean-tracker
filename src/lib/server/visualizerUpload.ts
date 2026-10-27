@@ -1,15 +1,13 @@
 // Bean Conqueror's "custom Visualizer server" upload: password, parsing and storage (plan 2026-10-27-bc-phone-import).
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
-import { hashPassword, verifyPassword } from './auth';
+import { verifyPassword } from './auth';
 import { compactFlow, type CompactFlow } from './bcFlow';
 
 export const MAX_SHOT_BYTES = 5 * 1024 * 1024;
 /** Shown on the page; the server ignores the username. */
 export const UPLOAD_USERNAME = 'bean-tracker';
 
-const HASH_KEY = 'visualizer_upload_password_hash';
-const CREATED_KEY = 'visualizer_upload_password_created_at';
 const LAST_UPLOAD_KEY = 'visualizer_last_upload_at';
 
 const getMeta = (db: DatabaseSync, key: string): string | null =>
@@ -17,21 +15,13 @@ const getMeta = (db: DatabaseSync, key: string): string | null =>
 const setMeta = (db: DatabaseSync, key: string, value: string) =>
   db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(key, value);
 
-// ponytail: one-entry memo of the last good header (sha256), so "Upload all" doesn't pay scrypt 1,330 times; cleared on rotate
+// ponytail: one-entry memo of the last good header (sha256), so "Upload all" doesn't pay scrypt 1,330 times; keyed on the hash, so a new hash invalidates it
 let lastGood: string | null = null;
 const memoKey = (header: string, storedHash: string) => createHash('sha256').update(header).update('\0').update(storedHash).digest('hex');
 
-/** Replaces any earlier password; the plain one is returned once and never stored. */
-export function createUploadPassword(db: DatabaseSync): string {
-  const pw = randomBytes(18).toString('base64url');
-  setMeta(db, HASH_KEY, hashPassword(pw));
-  setMeta(db, CREATED_KEY, new Date().toISOString());
-  lastGood = null;
-  return pw;
-}
-
-export function verifyUploadAuth(db: DatabaseSync, authorization: string | null): boolean {
-  const stored = getMeta(db, HASH_KEY);
+/** The Basic password is the admin sign-in password (ADMIN_PASSWORD_HASH), as for /login; the username is ignored. */
+export function verifyUploadAuth(authorization: string | null): boolean {
+  const stored = process.env.ADMIN_PASSWORD_HASH;
   if (!stored || !authorization) return false;
   const m = /^Basic (\S+)$/i.exec(authorization);
   if (!m) return false;
@@ -77,7 +67,6 @@ export function uploadStatus(db: DatabaseSync) {
     flows: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows`),
     joined: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows f JOIN beanconqueror_brews b ON b.bc_uuid = f.bc_uuid WHERE b.has_flow_profile = 1`),
     waiting: one(`SELECT COUNT(*) n FROM beanconqueror_brew_flows f WHERE NOT EXISTS (SELECT 1 FROM beanconqueror_brews b WHERE b.bc_uuid = f.bc_uuid)`),
-    brewsWithFlow: one(`SELECT SUM(has_flow_profile) n FROM beanconqueror_brews`),
-    hasPassword: getMeta(db, HASH_KEY) !== null
+    brewsWithFlow: one(`SELECT SUM(has_flow_profile) n FROM beanconqueror_brews`)
   };
 }
