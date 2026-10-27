@@ -33,7 +33,7 @@ export function createUploadPassword(db: DatabaseSync): string {
 export function verifyUploadAuth(db: DatabaseSync, authorization: string | null): boolean {
   const stored = getMeta(db, HASH_KEY);
   if (!stored || !authorization) return false;
-  const m = /^Basic (\S+)$/.exec(authorization);
+  const m = /^Basic (\S+)$/i.exec(authorization);
   if (!m) return false;
   const key = memoKey(authorization, stored);
   if (key === lastGood) return true;
@@ -53,7 +53,7 @@ export function parseShot(json: unknown): { uuid: string; flow: CompactFlow } {
   const j = (json ?? {}) as { application?: unknown; brew?: { config?: { uuid?: unknown } }; brewFlow?: unknown };
   if (j.application !== 'BEANCONQUEROR') throw new ShotError('Not a Bean Conqueror upload');
   const uuid = j.brew?.config?.uuid;
-  if (typeof uuid !== 'string' || !/^[0-9a-f-]{36}$/i.test(uuid)) throw new ShotError('Missing brew id');
+  if (typeof uuid !== 'string' || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(uuid)) throw new ShotError('Missing brew id');
   const flow = compactFlow(j.brewFlow);
   if (!flow) throw new ShotError('This brew has no flow data');
   return { uuid, flow };

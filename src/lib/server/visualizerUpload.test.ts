@@ -81,6 +81,8 @@ describe('parseShot', () => {
       [null, 'Not a Bean Conqueror upload'],
       [payload({ brew: { config: { uuid: 'nope' } } }), 'Missing brew id'],
       [payload({ brew: {} }), 'Missing brew id'],
+      [payload({ brew: { config: { uuid: '-'.repeat(36) } } }), 'Missing brew id'],
+      ['a string', 'Not a Bean Conqueror upload'],
       [payload({ brewFlow: { weight: [] } }), 'This brew has no flow data'],
       [payload({ brewFlow: undefined }), 'This brew has no flow data']
     ];
@@ -114,6 +116,8 @@ describe('verifyUploadAuth', () => {
     expect(verifyUploadAuth(db, basic('bean-tracker', 'wrong'))).toBe(false);
     expect(verifyUploadAuth(db, 'Basic !!!')).toBe(false);
     expect(verifyUploadAuth(db, 'Basic ' + Buffer.from('nocolon').toString('base64'))).toBe(false);
+    expect(verifyUploadAuth(db, basic('u', pw).replace('Basic', 'basic'))).toBe(true);
+    expect(verifyUploadAuth(db, basic('u', ''))).toBe(false);
     expect(verifyUploadAuth(db, 'Bearer ' + pw)).toBe(false);
     expect(verifyUploadAuth(db, null)).toBe(false);
   });
