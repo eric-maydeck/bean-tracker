@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { FavoriteGrind, OtherBag } from '$lib/server/favoriteGrind';
   import { RATING_MAX } from '$lib/rating';
+  import { page } from '$app/state'; // PREVIEW-TEMP
+  import Icon from '$lib/components/Icon.svelte'; // PREVIEW-TEMP
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import TextTip from '$lib/components/TextTip.svelte';
@@ -9,6 +11,7 @@
   // (ties: the latest), with the rating and dripper; a grinder with brews and no ratings shows its count.
   let { items }: { items: FavoriteGrind[] } = $props();
 
+  const pv = $derived((['t2', 't3'] as const).find((v) => v === page.url.searchParams.get('pv')) ?? 't1'); // PREVIEW-TEMP: title styles t1 | t2 | t3
   const SETTING_TIP = { title: 'Grind setting', lines: ['Grind setting of the best-rated brew on this grinder'] };
   const RATING_TIP = { title: 'Rating', lines: [`Best rating on this grinder, out of ${RATING_MAX} (Bean Conqueror's scale)`] };
   // The other bag's tip is sticky (ui-rules 54, the Spend value map's pattern): hover opens it, the mouse can cross
@@ -46,8 +49,8 @@
   <span class="stat-label">Favorite grind setting</span>
   <ul class="stat-value fave-list">
     {#each items as g (g.grinder)}
-      <li>
-        <strong class="g">{g.grinder}</strong>
+      <li class={pv}>
+        <h3 class="g">{#if pv === 't2'}<Icon name="coffee-bean" />{/if}{g.grinder}</h3>
         <div class="data">
         {#if g.best}
           <span class="seg"><TextTip label={g.best.setting ?? '—'} tip={SETTING_TIP} />&nbsp;·</span>{' '}<span class="seg"><TextTip label={String(g.best.rating)} tip={RATING_TIP} />{#if g.best.dripper}&nbsp;·{/if}</span>{#if g.best.dripper}{' '}<span class="seg">{g.best.dripper}{#if g.best.filter}&nbsp;·{/if}</span>{#if g.best.filter}{' '}<span class="seg">{g.best.filter}</span>{/if}{/if}
@@ -92,8 +95,31 @@
     padding-left: 1rem;
     text-indent: -1rem;
   }
+  /* The grinder's name is a sub-heading under the label "Favorite grind setting" (PREVIEW-TEMP: t1 label color, t2 + a bean
+     icon, t3 + a rule under it). */
   .g {
+    margin: 0;
+    font-size: 1.05rem;
     font-weight: 600;
+    color: var(--color-label);
+  }
+  .g :global(.icon) { /* PREVIEW-TEMP */
+    width: 1em;
+    height: 1em;
+    margin-right: 0.35em;
+    vertical-align: -0.12em;
+  }
+  .t3 .g { /* PREVIEW-TEMP */
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-border) 55%, transparent);
+  }
+  .t3 .data { /* PREVIEW-TEMP */
+    padding-left: 1.75rem;
+    text-indent: -0.75rem;
+    margin-top: 0.15rem;
+  }
+  .t3 .own { /* PREVIEW-TEMP */
+    padding-left: 1rem;
   }
   /* The other-bag link: on its own line under the row. */
   .fg-other {
