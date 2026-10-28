@@ -109,12 +109,14 @@
   <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
   <fieldset class="drippers">
     <legend>Drippers</legend>
-    {#each dripperChoices as d (d)}
-      <div class="form-field-checkbox"><label><input type="checkbox" value={d} bind:group={copy.drippers} /> {d}</label></div>
-    {/each}
+    <div class="choices">
+      {#each dripperChoices as d (d)}
+        <div class="form-field-checkbox"><label><input type="checkbox" value={d} bind:group={copy.drippers} /> {d}</label></div>
+      {/each}
+    </div>
     <small class="text-muted">{copy.drippers.length ? 'Only brews on the ticked drippers match.' : 'Any dripper, as none is ticked.'}</small>
     {#each copy.drippers as d (d)}
-      <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
+      <div class="form-field-checkbox lock"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
     {/each}
   </fieldset>
 
@@ -196,7 +198,11 @@
 <style>
   .editor { display: grid; gap: var(--space-3); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }
-  .drippers { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; margin: 0; }
+  .drippers { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: 0; min-width: 0; margin: 0; }
+  .drippers .form-field-checkbox label { min-height: 32px; font-weight: 400; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); column-gap: var(--space-2); }
+  .drippers small { margin: var(--space-1) 0; }
+  .drippers .lock { margin-left: var(--space-4); }
   .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
   .pour-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
