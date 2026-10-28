@@ -1,3 +1,19 @@
+# [1.96.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.95.0...v1.96.0) (2026-10-28)
+
+
+### Bug Fixes
+
+* **recipes:** a dripper lock only counts while a recipe is tied to it
+* **recipes:** editor fields no longer overflow at portrait; Note tags on its own row
+* **recipes:** pour header wraps so a pour fits at 320 px
+
+
+### Features
+
+* **recipes:** recipe dripper, dripper lock and 'pour speed doesn't matter'
+* **recipes:** several drippers per recipe, a lock per ticked dripper
+* **recipes:** show dripper on brew rows, say where hidden structures' brews went
+
 # [1.95.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.94.0...v1.95.0) (2026-10-28)
 
 
