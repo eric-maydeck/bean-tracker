@@ -89,21 +89,21 @@
   <input type="hidden" name="definition" value={JSON.stringify(payload)} />
   {#if id != null}<input type="hidden" name="id" value={id} />{/if}
   <input type="hidden" name="locks" value={JSON.stringify(Object.fromEntries(copy.drippers.map((d) => [d, !!locks[d]])))} />
-  <div class="grid">
-    <div class="form-field"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
-    <div class="form-field">
+  <div class="grid top">
+    <div class="form-field a-name"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
+    <div class="form-field a-tags">
       <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
       <small class="text-muted">A note containing one of these as a word is logged as this recipe.</small>
     </div>
-    <div class="form-field">
+    <div class="form-field a-unit">
       <label for="re-unit">Pour amounts in</label>
       <select id="re-unit" value={unit} onchange={(e) => setUnit(e.currentTarget.value as 'g' | '%')}>
         <option value="g">Grams</option>
         <option value="%">% of water</option>
       </select>
     </div>
-    <div class="form-field"><label for="re-hold">Bloom hold (s)</label><input id="re-hold" type="number" min="0" step="any" bind:value={copy.bloomHoldS} /></div>
-    <div class="form-field"><label for="re-holdtol">± (s)</label><input id="re-holdtol" type="number" min="0" step="any" bind:value={copy.bloomHoldTolS} /></div>
+    <div class="form-field a-hold"><label for="re-hold">Bloom hold (s)</label><input id="re-hold" type="number" min="0" step="any" bind:value={copy.bloomHoldS} /></div>
+    <div class="form-field a-tol"><label for="re-holdtol">± (s)</label><input id="re-holdtol" type="number" min="0" step="any" bind:value={copy.bloomHoldTolS} /></div>
   </div>
 
   <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
@@ -116,7 +116,7 @@
     </div>
     <small class="text-muted">{copy.drippers.length ? 'Only brews on the ticked drippers match.' : 'Any dripper, as none is ticked.'}</small>
     {#each copy.drippers as d (d)}
-      <div class="form-field-checkbox lock"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
+      <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
     {/each}
   </fieldset>
 
@@ -202,7 +202,6 @@
   .drippers .form-field-checkbox label { min-height: 32px; font-weight: 400; }
   .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); column-gap: var(--space-2); }
   .drippers small { margin: var(--space-1) 0; }
-  .drippers .lock { margin-left: var(--space-4); }
   .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
   .pour-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
@@ -211,6 +210,11 @@
   .form-field input, .form-field select { min-width: 0; }
   .editor :global(.form-actions) { margin-top: 0; }
   .editor :global(.button) { margin: 0; }
+  @media (max-width: 1100px) {
+    /* Phones (either way up): Name over Pour amounts beside the taller Note tags, then Bloom hold and its ± on one row. */
+    .top { grid-template-columns: 1fr 1fr; grid-template-areas: 'name tags' 'unit tags' 'hold tol'; }
+    .a-name { grid-area: name; } .a-tags { grid-area: tags; } .a-unit { grid-area: unit; } .a-hold { grid-area: hold; } .a-tol { grid-area: tol; }
+  }
   @media (max-width: 640px) {
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
