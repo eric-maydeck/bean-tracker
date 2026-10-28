@@ -93,7 +93,7 @@
     <div class="form-field a-name"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
     <div class="form-field a-tags">
       <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
-      <small class="text-muted">A note containing one of these as a word is logged as this recipe.</small>
+      <small class="text-muted">Comma-separated words or phrases. A brew whose note contains one is logged as this recipe.</small>
     </div>
     <div class="form-field a-unit">
       <label for="re-unit">Pour amounts in</label>
