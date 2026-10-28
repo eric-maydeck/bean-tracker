@@ -25,8 +25,8 @@ export interface RecipeDef {
   tempC: number | null;
   totalS: number | null;
   notes: string | null;
-  /** Only brews on this dripper match; null = any. */
-  dripper: string | null;
+  /** Only brews on one of these drippers match; empty = any. */
+  drippers: string[];
   /** Pour speed is ignored when matching (a dripper that restricts flow makes it meaningless). */
   anySpeed: boolean;
 }
@@ -93,7 +93,9 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     const tempC = numOrNull(json.tempC, -Infinity);
     const totalS = numOrNull(json.totalS);
     const notes = strOrNull(json.notes);
-    const dripper = strOrNull(json.dripper);
+    const drippers = json.drippers ?? [];
+    if (!Array.isArray(drippers) || drippers.length > 10) throw new Error(INVALID);
+    for (const d of drippers) if (typeof d !== 'string' || !d || d.length > 40) throw new Error(INVALID);
     if (json.anySpeed != null && typeof json.anySpeed !== 'boolean') throw new Error(INVALID);
     if (json.bloomHoldTolS < 0) throw new Error(INVALID);
     if (!pours.length) throw new Error('Add at least one pour');
@@ -115,7 +117,7 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
         tempC,
         totalS,
         notes,
-        dripper,
+        drippers: [...new Set(drippers as string[])],
         anySpeed: json.anySpeed === true
       }
     };
@@ -176,7 +178,7 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     tempC: round(median(tempsC.filter(isNum))),
     totalS: round(median(rs.map((r) => r.totalS)), 0),
     notes: null,
-    dripper: null,
+    drippers: [],
     anySpeed: false
   };
 }
@@ -251,7 +253,7 @@ export function describeRecipe(def: RecipeDef): string {
   out.push(isNum(def.ratio.target) ? `~1:${+def.ratio.target.toFixed(1)}` : 'ratio unknown');
   if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
   if (def.anySpeed) out.push('any pour speed');
-  if (def.dripper) out.push(`${def.dripper} only`);
+  if (def.drippers.length) out.push(`on ${def.drippers.join(', ').replace(/, ([^,]*)$/, ' or $1')}`);
   return capital(out.join(' · '));
 }
 
@@ -332,8 +334,9 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;
   for (const { id, def } of recipes) {
-    // A recipe tied to a dripper never matches another; a locked dripper's brews match only its own recipes (the lock only counts while a recipe is tied to it).
-    if (def.dripper ? def.dripper !== brew.dripper : brew.dripper && locked.has(brew.dripper) && recipes.some((x) => x.def.dripper === brew.dripper))
+    // A recipe tied to drippers never matches another; a locked dripper's brews match only recipes listing it (the lock only counts while a recipe lists it).
+    const d = brew.dripper;
+    if (def.drippers.length ? !d || !def.drippers.includes(d) : d && locked.has(d) && recipes.some((x) => x.def.drippers.includes(d)))
       continue;
     if (def.anySpeed) {
       if (r.bloomCount !== def.pours.filter((p) => p.bloom).length) continue;

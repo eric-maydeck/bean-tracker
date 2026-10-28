@@ -13,7 +13,7 @@ const def = (pat: string, over: Partial<RecipeDef> = {}): RecipeDef => {
   const pours = [...pat].map((c, i) => rp(c === 'F' || c === 'B' ? 'fast' : 'slow', c === 'B' && i < 3));
   return {
     v: 1, pours, pourCount: { min: pours.length, max: pours.length }, bloomHoldS: 30, bloomHoldTolS: 5,
-    ratio: { target: 16.7, tol: 0.7 }, tempC: null, totalS: null, notes: null, dripper: null, anySpeed: false, ...over
+    ratio: { target: 16.7, tol: 0.7 }, tempC: null, totalS: null, notes: null, drippers: [], anySpeed: false, ...over
   };
 };
 const recipe = (id: number, name: string, d: RecipeDef, tags: string[] = []): Recipe => ({ id, name, tags, def: d });
@@ -62,17 +62,18 @@ describe('parseRecipeDef', () => {
 });
 
 describe('parseRecipeDef dripper fields', () => {
-  const { dripper: _d, anySpeed: _a, ...old } = def('BFFS');
+  const { drippers: _d, anySpeed: _a, ...old } = def('BFFS');
   it('defaults them for an old def and accepts good values', () => {
-    expect(parseRecipeDef(old)).toMatchObject({ def: { dripper: null, anySpeed: false } });
-    expect(parseRecipeDef({ ...old, dripper: 'Gabi', anySpeed: true })).toMatchObject({ def: { dripper: 'Gabi', anySpeed: true } });
+    expect(parseRecipeDef(old)).toMatchObject({ def: { drippers: [], anySpeed: false } });
+    expect(parseRecipeDef({ ...old, drippers: ['Gabi', 'Orea'], anySpeed: true })).toMatchObject({ def: { drippers: ['Gabi', 'Orea'], anySpeed: true } });
   });
   it('rejects bad values', () => {
-    expect(parseRecipeDef({ ...old, dripper: 5 })).toEqual({ error: 'Invalid recipe' });
+    expect(parseRecipeDef({ ...old, drippers: 'Gabi' })).toEqual({ error: 'Invalid recipe' });
+    expect(parseRecipeDef({ ...old, drippers: [5] })).toEqual({ error: 'Invalid recipe' });
     expect(parseRecipeDef({ ...old, anySpeed: 'yes' })).toEqual({ error: 'Invalid recipe' });
   });
   it('describes them', () => {
-    expect(describeRecipe(def('BFFS', { dripper: 'Gabi', anySpeed: true }))).toBe('30 s bloom + 3 pours · ~1:16.7 · any pour speed · Gabi only');
+    expect(describeRecipe(def('BFFS', { drippers: ['Gabi Master A', 'Orea'], anySpeed: true }))).toBe('30 s bloom + 3 pours · ~1:16.7 · any pour speed · on Gabi Master A or Orea');
   });
 });
 
@@ -100,9 +101,12 @@ describe('matchBrew', () => {
   const r1 = recipe(1, 'R1', def('BFFS'));
   const on = (dripper: string, r: PourReading | null = reading('BFFS')) => ({ ...brew(r), dripper });
   it('a dripper-tied recipe ignores other drippers', () => {
-    const tied = recipe(1, 'Gabi', def('BFFS', { dripper: 'Gabi' }));
+    const tied = recipe(1, 'Gabi', def('BFFS', { drippers: ['Gabi'] }));
     expect(matchBrew(on('Gabi'), [tied])).toMatchObject({ how: 'match' });
     expect(matchBrew(on('V60'), [tied])).toBeNull();
+    const two = recipe(1, 'Two', def('BFFS', { drippers: ['Gabi', 'Orea'] }));
+    expect(matchBrew(on('Orea'), [two])).toMatchObject({ how: 'match' });
+    expect(matchBrew(on('V60'), [two])).toBeNull();
     expect(matchBrew(brew(reading('BFFS')), [tied])).toBeNull();
   });
   it('anySpeed matches any pattern at the same bloom count and ratio', () => {
@@ -119,9 +123,9 @@ describe('matchBrew', () => {
   });
   it('a locked dripper matches only its own recipes', () => {
     const anyR = recipe(1, 'Any', def('BFFS'));
-    const tied = recipe(2, 'Gabi', def('BFFS', { dripper: 'Gabi' }));
+    const tied = recipe(2, 'Gabi', def('BFFS', { drippers: ['Gabi'] }));
     const locked = new Set(['Gabi']);
-    expect(matchBrew(on('Gabi'), [anyR, recipe(3, 'Gabi other', def('SSSS', { dripper: 'Gabi' }))], locked)).toBeNull();
+    expect(matchBrew(on('Gabi'), [anyR, recipe(3, 'Gabi other', def('SSSS', { drippers: ['Gabi'] }))], locked)).toBeNull();
     expect(matchBrew(on('Gabi'), [anyR, tied], locked)).toMatchObject({ recipeId: 2 });
     expect(matchBrew(on('Gabi'), [anyR])).toMatchObject({ recipeId: 1 }); // unlocked
     expect(matchBrew(on('V60'), [anyR], locked)).toMatchObject({ recipeId: 1 });

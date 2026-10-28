@@ -339,12 +339,12 @@ test.describe('recipes', { tag: '@account' }, () => {
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     const pourCount = await page.locator('fieldset.pour').count();
     await page.getByLabel('Note tags').fill('TJ');
-    const dripper = page.getByLabel('Dripper', { exact: true });
-    await expect(dripper).toHaveValue('');
-    await expect(page.getByLabel(/only match its recipes/)).toHaveCount(0); // the lock shows only with a dripper chosen
-    await dripper.selectOption({ index: 1 });
-    await expect(page.getByLabel(/Brews on .+ only match its recipes/)).toBeVisible();
-    await dripper.selectOption('');
+    const drippers = page.locator('fieldset.drippers');
+    await expect(drippers).toContainText('Any dripper');
+    await expect(page.getByLabel(/only match its recipes/)).toHaveCount(0); // a lock shows only for a ticked dripper
+    await drippers.getByRole('checkbox').first().check();
+    await expect(page.getByLabel(/Brews on .+ only match its recipes/)).toHaveCount(1);
+    await drippers.getByRole('checkbox').first().uncheck();
     await page.getByLabel("Pour speed doesn't matter").check();
     await expect(page.getByTestId('editor-description')).toContainText('any pour speed');
     await page.getByRole('button', { name: 'Add pour' }).click(); // the pour-count range widens, so Save still validates

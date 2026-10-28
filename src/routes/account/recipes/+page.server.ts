@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listDrippers, listRecipes, lockedDrippers, saveRecipe,
+  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
@@ -58,7 +58,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
       .get() as { n: number }
   ).n;
 
-  let hidden: { key: string; description: string; count: number }[] | null = null;
+  let hidden: { key: string; description: string; count: number; matchedBy: { name: string; count: number }[] }[] | null = null;
   if (view.view === 'hidden') {
     hidden = (
       db
@@ -71,7 +71,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
     ).map((h) => ({
       key: h.key,
       count: h.count,
-      description: h.reading ? describeReading(JSON.parse(h.reading) as PourReading) : h.key
+      description: h.reading ? describeReading(JSON.parse(h.reading) as PourReading) : h.key,
+      matchedBy: matchedBy(db, h.key)
     }));
   }
 
@@ -131,8 +132,13 @@ export const actions: Actions = {
     const id = idText ? Number(idText) : undefined;
     if (id !== undefined && !Number.isInteger(id)) return fail(400, { error: 'Invalid recipe' });
     try {
-      const lock = text(f, 'lock');
-      return { saved: saveRecipe(getDb(), { id, name: input.name, tags: input.tags, def: parsed.def, lock: lock ? lock === '1' : undefined }) };
+      let locks: Record<string, boolean> | undefined;
+      try {
+        locks = JSON.parse(text(f, 'locks') || '{}');
+      } catch {
+        return fail(400, { error: 'Invalid recipe' });
+      }
+      return { saved: saveRecipe(getDb(), { id, name: input.name, tags: input.tags, def: parsed.def, locks }) };
     } catch (e) {
       if (e instanceof RecipeError) return fail(400, { error: e.message });
       throw e;
@@ -156,7 +162,8 @@ export const actions: Actions = {
     requireAdmin(locals);
     const key = text(await request.formData(), 'key');
     if (!key) return fail(400, { error: 'Invalid structure' });
-    undismissStructure(getDb(), key);
-    return { undismissed: key };
+    const db = getDb();
+    undismissStructure(db, key);
+    return { undismissed: key, now: matchedBy(db, key) };
   }
 };

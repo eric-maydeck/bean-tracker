@@ -21,12 +21,18 @@ export function listRecipes(db: DatabaseSync): Recipe[] {
     tags: string;
     definition: string;
   }[];
-  return rows.map((r) => ({ id: r.id, name: r.name, tags: JSON.parse(r.tags), def: JSON.parse(r.definition) }));
+  // Defs saved before the dripper fields existed lack them.
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    tags: JSON.parse(r.tags),
+    def: { drippers: [], anySpeed: false, ...JSON.parse(r.definition) }
+  }));
 }
 
 export function saveRecipe(
   db: DatabaseSync,
-  input: { id?: number; name: string; tags: string[]; def: RecipeDef; lock?: boolean }
+  input: { id?: number; name: string; tags: string[]; def: RecipeDef; locks?: Record<string, boolean> }
 ): number {
   const now = new Date().toISOString();
   let id = input.id;
@@ -46,10 +52,9 @@ export function saveRecipe(
     throw e;
   }
   // The lock belongs to the dripper, not the recipe: ticking it in any recipe for that dripper sets it for all.
-  if (input.def.dripper && input.lock != null)
-    db.prepare(input.lock ? `INSERT OR IGNORE INTO locked_drippers (name) VALUES (?)` : `DELETE FROM locked_drippers WHERE name = ?`).run(
-      input.def.dripper
-    );
+  for (const name of input.def.drippers)
+    if (input.locks?.[name] != null)
+      db.prepare(input.locks[name] ? `INSERT OR IGNORE INTO locked_drippers (name) VALUES (?)` : `DELETE FROM locked_drippers WHERE name = ?`).run(name);
   rematchBrews(db);
   return id!;
 }
@@ -83,6 +88,18 @@ export function listDrippers(db: DatabaseSync): string[] {
     )
     .all() as { method: string | null; tools: string | null }[];
   return [...new Set(rows.flatMap((r) => parseMethod(r.method, r.tools).dripper ?? []))].sort();
+}
+
+/** Which recipes a structure's brews now match, with brew counts. */
+export function matchedBy(db: DatabaseSync, key: string): { name: string; count: number }[] {
+  return db
+    .prepare(
+      `SELECT rec.name, COUNT(*) count FROM brew_pour_readings r
+       JOIN beanconqueror_brews b ON b.bc_uuid = r.bc_uuid
+       JOIN brew_recipe_matches x ON x.brew_id = b.id JOIN recipes rec ON rec.id = x.recipe_id
+       WHERE r.structure_key = ? GROUP BY rec.id ORDER BY count DESC, rec.name`
+    )
+    .all(key) as { name: string; count: number }[];
 }
 
 /** A stored reading, or null for none or an unreadable flow (stored as '{}' with pour_count 0). */
@@ -254,6 +271,7 @@ export interface BrewRow {
   rating: number | null;
   label: string | null;
   description: string;
+  dripper: string | null;
   gear: string;
   lowConfidence: boolean;
   timeline: Timeline | null;
@@ -323,7 +341,8 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
       rating: r.rating,
       label,
       description: reading ? describeReading(reading) : 'No flow data',
-      gear: [g.dripper, g.filter].filter(Boolean).join(' · '),
+      dripper: g.dripper,
+      gear: g.filter ?? '',
       lowConfidence: reading?.lowConfidence ?? false,
       timeline: reading ? timelineOf(reading) : null
     };

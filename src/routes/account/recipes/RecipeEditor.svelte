@@ -23,10 +23,10 @@
   /* svelte-ignore state_referenced_locally */
   let tagText = $state(tags.join(', '));
 
-  // The lock is the dripper's, so it starts from the dripper's current state and follows the dripper choice.
+  // The lock is the dripper's, so it starts from the dripper's current state.
   /* svelte-ignore state_referenced_locally */
-  let lock = $state(def.dripper != null && locked.includes(def.dripper));
-  const dripperChoices = $derived(copy.dripper && !drippers.includes(copy.dripper) ? [...drippers, copy.dripper] : drippers);
+  let locks = $state<Record<string, boolean>>(Object.fromEntries(locked.map((d) => [d, true])));
+  const dripperChoices = $derived([...drippers, ...copy.drippers.filter((d) => !drippers.includes(d))]);
 
   let tried = $state(false); // show only the error of a save this editor sent
   const mode = (p: RecipeDef['pours'][number]) => (p.rateGps ? 'range' : p.speed);
@@ -88,19 +88,12 @@
 >
   <input type="hidden" name="definition" value={JSON.stringify(payload)} />
   {#if id != null}<input type="hidden" name="id" value={id} />{/if}
-  {#if copy.dripper}<input type="hidden" name="lock" value={lock ? '1' : '0'} />{/if}
+  <input type="hidden" name="locks" value={JSON.stringify(Object.fromEntries(copy.drippers.map((d) => [d, !!locks[d]])))} />
   <div class="grid">
     <div class="form-field"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
     <div class="form-field">
       <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
       <small class="text-muted">A note containing one of these as a word is logged as this recipe.</small>
-    </div>
-    <div class="form-field">
-      <label for="re-dripper">Dripper</label>
-      <select id="re-dripper" value={copy.dripper ?? ''} onchange={(e) => { copy.dripper = e.currentTarget.value || null; lock = copy.dripper != null && locked.includes(copy.dripper); }}>
-        <option value="">Any</option>
-        {#each dripperChoices as d (d)}<option value={d}>{d}</option>{/each}
-      </select>
     </div>
     <div class="form-field">
       <label for="re-unit">Pour amounts in</label>
@@ -114,9 +107,16 @@
   </div>
 
   <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
-  {#if copy.dripper}
-    <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={lock} /> Brews on {copy.dripper} only match its recipes</label></div>
-  {/if}
+  <fieldset class="drippers">
+    <legend>Drippers</legend>
+    {#each dripperChoices as d (d)}
+      <div class="form-field-checkbox"><label><input type="checkbox" value={d} bind:group={copy.drippers} /> {d}</label></div>
+    {/each}
+    <small class="text-muted">{copy.drippers.length ? 'Only brews on the ticked drippers match.' : 'Any dripper, as none is ticked.'}</small>
+    {#each copy.drippers as d (d)}
+      <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
+    {/each}
+  </fieldset>
 
   {#each copy.pours as p, i (i)}
     <fieldset class="pour">
@@ -196,6 +196,7 @@
 <style>
   .editor { display: grid; gap: var(--space-3); }
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }
+  .drippers { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-1); min-width: 0; margin: 0; }
   .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
   .pour-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
