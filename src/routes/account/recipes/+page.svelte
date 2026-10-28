@@ -238,7 +238,7 @@
   <section class="chart-panel">
     <h2>Words in your notes</h2>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
-    <form method="POST" action="?/saveNoteWords" use:enhance={() => ({ update }) => update({ reset: false })} class="panel">
+    <form method="POST" action="?/saveNoteWords" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); if (result.type === 'success') resetWords(); }} class="panel">
       {#if words.length}
         {#each words as w, i (i)}
           <div class="word-row">
@@ -356,10 +356,13 @@
     gap: var(--space-2);
     align-items: center;
   }
-  @media (max-width: 640px) {
-    .word-row input { min-height: 44px; box-sizing: border-box; }
+  /* Phones, portrait and landscape (rule 4) */
+  @media (max-width: 640px), (max-height: 450px) {
+    .word-row :is(input, select, .icon-button) { min-height: 44px; box-sizing: border-box; }
+    .word-row .icon-button { min-width: 44px; }
   }
   .word-row .grow { flex: 1 1 auto; min-width: 0; }
+  .word-row input { width: 100%; min-width: 0; box-sizing: border-box; }
   .panel label { display: grid; gap: var(--space-1); }
   .brew-rows { gap: var(--space-3); margin-top: var(--space-2); }
   .brew-row {

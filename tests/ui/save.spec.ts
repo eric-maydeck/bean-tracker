@@ -382,5 +382,12 @@ test.describe('recipes', { tag: '@account' }, () => {
     await p.getByLabel('Word or phrase').nth(3).fill('Seed Word');
     await p.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(p.getByRole('alert')).toHaveText('Each word can be listed once');
+    // A word saved with stray spaces is trimmed, and Cancel goes away (the form matches what was saved).
+    await page.reload();
+    await p.getByRole('button', { name: 'Add word' }).click();
+    await p.getByLabel('Word or phrase').nth(3).fill(' trimmed ');
+    await p.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(p.getByLabel('Word or phrase').nth(3)).toHaveValue('trimmed');
+    await expect(p.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
   });
 });
