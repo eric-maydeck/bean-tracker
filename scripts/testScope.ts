@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, normalize } from 'node:path';
 
 export type Scope = { kind: 'full'; reason: string } | { kind: 'tags'; tags: string[] } | { kind: 'none' };
-const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^AppsScript\//, /^deploy\//, /^\.claude\//,
+const NO_UI = [/^docs\//, /\.md$/, /\.test\.ts$/, /^deploy\//, /^\.claude\//,
   /^src\/lib\/server\/fixtures\//];
 // The test:ui tag is a state's first path segment (routeTag in tests/ui/layout.spec.ts).
 const TAGGED = /^src\/routes\/(coffees|insights|stats|on-deck|subscriptions)\//;
