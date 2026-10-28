@@ -2396,7 +2396,7 @@ export const STATES: State[] = [
           // Phone tap targets: icon buttons, selects and number inputs are at least 44 px tall.
           if ((page.viewportSize()?.width ?? 1000) <= 480) {
             for (const el of [pours.nth(0).getByRole('button', { name: 'Move down' }), pours.nth(0).getByRole('button', { name: 'Remove' }), pours.nth(0).getByLabel('Speed'), pours.nth(0).getByLabel('Grams'), page.getByLabel('Ratio 1:', { exact: true })])
-              expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+              expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(43.9); // min-height 44px; sub-pixel layout can read 43.99997
           }
           // A number field by keyboard: Ratio 1: becomes 15.5 and the description follows.
           const ratio = page.getByLabel('Ratio 1:', { exact: true });
