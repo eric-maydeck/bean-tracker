@@ -154,9 +154,10 @@
         {/if}
         <div class="form-field">
           <label for="re-g{i}">Agitation</label>
-          <select id="re-g{i}" value={p.agitation ?? ''} onchange={(e) => (p.agitation = e.currentTarget.value === '' ? null : (e.currentTarget.value as 'high' | 'low'))}>
+          <select id="re-g{i}" value={p.agitation ?? ''} onchange={(e) => (p.agitation = e.currentTarget.value === '' ? null : (e.currentTarget.value as 'high' | 'medium' | 'low'))}>
             <option value="">From speed</option>
             <option value="high">High</option>
+            <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
         </div>

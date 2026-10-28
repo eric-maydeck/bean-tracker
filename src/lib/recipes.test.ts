@@ -50,6 +50,7 @@ describe('parseRecipeDef', () => {
     ['Ratio must be between 1:5 and 1:30', (d: any) => (d.ratio.tol = 0.05)],
     ['Temperature must be 60-100 °C', (d: any) => (d.tempC = 101)],
     ['Invalid recipe', (d: any) => (d.pours[0].speed = 'medium')],
+    ['Invalid recipe', (d: any) => (d.pours[0].agitation = 'extreme')],
     ['Invalid recipe', (d: any) => (d.pours[0].grams = -1)],
     ['Invalid recipe', (d: any) => (d.pours[0].tool = 'x'.repeat(41))],
     ['Invalid recipe', (d: any) => (d.v = 2)]
@@ -57,6 +58,11 @@ describe('parseRecipeDef', () => {
     const d = ok();
     mutate(d);
     expect(parseRecipeDef(d)).toEqual({ error });
+  });
+  it('accepts medium agitation', () => {
+    const d = ok();
+    d.pours[0].agitation = 'medium';
+    expect((parseRecipeDef(d) as { def: RecipeDef }).def.pours[0].agitation).toBe('medium');
   });
   it('rejects non-objects', () => expect(parseRecipeDef('x')).toEqual({ error: 'Invalid recipe' }));
 });

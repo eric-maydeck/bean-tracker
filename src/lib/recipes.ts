@@ -7,7 +7,7 @@ export interface RecipePour {
   share: number | null;
   speed: 'fast' | 'slow';
   rateGps: [number, number] | null;
-  agitation: 'high' | 'low' | null;
+  agitation: 'high' | 'medium' | 'low' | null;
   tool: string | null;
   swirlAfter: boolean;
   /** Typical values, for the timeline. */
@@ -71,7 +71,7 @@ function parsePour(p: unknown): RecipePour {
     share: numOrNull(p.share),
     speed: oneOf(p.speed, ['fast', 'slow'] as const),
     rateGps,
-    agitation: p.agitation == null ? null : oneOf(p.agitation, ['high', 'low'] as const),
+    agitation: p.agitation == null ? null : oneOf(p.agitation, ['high', 'medium', 'low'] as const),
     tool: strOrNull(p.tool),
     swirlAfter: p.swirlAfter,
     startS: numOrNull(p.startS),
