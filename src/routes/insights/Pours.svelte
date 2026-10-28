@@ -82,7 +82,7 @@
     <p class="chart-note">Calibrated ratings leave out {names(t.hiddenByRatings)}. <a href={allRatings} onclick={(e) => { e.preventDefault(); choose({ ratings: 'all' }); }}>See all ratings</a></p>
   {/if}
 {/snippet}
-{#if !t || !(t.recipes.length || t.technique.length || t.words.length)}
+{#if !t || !(t.recipes.length || cards.length || t.words.length || Object.values(t.recipeBy).some(Boolean) || t.rest.byRecipe || t.rest.byAgitation)}
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews with pour readings in this period.')}</p>
     {@render ratingsNote()}
@@ -112,7 +112,7 @@
                 <line x1="2" x2="78" y1={sp.zero} y2={sp.zero} /><polyline points={sp.pts} />
               </svg>
             {:else}<span class="spark"></span>{/if}
-            <span class="counts">{r.logged} logged · {r.matched + r.modified} matched</span>
+            <span class="counts">{#if r.id !== null}{r.logged} logged · {r.matched + r.modified} matched{/if}</span>
           </li>
         {/each}
       </ul>
