@@ -1,3 +1,10 @@
+# [1.97.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.96.0...v1.97.0) (2026-10-28)
+
+
+### Features
+
+* **recipes:** medium agitation option for recipe pours
+
 # [1.96.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.95.0...v1.96.0) (2026-10-28)
 
 
