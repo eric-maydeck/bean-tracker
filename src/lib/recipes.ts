@@ -25,6 +25,10 @@ export interface RecipeDef {
   tempC: number | null;
   totalS: number | null;
   notes: string | null;
+  /** Only brews on this dripper match; null = any. */
+  dripper: string | null;
+  /** Pour speed is ignored when matching (a dripper that restricts flow makes it meaningless). */
+  anySpeed: boolean;
 }
 export interface Recipe {
   id: number;
@@ -89,6 +93,8 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     const tempC = numOrNull(json.tempC, -Infinity);
     const totalS = numOrNull(json.totalS);
     const notes = strOrNull(json.notes);
+    const dripper = strOrNull(json.dripper);
+    if (json.anySpeed != null && typeof json.anySpeed !== 'boolean') throw new Error(INVALID);
     if (json.bloomHoldTolS < 0) throw new Error(INVALID);
     if (!pours.length) throw new Error('Add at least one pour');
     const blooms = pours.filter((p) => p.bloom).length;
@@ -108,7 +114,9 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
         ratio: { target, tol },
         tempC,
         totalS,
-        notes
+        notes,
+        dripper,
+        anySpeed: json.anySpeed === true
       }
     };
   } catch (e) {
@@ -167,7 +175,9 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     ratio: { target: round(ratio), tol: 0.7 },
     tempC: round(median(tempsC.filter(isNum))),
     totalS: round(median(rs.map((r) => r.totalS)), 0),
-    notes: null
+    notes: null,
+    dripper: null,
+    anySpeed: false
   };
 }
 
@@ -216,14 +226,14 @@ export function describeRecipe(def: RecipeDef): string {
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
   else if (blooms > 1) parts.push(`${['', '', 'two', 'three'][blooms] ?? blooms} ${hold}blooms`);
-  const kinds: { kind: 'fast' | 'slow'; n: number }[] = [];
+  const kinds: { kind: 'fast' | 'slow' | 'any'; n: number }[] = [];
   for (const p of def.pours.slice(blooms)) {
-    const kind = recipeSpeed(p);
+    const kind = def.anySpeed ? 'any' : recipeSpeed(p);
     const l = kinds[kinds.length - 1];
     if (l?.kind === kind) l.n++;
     else kinds.push({ kind, n: 1 });
   }
-  const names = { fast: ['fast pour', 'fast pours'], slow: ['slow pour', 'slow pours'] };
+  const names = { fast: ['fast pour', 'fast pours'], slow: ['slow pour', 'slow pours'], any: ['pour', 'pours'] };
   kinds.forEach((k, i) => {
     let lo = k.n;
     let hi = k.n;
@@ -240,6 +250,8 @@ export function describeRecipe(def: RecipeDef): string {
     out.push(sw.map((i) => (i < blooms ? 'swirl after bloom' : `swirl after pour ${i + 1}`)).join(', '));
   out.push(isNum(def.ratio.target) ? `~1:${+def.ratio.target.toFixed(1)}` : 'ratio unknown');
   if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
+  if (def.anySpeed) out.push('any pour speed');
+  if (def.dripper) out.push(`${def.dripper} only`);
   return capital(out.join(' · '));
 }
 
@@ -284,6 +296,7 @@ interface MatchBrew {
   notes: string | null;
   reading: PourReading | null;
   tempC: number | null;
+  dripper?: string | null;
 }
 
 function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null) {
@@ -306,7 +319,7 @@ function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null) {
 }
 
 /** The recipe a brew is logged as or looks like, or null. */
-export function matchBrew(brew: MatchBrew, recipes: Recipe[]): Match | null {
+export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySet<string> = new Set()): Match | null {
   const { reading: r } = brew;
   const tagged = noteTag(brew.notes, recipes);
   if (tagged)
@@ -319,9 +332,15 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[]): Match | null {
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;
   for (const { id, def } of recipes) {
-    const speeds = def.pours.map(recipeSpeed);
-    const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
-    if (aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase()) continue;
+    // A recipe tied to a dripper never matches another; a locked dripper's brews match only its own recipes.
+    if (def.dripper ? def.dripper !== brew.dripper : brew.dripper && locked.has(brew.dripper)) continue;
+    if (def.anySpeed) {
+      if (r.bloomCount !== def.pours.filter((p) => p.bloom).length) continue;
+    } else {
+      const speeds = def.pours.map(recipeSpeed);
+      const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
+      if (aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase()) continue;
+    }
     const target = def.ratio.target;
     if (target == null || Math.abs(r.ratio - target) > def.ratio.tol) continue;
     const diffs = diffsOf(def, r, brew.tempC);

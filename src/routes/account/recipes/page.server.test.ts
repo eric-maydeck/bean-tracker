@@ -116,6 +116,27 @@ describe('recipes page', () => {
     await actions.deleteRecipe(event(true, '', { id: String(id.saved) }));
   });
 
+  it('a dripper lock set from a recipe rematches brews; the lock is the dripper\'s', async () => {
+    db.prepare(`INSERT INTO beanconqueror_methods (id, name, preparation_tools, imported_at) VALUES (900, 'Gabi Master A', '', 'x')`).run();
+    db.prepare(`UPDATE beanconqueror_brews SET preparation_id = 900`).run();
+    const reading = JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings LIMIT 1`).get() as { reading: string }).reading) as PourReading;
+    const def = { ...draftFromReadings([reading], [null]), dripper: 'Gabi Master A' };
+    const other = draftFromReadings([reading], [null]);
+    const matched = () => (db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get() as { n: number }).n;
+    expect(((await actions.saveRecipe(event(true, '', { name: 'Any one', tags: '', definition: JSON.stringify(other) }))) as { saved: number }).saved).toBeGreaterThan(0);
+    expect(matched()).toBe(N);
+    const gabi = (await actions.saveRecipe(event(true, '', { name: 'Gabi one', tags: '', definition: JSON.stringify({ ...def, ratio: { target: 5, tol: 0.1 } }), lock: '1' }))) as { saved: number };
+    expect((load(event(true)) as Data).locked).toEqual(['Gabi Master A']);
+    expect((load(event(true)) as Data).drippers).toEqual(['Gabi Master A']);
+    expect(matched()).toBe(0); // locked: the Any recipe no longer matches and the Gabi recipe's ratio misses
+    await actions.saveRecipe(event(true, '', { id: String(gabi.saved), name: 'Gabi one', tags: '', definition: JSON.stringify(def), lock: '1' }));
+    expect(matched()).toBe(N);
+    await actions.saveRecipe(event(true, '', { id: String(gabi.saved), name: 'Gabi one', tags: '', definition: JSON.stringify(def), lock: '0' }));
+    expect((load(event(true)) as Data).locked).toEqual([]);
+    for (const r of listRecipes(db)) await actions.deleteRecipe(event(true, '', { id: String(r.id) }));
+    db.prepare(`UPDATE beanconqueror_brews SET preparation_id = NULL`).run();
+  });
+
   it('dismiss hides a structure, undismiss brings it back', async () => {
     await actions.dismiss(event(true, '', { key }));
     let d = load(event(true, '?view=hidden')) as Data;

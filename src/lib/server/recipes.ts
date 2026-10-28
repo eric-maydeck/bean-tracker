@@ -26,7 +26,7 @@ export function listRecipes(db: DatabaseSync): Recipe[] {
 
 export function saveRecipe(
   db: DatabaseSync,
-  input: { id?: number; name: string; tags: string[]; def: RecipeDef }
+  input: { id?: number; name: string; tags: string[]; def: RecipeDef; lock?: boolean }
 ): number {
   const now = new Date().toISOString();
   let id = input.id;
@@ -45,6 +45,11 @@ export function saveRecipe(
     if (e instanceof Error && /UNIQUE/i.test(e.message)) throw new RecipeError('A recipe with that name exists');
     throw e;
   }
+  // The lock belongs to the dripper, not the recipe: ticking it in any recipe for that dripper sets it for all.
+  if (input.def.dripper && input.lock != null)
+    db.prepare(input.lock ? `INSERT OR IGNORE INTO locked_drippers (name) VALUES (?)` : `DELETE FROM locked_drippers WHERE name = ?`).run(
+      input.def.dripper
+    );
   rematchBrews(db);
   return id!;
 }
@@ -66,6 +71,20 @@ export function undismissStructure(db: DatabaseSync, key: string): void {
   rematchBrews(db);
 }
 
+export const lockedDrippers = (db: DatabaseSync): string[] =>
+  (db.prepare(`SELECT name FROM locked_drippers ORDER BY name`).all() as { name: string }[]).map((r) => r.name);
+
+/** Distinct drippers across all brews, for the editor's dripper choice. */
+export function listDrippers(db: DatabaseSync): string[] {
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT m.name method, m.preparation_tools tools
+       FROM beanconqueror_brews b JOIN beanconqueror_methods m ON m.id = b.preparation_id`
+    )
+    .all() as { method: string | null; tools: string | null }[];
+  return [...new Set(rows.flatMap((r) => parseMethod(r.method, r.tools).dripper ?? []))].sort();
+}
+
 /** A stored reading, or null for none or an unreadable flow (stored as '{}' with pour_count 0). */
 const parseReading = (json: string | null, pourCount: number | null): PourReading | null =>
   json && pourCount ? (JSON.parse(json) as PourReading) : null;
@@ -73,11 +92,14 @@ const parseReading = (json: string | null, pourCount: number | null): PourReadin
 // ponytail: rematches every brew on a recipe change; ~1.5k brews × a few recipes is ms
 export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
   const recipes = listRecipes(db);
+  const locked = new Set(lockedDrippers(db));
   const where = brewIds ? `WHERE b.id IN (${brewIds.map(() => '?').join(',') || 'NULL'})` : '';
   const rows = db
     .prepare(
-      `SELECT b.id, b.notes, b.brew_temperature temp, r.reading, r.pour_count
-       FROM beanconqueror_brews b LEFT JOIN brew_pour_readings r ON r.bc_uuid = b.bc_uuid ${where}`
+      `SELECT b.id, b.notes, b.brew_temperature temp, r.reading, r.pour_count,
+              m.name method, m.preparation_tools tools
+       FROM beanconqueror_brews b LEFT JOIN brew_pour_readings r ON r.bc_uuid = b.bc_uuid
+       LEFT JOIN beanconqueror_methods m ON m.id = b.preparation_id ${where}`
     )
     .all(...(brewIds ?? [])) as {
     id: number;
@@ -85,6 +107,8 @@ export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
     temp: number | null;
     reading: string | null;
     pour_count: number | null;
+    method: string | null;
+    tools: string | null;
   }[];
   const own = !db.isTransaction;
   if (own) db.exec('BEGIN');
@@ -95,8 +119,14 @@ export function rematchBrews(db: DatabaseSync, brewIds?: number[]): number {
     for (const r of rows) {
       del.run(r.id);
       const m = matchBrew(
-        { notes: r.notes, reading: parseReading(r.reading, r.pour_count), tempC: r.temp && r.temp > 0 ? r.temp : null },
-        recipes
+        {
+          notes: r.notes,
+          reading: parseReading(r.reading, r.pour_count),
+          tempC: r.temp && r.temp > 0 ? r.temp : null,
+          dripper: parseMethod(r.method, r.tools).dripper
+        },
+        recipes,
+        locked
       );
       if (!m) continue;
       ins.run(r.id, m.recipeId, m.how, JSON.stringify(m.diffs));

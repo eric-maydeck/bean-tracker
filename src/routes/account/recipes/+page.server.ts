@@ -3,7 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listRecipes, saveRecipe,
+  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listDrippers, listRecipes, lockedDrippers, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
@@ -94,6 +94,8 @@ export const load: PageServerLoad = ({ locals, url }) => {
   return {
     recipes,
     groups,
+    drippers: listDrippers(db),
+    locked: lockedDrippers(db),
     unlisted,
     minGroup: MIN_GROUP,
     brewsTotal: view.brews ? brewCount(db, view.brews) : 0,
@@ -129,7 +131,8 @@ export const actions: Actions = {
     const id = idText ? Number(idText) : undefined;
     if (id !== undefined && !Number.isInteger(id)) return fail(400, { error: 'Invalid recipe' });
     try {
-      return { saved: saveRecipe(getDb(), { id, name: input.name, tags: input.tags, def: parsed.def }) };
+      const lock = text(f, 'lock');
+      return { saved: saveRecipe(getDb(), { id, name: input.name, tags: input.tags, def: parsed.def, lock: lock ? lock === '1' : undefined }) };
     } catch (e) {
       if (e instanceof RecipeError) return fail(400, { error: e.message });
       throw e;

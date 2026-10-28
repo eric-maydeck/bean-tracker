@@ -318,6 +318,8 @@ CREATE TABLE IF NOT EXISTS recipes (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+-- Drippers whose brews match only recipes tied to them (a property of the dripper, set from the recipe editor).
+CREATE TABLE IF NOT EXISTS locked_drippers (name TEXT PRIMARY KEY);
 CREATE TABLE IF NOT EXISTS dismissed_structures (structure_key TEXT PRIMARY KEY, dismissed_at TEXT NOT NULL);
 -- One recipe label per brew, rebuilt by rematchBrews. Brews without flow can only be 'logged'.
 CREATE TABLE IF NOT EXISTS brew_recipe_matches (

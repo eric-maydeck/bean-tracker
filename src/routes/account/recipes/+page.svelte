@@ -119,7 +119,7 @@
               <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
             </div>
             {#if editing === 'r' + r.recipe.id}
-              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} error={formError} ondone={() => (editing = null)} />
+              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} ondone={() => (editing = null)} />
             {/if}
             {#if deleting === r.recipe.id}
               <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ update }) => { deleting = null; await update(); }} class="panel">
@@ -176,7 +176,7 @@
               </form>
             </div>
             {#if editing === 's' + g.key}
-              <RecipeEditor name={g.suggestedName ?? ''} tags={g.suggestedPhrase ? [g.suggestedPhrase] : []} def={g.draft} error={formError} ondone={() => (editing = null)} />
+              <RecipeEditor name={g.suggestedName ?? ''} tags={g.suggestedPhrase ? [g.suggestedPhrase] : []} def={g.draft} drippers={data.drippers} locked={data.locked} error={formError} ondone={() => (editing = null)} />
             {/if}
             {#if naming === g.key}
               <form

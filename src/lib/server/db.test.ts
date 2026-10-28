@@ -32,6 +32,7 @@ describe('createDb', () => {
       'gear_details',
       'image_copies',
       'image_fills',
+      'locked_drippers',
       'recipes',
       'roast_levels',
       'roaster_images',

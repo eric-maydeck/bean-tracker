@@ -9,9 +9,11 @@
     tags,
     def,
     id,
+    drippers,
+    locked,
     error,
     ondone
-  }: { name: string; tags: string[]; def: RecipeDef; id?: number; error?: string; ondone: () => void } = $props();
+  }: { name: string; tags: string[]; def: RecipeDef; id?: number; drippers: string[]; locked: string[]; error?: string; ondone: () => void } = $props();
 
   // Editor-local copy; never in the URL. Props only seed it.
   /* svelte-ignore state_referenced_locally */
@@ -20,6 +22,11 @@
   let nameText = $state(name);
   /* svelte-ignore state_referenced_locally */
   let tagText = $state(tags.join(', '));
+
+  // The lock is the dripper's, so it starts from the dripper's current state and follows the dripper choice.
+  /* svelte-ignore state_referenced_locally */
+  let lock = $state(def.dripper != null && locked.includes(def.dripper));
+  const dripperChoices = $derived(copy.dripper && !drippers.includes(copy.dripper) ? [...drippers, copy.dripper] : drippers);
 
   let tried = $state(false); // show only the error of a save this editor sent
   const mode = (p: RecipeDef['pours'][number]) => (p.rateGps ? 'range' : p.speed);
@@ -81,11 +88,19 @@
 >
   <input type="hidden" name="definition" value={JSON.stringify(payload)} />
   {#if id != null}<input type="hidden" name="id" value={id} />{/if}
+  {#if copy.dripper}<input type="hidden" name="lock" value={lock ? '1' : '0'} />{/if}
   <div class="grid">
     <div class="form-field"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
     <div class="form-field">
       <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
       <small class="text-muted">A note containing one of these as a word is logged as this recipe.</small>
+    </div>
+    <div class="form-field">
+      <label for="re-dripper">Dripper</label>
+      <select id="re-dripper" value={copy.dripper ?? ''} onchange={(e) => { copy.dripper = e.currentTarget.value || null; lock = copy.dripper != null && locked.includes(copy.dripper); }}>
+        <option value="">Any</option>
+        {#each dripperChoices as d (d)}<option value={d}>{d}</option>{/each}
+      </select>
     </div>
     <div class="form-field">
       <label for="re-unit">Pour amounts in</label>
@@ -97,6 +112,11 @@
     <div class="form-field"><label for="re-hold">Bloom hold (s)</label><input id="re-hold" type="number" min="0" step="any" bind:value={copy.bloomHoldS} /></div>
     <div class="form-field"><label for="re-holdtol">± (s)</label><input id="re-holdtol" type="number" min="0" step="any" bind:value={copy.bloomHoldTolS} /></div>
   </div>
+
+  <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
+  {#if copy.dripper}
+    <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={lock} /> Brews on {copy.dripper} only match its recipes</label></div>
+  {/if}
 
   {#each copy.pours as p, i (i)}
     <fieldset class="pour">

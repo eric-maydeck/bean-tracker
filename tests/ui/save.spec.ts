@@ -339,6 +339,14 @@ test.describe('recipes', { tag: '@account' }, () => {
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     const pourCount = await page.locator('fieldset.pour').count();
     await page.getByLabel('Note tags').fill('TJ');
+    const dripper = page.getByLabel('Dripper', { exact: true });
+    await expect(dripper).toHaveValue('');
+    await expect(page.getByLabel(/only match its recipes/)).toHaveCount(0); // the lock shows only with a dripper chosen
+    await dripper.selectOption({ index: 1 });
+    await expect(page.getByLabel(/Brews on .+ only match its recipes/)).toBeVisible();
+    await dripper.selectOption('');
+    await page.getByLabel("Pour speed doesn't matter").check();
+    await expect(page.getByTestId('editor-description')).toContainText('any pour speed');
     await page.getByRole('button', { name: 'Add pour' }).click(); // the pour-count range widens, so Save still validates
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await expect(page.getByLabel('Note tags')).toHaveCount(0);
@@ -346,6 +354,7 @@ test.describe('recipes', { tag: '@account' }, () => {
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     await expect(page.getByLabel('Note tags')).toHaveValue('TJ');
     await expect(page.locator('fieldset.pour')).toHaveCount(pourCount + 1);
+    await expect(page.getByLabel("Pour speed doesn't matter")).toBeChecked();
     await page.getByRole('button', { name: 'Cancel' }).click();
     await joocy.getByRole('button', { name: 'Delete', exact: true }).click();
     const confirm = joocy.locator('form.panel');
