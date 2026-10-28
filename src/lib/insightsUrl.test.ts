@@ -582,10 +582,12 @@ describe('brewing lab params', () => {
     expect(['roast', 'origin', 'zzz'].map((v) => parse(`recipeBy=${v}`).recipeBy)).toEqual([undefined, undefined, undefined]);
     expect(parse('pourThin=OPEN').pourThin).toBe('open');
     expect(parse('pourThin=yes').pourThin).toBeUndefined();
-    const q = 'tab=pours&recipeBy=process&pourThin=open';
+    expect(['Group', 'RECIPE', 'avg'].map((v) => parse(`recipeVs=${v}`).recipeVs)).toEqual(['group', 'recipe', 'avg']);
+    expect(['same', 'bags', ''].map((v) => parse(`recipeVs=${v}`).recipeVs)).toEqual([undefined, undefined, undefined]);
+    const q = 'tab=pours&recipeBy=process&pourThin=open&recipeVs=group';
     expect(insightsParams(parse(q)).toString()).toBe(q);
-    expect(insightsParams(withDefaults(parse(q))).toString()).toContain('tab=pours&rank=rating&measure=brews&unit=grams&recipeBy=process&pourThin=open');
-    expect(withDefaults(parse(q))).toMatchObject({ recipeBy: 'process', pourThin: 'open' });
+    expect(insightsParams(withDefaults(parse(q))).toString()).toContain('tab=pours&rank=rating&measure=brews&unit=grams&recipeBy=process&pourThin=open&recipeVs=group');
+    expect(withDefaults(parse(q))).toMatchObject({ recipeBy: 'process', pourThin: 'open', recipeVs: 'group' });
     const c = 'range=12m&compare=1';
     expect({ ...parse(`tab=pours&${c}`), tab: 'brewing' }).toEqual(parse(`tab=brewing&${c}`));
   });

@@ -84,6 +84,8 @@ export const WAIT_BYS = ['roaster', 'origin', 'process', 'roast'] as const;
 export type WaitBy = (typeof WAIT_BYS)[number];
 // Pours: Recipe × coffee's grouping (absent = roast level).
 export const RECIPE_BYS = ['roast', 'process', 'roaster'] as const;
+// Pours: what Recipe × coffee compares a cell with (absent = the same bags).
+export const RECIPE_VS = ['group', 'recipe', 'avg'] as const;
 export const TABS = ['overview', 'onhand', 'leaderboards', 'habits', 'consumption', 'spend', 'records', 'milestones', 'insights', ...LAB_TABS] as const;
 export const RC_COLS = ['roaster', 'bags', 'spent', 'ppg', 'rating', 'like', 'last'] as const;
 export type RcCol = (typeof RC_COLS)[number];
@@ -282,6 +284,7 @@ export interface InsightsUrlState {
   waitBy?: WaitBy; // On hand's What's waiting grouping (absent = Roaster)
   recipeBy?: 'process' | 'roaster'; // Pours: Recipe × coffee's grouping (absent = Roast level)
   pourThin?: 'open'; // Pours: the thin recipes are shown (absent = hidden)
+  recipeVs?: (typeof RECIPE_VS)[number]; // Pours: Recipe × coffee compares with the same roaster / same recipe / nothing (absent = same bags)
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // average is the default and never explicit
   trend?: Trend; // Consumption: Brewed over time's measure (absent = the Unit)
@@ -293,12 +296,12 @@ export interface InsightsUrlState {
 
 // avg: absent = each board's default (boardAvg), so there is no one default to fill in.
 type Optional = 'avg' | 'trend' | 'gearBy' | 'gearView' | 'waterView' | 'open' | 'views' | 'by' | 'agg' | 'dial' | 'brewer' | 'kinds' | 'caffeine' | 'top' | 'topc' | 'recent' | 'recentc' | 'theme' | 'drinkers' | 'gpp' | 'inflow' | 'bpd' | 'dose'
-  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin';
+  | 'bag' | 'roast' | 'process' | 'origin' | 'roaster' | 'grinder' | BrewFilterKey | ByParam | ExactParam | 'pairs' | 'card' | 'chart' | 'retired' | 'gear' | 'spendView' | 'spendSeries' | 'rcSort' | 'rcDir' | 'rcTop' | 'waitBy' | 'recipeBy' | 'pourThin' | 'recipeVs';
 export type InsightsView = Required<Omit<InsightsUrlState, Optional>> & {
   avg?: Avg; trend?: Trend; gearBy?: 'grinder'; gearView?: 'lines'; waterView?: 'lines'; open?: Board[]; views?: BoardViews; by?: By; agg: Agg; dial: Dial; brewer?: BrewerType; kinds?: Kind[]; caffeine?: Caffeine; top?: Top; topc?: Top; recent?: Top; recentc?: Top;
   theme?: Theme; drinkers?: number; gpp?: number; inflow?: number; bpd?: number; dose?: number;
   bag?: string; roast?: string; process?: string; origin?: string; roaster?: string; grinder?: string;
-  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open';
+  tempBy?: Slice; ratioBy?: Slice; doseBy?: Slice; timeBy?: Slice; bloomBy?: Slice; grindBy?: Slice; pairs?: string[]; card?: string; chart?: string; retired?: 'open'; gear?: GearKind; spendView?: 'ppg'; spendSeries?: SpendSeries; rcSort?: RcCol; rcDir?: 'asc' | 'desc'; rcTop?: Top; waitBy?: WaitBy; recipeBy?: 'process' | 'roaster'; pourThin?: 'open'; recipeVs?: (typeof RECIPE_VS)[number];
 } & Partial<Record<ExactParam, 'exact'>> & BrewFilters;
 
 export const DEFAULTS: Required<Omit<InsightsUrlState, Optional>> & { agg: Agg; dial: Dial } = {
@@ -461,7 +464,8 @@ export function parseInsightsUrl(
     rcTop: TOPS.find((n) => String(n) === p.get('rcTop')),
     waitBy: pickOne(p, 'waitBy', WAIT_BYS.filter((k) => k !== 'roaster')), // the default stays out of the URL
     recipeBy: pickOne(p, 'recipeBy', RECIPE_BYS.filter((k) => k !== 'roast')),
-    pourThin: pickOne(p, 'pourThin', ['open'])
+    pourThin: pickOne(p, 'pourThin', ['open']),
+    recipeVs: pickOne(p, 'recipeVs', RECIPE_VS)
   };
 }
 
@@ -537,6 +541,7 @@ export function insightsParams(s: InsightsUrlState): URLSearchParams {
   if (s.waitBy) p.set('waitBy', s.waitBy);
   if (s.recipeBy) p.set('recipeBy', s.recipeBy);
   if (s.pourThin) p.set('pourThin', s.pourThin);
+  if (s.recipeVs) p.set('recipeVs', s.recipeVs);
   return p;
 }
 
@@ -673,7 +678,7 @@ export function withDefaults(s: InsightsUrlState): InsightsView {
     dripper: s.dripper, filter: s.filter, water: s.water, brewDose: s.brewDose, brewTemp: s.brewTemp,
     tempBy: s.tempBy, ratioBy: s.ratioBy, doseBy: s.doseBy, timeBy: s.timeBy, bloomBy: s.bloomBy, grindBy: s.grindBy,
     temp: s.temp, ratio: s.ratio, dosing: s.dosing, time: s.time, bloom: s.bloom, grind: s.grind, pairs: s.pairs, card: s.card, chart: s.chart, retired: s.retired, gear: s.gear,
-    spendView: s.spendView, spendSeries: s.spendSeries, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop, waitBy: s.waitBy, recipeBy: s.recipeBy, pourThin: s.pourThin
+    spendView: s.spendView, spendSeries: s.spendSeries, rcSort: s.rcSort, rcDir: s.rcDir, rcTop: s.rcTop, waitBy: s.waitBy, recipeBy: s.recipeBy, pourThin: s.pourThin, recipeVs: s.recipeVs
   };
 }
 

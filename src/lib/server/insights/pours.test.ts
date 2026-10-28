@@ -100,6 +100,25 @@ describe('poursTab report card', () => {
     expect(tab.agitationByProcess).not.toBeNull();
     expect(tab.recipeBy.process!.cols).toEqual(['R1', 'R2', 'No recipe']);
   });
+  it('recipe x coffee means: each mode exact (by process)', () => {
+    const g = tab.recipeMeans.process!;
+    expect(g.rows).toEqual(['Natural', 'Washed']);
+    expect(g.cols).toEqual(['R1', 'R2', 'No recipe']);
+    const r = (i: number, j: number) => { const c = g.cells[i][j]!; return [c.mean, c.brews, c.bags, +c.vsGroup!.toFixed(3), +c.vsRecipe!.toFixed(3)]; };
+    // Washed R1 8 vs the rest of Washed (R2 6 x12, none 7 x6 -> 6.333) and vs R1 in Natural (8.5); Natural mirrors it.
+    expect(r(1, 0)).toEqual([8, 12, 3, 1.667, -0.5]);
+    expect(r(0, 0)).toEqual([8.5, 12, 3, 2.5, 0.5]);
+    expect(r(1, 1)).toEqual([6, 12, 3, -1.667, 0.5]);
+    expect(r(0, 1)).toEqual([5.5, 12, 3, -2.5, -0.5]);
+    expect(r(1, 2)).toEqual([7, 6, 3, 0, 0]);
+    expect(g.cells[0][0]!.sample.small).toBe(false);
+  });
+  it('a recipe brewed in the same bags as no other still has a value (no same-bag contrast needed)', () => {
+    const solo = rows.filter((b) => facts.get(b.id)!.recipeId === 1); // only R1: nothing paired
+    const t = poursTab(solo, facts, [R1, R2])!;
+    expect(t.recipeBy.process).toBeNull();
+    expect(t.recipeMeans.process!.cells[1][0]).toMatchObject({ mean: 8, brews: 12, vsGroup: null, vsRecipe: expect.closeTo(-0.5, 5) });
+  });
   it('words: Brown listed (12 brews, 6 bags), Floral (2 bags) absent', () => {
     expect(tab.words.map((w) => w.label)).toEqual(['Brown']);
     const w = tab.words[0];
