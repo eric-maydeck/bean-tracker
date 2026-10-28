@@ -27,6 +27,7 @@
 
 <script lang="ts">
   import { page } from '$app/state';
+  import { labelTip } from '$lib/components/labelTip';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
   import { SAMPLE_HELP } from '$lib/sample';
@@ -41,6 +42,28 @@
     t: PoursTab | null; s: InsightsView; explicit: InsightsUrlState; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
   const emptyLine = useEmptyLine();
+
+  // An ellipsized name shows its full text in the shared tip on hover and focus (ui-rules 36, 39: no native title); only
+  // while it is actually cut, and then it is a tab stop (a link already is one).
+  function cutTip(node: HTMLElement, text: string) {
+    let tip: ReturnType<typeof labelTip> | null = null;
+    const sync = () => {
+      const cut = node.scrollWidth > node.clientWidth + 1;
+      if (cut && !tip) {
+        if (!node.matches('a')) node.tabIndex = 0;
+        tip = labelTip(node, text);
+      } else if (!cut && tip) {
+        tip.destroy();
+        tip = null;
+        if (!node.matches('a')) node.removeAttribute('tabindex');
+        node.style.cursor = '';
+      }
+    };
+    const ro = new ResizeObserver(sync);
+    ro.observe(node);
+    sync();
+    return { update: (t: string) => tip?.update(t), destroy: () => (ro.disconnect(), tip?.destroy()) };
+  }
 
   // Report card
   let open = $derived(s.pourThin === 'open');
@@ -105,8 +128,8 @@
           {@const d = r.stat?.delta ?? null}
           <li>
             <span class="name">
-              <span class="nm">{#if page.data.isAdmin && r.id !== null}<a href="/account/recipes?brews=r{r.id}">{r.name}</a>{:else}{r.name}{/if}</span>
-              <span class="sub">{r.dripper ?? ''}</span>
+              {#if page.data.isAdmin && r.id !== null}<a class="nm" href="/account/recipes?brews=r{r.id}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
+              <span class="sub" use:cutTip={r.dripper ?? ''}>{r.dripper ?? ''}</span>
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>
             <span class="delta {deltaInk(d)}" class:small-sample={r.stat?.sample.small ?? r.sample.small}>{d === null ? 'no match' : labDelta(d, ses)}</span>
@@ -245,6 +268,7 @@
   }
   .nm,
   .sub {
+    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

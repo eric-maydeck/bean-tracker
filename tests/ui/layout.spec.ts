@@ -3439,6 +3439,17 @@ export const STATES: State[] = [
       expect(wraps, 'labels wrapped mid-phrase').toEqual([]);
       const cut = await page.locator('ul.card > li').evaluateAll((lis) => lis.flatMap((li) => [...li.querySelectorAll('.spark, .counts')].filter((e) => e.getBoundingClientRect().right > li.getBoundingClientRect().right + 1).map((e) => e.tagName)));
       expect(cut, 'sparkline or counts past the card edge').toEqual([]);
+      // A name cut by an ellipsis shows its full text in the shared tip on focus (squeeze the first one to force the cut).
+      const name = page.locator('ul.card .nm').first();
+      const full = (await name.textContent())!.trim();
+      await name.evaluate((e) => { e.style.maxWidth = '3rem'; });
+      await expect.poll(() => name.evaluate((e) => e.tabIndex >= 0 && e.scrollWidth > e.clientWidth)).toBe(true);
+      await name.focus();
+      await page.keyboard.press('Shift+Tab'); // keyboard modality: back, then forward onto the name
+      await page.keyboard.press('Tab');
+      await expect(page.locator('.float-tip').filter({ hasText: full })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await name.evaluate((e) => { e.style.maxWidth = ''; });
       const w = async (id: string) => Math.round((await page.locator(`[data-section="${id}"]`).first().boundingBox())!.width);
       expect(await w('pours-rest')).toBe(await w('pours-recipes')); // Rest age cards are full width
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
