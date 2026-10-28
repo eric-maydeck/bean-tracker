@@ -165,6 +165,23 @@ describe('mixed split rule', () => {
   });
 });
 
+describe('recipe trend', () => {
+  it('monthly mean of ratings against the bag mean over ALL its rated brews', () => {
+    // Bag 1: R1 3 @ 8 (Sep) + 3 @ 9 (Oct), R2 6 @ 5 -> bag mean 6.75: Sep +1.25, Oct +2.25 (own-recipe basis would be -0.5/+0.5).
+    // Bag 2: all 7, R1 in Nov (2 brews, under 3: no point).
+    const rows: BrewFact[] = [], facts = new Map<number, PourFact>();
+    const add = (bag: number, rec: number, rating: number, date: string) => {
+      const b = brew({ coffeeId: bag, rating, localDate: date }); rows.push(b); facts.set(b.id, fact(b, { recipeId: rec, how: 'match' }));
+    };
+    for (let k = 0; k < 3; k++) add(1, 1, 8, '2026-09-10');
+    for (let k = 0; k < 3; k++) add(1, 1, 9, '2026-10-10');
+    for (let k = 0; k < 6; k++) add(1, 2, 5, '2026-09-11');
+    for (let k = 0; k < 2; k++) add(2, 1, 7, '2026-11-10');
+    for (let k = 0; k < 2; k++) add(2, 2, 7, '2026-11-11');
+    expect(poursTab(rows, facts, [R1, R2])!.recipes.find((r) => r.name === 'R1')!.trend).toEqual([{ label: 'Sep', value: 1.25 }, { label: 'Oct', value: 2.25 }]);
+  });
+});
+
 describe('hiddenByRatings', () => {
   it('lists a recipe with 12 All-ratings brews over 3 bags and none Calibrated', () => {
     const mk = (bag: number, rec: number) => { const b = brew({ coffeeId: bag, rating: 7 }); return [b, fact(b, { recipeId: rec })] as const; };
@@ -185,7 +202,8 @@ describe('swirlAfterBand', () => {
 });
 
 describe('FLAVOR_WORDS', () => {
-  it('carry no personal vocabulary', () => expect(FLAVOR_WORDS.map((w) => w.label)).toContain('Brown'));
+  it('are the generic labels only', () =>
+    expect(FLAVOR_WORDS.map((w) => w.label)).toEqual(['Bright', 'Sour', 'Floral', 'Sweet', 'Clean', 'Bitter', 'Brown', 'Astringent']));
 });
 
 describe('loadPourFacts', () => {

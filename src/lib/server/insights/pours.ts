@@ -24,8 +24,9 @@ export const FLAVOR_WORDS: readonly { label: string; terms: readonly string[] }[
   { label: 'Bitter', terms: ['bitter'] }, { label: 'Brown', terms: ['brown', 'roasty'] }, { label: 'Astringent', terms: ['astringent'] }
 ];
 // A term at a word start; the rest of the word is free ("acid" finds "acidic"). Terms are plain letters.
+const WORD_RES = FLAVOR_WORDS.map((w) => ({ label: w.label, res: w.terms.map((t) => new RegExp(`(?<![A-Za-z0-9])${t}\\w*`, 'i')) }));
 const wordsIn = (note: string | null): string[] =>
-  note ? FLAVOR_WORDS.filter((w) => w.terms.some((t) => new RegExp(`(?<![A-Za-z0-9])${t}\\w*`, 'i').test(note))).map((w) => w.label) : [];
+  note ? WORD_RES.filter((w) => w.res.some((re) => re.test(note))).map((w) => w.label) : [];
 
 export function loadPourFacts(db: DatabaseSync, brews: readonly BrewFact[]): { facts: Map<number, PourFact>; recipes: Recipe[] } {
   const recipes = listRecipes(db), words = getNoteWords(db);
@@ -173,13 +174,14 @@ export function poursTab(
   // Report card
   const rBand = recipeBand(facts, recipes);
   const stats = new Map(paired(rows, rBand).map((s) => [s.label, s]));
+  const dmOf = new Map(demeaned(rows).map((r) => [r.id, r.dm])); // same basis as the deltas: every rated row of the bag
   const groups = groupBy(cut, (b) => rBand(b)?.label ?? null);
   const card: RecipeRow[] = [];
   for (const [name, rs] of groups) {
     if (name === null) continue;
     const bags = bagsOf(rs), sample = pooled(bags, rs.length);
     const hows = countBy(rs, (b) => F(b).how ?? 'none');
-    const months = [...groupBy(demeaned(rs), (r) => r.localDate.slice(0, 7))].filter(([, g]) => g.length >= 3).sort((a, b) => a[0].localeCompare(b[0]));
+    const months = [...groupBy(rs.map((b) => ({ localDate: b.localDate, dm: dmOf.get(b.id)! })), (r) => r.localDate.slice(0, 7))].filter(([, g]) => g.length >= 3).sort((a, b) => a[0].localeCompare(b[0]));
     const drips = [...countBy(rs.filter((b) => b.dripper), (b) => b.dripper!)].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     card.push({
       id: F(rs[0]).recipeId, name, rated: rs.length, bags, sample, stat: stats.get(name) ?? null, best: { roast: null, process: null },
