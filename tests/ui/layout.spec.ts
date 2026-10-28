@@ -2459,7 +2459,7 @@ export const STATES: State[] = [
           await page.keyboard.press('ControlOrMeta+a');
           await page.keyboard.type('40');
           await page.getByLabel('Name', { exact: true }).fill('Should not save');
-          await page.getByRole('button', { name: 'Save', exact: true }).click();
+          await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
           await expect(page.getByRole('alert')).toHaveText('Ratio must be between 1:5 and 1:30');
           await expect(page.locator('fieldset.pour')).toHaveCount(4);
           await expect(panel(page, 'Your recipes').locator('li.item')).toHaveCount(3);
@@ -3414,7 +3414,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Show 2 more with few brews' })).toBeVisible();
       await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
       await expect(page.locator('nav.board-jump')).toBeVisible();
-      expect(await page.locator('main .sample-note, main .small-sample-mark, main .small-sample').count()).toBeGreaterThan(0);
+      expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },

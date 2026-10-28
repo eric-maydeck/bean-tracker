@@ -7,7 +7,7 @@
       t.recipes.length && ['pours-recipes', 'Recipe report card'],
       (t.technique.length || t.agitationByProcess || t.words.length) && ['pours-technique', 'Technique'],
       Object.values(t.recipeBy).some(Boolean) && ['pours-recipe-coffee', 'Recipe × coffee'],
-      (t.rest.byRecipe || t.rest.byAgitation) && ['pours-rest', 'Rest age']
+      (t.rest.byRecipe || t.rest.byAgitation) && [t.rest.byRecipe ? 'pours-rest' : 'pours-rest-agitation', 'Rest age']
     ];
   }
   const RECIPE_HELP = 'Each recipe against your other brews of the same bags: positive = it rated higher.';
@@ -38,8 +38,8 @@
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
 
-  let { t, s, placeTip, choose }: {
-    t: PoursTab | null; s: InsightsView; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
+  let { t, s, explicit, placeTip, choose }: {
+    t: PoursTab | null; s: InsightsView; explicit: InsightsUrlState; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
   const emptyLine = useEmptyLine();
 
@@ -50,11 +50,7 @@
   let shown = $derived(!solid.length || open ? (t?.recipes ?? []) : solid); // nothing but thin rows: show them
   let ses = $derived((t?.recipes ?? []).flatMap((r) => (r.stat && r.stat.delta !== null ? [r.stat.se] : [])));
   const names = (xs: string[]) => (xs.length <= 3 ? xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0] : `${xs.slice(0, 2).join(', ')} and ${xs.length - 2} more`);
-  let allRatings = $derived.by(() => {
-    const q = new URLSearchParams(page.url.search);
-    q.set('ratings', 'all');
-    return `?${q}`;
-  });
+  let allRatings = $derived(`?${insightsParams({ ...explicit, ratings: 'all' })}`);
   // A recipe's trend as a tiny polyline: the dot-less sparkline of its monthly mean same-bag delta.
   const spark = (v: number[]) => {
     const lo = Math.min(0, ...v), hi = Math.max(0, ...v), span = hi - lo || 1;
@@ -81,9 +77,15 @@
   let thinRest = $derived(!!t && [t.rest.byRecipe, t.rest.byAgitation].some((bd) => bd && !bd.rows.some((r, i) => FRESH.includes(r) && bd.cells[i].some((c) => c && c.delta !== null && !c.sample.small))));
 </script>
 
-{#if !t}
+{#snippet ratingsNote()}
+  {#if t?.hiddenByRatings.length}
+    <p class="chart-note">Calibrated ratings leave out {names(t.hiddenByRatings)}. <a href={allRatings} onclick={(e) => { e.preventDefault(); choose({ ratings: 'all' }); }}>See all ratings</a></p>
+  {/if}
+{/snippet}
+{#if !t || !(t.recipes.length || t.technique.length || t.words.length)}
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews with pour readings in this period.')}</p>
+    {@render ratingsNote()}
     {#if page.data.isAdmin}<p class="chart-note"><a href="/account/recipes">Set up recipes</a></p>{/if}
   </section>
 {:else}
@@ -91,7 +93,7 @@
     <section class="chart-panel" data-section="pours-recipes">
       <LabHead id="pours-recipes" title="Recipe report card" {placeTip} help={[RECIPE_HELP, ...SAME_BAG_HELP.slice(1)]} />
       <ul class="card" aria-label="Recipes">
-        {#each shown as r (r.name)}
+        {#each shown as r (r.id ?? r.name)}
           {@const d = r.stat?.delta ?? null}
           <li>
             <span class="name">
@@ -118,9 +120,7 @@
         <div class="more"><button class="button button-ghost" onclick={() => choose({ pourThin: open ? undefined : 'open' })}>{open ? 'Show fewer' : `Show ${thin.length} more with few brews`}</button></div>
       {/if}
       {#if t.noFlow > 0}<p class="chart-note">{t.noFlow} rated {t.noFlow === 1 ? 'brew has' : 'brews have'} no flow data and {t.noFlow === 1 ? 'is' : 'are'} left out.</p>{/if}
-      {#if t.hiddenByRatings.length}
-        <p class="chart-note">Calibrated ratings leave out {names(t.hiddenByRatings)}. <a href={allRatings} onclick={(e) => { e.preventDefault(); choose({ ratings: 'all' }); }}>See all ratings</a></p>
-      {/if}
+      {@render ratingsNote()}
     </section>
   {/if}
 

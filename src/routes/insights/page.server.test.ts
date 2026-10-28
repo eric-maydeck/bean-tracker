@@ -727,5 +727,9 @@ describe('brew filters', () => {
     expect(d.pours).not.toBeNull();
     expect(d.pours.hiddenByRatings).toEqual(['Rcp']);
     expect(run('?tab=pours&range=all&dial=all&ratings=all').pours.hiddenByRatings).toEqual([]);
+    // Calibrated hides every recipe: the tab keeps the note's data (the page shows the empty line plus the note).
+    db.exec(`UPDATE beanconqueror_brews SET rating = NULL WHERE bc_created_at >= '2026-06-01'`);
+    const none = run('?tab=pours&range=all&dial=all').pours;
+    expect(none).toMatchObject({ recipes: [], technique: [], hiddenByRatings: ['Rcp'] });
   });
 });

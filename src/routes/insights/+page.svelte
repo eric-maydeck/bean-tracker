@@ -926,7 +926,7 @@
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
   <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
 {:else if s.tab === 'pours'}
-  <Pours t={data.pours} {s} {placeTip} {choose} />
+  <Pours t={data.pours} {s} {explicit} {placeTip} {choose} />
 {:else if s.tab === 'water' && data.water}
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}

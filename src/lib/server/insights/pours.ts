@@ -156,7 +156,20 @@ export function poursTab(
   rows: readonly BrewFact[], facts: Facts, recipes: readonly Recipe[], o: { split?: boolean; allRows?: readonly BrewFact[] } = {}
 ): PoursTab | null {
   const cut = rows.filter((b) => facts.has(b.id));
-  if (!cut.length) return null;
+  // Recipes the Calibrated default hides (those of `allRows` with a big enough sample that no card shows).
+  const hiddenOf = (shown: ReadonlySet<number | null>) => o.allRows
+    ? [...groupBy(o.allRows.filter((b) => facts.get(b.id)?.recipeId != null), (b) => facts.get(b.id)!.recipeId)]
+        .filter(([id, g]) => id !== null && !shown.has(id) && !pooled(bagsOf(g), g.length).small && recipes.some((r) => r.id === id))
+        .sort((a, b) => b[1].length - a[1].length).map(([id]) => recipes.find((r) => r.id === id)!.name)
+    : [];
+  if (!cut.length) {
+    // Nothing rated here: null, unless Calibrated hid recipes (the tab then still says so).
+    const hiddenByRatings = hiddenOf(new Set());
+    return hiddenByRatings.length ? {
+      recipes: [], noFlow: rows.length, technique: [], split: [], agitationByProcess: null, recipeBy: { roast: null, process: null, roaster: null },
+      rest: { byRecipe: null, byAgitation: null }, words: [], agitationSplit: false, mixedKeep: [], hiddenByRatings
+    } : null;
+  }
   const F = (b: BrewFact) => facts.get(b.id)!;
   const lone = bagsOf(cut) < 2; // ponytail: one bag has nothing to compare against; no deltas at all
   // Deltas read every rated row: a brew without a reading still sets its bag's mean (bands skip it).
@@ -234,12 +247,7 @@ export function poursTab(
   }
 
   // Ratings hint: recipes the Calibrated default hides
-  const here = new Set(card.filter((r) => !r.thin).map((r) => r.id));
-  const hidden = o.allRows
-    ? [...groupBy(o.allRows.filter((b) => facts.get(b.id)?.recipeId != null), (b) => facts.get(b.id)!.recipeId)]
-        .filter(([id, g]) => id !== null && !here.has(id) && !pooled(bagsOf(g), g.length).small && recipes.some((r) => r.id === id))
-        .sort((a, b) => b[1].length - a[1].length).map(([id]) => recipes.find((r) => r.id === id)!.name)
-    : [];
+  const hidden = hiddenOf(new Set(card.filter((r) => !r.thin).map((r) => r.id)));
 
   return {
     recipes: card, noFlow: rows.length - cut.length, technique, split: splitRows,
