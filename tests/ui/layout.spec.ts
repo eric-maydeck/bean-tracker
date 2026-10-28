@@ -3434,11 +3434,40 @@ export const STATES: State[] = [
       // Cards size to their content: every Technique bar row has the normal height (no stretched pair), and the agitation
       // band labels, the report card's name and dripper lines each stay on one line (no mid-phrase wrap).
       const rowH = await page.locator('.tech-cols .bar-row').evaluateAll((rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)));
-      expect(Math.max(...rowH) - Math.min(...rowH), `bar row heights ${[...new Set(rowH)]}`).toBeLessThanOrEqual(4);
+      expect(Math.max(...rowH) / Math.min(...rowH), `bar row heights ${[...new Set(rowH)]}`).toBeLessThanOrEqual(1.32); // at most the 1.3x column-balance stretch
       const wraps = await page.locator('.tech-cols [data-section="pours-agitation"] .bar-label, ul.card .nm, ul.card .sub').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight) * 1.5).map((e) => e.textContent));
       expect(wraps, 'labels wrapped mid-phrase').toEqual([]);
       const cut = await page.locator('ul.card > li').evaluateAll((lis) => lis.flatMap((li) => [...li.querySelectorAll('.spark, .counts')].filter((e) => e.getBoundingClientRect().right > li.getBoundingClientRect().right + 1).map((e) => e.tagName)));
       expect(cut, 'sparkline or counts past the card edge').toEqual([]);
+      // Report card rows keep 8px of padding inside the box: no text touches its border.
+      const edge = await page.locator('ul.card').evaluate((ul) => {
+        const b = ul.getBoundingClientRect();
+        return [...ul.querySelectorAll('li > *')].filter((e) => e.getBoundingClientRect().width > 0 && (e.textContent?.trim() || e.querySelector('svg'))).flatMap((e) => {
+          const r = e.getBoundingClientRect();
+          return r.left < b.left + 8 || r.right > b.right - 8 ? [`${e.className}: ${Math.round(r.left - b.left)} / ${Math.round(b.right - r.right)}`] : [];
+        });
+      });
+      expect(edge, 'text within 8px of the card border').toEqual([]);
+      // The counts' tip says what logged and matched mean.
+      await page.locator('ul.card .counts span').first().hover();
+      await expect(page.locator('.float-tip').filter({ hasText: 'the site recognized the recipe from the brew' })).toBeVisible();
+      await page.mouse.move(0, 0);
+      // Words: a table per grouping, bands in canonical order; it scrolls inside its box and the word column stays put.
+      await expect(page.locator('.wscroll caption').first()).toHaveText('By agitation');
+      expect(await page.locator('.wscroll').first().locator('thead th').allTextContents()).toEqual(['Word', 'High', 'Low', 'Mixed']);
+      await expect(page.locator('.wscroll tbody th').first()).toContainText(/Bright|Sweet/);
+      await page.locator('.wscroll').first().evaluate((e) => { e.style.width = '9rem'; e.scrollLeft = 1e4; });
+      const sticky = await page.locator('.wscroll').first().evaluate((e) => ({ scrolled: e.scrollLeft, box: e.getBoundingClientRect().left, th: e.querySelector('tbody th')!.getBoundingClientRect().left }));
+      expect(sticky.scrolled).toBeGreaterThan(0);
+      expect(Math.abs(sticky.th - sticky.box), 'word column stays at the left edge').toBeLessThanOrEqual(1);
+      await expectInnerScroll(page, '.wscroll');
+      await page.locator('.wscroll').first().evaluate((e) => { e.style.width = ''; });
+      // Technique columns (two-up): same top, bottoms within 56px (cards stretch at most 1.3x; the rest sits below).
+      const cols = await page.locator('.tech-cols .col').evaluateAll((cs) => cs.map((c) => ({ two: getComputedStyle(c).display !== 'contents', top: Math.round(c.getBoundingClientRect().top), bottom: Math.round(c.getBoundingClientRect().bottom) })));
+      if (cols.length === 2 && cols[0].two) {
+        expect(cols[0].top).toBe(cols[1].top);
+        expect(Math.abs(cols[0].bottom - cols[1].bottom), `column bottoms ${cols[0].bottom} vs ${cols[1].bottom}`).toBeLessThanOrEqual(56);
+      }
       // A name cut by an ellipsis shows its full text in the shared tip on focus (squeeze the first one to force the cut).
       const name = page.locator('ul.card .nm').first();
       const full = (await name.textContent())!.trim();

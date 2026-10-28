@@ -28,6 +28,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { labelTip } from '$lib/components/labelTip';
+  import { assignCols, sortAgitation, sortContact } from './pourCols';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
   import { SAMPLE_HELP } from '$lib/sample';
@@ -45,7 +46,7 @@
 
   // An ellipsized name shows its full text in the shared tip on hover and focus (ui-rules 36, 39: no native title); only
   // while it is actually cut, and then it is a tab stop (a link already is one).
-  function cutTip(node: HTMLElement, text: string) {
+  function cutTip(node: HTMLElement, text: string) {  // `text` is kept current by update()
     let tip: ReturnType<typeof labelTip> | null = null;
     const sync = () => {
       const cut = node.scrollWidth > node.clientWidth + 1;
@@ -62,8 +63,10 @@
     const ro = new ResizeObserver(sync);
     ro.observe(node);
     sync();
-    return { update: (t: string) => tip?.update(t), destroy: () => (ro.disconnect(), tip?.destroy()) };
+    return { update: (t: string) => { text = t; tip?.update(t); sync(); }, destroy: () => (ro.disconnect(), tip?.destroy()) };
   }
+
+  const COUNTS_TIP = { title: 'Logged and matched', lines: ['Logged: the brew\'s note names the recipe.', 'Matched: the site recognized the recipe from the brew\'s pour reading, including modified (the pour pattern and ratio agree, but something like pour count or bloom time differs).'] };
 
   // Report card
   let open = $derived(s.pourThin === 'open');
@@ -91,12 +94,43 @@
     if (at >= 0 && t.split.length) out.splice(at + 1, 0, { id: 'pours-split', title: 'Pouring vs drawdown', help: ['Mean pouring time and drawdown time of the brews in each contact band.', 'Pouring: first pour to the last.', 'Drawdown: the last pour to the end.'], split: true });
     return out;
   });
+  // Two columns of cards at the same top and (about) the same bottom: assigned by height (estimated at first, then the
+  // measured natural heights), and the shorter column's bars stretch a little (balance, capped 1.3x). On one column
+  // (narrow) the cards keep reading order (their order index).
+  let heights = $state<Record<string, number>>({});
+  const est = (c: Card) => c.bd ? 150 + 36 * c.bd.rows.length : c.split ? 110 + 32 * (t?.split.length ?? 0) : 110 + 32 * (c.bars?.bands.length ?? 0) + (c.bars?.inferred ? 30 : 0);
+  let cols = $derived(assignCols(cards.map((c) => c.id), (id) => heights[id] ?? est(cards.find((c) => c.id === id)!)));
+  const order = (id: string) => cards.findIndex((c) => c.id === id);
+  function balance(node: HTMLElement, _deps: unknown) {
+    let raf = 0, w = -1;
+    const run = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const els = [...node.querySelectorAll<HTMLElement>('[data-card]')];
+        for (const c of els) (c.style.removeProperty('--bar-rows'), c.style.removeProperty('--split-row'));
+        const nat = Object.fromEntries(els.map((c) => [c.dataset.card!, Math.round(c.offsetHeight)]));
+        if (els.some((c) => heights[c.dataset.card!] !== nat[c.dataset.card!])) return void (heights = nat); // reassign; update() runs again
+        const cs = [...node.querySelectorAll<HTMLElement>('.col')];
+        if (cs.length !== 2 || getComputedStyle(cs[0]).display === 'contents') return;
+        const hs = cs.map((c) => c.getBoundingClientRect().height);
+        const rows = [...cs[hs[0] < hs[1] ? 0 : 1].querySelectorAll<HTMLElement>('[data-stretch]')].map((c) => ({ c, rs: [...c.querySelectorAll<HTMLElement>('.bar-row, .split li')] })).filter((x) => x.rs.length);
+        const total = rows.reduce((n, x) => n + x.rs.reduce((m, r) => m + r.offsetHeight, 0), 0);
+        if (!total) return;
+        const k = Math.min(1.3, 1 + Math.abs(hs[0] - hs[1]) / total);
+        for (const { c, rs } of rows) c.style.setProperty(c.dataset.stretch === 'split' ? '--split-row' : '--bar-rows', `${rs[0].offsetHeight * k}px`);
+      });
+    };
+    const ro = new ResizeObserver(() => { if (node.clientWidth !== w) { w = node.clientWidth; run(); } }); // width only: a stretch changes heights
+    ro.observe(node);
+    run();
+    return { update: run, destroy: () => (ro.disconnect(), cancelAnimationFrame(raf)) };
+  }
   // A bar's tip gains how many of its brews had their agitation guessed (the label stays the band's name).
   const techRows = (x: PoursTab['technique'][number]) => bandRows(x.bands, undefined, 'band').map((r, j) => {
     const n = x.inferred?.[x.bands[j].label] ?? 0;
     return n ? { ...r, tip: { ...r.tip, rows: [...(r.tip.rows ?? []), ['Guessed from pour speed', `${n} of ${x.bands[j].plainBrews}`] as [string, string]] } } : r;
   });
-  const wordCols = (key: 'byAgitation' | 'byContact') => [...new Set((t?.words ?? []).flatMap((w) => w[key].map((x) => x.label)))];
+  const wordCols = (key: 'byAgitation' | 'byContact') => (key === 'byAgitation' ? sortAgitation : sortContact)((t?.words ?? []).flatMap((w) => w[key].map((x) => x.label)));
   const maxShare = $derived(Math.max(0.01, ...(t?.words ?? []).flatMap((w) => [...w.byAgitation, ...w.byContact].map((x) => x.share))));
   const maxSplit = $derived(Math.max(1, ...(t?.split ?? []).map((x) => x.pourS + x.drawdownS)));
   const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
@@ -129,7 +163,7 @@
           <li>
             <span class="name">
               {#if page.data.isAdmin && r.id !== null}<a class="nm" href="/account/recipes?brews=r{r.id}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
-              <span class="sub" use:cutTip={r.dripper ?? ''}>{r.dripper ?? ''}</span>
+              {#if r.dripper}<span class="sub" use:cutTip={r.dripper}>{r.dripper}</span>{:else}<span class="sub"></span>{/if}
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>
             <span class="delta {deltaInk(d)}" class:small-sample={r.stat?.sample.small ?? r.sample.small}>{d === null ? 'no match' : labDelta(d, ses)}</span>
@@ -143,7 +177,7 @@
                 <line x1="2" x2="78" y1={sp.zero} y2={sp.zero} /><polyline points={sp.pts} />
               </svg>
             {:else}<span class="spark"></span>{/if}
-            <span class="counts">{#if r.id !== null}{r.logged} logged · {r.matched + r.modified} matched{/if}</span>
+            <span class="counts">{#if r.id !== null}<span use:labelTip={COUNTS_TIP}>{r.logged} logged · {r.matched + r.modified} matched</span>{/if}</span>
           </li>
         {/each}
       </ul>
@@ -158,26 +192,31 @@
   {#if cards.length || t.words.length}
     <section class="pours-technique" data-section="pours-technique">
       <LabHead id="pours-technique" title="Technique" {placeTip} help={[...SAME_BAG_HELP, 'Brews without a flow reading still set their bag\'s average.']} />
-      <div class="tech-cols">
-        {#each cards as c (c.id)}
-          <section class="chart-panel" data-section={c.id}>
-            <LabHead id={c.id} title={c.title} level={3} {placeTip} help={[...c.help, ...(c.split ? [] : SAME_BAG_HELP)]} />
-            {#if c.bd}
-              <LabHeatmap by={c.bd} ariaLabel="{c.title}: rating vs the same bag's other brews" />
-            {:else if c.split}
-              <ul class="split" aria-label="Pouring and drawdown time by contact band">
-                {#each t.split as g (g.label)}
-                  <li><span class="k">{g.label}</span>
-                    <span class="track"><span class="pour" style:width="{(100 * g.pourS) / maxSplit}%"></span><span class="draw" style:width="{(100 * g.drawdownS) / maxSplit}%"></span></span>
-                    <span class="v">{clock(g.pourS)} + {clock(g.drawdownS)}</span></li>
-                {/each}
-              </ul>
-              <p class="chart-note"><i class="sw pour"></i>Pouring <i class="sw draw"></i>Drawdown, mean time per contact band</p>
-            {:else if c.bars}
-              <DeltaBars ariaLabel="{c.title} vs rating" rows={techRows(c.bars)} />
-              {#if c.bars.inferred && Object.values(c.bars.inferred).some(Boolean)}<p class="chart-note">Agitation a recipe or note doesn't set is guessed from pour speed; a bar's tip says how many.</p>{/if}
-            {/if}
-          </section>
+      <div class="tech-cols" use:balance={cols}>
+        {#each cols as col, ci (ci)}
+          <div class="col">
+            {#each col as id (id)}
+              {@const c = cards.find((x) => x.id === id)!}
+              <section class="chart-panel" data-section={c.id} data-card={c.id} data-stretch={c.split ? 'split' : c.bars ? 'bars' : undefined} style:order={order(id)}>
+                <LabHead id={c.id} title={c.title} level={3} {placeTip} help={[...c.help, ...(c.split ? [] : SAME_BAG_HELP)]} />
+                {#if c.bd}
+                  <LabHeatmap by={c.bd} ariaLabel="{c.title}: rating vs the same bag's other brews" />
+                {:else if c.split}
+                  <ul class="split" aria-label="Pouring and drawdown time by contact band">
+                    {#each t.split as g (g.label)}
+                      <li><span class="k">{g.label}</span>
+                        <span class="track"><span class="pour" style:width="{(100 * g.pourS) / maxSplit}%"></span><span class="draw" style:width="{(100 * g.drawdownS) / maxSplit}%"></span></span>
+                        <span class="v">{clock(g.pourS)} + {clock(g.drawdownS)}</span></li>
+                    {/each}
+                  </ul>
+                  <p class="chart-note"><i class="sw pour"></i>Pouring <i class="sw draw"></i>Drawdown, mean time per contact band</p>
+                {:else if c.bars}
+                  <DeltaBars ariaLabel="{c.title} vs rating" rows={techRows(c.bars)} />
+                  {#if c.bars.inferred && Object.values(c.bars.inferred).some(Boolean)}<p class="chart-note">Agitation a recipe or note doesn't set is guessed from pour speed; a bar's tip says how many.</p>{/if}
+                {/if}
+              </section>
+            {/each}
+          </div>
         {/each}
       </div>
       {#if t.words.length}
@@ -213,13 +252,13 @@
 
   {#if Object.values(t.recipeBy).some(Boolean)}
     <section class="chart-panel" data-section="pours-recipe-coffee">
-      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[RECIPE_HELP, 'Rows: the coffees, grouped; blank: no match.', SAMPLE_HELP]}>
+      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[RECIPE_HELP, 'Rows: the coffees, grouped.', 'Blank: no brews, or no match.', 'No match: no bag has 2+ brews of another recipe; the tip shows the cell\'s own brews.', SAMPLE_HELP]}>
         <div class="tab-group tab-group-compact" role="group" aria-label="Group by">
           {#each BY as [k, name] (k)}<button aria-pressed={by === k} onclick={() => choose({ recipeBy: k === 'roast' ? undefined : k })}>{name}</button>{/each}
         </div>
       </LabHead>
       {#if t.recipeBy[by]}
-        <LabHeatmap by={t.recipeBy[by]!} ariaLabel="Recipe by {byLabel}: rating vs the same bag's other brews" />
+        <LabHeatmap by={t.recipeBy[by]!} noun="recipe" ariaLabel="Recipe by {byLabel}: rating vs the same bag's other brews" />
       {:else}
         <p class="hl-empty">No {byLabel} has 3+ bags with paired brews here.</p>
       {/if}
@@ -251,8 +290,8 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-1) var(--space-3);
-    padding: var(--space-2) 0;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-3);
     border-top: 1px solid var(--color-border);
     font-variant-numeric: tabular-nums;
   }
@@ -289,6 +328,7 @@
   /* Fixed-width cells (the marker's included, empty or not): every row's columns line up. */
   .num {
     width: 6.75rem;
+    white-space: nowrap;
   }
   .delta {
     font-weight: 600;
@@ -301,6 +341,7 @@
   }
   .counts {
     width: 9.5rem;
+    white-space: nowrap;
     text-align: right;
   }
   .best {
@@ -352,19 +393,29 @@
   .pours-technique {
     margin-bottom: var(--space-5);
   }
-  /* Cards at their own height (no stretching to a neighbour): two columns when there is room, balanced by the browser. */
+  /* Cards at their own height, two balanced columns when there is room (assignCols + balance); one column keeps reading order. */
   .tech-cols {
     --bar-label-w: 7rem;
     --bar-value-w: 7.25rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
   }
-  .tech-cols > :global(.chart-panel) {
-    break-inside: avoid;
-    margin-bottom: var(--space-3);
+  .col {
+    display: contents;
+  }
+  .tech-cols section {
+    margin: 0;
   }
   @container insights (min-width: 868px) {
     .tech-cols {
-      columns: 2;
-      column-gap: var(--space-3);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      align-items: start;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
     }
   }
   .words {
@@ -376,6 +427,7 @@
     align-items: center;
     gap: var(--space-2);
     padding: 6px 0;
+    min-height: var(--split-row, 0);
     font-size: 0.875rem;
     font-variant-numeric: tabular-nums;
   }
