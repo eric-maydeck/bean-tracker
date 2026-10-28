@@ -3515,10 +3515,41 @@ export const STATES: State[] = [
     }
   },
   {
-    name: 'insights-pours-bad-params', viewports: 'two', path: () => '/insights?tab=pours&recipeBy=zzz&pourThin=x',
+    // Compare with: each mode rewrites the URL without a load; a recipe with brews but no same-bag contrast (Seed equal pours)
+    // keeps a cell with its brews in Same roaster / Same recipe / Average.
+    name: 'insights-pours-recipe-vs', viewports: 'two', path: () => '/insights?tab=pours',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel[data-section="pours-recipe-coffee"]');
+      await panel.scrollIntoViewIfNeeded();
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      const vs = panel.getByRole('group', { name: 'Compare with' });
+      await expect(vs.getByRole('button', { name: 'Same bags', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      const cell = (g: RegExp) => panel.getByRole('group', { name: g }).getByRole('button', { name: /^Light · Seed equal pours/ });
+      for (const [name, param, group] of [['Same roaster', 'group', /rating vs the rest of its row/], ['Same recipe', 'recipe', /rating vs the recipe in other rows/], ['Average', 'avg', /average rating/]] as const) {
+        await vs.getByRole('button', { name, exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`recipeVs=${param}`));
+        await expect(vs.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+        await expect(cell(group)).toHaveAttribute('aria-label', param === 'avg' ? /· \d\.\d/ : /3 brews/);
+      }
+      expect(fetched).toEqual([]);
+      await reloadReady(page);
+      await expect(panel.getByRole('group', { name: 'Compare with' }).getByRole('button', { name: 'Average', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await panel.getByRole('group', { name: 'Compare with' }).getByRole('button', { name: 'Same bags', exact: true }).click();
+      await expect(page).not.toHaveURL(/recipeVs/);
+    }
+  },
+  { name: 'insights-pours-recipe-vs-avg', path: () => '/insights?tab=pours&recipeVs=avg&recipeBy=process',
+    act: async (page) => {
+      await expect(page.getByRole('group', { name: /^Recipe by process: average rating/ })).toBeVisible();
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    } },
+  {
+    name: 'insights-pours-bad-params', viewports: 'two', path: () => '/insights?tab=pours&recipeBy=zzz&pourThin=x&recipeVs=zzz',
     act: async (page) => {
       const by = page.locator('[data-section="pours-recipe-coffee"]').getByRole('group', { name: 'Group by' });
       await expect(by.getByRole('button', { name: 'Roast level', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('group', { name: 'Compare with' }).getByRole('button', { name: 'Same bags', exact: true })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('button', { name: 'Show 2 more with few brews' })).toBeVisible();
     }
   },

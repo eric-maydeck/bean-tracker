@@ -6,7 +6,7 @@
     return [
       t.recipes.length && ['pours-recipes', 'Recipe report card'],
       (t.technique.length || t.agitationByProcess || t.words.length) && ['pours-technique', 'Technique'],
-      Object.values(t.recipeBy).some(Boolean) && ['pours-recipe-coffee', 'Recipe × coffee'],
+      (Object.values(t.recipeBy).some(Boolean) || Object.values(t.recipeMeans).some(Boolean)) && ['pours-recipe-coffee', 'Recipe × coffee'],
       (t.rest.byRecipe || t.rest.byAgitation) && [t.rest.byRecipe ? 'pours-rest' : 'pours-rest-agitation', 'Rest age']
     ];
   }
@@ -31,13 +31,14 @@
   import { assignCols, sortAgitation, sortContact } from './pourCols';
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
-  import { SAMPLE_HELP } from '$lib/sample';
+  import { SAMPLE_HELP, TIP_TITLE, sampleField } from '$lib/sample';
   import { insightsParams, type InsightsView, type InsightsUrlState } from '$lib/insightsUrl';
   import type { Breakdown } from '$lib/server/insights/lab';
   import { useEmptyLine } from './coffeeNote';
   import DeltaBars, { bandRows, plural, SAME_BAG_HELP } from './DeltaBars.svelte';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
+  import Heatmap from '$lib/components/Heatmap.svelte';
 
   let { t, s, explicit, placeTip, choose }: {
     t: PoursTab | null; s: InsightsView; explicit: InsightsUrlState; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
@@ -139,6 +140,26 @@
   const BY = [['roast', 'Roast level'], ['process', 'Process'], ['roaster', 'Roaster']] as const;
   let by = $derived<'roast' | 'process' | 'roaster'>(s.recipeBy ?? 'roast');
   let byLabel = $derived(BY.find(([k]) => k === by)![1].toLowerCase());
+  // Recipe × coffee's comparison: the same bags (a paired delta), the rest of the row, the same recipe elsewhere, or the plain average.
+  const VS = [['same', 'Same bags'], ['group', 'Same roaster'], ['recipe', 'Same recipe'], ['avg', 'Average']] as const;
+  let vsMode = $derived<'same' | 'group' | 'recipe' | 'avg'>(s.recipeVs ?? 'same');
+  const VS_TEXT = {
+    same: { help: RECIPE_HELP, vs: 'same bag', scale: ["Below the bag's average", 'Above'] as [string, string] },
+    group: { help: "Each cell's average rating minus the average of every other brew in its row, on any bag.", vs: 'the rest of its row', scale: ['Below the rest of its row', 'Above'] as [string, string] },
+    recipe: { help: "Each cell's average rating minus the same recipe's average in the other rows.", vs: 'the recipe in other rows', scale: ['Below the recipe elsewhere', 'Above'] as [string, string] },
+    avg: { help: 'The average rating in each cell. It reflects which coffees you used the recipe on, so it is not a ranking of recipes.', vs: '', scale: ['Lower', 'Higher'] as [string, string] }
+  };
+  let grid = $derived(t?.recipeMeans[by] ?? null);
+  // "Same roaster" / "Same recipe" as a Breakdown for the shared heatmap; a cell with brews always has its counts in the tip.
+  let vsBd = $derived.by((): Breakdown | null => {
+    if (!grid || (vsMode !== 'group' && vsMode !== 'recipe')) return null;
+    const key = vsMode === 'group' ? 'vsGroup' : 'vsRecipe';
+    return { rows: grid.rows, cols: grid.cols, cells: grid.cells.map((row) => row.map((c) => c && ({ delta: c[key], solid: !c.sample.small, sample: c.sample, brews: c.brews, bags: c.bags, ...(c[key] === null ? { plain: { brews: c.brews, bags: c.bags } } : {}) }))) };
+  });
+  const avgTip = (r: number, c: number) => {
+    const cell = grid!.cells[r][c], title = `${grid!.rows[r]} · ${grid!.cols[c]}`;
+    return cell ? { title, rows: [['Average rating', cell.mean.toFixed(1)], ...(cell.sample.small ? [] : [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]])] as [string, string][], ...sampleField(cell.sample) } : { title, note: 'No brews.' };
+  };
   let thinRest = $derived(!!t && [t.rest.byRecipe, t.rest.byAgitation].some((bd) => bd && !bd.rows.some((r, i) => FRESH.includes(r) && bd.cells[i].some((c) => c && c.delta !== null && !c.sample.small))));
 </script>
 
@@ -147,7 +168,7 @@
     <p class="chart-note">Calibrated ratings leave out {names(t.hiddenByRatings)}. <a href={allRatings} onclick={(e) => { e.preventDefault(); choose({ ratings: 'all' }); }}>See all ratings</a></p>
   {/if}
 {/snippet}
-{#if !t || !(t.recipes.length || cards.length || t.words.length || Object.values(t.recipeBy).some(Boolean) || t.rest.byRecipe || t.rest.byAgitation)}
+{#if !t || !(t.recipes.length || cards.length || t.words.length || Object.values(t.recipeBy).some(Boolean) || Object.values(t.recipeMeans).some(Boolean) || t.rest.byRecipe || t.rest.byAgitation)}
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews with pour readings in this period.')}</p>
     {@render ratingsNote()}
@@ -250,17 +271,35 @@
     </section>
   {/if}
 
-  {#if Object.values(t.recipeBy).some(Boolean)}
+  {#if Object.values(t.recipeBy).some(Boolean) || Object.values(t.recipeMeans).some(Boolean)}
     <section class="chart-panel" data-section="pours-recipe-coffee">
-      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[RECIPE_HELP, 'Rows: the coffees, grouped.', 'Blank: no brews, or no match.', 'No match: no bag has 2+ brews of another recipe; the tip shows the cell\'s own brews.', SAMPLE_HELP]}>
-        <div class="tab-group tab-group-compact" role="group" aria-label="Group by">
-          {#each BY as [k, name] (k)}<button aria-pressed={by === k} onclick={() => choose({ recipeBy: k === 'roast' ? undefined : k })}>{name}</button>{/each}
+      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[VS_TEXT[vsMode].help, 'Rows: the coffees, grouped.', ...(vsMode === 'same' ? ['Blank: no brews, or no match.', 'No match: no bag has 2+ brews of another recipe; the tip shows the cell\'s own brews.'] : []), SAMPLE_HELP]}>
+        <div class="form-field group-field">
+          <span>Group by</span>
+          <div class="tab-group tab-group-compact" role="group" aria-label="Group by">
+            {#each BY as [k, name] (k)}<button aria-pressed={by === k} onclick={() => choose({ recipeBy: k === 'roast' ? undefined : k })}>{name}</button>{/each}
+          </div>
+        </div>
+        <div class="form-field group-field">
+          <span>Compare with</span>
+          <div class="tab-group tab-group-compact" role="group" aria-label="Compare with">
+            {#each VS as [k, name] (k)}<button aria-pressed={vsMode === k} onclick={() => choose({ recipeVs: k === 'same' ? undefined : k })}>{name}</button>{/each}
+          </div>
         </div>
       </LabHead>
-      {#if t.recipeBy[by]}
+      {#if vsMode === 'same' && t.recipeBy[by]}
         <LabHeatmap by={t.recipeBy[by]!} noun="recipe" ariaLabel="Recipe by {byLabel}: rating vs the same bag's other brews" />
+      {:else if vsBd}
+        <LabHeatmap by={vsBd} noun="recipe" vs={VS_TEXT[vsMode].vs} scale={VS_TEXT[vsMode].scale} ariaLabel="Recipe by {byLabel}: rating vs {VS_TEXT[vsMode].vs}" />
+      {:else if vsMode === 'avg' && grid}
+        <Heatmap rows={grid.rows} cols={grid.cols} cells={grid.cells.map((r) => r.map((c) => c?.mean ?? null))}
+          small={grid.cells.map((r) => r.map((c) => !!c && c.sample.small))}
+          text={(v, r, c) => (v === null ? 'No brews' : `${v.toFixed(1)}${grid!.cells[r][c]?.sample.small ? ` (${TIP_TITLE})` : ''}`)}
+          label={(r, c) => `${grid!.rows[r]} · ${grid!.cols[c]}`} tip={avgTip} ariaLabel="Recipe by {byLabel}: average rating" />
+        {@const means = grid.cells.flat().flatMap((c) => (c ? [c.mean] : []))}
+        <p class="chart-note">Average rating, {Math.min(...means).toFixed(1)} (light) to {Math.max(...means).toFixed(1)} (dark). Striped: few brews. Blank: no brews.</p>
       {:else}
-        <p class="hl-empty">No {byLabel} has 3+ bags with paired brews here.</p>
+        <p class="hl-empty">No {byLabel} has 3+ bags {vsMode === 'same' ? 'with paired brews' : 'brewed with a recipe'} here.</p>
       {/if}
     </section>
   {/if}
