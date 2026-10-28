@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Pour, PourReading } from './pours';
 import {
-  convertAmounts, describeRecipe, draftFromReadings, matchBrew, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
+  convertAmounts, describeRecipe, draftFromReadings, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
   type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
@@ -261,5 +261,12 @@ describe('editor-facing recipe edge cases', () => {
   it('rejects a fractional pour count', () => {
     expect(parseRecipeDef({ ...base, pourCount: { min: 1.5, max: 3 } })).toHaveProperty('error');
     expect(parseRecipeDef({ ...base, pourCount: { min: 1, max: 2.5 } })).toHaveProperty('error');
+  });
+});
+
+describe('hasWord', () => {
+  it('finds whole words only', () => {
+    expect(hasWord('BBS.', 'bbs')).toBe(0);
+    expect(hasWord('xBBS', 'BBS')).toBe(-1);
   });
 });

@@ -186,7 +186,7 @@ interface GroupRow {
 const mostlyMatched = (rows: GroupRow[]) => rows.filter((r) => r.matched).length * 2 >= rows.length;
 
 const TAG = /^\s*([A-Z0-9]*[A-Z][A-Z0-9]*)(?=[\s.,;:!]|$)/;
-const PHRASE = /\b(\d+|one|two|three|four|five)\s+(yeets?|pours?|blooms?)\b/i;
+const PHRASE = /\b(\d+|one|two|three|four|five)\s+(pours?|blooms?)\b/i;
 
 /** Most frequent value; ties go to the first seen. */
 function mostCommon(xs: string[]): string | null {

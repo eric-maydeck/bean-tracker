@@ -163,7 +163,7 @@
         </div>
         <div class="form-field">
           <label for="re-t{i}">Tool</label>
-          <input id="re-t{i}" maxlength="40" placeholder="e.g. melodrip" value={p.tool ?? ''} oninput={(e) => (p.tool = e.currentTarget.value || null)} />
+          <input id="re-t{i}" maxlength="40" placeholder="e.g. spoon" value={p.tool ?? ''} oninput={(e) => (p.tool = e.currentTarget.value || null)} />
         </div>
         <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={p.swirlAfter} /> Swirl after</label></div>
       </div>

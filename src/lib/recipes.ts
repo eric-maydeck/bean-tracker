@@ -275,6 +275,10 @@ export function recipeTimeline(def: RecipeDef): Timeline {
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Index of the first whole-word, case-insensitive hit of `term` in `text`, -1 for none. */
+export function hasWord(text: string, term: string): number {
+  return new RegExp(`(?<![A-Za-z0-9])${esc(term)}(?![A-Za-z0-9])`, 'i').exec(text)?.index ?? -1;
+}
 /** The recipe whose name or tag appears first in the note, as a whole word. */
 export function noteTag(note: string | null, recipes: Recipe[]): Recipe | null {
   if (!note) return null;
@@ -282,8 +286,8 @@ export function noteTag(note: string | null, recipes: Recipe[]): Recipe | null {
   for (const r of recipes)
     for (const term of [r.name, ...r.tags]) {
       if (!term.trim()) continue;
-      const m = new RegExp(`(?<![A-Za-z0-9])${esc(term.trim())}(?![A-Za-z0-9])`, 'i').exec(note);
-      if (m && (!best || m.index < best.at)) best = { at: m.index, r };
+      const at = hasWord(note, term.trim());
+      if (at >= 0 && (!best || at < best.at)) best = { at, r };
     }
   return best?.r ?? null;
 }

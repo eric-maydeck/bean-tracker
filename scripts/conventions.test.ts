@@ -39,4 +39,11 @@ describe('conventions', () => {
     );
     expect(hits).toEqual([]);
   });
+
+  it('no personal vocabulary (yeet, melodrip) in src (tests and fixtures excepted)', () => {
+    const hits = walk('src', (f) => /\.(ts|svelte)$/.test(f) && !f.endsWith('.test.ts') && !f.includes('/fixtures/')).filter(
+      (f) => /\b(yeets?|melodrip)\b/i.test(readFileSync(f, 'utf8'))
+    );
+    expect(hits).toEqual([]);
+  });
 });
