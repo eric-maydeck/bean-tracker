@@ -2,6 +2,8 @@
   import { enhance } from '$app/forms';
   import Icon from '$lib/components/Icon.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
+  import TipBody from '$lib/components/TipBody.svelte';
+  import { placeTip } from '$lib/components/modeTip';
   import { convertAmounts, describeRecipe, recipeTimeline, type RecipeDef } from '$lib/recipes';
 
   let {
@@ -92,8 +94,12 @@
   <div class="grid top">
     <div class="form-field a-name"><label for="re-name">Name</label><input id="re-name" name="name" bind:value={nameText} maxlength="40" required /></div>
     <div class="form-field a-tags">
-      <label for="re-tags">Note tags</label><input id="re-tags" name="tags" bind:value={tagText} />
-      <small class="text-muted">Comma-separated words or phrases. A brew whose note contains one is logged as this recipe.</small>
+      <div class="label-row">
+        <label for="re-tags">Note tags</label>
+        <button type="button" class="mode-tip-button" popovertarget="re-tags-help" aria-label="About note tags" aria-describedby="re-tags-help"><Icon name="question" /></button>
+      </div>
+      <div class="mode-tip" id="re-tags-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Note tags', lines: ['Comma-separated words or phrases.', 'A brew whose note contains one is logged as this recipe.'] }} /></div>
+      <input id="re-tags" name="tags" bind:value={tagText} />
     </div>
     <div class="form-field a-unit">
       <label for="re-unit">Pour amounts in</label>
@@ -210,6 +216,7 @@
   .form-field-checkbox { align-self: end; }
   .form-field input, .form-field select { min-width: 0; max-width: 100%; }
   .form-field { min-width: 0; }
+  .label-row { display: flex; align-items: center; gap: var(--space-2); }
   .editor :global(.form-actions) { margin-top: 0; }
   .editor :global(.button) { margin: 0; }
   @media (max-width: 1100px) {

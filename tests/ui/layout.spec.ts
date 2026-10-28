@@ -2393,6 +2393,11 @@ export const STATES: State[] = [
           await page.keyboard.type('50');
           await page.getByLabel('Pour amounts in').selectOption('g');
           await expect(pours.nth(0).getByLabel('Grams')).toHaveValue(String(+(total * 0.5).toFixed(1)));
+          // Note tags' hint button adds no height: its input sits level with the Name input beside it (same row above 640px), and the hint is a named, 44px-tall tap target on phones.
+          const [nameBox, tagsBox] = await Promise.all([page.getByLabel('Name', { exact: true }).boundingBox(), page.getByLabel('Note tags', { exact: true }).boundingBox()]);
+          if ((page.viewportSize()?.width ?? 0) > 640) expect(Math.abs(nameBox!.y - tagsBox!.y)).toBeLessThanOrEqual(1);
+          const hint = page.getByRole('button', { name: 'About note tags' });
+          if ((page.viewportSize()?.width ?? 1000) <= 640) expect((await hint.boundingBox())!.height).toBeGreaterThanOrEqual(43.9);
           // Phone tap targets: icon buttons, selects and number inputs are at least 44 px tall.
           if ((page.viewportSize()?.width ?? 1000) <= 480) {
             for (const el of [pours.nth(0).getByRole('button', { name: 'Move down' }), pours.nth(0).getByRole('button', { name: 'Remove' }), pours.nth(0).getByLabel('Speed'), pours.nth(0).getByLabel('Grams'), page.getByLabel('Ratio 1:', { exact: true })])

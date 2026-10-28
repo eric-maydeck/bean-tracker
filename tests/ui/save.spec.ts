@@ -332,14 +332,14 @@ test.describe('recipes', { tag: '@account' }, () => {
     const before = await found.locator('li.item').count();
     await bbj.getByRole('button', { name: 'Name & save' }).click();
     await page.getByLabel('Name', { exact: true }).fill('Test joocy');
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.locator('form:has(input[name="tags"])').getByRole('button', { name: 'Save', exact: true }).click();
     await expect(joocy).toHaveCount(1);
     await expect(found.locator('li.item')).toHaveCount(before - 1);
     // The 10 bbj brews are all accounted for: logged from notes + look like it (the seed has no bbj notes tagged "Test joocy").
     await expect(joocy).toContainText('0 from notes · 10 look like it');
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
     const pourCount = await page.locator('fieldset.pour').count();
-    await page.getByLabel('Note tags').fill('TJ');
+    await page.getByLabel('Note tags', { exact: true }).fill('TJ');
     const drippers = page.locator('fieldset.drippers');
     await expect(drippers).toContainText('Any dripper');
     await expect(page.getByLabel(/only match its recipes/)).toHaveCount(0); // a lock shows only for a ticked dripper
@@ -349,11 +349,11 @@ test.describe('recipes', { tag: '@account' }, () => {
     await page.getByLabel("Pour speed doesn't matter").check();
     await expect(page.getByTestId('editor-description')).toContainText('any pour speed');
     await page.getByRole('button', { name: 'Add pour' }).click(); // the pour-count range widens, so Save still validates
-    await page.getByRole('button', { name: 'Save', exact: true }).click();
-    await expect(page.getByLabel('Note tags')).toHaveCount(0);
+    await page.locator('form:has(input[name="tags"])').getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page.getByLabel('Note tags', { exact: true })).toHaveCount(0);
     await page.reload();
     await joocy.getByRole('button', { name: 'Edit', exact: true }).click();
-    await expect(page.getByLabel('Note tags')).toHaveValue('TJ');
+    await expect(page.getByLabel('Note tags', { exact: true })).toHaveValue('TJ');
     await expect(page.locator('fieldset.pour')).toHaveCount(pourCount + 1);
     await expect(page.getByLabel("Pour speed doesn't matter")).toBeChecked();
     await page.getByRole('button', { name: 'Cancel' }).click();
