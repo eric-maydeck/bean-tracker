@@ -142,16 +142,17 @@
   let by = $derived<'roast' | 'process' | 'roaster'>(s.recipeBy ?? 'roast');
   let byLabel = $derived(BY.find(([k]) => k === by)![1].toLowerCase());
   // Recipe × coffee's comparison: the same bags (a paired delta), the rest of the row, the same recipe elsewhere, or the plain average.
-  const VS = [['same', 'Same bags'], ['group', 'Same roaster'], ['recipe', 'Same recipe'], ['avg', 'Average']] as const;
+  // "Same <row dimension>" follows Group by: the rest of the row is the same roast level / process / roaster.
+  const VS = $derived([['same', 'Same bags'], ['group', `Same ${byLabel}`], ['recipe', 'Same recipe'], ['avg', 'Average']] as const);
   let vsMode = $derived<'same' | 'group' | 'recipe' | 'avg'>(s.recipeVs ?? 'same');
-  const VS_TEXT = {
+  const VS_TEXT = $derived({
     same: { help: RECIPE_HELP, vs: 'same bag', scale: ["Below the bag's average", 'Above'] as [string, string] },
-    group: { help: "Each cell's average rating minus the average of every other brew in its row, on any bag.", vs: 'the rest of its row', scale: ['Below the rest of its row', 'Above'] as [string, string] },
+    group: { help: `Each cell's average rating minus the average of every other brew in its row (the same ${byLabel}), on any bag.`, vs: 'the rest of its row', scale: ['Below the rest of its row', 'Above'] as [string, string] },
     recipe: { help: "Each cell's average rating minus the same recipe's average in the other rows.", vs: 'the recipe in other rows', scale: ['Below the recipe elsewhere', 'Above'] as [string, string] },
     avg: { help: "Each cell's average rating against your average for these brews.", vs: 'your average', scale: ['Below your average', 'Above'] as [string, string] }
-  };
+  });
   let grid = $derived(t?.recipeMeans[by] ?? null);
-  // "Same roaster" / "Same recipe" as a Breakdown for the shared heatmap; a cell with brews always has its counts in the tip.
+  // "Same <row dimension>" / "Same recipe" as a Breakdown for the shared heatmap; a cell with brews always has its counts in the tip.
   let vsBd = $derived.by((): Breakdown | null => {
     if (!grid || (vsMode !== 'group' && vsMode !== 'recipe')) return null;
     const key = vsMode === 'group' ? 'vsGroup' : 'vsRecipe';
@@ -309,7 +310,7 @@
       {#each [['pours-rest', 'Rest age by recipe', t.rest.byRecipe], ['pours-rest-agitation', 'Rest age by agitation', t.rest.byAgitation]] as const as [id, title, bd] (id)}
         {#if bd}
           <section class="chart-panel" data-section={id}>
-            <LabHead {id} {title} {placeTip} help={['Days off roast at the brew.', RECIPE_HELP, SAMPLE_HELP]} />
+            <LabHead {id} {title} {placeTip} help={['Days off roast at the brew.', id === 'pours-rest' ? RECIPE_HELP : 'Each agitation against your other brews of the same bags: positive = it rated higher.', SAMPLE_HELP]} />
             <LabHeatmap by={bd} ariaLabel="{title}: rating vs the same bag's other brews" />
           </section>
         {/if}

@@ -1052,7 +1052,7 @@ describe('pour findings', () => {
     expect(by('pours:recipe:1').headline).toBe('R1 rates 0.6 above your other brews of the same bags');
     expect(by('pours:recipe:1').sample).toBe('12 brews, 6 bags');
     expect(by('pours:recipe:1').href).toBe('/insights?tab=pours&chart=pours-recipes#pours-recipes');
-    expect(by('pours:recipe:2').headline).toBe('R2 rates 0.6 below your other brews of the same bags');
+    expect(fs.filter((f) => f.key.startsWith('pours:recipe:')).length).toBe(1); // the mirror pair is one card
     expect(by('pours:agitation:process:Washed').headline).toBe('High agitation beats low on Washed coffees by 1.2');
     expect(fs.every(finite)).toBe(true);
   });
@@ -1061,7 +1061,7 @@ describe('pour findings', () => {
     void rows;
     const f = all(c).find((x) => x!.key === 'pours:recipeBy:process') as Finding;
     expect(f.headline).toMatch(/^R[12] runs [+-]0\.6 on Washed coffees$/);
-    expect(f.headPoints).toEqual([['Compared with', 'Your other recipes on the same bags']]);
+    expect(f.headPoints).toEqual([['Compared with', 'Your other brews of the same bags']]);
     expect(f.href).toContain('recipeBy=process');
   });
   it('a 0.29 delta is no finding', () => {
@@ -1090,6 +1090,17 @@ describe('pour findings', () => {
     expect(f.headline).toBe('Brown shows up mostly at contact times over 3:30');
     expect(f.kind).toBe('pattern');
     expect(f.sample).toBe('24 brown notes');
+  });
+  it('recipe grades with the per-bag test z; a sign-disagreeing test gives no finding', () => {
+    const stat = (delta: number, z: number) => ({ delta, z, se: 0.1, brews: 12, bags: 6, sample: { bags: 6, brews: 12, small: false } });
+    const tabOf = (st: ReturnType<typeof stat>) => ({ recipes: [{ id: 1, name: 'R1', stat: st }], recipeBy: { roast: null, process: null, roaster: null }, words: [] }) as unknown as PoursTab;
+    const run = (st: ReturnType<typeof stat>) => all(ctx([], [], { pours: { facts: new Map(), tab: tabOf(st), veryLight: new Set() } })).find((x) => x!.key === 'pours:recipe:1') as Finding | undefined;
+    const ok = run(stat(0.6, 5))!;
+    expect(ok.z).toBe(5); // z of the per-bag test, not delta / se (6)
+    expect(ok.strength).toBe('solid');
+    expect(run(stat(0.6, -5))).toBeUndefined();
+    const hint = run(stat(0.6, 2.5));
+    expect(hint?.strength).not.toBe('solid');
   });
   it('absent pours: no pour finding', () => {
     expect(keys(ctx([...seq(1, [7, 8, 7, 8])]))).toEqual([]);

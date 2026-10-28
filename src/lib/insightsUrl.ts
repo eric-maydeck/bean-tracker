@@ -284,7 +284,7 @@ export interface InsightsUrlState {
   waitBy?: WaitBy; // On hand's What's waiting grouping (absent = Roaster)
   recipeBy?: 'process' | 'roaster'; // Pours: Recipe × coffee's grouping (absent = Roast level)
   pourThin?: 'open'; // Pours: the thin recipes are shown (absent = hidden)
-  recipeVs?: (typeof RECIPE_VS)[number]; // Pours: Recipe × coffee compares with the same roaster / same recipe / nothing (absent = same bags)
+  recipeVs?: (typeof RECIPE_VS)[number]; // Pours: Recipe × coffee compares with the rest of the row (same roast level / process / roaster, per Group by) / same recipe / the plain average (absent = same bags)
   pairs?: string[]; // Water's "Same bag, different water": the recipe pairs shown in full (WaterPair slugs, "a--b")
   agg?: Agg; // average is the default and never explicit
   trend?: Trend; // Consumption: Brewed over time's measure (absent = the Unit)

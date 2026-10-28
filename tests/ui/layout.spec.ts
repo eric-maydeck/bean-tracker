@@ -3521,7 +3521,7 @@ export const STATES: State[] = [
   },
   {
     // Compare with: each mode rewrites the URL without a load; a recipe with brews but no same-bag contrast (Seed equal pours)
-    // keeps a cell with its brews in Same roaster / Same recipe / Average.
+    // keeps a cell with its brews in Same roast level / Same recipe / Average.
     name: 'insights-pours-recipe-vs', viewports: 'two', path: () => '/insights?tab=pours',
     act: async (page) => {
       const panel = page.locator('section.chart-panel[data-section="pours-recipe-coffee"]');
@@ -3531,7 +3531,7 @@ export const STATES: State[] = [
       const vs = panel.getByRole('group', { name: 'Compare with' });
       await expect(vs.getByRole('button', { name: 'Same bags', exact: true })).toHaveAttribute('aria-pressed', 'true');
       const cell = (g: RegExp) => panel.getByRole('group', { name: g }).getByRole('button', { name: /^Light · Seed equal pours/ });
-      for (const [name, param, group] of [['Same roaster', 'group', /rating vs the rest of its row/], ['Same recipe', 'recipe', /rating vs the recipe in other rows/], ['Average', 'avg', /average rating/]] as const) {
+      for (const [name, param, group] of [['Same roast level', 'group', /rating vs the rest of its row/], ['Same recipe', 'recipe', /rating vs the recipe in other rows/], ['Average', 'avg', /average rating/]] as const) {
         await vs.getByRole('button', { name, exact: true }).click();
         await expect(page).toHaveURL(new RegExp(`recipeVs=${param}`));
         await expect(vs.getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true');

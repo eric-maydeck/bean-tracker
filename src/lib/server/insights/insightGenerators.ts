@@ -981,16 +981,19 @@ const rescuedBags: Generator = (c) => {
 // ---- Pour findings (Pours tab): same-bag paired figures only, kept to POUR_FINDINGS_MAX in insightsTab ----
 export const POUR_FINDINGS_MAX = 3, POUR_MIN_DELTA = 0.3;
 const POURS = '/insights?tab=pours';
+// The per-bag test's z, or null when it points opposite to the bar's delta (the tab grades that Too early): no finding.
+const testZ = (x: { delta: number | null; z?: number | null }) => (x.z != null && x.delta !== null && Math.sign(x.z) === Math.sign(x.delta) ? x.z : null);
 const poursRecipe: Generator = (c) => {
-  const rows = (c.pours?.tab?.recipes ?? []).filter((r) => r.id !== null && r.stat && !r.stat.sample.small && r.stat.delta !== null && r.stat.se);
-  return rows.filter((r) => Math.abs(r.stat!.delta!) >= POUR_MIN_DELTA).map((r) => {
-    const s = r.stat!, d = s.delta!;
-    return graded({
-      key: `pours:recipe:${r.id}`, theme: 'taste', kind: 'number', value: gapText(d), href: `${POURS}&chart=pours-recipes#pours-recipes`,
-      headline: `${r.name} rates ${Math.abs(d).toFixed(1)} ${d >= 0 ? 'above' : 'below'} your other brews of the same bags`,
-      sample: `${plural(s.brews, 'brew')}, ${plural(s.bags, 'bag')}`
-    }, d / s.se!, true, 'bags', s.bags, undefined, rows.length);
-  }).filter((f): f is Finding => f !== null);
+  const rows = (c.pours?.tab?.recipes ?? []).filter((r) => r.id !== null && r.stat && !r.stat.sample.small && r.stat.delta !== null && testZ(r.stat) !== null);
+  // Only the strongest: the recipes' gaps mirror each other ("A above" / "B below"), one card says it.
+  const top = rows.filter((r) => Math.abs(r.stat!.delta!) >= POUR_MIN_DELTA).sort((a, b) => Math.abs(testZ(b.stat!)!) - Math.abs(testZ(a.stat!)!))[0];
+  if (!top) return null;
+  const s = top.stat!, d = s.delta!;
+  return graded({
+    key: `pours:recipe:${top.id}`, theme: 'taste', kind: 'number', value: gapText(d), href: `${POURS}&chart=pours-recipes#pours-recipes`,
+    headline: `${top.name} rates ${Math.abs(d).toFixed(1)} ${d >= 0 ? 'above' : 'below'} your other brews of the same bags`,
+    sample: `${plural(s.brews, 'brew')}, ${plural(s.bags, 'bag')}`
+  }, testZ(s)!, true, 'bags', s.bags, undefined, rows.length);
 };
 const poursRecipeBy: Generator = (c) => {
   const t = c.pours?.tab;
@@ -1000,18 +1003,18 @@ const poursRecipeBy: Generator = (c) => {
     const bd = t.recipeBy[by];
     return (bd?.rows ?? []).flatMap((slice, i) => bd!.cols.flatMap((name, j) => {
       const x = bd!.cells[i][j];
-      return x && x.delta !== null && x.se && !x.sample.small && real.has(name) ? [{ by, slice, name, x, d: x.delta, z: x.delta / x.se }] : [];
+      return x && x.delta !== null && testZ(x) !== null && !x.sample.small && real.has(name) ? [{ by, slice, name, x, d: x.delta, z: testZ(x)! }] : [];
     }));
   });
   const top = cells.filter((k) => Math.abs(k.d) >= POUR_MIN_DELTA).sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
   return top ? graded({
     key: `pours:recipeBy:${top.by}`, theme: 'taste', kind: 'number', value: gapText(top.d),
-    headline: `${top.name} runs ${signed(top.d, 1)} on ${top.slice} coffees`, headPoints: [['Compared with', 'Your other recipes on the same bags']],
+    headline: `${top.name} runs ${signed(top.d, 1)} on ${top.slice} coffees`, headPoints: [['Compared with', 'Your other brews of the same bags']],
     sample: `${plural(top.x.brews, 'brew')}, ${plural(top.x.bags, 'bag')}`,
     href: `${POURS}${top.by === 'process' ? '&recipeBy=process' : ''}&chart=pours-recipe-coffee#pours-recipe-coffee`
   }, top.z, true, 'bags', top.x.bags, undefined, cells.length) : null;
 };
-const AG_PAIRS = [['High', 'Low'], ['High', 'Medium'], ['Medium', 'Low']] as const;
+const AG_PAIRS = [['high', 'low'], ['high', 'medium'], ['medium', 'low']].map(([a, b]) => [AGITATION_LABEL[a as 'high'], AGITATION_LABEL[b as 'low']] as const);
 const poursAgitation: Generator = (c) => {
   const p = c.pours;
   if (!p?.tab) return null;
@@ -1035,6 +1038,7 @@ const poursAgitation: Generator = (c) => {
   });
 };
 // A word's strongest contact-time cut (a 30 s band edge): its rate in the bands from the cut up against the bands below.
+// ponytail: brew-level two-proportion z (brews of one bag aren't independent, so it can over-fire); bag-level if it does.
 // ponytail: only "mostly over" a cut (the spec headline); a word that clusters at short contact times is not reported.
 const poursWords: Generator = (c) => {
   const words = c.pours?.tab?.words ?? [];
@@ -1083,6 +1087,7 @@ const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
   let fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  const tested = fs.filter((f) => f.z !== null && f.kind !== 'story').length; // before the pour cap: tests run, shown or not
   // Pour findings: only the POUR_FINDINGS_MAX strongest, grid and Too early together (fs is sorted by |z|).
   let pour = 0;
   fs = fs.filter((f) => !f.key.startsWith('pours:') || pour++ < POUR_FINDINGS_MAX);
@@ -1123,7 +1128,7 @@ export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
     stories,
     myths: fs.filter((f) => f.kind === 'myth'),
     tooEarly: extra ? leads.filter((f) => capped.includes(f) || f === extra) : capped,
-    tested: fs.filter((f) => f.z !== null && f.kind !== 'story').length,
+    tested,
     whatIf: { defaults, onHandG: c.onHandG, avgPricePerG }
   };
 }

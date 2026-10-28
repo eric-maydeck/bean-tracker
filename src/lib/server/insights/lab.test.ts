@@ -37,6 +37,16 @@ describe('pairedDeltas', () => {
     expect(b).toMatchObject({ label: '93–94 °C', bags: 1, brews: 2 });
     expect(b.delta).toBeCloseTo(-0.5);
   });
+  it('z is the per-bag test: mean gap over its SE, matching se; cellOf carries it', () => {
+    const rows = [...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(2, 2, 91, 9), ...many(2, 2, 94, 7), ...many(2, 3, 91, 7.5), ...many(2, 3, 94, 7)];
+    const [a, b] = pairedDeltas(rows, temp);
+    expect(a.z).toBeCloseTo(Math.sqrt(7), 9); // bag gaps 1, 2, 0.5: mean 7/6 over SD/sqrt(3)
+    expect(a.z!).toBeGreaterThan(0);
+    expect(b.z).toBeCloseTo(-a.z!, 9);
+    expect(cellOf(a).z).toBe(a.z);
+    expect(cellOf({ ...a, z: null })).not.toHaveProperty('z');
+    expect(pairedDeltas([...many(2, 1, 91, 8), ...many(2, 1, 94, 7)], temp)[0].z).toBeNull(); // one bag: no test
+  });
   it('minPerBand 1 pairs single brews (dial-in)', () => {
     const rows = [...many(1, 1, 91, 8), ...many(2, 1, 94, 7)];
     expect(pairedDeltas(rows, temp)[0].delta).toBeNull();

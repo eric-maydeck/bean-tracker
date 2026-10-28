@@ -27,6 +27,7 @@ export interface BandStat {
   strength: Strength | null; // vs the other bands' deltas, Bonferroni over every band of the variable in the period's data; null = nothing to compare
   adjusted: number; plainBrews: number; plainBags: number; // bag-weighted adjusted mean (K = 5) over every rated brew in the band
   se: number | null; // the badge test's SE (bag level); the bar's text shows 2 dp only under 0.05 (stats audit precision rule)
+  z: number | null; // the badge test's signed z (mean per-bag gap ÷ se); null when it has no test. May disagree in sign with `delta`
   spread: number | null; // sample SD of the paired brews' same-bag deltas (consistency); null under 2 paired brews
   sd: number | null; // sample SD of the band's rated brews' ratings (board SD column, over plainBrews); null under 2 brews
 }
@@ -70,7 +71,7 @@ export function pairedDeltas(rows: readonly BrewFact[], band: BandFn, minPerBand
     return {
       label, order: s.order, ...(s.range ? { range: s.range } : {}), delta, brews: s.paired.length, bags: s.bags.size, solid,
       sample: s.paired.length ? pooled(s.bags.size, s.paired.length) : pooled(g.bags, g.brews),
-      strength, se: z === null ? null : spread / Math.sqrt(n),
+      strength, se: z === null ? null : spread / Math.sqrt(n), z,
       adjusted: g.adjusted, plainBrews: g.brews, plainBags: g.bags, spread: pairedSd.get(label)!, sd: ratingSd.get(label)!
     };
   }).sort(byOrder);
@@ -86,7 +87,7 @@ export function fillGrind<T extends { label: string }>(bands: T[], empty: (b: Ba
 }
 export const emptyStat = (b: Band): BandStat => ({
   label: b.label, order: b.order, ...(b.range ? { range: b.range } : {}), delta: null, brews: 0, bags: 0, solid: false, strength: null,
-  adjusted: 0, plainBrews: 0, plainBags: 0, se: null, spread: null, sd: null, sample: pooled(0, 0)
+  adjusted: 0, plainBrews: 0, plainBags: 0, se: null, z: null, spread: null, sd: null, sample: pooled(0, 0)
 });
 const emptySpot = (b: Band): SpotBand => ({ label: b.label, ...(b.range ? { range: b.range } : {}), value: null, bags: 0, brews: 0, solid: false, sample: pooled(0, 0) });
 
@@ -233,11 +234,11 @@ export const SLICE_OF: Record<Slice, (b: BrewFact) => string | null> = {
   roast: (b) => b.roastLevel, process: (b) => b.processGroup, origin: (b) => b.origin, roaster: (b) => b.roaster
 };
 // delta null = no paired brews (blank); a thin cell (not solid) keeps its delta and draws faded; counts for the tip.
-export interface Cell { delta: number | null; se?: number | null; solid: boolean; sample: Sample; brews: number; bags: number; plain?: { brews: number; bags: number } } // plain: a no-match cell's own brews and bags (no same-bag partner)
+export interface Cell { delta: number | null; se?: number | null; z?: number; solid: boolean; sample: Sample; brews: number; bags: number; plain?: { brews: number; bags: number } } // plain: a no-match cell's own brews and bags (no same-bag partner)
 // One mapping for every heatmap (breakdown, gearTab's matrix): counts are the paired brews and bags
 // behind the delta, so a tip never reads "6 brews, 0 bags".
-export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'> & { se?: number | null; plainBrews?: number; plainBags?: number }): Cell => ({
-  delta: s.delta, ...(s.se != null ? { se: s.se } : {}), solid: s.solid, sample: pooled(s.bags, s.brews), brews: s.brews, bags: s.bags,
+export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'> & { se?: number | null; z?: number | null; plainBrews?: number; plainBags?: number }): Cell => ({
+  delta: s.delta, ...(s.se != null ? { se: s.se } : {}), ...(s.z != null ? { z: s.z } : {}), solid: s.solid, sample: pooled(s.bags, s.brews), brews: s.brews, bags: s.bags,
   ...(s.delta === null && s.plainBrews ? { plain: { brews: s.plainBrews, bags: s.plainBags ?? 0 } } : {})
 });
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
