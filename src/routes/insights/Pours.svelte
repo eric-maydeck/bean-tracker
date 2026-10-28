@@ -34,7 +34,6 @@
   import type { Breakdown } from '$lib/server/insights/lab';
   import { useEmptyLine } from './coffeeNote';
   import DeltaBars, { bandRows, plural, SAME_BAG_HELP } from './DeltaBars.svelte';
-  import { fitPairs } from './fitPairs';
   import LabHead from './LabHead.svelte';
   import LabHeatmap from './LabHeatmap.svelte';
 
@@ -59,14 +58,23 @@
   };
 
   // Technique
-  type Card = { id: string; title: string; help: string[]; bd?: Breakdown; bars?: PoursTab['technique'][number] };
+  type Card = { id: string; title: string; help: string[]; bd?: Breakdown; bars?: PoursTab['technique'][number]; split?: boolean };
   let cards = $derived.by((): Card[] => {
     if (!t) return [];
     const out: Card[] = t.technique.map((x) => ({ ...TECH[x.key], bars: x }));
     if (t.agitationByProcess) out.splice(1, 0, { id: 'pours-agitation-process', title: 'Agitation by process', help: ['The same delta, per process.'], bd: t.agitationByProcess });
+    // Pouring vs drawdown time: its own card after Contact time, on the same band labels.
+    const at = out.findIndex((c) => c.id === 'pours-contact');
+    if (at >= 0 && t.split.length) out.splice(at + 1, 0, { id: 'pours-split', title: 'Pouring vs drawdown', help: ['Mean pouring time and drawdown time of the brews in each contact band.', 'Pouring: first pour to the last.', 'Drawdown: the last pour to the end.'], split: true });
     return out;
   });
-  const likely = (x: PoursTab['technique'][number], label: string) => x.inferred?.[label] ?? 0;
+  // A bar's tip gains how many of its brews had their agitation guessed (the label stays the band's name).
+  const techRows = (x: PoursTab['technique'][number]) => bandRows(x.bands, undefined, 'band').map((r, j) => {
+    const n = x.inferred?.[x.bands[j].label] ?? 0;
+    return n ? { ...r, tip: { ...r.tip, rows: [...(r.tip.rows ?? []), ['Guessed from pour speed', `${n} of ${x.bands[j].plainBrews}`] as [string, string]] } } : r;
+  });
+  const wordCols = (key: 'byAgitation' | 'byContact') => [...new Set((t?.words ?? []).flatMap((w) => w[key].map((x) => x.label)))];
+  const maxShare = $derived(Math.max(0.01, ...(t?.words ?? []).flatMap((w) => [...w.byAgitation, ...w.byContact].map((x) => x.share))));
   const maxSplit = $derived(Math.max(1, ...(t?.split ?? []).map((x) => x.pourS + x.drawdownS)));
   const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
 
@@ -86,7 +94,7 @@
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews with pour readings in this period.')}</p>
     {@render ratingsNote()}
-    {#if page.data.isAdmin}<p class="chart-note"><a href="/account/recipes">Set up recipes</a></p>{/if}
+    {#if page.data.isAdmin}<p class="chart-note empty-link"><a href="/account/recipes">Set up recipes</a></p>{/if}
   </section>
 {:else}
   {#if t.recipes.length}
@@ -97,8 +105,8 @@
           {@const d = r.stat?.delta ?? null}
           <li>
             <span class="name">
-              {#if page.data.isAdmin && r.id !== null}<a href="/account/recipes?brews=r{r.id}">{r.name}</a>{:else}{r.name}{/if}
-              {#if r.dripper}<span class="sub">{r.dripper}</span>{/if}
+              <span class="nm">{#if page.data.isAdmin && r.id !== null}<a href="/account/recipes?brews=r{r.id}">{r.name}</a>{:else}{r.name}{/if}</span>
+              <span class="sub">{r.dripper ?? ''}</span>
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>
             <span class="delta {deltaInk(d)}" class:small-sample={r.stat?.sample.small ?? r.sample.small}>{d === null ? 'no match' : labDelta(d, ses)}</span>
@@ -127,30 +135,25 @@
   {#if cards.length || t.words.length}
     <section class="pours-technique" data-section="pours-technique">
       <LabHead id="pours-technique" title="Technique" {placeTip} help={[...SAME_BAG_HELP, 'Brews without a flow reading still set their bag\'s average.']} />
-      <div class="lab-grid" use:fitPairs={[t, s]}>
-        {#each cards as c, i (c.id)}
-          <section class="chart-panel lab-chart" class:span={cards.length % 2 === 1 && i === cards.length - 1} data-section={c.id}>
-            <LabHead id={c.id} title={c.title} level={3} {placeTip} help={[...c.help, ...SAME_BAG_HELP]} />
-            <div class="fit-body">
-              {#if c.bd}
-                <LabHeatmap by={c.bd} ariaLabel="{c.title}: rating vs the same bag's other brews" />
-              {:else if c.bars}
-                {@const x = c.bars}
-                <DeltaBars ariaLabel="{c.title} vs rating"
-                  rows={bandRows(x.bands, undefined, 'band').map((r, j) => (likely(x, x.bands[j].label) ? { ...r, label: `${r.label} · ${likely(x, x.bands[j].label)} likely` } : r))} />
-                {#if c.id === 'pours-contact' && t.split.length}
-                  <ul class="split" aria-label="Pouring and drawdown time by contact band">
-                    {#each t.split as g (g.label)}
-                      <li><span class="k">{g.label}</span>
-                        <span class="track"><span class="pour" style:width="{(100 * g.pourS) / maxSplit}%"></span><span class="draw" style:width="{(100 * g.drawdownS) / maxSplit}%"></span></span>
-                        <span class="v">{clock(g.pourS)} + {clock(g.drawdownS)}</span></li>
-                    {/each}
-                  </ul>
-                {/if}
-              {/if}
-            </div>
-            {#if c.bars?.inferred && Object.values(c.bars.inferred).some(Boolean)}<p class="chart-note">likely = guessed from pour speed</p>{/if}
-            {#if c.id === 'pours-contact' && t.split.length}<p class="chart-note">Bars: pouring time + drawdown time</p>{/if}
+      <div class="tech-cols">
+        {#each cards as c (c.id)}
+          <section class="chart-panel" data-section={c.id}>
+            <LabHead id={c.id} title={c.title} level={3} {placeTip} help={[...c.help, ...(c.split ? [] : SAME_BAG_HELP)]} />
+            {#if c.bd}
+              <LabHeatmap by={c.bd} ariaLabel="{c.title}: rating vs the same bag's other brews" />
+            {:else if c.split}
+              <ul class="split" aria-label="Pouring and drawdown time by contact band">
+                {#each t.split as g (g.label)}
+                  <li><span class="k">{g.label}</span>
+                    <span class="track"><span class="pour" style:width="{(100 * g.pourS) / maxSplit}%"></span><span class="draw" style:width="{(100 * g.drawdownS) / maxSplit}%"></span></span>
+                    <span class="v">{clock(g.pourS)} + {clock(g.drawdownS)}</span></li>
+                {/each}
+              </ul>
+              <p class="chart-note"><i class="sw pour"></i>Pouring <i class="sw draw"></i>Drawdown, mean time per contact band</p>
+            {:else if c.bars}
+              <DeltaBars ariaLabel="{c.title} vs rating" rows={techRows(c.bars)} />
+              {#if c.bars.inferred && Object.values(c.bars.inferred).some(Boolean)}<p class="chart-note">Agitation a recipe or note doesn't set is guessed from pour speed; a bar's tip says how many.</p>{/if}
+            {/if}
           </section>
         {/each}
       </div>
@@ -158,16 +161,28 @@
         <section class="chart-panel words" data-section="pours-words">
           <LabHead id="pours-words" title="Words in brew notes" level={3} {placeTip}
             help={['The share of brews in each band whose notes mention the word.', 'Bands under 10 brews are left out.', SAMPLE_HELP]} />
-          <ul>
-            {#each t.words as w (w.label)}
-              <li>
-                <span class="w"><strong>{w.label}</strong> {plural(w.brews, 'brew')}, {plural(w.bags, 'bag')}{#if w.sample.small}<SampleNote s={w.sample} />{/if}</span>
-                {#each [['Agitation', w.byAgitation], ['Contact', w.byContact]] as const as [what, xs] (what)}
-                  {#if xs.length}<span class="shares"><span class="what">{what}</span>{#each xs as x (x.label)}<span class="chip" title={plural(x.brews, 'brew')}>{x.label} {Math.round(100 * x.share)}%</span>{/each}</span>{/if}
-                {/each}
-              </li>
-            {/each}
-          </ul>
+          {#each [['By agitation', 'byAgitation'], ['By contact time', 'byContact']] as const as [what, key] (key)}
+            {@const cols = wordCols(key)}
+            {#if cols.length}
+              <div class="wscroll">
+                <table>
+                  <caption>{what}</caption>
+                  <thead><tr><th scope="col">Word</th>{#each cols as c (c)}<th scope="col">{c}</th>{/each}</tr></thead>
+                  <tbody>
+                    {#each t.words as w (w.label)}
+                      <tr>
+                        <th scope="row"><strong>{w.label}</strong> <span class="sub">{plural(w.brews, 'brew')} · {plural(w.bags, 'bag')}</span>{#if w.sample.small}<SampleNote icon s={w.sample} />{/if}</th>
+                        {#each cols as c (c)}
+                          {@const x = w[key].find((y) => y.label === c)}
+                          <td style:background={x ? `color-mix(in srgb, var(--chart-color-1) ${Math.round(Math.min(1, x.share / maxShare) * 45)}%, transparent)` : undefined}>{x ? `${Math.round(100 * x.share)}%` : '–'}</td>
+                        {/each}
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/if}
+          {/each}
         </section>
       {/if}
     </section>
@@ -190,16 +205,14 @@
 
   {#if t.rest.byRecipe || t.rest.byAgitation}
     <section class="pours-rest" data-section="pours-rest-age">
-      <div class="lab-grid" use:fitPairs={[t, s]}>
-        {#each [['pours-rest', 'Rest age by recipe', t.rest.byRecipe], ['pours-rest-agitation', 'Rest age by agitation', t.rest.byAgitation]] as const as [id, title, bd] (id)}
-          {#if bd}
-            <section class="chart-panel lab-chart" class:span={!(t.rest.byRecipe && t.rest.byAgitation)} data-section={id}>
-              <LabHead {id} {title} {placeTip} help={['Days off roast at the brew.', RECIPE_HELP, SAMPLE_HELP]} />
-              <div class="fit-body"><LabHeatmap by={bd} ariaLabel="{title}: rating vs the same bag's other brews" /></div>
-            </section>
-          {/if}
-        {/each}
-      </div>
+      {#each [['pours-rest', 'Rest age by recipe', t.rest.byRecipe], ['pours-rest-agitation', 'Rest age by agitation', t.rest.byAgitation]] as const as [id, title, bd] (id)}
+        {#if bd}
+          <section class="chart-panel" data-section={id}>
+            <LabHead {id} {title} {placeTip} help={['Days off roast at the brew.', RECIPE_HELP, SAMPLE_HELP]} />
+            <LabHeatmap by={bd} ariaLabel="{title}: rating vs the same bag's other brews" />
+          </section>
+        {/if}
+      {/each}
       {#if thinRest}<p class="chart-note">Few brews are under 31 days old, so fresh-coffee rows are thin.</p>{/if}
     </section>
   {/if}
@@ -223,11 +236,24 @@
   .card li:first-child {
     border-top: 0;
   }
+  /* The name and its dripper are two lines, each one line (never wrapped mid-phrase). */
   .name {
     flex: 1 1 8rem;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .nm,
+  .sub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .nm {
     font-weight: 600;
-    overflow-wrap: anywhere;
+  }
+  .sub {
+    min-height: 1.2em;
   }
   .sub,
   .counts,
@@ -235,9 +261,6 @@
     font-weight: 400;
     font-size: 0.875rem;
     color: var(--color-text-muted);
-  }
-  .sub::before {
-    content: ' · ';
   }
   /* Fixed-width cells (the marker's included, empty or not): every row's columns line up. */
   .num {
@@ -280,6 +303,17 @@
     stroke-linejoin: round;
     stroke-linecap: round;
   }
+  /* Phones: the name takes a line, the numbers a line, Best a line, the trend and counts a line. */
+  @media (max-width: 640px) {
+    .name,
+    .best {
+      flex: 1 1 100%;
+    }
+    .counts {
+      flex: 1 1 auto;
+      width: auto;
+    }
+  }
   .more {
     display: flex;
     justify-content: center;
@@ -288,88 +322,104 @@
   .more button {
     margin: 0;
   }
-  .pours-technique,
-  .pours-rest {
+  .empty-link {
+    text-align: center;
+  }
+  .pours-technique {
     margin-bottom: var(--space-5);
+  }
+  /* Cards at their own height (no stretching to a neighbour): two columns when there is room, balanced by the browser. */
+  .tech-cols {
+    --bar-label-w: 7rem;
+    --bar-value-w: 7.25rem;
+  }
+  .tech-cols > :global(.chart-panel) {
+    break-inside: avoid;
+    margin-bottom: var(--space-3);
+  }
+  @container insights (min-width: 868px) {
+    .tech-cols {
+      columns: 2;
+      column-gap: var(--space-3);
+    }
   }
   .words {
     margin-top: var(--space-3);
   }
-  /* Fixed label and value columns: the 0 lines of side-by-side (and stacked) charts line up. */
-  .lab-grid {
-    --bar-label-w: 7rem;
-    --bar-value-w: 7.25rem;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-  }
-  .lab-chart {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  @container insights (min-width: 868px) {
-    .lab-grid {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-    .lab-chart.span {
-      grid-column: 1 / -1;
-    }
-  }
-  .split {
-    margin-top: var(--space-3);
-    font-size: 0.875rem;
-  }
   .split li {
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--bar-label-w) minmax(0, 1fr) var(--bar-value-w);
     align-items: center;
     gap: var(--space-2);
-    padding: 2px 0;
+    padding: 6px 0;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
   }
   .split .k {
-    flex: none;
-    width: 5.5rem;
-  }
-  .split .track {
-    flex: 1;
-    display: flex;
-    min-width: 3rem;
-    height: 0.75rem;
-  }
-  .split .pour {
-    background-color: var(--series-brown-1);
-  }
-  .split .draw {
-    background-color: var(--series-brown-3);
-  }
-  .split .v {
-    flex: none;
-    min-width: 6rem;
     text-align: right;
   }
-  .words li {
-    padding: var(--space-2) 0;
+  .split .track {
+    display: flex;
+    height: 0.75rem;
+  }
+  .split .pour,
+  .sw.pour {
+    background-color: var(--series-brown-1);
+  }
+  .split .draw,
+  .sw.draw {
+    background-color: var(--series-brown-3);
+  }
+  .sw {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 2px;
+    margin: 0 4px 0 8px;
+  }
+  .sw:first-child {
+    margin-left: 0;
+  }
+  /* Words: a table per grouping; the row labels stay put while the bands scroll sideways on a phone. */
+  .wscroll {
+    overflow-x: auto;
+    margin-bottom: var(--space-3);
+  }
+  table {
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    width: 100%;
+  }
+  caption {
+    text-align: left;
+    font-weight: 600;
+    padding-bottom: var(--space-1);
+  }
+  th,
+  td {
+    padding: 6px 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  thead th {
+    font-weight: 400;
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+  }
+  tbody th {
+    text-align: left;
+    font-weight: 400;
+    position: sticky;
+    left: 0;
+    background: var(--color-surface, var(--color-bg, inherit));
+  }
+  tbody tr {
     border-top: 1px solid var(--color-border);
   }
-  .words li:first-child {
-    border-top: 0;
-  }
-  .w {
+  tbody th .sub {
     display: block;
-  }
-  .shares {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-2);
-    align-items: baseline;
-    font-size: 0.875rem;
-  }
-  .what {
-    color: var(--color-text-muted);
-    min-width: 4.5rem;
-  }
-  .chip {
-    white-space: nowrap;
+    min-height: 0;
   }
   .tab-group :global(button) {
     min-height: 2.25rem;

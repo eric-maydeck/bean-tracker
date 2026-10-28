@@ -3431,7 +3431,16 @@ export const STATES: State[] = [
       }
       await expect(page.locator('nav.board-jump')).toBeVisible();
       expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
-      await expectColumnsFilled(page, '.pours-technique > .lab-grid, .pours-rest > .lab-grid'); // paired cards: one height, content to the bottom
+      // Cards size to their content: every Technique bar row has the normal height (no stretched pair), and the agitation
+      // band labels, the report card's name and dripper lines each stay on one line (no mid-phrase wrap).
+      const rowH = await page.locator('.tech-cols .bar-row').evaluateAll((rs) => rs.map((r) => Math.round(r.getBoundingClientRect().height)));
+      expect(Math.max(...rowH) - Math.min(...rowH), `bar row heights ${[...new Set(rowH)]}`).toBeLessThanOrEqual(4);
+      const wraps = await page.locator('.tech-cols [data-section="pours-agitation"] .bar-label, ul.card .nm, ul.card .sub').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight) * 1.5).map((e) => e.textContent));
+      expect(wraps, 'labels wrapped mid-phrase').toEqual([]);
+      const cut = await page.locator('ul.card > li').evaluateAll((lis) => lis.flatMap((li) => [...li.querySelectorAll('.spark, .counts')].filter((e) => e.getBoundingClientRect().right > li.getBoundingClientRect().right + 1).map((e) => e.className.baseVal ?? e.className)));
+      expect(cut, 'sparkline or counts past the card edge').toEqual([]);
+      const w = async (id: string) => Math.round((await page.locator(`[data-section="${id}"]`).first().boundingBox())!.width);
+      expect(await w('pours-rest')).toBe(await w('pours-recipes')); // Rest age cards are full width
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
     }
   },
