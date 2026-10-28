@@ -1,3 +1,36 @@
+# [1.98.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.97.0...v1.98.0) (2026-10-28)
+
+
+### Bug Fixes
+
+* **insights:** pours rest jump link, ratings note on empty tab, recipe editor save locator
+* **lab:** a no-match heatmap cell's tip shows its own brews and bags
+* **pours:** full text of an ellipsized report card name in the shared tip
+* **pours:** grade findings with the per-bag z, one recipe card, group label
+* **pours:** keep each Best item on one line
+* **pours:** keep yeets in the shipped phrase detector
+* **pours:** layout pass, content-height cards, split card, words tables, stacked rest
+* **pours:** no counts on the No recipe row, empty state checks every section
+* **pours:** small-sample marker in its own icon column on the report card
+* **pours:** trend on all-rows basis, precompiled word regexes
+* **recipes:** note tags help as a hint tip, scope editor Save locators
+* **recipes:** note tags help line
+* **recipes:** reset note words after save, 44px word controls on short screens
+
+
+### Features
+
+* **insights:** pour findings with a cap of three
+* **insights:** pours tab with recipe report card, technique, recipe grid and rest
+* **pours:** agitation labels from recipe, note words and pour speed
+* **pours:** average mode colored against your overall average
+* **pours:** balanced technique columns, padded report card, count tips, ordered words tables
+* **pours:** compare-with switch on recipe by coffee
+* **pours:** overall mean and per-cell difference for the average mode
+* **pours:** pours tab builder on same-bag deltas
+* **pours:** recipe by coffee means against the row, the recipe and nothing, recipeVs param
+* **recipes:** words in your notes setting for agitation
+
 # [1.97.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.96.0...v1.97.0) (2026-10-28)
 
 
