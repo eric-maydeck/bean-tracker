@@ -197,7 +197,7 @@
 
 <style>
   .editor { display: grid; gap: var(--space-3); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-2); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(9rem, 100%), 1fr)); gap: var(--space-2); }
   .drippers { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: 0; min-width: 0; margin: 0; }
   .drippers .form-field-checkbox label { min-height: 32px; font-weight: 400; }
   .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); column-gap: var(--space-2); }
@@ -207,15 +207,17 @@
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .tools { display: flex; gap: var(--space-2); }
   .form-field-checkbox { align-self: end; }
-  .form-field input, .form-field select { min-width: 0; }
+  .form-field input, .form-field select { min-width: 0; max-width: 100%; }
+  .form-field { min-width: 0; }
   .editor :global(.form-actions) { margin-top: 0; }
   .editor :global(.button) { margin: 0; }
   @media (max-width: 1100px) {
     /* Phones (either way up): Name over Pour amounts beside the taller Note tags, then Bloom hold and its ± on one row. */
-    .top { grid-template-columns: 1fr 1fr; grid-template-areas: 'name tags' 'unit tags' 'hold tol'; }
+    .top { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'name tags' 'unit tags' 'hold tol'; }
     .a-name { grid-area: name; } .a-tags { grid-area: tags; } .a-unit { grid-area: unit; } .a-hold { grid-area: hold; } .a-tol { grid-area: tol; }
   }
   @media (max-width: 640px) {
+    .top { grid-template-areas: 'name name' 'unit unit' 'tags tags' 'hold tol'; }
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
