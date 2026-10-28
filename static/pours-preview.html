@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pours variants</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 12px; background: #faf6f0; color: #333 }
+  h2 { margin: 24px 0 4px } .row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start }
+  figure { margin: 0; flex: none } figcaption { font-weight: 600; margin: 2px 0 }
+  iframe { border: 1px solid #bbb; background: #fff; display: block }
+  .p iframe { width: 480px; height: 900px } .w iframe { width: 1280px; height: 900px }
+</style>
+<h1>Pours variants</h1>
+<p>Each frame is the live page with a <code>pv</code> switch (ratings=all). Phone width (480) first; 1280 rows below each.</p>
+<script>
+  const S = [
+    ['Recipe report card', 'pours-recipes', [['card-a', 'A: table rows'], ['card-b', 'B: stacked cards']]],
+    ['Technique', 'pours-technique', [['tech-a', 'A: one bar list per variable'], ['tech-b', 'B: small multiples']]],
+    ['Recipe × coffee', 'pours-recipe-coffee', [['grid-a', 'A: heatmap'], ['grid-b', 'B: dot matrix']]],
+    ['Rest age', 'pours-rest', [['rest-a', 'A: heatmaps'], ['rest-b', 'B: lines by rest band']]],
+    ['Mixed agitation (Agitation card)', 'pours-agitation', [['mix-split', 'Split by sequence'], ['mix-one', 'One Mixed band']]]
+  ];
+  for (const [title, id, vs] of S) {
+    for (const [cls, h] of [['p', title + ' · 480'], ['w', title + ' · 1280']]) {
+      document.body.insertAdjacentHTML('beforeend', `<h2>${h}</h2><div class="row ${cls}">` + vs.map(([v, label]) =>
+        `<figure><figcaption>${label} (pv=${v})</figcaption><iframe loading="lazy" src="/insights?tab=pours&ratings=all&pv=${v}#${id}"></iframe></figure>`).join('') + '</div>');
+    }
+  }
+</script>
