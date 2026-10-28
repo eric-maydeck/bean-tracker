@@ -51,7 +51,7 @@ describe('handleCoffeeCreate', () => {
 
 describe('handleCoffeeCreateAndLink', () => {
   const beanFields = {
-    name: 'From BC', roaster: 'Elsewhere', roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null,
+    name: 'From BQ', roaster: 'Elsewhere', roastDate: null, roastType: null, degreeOfRoast: null, customDegreeOfRoast: null,
     blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null,
     eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false
   };

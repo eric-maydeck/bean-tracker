@@ -12,7 +12,7 @@ Sources (mined 2026-10-09, read-only):
 
 - **DB**: prod SQLite (`coffees`, `subscriptions`, `beanconqueror_*`), 265 bags,
   1344 joined brews.
-- **BC**: Bean Conqueror JSON export (app 8.7.0), 242 beans, 1357 brews,
+- **BQ**: Bean Conqueror JSON export (app 8.7.0), 242 beans, 1357 brews,
   22 preparations, 3 mills, 17 waters.
 - **FP**: smart-scale flow profiles from the full export, 1218 brews, 354
   profiles read, summarizer prototyped (see "Pour analytics notes").
@@ -30,102 +30,102 @@ Sources in brackets. All rating stats follow the foundation's rating switches
 | Bags: roaster, origin, process, roast level, cost, weight, roast date, rest window | rich (98–100%) | 41 roasters, 17 origins, 46 process labels (9 groups), 8 roast labels (Ultralight 159/265) |
 | Water minerals, stored GH/KH | rich (41–82%) | 12 recipes used; Mg/K 60/10 on 784 brews |
 | Flow profiles | rich (90% of brews) | only from 2026-03-04 |
-| Bean-level rating, BC roast slider, best_brew flag | good (72% / 100% / one per bag) | bean rating correlates 0.80 with mean brew rating |
+| Bean-level rating, BQ roast slider, best_brew flag | good (72% / 100% / one per bag) | bean rating correlates 0.80 with mean brew rating |
 | Gear | good | 22 methods (dripper + filter in the name), 2 grinders used (A4Z 1245, ZP6 112) |
 | Subscriptions | thin | 6 rows, current state only; no dates, no link to bags |
-| Freezer dates | thin | 18 bags (DB only; BC freezer off) |
+| Freezer dates | thin | 18 bags (DB only; BQ freezer off) |
 | opened_date | thin | 37 rows, since 2026-09-20 |
 | Decaf, free bags, repeat buys | thin | 16 decaf, 5 free, 33 repeat pairs |
 | Brew notes (recipe tags, coarser/finer) | thin | 62% have a note, heuristic parsing only |
-| TDS/EY, farm/region/variety/elevation, coordinates, cupping, first drip time, favorite, vessel, BC frozen/buy/open dates, brew photos, pressure/temperature curves, second scale | **empty (0%)** | settings off or never used; stats on these need new data |
+| TDS/EY, farm/region/variety/elevation, coordinates, cupping, first drip time, favorite, vessel, BQ frozen/buy/open dates, brew photos, pressure/temperature curves, second scale | **empty (0%)** | settings off or never used; stats on these need new data |
 
 ## Overview
 
 - **Bags bought** — bags by purchase (roast) date in the period, vs previous [DB] | roast_date | ok | tile | 3 | high
-- **Backlog right now** — bags, grams and $ waiting (backlog + open, ~82 bags / 11 kg) [DB, BC] | status, amount_g, cost | ok | tile | 3 | high
+- **Backlog right now** — bags, grams and $ waiting (backlog + open, ~82 bags / 11 kg) [DB, BQ] | status, amount_g, cost | ok | tile | 3 | high
 - **Days of coffee left** — backlog grams ÷ recent g/day (~119 days), plus run-out date at current pace ignoring new buys [DB] | status, amount_g, doses | ok | tile | 3 | high
 - **Variety tried** — distinct roasters, origins, process groups in the period [DB] | roaster, origin, processing | ok | tile | 3 | med
-- **Unrated share** — % of brews and bags left unrated, over time [BC] | rating = 0 | ok | line | 3 | low
+- **Unrated share** — % of brews and bags left unrated, over time [BQ] | rating = 0 | ok | line | 3 | low
 
 ## Taste & preference
 
-- **Rating by origin** — adjusted mean per origin with bag count [DB, BC] | origin + brew rating | ok | bar | 2 | high
-- **Rating by process group** — adjusted mean per process group [DB, BC] | processing → processGroup | ok | bar | 2 | high
-- **Rating by roaster** — adjusted mean, bags, brews per roaster, few-bags marker [DB, BC] | roaster + rating | ok | bar | 2 | high
-- **Rating by roast level** — normalized roast level, or BC's numeric roast slider for finer steps [DB, BC] | roast_level / roast_range | ok (Ultralight-heavy) | bar | 2 | high
-- **Rating distribution** — histogram of brew ratings, mode and median, Settled vs All [BC] | brew rating | ok | bar | 2 | high
-- **Bag verdict vs brew average** — bean rating vs mean brew rating per bag; above the line = remembered better than brewed [BC] | bean rating, brew rating | ok | scatter | 4 | high
-- **Best-brew uplift** — how far each bag's best brew sits above its mean [BC] | best_brew, rating | ok | bar | 4 | med
-- **Most consistent bags** — lowest rating spread per bag (≥ 5 brews) [BC] | rating per bag | ok | table | 3 | med
-- **Rating variance over time** — monthly SD of ratings; shows the June calibration settling [BC] | rating, date | ok | line | 2 | med
+- **Rating by origin** — adjusted mean per origin with bag count [DB, BQ] | origin + brew rating | ok | bar | 2 | high
+- **Rating by process group** — adjusted mean per process group [DB, BQ] | processing → processGroup | ok | bar | 2 | high
+- **Rating by roaster** — adjusted mean, bags, brews per roaster, few-bags marker [DB, BQ] | roaster + rating | ok | bar | 2 | high
+- **Rating by roast level** — normalized roast level, or BQ's numeric roast slider for finer steps [DB, BQ] | roast_level / roast_range | ok (Ultralight-heavy) | bar | 2 | high
+- **Rating distribution** — histogram of brew ratings, mode and median, Settled vs All [BQ] | brew rating | ok | bar | 2 | high
+- **Bag verdict vs brew average** — bean rating vs mean brew rating per bag; above the line = remembered better than brewed [BQ] | bean rating, brew rating | ok | scatter | 4 | high
+- **Best-brew uplift** — how far each bag's best brew sits above its mean [BQ] | best_brew, rating | ok | bar | 4 | med
+- **Most consistent bags** — lowest rating spread per bag (≥ 5 brews) [BQ] | rating per bag | ok | table | 3 | med
+- **Rating variance over time** — monthly SD of ratings; shows the June calibration settling [BQ] | rating, date | ok | line | 2 | med
 - **Origin × process heatmap** — rating per cell [DB] | origin, processing, rating | thin (many small cells) | heatmap | 2 | med
-- **Rating by bag size** — 250 g bags vs 100/125 g samplers [DB, BC] | amount_g, rating | ok | bar | 2 | low
-- **Decaf vs regular** — decaf share of bags/grams and rating gap [DB, BC] | decaf | thin (16 bags) | tile | 2 | low
-- **Note words by rating band** — frequent words in brew notes per rating band [BC] | brew notes | thin | bar | 4 | low
+- **Rating by bag size** — 250 g bags vs 100/125 g samplers [DB, BQ] | amount_g, rating | ok | bar | 2 | low
+- **Decaf vs regular** — decaf share of bags/grams and rating gap [DB, BQ] | decaf | thin (16 bags) | tile | 2 | low
+- **Note words by rating band** — frequent words in brew notes per rating band [BQ] | brew notes | thin | bar | 4 | low
 
 ## Brewing
 
-- **Rest curve** — rating by days off roast (net of freezer), bucketed [BC] | roast_date, brew date, frozen_*, rating | ok | line | 4 | high
-- **Rest curve by process / roast level** — peak day per group [BC] | + processGroup, roast level | ok | line | 4 | high
-- **Dial-in curve** — mean rating by brew number within a bag (1st 6.7 → 7th 7.7) [BC] | brews per bag, rating | ok | line | 4 | high
-- **Brews to dial in** — brews until a bag first hits its best (or ≥ 8) [BC] | rating, best_brew | ok | bar | 4 | high
-- **Grind drift over a bag** — grind setting by brew number (per grinder) [BC] | grind_size, mill | ok | line | 4 | high
-- **Grind vs rating** — rating by grind setting per grinder, faceted by roast level [BC] | grind_size, mill, rating | ok | heatmap | 4 | high
-- **Temperature vs rating** — mean rating per temp (85–94 °C) [BC] | brew_temperature, rating | ok | bar | 4 | high
-- **Brew time vs rating** — rating by total time band, per dripper [BC] | brew_time, method, rating | ok | scatter | 4 | high
-- **Ratio vs rating** — water/dose bands (15.6–18) vs rating [BC] | brew_quantity, dose, rating | ok | bar | 4 | high
-- **Bloom length vs rating** — entered bloom (30/40/45/60 s); prefer the measured bloom from flow profiles once sub-project 6 exists (Alpha Switch: 45 s 7.5 vs 30 s 6.4) [BC, FP] | coffee_blooming_time / bloom_s, rating | ok | bar | 4 → 6 | high
-- **Recipe tag leaderboard** — rating per recipe tag parsed from brew notes [BC] | notes | thin | table | 4 | high
-- **Where the best brew lands** — position in the bag (median ~70% through) and days off roast [BC] | best_brew, order, roast_date | ok | bar | 4 | med
-- **Temperature by roast level** — chosen temp vs roast level, rating as color [BC] | temp, roast level, rating | ok | heatmap | 4 | med
-- **Dose sizes** — dose histogram (8–33 g) and rating by dose [BC] | grind_weight, rating | ok | bar | 4 | med
-- **Back-to-back brews** — same bag twice in a day (436 bean-days): rating change on the second [BC] | bag, date, rating | ok | tile | 4 | med
-- **Sweet spot per process** — best grind/temp/ratio band per process group [BC] | brew vars, processGroup | ok | table | 4 | med
-- **Method eras** — which method dominated each month [BC] | method, date | ok | line | 4 | med
-- **Dial-in direction log** — how often notes say coarser/finer and whether the next brew improved [BC] | notes, next brew | thin | bar | 4 | med
-- **Over vs under extraction calls** — note mentions by roast level and process [BC] | notes | thin | bar | 4 | low
+- **Rest curve** — rating by days off roast (net of freezer), bucketed [BQ] | roast_date, brew date, frozen_*, rating | ok | line | 4 | high
+- **Rest curve by process / roast level** — peak day per group [BQ] | + processGroup, roast level | ok | line | 4 | high
+- **Dial-in curve** — mean rating by brew number within a bag (1st 6.7 → 7th 7.7) [BQ] | brews per bag, rating | ok | line | 4 | high
+- **Brews to dial in** — brews until a bag first hits its best (or ≥ 8) [BQ] | rating, best_brew | ok | bar | 4 | high
+- **Grind drift over a bag** — grind setting by brew number (per grinder) [BQ] | grind_size, mill | ok | line | 4 | high
+- **Grind vs rating** — rating by grind setting per grinder, faceted by roast level [BQ] | grind_size, mill, rating | ok | heatmap | 4 | high
+- **Temperature vs rating** — mean rating per temp (85–94 °C) [BQ] | brew_temperature, rating | ok | bar | 4 | high
+- **Brew time vs rating** — rating by total time band, per dripper [BQ] | brew_time, method, rating | ok | scatter | 4 | high
+- **Ratio vs rating** — water/dose bands (15.6–18) vs rating [BQ] | brew_quantity, dose, rating | ok | bar | 4 | high
+- **Bloom length vs rating** — entered bloom (30/40/45/60 s); prefer the measured bloom from flow profiles once sub-project 6 exists (Alpha Switch: 45 s 7.5 vs 30 s 6.4) [BQ, FP] | coffee_blooming_time / bloom_s, rating | ok | bar | 4 → 6 | high
+- **Recipe tag leaderboard** — rating per recipe tag parsed from brew notes [BQ] | notes | thin | table | 4 | high
+- **Where the best brew lands** — position in the bag (median ~70% through) and days off roast [BQ] | best_brew, order, roast_date | ok | bar | 4 | med
+- **Temperature by roast level** — chosen temp vs roast level, rating as color [BQ] | temp, roast level, rating | ok | heatmap | 4 | med
+- **Dose sizes** — dose histogram (8–33 g) and rating by dose [BQ] | grind_weight, rating | ok | bar | 4 | med
+- **Back-to-back brews** — same bag twice in a day (436 bean-days): rating change on the second [BQ] | bag, date, rating | ok | tile | 4 | med
+- **Sweet spot per process** — best grind/temp/ratio band per process group [BQ] | brew vars, processGroup | ok | table | 4 | med
+- **Method eras** — which method dominated each month [BQ] | method, date | ok | line | 4 | med
+- **Dial-in direction log** — how often notes say coarser/finer and whether the next brew improved [BQ] | notes, next brew | thin | bar | 4 | med
+- **Over vs under extraction calls** — note mentions by roast level and process [BQ] | notes | thin | bar | 4 | low
 
 ## Water
 
-- **Water recipe leaderboard** — adjusted mean per recipe, with brews and bags [BC] | water, rating | ok | bar | 2 | high
-- **GH band vs rating** — 0 / 40 / 60 / 70–90 ppm [BC] | derived GH (stored as cross-check) | ok | bar | 2 | high
-- **KH band vs rating** — 10 / 14–20 / 25–40 ppm [BC] | derived KH | ok | bar | 2 | high
-- **GH × KH map** — rating heatmap over GH/KH cells [BC] | GH, KH, rating | ok | heatmap | 2 | high
-- **Ca vs Mg water** — Mg-only, Ca-only, mixed recipes [BC] | calcium, magnesium | ok | bar | 2 | high
-- **Water × roast level** — "what water for what coffee" [BC] | water, roast level, rating | ok | heatmap | 2 | high
-- **Water × process group** — naturals vs washed vs anaerobic [BC] | water, processGroup, rating | ok | heatmap | 2 | high
-- **Same bag, different water** — paired rating difference on bags brewed with 2+ waters [BC] | bag, water, rating | ok | bar | 4 | high
-- **Water × origin** — recipe × top countries [BC] | water, origin, rating | thin | heatmap | 2 | med
-- **Water × dripper** — recipe × dripper [BC] | water, method, rating | thin | heatmap | 2 | med
-- **Water eras** — recipe use by month [BC] | water, date | ok | line | 4 | med
-- **Mineral mg per month** — Mg/Ca/K mg consumed (mg/L × water g) [BC] | minerals, brew_quantity | ok | line | 4 | low
-- **Lotus drops used** — drops per mineral from the recipe note × brews, as a bottle burn rate [BC] | water.note, brews | thin | bar | 4 | low
+- **Water recipe leaderboard** — adjusted mean per recipe, with brews and bags [BQ] | water, rating | ok | bar | 2 | high
+- **GH band vs rating** — 0 / 40 / 60 / 70–90 ppm [BQ] | derived GH (stored as cross-check) | ok | bar | 2 | high
+- **KH band vs rating** — 10 / 14–20 / 25–40 ppm [BQ] | derived KH | ok | bar | 2 | high
+- **GH × KH map** — rating heatmap over GH/KH cells [BQ] | GH, KH, rating | ok | heatmap | 2 | high
+- **Ca vs Mg water** — Mg-only, Ca-only, mixed recipes [BQ] | calcium, magnesium | ok | bar | 2 | high
+- **Water × roast level** — "what water for what coffee" [BQ] | water, roast level, rating | ok | heatmap | 2 | high
+- **Water × process group** — naturals vs washed vs anaerobic [BQ] | water, processGroup, rating | ok | heatmap | 2 | high
+- **Same bag, different water** — paired rating difference on bags brewed with 2+ waters [BQ] | bag, water, rating | ok | bar | 4 | high
+- **Water × origin** — recipe × top countries [BQ] | water, origin, rating | thin | heatmap | 2 | med
+- **Water × dripper** — recipe × dripper [BQ] | water, method, rating | thin | heatmap | 2 | med
+- **Water eras** — recipe use by month [BQ] | water, date | ok | line | 4 | med
+- **Mineral mg per month** — Mg/Ca/K mg consumed (mg/L × water g) [BQ] | minerals, brew_quantity | ok | line | 4 | low
+- **Lotus drops used** — drops per mineral from the recipe note × brews, as a bottle burn rate [BQ] | water.note, brews | thin | bar | 4 | low
 
 ## Gear (drippers, filters, grinders)
 
-- **Dripper comparison** — adjusted mean, brews, SD per dripper, filter ignored [BC] | method → dripper | ok | bar | 2 | high
-- **Filter comparison** — Abaca vs T90 vs Sibarist Fast, overall and within one dripper (Alpha Switch: 7.02 / 7.42 / 6.79) [BC] | method → filter | ok | bar | 2 | high
-- **Dripper × filter matrix** — rating per pair, cell size = brews [BC] | method, rating | ok | heatmap | 2 | high
-- **Consistency per method** — rating SD per method (0.67 vs 1.98) [BC] | method, rating | ok | bar | 2 | high
-- **Grinder comparison** — A4Z vs ZP6 on the same bags only [BC] | mill, bag, rating | ok | bar | 4 | med
-- **Gear usage share** — brews per dripper/filter/grinder over time [BC] | method, mill, date | ok | bar | 2 | med
-- **Dripper by roast level** — which dripper per roast level and its rating there [BC] | method, roast level, rating | ok | heatmap | 2 | med
-- **Dripper geometry** — cone vs flat/wave vs Origami [BC] | preparation.type | ok | bar | 2 | low
-- **Unused gear** — defined but rarely/never used [BC] | mill, preparation, brews | ok | table | 3 | low
+- **Dripper comparison** — adjusted mean, brews, SD per dripper, filter ignored [BQ] | method → dripper | ok | bar | 2 | high
+- **Filter comparison** — Abaca vs T90 vs Sibarist Fast, overall and within one dripper (Alpha Switch: 7.02 / 7.42 / 6.79) [BQ] | method → filter | ok | bar | 2 | high
+- **Dripper × filter matrix** — rating per pair, cell size = brews [BQ] | method, rating | ok | heatmap | 2 | high
+- **Consistency per method** — rating SD per method (0.67 vs 1.98) [BQ] | method, rating | ok | bar | 2 | high
+- **Grinder comparison** — A4Z vs ZP6 on the same bags only [BQ] | mill, bag, rating | ok | bar | 4 | med
+- **Gear usage share** — brews per dripper/filter/grinder over time [BQ] | method, mill, date | ok | bar | 2 | med
+- **Dripper by roast level** — which dripper per roast level and its rating there [BQ] | method, roast level, rating | ok | heatmap | 2 | med
+- **Dripper geometry** — cone vs flat/wave vs Origami [BQ] | preparation.type | ok | bar | 2 | low
+- **Unused gear** — defined but rarely/never used [BQ] | mill, preparation, brews | ok | table | 3 | low
 
 ## Habits & time
 
-- **Hour of day** — brews and rating per hour (peak 11–14, 15:00 rates highest) [BC] | brew timestamp (local) | ok | bar | 2 | high
-- **Day of week** — brews and rating by weekday (weekend ~7.5 vs Wed 7.0) [BC] | timestamp, rating | ok | bar | 2 | high
-- **Brew calendar** — daily brews heatmap [BC] | timestamp | ok | calendar | 3 | high
-- **Bag lifetime** — days first → last brew (avg 5.5) and brews per bag (avg 7.3) [DB, BC] | brews per bag | ok | histogram | 4 | high
-- **Active brew days & streaks** — share of days brewed, longest streak, current gap [BC] | timestamp | ok | tile | 3 | med
-- **Brews per brew day** — distribution (mode 6) and busiest day [BC] | timestamp | ok | bar | 3 | med
-- **Hour × weekday** — brew count heatmap [BC] | timestamp | ok | heatmap | 2 | med
-- **Bags in rotation** — bags open/brewed at once per day or week [DB, BC] | first/last brew per bag | ok | line | 4 | med
+- **Hour of day** — brews and rating per hour (peak 11–14, 15:00 rates highest) [BQ] | brew timestamp (local) | ok | bar | 2 | high
+- **Day of week** — brews and rating by weekday (weekend ~7.5 vs Wed 7.0) [BQ] | timestamp, rating | ok | bar | 2 | high
+- **Brew calendar** — daily brews heatmap [BQ] | timestamp | ok | calendar | 3 | high
+- **Bag lifetime** — days first → last brew (avg 5.5) and brews per bag (avg 7.3) [DB, BQ] | brews per bag | ok | histogram | 4 | high
+- **Active brew days & streaks** — share of days brewed, longest streak, current gap [BQ] | timestamp | ok | tile | 3 | med
+- **Brews per brew day** — distribution (mode 6) and busiest day [BQ] | timestamp | ok | bar | 3 | med
+- **Hour × weekday** — brew count heatmap [BQ] | timestamp | ok | heatmap | 2 | med
+- **Bags in rotation** — bags open/brewed at once per day or week [DB, BQ] | first/last brew per bag | ok | line | 4 | med
 - **Bags finished per month** — throughput by last brew (not moved_date) [DB] | last brew per bag | ok | bar | 4 | med
-- **Bag yield** — share of bag grams logged as brews (86%), unaccounted grams per bag [DB, BC] | amount_g, doses | ok | tile | 4 | med
-- **Note-taking habit** — share of brews with a note, by month and rating [BC] | notes present | ok | line | 3 | low
+- **Bag yield** — share of bag grams logged as brews (86%), unaccounted grams per bag [DB, BQ] | amount_g, doses | ok | tile | 4 | med
+- **Note-taking habit** — share of brews with a note, by month and rating [BQ] | notes present | ok | line | 3 | low
 
 ## Buying & value
 
@@ -134,18 +134,18 @@ Sources in brackets. All rating stats follow the foundation's rating switches
 - **$/g by roaster** — weighted, ranked (Sey $0.108 vs Picky Chemist $0.393) [DB] | cost, amount_g, roaster | ok | bar | 2 | high
 - **$/g by origin** — with bag count [DB] | cost, amount_g, origin | ok | bar | 2 | high
 - **$/g by process group** — are co-ferments the premium tier? [DB] | cost, amount_g, processGroup | ok | bar | 2 | high
-- **Price vs rating** — does paying more get a better cup; correlation + scatter of $/g vs bag rating [DB, BC] | cost, amount_g, rating | ok | scatter | 4 | high
-- **Value map** — adjusted rating vs $/g with a "cheap & great" quadrant and a top value-picks list [DB, BC] | cost, amount_g, rating | ok | scatter + table | 4 | high
+- **Price vs rating** — does paying more get a better cup; correlation + scatter of $/g vs bag rating [DB, BQ] | cost, amount_g, rating | ok | scatter | 4 | high
+- **Value map** — adjusted rating vs $/g with a "cheap & great" quadrant and a top value-picks list [DB, BQ] | cost, amount_g, rating | ok | scatter + table | 4 | high
 - **Best value roasters** — adjusted rating ÷ $/g per roaster [DB] | roaster, cost, rating | ok | table | 4 | high
-- **Roaster report card** — bags, $, $/g, rating, rated-bag %, last bought per roaster [DB, BC] | coffees + rating | ok | table | 4 | high
+- **Roaster report card** — bags, $, $/g, rating, rated-bag %, last bought per roaster [DB, BQ] | coffees + rating | ok | table | 4 | high
 - **New-roaster discovery** — first-ever bag per roaster per month + cumulative roasters [DB] | roaster, roast_date | ok | line | 4 | high
-- **Arrival lag** — days from roast to logging the bag, per roaster (5–40 days) [BC] | roastingDate, bean created timestamp | ok | bar | 4 | high
+- **Arrival lag** — days from roast to logging the bag, per roaster (5–40 days) [BQ] | roastingDate, bean created timestamp | ok | bar | 4 | high
 - **$/g by roast level** — ordered by degrees of roast [DB] | cost, roast_levels | ok (skewed) | bar | 2 | med
-- **Bag size habits** — 100/125/200/250 g split and shift over time [DB, BC] | amount_g, roast_date | ok | bar | 4 | med
+- **Bag size habits** — 100/125/200/250 g split and shift over time [DB, BQ] | amount_g, roast_date | ok | bar | 4 | med
 - **Share of spend by roaster** — top roasters' share of $, rest grouped [DB] | roaster, cost | ok | stacked 100% bar | 4 | med
-- **Roaster loyalty over time** — monthly bags per top-N roaster, repeat-buy rate [DB, BC] | roaster, roast_date | ok | stacked bar | 4 | med
-- **Origin / process mix over time** — bags per origin and per process group by month [DB, BC] | origin, processGroup, roast_date | ok | stacked bar | 2 | med
-- **Repeat purchases** — coffees bought twice (33 pairs): bag 1 vs bag 2 rating, repeat rate [DB, BC] | name + roaster, rating | ok (fuzzy matching) | table | 4 | med
+- **Roaster loyalty over time** — monthly bags per top-N roaster, repeat-buy rate [DB, BQ] | roaster, roast_date | ok | stacked bar | 4 | med
+- **Origin / process mix over time** — bags per origin and per process group by month [DB, BQ] | origin, processGroup, roast_date | ok | stacked bar | 2 | med
+- **Repeat purchases** — coffees bought twice (33 pairs): bag 1 vs bag 2 rating, repeat rate [DB, BQ] | name + roaster, rating | ok (fuzzy matching) | table | 4 | med
 - **Purchase cadence** — days between purchases, average gap, longest drought [DB] | roast_date | ok (proxy) | line | 4 | med
 - **Rebuy-worthy list** — best bags never rebought from roasters still bought [DB] | coffees + rating | ok | table | 3 | low
 - **Buying bursts** — purchase calendar heatmap [DB] | roast_date | ok | calendar | 4 | low
@@ -164,8 +164,8 @@ Subscriptions (own sub-section, user-requested in the roadmap):
 
 - **Backlog size over time** — bags/grams on hand per day: bought minus finished (last brew) [DB] | roast_date, last brew | ok (reconstructed) | line | 4 | high
 - **Inflow vs outflow** — grams bought vs brewed per month; is the pile growing [DB] | amount_g, doses | ok | paired bar | 4 | high
-- **Time in backlog** — days roast → first brew per bag (avg 55), by roaster/process [DB, BC] | roast_date, first brew | ok | bar | 4 | high
-- **Backlog age profile** — waiting bags bucketed by days since roast (net of freezer) [DB, BC] | roast_date, frozen_*, status | ok | bar | 4 | high
+- **Time in backlog** — days roast → first brew per bag (avg 55), by roaster/process [DB, BQ] | roast_date, first brew | ok | bar | 4 | high
+- **Backlog age profile** — waiting bags bucketed by days since roast (net of freezer) [DB, BQ] | roast_date, frozen_*, status | ok | bar | 4 | high
 - **Rest-window adherence** — % brews before / inside / after the bag's window (65 / 1177 / 102) [DB] | rest_days_low/high, rest days | ok | stacked bar | 4 | high
 - **Rating vs rest window** — early / in-window / late means, plus rating vs position in window (0 = low, 1 = high) [DB] | rest window, rating | ok | bar + scatter | 4 | high
 - **Urgency right now** — backlog bags ready / not yet / past drink-before [DB] | urgency.ts | ok | tile | 3 | med
@@ -179,22 +179,22 @@ Subscriptions (own sub-section, user-requested in the roadmap):
 - **Rest windows by roaster** — typical stated window per roaster [DB] | rest_days_* | ok | range bar | 4 | low
 - **Days saved by freezing** — rest days paused across frozen bags [DB] | frozen_* | thin | tile | 4 | low
 - **What gets frozen** — frozen bags by roaster/process/window [DB] | frozen_* | thin | table | 4 | low
-- **Bags never brewed** — archived without brews (3) [DB] | status, BC link | ok | tile | 4 | low
+- **Bags never brewed** — archived without brews (3) [DB] | status, BQ link | ok | tile | 4 | low
 - **On-deck behavior** — opened → first brew, open → archive [DB] | opened_date | thin (since 2026-09-20) | tile | 4 | low
 
 ## Records & fun
 
 - **Best / worst bag ever** — top and bottom bags by mean rating (min brews) [DB] | rating per bag | ok | table | 3 | high
-- **Highest-rated brews** — top 10 with bag, method, water, grind [BC] | brews | ok | table | 3 | high
-- **Perfect 10s** — the 7 brews rated 10 and what they share [BC] | rating = 10 | ok | table | 3 | med
-- **Biggest dial-in jump** — largest gain between consecutive brews of a bag [BC] | rating per bag | ok | table | 3 | med
-- **Most-brewed bag** — most brews (16) / grams [DB, BC] | brews per bag | ok | tile | 3 | med
-- **Firsts** — first bag per roaster/origin/process, first brew per dripper/filter/water/grinder [DB, BC] | dates | ok | table | 3 | med
+- **Highest-rated brews** — top 10 with bag, method, water, grind [BQ] | brews | ok | table | 3 | high
+- **Perfect 10s** — the 7 brews rated 10 and what they share [BQ] | rating = 10 | ok | table | 3 | med
+- **Biggest dial-in jump** — largest gain between consecutive brews of a bag [BQ] | rating per bag | ok | table | 3 | med
+- **Most-brewed bag** — most brews (16) / grams [DB, BQ] | brews per bag | ok | tile | 3 | med
+- **Firsts** — first bag per roaster/origin/process, first brew per dripper/filter/water/grinder [DB, BQ] | dates | ok | table | 3 | med
 - **Biggest buying month** — most bags (Mar: 45) / most $ (Apr: $1,032) [DB] | roast_date, cost | ok | tile | 3 | med
 - **Most / least expensive bag** — by $/g and absolute [DB] | cost, amount_g | ok | table | 3 | med
 - **Oldest bag waiting** — longest-resting backlog bag [DB] | roast_date, frozen_* | ok | tile | 3 | med
-- **Busiest brew day** — 13 brews [BC] | timestamp | ok | tile | 3 | low
-- **Longest / shortest brew** — brew_time extremes, zeros excluded [BC] | brew_time | ok | tile | 3 | low
+- **Busiest brew day** — 13 brews [BQ] | timestamp | ok | tile | 3 | low
+- **Longest / shortest brew** — brew_time extremes, zeros excluded [BQ] | brew_time | ok | tile | 3 | low
 - **Most-renamed coffee** — slug redirects (15) [DB] | slug_redirects | thin | tile | 3 | low
 
 ## Pour analytics
@@ -227,7 +227,7 @@ family (and ideally within a bag), always show n.
 - **Pour accuracy** — final water vs target | final_g, brew_quantity | ok | histogram | 6 | low
 - **Peak pour rate** — aggressive pours (> 20 g/s) vs rating | peak_rate | ok | strip plot | 6 | low
 - **Pour habits by time** — pour speed/timing by hour × weekday | avg_rate, total_s | ok | heatmap | 6 | low
-- **Profile availability** — share of brews with a profile, by month [BC] | flow_profile | ok | tile | 6 | low
+- **Profile availability** — share of brews with a profile, by month [BQ] | flow_profile | ok | tile | 6 | low
 - **Alpha Switch steep time** — closed vs open phase | **needs-new-data**: switch-open marker (invisible on one scale) | stacked bar | 6 | low
 - **Channeling / stall detector** — drip rate during drawdown | **needs-new-data**: server-only weight (second scale) | line | 6 | low
 
@@ -362,7 +362,7 @@ Graycano lifts +0.28). Hypotheses, not findings: the bean dominates rating.
 - **Data starts** 2026-01-19 (bags), 2026-02-09 (brews), 2026-03-04 (flow
   profiles); January is partial and `3y` is mostly empty. `opened_date` only
   since 2026-09-20.
-- **Rest days** must be net of freezer time (BC `bean_age_days` ignores it);
+- **Rest days** must be net of freezer time (BQ `bean_age_days` ignores it);
   10 of 18 frozen bags are still frozen (open freeze runs to the brew).
 - **Zeros mean "not entered"**: rating 0 (37 brews, 68 beans), brew_time 0
   (18), bloom 0 (35), brew_quantity 0 and one −368.6; a few malformed grind
@@ -372,7 +372,7 @@ Graycano lifts +0.28). Hypotheses, not findings: the bean dominates rating.
 - **Back-filled brews:** brew timestamps are already local, but 9 sit on
   whole hours and 12 predate their bag's creation; exclude from hour-of-day.
   Insights uses whole hours only (the created_at rule flagged 30 on prod-copy, 2026-10-11).
-  BC `roastingDate` is mixed ISO-UTC / plain date: convert ISO carefully so a
+  BQ `roastingDate` is mixed ISO-UTC / plain date: convert ISO carefully so a
   late-evening roast doesn't land on the next day.
 - **Brew upsert key:** two brews share both timestamp and bean; key on
   `bc_uuid` (the import spec does).

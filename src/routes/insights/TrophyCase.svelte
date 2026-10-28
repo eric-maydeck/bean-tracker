@@ -188,7 +188,7 @@
           <article class="detail trophy-detail">
             <div class="detail-media">
               {@render img(t, preview ?? t.image)}
-              <!-- Under the photo: when the gear was added (BC created / first brew, with time) and last updated. -->
+              <!-- Under the photo: when the gear was added (BQ created / first brew, with time) and last updated. -->
               <div class="media-meta">
                 <span>Added {@render stamp(t.added)}</span>
                 {#if t.updatedAt}<span>Updated {@render stamp(t.updatedAt)}</span>{/if}

@@ -275,7 +275,7 @@ CREATE TABLE IF NOT EXISTS gear_details (
   PRIMARY KEY (kind, name)
 );
 
--- One compact flow series per Bean Conqueror brew, from BC's Visualizer upload (plan 2026-10-27-bc-phone-import).
+-- One compact flow series per Bean Conqueror brew, from BQ's Visualizer upload (plan 2026-10-27-bc-phone-import).
 -- No FK: a flow may arrive before the zip import brings its brew; join on bc_uuid.
 CREATE TABLE IF NOT EXISTS beanconqueror_brew_flows (
   bc_uuid TEXT PRIMARY KEY,
@@ -292,7 +292,7 @@ CREATE TABLE IF NOT EXISTS brew_pour_readings (
   bc_uuid TEXT PRIMARY KEY,
   detector_version INTEGER NOT NULL,
   flow_uploaded_at TEXT NOT NULL,   -- beanconqueror_brew_flows.uploaded_at it was read from
-  water_g REAL, dose_g REAL, logged_brew_time TEXT,  -- BC's logged inputs, as read
+  water_g REAL, dose_g REAL, logged_brew_time TEXT,  -- BQ's logged inputs, as read
   structure_key TEXT,
   pattern TEXT NOT NULL,
   pour_count INTEGER NOT NULL,

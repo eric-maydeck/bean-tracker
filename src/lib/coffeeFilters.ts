@@ -40,7 +40,7 @@ export const COLUMNS: readonly Column[] = [
   { key: 'roast_level', label: 'Roast level', short: 'Roast', kind: 'text' },
   { key: 'decaf', label: 'Decaf', short: 'Decaf', kind: 'bool' },
   { key: 'frozen', label: 'Frozen', short: 'Frozen', kind: 'bool' },
-  { key: 'bc', label: 'In Bean Conqueror', short: 'In BC', kind: 'bool' },
+  { key: 'bc', label: 'In Bean Conqueror', short: 'In BQ', kind: 'bool' },
   { key: 'cost_per_gram', label: 'Cost/g', short: 'Cost/g', kind: 'number' },
   { key: 'amount_g', label: 'Weight', short: 'Weight', kind: 'number', unit: 'g' },
   { key: 'roast_date', label: 'Roast date', short: 'Roasted', kind: 'date' },

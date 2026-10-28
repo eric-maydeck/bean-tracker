@@ -19,7 +19,7 @@ export function parseMethod(name: string | null, tools: string | null): { drippe
   return { dripper: name.trim(), filter: tools?.replace(/ filters$/i, '').trim() || null };
 }
 
-// Bean Conqueror's preparation style, except the OXO Rapid Brewer: styled ESPRESSO in BC but it
+// Bean Conqueror's preparation style, except the OXO Rapid Brewer: styled ESPRESSO in BQ but it
 // brews soup (user, 2026-10-11).
 const STYLE: Record<string, BrewerType> = { 'POUR OVER': 'pourover', ESPRESSO: 'espresso', 'FULL IMMERSION': 'immersion' };
 export const brewerType = (name: string | null, style: string | null): BrewerType =>

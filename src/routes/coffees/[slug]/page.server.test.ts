@@ -69,11 +69,11 @@ describe('coffee page Bean Conqueror link', () => {
   it('load includes the linked bean; Unlink is admin-only and returns the bean to the list', async () => {
     const db = getDb();
     const { id, slug } = createCoffee(db, sampleInput({ coffee_name: 'Linked Page Test' }));
-    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('pb1', 'BC Name', '2026-10-01', ?)`).run(id);
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('pb1', 'BQ Name', '2026-10-01', ?)`).run(id);
     const event = (isAdmin: boolean) => ({ params: { slug }, url: new URL('http://x/'), setHeaders: () => {}, locals: { isAdmin } }) as never;
 
     const data = (await load(event(false))) as { beanConqueror: unknown };
-    expect(data.beanConqueror).toEqual({ id: 'pb1', name: 'BC Name', brewCount: 0 });
+    expect(data.beanConqueror).toEqual({ id: 'pb1', name: 'BQ Name', brewCount: 0 });
 
     await expect(actions.unlinkBeanConqueror(event(false))).rejects.toMatchObject({ status: 401 });
     expect(await actions.unlinkBeanConqueror(event(true))).toEqual({ success: true });
