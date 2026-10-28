@@ -162,7 +162,7 @@ export function thinOf(best: number, bands: readonly SpotBand[]): Spot['thin'] {
 // `rivals`: the other solid bands' gap to the best, its SE and the bags behind the smaller side.
 // Best's gap to band `x` on the bags that brewed both (≥ 2 brews each, as pairedDeltas pairs): each bag's mean rating in
 // best minus its mean in x. Its mean, SE (SD of those bag gaps ÷ √n) and n; null under 2 shared bags.
-function pairedGap(rows: readonly BrewFact[], band: BandFn, best: string, x: string) {
+export function pairedGap(rows: readonly BrewFact[], band: BandFn, best: string, x: string) {
   const d: number[] = [];
   for (const [, g] of groupBy(rows, (r) => r.coffeeId)) {
     const by = groupBy(g, (r) => band(r)?.label), a = by.get(best), c = by.get(x);
