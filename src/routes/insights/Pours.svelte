@@ -28,7 +28,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import SampleNote from '$lib/components/SampleNote.svelte';
-  import { deltaColor, deltaInk, labDelta, signed } from '$lib/components/deltaColor';
+  import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
   import { SAMPLE_HELP } from '$lib/sample';
   import { insightsParams, type InsightsView, type InsightsUrlState } from '$lib/insightsUrl';
   import type { Breakdown } from '$lib/server/insights/lab';
@@ -42,11 +42,6 @@
     t: PoursTab | null; s: InsightsView; explicit: InsightsUrlState; placeTip: (e: ToggleEvent) => void; choose: (c: InsightsUrlState) => void;
   } = $props();
   const emptyLine = useEmptyLine();
-
-  // TEMPORARY preview variants (pv=card-b,tech-b,grid-b,rest-b); dropped after the round.
-  let pv = $derived(new Set((page.url.searchParams.get('pv') ?? '').split(',')));
-  const dotR = (n: number) => 6 + Math.min(10, Math.sqrt(n) * 1.6);
-  const lineY = (v: number, m: number) => (60 - (v / m) * 52).toFixed(1);
 
   // Report card
   let open = $derived(s.pourThin === 'open');
@@ -71,7 +66,6 @@
     if (t.agitationByProcess) out.splice(1, 0, { id: 'pours-agitation-process', title: 'Agitation by process', help: ['The same delta, per process.'], bd: t.agitationByProcess });
     return out;
   });
-  let scale = $derived(Math.max(0.1, ...cards.flatMap((c) => c.bars?.bands.map((b) => Math.abs(b.delta ?? 0)) ?? [])));
   const likely = (x: PoursTab['technique'][number], label: string) => x.inferred?.[label] ?? 0;
   const maxSplit = $derived(Math.max(1, ...(t?.split ?? []).map((x) => x.pourS + x.drawdownS)));
   const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
@@ -98,7 +92,7 @@
   {#if t.recipes.length}
     <section class="chart-panel" data-section="pours-recipes">
       <LabHead id="pours-recipes" title="Recipe report card" {placeTip} help={[RECIPE_HELP, ...SAME_BAG_HELP.slice(1)]} />
-      <ul class="card" class:stack={pv.has('card-b')} aria-label="Recipes">
+      <ul class="card" aria-label="Recipes">
         {#each shown as r (r.id ?? r.name)}
           {@const d = r.stat?.delta ?? null}
           <li>
@@ -133,29 +127,6 @@
   {#if cards.length || t.words.length}
     <section class="pours-technique" data-section="pours-technique">
       <LabHead id="pours-technique" title="Technique" {placeTip} help={[...SAME_BAG_HELP, 'Brews without a flow reading still set their bag\'s average.']} />
-      {#if pv.has('tech-b')}
-        <div class="mini-grid">
-          {#each cards as c (c.id)}
-            <section class="chart-panel mini" data-section={c.id}>
-              <LabHead id={c.id} title={c.title} level={3} {placeTip} help={[...c.help, ...SAME_BAG_HELP]} />
-              {#if c.bd}
-                <LabHeatmap by={c.bd} ariaLabel="{c.title}: rating vs the same bag's other brews" />
-              {:else if c.bars}
-                <div class="cols" role="img" aria-label="{c.title}: {c.bars.bands.map((b) => `${b.label} ${signed(b.delta ?? 0)}`).join(', ')}">
-                  {#each c.bars.bands as b (b.label)}
-                    <div class="col" title="{b.label}: {signed(b.delta ?? 0)} ({b.brews} brews)">
-                      <span class="half up">{#if (b.delta ?? 0) > 0}<span class="m bar" class:small-sample-mark={b.sample.small} style:height="{(100 * (b.delta ?? 0)) / scale}%"></span>{/if}</span>
-                      <span class="half dn">{#if (b.delta ?? 0) < 0}<span class="m bar neg" class:small-sample-mark={b.sample.small} style:height="{(100 * -(b.delta ?? 0)) / scale}%"></span>{/if}</span>
-                      <span class="v {deltaInk(b.delta)}">{signed(b.delta ?? 0, 1)}</span>
-                      <span class="l">{b.label}</span>
-                    </div>
-                  {/each}
-                </div>
-              {/if}
-            </section>
-          {/each}
-        </div>
-      {:else}
       <div class="lab-grid" use:fitPairs={[t, s]}>
         {#each cards as c, i (c.id)}
           <section class="chart-panel lab-chart" class:span={cards.length % 2 === 1 && i === cards.length - 1} data-section={c.id}>
@@ -183,7 +154,6 @@
           </section>
         {/each}
       </div>
-      {/if}
       {#if t.words.length}
         <section class="chart-panel words" data-section="pours-words">
           <LabHead id="pours-words" title="Words in brew notes" level={3} {placeTip}
@@ -210,21 +180,7 @@
           {#each BY as [k, name] (k)}<button aria-pressed={by === k} onclick={() => choose({ recipeBy: k === 'roast' ? undefined : k })}>{name}</button>{/each}
         </div>
       </LabHead>
-      {#if t.recipeBy[by] && pv.has('grid-b')}
-        {@const bd = t.recipeBy[by]!}
-        <div class="dots-wrap"><div class="dots" style:--n={bd.cols.length} role="img" aria-label="Recipe by {byLabel}: dot per cell, color = delta, size = brews">
-          <span></span>{#each bd.cols as c (c)}<span class="ch">{c}</span>{/each}
-          {#each bd.rows as r, i (r)}
-            <span class="rh">{r}</span>
-            {#each bd.cols as c, j (c)}
-              {@const cell = bd.cells[i][j]}
-              <span class="cell" title="{r} · {c}: {cell && cell.delta !== null ? signed(cell.delta) : 'no match'}">
-                {#if cell && cell.delta !== null}<span class="dot" class:thin={cell.sample.small} style:width="{2 * dotR(cell.brews)}px" style:height="{2 * dotR(cell.brews)}px" style:background={deltaColor(cell.delta)}></span><span class="dv">{signed(cell.delta, 1)}</span>{:else}<span class="dv">–</span>{/if}
-              </span>
-            {/each}
-          {/each}
-        </div></div>
-      {:else if t.recipeBy[by]}
+      {#if t.recipeBy[by]}
         <LabHeatmap by={t.recipeBy[by]!} ariaLabel="Recipe by {byLabel}: rating vs the same bag's other brews" />
       {:else}
         <p class="hl-empty">No {byLabel} has 3+ bags with paired brews here.</p>
@@ -239,24 +195,7 @@
           {#if bd}
             <section class="chart-panel lab-chart" class:span={!(t.rest.byRecipe && t.rest.byAgitation)} data-section={id}>
               <LabHead {id} {title} {placeTip} help={['Days off roast at the brew.', RECIPE_HELP, SAMPLE_HELP]} />
-              {#if pv.has('rest-b')}
-                {@const m = Math.max(0.1, ...bd.cells.flat().map((c) => Math.abs(c?.delta ?? 0)))}
-                <div class="fit-body">
-                  <svg class="lines" viewBox="0 0 300 120" role="img" aria-label="{title}: delta by rest band, a line per series">
-                    <line x1="0" x2="300" y1="60" y2="60" />
-                    {#each bd.cols as c, j (c)}
-                      {@const pts = bd.rows.map((_, i) => [bd.rows.length > 1 ? 20 + (i / (bd.rows.length - 1)) * 260 : 150, bd.cells[i][j]?.delta ?? null, bd.cells[i][j]?.sample.small] as const)}
-                      <polyline points={pts.filter((q) => q[1] !== null).map((q) => `${q[0]},${lineY(q[1]!, m)}`).join(' ')} style:stroke="var(--series-{j + 1}-ink, var(--series-{j + 1}))" />
-                      {#each pts as q (q[0])}{#if q[1] !== null}<circle cx={q[0]} cy={lineY(q[1], m)} r="4" class:hollow={q[2]} style:stroke="var(--series-{j + 1}-ink, var(--series-{j + 1}))" style:fill={q[2] ? 'var(--color-surface, #fff)' : `var(--series-${j + 1}-ink, var(--series-${j + 1}))`} />{/if}{/each}
-                    {/each}
-                  </svg>
-                  <div class="xl">{#each bd.rows as r (r)}<span>{r} d</span>{/each}</div>
-                  <ul class="lg">{#each bd.cols as c, j (c)}<li><i style:background="var(--series-{j + 1}-ink, var(--series-{j + 1}))"></i>{c}</li>{/each}</ul>
-                  <p class="chart-note">Same-bag delta by days off roast (±{m.toFixed(1)}); hollow = few brews</p>
-                </div>
-              {:else}
               <div class="fit-body"><LabHeatmap by={bd} ariaLabel="{title}: rating vs the same bag's other brews" /></div>
-              {/if}
             </section>
           {/if}
         {/each}
@@ -423,166 +362,5 @@
     .more button {
       min-height: 44px;
     }
-  }
-  /* TEMPORARY variant styles */
-  .card.stack {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: var(--space-3);
-  }
-  .card.stack li {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: var(--space-1) var(--space-2);
-    padding: var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
-  }
-  .card.stack li:first-child {
-    border-top: 1px solid var(--color-border);
-  }
-  .card.stack .name {
-    grid-column: 1;
-  }
-  .card.stack .delta {
-    grid-column: 2;
-    grid-row: 1;
-    font-size: 1.5rem;
-    text-align: right;
-  }
-  .card.stack .best,
-  .card.stack .counts,
-  .card.stack .num,
-  .card.stack .spark {
-    grid-column: 1 / -1;
-  }
-  .mini-grid {
-    --bar-label-w: 5rem;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
-    gap: var(--space-3);
-  }
-  .mini {
-    margin: 0;
-  }
-  .cols {
-    display: flex;
-    gap: var(--space-1);
-    align-items: stretch;
-  }
-  .col {
-    flex: 1 1 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
-  .half {
-    height: 3rem;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-  }
-  .half.up {
-    align-items: flex-end;
-    border-bottom: 1px solid var(--color-border);
-  }
-  .half.dn {
-    align-items: flex-start;
-  }
-  .m {
-    width: min(70%, 1.5rem);
-    background-color: var(--div-high);
-  }
-  .m.neg {
-    background-color: var(--div-low);
-  }
-  .col .v {
-    font-size: 0.7rem;
-    font-variant-numeric: tabular-nums;
-    margin-top: 2px;
-  }
-  .col .l {
-    font-size: 0.65rem;
-    color: var(--color-text-muted);
-    overflow-wrap: anywhere;
-    line-height: 1.15;
-  }
-  .dots-wrap {
-    overflow-x: auto;
-  }
-  .dots {
-    min-width: max-content;
-    display: grid;
-    grid-template-columns: minmax(4rem, 8rem) repeat(var(--n), minmax(3.25rem, 1fr));
-    align-items: center;
-    gap: var(--space-1);
-    font-size: 0.8rem;
-  }
-  .dots .rh {
-    position: sticky;
-    left: 0;
-    background: var(--color-surface, inherit);
-  }
-  .dots .ch {
-    text-align: center;
-    overflow-wrap: anywhere;
-    line-height: 1.15;
-  }
-  .dots .cell {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 2.75rem;
-    justify-content: center;
-  }
-  .dots .dot {
-    border-radius: 50%;
-    display: block;
-  }
-  .dots .dot.thin {
-    outline: 2px dashed var(--color-text-muted);
-    outline-offset: 1px;
-  }
-  .dots .dv {
-    font-size: 0.7rem;
-    color: var(--color-text-muted);
-  }
-  .lines {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-  .lines line {
-    stroke: var(--color-border);
-  }
-  .lines polyline {
-    fill: none;
-    stroke-width: 2;
-  }
-  .lines circle {
-    stroke-width: 2;
-  }
-  .xl {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-    padding: 0 2%;
-  }
-  .lg {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1) var(--space-3);
-    font-size: 0.8rem;
-    margin-top: var(--space-2);
-  }
-  .lg i {
-    display: inline-block;
-    width: 0.7rem;
-    height: 0.7rem;
-    border-radius: 2px;
-    margin-right: 4px;
   }
 </style>

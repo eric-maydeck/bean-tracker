@@ -107,9 +107,7 @@ export const load: PageServerLoad = ({ url }) => {
   if (s.tab === 'pours') {
     const { facts, recipes } = loadPourFacts(db, everyBrew);
     const calibrated = s.ratings === 'current';
-    const pv = (url.searchParams.get('pv') ?? '').split(','); // TEMPORARY preview switch (pv=mix-split|mix-one)
-    const pvSplit = pv.includes('mix-split') ? { split: true } : pv.includes('mix-one') ? { split: false } : {};
-    poursData = poursTab(ratedIn(scored, period, s.ratings), facts, recipes, { ...(calibrated ? { allRows: ratedIn(scored, period, 'all') } : {}), ...pvSplit });
+    poursData = poursTab(ratedIn(scored, period, s.ratings), facts, recipes, calibrated ? { allRows: ratedIn(scored, period, 'all') } : {});
   }
   return {
     explicit,
