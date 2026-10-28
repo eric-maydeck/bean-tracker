@@ -203,7 +203,7 @@
   .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); column-gap: var(--space-2); }
   .drippers small { margin: var(--space-1) 0; }
   .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
-  .pour-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .tools { display: flex; gap: var(--space-2); }
   .form-field-checkbox { align-self: end; }
