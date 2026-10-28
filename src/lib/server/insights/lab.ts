@@ -233,10 +233,13 @@ export const SLICE_OF: Record<Slice, (b: BrewFact) => string | null> = {
   roast: (b) => b.roastLevel, process: (b) => b.processGroup, origin: (b) => b.origin, roaster: (b) => b.roaster
 };
 // delta null = no paired brews (blank); a thin cell (not solid) keeps its delta and draws faded; counts for the tip.
-export interface Cell { delta: number | null; se?: number | null; solid: boolean; sample: Sample; brews: number; bags: number }
+export interface Cell { delta: number | null; se?: number | null; solid: boolean; sample: Sample; brews: number; bags: number; plain?: { brews: number; bags: number } } // plain: a no-match cell's own brews and bags (no same-bag partner)
 // One mapping for every heatmap (breakdown, gearTab's matrix): counts are the paired brews and bags
 // behind the delta, so a tip never reads "6 brews, 0 bags".
-export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'> & { se?: number | null }): Cell => ({ delta: s.delta, ...(s.se != null ? { se: s.se } : {}), solid: s.solid, sample: pooled(s.bags, s.brews), brews: s.brews, bags: s.bags });
+export const cellOf = (s: Pick<BandStat, 'delta' | 'solid' | 'brews' | 'bags'> & { se?: number | null; plainBrews?: number; plainBags?: number }): Cell => ({
+  delta: s.delta, ...(s.se != null ? { se: s.se } : {}), solid: s.solid, sample: pooled(s.bags, s.brews), brews: s.brews, bags: s.bags,
+  ...(s.delta === null && s.plainBrews ? { plain: { brews: s.plainBrews, bags: s.plainBags ?? 0 } } : {})
+});
 export interface Breakdown { rows: string[]; cols: string[]; cells: (Cell | null)[][] } // null cell = no brews there
 // Drop rows, then columns, with no cell that has a delta (all blank: nothing to show, round 1 I8); null when none is left.
 const live = (c: Cell | null) => c !== null && c.delta !== null;

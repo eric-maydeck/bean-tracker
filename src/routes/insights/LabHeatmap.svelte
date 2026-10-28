@@ -27,7 +27,7 @@
     const cell = by.cells[r][c], title = `${by.rows[r]} · ${by.cols[c]}`;
     if (!cell) return { title, note: 'No brews.' };
     const counts: [string, string][] = [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]];
-    if (cell.delta === null) return { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
+    if (cell.delta === null) return cell.plain ? { title, rows: [['Brews', `${cell.plain.brews}`], ['Bags', `${cell.plain.bags}`]], note: noMatch(noun) } : { title, rows: counts, note: cell.brews ? noMatch(noun) : 'No brews' };
     return { title, rows: [[`vs ${vs}`, labDelta(cell.delta, ses), deltaInk(cell.delta)], ...(cell.sample.small ? [] : counts)], ...sampleField(cell.sample, true) };
   };
 </script>

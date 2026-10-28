@@ -332,6 +332,9 @@ describe('breakdown', () => {
     expect(a.delta).not.toBeNull();
     expect(cellOf({ ...a, solid: true })).toMatchObject({ delta: a.delta, solid: true, brews: 2, bags: 1 });
     expect(cellOf({ ...a, delta: null, brews: 0, bags: 0 })).toMatchObject({ delta: null, solid: false }); // no paired brews: blank
+    // a no-match cell keeps its own (plain) counts, so its tip can say how many brews it has
+    expect(cellOf({ ...a, delta: null, brews: 0, bags: 0, plainBrews: 42, plainBags: 9 }).plain).toEqual({ brews: 42, bags: 9 });
+    expect(cellOf({ ...a, delta: null, brews: 0, bags: 0, plainBrews: 0 }).plain).toBeUndefined();
   });
   it('trimBlank: rows, then columns, with no delta are dropped; nothing left → null', () => {
     const c = (delta: number | null) => ({ delta, solid: true, sample: { bags: 2, brews: 4, small: true }, brews: 4, bags: 2 });
