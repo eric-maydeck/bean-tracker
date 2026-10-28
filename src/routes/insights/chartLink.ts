@@ -90,6 +90,7 @@ const TAB_SUMMARY: Record<Tab, (n: string) => string> = {
   spend: (n) => `What ${n} spends on coffee, and on what`,
   sweetspots: (n) => `The recipes ${n} rates best`,
   brewing: (n) => `How ${n} dials in brews`,
+  pours: (n) => `How ${n}'s recipes and pours compare`,
   water: (n) => `How water affects ${n}'s ratings`,
   gear: (n) => `How ${n}'s gear compares`
 };

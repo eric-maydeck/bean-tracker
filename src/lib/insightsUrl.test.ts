@@ -575,6 +575,20 @@ describe('brewing lab params', () => {
   it('reads the four tabs', () => {
     for (const t of ['sweetspots', 'brewing', 'water', 'gear']) expect(parse(`tab=${t.toUpperCase()}`).tab).toBe(t);
   });
+  it('pours: tab, recipeBy and pourThin parse, default and junk dropped, round-trip', () => {
+    expect(parse('tab=POURS').tab).toBe('pours');
+    expect(parse('recipeBy=Process').recipeBy).toBe('process');
+    expect(parse('recipeBy=roaster').recipeBy).toBe('roaster');
+    expect(['roast', 'origin', 'zzz'].map((v) => parse(`recipeBy=${v}`).recipeBy)).toEqual([undefined, undefined, undefined]);
+    expect(parse('pourThin=OPEN').pourThin).toBe('open');
+    expect(parse('pourThin=yes').pourThin).toBeUndefined();
+    const q = 'tab=pours&recipeBy=process&pourThin=open';
+    expect(insightsParams(parse(q)).toString()).toBe(q);
+    expect(insightsParams(withDefaults(parse(q))).toString()).toContain('tab=pours&rank=rating&measure=brews&unit=grams&recipeBy=process&pourThin=open');
+    expect(withDefaults(parse(q))).toMatchObject({ recipeBy: 'process', pourThin: 'open' });
+    const c = 'range=12m&compare=1';
+    expect({ ...parse(`tab=pours&${c}`), tab: 'brewing' }).toEqual(parse(`tab=brewing&${c}`));
+  });
   it('sweet spots picker: values from the data, canonical case; unknown dropped', () => {
     expect(parse('bag=2025-OLD-BAG&roast=ultralight&process=natural&origin=kenya&roaster=SEY')).toMatchObject(
       { bag: '2025-old-bag', roast: 'Ultralight', process: 'Natural', origin: 'Kenya', roaster: 'Sey' });
@@ -638,6 +652,9 @@ describe('brewing lab params', () => {
 });
 
 describe('TAB_GROUPS', () => {
+  it('Lab lists sweetspots, brewing, pours, water, gear', () => {
+    expect(TAB_GROUPS.find((g) => g.label === 'Lab')!.tabs).toEqual(['sweetspots', 'brewing', 'pours', 'water', 'gear']);
+  });
   it('lists every tab exactly once, in TABS order', () => {
     expect(TAB_GROUPS.flatMap((g) => g.tabs)).toEqual([...TABS]);
   });
@@ -714,7 +731,7 @@ describe('coffees filter note', () => {
 describe('ratingsMenuOn', () => {
   const on = (q: string) => ratingsMenuOn(withDefaults(parse(q)));
   it('the lab tabs and Records; Leaderboards by rating; Habits measuring rating', () => {
-    expect(['tab=sweetspots', 'tab=brewing', 'tab=water', 'tab=gear', 'tab=records'].map(on)).toEqual([true, true, true, true, true]);
+    expect(['tab=sweetspots', 'tab=brewing', 'tab=pours', 'tab=water', 'tab=gear', 'tab=records'].map(on)).toEqual([true, true, true, true, true, true]);
     expect(['tab=leaderboards&rank=rating', 'tab=leaderboards&rank=like', 'tab=habits&measure=rating'].map(on)).toEqual([true, true, true]);
     expect(['', 'tab=leaderboards&rank=brews', 'tab=habits&measure=brews', 'tab=consumption', 'tab=milestones'].map(on))
       .toEqual([false, false, false, false, false]);
@@ -821,6 +838,7 @@ describe('brew filters', () => {
     expect(BREW_FILTERS_ON.sweetspots).toEqual([]);
     expect(BREW_FILTERS_ON.milestones).toEqual([]);
     expect(BREW_FILTERS_ON.brewing).toEqual(['dripper', 'filter', 'water']);
+    expect(BREW_FILTERS_ON.pours).toEqual(['dripper', 'filter', 'water']);
     expect(BREW_FILTERS_ON.water).toEqual(['dripper', 'filter', 'brewDose', 'brewTemp']);
     expect(BREW_FILTERS_ON.gear).toEqual(['water', 'brewDose', 'brewTemp']);
     expect(BREW_FILTERS_ON.records).toEqual(['dripper', 'water', 'brewDose']);

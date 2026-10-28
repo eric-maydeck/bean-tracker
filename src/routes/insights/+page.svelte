@@ -37,6 +37,7 @@
   import Insights, { jumpLinks as insightsLinks } from './Insights.svelte';
   import SweetSpots from './SweetSpots.svelte';
   import Brewing, { jumpLinks as brewingLinks } from './Brewing.svelte';
+  import Pours, { jumpLinks as poursLinks } from './Pours.svelte';
   import Water, { jumpLinks as waterLinks } from './Water.svelte';
   import Gear, { jumpLinks as gearLinks } from './Gear.svelte';
   import Spend, { jumpLinks as spendLinks } from './Spend.svelte';
@@ -55,7 +56,7 @@
   // Show all and the Over time / expand switches change nothing the server computes, so they are applied here and written
   // to the URL with replaceState: no refetch, no re-render of the other tiles. `local` holds them until the next real
   // navigation, whose data already includes them (afterNavigate clears it). Everything below reads `explicit`.
-  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy'] as const;
+  const LOCAL_KEYS = ['open', 'views', 'card', 'chart', 'retired', 'gear', 'spendView', 'spendSeries', 'rcSort', 'rcDir', 'rcTop', 'waitBy', 'recipeBy', 'pourThin'] as const;
   let local = $state<Pick<InsightsUrlState, (typeof LOCAL_KEYS)[number]> | null>(null);
   const explicit = $derived(local ? { ...data.explicit, ...local } : data.explicit);
   let s = $derived(withDefaults(explicit));
@@ -225,7 +226,7 @@
     rangeDialog?.close();
   }
 
-  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', water: 'Water', gear: 'Gear' };
+  const TAB_LABEL: Record<Tab, string> = { overview: 'Overview', leaderboards: 'Leaderboards', habits: 'Habits', consumption: 'Consumption', records: 'Records', milestones: 'Milestones', insights: 'Insights', onhand: 'On hand', spend: 'Spend', sweetspots: 'Sweet spots', brewing: 'Brewing', pours: 'Pours', water: 'Water', gear: 'Gear' };
   // A rail link: the same URL choose({ tab }) builds (filters kept, old #anchor dropped).
   function tabHref(tab: Tab) {
     const qs = insightsParams({ ...explicit, tab }).toString();
@@ -518,6 +519,7 @@
     if (s.tab === 'milestones' && data.milestones) return [];
     if (s.tab === 'insights' && data.insights) return insightsLinks(data.insights);
     if (s.tab === 'brewing' && data.brewing && data.lab) return brewingLinks(data.brewing);
+    if (s.tab === 'pours') return poursLinks(data.pours);
     if (s.tab === 'water' && data.water) return waterLinks(data.water);
     if (s.tab === 'gear' && data.gear) return gearLinks(data.gear, data.trophies);
     if (s.tab === 'onhand' && data.onHand) return onHandLinks(data.onHand);
@@ -923,6 +925,8 @@
   />
 {:else if s.tab === 'brewing' && data.brewing && data.lab}
   <Brewing t={data.brewing} lab={data.lab} {s} {placeTip} {choose} />
+{:else if s.tab === 'pours'}
+  <Pours t={data.pours} {s} {placeTip} {choose} />
 {:else if s.tab === 'water' && data.water}
   <Water t={data.water} {s} {placeTip} {choose} />
 {:else if s.tab === 'gear' && data.gear}

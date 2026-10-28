@@ -704,4 +704,28 @@ describe('brew filters', () => {
     expect(w.brews).toBe(1);
     expect(w.firstUsed).toBe(addDays(today, -400));
   });
+  it('pours: only on tab=pours; Calibrated names the recipe it hides, ratings=all does not', () => {
+    seed([[today, 15]]);
+    const db = getDb();
+    db.exec('DELETE FROM beanconqueror_brews; DELETE FROM beanconqueror_beans; DELETE FROM coffees; DELETE FROM recipes;');
+    db.prepare(`INSERT INTO recipes (id, name, definition, created_at, updated_at) VALUES (1, 'Rcp', '{"v":1,"pours":[],"pourCount":{"min":1,"max":9},"drippers":[]}', 'x', 'x')`).run();
+    const reading = JSON.stringify({ v: 1, pours: [0, 1, 2].map((i) => ({ startS: i * 30, durationS: 10, grams: 50, avgGps: 5, peakGps: 8, speed: 'slow', bloom: i === 0, contactS: 30 })), swirls: [], tares: [], bloomCount: 1, bloomHoldS: 30, immersion: false, totalS: 140, drawdownS: 40 });
+    let n = 0;
+    for (const bag of [1, 2, 3]) {
+      const { id } = createCoffee(db, { roaster: 'R', coffee_name: `C${bag}`, origin: null, roast_level: null, processing: 'Washed', amount_g: 250, cost: 25, roast_date: today, frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null });
+      db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES (?, ?, ?, ?)`).run(`b${bag}`, `C${bag}`, today, id);
+      // Four recipe brews before the Calibrated date, two unmatched ones after it.
+      for (const [date, rating, match] of [['2026-03-01', 8, 1], ['2026-03-02', 8, 1], ['2026-03-03', 8, 1], ['2026-03-04', 8, 1], [today, 7, 0], [today, 6, 0]] as const) {
+        const brewId = ++n, uuid = `00000000-0000-4000-8000-${String(brewId).padStart(12, '0')}`;
+        db.prepare(`INSERT INTO beanconqueror_brews (id, bc_created_at, bc_uuid, bean_id, ground_coffee_g, rating, imported_at) VALUES (?, ?, ?, ?, 15, ?, ?)`).run(brewId, `${date}T15:00:${String(brewId).padStart(2, '0')}.000Z`, uuid, `b${bag}`, rating, today);
+        db.prepare(`INSERT INTO brew_pour_readings (bc_uuid, detector_version, flow_uploaded_at, pattern, pour_count, bloom_count, swirl_count, low_confidence, immersion, reading, read_at) VALUES (?, 3, 'x', 'p', 3, 1, 0, 0, 0, ?, 'x')`).run(uuid, reading);
+        if (match) db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) VALUES (?, 1, 'match')`).run(brewId);
+      }
+    }
+    expect(run('?tab=brewing&range=all').pours).toBeNull();
+    const d = run('?tab=pours&range=all&dial=all');
+    expect(d.pours).not.toBeNull();
+    expect(d.pours.hiddenByRatings).toEqual(['Rcp']);
+    expect(run('?tab=pours&range=all&dial=all&ratings=all').pours.hiddenByRatings).toEqual([]);
+  });
 });

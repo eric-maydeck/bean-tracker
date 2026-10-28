@@ -18,6 +18,7 @@ import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { getGearDetails } from '$lib/server/gearDetails';
 import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
+import { loadPourFacts, poursTab } from '$lib/server/insights/pours';
 import { labOptions, matchesBrew, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
 
@@ -101,6 +102,13 @@ export const load: PageServerLoad = ({ url }) => {
     ) ?? { start: dataStart ?? today, end: today };
   // A custom Period has its own menus (the preset ones don't cover it).
   const menuRanges = [...RANGES, ...years.map(String), ...(isCustom(s.range) ? [s.range] : [])];
+  // Pours: the readings load only on this tab, from every brew so dial-in and the filters stay the page's.
+  let poursData: ReturnType<typeof poursTab> = null;
+  if (s.tab === 'pours') {
+    const { facts, recipes } = loadPourFacts(db, everyBrew);
+    const calibrated = s.ratings === 'current';
+    poursData = poursTab(ratedIn(scored, period, s.ratings), facts, recipes, calibrated ? { allRows: ratedIn(scored, period, 'all') } : {});
+  }
   return {
     explicit,
     // What applied on this tab, and the pickers' values (from the unfiltered data, every tab).
@@ -194,6 +202,7 @@ export const load: PageServerLoad = ({ url }) => {
       ? brewingTab(scored, { ...labCtx, all: brews, whole, bags, brewFilters: bf, grinder, exact: Object.fromEntries(Object.entries(EXACT_PARAM).map(([v, k]) => [v, s[k] === 'exact'])),
           by: { temp: s.tempBy, ratio: s.ratioBy, dose: s.doseBy, time: s.timeBy, bloom: s.bloomBy, grind: s.grindBy } })
       : null,
+    pours: poursData,
     water: s.tab === 'water' ? waterTab(scored, bags, labCtx) : null,
     gear: s.tab === 'gear' ? gearTab(scored, labCtx) : null,
     recent: s.tab === 'overview' ? recent(brews, bags, 50) : null,

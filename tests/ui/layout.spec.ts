@@ -2259,8 +2259,8 @@ export const STATES: State[] = [
         path: () => '/account/recipes',
         act: async (page: Page) => {
           const mine = panel(page, 'Your recipes').locator('li.item');
-          await expect(mine).toHaveCount(1);
-          await expect(mine).toContainText('Seed equal pours');
+          await expect(mine).toHaveCount(3); // + the two logged-only recipes the Pours tab's seed adds
+          await expect(mine.filter({ hasText: 'Seed equal pours' })).toHaveCount(1);
           const found = panel(page, 'Found in your brews').locator('li.item');
           await expect(found).toHaveCount(2);
           await expect(found.first()).toContainText('2 tagged in notes (mostly BBS)');
@@ -2273,7 +2273,7 @@ export const STATES: State[] = [
           // The only small structures are the recipe's 4sy (matched) and the dismissed bbf: neither counts as "other".
           await expect(page.getByText(/other structures? with fewer than/)).toHaveCount(0);
           await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
-          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 0 with notes only')).toBeVisible();
+          await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 24 with notes only')).toBeVisible();
         }
       },
       {
@@ -2462,7 +2462,7 @@ export const STATES: State[] = [
           await page.getByRole('button', { name: 'Save', exact: true }).click();
           await expect(page.getByRole('alert')).toHaveText('Ratio must be between 1:5 and 1:30');
           await expect(page.locator('fieldset.pour')).toHaveCount(4);
-          await expect(panel(page, 'Your recipes').locator('li.item')).toHaveCount(1);
+          await expect(panel(page, 'Your recipes').locator('li.item')).toHaveCount(3);
           await expect(panel(page, 'Your recipes')).not.toContainText('Should not save');
         }
       }
@@ -3400,6 +3400,73 @@ export const STATES: State[] = [
       await by.getByRole('button', { name: 'Roaster', exact: true }).click();
       await expect(page).not.toHaveURL(/waitBy/);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  // Pours tab: the report card, technique, recipe x coffee and rest age; thin recipes behind a toggle (pourThin).
+  {
+    name: 'insights-pours', path: () => '/insights?tab=pours',
+    act: async (page) => {
+      for (const id of ['pours-recipes', 'pours-technique', 'pours-recipe-coffee', 'pours-rest']) await expect(page.locator(`#${id}`)).toBeVisible();
+      const rows = page.locator('.chart-panel[data-section="pours-recipes"] li');
+      await expect(rows.filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
+      await expect(rows.filter({ hasText: 'Seed low agitation' })).toHaveCount(1);
+      await expect(rows.filter({ hasText: 'No recipe' })).toHaveCount(0); // thin: behind the toggle
+      await expect(page.getByRole('button', { name: 'Show 2 more with few brews' })).toBeVisible();
+      await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
+      await expect(page.locator('nav.board-jump')).toBeVisible();
+      expect(await page.locator('main .sample-note, main .small-sample-mark, main .small-sample').count()).toBeGreaterThan(0);
+      await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
+    }
+  },
+  {
+    name: 'insights-pours-thin-open', path: () => '/insights?tab=pours&pourThin=open',
+    act: async (page) => {
+      const rows = page.locator('.chart-panel[data-section="pours-recipes"] li');
+      await expect(rows.filter({ hasText: 'Seed equal pours' })).toHaveCount(1);
+      await expect(rows.filter({ hasText: 'No recipe' })).toHaveCount(1);
+      await expect(page.getByRole('button', { name: 'Show fewer' })).toBeVisible();
+      await page.getByRole('button', { name: 'Show fewer' }).click();
+      await expect(page).not.toHaveURL(/pourThin/);
+      await expect(rows.filter({ hasText: 'No recipe' })).toHaveCount(0);
+    }
+  },
+  {
+    name: 'insights-pours-recipe-by', viewports: 'two', path: () => '/insights?tab=pours',
+    act: async (page) => {
+      const panel = page.locator('section.chart-panel[data-section="pours-recipe-coffee"]');
+      await panel.scrollIntoViewIfNeeded();
+      const fetched: string[] = [];
+      page.on('request', (r) => { if (r.url().includes('__data.json')) fetched.push(r.url()); });
+      const by = panel.getByRole('group', { name: 'Group by' });
+      await expect(by.getByRole('button', { name: 'Roast level', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await by.getByRole('button', { name: 'Process', exact: true }).click();
+      await expect(page).toHaveURL(/recipeBy=process/);
+      await expect(by.getByRole('button', { name: 'Process', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(panel.getByRole('group', { name: /^Recipe by process/ })).toContainText('Washed');
+      expect(fetched).toEqual([]);
+      await page.reload();
+      await expect(by.getByRole('button', { name: 'Process', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    }
+  },
+  {
+    name: 'insights-pours-bad-params', viewports: 'two', path: () => '/insights?tab=pours&recipeBy=zzz&pourThin=x',
+    act: async (page) => {
+      const by = page.locator('[data-section="pours-recipe-coffee"]').getByRole('group', { name: 'Group by' });
+      await expect(by.getByRole('button', { name: 'Roast level', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('button', { name: 'Show 2 more with few brews' })).toBeVisible();
+    }
+  },
+  {
+    name: 'insights-pours-chart-link', viewports: 'two', path: () => '/insights?tab=pours&chart=pours-technique',
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Technique', exact: true })).toBeInViewport();
+    }
+  },
+  {
+    name: 'insights-pours-empty', viewports: 'two', path: () => '/insights?tab=pours&range=2000-01-01..2000-01-31',
+    act: async (page) => {
+      await expect(page.getByText('No rated brews with pour readings in this period.')).toBeVisible();
+      await expect(page.getByRole('link', { name: 'Set up recipes' })).toHaveAttribute('href', '/account/recipes');
     }
   },
   // A tile's title never moves when per person adds its caption part: secondary parts sit on their own line (shared tile layout).
@@ -9330,6 +9397,12 @@ test.describe('signed out', () => {
     await page.goto('/account');
     await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);
     await expect(page.getByRole('link', { name: 'Account', exact: true })).toHaveCount(0);
+  });
+  test('insights-pours-signed-out', async ({ page }) => {
+    await gotoReady(page, '/insights?tab=pours&pourThin=open');
+    await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
+    await expect(page.locator('main a[href^="/account/recipes"]')).toHaveCount(0);
+    await checkLayout(page);
   });
   test('recipes-signed-out', async ({ page }) => {
     await page.goto('/account/recipes');

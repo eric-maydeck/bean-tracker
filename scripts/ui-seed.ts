@@ -295,6 +295,20 @@ const keyOf = (i: number) => (db.prepare(`SELECT structure_key k FROM brew_pour_
 const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]) });
 dismissStructure(db, keyOf(23));
 rematchBrews(db);
+// Pours tab: two more recipes, logged by a tag in the notes of lab bags 0-5 (roast Light / process Natural, Washed / roaster
+// Lab Roasters each reach 3+ bags): per bag two brews of each, high vs low agitation, in the 15-30 day rest band. A tag-logged
+// brew needs no reading, so the account page's flow counts stay as they were (its "with notes only" count does not).
+const baseDef = draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]);
+const loggedRecipe = (name: string, tag: string, agitation: 'high' | 'low') => saveRecipe(db, { name, tags: [tag], def: {
+  ...baseDef, pourCount: { min: 9, max: 9 }, pours: Array.from({ length: 9 }, (_, i) => ({ ...baseDef.pours[Math.min(i, baseDef.pours.length - 1)], bloom: i === 0, agitation })) } });
+const TAGS = ['seedhigh', 'seedlow'];
+loggedRecipe('Seed high agitation', TAGS[0], 'high');
+loggedRecipe('Seed low agitation', TAGS[1], 'low');
+for (let k = 0; k < 6; k++) {
+  const ids = (db.prepare(`SELECT id FROM beanconqueror_brews WHERE bean_id = ? ORDER BY bc_created_at`).all(`bean-lab-${k}`) as { id: number }[]).map((r) => r.id);
+  ids.slice(10, 14).forEach((id, i) => db.prepare(`UPDATE beanconqueror_brews SET notes = ? WHERE id = ? AND notes IS NULL`).run(TAGS[i >> 1], id));
+}
+rematchBrews(db);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, big: grams.big.slug,
