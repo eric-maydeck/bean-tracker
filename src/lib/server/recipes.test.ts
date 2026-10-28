@@ -7,10 +7,11 @@ import { saveShot } from './visualizerUpload';
 import { readStale } from './pourReadings';
 import {
   MIN_GROUP, RecipeError, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listRecipes,
-  rematchBrews, saveRecipe, smallGroupCount, undismissStructure
+  rematchBrews, saveRecipe, getNoteWords, setNoteWords, smallGroupCount, undismissStructure
 } from './recipes';
 import { draftFromReadings } from '$lib/recipes';
 import type { PourReading } from '$lib/pours';
+import { DEFAULT_NOTE_WORDS } from '$lib/agitation';
 
 const load = (n: string) =>
   compactFlow(JSON.parse(readFileSync(new URL(`./fixtures/bcflow/${n}.json`, import.meta.url), 'utf8')))!;
@@ -164,5 +165,18 @@ describe('brewsFor', () => {
     db.prepare(`UPDATE brew_pour_readings SET reading = json_set(reading, '$.lowConfidence', json('true')) WHERE bc_uuid = ?`).run(uuid(b));
     expect(brewsFor(db, { key: reading(db, b).structureKey! }).find((r) => r.lowConfidence)).toBeTruthy();
     void logged; void noFlow;
+  });
+});
+
+describe('note words', () => {
+  it('defaults, round-trips, falls back on garbage, keeps an empty list', () => {
+    const db = createDb(':memory:');
+    expect(getNoteWords(db)).toEqual(DEFAULT_NOTE_WORDS);
+    setNoteWords(db, [{ word: 'fast', agitation: 'high' }]);
+    expect(getNoteWords(db)).toEqual([{ word: 'fast', agitation: 'high' }]);
+    db.prepare(`UPDATE app_meta SET value = 'garbage' WHERE key = 'agitation_note_words'`).run();
+    expect(getNoteWords(db)).toEqual(DEFAULT_NOTE_WORDS);
+    setNoteWords(db, []);
+    expect(getNoteWords(db)).toEqual([]);
   });
 });

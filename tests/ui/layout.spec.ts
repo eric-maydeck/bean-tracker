@@ -2412,6 +2412,43 @@ export const STATES: State[] = [
         }
       },
       {
+        // The default note words: two rows (High / Low selected), a Save action row.
+        name: 'recipes-note-words',
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          const p = panel(page, 'Words in your notes');
+          await expect(p.getByLabel('Word or phrase')).toHaveCount(2);
+          await expect(p.getByLabel('Word or phrase').nth(0)).toHaveValue('high agitation');
+          await expect(p.getByLabel('Agitation').nth(0)).toHaveValue('high');
+          await expect(p.getByLabel('Word or phrase').nth(1)).toHaveValue('low agitation');
+          await expect(p.getByLabel('Agitation').nth(1)).toHaveValue('low');
+          await expect(p.locator('[data-button-row]')).toBeVisible();
+          await expect(p.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+          if ((page.viewportSize()?.width ?? 1000) <= 480)
+            for (const el of [p.getByLabel('Word or phrase').first(), p.getByLabel('Agitation').first(), p.getByRole('button', { name: 'Remove' }).first()])
+              expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        }
+      },
+      {
+        // Add word appends an empty row without focusing it or touching the URL; Cancel appears and undoes it.
+        name: 'recipes-note-words-add',
+        path: () => '/account/recipes',
+        act: async (page: Page) => {
+          const before = page.url();
+          const p = panel(page, 'Words in your notes');
+          await p.getByRole('button', { name: 'Add word' }).click();
+          await expect(p.getByLabel('Word or phrase')).toHaveCount(3);
+          await expect(p.getByLabel('Word or phrase').nth(2)).toHaveValue('');
+          expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+          expect(page.url()).toBe(before);
+          await expect(p.getByRole('button', { name: 'Cancel' })).toBeVisible();
+          await p.getByRole('button', { name: 'Cancel' }).click();
+          await expect(p.getByLabel('Word or phrase')).toHaveCount(2);
+          await p.getByRole('button', { name: 'Add word' }).click();
+          await expect(p.getByLabel('Word or phrase')).toHaveCount(3);
+        }
+      },
+      {
         // A ratio outside 1:5-1:30 is rejected with the exact message; the editor stays open and nothing is saved.
         name: 'recipes-edit-error', viewports: 'two' as const,
         path: () => '/account/recipes',

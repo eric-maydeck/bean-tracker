@@ -3,11 +3,12 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
+  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, getNoteWords, setNoteWords, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
 import { describeReading, type PourReading } from '$lib/pours';
+import { parseNoteWords } from '$lib/agitation';
 import { parseRecipesView } from '$lib/recipesView';
 
 export const load: PageServerLoad = ({ locals, url }) => {
@@ -105,6 +106,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     hidden,
     brews: view.brews ? brewsFor(db, view.brews, view.order) : null,
     view,
+    noteWords: getNoteWords(db),
     totals: { read: t.read, lowConfidence: t.low, notesOnly }
   };
 };
@@ -157,6 +159,15 @@ export const actions: Actions = {
     if (!key) return fail(400, { error: 'Invalid structure' });
     dismissStructure(getDb(), key);
     return { dismissed: key };
+  },
+  saveNoteWords: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const f = await request.formData();
+    const agit = f.getAll('agitation');
+    const parsed = parseNoteWords(f.getAll('word').map((w, i) => ({ word: w, agitation: agit[i] })));
+    if ('error' in parsed) return fail(400, { noteWordsError: parsed.error });
+    setNoteWords(getDb(), parsed.words);
+    return { noteWordsSaved: true };
   },
   undismiss: async ({ request, locals }) => {
     requireAdmin(locals);

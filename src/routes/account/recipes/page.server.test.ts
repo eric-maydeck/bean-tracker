@@ -74,7 +74,7 @@ describe('recipes page', () => {
   });
 
   it('every action rejects a signed-out request', async () => {
-    for (const a of [actions.saveRecipe, actions.deleteRecipe, actions.dismiss, actions.undismiss])
+    for (const a of [actions.saveRecipe, actions.deleteRecipe, actions.dismiss, actions.undismiss, actions.saveNoteWords])
       await expect(a(event(false))).rejects.toMatchObject({ status: 401 });
   });
 
@@ -164,5 +164,30 @@ describe('recipes page', () => {
     d = load(event(true, '?view=hidden')) as Data;
     expect(d.groups).toHaveLength(1);
     expect(d.hidden).toEqual([]);
+  });
+
+  describe('saveNoteWords', () => {
+    const post = (rows: [string, string][]) => {
+      const body = new FormData();
+      for (const [w, a] of rows) {
+        body.append('word', w);
+        body.append('agitation', a);
+      }
+      return { locals: { isAdmin: true }, request: new Request('http://localhost/account/recipes', { method: 'POST', body }) } as never;
+    };
+    it('stores a valid list and load returns it', async () => {
+      await actions.saveNoteWords(post([['fast', 'high'], ['gentle', 'medium']]));
+      expect((load(event(true)) as Data).noteWords).toEqual([
+        { word: 'fast', agitation: 'high' },
+        { word: 'gentle', agitation: 'medium' }
+      ]);
+    });
+    it('rejects a duplicate and too many rows', async () => {
+      await expect(actions.saveNoteWords(post([['a', 'high'], ['A', 'low']]))).resolves.toMatchObject({
+        status: 400, data: { noteWordsError: 'Each word can be listed once' }
+      });
+      const many = Array.from({ length: 21 }, (_, i): [string, string] => [`w${i}`, 'low']);
+      await expect(actions.saveNoteWords(post(many))).resolves.toMatchObject({ status: 400, data: { noteWordsError: 'Up to 20 words' } });
+    });
   });
 });

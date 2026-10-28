@@ -2,6 +2,7 @@
   import { enhance } from '$app/forms';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
+  import Icon from '$lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
@@ -11,6 +12,12 @@
   let deleting = $state<number | null>(null);
   let editing = $state<string | null>(null); // 'r<id>' or 's<structure key>'
   const formError = $derived(form && 'error' in form && form.error ? String(form.error) : undefined);
+
+  // Words in your notes: edited rows are local until Save (never in the URL).
+  let words = $state(data.noteWords.map((w: { word: string; agitation: string }) => ({ ...w })));
+  const wordsEdited = $derived(JSON.stringify(words) !== JSON.stringify(data.noteWords));
+  const resetWords = () => (words = data.noteWords.map((w: { word: string; agitation: string }) => ({ ...w })));
+  const noteWordsError = $derived(form && 'noteWordsError' in form && form.noteWordsError ? String(form.noteWordsError) : undefined);
 
   const avg = (r: number | null) => (r == null ? 'no ratings' : `avg ${r.toFixed(1)}`);
   // The link that opens an item's brews, or closes them when it is already open.
@@ -227,6 +234,36 @@
       <p><a href="?view=hidden">Hidden ({data.hiddenCount})</a></p>
     {/if}
   </section>
+
+  <section class="chart-panel">
+    <h2>Words in your notes</h2>
+    <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
+    <form method="POST" action="?/saveNoteWords" use:enhance={() => ({ update }) => update({ reset: false })} class="panel">
+      {#if words.length}
+        {#each words as w, i (i)}
+          <div class="word-row">
+            <div class="form-field group-field grow"><input name="word" aria-label="Word or phrase" bind:value={w.word} maxlength="40" /></div>
+            <div class="form-field group-field">
+              <select name="agitation" aria-label="Agitation" bind:value={w.agitation}>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <button class="icon-button" type="button" aria-label="Remove" onclick={() => words.splice(i, 1)}><Icon name="x" /></button>
+          </div>
+        {/each}
+      {:else}
+        <p class="text-muted">No words yet.</p>
+      {/if}
+      <div><button class="button button-ghost" type="button" onclick={() => words.push({ word: '', agitation: 'high' })}>Add word</button></div>
+      {#if noteWordsError}<p class="badge badge-urgent" role="alert">{noteWordsError}</p>{/if}
+      <div class="form-actions" data-button-row>
+        <button class="button" type="submit">Save</button>
+        {#if wordsEdited}<button class="button button-ghost" type="button" onclick={resetWords}>Cancel</button>{/if}
+      </div>
+    </form>
+  </section>
 {/if}
 </div>
 
@@ -314,6 +351,15 @@
     display: grid;
     gap: var(--space-2);
   }
+  .word-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  @media (max-width: 640px) {
+    .word-row input { min-height: 44px; box-sizing: border-box; }
+  }
+  .word-row .grow { flex: 1 1 auto; min-width: 0; }
   .panel label { display: grid; gap: var(--space-1); }
   .brew-rows { gap: var(--space-3); margin-top: var(--space-2); }
   .brew-row {

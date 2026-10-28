@@ -318,6 +318,7 @@ test.describe('recipes', { tag: '@account' }, () => {
   test.afterAll(() => {
     const db = new DatabaseSync('.ui-test/ui.db', { timeout: 5000 });
     db.prepare(`DELETE FROM recipes WHERE name = 'Test joocy'`).run();
+    db.prepare(`DELETE FROM app_meta WHERE key = 'agitation_note_words'`).run();
     db.prepare(`DELETE FROM brew_recipe_matches WHERE recipe_id NOT IN (SELECT id FROM recipes)`).run(); // the app's rematchBrews, for a test that died midway
     db.close();
   });
@@ -364,5 +365,22 @@ test.describe('recipes', { tag: '@account' }, () => {
     await confirm.getByRole('button', { name: 'Delete', exact: true }).click();
     await expect(joocy).toHaveCount(0);
     await expect(found.locator('li.item')).toHaveCount(before);
+  });
+
+  test('recipes-note-words-save: add a word, save, see it after a reload; a duplicate is rejected', async ({ page }) => {
+    const p = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Words in your notes', level: 2 }) });
+    await gotoReady(page, '/account/recipes');
+    await p.getByRole('button', { name: 'Add word' }).click();
+    await p.getByLabel('Word or phrase').nth(2).fill('seed word');
+    await p.getByLabel('Agitation').nth(2).selectOption('medium');
+    await p.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(p.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+    await page.reload();
+    await expect(p.getByLabel('Word or phrase').nth(2)).toHaveValue('seed word');
+    await expect(p.getByLabel('Agitation').nth(2)).toHaveValue('medium');
+    await p.getByRole('button', { name: 'Add word' }).click();
+    await p.getByLabel('Word or phrase').nth(3).fill('Seed Word');
+    await p.getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(p.getByRole('alert')).toHaveText('Each word can be listed once');
   });
 });

@@ -9,10 +9,30 @@ import {
   type Recipe,
   type RecipeDef
 } from '$lib/recipes';
+import { DEFAULT_NOTE_WORDS, parseNoteWords, type NoteWord } from '$lib/agitation';
 import { parseMethod } from './insights/facts';
 
 export class RecipeError extends Error {}
 export const MIN_GROUP = 10;
+
+const NOTE_WORDS_KEY = 'agitation_note_words';
+
+export function getNoteWords(db: DatabaseSync): NoteWord[] {
+  const row = db.prepare(`SELECT value FROM app_meta WHERE key = ?`).get(NOTE_WORDS_KEY) as { value: string } | undefined;
+  if (!row) return DEFAULT_NOTE_WORDS;
+  try {
+    const p = parseNoteWords(JSON.parse(row.value));
+    return 'words' in p ? p.words : DEFAULT_NOTE_WORDS;
+  } catch {
+    return DEFAULT_NOTE_WORDS;
+  }
+}
+
+export function setNoteWords(db: DatabaseSync, words: NoteWord[]): void {
+  db.prepare(
+    `INSERT INTO app_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run(NOTE_WORDS_KEY, JSON.stringify(words));
+}
 
 export function listRecipes(db: DatabaseSync): Recipe[] {
   const rows = db.prepare(`SELECT id, name, tags, definition FROM recipes ORDER BY name`).all() as {
