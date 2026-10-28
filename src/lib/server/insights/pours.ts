@@ -122,7 +122,7 @@ export interface WordRow {
 }
 // Recipe x coffee without the same-bag requirement: each cell's mean rating, and that mean against the rest of its row
 // group (any bag) and against the same recipe in the other row groups. null = nothing to compare against.
-export interface MeanCell { mean: number; brews: number; bags: number; sample: Sample; vsGroup: number | null; vsRecipe: number | null }
+export interface MeanCell { mean: number; brews: number; bags: number; sample: Sample; vsGroup: number | null; vsRecipe: number | null; vsAll: number }
 export interface MeanGrid { rows: string[]; cols: string[]; cells: (MeanCell | null)[][] }
 export interface PoursTab {
   recipes: RecipeRow[]; noFlow: number;
@@ -131,6 +131,7 @@ export interface PoursTab {
   agitationByProcess: Breakdown | null;
   recipeBy: Record<'roast' | 'process' | 'roaster', Breakdown | null>;
   recipeMeans: Record<'roast' | 'process' | 'roaster', MeanGrid | null>;
+  overallMean: number | null; // the mean rating of every rated brew in view (the Average mode's basis)
   rest: { byRecipe: Breakdown | null; byAgitation: Breakdown | null };
   words: WordRow[]; agitationSplit: boolean;
   mixedKeep: string[]; // the sequences with their own band when split (pass to agitationBand)
@@ -143,7 +144,7 @@ const countBy = <T>(xs: readonly T[], f: (x: T) => string) => { const m = new Ma
 const bagsOf = (rs: readonly BrewFact[]) => new Set(rs.map((r) => r.coffeeId)).size;
 
 // Rows: the groups with 3+ bags of recipe brews, most-brewed first (as `breakdown`); `all` = every rated brew of the group.
-function meanGrid(all: readonly BrewFact[], cut: readonly BrewFact[], recipeOf: (b: BrewFact) => string | null, slice: (b: BrewFact) => string | null, cols: string[]): MeanGrid | null {
+function meanGrid(all: readonly BrewFact[], overall: number, cut: readonly BrewFact[], recipeOf: (b: BrewFact) => string | null, slice: (b: BrewFact) => string | null, cols: string[]): MeanGrid | null {
   const inRecipe = cut.filter((b) => recipeOf(b) && slice(b));
   const groups = [...groupBy(inRecipe, slice)].filter(([, g]) => bagsOf(g) >= MIN_BAGS).sort((a, b) => b[1].length - a[1].length || a[0]!.localeCompare(b[0]!));
   if (!groups.length) return null;
@@ -156,7 +157,7 @@ function meanGrid(all: readonly BrewFact[], cut: readonly BrewFact[], recipeOf: 
     const ids = new Set(mine.map((b) => b.id));
     const rest = (allBy.get(k) ?? []).filter((b) => !ids.has(b.id)), elsewhere = (byRecipe.get(c) ?? []).filter((b) => slice(b) !== k);
     const m = rate(mine), bags = bagsOf(mine);
-    return { mean: m, brews: mine.length, bags, sample: pooled(bags, mine.length), vsGroup: rest.length ? m - rate(rest) : null, vsRecipe: elsewhere.length ? m - rate(elsewhere) : null };
+    return { mean: m, brews: mine.length, bags, sample: pooled(bags, mine.length), vsGroup: rest.length ? m - rate(rest) : null, vsRecipe: elsewhere.length ? m - rate(elsewhere) : null, vsAll: m - overall };
   }));
   return { rows: groups.map(([k]) => k!), cols, cells };
 }
@@ -190,7 +191,7 @@ export function poursTab(
     // Nothing rated here: null, unless Calibrated hid recipes (the tab then still says so).
     const hiddenByRatings = hiddenOf(new Set());
     return hiddenByRatings.length ? {
-      recipes: [], noFlow: rows.length, technique: [], split: [], agitationByProcess: null, recipeBy: { roast: null, process: null, roaster: null }, recipeMeans: { roast: null, process: null, roaster: null },
+      recipes: [], noFlow: rows.length, technique: [], split: [], agitationByProcess: null, recipeBy: { roast: null, process: null, roaster: null }, recipeMeans: { roast: null, process: null, roaster: null }, overallMean: null,
       rest: { byRecipe: null, byAgitation: null }, words: [], agitationSplit: false, mixedKeep: [], hiddenByRatings
     } : null;
   }
@@ -229,7 +230,8 @@ export function poursTab(
   card.sort((a, b) => +(a.id === null) - +(b.id === null) || +a.thin - +b.thin || b.rated - a.rated || a.name.localeCompare(b.name));
   const names = card.map((r) => r.name);
   const recipeBy = Object.fromEntries((['roast', 'process', 'roaster'] as const).map((d) => [d, breakdown(rows, rBand, SLICE_OF[d], names)])) as PoursTab['recipeBy'];
-  const recipeMeans = Object.fromEntries((['roast', 'process', 'roaster'] as const).map((d) => [d, meanGrid(rows, cut, (b) => rBand(b)?.label ?? null, SLICE_OF[d], names)])) as PoursTab['recipeMeans'];
+  const overallMean = mean(rows.map((b) => b.rating!));
+  const recipeMeans = Object.fromEntries((['roast', 'process', 'roaster'] as const).map((d) => [d, meanGrid(rows, overallMean, cut, (b) => rBand(b)?.label ?? null, SLICE_OF[d], names)])) as PoursTab['recipeMeans'];
   for (const r of card) r.best = { roast: bestOf(recipeBy.roast, r.name), process: bestOf(recipeBy.process, r.name) };
 
   // Technique
@@ -276,7 +278,7 @@ export function poursTab(
 
   return {
     recipes: card, noFlow: rows.length - cut.length, technique, split: splitRows,
-    agitationByProcess: lone ? null : breakdown(rows, agBand, SLICE_OF.process, agCols), recipeBy, recipeMeans,
+    agitationByProcess: lone ? null : breakdown(rows, agBand, SLICE_OF.process, agCols), recipeBy, recipeMeans, overallMean,
     rest: { byRecipe: byRest(rBand, names), byAgitation: byRest(agBand, agCols) },
     words: wordRows, agitationSplit: split, mixedKeep: [...keep], hiddenByRatings: hidden
   };

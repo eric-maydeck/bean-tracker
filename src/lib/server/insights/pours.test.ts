@@ -112,6 +112,10 @@ describe('poursTab report card', () => {
     expect(r(0, 1)).toEqual([5.5, 12, 3, -2.5, -0.5]);
     expect(r(1, 2)).toEqual([7, 6, 3, 0, 0]);
     expect(g.cells[0][0]!.sample.small).toBe(false);
+    // Average mode's basis: every rated brew in view averages 7 (each bag's 4 R1 + 4 R2 + 2 plain), so a cell is its mean - 7.
+    expect(tab.overallMean).toBeCloseTo(7, 10);
+    expect([r(1, 0), r(0, 0), r(1, 1), r(0, 1), r(1, 2)].map((x) => x[0]! - tab.overallMean!)).toEqual([1, 1.5, -1, -1.5, 0]);
+    expect([g.cells[1][0]!.vsAll, g.cells[0][1]!.vsAll, g.cells[1][2]!.vsAll]).toEqual([1, -1.5, 0]);
   });
   it('a recipe brewed in the same bags as no other still has a value (no same-bag contrast needed)', () => {
     const solo = rows.filter((b) => facts.get(b.id)!.recipeId === 1); // only R1: nothing paired
