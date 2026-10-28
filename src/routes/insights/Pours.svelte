@@ -32,6 +32,7 @@
   import SampleNote from '$lib/components/SampleNote.svelte';
   import { deltaInk, labDelta, signed } from '$lib/components/deltaColor';
   import { SAMPLE_HELP, TIP_TITLE, sampleField } from '$lib/sample';
+  import type { Tip } from '$lib/components/TipBody.svelte';
   import { insightsParams, type InsightsView, type InsightsUrlState } from '$lib/insightsUrl';
   import type { Breakdown } from '$lib/server/insights/lab';
   import { useEmptyLine } from './coffeeNote';
@@ -147,7 +148,7 @@
     same: { help: RECIPE_HELP, vs: 'same bag', scale: ["Below the bag's average", 'Above'] as [string, string] },
     group: { help: "Each cell's average rating minus the average of every other brew in its row, on any bag.", vs: 'the rest of its row', scale: ['Below the rest of its row', 'Above'] as [string, string] },
     recipe: { help: "Each cell's average rating minus the same recipe's average in the other rows.", vs: 'the recipe in other rows', scale: ['Below the recipe elsewhere', 'Above'] as [string, string] },
-    avg: { help: 'The average rating in each cell. It reflects which coffees you used the recipe on, so it is not a ranking of recipes.', vs: '', scale: ['Lower', 'Higher'] as [string, string] }
+    avg: { help: "Each cell's average rating against your average for these brews.", vs: 'your average', scale: ['Below your average', 'Above'] as [string, string] }
   };
   let grid = $derived(t?.recipeMeans[by] ?? null);
   // "Same roaster" / "Same recipe" as a Breakdown for the shared heatmap; a cell with brews always has its counts in the tip.
@@ -156,9 +157,10 @@
     const key = vsMode === 'group' ? 'vsGroup' : 'vsRecipe';
     return { rows: grid.rows, cols: grid.cols, cells: grid.cells.map((row) => row.map((c) => c && ({ delta: c[key], solid: !c.sample.small, sample: c.sample, brews: c.brews, bags: c.bags, ...(c[key] === null ? { plain: { brews: c.brews, bags: c.bags } } : {}) }))) };
   });
-  const avgTip = (r: number, c: number) => {
+  const overall = $derived(t?.overallMean ?? null);
+  const avgTip = (r: number, c: number): Tip => {
     const cell = grid!.cells[r][c], title = `${grid!.rows[r]} · ${grid!.cols[c]}`;
-    return cell ? { title, rows: [['Average rating', cell.mean.toFixed(1)], ...(cell.sample.small ? [] : [['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]])] as [string, string][], ...sampleField(cell.sample) } : { title, note: 'No brews.' };
+    return cell ? { title, rows: [['Average rating', cell.mean.toFixed(1)], ['vs your average', signed(cell.vsAll, 1), deltaInk(cell.vsAll)], ['Brews', `${cell.brews}`], ['Bags', `${cell.bags}`]] as Tip['rows'], ...sampleField(cell.sample) } : { title, note: 'No brews.' };
   };
   let thinRest = $derived(!!t && [t.rest.byRecipe, t.rest.byAgitation].some((bd) => bd && !bd.rows.some((r, i) => FRESH.includes(r) && bd.cells[i].some((c) => c && c.delta !== null && !c.sample.small))));
 </script>
@@ -273,7 +275,7 @@
 
   {#if Object.values(t.recipeBy).some(Boolean) || Object.values(t.recipeMeans).some(Boolean)}
     <section class="chart-panel" data-section="pours-recipe-coffee">
-      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[VS_TEXT[vsMode].help, 'Rows: the coffees, grouped.', ...(vsMode === 'same' ? ['Blank: no brews, or no match.', 'No match: no bag has 2+ brews of another recipe; the tip shows the cell\'s own brews.'] : []), SAMPLE_HELP]}>
+      <LabHead id="pours-recipe-coffee" title="Recipe × coffee" {placeTip} help={[vsMode === 'avg' && overall !== null ? `Each cell's average rating against your average of ${overall.toFixed(1)} for these brews.` : VS_TEXT[vsMode].help, ...(vsMode === 'avg' ? ['It reflects which coffees you used the recipe on, so it is not a ranking of recipes.'] : []), 'Rows: the coffees, grouped.', ...(vsMode === 'same' ? ['Blank: no brews, or no match.', 'No match: no bag has 2+ brews of another recipe; the tip shows the cell\'s own brews.'] : []), SAMPLE_HELP]}>
         <div class="form-field group-field">
           <span>Group by</span>
           <div class="tab-group tab-group-compact" role="group" aria-label="Group by">
@@ -292,12 +294,10 @@
       {:else if vsBd}
         <LabHeatmap by={vsBd} noun="recipe" vs={VS_TEXT[vsMode].vs} scale={VS_TEXT[vsMode].scale} ariaLabel="Recipe by {byLabel}: rating vs {VS_TEXT[vsMode].vs}" />
       {:else if vsMode === 'avg' && grid}
-        <Heatmap rows={grid.rows} cols={grid.cols} cells={grid.cells.map((r) => r.map((c) => c?.mean ?? null))}
-          small={grid.cells.map((r) => r.map((c) => !!c && c.sample.small))}
-          text={(v, r, c) => (v === null ? 'No brews' : `${v.toFixed(1)}${grid!.cells[r][c]?.sample.small ? ` (${TIP_TITLE})` : ''}`)}
+        <Heatmap diverging rows={grid.rows} cols={grid.cols} cells={grid.cells.map((r) => r.map((c) => c?.vsAll ?? null))}
+          small={grid.cells.map((r) => r.map((c) => !!c && c.sample.small))} scale={VS_TEXT.avg.scale}
+          text={(v, r, c) => { const cell = grid!.cells[r][c]; return v === null || !cell ? 'No brews' : `${cell.mean.toFixed(1)}, ${signed(v, 1)} vs your average${cell.sample.small ? ` (${TIP_TITLE})` : ''}`; }}
           label={(r, c) => `${grid!.rows[r]} · ${grid!.cols[c]}`} tip={avgTip} ariaLabel="Recipe by {byLabel}: average rating" />
-        {@const means = grid.cells.flat().flatMap((c) => (c ? [c.mean] : []))}
-        <p class="chart-note">Average rating, {Math.min(...means).toFixed(1)} (light) to {Math.max(...means).toFixed(1)} (dark). Striped: few brews. Blank: no brews.</p>
       {:else}
         <p class="hl-empty">No {byLabel} has 3+ bags {vsMode === 'same' ? 'with paired brews' : 'brewed with a recipe'} here.</p>
       {/if}
