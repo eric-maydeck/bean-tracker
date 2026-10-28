@@ -90,12 +90,12 @@ describe('discoverGroups', () => {
   it('groups of MIN_GROUP+, biggest first, with tags, phrase and shared gear', () => {
     const db = fresh();
     for (let k = 0; k < MIN_GROUP; k++) addBrew(db, { notes: 'BBS. sweet', method: 'm1', rating: 8 });
-    for (let k = 0; k < MIN_GROUP + 1; k++) addBrew(db, { flow: BBJ, notes: k < 2 ? '2 pours, 1 MD. Sweet' : null, method: 'm1' });
+    for (let k = 0; k < MIN_GROUP + 1; k++) addBrew(db, { flow: BBJ, notes: k < 2 ? '2 yeets, 1 MD. Sweet' : null, method: 'm1' });
     for (let k = 0; k < MIN_GROUP - 1; k++) addBrew(db, { flow: load('5sy') });
     const g = discoverGroups(db);
     expect(g).toHaveLength(2);
     expect(g[0].count).toBe(MIN_GROUP + 1);
-    expect(g[0]).toMatchObject({ tagged: 0, suggestedPhrase: '2 pours, 1 MD', common: ['V60', 'Abaca'] });
+    expect(g[0]).toMatchObject({ tagged: 0, suggestedPhrase: '2 yeets, 1 MD', common: ['V60', 'Abaca'] });
     expect(g[1]).toMatchObject({ count: MIN_GROUP, tagged: MIN_GROUP, suggestedName: 'BBS', avgRating: 8 });
     expect(g[1].description).toMatch(/^Two 20 s blooms/);
     expect(g[1].timeline.pours.length).toBeGreaterThan(0);
