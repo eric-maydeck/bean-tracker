@@ -102,7 +102,7 @@
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>
             <span class="delta {deltaInk(d)}" class:small-sample={r.stat?.sample.small ?? r.sample.small}>{d === null ? 'no match' : labDelta(d, ses)}</span>
-            {#if r.stat?.sample.small || (d === null && r.sample.small)}<SampleNote s={r.stat && d !== null ? r.stat.sample : r.sample} paired={d !== null} />{/if}
+            <span class="mark">{#if r.stat?.sample.small || (d === null && r.sample.small)}<SampleNote icon s={r.stat && d !== null ? r.stat.sample : r.sample} paired={d !== null} />{/if}</span>
             <span class="best">
               {#each [r.best.roast, r.best.process].filter((b) => b !== null) as b, i}{i ? ' · ' : 'Best: '}<span class:small-sample={b.small}>{b.label} {signed(b.delta, 1)} ({plural(b.brews, 'brew')})</span>{/each}
             </span>
@@ -111,7 +111,7 @@
               <svg class="spark" viewBox="0 0 80 24" role="img" aria-label="Trend by month: {r.trend.map((x) => `${x.label} ${signed(x.value)}`).join(', ')}">
                 <line x1="2" x2="78" y1={sp.zero} y2={sp.zero} /><polyline points={sp.pts} />
               </svg>
-            {/if}
+            {:else}<span class="spark"></span>{/if}
             <span class="counts">{r.logged} logged · {r.matched + r.modified} matched</span>
           </li>
         {/each}
@@ -239,9 +239,22 @@
   .sub::before {
     content: ' · ';
   }
+  /* Fixed-width cells (the marker's included, empty or not): every row's columns line up. */
+  .num {
+    width: 7.5rem;
+  }
   .delta {
     font-weight: 600;
-    min-width: 3.5rem;
+    width: 3.5rem;
+  }
+  .mark {
+    width: 1.5rem;
+    display: flex;
+    justify-content: center;
+  }
+  .counts {
+    width: 9.5rem;
+    text-align: right;
   }
   .best {
     flex: 1 1 12rem;

@@ -10,19 +10,20 @@
   // are of same-bag paired brews (a lab row's delta), so the rows say so beside plain columns.
   // `tip`: a fuller tip to open instead (the mineral map row's own, so the name and its chip show one tip);
   // `label`: the chip's words when it speaks for several rows (a Water pair heading).
-  let { s, paired = false, strength, tip: given, label }: { s: Sample; paired?: boolean; strength?: Badge; tip?: Tip; label?: string } = $props();
+  // `icon`: the warning icon alone (a table column of its own); the button's accessible name is still the tip's text.
+  let { s, paired = false, strength, tip: given, label, icon = false }: { s: Sample; paired?: boolean; strength?: Badge; tip?: Tip; label?: string; icon?: boolean } = $props();
   let anchor: HTMLButtonElement | undefined = $state();
   let open = $state(false);
   let tip = $derived<Tip>(given ?? { title: '', ...(strength ? { strength } : {}), sample: { s, paired } });
 </script>
 
-<button bind:this={anchor} type="button" class="sample-note" aria-expanded={open}
+<button bind:this={anchor} type="button" class="sample-note" class:icon aria-expanded={open}
   aria-label={tipText(tip)}
   onpointerenter={(e) => e.pointerType === 'mouse' && (open = true)}
   onpointerleave={(e) => e.pointerType === 'mouse' && (open = false)}
   onfocus={(e) => e.currentTarget.matches(':focus-visible') && (open = true)}
   onblur={() => (open = false)}
-  onclick={() => (open = true)}><span class="sample-chip"><Icon name="warning" />{label ?? chipLabel(s)}</span></button>
+  onclick={() => (open = true)}><span class="sample-chip"><Icon name="warning" />{#if !icon}{label ?? chipLabel(s)}{/if}</span></button>
 {#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody {tip} /></FloatTip>{/if}
 
 <style>
@@ -48,6 +49,11 @@
     .sample-note {
       padding: 16px 6px;
       margin: -16px -6px;
+    }
+    /* the icon alone is narrower: more side padding to reach 44 */
+    .sample-note.icon {
+      padding-inline: 12px;
+      margin-inline: -12px;
     }
   }
 </style>

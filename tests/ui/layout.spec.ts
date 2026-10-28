@@ -3413,6 +3413,15 @@ export const STATES: State[] = [
       await expect(rows.filter({ hasText: 'No recipe' })).toHaveCount(0); // thin: behind the toggle
       await expect(page.getByRole('button', { name: 'Show 2 more with few brews' })).toBeVisible();
       await expect(page.getByLabel('Compare', { exact: true })).toHaveCount(0);
+      // The small-sample marker has its own fixed column: the delta cells line up with and without one, and the icon is named.
+      await page.getByRole('button', { name: /^Show \d+ more/ }).click();
+      const items = page.locator('ul.card li');
+      const xs = await items.evaluateAll((lis) => lis.map((li) => [Math.round(li.querySelector('.delta')!.getBoundingClientRect().left), !!li.querySelector('.mark button'), Math.round(li.querySelector('.mark')!.getBoundingClientRect().left)]));
+      expect(xs.some((x) => x[1]) && xs.some((x) => !x[1]), 'rows with and without a marker').toBe(true);
+      expect(new Set(xs.map((x) => x[0])).size, 'delta column x').toBe(1);
+      expect(new Set(xs.map((x) => x[2])).size, 'marker column x').toBe(1);
+      for (const b of await items.locator('.mark button').all()) expect(await b.getAttribute('aria-label')).toBeTruthy();
+      await expect(items.locator('.mark .sample-chip').first()).not.toContainText(/Only/);
       await expect(page.locator('nav.board-jump')).toBeVisible();
       expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
