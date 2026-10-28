@@ -224,7 +224,7 @@
     border-top: 0;
   }
   .name {
-    flex: 1 1 10rem;
+    flex: 1 1 8rem;
     min-width: 0;
     font-weight: 600;
     overflow-wrap: anywhere;
@@ -241,7 +241,7 @@
   }
   /* Fixed-width cells (the marker's included, empty or not): every row's columns line up. */
   .num {
-    width: 7.5rem;
+    width: 6.75rem;
   }
   .delta {
     font-weight: 600;
@@ -257,8 +257,12 @@
     text-align: right;
   }
   .best {
-    flex: 1 1 12rem;
+    flex: 3 1 12rem;
     font-size: 0.875rem;
+  }
+  /* One Best item never splits ("Light +0.4 (8 brews)"): a narrow row wraps between items. */
+  .best > span {
+    white-space: nowrap;
   }
   .spark {
     width: 5rem;

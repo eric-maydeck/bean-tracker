@@ -3422,6 +3422,13 @@ export const STATES: State[] = [
       expect(new Set(xs.map((x) => x[2])).size, 'marker column x').toBe(1);
       for (const b of await items.locator('.mark button').all()) expect(await b.getAttribute('aria-label')).toBeTruthy();
       await expect(items.locator('.mark .sample-chip').first()).not.toContainText(/Only/);
+      // A Best item stays on one line (its "(n brews)" never splits); wide screens fit all of a row's items on one line.
+      const lines = await items.locator('.best > span').evaluateAll((es) => es.map((e) => e.getClientRects().length));
+      expect(lines.every((n) => n === 1), 'a Best item wraps inside itself').toBe(true);
+      if ((page.viewportSize()?.width ?? 0) >= 1280) {
+        const tops = await items.locator('.best').evaluateAll((bs) => bs.map((b) => new Set([...b.querySelectorAll(':scope > span')].map((e) => Math.round(e.getBoundingClientRect().top))).size));
+        expect(tops.every((n) => n === 1), 'Best items on one line at 1280').toBe(true);
+      }
       await expect(page.locator('nav.board-jump')).toBeVisible();
       expect(await page.locator('main .bar.small-sample-mark').count()).toBeGreaterThan(0);
       await expect(page.locator('body')).not.toContainText(/NaN|Infinity|undefined/);
