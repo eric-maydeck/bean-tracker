@@ -114,11 +114,14 @@ describe('matchBrew', () => {
     expect(matchBrew(brew(reading('BSSF', { ratio: 18 })), [any])).toBeNull();
     expect(matchBrew(brew(reading('BSSFS')), [any])).toMatchObject({ how: 'modified' }); // pour count still only modifies
   });
+  it('a lock with no recipe tied to the dripper does nothing', () => {
+    expect(matchBrew(on('Gabi'), [recipe(1, 'Any', def('BFFS'))], new Set(['Gabi']))).toMatchObject({ recipeId: 1 });
+  });
   it('a locked dripper matches only its own recipes', () => {
     const anyR = recipe(1, 'Any', def('BFFS'));
     const tied = recipe(2, 'Gabi', def('BFFS', { dripper: 'Gabi' }));
     const locked = new Set(['Gabi']);
-    expect(matchBrew(on('Gabi'), [anyR], locked)).toBeNull();
+    expect(matchBrew(on('Gabi'), [anyR, recipe(3, 'Gabi other', def('SSSS', { dripper: 'Gabi' }))], locked)).toBeNull();
     expect(matchBrew(on('Gabi'), [anyR, tied], locked)).toMatchObject({ recipeId: 2 });
     expect(matchBrew(on('Gabi'), [anyR])).toMatchObject({ recipeId: 1 }); // unlocked
     expect(matchBrew(on('V60'), [anyR], locked)).toMatchObject({ recipeId: 1 });

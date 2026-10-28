@@ -332,8 +332,9 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;
   for (const { id, def } of recipes) {
-    // A recipe tied to a dripper never matches another; a locked dripper's brews match only its own recipes.
-    if (def.dripper ? def.dripper !== brew.dripper : brew.dripper && locked.has(brew.dripper)) continue;
+    // A recipe tied to a dripper never matches another; a locked dripper's brews match only its own recipes (the lock only counts while a recipe is tied to it).
+    if (def.dripper ? def.dripper !== brew.dripper : brew.dripper && locked.has(brew.dripper) && recipes.some((x) => x.def.dripper === brew.dripper))
+      continue;
     if (def.anySpeed) {
       if (r.bloomCount !== def.pours.filter((p) => p.bloom).length) continue;
     } else {
