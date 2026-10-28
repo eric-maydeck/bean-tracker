@@ -20,7 +20,8 @@
   };
   const label = (r: number, c: number) => {
     const cell = by.cells[r][c];
-    return `${by.rows[r]} · ${by.cols[c]}${cell?.brews ? ` · ${plural(cell.brews, 'brew')}, ${plural(cell.bags, 'bag')}` : ''}`;
+    const n = cell?.brews ? cell : cell?.plain;
+    return `${by.rows[r]} · ${by.cols[c]}${n ? ` · ${plural(n.brews, 'brew')}, ${plural(n.bags, 'bag')}` : ''}`;
   };
   // Cells show no numbers, so the tip leads with the delta; the counts follow.
   const tip = (r: number, c: number): Tip => {

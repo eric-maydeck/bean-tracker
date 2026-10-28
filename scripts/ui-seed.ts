@@ -302,11 +302,13 @@ const baseDef = draftFromReadings([20, 21, 22].map(readingOf), [null, null, null
 const loggedRecipe = (name: string, tag: string, agitation: 'high' | 'low') => saveRecipe(db, { name, tags: [tag], def: {
   ...baseDef, pourCount: { min: 9, max: 9 }, pours: Array.from({ length: 9 }, (_, i) => ({ ...baseDef.pours[Math.min(i, baseDef.pours.length - 1)], bloom: i === 0, agitation })) } });
 const TAGS = ['seedhigh', 'seedlow'];
+// Each logged brew's note also carries a flavor word (two words, 12 brews each, 6 bags): the Pours tab's Words block renders.
+const NOTES = ['seedhigh bright', 'seedhigh sweet', 'seedlow bright', 'seedlow sweet'];
 loggedRecipe('Seed high agitation', TAGS[0], 'high');
 loggedRecipe('Seed low agitation', TAGS[1], 'low');
 for (let k = 0; k < 6; k++) {
   const ids = (db.prepare(`SELECT id FROM beanconqueror_brews WHERE bean_id = ? ORDER BY bc_created_at`).all(`bean-lab-${k}`) as { id: number }[]).map((r) => r.id);
-  ids.slice(10, 14).forEach((id, i) => db.prepare(`UPDATE beanconqueror_brews SET notes = ? WHERE id = ? AND notes IS NULL`).run(TAGS[i >> 1], id));
+  ids.slice(10, 14).forEach((id, i) => db.prepare(`UPDATE beanconqueror_brews SET notes = ? WHERE id = ? AND notes IS NULL`).run(NOTES[i], id));
 }
 rematchBrews(db);
 
