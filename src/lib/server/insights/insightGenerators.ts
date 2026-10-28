@@ -10,7 +10,9 @@ import { bagWeight, brewZ, demeaned, effN, mean, wmean, weightedMedian, MIN_BAGS
 import { consumption, remaining } from './overview';
 import { likeGaps, roasterLikes, twinKeys, type Like } from './likeGroup';
 import { POOLED_MIN_BAGS, pooled, single } from '$lib/sample';
-import { exceptOwn, matchesBrew, tagTwins } from './lab';
+import { exceptOwn, matchesBrew, pairedGap, tagTwins } from './lab';
+import { agitationBand, type PourFact, type PoursTab } from './pours';
+import { AGITATION_LABEL } from '$lib/agitation';
 import { listHref } from './leaderboards';
 import { groupBy } from './records';
 import { addDays, daysBetween, inPeriod, trackedBounds, trackedDays, weekday } from './time';
@@ -51,6 +53,9 @@ export interface GenCtx {
   // In-period, every rating, before the brew filters: whole-bag figures (What-if, runway) and the settle
   // views read it. `brewFilters` is what applied.
   wholeBrews: readonly BrewFact[]; brewFilters: BrewFilters;
+  // Pour findings (tab=insights only; absent = none): the Pours tab over the same scored brews, and the roast levels at or
+  // under 1.5 on the roast scale (Hyperlight, Ultralight, Nordic Light).
+  pours?: { facts: ReadonlyMap<number, PourFact>; tab: PoursTab | null; veryLight: ReadonlySet<string> };
 }
 export type Generator = (c: GenCtx) => Finding | Finding[] | null;
 
@@ -973,13 +978,90 @@ const rescuedBags: Generator = (c) => {
   };
 };
 
+// ---- Pour findings (Pours tab): same-bag paired figures only, kept to POUR_FINDINGS_MAX in insightsTab ----
+export const POUR_FINDINGS_MAX = 3, POUR_MIN_DELTA = 0.3;
+const POURS = '/insights?tab=pours';
+const poursRecipe: Generator = (c) => {
+  const rows = (c.pours?.tab?.recipes ?? []).filter((r) => r.id !== null && r.stat && !r.stat.sample.small && r.stat.delta !== null && r.stat.se);
+  return rows.filter((r) => Math.abs(r.stat!.delta!) >= POUR_MIN_DELTA).map((r) => {
+    const s = r.stat!, d = s.delta!;
+    return graded({
+      key: `pours:recipe:${r.id}`, theme: 'taste', kind: 'number', value: gapText(d), href: `${POURS}&chart=pours-recipes#pours-recipes`,
+      headline: `${r.name} rates ${Math.abs(d).toFixed(1)} ${d >= 0 ? 'above' : 'below'} your other brews of the same bags`,
+      sample: `${plural(s.brews, 'brew')}, ${plural(s.bags, 'bag')}`
+    }, d / s.se!, true, 'bags', s.bags, undefined, rows.length);
+  }).filter((f): f is Finding => f !== null);
+};
+const poursRecipeBy: Generator = (c) => {
+  const t = c.pours?.tab;
+  if (!t) return null;
+  const real = new Set(t.recipes.filter((r) => r.id !== null).map((r) => r.name));
+  const cells = (['roast', 'process'] as const).flatMap((by) => {
+    const bd = t.recipeBy[by];
+    return (bd?.rows ?? []).flatMap((slice, i) => bd!.cols.flatMap((name, j) => {
+      const x = bd!.cells[i][j];
+      return x && x.delta !== null && x.se && !x.sample.small && real.has(name) ? [{ by, slice, name, x, d: x.delta, z: x.delta / x.se }] : [];
+    }));
+  });
+  const top = cells.filter((k) => Math.abs(k.d) >= POUR_MIN_DELTA).sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+  return top ? graded({
+    key: `pours:recipeBy:${top.by}`, theme: 'taste', kind: 'number', value: gapText(top.d),
+    headline: `${top.name} runs ${signed(top.d, 1)} on ${top.slice} coffees`, headPoints: [['Compared with', 'Your other recipes on the same bags']],
+    sample: `${plural(top.x.brews, 'brew')}, ${plural(top.x.bags, 'bag')}`,
+    href: `${POURS}${top.by === 'process' ? '&recipeBy=process' : ''}&chart=pours-recipe-coffee#pours-recipe-coffee`
+  }, top.z, true, 'bags', top.x.bags, undefined, cells.length) : null;
+};
+const AG_PAIRS = [['High', 'Low'], ['High', 'Medium'], ['Medium', 'Low']] as const;
+const poursAgitation: Generator = (c) => {
+  const p = c.pours;
+  if (!p?.tab) return null;
+  const band = agitationBand(p.facts, p.tab.agitationSplit, new Set(p.tab.mixedKeep)), rows = counted(c).filter((b) => b.coffeeId !== null);
+  const slices = [
+    ...(p.tab.agitationByProcess?.rows ?? []).map((r) => ({ key: `process:${r}`, name: `${r} coffees`, rs: rows.filter((b) => b.processGroup === r) })),
+    { key: 'veryLight', name: 'very light roasts under 31 days', rs: rows.filter((b) => !!b.roastLevel && p.veryLight.has(b.roastLevel) && b.restDays !== null && b.restDays < 31) }
+  ];
+  const tried = slices.map((s) => ({ s, gaps: AG_PAIRS.flatMap(([a, b]) => { const g = pairedGap(s.rs, band, a, b); return g && g.n >= MIN_BAGS && g.se > 0 ? [{ a, b, ...g }] : []; }) }));
+  const tests = tried.reduce((n, t) => n + t.gaps.length, 0);
+  return tried.flatMap(({ s, gaps }) => {
+    const top = gaps.filter((g) => Math.abs(g.diff) >= POUR_MIN_DELTA).sort((x, y) => Math.abs(y.diff / y.se) - Math.abs(x.diff / x.se))[0];
+    if (!top) return [];
+    const [win, lose] = top.diff > 0 ? [top.a, top.b] : [top.b, top.a];
+    const f = graded({
+      key: `pours:agitation:${s.key}`, theme: 'taste', kind: 'versus', value: gapText(Math.abs(top.diff)),
+      headline: `${win} agitation beats ${lose.toLowerCase()} on ${s.name} by ${Math.abs(top.diff).toFixed(1)}`,
+      sample: plural(top.n, 'bag'), href: `${POURS}&chart=pours-agitation#pours-agitation`
+    }, top.diff / top.se, true, 'bags', top.n, undefined, tests);
+    return f ? [f] : [];
+  });
+};
+// A word's strongest contact-time cut (a 30 s band edge): its rate in the bands from the cut up against the bands below.
+// ponytail: only "mostly over" a cut (the spec headline); a word that clusters at short contact times is not reported.
+const poursWords: Generator = (c) => {
+  const words = c.pours?.tab?.words ?? [];
+  const cuts = words.flatMap((w) => w.byContact.slice(1).map((_, k) => ({ w, k: k + 1 })));
+  return words.flatMap((w) => {
+    const best = w.byContact.slice(1).flatMap((band, i) => {
+      const lo = w.byContact.slice(0, i + 1), hi = w.byContact.slice(i + 1), at = /\d+:\d\d/.exec(band.label)?.[0];
+      const n0 = lo.reduce((n, x) => n + x.brews, 0), n1 = hi.reduce((n, x) => n + x.brews, 0);
+      const x0 = lo.reduce((n, x) => n + x.share * x.brews, 0), x1 = hi.reduce((n, x) => n + x.share * x.brews, 0);
+      const p0 = x0 / n0, p1 = x1 / n1, pp = (x0 + x1) / (n0 + n1), z = (p1 - p0) / Math.sqrt(pp * (1 - pp) * (1 / n0 + 1 / n1));
+      return at && p1 > 0 && (p0 === 0 || p1 / p0 >= 2) && Number.isFinite(z) ? [{ at, z }] : [];
+    }).sort((a, b) => b.z - a.z)[0];
+    const f = best && graded({
+      key: `pours:words:${w.label}`, theme: 'taste', kind: 'pattern', headline: `${w.label} shows up mostly at contact times over ${best.at}`,
+      sample: `${w.brews} ${w.label.toLowerCase()} notes`, href: `${POURS}&chart=pours-words#pours-words`
+    }, best.z, true, 'brews', w.brews, undefined, cuts.length);
+    return f ? [f] : [];
+  });
+};
+
 export const DIAL_IN_GENERATORS: ReadonlySet<Generator> = new Set([dialinCurve, dialinSpeed, firstVsLater, settleTrend]);
 
 export const GENERATORS: Generator[] = [
   dialinCurve, dialinSpeed, firstVsLater, settleTrend, roastRating, roastShare, secondCup, fondMemory, repeatBuys, groupDelta, coFerments, notesTrouble, backlogRunway,
   morningDrift, weekendVsWeekday, earlyBrews, weekdayRatings, periodVsPrevious, gearEras, sameBagVersus, wildcardBrewer,
   priceVsRating, costPerCup, pricePerMonth, loyalty, restMyth, restWindowMyth, originMyth, backlogWaitMyth, variablesMyth, calibration,
-  likeStandouts, dialinByGroup, rescuedBags
+  likeStandouts, dialinByGroup, rescuedBags, poursRecipe, poursRecipeBy, poursAgitation, poursWords
 ];
 
 // ---- Insights tab: bucketing and What-if ----
@@ -1000,7 +1082,10 @@ const negligible = (f: Finding) => (/^[-+]\d/.test(f.value ?? '') && Math.abs(pa
 const byZ = (a: Finding, b: Finding) => Math.abs(b.z ?? -1) - Math.abs(a.z ?? -1); // null z last
 
 export function insightsTab(c: GenCtx, theme: Theme | undefined): InsightsTab {
-  const fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  let fs = GENERATORS.flatMap((g) => [g(DIAL_IN_GENERATORS.has(g) ? { ...c, brews: c.allBrews } : c)].flat()).filter((f): f is Finding => f !== null).sort(byZ);
+  // Pour findings: only the POUR_FINDINGS_MAX strongest, grid and Too early together (fs is sorted by |z|).
+  let pour = 0;
+  fs = fs.filter((f) => !f.key.startsWith('pours:') || pour++ < POUR_FINDINGS_MAX);
   const inGrid = (f: Finding) => (f.kind === 'number' || f.kind === 'pattern' || f.kind === 'versus') && f.strength !== 'early';
 
   const p = { start: c.period.from, end: c.period.to };

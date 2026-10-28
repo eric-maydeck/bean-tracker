@@ -18,6 +18,7 @@ import { dialInIds, onceDialed } from '$lib/server/insights/dialed';
 import { getGearDetails } from '$lib/server/gearDetails';
 import { trophyCase, gearArchive } from '$lib/server/insights/trophies';
 import { insightsTab } from '$lib/server/insights/insightGenerators';
+import { getRoastLevels } from '$lib/server/roastLevels';
 import { loadPourFacts, poursTab } from '$lib/server/insights/pours';
 import { labOptions, matchesBrew, matchesCoffee, ratedIn, sweetSpotsTab, brewingTab, waterTab, gearTab } from '$lib/server/insights/lab';
 import { RANGES, BYS, BREWER_TYPES, LAB_TABS, EXACT_PARAM, VIEW_BOARDS, boardAvg, parseInsightsUrl, withDefaults, compareOptions, isCustom, ratingsMenuOn, activeBrewFilters } from '$lib/insightsUrl';
@@ -102,12 +103,17 @@ export const load: PageServerLoad = ({ url }) => {
     ) ?? { start: dataStart ?? today, end: today };
   // A custom Period has its own menus (the preset ones don't cover it).
   const menuRanges = [...RANGES, ...years.map(String), ...(isCustom(s.range) ? [s.range] : [])];
-  // Pours: the readings load only on this tab, from every brew so dial-in and the filters stay the page's.
+  // Pours: the readings load only on the Pours and Insights tabs (findings), from every brew so dial-in and the filters stay the page's.
   let poursData: ReturnType<typeof poursTab> = null;
-  if (s.tab === 'pours') {
+  let pourCtx: NonNullable<Parameters<typeof insightsTab>[0]['pours']> | undefined;
+  if (s.tab === 'pours' || s.tab === 'insights') {
     const { facts, recipes } = loadPourFacts(db, everyBrew);
     const calibrated = s.ratings === 'current';
     poursData = poursTab(ratedIn(scored, period, s.ratings), facts, recipes, calibrated ? { allRows: ratedIn(scored, period, 'all') } : {});
+    if (s.tab === 'insights') {
+      pourCtx = { facts, tab: poursData, veryLight: new Set(getRoastLevels(db).filter((r) => r.degrees_of_roast <= 1.5).map((r) => r.roast_level)) };
+      poursData = null;
+    }
   }
   return {
     explicit,
@@ -175,7 +181,8 @@ export const load: PageServerLoad = ({ url }) => {
               onHandG: onHand,
               logged: loggedGrams(whole),
               period: { from: period.start ?? dataStart ?? today, to: period.end },
-              dataStart: dataStart ?? today
+              dataStart: dataStart ?? today,
+              pours: pourCtx
             },
             s.theme
           )

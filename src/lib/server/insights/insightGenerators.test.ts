@@ -1,12 +1,14 @@
 import { likeGap } from '$lib/components/deltaColor';
 import { describe, it, expect } from 'vitest';
 import { leaderboard } from './leaderboards';
-import { GENERATORS, monthlyMulti, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, type Finding, type GenCtx, type Generator } from './insightGenerators';
+import { GENERATORS, monthlyMulti, insightsTab, settleGroups, settlePositions, rescueOdds, settleEvidence, POUR_FINDINGS_MAX, type Finding, type GenCtx, type Generator } from './insightGenerators';
 import { MIXED_FILTER, type BagFact, type BrewFact } from './facts';
 import { addDays } from './time';
 import { loggedGrams } from './overview';
 import { formatGrams } from '$lib/grams';
 import { solidBar } from './stats';
+import { poursTab, type PourFact, type PoursTab } from './pours';
+import type { Recipe } from '$lib/recipes';
 
 const brew = (o: Partial<BrewFact>): BrewFact => ({
   id: 0, coffeeId: 1, localTime: '', localDate: '2026-09-15', backfilled: false, dose: null, rating: null, roaster: null, origin: null,
@@ -1022,4 +1024,87 @@ describe('monthlyMulti: when "Other" folds', () => {
   });
   it('overflow past the line cap leaving one keeps it too', () =>
     expect(run([['A', 20], ['B', 20], ['C', 20], ['D', 20], ['E', 20]])!.lines.map((l) => l.label)).toEqual(['A', 'B', 'C', 'D', 'E']));
+});
+
+describe('pour findings', () => {
+  const recipes = [1, 2].map((id) => ({ id, name: `R${id}`, tags: [], def: {} as Recipe['def'] }) as Recipe);
+  // 6 Washed bags, each brewed twice with R1 / High and twice with R2 / Low; R1 rates `gap` above R2, a little differently per bag.
+  function world(gap: number, bagCount = 6, o: Partial<BrewFact> = {}) {
+    const rows: BrewFact[] = [], facts = new Map<number, PourFact>();
+    for (let i = 0; i < bagCount; i++) {
+      const g = gap + (i % 3 - 1) * 0.4;
+      for (const [rec, ag, r] of [[1, 'high', 7 + g / 2], [2, 'low', 7 - g / 2]] as const)
+        for (let k = 0; k < 2; k++) {
+          const b = brew({ id: nextId++, coffeeId: i + 1, rating: r, localDate: '2026-09-15', ...o });
+          rows.push(b);
+          facts.set(b.id, { brewId: b.id, recipeId: rec, how: 'match', reading: null, agitation: ag, agitationSet: true, words: [], sequence: null });
+        }
+    }
+    const tab = poursTab(rows, facts, recipes);
+    return { rows, ctx: ctx(rows, [], { pours: { facts, tab, veryLight: new Set(['Ultralight']) } }) };
+  }
+  const keys = (c: GenCtx) => all(c).map((f) => f!.key).filter((k) => k.startsWith('pours:'));
+
+  it('headlines: recipe, recipe x process, agitation', () => {
+    const { ctx: c } = world(1.2);
+    const fs = all(c).filter((f) => f!.key.startsWith('pours:')) as Finding[];
+    const by = (k: string) => fs.find((f) => f.key === k)!;
+    expect(by('pours:recipe:1').headline).toBe('R1 rates 0.6 above your other brews of the same bags');
+    expect(by('pours:recipe:1').sample).toBe('12 brews, 6 bags');
+    expect(by('pours:recipe:1').href).toBe('/insights?tab=pours&chart=pours-recipes#pours-recipes');
+    expect(by('pours:recipe:2').headline).toBe('R2 rates 0.6 below your other brews of the same bags');
+    expect(by('pours:agitation:process:Washed').headline).toBe('High agitation beats low on Washed coffees by 1.2');
+    expect(fs.every(finite)).toBe(true);
+  });
+  it('recipe by process: the strongest cell, with its comparison', () => {
+    const { rows, ctx: c } = world(1.2, 6, { processGroup: 'Washed' });
+    void rows;
+    const f = all(c).find((x) => x!.key === 'pours:recipeBy:process') as Finding;
+    expect(f.headline).toMatch(/^R[12] runs [+-]0\.6 on Washed coffees$/);
+    expect(f.headPoints).toEqual([['Compared with', 'Your other recipes on the same bags']]);
+    expect(f.href).toContain('recipeBy=process');
+  });
+  it('a 0.29 delta is no finding', () => {
+    const { ctx: c } = world(0.58); // delta 0.29 per recipe
+    expect(keys(c).filter((k) => k.startsWith('pours:recipe'))).toEqual([]);
+  });
+  it('a cell below the pooled bar is no finding', () => {
+    const { ctx: c } = world(1.2, 2);
+    expect(keys(c)).toEqual([]);
+  });
+  it('very light roasts under 31 days: its own agitation slice', () => {
+    const lit = world(1.2, 6, { roastLevel: 'Ultralight', restDays: 20 }).ctx;
+    expect(keys(lit)).toContain('pours:agitation:veryLight');
+    expect((all(lit).find((f) => f!.key === 'pours:agitation:veryLight') as Finding).headline).toBe('High agitation beats low on very light roasts under 31 days by 1.2');
+    const rested = world(1.2, 6, { roastLevel: 'Ultralight', restDays: 45 }).ctx;
+    expect(keys(rested)).not.toContain('pours:agitation:veryLight');
+  });
+  it('words: the contact cut with the strongest rate jump', () => {
+    const band = (label: string, share: number) => ({ label, share, brews: 20 });
+    const tab = {
+      recipes: [], recipeBy: { roast: null, process: null, roaster: null }, agitationByProcess: null, agitationSplit: false, mixedKeep: [],
+      words: [{ label: 'Brown', brews: 24, bags: 5, sample: { bags: 5, brews: 24, small: false }, byAgitation: [],
+        byContact: [band('< 1:30', 0.05), band('1:30–1:59', 0.05), band('3:30–3:59', 0.5), band('4:30+', 0.6)] }]
+    } as unknown as PoursTab;
+    const f = all(ctx([], [], { pours: { facts: new Map(), tab, veryLight: new Set() } })).find((x) => x!.key === 'pours:words:Brown') as Finding;
+    expect(f.headline).toBe('Brown shows up mostly at contact times over 3:30');
+    expect(f.kind).toBe('pattern');
+    expect(f.sample).toBe('24 brown notes');
+  });
+  it('absent pours: no pour finding', () => {
+    expect(keys(ctx([...seq(1, [7, 8, 7, 8])]))).toEqual([]);
+  });
+  it('insightsTab keeps the three strongest pour findings', () => {
+    const fake = (n: number): Generator => () => ({ key: `pours:fake${n}`, theme: 'taste', kind: 'number', headline: `p${n}`, sample: 's', z: n, strength: 'solid' });
+    const gs = [1, 2, 3, 4, 5].map(fake);
+    GENERATORS.push(...gs);
+    try {
+      const t = insightsTab(ctx([]), undefined);
+      const kept = [...t.grid, ...t.stories, ...t.tooEarly].filter((f) => f.key.startsWith('pours:')).map((f) => f.key).sort();
+      expect(POUR_FINDINGS_MAX).toBe(3);
+      expect(kept).toEqual(['pours:fake3', 'pours:fake4', 'pours:fake5']);
+    } finally {
+      GENERATORS.splice(GENERATORS.length - gs.length, gs.length);
+    }
+  });
 });
