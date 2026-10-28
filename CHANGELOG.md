@@ -1,3 +1,29 @@
+# [1.95.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.94.0...v1.95.0) (2026-10-28)
+
+
+### Bug Fixes
+
+* **csrf:** refused enhanced forms show an error instead of nothing
+* **pours:** fast pours need a minimum average speed
+* **pours:** split recoveries, swing bridges and slow long pours read right
+* **recipes:** editor keeps the pour range valid, ratio unknown, % timeline, integer counts
+* **recipes:** one unit toggle for the whole recipe, 44px editor inputs
+* **recipes:** seed via vite-node, save error in its form, one recipe spans the row
+* **recipes:** upload survives a reading error, tests and docs tidy
+
+
+### Features
+
+* **pours:** pour detector calibrated on tagged brews
+* **pours:** store a pour reading per brew on upload, import and boot
+* **recipes:** bolder swirl lines, 720px page width, other-structures count skips matched ones
+* **recipes:** cumulative-water pour timeline
+* **recipes:** groups need 10 brews, no yeet class, descriptions read as a sentence
+* **recipes:** latest and top rated brew lists, unlisted structure panel, 10-brew seed groups
+* **recipes:** recipe definitions, matching and discovery groups
+* **recipes:** recipe editor
+* **recipes:** recipes page with discovered structures and brew lists
+
 # [1.94.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.93.0...v1.94.0) (2026-10-27)
 
 
