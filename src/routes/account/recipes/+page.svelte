@@ -64,6 +64,7 @@
               {#if b.slug}<a href="/coffees/{b.slug}"><CoffeeName name={b.coffeeName} /></a>{:else}<CoffeeName name={b.coffeeName} />{/if}
             </span>
             <span>{b.rating ? b.rating : 'unrated'}</span>
+            {#if b.dripper}<span class="text-muted">{b.dripper}</span>{/if}
             {#if b.lowConfidence}<span class="badge badge-warm">low confidence</span>{/if}
           </div>
           {#if b.timeline}<PourTimeline timeline={b.timeline} label={b.description} compact />{/if}
@@ -79,6 +80,18 @@
   <p class="badge badge-urgent" role="alert">{form.error}</p>
 {/if}
 
+{#if form && 'now' in form && form.now}
+  <p role="status">
+    <strong>
+      {#if form.now.length}
+        {form.now.map((m: { name: string; count: number }) => `${n(m.count, 'brew', 'brews')} now ${m.count === 1 ? 'matches' : 'match'} ${m.name}`).join(', ')}
+      {:else}
+        Back in found structures.
+      {/if}
+    </strong>
+  </p>
+{/if}
+
 {#if data.view.view === 'hidden'}
   <section class="chart-panel">
     <h2>Hidden structures</h2>
@@ -88,7 +101,9 @@
         {#each data.hidden as h (h.key)}
           <li class="item">
             <div>{h.description}</div>
-            <div class="text-muted">{n(h.count, 'brew', 'brews')}</div>
+            <div class="text-muted">
+              {n(h.count, 'brew', 'brews')}{#if h.matchedBy.length} · Now matched by {h.matchedBy.length === 1 ? h.matchedBy[0].name : h.matchedBy.map((m: { name: string; count: number }) => `${m.name} (${m.count})`).join(', ')}{/if}
+            </div>
             <form method="POST" action="?/undismiss" use:enhance data-button-row class="row-actions">
               <input type="hidden" name="key" value={h.key} />
               <button class="button button-secondary" type="submit">Show again</button>

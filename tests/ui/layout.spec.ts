@@ -2331,6 +2331,7 @@ export const STATES: State[] = [
         act: async (page: Page) => {
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
+          await expect(page.locator('li.item').first()).toContainText(/\d+ brews?/); // + " · Now matched by …" when a recipe took them over
         }
       },
       {
