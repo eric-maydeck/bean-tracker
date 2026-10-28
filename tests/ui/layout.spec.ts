@@ -5391,7 +5391,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('combobox', { name: 'View' })).toHaveValue('records');
       const u = new URL(page.url());
       expect([u.searchParams.get('tab'), u.searchParams.get('range')]).toEqual(['records', 'all']);
-      await expect(rail.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Water', 'Gear']);
+      await expect(rail.getByRole('group', { name: 'Lab' }).getByRole('link')).toHaveText(['Sweet spots', 'Brewing', 'Pours', 'Water', 'Gear']);
       await at(1280, 800, '/insights?range=all');
     }
   },
@@ -5943,7 +5943,9 @@ export const STATES: State[] = [
       await page.mouse.click(b.x + 3, b.y + b.height / 2);
       await expect(page.locator(':popover-open')).toHaveCount(0);
       const i = await page.locator('.finding-grid .hl-card').evaluateAll((cs) => {
-        const j = cs.findIndex((c) => c.querySelector('.body'));
+        // Prefer a body already cut by its line clamp: a longer text in a body that fits would grow a fixed-height card.
+        const cut = (c: Element) => { const e = c.querySelector('.body'); return !!e && e.scrollHeight > e.clientHeight + 1; };
+        const j = cs.findIndex(cut) >= 0 ? cs.findIndex(cut) : cs.findIndex((c) => c.querySelector('.body'));
         if (j >= 0) cs[j].querySelector('.body')!.textContent = 'A very long finding body that keeps going. '.repeat(12);
         return j;
       });
