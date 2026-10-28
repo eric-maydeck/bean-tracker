@@ -3437,7 +3437,7 @@ export const STATES: State[] = [
       expect(Math.max(...rowH) - Math.min(...rowH), `bar row heights ${[...new Set(rowH)]}`).toBeLessThanOrEqual(4);
       const wraps = await page.locator('.tech-cols [data-section="pours-agitation"] .bar-label, ul.card .nm, ul.card .sub').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().height > parseFloat(getComputedStyle(e).lineHeight) * 1.5).map((e) => e.textContent));
       expect(wraps, 'labels wrapped mid-phrase').toEqual([]);
-      const cut = await page.locator('ul.card > li').evaluateAll((lis) => lis.flatMap((li) => [...li.querySelectorAll('.spark, .counts')].filter((e) => e.getBoundingClientRect().right > li.getBoundingClientRect().right + 1).map((e) => e.className.baseVal ?? e.className)));
+      const cut = await page.locator('ul.card > li').evaluateAll((lis) => lis.flatMap((li) => [...li.querySelectorAll('.spark, .counts')].filter((e) => e.getBoundingClientRect().right > li.getBoundingClientRect().right + 1).map((e) => e.tagName)));
       expect(cut, 'sparkline or counts past the card edge').toEqual([]);
       const w = async (id: string) => Math.round((await page.locator(`[data-section="${id}"]`).first().boundingBox())!.width);
       expect(await w('pours-rest')).toBe(await w('pours-recipes')); // Rest age cards are full width
