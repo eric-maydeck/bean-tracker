@@ -72,14 +72,15 @@ describe('applyRecipeFixes', () => {
     for (const n of ["Bean's Beans Standard", "Bean's Beans Floral", "Bean's Beans Joocy", 'Double Yeet Bloom 3 Pour'])
       expect(by(n).def.ratio.tol).toBe(0.5);
     expect(by('Standard 5 Pour').def.ratio).toEqual({ targets: [15, 16.7, 18], tol: 0.5 });
-    expect(by('Standard 3 Pour').def.ratio).toEqual({ targets: [16.7, 18], tol: 0.5 });
-    expect(by('Shoebox QC (Washed)').def.ratio).toEqual({ targets: [16.7], tol: 0.5 });
+    expect(by('Standard 3 Pour').def.ratio).toEqual({ targets: [15, 16.7, 18], tol: 0.5 });
+    expect(by('Double Yeet Bloom 3 Pour').def.ratio.targets).toEqual([16.7, 18]);
+    expect(by('Shoebox QC (Washed)').def.ratio).toEqual({ targets: [16.7, 18], tol: 0.5 });
     expect(by('Shoebox QC (Washed)').def.tempC).toBe(91.5);
     expect(by('Shoebox QC (Natural)').def.ratio).toEqual({ targets: [15.3], tol: 0.5 });
     expect(by('Shoebox QC (Natural)').def.tempC).toBe(85);
     expect(by('Lance Hedrick 2 Pour').def.ratio).toEqual({ targets: [16], tol: 1 });
-    expect(by('Gabi Standard (bloom)').def.ratio).toEqual({ targets: [18], tol: 1 });
-    expect(by('Gabi Gentle (bloom)').def.ratio).toEqual({ targets: [16], tol: 1 });
+    expect(by('Gabi Standard (bloom)').def.ratio).toEqual({ targets: [18], tol: 0.5 });
+    expect(by('Gabi Gentle (bloom)').def.ratio).toEqual({ targets: [16.7], tol: 0.5 });
     expect(by('Lume 3 Pour').def.ratio).toEqual({ targets: [16.67], tol: 1 });
   });
 
