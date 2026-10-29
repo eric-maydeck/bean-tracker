@@ -255,9 +255,9 @@ export function convertAmounts(
   };
 }
 
-const recipeSpeed = (p: RecipePour): 'fast' | 'slow' =>
+export const recipeSpeed = (p: RecipePour): 'fast' | 'slow' =>
   p.rateGps ? ((p.rateGps[0] + p.rateGps[1]) / 2 >= FAST_GPS ? 'fast' : 'slow') : p.speed;
-const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
+export const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 const fmtHold = (s: number) => Math.round(s / 5) * 5;
 
 export function describeRecipe(def: RecipeDef): string {
