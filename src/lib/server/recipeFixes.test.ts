@@ -131,4 +131,44 @@ describe('applyRecipeFixes', () => {
     expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M)).toBeTruthy();
     expect(RECIPE_FIXES_2026_10_MARKER).toBe('recipe_steps_2026_10');
   });
+
+  describe('collisions and shape mismatches', () => {
+    const fresh = () => {
+      const db = createDb(':memory:');
+      db.exec('DELETE FROM recipes');
+      const ins = (name: string, n = 4) =>
+        db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES (?, '["x"]', ?, 'x', 'x')`)
+          .run(name, JSON.stringify(oldDef(n, 16.7, 0.7, 91)));
+      return { db, ins, names: () => (db.prepare(`SELECT name FROM recipes ORDER BY id`).all() as { name: string }[]).map((r) => r.name) };
+    };
+
+    it('an existing Natural is left untouched; Shoebox QC is still renamed', () => {
+      const { db, ins, names } = fresh();
+      ins('Shoebox QC');
+      ins('shoebox qc (natural)');
+      const before = db.prepare(`SELECT * FROM recipes WHERE id = 2`).get();
+      applyRecipeFixes(db, M);
+      expect(names()).toEqual(['Shoebox QC (Washed)', 'shoebox qc (natural)']);
+      expect(db.prepare(`SELECT * FROM recipes WHERE id = 2`).get()).toEqual(before);
+      expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M)).toBeTruthy();
+    });
+
+    it('an existing Washed leaves Shoebox QC as is', () => {
+      const { db, ins, names } = fresh();
+      ins('Shoebox QC');
+      ins('Shoebox QC (Washed)');
+      applyRecipeFixes(db, M);
+      expect(names()).toEqual(expect.arrayContaining(['Shoebox QC', 'Shoebox QC (Washed)']));
+      expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M)).toBeTruthy();
+    });
+
+    it('leaves shares and grams alone when the pour count differs from the data', () => {
+      const { db, ins } = fresh();
+      ins("Bean's Beans Standard", 3);
+      applyRecipeFixes(db, M);
+      const def = JSON.parse((db.prepare(`SELECT definition d FROM recipes`).get() as { d: string }).d);
+      expect(def.pours.map((p: { share: unknown; grams: number }) => [p.share, p.grams])).toEqual([[null, 60], [null, 60], [null, 60]]);
+      expect(def.ratio.tol).toBe(0.5);
+    });
+  });
 });

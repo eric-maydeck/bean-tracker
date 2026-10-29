@@ -38,7 +38,7 @@ const SHOEBOX = { equalSplit: true, tol: 0.5, triggers: [null, after(30, 60)] as
 type Def = Record<string, any>;
 function fixDef(def: Def, f: Omit<Fix, 'name' | 'dropTags'>): Def {
   def.pours.forEach((p: Def, i: number) => {
-    if (f.shares) Object.assign(p, { share: f.shares[i], grams: null });
+    if (f.shares && f.shares.length === def.pours.length) Object.assign(p, { share: f.shares[i], grams: null });
     if (f.triggers) p.trigger = f.triggers[i] ?? null;
   });
   if (f.equalSplit) def.equalSplit = true;
@@ -70,9 +70,12 @@ export function applyRecipeFixes(db: DatabaseSync, marker = RECIPE_FIXES_2026_10
     if (box) {
       // Natural first: it copies the untouched def and tags; washed keeps the id and brew links.
       const nat = fixDef(JSON.parse(box.definition), { ...SHOEBOX, targets: [15.3], tempC: 85 });
-      db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
-        .run('Shoebox QC (Natural)', box.tags, JSON.stringify(nat), now, now);
-      apply('Shoebox QC', { ...SHOEBOX, targets: [16.7], tempC: 91.5, rename: 'Shoebox QC (Washed)' });
+      // Names are unique (NOCASE); a name someone already made is left alone rather than aborting boot.
+      if (!get.get('Shoebox QC (Natural)'))
+        db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
+          .run('Shoebox QC (Natural)', box.tags, JSON.stringify(nat), now, now);
+      if (!get.get('Shoebox QC (Washed)'))
+        apply('Shoebox QC', { ...SHOEBOX, targets: [16.7], tempC: 91.5, rename: 'Shoebox QC (Washed)' });
     }
     db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(marker, now);
     db.exec('COMMIT');
