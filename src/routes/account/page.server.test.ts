@@ -86,20 +86,33 @@ describe('?/importBeanConqueror', () => {
   });
 });
 
-describe('?/saveDoses', () => {
-  const post = (doses: string, isAdmin = true) => {
+describe('brew now dose and ratio lists', () => {
+  const post = (value: string, isAdmin = true) => {
     const body = new FormData();
-    body.set('doses', doses);
+    body.set('value', value);
     return { request: new Request('http://localhost/account', { method: 'POST', body }), locals: { isAdmin } } as never;
   };
-  it('saves parsed doses and load returns them', async () => {
-    await expect(actions.saveDoses(post('20, 16 18'))).resolves.toEqual({ dosesSaved: true });
-    expect((load(event(true)) as { doses: number[] }).doses).toEqual([16, 18, 20]);
+  const data = () => load(event(true)) as unknown as { doses: number[]; ratios: { ratios: number[]; derived: boolean } };
+  it('adds and removes doses; load returns them', async () => {
+    await expect(actions.addDose(post('22'))).resolves.toEqual({ listSaved: true });
+    expect(data().doses).toEqual([15, 18, 20, 22]);
+    await actions.removeDose(post('15'));
+    expect(data().doses).toEqual([18, 20, 22]);
   });
-  it('rejects bad input with dosesError', async () => {
-    expect(failure(await actions.saveDoses(post('3')))).toEqual({ status: 400, data: { dosesError: 'Each dose must be 5–40 g' } });
+  it('ratios are derived until the first edit stores them', async () => {
+    getDb().prepare(`DELETE FROM beanconqueror_brews`).run(); // the import test above left fixture brews
+    expect(data().ratios).toEqual({ ratios: [15, 16, 17], derived: true });
+    await actions.addRatio(post('16.5'));
+    expect(data().ratios).toEqual({ ratios: [15, 16, 16.5, 17], derived: false });
+    await actions.removeRatio(post('15'));
+    expect(data().ratios.ratios).toEqual([16, 16.5, 17]);
+  });
+  it('rejects bad input with listError', async () => {
+    expect(failure(await actions.addDose(post('3')))).toEqual({ status: 400, data: { listError: 'Each dose must be 5–40 g', list: 'doses' } });
+    expect(failure(await actions.addRatio(post('25')))).toEqual({ status: 400, data: { listError: 'Each ratio must be 10–20', list: 'ratios' } });
   });
   it('rejects a non-admin with 401', async () => {
-    await expect(actions.saveDoses(post('18', false))).rejects.toMatchObject({ status: 401 });
+    for (const a of ['addDose', 'removeDose', 'addRatio', 'removeRatio'] as const)
+      await expect(actions[a](post('18', false))).rejects.toMatchObject({ status: 401 });
   });
 });

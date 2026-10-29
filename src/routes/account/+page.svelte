@@ -1,7 +1,27 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
+  import Icon from '$lib/components/Icon.svelte';
+  import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   let { data, form } = $props();
+
+  // ✕ confirms in a dialog; "Don't ask again" is remembered per browser.
+  const SKIP_KEY = 'account-skip-remove-confirm';
+  let pending = $state<{ form: HTMLFormElement; label: string } | null>(null);
+  let dontAsk = $state(false);
+  function ask(e: MouseEvent, label: string) {
+    let skip = false;
+    try { skip = loadChoice(localStorage.getItem(SKIP_KEY), ['skip'], Date.now(), Infinity) === 'skip'; } catch { /* storage blocked: ask */ }
+    if (skip) return;
+    e.preventDefault();
+    pending = { form: (e.currentTarget as HTMLButtonElement).form!, label };
+  }
+  function confirmRemove() {
+    const f = pending!.form;
+    if (dontAsk) try { localStorage.setItem(SKIP_KEY, serializeChoice('skip', Date.now())); } catch { /* ignore */ }
+    pending = null;
+    f.requestSubmit();
+  }
 
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { timeZone: 'UTC' }) + ' UTC' : 'never');
   const s = $derived(data.status);
@@ -80,17 +100,72 @@
 
 <section class="chart-panel">
   <h2>Brew now</h2>
-  <form method="POST" action="?/saveDoses" use:enhance>
-    <label class="form-field">
-      Doses (g)
-      <input name="doses" type="text" inputmode="decimal" value={data.doses.join(', ')} placeholder="15, 18, 20" />
-    </label>
-    <button class="button" type="submit">Save</button>
+  <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
+
+  <h3>Doses (g)</h3>
+  <ul class="bn-list">
+    {#each data.doses as d (d)}
+      <li>
+        <form method="POST" action="?/removeDose" use:enhance>
+          <input type="hidden" name="value" value={d} />
+          <span class="bn-main">
+            <strong>{d} g</strong>
+            <span class="text-muted">{data.ratios.ratios.map((r) => `1:${r} → ${Math.round(d * r)} g`).join(' · ')}</span>
+          </span>
+          <button class="button button-ghost button-icon" type="submit" aria-label="Remove {d} g" onclick={(e) => ask(e, `${d} g`)}><Icon name="x" /></button>
+        </form>
+      </li>
+    {/each}
+  </ul>
+  <form class="bn-add" method="POST" action="?/addDose" use:enhance>
+    <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="g" />
+    <button class="button button-secondary" type="submit">Add</button>
   </form>
-  {#if form && 'dosesError' in form && form.dosesError}
-    <p class="badge badge-urgent" role="alert">{form.dosesError}</p>
-  {:else if form && 'dosesSaved' in form && form.dosesSaved}
-    <p class="text-muted">Saved.</p>
-  {/if}
-  <p class="text-muted">The dose choices on each coffee's Brew now page, 1–6 values of 5–40 g.</p>
+  {#if form && 'listError' in form && form.list === 'doses'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
+
+  <h3>Ratios</h3>
+  <ul class="bn-list">
+    {#each data.ratios.ratios as r (r)}
+      <li>
+        <form method="POST" action="?/removeRatio" use:enhance>
+          <input type="hidden" name="value" value={r} />
+          <span class="bn-main"><strong>1:{r}</strong></span>
+          <button class="button button-ghost button-icon" type="submit" aria-label="Remove 1:{r}" onclick={(e) => ask(e, `1:${r}`)}><Icon name="x" /></button>
+        </form>
+      </li>
+    {/each}
+  </ul>
+  <form class="bn-add" method="POST" action="?/addRatio" use:enhance>
+    <span aria-hidden="true">1:</span>
+    <input name="value" type="text" inputmode="decimal" aria-label="New ratio, water per 1 of coffee" placeholder="16" />
+    <button class="button button-secondary" type="submit">Add</button>
+  </form>
+  {#if form && 'listError' in form && form.list === 'ratios'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
+  {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
 </section>
+
+{#if pending}
+  <div class="modal-backdrop">
+    <div class="modal bn-confirm" role="dialog" aria-modal="true" aria-labelledby="bn-confirm-title">
+      <h2 id="bn-confirm-title">Remove {pending.label}?</h2>
+      <div class="form-field form-field-checkbox">
+        <label><input type="checkbox" bind:checked={dontAsk} /> Don't ask again</label>
+      </div>
+      <div class="action-buttons">
+        <button class="button button-danger" type="button" onclick={confirmRemove}>Remove</button>
+        <button class="button button-secondary" type="button" onclick={() => (pending = null)}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); max-width: 720px; }
+  .bn-list li { border-bottom: 1px solid var(--color-border); }
+  .bn-list form { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+  .bn-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); padding: var(--space-2) 0; min-width: 0; }
+  .bn-add { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+  .bn-add input { width: 5rem; }
+  .bn-list .button-icon { flex: none; margin: 0; min-width: 44px; min-height: 44px; }
+  .bn-confirm { max-width: 24rem; }
+</style>

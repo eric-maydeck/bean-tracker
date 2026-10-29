@@ -1,9 +1,9 @@
 import { fail, redirect } from '@sveltejs/kit';
-import type { Actions, PageServerLoad } from './$types';
+import type { Actions, PageServerLoad, RequestEvent } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
-import { getBrewDoses, parseBrewDoses, setBrewDoses } from '$lib/server/brewNow/prefs';
+import { editBrewList, getBrewDoses, getBrewRatios } from '$lib/server/brewNow/prefs';
 import { linkMarks } from '$lib/server/brewNow/outcome';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { queueReadings } from '$lib/server/pourReadings';
@@ -17,7 +17,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
     .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
-  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
+  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), ratios: getBrewRatios(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
 };
 
 export const actions: Actions = {
@@ -48,11 +48,14 @@ export const actions: Actions = {
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }
     };
   },
-  saveDoses: async ({ request, locals }) => {
-    requireAdmin(locals);
-    const parsed = parseBrewDoses(String((await request.formData()).get('doses') ?? ''));
-    if ('error' in parsed) return fail(400, { dosesError: parsed.error });
-    setBrewDoses(getDb(), parsed.doses);
-    return { dosesSaved: true as const };
-  }
+  addDose: (e) => editList(e, 'doses', 'add'),
+  removeDose: (e) => editList(e, 'doses', 'remove'),
+  addRatio: (e) => editList(e, 'ratios', 'add'),
+  removeRatio: (e) => editList(e, 'ratios', 'remove')
 };
+
+async function editList({ request, locals }: RequestEvent, name: 'doses' | 'ratios', op: 'add' | 'remove') {
+  requireAdmin(locals);
+  const error = editBrewList(getDb(), name, op, String((await request.formData()).get('value') ?? ''));
+  return error ? fail(400, { listError: error, list: name }) : { listSaved: true as const };
+}
