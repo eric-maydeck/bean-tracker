@@ -502,6 +502,11 @@
 </svelte:head>
 <PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, grams: visibleTotalGrams, status: lit, query, chips: explicit.filters.map((f) => previewChip(f, data.plans)) })} />
 
+{#snippet brewButton(coffee: CoffeeRow)}
+  {#if coffee.status === 'open'}
+    <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}/brew`} use:labelTip={'Brew now'} aria-label="Brew now"><Icon name="coffee" /></a>
+  {/if}
+{/snippet}
 {#snippet cloneButton(coffee: CoffeeRow, icons = false)}
   <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}
     use:labelTip={icons ? 'Clone' : undefined} aria-label={icons ? 'Clone' : undefined}>
@@ -812,7 +817,6 @@
                 </a>
               {/if}
               <h2><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a></h2>
-              {#if coffee.status === 'open'}<p><a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a></p>{/if}
               <p class="text-muted">{coffee.roaster}</p>
               <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
               <p class="roast-row">
@@ -855,6 +859,7 @@
               {#if canEdit(coffee.id)}
                 {@render adminActions(coffee, true)}
               {:else}
+                {@render brewButton(coffee)}
                 {@render editButton(coffee, true)}
                 {@render cloneButton(coffee, true)}
               {/if}
@@ -905,7 +910,7 @@
             <span class="badge badge-frozen">Frozen</span>
           {/if}
         </a>
-        {#if coffee.status === 'open'}<a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}
+        {#if coffee.status === 'open'}<a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}
         </div>
       {/if}
     {/each}
@@ -984,12 +989,12 @@
               {:else}
                 <span class="badge badge-neutral">Backlog</span>
               {/if}
-              {#if coffee.status === 'open'}<a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}
             </div>
           {/if}
           {#if expandedId === coffee.id}
             <div class="action-buttons">
               <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}`} use:labelTip={'Open coffee page'} aria-label="Open coffee page"><Icon name="page" /></a>
+              {@render brewButton(coffee)}
               {#if data.isAdmin}
                 {@render editButton(coffee, true)}
                 {@render cloneButton(coffee, true)}
@@ -1136,7 +1141,7 @@
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if coffee.status === 'open'} <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}</td>
+            <td><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if !data.isAdmin} {@render brewButton(coffee)}{/if}</td>
             <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
@@ -1170,6 +1175,7 @@
                       {@render adminActions(coffee, true)}
                     {/if}
                   {:else}
+                    {@render brewButton(coffee)}
                     {@render editButton(coffee, true)}
                     {@render cloneButton(coffee, true)}
                   {/if}

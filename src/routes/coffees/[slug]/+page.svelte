@@ -264,6 +264,7 @@
   <button class="button button-secondary detail-import" type="button" onclick={shareToBeanConqueror}>
     Import into Bean Conqueror
   </button>
+  <a class="button button-secondary detail-brew" href="/coffees/{data.coffee.slug}/brew">Brew now</a>
   {#if data.isAdmin}
     <button class="button button-secondary detail-add" type="button" onclick={() => openModal({}, true)}>+ Add Coffee</button>
     <button class="button button-secondary detail-clone" type="button" onclick={() => openModal(clonePrefill(formCoffee))}>
@@ -475,10 +476,6 @@
               <span class="stat-value">{localDate(data.coffee.moved_date)}</span>
             </div>
           {/if}
-          <div class="stat">
-            <span class="stat-label">Brew</span>
-            <span class="stat-value"><a class="brew-now-link" href="/coffees/{data.coffee.slug}/brew">Brew now</a></span>
-          </div>
           {#if data.favoriteGrind.length}<FavoriteGrind items={data.favoriteGrind} />{/if}
         </div>
       </section>

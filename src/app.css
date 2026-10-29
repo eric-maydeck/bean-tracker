@@ -416,7 +416,7 @@ input:focus-visible {
   transform: translateY(-1px);
 }
 
-/* A whole-card link plus a sibling "Brew now" link (never nested <a>), pinned inside the card's bottom edge. */
+/* A whole-card link plus a sibling "Brew now" button (never nested <a>), pinned inside the card's bottom edge. */
 .card-wrap {
   position: relative;
   display: grid;
@@ -428,22 +428,14 @@ input:focus-visible {
   box-shadow: var(--shadow-hover);
   transform: translateY(-1px);
 }
-.brew-now-link {
+.card-wrap > .brew-now-link {
+  position: absolute;
+  left: var(--space-4);
+  bottom: var(--space-3);
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  padding: 0 var(--space-2);
-  font-weight: 600;
-}
-.data-table .brew-now-link {
-  min-height: 0;
-  padding: 0;
-  margin-left: var(--space-2);
-}
-.card-wrap > .brew-now-link {
-  position: absolute;
-  left: var(--space-2);
-  bottom: var(--space-2);
+  margin: 0;
 }
 
 .grid {

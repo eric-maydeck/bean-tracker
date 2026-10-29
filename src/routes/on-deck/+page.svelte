@@ -132,7 +132,7 @@
               <p class="text-muted">Drink before {coffee.drink_before}</p>
             {/if}
           </a>
-          <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
           </div>
         {/each}
       </section>
@@ -170,7 +170,7 @@
               </p>
             {/if}
           </a>
-          <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
           </div>
         {/each}
       </section>
