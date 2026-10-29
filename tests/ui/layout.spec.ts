@@ -1984,6 +1984,43 @@ export const STATES: State[] = [
     }
   })),
   {
+    // Phone bug: in List view, top Edit, then tapping a row's freeze icon did nothing. Touch taps stage Freeze (pressed, Pending badge);
+    // a second tap un-stages; Unfreeze and Archive stage the same way. Nothing is saved.
+    name: 'coffees-list-edit-tap-status', viewports: 'all' as const,
+    path: () => '/coffees?status=backlog&view=list',
+    act: async (page: Page) => {
+      const canTap = await page.evaluate(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0);
+      const tap = (l: Locator) => (canTap ? l.tap() : l.click());
+      await tap(page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }));
+      const row = page.locator('table.data-table tbody tr').first();
+      const pending = row.locator('.badge');
+      for (const [name, label] of [['Freeze', 'Pending: freeze'], ['Archive', 'Pending: archive']] as const) {
+        const b = row.getByRole('button', { name, exact: true });
+        await b.scrollIntoViewIfNeeded();
+        await tap(b);
+        await expect(b).toHaveAttribute('aria-pressed', 'true');
+        await expect(pending).toHaveText(label);
+        // Visible: the icon is filled (not its resting look) and the badge is on screen, under the icons.
+        expect(await b.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await row.getByRole('button', { name: 'Edit', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor));
+        const [bb, pb, bbt] = [(await pending.boundingBox())!, (await pending.boundingBox())!, (await b.boundingBox())!];
+        expect(pb.x + pb.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
+        expect(bb.y).toBeGreaterThan(bbt.y);
+        await tap(b); // un-stage
+        await expect(b).toHaveAttribute('aria-pressed', 'false');
+      }
+      // Unfreeze (Thaw) on a frozen bag stages the same way.
+      const thaw = page.getByRole('button', { name: 'Thaw', exact: true }).first();
+      if (await thaw.count()) {
+        await thaw.scrollIntoViewIfNeeded();
+        await tap(thaw);
+        await expect(thaw).toHaveAttribute('aria-pressed', 'true');
+        await expect(thaw.locator('xpath=ancestor::tr[1]').locator('.badge')).toHaveText('Pending: thaw');
+        await tap(thaw);
+        await expect(thaw).toHaveAttribute('aria-pressed', 'false');
+      }
+    }
+  },
+  {
     // Archived rows offer Unarchive (was Restore, which dropped the opened date); nothing is saved here.
     name: 'coffees-unarchive-button', viewports: 'two',
     path: () => '/coffees?status=archive&view=list',

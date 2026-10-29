@@ -3161,3 +3161,18 @@ button .sample-chip {
   grid-template-columns: repeat(2, max-content);
   flex-wrap: unset;
 }
+
+/* A staged status action (Edit mode: Open, Freeze, Archive, …) reads as pressed: filled in the accent with a ring.
+   Without it a phone tap showed nothing (the "Pending" badge sat off-screen right of the scrolling table). Delete
+   keeps its own staged look (Restore, green). */
+.action-row .button[aria-pressed='true']:not(.button-danger, .button-success) {
+  --button-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-accent);
+}
+/* The Pending badge sits under the icons, where it is on screen, not beside them past the table's scroll edge. */
+.data-table td > .action-buttons:has(> .action-stack) {
+  flex-direction: column;
+  align-items: flex-start;
+}
