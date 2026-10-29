@@ -186,7 +186,7 @@
           {@const d = r.stat?.delta ?? null}
           <li>
             <span class="name">
-              {#if r.id !== null}<a class="nm" href="/recipes#recipe-{r.id}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
+              {#if r.slug}<a class="nm" href="/recipes/{r.slug}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
               {#if r.dripper}<span class="sub" use:cutTip={r.dripper}>{r.dripper}</span>{:else}<span class="sub"></span>{/if}
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>

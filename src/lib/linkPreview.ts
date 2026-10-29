@@ -64,6 +64,12 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
+// One recipe's link preview: its pours and ratio, then how many brews matched and their average rating. No notes.
+export function recipePreview(r: { name: string; description: string; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
+  const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `brews took ${r.brewTime}`]);
+  return { title: r.name, description: fitList([r.description, stats].filter(Boolean), '\n', false) };
+}
+
 export function recipesPreview(names: string[]): Preview {
   if (!names.length) return { title: 'Recipes', description: 'No saved recipes.' };
   return { title: 'Recipes', description: fitList([plural(names.length, 'recipe'), ...names], '\n', true) };

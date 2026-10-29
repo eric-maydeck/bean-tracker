@@ -11,7 +11,7 @@ import { readStale } from '$lib/server/pourReadings';
 import { deleteRecipe, listRecipes, saveRecipe } from '$lib/server/recipes';
 import { draftFromReadings } from '$lib/recipes';
 import type { PourReading } from '$lib/pours';
-import { actions, load } from './+page.server';
+import { actions, load, _loadRecipes } from './+page.server';
 
 const flow = compactFlow(JSON.parse(readFileSync(new URL('../../lib/server/fixtures/bcflow/bbs.json', import.meta.url), 'utf8')))!;
 const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
@@ -38,6 +38,17 @@ describe('recipes page', () => {
   }
   readStale(db, -1);
   const key = (db.prepare(`SELECT structure_key k FROM brew_pour_readings LIMIT 1`).get() as { k: string }).k;
+
+  it('/recipes/<name-slug> focuses that recipe; an unknown slug is a 404', () => {
+    const admin = load(event(true)) as Data;
+    const id = saveRecipe(db, { name: 'Floral One', tags: [], def: admin.groups[0].draft });
+    const slugEvent = (slug: string) => ({ ...(event(false) as object), params: { slug } }) as never;
+    const d = _loadRecipes(slugEvent('floral-one') as never, 'floral-one') as Data;
+    expect(d.focusId).toBe(id);
+    expect(d.recipes.find((r: { recipe: { id: number } }) => r.recipe.id === id)?.slug).toBe('floral-one');
+    expect(() => _loadRecipes(slugEvent('nope') as never, 'nope')).toThrow(expect.objectContaining({ status: 404 }));
+    deleteRecipe(db, id);
+  });
 
   it('a signed-out visitor sees recipes and their brews, but not the workbench', () => {
     const admin = load(event(true)) as Data;

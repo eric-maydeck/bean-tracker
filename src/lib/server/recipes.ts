@@ -4,6 +4,7 @@ import { describeReading, timelineOf, type PourReading, type Timeline } from '$l
 import {
   draftFromReadings,
   describeRecipe,
+  middleHalf,
   matchBrew,
   recipeTimeline,
   type Recipe,
@@ -300,6 +301,24 @@ export interface BrewRow {
 
 export const BREW_ROWS = 10;
 type Item = { recipe: number } | { key: string };
+
+/** Each recipe's brews' total brew times, as the middle half (null under four timed brews). */
+export function recipeBrewTimes(db: DatabaseSync): Map<number, { lo: number; hi: number; n: number }> {
+  const rows = db
+    .prepare(
+      `SELECT x.recipe_id id, CAST(b.brew_time AS REAL) s FROM brew_recipe_matches x
+       JOIN beanconqueror_brews b ON b.id = x.brew_id WHERE CAST(b.brew_time AS REAL) > 0`
+    )
+    .all() as { id: number; s: number }[];
+  const by = new Map<number, number[]>();
+  for (const r of rows) by.set(r.id, [...(by.get(r.id) ?? []), r.s]);
+  const out = new Map<number, { lo: number; hi: number; n: number }>();
+  for (const [id, v] of by) {
+    const m = middleHalf(v);
+    if (m) out.set(id, m);
+  }
+  return out;
+}
 
 /** How many brews an item's list draws from. */
 export function brewCount(db: DatabaseSync, item: Item): number {

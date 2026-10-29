@@ -1,17 +1,19 @@
-import { fail } from '@sveltejs/kit';
+import { error, fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import {
-  MIN_GROUP, RecipeError, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, getNoteWords, setNoteWords, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
+  MIN_GROUP, RecipeError, recipeBrewTimes, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, getNoteWords, setNoteWords, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
 import { describeReading, type PourReading } from '$lib/pours';
 import { parseNoteWords } from '$lib/agitation';
 import { parseRecipesView } from '$lib/recipesView';
+import { recipeIdBySlug, recipeSlugs } from '$lib/recipeSlug';
 
-export const load: PageServerLoad = ({ locals, url }) => {
+// The page for /recipes and /recipes/<name-slug> (the latter scrolls to, highlights and previews that recipe).
+export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, slug?: string) {
   // Public read; structures found in brews, hidden ones and note words are the admin's workbench.
   const admin = locals.isAdmin;
   const db = getDb();
@@ -33,11 +35,18 @@ export const load: PageServerLoad = ({ locals, url }) => {
         .all() as { id: number; logged: number; matched: number; modified: number; avg: number | null; n: number }[]
     ).map((r) => [r.id, r])
   );
-  const recipes = listRecipes(db)
+  const all = listRecipes(db);
+  const slugs = recipeSlugs(all);
+  const times = recipeBrewTimes(db);
+  const focusId = slug === undefined ? null : recipeIdBySlug(all, slug);
+  if (slug !== undefined && focusId === null) error(404, 'No such recipe');
+  const recipes = all
     .map((recipe) => {
       const s = stats.get(recipe.id);
       return {
         recipe,
+        slug: slugs.get(recipe.id)!,
+        brewTime: times.get(recipe.id) ?? null,
         description: describeRecipe(recipe.def),
         timeline: recipeTimeline(recipe.def),
         counts: { logged: s?.logged ?? 0, match: s?.matched ?? 0, modified: s?.modified ?? 0 },
@@ -100,6 +109,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
 
   return {
     recipes,
+    focusId,
     groups,
     drippers: listDrippers(db),
     locked: lockedDrippers(db),
@@ -114,7 +124,9 @@ export const load: PageServerLoad = ({ locals, url }) => {
     noteWords: admin ? getNoteWords(db) : [],
     totals: { read: t.read, lowConfidence: t.low, notesOnly }
   };
-};
+}
+
+export const load: PageServerLoad = (event) => _loadRecipes(event)
 
 const text = (f: FormData, k: string) => {
   const v = f.get(k);

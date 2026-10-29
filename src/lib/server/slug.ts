@@ -1,13 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { slugify } from '../slugify.ts';
 
-export function slugify(input: string): string {
-  return input
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // strip combining diacritical marks left by NFD normalization
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
+export { slugify };
 
 export function generateBaseSlug(params: {
   roaster: string;

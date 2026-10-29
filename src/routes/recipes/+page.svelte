@@ -2,14 +2,30 @@
   import { enhance } from '$app/forms';
   import { page } from '$app/state';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
-  import { recipesPreview } from '$lib/linkPreview';
+  import { recipePreview, recipesPreview } from '$lib/linkPreview';
+  import { tick } from 'svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
+  import { fmtRange } from '$lib/recipes';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
+  // /recipes/<slug>: that recipe scrolls into view (below the sticky bars) and flashes once.
+  const focus = $derived(data.focusId == null ? null : data.recipes.find((r: { recipe: { id: number } }) => r.recipe.id === data.focusId) ?? null);
+  let flashId = $state<number | null>(null);
+  $effect(() => {
+    const id = data.focusId;
+    if (id == null) return;
+    let t: ReturnType<typeof setTimeout>;
+    void tick().then(() => {
+      document.getElementById(`recipe-${id}`)?.scrollIntoView({ block: 'start' });
+      flashId = id;
+      t = setTimeout(() => (flashId = null), 1800);
+    });
+    return () => clearTimeout(t);
+  });
 
   // Inline editor state: never in the URL.
   let naming = $state<string | null>(null);
@@ -42,7 +58,7 @@
 <svelte:head>
   <title>Bean Tracker - Recipes</title>
 </svelte:head>
-<PreviewMeta preview={recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
+<PreviewMeta preview={focus ? recipePreview({ name: focus.recipe.name, description: focus.description, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
 
 <div class="recipes">
 <h1>Recipes</h1>
@@ -133,10 +149,11 @@
     {#if data.recipes.length}
       <ul class="items">
         {#each data.recipes as r (r.recipe.id)}
-          <li class="item" class:open={isOpen({ recipe: r.recipe.id })} id="recipe-{r.recipe.id}">
-            <h3><a class="recipe-link" href="#recipe-{r.recipe.id}" data-sveltekit-preload-data="off">{r.recipe.name}<Icon name="link" /></a></h3>
+          <li class="item" class:open={isOpen({ recipe: r.recipe.id })} class:flash={flashId === r.recipe.id} id="recipe-{r.recipe.id}">
+            <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="off" data-sveltekit-noscroll>{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
+            {#if r.brewTime}<div class="text-muted">Brews took {fmtRange(r.brewTime)} in total (the middle half of {r.brewTime.n})</div>{/if}
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
             </div>
@@ -350,6 +367,9 @@
     min-width: 0;
   }
   .item { scroll-margin-top: var(--space-4); }
+  .item.flash { animation: recipe-flash 1.8s ease-out; }
+  @keyframes recipe-flash { from { box-shadow: 0 0 0 3px var(--color-accent); } to { box-shadow: 0 0 0 3px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .item.flash { animation: none; outline: 2px solid var(--color-accent); } }
   .item h3 { margin: 0; }
   .recipe-link { color: inherit; text-decoration: none; }
   .recipe-link :global(.icon) { width: 0.8em; height: 0.8em; margin-inline-start: 0.3em; vertical-align: -0.05em; color: var(--color-text-muted); opacity: 0; }

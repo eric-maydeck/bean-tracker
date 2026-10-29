@@ -251,7 +251,6 @@ export function describeRecipe(def: RecipeDef): string {
   else if (sw.length)
     out.push(sw.map((i) => (i < blooms ? 'swirl after bloom' : `swirl after pour ${i + 1}`)).join(', '));
   out.push(isNum(def.ratio.target) ? `~1:${+def.ratio.target.toFixed(1)}` : 'ratio unknown');
-  if (def.totalS != null) out.push(`${mmss(def.totalS)} total`);
   if (def.anySpeed) out.push('any pour speed');
   if (def.drippers.length) out.push(`on ${def.drippers.join(', ').replace(/, ([^,]*)$/, ' or $1')}`);
   return capital(out.join(' · '));
@@ -359,3 +358,16 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
   }
   return best;
 }
+
+// What a recipe's brews actually took (total brew time): the middle half of them, so it reads as a spread, not a goal.
+export function middleHalf(seconds: number[]): { lo: number; hi: number; n: number } | null {
+  const v = seconds.filter((s) => s > 0).sort((a, b) => a - b);
+  if (v.length < 4) return null;
+  const at = (q: number) => {
+    const i = (v.length - 1) * q;
+    return v[Math.floor(i)] + (v[Math.ceil(i)] - v[Math.floor(i)]) * (i - Math.floor(i));
+  };
+  return { lo: Math.round(at(0.25)), hi: Math.round(at(0.75)), n: v.length };
+}
+
+export const fmtRange = (r: { lo: number; hi: number }) => `${mmss(r.lo)}–${mmss(r.hi)}`;

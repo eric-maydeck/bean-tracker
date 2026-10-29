@@ -2586,13 +2586,18 @@ export const STATES: State[] = [
         }
       },
       {
-        name: 'recipes-hash-anchor', viewports: 'two' as const,
-        path: (s: Seed) => `/recipes#recipe-${s.recipes.recipeId}`,
+        name: 'recipes-by-name-path', viewports: 'two' as const,
+        path: () => '/recipes/seed-equal-pours',
         act: async (page: Page, s: Seed) => {
           const item = page.locator(`#recipe-${s.recipes.recipeId}`);
           await expect(item.getByRole('heading', { name: 'Seed equal pours' })).toBeVisible();
-          await expect(item.getByRole('link', { name: 'Seed equal pours' })).toHaveAttribute('href', `#recipe-${s.recipes.recipeId}`);
-          expect((await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
+          await expect(item.getByRole('link', { name: 'Seed equal pours' })).toHaveAttribute('href', '/recipes/seed-equal-pours');
+          await expect.poll(async () => (await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
+          // The link preview names the recipe; no note text.
+          await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Seed equal pours');
+          await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /\d+ brews? · avg/);
+          await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /\/recipes\/seed-equal-pours$/);
+          expect((await page.goto('/recipes/no-such-recipe'))!.status()).toBe(404);
         }
       },
       {
@@ -9817,7 +9822,7 @@ test.describe('signed out', () => {
   test('insights-pours-signed-out', async ({ page }) => {
     await gotoReady(page, '/insights?tab=pours&pourThin=open');
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
-    await expect(page.locator('main a[href^="/recipes#recipe-"]').first()).toBeVisible(); // recipe names link for everyone
+    await expect(page.locator('main a[href^="/recipes/"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
   });
   test('recipes-public', async ({ page }) => {

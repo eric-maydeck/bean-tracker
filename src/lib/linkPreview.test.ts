@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
+import { recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -148,5 +148,12 @@ describe('recipesPreview', () => {
   it('lists recipe names, or says there are none', () => {
     expect(recipesPreview(['A', 'B'])).toEqual({ title: 'Recipes', description: '2 recipes\nA\nB' });
     expect(recipesPreview([]).description).toBe('No saved recipes.');
+  });
+});
+
+describe('recipePreview', () => {
+  it('names the recipe, its pours, brew count and average', () => {
+    expect(recipePreview({ name: 'Floral', description: 'Two blooms · ~1:16', n: 311, avgRating: 7.1 })).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n311 brews · avg 7.1' });
+    expect(recipePreview({ name: 'F', description: 'd', n: 1, avgRating: null }).description).toBe('d\n1 brew');
   });
 });

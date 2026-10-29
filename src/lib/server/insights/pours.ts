@@ -1,4 +1,5 @@
 // The Pours tab: recipes and pour technique against rating, always as same-bag paired deltas (lab.ts).
+import { recipeSlugs } from '$lib/recipeSlug';
 import type { DatabaseSync } from 'node:sqlite';
 import { MON } from '$lib/insightsUrl';
 import { AGITATION_LABEL, brewAgitation, sequenceLabel, type Agitation, type BrewAgitation } from '$lib/agitation';
@@ -112,7 +113,7 @@ export const restBand: BandFn = (b) => {
 export type TechVar = 'agitation' | 'pours' | 'swirls' | 'swirlAfter' | 'bloom' | 'contact' | 'drawdown' | 'ratio';
 export interface BestCell { label: string; delta: number; brews: number; small: boolean }
 export interface RecipeRow {
-  id: number | null; name: string; rated: number; bags: number; sample: Sample; stat: BandStat | null;
+  id: number | null; slug?: string | null; name: string; rated: number; bags: number; sample: Sample; stat: BandStat | null;
   best: { roast: BestCell | null; process: BestCell | null }; trend: { label: string; value: number }[];
   logged: number; matched: number; modified: number; dripper: string | null; thin: boolean;
 }
@@ -214,6 +215,7 @@ export function poursTab(
   const stats = new Map(paired(rows, rBand).map((s) => [s.label, s]));
   const dmOf = new Map(demeaned(rows).map((r) => [r.id, r.dm])); // same basis as the deltas: every rated row of the bag
   const groups = groupBy(cut, (b) => rBand(b)?.label ?? null);
+  const recipeSlugMap = recipeSlugs(recipes);
   const card: RecipeRow[] = [];
   for (const [name, rs] of groups) {
     if (name === null) continue;
@@ -222,7 +224,7 @@ export function poursTab(
     const months = [...groupBy(rs.map((b) => ({ localDate: b.localDate, dm: dmOf.get(b.id)! })), (r) => r.localDate.slice(0, 7))].filter(([, g]) => g.length >= 3).sort((a, b) => a[0].localeCompare(b[0]));
     const drips = [...countBy(rs.filter((b) => b.dripper), (b) => b.dripper!)].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
     card.push({
-      id: F(rs[0]).recipeId, name, rated: rs.length, bags, sample, stat: stats.get(name) ?? null, best: { roast: null, process: null },
+      id: F(rs[0]).recipeId, slug: F(rs[0]).recipeId === null ? null : recipeSlugMap.get(F(rs[0]).recipeId!) ?? null, name, rated: rs.length, bags, sample, stat: stats.get(name) ?? null, best: { roast: null, process: null },
       trend: months.length >= 2 ? months.map(([k, g]) => ({ label: MON[+k.slice(5) - 1], value: mean(g.map((r) => r.dm)) })) : [],
       logged: hows.get('logged') ?? 0, matched: hows.get('match') ?? 0, modified: hows.get('modified') ?? 0, dripper: drips[0]?.[0] ?? null, thin: sample.small
     });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Pour, PourReading } from './pours';
 import {
+  middleHalf,
+  fmtRange,
   convertAmounts, describeRecipe, draftFromReadings, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
   type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
@@ -201,7 +203,7 @@ describe('matchBrew', () => {
 describe('describeRecipe', () => {
   it('bloom + fast pours with a count range', () => {
     const d = def('BFFF', { pourCount: { min: 4, max: 5 }, ratio: { target: 16.7, tol: 0.7 }, totalS: 150 });
-    expect(describeRecipe(d)).toBe('30 s bloom + 3-4 fast pours · ~1:16.7 · 2:30 total');
+    expect(describeRecipe(d)).toBe('30 s bloom + 3-4 fast pours · ~1:16.7');
   });
   it('fast pours stay fast pours whatever the rate, and a swirl follows the pours', () => {
     const d = def('BFF');
@@ -268,5 +270,13 @@ describe('hasWord', () => {
   it('finds whole words only', () => {
     expect(hasWord('BBS.', 'bbs')).toBe(0);
     expect(hasWord('xBBS', 'BBS')).toBe(-1);
+  });
+});
+
+describe('middleHalf', () => {
+  it('is the middle 50% of timed brews, and nothing for fewer than four', () => {
+    expect(middleHalf([100, 160, 170, 180, 190, 400])).toEqual({ lo: 163, hi: 188, n: 6 });
+    expect(middleHalf([0, 150, 160, 170])).toBeNull();
+    expect(fmtRange({ lo: 155, hi: 185 })).toBe('2:35–3:05');
   });
 });
