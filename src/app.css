@@ -421,12 +421,25 @@ input:focus-visible {
   position: relative;
   display: grid;
 }
-.card-wrap:has(> .brew-now-link) > .card {
+.card-wrap:has(> .brew-now-link, > .card-actions) > .card {
   padding-bottom: calc(44px + var(--space-4));
 }
 .card-wrap:hover > .card {
   box-shadow: var(--shadow-hover);
   transform: translateY(-1px);
+}
+.card-wrap > .card-actions {
+  position: absolute;
+  left: var(--space-4);
+  bottom: var(--space-3);
+  display: flex;
+  gap: var(--space-2);
+}
+.card-actions .button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
 }
 .card-wrap > .brew-now-link {
   position: absolute;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -170,7 +171,15 @@
               </p>
             {/if}
           </a>
-          <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          <div class="card-actions">
+            <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+            {#if page.data.isAdmin}
+              <form method="POST" action="?/open" use:enhance>
+                <input type="hidden" name="id" value={coffee.id} />
+                <button class="button button-secondary" type="submit">Open</button>
+              </form>
+            {/if}
+          </div>
           </div>
         {/each}
       </section>
