@@ -2884,6 +2884,8 @@ export const STATES: State[] = [
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
           await expect(pours.nth(1).getByLabel('Target (s)')).toHaveCount(0);
+          // The flow-control note shows only for flow-controlling drippers (the seed has none; the text is unit-tested).
+          await expect(page.getByTestId('flow-note')).toHaveCount(0);
           // Equal shares hides every amount input and the unit select.
           await expect(pours.getByLabel('Grams')).toHaveCount(4);
           await page.getByLabel('Equal shares').check();

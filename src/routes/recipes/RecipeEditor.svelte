@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, describeRecipe, recipeTimeline, type RecipeDef, type Trigger } from '$lib/recipes';
+  import { convertAmounts, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Trigger } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -153,6 +153,7 @@
       {/each}
     </div>
     <small class="text-muted">{copy.drippers.length ? 'Only brews on the ticked drippers match.' : 'Any dripper, as none is ticked.'}</small>
+    {#if flowNote(copy.drippers)}<small class="text-muted" data-testid="flow-note">{flowNote(copy.drippers)}</small>{/if}
     {#each copy.drippers as d (d)}
       <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={locks[d]} /> Brews on {d} only match its recipes</label></div>
     {/each}
