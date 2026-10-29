@@ -1781,6 +1781,8 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
       await expect(page.locator('.rows > li').first()).toBeVisible();
+      for (const li of await page.locator('.rows > li').all()) expect(((await li.locator('.rowhead').innerText()).split(/\s+/).length)).toBeGreaterThan(1);
+      await expect(page.locator('.start .badge')).toHaveText('guess');
     } },
   { name: 'brew-now-no-grinder-data', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?grinder=Comandante%20C40%20MK4`,
     act: async (page) => {

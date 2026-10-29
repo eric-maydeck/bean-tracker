@@ -4,7 +4,7 @@
   import { originWithFlag } from '$lib/countryFlags';
   import { formatDate } from '$lib/formatDate';
   import type { BrewRow } from '$lib/server/brewNow/load';
-  import type { Row, Setting } from '$lib/server/brewNow/suggest';
+  import type { Setting } from '$lib/server/brewNow/suggest';
   import { brewNowParams } from './brewNowUrl';
   import GrindTrend from './GrindTrend.svelte';
 
@@ -25,7 +25,6 @@
   ] as const);
 
   const gearText = (b: BrewRow) => [b.dripper, b.filter].filter(Boolean).join(' · ');
-  const hasRoasterBrews = $derived(!data.neverBrewedRoaster);
 </script>
 
 <svelte:head><title>Brew now - {c.coffeeName}</title></svelte:head>
@@ -102,7 +101,7 @@
             <span class="lab">{LABEL[r.setting]}</span>
             {#if r.value !== null}
               <strong class="val">{r.value}</strong>
-              {#if r.link}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
+              {#if r.link && (r.setting !== 'recipe' || data.isAdmin)}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
             {:else}
               <span class="none">{r.reason}</span>
             {/if}
@@ -134,7 +133,7 @@
 
   {#if data.similar.length}
     <section class="bn-card" aria-labelledby="bn-similar">
-      <h2 id="bn-similar">{hasRoasterBrews ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
+      <h2 id="bn-similar">{!data.neverBrewedRoaster ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
       <ul class="brews">
         {#each data.similar as s (s.slug)}
           <li>

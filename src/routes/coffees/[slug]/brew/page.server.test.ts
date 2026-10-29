@@ -23,8 +23,9 @@ for (const [i, mill] of ['g1', 'g1', 'g2'].entries())
   db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, ground_coffee_g, brew_temperature,
     water_amount_g, best_brew, imported_at) VALUES (?, ?, 'm1', ?, '5.5', 8, 15, 94, 250, ?, 'x')`).run(`${today}T08:00:0${i}.000Z`, `bean${brewed.id}`, mill, i === 0 ? 1 : 0);
 
-const run = (slug: string, qs = '') =>
-  load({ params: { slug }, url: new URL(`http://x/coffees/${slug}/brew${qs}`), setHeaders: () => {}, locals: { isAdmin: false } } as never) as Promise<any>;
+db.prepare(`UPDATE beanconqueror_brews SET notes = 'try finer next' WHERE best_brew = 1`).run();
+const run = (slug: string, qs = '', isAdmin = false) =>
+  load({ params: { slug }, url: new URL(`http://x/coffees/${slug}/brew${qs}`), setHeaders: () => {}, locals: { isAdmin } } as never) as Promise<any>;
 
 describe('brew now load', () => {
   it('404 for an unknown slug', async () => {
@@ -42,6 +43,15 @@ describe('brew now load', () => {
     expect(d.neverBrewedRoaster).toBe(false);
     expect(d.roasterRecipe).toBeNull();
     expect(d.marks).toEqual([]);
+  });
+  it('keeps notes private: stripped for anonymous, kept for admin', async () => {
+    const anon = await run(brewed.slug);
+    expect(JSON.stringify(anon)).not.toContain('try finer');
+    expect(anon.suggestion.lastNote).toBeNull();
+    expect(anon.thisCoffee.every((b: { notes: string | null }) => b.notes === null)).toBe(true);
+    const admin = await run(brewed.slug, '', true);
+    expect(admin.thisCoffee[0].notes).toBe('try finer next');
+    expect(admin.suggestion.lastNote).toContain('try finer');
   });
   it('flags a roaster with no brews', async () => {
     const d = await run(fresh.slug);

@@ -28,10 +28,13 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   const gc = loadGearClass(db);
   const roaster = coffee.roaster.trim().toLowerCase();
   const mine = rows.filter((r) => tierOf(coffee, r) === 1).reverse(); // rows are oldest first
+  // R9: brew notes are private; strip them server-side for anyone not signed in.
+  const strip = <T extends { notes: string | null }>(b: T): T => (locals.isAdmin ? b : { ...b, notes: null });
+  const sug = suggest(coffee, rows, gear, gc, getBrewDoses(db), today);
   return {
     coffee, gear, defaults, options, why: view.why,
-    suggestion: suggest(coffee, rows, gear, gc, getBrewDoses(db), today),
-    thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)], // Best brew pinned
+    suggestion: locals.isAdmin ? sug : { ...sug, lastNote: null, rows: sug.rows.map((r) => ({ ...r, evidence: r.evidence.map(strip) })) },
+    thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)].map(strip), // Best brew pinned
     similar: similarCoffees(coffee, rows, gear, gc),
     roasterRecipe: null as null, // Task 7
     neverBrewedRoaster: !rows.some((r) => r.roaster.trim().toLowerCase() === roaster),

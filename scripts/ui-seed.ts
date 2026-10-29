@@ -332,7 +332,7 @@ for (let j = 0; j < 4; j++) // bag 2 on the A4Z
 for (let j = 0; j < 3; j++) // Gabi brews
   bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm11', 'g2', '1.2.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
-bnBrew.run(atLocal(2, 8, 0), 'bean-lab-0', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
+bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
 const bnNew = coffee({ roaster: 'Nobody Brewed Roasters', coffee_name: 'Brew Seed Fresh Lot', origin: 'Kenya', processing: 'Washed', status: 'backlog' });
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
