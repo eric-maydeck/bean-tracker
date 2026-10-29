@@ -1,5 +1,6 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { showToast } from '$lib/toast.svelte';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -174,7 +175,7 @@
           <div class="card-actions">
             <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
             {#if page.data.isAdmin}
-              <form method="POST" action="?/open" use:enhance>
+              <form method="POST" action="?/open" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'success') showToast(`Coffee "${coffee.coffee_name}" marked as open.`); }}>
                 <input type="hidden" name="id" value={coffee.id} />
                 <button class="button button-secondary" type="submit">Open</button>
               </form>

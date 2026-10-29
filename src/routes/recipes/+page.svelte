@@ -133,15 +133,15 @@
     {#if data.recipes.length}
       <ul class="items">
         {#each data.recipes as r (r.recipe.id)}
-          <li class="item" class:open={isOpen({ recipe: r.recipe.id })}>
-            <h3>{r.recipe.name}</h3>
+          <li class="item" class:open={isOpen({ recipe: r.recipe.id })} id="recipe-{r.recipe.id}">
+            <h3><a class="recipe-link" href="#recipe-{r.recipe.id}" data-sveltekit-preload-data="off">{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
             </div>
             <div class="row-actions" data-button-row>
-              <a class="button button-secondary" href={brewsHref({ recipe: r.recipe.id })} data-sveltekit-noscroll>See brews</a>
+              <a class="button" class:button-secondary={!isOpen({ recipe: r.recipe.id })} href={brewsHref({ recipe: r.recipe.id })} aria-expanded={isOpen({ recipe: r.recipe.id })} data-sveltekit-noscroll>{isOpen({ recipe: r.recipe.id }) ? 'Hide brews' : 'See brews'}</a>
               {#if isAdmin}
                 <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
                 <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
@@ -349,7 +349,12 @@
     gap: var(--space-2);
     min-width: 0;
   }
+  .item { scroll-margin-top: var(--space-4); }
   .item h3 { margin: 0; }
+  .recipe-link { color: inherit; text-decoration: none; }
+  .recipe-link :global(.icon) { width: 0.8em; height: 0.8em; margin-inline-start: 0.3em; vertical-align: -0.05em; color: var(--color-text-muted); opacity: 0; }
+  .recipe-link:hover :global(.icon), .recipe-link:focus-visible :global(.icon) { opacity: 1; }
+  @media (hover: none) { .recipe-link :global(.icon) { opacity: 0.5; } }
   .row-actions {
     display: flex;
     flex-wrap: wrap;

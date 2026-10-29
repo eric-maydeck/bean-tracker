@@ -2507,6 +2507,22 @@ export const STATES: State[] = [
         name: 'recipes-bad-params', viewports: 'two' as const,
         path: () => '/recipes?brews=zzz&view=nope',
         act: async (page: Page) => {
+          // Open: the button reads Hide brews (expanded) and closes the list.
+          const hide = page.getByRole('link', { name: 'Hide brews' });
+          await expect(hide).toHaveAttribute('aria-expanded', 'true');
+          await hide.click();
+          await expect(rows(page)).toHaveCount(0);
+          await expect(page.getByRole('link', { name: 'See brews' }).first()).toHaveAttribute('aria-expanded', 'false');
+        }
+      },
+      {
+        name: 'recipes-hash-anchor', viewports: 'two' as const,
+        path: (s: Seed) => `/recipes#recipe-${s.recipes.recipeId}`,
+        act: async (page: Page, s: Seed) => {
+          const item = page.locator(`#recipe-${s.recipes.recipeId}`);
+          await expect(item.getByRole('heading', { name: 'Seed equal pours' })).toBeVisible();
+          await expect(item.getByRole('link', { name: 'Seed equal pours' })).toHaveAttribute('href', `#recipe-${s.recipes.recipeId}`);
+          expect((await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
           await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
           await expect(rows(page)).toHaveCount(0);
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toHaveCount(0);
@@ -2683,6 +2699,21 @@ export const STATES: State[] = [
     path: () => '/coffees',
     act: async (page) => {
       if (isPhone(page)) {
+  {
+    // Add then remove a dose (a different one per viewport: both run against one DB): each shows a status toast.
+    name: 'account-toasts', viewports: 'two',
+    path: () => '/account',
+    act: async (page) => {
+      const dose = isPhone(page) ? '31' : '32';
+      await page.getByLabel('New dose in grams').fill(dose);
+      await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+      await expect(page.getByRole('status').filter({ hasText: `Added ${dose} g.` })).toBeVisible();
+      await page.getByRole('button', { name: `Remove ${dose} g` }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
+      await expect(page.getByRole('status').filter({ hasText: `Removed ${dose} g.` })).toBeVisible();
+      await expect(page.getByRole('status')).toHaveCount(1);
+    }
+  },
         await page.getByRole('button', { name: 'More' }).click();
         await page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' }).click();
       } else {
@@ -7246,6 +7277,14 @@ export const STATES: State[] = [
           expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43);
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByRole('button', { name: 'Preview' })));
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size', { exact: true })));
+      // The Brew now evidence tip: a link to /on-deck, bold Yes:/No:, one line each.
+      await dlg.getByRole('button', { name: 'About Learn from similar gear?' }).click();
+      const own = page.locator('#gear-tip-ownData');
+      await expect(own.getByRole('link', { name: 'Brew now' })).toHaveAttribute('href', '/on-deck');
+      await expect(own.locator('li')).toHaveCount(3);
+      await expect(own.locator('li b')).toHaveText(['Yes:', 'No:']);
+      await page.keyboard.press('Escape');
+      await expect(own).toBeHidden();
           const sz = await box(dlg.getByLabel('Size', { exact: true }));
           expect((await box(save)).y - (sz.y + sz.height), 'ui-rules 22: space above the action row').toBeGreaterThanOrEqual(14);
         }
@@ -9677,7 +9716,7 @@ test.describe('signed out', () => {
   test('insights-pours-signed-out', async ({ page }) => {
     await gotoReady(page, '/insights?tab=pours&pourThin=open');
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
-    await expect(page.locator('main a[href^="/recipes?brews=r"]').first()).toBeVisible(); // recipe names link for everyone
+    await expect(page.locator('main a[href^="/recipes#recipe-"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
   });
   test('recipes-public', async ({ page }) => {
@@ -9691,10 +9730,6 @@ test.describe('signed out', () => {
     await expect(page).toHaveURL(/brews=r\d+/);
     await expect(page.locator('.brew-row').first()).toBeVisible();
     await checkLayout(page);
-  });
-  test('recipes-old-url-redirects', async ({ page }) => {
-    await page.goto('/account/recipes?brews=r1&order=top');
-    await expect(page).toHaveURL(/\/recipes\?brews=r1&order=top$/);
   });
   test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');

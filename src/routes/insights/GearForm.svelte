@@ -122,7 +122,17 @@
             <button type="button" class="mode-tip-button" popovertarget="gear-tip-{f.key}" aria-label="About {f.label}" aria-describedby="gear-tip-{f.key}"><Icon name="question" /></button>
           {/if}
         </div>
-        {#if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: f.help.split(/(?<=\.)(?<!e\.g\.) /) }} /></div>{/if}
+        {#if f.help && f.key === 'ownData'}
+          <!-- The one tip with a link and bold Yes:/No: labels (the other tips are plain lines). -->
+          <div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}>
+            <strong class="tip-title">{f.label}</strong>
+            <ul class="tip-lines">
+              <li><a href="/on-deck">Brew now</a> suggests grind settings, a brew temperature, and a recipe using data from your past brews.</li>
+              <li><b>Yes:</b> also uses brews from similar gear (e.g. other ~60° cones) when there isn't much data.</li>
+              <li><b>No:</b> uses only brews made with this exact gear. Choose this for gear that brews differently.</li>
+            </ul>
+          </div>
+        {:else if f.help}<div class="mode-tip" id="gear-tip-{f.key}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: f.label, lines: f.help.split(/(?<=\.)(?<!e\.g\.) /) }} /></div>{/if}
         {#if f.type === 'select'}
           <select id="gear-{f.key}" bind:value={values[f.key]}>
             <option value="">Select one</option>
