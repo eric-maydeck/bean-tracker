@@ -84,7 +84,7 @@ export function loadGearClass(db: DatabaseSync): GearClass {
 // Gear for the pickers, archived (R1) left out. Rows arrive oldest first. Grinders: used in the last 365 days, newest first.
 // Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`.
 // Filters for a `dripper` (round 7): chips = the ones used with it in the last 365 days, ignoring one-offs (>= 2 brews, or
-// any in the last 90 days); `otherFilters` = the same kind of filter used with drippers of the same class (`gc`), never
+// any in the last 90 days); `otherFilters` = filters used with at least 2 other drippers of the same class (`gc`), never
 // the whole list, so it is empty for a dripper with no siblings. With no dripper: every filter, the rest as other.
 export interface GearOptions { grinders: string[]; drippers: string[]; otherDrippers: string[]; filters: string[]; otherFilters: string[] }
 export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null, gc?: GearClass): GearOptions {
@@ -107,7 +107,8 @@ export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: str
   if (dripper) {
     filters = real(recent.filter((r) => r.dripper === dripper));
     const kin = gc ? all.filter((r) => r.dripper && r.dripper !== dripper && gc.dripper(r.dripper) === gc.dripper(dripper)) : [];
-    otherFilters = real(kin).filter((f) => !filters.includes(f));
+    // the class's own filters: used with at least 2 different drippers of the class (one dripper's odd filter doesn't count)
+    otherFilters = real(kin).filter((f) => !filters.includes(f) && new Set(kin.filter((r) => r.filter === f && !r.methodArchived).map((r) => r.dripper)).size >= 2);
   } else {
     filters = list(recent, (r) => r.filter, (r) => r.methodArchived);
     otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f));
