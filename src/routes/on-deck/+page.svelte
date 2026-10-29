@@ -103,6 +103,7 @@
       <section class="grid">
         {#each current.open as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
+          <div class="card-wrap">
           <a class="card" href={`/coffees/${coffee.slug}`}>
             {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
@@ -131,6 +132,8 @@
               <p class="text-muted">Drink before {coffee.drink_before}</p>
             {/if}
           </a>
+          <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          </div>
         {/each}
       </section>
     {/if}
@@ -144,6 +147,7 @@
       <section class="grid">
         {#each current.nextUp as coffee (coffee.id)}
           {@const img = coffeeImage(coffee, '')}
+          <div class="card-wrap">
           <a class="card" href={`/coffees/${coffee.slug}`}>
             {#if img}
               <img src={img.src} alt={img.alt} class="card-thumb" style:background-color={img.fill} />
@@ -166,6 +170,8 @@
               </p>
             {/if}
           </a>
+          <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          </div>
         {/each}
       </section>
     {/if}

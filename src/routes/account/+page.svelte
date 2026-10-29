@@ -77,3 +77,21 @@
   <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
   <p><a class="button button-secondary" href="/account/recipes">Open recipes</a></p>
 </section>
+
+
+<section class="chart-panel">
+  <h2>Brew now</h2>
+  <form method="POST" action="?/saveDoses" use:enhance>
+    <label class="form-field">
+      Doses (g)
+      <input name="doses" type="text" inputmode="decimal" value={data.doses.join(', ')} placeholder="15, 18, 20" />
+    </label>
+    <button class="button" type="submit">Save</button>
+  </form>
+  {#if form && 'dosesError' in form && form.dosesError}
+    <p class="badge badge-urgent" role="alert">{form.dosesError}</p>
+  {:else if form && 'dosesSaved' in form && form.dosesSaved}
+    <p class="text-muted">Saved.</p>
+  {/if}
+  <p class="text-muted">The dose choices on each coffee's Brew now page, 1–6 values of 5–40 g.</p>
+</section>

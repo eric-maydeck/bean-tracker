@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
+import { getBrewDoses, parseBrewDoses, setBrewDoses } from '$lib/server/brewNow/prefs';
 import { linkMarks } from '$lib/server/brewNow/outcome';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { queueReadings } from '$lib/server/pourReadings';
@@ -16,7 +17,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     .prepare(`SELECT value FROM app_meta WHERE key = 'beanconqueror_last_imported_at'`)
     .get() as { value: string } | undefined;
   // Without ORIGIN, adapter-node builds url.origin from the Host header, so each domain shows its own URL.
-  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
+  return { status: uploadStatus(db), recipes: { saved: listRecipes(db).length, groups: discoverGroups(db).length }, lastImportedAt: lastImported?.value ?? null, doses: getBrewDoses(db), uploadUrl: url.origin + '/', username: UPLOAD_USERNAME };
 };
 
 export const actions: Actions = {
@@ -46,5 +47,12 @@ export const actions: Actions = {
       success: true as const,
       imported: { beans: parsed.beans.length, brews: parsed.brews.length, waters: parsed.waters?.length ?? 0 }
     };
+  },
+  saveDoses: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const parsed = parseBrewDoses(String((await request.formData()).get('doses') ?? ''));
+    if ('error' in parsed) return fail(400, { dosesError: parsed.error });
+    setBrewDoses(getDb(), parsed.doses);
+    return { dosesSaved: true as const };
   }
 };

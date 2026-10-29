@@ -85,3 +85,21 @@ describe('?/importBeanConqueror', () => {
     expect((f?.data as unknown as { error: string }).error).toMatch(/over 20 MB/);
   });
 });
+
+describe('?/saveDoses', () => {
+  const post = (doses: string, isAdmin = true) => {
+    const body = new FormData();
+    body.set('doses', doses);
+    return { request: new Request('http://localhost/account', { method: 'POST', body }), locals: { isAdmin } } as never;
+  };
+  it('saves parsed doses and load returns them', async () => {
+    await expect(actions.saveDoses(post('20, 16 18'))).resolves.toEqual({ dosesSaved: true });
+    expect((load(event(true)) as { doses: number[] }).doses).toEqual([16, 18, 20]);
+  });
+  it('rejects bad input with dosesError', async () => {
+    expect(failure(await actions.saveDoses(post('3')))).toEqual({ status: 400, data: { dosesError: 'Each dose must be 5–40 g' } });
+  });
+  it('rejects a non-admin with 401', async () => {
+    await expect(actions.saveDoses(post('18', false))).rejects.toMatchObject({ status: 401 });
+  });
+});

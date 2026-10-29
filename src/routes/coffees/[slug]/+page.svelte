@@ -475,6 +475,10 @@
               <span class="stat-value">{localDate(data.coffee.moved_date)}</span>
             </div>
           {/if}
+          <div class="stat">
+            <span class="stat-label">Brew</span>
+            <span class="stat-value"><a class="brew-now-link inline" href="/coffees/{data.coffee.slug}/brew">Brew now</a></span>
+          </div>
           {#if data.favoriteGrind.length}<FavoriteGrind items={data.favoriteGrind} />{/if}
         </div>
       </section>

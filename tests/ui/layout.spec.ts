@@ -1819,6 +1819,14 @@ export const STATES: State[] = [
     act: async (page) => {
       for (const text of Object.values(GRAMS)) await expect(page.getByText(text, { exact: true })).toBeVisible();
       for (const img of await page.locator('img.card-thumb').all()) await expectContained(img);
+      // Brew now is a sibling of the card link (no nested <a>), with a >= 44 px tap target inside the card.
+      const link = page.getByRole('link', { name: 'Brew now' }).first();
+      await expect(link).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew$/);
+      expect(await page.locator('a a').count()).toBe(0);
+      const [l, c] = [(await link.boundingBox())!, (await page.locator('.card-wrap .card').first().boundingBox())!];
+      expect(l.height).toBeGreaterThanOrEqual(44);
+      expect(l.y + l.height).toBeLessThanOrEqual(c.y + c.height + 1);
+      expect(l.x + l.width).toBeLessThanOrEqual(c.x + c.width + 1);
     }
   },
   {
@@ -2290,6 +2298,14 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByText('Flow data for 24 of 24 brews')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
+      const doses = page.getByLabel('Doses (g)');
+      await doses.fill('3');
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.getByText('Each dose must be 5–40 g')).toBeVisible();
+      await doses.fill('20, 16');
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      await expect(page.getByText('Saved.')).toBeVisible();
+      await expect(doses).toHaveValue('16, 20');
       await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
       await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();

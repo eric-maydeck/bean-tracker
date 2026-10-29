@@ -416,6 +416,13 @@ input:focus-visible {
   transform: translateY(-1px);
 }
 
+/* A whole-card link plus a sibling "Brew now" link (never nested <a>), pinned inside the card's bottom edge. */
+.card-wrap { position: relative; display: grid; }
+.card-wrap:has(> .brew-now-link) > .card { padding-bottom: calc(44px + var(--space-4)); }
+.brew-now-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-2); font-weight: 600; }
+.card-wrap > .brew-now-link { position: absolute; left: var(--space-2); bottom: var(--space-2); }
+.brew-now-link.inline { min-height: 44px; }
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
