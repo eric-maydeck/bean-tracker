@@ -1,3 +1,69 @@
+# [1.99.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.98.0...v1.99.0) (2026-10-29)
+
+
+### Bug Fixes
+
+* adding an existing dose or ratio is an error, not an Added toast with Undo
+* **brew-now:** a filter pick keeps the dripper, grind before grinder, prompt spacing
+* **brew-now:** deleted brew re-pends its mark, key marks by id
+* **brew-now:** device filter papers only show where used
+* **brew-now:** dose and ratio no longer depend on the picked gear
+* **brew-now:** filter sizes no longer limit other filters
+* **brew-now:** final review fixes
+* **brew-now:** flat bottom drippers also take flat-bottom basket filters
+* **brew-now:** gear fallback only when gear has no brews, copy, step
+* **brew-now:** keep brew notes private, admin-only recipe link, seed
+* **brew-now:** no gear lurking sentences on dose and ratio
+* **brew-now:** other filters need two drippers of the class
+* **brew-now:** recipe link points at the recipe anchor
+* **brew-now:** roast age reads 150d ago
+* **brew-now:** seed no longer perturbs insights, compact link, card hover
+* **brew-now:** www-insensitive roaster site match, safe recipe host, tighter test
+* **insights:** findings cards tighten one more step; hairline bars skip the fold check
+* recipe brew time tip anchors to its text, toasts sit closer to the top
+* recipe rename and delete on a slug page no longer 404; Recipes nav stays current
+* staged status icons show as pressed and the pending badge sits under them
+* toast undo button keeps its width on phones
+* undo restores the exact earlier coffee state; unarchive clears drank
+
+
+### Features
+
+* apostrophe-free recipe slugs, toasts leave one by one, steady edit icons
+* **brew-now:** aligned evidence grid, working tip links, green best dot, undo toasts
+* **brew-now:** brew now buttons on on-deck, coffees and coffee page
+* **brew-now:** brew this mark and outcome check
+* **brew-now:** clearer gear field for brew now evidence
+* **brew-now:** clearer ownData wording, migrate stored values
+* **brew-now:** dose prefs and entry links
+* **brew-now:** dot plot, evidence table, basis popover, round 2 page ui
+* **brew-now:** editable dose and ratio lists on the account page
+* **brew-now:** evidence recipe names link to their recipe page
+* **brew-now:** filter choices relevant to the dripper
+* **brew-now:** load brews, gear classes, defaults
+* **brew-now:** natural synopsis, ratio row, dose plan, open coffee, other gear lists
+* **brew-now:** open button on on-deck next up cards
+* **brew-now:** other filters follow the gear details' shapes and sizes
+* **brew-now:** other-gear dropdown, advice label, best crown, toasts, see coffees fix
+* **brew-now:** page
+* **brew-now:** preview-temp grind trend alternatives
+* **brew-now:** readable dose grid, import icon on coffees rows
+* **brew-now:** roaster recipe search
+* **brew-now:** round 3 page ui, dose and ratio chips, chart tips, open prompt
+* **brew-now:** schema, gear own-data flag, dose prefs
+* **brew-now:** suggestion engine
+* **brew-now:** tiers, pooling, confidence labels, synopsis, mark expiry
+* **brew-now:** url state
+* coffee action toasts, unarchive replaces restore; fix ui state placement
+* on deck tile menu, toast undo wiring, edit param, account row spacing, undo tap target
+* on deck tiles use coffees' icon set, backlog Open icon, stable list columns on Edit
+* recipe anchors, hide brews toggle, account toasts and layout, gear tip; drop recipes redirect
+* recipes as a public page between insights and water
+* recipes at /recipes/<name-slug> with link previews; brews' time as a range
+* server-resolved recipe slug on brew rows, undo on add and clone, left-aligned toasts
+* shared status toast helper
+* stacked toasts with undo, hover pause and smaller text
+
 # [1.98.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.97.0...v1.98.0) (2026-10-28)
 
 
