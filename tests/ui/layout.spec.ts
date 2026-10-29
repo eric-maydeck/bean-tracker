@@ -190,6 +190,7 @@ async function expectFoldCorners(page: Page) {
   const bad = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>('main .bar.small-sample-mark')].flatMap((e) => {
     const cs = getComputedStyle(e), track = e.parentElement!.getBoundingClientRect(), r = e.getBoundingClientRect();
     const horizontal = !!e.closest('.delta-bars');
+    if (horizontal && r.width <= 2) return []; // a hairline bar has no direction to read (its fold may sit on either side)
     const left = horizontal && Math.abs(r.right - (track.left + track.width / 2)) < 1.5 && r.width > 2; // ends at the 0 line
     const atRight = /^(100%|right)/.test(cs.backgroundPositionX.split(',')[0].trim()) && /to left bottom|to bottom left/.test(cs.backgroundImage);
     return left === atRight ? [] : [`${e.closest('[data-section]')?.getAttribute('data-section')}: fold at ${atRight ? 'right' : 'left'}, bar points ${left ? 'left' : 'right/up'}`];

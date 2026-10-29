@@ -77,10 +77,10 @@
       for (const g of groups) g.hidden = true;
       const cards = [...el.children] as HTMLElement[];
       // A fixed-height findings card whose text doesn't fit tightens step by step (CSS [data-tight],
-      // ui-rules 34); still overflowing at 3 is a test failure. Auto-height cards never overflow.
+      // ui-rules 34); still overflowing at 4 is a test failure. Auto-height cards never overflow.
       for (const c of cards) {
         delete c.dataset.tight;
-        for (let t = 1; t <= 3 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
+        for (let t = 1; t <= 4 && c.scrollHeight > c.clientHeight + 1; t++) c.dataset.tight = `${t}`;
       }
       if (!groups.length) return;
       el.style.alignItems = 'flex-start';
@@ -605,7 +605,7 @@
     overflow: hidden;
   }
   /* Too little room (narrow phones): headline and body to 2 lines, then legend entries and the sample
-     line to 1 line each, then headline and body to 1. */
+     line to 1 line each, then headline and body to 1, then the body goes (its popover keeps it). */
   .finding:global([data-tight]) {
     --clamp: 2;
     --vs-clamp: 2;
@@ -619,6 +619,11 @@
   }
   .finding:global([data-tight='3']) .sample {
     white-space: nowrap;
+  }
+  /* Last resort (a 2-line headline, a value, a body and a sample line in a 10rem card): the body gives way; the card's
+     click popover still has it, and the sample line keeps its Data link. */
+  .finding:global([data-tight='4']) .body {
+    display: none;
   }
   .finding:global(:is([data-tight='2'], [data-tight='3'])) .legend li {
     display: block;
