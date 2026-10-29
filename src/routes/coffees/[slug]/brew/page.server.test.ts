@@ -5,6 +5,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
+import { setRoasterWebsite } from '$lib/server/roasterWebsites';
 import { actions, load } from './+page.server';
 
 const db = getDb();
@@ -51,6 +52,15 @@ describe('brew now load', () => {
     const admin = await run(brewed.slug, '', true);
     expect(admin.thisCoffee[0].notes).toBe('try finer next');
     expect(admin.suggestion.lastNote).toContain('try finer');
+  });
+  it('treats www.x.com and x.com as one site, and survives a malformed stored recipe URL', async () => {
+    setRoasterWebsite(db, 'Sey', 'https://www.sey.example');
+    const put = (url: string) => db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_at) VALUES ('Sey', ?, 't', NULL, 'x')
+      ON CONFLICT(roaster) DO UPDATE SET url = excluded.url`).run(url);
+    put('https://sey.example/guide');
+    expect(await run(brewed.slug)).toMatchObject({ recipeHost: 'sey.example', recipeOwn: true });
+    put('not a url');
+    expect(await run(brewed.slug)).toMatchObject({ recipeHost: null, recipeOwn: false });
   });
   it('flags a roaster with no brews', async () => {
     const d = await run(fresh.slug);

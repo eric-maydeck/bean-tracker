@@ -68,10 +68,8 @@
     <section class="bn-card rr" aria-labelledby="bn-rr">
       <h2 id="bn-rr">Roaster's recipe</h2>
       {#if rr?.url}
-        {@const host = new URL(rr.url).hostname}
-        {@const own = !!data.roasterHost && (host === data.roasterHost || host.endsWith('.' + data.roasterHost))}
         <p><a href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title}</a></p>
-        <p class="foot host">{own ? host : `From ${host}, not ${c.roaster}'s site`}</p>
+        <p class="foot host">{data.recipeOwn ? data.recipeHost : data.recipeHost ? `From ${data.recipeHost}, not ${c.roaster}'s site` : ''}</p>
         {#if rr.snippet}<p class="snip">{rr.snippet}</p>{/if}
       {:else if rr}
         <p class="none">Nothing found {data.roasterHost ? `on ${c.roaster}'s site` : `for ${c.roaster}`}</p>

@@ -25,9 +25,15 @@ function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typ
 }
 
 // The roaster's own site as a bare host (what the search was restricted to), or null when none is on file.
+const bareHost = (u: string | null): string | null => { try { return u ? new URL(u).hostname.replace(/^www\./, '') : null; } catch { return null; } }; // www.x.com = x.com
 function roasterHost(db: ReturnType<typeof getDb>, roaster: string): string | null {
-  const site = getRoasterWebsite(db, roaster);
-  try { return site ? new URL(site).hostname : null; } catch { return null; }
+  return bareHost(getRoasterWebsite(db, roaster));
+}
+
+// The stored recipe link's host (null if it can't be parsed) and whether it is the roaster's own site.
+function recipeHost(db: ReturnType<typeof getDb>, roaster: string) {
+  const rr = getRoasterRecipe(db, roaster), host = bareHost(rr?.url ?? null), own = roasterHost(db, roaster);
+  return { recipeHost: host, recipeOwn: !!host && !!own && (host === own || host.endsWith('.' + own)) };
 }
 
 export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
@@ -56,6 +62,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     roasterRecipe: getRoasterRecipe(db, coffee.roaster),
     neverBrewedRoaster: !rows.some((r) => r.roaster.trim().toLowerCase() === roaster),
     roasterHost: roasterHost(db, coffee.roaster),
+    ...recipeHost(db, coffee.roaster),
     marks, bias: biasLine(marks), // no notes: safe for anyone
     isAdmin: locals.isAdmin
   };
