@@ -336,30 +336,112 @@ export type Match = {
   diffs: { text: string; modified: boolean }[];
   distance: number;
 };
-interface MatchBrew {
+export interface MatchBrew {
   notes: string | null;
   reading: PourReading | null;
   tempC: number | null;
   dripper?: string | null;
 }
 
-function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null) {
+export const SHARE_TOL = 0.06, TRIGGER_GRACE_S = 5, TEMP_TOL_C = 2;
+const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+
+/** Target share per brew pour (length n), or null when the share gate doesn't apply. */
+export function recipeShares(def: RecipeDef, n: number): number[] | null {
+  if (def.equalSplit) return Array<number>(n).fill(1 / n);
+  if (n !== def.pours.length) return null;
+  const amounts = def.pours.map((p) => p.share ?? p.grams);
+  const total = sum(amounts.map((a) => a ?? 0));
+  return amounts.some((a) => a == null) || total <= 0 ? null : amounts.map((a) => a! / total);
+}
+const sharesFor = (def: RecipeDef, r: PourReading) =>
+  sum(r.pours.map((p) => p.grams)) > 0 ? recipeShares(def, r.pours.length) : null;
+
+function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null, sharesApplied = false) {
   const out: Match['diffs'] = [];
   const n = r.pours.length;
   if (n < def.pourCount.min || n > def.pourCount.max) out.push({ text: `${n} pours`, modified: true });
   const blooms = def.pours.filter((p) => p.bloom).length;
-  if (r.bloomCount !== blooms)
+  if (!sharesApplied && r.bloomCount !== blooms)
     out.push({
       text: r.bloomCount === 2 ? 'two blooms' : r.bloomCount === 0 ? 'no bloom' : `${r.bloomCount} bloom${r.bloomCount === 1 ? '' : 's'}`,
       modified: true
     });
   if (r.bloomHoldS != null && def.bloomHoldS != null && Math.abs(r.bloomHoldS - def.bloomHoldS) > def.bloomHoldTolS)
     out.push({ text: `${fmtHold(r.bloomHoldS)} s bloom${r.bloomCount === 1 ? '' : 's'}`, modified: true });
-  if (tempC != null && def.tempC != null && Math.abs(tempC - def.tempC) > 1)
-    out.push({ text: `${+tempC.toFixed(1)} °C vs ${+def.tempC.toFixed(1)} °C`, modified: false });
+  if (tempC && def.tempC && Math.abs(tempC - def.tempC) > 1)
+    out.push({ text: `${+tempC.toFixed(1)} °C vs ${+def.tempC.toFixed(1)} °C`, modified: Math.abs(tempC - def.tempC) > TEMP_TOL_C });
   if (def.totalS != null && Math.abs(r.totalS - def.totalS) > 20)
     out.push({ text: `${mmss(r.totalS)} total vs ${mmss(def.totalS)}`, modified: false });
   return out;
+}
+
+export interface Fit {
+  pass: boolean;
+  failed: 'dripper' | 'count' | 'pattern' | 'shares' | 'ratio' | 'blooms' | null;
+  how: 'match' | 'modified';
+  diffs: Match['diffs'];
+  distance: number;
+}
+/** How well a recipe fits a brew: the first failed gate (diffs and distance are filled in regardless, for ranking). */
+export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recipe[]; locked: ReadonlySet<string> }): Fit {
+  const { reading: r } = brew;
+  if (!r || r.ratio == null || !r.pours.length) return { pass: false, failed: 'count', how: 'match', diffs: [], distance: Infinity };
+  const n = r.pours.length;
+  // A recipe tied to drippers never matches another; a locked dripper's brews match only recipes listing it (the lock only counts while a recipe lists it).
+  const d = brew.dripper;
+  const dripperBad = def.drippers.length
+    ? !d || !def.drippers.includes(d)
+    : !!d && ctx.locked.has(d) && ctx.recipes.some((x) => x.def.drippers.includes(d));
+  const countBad = n < def.pourCount.min || n > def.pourCount.max;
+
+  const speeds = def.pours.map(recipeSpeed);
+  const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
+  const patternBad = !def.anySpeed && aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase();
+
+  const shares = sharesFor(def, r);
+  const trig = (i: number) => def.pours[i]?.trigger ?? null;
+  let devs: number[] = [];
+  if (shares) {
+    const total = sum(r.pours.map((p) => p.grams));
+    const groups: number[][] = [];
+    for (let i = 0; i < n; i++) {
+      if (i > 0 && trig(i)?.kind === 'low' && trig(i - 1)?.kind === 'low') groups[groups.length - 1].push(i);
+      else groups.push([i]);
+    }
+    devs = groups.map((g) => Math.abs(sum(g.map((i) => r.pours[i].grams / total)) - sum(g.map((i) => shares[i]))));
+  }
+  const dev = devs.length ? sum(devs) / devs.length : 0;
+  const sharesBad = devs.some((x) => x > SHARE_TOL + 1e-9);
+
+  const off = Math.min(...def.ratio.targets.map((t) => Math.abs(r.ratio! - t)));
+  const ratioBad = !(off <= def.ratio.tol);
+  const bloomsBad = !shares && def.anySpeed && r.bloomCount !== def.pours.filter((p) => p.bloom).length;
+
+  const diffs = diffsOf(def, r, brew.tempC, !!shares);
+  if (shares) {
+    for (let i = 1; i < n; i++) {
+      const t = trig(i);
+      if (t?.kind !== 'after') continue;
+      const gap = r.pours[i].startS - r.pours[i - 1].startS;
+      if (gap < t.targetS - TRIGGER_GRACE_S || gap > t.maxS + TRIGGER_GRACE_S)
+        diffs.push({ text: `pour ${i + 1} after ${Math.round(gap)} s`, modified: true });
+    }
+  }
+  const speedException = patternBad && !!shares && !sharesBad && !ratioBad && !countBad;
+  if (speedException) {
+    const wrong = [...r.pattern.toUpperCase()].filter((c, i) => c !== (aligned[i] === 'fast' ? 'F' : 'S'));
+    diffs.push({ text: wrong.every((c) => c === 'S') ? 'slow pours' : wrong.every((c) => c === 'F') ? 'fast pours' : 'pour speeds', modified: true });
+  }
+
+  const failed = dripperBad ? 'dripper' : countBad ? 'count'
+    : patternBad && !speedException ? 'pattern' : sharesBad ? 'shares' : ratioBad ? 'ratio' : bloomsBad ? 'blooms' : null;
+  const mods = diffs.filter((x) => x.modified).length;
+  const tempTerm = brew.tempC && def.tempC ? Math.abs(brew.tempC - def.tempC) / TEMP_TOL_C : 0;
+  return {
+    pass: failed == null, failed, how: mods ? 'modified' : 'match', diffs,
+    distance: off / def.ratio.tol + 0.5 * mods + dev / SHARE_TOL + tempTerm
+  };
 }
 
 /** The recipe a brew is logged as or looks like, or null. */
@@ -376,31 +458,13 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;
   for (const { id, def } of recipes) {
-    // A recipe tied to drippers never matches another; a locked dripper's brews match only recipes listing it (the lock only counts while a recipe lists it).
-    const d = brew.dripper;
-    if (def.drippers.length ? !d || !def.drippers.includes(d) : d && locked.has(d) && recipes.some((x) => x.def.drippers.includes(d)))
-      continue;
-    if (def.anySpeed) {
-      if (r.bloomCount !== def.pours.filter((p) => p.bloom).length) continue;
-    } else {
-      const speeds = def.pours.map(recipeSpeed);
-      const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
-      if (aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase()) continue;
-    }
-    // ponytail: temporary nearest-target test; Task 2 replaces matchBrew's gates
-    const ratio = r.ratio;
-    const off = Math.min(...def.ratio.targets.map((t) => Math.abs(ratio - t)));
-    if (off > def.ratio.tol) continue;
-    const diffs = diffsOf(def, r, brew.tempC);
-    const mods = diffs.filter((d) => d.modified).length;
-    const distance = off / def.ratio.tol + 0.5 * mods;
-    if (!best || distance < best.distance || (distance === best.distance && id < best.recipeId))
-      best = { recipeId: id, how: mods ? 'modified' : 'match', diffs, distance };
+    const fit = fitRecipe(def, brew, { recipes, locked });
+    if (fit.pass && (!best || fit.distance < best.distance || (fit.distance === best.distance && id < best.recipeId)))
+      best = { recipeId: id, how: fit.how, diffs: fit.diffs, distance: fit.distance };
   }
   return best;
 }
 
-// What a recipe's brews actually took (total brew time): the middle half of them, so it reads as a spread, not a goal.
 export function middleHalf(seconds: number[]): { lo: number; hi: number; n: number } | null {
   const v = seconds.filter((s) => s > 0).sort((a, b) => a - b);
   if (v.length < 4) return null;

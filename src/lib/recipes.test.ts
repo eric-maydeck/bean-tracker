@@ -3,8 +3,8 @@ import type { Pour, PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, withDefaults,
-  type Recipe, type RecipeDef, type RecipePour
+  convertAmounts, describeRecipe, draftFromReadings, fitRecipe, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, withDefaults,
+  type Recipe, type RecipeDef, type RecipePour, type Trigger
 } from './recipes';
 
 const rp = (speed: 'fast' | 'slow', bloom = false, extra: Partial<RecipePour> = {}): RecipePour => ({
@@ -24,8 +24,12 @@ const pour = (speed: 'fast' | 'slow', bloom = false): Pour => ({
   startS: 0, durationS: 10, grams: 50, avgGps: speed === 'fast' ? 16 : 5, peakGps: 20, speed, bloom, contactS: 30
 });
 // pattern letters: B = bloom (fast), F, S
-const reading = (pat: string, over: Partial<PourReading> = {}): PourReading => {
-  const pours = [...pat].map((c) => pour(c === 'S' ? 'slow' : 'fast', c === 'B'));
+const reading = (
+  pat: string, over: Partial<PourReading> = {}, grams?: number[], starts?: number[]
+): PourReading => {
+  const pours = [...pat].map((c, i) => ({
+    ...pour(c === 'S' ? 'slow' : 'fast', c === 'B'), ...(grams && { grams: grams[i] }), ...(starts && { startS: starts[i] })
+  }));
   const blooms = pours.filter((p) => p.bloom).length;
   return {
     v: 1, pours, swirls: [], tares: [], bloomCount: blooms, bloomHoldS: blooms ? 30 : null, immersion: false,
@@ -148,13 +152,14 @@ describe('matchBrew', () => {
     expect(matchBrew(brew(reading('BFFS')), [tied])).toBeNull();
   });
   it('anySpeed matches any pattern at the same bloom count and ratio', () => {
-    const any = recipe(1, 'Any', def('BFFS', { anySpeed: true }));
+    const d = def('BFFS', { anySpeed: true });
+    const any = recipe(1, 'Any', { ...d, pours: d.pours.map((p) => ({ ...p, grams: null })) }); // no amounts: shares skipped
     expect(matchBrew(brew(reading('BFFS')), [any])).toMatchObject({ how: 'match' });
     expect(matchBrew(brew(reading('BSSF')), [any])).toMatchObject({ how: 'match', diffs: [] });
     expect(matchBrew(brew(reading('FFFS')), [any])).toBeNull(); // no bloom
     expect(matchBrew(brew(reading('BBFS')), [any])).toBeNull(); // two blooms
     expect(matchBrew(brew(reading('BSSF', { ratio: 18 })), [any])).toBeNull();
-    expect(matchBrew(brew(reading('BSSFS')), [any])).toMatchObject({ how: 'modified' }); // pour count still only modifies
+    expect(matchBrew(brew(reading('BSSFS')), [any])).toBeNull(); // count outside the range is no match
   });
   it('a lock with no recipe tied to the dripper does nothing', () => {
     expect(matchBrew(on('Gabi'), [recipe(1, 'Any', def('BFFS'))], new Set(['Gabi']))).toMatchObject({ recipeId: 1 });
@@ -163,7 +168,7 @@ describe('matchBrew', () => {
     const anyR = recipe(1, 'Any', def('BFFS'));
     const tied = recipe(2, 'Gabi', def('BFFS', { drippers: ['Gabi'] }));
     const locked = new Set(['Gabi']);
-    expect(matchBrew(on('Gabi'), [anyR, recipe(3, 'Gabi other', def('SSSS', { drippers: ['Gabi'] }))], locked)).toBeNull();
+    expect(matchBrew(on('Gabi'), [anyR, recipe(3, 'Gabi other', def('SSS', { drippers: ['Gabi'] }))], locked)).toBeNull();
     expect(matchBrew(on('Gabi'), [anyR, tied], locked)).toMatchObject({ recipeId: 2 });
     expect(matchBrew(on('Gabi'), [anyR])).toMatchObject({ recipeId: 1 }); // unlocked
     expect(matchBrew(on('V60'), [anyR], locked)).toMatchObject({ recipeId: 1 });
@@ -172,20 +177,19 @@ describe('matchBrew', () => {
     const m = matchBrew(brew(reading('BFFS')), [r1])!;
     expect(m).toMatchObject({ recipeId: 1, how: 'match', diffs: [] });
   });
-  it('pourCount range absorbs an extra pour; a fixed count is modified', () => {
+  it('pourCount range absorbs an extra pour; a fixed count is no match', () => {
     const wide = recipe(1, 'R1', def('BFFF', { pourCount: { min: 4, max: 5 } }));
     expect(matchBrew(brew(reading('BFFFF')), [wide])).toMatchObject({ how: 'match' });
     const fixed = recipe(1, 'R1', def('BFFF', { pourCount: { min: 4, max: 4 } }));
-    expect(matchBrew(brew(reading('BFFFF')), [fixed])).toMatchObject({
-      how: 'modified', diffs: [{ text: '5 pours', modified: true }]
-    });
+    expect(matchBrew(brew(reading('BFFFF')), [fixed])).toBeNull();
   });
   it('bloom hold and count differences are modified', () => {
     const m = matchBrew(brew(reading('BFFS', { bloomHoldS: 30 })), [recipe(1, 'R1', def('BFFS', { bloomHoldS: 20 }))])!;
     expect(m).toMatchObject({ how: 'modified', diffs: [{ text: '30 s bloom', modified: true }] });
     const two = reading('BBFS', { bloomHoldS: 30 });
-    expect(matchBrew(brew(two), [r1])!.diffs).toContainEqual({ text: 'two blooms', modified: true });
-    expect(matchBrew(brew(reading('BFFS', { bloomHoldS: 30 })), [recipe(1, 'R', def('BBFS'))])!.diffs)
+    expect(matchBrew(brew(two), [r1])!.diffs).not.toContainEqual({ text: 'two blooms', modified: true }); // shares apply
+    const skip = def('BBFS', { pourCount: { min: 3, max: 4 } }); // 3 pours: shares skipped, bloom count diffs
+    expect(matchBrew(brew(reading('BFF', { bloomHoldS: 30 })), [recipe(1, 'R', skip)])!.diffs)
       .toContainEqual({ text: '1 bloom', modified: true });
   });
   it('two blooms of 30 s vs a 20 s recipe', () => {
@@ -193,7 +197,8 @@ describe('matchBrew', () => {
     expect(m.diffs).toEqual([{ text: '30 s blooms', modified: true }]);
   });
   it('different fast/slow pattern is null', () => {
-    expect(matchBrew(brew(reading('FFSS')), [recipe(1, 'R', def('FFFS'))])).toBeNull();
+    const d = def('FFFS');
+    expect(matchBrew(brew(reading('FFSS')), [recipe(1, 'R', { ...d, pours: d.pours.map((p) => ({ ...p, grams: null })) })])).toBeNull();
   });
   it('ratio null or out of tolerance is null', () => {
     expect(matchBrew(brew(reading('BFFS', { ratio: null })), [r1])).toBeNull();
@@ -227,6 +232,96 @@ describe('matchBrew', () => {
       ...def('F'), pours: [rp('slow', false, { rateGps: [14, 20] })]
     });
     expect(matchBrew(brew(reading('F')), [rate])).not.toBeNull();
+  });
+});
+
+describe('matchBrew shares and triggers', () => {
+  const ctx = { recipes: [] as Recipe[], locked: new Set<string>() };
+  const shared = (pat: string, shares: (number | null)[], over: Partial<RecipeDef> = {}, trig: Trigger[] = []) => {
+    const d = def(pat, over);
+    d.pours = d.pours.map((p, i) => ({ ...p, grams: null, share: shares[i] ?? null, trigger: trig[i] ?? null }));
+    return d;
+  };
+  const g = (xs: number[]) => xs.map((x) => x * 300);
+  const fit = (d: RecipeDef, r: PourReading, t: number | null = null) => fitRecipe(d, brew(r, null, t), ctx);
+  const four = shared('BFFS', [0.205, 0.181, 0.302, 0.311]);
+  it('shares within 6 pts match', () => {
+    expect(fit(four, reading('BFFS', {}, g([0.25, 0.18, 0.27, 0.3]))).pass).toBe(true);
+    const off = fit(four, reading('BFFS', {}, g([0.275, 0.18, 0.232, 0.313])));
+    expect(off).toMatchObject({ pass: false, failed: 'shares' });
+    expect(matchBrew(brew(reading('BFFS', {}, g([0.275, 0.18, 0.232, 0.313]))), [recipe(1, 'R', four)])).toBeNull();
+  });
+  it('consecutive low pours are one share', () => {
+    const t: Trigger[] = [null, null, null, { kind: 'low' }, { kind: 'low' }];
+    const bbj = shared('BFFFF', [0.209, 0.178, 0.192, 0.15, 0.278], {}, t);
+    for (const s of [[0.209, 0.178, 0.192, 0.15, 0.278], [0.209, 0.178, 0.192, 0.21, 0.22]])
+      expect(fit(bbj, reading('BFFFF', {}, g(s))).pass).toBe(true);
+    expect(fit(bbj, reading('BFFFF', {}, g([0.209, 0.178, 0.192, 0.1, 0.22]))).failed).toBe('shares');
+  });
+  it('equal split uses 1/N', () => {
+    const eq = shared('BFFF', [null, null, null, null], { equalSplit: true, pourCount: { min: 4, max: 5 } });
+    expect(fit(eq, reading('BFFF', {}, g([0.25, 0.25, 0.25, 0.25]))).pass).toBe(true);
+    expect(fit(eq, reading('BFFFF', {}, g([0.2, 0.2, 0.2, 0.2, 0.2]))).pass).toBe(true);
+    expect(fit(eq, reading('BFFFF', {}, g([0.175, 0.175, 0.175, 0.175, 0.3]))).failed).toBe('shares');
+  });
+  it('equal split with more pours than listed checks only listed triggers', () => {
+    const eq = shared('BFFF', [null, null, null, null], { equalSplit: true, pourCount: { min: 4, max: 5 } },
+      [null, { kind: 'after', targetS: 30, maxS: 60 }]);
+    const r = (gap: number) => reading('BFFFF', {}, g([0.2, 0.2, 0.2, 0.2, 0.2]), [0, gap, 70, 80, 90]);
+    expect(fit(eq, r(40)).diffs).toEqual([]);
+    expect(fit(eq, r(10)).diffs).toEqual([{ text: 'pour 2 after 10 s', modified: true }]);
+  });
+  it('count inside the range but not the listed pours skips shares', () => {
+    const d = shared('BFF', [0.2, 0.4, 0.4], { pourCount: { min: 2, max: 4 } });
+    expect(fit(d, reading('BF', {}, g([0.7, 0.3]))).pass).toBe(true);
+  });
+  it('no amounts skips shares', () => {
+    const d = shared('BFFS', [null, null, null, null]);
+    const f = fit(d, reading('BFFS', {}, g([0.4, 0.1, 0.2, 0.3])));
+    expect(f.pass).toBe(true);
+    expect(Number.isFinite(f.distance)).toBe(true);
+  });
+  it('bloom count is no gate when shares apply', () => {
+    const f = fit(four, reading('BBFS', {}, g([0.205, 0.181, 0.302, 0.311])));
+    expect(f).toMatchObject({ pass: true, how: 'match' });
+    expect(f.diffs.map((x) => x.text)).not.toContain('two blooms');
+  });
+  it('speed exception', () => {
+    const eq = shared('FFFF', [null, null, null, null], { equalSplit: true });
+    expect(fit(eq, reading('SSSS', {}, g([0.25, 0.25, 0.25, 0.25])))).toMatchObject({
+      pass: true, how: 'modified', diffs: [{ text: 'slow pours', modified: true }]
+    });
+    const none = shared('FFFF', [null, null, null, null]);
+    expect(fit(none, reading('SSSS', {}, g([0.25, 0.25, 0.25, 0.25]))).failed).toBe('pattern');
+  });
+  it('trigger grace', () => {
+    const d = shared('FF', [0.5, 0.5], {}, [null, { kind: 'after', targetS: 20, maxS: 30 }]);
+    const gap = (s: number) => fit(d, reading('FF', {}, g([0.5, 0.5]), [3, 3 + s]));
+    expect(gap(15)).toMatchObject({ how: 'match', diffs: [] });
+    expect(gap(35)).toMatchObject({ how: 'match', diffs: [] });
+    expect(gap(14)).toMatchObject({ how: 'modified', diffs: [{ text: 'pour 2 after 14 s', modified: true }] });
+    expect(gap(36).how).toBe('modified');
+    const low = shared('FF', [0.5, 0.5], {}, [null, { kind: 'low' }]);
+    expect(fit(low, reading('FF', {}, g([0.5, 0.5]), [0, 99])).diffs).toEqual([]);
+  });
+  it('temperature', () => {
+    const d = def('FF', { tempC: 91.5 });
+    const t = (c: number | null) => fit(d, reading('FF'), c);
+    expect(t(93)).toMatchObject({ how: 'match', diffs: [{ text: '93 °C vs 91.5 °C', modified: false }] });
+    expect(t(94)).toMatchObject({ how: 'modified' });
+    expect(t(null).diffs).toEqual([]);
+    expect(t(0).diffs).toEqual([]);
+  });
+  it('distance prefers the closer temperature', () => {
+    const a = recipe(1, 'A', def('FF', { tempC: 91.5 }));
+    const b = recipe(2, 'B', def('FF', { tempC: 85 }));
+    expect(matchBrew(brew(reading('FF'), null, 86), [a, b])!.recipeId).toBe(2);
+  });
+  it('ratio list', () => {
+    const d = def('FF', { ratio: { targets: [15, 16.7, 18], tol: 0.5 } });
+    expect(fit(d, reading('FF', { ratio: 15.4 })).pass).toBe(true);
+    expect(fit(d, reading('FF', { ratio: 18.3 })).pass).toBe(true);
+    expect(fit(d, reading('FF', { ratio: 17.3 }))).toMatchObject({ pass: false, failed: 'ratio' });
   });
 });
 
