@@ -1875,14 +1875,26 @@ export const STATES: State[] = [
     } },
   { name: 'brew-now-filter-keeps-dripper', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
-      // A dripper pick, then a filter pick: the filter must never change the dripper (the URL keeps both).
-      const dripper = page.getByRole('group', { name: 'Dripper' }).getByRole('button', { name: 'Origami' });
-      await dripper.click();
-      await expect(page).toHaveURL(/dripper=Origami/);
-      await page.getByRole('group', { name: 'Filter' }).locator('button[aria-pressed="false"]').first().click();
-      await expect(page).toHaveURL(/filter=/);
-      await expect(page).toHaveURL(/dripper=Origami/);
-      await expect(page.getByRole('group', { name: 'Dripper' }).getByRole('button', { name: 'Origami' })).toHaveAttribute('aria-pressed', 'true');
+      // Pick a dripper, then a different filter (a chip, else from Other): the URL keeps both. The filter lists follow the
+      // dripper, so try each dripper chip until one offers a filter to switch to.
+      const group = (name: string) => page.getByRole('group', { name });
+      const names = await group('Dripper').locator('button[aria-pressed="false"]:not([aria-haspopup])').allInnerTexts();
+      let done = false;
+      for (const name of names) {
+        await group('Dripper').getByRole('button', { name, exact: true }).click();
+        await expect(page).toHaveURL(new RegExp(`dripper=${encodeURIComponent(name).replace(/%20/g, '(\\+|%20)')}`));
+        const chip = group('Filter').locator('button[aria-pressed="false"]:not([aria-haspopup])').first();
+        const other = group('Filter').locator('button[aria-haspopup]');
+        if (await chip.count()) await chip.click();
+        else if (await other.count()) { await other.click(); await page.getByRole('menuitem').first().click(); }
+        else continue;
+        await expect(page).toHaveURL(/filter=/);
+        await expect(page).toHaveURL(new RegExp(`dripper=${encodeURIComponent(name).replace(/%20/g, '(\\+|%20)')}`));
+        await expect(group('Dripper').getByRole('button', { name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+        done = true;
+        break;
+      }
+      expect(done, 'the seed has a dripper with a second filter').toBe(true);
     } },
   { name: 'brew-now-other-gear', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {

@@ -328,6 +328,10 @@ for (let j = 0; j < 4; j++) // bag 2 on the A4Z
   bnBrew.run(atLocal(11 - j, 8, 10), 'bean-bn-1', 'm4', 'g2', `1.${Math.max(5 - j, 3)}.0`, 18, 92, 270, 7 + j * 0.4, j === 3 ? 1 : 0, j === 3 ? 'Try a touch finer next' : null, now);
 for (let j = 0; j < 3; j++) // Origami brews (no gear_details row, so isolated)
   bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm3', 'g2', '1.3.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
+// One unrated brew with a second filter on the Origami (brew-now-filter-keeps-dripper picks it: filters follow the dripper).
+db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
+  VALUES ('m12', 'CUSTOM_PREPARATION', 'Origami - Sibarist Fast', 'POUR OVER', ?)`).run(now);
+bnBrew.run(atLocal(9, 9, 30), 'bean-bn-1', 'm12', 'g2', '1.3.0', 15, 90, 250, null, 0, null, now);
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
 bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
 // Brew now marks on bag 2: one linked to the first Origami brew (grind and temp changed), one pending after the last brew.
