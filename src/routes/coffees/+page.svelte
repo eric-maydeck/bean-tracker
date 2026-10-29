@@ -812,7 +812,7 @@
                 </a>
               {/if}
               <h2><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a></h2>
-              {#if coffee.status === 'open'}<p><a class="brew-now-link inline" href={`/coffees/${coffee.slug}/brew`}>Brew now</a></p>{/if}
+              {#if coffee.status === 'open'}<p><a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a></p>{/if}
               <p class="text-muted">{coffee.roaster}</p>
               <p>{coffee.origin ? originWithFlag(coffee.origin) : 'Origin unknown'}</p>
               <p class="roast-row">
@@ -984,6 +984,7 @@
               {:else}
                 <span class="badge badge-neutral">Backlog</span>
               {/if}
+              {#if coffee.status === 'open'}<a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}
             </div>
           {/if}
           {#if expandedId === coffee.id}
@@ -1135,7 +1136,7 @@
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if coffee.status === 'open'} <a class="brew-now-link inline" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}</td>
+            <td><a href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if coffee.status === 'open'} <a class="brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>{/if}</td>
             <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />

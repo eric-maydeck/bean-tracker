@@ -78,7 +78,6 @@
   <p><a class="button button-secondary" href="/account/recipes">Open recipes</a></p>
 </section>
 
-
 <section class="chart-panel">
   <h2>Brew now</h2>
   <form method="POST" action="?/saveDoses" use:enhance>

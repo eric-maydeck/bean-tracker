@@ -32,7 +32,7 @@ interface State {
 }
 
 // The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Preview/Discard share their row and
-// Image URL sits on the row above. Measured on the dripper's 9 fields (Size alone on the last row).
+// Image URL sits on the row above. Measured on the dripper's 10 fields (Size + Suggestions use fill the last row, the buttons sit on the row below).
 async function expectEditAligned(page: Page) {
   const dlg = page.locator('dialog.trophy-dialog');
   const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -40,14 +40,13 @@ async function expectEditAligned(page: Page) {
   const [save, cancel] = [await bx(dlg.getByRole('button', { name: 'Save' })), await bx(dlg.getByRole('button', { name: 'Cancel' }))];
   expect(Math.abs(save.x - flow.x), 'Save left = Flow input left').toBeLessThan(1.5);
   expect(Math.abs(cancel.x + cancel.width - (flow.x + flow.width)), 'Cancel right = Flow input right').toBeLessThan(1.5);
-  expect(Math.abs(save.y - size.y), 'Save top = Size input top').toBeLessThan(2);
-  expect(Math.abs(cancel.y - size.y)).toBeLessThan(2);
-  expect(Math.abs(save.y + save.height - (size.y + size.height)), 'Save bottom = Size input bottom').toBeLessThan(2);
-  const url = await bx(dlg.getByLabel('Image URL'));
-  expect(Math.abs(url.y - mat.y), 'Image URL input top = Material input top').toBeLessThan(2);
-  expect(Math.abs((await bx(dlg.getByText('Image URL', { exact: true }))).y - (await bx(dlg.getByText('Material', { exact: true }).first())).y), 'labels level').toBeLessThan(2);
   const [prev, disc] = [await bx(dlg.getByRole('button', { name: 'Preview' })), await bx(dlg.getByRole('button', { name: 'Discard image' }))];
-  expect(Math.abs(prev.y - size.y), 'Preview top = Size input top').toBeLessThan(2);
+  expect(Math.abs(save.y - prev.y), 'Save top = Preview top').toBeLessThan(2);
+  expect(Math.abs(cancel.y - prev.y)).toBeLessThan(2);
+  expect(save.y, 'buttons below the last field row').toBeGreaterThan(size.y + size.height);
+  const url = await bx(dlg.getByLabel('Image URL'));
+  expect(Math.abs(url.y - size.y), 'Image URL input top = Size input top').toBeLessThan(2);
+  expect(Math.abs((await bx(dlg.getByText('Image URL', { exact: true }))).y - (await bx(dlg.getByText('Size', { exact: true }).first())).y), 'labels level').toBeLessThan(2);
   expect(Math.abs(prev.x - url.x)).toBeLessThan(1.5);
   expect(Math.abs(disc.x + disc.width - (url.x + url.width))).toBeLessThan(1.5);
   // Compact: label to input ~4px, field to field ~10-12px, inputs at the site's normal height.
@@ -1790,7 +1789,7 @@ export const STATES: State[] = [
       const items = page.locator('.marks > li');
       await expect(items).toHaveCount(2);
       await expect(items.nth(0)).toContainText('Waiting for your next BQ brew');
-      await expect(items.nth(1)).toContainText('Grind: 1.4.0 → 1.2.0');
+      await expect(items.nth(1)).toContainText('Grind: 1.4.0 → 1.3.0');
       await expect(items.nth(1).locator('a')).toHaveAttribute('href', /#brew-\d+/);
     } },
   { name: 'brew-now-mark-submit', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
@@ -7113,9 +7112,9 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
-      // "?" tips on Shape, Material, Flow and Size only; one opens in the site's tip look and focuses no input.
-      for (const n of ['Shape', 'Material', 'Flow', 'Size']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
-      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
+      // "?" tips on Shape, Material, Flow, Size and Suggestions use only; one opens in the site's tip look and focuses no input.
+      for (const n of ['Shape', 'Material', 'Flow', 'Size', 'Suggestions use']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       const tipBtn = dlg.getByRole('button', { name: 'About Flow' });
       if (phone) expect((await tipBtn.boundingBox())!.width).toBeGreaterThanOrEqual(43);
       await tipBtn.click();
@@ -7293,8 +7292,8 @@ export const STATES: State[] = [
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      for (const n of ['Shape', 'Material', 'Size', 'Flow']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
-      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(4);
+      for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Suggestions use']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
   { name: 'insights-trophy-fill', path: () => '/insights?tab=gear&card=dripper-v60',

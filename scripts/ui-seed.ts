@@ -312,11 +312,8 @@ for (let k = 0; k < 6; k++) {
 }
 rematchBrews(db);
 
-// Brew now: one coffee with two bags (clones) and 13 brews on two grinders incl. a Best brew and an own-data dripper (Gabi),
+// Brew now: one coffee with two bags (clones) and 13 brews on two grinders incl. a Best brew and an isolated dripper (Origami),
 // plus a coffee from a roaster nobody has brewed.
-db.prepare(`INSERT INTO beanconqueror_methods (id, preparation_method, name, preparation_style, imported_at)
-  VALUES ('m11', 'CUSTOM_PREPARATION', 'Gabi Master A', 'POUR OVER', ?)`).run(now);
-gearRow.run('dripper', 'Gabi Master A', JSON.stringify({ shape: 'Flat bottom', ownData: 'Own brews only' }), null, '2026-09-03T12:00:00.000Z', '2026-09-03T12:00:00.000Z');
 const BN = { roaster: 'Brew Roasters', coffee_name: 'Brew Seed Ethiopia Guji', origin: 'Ethiopia', processing: 'Natural' };
 const bnBags = [coffee({ ...BN, status: 'open', roast_date: daysAgo(25) }), coffee({ ...BN, status: 'open', roast_date: daysAgo(12) })];
 bnBags.forEach((c, i) => {
@@ -326,17 +323,17 @@ bnBags.forEach((c, i) => {
 const bnBrew = db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, ground_coffee_g,
   brew_temperature, water_amount_g, rating, best_brew, notes, imported_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
 for (let j = 0; j < 6; j++) // bag 1 on the ZP6: finer each brew, ratings rise
-  bnBrew.run(atLocal(24 - j, 8, 5), 'bean-bn-0', 'm1', 'g1', String(6 - j * 0.5), 15, 93, 250, 6 + j * 0.5, 0, null, now);
+  bnBrew.run(atLocal(24 - j, 8, 5), 'bean-bn-0', 'm1', 'g1', String(6 - Math.floor(j / 2) * 0.5), 15, 93, 250, 6 + j * 0.5, 0, null, now);
 for (let j = 0; j < 4; j++) // bag 2 on the A4Z
-  bnBrew.run(atLocal(11 - j, 8, 10), 'bean-bn-1', 'm4', 'g2', `1.${5 - j}.0`, 18, 92, 270, 7 + j * 0.4, j === 3 ? 1 : 0, j === 3 ? 'Try a touch finer next' : null, now);
-for (let j = 0; j < 3; j++) // Gabi brews
-  bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm11', 'g2', '1.2.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
+  bnBrew.run(atLocal(11 - j, 8, 10), 'bean-bn-1', 'm4', 'g2', `1.${Math.max(5 - j, 3)}.0`, 18, 92, 270, 7 + j * 0.4, j === 3 ? 1 : 0, j === 3 ? 'Try a touch finer next' : null, now);
+for (let j = 0; j < 3; j++) // Origami brews (no gear_details row, so isolated)
+  bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm3', 'g2', '1.3.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
 bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
-// Brew now marks on bag 2: one linked to the first Gabi brew (grind and temp changed), one pending after the last brew.
+// Brew now marks on bag 2: one linked to the first Origami brew (grind and temp changed), one pending after the last brew.
 const bnMark = db.prepare(`INSERT INTO brew_now_marks (coffee_id, marked_at, marked_local, grinder, dripper, filter, suggestion, brew_id, status)
-  VALUES (?, ?, ?, 'A4Z (Femobook)', 'Gabi Master A', NULL, ?, ?, ?)`);
-const gabi = db.prepare(`SELECT id, bc_created_at FROM beanconqueror_brews WHERE preparation_id = 'm11' ORDER BY bc_created_at LIMIT 1`).get() as { id: number; bc_created_at: string };
+  VALUES (?, ?, ?, 'A4Z (Femobook)', 'Origami', NULL, ?, ?, ?)`);
+const gabi = db.prepare(`SELECT id, bc_created_at FROM beanconqueror_brews WHERE preparation_id = 'm3' AND mill_id = 'g2' AND bean_id = 'bean-bn-1' ORDER BY bc_created_at LIMIT 1`).get() as { id: number; bc_created_at: string };
 const bnSug = (grind: string, temp: string) => JSON.stringify({ grind, temp: `${temp} °C`, dose: '15 g', recipe: null, water: null });
 bnMark.run(bnBags[1].id, now, atLocal(7, 8, 0).slice(0, 16), bnSug('1.4.0', '93'), gabi.id, 'linked');
 bnMark.run(bnBags[1].id, now, atLocal(1, 8, 0).slice(0, 16), bnSug('1.2.0', '92'), null, 'pending');
