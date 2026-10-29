@@ -18,7 +18,11 @@ export interface BrewRow {
   decaf: boolean; grinderArchived: boolean; methodArchived: boolean; // archived in BQ: still evidence, never offered
 }
 // Pool key: 'cone' / 'any' or the name itself (own-data gear, or a dripper with no shape on file).
-export interface GearClass { dripper: (name: string | null) => string; filter: (name: string | null) => string }
+export interface GearClass {
+  dripper: (name: string | null) => string; filter: (name: string | null) => string;
+  // Could this filter be used with this dripper, by the gear details' shapes and sizes? null = a shape is not on file.
+  filterFits?: (dripper: string, filter: string) => boolean | null;
+}
 export interface CoffeeDetails {
   id: number; slug: string; roaster: string; coffeeName: string; roastDate: string | null; restDays: number | null;
   gramsLeft: number | null; processing: string | null; origin: string | null; roastLevel: string | null; decaf: boolean;
@@ -77,15 +81,25 @@ export function loadGearClass(db: DatabaseSync): GearClass {
   const own = (kind: string, name: string | null) => of(kind, name)?.ownData === OWN_DATA_ONLY;
   return {
     dripper: (name) => (!name || own('dripper', name) ? (name ?? '') : of('dripper', name)?.shape === 'Conical' ? 'cone' : name),
-    filter: (name) => (!name || own('filter', name) ? (name ?? '') : 'any')
+    filter: (name) => (!name || own('filter', name) ? (name ?? '') : 'any'),
+    filterFits: (dripper, filter) => {
+      const ds = of('dripper', dripper), fs = of('filter', filter);
+      if (!ds?.shape || !fs?.shape) return null;
+      const shapes: Record<string, string[]> = { Conical: ['Cone'], Wave: ['Wave'], 'Flat bottom': ['Wave'], Hybrid: ['Cone', 'Wave'] };
+      if (!shapes[String(ds.shape)]) return null;
+      if (!shapes[String(ds.shape)].includes(String(fs.shape))) return false;
+      // ponytail: sizes are compared only for the 01 / 02 codes; 03 drippers and 155 / 185 filters have no known mapping
+      const d = String(ds.size ?? ''), f = String(fs.fits ?? '');
+      return !(['01', '02'].includes(d) && ['01', '02'].includes(f)) || (d === '01' ? true : f === '02');
+    }
   };
 }
 
 // Gear for the pickers, archived (R1) left out. Rows arrive oldest first. Grinders: used in the last 365 days, newest first.
 // Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`.
 // Filters for a `dripper` (round 7): chips = the ones used with it in the last 365 days, ignoring one-offs (>= 2 brews, or
-// any in the last 90 days); `otherFilters` = filters used with at least 2 other drippers of the same class (`gc`), never
-// the whole list, so it is empty for a dripper with no siblings. With no dripper: every filter, the rest as other.
+// any in the last 90 days); `otherFilters` = the other non-archived filters whose gear-detail shape (and 01 / 02 size) fits the
+// dripper; with no shape on file for either, only filters used with at least 2 other drippers of its class. With no dripper: every filter, the rest as other.
 export interface GearOptions { grinders: string[]; drippers: string[]; otherDrippers: string[]; filters: string[]; otherFilters: string[] }
 export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null, gc?: GearClass): GearOptions {
   const since = addDays(today, -365), recentDay = addDays(today, -90);
@@ -108,7 +122,9 @@ export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: str
     filters = real(recent.filter((r) => r.dripper === dripper));
     const kin = gc ? all.filter((r) => r.dripper && r.dripper !== dripper && gc.dripper(r.dripper) === gc.dripper(dripper)) : [];
     // the class's own filters: used with at least 2 different drippers of the class (one dripper's odd filter doesn't count)
-    otherFilters = real(kin).filter((f) => !filters.includes(f) && new Set(kin.filter((r) => r.filter === f && !r.methodArchived).map((r) => r.dripper)).size >= 2);
+    const siblings = (f: string) => real(kin).includes(f) && new Set(kin.filter((r) => r.filter === f && !r.methodArchived).map((r) => r.dripper)).size >= 2;
+    // Every filter that could fit this dripper by the gear details; without a shape on file, the class's own filters.
+    otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f) && (gc?.filterFits?.(dripper, f) ?? siblings(f)));
   } else {
     filters = list(recent, (r) => r.filter, (r) => r.methodArchived);
     otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f));

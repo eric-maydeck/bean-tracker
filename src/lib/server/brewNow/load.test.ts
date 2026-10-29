@@ -157,6 +157,36 @@ describe('filters per dripper (round 7)', () => {
   });
 });
 
+describe('filterFits and Other from the gear details (round 7)', () => {
+  const d = (name: string, shape?: string, size?: string) => saveGearDetails(db, { kind: 'dripper', name, values: { ...(shape ? { shape } : {}), ...(size ? { size } : {}), brand: 'x' }, imageUrl: null });
+  const f = (name: string, shape?: string, fits?: string) => saveGearDetails(db, { kind: 'filter', name, values: { ...(shape ? { shape } : {}), ...(fits ? { fits } : {}), brand: 'x' }, imageUrl: null });
+  d('FCone1', 'Conical', '01'); d('FCone2', 'Conical', '02'); d('FHybrid', 'Hybrid'); d('FFlat', 'Flat bottom', '01'); d('FNone');
+  d('FOwn', 'Conical', '01'); saveGearDetails(db, { kind: 'dripper', name: 'FOwn', values: { shape: 'Conical', size: '01', ownData: OWN_DATA_ONLY }, imageUrl: null });
+  f('Cone1', 'Cone', '01'); f('Cone2', 'Cone', '02'); f('Wave155', 'Wave', '155'); f('Basket155', 'Flat-bottom basket', '155'); f('NoShape');
+  const fits = loadGearClass(db).filterFits!;
+  it('conical takes cones, wave and flat bottom take waves, hybrid takes both; baskets fit none', () => {
+    expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FCone1', x))).toEqual([true, false, false]);
+    expect(['Cone1', 'Wave155'].map((x) => fits('FFlat', x))).toEqual([false, true]);
+    expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FHybrid', x))).toEqual([true, true, false]);
+  });
+  it('01 drippers take 01 or 02, 02 drippers take 02; own-data does not matter; a missing shape is unknown', () => {
+    expect([fits('FCone1', 'Cone1'), fits('FCone1', 'Cone2'), fits('FCone2', 'Cone1'), fits('FCone2', 'Cone2')]).toEqual([true, true, false, true]);
+    expect(fits('FOwn', 'Cone1')).toBe(true);
+    expect(fits('FNone', 'Cone1')).toBeNull();
+    expect(fits('FCone1', 'NoShape')).toBeNull();
+  });
+  it('Other lists the fitting filters that are not chips; unknown shapes fall back to the class rule', () => {
+    const gc = { ...loadGearClass(db), dripper: (n: string | null) => n ?? '' }; // every dripper its own class: no siblings
+    const rows = [row({ dripper: 'FCone1', filter: 'Cone1', localTime: '2026-10-20T08:00' }), row({ dripper: 'FCone2', filter: 'Cone2', localTime: '2026-10-20T08:00' }),
+      row({ dripper: 'FFlat', filter: 'Wave155', localTime: '2026-10-20T08:00' }), row({ dripper: 'FCone1', filter: 'Basket155', localTime: '2026-10-20T08:00' }),
+      row({ dripper: 'FNone', filter: 'NoShape', localTime: '2026-10-20T08:00' })];
+    expect(gearOptions(rows, '2026-10-28', 'FCone1', gc).otherFilters).toEqual(['Cone2']);
+    expect(gearOptions(rows, '2026-10-28', 'FCone2', gc).otherFilters).toEqual([]); // Cone1 is an 01 filter: 02 takes 02 only
+    expect(gearOptions(rows, '2026-10-28', 'FFlat', gc).otherFilters).toEqual([]);
+    expect(gearOptions(rows, '2026-10-28', 'FNone', gc).otherFilters).toEqual([]);
+  });
+});
+
 describe('decaf', () => {
   it('rows and details carry the coffee decaf flag', () => {
     const c = coffee('Sey', 'Decaf One');
