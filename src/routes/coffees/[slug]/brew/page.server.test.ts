@@ -124,6 +124,17 @@ describe('?/openCoffee', () => {
   });
 });
 
+describe('?/unopenCoffee', () => {
+  const act = (name: 'openCoffee' | 'unopenCoffee', isAdmin: boolean, slug: string) => actions[name]({ params: { slug }, locals: { isAdmin } } as never) as Promise<any>;
+  it('401s without admin; an admin sends an open coffee back to the backlog', async () => {
+    await act('openCoffee', true, fresh.slug);
+    await expect(act('unopenCoffee', false, fresh.slug)).rejects.toMatchObject({ status: 401 });
+    expect((await run(fresh.slug)).coffee.status).toBe('open');
+    expect(await act('unopenCoffee', true, fresh.slug)).toEqual({ unopened: true });
+    expect((await run(fresh.slug)).coffee.status).toBe('backlog');
+  });
+});
+
 describe('this coffee summary', () => {
   it('has bullets for everyone, with note bullets only for the admin', async () => {
     const anon = await run(brewed.slug), admin = await run(brewed.slug, '', true);
