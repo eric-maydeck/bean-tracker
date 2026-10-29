@@ -1835,14 +1835,11 @@ export const STATES: State[] = [
       const tip = page.locator('.bn-tip');
       await expect(tip).toBeVisible();
       await expect(tip.getByRole('link').first()).toHaveAttribute('href', /^\/coffees\//); // each basis coffee is linked
-      if (await page.locator('#similar').count()) {
-        await tip.getByRole('button', { name: 'Similar coffees' }).click(); // a real click: the tip must take pointer events. Closes the popover and lands on Similar coffees
-        await expect(tip).toHaveCount(0);
-        await expect.poll(() => page.locator('#similar').evaluate((el) => el.getBoundingClientRect().top < innerHeight)).toBe(true);
-      } else {
-        await page.keyboard.press('Escape');
-        await expect(tip).toHaveCount(0);
-      }
+      // The seed's brew coffee has similar coffees: the section and the button must exist (no vacuous pass).
+      await expect(page.locator('#similar')).toHaveCount(1);
+      await tip.getByRole('button', { name: 'Similar coffees' }).click(); // a real click: the tip must take pointer events. Closes the popover and lands on Similar coffees
+      await expect(tip).toHaveCount(0);
+      await expect.poll(() => page.locator('#similar').evaluate((el) => el.getBoundingClientRect().top < innerHeight)).toBe(true);
     } },
   { name: 'brew-now-chart-tip', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
@@ -1997,27 +1994,27 @@ export const STATES: State[] = [
       for (const [name, label] of [['Freeze', 'Pending: freeze'], ['Archive', 'Pending: archive']] as const) {
         const b = row.getByRole('button', { name, exact: true });
         await b.scrollIntoViewIfNeeded();
+        const restBg = await b.evaluate((el) => getComputedStyle(el).backgroundColor); // its own look before the tap
         await tap(b);
         await expect(b).toHaveAttribute('aria-pressed', 'true');
         await expect(pending).toHaveText(label);
         // Visible: the icon is filled (not its resting look) and the badge is on screen, under the icons.
-        expect(await b.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(await row.getByRole('button', { name: 'Edit', exact: true }).evaluate((el) => getComputedStyle(el).backgroundColor));
-        const [bb, pb, bbt] = [(await pending.boundingBox())!, (await pending.boundingBox())!, (await b.boundingBox())!];
+        await expect.poll(() => b.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(restBg); // the fill transitions in
+        const [pb, bbt] = [(await pending.boundingBox())!, (await b.boundingBox())!];
         expect(pb.x + pb.width).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
-        expect(bb.y).toBeGreaterThan(bbt.y);
+        expect(pb.y).toBeGreaterThan(bbt.y);
         await tap(b); // un-stage
         await expect(b).toHaveAttribute('aria-pressed', 'false');
       }
       // Unfreeze (Thaw) on a frozen bag stages the same way.
       const thaw = page.getByRole('button', { name: 'Thaw', exact: true }).first();
-      if (await thaw.count()) {
-        await thaw.scrollIntoViewIfNeeded();
-        await tap(thaw);
-        await expect(thaw).toHaveAttribute('aria-pressed', 'true');
-        await expect(thaw.locator('xpath=ancestor::tr[1]').locator('.badge')).toHaveText('Pending: thaw');
-        await tap(thaw);
-        await expect(thaw).toHaveAttribute('aria-pressed', 'false');
-      }
+      expect(await thaw.count(), 'the seed has a frozen backlog bag').toBeGreaterThan(0);
+      await thaw.scrollIntoViewIfNeeded();
+      await tap(thaw);
+      await expect(thaw).toHaveAttribute('aria-pressed', 'true');
+      await expect(thaw.locator('xpath=ancestor::tr[1]').locator('.badge')).toHaveText('Pending: thaw');
+      await tap(thaw);
+      await expect(thaw).toHaveAttribute('aria-pressed', 'false');
     }
   },
   {
@@ -2578,6 +2575,11 @@ export const STATES: State[] = [
       await page.getByLabel('New dose in grams').fill('3');
       await page.getByRole('button', { name: 'Add', exact: true }).first().click();
       await expect(page.getByText('Each dose must be 5–40 g')).toBeVisible();
+      // An existing value is an error with no toast (so no Undo that would remove it).
+      await page.getByLabel('New dose in grams').fill('18');
+      await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+      await expect(page.getByText('Already in your list.')).toBeVisible();
+      await expect(page.getByRole('status')).toHaveCount(0);
       const x = rows.first().getByRole('button', { name: /^Remove / });
       const [xb, rb] = [(await x.boundingBox())!, (await rows.first().boundingBox())!];
       expect(rb.x + rb.width - (xb.x + xb.width)).toBeLessThan(4); // the ✕ sits at the row's far right
@@ -2855,6 +2857,19 @@ export const STATES: State[] = [
         await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
         const names = await links.allTextContents();
         expect(names.map((n) => n.trim()).slice(names.indexOf('Insights'), names.indexOf('Insights') + 3)).toEqual(['Insights', 'Recipes', 'Water']);
+      }
+    }
+  },
+  {
+    // /recipes/<slug> is the Recipes page: its nav item stays current.
+    name: 'recipes-nav-slug', viewports: 'two',
+    path: () => '/recipes/seed-equal-pours',
+    act: async (page) => {
+      if (isPhone(page)) {
+        await page.getByRole('button', { name: 'More' }).click();
+        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
+      } else {
+        await expect(page.locator('.nav-links > a').filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
       }
     }
   },
@@ -9930,6 +9945,14 @@ test.describe('signed out', () => {
     await expect(page).toHaveURL(/brews=r\d+/);
     await expect(page.locator('.brew-row').first()).toBeVisible();
     await checkLayout(page);
+  });
+  test('coffee-edit-clone-params-signed-out', async ({ page }) => {
+    await gotoReady(page, '/coffees?status=all&view=cards');
+    const href = (await page.locator('a.card').first().getAttribute('href'))!;
+    await gotoReady(page, `${href}?edit=1&clone=1`);
+    await expect.poll(() => new URL(page.url()).search).toBe(''); // the one-shot params are dropped for everyone
+    await expect(page.getByRole('button', { name: 'Save changes' })).toHaveCount(0);
+    await expect(page.locator('.modal')).toHaveCount(0);
   });
   test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');
