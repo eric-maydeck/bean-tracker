@@ -11,5 +11,7 @@ describe('recipeSlugs', () => {
     expect(recipeIdBySlug(rs, 'nope')).toBeNull();
     expect(recipeHref('shoebox-qc')).toBe('/recipes/shoebox-qc');
   });
+  it('drops apostrophes instead of splitting the word', () =>
+    expect(recipeSlugs([{ id: 1, name: "Bean's Beans Standard" }, { id: 2, name: 'Beans’ Floral' }]).get(1)).toBe('beans-beans-standard'));
   it('falls back for a name with no letters', () => expect(recipeSlugs([{ id: 3, name: '!!' }]).get(3)).toBe('recipe'));
 });

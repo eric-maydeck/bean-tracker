@@ -1,7 +1,7 @@
 <script lang="ts">
   // One toast. Timing matches AddedToast ("Coffee added!"): 3 s visible (5 s on touch screens), a 400 ms fade, hover or
   // focus inside pauses the countdown, and leaving resumes it with at least 2 s left. No focus move, no backdrop.
-  import { dismissToast, undoToast, type ToastItem } from '$lib/toast.svelte';
+  import { dismissToast, leaving, noteLeaving, remainingAfterLeave, undoToast, type ToastItem } from '$lib/toast.svelte';
 
   let { t }: { t: ToastItem } = $props();
 
@@ -15,6 +15,7 @@
     startedAt = Date.now();
     timer = setTimeout(() => {
       fading = true;
+      noteLeaving();
       timer = setTimeout(() => dismissToast(t.id), 400);
     }, remaining);
   }
@@ -32,6 +33,21 @@
     remaining = Math.max(remaining, 2000);
     run();
   }
+
+  // When another toast starts to leave, this one keeps at least ~1.2 s, so they go one after another, not together.
+  let seenLeaving = leaving.n;
+  $effect(() => {
+    const n = leaving.n;
+    if (n === seenLeaving) return;
+    seenLeaving = n;
+    if (paused || fading) return;
+    const left = remaining - (Date.now() - startedAt);
+    const bumped = remainingAfterLeave(left);
+    if (bumped === left) return;
+    clearTimeout(timer);
+    remaining = bumped;
+    run();
+  });
 
   $effect(() => {
     remaining = matchMedia('(hover: none)').matches ? 5000 : 3000;

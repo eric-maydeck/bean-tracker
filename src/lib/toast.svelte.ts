@@ -7,6 +7,12 @@ export interface ToastItem {
 }
 
 export const toasts = $state<ToastItem[]>([]);
+
+// A toast starting to fade bumps the counter; the others then keep at least BUMP_MS, so they leave one after another.
+export const leaving = $state({ n: 0 });
+export const BUMP_MS = 1200;
+export const remainingAfterLeave = (left: number): number => Math.max(left, BUMP_MS);
+export const noteLeaving = (): void => void leaving.n++;
 let nextId = 1;
 
 export function showToast(text: string, opts: { undo?: ToastItem['undo'] } = {}): number {

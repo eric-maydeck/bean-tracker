@@ -1935,7 +1935,7 @@ export const STATES: State[] = [
     }
   })),
   {
-    // Next up tiles carry /coffees' icon set for a backlog coffee: Open, Import / Edit, Clone in a 2×2 (no ⋯ menu, no text button).
+    // Next up tiles carry /coffees' icon set for a backlog coffee, in one row: Open, Import, Edit, Clone (no ⋯ menu, no text button).
     name: 'on-deck-next-up-icons',
     viewports: 'two',
     path: () => '/on-deck?view=next',
@@ -1944,30 +1944,33 @@ export const STATES: State[] = [
       const names = ['Open', 'Import into Bean Conqueror', 'Edit', 'Clone'];
       const boxes = [];
       for (const n of names) boxes.push((await card.getByRole(n === 'Open' || false ? 'button' : 'link', { name: n, exact: true }).boundingBox())!);
-      expect(Math.abs(boxes[0].y - boxes[1].y)).toBeLessThan(2); // row 1: Open, Import
-      expect(Math.abs(boxes[2].y - boxes[3].y)).toBeLessThan(2); // row 2: Edit, Clone
-      expect(boxes[2].y).toBeGreaterThan(boxes[0].y + 40);
-      expect(boxes[2].x).toBeCloseTo(boxes[0].x, 0);
+      for (const b of boxes) expect(Math.abs(b.y - boxes[0].y)).toBeLessThan(2); // one row, in order
+      for (let i = 1; i < boxes.length; i++) expect(boxes[i].x).toBeGreaterThan(boxes[i - 1].x);
       const cb = (await card.boundingBox())!;
       for (const b of boxes) { expect(b.width).toBeGreaterThanOrEqual(43); expect(b.y + b.height).toBeLessThanOrEqual(cb.y + cb.height + 1); }
       await expect(card.getByRole('button', { name: 'More actions' })).toHaveCount(0);
     }
   },
-  {
+  ...['open', 'backlog'].map((st) => ({
     // The List view's column positions hold still when top Edit is toggled.
-    name: 'coffees-edit-stable-columns',
-    viewports: 'two',
-    path: () => '/coffees?status=open&view=list',
+    name: `coffees-edit-stable-columns-${st}`,
+    viewports: 'two' as const,
+    path: () => `/coffees?status=${st}&view=list`,
     act: async (page: Page) => {
       const cols = () => page.locator('table.data-table thead th').evaluateAll((ths) => { const x0 = ths[0].getBoundingClientRect().x; return ths.map((th) => { const r = th.getBoundingClientRect(); return [r.x - x0, r.width]; }); });
+      const icons = () => page.locator('table.data-table tbody tr').first().locator('td:last-child').locator('button, a.button').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().x));
       const before = await cols();
+      const iconsBefore = await icons();
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       const after = await cols();
+      // The icons that were there keep their x; Edit mode's extra icon lands to their right.
+      const iconsAfter = await icons();
+      for (const x of iconsBefore) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
       expect(after).toHaveLength(before.length);
       after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
     }
-  },
+  })),
   {
     // Archived rows offer Unarchive (was Restore, which dropped the opened date); nothing is saved here.
     name: 'coffees-unarchive-button', viewports: 'two',

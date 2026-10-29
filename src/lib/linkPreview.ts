@@ -66,7 +66,7 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
 
 // One recipe's link preview: its pours and ratio, then how many brews matched and their average rating. No notes.
 export function recipePreview(r: { name: string; description: string; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
-  const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `brews took ${r.brewTime}`]);
+  const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `most brews took ${r.brewTime}`]);
   return { title: r.name, description: fitList([r.description, stats].filter(Boolean), '\n', false) };
 }
 

@@ -9,6 +9,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { fmtRange } from '$lib/recipes';
+  import { labelTip } from '$lib/components/labelTip';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
@@ -153,7 +154,7 @@
             <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="off" data-sveltekit-noscroll>{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
-            {#if r.brewTime}<div class="text-muted">Brews took {fmtRange(r.brewTime)} in total (the middle half of {r.brewTime.n})</div>{/if}
+            {#if r.brewTime}<div class="text-muted" use:labelTip={`Middle 50% of ${r.brewTime.n} timed brews.`}>Most brews took {fmtRange(r.brewTime)}</div>{/if}
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
             </div>

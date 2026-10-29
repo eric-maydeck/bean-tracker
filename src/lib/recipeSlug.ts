@@ -6,7 +6,7 @@ export function recipeSlugs(recipes: readonly { id: number; name: string }[]): M
   const out = new Map<number, string>();
   const taken = new Set<string>();
   for (const r of [...recipes].sort((a, b) => a.id - b.id)) {
-    const base = slugify(r.name) || 'recipe';
+    const base = slugify(r.name.replace(/['’]/g, '')) || 'recipe'; // Bean's -> beans, not bean-s
     const slug = taken.has(base) ? `${base}-${r.id}` : base;
     taken.add(slug);
     out.set(r.id, slug);

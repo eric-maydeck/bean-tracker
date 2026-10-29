@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { toasts, showToast, dismissToast, undoToast } from './toast.svelte';
+import { toasts, showToast, dismissToast, undoToast, remainingAfterLeave, BUMP_MS } from './toast.svelte';
 
 beforeEach(() => toasts.splice(0));
 
@@ -24,5 +24,12 @@ describe('toasts', () => {
     showToast('Archived', { undo: () => { throw new Error('Nope'); } });
     await undoToast(toasts[0]);
     expect(toasts.map((t) => t.text)).toEqual(['Nope']);
+  });
+});
+
+describe('remainingAfterLeave', () => {
+  it('lifts a short remainder to the bump, keeps a longer one', () => {
+    expect(remainingAfterLeave(200)).toBe(BUMP_MS);
+    expect(remainingAfterLeave(2500)).toBe(2500);
   });
 });
