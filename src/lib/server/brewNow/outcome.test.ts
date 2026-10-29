@@ -4,7 +4,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { addMark, linkMarks, marksFor } from './outcome';
+import { addMark, linkMarks, marksFor, biasLine, type MarkView } from './outcome';
 import type { Suggestion } from './suggest';
 
 const db = getDb();
@@ -80,5 +80,37 @@ describe('outcome', () => {
     const m = marksFor(db, a.id);
     expect(m).toHaveLength(5);
     expect(m[0].markedLocal > m[4].markedLocal).toBe(true);
+  });
+  it('links a brew logged in the same minute as the mark', () => {
+    mark(a, '2026-10-20T14:00:00Z');
+    brew(a, '2026-10-20T14:00:30.000Z');
+    expect(linkMarks(db)).toBe(1);
+  });
+  it('compares grind numerically, trims water, and holds the recipe diff until a recipe matches', () => {
+    addMark(db, { coffeeId: a.id, gear, now: new Date('2026-10-20T14:00:00Z'),
+      suggestion: { ...sug, rows: [row('grind', '5'), row('temp', '94 °C'), row('dose', '15 g'), row('recipe', 'Rec'), row('water', 'Soft')] } as unknown as Suggestion });
+    db.exec(`INSERT INTO beanconqueror_waters (id, name, imported_at) VALUES ('w1', 'Soft ', 'x')`);
+    const id = brew(a, '2026-10-20T10:30:00.000Z', '5.0', 94);
+    db.prepare(`UPDATE beanconqueror_brews SET water_id = 'w1' WHERE id = ?`).run(id);
+    linkMarks(db);
+    expect(marksFor(db, a.id)[0].diffs).toEqual([]);
+  });
+});
+
+describe('biasLine', () => {
+  const m = (grind: [string, string] | null, temp: [string, string] | null, status: MarkView['status'] = 'linked'): MarkView => ({
+    id: 1, markedLocal: '', status, gear, rating: null, brewId: status === 'linked' ? 1 : null,
+    diffs: [...(grind ? [{ setting: 'grind' as const, suggested: grind[0], actual: grind[1] }] : []),
+      ...(temp ? [{ setting: 'temp' as const, suggested: temp[0], actual: temp[1] }] : [])]
+  });
+  it('needs two linked tries and a consistent direction', () => {
+    expect(biasLine([m(['5.5', '5.0'], null)])).toBeNull();
+    expect(biasLine([m(['5.5', '5.0'], null), m(null, null, 'pending'), m(null, null)])).toBeNull(); // one real diff only
+    expect(biasLine([m(['5.5', '5.0'], null), m(['5.5', '6.0'], null)])).toBeNull(); // mixed
+  });
+  it('says which way grind and temp lean', () => {
+    const t = ['94 °C', '95 °C'] as [string, string];
+    expect(biasLine([m(['5.5', '5.0'], t), m(['5.5', '4.5'], t), m(null, null), m(['5.5', '5.1'], t)]))
+      .toBe('Last 4 tries: lower grind setting than suggested 3\u00d7, temp +0.8 \u00b0C on average');
   });
 });

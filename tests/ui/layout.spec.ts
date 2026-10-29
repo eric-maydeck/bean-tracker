@@ -1809,7 +1809,7 @@ export const STATES: State[] = [
     } },
   { name: 'brew-now-no-grinder-data', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?grinder=Comandante%20C40%20MK4`,
     act: async (page) => {
-      await expect(page.getByText('No data on this grinder yet')).toBeVisible();
+      await expect(page.getByText(/^(No data on this grinder yet|No .+ brews on this grinder yet)$/)).toBeVisible();
       await expect(page.locator('.ref li').first()).toBeVisible();
     } },
   {

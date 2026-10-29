@@ -89,17 +89,16 @@ export function gearOptions(rows: BrewRow[], today = localToday()): { grinders: 
 }
 
 // The most used of each over the last 30 brews that still have non-archived gear; ties go to the most recent.
-export function gearDefaults(rows: BrewRow[]): { grinder: string | null; dripper: string | null; filter: string | null } {
-  const top = (pick: (r: BrewRow) => string | null, skip: (r: BrewRow) => boolean) => {
+// The filter is the chosen dripper's own most used (its last 30 brews), else the global one.
+export function gearDefaults(rows: BrewRow[], dripper?: string | null): { grinder: string | null; dripper: string | null; filter: string | null } {
+  const top = (pick: (r: BrewRow) => string | null, skip: (r: BrewRow) => boolean, only: (r: BrewRow) => boolean = () => true) => {
     const c = new Map<string, number>();
-    for (const r of rows.filter((r) => !skip(r) && pick(r)).slice(-30).reverse()) c.set(pick(r)!, (c.get(pick(r)!) ?? 0) + 1);
+    for (const r of rows.filter((r) => !skip(r) && only(r) && pick(r)).slice(-30).reverse()) c.set(pick(r)!, (c.get(pick(r)!) ?? 0) + 1);
     return [...c].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null; // stable sort: first-seen (most recent) wins ties
   };
-  return {
-    grinder: top((r) => r.grinder, (r) => r.grinderArchived),
-    dripper: top((r) => r.dripper, (r) => r.methodArchived),
-    filter: top((r) => r.filter, (r) => r.methodArchived)
-  };
+  const d = top((r) => r.dripper, (r) => r.methodArchived);
+  const filter = (dripper ?? d) ? top((r) => r.filter, (r) => r.methodArchived, (r) => r.dripper === (dripper ?? d)) : null;
+  return { grinder: top((r) => r.grinder, (r) => r.grinderArchived), dripper: d, filter: filter ?? top((r) => r.filter, (r) => r.methodArchived) };
 }
 
 export function coffeeDetails(db: DatabaseSync, slug: string, today: string): CoffeeDetails | null {

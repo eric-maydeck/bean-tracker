@@ -1,7 +1,8 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/server/auth';
-import { addMark, marksFor } from '$lib/server/brewNow/outcome';
+import { addMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
+import { getRoasterWebsite } from '$lib/server/roasterWebsites';
 import { getDb } from '$lib/server/db';
 import { getRedirectSlug } from '$lib/server/coffees';
 import { localToday } from '$lib/server/localToday';
@@ -15,12 +16,18 @@ import { parseBrewNowView } from './brewNowUrl';
 function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typeof coffeeDetails>>, url: URL, today: string) {
   const rows = loadBrewRows(db);
   const options = gearOptions(rows, today);
-  const defaults = gearDefaults(rows);
   const view = parseBrewNowView(url, options);
+  const defaults = gearDefaults(rows, view.dripper); // its filter is the chosen dripper's own most used
   const gear = { grinder: view.grinder ?? defaults.grinder, dripper: view.dripper ?? defaults.dripper, filter: view.filter ?? defaults.filter };
   const gc = loadGearClass(db);
   const sug = suggest(coffee, rows, gear, gc, getBrewDoses(db), today);
   return { rows, options, defaults, view, gear, gc, sug };
+}
+
+// The roaster's own site as a bare host (what the search was restricted to), or null when none is on file.
+function roasterHost(db: ReturnType<typeof getDb>, roaster: string): string | null {
+  const site = getRoasterWebsite(db, roaster);
+  try { return site ? new URL(site).hostname : null; } catch { return null; }
 }
 
 export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
@@ -36,6 +43,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     error(404, 'Coffee not found');
   }
   const { rows, options, defaults, view, gear, gc, sug } = derive(db, coffee, url, today);
+  const marks = marksFor(db, coffee.id);
   const roaster = coffee.roaster.trim().toLowerCase();
   const mine = rows.filter((r) => tierOf(coffee, r) === 1).reverse(); // rows are oldest first
   // R9: brew notes are private; strip them server-side for anyone not signed in.
@@ -47,7 +55,8 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     similar: similarCoffees(coffee, rows, gear, gc),
     roasterRecipe: getRoasterRecipe(db, coffee.roaster),
     neverBrewedRoaster: !rows.some((r) => r.roaster.trim().toLowerCase() === roaster),
-    marks: marksFor(db, coffee.id), // no notes: safe for anyone
+    roasterHost: roasterHost(db, coffee.roaster),
+    marks, bias: biasLine(marks), // no notes: safe for anyone
     isAdmin: locals.isAdmin
   };
 };

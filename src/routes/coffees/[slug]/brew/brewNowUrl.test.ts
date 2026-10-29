@@ -23,6 +23,11 @@ describe('brew-now url', () => {
       'grinder=Beta&filter=Mesh&why=temp',
     );
   });
+  it('compares against the dripper-aware default filter', () => {
+    const d = { grinder: 'Alpha', dripper: 'Cone', filter: 'Mesh' }; // Mesh is this dripper's default
+    expect(brewNowParams({ grinder: 'Alpha', dripper: 'Cone', filter: 'Mesh', why: null }, d)).toBe('');
+    expect(brewNowParams({ grinder: 'Alpha', dripper: 'Cone', filter: 'Paper', why: null }, d)).toBe('filter=Paper');
+  });
   it('round trips', () => {
     const v = { grinder: 'Beta', dripper: 'Cone', filter: null, why: 'water' as const };
     expect(parseBrewNowView(u(brewNowParams(v, none)), opts)).toEqual(v);

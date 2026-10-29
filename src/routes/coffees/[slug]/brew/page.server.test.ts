@@ -59,6 +59,19 @@ describe('brew now load', () => {
   });
 });
 
+describe('dripper-aware filter default', () => {
+  it('picking another dripper switches to its own most used filter', async () => {
+    db.exec(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m2', 'Graycano - Sibarist Fast', 'x')`);
+    for (const i of [3, 4]) db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at)
+      VALUES (?, ?, 'm2', 'g1', '5.5', 8, 'x')`).run(`${today}T08:00:0${i}.000Z`, `bean${brewed.id}`);
+    const d = await run(brewed.slug, '?dripper=graycano');
+    expect(d.gear).toMatchObject({ dripper: 'Graycano', filter: 'Sibarist Fast' });
+    expect(d.defaults.filter).toBe('Sibarist Fast');
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE preparation_id = 'm2'`).run();
+    db.exec(`DELETE FROM beanconqueror_methods WHERE id = 'm2'`);
+  });
+});
+
 describe('?/brewThis', () => {
   const post = (slug: string, isAdmin: boolean, fields: Record<string, string> = {}) =>
     actions.brewThis({ params: { slug }, locals: { isAdmin }, request: new Request('http://x', { method: 'POST', body: new URLSearchParams(fields) }) } as never);

@@ -42,6 +42,16 @@ describe('grind', () => {
     expect(g.reference).toEqual([{ grinder: 'A4Z', grind: expect.stringMatching(/^1\.\d\.\d$/) }]);
     expect(get(s, 'temp').value).toBe('94 °C');
   });
+  it('a grinder with brews but none on this dripper says so; no brews at all keeps the old copy', () => {
+    const rows = [brew(), brew({ grinder: 'A4Z', dripper: 'Graycano' })];
+    expect(get(run(rows, { ...gear, dripper: 'Graycano', filter: 'Cafec Abaca' }), 'grind')).toMatchObject({ value: null, reason: 'No Graycano brews on this grinder yet' });
+    expect(get(run(rows, { ...gear, grinder: 'Nope' }), 'grind').reason).toBe('No data on this grinder yet');
+  });
+  it('a missing grind counts as a guess in the footer confidence', () => {
+    const rows = [1, 2, 3].map(() => brew());
+    expect(run(rows).confidence).toBe('good');
+    expect(run(rows, { ...gear, grinder: 'Nope' }).confidence).toBe('guess');
+  });
   const series = (ratings: number[], best = -1) => ratings.map((rating, i) =>
     brew({ grind: (6.5 - i * 0.2).toFixed(1), rating, best: i === best, localTime: `2026-10-0${i + 1}T08:00` }));
   it('rising ratings as grind goes lower, best at the lowest → one step past it', () => {
@@ -121,6 +131,11 @@ describe('dose (focus 4)', () => {
     expect(d.reason).toBe('18 g leaves 18 g, one more brew');
     expect(dose(18).reason).toBe('18 g uses the bag exactly');
     expect(dose(40).reason).toMatch(/20 g uses the bag exactly/);
+  });
+  it('a short bag shows what is left, never more; an empty bag keeps the dose', () => {
+    expect(dose(12)).toMatchObject({ value: '12 g', reason: 'Use the rest of the bag' });
+    expect(dose(12.4).value).toBe('12.4 g');
+    expect(dose(0)).toMatchObject({ value: '18 g', reason: 'The bag is empty' });
   });
 });
 

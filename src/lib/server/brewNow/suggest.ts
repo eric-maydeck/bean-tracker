@@ -34,7 +34,7 @@ export function tierOf(target: CoffeeDetails, row: BrewRow): Tier {
 
 // A grind as one decimal number: "5.5" → 5.5, "1.4.5" → 1.45 (one digit per later part). Anything else is skipped
 // ponytail: parts of 2+ digits ("6.10") are skipped, not ordered; add if a grinder needs them.
-const lin = (g: string | null): number | null => {
+export const lin = (g: string | null): number | null => {
   if (!g || !/^\d+(\.\d)*$/.test(g)) return null;
   const [a, ...rest] = g.split('.');
   return Number(a) + (rest.length ? Number(rest.join('')) / 10 ** rest.length : 0);
@@ -51,7 +51,7 @@ const median = (xs: number[]) => {
 };
 
 // Median absolute non-zero change between consecutive brews of one bag on this grinder (all bags), in the
-// grinder's own decimals; 0.1 when no bag ever moved.
+// grinder's own decimals; with none moved, 1 for whole-number settings and 0.1 otherwise.
 export function grindStep(rows: BrewRow[], grinder: string): number {
   const mine = rows.filter((r) => r.grinder === grinder && lin(r.grind) !== null);
   const k = parts(mine.map((r) => r.grind)), unit = 10 ** k;
@@ -137,7 +137,9 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     const reference = [...new Set(rated.flatMap((r) => (r.grinder && r.grinder !== gear.grinder && lin(r.grind) !== null ? r.grinder : [])))]
       .filter((grinder) => grindPick(grinder))
       .map((grinder) => ({ grinder, grind: grindOn(grinder).value }));
-    return { setting: 'grind', value: null, reason: 'No data on this grinder yet', tier: null, confidence: 'guess', evidence: [], link: null, reference };
+    const hasBrews = gear.grinder && rows.some((r) => r.grinder === gear.grinder);
+    const reason = !hasBrews ? 'No data on this grinder yet' : gear.dripper ? `No ${gear.dripper} brews on this grinder yet` : 'No matching brews on this grinder yet';
+    return { setting: 'grind', value: null, reason, tier: null, confidence: 'guess', evidence: [], link: null, reference };
   };
 
   const none = (setting: Setting, what: string): Row =>
@@ -157,13 +159,14 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     return row(setting, p, name(best.r), `${best.n} of ${src(p)}`, link(best.r));
   };
 
+  const snap = (v: number) => (doses.length ? doses.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v));
   const dose = (): Row => numRow('dose', (r) => r.dose, (v) => {
-    const d = doses.length ? doses.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v);
-    return `${d} g`;
+    const d = snap(v), left = target.gramsLeft;
+    return left !== null && left > 0 && left < d ? `${num(left)} g` : `${d} g`; // never more than the bag holds
   }, (v, p) => {
-    const d = doses.length ? doses.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v), left = target.gramsLeft;
+    const d = snap(v), left = target.gramsLeft;
     if (left === null) return `Median ${num(v)} of ${src(p)}`;
-    if (left < d) return left > 0 ? `Only ${num(left)} g left in the bag` : 'No coffee left in the bag';
+    if (left < d) return left > 0 ? 'Use the rest of the bag' : 'The bag is empty';
     const exact = doses.find((x) => left >= x && left % x <= 1);
     if (exact === d && left - d <= 1) return `${d} g uses the bag exactly`;
     return `${d} g leaves ${num(left - d)} g` + (exact === d ? ', one more brew' : exact ? `; ${exact} g uses the bag exactly` : '');
@@ -178,7 +181,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   ];
 
   const filled = rowsOut.filter((r) => r.value !== null);
-  const confidence = filled.reduce<Confidence>((c, r) => (rank(r.confidence) < rank(c) ? r.confidence : c), 'good');
+  const confidence = rowsOut.filter((r) => r.value !== null || r.setting === 'grind') // a missing grind drags it to guess
+    .reduce<Confidence>((c, r) => (rank(r.confidence) < rank(c) ? r.confidence : c), 'good');
   const top = filled.length ? Math.min(...filled.map((r) => r.tier!)) as Tier : null;
   const inTop = rated.filter((r) => tiers.get(r) === top), n = (inTop.filter((r) => compat(r, gear, gc)).length || inTop.length);
   const pg = processGroup(target.processing);

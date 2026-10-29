@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import { localDateTime } from '$lib/localDate';
 import { bcLocalTime } from '../insights/time';
 import { loadBrewRows, type BrewRow } from './load';
-import type { Gear, Setting, Suggestion } from './suggest';
+import { lin, type Gear, type Setting, type Suggestion } from './suggest';
 
 const SETTINGS: Setting[] = ['grind', 'temp', 'dose', 'recipe', 'water'];
 type Values = Partial<Record<Setting, string | null>>;
@@ -32,7 +32,7 @@ export function linkMarks(db: DatabaseSync): number {
   const winner = new Map<number, number>(); // brew id → latest mark id (marks arrive oldest first)
   const skip: number[] = [];
   for (const m of marks) {
-    const brew = brews.find((r) => r.coffeeId === m.coffee_id && r.localTime > m.marked_local);
+    const brew = brews.find((r) => r.coffeeId === m.coffee_id && r.localTime >= m.marked_local);
     if (!brew) continue;
     if (winner.has(brew.id)) skip.push(winner.get(brew.id)!);
     winner.set(brew.id, m.id);
@@ -46,6 +46,11 @@ export function linkMarks(db: DatabaseSync): number {
   return winner.size;
 }
 
+// The same grind written two ways ("5" / "5.0") is no difference.
+const same = (s: Setting, a: string | null, b: string | null) => {
+  if (s === 'grind' && lin(a) !== null && lin(b) !== null) return lin(a) === lin(b);
+  return s === 'water' ? (a?.trim() ?? null) === (b?.trim() ?? null) : a === b;
+};
 const num = (n: number | null) => (n === null ? null : String(Math.round(n * 10) / 10));
 // The brew's value in the same wording suggest() uses.
 const actualOf = (b: BrewRow): Values => ({
@@ -64,9 +69,29 @@ export function marksFor(db: DatabaseSync, coffeeId: number): MarkView[] {
     return {
       id: m.id, markedLocal: m.marked_local, status: m.status === 'linked' && !brew ? 'pending' : m.status, // R11: brew gone
  gear: { grinder: m.grinder, dripper: m.dripper, filter: m.filter },
-      diffs: actual ? SETTINGS.map((s) => ({ setting: s, suggested: suggested[s] ?? null, actual: actual[s] ?? null }))
-        .filter((d) => d.suggested !== d.actual && (d.suggested !== null || d.actual !== null)) : [],
+      diffs: actual ? SETTINGS.map((s) => ({ setting: s, suggested: suggested[s]?.trim() ?? null, actual: actual[s]?.trim() ?? null }))
+        .filter((d) => !same(d.setting, d.suggested, d.actual) && (d.suggested !== null || d.actual !== null)
+          && !(d.setting === 'recipe' && brew!.recipeId === null)) : [], // the recipe match lands after the pour readings
       rating: brew?.rating ?? null, brewId: m.brew_id
     };
   });
+}
+
+// One line over the linked tries: only settings that always went the same way (twice or more).
+export function biasLine(marks: MarkView[]): string | null {
+  const linked = marks.filter((m) => m.status === 'linked' && m.brewId !== null);
+  if (linked.length < 2) return null;
+  const deltas = (s: Setting, parse: (v: string) => number | null) => linked.flatMap((m) => {
+    const d = m.diffs.find((x) => x.setting === s);
+    if (!d) return [0];
+    const a = d.suggested === null ? null : parse(d.suggested), b = d.actual === null ? null : parse(d.actual);
+    return a === null || b === null ? [] : [b - a];
+  });
+  const parts: string[] = [];
+  const consistent = (xs: number[]) => xs.filter((x) => x !== 0).length >= 2 && (xs.every((x) => x >= 0) || xs.every((x) => x <= 0));
+  const g = deltas('grind', lin);
+  if (consistent(g)) parts.push(`${g[g.findIndex((x) => x !== 0)] > 0 ? 'higher' : 'lower'} grind setting than suggested ${g.filter((x) => x !== 0).length}\u00d7`);
+  const t = deltas('temp', (v) => parseFloat(v) || null);
+  if (consistent(t)) { const avg = Math.round(t.reduce((a, b) => a + b, 0) / t.length * 10) / 10; parts.push(`temp ${avg > 0 ? '+' : ''}${avg} \u00b0C on average`); }
+  return parts.length ? `Last ${linked.length} tries: ${parts.join(', ')}` : null;
 }

@@ -85,7 +85,22 @@ describe('gearOptions / gearDefaults', () => {
   });
   it('defaults to the most used of the last 30, skipping archived', () => {
     expect(gearDefaults(rows)).toEqual({ grinder: 'A', dripper: 'D1', filter: 'F2' });
+    expect(gearDefaults(rows, 'D1').filter).toBe('F2');
     expect(gearDefaults([])).toEqual({ grinder: null, dripper: null, filter: null });
+  });
+});
+
+describe('gearDefaults filter follows the dripper', () => {
+  const rows = [
+    ...[1, 2, 3].map((i) => row({ localTime: `2026-09-0${i}T08:00`, dripper: 'CT62', filter: 'Abaca' })),
+    ...[1, 2].map((i) => row({ localTime: `2026-10-0${i}T08:00`, dripper: 'Graycano', filter: 'Sibarist' })),
+    row({ localTime: '2026-10-03T08:00', dripper: 'Graycano', filter: 'Abaca', methodArchived: true }),
+    row({ localTime: '2026-10-04T08:00', dripper: 'Other', filter: null })
+  ];
+  it('uses the chosen dripper\'s most used filter, else the global one', () => {
+    expect(gearDefaults(rows).filter).toBe('Abaca');
+    expect(gearDefaults(rows, 'Graycano')).toMatchObject({ dripper: 'CT62', filter: 'Sibarist' });
+    expect(gearDefaults(rows, 'Other').filter).toBe('Abaca'); // no filter on file: global
   });
 });
 

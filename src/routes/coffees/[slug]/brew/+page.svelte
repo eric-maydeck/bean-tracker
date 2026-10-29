@@ -11,6 +11,7 @@
 
   let { data, form } = $props();
   const recipeError = $derived((form as { recipeError?: string } | null)?.recipeError);
+  let submitting = $state(false); // blocks a double tap on Brew this
   let marked = $state(false); // shown after the mark, until the gear or page changes
   $effect(() => { void [data.gear, data.coffee.id]; marked = false; });
   const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
@@ -67,10 +68,13 @@
     <section class="bn-card rr" aria-labelledby="bn-rr">
       <h2 id="bn-rr">Roaster's recipe</h2>
       {#if rr?.url}
+        {@const host = new URL(rr.url).hostname}
+        {@const own = !!data.roasterHost && (host === data.roasterHost || host.endsWith('.' + data.roasterHost))}
         <p><a href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title}</a></p>
+        <p class="foot host">{own ? host : `From ${host}, not ${c.roaster}'s site`}</p>
         {#if rr.snippet}<p class="snip">{rr.snippet}</p>{/if}
       {:else if rr}
-        <p class="none">Nothing found on {c.roaster}'s site</p>
+        <p class="none">Nothing found {data.roasterHost ? `on ${c.roaster}'s site` : `for ${c.roaster}`}</p>
       {/if}
       {#if rr}<p class="foot">Searched {formatDate(rr.searchedAt)}</p>{/if}
       {#if data.isAdmin}
@@ -103,7 +107,7 @@
     {#each pickers as p (p.key)}
       <label>
         <span>{p.label}</span>
-        <select value={p.cur ?? ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null })}>
+        <select value={p.cur ?? ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null, ...(p.key === 'dripper' ? { filter: null } : {}) })}>
           {#if !p.list.length}<option value="">None yet</option>{/if}
           {#each p.list as o (o)}<option value={o}>{o}</option>{/each}
         </select>
@@ -150,9 +154,9 @@
     </ul>
     <p class="foot">{data.suggestion.basis}{#if data.suggestion.lastNote}<br />Last note: {data.suggestion.lastNote}{/if}</p>
     {#if data.isAdmin}
-      <form class="mark" method="POST" action="?/brewThis" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); marked = result.type === 'success'; }}>
+      <form class="mark" method="POST" action="?/brewThis" use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); marked = result.type === 'success'; } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
-        <button type="submit" class="button">Brew this</button>
+        <button type="submit" class="button" disabled={submitting}>Brew this</button>
         {#if marked}<span role="status">Marked — your next BQ brew of this coffee will be compared</span>{/if}
       </form>
     {/if}
@@ -161,6 +165,7 @@
   {#if data.marks.length}
     <section class="bn-card" aria-labelledby="bn-marks">
       <h2 id="bn-marks">Your last tries</h2>
+      {#if data.bias}<p class="bias">{data.bias}</p>{/if}
       <ul class="brews marks">
         {#each data.marks as m (m.id)}
           <li>
@@ -239,7 +244,9 @@
   .rr form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
   .rr .button { min-height: 44px; }
   .rr .snip { overflow-wrap: anywhere; }
+  .bias { margin: 0 0 var(--space-2); }
   .foot { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
+  .foot.host { margin-top: 0; }
   .split { display: grid; gap: var(--space-4); }
   @media (min-width: 700px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
 </style>
