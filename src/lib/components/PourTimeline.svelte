@@ -7,7 +7,9 @@
   // stretches horizontally only, so strokes are non-scaling and the shapes stay crisp vertically.
   const W = 1000;
   const H = $derived(compact ? 32 : 64);
-  const total = $derived(Math.max(timeline.totalS, ...timeline.pours.map((p) => p.startS + p.durationS), 1));
+  const total = $derived(
+    Math.max(timeline.totalS, ...timeline.pours.map((p) => p.startS + p.durationS), ...(timeline.windows ?? []).map((w) => w.fromS), 1)
+  );
   const water = $derived(Math.max(timeline.pours.reduce((s, p) => s + p.grams, 0), 1));
   const x = (s: number) => (s / total) * W;
   const edge = (px: number) => Math.min(W - 6, Math.max(6, px)); // keep a swirl at either end inside the box
@@ -34,6 +36,12 @@
 
 <div class="pour-timeline" class:compact>
   <svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" role="img" aria-label={label} style="height:{H}px">
+    {#each timeline.windows ?? [] as w, i (i)}
+      {#if w.toS > w.fromS}
+        <rect class="window" x={x(w.fromS)} y="0" width={Math.min(W, x(w.toS)) - x(w.fromS)} height={H} />
+      {/if}
+      <line class="target" x1={x(w.fromS)} x2={x(w.fromS)} y1="0" y2={H} vector-effect="non-scaling-stroke" />
+    {/each}
     <line class="base" x1="0" x2={W} y1={H - 0.5} y2={H - 0.5} vector-effect="non-scaling-stroke" />
     {#each shapes as sh, i (i)}
       {#if sh.hold}
@@ -64,6 +72,15 @@
   .hold {
     stroke: var(--color-text-muted);
     stroke-width: 1.5;
+  }
+  /* Trigger window: a pale full-height band behind the pours, with a solid thin tick where the target begins. */
+  .window {
+    fill: var(--series-7);
+    opacity: 0.35;
+  }
+  .target {
+    stroke: var(--series-7-ink);
+    stroke-width: 2;
   }
   .seg.bloom {
     fill: var(--series-4);

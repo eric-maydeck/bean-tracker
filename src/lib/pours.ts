@@ -94,6 +94,8 @@ export interface Timeline {
   }[];
   swirls: number[];
   totalS: number;
+  /** Where a pour should begin (trigger window), drawn as bands behind the pours. */
+  windows?: { fromS: number; toS: number }[];
 }
 export function timelineOf(r: PourReading): Timeline {
   return {

@@ -295,21 +295,31 @@ export function describeRecipe(def: RecipeDef): string {
   return capital(out.join(' · '));
 }
 
+/** For each `after` step i >= 1 that has a start before it: the span in which its pour should begin. */
+export function triggerWindows(def: RecipeDef, startsS: number[]): { fromS: number; toS: number }[] {
+  return startsS.flatMap((_, i) => {
+    const t = i > 0 ? def.pours[i]?.trigger : null;
+    return t?.kind === 'after' ? [{ fromS: startsS[i - 1] + t.targetS, toS: startsS[i - 1] + t.maxS }] : [];
+  });
+}
+
 export function recipeTimeline(def: RecipeDef): Timeline {
   let t = 0;
-  const pours = def.pours.map((p) => {
-    const startS = p.startS ?? t;
+  const pours: Timeline['pours'] = [];
+  def.pours.forEach((p, i) => {
+    const trig = i > 0 ? p.trigger : null;
+    const startS = trig?.kind === 'after' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
     const durationS = p.durationS ?? 0;
     t = startS + durationS;
-    return {
+    pours.push({
       startS,
       durationS,
       grams: p.grams ?? (p.share ?? 0) * 100, // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
-      kind: p.bloom ? ('bloom' as const) : recipeSpeed(p)
-    };
+      kind: p.bloom ? 'bloom' : recipeSpeed(p)
+    });
   });
   const swirls = def.pours.flatMap((p, i) => (p.swirlAfter ? [pours[i].startS + pours[i].durationS] : []));
-  return { pours, swirls, totalS: def.totalS ?? t };
+  return { pours, swirls, totalS: def.totalS ?? t, windows: triggerWindows(def, pours.map((p) => p.startS)) };
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

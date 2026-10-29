@@ -8,6 +8,7 @@ import {
   matchBrew,
   withDefaults,
   recipeTimeline,
+  triggerWindows,
   type Recipe,
   type RecipeDef
 } from '$lib/recipes';
@@ -364,8 +365,13 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
     method: string | null;
     tools: string | null;
   }[];
+  const def = 'recipe' in item ? listRecipes(db).find((x) => x.id === item.recipe)?.def : undefined;
   return rows.map((r) => {
     const reading = parseReading(r.reading, r.pour_count);
+    let timeline = reading ? timelineOf(reading) : null;
+    // Windows read against the brew's own pour starts, only when its pours line up with the recipe's (as in fitRecipe).
+    if (timeline && def && (def.equalSplit || reading!.pours.length === def.pours.length))
+      timeline = { ...timeline, windows: triggerWindows(def, reading!.pours.map((p) => p.startS)) };
     let label: string | null = null;
     if (r.how && r.recipe) {
       const diffs = JSON.parse(r.diffs ?? '[]') as { text: string; modified: boolean }[];
@@ -385,7 +391,7 @@ export function brewsFor(db: DatabaseSync, item: Item, order: 'latest' | 'top' =
       dripper: g.dripper,
       gear: g.filter ?? '',
       lowConfidence: reading?.lowConfidence ?? false,
-      timeline: reading ? timelineOf(reading) : null
+      timeline
     };
   });
 }

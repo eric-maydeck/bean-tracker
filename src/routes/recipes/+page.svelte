@@ -77,6 +77,7 @@
   <li><span class="swatch fast"></span>Fast pour (likely high agitation)</li>
   <li><span class="swatch slow"></span>Slow pour (likely low agitation)</li>
   <li><span class="swatch swirl"></span>Swirl or shake</li>
+  <li><span class="swatch window"></span>Bloom target</li>
 </ul>
 
 {#snippet brewList()}
@@ -324,6 +325,11 @@
   .swatch.bloom { background: var(--series-4); }
   .swatch.fast { background: var(--series-1-ink); }
   .swatch.slow { background: var(--series-6); }
+  .swatch.window {
+    background: color-mix(in srgb, var(--series-7) 35%, transparent);
+    border-left: 2px solid var(--series-7-ink);
+    border-radius: 0;
+  }
   .swatch.swirl {
     width: 0;
     height: 14px;

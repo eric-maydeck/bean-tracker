@@ -149,6 +149,29 @@ describe('discoverGroups', () => {
   });
 });
 
+describe('brewsFor windows', () => {
+  it("gives a recipe's aligned brews windows from their own starts; misaligned and structure rows get none", () => {
+    const db = fresh();
+    const a = addBrew(db);
+    addBrew(db);
+    const draft = draftFromReadings([reading(db, a)], [null]);
+    const trigger = { kind: 'after' as const, targetS: 20, maxS: 30 };
+    draft.pours[1].trigger = trigger;
+    const id = saveRecipe(db, { name: 'R1', tags: [], def: draft });
+    addBrew(db, { flow: BBJ, notes: 'R1' }); // logged, but a different pour count and no equal split
+    rematchBrews(db);
+    const rows = brewsFor(db, { recipe: id });
+    const own = rows.filter((r) => r.timeline!.pours.length === draft.pours.length);
+    expect(own.length).toBeGreaterThan(0);
+    for (const r of own) {
+      const t = r.timeline!;
+      expect(t.windows).toEqual([{ fromS: t.pours[0].startS + 20, toS: t.pours[0].startS + 30 }]);
+    }
+    for (const r of rows.filter((r) => !own.includes(r))) expect(r.timeline!.windows ?? []).toEqual([]);
+    for (const r of brewsFor(db, { key: reading(db, a).structureKey! })) expect(r.timeline!.windows ?? []).toEqual([]);
+  });
+});
+
 describe('brewsFor', () => {
   it('labels logged, match and modified; no-flow tagged; low confidence flagged', () => {
     const db = fresh();

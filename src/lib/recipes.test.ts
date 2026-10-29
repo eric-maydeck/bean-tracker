@@ -3,7 +3,7 @@ import type { Pour, PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, fitRecipe, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, fitRecipe, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Recipe, type RecipeDef, type RecipePour, type Trigger
 } from './recipes';
 
@@ -417,6 +417,27 @@ describe('draftFromReadings + recipeTimeline', () => {
     expect(d.pours[0].swirlAfter).toBe(false);
     expect(parseRecipeDef(d)).toEqual({ def: d });
     expect(recipeTimeline(d).pours).toHaveLength(4);
+  });
+});
+
+describe('recipeTimeline triggers', () => {
+  const after = (t: number, m: number): Trigger => ({ kind: 'after', targetS: t, maxS: m });
+  const timed = (trigs: Trigger[], starts: (number | null)[]) =>
+    def('FFFF', { pours: trigs.map((trigger, i) => rp('fast', false, { trigger, startS: starts[i], durationS: 5 })) });
+  it('places timed pours from the previous start and draws their windows', () => {
+    const tl = recipeTimeline(timed([null, after(20, 30), after(20, 30), { kind: 'low' }], [0.3, null, null, 90]));
+    expect(tl.pours.map((p) => p.startS)).toEqual([0.3, 20.3, 40.3, 90]);
+    expect(tl.windows).toEqual([{ fromS: 20.3, toS: 30.3 }, { fromS: 40.3, toS: 50.3 }]);
+  });
+  it('legacy triggers leave the chain unchanged and draw no windows', () => {
+    const tl = recipeTimeline(timed([null, null, null, null], [null, null, 12, null]));
+    expect(tl.pours.map((p) => p.startS)).toEqual([0, 5, 12, 17]);
+    expect(tl.windows).toEqual([]);
+  });
+  it('triggerWindows skips low/legacy steps and steps past the starts given', () => {
+    const d = timed([null, after(20, 30), { kind: 'low' }, after(10, 10)], [0, null, null, null]);
+    expect(triggerWindows(d, [0, 25, 60])).toEqual([{ fromS: 20, toS: 30 }]);
+    expect(triggerWindows(d, [0, 25, 60, 70])).toEqual([{ fromS: 20, toS: 30 }, { fromS: 70, toS: 70 }]);
   });
 });
 

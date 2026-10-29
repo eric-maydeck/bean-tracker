@@ -292,7 +292,9 @@ db.prepare(`INSERT INTO app_meta (key, value) VALUES ('visualizer_last_upload_at
 readStale(db, -1);
 const readingOf = (i: number) => JSON.parse((db.prepare(`SELECT reading FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { reading: string }).reading) as PourReading;
 const keyOf = (i: number) => (db.prepare(`SELECT structure_key k FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { k: string }).k;
-const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]) });
+const equalDef = draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]);
+for (const p of equalDef.pours.slice(1, 3)) p.trigger = { kind: 'after', targetS: 20, maxS: 30 }; // timed steps: the cards draw trigger windows
+const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: equalDef });
 dismissStructure(db, keyOf(23));
 rematchBrews(db);
 // Pours tab: two more recipes, logged by a tag in the notes of lab bags 0-5 (roast Light / process Natural, Washed / roaster

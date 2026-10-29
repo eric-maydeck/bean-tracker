@@ -2683,6 +2683,21 @@ export const STATES: State[] = [
         }
       },
       {
+        // Trigger windows: each timed step draws a band and a target tick on the card chart, and on the brew rows.
+        name: 'recipes-trigger-windows', viewports: 'two' as const,
+        path: (s: Seed) => `/recipes?brews=r${s.recipes.recipeId}`,
+        act: async (page: Page, s: Seed) => {
+          const chart = page.locator(`#recipe-${s.recipes.recipeId} .pour-timeline`).first();
+          await expect(chart.locator('rect.window')).toHaveCount(2);
+          await expect(chart.locator('line.target')).toHaveCount(2);
+          await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('Bloom target');
+          // Brew rows align with the recipe (same pour count), so they carry bands too.
+          const first = rows(page).first().locator('.pour-timeline');
+          await expect(first.locator('rect.window')).toHaveCount(2);
+          await expect(first.locator('line.target')).toHaveCount(2);
+        }
+      },
+      {
         name: 'recipes-by-name-path', viewports: 'two' as const,
         path: () => '/recipes/seed-equal-pours',
         act: async (page: Page, s: Seed) => {
