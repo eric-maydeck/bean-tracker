@@ -154,7 +154,7 @@
             <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="off" data-sveltekit-noscroll>{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
-            {#if r.brewTime}<div class="text-muted" use:labelTip={`Middle 50% of ${r.brewTime.n} timed brews.`}>Most brews took {fmtRange(r.brewTime)}</div>{/if}
+            {#if r.brewTime}<div class="text-muted"><span class="brew-time" tabindex="0" use:labelTip={`Middle 50% of ${r.brewTime.n} timed brews.`}>Most brews took {fmtRange(r.brewTime)}</span></div>{/if}
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
             </div>
@@ -368,6 +368,7 @@
     min-width: 0;
   }
   .item { scroll-margin-top: var(--space-4); }
+  .brew-time { width: fit-content; } /* the tip anchors to the text, not the card-wide line */
   .item.flash { animation: recipe-flash 1.8s ease-out; }
   @keyframes recipe-flash { from { box-shadow: 0 0 0 3px var(--color-accent); } to { box-shadow: 0 0 0 3px transparent; } }
   @media (prefers-reduced-motion: reduce) { .item.flash { animation: none; outline: 2px solid var(--color-accent); } }
