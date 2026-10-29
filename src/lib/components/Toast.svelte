@@ -1,60 +1,33 @@
 <script lang="ts">
-  import { toast } from '$lib/toast.svelte';
+  import { flip } from 'svelte/animate';
+  import { toasts } from '$lib/toast.svelte';
+  import ToastItem from './ToastItem.svelte';
 
-  const VISIBLE_MS = 2000;
-  const FADE_MS = 400;
-  let fading = $state(false);
-
-  $effect(() => {
-    void toast.n; // a new showToast restarts the countdown
-    if (!toast.text) return;
-    fading = false;
-    const fade = setTimeout(() => (fading = true), VISIBLE_MS);
-    const gone = setTimeout(() => (toast.text = null), VISIBLE_MS + FADE_MS);
-    return () => { clearTimeout(fade); clearTimeout(gone); };
-  });
+  const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 </script>
 
-{#if toast.text}
-  {#key toast.n}
-    <div class="toast" class:fading role="status">{toast.text}</div>
-  {/key}
-{/if}
+<!-- Newer toasts sit below older ones; when one goes, the rest slide up. -->
+<div class="toast-stack">
+  {#each toasts as t (t.id)}
+    <div animate:flip={{ duration: reduced ? 0 : 200 }}><ToastItem {t} /></div>
+  {/each}
+</div>
 
 <style>
-  /* The look of AddedToast, top center. */
-  .toast {
+  .toast-stack {
     position: fixed;
     top: calc(var(--space-5) + env(safe-area-inset-top, 0px));
     left: 50%;
     z-index: 90;
     transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
     max-width: calc(100vw - 2 * var(--space-4));
-    padding: var(--space-3) var(--space-5);
-    border-radius: var(--radius);
-    background: var(--color-text);
-    color: var(--color-surface);
-    box-shadow: var(--shadow-hover);
-    font-weight: 600;
-    font-size: 1.05rem;
-    text-align: center;
-    animation: toast-in 150ms ease-out;
+    pointer-events: none; /* only the toasts themselves take clicks */
   }
-  .toast.fading {
-    opacity: 0;
-    transition: opacity 400ms ease-in;
-  }
-  @keyframes toast-in {
-    from {
-      opacity: 0;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .toast {
-      animation: none;
-    }
-    .toast.fading {
-      transition: none;
-    }
+  .toast-stack > :global(*) {
+    pointer-events: auto;
   }
 </style>
