@@ -7,7 +7,7 @@ import type { Gear, Setting, Suggestion } from './suggest';
 const SETTINGS: Setting[] = ['grind', 'temp', 'dose', 'recipe', 'water'];
 type Values = Partial<Record<Setting, string | null>>;
 export interface MarkView {
-  markedLocal: string; status: 'pending' | 'linked' | 'skipped'; gear: Gear;
+  id: number; markedLocal: string; status: 'pending' | 'linked' | 'skipped'; gear: Gear;
   diffs: { setting: Setting; suggested: string | null; actual: string | null }[]; rating: number | null; brewId: number | null;
 }
 
@@ -22,6 +22,8 @@ export function addMark(db: DatabaseSync, m: { coffeeId: number; gear: Gear; sug
 // Each pending mark takes the earliest unlinked brew of its coffee after it; of several marks before one brew, the latest links
 // and the older are skipped. A mark with no later brew stays pending.
 export function linkMarks(db: DatabaseSync): number {
+  // R11: a linked mark whose brew was deleted (brew_id SET NULL) goes back to pending and re-links to the next eligible brew.
+  db.exec(`UPDATE brew_now_marks SET status = 'pending' WHERE status = 'linked' AND brew_id IS NULL`);
   const marks = db.prepare(`SELECT id, coffee_id, marked_local FROM brew_now_marks WHERE status = 'pending' ORDER BY marked_local, id`)
     .all() as unknown as { id: number; coffee_id: number; marked_local: string }[];
   if (!marks.length) return 0;
@@ -52,15 +54,16 @@ const actualOf = (b: BrewRow): Values => ({
 });
 
 export function marksFor(db: DatabaseSync, coffeeId: number): MarkView[] {
-  const marks = db.prepare(`SELECT marked_local, grinder, dripper, filter, suggestion, brew_id, status FROM brew_now_marks
+  const marks = db.prepare(`SELECT id, marked_local, grinder, dripper, filter, suggestion, brew_id, status FROM brew_now_marks
     WHERE coffee_id = ? ORDER BY marked_local DESC, id DESC LIMIT 5`).all(coffeeId) as unknown as
-    { marked_local: string; grinder: string | null; dripper: string | null; filter: string | null; suggestion: string; brew_id: number | null; status: MarkView['status'] }[];
+    { id: number; marked_local: string; grinder: string | null; dripper: string | null; filter: string | null; suggestion: string; brew_id: number | null; status: MarkView['status'] }[];
   const linked = marks.some((m) => m.brew_id !== null) ? new Map(loadBrewRows(db).filter((r) => r.coffeeId === coffeeId).map((r) => [r.id, r])) : new Map<number, BrewRow>();
   return marks.map((m) => {
     const brew = m.brew_id === null ? undefined : linked.get(m.brew_id);
     const suggested = JSON.parse(m.suggestion) as Values, actual = brew ? actualOf(brew) : null;
     return {
-      markedLocal: m.marked_local, status: m.status, gear: { grinder: m.grinder, dripper: m.dripper, filter: m.filter },
+      id: m.id, markedLocal: m.marked_local, status: m.status === 'linked' && !brew ? 'pending' : m.status, // R11: brew gone
+ gear: { grinder: m.grinder, dripper: m.dripper, filter: m.filter },
       diffs: actual ? SETTINGS.map((s) => ({ setting: s, suggested: suggested[s] ?? null, actual: actual[s] ?? null }))
         .filter((d) => d.suggested !== d.actual && (d.suggested !== null || d.actual !== null)) : [],
       rating: brew?.rating ?? null, brewId: m.brew_id

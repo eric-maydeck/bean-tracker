@@ -65,6 +65,16 @@ describe('outcome', () => {
     expect(linkMarks(db)).toBe(1);
     expect(linkMarks(db)).toBe(0);
   });
+  it('treats a linked mark whose brew was deleted as pending and re-links it later', () => {
+    mark(a, '2026-10-20T14:00:00Z');
+    const id = brew(a, '2026-10-20T10:30:00.000Z');
+    linkMarks(db);
+    db.prepare('DELETE FROM beanconqueror_brews WHERE id = ?').run(id);
+    expect(marksFor(db, a.id)[0]).toMatchObject({ status: 'pending', diffs: [], brewId: null });
+    const next = brew(a, '2026-10-21T10:30:00.000Z');
+    expect(linkMarks(db)).toBe(1);
+    expect(marksFor(db, a.id)[0]).toMatchObject({ status: 'linked', brewId: next });
+  });
   it('returns at most 5, newest first', () => {
     for (let i = 0; i < 7; i++) mark(a, `2026-10-2${i}T14:00:00Z`);
     const m = marksFor(db, a.id);

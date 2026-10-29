@@ -143,7 +143,7 @@
     <section class="bn-card" aria-labelledby="bn-marks">
       <h2 id="bn-marks">Your last tries</h2>
       <ul class="brews marks">
-        {#each data.marks as m}
+        {#each data.marks as m (m.id)}
           <li>
             <span class="date">{formatDate(m.markedLocal)}</span>
             {#if m.status === 'pending'}<span class="badge badge-neutral">Waiting for your next BQ brew</span>
