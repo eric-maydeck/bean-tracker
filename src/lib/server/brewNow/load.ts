@@ -20,7 +20,7 @@ export interface BrewRow {
 // Pool key: 'cone' / 'any' or the name itself (own-data gear, or a dripper with no shape on file).
 export interface GearClass {
   dripper: (name: string | null) => string; filter: (name: string | null) => string;
-  // Could this filter be used with this dripper, by the gear details' shapes and sizes? null = a shape is not on file.
+  // Could this filter be used with this dripper, by the gear details' shapes? null = a shape is not on file.
   filterFits?: (dripper: string, filter: string) => boolean | null;
 }
 export interface CoffeeDetails {
@@ -87,10 +87,8 @@ export function loadGearClass(db: DatabaseSync): GearClass {
       if (!ds?.shape || !fs?.shape) return null;
       const shapes: Record<string, string[]> = { Conical: ['Cone'], Wave: ['Wave'], 'Flat bottom': ['Wave', 'Flat-bottom basket'], Hybrid: ['Cone', 'Wave'] };
       if (!shapes[String(ds.shape)]) return null;
-      if (!shapes[String(ds.shape)].includes(String(fs.shape))) return false;
-      // ponytail: sizes are compared only for the 01 / 02 codes; 03 drippers and 155 / 185 filters have no known mapping
-      const d = String(ds.size ?? ''), f = String(fs.fits ?? '');
-      return !(['01', '02'].includes(d) && ['01', '02'].includes(f)) || (d === '01' ? true : f === '02');
+      // Shape only: sizes don't gate it (user brews 01 papers in 02 V60s).
+      return shapes[String(ds.shape)].includes(String(fs.shape));
     }
   };
 }
@@ -98,7 +96,7 @@ export function loadGearClass(db: DatabaseSync): GearClass {
 // Gear for the pickers, archived (R1) left out. Rows arrive oldest first. Grinders: used in the last 365 days, newest first.
 // Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`.
 // Filters for a `dripper` (round 7): chips = the ones used with it in the last 365 days, ignoring one-offs (>= 2 brews, or
-// any in the last 90 days); `otherFilters` = the other non-archived filters whose gear-detail shape (and 01 / 02 size) fits the
+// any in the last 90 days); `otherFilters` = the other non-archived filters whose gear-detail shape fits the
 // dripper; with no shape on file for either, only filters used with at least 2 other drippers of its class. With no dripper: every filter, the rest as other.
 export interface GearOptions { grinders: string[]; drippers: string[]; otherDrippers: string[]; filters: string[]; otherFilters: string[] }
 export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null, gc?: GearClass): GearOptions {

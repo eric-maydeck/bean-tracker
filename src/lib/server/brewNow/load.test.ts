@@ -169,8 +169,8 @@ describe('filterFits and Other from the gear details (round 7)', () => {
     expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FFlat', x))).toEqual([false, true, true]);
     expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FHybrid', x))).toEqual([true, true, false]);
   });
-  it('01 drippers take 01 or 02, 02 drippers take 02; own-data does not matter; a missing shape is unknown', () => {
-    expect([fits('FCone1', 'Cone1'), fits('FCone1', 'Cone2'), fits('FCone2', 'Cone1'), fits('FCone2', 'Cone2')]).toEqual([true, true, false, true]);
+  it('sizes do not matter; own-data does not matter; a missing shape is unknown', () => {
+    expect([fits('FCone1', 'Cone1'), fits('FCone1', 'Cone2'), fits('FCone2', 'Cone1'), fits('FCone2', 'Cone2')]).toEqual([true, true, true, true]);
     expect(fits('FOwn', 'Cone1')).toBe(true);
     expect(fits('FNone', 'Cone1')).toBeNull();
     expect(fits('FCone1', 'NoShape')).toBeNull();
@@ -181,7 +181,7 @@ describe('filterFits and Other from the gear details (round 7)', () => {
       row({ dripper: 'FFlat', filter: 'Wave155', localTime: '2026-10-20T08:00' }), row({ dripper: 'FCone1', filter: 'Basket155', localTime: '2026-10-20T08:00' }),
       row({ dripper: 'FNone', filter: 'NoShape', localTime: '2026-10-20T08:00' })];
     expect(gearOptions(rows, '2026-10-28', 'FCone1', gc).otherFilters).toEqual(['Cone2']);
-    expect(gearOptions(rows, '2026-10-28', 'FCone2', gc).otherFilters).toEqual([]); // Cone1 is an 01 filter: 02 takes 02 only
+    expect(gearOptions(rows, '2026-10-28', 'FCone2', gc).otherFilters).toEqual(['Cone1']); // an 01 paper fits an 02 cone
     expect(gearOptions(rows, '2026-10-28', 'FFlat', gc).otherFilters).toEqual(['Basket155']); // its Wave155 is a chip
     expect(gearOptions(rows, '2026-10-28', 'FNone', gc).otherFilters).toEqual([]);
   });
