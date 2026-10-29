@@ -217,3 +217,17 @@ describe('coffeeDetails', () => {
 function createSlug(id: number): string {
   return (db.prepare(`SELECT slug FROM coffees WHERE id = ?`).get(id) as { slug: string }).slug;
 }
+
+describe('device papers (round 7, user: the Gabi only takes 155s; Aeropress papers never show for it)', () => {
+  saveGearDetails(db, { kind: 'dripper', name: 'DGabi', values: { shape: 'Flat bottom' }, imageUrl: null });
+  saveGearDetails(db, { kind: 'dripper', name: 'DOrb', values: { shape: 'Flat bottom' }, imageUrl: null });
+  saveGearDetails(db, { kind: 'filter', name: 'D155', values: { shape: 'Flat-bottom basket', fits: '155' }, imageUrl: null });
+  saveGearDetails(db, { kind: 'filter', name: 'DAero', values: { shape: 'Flat-bottom basket', fits: 'Standard Aeropress' }, imageUrl: null });
+  it('a device paper is never offered by shape, and a device-paper-only dripper gets no Other', () => {
+    const gc = { ...loadGearClass(db), dripper: (n: string | null) => n ?? '' };
+    const rows = [row({ dripper: 'DGabi', filter: 'Mixed155', localTime: '2026-10-20T08:00' }), row({ dripper: 'DOrb', filter: 'DAero', localTime: '2026-10-20T08:00' }),
+      row({ dripper: 'DGabi', filter: 'D155', localTime: '2025-01-01T08:00' })];
+    expect(gearOptions(rows, '2026-10-28', 'DGabi', gc).otherFilters).toEqual(['D155']);
+    expect(gearOptions(rows, '2026-10-28', 'DOrb', gc)).toMatchObject({ filters: ['DAero'], otherFilters: [] });
+  });
+});

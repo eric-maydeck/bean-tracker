@@ -22,6 +22,8 @@ export interface GearClass {
   dripper: (name: string | null) => string; filter: (name: string | null) => string;
   // Could this filter be used with this dripper, by the gear details' shapes? null = a shape is not on file.
   filterFits?: (dripper: string, filter: string) => boolean | null;
+  // A device's own paper (Size on file other than 01 / 02 / 155 / 185, e.g. "Standard Aeropress").
+  deviceFilter?: (filter: string) => boolean;
 }
 export interface CoffeeDetails {
   id: number; slug: string; roaster: string; coffeeName: string; roastDate: string | null; restDays: number | null;
@@ -79,12 +81,15 @@ export function loadGearClass(db: DatabaseSync): GearClass {
   const d = getGearDetails(db);
   const of = (kind: string, name: string | null) => d.find((x) => x.kind === kind && x.name === name)?.values;
   const own = (kind: string, name: string | null) => of(kind, name)?.ownData === OWN_DATA_ONLY;
+  const device = (filter: string) => { const f = String(of('filter', filter)?.fits ?? ''); return !!f && !['01', '02', '155', '185'].includes(f); };
   return {
+    deviceFilter: device,
     dripper: (name) => (!name || own('dripper', name) ? (name ?? '') : of('dripper', name)?.shape === 'Conical' ? 'cone' : name),
     filter: (name) => (!name || own('filter', name) ? (name ?? '') : 'any'),
     filterFits: (dripper, filter) => {
       const ds = of('dripper', dripper), fs = of('filter', filter);
       if (!ds?.shape || !fs?.shape) return null;
+      if (device(filter)) return false; // only where it's been used (a chip), never offered by shape
       const shapes: Record<string, string[]> = { Conical: ['Cone'], Wave: ['Wave'], 'Flat bottom': ['Wave', 'Flat-bottom basket'], Hybrid: ['Cone', 'Wave'] };
       if (!shapes[String(ds.shape)]) return null;
       // Shape only: sizes don't gate it (user brews 01 papers in 02 V60s).
@@ -122,7 +127,9 @@ export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: str
     // the class's own filters: used with at least 2 different drippers of the class (one dripper's odd filter doesn't count)
     const siblings = (f: string) => real(kin).includes(f) && new Set(kin.filter((r) => r.filter === f && !r.methodArchived).map((r) => r.dripper)).size >= 2;
     // Every filter that could fit this dripper by the gear details; without a shape on file, the class's own filters.
-    otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f) && (gc?.filterFits?.(dripper, f) ?? siblings(f)));
+    // A dripper that only takes its device's own paper (all chips device filters) gets no Other.
+    const deviceOnly = filters.length > 0 && filters.every((f) => gc?.deviceFilter?.(f));
+    otherFilters = deviceOnly ? [] : list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f) && (gc?.filterFits?.(dripper, f) ?? siblings(f)));
   } else {
     filters = list(recent, (r) => r.filter, (r) => r.methodArchived);
     otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f));
