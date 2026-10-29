@@ -1,16 +1,27 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { invalidateAll } from '$app/navigation';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { showToast } from '$lib/toast.svelte';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   let { data, form } = $props();
-  // A short toast when a dose/ratio add or remove saved; `say` builds the text from the submitted value.
-  const toasting = (say: (v: string) => string): import('@sveltejs/kit').SubmitFunction => ({ formData }) => {
+  // A short toast when a dose/ratio add or remove saved, with Undo (the opposite action on the same value).
+  const toasting = (say: (v: string) => string, reverse: string): import('@sveltejs/kit').SubmitFunction => ({ formData }) => {
     const v = String(formData.get('value') ?? '').trim();
     return async ({ result, update }) => {
       await update();
-      if (result.type === 'success') showToast(say(v));
+      if (result.type !== 'success') return;
+      showToast(say(v), {
+        undo: async () => {
+          const body = new FormData();
+          body.set('value', v);
+          const res = await fetch(`?/${reverse}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } });
+          const out = (await res.json().catch(() => null)) as { type?: string } | null;
+          if (out?.type !== 'success') throw new Error('Could not undo that.');
+          await invalidateAll();
+        }
+      });
     };
   };
   const fmt = (r: number) => String(Math.round(r * 10) / 10); // 16.67 -> 16.7
@@ -116,7 +127,7 @@
   <ul class="bn-list">
     {#each data.doses as d (d)}
       <li>
-        <form method="POST" action="?/removeDose" use:enhance={toasting((v) => `Removed ${v} g.`)}>
+        <form method="POST" action="?/removeDose" use:enhance={toasting((v) => `Removed ${v} g.`, 'addDose')}>
           <input type="hidden" name="value" value={d} />
           <strong class="bn-dose">{d} g</strong>
           <span class="bn-cells">
@@ -129,7 +140,7 @@
       </li>
     {/each}
   </ul>
-  <form class="bn-add" method="POST" action="?/addDose" use:enhance={toasting((v) => `Added ${v} g.`)}>
+  <form class="bn-add" method="POST" action="?/addDose" use:enhance={toasting((v) => `Added ${v} g.`, 'removeDose')}>
     <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="18" /><span>g</span>
     <button class="button button-secondary" type="submit">Add</button>
   </form>
@@ -139,7 +150,7 @@
   <ul class="bn-list">
     {#each data.ratios.ratios as r (r)}
       <li>
-        <form method="POST" action="?/removeRatio" use:enhance={toasting((v) => `Removed 1:${fmt(Number(v))}.`)}>
+        <form method="POST" action="?/removeRatio" use:enhance={toasting((v) => `Removed 1:${fmt(Number(v))}.`, 'addRatio')}>
           <input type="hidden" name="value" value={r} />
           <strong class="bn-dose">1:{fmt(r)}</strong>
           <button class="button button-ghost button-icon" type="submit" aria-label="Remove 1:{fmt(r)}" onclick={(e) => ask(e, `1:${fmt(r)}`)}><Icon name="x" /></button>
@@ -147,7 +158,7 @@
       </li>
     {/each}
   </ul>
-  <form class="bn-add" method="POST" action="?/addRatio" use:enhance={toasting((v) => `Added 1:${fmt(Number(v))}.`)}>
+  <form class="bn-add" method="POST" action="?/addRatio" use:enhance={toasting((v) => `Added 1:${fmt(Number(v))}.`, 'removeRatio')}>
     <span aria-hidden="true">1:</span>
     <input name="value" type="text" inputmode="decimal" aria-label="New ratio, water per 1 of coffee" placeholder="16" />
     <button class="button button-secondary" type="submit">Add</button>
@@ -172,7 +183,7 @@
 {/if}
 
 <style>
-  .bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); width: fit-content; min-width: 14rem; max-width: 100%; }
+  .bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); width: fit-content; max-width: 100%; }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-list li { border-bottom: 1px solid var(--color-border); }
   .bn-list form { display: flex; align-items: center; gap: var(--space-3); }
@@ -183,7 +194,7 @@
   .bn-add { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
   .bn-add input { width: 4.5rem; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font: inherit; }
   .bn-add .button { margin: 0; }
-  .bn-list .button-icon { flex: none; margin: 0 0 0 auto; min-width: 44px; min-height: 44px; }
+  .bn-list .button-icon { flex: none; margin: 0; min-width: 44px; min-height: 44px; }
   @media (max-width: 640px) { .bn-add input { font-size: 16px; min-height: 44px; } }
   .bn-confirm { max-width: 24rem; }
 </style>

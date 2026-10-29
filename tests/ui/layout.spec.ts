@@ -1947,7 +1947,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
       // Edit's Cancel and Unarchive sit side by side on one row.
       const row = un.locator('xpath=ancestor::*[contains(@class,"action-stack")][1]');
-      const [ub, cb] = [(await un.boundingBox())!, (await row.getByRole('button', { name: 'Cancel' }).boundingBox())!];
+      const [ub, cb] = [(await un.boundingBox())!, (await row.getByRole('button', { name: /^(Cancel|Edit)$/ }).boundingBox())!];
       expect(Math.abs(ub.y - cb.y)).toBeLessThan(4);
     }
   },
@@ -1957,7 +1957,7 @@ export const STATES: State[] = [
     path: () => '/on-deck',
     act: async (page: Page) => {
       const tile = page.locator('.card-wrap').first();
-      await tile.getByRole('button', { name: /^More actions for/ }).click();
+      await tile.getByRole('button', { name: 'More actions' }).click();
       const menu = tile.getByRole('menu');
       await expect(menu.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute('href', /\/coffees\/[^/]+\?edit=1$/);
       for (const n of ['Unopen', 'Archive']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible();
@@ -2764,6 +2764,7 @@ export const STATES: State[] = [
     path: () => '/account',
     act: async (page) => {
       const dose = isPhone(page) ? '31' : '32';
+      // The Undo tap target is at least 44 px on phones (rule 4).
       const add = async () => {
         await page.getByLabel('New dose in grams').fill(dose);
         await page.getByRole('button', { name: 'Add', exact: true }).first().click();
@@ -2771,7 +2772,10 @@ export const STATES: State[] = [
       };
       // Undo reverses the add and says so.
       await add();
-      await page.getByRole('status').filter({ hasText: `Added ${dose} g.` }).getByRole('button', { name: 'Undo' }).click();
+      const undo = page.getByRole('status').filter({ hasText: `Added ${dose} g.` }).getByRole('button', { name: 'Undo' });
+      const ub = (await undo.boundingBox())!;
+      if (isPhone(page)) expect(Math.min(ub.width, ub.height)).toBeGreaterThanOrEqual(44);
+      await undo.click();
       await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
       await expect(page.getByRole('button', { name: `Remove ${dose} g` })).toHaveCount(0);
       // Toasts stack: newer below older, none replaced.

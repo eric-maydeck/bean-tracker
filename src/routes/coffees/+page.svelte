@@ -1,7 +1,7 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { bqImportHref } from '$lib/bqImportUrl';
-  import { coffeeToast } from '$lib/coffeeToast';
+  import { coffeeToast, reverseChanges, undoChanges } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -276,7 +276,8 @@
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
     const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
-    if (toastText) showToast(toastText);
+    const back = reverseChanges(changes);
+    if (toastText) showToast(toastText, back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);
@@ -569,10 +570,7 @@
         >
           {#if icons}<Icon name="delete" />{:else}Delete{/if}
         </button>
-      {/if}
-    </div>
-    <div class="action-row">
-      {#if coffee.status === 'archive'}
+      {:else}
         <button
           class="button button-secondary" class:button-icon={icons}
           type="button"
@@ -583,7 +581,10 @@
         >
           {#if icons}<Icon name="restore" />{:else}Unarchive{/if}
         </button>
-      {:else}
+      {/if}
+    </div>
+    {#if coffee.status !== 'archive'}
+    <div class="action-row">
         {#if coffee.status === 'backlog'}
           <button
             class="button" class:button-icon={icons}
@@ -640,8 +641,8 @@
         >
           {#if icons}<Icon name="archive" />{:else}Archive{/if}
         </button>
-      {/if}
     </div>
+    {/if}
   </div>
   {#if pending.has(coffee.id)}
     <span class="badge badge-neutral">

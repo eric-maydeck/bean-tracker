@@ -5,8 +5,9 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { untrack, onMount } from 'svelte';
   import { page } from '$app/state';
-  import { bqImportRequested } from '$lib/bqImportUrl';
-  import { coffeeToast } from '$lib/coffeeToast';
+  import { bqImportRequested, editRequested } from '$lib/bqImportUrl';
+  import { writeUrlParams } from '$lib/urlState';
+  import { coffeeToast, reverseChanges, undoChanges } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
@@ -89,9 +90,18 @@
   }
 
   // A /coffees row's import icon links here with ?bq=import.
-  onMount(() => { if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror(); });
-
   let editMode = $state(false);
+  // On Deck's tile menu links here with ?edit=1: enter Edit mode once, then drop the param (after the router is up).
+  onMount(() => {
+    if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror();
+  });
+  afterNavigate(() => {
+    if (!data.isAdmin || !editRequested(new URLSearchParams(location.search))) return;
+    editMode = true;
+    const q = new URLSearchParams(location.search);
+    q.delete('edit');
+    setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: replaceState isn't allowed inside it
+  });
   let canEdit = $derived(editMode && data.isAdmin);
   let detailImage = $derived(coffeeImage(data.coffee, `${data.coffee.coffee_name} label`));
 
@@ -209,7 +219,8 @@
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
     const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
-    if (toastText) showToast(toastText);
+    const back = reverseChanges(changes);
+    if (toastText) showToast(toastText, back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
     pending = new SvelteMap();
     editMode = false;
     saving = false;

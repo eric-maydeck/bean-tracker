@@ -80,6 +80,14 @@
     background: var(--color-surface);
     color: var(--color-text);
   }
+  /* Phones, portrait and landscape: a 44 px tap target; negative block margins keep the toast slim. */
+  @media (max-width: 640px), (max-height: 450px) {
+    .undo {
+      min-width: 44px;
+      min-height: 44px;
+      margin-block: calc(-1 * var(--space-2));
+    }
+  }
   @keyframes toast-in {
     from {
       opacity: 0;

@@ -1,6 +1,10 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
   import { showToast } from '$lib/toast.svelte';
+  import Icon from '$lib/components/Icon.svelte';
+  import { editHref } from '$lib/bqImportUrl';
+  import { coffeeToast, reverseChanges, commitChanges } from '$lib/coffeeToast';
+  import type { CoffeeRow } from '$lib/types';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
   import { urgencyColorStyle } from '$lib/urgencyColor';
@@ -64,6 +68,22 @@
   async function refresh() {
     await invalidateAll();
   }
+
+  // Admin tile menu (⋯): Edit, Freeze/Unfreeze, Unopen, Archive. Each action toasts with Undo and the tile moves.
+  let menuId = $state<number | null>(null);
+  async function tileAction(coffee: CoffeeRow, statusAction: string) {
+    menuId = null;
+    const changes = [{ id: coffee.id, statusAction }];
+    try {
+      await commitChanges(changes as { id: number; statusAction: string }[]);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Something went wrong.');
+      return;
+    }
+    const back = reverseChanges(changes);
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', back ? { undo: async () => { await commitChanges(back); await invalidateAll(); } } : {});
+    await invalidateAll();
+  }
 </script>
 
 <svelte:head>
@@ -95,6 +115,32 @@
   </div>
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>
+
+{#snippet tileMenu(coffee: CoffeeRow)}
+  {#if page.data.isAdmin}
+    <div class="tile-menu">
+      <button class="tile-menu-button" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menuId === coffee.id}
+        onclick={(e) => { e.stopPropagation(); menuId = menuId === coffee.id ? null : coffee.id; }}><Icon name="dots-three" /></button>
+      {#if menuId === coffee.id}
+        <div class="tile-menu-list" role="menu">
+          <a role="menuitem" href={editHref(coffee.slug)}>Edit</a>
+          {#if coffee.status === 'backlog'}
+            {#if coffee.frozen_start_date && !coffee.frozen_end_date}
+              <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'thaw')}>Unfreeze</button>
+            {:else}
+              <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'freeze')}>Freeze</button>
+            {/if}
+          {:else if coffee.status === 'open'}
+            <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'unopen')}>Unopen</button>
+          {/if}
+          <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'archive')}>Archive</button>
+        </div>
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
+<svelte:window onclick={() => (menuId = null)} onkeydown={(e) => { if (e.key === 'Escape') menuId = null; }} />
 
 {#if view === 'open'}
   <section>
@@ -134,6 +180,7 @@
               <p class="text-muted">Drink before {coffee.drink_before}</p>
             {/if}
           </a>
+          {@render tileMenu(coffee)}
           <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
           </div>
         {/each}
@@ -172,10 +219,11 @@
               </p>
             {/if}
           </a>
+          {@render tileMenu(coffee)}
           <div class="card-actions">
             <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
             {#if page.data.isAdmin}
-              <form method="POST" action="?/open" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'success') showToast(`Coffee "${coffee.coffee_name}" marked as open.`); }}>
+              <form method="POST" action="?/open" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'success') showToast(`Coffee "${coffee.coffee_name}" marked as open.`, { undo: async () => { await commitChanges([{ id: coffee.id, statusAction: 'unopen' }]); await invalidateAll(); } }); }}>
                 <input type="hidden" name="id" value={coffee.id} />
                 <button class="button button-secondary" type="submit">Open</button>
               </form>

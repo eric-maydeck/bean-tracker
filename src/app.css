@@ -428,6 +428,76 @@ input:focus-visible {
   box-shadow: var(--shadow-hover);
   transform: translateY(-1px);
 }
+.tile-menu {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 2;
+}
+.tile-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.tile-menu-button .icon {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.tile-menu-button:hover,
+.tile-menu-button[aria-expanded='true'] {
+  background: var(--color-bg);
+}
+.tile-menu-list {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-hover);
+}
+.tile-menu-list a,
+.tile-menu-list button {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.tile-menu-list a:hover,
+.tile-menu-list button:hover,
+.tile-menu-list a:focus-visible,
+.tile-menu-list button:focus-visible {
+  background: var(--color-bg);
+}
+@media (max-width: 640px) {
+  .tile-menu-button {
+    width: 44px;
+    height: 44px;
+  }
+  .tile-menu-list a,
+  .tile-menu-list button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
 .card-wrap > .card-actions {
   position: absolute;
   left: var(--space-4);
