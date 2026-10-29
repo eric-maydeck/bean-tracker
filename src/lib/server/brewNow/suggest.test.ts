@@ -131,12 +131,12 @@ describe('gear (focus 2)', () => {
     brew({ dripper: 'Graycano', filter: 'Sibarist Fast', tempC: 88 }), brew({ dripper: 'CT62', tempC: 93 })];
   it('Gabi uses only Gabi brews', () => {
     const s = run(mixed, { ...gear, dripper: 'Gabi Master A' });
-    expect(s.rows.flatMap((r) => r.evidence).every((b) => b.dripper === 'Gabi Master A')).toBe(true);
+    expect(s.rows.filter((r) => r.setting !== 'dose' && r.setting !== 'ratio').flatMap((r) => r.evidence).every((b) => b.dripper === 'Gabi Master A')).toBe(true);
     expect(get(s, 'temp').value).toBe('90 °C');
   });
   it('Graycano + Sibarist Fast: only that pair', () => {
     const s = run(mixed, { ...gear, dripper: 'Graycano', filter: 'Sibarist Fast' });
-    expect(s.rows.flatMap((r) => r.evidence).every((b) => b.dripper === 'Graycano' && b.filter === 'Sibarist Fast')).toBe(true);
+    expect(s.rows.filter((r) => r.setting !== 'dose' && r.setting !== 'ratio').flatMap((r) => r.evidence).every((b) => b.dripper === 'Graycano' && b.filter === 'Sibarist Fast')).toBe(true);
   });
   it('V60 + Cafec Abaca pools CT62', () => {
     const ev = get(run(mixed), 'temp').evidence;
@@ -257,5 +257,19 @@ describe('thisCoffeeSummary (E7)', () => {
     expect(s.length).toBeLessThanOrEqual(5);
     expect(thisCoffeeSummary(target, rows, gear, true).join(' ')).toContain('too sour, try finer');
     expect(thisCoffeeSummary(target, [], gear, true)).toEqual([]);
+  });
+});
+
+describe('dose and ratio ignore the gear picked (round 5 E1)', () => {
+  const rows = [brew({ dose: 18, waterG: 288 }), brew({ dose: 18, waterG: 288 }), brew({ dose: 20, waterG: 340, filter: 'Cafec T90' }),
+    brew({ dose: 20, waterG: 340, filter: 'Cafec T90' }), brew({ dose: 18, waterG: 288, filter: 'Sibarist Fast' })];
+  const at = (filter: string) => suggest(target, rows, { ...gear, filter }, gc, [15, 18, 20], '2026-10-28', [16, 17]);
+  it('the same coffee gives the same dose and ratio rows for any filter', () => {
+    const a = at('Cafec Abaca'), b = at('Cafec T90'), c = at('Sibarist Fast');
+    for (const o of [b, c]) {
+      expect(o.suggestedDose).toBe(a.suggestedDose);
+      expect(o.suggestedRatio).toBe(a.suggestedRatio);
+      expect(get(o, 'dose')).toMatchObject({ value: get(a, 'dose').value, reason: get(a, 'dose').reason });
+    }
   });
 });

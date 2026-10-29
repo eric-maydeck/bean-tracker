@@ -113,7 +113,7 @@ export function dosePlan(left: number, doses: number[]): DosePlan {
 }
 
 interface Pick { tier: Tier; set: BrewRow[]; w: Map<BrewRow, number>; loose: boolean; counts: Map<Tier, number> }
-interface PickOpts { rest?: boolean; grinder?: string; maxTier?: Tier; factor?: (r: BrewRow) => number }
+interface PickOpts { anyGear?: boolean; /* dose / ratio: the same whatever gear is picked */ rest?: boolean; grinder?: string; maxTier?: Tier; factor?: (r: BrewRow) => number }
 
 export interface Chosen { dose: number | null; ratio: number | null }
 export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: GearClass, doses: number[], today: string,
@@ -133,7 +133,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     return new Map(set.map((r) => {
       const age = Math.max(0, daysBetween(r.localTime.slice(0, 10), today));
       const rest = o.rest && target.restDays !== null && r.restDays !== null ? 1 / (1 + Math.abs(r.restDays - target.restDays) / 14) : 1;
-      const exact = r.dripper === gear.dripper && r.filter === gear.filter ? 2 : 1;
+      const exact = !o.anyGear && r.dripper === gear.dripper && r.filter === gear.filter ? 2 : 1;
       const t = tiers.get(r)!, decaf = t === 2 || t === 3 || t === 5 ? (r.decaf === target.decaf ? 2 : 0.5) : 1;
       return [r, 0.5 ** (age / 90) * Math.max(r.rating! - med + 1, 0.25) * rest * exact * decaf * 0.5 ** (t - first) * (o.factor?.(r) ?? 1)] as const;
     }));
@@ -142,8 +142,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   // half weight per step (best rated first). Gear is ignored only when the gear has no rated brew at all.
   const gearHas = rated.some((r) => compat(r, gear, gc));
   const pick = (has: (r: BrewRow) => boolean, o: PickOpts = {}): Pick | null => {
-    const loose = !gearHas, max = o.maxTier ?? 5;
-    const pool = rated.filter((r) => has(r) && (o.grinder === undefined || r.grinder === o.grinder) && (loose || compat(r, gear, gc)));
+    const loose = !gearHas && !o.anyGear, max = o.maxTier ?? 5;
+    const pool = rated.filter((r) => has(r) && (o.grinder === undefined || r.grinder === o.grinder) && (loose || o.anyGear || compat(r, gear, gc)));
     const at = (t: number) => pool.filter((r) => tiers.get(r) === t);
     const first = ([1, 2, 3, 4, 5] as Tier[]).find((t) => t <= max && at(t).length);
     if (!first) return null;
@@ -204,7 +204,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     return p ? { p, v: weightedMedian(p.set.map((r) => get(r)!), p.set.map((r) => p.w.get(r)!)) } : null;
   };
   const left = target.gramsLeft;
-  const dS = stat((r) => r.dose), rS = stat((r) => (r.dose && r.waterG ? r.waterG / r.dose : null));
+  // E1 (round 5): dose and ratio never depend on the gear picked; the filter's gear weight and pool were moving the dose.
+  const dS = stat((r) => r.dose, { anyGear: true }), rS = stat((r) => (r.dose && r.waterG ? r.waterG / r.dose : null), { anyGear: true });
   const snapRatio = (v: number) => (ratios.length ? ratios.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v * 2) / 2);
   const sugDose = dS ? (() => { const d = snap(dS.v); return left !== null && left > 0 && left < d ? Math.round(left * 10) / 10 : d; })() : null; // never more than the bag holds
   const sugRatio = rS ? snapRatio(rS.v) : null;
