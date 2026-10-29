@@ -2843,6 +2843,60 @@ export const STATES: State[] = [
         }
       },
       {
+        // Trigger chips per pour (pour 1 has none), Custom's two number inputs, Water low, Equal shares hiding amounts,
+        // the ratio list, the temperature help, nothing focused, and a too-small Up to rejected on Save.
+        name: 'recipes-edit-triggers',
+        path: () => '/recipes',
+        act: async (page: Page) => {
+          await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
+          const pours = page.locator('fieldset.pour');
+          await expect(pours).toHaveCount(4);
+          expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+          await expect(pours.nth(0)).toContainText('Starts at 0:00');
+          await expect(pours.nth(0).getByRole('radiogroup')).toHaveCount(0);
+          const group = page.getByRole('radiogroup', { name: 'Pour 2 starts' });
+          for (const n of ['+20 s', '+30 s', 'Custom', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
+          const steps = page.getByTestId('editor-steps');
+          await group.getByText('Custom', { exact: true }).click();
+          const target = pours.nth(1).getByLabel('Target (s)');
+          const upTo = pours.nth(1).getByLabel('Up to (s)');
+          await target.focus();
+          await page.keyboard.press('ControlOrMeta+a');
+          await page.keyboard.type('20');
+          await upTo.focus();
+          await page.keyboard.press('ControlOrMeta+a');
+          await page.keyboard.type('30');
+          await expect(steps).toContainText('0:20 (–0:30)');
+          await group.getByText('Water low', { exact: true }).click();
+          await expect(steps).toContainText('Low');
+          await expect(pours.nth(1).getByLabel('Target (s)')).toHaveCount(0);
+          // Equal shares hides every amount input and the unit select.
+          await expect(pours.getByLabel('Grams')).toHaveCount(4);
+          await page.getByLabel('Equal shares').check();
+          await expect(pours.getByLabel('Grams')).toHaveCount(0);
+          await expect(pours.getByLabel('% of water')).toHaveCount(0);
+          await expect(page.getByLabel('Pour amounts in')).toHaveCount(0);
+          await page.getByLabel('Equal shares').uncheck();
+          await expect(pours.getByLabel('Grams')).toHaveCount(4);
+          // Ratio list.
+          await page.getByRole('button', { name: 'Add ratio' }).click();
+          await expect(page.getByLabel('Ratio 1: (2)')).toBeVisible();
+          await page.getByRole('button', { name: 'Remove ratio 2' }).click();
+          await expect(page.getByLabel('Ratio 1: (2)')).toHaveCount(0);
+          // Temperature help.
+          await page.getByRole('button', { name: 'About temperature' }).click();
+          await expect(page.locator('#re-temp-help')).toContainText('±2 °C');
+          await page.keyboard.press('Escape');
+          expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
+          // An Up to below its Target is rejected on Save.
+          await group.getByText('Custom', { exact: true }).click();
+          await target.fill('20');
+          await upTo.fill('10');
+          await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(page.getByRole('alert')).toHaveText('Trigger time must be at least its target');
+        }
+      },
+      {
         // A ratio outside 1:5-1:30 is rejected with the exact message; the editor stays open and nothing is saved.
         name: 'recipes-edit-error', viewports: 'two' as const,
         path: () => '/recipes',
