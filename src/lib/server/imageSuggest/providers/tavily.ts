@@ -30,7 +30,7 @@ export function tavilyAvailable(db: DatabaseSync = getDb(), now = new Date()): b
 }
 
 // Fixed host, so plain fetch (like getUsdRates); the result pages go through safeFetch.
-async function call(query: string, domain: string | null, signal: AbortSignal, db: DatabaseSync, now: Date): Promise<CandidatePage[]> {
+async function raw(query: string, domain: string | null, signal: AbortSignal, db: DatabaseSync, now: Date): Promise<{ url: string; title: string; content: string }[]> {
   recordTavilyCall(db, now); // before the call: a failed call may still cost a credit
   const body: Record<string, unknown> = { query, search_depth: 'basic', max_results: 5 };
   if (domain) body.include_domains = [domain];
@@ -41,13 +41,20 @@ async function call(query: string, domain: string | null, signal: AbortSignal, d
     body: JSON.stringify(body)
   });
   if (!res.ok) throw new Error(REASONS[res.status] ?? `HTTP ${res.status}`);
-  const data = (await res.json()) as { results?: { url?: unknown; title?: unknown }[] };
+  const data = (await res.json()) as { results?: { url?: unknown; title?: unknown; content?: unknown }[] };
   return (Array.isArray(data.results) ? data.results : []).flatMap((r) =>
     typeof r?.url === 'string' && /^https?:\/\//i.test(r.url)
-      ? [{ url: r.url, title: typeof r.title === 'string' && r.title ? r.title : r.url, provider: 'tavily' }]
+      ? [{ url: r.url, title: typeof r.title === 'string' && r.title ? r.title : r.url, content: typeof r.content === 'string' ? r.content : '' }]
       : []
   );
 }
+
+async function call(query: string, domain: string | null, signal: AbortSignal, db: DatabaseSync, now: Date): Promise<CandidatePage[]> {
+  return (await raw(query, domain, signal, db, now)).map(({ url, title }) => ({ url, title, provider: 'tavily' }));
+}
+
+// One call (shares the quota count); results carry Tavily's text snippet.
+export const searchTavilyText = raw;
 
 // At most 2 calls: the roaster's site first, then the open web if it had nothing.
 export async function searchTavily(q: SuggestQuery, signal: AbortSignal, db: DatabaseSync = getDb(), now = new Date()): Promise<CandidatePage[]> {

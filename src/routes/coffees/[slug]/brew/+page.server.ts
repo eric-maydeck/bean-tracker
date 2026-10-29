@@ -1,4 +1,4 @@
-import { error, redirect } from '@sveltejs/kit';
+import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/server/auth';
 import { addMark, marksFor } from '$lib/server/brewNow/outcome';
@@ -7,6 +7,7 @@ import { getRedirectSlug } from '$lib/server/coffees';
 import { localToday } from '$lib/server/localToday';
 import { loadBrewRows, loadGearClass, gearOptions, gearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
 import { suggest, similarCoffees, tierOf } from '$lib/server/brewNow/suggest';
+import { findRoasterRecipe, getRoasterRecipe } from '$lib/server/brewNow/roasterRecipe';
 import { getBrewDoses } from '$lib/server/brewNow/prefs';
 import { parseBrewNowView } from './brewNowUrl';
 
@@ -44,7 +45,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     suggestion: locals.isAdmin ? sug : { ...sug, lastNote: null, rows: sug.rows.map((r) => ({ ...r, evidence: r.evidence.map(strip) })) },
     thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)].map(strip), // Best brew pinned
     similar: similarCoffees(coffee, rows, gear, gc),
-    roasterRecipe: null as null, // Task 7
+    roasterRecipe: getRoasterRecipe(db, coffee.roaster),
     neverBrewedRoaster: !rows.some((r) => r.roaster.trim().toLowerCase() === roaster),
     marks: marksFor(db, coffee.id), // no notes: safe for anyone
     isAdmin: locals.isAdmin
@@ -64,5 +65,13 @@ export const actions: Actions = {
     const { gear, sug } = derive(db, coffee, url, localToday());
     addMark(db, { coffeeId: coffee.id, gear, suggestion: sug, now: new Date() });
     return { marked: true as const };
+  },
+  findRecipe: async ({ params, locals }) => {
+    requireAdmin(locals);
+    const db = getDb();
+    const coffee = coffeeDetails(db, params.slug, localToday());
+    if (!coffee) error(404, 'Coffee not found');
+    const r = await findRoasterRecipe(db, coffee.roaster, new Date());
+    return 'error' in r ? fail(503, { recipeError: r.error }) : { found: true as const };
   }
 };

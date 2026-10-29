@@ -9,7 +9,8 @@
   import { brewNowParams } from './brewNowUrl';
   import GrindTrend from './GrindTrend.svelte';
 
-  let { data } = $props();
+  let { data, form } = $props();
+  const recipeError = $derived((form as { recipeError?: string } | null)?.recipeError);
   let marked = $state(false); // shown after the mark, until the gear or page changes
   $effect(() => { void [data.gear, data.coffee.id]; marked = false; });
   const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
@@ -61,7 +62,25 @@
 {/snippet}
 
 {#snippet roasterRecipe()}
-  <!-- Task 7 fills data.roasterRecipe -->
+  {@const rr = data.roasterRecipe}
+  {#if rr || data.isAdmin}
+    <section class="bn-card rr" aria-labelledby="bn-rr">
+      <h2 id="bn-rr">Roaster's recipe</h2>
+      {#if rr?.url}
+        <p><a href={rr.url} target="_blank" rel="noopener noreferrer">{rr.title}</a></p>
+        {#if rr.snippet}<p class="snip">{rr.snippet}</p>{/if}
+      {:else if rr}
+        <p class="none">Nothing found on {c.roaster}'s site</p>
+      {/if}
+      {#if rr}<p class="foot">Searched {formatDate(rr.searchedAt)}</p>{/if}
+      {#if data.isAdmin}
+        <form method="POST" action="?/findRecipe" use:enhance={() => async ({ update }) => { await update({ reset: false }); }}>
+          <button type="submit" class="button">{rr ? 'Search again' : 'Find roaster recipe'}</button>
+          {#if recipeError}<span role="alert">{recipeError}</span>{/if}
+        </form>
+      {/if}
+    </section>
+  {/if}
 {/snippet}
 
 <div class="bn">
@@ -217,6 +236,9 @@
   .note { flex-basis: 100%; color: var(--color-text-muted); font-style: italic; }
   .mark { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
   .mark .button { min-height: 44px; }
+  .rr form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+  .rr .button { min-height: 44px; }
+  .rr .snip { overflow-wrap: anywhere; }
   .foot { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
   .split { display: grid; gap: var(--space-4); }
   @media (min-width: 700px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }

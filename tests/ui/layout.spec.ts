@@ -1800,6 +1800,14 @@ export const STATES: State[] = [
       await expect(page.getByRole('status')).toHaveText('Marked — your next BQ brew of this coffee will be compared');
       await expect(page.locator('.marks > li')).not.toHaveCount(before);
     } },
+  { name: 'brew-now-roaster-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
+    act: async (page) => {
+      const sec = page.locator('.rr');
+      await expect(sec.getByRole('link')).toHaveAttribute('href', 'https://example.com/brew-guide');
+      await expect(sec).toContainText('Searched');
+      await expect(sec.getByRole('button', { name: 'Search again' })).toBeVisible();
+      expect(await sec.evaluate((el) => el.scrollWidth <= el.clientWidth && document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    } },
   { name: 'brew-now-no-grinder-data', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?grinder=Comandante%20C40%20MK4`,
     act: async (page) => {
       await expect(page.getByText('No data on this grinder yet')).toBeVisible();

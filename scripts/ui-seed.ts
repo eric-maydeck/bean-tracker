@@ -341,6 +341,10 @@ const bnSug = (grind: string, temp: string) => JSON.stringify({ grind, temp: `${
 bnMark.run(bnBags[1].id, now, atLocal(7, 8, 0).slice(0, 16), bnSug('1.4.0', '93'), gabi.id, 'linked');
 bnMark.run(bnBags[1].id, now, atLocal(1, 8, 0).slice(0, 16), bnSug('1.2.0', '92'), null, 'pending');
 const bnNew = coffee({ roaster: 'Nobody Brewed Roasters', coffee_name: 'Brew Seed Fresh Lot', origin: 'Kenya', processing: 'Washed', status: 'backlog' });
+// A stored roaster recipe (long unbroken title and snippet) for the never-brewed roaster.
+db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_at) VALUES (?, ?, ?, ?, ?)`).run(
+  'Nobody Brewed Roasters', 'https://example.com/brew-guide', 'Brew guide: ' + 'Pour-over-recipe-with-a-very-long-title-'.repeat(3),
+  '15 g coffee to 250 g water at 93 C. ' + 'Pour in three stages, then swirl and let it drain. '.repeat(5).slice(0, 240), now);
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({
   slugs: { long: long.slug, linked: linked.slug, frozen: frozen.slug, wide: wide.slug, decaf: decaf.slug, lab: labSlugs[0], labTwo: labSlugs[7], sey: sey.slug, brew: bnBags[1].slug, brewNew: bnNew.slug, big: grams.big.slug,
