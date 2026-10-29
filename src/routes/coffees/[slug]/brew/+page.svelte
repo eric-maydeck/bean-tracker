@@ -104,7 +104,7 @@
   <div class="ev-scroll">
     <ul class="ev">
       {#each list as b (b.id)}
-        {@const grinder = [b.grinder, b.grind].filter(Boolean).join(' ') || 'No grinder'}
+        {@const grinder = [b.grind, b.grinder].filter(Boolean).join(' · ') || 'No grinder'} <!-- setting first: a cut cell hides the grinder name, not the setting -->
         {@const gear = gearText(b) || 'No dripper'}
         <li>
           <div class="ev-line">
@@ -300,7 +300,7 @@
                 <li><a href="/coffees/{b.slug}">{b.name}, {b.roaster}</a> <span class="muted">{b.brews} {b.brews === 1 ? 'brew' : 'brews'}</span></li>
               {/each}
             </ul>
-            {#if data.similar.length}<button type="button" class="tip-link" onclick={seeCoffees}>See coffees</button>{/if}
+            {#if data.similar.length}<button type="button" class="tip-link" onclick={seeCoffees}>Similar coffees</button>{/if}
           {:else if pop.kind === 'prefs'}
             <TipBody tip={{ title: 'Doses and ratios', lines: ['You can change your usual doses and ratios on the Account page.'] }} />
             <a class="tip-link" href="/account#brew-now" onclick={() => (pop = null)}>Open Account</a>
@@ -479,6 +479,7 @@
   .marks .badge { white-space: nowrap; }
   .marks .button { min-height: 44px; margin: 0; }
   .bn-confirm { max-width: 18rem; }
+  .bn-confirm :global(.action-buttons) { margin-top: var(--space-5); }
   /* Every control gets the hand (links already have it). */
   .bn button:not(:disabled), .bn-confirm button:not(:disabled), .bn [role='menuitem'], .bn summary { cursor: pointer; }
   .bn button.tiplabel { cursor: help; } /* a tip trigger (ui-rules 50) */

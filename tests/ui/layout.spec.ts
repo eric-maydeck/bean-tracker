@@ -1835,7 +1835,7 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       await expect(tip.getByRole('link').first()).toHaveAttribute('href', /^\/coffees\//); // each basis coffee is linked
       if (await page.locator('#similar').count()) {
-        await tip.getByRole('button', { name: 'See coffees' }).click(); // a real click: the tip must take pointer events. Closes the popover and lands on Similar coffees
+        await tip.getByRole('button', { name: 'Similar coffees' }).click(); // a real click: the tip must take pointer events. Closes the popover and lands on Similar coffees
         await expect(tip).toHaveCount(0);
         await expect.poll(() => page.locator('#similar').evaluate((el) => el.getBoundingClientRect().top < innerHeight)).toBe(true);
       } else {
@@ -1871,6 +1871,17 @@ export const STATES: State[] = [
       await page.locator('.rows .tiplabel', { hasText: 'Dose' }).click();
       await page.locator('.bn-tip').getByRole('link', { name: 'Open Account' }).click();
       await expect(page).toHaveURL(/\/account#brew-now$/);
+    } },
+  { name: 'brew-now-filter-keeps-dripper', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      // A dripper pick, then a filter pick: the filter must never change the dripper (the URL keeps both).
+      const dripper = page.getByRole('group', { name: 'Dripper' }).getByRole('button', { name: 'Origami' });
+      await dripper.click();
+      await expect(page).toHaveURL(/dripper=Origami/);
+      await page.getByRole('group', { name: 'Filter' }).locator('button[aria-pressed="false"]').first().click();
+      await expect(page).toHaveURL(/filter=/);
+      await expect(page).toHaveURL(/dripper=Origami/);
+      await expect(page.getByRole('group', { name: 'Dripper' }).getByRole('button', { name: 'Origami' })).toHaveAttribute('aria-pressed', 'true');
     } },
   { name: 'brew-now-other-gear', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {

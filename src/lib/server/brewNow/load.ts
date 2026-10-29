@@ -113,11 +113,13 @@ export function gearDefaults(rows: BrewRow[], dripper?: string | null): { grinde
   return { grinder: top((r) => r.grinder, (r) => r.grinderArchived), dripper: d, filter: filter ?? top((r) => r.filter, (r) => r.methodArchived) };
 }
 
-// E8: this coffee's own most used gear first (`mine` = its brews), the global defaults where it has none.
+// E8: this coffee's own most used gear first (`mine` = its brews), the global defaults where it has none. The default
+// dripper never follows `dripper` (the pick): the URL omits a value equal to its default, so an echo here made a later
+// filter pick drop the dripper. Only the default filter follows the dripper.
 export function coffeeGearDefaults(rows: BrewRow[], mine: BrewRow[], dripper?: string | null) {
   const own = gearDefaults(mine, dripper), all = gearDefaults(rows, dripper), d = dripper ?? own.dripper ?? all.dripper;
   const ownFilter = mine.some((r) => r.dripper === d && !r.methodArchived && r.filter);
-  return { grinder: own.grinder ?? all.grinder, dripper: dripper ?? own.dripper ?? all.dripper, filter: ownFilter ? own.filter : gearDefaults(rows, d).filter };
+  return { grinder: own.grinder ?? all.grinder, dripper: own.dripper ?? all.dripper, filter: ownFilter ? own.filter : gearDefaults(rows, d).filter };
 }
 
 export function coffeeDetails(db: DatabaseSync, slug: string, today: string): CoffeeDetails | null {

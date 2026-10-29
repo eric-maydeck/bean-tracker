@@ -116,7 +116,7 @@ describe('coffeeGearDefaults / filters follow the dripper', () => {
   it('this coffee\'s own most used gear wins; with no brews the global defaults stand', () => {
     expect(coffeeGearDefaults(rows, mine)).toEqual({ grinder: 'B', dripper: 'D2', filter: 'F2' });
     expect(coffeeGearDefaults(rows, [])).toEqual(gearDefaults(rows));
-    expect(coffeeGearDefaults(rows, mine, 'D1')).toEqual({ grinder: 'B', dripper: 'D1', filter: 'F1' }); // not its dripper: D1's own filter
+    expect(coffeeGearDefaults(rows, mine, 'D1')).toEqual({ grinder: 'B', dripper: 'D2', filter: 'F1' }); // the pick changes the filter default, never the dripper default (URL omits defaults)
   });
   it('options.filters lists only the filters used with the dripper', () => {
     expect(gearOptions(rows, '2026-10-28', 'D2').filters).toEqual(['F3', 'F2']);
