@@ -366,11 +366,11 @@ describe('ownData gear migration', () => {
     const path = join(dir, 't.db');
     const db = createDb(path); // no rows yet: marker set, nothing thrown
     seed(db);
-    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10'`);
+    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10b'`);
     db.close();
     const db2 = createDb(path);
-    expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: 'Own brews only' });
-    expect(fields(db2, 'filter', 'Sibarist Fast')).toEqual({ ownData: 'Own brews only' });
+    expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: 'This gear only' });
+    expect(fields(db2, 'filter', 'Sibarist Fast')).toEqual({ ownData: 'This gear only' });
     expect(fields(db2, 'dripper', 'Other')).toEqual({});
     db2.prepare(`UPDATE gear_details SET fields = '{}' WHERE name = 'Graycano'`).run();
     db2.close();

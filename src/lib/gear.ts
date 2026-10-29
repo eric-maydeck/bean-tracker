@@ -39,8 +39,8 @@ export const COMMON_FIELDS: readonly GearField[] = [
   { key: 'cost', label: 'Cost', type: 'money', min: 0, max: 100000, aliases: ['cost', 'price'] },
   { key: 'website', label: 'Official website', type: 'url', aliases: ['official website', 'website'] }
 ];
-const ownData = { ...text('ownData', 'Suggestions use', ['Similar gear', 'Own brews only'], undefined,
-  "Brew now pools brews from similar gear; 'Own brews only' limits suggestions to brews made with this one."), type: 'select' as const };
+const ownData = { ...text('ownData', 'Brew now evidence', ['Similar gear too', 'This gear only'], undefined,
+  'Similar gear too: suggestions also use brews from similar gear (e.g. other ~60° cones). This gear only: suggestions use only brews made with this exact gear.'), type: 'select' as const };
 export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   dripper: [
     text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid'], undefined,

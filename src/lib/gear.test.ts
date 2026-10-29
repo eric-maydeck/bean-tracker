@@ -57,8 +57,8 @@ describe('parseGearValues', () => {
 
 describe('ownData', () => {
   it('is a select on dripper and filter only', () => {
-    expect(parseGearValues('dripper', { ownData: 'Own brews only' })).toEqual({ values: { ownData: 'Own brews only' } });
+    expect(parseGearValues('dripper', { ownData: 'This gear only' })).toEqual({ values: { ownData: 'This gear only' } });
     expect('error' in parseGearValues('filter', { ownData: 'bogus' })).toBe(true);
-    expect(parseGearValues('grinder', { ownData: 'Own brews only' })).toEqual({ values: {} });
+    expect(parseGearValues('grinder', { ownData: 'This gear only' })).toEqual({ values: {} });
   });
 });

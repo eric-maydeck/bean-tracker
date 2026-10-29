@@ -164,13 +164,13 @@ export function applySchema(db: DatabaseSync): void {
     );
   }
   // Brew now: the user's own dripper/filter suggest from their own brews only. Once; a later edit sticks.
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10')) {
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10b')) {
     const set = db.prepare(
-      `UPDATE gear_details SET fields = json_set(fields, '$.ownData', 'Own brews only') WHERE kind = ? AND name = ?`
+      `UPDATE gear_details SET fields = json_set(fields, '$.ownData', 'This gear only') WHERE kind = ? AND name = ?`
     );
     set.run('dripper', 'Graycano');
     set.run('filter', 'Sibarist Fast');
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('brew_now_own_data_2026_10', new Date().toISOString());
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('brew_now_own_data_2026_10b', new Date().toISOString());
   }
   migrateStatusValues(db);
   dropHandSetRates(db);
