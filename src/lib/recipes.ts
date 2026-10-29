@@ -472,7 +472,7 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
     // Shared tag: the closest carrier by distance (gates ignored), ties to the lower id; no reading, the first by id.
     const fits = tagged.map((t) => ({ t, fit: r ? fitRecipe(t.def, brew, { recipes, locked }) : null }));
     const [pick] = fits.sort((x, y) => (x.fit?.distance ?? 0) - (y.fit?.distance ?? 0) || x.t.id - y.t.id);
-    return { recipeId: pick.t.id, how: 'logged', diffs: pick.fit?.diffs ?? [], distance: 0 };
+    return { recipeId: pick.t.id, how: 'logged', diffs: !r ? [] : Number.isFinite(pick.fit!.distance) ? pick.fit!.diffs : diffsOf(pick.t.def, r, brew.tempC), distance: 0 };
   }
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;

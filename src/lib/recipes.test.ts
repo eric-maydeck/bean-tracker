@@ -264,6 +264,21 @@ describe('matchBrew', () => {
     expect(matchBrew(brew(reading('BFFS', { ratio: 30 }), '4SY', 85), [washed, natural])!.recipeId).toBe(2);
     expect(matchBrew(brew(null, '4SY'), [washed, natural])!.recipeId).toBe(1);
   });
+  it('a tagged brew without a usable ratio still reports its diffs', () => {
+    const t = recipe(1, 'R1', def('BFS'));
+    const m = matchBrew(brew(reading('BFFFF', { ratio: null }), 'R1'), [t])!;
+    expect(m.diffs.map((d) => d.text)).toContain('5 pours');
+  });
+  it('a gate-failing logged brew carries its diffs', () => {
+    const t = recipe(1, 'R1', def('BFS'));
+    const m = matchBrew(brew(reading('BFFF'), 'R1'), [t])!;
+    expect(m).toMatchObject({ recipeId: 1, how: 'logged' });
+    expect(m.diffs.map((d) => d.text)).toContain('4 pours');
+  });
+  it('shared-tag ties go to the lower id', () => {
+    const a = recipe(2, 'A', def('BFS'), ['T']), b = recipe(1, 'B', def('BFS'), ['T']);
+    expect(matchBrew(brew(reading('BFS'), 'T'), [a, b])!.recipeId).toBe(1);
+  });
   it('a pour with only a rate range aligns by its midpoint', () => {
     const rate = recipe(1, 'R1', {
       ...def('F'), pours: [rp('slow', false, { rateGps: [14, 20] })]
