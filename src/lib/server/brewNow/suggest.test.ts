@@ -273,7 +273,7 @@ describe('dose and ratio ignore the gear picked (round 5 E1)', () => {
     }
   });
   it('dose and ratio synopses do not mention other drippers or grinders; grind and temp still do', () => {
-    const mixed = [...rows, brew({ dripper: 'Gabi Master A', grinder: 'A4Z', dose: 18, waterG: 288 })];
+    const mixed = [...rows, brew({ dripper: 'CT62', grinder: 'A4Z', dose: 18, waterG: 288 })];
     const s = suggest(target, mixed, gear, gc, [15, 18, 20], '2026-10-28', [16, 17]);
     for (const k of ['dose', 'ratio']) expect(get(s, k).synopsis.join(' ')).not.toMatch(/rather than|another grinder/);
     expect(get(s, 'temp').synopsis.join(' ')).toMatch(/rather than the V60/);
