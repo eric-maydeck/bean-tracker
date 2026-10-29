@@ -32,7 +32,7 @@ interface State {
 }
 
 // The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Preview/Discard share their row and
-// Image URL sits on the row above. Measured on the dripper's 10 fields (Size + Suggestions use fill the last row, the buttons sit on the row below).
+// Image URL sits on the row above. Measured on the dripper's 10 fields (Size + Brew now evidence fill the last row, the buttons sit on the row below).
 async function expectEditAligned(page: Page) {
   const dlg = page.locator('dialog.trophy-dialog');
   const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -1771,7 +1771,12 @@ export const STATES: State[] = [
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {
-      await expect(page.locator('.evidence li').first()).toBeVisible();
+      await expect(page.locator('.evidence .syn li').first()).toBeVisible();
+      const rows = page.locator('.evidence tbody tr');
+      await expect(rows.first()).toBeVisible();
+      // Aligned columns: every rating cell ends at the same x, and a row without a saved recipe says so.
+      const ends = await page.locator('.evidence td.r').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().right)));
+      expect(new Set(ends).size).toBe(1);
       await page.locator('.why[aria-expanded="true"]').click();
       await expect(page).not.toHaveURL(/why=/);
       await expect(page.locator('.evidence')).toHaveCount(0);
@@ -1781,14 +1786,15 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
       await expect(page.locator('.rows > li').first()).toBeVisible();
       for (const li of await page.locator('.rows > li').all()) expect(((await li.locator('.rowhead').innerText()).split(/\s+/).length)).toBeGreaterThan(1);
-      await expect(page.locator('.start .badge')).toHaveText('guess');
+      await expect(page.locator('.start h2 .badge')).toHaveText('Guess');
     } },
   { name: 'brew-now-marks', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
-      await expect(page.getByRole('heading', { name: 'Your last tries' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Your last brews of this coffee' })).toBeVisible();
       const items = page.locator('.marks > li');
       await expect(items).toHaveCount(2);
       await expect(items.nth(0)).toContainText('Waiting for your next BQ brew');
+      await expect(items.nth(0).getByRole('button', { name: 'Cancel' })).toBeVisible();
       await expect(items.nth(1)).toContainText('Grind: 1.4.0 → 1.3.0');
       await expect(items.nth(1).locator('a')).toHaveAttribute('href', /#brew-\d+/);
     } },
@@ -1812,8 +1818,18 @@ export const STATES: State[] = [
       await expect(page.getByText(/^No .+ brews on this grinder yet$/)).toBeVisible();
       await expect(page.locator('.ref li').first()).toBeVisible();
     } },
-  ...['b', 'c'].map((t) => ({ name: `brew-now-trend-${t}`, path: (s: Seed) => `/coffees/${s.slugs.brew}/brew?trend=${t}`, // PREVIEW-TEMP
-    act: async (page: Page) => { await expect(page.locator('.gt svg, .gt ul')).toBeVisible(); } })), // PREVIEW-TEMP
+  { name: 'brew-now-basis-popover', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await page.locator('.basis').click();
+      const tip = page.locator('.bn-tip');
+      await expect(tip).toBeVisible();
+      await expect(tip.getByRole('link', { name: 'See coffees' })).toHaveAttribute('href', '#similar');
+      await page.keyboard.press('Escape');
+      await expect(tip).toHaveCount(0);
+    } },
+  ...['card=b&pickers=b', 'card=c&pickers=a'].map((q) => ({ name: `brew-now-options-${q.replace(/[=&]/g, '-')}`, viewports: 'two' as const, // PREVIEW-TEMP
+    path: (s: Seed) => `/coffees/${s.slugs.brew}/brew?${q}`, // PREVIEW-TEMP
+    act: async (page: Page) => { await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible(); } })), // PREVIEW-TEMP
   {
     name: 'on-deck',
     path: () => '/on-deck',
@@ -1828,6 +1844,31 @@ export const STATES: State[] = [
       expect(l.height).toBeGreaterThanOrEqual(44);
       expect(l.y + l.height).toBeLessThanOrEqual(c.y + c.height + 1);
       expect(l.x + l.width).toBeLessThanOrEqual(c.x + c.width + 1);
+    }
+  },
+  ...['cards', 'compact', 'list'].map((view) => ({
+    name: `coffees-brew-now-button-${view}`,
+    viewports: 'two' as const,
+    path: () => `/coffees?status=open&view=${view}`,
+    act: async (page: Page) => {
+      if (view === 'compact') await page.locator('.compact-row').first().click();
+      const b = page.getByRole('link', { name: 'Brew now' }).first();
+      await expect(b).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew$/);
+      const edit = b.locator('xpath=..').getByRole('button', { name: 'Edit', exact: true });
+      const [bb, eb] = [(await b.boundingBox())!, (await edit.boundingBox())!];
+      expect(Math.abs(bb.y + bb.height / 2 - (eb.y + eb.height / 2))).toBeLessThan(4); // same row as Edit
+      expect(bb.x).toBeLessThan(eb.x); // before Edit
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth || !!document.querySelector('.table-scroll'))).toBe(true);
+    }
+  })),
+  {
+    name: 'coffee-brew-now-button',
+    viewports: 'two',
+    path: (s: Seed) => `/coffees/${s.slugs.brew}`,
+    act: async (page: Page) => {
+      const b = page.locator('.detail-actions').getByRole('link', { name: 'Brew now' });
+      await expect(b).toHaveAttribute('href', /\/brew$/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
   },
   {
@@ -2299,14 +2340,22 @@ export const STATES: State[] = [
     act: async (page) => {
       await expect(page.getByText('Flow data for 24 of 24 brews')).toBeVisible();
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
-      const doses = page.getByLabel('Doses (g)');
-      await doses.fill('3');
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
+      // Brew now lists: no mutation here (every viewport shares one DB); add/remove are covered in page.server.test.ts.
+      const rows = page.locator('.bn-list').first().locator('li');
+      await expect(rows.first()).toContainText(/\d+ g\s+1:\d+(\.\d)? → \d+ g/);
+      await page.getByLabel('New dose in grams').fill('3');
+      await page.getByRole('button', { name: 'Add', exact: true }).first().click();
       await expect(page.getByText('Each dose must be 5–40 g')).toBeVisible();
-      await doses.fill('20, 16');
-      await page.getByRole('button', { name: 'Save', exact: true }).click();
-      await expect(page.getByText('Saved.')).toBeVisible();
-      await expect(doses).toHaveValue('16, 20');
+      const x = rows.first().getByRole('button', { name: /^Remove / });
+      const [xb, rb] = [(await x.boundingBox())!, (await rows.first().boundingBox())!];
+      expect(rb.x + rb.width - (xb.x + xb.width)).toBeLessThan(4); // the ✕ sits at the row's far right
+      await x.click();
+      const dlg = page.getByRole('dialog');
+      await expect(dlg).toContainText('Remove');
+      await expect(dlg.getByLabel("Don't ask again")).not.toBeChecked();
+      await dlg.getByRole('button', { name: 'Cancel' }).click();
+      await expect(dlg).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       await expect(page.getByText('1 brew not on the site yet: import the Bean Conqueror .zip above to add it and its coffee')).toBeVisible();
       await expect(page.getByRole('listitem').filter({ hasText: 'custom server' }).locator('code')).toHaveText('http://localhost:5198/');
       await expect(page.getByText('Username: bean-tracker. Password: your Bean Tracker sign-in password.')).toBeVisible();
@@ -7114,8 +7163,8 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
-      // "?" tips on Shape, Material, Flow, Size and Suggestions use only; one opens in the site's tip look and focuses no input.
-      for (const n of ['Shape', 'Material', 'Flow', 'Size', 'Suggestions use']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
+      // "?" tips on Shape, Material, Flow, Size and Brew now evidence only; one opens in the site's tip look and focuses no input.
+      for (const n of ['Shape', 'Material', 'Flow', 'Size', 'Brew now evidence']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       const tipBtn = dlg.getByRole('button', { name: 'About Flow' });
       if (phone) expect((await tipBtn.boundingBox())!.width).toBeGreaterThanOrEqual(43);
@@ -7294,7 +7343,7 @@ export const STATES: State[] = [
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Suggestions use']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Brew now evidence']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },
