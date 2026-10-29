@@ -1,11 +1,15 @@
 <script lang="ts">
   import { enhance } from '$app/forms';
+  import { page } from '$app/state';
+  import PreviewMeta from '$lib/components/PreviewMeta.svelte';
+  import { recipesPreview } from '$lib/linkPreview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
+  const isAdmin = $derived(!!page.data.isAdmin);
 
   // Inline editor state: never in the URL.
   let naming = $state<string | null>(null);
@@ -38,10 +42,11 @@
 <svelte:head>
   <title>Bean Tracker - Recipes</title>
 </svelte:head>
+<PreviewMeta preview={recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
 
 <div class="recipes">
 <h1>Recipes</h1>
-<p><a class="button button-ghost" href="/account">Account</a></p>
+{#if isAdmin}<p><a class="button button-ghost" href="/account">Account</a></p>{/if}
 
 <p class="text-muted">
   Read from {data.totals.read} brews with flow data · {data.totals.lowConfidence} low confidence · {data.totals.notesOnly} with
@@ -137,8 +142,10 @@
             </div>
             <div class="row-actions" data-button-row>
               <a class="button button-secondary" href={brewsHref({ recipe: r.recipe.id })} data-sveltekit-noscroll>See brews</a>
-              <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
-              <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
+              {#if isAdmin}
+                <button class="button button-secondary" type="button" onclick={() => (editing = 'r' + r.recipe.id)}>Edit</button>
+                <button class="button button-danger button-ghost" type="button" onclick={() => (deleting = r.recipe.id)}>Delete</button>
+              {/if}
             </div>
             {#if editing === 'r' + r.recipe.id}
               <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} ondone={() => (editing = null)} />
@@ -158,10 +165,11 @@
         {/each}
       </ul>
     {:else}
-      <p class="text-muted">No saved recipes yet. Name one from the structures below.</p>
+      <p class="text-muted">{isAdmin ? 'No saved recipes yet. Name one from the structures below.' : 'No saved recipes yet.'}</p>
     {/if}
   </section>
 
+  {#if isAdmin}
   <section class="chart-panel">
     <h2>Found in your brews</h2>
     {#if data.unlisted}
@@ -235,6 +243,8 @@
     {/if}
   </section>
 
+  {/if}
+  {#if isAdmin}
   <section class="chart-panel">
     <h2>Words in your notes</h2>
     <p class="text-muted">A brew whose note contains one of these as a word gets that agitation, unless its recipe sets one.</p>
@@ -264,6 +274,7 @@
       </div>
     </form>
   </section>
+  {/if}
 {/if}
 </div>
 

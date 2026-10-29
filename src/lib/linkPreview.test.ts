@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
+import { recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -141,5 +141,12 @@ describe('ownerName / statsPreview', () => {
     const v = { owner: 'Eric', opened: 3, unopened: 5, onHandG: 1500, finished: 40 };
     expect(statsPreview({ ...v, tab: 'general' })).toEqual({ title: 'Stats: General', description: "Eric's collection totals\n3 open · 5 unopened · 1.5kg on hand · 40 finished" });
     expect(statsPreview({ ...v, owner: 'fuhnoo', tab: 'bq' })).toEqual({ title: 'Stats: Bean Conqueror', description: "fuhnoo's Bean Conqueror stats\n3 open · 5 unopened · 1.5kg on hand · 40 finished" });
+  });
+});
+
+describe('recipesPreview', () => {
+  it('lists recipe names, or says there are none', () => {
+    expect(recipesPreview(['A', 'B'])).toEqual({ title: 'Recipes', description: '2 recipes\nA\nB' });
+    expect(recipesPreview([]).description).toBe('No saved recipes.');
   });
 });

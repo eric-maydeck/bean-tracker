@@ -96,7 +96,7 @@
 <section class="chart-panel">
   <h2>Recipes</h2>
   <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
-  <p><a class="button button-secondary" href="/account/recipes">Open recipes</a></p>
+  <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
 </section>
 
 <section class="chart-panel">

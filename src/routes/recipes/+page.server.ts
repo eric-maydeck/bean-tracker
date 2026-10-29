@@ -1,4 +1,4 @@
-import { fail, redirect } from '@sveltejs/kit';
+import { fail } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
@@ -12,9 +12,14 @@ import { parseNoteWords } from '$lib/agitation';
 import { parseRecipesView } from '$lib/recipesView';
 
 export const load: PageServerLoad = ({ locals, url }) => {
-  if (!locals.isAdmin) redirect(303, '/login?redirectTo=%2Faccount%2Frecipes');
+  // Public read; structures found in brews, hidden ones and note words are the admin's workbench.
+  const admin = locals.isAdmin;
   const db = getDb();
   const view = parseRecipesView(url.searchParams);
+  if (!admin) {
+    delete view.view;
+    if (view.brews && 'key' in view.brews) delete view.brews;
+  }
 
   const stats = new Map(
     (
@@ -60,7 +65,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
   ).n;
 
   let hidden: { key: string; description: string; count: number; matchedBy: { name: string; count: number }[] }[] | null = null;
-  if (view.view === 'hidden') {
+  if (admin && view.view === 'hidden') {
     hidden = (
       db
         .prepare(
@@ -77,7 +82,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
     }));
   }
 
-  const groups = discoverGroups(db);
+  const groups = admin ? discoverGroups(db) : [];
   // A ?brews=s<key> that isn't listed as a group (too small, dismissed, matched by a recipe) still opens, in its own panel.
   let unlisted: { key: string; description: string; count: number } | null = null;
   const item = view.brews;
@@ -101,12 +106,12 @@ export const load: PageServerLoad = ({ locals, url }) => {
     unlisted,
     minGroup: MIN_GROUP,
     brewsTotal: view.brews ? brewCount(db, view.brews) : 0,
-    smallGroups: smallGroupCount(db),
-    hiddenCount: (db.prepare(`SELECT COUNT(*) n FROM dismissed_structures`).get() as { n: number }).n,
+    smallGroups: admin ? smallGroupCount(db) : 0,
+    hiddenCount: admin ? (db.prepare(`SELECT COUNT(*) n FROM dismissed_structures`).get() as { n: number }).n : 0,
     hidden,
     brews: view.brews ? brewsFor(db, view.brews, view.order) : null,
     view,
-    noteWords: getNoteWords(db),
+    noteWords: admin ? getNoteWords(db) : [],
     totals: { read: t.read, lowConfidence: t.low, notesOnly }
   };
 };

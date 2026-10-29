@@ -8,20 +8,20 @@ import { getDb } from '$lib/server/db';
 import { compactFlow } from '$lib/server/bcFlow';
 import { saveShot } from '$lib/server/visualizerUpload';
 import { readStale } from '$lib/server/pourReadings';
-import { listRecipes } from '$lib/server/recipes';
+import { deleteRecipe, listRecipes, saveRecipe } from '$lib/server/recipes';
 import { draftFromReadings } from '$lib/recipes';
 import type { PourReading } from '$lib/pours';
 import { actions, load } from './+page.server';
 
-const flow = compactFlow(JSON.parse(readFileSync(new URL('../../../lib/server/fixtures/bcflow/bbs.json', import.meta.url), 'utf8')))!;
+const flow = compactFlow(JSON.parse(readFileSync(new URL('../../lib/server/fixtures/bcflow/bbs.json', import.meta.url), 'utf8')))!;
 const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
 const event = (isAdmin: boolean, query = '', fields: Record<string, string> = {}) => {
   const body = new FormData();
   for (const [k, v] of Object.entries(fields)) body.set(k, v);
   return {
     locals: { isAdmin },
-    url: new URL(`https://beans.example/account/recipes${query}`),
-    request: new Request('http://localhost/account/recipes', { method: 'POST', body })
+    url: new URL(`https://beans.example/recipes${query}`),
+    request: new Request('http://localhost/recipes', { method: 'POST', body })
   } as never;
 };
 type Data = Awaited<ReturnType<typeof load>> & Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -39,13 +39,19 @@ describe('recipes page', () => {
   readStale(db, -1);
   const key = (db.prepare(`SELECT structure_key k FROM brew_pour_readings LIMIT 1`).get() as { k: string }).k;
 
-  it('redirects a signed-out visitor to sign in', () => {
-    try {
-      load(event(false));
-      expect.unreachable();
-    } catch (e) {
-      expect(e).toMatchObject({ status: 303, location: '/login?redirectTo=%2Faccount%2Frecipes' });
-    }
+  it('a signed-out visitor sees recipes and their brews, but not the workbench', () => {
+    const admin = load(event(true)) as Data;
+    const id = saveRecipe(db, { name: 'Public one', tags: [], def: admin.groups[0].draft });
+    const pub = load(event(false, `?brews=r${id}&view=hidden`)) as Data;
+    expect(pub.recipes.map((r: { recipe: { name: string } }) => r.recipe.name)).toContain('Public one');
+    expect(pub.groups).toEqual([]);
+    expect(pub.noteWords).toEqual([]);
+    expect(pub.hidden).toBeNull();
+    expect(pub.view).toEqual({ brews: { recipe: id } });
+    expect(pub.brews).toHaveLength(N);
+    expect(JSON.stringify(pub.brews)).not.toContain('BBS.'); // brew notes never reach the public page
+    expect((load(event(false, `?brews=s${key}`)) as Data).brews).toBeNull();
+    deleteRecipe(db, id);
   });
 
   it('lists groups, and brews only for a ?brews= URL, never touching the raw flows', () => {
@@ -173,7 +179,7 @@ describe('recipes page', () => {
         body.append('word', w);
         body.append('agitation', a);
       }
-      return { locals: { isAdmin: true }, request: new Request('http://localhost/account/recipes', { method: 'POST', body }) } as never;
+      return { locals: { isAdmin: true }, request: new Request('http://localhost/recipes', { method: 'POST', body }) } as never;
     };
     it('stores a valid list and load returns it', async () => {
       await actions.saveNoteWords(post([['fast', 'high'], ['gentle', 'medium']]));

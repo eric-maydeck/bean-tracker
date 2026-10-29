@@ -64,6 +64,11 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
+export function recipesPreview(names: string[]): Preview {
+  if (!names.length) return { title: 'Recipes', description: 'No saved recipes.' };
+  return { title: 'Recipes', description: fitList([plural(names.length, 'recipe'), ...names], '\n', true) };
+}
+
 export function subscriptionsPreview(subs: Pick<SubscriptionRow, 'roaster_service' | 'subscription_name'>[]): Preview {
   if (!subs.length) return { title: 'Subscriptions', description: 'No subscriptions.' };
   const lines = subs.map((s) => join([s.roaster_service, s.subscription_name]));

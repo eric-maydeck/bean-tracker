@@ -2360,7 +2360,7 @@ export const STATES: State[] = [
     path: () => '/account',
     act: async (page) => {
       await expect(page.getByText('Flow data for 24 of 24 brews')).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
+      await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/recipes');
       // Brew now lists: no mutation here (every viewport shares one DB); add/remove are covered in page.server.test.ts.
       const rows = page.locator('.bn-list').first().locator('li');
       await expect(rows.first().locator('.bn-cell').first()).toContainText(/1:\d+(\.\d)?\s*\d+ g/);
@@ -2388,14 +2388,14 @@ export const STATES: State[] = [
     }
   },
   ...(() => {
-    // /account/recipes: seeded with 24 flow brews (10 bbs, 10 bbj, 3 4sy, 1 bbf), the recipe "Seed equal pours" (the 4sy
+    // /recipes: seeded with 24 flow brews (10 bbs, 10 bbj, 3 4sy, 1 bbf), the recipe "Seed equal pours" (the 4sy
     // brews, 3 of 24 flow brews) and the bbf structure dismissed; bbs and bbj have MIN_GROUP (10) brews each. `item` finds a list item by text inside one panel.
     const panel = (page: Page, h: string) => page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: h, level: 2 }) });
     const rows = (page: Page) => page.locator('.brew-row');
     return [
       {
         name: 'recipes',
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           const mine = panel(page, 'Your recipes').locator('li.item');
           await expect(mine).toHaveCount(3); // + the two logged-only recipes the Pours tab's seed adds
@@ -2417,7 +2417,7 @@ export const STATES: State[] = [
       },
       {
         name: 'recipes-see-brews',
-        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbsKey}`,
+        path: (s: Seed) => `/recipes?brews=s${s.recipes.bbsKey}`,
         act: async (page: Page, s: Seed) => {
           await expect(rows(page)).toHaveCount(10);
           await expect(page.getByRole('link', { name: 'Latest' })).toHaveAttribute('aria-current', 'true');
@@ -2433,7 +2433,7 @@ export const STATES: State[] = [
       {
         // Top rated: 10 rows, rating never rises down the list; the toggle keeps brews=.
         name: 'recipes-see-brews-top', viewports: 'two' as const,
-        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbsKey}&order=top`,
+        path: (s: Seed) => `/recipes?brews=s${s.recipes.bbsKey}&order=top`,
         act: async (page: Page, s: Seed) => {
           await expect(rows(page)).toHaveCount(10);
           await expect(page.getByRole('link', { name: 'Top rated' })).toHaveAttribute('aria-current', 'true');
@@ -2446,7 +2446,7 @@ export const STATES: State[] = [
       {
         // A key that is not shown as a group (here the dismissed bbf structure) still opens, in its own panel.
         name: 'recipes-unlisted-key', viewports: 'two' as const,
-        path: (s: Seed) => `/account/recipes?brews=s${s.recipes.bbfKey}`,
+        path: (s: Seed) => `/recipes?brews=s${s.recipes.bbfKey}`,
         act: async (page: Page) => {
           const open = panel(page, 'Found in your brews').locator('li.item.open');
           await expect(open).toHaveCount(1);
@@ -2458,7 +2458,7 @@ export const STATES: State[] = [
       },
       {
         name: 'recipes-see-recipe-brews', viewports: 'two' as const,
-        path: (s: Seed) => `/account/recipes?brews=r${s.recipes.recipeId}`,
+        path: (s: Seed) => `/recipes?brews=r${s.recipes.recipeId}`,
         act: async (page: Page) => {
           await expect(rows(page)).toHaveCount(3);
           for (const r of await rows(page).all()) await expect(r).toContainText('looks like Seed equal pours');
@@ -2466,7 +2466,7 @@ export const STATES: State[] = [
       },
       {
         name: 'recipes-hidden', viewports: 'two' as const,
-        path: () => '/account/recipes?view=hidden',
+        path: () => '/recipes?view=hidden',
         act: async (page: Page) => {
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
           await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
@@ -2475,7 +2475,7 @@ export const STATES: State[] = [
       },
       {
         name: 'recipes-bad-params', viewports: 'two' as const,
-        path: () => '/account/recipes?brews=zzz&view=nope',
+        path: () => '/recipes?brews=zzz&view=nope',
         act: async (page: Page) => {
           await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
           await expect(rows(page)).toHaveCount(0);
@@ -2485,7 +2485,7 @@ export const STATES: State[] = [
       {
         // Name & save opens the form with the suggested name, nothing focused, nothing in the URL.
         name: 'recipes-name-save-open', viewports: 'two' as const,
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           const before = page.url();
           await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Name & save' }).click();
@@ -2497,7 +2497,7 @@ export const STATES: State[] = [
       {
         // Edit on the bbs group opens the full editor: its 4 pours (2 blooms), add/remove/move, live preview, nothing focused or in the URL.
         name: 'recipes-edit',
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           const before = page.url();
           await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
@@ -2558,7 +2558,7 @@ export const STATES: State[] = [
       {
         // The default note words: two rows (High / Low selected), a Save action row.
         name: 'recipes-note-words',
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           const p = panel(page, 'Words in your notes');
           await expect(p.getByLabel('Word or phrase')).toHaveCount(2);
@@ -2576,7 +2576,7 @@ export const STATES: State[] = [
       {
         // Add word appends an empty row without focusing it or touching the URL; Cancel appears and undoes it.
         name: 'recipes-note-words-add',
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           const before = page.url();
           const p = panel(page, 'Words in your notes');
@@ -2595,7 +2595,7 @@ export const STATES: State[] = [
       {
         // A ratio outside 1:5-1:30 is rejected with the exact message; the editor stays open and nothing is saved.
         name: 'recipes-edit-error', viewports: 'two' as const,
-        path: () => '/account/recipes',
+        path: () => '/recipes',
         act: async (page: Page) => {
           await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
           const ratio = page.getByLabel('Ratio 1:', { exact: true });
@@ -2613,15 +2613,18 @@ export const STATES: State[] = [
     ];
   })(),
   {
-    // From /account/recipes the Account nav item is current (desktop nav, phone More panel).
-    name: 'recipes-account-nav', viewports: 'two',
-    path: () => '/account/recipes',
+    // On /recipes the Recipes nav item is current, between Insights and Water (desktop nav, phone More panel).
+    name: 'recipes-nav', viewports: 'two',
+    path: () => '/recipes',
     act: async (page) => {
       if (isPhone(page)) {
         await page.getByRole('button', { name: 'More' }).click();
-        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+        await expect(page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Recipes' })).toHaveAttribute('aria-current', 'page');
       } else {
-        await expect(page.locator('.nav-links').getByRole('link', { name: 'Account' })).toHaveAttribute('aria-current', 'page');
+        const links = page.locator('.nav-links > a');
+        await expect(links.filter({ hasText: /^Recipes$/ })).toHaveAttribute('aria-current', 'page');
+        const names = await links.allTextContents();
+        expect(names.map((n) => n.trim()).slice(names.indexOf('Insights'), names.indexOf('Insights') + 3)).toEqual(['Insights', 'Recipes', 'Water']);
       }
     }
   },
@@ -3707,7 +3710,7 @@ export const STATES: State[] = [
     name: 'insights-pours-empty', viewports: 'two', path: () => '/insights?tab=pours&range=2000-01-01..2000-01-31',
     act: async (page) => {
       await expect(page.getByText('No rated brews with pour readings in this period.')).toBeVisible();
-      await expect(page.getByRole('link', { name: 'Set up recipes' })).toHaveAttribute('href', '/account/recipes');
+      await expect(page.getByRole('link', { name: 'Set up recipes' })).toHaveAttribute('href', '/recipes');
     }
   },
   // A tile's title never moves when per person adds its caption part: secondary parts sit on their own line (shared tile layout).
@@ -9644,12 +9647,24 @@ test.describe('signed out', () => {
   test('insights-pours-signed-out', async ({ page }) => {
     await gotoReady(page, '/insights?tab=pours&pourThin=open');
     await expect(page.locator('[data-section="pours-recipes"] li').filter({ hasText: 'Seed high agitation' })).toHaveCount(1);
-    await expect(page.locator('main a[href^="/account/recipes"]')).toHaveCount(0);
+    await expect(page.locator('main a[href^="/recipes?brews=r"]').first()).toBeVisible(); // recipe names link for everyone
     await checkLayout(page);
   });
-  test('recipes-signed-out', async ({ page }) => {
-    await page.goto('/account/recipes');
-    await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount%2Frecipes/);
+  test('recipes-public', async ({ page }) => {
+    await gotoReady(page, '/recipes');
+    await expect(page).toHaveURL(/\/recipes$/);
+    await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
+    for (const n of ['Edit', 'Delete', 'Name & save', 'Not a recipe', 'Save']) await expect(page.getByRole('button', { name: n, exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Found in your brews' })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'Words in your notes' })).toHaveCount(0);
+    await page.getByRole('link', { name: 'See brews' }).first().click();
+    await expect(page).toHaveURL(/brews=r\d+/);
+    await expect(page.locator('.brew-row').first()).toBeVisible();
+    await checkLayout(page);
+  });
+  test('recipes-old-url-redirects', async ({ page }) => {
+    await page.goto('/account/recipes?brews=r1&order=top');
+    await expect(page).toHaveURL(/\/recipes\?brews=r1&order=top$/);
   });
   test('coffees-cards-public-roaster-default', { tag: '@coffees' }, async ({ page }, info) => {
     await gotoReady(page, '/coffees?status=all&view=cards');

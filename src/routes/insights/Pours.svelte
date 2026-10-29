@@ -175,7 +175,7 @@
   <section class="chart-panel">
     <p class="hl-empty">{emptyLine('No rated brews with pour readings in this period.')}</p>
     {@render ratingsNote()}
-    {#if page.data.isAdmin}<p class="chart-note empty-link"><a href="/account/recipes">Set up recipes</a></p>{/if}
+    {#if page.data.isAdmin}<p class="chart-note empty-link"><a href="/recipes">Set up recipes</a></p>{/if}
   </section>
 {:else}
   {#if t.recipes.length}
@@ -186,7 +186,7 @@
           {@const d = r.stat?.delta ?? null}
           <li>
             <span class="name">
-              {#if page.data.isAdmin && r.id !== null}<a class="nm" href="/account/recipes?brews=r{r.id}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
+              {#if r.id !== null}<a class="nm" href="/recipes?brews=r{r.id}" use:cutTip={r.name}>{r.name}</a>{:else}<span class="nm" use:cutTip={r.name}>{r.name}</span>{/if}
               {#if r.dripper}<span class="sub" use:cutTip={r.dripper}>{r.dripper}</span>{:else}<span class="sub"></span>{/if}
             </span>
             <span class="num">{plural(r.rated, 'rated brew')}</span>

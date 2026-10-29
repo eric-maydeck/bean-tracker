@@ -1,4 +1,4 @@
-// /account/recipes view state: which item's brew list is open, and the hidden-structures view.
+// /recipes view state: which item's brew list is open, and the hidden-structures view.
 import { pickOne } from './pageUrlState';
 
 export type RecipesItem = { recipe: number } | { key: string };

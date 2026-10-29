@@ -21,10 +21,11 @@
     { href: '/subscriptions', label: 'Subscriptions' },
     { href: '/stats', label: 'Stats' },
     { href: '/insights', label: 'Insights' },
+    { href: '/recipes', label: 'Recipes' },
     { href: '/water', label: 'Water' }
   ];
-  // The bottom bar is full at phone width; Insights (alpha) and Water live in More there.
-  const tabLinks = links.filter((l) => l.href !== '/insights' && l.href !== '/water');
+  // The bottom bar is full at phone width; Insights (alpha), Recipes and Water live in More there.
+  const tabLinks = links.filter((l) => l.href !== '/insights' && l.href !== '/recipes' && l.href !== '/water');
 
   let theme = $state<'light' | 'dark'>('light');
 
@@ -176,6 +177,9 @@
   <div class="bottom-tabs-more-panel">
     <a class="nav-link-button" href="/insights" aria-current={page.url.pathname === '/insights' ? 'page' : undefined}
       ><Icon name="chart-line" /> Insights</a
+    >
+    <a class="nav-link-button" href="/recipes" aria-current={page.url.pathname === '/recipes' ? 'page' : undefined}
+      ><Icon name="list-checks" /> Recipes</a
     >
     <a class="nav-link-button" href="/water" aria-current={page.url.pathname === '/water' ? 'page' : undefined}
       ><Icon name="drop" /> Water</a

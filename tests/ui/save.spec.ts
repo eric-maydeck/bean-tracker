@@ -327,7 +327,7 @@ test.describe('recipes', { tag: '@account' }, () => {
     const mine = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Your recipes', level: 2 }) });
     const found = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Found in your brews', level: 2 }) });
     const joocy = mine.locator('li.item').filter({ hasText: 'Test joocy' });
-    await gotoReady(page, '/account/recipes');
+    await gotoReady(page, '/recipes');
     const bbj = found.locator('li.item').filter({ hasText: 'Mostly' }).nth(1); // bbs is first, bbj second
     const before = await found.locator('li.item').count();
     await bbj.getByRole('button', { name: 'Name & save' }).click();
@@ -369,7 +369,7 @@ test.describe('recipes', { tag: '@account' }, () => {
 
   test('recipes-note-words-save: add a word, save, see it after a reload; a duplicate is rejected', async ({ page }) => {
     const p = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Words in your notes', level: 2 }) });
-    await gotoReady(page, '/account/recipes');
+    await gotoReady(page, '/recipes');
     await p.getByRole('button', { name: 'Add word' }).click();
     await p.getByLabel('Word or phrase').nth(2).fill('seed word');
     await p.getByLabel('Agitation').nth(2).selectOption('medium');
