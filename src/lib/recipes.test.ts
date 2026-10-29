@@ -127,16 +127,45 @@ describe('parseRecipeInput', () => {
 
 describe('noteTag', () => {
   const rs = [recipe(1, 'BBS', def('BFFS')), recipe(2, 'BB', def('BFF')), recipe(3, 'R3', def('BFS'), ['2 yeets, 1 MD', 'md'])];
+  const ids = (note: string | null, list: Recipe[] = rs) => noteTag(note, list).map((r) => r.id);
   it('whole word, case-insensitive', () => {
-    expect(noteTag('BBS.', rs)?.id).toBe(1);
-    expect(noteTag('bbs, go finer', rs)?.id).toBe(1);
-    expect(noteTag('BBSX', rs)).toBeNull();
-    expect(noteTag('xBBS', rs)).toBeNull();
+    expect(ids('BBS.')).toEqual([1]);
+    expect(ids('bbs, go finer')).toEqual([1]);
+    expect(ids('BBSX')).toEqual([]);
+    expect(ids('xBBS')).toEqual([]);
   });
-  it('BB does not tag BBS.', () => expect(noteTag('BBS.', [rs[1]])).toBeNull());
-  it('tag phrases with punctuation', () => expect(noteTag('2 yeets, 1 MD. nice', rs)?.id).toBe(3));
-  it('earliest in the note wins', () => expect(noteTag('md then bbs', rs)?.id).toBe(3));
-  it('no note', () => expect(noteTag(null, rs)).toBeNull());
+  it('BB does not tag BBS.', () => expect(ids('BBS.', [rs[1]])).toEqual([]));
+  it('tag phrases with punctuation', () => expect(ids('2 yeets, 1 MD. nice')).toEqual([3]));
+  it('earliest in the note wins', () => expect(ids('md then bbs')).toEqual([3]));
+  it('no note', () => expect(ids(null)).toEqual([]));
+
+  const fx = [
+    recipe(1, 'BBS', def('BFFS')), recipe(2, 'BBF', def('BFFF')), recipe(3, 'Shoebox', def('BFS')),
+    recipe(4, 'BBJ', def('BFFSS')), recipe(5, 'DYB', def('BFS'), ['1 long pour'])
+  ];
+  it('advice sentence is ignored', () => {
+    expect(ids('Try BBF next time', fx)).toEqual([]);
+    expect(ids('BBS. Try BBF next', fx)).toEqual([1]);
+    expect(ids('Maybe try the Shoebox approach', fx)).toEqual([]);
+  });
+  it('a first-token hit always counts', () => {
+    expect(ids('bbs, go finer', fx)).toEqual([1]);
+    expect(ids('BBJ. Good, but probably better as a 4 shoey yeet', fx)).toEqual([4]);
+  });
+  it('mid-note tag without advice words', () => expect(ids('Nice. 2 yeets, 1 long pour', fx)).toEqual([5]));
+  it('dotted grind stays one sentence', () => {
+    expect(ids('1.1.0 BBS', fx)).toEqual([1]);
+    expect(ids('Grind 1.1.0. BBS', fx)).toEqual([1]);
+  });
+  it('whole-word advice only', () => expect(ids('Nice, BBS ordinary', fx)).toEqual([1]));
+  it('shared tag returns every carrier', () => {
+    const sh = [recipe(1, 'A', def('BFS'), ['Shoebox']), recipe(2, 'B', def('BFS'), ['Shoebox']), recipe(3, 'C', def('BFS'))];
+    expect(ids('Shoebox, fine', sh)).toEqual([1, 2]);
+  });
+  it('longest term at the same index wins', () => {
+    const sh = [recipe(1, 'A', def('BFS'), ['Shoebox QC washed', 'Shoebox']), recipe(2, 'B', def('BFS'), ['Shoebox'])];
+    expect(ids('Shoebox QC washed, nice', sh)).toEqual([1]);
+  });
 });
 
 describe('matchBrew', () => {
@@ -226,6 +255,14 @@ describe('matchBrew', () => {
     const m = matchBrew(brew(reading('BFFS'), 'R2 today'), [r1, tagged])!;
     expect(m).toMatchObject({ recipeId: 2, how: 'logged', distance: 0 });
     expect(matchBrew(brew(null, 'R2'), [tagged])).toMatchObject({ how: 'logged', diffs: [] });
+  });
+  it('picks the closer carrier of a shared tag', () => {
+    const washed = recipe(1, 'W', def('BFFS', { ratio: { targets: [16.7], tol: 0.5 }, tempC: 91.5 }), ['4SY']);
+    const natural = recipe(2, 'N', def('BFFS', { ratio: { targets: [15.3], tol: 0.5 }, tempC: 85 }), ['4SY']);
+    const r = reading('BFFS', { ratio: 15.3 });
+    expect(matchBrew(brew(r, '4SY', 85), [washed, natural])).toMatchObject({ recipeId: 2, how: 'logged' });
+    expect(matchBrew(brew(reading('BFFS', { ratio: 30 }), '4SY', 85), [washed, natural])!.recipeId).toBe(2);
+    expect(matchBrew(brew(null, '4SY'), [washed, natural])!.recipeId).toBe(1);
   });
   it('a pour with only a rate range aligns by its midpoint', () => {
     const rate = recipe(1, 'R1', {

@@ -317,17 +317,37 @@ const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 export function hasWord(text: string, term: string): number {
   return new RegExp(`(?<![A-Za-z0-9])${esc(term)}(?![A-Za-z0-9])`, 'i').exec(text)?.index ?? -1;
 }
-/** The recipe whose name or tag appears first in the note, as a whole word. */
-export function noteTag(note: string | null, recipes: Recipe[]): Recipe | null {
-  if (!note) return null;
-  let best: { at: number; r: Recipe } | null = null;
+export const ADVICE_WORDS: readonly string[] = [
+  'try', 'maybe', 'next', 'either', 'instead', 'should', 'could', 'would', 'switch', 'supposed', 'forgot', 'prefer', 'or', 'go', 'do', 'think'
+];
+/**
+ * Every recipe carrying the note's winning name/tag, as whole words. A hit at the note's first token always counts;
+ * any other hit is skipped when its sentence (split on . ! ? plus whitespace) has an advice word. Earliest hit wins,
+ * the longest term at the same spot; several recipes may share the term.
+ */
+export function noteTag(note: string | null, recipes: Recipe[]): Recipe[] {
+  if (!note) return [];
+  const first = note.search(/\S/);
+  const cuts = [...note.matchAll(/(?<=[.!?])\s+/g)].map((m) => m.index!);
+  const advice = (at: number) => {
+    const from = cuts.filter((c) => c < at).pop() ?? 0;
+    const sentence = note.slice(from, cuts.find((c) => c >= at) ?? note.length);
+    return ADVICE_WORDS.some((w) => hasWord(sentence, w) >= 0);
+  };
+  let best: { at: number; term: string } | null = null;
   for (const r of recipes)
-    for (const term of [r.name, ...r.tags]) {
-      if (!term.trim()) continue;
-      const at = hasWord(note, term.trim());
-      if (at >= 0 && (!best || at < best.at)) best = { at, r };
+    for (const raw of [r.name, ...r.tags]) {
+      const term = raw.trim();
+      if (!term) continue;
+      for (const m of note.matchAll(new RegExp(`(?<![A-Za-z0-9])${esc(term)}(?![A-Za-z0-9])`, 'gi'))) {
+        if (m.index !== first && advice(m.index)) continue;
+        if (!best || m.index < best.at || (m.index === best.at && term.length > best.term.length)) best = { at: m.index, term };
+        break;
+      }
     }
-  return best?.r ?? null;
+  if (!best) return [];
+  const win = best.term.toLowerCase();
+  return recipes.filter((r) => [r.name, ...r.tags].some((t) => t.trim().toLowerCase() === win));
 }
 
 export type Match = {
@@ -448,13 +468,12 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
 export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySet<string> = new Set()): Match | null {
   const { reading: r } = brew;
   const tagged = noteTag(brew.notes, recipes);
-  if (tagged)
-    return {
-      recipeId: tagged.id,
-      how: 'logged',
-      diffs: r ? diffsOf(tagged.def, r, brew.tempC) : [],
-      distance: 0
-    };
+  if (tagged.length) {
+    // Shared tag: the closest carrier by distance (gates ignored), ties to the lower id; no reading, the first by id.
+    const fits = tagged.map((t) => ({ t, fit: r ? fitRecipe(t.def, brew, { recipes, locked }) : null }));
+    const [pick] = fits.sort((x, y) => (x.fit?.distance ?? 0) - (y.fit?.distance ?? 0) || x.t.id - y.t.id);
+    return { recipeId: pick.t.id, how: 'logged', diffs: pick.fit?.diffs ?? [], distance: 0 };
+  }
   if (!r || r.ratio == null || !r.pours.length) return null;
   let best: Match | null = null;
   for (const { id, def } of recipes) {
@@ -465,6 +484,7 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
   return best;
 }
 
+// What a recipe's brews actually took (total brew time): the middle half of them, so it reads as a spread, not a goal.
 export function middleHalf(seconds: number[]): { lo: number; hi: number; n: number } | null {
   const v = seconds.filter((s) => s > 0).sort((a, b) => a - b);
   if (v.length < 4) return null;
