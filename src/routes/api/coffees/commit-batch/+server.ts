@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
-import { commitCoffeeBatch, type CoffeeBatchChange } from '$lib/server/coffeeBatchActions';
+import { commitCoffeeBatchWithStates, type CoffeeBatchChange } from '$lib/server/coffeeBatchActions';
 import { queueFillMissing } from '$lib/server/imageFills';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -14,9 +14,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   const changes = body.changes as CoffeeBatchChange[];
   try {
     const db = getDb();
-    const slugs = commitCoffeeBatch(db, changes);
+    const { slugs, before, after } = commitCoffeeBatchWithStates(db, changes);
     void queueFillMissing(db); // new images or roaster defaults → backdrop fills, in the background
-    return json({ success: true, slugs });
+    return json({ success: true, slugs, before, after });
   } catch (err) {
     return json({ success: false, error: err instanceof Error ? err.message : 'Save failed' }, { status: 500 });
   }

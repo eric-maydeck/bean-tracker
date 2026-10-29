@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { DatabaseSync } from 'node:sqlite';
 import { createDb } from './db';
 import { createCoffee, getCoffeeById, getRedirectSlug, type NewCoffeeInput } from './coffees';
-import { validateCoffeeBatch, commitCoffeeBatch, type CoffeeBatchChange } from './coffeeBatchActions';
+import { validateCoffeeBatch, commitCoffeeBatch, commitCoffeeBatchWithStates, type CoffeeBatchChange } from './coffeeBatchActions';
 import { stageFieldChange, type PendingChange } from '../pendingChanges';
 import { setRoasterImage, getRoasterImage } from './roasterImages';
 import { getRoasterWebsite } from './roasterWebsites';
@@ -124,6 +124,15 @@ describe('commitCoffeeBatch', () => {
     const { id } = createCoffee(db, sampleInput());
     commitCoffeeBatch(db, [{ id, statusAction: 'archive' }]);
     expect(getCoffeeById(db, id)?.status).toBe('archive');
+  });
+
+  it('reports before/after states for status actions, none for a delete', () => {
+    const { id } = createCoffee(db, sampleInput());
+    const r = commitCoffeeBatchWithStates(db, [{ id, statusAction: 'open' }]);
+    expect(r.before[0]).toMatchObject({ id, status: 'backlog', opened_date: null });
+    expect(r.after[0]).toMatchObject({ id, status: 'open' });
+    const d = commitCoffeeBatchWithStates(db, [{ id, statusAction: 'delete' }]);
+    expect(d.before).toEqual([]);
   });
 
   it('unarchives an opened coffee back to open', () => {

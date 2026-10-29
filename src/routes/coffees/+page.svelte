@@ -1,7 +1,7 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { bqImportHref } from '$lib/bqImportUrl';
-  import { coffeeToast, commitChanges, reverseChanges, undoChanges } from '$lib/coffeeToast';
+  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -179,14 +179,14 @@
   // The backlog row's Open icon: opens now (no Edit mode), toasts with Undo.
   async function quickOpen(coffee: CoffeeRow) {
     const changes = [{ id: coffee.id, statusAction: 'open' }];
+    let states;
     try {
-      await commitChanges(changes);
+      states = await commitChanges(changes);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    const back = reverseChanges(changes);
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
     await invalidateAll();
   }
 
@@ -237,6 +237,7 @@
     const changes = Array.from(pending.entries())
       .filter(([id]) => onlyId == null || id === onlyId)
       .map(([id, change]) => ({ id, ...change }));
+    let undoStates: States | null = null; // from commit-batch: what an Undo restores
     if (onlyId != null && changes.length === 0) {
       saving = false;
       discardRow(onlyId);
@@ -271,7 +272,7 @@
       // non-2xx status, so parse it regardless of `.ok` — only fall back to
       // the generic error if parsing itself fails (network failure or a
       // genuinely non-JSON response).
-      let commitResult: { success: boolean; error?: string };
+      let commitResult: { success: boolean; error?: string; before?: unknown[]; after?: unknown[] };
       try {
         commitResult = await commitRes.json();
       } catch {
@@ -285,6 +286,7 @@
         saving = false;
         return;
       }
+      undoStates = { before: commitResult.before ?? [], after: commitResult.after ?? [] };
     } catch {
       // Network error, non-2xx response, or an unexpected response shape
       // (e.g. an expired session serializing as something other than
@@ -302,8 +304,7 @@
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
     const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
-    const back = reverseChanges(changes);
-    if (toastText) showToast(toastText, back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);

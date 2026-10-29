@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { coffeeToast, reverseChanges } from './coffeeToast';
+import { coffeeToast, undoable } from './coffeeToast';
 
 const name = (id: number) => `C${id}`;
 describe('coffeeToast', () => {
@@ -18,15 +18,12 @@ describe('coffeeToast', () => {
   it('is silent for nothing', () => expect(coffeeToast([], name)).toBeNull());
 });
 
-describe('reverseChanges', () => {
-  it('reverses each status action', () => {
-    expect(reverseChanges([{ id: 1, statusAction: 'archive' }, { id: 2, statusAction: 'freeze' }, { id: 3, statusAction: 'open' }]))
-      .toEqual([{ id: 1, statusAction: 'unarchive' }, { id: 2, statusAction: 'thaw' }, { id: 3, statusAction: 'unopen' }]);
-  });
-  it('refuses field edits, deletes and nothing', () => {
-    expect(reverseChanges([{ id: 1 }])).toBeNull();
-    expect(reverseChanges([{ id: 1, statusAction: 'delete' }])).toBeNull();
-    expect(reverseChanges([{ id: 1, statusAction: 'archive', fields: {} }])).toBeNull();
-    expect(reverseChanges([])).toBeNull();
+describe('undoable', () => {
+  it('is true for status actions only', () => {
+    expect(undoable([{ statusAction: 'archive' }, { statusAction: 'freeze' }])).toBe(true);
+    expect(undoable([{}])).toBe(false);
+    expect(undoable([{ statusAction: 'delete' }])).toBe(false);
+    expect(undoable([{ statusAction: 'archive', fields: {} }])).toBe(false);
+    expect(undoable([])).toBe(false);
   });
 });

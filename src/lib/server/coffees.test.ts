@@ -17,6 +17,8 @@ import {
   thawCoffee,
   archiveCoffee,
   unarchiveCoffee,
+  coffeeState,
+  restoreCoffeeStates,
   deleteCoffee,
   getDistinctFieldValues,
   applyCoffeeFixes,
@@ -268,7 +270,7 @@ describe('archiveCoffee / unarchiveCoffee', () => {
     expect(getCoffeeById(db, id)?.drank).toBe(0);
   });
 
-  it('puts an opened coffee back to open, keeping its opened date and drank = 1', () => {
+  it('puts an opened coffee back to open, keeping its opened date, with drank = 0 (back in rotation)', () => {
     const { id } = createCoffee(db, sampleInput());
     openCoffee(db, id);
     const opened = getCoffeeById(db, id)?.opened_date;
@@ -276,7 +278,7 @@ describe('archiveCoffee / unarchiveCoffee', () => {
     unarchiveCoffee(db, id);
     const c = getCoffeeById(db, id);
     expect(getOpenCoffees(db).map((x) => x.id)).toContain(id);
-    expect(c).toMatchObject({ status: 'open', opened_date: opened, moved_date: null, drank: 1 });
+    expect(c).toMatchObject({ status: 'open', opened_date: opened, moved_date: null, drank: 0 });
   });
 
   it('does nothing to a coffee that is not archived', () => {
@@ -618,5 +620,36 @@ describe('applyCoffeeFixes (product page backfill)', () => {
     expect(applyCoffeeFixes(db, batch({ tavilyCalls: ['2026-10-07T10:00:00.000Z'] }))).toBeNull();
     expect(marker()).toBeUndefined();
     expect(usage()).toEqual([]);
+  });
+});
+
+describe('undo by state snapshot', () => {
+  const run = (id: number, act: (d: DatabaseSync, id: number) => void) => {
+    const before = [coffeeState(db, id)!];
+    act(db, id);
+    return { before, after: [coffeeState(db, id)!] };
+  };
+  it('undoing a freeze, a thaw and an open of a frozen bag restores the exact frozen dates', () => {
+    const { id } = createCoffee(db, sampleInput({ frozen_start_date: '2026-09-01', frozen_end_date: null }));
+    const thaw = run(id, thawCoffee);
+    expect(getCoffeeById(db, id)?.frozen_end_date).not.toBeNull();
+    restoreCoffeeStates(db, thaw.before, thaw.after);
+    expect(getCoffeeById(db, id)).toMatchObject({ frozen_start_date: '2026-09-01', frozen_end_date: null, status: 'backlog' });
+    const open = run(id, openCoffee); // opening a frozen bag thaws it
+    expect(getCoffeeById(db, id)).toMatchObject({ status: 'open' });
+    restoreCoffeeStates(db, open.before, open.after);
+    expect(getCoffeeById(db, id)).toMatchObject({ status: 'backlog', opened_date: null, frozen_start_date: '2026-09-01', frozen_end_date: null });
+    const { id: plain } = createCoffee(db, sampleInput());
+    const freeze = run(plain, freezeCoffee);
+    restoreCoffeeStates(db, freeze.before, freeze.after);
+    expect(getCoffeeById(db, plain)).toMatchObject({ frozen_start_date: null, frozen_end_date: null });
+  });
+  it('refuses, and changes nothing, when the coffee changed since', () => {
+    const { id } = createCoffee(db, sampleInput());
+    const a = run(id, openCoffee);
+    archiveCoffee(db, id); // changed elsewhere
+    expect(() => restoreCoffeeStates(db, a.before, a.after)).toThrow(/changed since/);
+    expect(getCoffeeById(db, id)?.status).toBe('archive');
+    expect(() => restoreCoffeeStates(db, [], [])).toThrow(/Nothing to undo/);
   });
 });

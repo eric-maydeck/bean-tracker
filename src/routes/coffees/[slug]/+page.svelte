@@ -7,7 +7,7 @@
   import { page } from '$app/state';
   import { bqImportRequested, cloneRequested, editRequested } from '$lib/bqImportUrl';
   import { writeUrlParams } from '$lib/urlState';
-  import { coffeeToast, commitChanges, reverseChanges, undoChanges } from '$lib/coffeeToast';
+  import { coffeeToast, commitChanges, restoreStates, undoable, type States } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
@@ -111,11 +111,13 @@
   afterNavigate(() => {
     const q = new URLSearchParams(location.search);
     const edit = editRequested(q), clone = cloneRequested(q);
-    if (!data.isAdmin || (!edit && !clone)) return;
-    if (edit) editMode = true;
-    if (clone) openModal(clonePrefill(formCoffee));
-    q.delete('edit');
+    if (!edit && !clone) return;
+    q.delete('edit'); // dropped for everyone; only an admin gets the mode
     q.delete('clone');
+    if (data.isAdmin) {
+      if (edit) editMode = true;
+      if (clone) openModal(clonePrefill(formCoffee));
+    }
     setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: replaceState isn't allowed inside it
   });
   let canEdit = $derived(editMode && data.isAdmin);
@@ -187,6 +189,7 @@
     saving = true;
     commitError = null;
     const changes = Array.from(pending.entries()).map(([id, change]) => ({ id, ...change }));
+    let undoStates: States | null = null; // from commit-batch: what an Undo restores
     const wasDeleted = pending.get(data.coffee.id)?.statusAction === 'delete';
 
     try {
@@ -212,7 +215,7 @@
       // non-2xx status, so parse it regardless of `.ok` — only fall back to
       // the generic error if parsing itself fails (network failure or a
       // genuinely non-JSON response).
-      let commitResult: { success: boolean; error?: string; slugs?: Record<number, string> };
+      let commitResult: { success: boolean; error?: string; slugs?: Record<number, string>; before?: unknown[]; after?: unknown[] };
       try {
         commitResult = await commitRes.json();
       } catch {
@@ -224,6 +227,7 @@
         return;
       }
       savedSlug = commitResult.slugs?.[data.coffee.id];
+      undoStates = { before: commitResult.before ?? [], after: commitResult.after ?? [] };
     } catch {
       commitError = 'Something went wrong saving your changes. Please check your connection and try again.';
       saving = false;
@@ -235,8 +239,7 @@
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
     const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
-    const back = reverseChanges(changes);
-    if (toastText) showToast(toastText, back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
+    if (toastText) showToast(toastText, undoable(changes) && undoStates ? { undo: async () => { await restoreStates(undoStates!); await invalidateAll(); } } : {});
     pending = new SvelteMap();
     editMode = false;
     saving = false;

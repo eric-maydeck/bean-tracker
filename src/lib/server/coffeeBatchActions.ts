@@ -9,6 +9,8 @@ import {
   thawCoffee,
   archiveCoffee,
   unarchiveCoffee,
+  coffeeState,
+  type CoffeeState,
   deleteCoffee,
   type NewCoffeeInput
 } from './coffees';
@@ -117,6 +119,16 @@ function nextSlug(db: DatabaseSync, before: CoffeeRow, input: NewCoffeeInput, st
 // error here (a genuinely nonexistent id, a real DB error) rolls back
 // everything in the batch, not just the failing entry. Returns the final
 // slug of each field-edited coffee (it may have been regenerated).
+// commitCoffeeBatch plus the before/after state of every coffee whose status changed (an Undo restores `before`
+// only while the coffee is still as `after`). Deletes have none.
+export function commitCoffeeBatchWithStates(db: DatabaseSync, changes: CoffeeBatchChange[]) {
+  const ids = [...new Set(changes.filter((c) => c.statusAction && c.statusAction !== 'delete').map((c) => c.id))];
+  const states = () => ids.map((id) => coffeeState(db, id)).filter((s): s is CoffeeState => !!s);
+  const before = states();
+  const slugs = commitCoffeeBatch(db, changes);
+  return { slugs, before, after: states() };
+}
+
 export function commitCoffeeBatch(db: DatabaseSync, changes: CoffeeBatchChange[]): Record<number, string> {
   const slugs: Record<number, string> = {};
   db.exec('BEGIN');

@@ -342,15 +342,39 @@ export function archiveCoffee(db: DatabaseSync, id: number): void {
   ).run(now, now, id);
 }
 
-// Undo an archive: an opened coffee goes back to open (archive had forced drank = 1; it stays 1 only for a
-// coffee that was opened), an unopened one back to the backlog.
+// Un-archive: an opened coffee goes back to open, an unopened one to the backlog. drank = 0 either way: it is back in
+// rotation, not finished (urgency.ts rates a drank coffee "Done").
 export function unarchiveCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
   db.prepare(
     `UPDATE coffees SET status = CASE WHEN opened_date IS NOT NULL THEN 'open' ELSE 'backlog' END,
-       drank = CASE WHEN opened_date IS NOT NULL THEN 1 ELSE 0 END, moved_date = NULL, updated_at = ?
+       drank = 0, moved_date = NULL, updated_at = ?
      WHERE id = ? AND status = 'archive'`
   ).run(now, id);
+}
+
+// What a status action changes, so an Undo can put the exact values back (frozen dates included).
+export interface CoffeeState {
+  id: number; status: string; opened_date: string | null; frozen_start_date: string | null; frozen_end_date: string | null;
+  drank: number; moved_date: string | null;
+}
+export function coffeeState(db: DatabaseSync, id: number): CoffeeState | undefined {
+  return db
+    .prepare(`SELECT id, status, opened_date, frozen_start_date, frozen_end_date, drank, moved_date FROM coffees WHERE id = ?`)
+    .get(id) as CoffeeState | undefined;
+}
+const sameState = (a: CoffeeState | undefined, b: CoffeeState) => !!a && JSON.stringify(a) === JSON.stringify(b);
+
+// Undo: put `before` back, but only where the coffee is still exactly as the action left it (`after`); otherwise
+// nothing changes and the error says why (no silent no-op).
+export function restoreCoffeeStates(db: DatabaseSync, before: CoffeeState[], after: CoffeeState[]): void {
+  if (!before.length || before.length !== after.length) throw new Error('Nothing to undo.');
+  if (!after.every((a) => sameState(coffeeState(db, a.id), a))) throw new Error('That coffee changed since, so Undo did nothing.');
+  const now = new Date().toISOString();
+  const set = db.prepare(
+    `UPDATE coffees SET status = ?, opened_date = ?, frozen_start_date = ?, frozen_end_date = ?, drank = ?, moved_date = ?, updated_at = ? WHERE id = ?`
+  );
+  for (const s of before) set.run(s.status, s.opened_date, s.frozen_start_date, s.frozen_end_date, s.drank, s.moved_date, now, s.id);
 }
 
 export function deleteCoffee(db: DatabaseSync, id: number): void {

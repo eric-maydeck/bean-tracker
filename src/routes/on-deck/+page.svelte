@@ -3,7 +3,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { bqImportHref, cloneHref, editHref } from '$lib/bqImportUrl';
   import { labelTip } from '$lib/components/labelTip';
-  import { coffeeToast, reverseChanges, commitChanges } from '$lib/coffeeToast';
+  import { coffeeToast, commitChanges, restoreStates } from '$lib/coffeeToast';
   import type { CoffeeRow } from '$lib/types';
   import { invalidateAll, afterNavigate } from '$app/navigation';
   import { page } from '$app/state';
@@ -72,14 +72,14 @@
   // A tile's Open: toasts with Undo and the tile moves to Currently open.
   async function tileAction(coffee: CoffeeRow, statusAction: string) {
     const changes = [{ id: coffee.id, statusAction }];
+    let states;
     try {
-      await commitChanges(changes as { id: number; statusAction: string }[]);
+      states = await commitChanges(changes);
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Something went wrong.');
       return;
     }
-    const back = reverseChanges(changes);
-    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', back ? { undo: async () => { await commitChanges(back); await invalidateAll(); } } : {});
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', { undo: async () => { await restoreStates(states); await invalidateAll(); } });
     await invalidateAll();
   }
 </script>
