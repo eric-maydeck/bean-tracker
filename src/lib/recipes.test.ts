@@ -3,7 +3,7 @@ import type { Pour, PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, fitRecipe, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, fitRecipe, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Recipe, type RecipeDef, type RecipePour, type Trigger
 } from './recipes';
 
@@ -357,6 +357,40 @@ describe('matchBrew shares and triggers', () => {
     expect(gap(36).how).toBe('modified');
     const low = shared('FF', [0.5, 0.5], {}, [null, { kind: 'low' }]);
     expect(fit(low, reading('FF', {}, g([0.5, 0.5]), [0, 99])).diffs).toEqual([]);
+  });
+  it('a speed mismatch outweighs a trigger miss when ranking equal splits', () => {
+    const t: Trigger[] = [null, { kind: 'after', targetS: 20, maxS: 30 }, null, null, null];
+    const fast = recipe(1, 'Fast', shared('FFFFF', Array(5).fill(null), { equalSplit: true, pourCount: { min: 5, max: 5 } }, t));
+    const slow = recipe(2, 'Slow', shared('SSSSS', Array(5).fill(null), { equalSplit: true, pourCount: { min: 5, max: 5 } }));
+    // pour 2 starts 60 s after pour 1 (misses the trigger on Fast); Slow would need a 1.0 speed diff.
+    const b = brew(reading('FFFFF', {}, g([0.2, 0.2, 0.2, 0.2, 0.2]), [0, 60, 70, 80, 90]));
+    expect(matchBrew(b, [slow, fast])!.recipeId).toBe(1);
+    expect(fit(slow.def, b.reading!).distance - fit(fast.def, b.reading!).distance).toBeCloseTo(0.5);
+  });
+  describe('flow-controlling dripper', () => {
+    const mk = (drippers: string[]) => {
+      const d = def('BFFS', { drippers, pourCount: { min: 4, max: 4 }, ratio: { targets: [18], tol: 0.5 } });
+      d.pours = d.pours.map((p, i) => ({ ...p, grams: null, share: 0.25, trigger: i ? { kind: 'after', targetS: 20, maxS: 30 } : null }));
+      return d;
+    };
+    const any = mk(['Gabi Master A']);
+    const b = (pat: string, over: Partial<PourReading> = {}, dripper: string | null = 'Gabi Master A') =>
+      ({ ...brew(reading(pat, { ratio: 18, ...over }, undefined, [0, 100, 200, 300, 400])), dripper });
+    const lock = { recipes: [] as Recipe[], locked: new Set<string>() };
+    it.each(['BF', 'BFF', 'BFFFF', 'FFF', 'BBFS', 'SSS'])('matches %s on the dripper', (pat) => {
+      expect(fitRecipe(any, b(pat), lock)).toMatchObject({ pass: true, how: 'match', diffs: [] });
+    });
+    it('a wrong ratio or other dripper fails', () => {
+      expect(fitRecipe(any, b('BFF', { ratio: 16 }), lock).failed).toBe('ratio');
+      expect(fitRecipe(any, b('BFF', {}, 'Orea'), lock).failed).toBe('dripper');
+    });
+    it('listing another dripper too keeps the normal rules', () => {
+      expect(fitRecipe(mk(['Gabi Master A', 'Orea']), b('BFF'), lock).failed).toBe('count');
+      expect(controlsFlow(mk(['Gabi Master A']))).toBe(true);
+      expect(controlsFlow(mk([]))).toBe(false);
+      expect(flowNote(['Gabi Master A'])).toBe("Gabi Master A controls the flow: pour amounts, pour count and speed don't matter.");
+      expect(flowNote(['Gabi Master A', 'Orea'])).toBeNull();
+    });
   });
   it('temperature', () => {
     const d = def('FF', { tempC: 91.5 });

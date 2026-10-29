@@ -374,6 +374,14 @@ export interface MatchBrew {
   dripper?: string | null;
 }
 
+// ponytail: matched by BQ dripper name; becomes a gear property when multi-user lands (backlog #18).
+export const FLOW_CONTROL_DRIPPERS: ReadonlySet<string> = new Set(['Gabi Master A']);
+/** A recipe only for flow-controlling drippers: amounts, count, triggers and speed can't matter; dripper and ratio decide. */
+export const controlsFlow = (def: Pick<RecipeDef, 'drippers'>) =>
+  def.drippers.length > 0 && def.drippers.every((d) => FLOW_CONTROL_DRIPPERS.has(d));
+export const flowNote = (drippers: string[]) =>
+  controlsFlow({ drippers }) ? `${drippers.join(' and ')} control${drippers.length > 1 ? '' : 's'} the flow: pour amounts, pour count and speed don't matter.` : null;
+
 export const SHARE_TOL = 0.06, TRIGGER_GRACE_S = 5, TEMP_TOL_C = 2;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -391,9 +399,9 @@ const sharesFor = (def: RecipeDef, r: PourReading) =>
 function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null, sharesApplied = false) {
   const out: Match['diffs'] = [];
   const n = r.pours.length;
-  if (n < def.pourCount.min || n > def.pourCount.max) out.push({ text: `${n} pours`, modified: true });
+  if (!controlsFlow(def) && (n < def.pourCount.min || n > def.pourCount.max)) out.push({ text: `${n} pours`, modified: true });
   const blooms = def.pours.filter((p) => p.bloom).length;
-  if (!sharesApplied && r.bloomCount !== blooms)
+  if (!sharesApplied && !controlsFlow(def) && r.bloomCount !== blooms)
     out.push({
       text: r.bloomCount === 2 ? 'two blooms' : r.bloomCount === 0 ? 'no bloom' : `${r.bloomCount} bloom${r.bloomCount === 1 ? '' : 's'}`,
       modified: true
@@ -424,13 +432,14 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
   const dripperBad = def.drippers.length
     ? !d || !def.drippers.includes(d)
     : !!d && ctx.locked.has(d) && ctx.recipes.some((x) => x.def.drippers.includes(d));
-  const countBad = n < def.pourCount.min || n > def.pourCount.max;
+  const flow = controlsFlow(def);
+  const countBad = !flow && (n < def.pourCount.min || n > def.pourCount.max);
 
   const speeds = def.pours.map(recipeSpeed);
   const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
-  const patternBad = !def.anySpeed && aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase();
+  const patternBad = !def.anySpeed && !flow && aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase();
 
-  const shares = sharesFor(def, r);
+  const shares = flow ? null : sharesFor(def, r);
   const trig = (i: number) => def.pours[i]?.trigger ?? null;
   let devs: number[] = [];
   if (shares) {
@@ -447,7 +456,7 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
 
   const off = Math.min(...def.ratio.targets.map((t) => Math.abs(r.ratio! - t)));
   const ratioBad = !(off <= def.ratio.tol);
-  const bloomsBad = !shares && def.anySpeed && r.bloomCount !== def.pours.filter((p) => p.bloom).length;
+  const bloomsBad = !flow && !shares && def.anySpeed && r.bloomCount !== def.pours.filter((p) => p.bloom).length;
 
   const diffs = diffsOf(def, r, brew.tempC, !!shares);
   if (shares) {
@@ -464,14 +473,15 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
     const wrong = [...r.pattern.toUpperCase()].filter((c, i) => c !== (aligned[i] === 'fast' ? 'F' : 'S'));
     diffs.push({ text: wrong.every((c) => c === 'S') ? 'slow pours' : wrong.every((c) => c === 'F') ? 'fast pours' : 'pour speeds', modified: true });
   }
+  // Speed is the only thing telling equal-split recipes apart, so its diff counts double.
+  const mods = 0.5 * diffs.filter((x) => x.modified).length + (speedException ? 0.5 : 0);
 
   const failed = dripperBad ? 'dripper' : countBad ? 'count'
     : patternBad && !speedException ? 'pattern' : sharesBad ? 'shares' : ratioBad ? 'ratio' : bloomsBad ? 'blooms' : null;
-  const mods = diffs.filter((x) => x.modified).length;
   const tempTerm = brew.tempC && def.tempC ? Math.abs(brew.tempC - def.tempC) / TEMP_TOL_C : 0;
   return {
-    pass: failed == null, failed, how: mods ? 'modified' : 'match', diffs,
-    distance: off / def.ratio.tol + 0.5 * mods + dev / SHARE_TOL + tempTerm
+    pass: failed == null, failed, how: diffs.some((x) => x.modified) ? 'modified' : 'match', diffs,
+    distance: off / def.ratio.tol + mods + dev / SHARE_TOL + tempTerm
   };
 }
 
