@@ -41,7 +41,7 @@ describe('conventions', () => {
   });
 
   it('no personal vocabulary (yeet, melodrip) in src (tests and fixtures excepted)', () => {
-    const hits = walk('src', (f) => /\.(ts|svelte)$/.test(f) && !f.endsWith('.test.ts') && !f.includes('/fixtures/') && f !== 'src/lib/server/recipes.ts').filter(
+    const hits = walk('src', (f) => /\.(ts|svelte)$/.test(f) && !f.endsWith('.test.ts') && !f.includes('/fixtures/') && !['src/lib/server/recipes.ts', 'src/lib/server/recipeFixes.ts'].includes(f)).filter(
       (f) => /\b(yeets?|melodrip)\b/i.test(readFileSync(f, 'utf8'))
     );
     expect(hits).toEqual([]);

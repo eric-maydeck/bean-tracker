@@ -8,6 +8,7 @@ import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
 import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscriptions.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
 import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER } from './subscriptionLinks.ts';
+import { applyRecipeFixes } from './recipeFixes.ts';
 import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
@@ -119,6 +120,7 @@ export function applySchema(db: DatabaseSync): void {
   for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
   applySubscriptionUrls(db, SUBSCRIPTION_URLS_2026_10_08, 'subscription_urls_2026_10_08');
   applySubscriptionLinks(db, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER);
+  applyRecipeFixes(db);
   // computeFill's solid-border rule changed, so cached fills may be wrong; drop
   // them once and the background run refills every displayed URL at boot.
   if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('image_fills_recompute_2026_10_06')) {
