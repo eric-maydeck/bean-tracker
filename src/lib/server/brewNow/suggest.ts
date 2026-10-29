@@ -167,9 +167,10 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     const n = p.set.length, out: string[] = [], carry = `so their ${WHAT[setting]} may not carry over`;
     const most = (xs: string[]) => { const c = new Map<string, number>(); for (const x of xs) c.set(x, (c.get(x) ?? 0) + 1); return [...c].sort((a, b) => b[1] - a[1])[0]; };
     const otherDrip = p.set.flatMap((r) => (gear.dripper && r.dripper && r.dripper !== gear.dripper ? r.dripper : []));
-    if (otherDrip.length) out.push(`${otherDrip.length} of these ${n} brews ${otherDrip.length === 1 ? 'was' : 'were'} on the ${most(otherDrip)[0]} rather than the ${gear.dripper}, ${carry}`);
+    const gearFree = setting === 'dose' || setting === 'ratio'; // R20: gear is no lurking variable for these
+    if (otherDrip.length && !gearFree) out.push(`${otherDrip.length} of these ${n} brews ${otherDrip.length === 1 ? 'was' : 'were'} on the ${most(otherDrip)[0]} rather than the ${gear.dripper}, ${carry}`);
     const otherGr = p.set.filter((r) => gear.grinder && r.grinder && r.grinder !== gear.grinder).length;
-    if (setting !== 'grind' && otherGr) out.push(`${otherGr} of these ${n} brews ${otherGr === 1 ? 'was' : 'were'} made on another grinder, ${carry}`);
+    if (setting !== 'grind' && !gearFree && otherGr) out.push(`${otherGr} of these ${n} brews ${otherGr === 1 ? 'was' : 'were'} made on another grinder, ${carry}`);
     const ts = p.set.flatMap((r) => r.tempC ?? []);
     if (setting !== 'temp' && ts.length > 1 && Math.max(...ts) - Math.min(...ts) >= 2) out.push(`Water temperatures in these brews ranged from ${num(Math.min(...ts))} to ${num(Math.max(...ts))} °C`);
     const ds = p.set.flatMap((r) => r.dose ?? []);
