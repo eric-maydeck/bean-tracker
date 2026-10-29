@@ -132,9 +132,27 @@ describe('coffeeGearDefaults / filters follow the dripper', () => {
   });
   it('options.filters lists only the filters used with the dripper', () => {
     expect(gearOptions(rows, '2026-10-28', 'D2').filters).toEqual(['F3', 'F2']);
-    expect(gearOptions(rows, '2026-10-28', 'D2').otherFilters).toEqual(['F1']);
+    expect(gearOptions(rows, '2026-10-28', 'D2').otherFilters).toEqual([]); // no gear classes given: no siblings
     expect(gearOptions(rows, '2026-10-28', 'D1').filters).toEqual(['F1']);
     expect(gearOptions(rows, '2026-10-28').filters).toEqual(['F3', 'F2', 'F1']);
+  });
+});
+
+describe('filters per dripper (round 7)', () => {
+  const gcs = { dripper: (n: string | null) => (n === 'C1' || n === 'C2' ? 'cone' : (n ?? '')), filter: () => 'any' };
+  const rows = [
+    ...[1, 2].map((i) => row({ localTime: `2026-03-0${i}T08:00`, dripper: 'C1', filter: 'Paper' })),
+    row({ localTime: '2026-03-05T08:00', dripper: 'C1', filter: 'Stray' }), // one old brew: a one-off
+    row({ localTime: '2026-10-20T08:00', dripper: 'C1', filter: 'Fresh' }), // one brew, but recent: kept
+    ...[1, 2].map((i) => row({ localTime: `2026-04-0${i}T08:00`, dripper: 'C2', filter: 'Thin' })),
+    row({ localTime: '2026-04-05T08:00', dripper: 'C2', filter: 'Odd' }),
+    ...[1, 2].map((i) => row({ localTime: `2026-05-0${i}T08:00`, dripper: 'Flat', filter: 'Mixed' })),
+    row({ localTime: '2026-06-01T08:00', dripper: 'Old', filter: 'Gone', methodArchived: true })
+  ];
+  it('chips drop one-offs; other = same-class drippers\' filters only, never the whole list', () => {
+    expect(gearOptions(rows, '2026-10-28', 'C1', gcs)).toMatchObject({ filters: ['Fresh', 'Paper'], otherFilters: ['Thin'] });
+    expect(gearOptions(rows, '2026-10-28', 'C2', gcs)).toMatchObject({ filters: ['Thin'], otherFilters: ['Fresh', 'Paper'] });
+    expect(gearOptions(rows, '2026-10-28', 'Flat', gcs)).toMatchObject({ filters: ['Mixed'], otherFilters: [] }); // no siblings: no Other
   });
 });
 

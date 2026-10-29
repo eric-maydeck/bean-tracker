@@ -89,10 +89,10 @@ describe('E9/E6 filters follow the dripper', () => {
       VALUES (?, ?, 'm3', 'g1', '5.5', 8, 'x')`).run(`${today}T08:00:09.000Z`, `bean${brewed.id}`);
     const gr = await run(brewed.slug, '?dripper=graycano');
     expect(gr.options.filters).toEqual(['Sibarist Fast']);
-    expect(gr.options.otherFilters).toEqual(['Cafec Abaca']);
+    expect(gr.options.otherFilters).toEqual([]); // Graycano stands alone: no same-class drippers, so no Other
     const v60 = await run(brewed.slug, '?dripper=v60&filter=sibarist+fast');
     expect(v60.options.filters).toEqual(['Cafec Abaca']);
-    expect(v60.gear).toMatchObject({ dripper: 'V60', filter: 'Sibarist Fast' }); // an "other" filter is a valid pick
+    expect(v60.gear).toMatchObject({ dripper: 'V60', filter: 'Cafec Abaca' }); // a filter in neither list loads but falls back to the default
     expect((await run(brewed.slug, '?dripper=v60&filter=nope')).gear.filter).toBe('Cafec Abaca');
     expect(v60.options.drippers).toEqual(expect.arrayContaining(['V60', 'Graycano']));
     db.prepare(`DELETE FROM beanconqueror_brews WHERE preparation_id = 'm3'`).run();

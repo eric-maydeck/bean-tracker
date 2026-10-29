@@ -24,10 +24,12 @@ function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typ
   // E8: this coffee's own most used gear first; the filter is the chosen dripper's own most used.
   const gearDefaults = coffeeGearDefaults(rows, rows.filter((r) => tierOf(coffee, r) === 1), view.dripper);
   // E9: the filter lists follow the dripper.
-  const { filters, otherFilters } = gearOptions(rows, today, view.dripper ?? gearDefaults.dripper);
-  const options = { ...base, filters, otherFilters, doses, ratios };
-  const gear = { grinder: view.grinder ?? gearDefaults.grinder, dripper: view.dripper ?? gearDefaults.dripper, filter: view.filter ?? gearDefaults.filter };
   const gc = loadGearClass(db);
+  const { filters, otherFilters } = gearOptions(rows, today, view.dripper ?? gearDefaults.dripper, gc);
+  const options = { ...base, filters, otherFilters, doses, ratios };
+  // A filter that is in neither list for this dripper still loads, but falls back to the dripper's default.
+  const filter = view.filter && [...filters, ...otherFilters, gearDefaults.filter].includes(view.filter) ? view.filter : null;
+  const gear = { grinder: view.grinder ?? gearDefaults.grinder, dripper: view.dripper ?? gearDefaults.dripper, filter: filter ?? gearDefaults.filter };
   const sug = suggest(coffee, rows, gear, gc, doses, today, ratios, { dose: view.dose ?? null, ratio: view.ratio ?? null });
   const defaults = { ...gearDefaults, dose: sug.suggestedDose, ratio: sug.suggestedRatio }; // what the URL omits
   return { rows, options, defaults, view, gear, gc, sug };

@@ -82,11 +82,13 @@ export function loadGearClass(db: DatabaseSync): GearClass {
 }
 
 // Gear for the pickers, archived (R1) left out. Rows arrive oldest first. Grinders: used in the last 365 days, newest first.
-// Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`. Filters: those used with
-// `dripper` (E9), the rest of the non-archived ones as `otherFilters` (E6).
+// Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`.
+// Filters for a `dripper` (round 7): chips = the ones used with it in the last 365 days, ignoring one-offs (>= 2 brews, or
+// any in the last 90 days); `otherFilters` = the same kind of filter used with drippers of the same class (`gc`), never
+// the whole list, so it is empty for a dripper with no siblings. With no dripper: every filter, the rest as other.
 export interface GearOptions { grinders: string[]; drippers: string[]; otherDrippers: string[]; filters: string[]; otherFilters: string[] }
-export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null): GearOptions {
-  const since = addDays(today, -365);
+export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null, gc?: GearClass): GearOptions {
+  const since = addDays(today, -365), recentDay = addDays(today, -90);
   const all = [...rows].reverse(), recent = all.filter((r) => r.localTime.slice(0, 10) >= since);
   const list = (src: BrewRow[], pick: (r: BrewRow) => string | null, skip: (r: BrewRow) => boolean) =>
     [...new Set(src.filter((r) => !skip(r)).flatMap((r) => pick(r) ?? []))];
@@ -96,11 +98,24 @@ export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: str
     return [...n].sort((a, b) => b[1] - a[1]).map(([k]) => k); // stable: newest first among ties
   };
   const drippers = byUse(recent, (r) => r.dripper);
-  const filters = list(recent, (r) => r.filter, (r) => r.methodArchived || (!!dripper && r.dripper !== dripper));
+  // Filters of `src` (newest first) that are not one-offs.
+  const real = (src: BrewRow[]) => list(src, (r) => r.filter, (r) => r.methodArchived).filter((f) => {
+    const fs = src.filter((r) => r.filter === f && !r.methodArchived);
+    return fs.length >= 2 || fs.some((r) => r.localTime.slice(0, 10) >= recentDay);
+  });
+  let filters: string[], otherFilters: string[];
+  if (dripper) {
+    filters = real(recent.filter((r) => r.dripper === dripper));
+    const kin = gc ? all.filter((r) => r.dripper && r.dripper !== dripper && gc.dripper(r.dripper) === gc.dripper(dripper)) : [];
+    otherFilters = real(kin).filter((f) => !filters.includes(f));
+  } else {
+    filters = list(recent, (r) => r.filter, (r) => r.methodArchived);
+    otherFilters = list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f));
+  }
   return {
     grinders: list(recent, (r) => r.grinder, (r) => r.grinderArchived),
     drippers, otherDrippers: list(all, (r) => r.dripper, (r) => r.methodArchived).filter((d) => !drippers.includes(d)),
-    filters, otherFilters: list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f))
+    filters, otherFilters
   };
 }
 
