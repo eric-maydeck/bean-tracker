@@ -63,8 +63,8 @@
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
   // Trigger chips: +20 s / +30 s are {after, n, n}; anything else after is Custom, which also stays picked once chosen.
-  /* svelte-ignore state_referenced_locally */
   let custom = $state<boolean[]>([]);
+  const lastCustom: ({ kind: 'after'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
   const chip = (i: number) => {
     const t = copy.pours[i].trigger;
     if (t?.kind === 'low') return 'low';
@@ -74,8 +74,9 @@
   };
   function setChip(i: number, c: string) {
     const t = copy.pours[i].trigger;
+    if (custom[i] && t?.kind === 'after') lastCustom[i] = { ...t };
     custom[i] = c === 'custom';
-    copy.pours[i].trigger = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'after' ? t : { kind: 'after', targetS: 20, maxS: 20 }) : { kind: 'after', targetS: +c, maxS: +c };
+    copy.pours[i].trigger = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'after' ? t : (lastCustom[i] ?? { kind: 'after', targetS: 20, maxS: 20 })) : { kind: 'after', targetS: +c, maxS: +c };
   }
   const chips = [['20', '+20 s'], ['30', '+30 s'], ['custom', 'Custom'], ['low', 'Water low']];
   const after = (i: number) => copy.pours[i].trigger as Extract<Trigger, { kind: 'after' }>;

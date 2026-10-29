@@ -59,6 +59,8 @@ describe('parseRecipeDef', () => {
     ['Trigger time must be at least its target', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 0, maxS: 20 })],
     ['Trigger time must be at least its target', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 20, maxS: 601 })],
     ['Invalid recipe', (d: any) => (d.pours[1].trigger = { kind: 'soon' })],
+    ['Enter a trigger time', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 20, maxS: null })],
+    ['Enter a trigger time', (d: any) => (d.pours[1].trigger = { kind: 'after' })],
     ['Add a ratio', (d: any) => (d.ratio.targets = [])],
     ['Invalid recipe', (d: any) => (d.ratio.targets = [10, 11, 12, 13, 14, 15])],
     ['Invalid recipe', (d: any) => (d.equalSplit = 'yes')],

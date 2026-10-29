@@ -65,7 +65,8 @@ function parseTrigger(t: unknown): Trigger {
   if (t == null) return null;
   if (!isObj(t)) throw new Error(INVALID);
   if (t.kind === 'low') return { kind: 'low' };
-  if (t.kind !== 'after' || !isNum(t.targetS) || !isNum(t.maxS)) throw new Error(INVALID);
+  if (t.kind !== 'after') throw new Error(INVALID);
+  if (!isNum(t.targetS) || !isNum(t.maxS)) throw new Error('Enter a trigger time');
   if (!(t.targetS > 0 && t.maxS >= t.targetS && t.maxS <= 600)) throw new Error('Trigger time must be at least its target');
   return { kind: 'after', targetS: t.targetS, maxS: t.maxS };
 }

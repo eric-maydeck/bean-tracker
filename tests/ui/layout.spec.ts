@@ -2894,6 +2894,9 @@ export const STATES: State[] = [
           await upTo.fill('10');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
           await expect(page.getByRole('alert')).toHaveText('Trigger time must be at least its target');
+          await upTo.fill('');
+          await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(page.getByRole('alert')).toHaveText('Enter a trigger time');
         }
       },
       {
