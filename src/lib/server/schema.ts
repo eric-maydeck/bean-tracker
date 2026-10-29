@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS brew_now_marks (
   filter TEXT,
   suggestion TEXT NOT NULL,
   brew_id INTEGER REFERENCES beanconqueror_brews(id) ON DELETE SET NULL,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','linked','skipped'))
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','linked','skipped','expired'))
 );
 -- Cached roaster brew-recipe search; url NULL = none found.
 CREATE TABLE IF NOT EXISTS roaster_recipes (

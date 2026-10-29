@@ -1,13 +1,13 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { requireAdmin } from '$lib/server/auth';
-import { addMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
+import { addMark, deleteMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
 import { getRoasterWebsite } from '$lib/server/roasterWebsites';
 import { getDb } from '$lib/server/db';
 import { getRedirectSlug } from '$lib/server/coffees';
 import { localToday } from '$lib/server/localToday';
-import { loadBrewRows, loadGearClass, gearOptions, gearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
-import { suggest, similarCoffees, tierOf } from '$lib/server/brewNow/suggest';
+import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
+import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '$lib/server/brewNow/suggest';
 import { findRoasterRecipe, getRoasterRecipe } from '$lib/server/brewNow/roasterRecipe';
 import { getBrewDoses } from '$lib/server/brewNow/prefs';
 import { parseBrewNowView } from './brewNowUrl';
@@ -15,9 +15,13 @@ import { parseBrewNowView } from './brewNowUrl';
 // The chosen gear and its suggestion, from the view params only: the page and ?/brewThis both derive them here.
 function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typeof coffeeDetails>>, url: URL, today: string) {
   const rows = loadBrewRows(db);
-  const options = gearOptions(rows, today);
-  const view = parseBrewNowView(url, options);
-  const defaults = gearDefaults(rows, view.dripper); // its filter is the chosen dripper's own most used
+  const base = gearOptions(rows, today);
+  const picked = parseBrewNowView(url, base);
+  // E8: this coffee's own most used gear first; the filter is the chosen dripper's own most used.
+  const defaults = coffeeGearDefaults(rows, rows.filter((r) => tierOf(coffee, r) === 1), picked.dripper);
+  // E9: the filters follow the dripper; one that doesn't fit it falls back to that dripper's default.
+  const options = { ...base, filters: gearOptions(rows, today, picked.dripper ?? defaults.dripper).filters };
+  const view = { ...picked, filter: picked.filter && options.filters.includes(picked.filter) ? picked.filter : null };
   const gear = { grinder: view.grinder ?? defaults.grinder, dripper: view.dripper ?? defaults.dripper, filter: view.filter ?? defaults.filter };
   const gc = loadGearClass(db);
   const sug = suggest(coffee, rows, gear, gc, getBrewDoses(db), today);
@@ -58,6 +62,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
     coffee, gear, defaults, options, why: view.why,
     suggestion: locals.isAdmin ? sug : { ...sug, lastNote: null, rows: sug.rows.map((r) => ({ ...r, evidence: r.evidence.map(strip) })) },
     thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)].map(strip), // Best brew pinned
+    thisCoffeeSummary: thisCoffeeSummary(coffee, rows, gear, locals.isAdmin), // notes only for the admin (R9)
     similar: similarCoffees(coffee, rows, gear, gc),
     roasterRecipe: getRoasterRecipe(db, coffee.roaster),
     neverBrewedRoaster: !rows.some((r) => r.roaster.trim().toLowerCase() === roaster),
@@ -81,6 +86,13 @@ export const actions: Actions = {
     const { gear, sug } = derive(db, coffee, url, localToday());
     addMark(db, { coffeeId: coffee.id, gear, suggestion: sug, now: new Date() });
     return { marked: true as const };
+  },
+  // Cancels a pending mark (admin).
+  deleteMark: async ({ request, locals }) => {
+    requireAdmin(locals);
+    const id = Number((await request.formData()).get('id'));
+    if (!Number.isInteger(id) || !deleteMark(getDb(), id)) return fail(400, { markError: 'Only a pending mark can be cancelled' });
+    return { deleted: true as const };
   },
   findRecipe: async ({ params, locals }) => {
     requireAdmin(locals);

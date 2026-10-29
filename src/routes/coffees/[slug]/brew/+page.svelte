@@ -7,6 +7,7 @@
   import type { BrewRow } from '$lib/server/brewNow/load';
   import type { Setting } from '$lib/server/brewNow/suggest';
   import { brewNowParams } from './brewNowUrl';
+  import { CONFIDENCE_LABEL } from '$lib/brewNowConfidence';
   import GrindTrend from './GrindTrend.svelte';
   import TrendScatter from './TrendScatter.svelte'; // PREVIEW-TEMP
   import TrendStrip from './TrendStrip.svelte'; // PREVIEW-TEMP
@@ -123,7 +124,7 @@
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
   <section class="bn-card start" aria-labelledby="bn-start">
-    <h2 id="bn-start">Start here <span class="badge badge-neutral">{data.suggestion.confidence}</span></h2>
+    <h2 id="bn-start">Start here <span class="badge badge-neutral">{CONFIDENCE_LABEL[data.suggestion.confidence]}</span></h2>
     <ul class="rows">
       {#each data.suggestion.rows as r (r.setting)}
         {@const open = data.why === r.setting}
@@ -176,6 +177,7 @@
           <li>
             <span class="date">{formatDate(m.markedLocal)}</span>
             {#if m.status === 'pending'}<span class="badge badge-neutral">Waiting for your next BQ brew</span>
+            {:else if m.status === 'expired'}<span class="badge badge-neutral">Expired</span>
             {:else if m.status === 'skipped'}<span class="badge badge-neutral">Skipped</span>
             {:else}
               {#if m.brewId !== null}<a href="#brew-{m.brewId}">Brew</a>{/if}

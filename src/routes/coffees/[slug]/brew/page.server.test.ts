@@ -82,6 +82,31 @@ describe('dripper-aware filter default', () => {
   });
 });
 
+describe('E9 filters follow the dripper', () => {
+  it('lists only the dripper\'s filters and falls back from an incompatible filter param', async () => {
+    db.exec(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m3', 'Graycano - Sibarist Fast', 'x')`);
+    db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at)
+      VALUES (?, ?, 'm3', 'g1', '5.5', 8, 'x')`).run(`${today}T08:00:09.000Z`, `bean${brewed.id}`);
+    const gr = await run(brewed.slug, '?dripper=graycano');
+    expect(gr.options.filters).toEqual(['Sibarist Fast']);
+    const v60 = await run(brewed.slug, '?dripper=v60&filter=sibarist+fast');
+    expect(v60.options.filters).toEqual(['Cafec Abaca']);
+    expect(v60.gear).toMatchObject({ dripper: 'V60', filter: 'Cafec Abaca' });
+    db.prepare(`DELETE FROM beanconqueror_brews WHERE preparation_id = 'm3'`).run();
+    db.exec(`DELETE FROM beanconqueror_methods WHERE id = 'm3'`);
+  });
+});
+
+describe('this coffee summary', () => {
+  it('has bullets for everyone, with note bullets only for the admin', async () => {
+    const anon = await run(brewed.slug), admin = await run(brewed.slug, '', true);
+    expect(anon.thisCoffeeSummary.length).toBeGreaterThanOrEqual(2);
+    expect(JSON.stringify(anon.thisCoffeeSummary)).not.toContain('try finer');
+    expect(admin.thisCoffeeSummary.join(' ')).toContain('try finer next');
+    expect(admin.thisCoffeeSummary.length).toBeLessThanOrEqual(5);
+  });
+});
+
 describe('?/brewThis', () => {
   const post = (slug: string, isAdmin: boolean, fields: Record<string, string> = {}) =>
     actions.brewThis({ params: { slug }, locals: { isAdmin }, request: new Request('http://x', { method: 'POST', body: new URLSearchParams(fields) }) } as never);
@@ -96,5 +121,18 @@ describe('?/brewThis', () => {
     expect(d.marks[0]).toMatchObject({ status: 'pending', gear: { grinder: 'A4Z' } });
     expect(JSON.stringify(d.marks)).not.toContain('99');
     expect(JSON.stringify(d.marks)).not.toContain('try finer');
+  });
+});
+
+describe('?/deleteMark', () => {
+  const del = (isAdmin: boolean, id: string) =>
+    actions.deleteMark({ locals: { isAdmin }, request: new Request('http://x', { method: 'POST', body: new URLSearchParams({ id }) }) } as never) as Promise<any>;
+  it('401s without admin; deletes a pending mark; refuses an unknown or non-pending one', async () => {
+    const id = (await run(brewed.slug)).marks[0].id;
+    await expect(del(false, String(id))).rejects.toMatchObject({ status: 401 });
+    expect(await del(true, String(id))).toEqual({ deleted: true });
+    expect((await run(brewed.slug)).marks).toEqual([]);
+    expect(await del(true, String(id))).toMatchObject({ status: 400 });
+    expect(await del(true, 'x')).toMatchObject({ status: 400 });
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { createDb } from '../db';
 import { createCoffee } from '../coffees';
 import { saveGearDetails } from '../gearDetails';
-import { loadBrewRows, loadGearClass, gearOptions, gearDefaults, coffeeDetails, type BrewRow } from './load';
+import { loadBrewRows, loadGearClass, gearOptions, gearDefaults, coffeeGearDefaults, coffeeDetails, type BrewRow } from './load';
 
 const db = createDb(':memory:');
 let n = 0; // a unique second per brew (the importer's identity index)
@@ -43,7 +43,7 @@ describe('loadBrewRows', () => {
     expect(rows[0]).toMatchObject({ id: 1, coffeeId: a, roaster: 'Sey', coffeeName: 'Kiambu', origin: 'Kenya', processGroup: 'Washed',
       roastLevel: 'Light', localTime: '2026-09-11T08:00', restDays: 10, grinder: 'ZP6', grind: '5.5', grindNum: 5.005, dripper: 'V60',
       filter: 'Cafec Abaca', tempC: 94, dose: 15, waterG: 250, water: 'Third Wave', recipeId: 1, recipeName: 'Rec One', rating: 9, best: true,
-      grinderArchived: false, methodArchived: false });
+      decaf: false, grinderArchived: false, methodArchived: false });
     expect(rows[1]).toMatchObject({ rating: null, best: false, recipeId: null, recipeName: null, water: null });
   });
   it('grindNum is null for blank or non-numeric grinds; archived flags set', () => {
@@ -69,7 +69,7 @@ describe('loadGearClass', () => {
 
 const row = (o: Partial<BrewRow>): BrewRow => ({ id: 0, coffeeId: 1, slug: 's', roaster: 'r', coffeeName: 'c', origin: null, processGroup: 'Washed',
   roastLevel: null, localTime: '2026-10-01T08:00', restDays: null, grinder: null, grind: null, grindNum: null, dripper: null, filter: null,
-  tempC: null, dose: null, waterG: null, water: null, recipeId: null, recipeName: null, rating: null, best: false, notes: null,
+  tempC: null, dose: null, waterG: null, water: null, recipeId: null, recipeName: null, rating: null, best: false, notes: null, decaf: false,
   grinderArchived: false, methodArchived: false, ...o });
 
 describe('gearOptions / gearDefaults', () => {
@@ -101,6 +101,36 @@ describe('gearDefaults filter follows the dripper', () => {
     expect(gearDefaults(rows).filter).toBe('Abaca');
     expect(gearDefaults(rows, 'Graycano')).toMatchObject({ dripper: 'CT62', filter: 'Sibarist' });
     expect(gearDefaults(rows, 'Other').filter).toBe('Abaca'); // no filter on file: global
+  });
+});
+
+describe('coffeeGearDefaults / filters follow the dripper', () => {
+  const rows = [
+    ...[1, 2, 3].map((i) => row({ localTime: `2026-10-0${i}T08:00`, grinder: 'A', dripper: 'D1', filter: 'F1' })),
+    row({ localTime: '2026-10-04T08:00', grinder: 'B', dripper: 'D2', filter: 'F2' }),
+    row({ localTime: '2026-10-05T08:00', grinder: 'B', dripper: 'D2', filter: 'F3' })
+  ];
+  const mine = rows.slice(3, 4); // this coffee: one brew on B / D2 / F2
+  it('this coffee\'s own most used gear wins; with no brews the global defaults stand', () => {
+    expect(coffeeGearDefaults(rows, mine)).toEqual({ grinder: 'B', dripper: 'D2', filter: 'F2' });
+    expect(coffeeGearDefaults(rows, [])).toEqual(gearDefaults(rows));
+    expect(coffeeGearDefaults(rows, mine, 'D1')).toEqual({ grinder: 'B', dripper: 'D1', filter: 'F1' }); // not its dripper: D1's own filter
+  });
+  it('options.filters lists only the filters used with the dripper', () => {
+    expect(gearOptions(rows, '2026-10-28', 'D2').filters).toEqual(['F3', 'F2']);
+    expect(gearOptions(rows, '2026-10-28', 'D1').filters).toEqual(['F1']);
+    expect(gearOptions(rows, '2026-10-28').filters).toEqual(['F3', 'F2', 'F1']);
+  });
+});
+
+describe('decaf', () => {
+  it('rows and details carry the coffee decaf flag', () => {
+    const c = coffee('Sey', 'Decaf One');
+    db.prepare('UPDATE coffees SET decaf = 1 WHERE id = ?').run(c);
+    brew(c, '2026-10-15');
+    expect(loadBrewRows(db).find((r) => r.coffeeId === c)!.decaf).toBe(true);
+    expect(coffeeDetails(db, createSlug(c), '2026-10-20')!.decaf).toBe(true);
+    expect(loadBrewRows(db)[0].decaf).toBe(false);
   });
 });
 

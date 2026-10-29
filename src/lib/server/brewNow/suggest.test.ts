@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggest, tierOf, grindStep, similarCoffees, type Gear } from './suggest';
+import { suggest, thisCoffeeSummary, tierOf, grindStep, similarCoffees, type Gear } from './suggest';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
 
 let id = 0;
@@ -7,10 +7,10 @@ const brew = (o: Partial<BrewRow> = {}): BrewRow => ({
   id: ++id, coffeeId: 1, slug: 's1', roaster: 'Sey', coffeeName: 'Kiambu', origin: 'Kenya', processGroup: 'Washed', roastLevel: 'Light',
   localTime: '2026-10-01T08:00', restDays: 10, grinder: 'ZP6', grind: '5.5', grindNum: 5.005, dripper: 'V60', filter: 'Cafec Abaca',
   tempC: 94, dose: 15, waterG: 250, water: 'Third Wave', recipeId: 1, recipeName: 'Rec One', rating: 7, best: false, notes: null,
-  grinderArchived: false, methodArchived: false, ...o
+  decaf: false, grinderArchived: false, methodArchived: false, ...o
 });
 const target: CoffeeDetails = { id: 1, slug: 's1', roaster: 'Sey', coffeeName: 'Kiambu', roastDate: null, restDays: 10, gramsLeft: 100,
-  processing: 'Washed', origin: 'Kenya', roastLevel: 'Light' };
+  processing: 'Washed', origin: 'Kenya', roastLevel: 'Light', decaf: false };
 const gc: GearClass = {
   dripper: (n) => (n === 'V60' || n === 'CT62' ? 'cone' : (n ?? '')),
   filter: (n) => (n === 'Sibarist Fast' ? n : !n ? '' : 'any')
@@ -20,17 +20,47 @@ const run = (rows: BrewRow[], g: Gear = gear, t = target, doses = [15, 18, 20]) 
 const get = (s: ReturnType<typeof run>, k: string) => s.rows.find((r) => r.setting === k)!;
 
 describe('tiers', () => {
-  it('clone with other case/spacing is tier 1; roaster+origin is 2; other roaster same pg+roast is 3', () => {
+  it('clone is 1; same roaster + origin/process 2; same roaster otherwise 3; other roaster same pg+roast 4; rest 5', () => {
     expect(tierOf(target, brew({ roaster: ' sey ', coffeeName: 'KIAMBU', coffeeId: 2 }))).toBe(1);
     expect(tierOf(target, brew({ coffeeName: 'Other' }))).toBe(2);
-    expect(tierOf(target, brew({ coffeeName: 'Other', origin: 'Peru', processGroup: 'Natural' }))).toBe(4);
-    expect(tierOf(target, brew({ roaster: 'Tim', coffeeName: 'X', origin: 'Peru' }))).toBe(3);
-    expect(tierOf({ ...target, processing: 'Washed', roastLevel: 'Light/Med' }, brew({ roaster: 'Tim', coffeeName: 'X', roastLevel: 'Light/Medium' }))).toBe(3);
+    expect(tierOf(target, brew({ coffeeName: 'Other', origin: 'Peru', processGroup: 'Natural' }))).toBe(3);
+    expect(tierOf(target, brew({ roaster: 'Tim', coffeeName: 'X', origin: 'Peru' }))).toBe(4);
+    expect(tierOf({ ...target, processing: 'Washed', roastLevel: 'Light/Med' }, brew({ roaster: 'Tim', coffeeName: 'X', roastLevel: 'Light/Medium' }))).toBe(4);
+    expect(tierOf(target, brew({ roaster: 'Tim', coffeeName: 'X', roastLevel: 'Dark' }))).toBe(5);
   });
-  it('tier 1 beats tier 2 when both have data', () => {
-    const s = run([brew({ tempC: 92, coffeeId: 2, coffeeName: 'Other' }), brew({ tempC: 95, coffeeId: 3, coffeeName: 'kiambu ' })]);
-    expect(get(s, 'temp')).toMatchObject({ tier: 1, value: '95 °C' });
-    expect(s.basis).toBe('this coffee, 1 brew');
+  it('decaf is a similarity key for tier 4', () => {
+    expect(tierOf(target, brew({ roaster: 'Tim', coffeeName: 'X', decaf: true }))).toBe(5);
+    expect(tierOf({ ...target, decaf: true }, brew({ roaster: 'Tim', coffeeName: 'X', decaf: true }))).toBe(4);
+  });
+  const clones = (temps: number[]) => temps.map((tempC) => brew({ tempC }));
+  it('tier 1 beats tier 2 when it has 3 brews', () => {
+    const s = run([brew({ tempC: 92, coffeeId: 2, coffeeName: 'Other' }), ...clones([95, 95, 95])]);
+    expect(get(s, 'temp')).toMatchObject({ tier: 1, value: '95 °C', confidence: 'high', reason: 'Median 95 °C of 3 brews, this coffee' });
+    expect(s.basis).toBe('This coffee, 3 brews');
+    expect(s.basisCoffees).toEqual([{ slug: 's1', name: 'Kiambu', roaster: 'Sey', brews: 3 }]);
+  });
+  it('a thin tier pools down at half weight; the reason names the mix; confidence follows the winning tier', () => {
+    const s = run([brew({ tempC: 95 }), brew({ tempC: 90, coffeeId: 2, coffeeName: 'Other' }), brew({ tempC: 90, coffeeId: 2, coffeeName: 'Other' }),
+      brew({ tempC: 80, coffeeId: 3, roaster: 'Tim', coffeeName: 'T' })]);
+    const t = get(s, 'temp');
+    expect(t).toMatchObject({ tier: 1, confidence: 'moderate', reason: 'Median 90 °C of 3 brews, 1 this coffee + 2 same roaster, alike' });
+    expect(t.evidence).toHaveLength(3);
+  });
+  it('decaf brews weigh double in the same-roaster tiers and half when they differ', () => {
+    const rows = [brew({ coffeeName: 'A', coffeeId: 2, tempC: 90, decaf: true }), brew({ coffeeName: 'B', coffeeId: 3, tempC: 96 }), brew({ coffeeName: 'C', coffeeId: 4, tempC: 96 })];
+    expect(get(run(rows, gear, { ...target, decaf: true }), 'temp').value).toBe('90 °C');
+    expect(get(run(rows), 'temp').value).toBe('96 °C');
+  });
+  it('confidence labels: low for similar coffees, guess for the rest', () => {
+    const sim = [1, 2, 3].map((i) => brew({ roaster: 'Tim', coffeeName: `X${i}`, coffeeId: 10 + i }));
+    expect(get(run(sim), 'temp').confidence).toBe('low');
+    expect(get(run([brew({ roaster: 'Tim', coffeeName: 'Y', roastLevel: 'Dark' })]), 'temp').confidence).toBe('guess');
+  });
+  it('temps follow the process group: same process counts double, and the synopsis says how they differ', () => {
+    const rows = [brew({ coffeeName: 'A', coffeeId: 2, tempC: 92, processGroup: 'Natural' }), brew({ coffeeName: 'B', coffeeId: 3, tempC: 95 }), brew({ coffeeName: 'C', coffeeId: 4, tempC: 95 })];
+    const t = get(run(rows, gear, { ...target, processing: 'Natural' }), 'temp');
+    expect(t.value).toBe('92 °C');
+    expect(t.synopsis.join(' ')).toMatch(/Your natural coffees ran ~3 °C cooler than washed ones/);
   });
 });
 
@@ -49,17 +79,33 @@ describe('grind', () => {
   });
   it('a missing grind counts as a guess in the footer confidence', () => {
     const rows = [1, 2, 3].map(() => brew());
-    expect(run(rows).confidence).toBe('good');
+    expect(run(rows).confidence).toBe('high');
     expect(run(rows, { ...gear, grinder: 'Nope' }).confidence).toBe('guess');
   });
   const series = (ratings: number[], best = -1) => ratings.map((rating, i) =>
     brew({ grind: (6.5 - i * 0.2).toFixed(1), rating, best: i === best, localTime: `2026-10-0${i + 1}T08:00` }));
-  it('rising ratings as grind goes lower, best at the lowest → one step past it', () => {
+  it('rising ratings as grind goes lower, best at the lowest → a range down to one step past it', () => {
     const rows = series([5, 6, 7, 8, 9], 4);
-    const step = grindStep(rows, 'ZP6');
-    expect(step).toBeCloseTo(0.2);
-    expect(get(run(rows), 'grind').value).toBe((5.7 - step).toFixed(1));
-    expect(get(run(rows), 'grind').reason).toMatch(/lower settings rated higher/);
+    expect(grindStep(rows, 'ZP6')).toBeCloseTo(0.2);
+    const g = get(run(rows), 'grind');
+    expect(g.value).toBe('5.5–5.7');
+    expect(g.reason).toBe('Best at 5.7; down to 5.5 for more sweetness');
+    expect(g.reason.length).toBeLessThanOrEqual(60);
+    expect(g.synopsis.join(' ')).toMatch(/over-extraction/);
+  });
+  it('ratings rising with coarser grinds → best up to one step coarser, with the clarity reason', () => {
+    const rows = [5, 6, 7, 8, 9].map((rating, i) => brew({ grind: (1.2 + i * 0.1).toFixed(1), rating, best: i === 4, localTime: `2026-10-0${i + 1}T08:00` }));
+    const g = get(run(rows), 'grind');
+    expect(g.value).toBe('1.6–1.7');
+    expect(g.reason).toBe('Best at 1.6; up to 1.7 for more clarity');
+    expect(g.synopsis.join(' ')).toMatch(/under-extraction/);
+  });
+  it('a larger suggested dose than the evidence says so, and brews with a near dose count more', () => {
+    const rows = [brew({ dose: 15, grind: '5.0' }), brew({ dose: 15, grind: '5.0' }), brew({ dose: 21, grind: '6.0' }), brew({ dose: 21, grind: '6.0' })];
+    const big = run(rows.slice(0, 2), gear, target, [20]);
+    expect(get(big, 'dose').value).toBe('20 g');
+    expect(get(big, 'grind').synopsis.join(' ')).toMatch(/larger doses usually need a coarser grind/);
+    expect(get(run(rows, gear, target, [20]), 'grind').value).toBe('6.0');
   });
   it('flat ratings → the best brew itself', () => {
     expect(get(run(series([7, 7, 7, 7, 7], 2)), 'grind').value).toBe('6.1');
@@ -74,9 +120,9 @@ describe('grind', () => {
 describe('thin data (focus 1)', () => {
   it('no tier 1-3 brews → every row has a value, guess', () => {
     const s = run([brew({ roaster: 'X', coffeeName: 'Y', origin: 'Peru', processGroup: 'Natural' })]);
-    expect(s.rows.every((r) => r.value !== null && r.tier === 4)).toBe(true);
+    expect(s.rows.every((r) => r.value !== null && r.tier === 5)).toBe(true);
     expect(s.confidence).toBe('guess');
-    expect(s.basis).toMatch(/^any coffee/);
+    expect(s.basis).toMatch(/^Any coffee/);
   });
 });
 
@@ -156,6 +202,20 @@ describe('similarCoffees', () => {
     expect(out).toHaveLength(6);
     expect(out.every((c) => c.slug !== 's1')).toBe(true);
     expect(out.every((c) => c.tier === 2)).toBe(true);
-    expect(similarCoffees(target, rows.slice(0, 2), gear, gc)[0]).toMatchObject({ tier: 3, roaster: 'Tim', avgRating: 10, brews: 1, tempRange: [94, 94] });
+    expect(similarCoffees(target, rows.slice(0, 2), gear, gc)[0]).toMatchObject({ tier: 4, roaster: 'Tim', avgRating: 10, brews: 1, tempRange: [94, 94] });
+  });
+});
+
+describe('thisCoffeeSummary (E7)', () => {
+  const rows = [['1.4.5', 6], ['1.5.5', 8], ['1.6.0', 9], ['1.6.5', 8], ['1.7.5', 5]].map(([grind, rating], i) =>
+    brew({ grind: grind as string, rating: rating as number, best: i === 2, notes: i === 4 ? 'too sour, try finer' : null, localTime: `2026-10-0${i + 1}T08:00` }));
+  it('best brew, trend and the drop-off; notes only on request', () => {
+    const s = thisCoffeeSummary(target, rows, gear, false);
+    expect(s).toContain('Best brew: ZP6 1.6.0, 94 °C, rated 9');
+    expect(s).toContain('Ratings dropped above 1.6.5');
+    expect(s.join(' ')).not.toContain('sour');
+    expect(s.length).toBeLessThanOrEqual(5);
+    expect(thisCoffeeSummary(target, rows, gear, true).join(' ')).toContain('too sour, try finer');
+    expect(thisCoffeeSummary(target, [], gear, true)).toEqual([]);
   });
 });

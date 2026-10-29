@@ -7,7 +7,7 @@ import { lin, type Gear, type Setting, type Suggestion } from './suggest';
 const SETTINGS: Setting[] = ['grind', 'temp', 'dose', 'recipe', 'water'];
 type Values = Partial<Record<Setting, string | null>>;
 export interface MarkView {
-  id: number; markedLocal: string; status: 'pending' | 'linked' | 'skipped'; gear: Gear;
+  id: number; markedLocal: string; status: 'pending' | 'linked' | 'skipped' | 'expired'; gear: Gear;
   diffs: { setting: Setting; suggested: string | null; actual: string | null }[]; rating: number | null; brewId: number | null;
 }
 
@@ -19,9 +19,18 @@ export function addMark(db: DatabaseSync, m: { coffeeId: number; gear: Gear; sug
     .run(m.coffeeId, iso, localDateTime(iso), m.gear.grinder, m.gear.dripper, m.gear.filter, JSON.stringify(values));
 }
 
-// Each pending mark takes the earliest unlinked brew of its coffee after it; of several marks before one brew, the latest links
-// and the older are skipped. A mark with no later brew stays pending.
-export function linkMarks(db: DatabaseSync): number {
+const DAY_MS = 864e5;
+// E10: a mark only links a brew made within 24 h after it; one with no such brew by then expires.
+const plusDay = (local: string) => new Date(Date.parse(local.slice(0, 16) + ':00Z') + DAY_MS).toISOString().slice(0, 16);
+
+// Admin cancel: only a pending mark can be deleted.
+export function deleteMark(db: DatabaseSync, id: number): boolean {
+  return db.prepare(`DELETE FROM brew_now_marks WHERE id = ? AND status = 'pending'`).run(id).changes > 0;
+}
+
+// Each pending mark takes the earliest unlinked brew of its coffee within 24 h after it; of several marks before one brew, the
+// latest links and the older are skipped. A mark with no such brew stays pending for 24 h, then expires.
+export function linkMarks(db: DatabaseSync, now = new Date()): number {
   // R11: a linked mark whose brew was deleted (brew_id SET NULL) goes back to pending and re-links to the next eligible brew.
   db.exec(`UPDATE brew_now_marks SET status = 'pending' WHERE status = 'linked' AND brew_id IS NULL`);
   const marks = db.prepare(`SELECT id, coffee_id, marked_local FROM brew_now_marks WHERE status = 'pending' ORDER BY marked_local, id`)
@@ -32,7 +41,8 @@ export function linkMarks(db: DatabaseSync): number {
   const winner = new Map<number, number>(); // brew id → latest mark id (marks arrive oldest first)
   const skip: number[] = [];
   for (const m of marks) {
-    const brew = brews.find((r) => r.coffeeId === m.coffee_id && r.localTime >= m.marked_local);
+    const limit = plusDay(m.marked_local);
+    const brew = brews.find((r) => r.coffeeId === m.coffee_id && r.localTime >= m.marked_local && r.localTime.slice(0, 16) <= limit);
     if (!brew) continue;
     if (winner.has(brew.id)) skip.push(winner.get(brew.id)!);
     winner.set(brew.id, m.id);
@@ -41,6 +51,7 @@ export function linkMarks(db: DatabaseSync): number {
   try {
     for (const [brewId, markId] of winner) db.prepare(`UPDATE brew_now_marks SET status = 'linked', brew_id = ? WHERE id = ?`).run(brewId, markId);
     for (const id of skip) db.prepare(`UPDATE brew_now_marks SET status = 'skipped' WHERE id = ?`).run(id);
+    db.prepare(`UPDATE brew_now_marks SET status = 'expired' WHERE status = 'pending' AND marked_at < ?`).run(new Date(now.getTime() - DAY_MS).toISOString());
     db.exec('COMMIT');
   } catch (e) { db.exec('ROLLBACK'); throw e; }
   return winner.size;
@@ -48,7 +59,11 @@ export function linkMarks(db: DatabaseSync): number {
 
 // The same grind written two ways ("5" / "5.0") is no difference.
 const same = (s: Setting, a: string | null, b: string | null) => {
-  if (s === 'grind' && lin(a) !== null && lin(b) !== null) return lin(a) === lin(b);
+  if (s === 'grind' && lin(b) !== null) { // a suggested range "1.6.0–1.6.5" is followed by any setting inside it
+    const [lo, hi] = (a ?? '').split('–').map(lin);
+    if (lo != null && hi != null) return lin(b)! >= lo && lin(b)! <= hi;
+    if (lo != null) return lo === lin(b);
+  }
   return s === 'water' ? (a?.trim() ?? null) === (b?.trim() ?? null) : a === b;
 };
 const num = (n: number | null) => (n === null ? null : String(Math.round(n * 10) / 10));
