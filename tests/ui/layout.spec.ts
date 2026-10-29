@@ -1856,11 +1856,32 @@ export const STATES: State[] = [
       await expect(b).toHaveAttribute('href', /^\/coffees\/[^/]+\/brew$/);
       const edit = b.locator('xpath=..').getByRole('button', { name: 'Edit', exact: true });
       const [bb, eb] = [(await b.boundingBox())!, (await edit.boundingBox())!];
-      expect(Math.abs(bb.y + bb.height / 2 - (eb.y + eb.height / 2))).toBeLessThan(4); // same row as Edit
-      expect(bb.x).toBeLessThan(eb.x); // before Edit
+      expect(bb.y < eb.y - 4 || (Math.abs(bb.y - eb.y) < 4 && bb.x < eb.x)).toBe(true); // before Edit (the icon grid may wrap to 2 rows)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth || !!document.querySelector('.table-scroll'))).toBe(true);
     }
   })),
+  {
+    name: 'on-deck-next-up-open',
+    viewports: 'two',
+    path: () => '/on-deck?view=next',
+    act: async (page: Page) => {
+      const card = page.locator('.card-wrap').first();
+      const [brew, open] = [card.getByRole('link', { name: 'Brew now' }), card.getByRole('button', { name: 'Open', exact: true })];
+      const [bb, ob, cb] = [(await brew.boundingBox())!, (await open.boundingBox())!, (await card.boundingBox())!];
+      expect(ob.x).toBeGreaterThan(bb.x + bb.width - 1);
+      expect(Math.abs(ob.y - bb.y)).toBeLessThan(2);
+      expect(ob.x + ob.width).toBeLessThanOrEqual(cb.x + cb.width + 1);
+      expect(ob.y + ob.height).toBeLessThanOrEqual(cb.y + cb.height + 1);
+    }
+  },
+  {
+    name: 'coffee-bq-import-link',
+    viewports: 'two',
+    path: (s: Seed) => `/coffees/${s.slugs.brew}?bq=import`,
+    act: async (page: Page) => {
+      await expect(page.getByAltText('QR code to import this coffee into Bean Conqueror')).toBeVisible();
+    }
+  },
   {
     name: 'coffee-brew-now-button',
     viewports: 'two',
@@ -2342,7 +2363,9 @@ export const STATES: State[] = [
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/account/recipes');
       // Brew now lists: no mutation here (every viewport shares one DB); add/remove are covered in page.server.test.ts.
       const rows = page.locator('.bn-list').first().locator('li');
-      await expect(rows.first()).toContainText(/\d+ g\s+1:\d+(\.\d)? → \d+ g/);
+      await expect(rows.first().locator('.bn-cell').first()).toContainText(/1:\d+(\.\d)?\s*\d+ g/);
+      const cellXs = await page.locator('.bn-list').first().locator('li').evaluateAll((lis) => lis.map((li) => li.querySelector('.bn-cell')!.getBoundingClientRect().x));
+      expect(Math.max(...cellXs) - Math.min(...cellXs)).toBeLessThan(2); // water columns line up row to row
       await page.getByLabel('New dose in grams').fill('3');
       await page.getByRole('button', { name: 'Add', exact: true }).first().click();
       await expect(page.getByText('Each dose must be 5–40 g')).toBeVisible();

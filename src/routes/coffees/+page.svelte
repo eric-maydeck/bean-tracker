@@ -1,5 +1,6 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
+  import { bqImportHref } from '$lib/bqImportUrl';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -507,6 +508,11 @@
     <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}/brew`} use:labelTip={'Brew now'} aria-label="Brew now"><Icon name="coffee" /></a>
   {/if}
 {/snippet}
+{#snippet importButton(coffee: CoffeeRow)}
+  {#if coffee.status !== 'archive'}
+    <a class="button button-secondary button-icon" href={bqImportHref(coffee.slug)} use:labelTip={'Import into Bean Conqueror'} aria-label="Import into Bean Conqueror"><Icon name="share-network" /></a>
+  {/if}
+{/snippet}
 {#snippet cloneButton(coffee: CoffeeRow, icons = false)}
   <button class="button button-secondary" class:button-icon={icons} type="button" disabled={saving} onclick={() => openClone(clonePrefill(formCoffeeFor(coffee)))}
     use:labelTip={icons ? 'Clone' : undefined} aria-label={icons ? 'Clone' : undefined}>
@@ -860,6 +866,7 @@
                 {@render adminActions(coffee, true)}
               {:else}
                 {@render brewButton(coffee)}
+                {@render importButton(coffee)}
                 {@render editButton(coffee, true)}
                 {@render cloneButton(coffee, true)}
               {/if}
@@ -995,6 +1002,7 @@
             <div class="action-buttons">
               <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}`} use:labelTip={'Open coffee page'} aria-label="Open coffee page"><Icon name="page" /></a>
               {@render brewButton(coffee)}
+              {@render importButton(coffee)}
               {#if data.isAdmin}
                 {@render editButton(coffee, true)}
                 {@render cloneButton(coffee, true)}
@@ -1176,6 +1184,7 @@
                     {/if}
                   {:else}
                     {@render brewButton(coffee)}
+                    {@render importButton(coffee)}
                     {@render editButton(coffee, true)}
                     {@render cloneButton(coffee, true)}
                   {/if}

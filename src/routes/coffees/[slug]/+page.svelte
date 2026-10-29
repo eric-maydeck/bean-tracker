@@ -3,7 +3,9 @@
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { coffeePreview } from '$lib/linkPreview';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
-  import { untrack } from 'svelte';
+  import { untrack, onMount } from 'svelte';
+  import { page } from '$app/state';
+  import { bqImportRequested } from '$lib/bqImportUrl';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
@@ -83,6 +85,9 @@
     shareUrl = url;
     shareQrDataUrl = await QRCode.toDataURL(url);
   }
+
+  // A /coffees row's import icon links here with ?bq=import.
+  onMount(() => { if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror(); });
 
   let editMode = $state(false);
   let canEdit = $derived(editMode && data.isAdmin);

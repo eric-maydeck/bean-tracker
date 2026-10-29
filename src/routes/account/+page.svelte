@@ -4,6 +4,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import { loadChoice, serializeChoice } from '$lib/rememberedChoice';
   let { data, form } = $props();
+  const fmt = (r: number) => String(Math.round(r * 10) / 10); // 16.67 -> 16.7
 
   // ✕ confirms in a dialog; "Don't ask again" is remembered per browser.
   const SKIP_KEY = 'account-skip-remove-confirm';
@@ -108,9 +109,11 @@
       <li>
         <form method="POST" action="?/removeDose" use:enhance>
           <input type="hidden" name="value" value={d} />
-          <span class="bn-main">
-            <strong>{d} g</strong>
-            <span class="text-muted">{data.ratios.ratios.map((r) => `1:${r} → ${Math.round(d * r)} g`).join(' · ')}</span>
+          <strong class="bn-dose">{d} g</strong>
+          <span class="bn-cells">
+            {#each data.ratios.ratios as r (r)}
+              <span class="bn-cell"><span class="text-muted">1:{fmt(r)}</span><span>{Math.round(d * r)} g</span></span>
+            {/each}
           </span>
           <button class="button button-ghost button-icon" type="submit" aria-label="Remove {d} g" onclick={(e) => ask(e, `${d} g`)}><Icon name="x" /></button>
         </form>
@@ -118,7 +121,7 @@
     {/each}
   </ul>
   <form class="bn-add" method="POST" action="?/addDose" use:enhance>
-    <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="g" />
+    <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="18" /><span>g</span>
     <button class="button button-secondary" type="submit">Add</button>
   </form>
   {#if form && 'listError' in form && form.list === 'doses'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
@@ -129,8 +132,8 @@
       <li>
         <form method="POST" action="?/removeRatio" use:enhance>
           <input type="hidden" name="value" value={r} />
-          <span class="bn-main"><strong>1:{r}</strong></span>
-          <button class="button button-ghost button-icon" type="submit" aria-label="Remove 1:{r}" onclick={(e) => ask(e, `1:${r}`)}><Icon name="x" /></button>
+          <strong class="bn-dose">1:{fmt(r)}</strong>
+          <button class="button button-ghost button-icon" type="submit" aria-label="Remove 1:{fmt(r)}" onclick={(e) => ask(e, `1:${fmt(r)}`)}><Icon name="x" /></button>
         </form>
       </li>
     {/each}
@@ -162,10 +165,15 @@
 <style>
   .bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); max-width: 720px; }
   .bn-list li { border-bottom: 1px solid var(--color-border); }
-  .bn-list form { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-  .bn-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); padding: var(--space-2) 0; min-width: 0; }
+  .bn-list form { display: flex; align-items: center; gap: var(--space-3); }
+  .bn-dose { flex: none; min-width: 3.5rem; }
+  .bn-cells { display: flex; flex-wrap: wrap; flex: 1; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
+  .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }
+  .bn-cell .text-muted { font-size: 0.8rem; }
   .bn-add { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .bn-add input { width: 5rem; }
-  .bn-list .button-icon { flex: none; margin: 0; min-width: 44px; min-height: 44px; }
+  .bn-add input { width: 6.5rem; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font: inherit; }
+  .bn-add .button { margin: 0; }
+  .bn-list .button-icon { flex: none; margin: 0 0 0 auto; min-width: 44px; min-height: 44px; }
+  @media (max-width: 640px) { .bn-add input { font-size: 16px; min-height: 44px; } }
   .bn-confirm { max-width: 24rem; }
 </style>
