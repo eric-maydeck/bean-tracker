@@ -1769,6 +1769,7 @@ export const STATES: State[] = [
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt figure > svg')).toBeVisible();
       await expect(page.locator('.gt .crown')).toHaveCount(2); // the Best brew's crown and the legend's
+      await expect(page.getByRole('link', { name: 'Recipe', exact: true })).toHaveAttribute('href', /^\/recipes\/[a-z0-9-]+$/); // a recipe's own page, by name
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {

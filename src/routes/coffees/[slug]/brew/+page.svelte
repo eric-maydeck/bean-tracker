@@ -14,6 +14,8 @@
   import Icon from '$lib/components/Icon.svelte';
   import { showToast } from '$lib/toast.svelte';
   import { cutTip } from './cutTip';
+  import { slugify } from '$lib/slugify';
+  import { recipeHref } from '$lib/recipeSlug';
   import TipBody from '$lib/components/TipBody.svelte';
 
   let { data, form } = $props();
@@ -113,7 +115,7 @@
             <span class="c" use:cutTip={grinder}>{grinder}</span>
             <span class="c">{b.tempC ? `${b.tempC}°C` : 'No temp'}</span>
             <span class="c" use:cutTip={gear}>{gear}</span>
-            <span class="c" class:muted={!b.recipeName} use:cutTip={b.recipeName ?? 'Not using saved recipe'}>{#if b.recipeName && b.recipeId !== null}<a href="/recipes#recipe-{b.recipeId}">{b.recipeName}</a>{:else}{b.recipeName ?? 'Not using saved recipe'}{/if}</span>
+            <span class="c" class:muted={!b.recipeName} use:cutTip={b.recipeName ?? 'Not using saved recipe'}>{#if b.recipeName && b.recipeId !== null}<a href={recipeHref(slugify(b.recipeName))}>{b.recipeName}</a>{:else}{b.recipeName ?? 'Not using saved recipe'}{/if}</span>
             <span class="c ev-r">{#if b.best}<span class="badge badge-fresh">Best</span>{/if} <strong>{b.rating ?? '–'}</strong></span>
           </div>
           {#if b.notes}<p class="note">{b.notes}</p>{/if}
