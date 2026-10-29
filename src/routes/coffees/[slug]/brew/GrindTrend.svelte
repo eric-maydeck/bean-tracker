@@ -4,7 +4,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
 
   // Plain dot plot of this coffee's rated brews on the chosen grinder: grind setting on x, rating on y. The Best brew is
-  // a filled dot inside a ring. Hovering, focusing or tapping a dot opens the site's tip (FloatTip + TipBody); clicking
+  // a crowned amber dot. Hovering, focusing or tapping a dot opens the site's tip (FloatTip + TipBody); clicking
   // one flashes its row in the list (scrolling only when that row is off screen). No time encoding.
   let { brews, grinder, summary = [] }: { brews: BrewRow[]; grinder: string | null; summary?: string[] } = $props();
 
@@ -16,6 +16,7 @@
   const y = (v: number) => H - B - ((v - rl) / (rh - rl)) * (H - B - T);
   const gname = (v: number) => pts.find((p) => p.grindNum === v)?.grind;
   const label = (p: BrewRow) => `${p.localTime.slice(0, 10)}, grind ${p.grind}, rated ${p.rating}${p.best ? ', Best brew' : ''}`;
+  const crown = (cx: number, cy: number) => `${cx - 5},${cy - 6} ${cx - 5},${cy - 12} ${cx - 2.5},${cy - 9} ${cx},${cy - 13} ${cx + 2.5},${cy - 9} ${cx + 5},${cy - 12} ${cx + 5},${cy - 6}`;
   const tipOf = (p: BrewRow) => ({
     title: p.localTime.slice(0, 10),
     rows: [['Grind', p.grind ?? '–'], ['Rating', String(p.rating)], ...(p.tempC ? [['Temp', `${p.tempC}°C`]] : []),
@@ -56,12 +57,12 @@
             onfocus={(e) => e.currentTarget.matches(':focus-visible') && (tip = { p, el: e.currentTarget as Element, pinned: false })}
             onblur={() => !tip?.pinned && (tip = null)}>
             <circle cx={x(p.grindNum!)} cy={y(p.rating!)} r="14" class="hit" />
-            {#if p.best}<circle cx={x(p.grindNum!)} cy={y(p.rating!)} r="7.5" class="ring" />{/if}
-            <circle cx={x(p.grindNum!)} cy={y(p.rating!)} r={p.best ? 3.5 : 3} class="dot" class:bestdot={p.best} />
+            {#if p.best}<polygon points={crown(x(p.grindNum!), y(p.rating!))} class="crown" />{/if}
+            <circle cx={x(p.grindNum!)} cy={y(p.rating!)} r={p.best ? 4 : 3} class="dot" class:bestdot={p.best} />
           </a>
         {/each}
       </svg>
-      <p class="key">Each dot is a brew.{#if pts.some((p) => p.best)} <svg class="legend" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.5" class="ring" /><circle cx="9" cy="9" r="3.5" class="dot bestdot" /></svg> Best brew{/if}</p>
+      <p class="key">Each dot is a brew.{#if pts.some((p) => p.best)} <svg class="legend" viewBox="0 0 18 18" aria-hidden="true"><polygon points={crown(9, 13)} class="crown" /><circle cx="9" cy="13" r="3.5" class="dot bestdot" /></svg> Best brew{/if}</p>
     </figure>
   {/if}
   {#if summary.length}
@@ -83,11 +84,11 @@
   .axis { stroke: var(--color-border); stroke-width: 1; }
   .tick { fill: var(--color-text-muted); font-size: 10px; }
   .dot { fill: var(--color-accent); fill-opacity: 0.6; stroke: var(--color-accent); stroke-width: 1.2; }
-  .bestdot { fill-opacity: 1; }
-  .ring { fill: none; stroke: var(--color-accent); stroke-width: 1.5; }
+  .bestdot { fill: var(--color-warm); stroke: var(--color-warm); fill-opacity: 1; }
+  .crown { fill: var(--color-warm); }
   .hit { fill: transparent; }
   .gt-dot { cursor: pointer; }
-  .gt-dot:focus-visible .ring, .gt-dot:focus-visible .dot { stroke-width: 3; }
+  .gt-dot:focus-visible .dot { stroke-width: 3; }
   .key { margin: var(--space-2) 0 0; font-size: 0.8rem; color: var(--color-text-muted); }
   .key .legend { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -0.2em; }
   .sum { margin: 0; padding-left: 1.1rem; font-size: 0.9rem; }

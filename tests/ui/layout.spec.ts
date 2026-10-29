@@ -1768,6 +1768,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'This coffee', exact: true })).toBeVisible();
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt figure > svg')).toBeVisible();
+      await expect(page.locator('.gt .crown')).toHaveCount(2); // the Best brew's crown and the legend's
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {
@@ -1802,7 +1803,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const before = await page.locator('.marks > li').count(); // the other viewport may be marking at the same time
       await page.getByRole('button', { name: 'Brew this' }).click();
-      await expect(page.getByRole('status')).toHaveText('Marked — your next BQ brew of this coffee will be compared');
+      await expect(page.getByRole('status')).toHaveText('Marked. Your next BQ brew of this coffee will be compared.');
       await expect(page.locator('.marks > li')).not.toHaveCount(before);
     } },
   { name: 'brew-now-roaster-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
@@ -1823,9 +1824,15 @@ export const STATES: State[] = [
       await page.locator('.foot .basis').click();
       const tip = page.locator('.bn-tip');
       await expect(tip).toBeVisible();
-      await expect(tip.getByRole('link', { name: 'See coffees' })).toHaveAttribute('href', '#similar');
-      await page.keyboard.press('Escape');
-      await expect(tip).toHaveCount(0);
+      await expect(tip.getByRole('link').first()).toHaveAttribute('href', /^\/coffees\//); // each basis coffee is linked
+      if (await page.locator('#similar').count()) {
+        await tip.getByRole('button', { name: 'See coffees' }).dispatchEvent('click'); // (no scroll-into-view: FloatTip hides while its anchor scrolls) closes the popover and lands on Similar coffees
+        await expect(tip).toHaveCount(0);
+        await expect.poll(() => page.locator('#similar').evaluate((el) => el.getBoundingClientRect().top < innerHeight)).toBe(true);
+      } else {
+        await page.keyboard.press('Escape');
+        await expect(tip).toHaveCount(0);
+      }
     } },
   { name: 'brew-now-chart-tip', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
@@ -1842,20 +1849,28 @@ export const STATES: State[] = [
     act: async (page) => {
       const dose = page.getByRole('group', { name: 'Dose' }).getByRole('button');
       await expect(dose.first()).toBeVisible();
+      await page.locator('.rows .tiplabel', { hasText: 'Dose' }).click();
+      await expect(page.locator('.bn-tip')).toContainText('change your usual doses and ratios on the Account page');
+      await expect(page.locator('.bn-tip').getByRole('link')).toHaveAttribute('href', '/account#brew-now');
+      await page.keyboard.press('Escape');
       await dose.last().click();
       await expect(page).toHaveURL(/dose=/);
       await expect(page.getByRole('group', { name: 'Ratio' }).getByRole('button').first()).toBeVisible();
     } },
   { name: 'brew-now-other-gear', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
-      const other = page.getByRole('button', { name: 'Other…' }).first();
+      const other = page.getByRole('button', { name: /^Other/ }).first();
       await other.click();
-      await expect(page.locator('.pk2-other').first()).toBeVisible();
+      const item = page.getByRole('menuitem').first();
+      const name = (await item.innerText()).trim();
+      await item.click(); // the dropdown's label becomes the pick and shows as the selected chip
+      await expect(page.getByRole('button', { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) }).first()).toHaveAttribute('aria-pressed', 'true');
     } },
   { name: 'brew-now-open-confirm', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
     act: async (page) => {
       await page.getByRole('button', { name: 'Brew this' }).click(); // no mutation: Cancel leaves the coffee unopened
       await expect(page.getByRole('heading', { name: "This coffee isn't open yet. Open it now?" })).toBeVisible();
+      expect(await page.locator('#bn-open-title .line').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))).toHaveLength(2); // two lines
       await expect(page.getByRole('button', { name: 'Open and brew' })).toBeVisible();
       await page.getByRole('button', { name: 'Cancel' }).click();
       await expect(page.locator('.modal')).toHaveCount(0);
