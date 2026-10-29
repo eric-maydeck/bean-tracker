@@ -1,0 +1,51 @@
+import { describe, it, expect } from 'vitest';
+import { isHttpError } from '@sveltejs/kit';
+
+process.env.DB_PATH = ':memory:';
+
+import { getDb } from '$lib/server/db';
+import { createCoffee } from '$lib/server/coffees';
+import { load } from './+page.server';
+
+const db = getDb();
+const mk = (roaster: string, name: string) => {
+  const c = createCoffee(db, { roaster, coffee_name: name, origin: 'Kenya', roast_level: 'Light', processing: 'Washed', amount_g: 250, cost: 20,
+    roast_date: '2026-09-01', frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null });
+  db.prepare(`INSERT INTO beanconqueror_beans (id, name, roaster, imported_at, coffee_id) VALUES (?, ?, ?, 'x', ?)`).run(`bean${c.id}`, name, roaster, c.id);
+  return c;
+};
+db.exec(`INSERT INTO beanconqueror_grinders (id, name, imported_at) VALUES ('g1', 'ZP6', 'x'), ('g2', 'A4Z', 'x');
+  INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m1', 'V60 - Cafec Abaca', 'x');`);
+const brewed = mk('Sey', 'Kiambu');
+const fresh = mk('Nobody Yet', 'Fresh Lot');
+const today = new Date().toISOString().slice(0, 10);
+for (const [i, mill] of ['g1', 'g1', 'g2'].entries())
+  db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, ground_coffee_g, brew_temperature,
+    water_amount_g, best_brew, imported_at) VALUES (?, ?, 'm1', ?, '5.5', 8, 15, 94, 250, ?, 'x')`).run(`${today}T08:00:0${i}.000Z`, `bean${brewed.id}`, mill, i === 0 ? 1 : 0);
+
+const run = (slug: string, qs = '') =>
+  load({ params: { slug }, url: new URL(`http://x/coffees/${slug}/brew${qs}`), setHeaders: () => {}, locals: { isAdmin: false } } as never) as Promise<any>;
+
+describe('brew now load', () => {
+  it('404 for an unknown slug', async () => {
+    try { await run('nope'); expect.unreachable(); } catch (e) { expect(isHttpError(e, 404)).toBe(true); }
+  });
+  it('falls back to the default grinder for an unknown one, and passes ?why through', async () => {
+    const d = await run(brewed.slug, '?grinder=nope&why=grind');
+    expect(d.gear.grinder).toBe('ZP6');
+    expect(d.why).toBe('grind');
+    expect((await run(brewed.slug, '?grinder=a4z')).gear.grinder).toBe('A4Z');
+  });
+  it('lists this coffee newest first with the Best brew pinned, roaster recipe and marks stubbed', async () => {
+    const d = await run(brewed.slug);
+    expect(d.thisCoffee.map((r: { best: boolean }) => r.best)).toEqual([true, false, false]);
+    expect(d.neverBrewedRoaster).toBe(false);
+    expect(d.roasterRecipe).toBeNull();
+    expect(d.marks).toEqual([]);
+  });
+  it('flags a roaster with no brews', async () => {
+    const d = await run(fresh.slug);
+    expect(d.neverBrewedRoaster).toBe(true);
+    expect(d.thisCoffee).toEqual([]);
+  });
+});

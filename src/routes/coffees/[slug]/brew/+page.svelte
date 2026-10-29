@@ -1,0 +1,190 @@
+<script lang="ts">
+  import { goto } from '$app/navigation';
+  import { page } from '$app/state';
+  import { originWithFlag } from '$lib/countryFlags';
+  import { formatDate } from '$lib/formatDate';
+  import type { BrewRow } from '$lib/server/brewNow/load';
+  import type { Row, Setting } from '$lib/server/brewNow/suggest';
+  import { brewNowParams } from './brewNowUrl';
+  import GrindTrend from './GrindTrend.svelte';
+
+  let { data } = $props();
+  const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
+  const c = $derived(data.coffee);
+
+  function go(patch: Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null }>) {
+    const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why, ...patch }, data.defaults);
+    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
+  }
+  // The chosen gear is always listed, even if it dropped out of the recent options.
+  const opts = (list: string[], cur: string | null) => (cur && !list.includes(cur) ? [cur, ...list] : list);
+  const pickers = $derived([
+    { key: 'grinder', label: 'Grinder', list: opts(data.options.grinders, data.gear.grinder), cur: data.gear.grinder },
+    { key: 'dripper', label: 'Dripper', list: opts(data.options.drippers, data.gear.dripper), cur: data.gear.dripper },
+    { key: 'filter', label: 'Filter', list: opts(data.options.filters, data.gear.filter), cur: data.gear.filter }
+  ] as const);
+
+  const gearText = (b: BrewRow) => [b.dripper, b.filter].filter(Boolean).join(' · ');
+  const hasRoasterBrews = $derived(!data.neverBrewedRoaster);
+</script>
+
+<svelte:head><title>Brew now - {c.coffeeName}</title></svelte:head>
+
+{#snippet brewLine(b: BrewRow, withCoffee: boolean)}
+  <span class="date">{formatDate(b.localTime)}</span>
+  {#if withCoffee}{#if b.slug}<a href="/coffees/{b.slug}">{b.coffeeName}</a>{:else}<span>{b.coffeeName}</span>{/if}{/if}
+  {#if b.grinder || b.grind}<span>{[b.grinder, b.grind].filter(Boolean).join(' ')}</span>{/if}
+  {#if b.tempC}<span>{b.tempC}°C</span>{/if}
+  {#if gearText(b)}<span>{gearText(b)}</span>{/if}
+  {#if b.recipeName}<span>{b.recipeName}</span>{/if}
+  {#if b.rating !== null}<span class="rate">{b.rating}</span>{/if}
+  {#if b.best}<span class="badge badge-fresh">Best</span>{/if}
+  {#if b.notes}<span class="note">{b.notes}</span>{/if}
+{/snippet}
+
+{#snippet thisCoffee()}
+  {#if data.thisCoffee.length}
+    <section class="bn-card" aria-labelledby="bn-this">
+      <h2 id="bn-this">This coffee</h2>
+      <div class="split">
+        <GrindTrend brews={[...data.thisCoffee].sort((a, b) => a.localTime.localeCompare(b.localTime))} grinder={data.gear.grinder} />
+        <ul class="brews">
+          {#each data.thisCoffee as b (b.id)}
+            <li id="brew-{b.id}" class:best={b.best}>{@render brewLine(b, false)}</li>
+          {/each}
+        </ul>
+      </div>
+    </section>
+  {/if}
+{/snippet}
+
+{#snippet roasterRecipe()}
+  <!-- Task 7 fills data.roasterRecipe -->
+{/snippet}
+
+<div class="bn">
+  <p><a href="/coffees/{c.slug}">← {c.coffeeName}</a></p>
+  <h1>Brew now</h1>
+
+  <section class="bn-card" aria-label="Coffee">
+    <h2>{c.roaster}</h2>
+    <p class="name">{c.coffeeName}</p>
+    <dl class="facts">
+      {#if c.roastDate}<div><dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays} d off roast)` : ''}</dd></div>{/if}
+      {#if c.gramsLeft !== null}<div><dt>Left</dt><dd>{c.gramsLeft} g</dd></div>{/if}
+      {#if c.processing}<div><dt>Process</dt><dd>{c.processing}</dd></div>{/if}
+      {#if c.origin}<div><dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd></div>{/if}
+      {#if c.roastLevel}<div><dt>Roast</dt><dd>{c.roastLevel}</dd></div>{/if}
+    </dl>
+  </section>
+
+  <section class="bn-card pickers" aria-label="Gear">
+    {#each pickers as p (p.key)}
+      <label>
+        <span>{p.label}</span>
+        <select value={p.cur ?? ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null })}>
+          {#if !p.list.length}<option value="">None yet</option>{/if}
+          {#each p.list as o (o)}<option value={o}>{o}</option>{/each}
+        </select>
+      </label>
+    {/each}
+  </section>
+
+  {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
+
+  <section class="bn-card start" aria-labelledby="bn-start">
+    <h2 id="bn-start">Start here <span class="badge badge-neutral">{data.suggestion.confidence}</span></h2>
+    <ul class="rows">
+      {#each data.suggestion.rows as r (r.setting)}
+        {@const open = data.why === r.setting}
+        <li class:open>
+          <div class="rowhead">
+            <span class="lab">{LABEL[r.setting]}</span>
+            {#if r.value !== null}
+              <strong class="val">{r.value}</strong>
+              {#if r.link}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
+            {:else}
+              <span class="none">{r.reason}</span>
+            {/if}
+          </div>
+          {#if r.value !== null}
+            {#if r.evidence.length}
+              <button type="button" class="why" aria-expanded={open} onclick={() => go({ why: open ? null : r.setting })}>{r.reason}</button>
+            {:else}
+              <span class="why-plain">{r.reason}</span>
+            {/if}
+          {/if}
+          {#if r.reference?.length}
+            <ul class="ref">
+              {#each r.reference as x (x.grinder)}<li>{x.grinder}: {x.grind}</li>{/each}
+            </ul>
+          {/if}
+          {#if open}
+            <ul class="evidence">
+              {#each r.evidence as b (b.id)}<li>{@render brewLine(b, true)}</li>{/each}
+            </ul>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+    <p class="foot">{data.suggestion.basis}{#if data.suggestion.lastNote}<br />Last note: {data.suggestion.lastNote}{/if}</p>
+  </section>
+
+  {@render thisCoffee()}
+
+  {#if data.similar.length}
+    <section class="bn-card" aria-labelledby="bn-similar">
+      <h2 id="bn-similar">{hasRoasterBrews ? 'Similar coffees' : 'Similar coffees from other roasters'}</h2>
+      <ul class="brews">
+        {#each data.similar as s (s.slug)}
+          <li>
+            <a href="/coffees/{s.slug}">{s.roaster} {s.coffeeName}</a>
+            <span>{s.brews} {s.brews === 1 ? 'brew' : 'brews'}</span>
+            {#if s.avgRating !== null}<span class="rate">{Math.round(s.avgRating * 10) / 10}</span>{/if}
+            {#if s.grindRange}<span>grind {s.grindRange[0] === s.grindRange[1] ? s.grindRange[0] : `${s.grindRange[0]} to ${s.grindRange[1]}`}</span>{/if}
+            {#if s.tempRange}<span>{s.tempRange[0] === s.tempRange[1] ? s.tempRange[0] : `${s.tempRange[0]} to ${s.tempRange[1]}`}°C</span>{/if}
+            {#if s.topRecipe}<span>{s.topRecipe}</span>{/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  {#if !data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
+</div>
+
+<style>
+  .bn { max-width: 56rem; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
+  .bn > p, .bn > h1 { margin: 0; }
+  .bn-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--space-4); }
+  .name { margin: 0 0 var(--space-3); font-weight: 600; }
+  .facts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: 0; }
+  .facts div { display: flex; gap: var(--space-2); }
+  dt { color: var(--color-text-muted); }
+  dd { margin: 0; }
+  .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-3); }
+  .pickers label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 0.85rem; color: var(--color-text-muted); }
+  .pickers select { min-height: 44px; width: 100%; }
+  .rows, .brews, .evidence, .ref { list-style: none; margin: 0; padding: 0; }
+  .rows > li { padding: var(--space-3) 0; border-top: 1px solid var(--color-border); }
+  .rows > li:first-child { border-top: 0; padding-top: 0; }
+  .rowhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+  .lab { min-width: 4rem; color: var(--color-text-muted); }
+  .val { font-size: 1.25rem; }
+  .none { color: var(--color-text-muted); }
+  .more { font-size: 0.85rem; }
+  .why { display: block; min-height: 44px; margin: 0; padding: var(--space-1) 0; background: none; border: 0; color: var(--color-text-muted);
+    font: inherit; font-size: 0.9rem; text-align: left; text-decoration: underline dotted; cursor: pointer; }
+  .why-plain { display: block; color: var(--color-text-muted); font-size: 0.9rem; padding: var(--space-1) 0; }
+  .ref { color: var(--color-text-muted); font-size: 0.9rem; }
+  .evidence { margin-top: var(--space-2); background: var(--color-bg); border-radius: var(--radius); padding: var(--space-2) var(--space-3); }
+  .evidence li, .brews li { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--color-border); font-size: 0.9rem; }
+  .evidence li:first-child, .brews li:first-child { border-top: 0; }
+  .brews li.best { font-weight: 600; }
+  .date { color: var(--color-text-muted); }
+  .rate { font-weight: 600; }
+  .note { flex-basis: 100%; color: var(--color-text-muted); font-style: italic; }
+  .foot { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
+  .split { display: grid; gap: var(--space-4); }
+  @media (min-width: 700px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }
+</style>

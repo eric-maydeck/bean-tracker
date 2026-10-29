@@ -7,7 +7,7 @@ import { fieldsFor } from '../../src/lib/gear';
 import { checkLayout, expectGridRowsFull, expectInnerScroll, expectPairsFilled, expectStatRowsFull, expectTipInView, expectTipsFormatted, expectNoTitleTips, expectColumnsFilled, expectDataTip, expectLabelsOutsidePlot } from './checkLayout';
 
 interface Seed {
-  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string } & Record<GramsKey, string>;
+  slugs: { long: string; linked: string; frozen: string; decaf: string; wide: string; lab: string; labTwo: string; sey: string; skip: string; brew: string; brewNew: string } & Record<GramsKey, string>;
   names: { long: string; everyAction: string } & Record<GramsKey, string>;
   recipes: { bbsKey: string; bbjKey: string; bbfKey: string; recipeId: number };
 }
@@ -1763,6 +1763,30 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Water (mL)')).toHaveValue('900');
     }
   },
+  { name: 'brew-now', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'This coffee' })).toBeVisible();
+      await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
+      await expect(page.locator('.gt svg')).toBeVisible();
+    } },
+  { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
+    act: async (page) => {
+      await expect(page.locator('.evidence li').first()).toBeVisible();
+      await page.locator('.why[aria-expanded="true"]').click();
+      await expect(page).not.toHaveURL(/why=/);
+      await expect(page.locator('.evidence')).toHaveCount(0);
+    } },
+  { name: 'brew-now-new-roaster', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
+      await expect(page.locator('.rows > li').first()).toBeVisible();
+    } },
+  { name: 'brew-now-no-grinder-data', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?grinder=Comandante%20C40%20MK4`,
+    act: async (page) => {
+      await expect(page.getByText('No data on this grinder yet')).toBeVisible();
+      await expect(page.locator('.ref li').first()).toBeVisible();
+    } },
   {
     name: 'on-deck',
     path: () => '/on-deck',
