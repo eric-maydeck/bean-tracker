@@ -13,6 +13,7 @@
   import FloatTip from '$lib/components/FloatTip.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import { showToast } from '$lib/toast.svelte';
+  import { cutTip } from './cutTip';
   import TipBody from '$lib/components/TipBody.svelte';
 
   let { data, form } = $props();
@@ -63,12 +64,20 @@
   // Brew this on a coffee that isn't open yet asks first, then opens it and records the mark.
   let confirmOpen = $state(false), brewForm: HTMLFormElement | undefined = $state(), openError = $state('');
   const notOpen = $derived(c.status !== 'open' && c.status !== 'archive');
+  // Posts to a page action; throws (for the toast's Undo) when it doesn't succeed.
+  async function post(action: string, fields: Record<string, string> = {}) {
+    const body = new FormData();
+    for (const [k, v] of Object.entries(fields)) body.set(k, v);
+    const res = deserialize(await (await fetch(`?/${action}`, { method: 'POST', body, headers: { 'x-sveltekit-action': 'true' } })).text());
+    if (res.type !== 'success') throw new Error("Couldn't undo that.");
+    await invalidateAll();
+  }
   async function openAndBrew() {
     openError = '';
     const res = deserialize(await (await fetch('?/openCoffee', { method: 'POST', body: new FormData(), headers: { 'x-sveltekit-action': 'true' } })).text());
     if (res.type !== 'success') { openError = "Couldn't open this coffee"; return; }
     confirmOpen = false;
-    showToast(`Coffee "${c.coffeeName}" marked as open.`);
+    showToast(`Coffee "${c.coffeeName}" marked as open.`, { undo: () => post('unopenCoffee') });
     await invalidateAll();
     brewForm?.requestSubmit();
   }
@@ -92,24 +101,26 @@
 {/snippet}
 
 {#snippet evidenceList(list: BrewRow[])}
-  <ul class="ev">
-    {#each list as b (b.id)}
-      <li>
-        <div class="ev-line">
-        <span class="ev-main">
-          <span class="date">{formatDate(b.localTime)}</span>
-          <span>{#if b.slug}<a href="/coffees/{b.slug}">{b.coffeeName}</a>{:else}{b.coffeeName}{/if}</span>
-          <span>{[b.grinder, b.grind].filter(Boolean).join(' ') || 'No grinder'}</span>
-          <span>{b.tempC ? `${b.tempC}°C` : 'No temp'}</span>
-          <span>{gearText(b) || 'No dripper'}</span>
-          <span class:muted={!b.recipeName}>{b.recipeName ?? 'Not using saved recipe'}</span>
-        </span>
-        <span class="ev-r">{#if b.best}<span class="badge badge-fresh">Best</span>{/if} <strong>{b.rating ?? '–'}</strong></span>
-        </div>
-        {#if b.notes}<p class="note">{b.notes}</p>{/if}
-      </li>
-    {/each}
-  </ul>
+  <div class="ev-scroll">
+    <ul class="ev">
+      {#each list as b (b.id)}
+        {@const grinder = [b.grinder, b.grind].filter(Boolean).join(' ') || 'No grinder'}
+        {@const gear = gearText(b) || 'No dripper'}
+        <li>
+          <div class="ev-line">
+            <span class="c date">{formatDate(b.localTime)}</span>
+            <span class="c" use:cutTip={b.coffeeName}>{#if b.slug}<a href="/coffees/{b.slug}">{b.coffeeName}</a>{:else}{b.coffeeName}{/if}</span>
+            <span class="c" use:cutTip={grinder}>{grinder}</span>
+            <span class="c">{b.tempC ? `${b.tempC}°C` : 'No temp'}</span>
+            <span class="c" use:cutTip={gear}>{gear}</span>
+            <span class="c" class:muted={!b.recipeName} use:cutTip={b.recipeName ?? 'Not using saved recipe'}>{#if b.recipeName && b.recipeId !== null}<a href="/recipes#recipe-{b.recipeId}">{b.recipeName}</a>{:else}{b.recipeName ?? 'Not using saved recipe'}{/if}</span>
+            <span class="c ev-r">{#if b.best}<span class="badge badge-fresh">Best</span>{/if} <strong>{b.rating ?? '–'}</strong></span>
+          </div>
+          {#if b.notes}<p class="note">{b.notes}</p>{/if}
+        </li>
+      {/each}
+    </ul>
+  </div>
 {/snippet}
 
 {#snippet thisCoffee()}
@@ -162,7 +173,7 @@
   <h1>Brew now</h1>
 
   <section class="bn-card hero" aria-label="Coffee">
-    {#if data.image}<img class="hero-img" src={data.image.src} alt={data.image.alt} style:background-color={data.image.fill} />{/if}
+    {#if data.image}<div class="hero-pic"><img class="hero-img" src={data.image.src} alt={data.image.alt} style:background-color={data.image.fill} /></div>{/if}
     <div class="hero-body">
       <p class="muted">{c.roaster}</p>
       <h2 class="hero-name">{c.coffeeName}</h2>
@@ -249,10 +260,10 @@
               {#if r.setting === 'dose' && data.suggestion.dosePlan && planSplit(r.reason)}
                 {@const m = planSplit(r.reason)!}{m[1]}<button type="button" class="basis bn-trig" aria-expanded={pop?.kind === 'plan'} onclick={(e) => toggle('plan', e.currentTarget)}>{m[2]}</button>{m[3]}
               {:else}{r.reason}{/if}
+            </p>
               {#if r.evidence.length}
                 <button type="button" class="why" aria-expanded={open} onclick={() => go({ why: open ? null : r.setting })}>{open ? 'Hide brews' : 'Show brews'}</button>
               {/if}
-            </p>
           {/if}
           {#if r.reference?.length}
             <ul class="ref">
@@ -301,7 +312,7 @@
       </FloatTip>
     {/if}
     {#if data.isAdmin}
-      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); if (result.type === 'success') showToast('Marked. Your next BQ brew of this coffee will be compared.'); } finally { submitting = false; } }; }}>
+      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); if (result.type === 'success') { const id = (result.data as { markId?: number } | undefined)?.markId; showToast('Marked. Your next BQ brew of this coffee will be compared.', id === undefined ? {} : { undo: () => post('deleteMark', { id: String(id) }) }); } } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
         {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
         {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
@@ -390,7 +401,7 @@
   .val { font-size: 1.25rem; }
   .none { color: var(--color-text-muted); }
   .more { font-size: 0.85rem; }
-  .why { min-height: 44px; margin: 0 0 0 var(--space-2); padding: var(--space-1) var(--space-2); background: none; border: 0; color: var(--color-accent);
+  .why { display: block; min-height: 44px; margin: 0; padding: var(--space-1) 0; background: none; border: 0; color: var(--color-accent);
     font: inherit; font-size: 0.9rem; white-space: nowrap; text-decoration: underline; cursor: pointer; }
   .why-plain { margin: 0; color: var(--color-text-muted); font-size: 0.9rem; padding: var(--space-1) 0; }
   .ref { color: var(--color-text-muted); font-size: 0.9rem; }
@@ -413,7 +424,7 @@
   .others { margin: var(--space-1) 0 0; font-size: 0.9rem; color: var(--color-text-muted); display: flex; flex-wrap: wrap; gap: 0 var(--space-3); }
   .others strong { color: var(--color-text); font-weight: 600; }
   .basis { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; min-height: 44px; }
-  .bn-tip { display: flex; flex-direction: column; gap: var(--space-2); }
+  .bn-tip { pointer-events: auto; display: flex; flex-direction: column; gap: var(--space-2); }
   .bn-tip :global(a.tip-link), .bn-tip button.tip-link { align-self: flex-start; color: var(--color-accent); }
   .marks form { display: contents; }
   .rr-title { font-weight: 600; overflow-wrap: anywhere; }
@@ -422,7 +433,9 @@
   .rr ol.snip { padding-left: calc(var(--space-3) + 1.2rem); }
   .rr ol.snip li { margin: var(--space-1) 0; }
   .hero { display: flex; gap: var(--space-4); align-items: stretch; }
-  .hero-img { width: 7rem; min-height: 7rem; height: auto; object-fit: contain; border-radius: var(--radius); flex: none; } /* contain on the computed fill: ui-rules 18, images are never cropped */
+  /* The box stretches with the details; the image fills it (contain on its fill: rule 18) and never sizes it. */
+  .hero-pic { position: relative; flex: 0 0 min(10rem, 38%); min-height: 10rem; }
+  .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius); }
   .hero-body { min-width: 0; flex: 1; }
   .hero-body p { margin: 0; }
   .hero-name { font-size: 1.25rem; margin: 0 0 var(--space-3); }
@@ -447,21 +460,26 @@
   .bn-tip button.tip-link { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-align: left; }
   #similar { scroll-margin-top: 5rem; }
   #bn-open-title .line { display: block; }
+  #bn-open-title .line + .line { margin-top: 1.25rem; }
   .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }
   .brews li { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--color-border); font-size: 0.9rem; }
   .brews li:first-child { border-top: 0; }
   .syn { margin: 0 0 var(--space-2); font-size: 0.9rem; }
   .ev-label { margin: 0; font-size: 0.85rem; font-weight: 600; }
-  .ev { margin: 0; padding-left: 1.1rem; list-style: disc; font-size: 0.9rem; }
+  .ev-scroll { overflow-x: auto; }
+  .ev { min-width: 44rem; margin: 0; padding-left: 1.1rem; list-style: disc; font-size: 0.9rem; }
   .ev li { padding: var(--space-1) 0; }
-  .ev .note { margin: 0; flex-basis: auto; }
-  .ev-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); }
-  .ev-main { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); flex: 1; min-width: 0; }
-  .ev-main > span + span::before { content: '·'; margin-right: var(--space-2); color: var(--color-text-muted); }
-  .ev-main .muted { color: var(--color-text-muted); }
-  .ev-r { margin-left: auto; white-space: nowrap; }
+  .ev .note { margin: 0; }
+  /* One set of tracks for every row, so columns line up whatever the values; cut text gets the site's tip. */
+  .ev-line { display: grid; grid-template-columns: 6rem minmax(0, 1.4fr) minmax(0, 1.2fr) 3.4rem minmax(0, 1.4fr) minmax(0, 1.2fr) 5rem; column-gap: var(--space-3); align-items: baseline; }
+  .ev-line .c { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev-line .muted { color: var(--color-text-muted); }
+  .ev-r { text-align: right; }
   .marks li { align-items: center; gap: var(--space-2) var(--space-3); }
   .marks .badge { white-space: nowrap; }
   .marks .button { min-height: 44px; margin: 0; }
   .bn-confirm { max-width: 18rem; }
+  /* Every control gets the hand (links already have it). */
+  .bn button:not(:disabled), .bn-confirm button:not(:disabled), .bn [role='menuitem'], .bn summary { cursor: pointer; }
+  .bn button.tiplabel { cursor: help; } /* a tip trigger (ui-rules 50) */
 </style>

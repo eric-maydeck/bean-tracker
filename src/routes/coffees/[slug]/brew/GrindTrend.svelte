@@ -4,7 +4,7 @@
   import TipBody from '$lib/components/TipBody.svelte';
 
   // Plain dot plot of this coffee's rated brews on the chosen grinder: grind setting on x, rating on y. The Best brew is
-  // a crowned amber dot. Hovering, focusing or tapping a dot opens the site's tip (FloatTip + TipBody); clicking
+  // a crowned green dot. Hovering, focusing or tapping a dot opens the site's tip (FloatTip + TipBody); clicking
   // one flashes its row in the list (scrolling only when that row is off screen). No time encoding.
   let { brews, grinder, summary = [] }: { brews: BrewRow[]; grinder: string | null; summary?: string[] } = $props();
 
@@ -84,8 +84,8 @@
   .axis { stroke: var(--color-border); stroke-width: 1; }
   .tick { fill: var(--color-text-muted); font-size: 10px; }
   .dot { fill: var(--color-accent); fill-opacity: 0.6; stroke: var(--color-accent); stroke-width: 1.2; }
-  .bestdot { fill: var(--color-warm); stroke: var(--color-warm); fill-opacity: 1; }
-  .crown { fill: var(--color-warm); }
+  .bestdot { fill: var(--color-fresh); stroke: var(--color-fresh); fill-opacity: 1; } /* the site's positive green; the crown stays gold */
+  .crown { fill: var(--color-sunflower); stroke: var(--color-warm); stroke-width: 0.5; }
   .hit { fill: transparent; }
   .gt-dot { cursor: pointer; }
   .gt-dot:focus-visible .dot { stroke-width: 3; }

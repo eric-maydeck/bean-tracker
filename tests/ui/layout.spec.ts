@@ -1775,6 +1775,13 @@ export const STATES: State[] = [
       await expect(page.locator('.evidence p.syn')).toBeVisible();
       await expect(page.locator('.evidence .ev-label')).toHaveText('Evidence:');
       await expect(page.locator('.evidence .ev li').first()).toBeVisible();
+      // Every column lines up row to row: the recipe column starts at the same x in each row.
+      const lefts = await page.locator('.evidence .ev-line > :nth-child(6)').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+      expect(new Set(lefts).size).toBe(1);
+      // "Show brews" sits under the summary line, not beside it.
+      const why = page.locator('.why[aria-expanded="true"]');
+      const [wb, pb] = [(await why.boundingBox())!, (await why.locator('xpath=preceding-sibling::p[1]').boundingBox())!];
+      expect(wb.y).toBeGreaterThanOrEqual(pb.y + pb.height - 1);
       // Ratings end every bullet at the same right edge.
       const ends = await page.locator('.evidence .ev-r').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().right)));
       expect(new Set(ends).size).toBe(1);
@@ -1803,7 +1810,9 @@ export const STATES: State[] = [
     act: async (page) => {
       const before = await page.locator('.marks > li').count(); // the other viewport may be marking at the same time
       await page.getByRole('button', { name: 'Brew this' }).click();
-      await expect(page.getByRole('status')).toHaveText('Marked. Your next BQ brew of this coffee will be compared.');
+      const toast = page.getByRole('status').filter({ hasText: 'Marked. Your next BQ brew of this coffee will be compared.' });
+      await expect(toast).toBeVisible();
+      await expect(toast.getByRole('button', { name: /undo/i })).toBeVisible();
       await expect(page.locator('.marks > li')).not.toHaveCount(before);
     } },
   { name: 'brew-now-roaster-recipe', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
@@ -1826,7 +1835,7 @@ export const STATES: State[] = [
       await expect(tip).toBeVisible();
       await expect(tip.getByRole('link').first()).toHaveAttribute('href', /^\/coffees\//); // each basis coffee is linked
       if (await page.locator('#similar').count()) {
-        await tip.getByRole('button', { name: 'See coffees' }).dispatchEvent('click'); // (no scroll-into-view: FloatTip hides while its anchor scrolls) closes the popover and lands on Similar coffees
+        await tip.getByRole('button', { name: 'See coffees' }).click(); // a real click: the tip must take pointer events. Closes the popover and lands on Similar coffees
         await expect(tip).toHaveCount(0);
         await expect.poll(() => page.locator('#similar').evaluate((el) => el.getBoundingClientRect().top < innerHeight)).toBe(true);
       } else {
@@ -1857,6 +1866,12 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/dose=/);
       await expect(page.getByRole('group', { name: 'Ratio' }).getByRole('button').first()).toBeVisible();
     } },
+  { name: 'brew-now-prefs-tip-link', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await page.locator('.rows .tiplabel', { hasText: 'Dose' }).click();
+      await page.locator('.bn-tip').getByRole('link', { name: 'Open Account' }).click();
+      await expect(page).toHaveURL(/\/account#brew-now$/);
+    } },
   { name: 'brew-now-other-gear', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
       const other = page.getByRole('button', { name: /^Other/ }).first();
@@ -1872,6 +1887,8 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: "This coffee isn't open yet. Open it now?" })).toBeVisible();
       expect(await page.locator('#bn-open-title .line').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)))).toHaveLength(2); // two lines
       await expect(page.getByRole('button', { name: 'Open and brew' })).toBeVisible();
+      const tops = await page.locator('#bn-open-title .line').evaluateAll((els) => els.map((e) => e.getBoundingClientRect()));
+      expect(tops[1].top - tops[0].bottom).toBeGreaterThanOrEqual(12); // a clear gap between the two lines
       await page.getByRole('button', { name: 'Cancel' }).click();
       await expect(page.locator('.modal')).toHaveCount(0);
     } },
@@ -1925,8 +1942,40 @@ export const STATES: State[] = [
     path: () => '/coffees?status=archive&view=list',
     act: async (page: Page) => {
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
-      await expect(page.getByRole('button', { name: 'Unarchive' }).first()).toBeVisible();
+      const un = page.getByRole('button', { name: 'Unarchive' }).first();
+      await expect(un).toBeVisible();
       await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
+      // Edit's Cancel and Unarchive sit side by side on one row.
+      const row = un.locator('xpath=ancestor::*[contains(@class,"action-stack")][1]');
+      const [ub, cb] = [(await un.boundingBox())!, (await row.getByRole('button', { name: 'Cancel' }).boundingBox())!];
+      expect(Math.abs(ub.y - cb.y)).toBeLessThan(4);
+    }
+  },
+  {
+    // The ⋯ menu on every On Deck tile (admin): Edit, Freeze/Unfreeze, Unopen (open tiles), Archive. No action is run here.
+    name: 'on-deck-tile-menu', viewports: 'two',
+    path: () => '/on-deck',
+    act: async (page: Page) => {
+      const tile = page.locator('.card-wrap').first();
+      await tile.getByRole('button', { name: /^More actions for/ }).click();
+      const menu = tile.getByRole('menu');
+      await expect(menu.getByRole('menuitem', { name: 'Edit' })).toHaveAttribute('href', /\/coffees\/[^/]+\?edit=1$/);
+      for (const n of ['Unopen', 'Archive']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible();
+      const [m, c] = [(await menu.boundingBox())!, (await tile.boundingBox())!];
+      expect(m.x).toBeGreaterThanOrEqual(0);
+      expect(m.x + m.width).toBeLessThanOrEqual((await page.evaluate(() => innerWidth)) + 1);
+      expect(m.y).toBeGreaterThan(c.y);
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+    }
+  },
+  {
+    name: 'coffee-edit-param',
+    viewports: 'two',
+    path: (s: Seed) => `/coffees/${s.slugs.brew}?edit=1`,
+    act: async (page: Page) => {
+      await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
+      await expect(page).toHaveURL(/\/coffees\/[^?]+$/); // the param is dropped once used
     }
   },
   {
@@ -2715,13 +2764,25 @@ export const STATES: State[] = [
     path: () => '/account',
     act: async (page) => {
       const dose = isPhone(page) ? '31' : '32';
-      await page.getByLabel('New dose in grams').fill(dose);
-      await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-      await expect(page.getByRole('status').filter({ hasText: `Added ${dose} g.` })).toBeVisible();
+      const add = async () => {
+        await page.getByLabel('New dose in grams').fill(dose);
+        await page.getByRole('button', { name: 'Add', exact: true }).first().click();
+        await expect(page.getByRole('status').filter({ hasText: `Added ${dose} g.` })).toBeVisible();
+      };
+      // Undo reverses the add and says so.
+      await add();
+      await page.getByRole('status').filter({ hasText: `Added ${dose} g.` }).getByRole('button', { name: 'Undo' }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
+      await expect(page.getByRole('button', { name: `Remove ${dose} g` })).toHaveCount(0);
+      // Toasts stack: newer below older, none replaced.
+      await add();
       await page.getByRole('button', { name: `Remove ${dose} g` }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
-      await expect(page.getByRole('status').filter({ hasText: `Removed ${dose} g.` })).toBeVisible();
-      await expect(page.getByRole('status')).toHaveCount(1);
+      const [added, removed] = [page.getByRole('status').filter({ hasText: `Added ${dose} g.` }), page.getByRole('status').filter({ hasText: `Removed ${dose} g.` })];
+      await expect(removed).toBeVisible();
+      await expect(added).toBeVisible();
+      expect((await removed.boundingBox())!.y).toBeGreaterThan((await added.boundingBox())!.y);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     }
   },
   {

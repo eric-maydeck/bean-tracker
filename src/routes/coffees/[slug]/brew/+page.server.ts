@@ -4,7 +4,7 @@ import { requireAdmin } from '$lib/server/auth';
 import { addMark, deleteMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
 import { getRoasterWebsite } from '$lib/server/roasterWebsites';
 import { getDb } from '$lib/server/db';
-import { getRedirectSlug, getCoffeeBySlug, openCoffee } from '$lib/server/coffees';
+import { getRedirectSlug, getCoffeeBySlug, openCoffee, unopenCoffee } from '$lib/server/coffees';
 import { coffeeImage } from '$lib/coffeeImage';
 import { localToday } from '$lib/server/localToday';
 import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
@@ -91,7 +91,8 @@ export const actions: Actions = {
     for (const k of ['grinder', 'dripper', 'filter', 'dose', 'ratio']) { const v = f.get(k); if (typeof v === 'string' && v) url.searchParams.set(k, v); }
     const { gear, sug } = derive(db, coffee, url, localToday());
     addMark(db, { coffeeId: coffee.id, gear, suggestion: sug, now: new Date() });
-    return { marked: true as const };
+    const { id } = db.prepare(`SELECT last_insert_rowid() AS id`).get() as { id: number }; // the page's Undo deletes this mark
+    return { marked: true as const, markId: id };
   },
   // Cancels a pending mark (admin).
   deleteMark: async ({ request, locals }) => {
@@ -109,6 +110,15 @@ export const actions: Actions = {
     if (coffee.status === 'archive') return fail(400, { openError: 'This coffee is archived' });
     openCoffee(db, coffee.id);
     return { opened: true as const };
+  },
+  // The Undo of "marked as open" (an open coffee goes back to the backlog).
+  unopenCoffee: async ({ params, locals }) => {
+    requireAdmin(locals);
+    const db = getDb();
+    const coffee = coffeeDetails(db, params.slug, localToday());
+    if (!coffee) error(404, 'Coffee not found');
+    unopenCoffee(db, coffee.id);
+    return { unopened: true as const };
   },
   findRecipe: async ({ params, locals }) => {
     requireAdmin(locals);

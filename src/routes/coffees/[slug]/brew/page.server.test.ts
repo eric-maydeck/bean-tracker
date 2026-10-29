@@ -142,7 +142,7 @@ describe('?/brewThis', () => {
     expect((await run(brewed.slug)).marks).toEqual([]);
   });
   it('re-derives the suggestion from the posted gear, ignoring posted values', async () => {
-    expect(await post(brewed.slug, true, { grinder: 'A4Z', grind: '99', suggestion: 'x' })).toEqual({ marked: true });
+    expect(await post(brewed.slug, true, { grinder: 'A4Z', grind: '99', suggestion: 'x' })).toMatchObject({ marked: true, markId: expect.any(Number) });
     const d = await run(brewed.slug);
     expect(d.marks).toHaveLength(1);
     expect(d.marks[0]).toMatchObject({ status: 'pending', gear: { grinder: 'A4Z' } });
