@@ -65,6 +65,7 @@
     transition: opacity 400ms ease-in;
   }
   .undo {
+    flex: none; /* never squeezed by a long message */
     min-height: 32px;
     padding: 0 var(--space-2);
     border: 1px solid currentColor;
@@ -85,6 +86,8 @@
     .undo {
       min-width: 44px;
       min-height: 44px;
+      padding-inline: var(--space-3);
+      white-space: nowrap;
       margin-block: calc(-1 * var(--space-2));
     }
   }
