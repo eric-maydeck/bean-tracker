@@ -11,6 +11,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import RecipeEditor from './RecipeEditor.svelte';
   import { fmtRange } from '$lib/recipes';
+  import { stepsText } from '$lib/recipeSteps';
   import { labelTip } from '$lib/components/labelTip';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
   let { data, form } = $props();
@@ -42,6 +43,7 @@
   const resetWords = () => (words = data.noteWords.map((w: { word: string; agitation: string }) => ({ ...w })));
   const noteWordsError = $derived(form && 'noteWordsError' in form && form.noteWordsError ? String(form.noteWordsError) : undefined);
 
+  const lowTip = { title: 'Water low', lines: ['Start this pour when the water is low, close to the bed.'] };
   const avg = (r: number | null) => (r == null ? 'no ratings' : `avg ${r.toFixed(1)}`);
   // The link that opens an item's brews, or closes them when it is already open.
   const brewsHref = (item: RecipesItem) => {
@@ -61,7 +63,7 @@
 <svelte:head>
   <title>Bean Tracker - {focus ? focus.recipe.name : 'Recipes'}</title>
 </svelte:head>
-<PreviewMeta preview={focus ? recipePreview({ name: focus.recipe.name, description: focus.description, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
+<PreviewMeta preview={focus ? recipePreview({ name: focus.recipe.name, description: focus.description, steps: stepsText(focus.recipe.def), tempNotes: focus.tempNotes, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
 
 <div class="recipes">
 <h1>Recipes</h1>
@@ -157,6 +159,15 @@
             <h3><a class="recipe-link" href="/recipes/{r.slug}" data-sveltekit-preload-data="off" data-sveltekit-noscroll>{r.recipe.name}<Icon name="link" /></a></h3>
             <PourTimeline timeline={r.timeline} label={r.description} />
             <div>{r.description}</div>
+            <ol class="steps" aria-label="Steps">
+              {#each r.steps as st}
+                <li>
+                  {#if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}
+                  <span>{st.text}</span>
+                </li>
+              {/each}
+            </ol>
+            {#if r.tempNotes}<div>{r.tempNotes}</div>{/if}
             {#if r.brewTime}<div class="text-muted"><span class="brew-time" tabindex="0" use:labelTip={`Middle 50% of ${r.brewTime.n} timed brews.`}>Most brews took {fmtRange(r.brewTime)}</span></div>{/if}
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
@@ -378,6 +389,10 @@
     min-width: 0;
   }
   .item { scroll-margin-top: var(--space-4); }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: max-content 1fr; column-gap: var(--space-3); row-gap: var(--space-1); }
+  .steps li { display: contents; }
+  .step-time { font-variant-numeric: tabular-nums; color: var(--color-text-muted); }
+  .step-time.low { width: fit-content; text-decoration: underline dotted; }
   .brew-time { width: fit-content; } /* the tip anchors to the text, not the card-wide line */
   .item.flash { animation: recipe-flash 1.8s ease-out; }
   @keyframes recipe-flash { from { box-shadow: 0 0 0 3px var(--color-accent); } to { box-shadow: 0 0 0 3px transparent; } }

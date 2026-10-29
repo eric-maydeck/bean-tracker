@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
+import { RECIPE_PREVIEW_MAX, recipePreview, recipesPreview, absoluteImage, coffeePreview, coffeesPreview, fitList, onDeckPreview, ownerName, plural, statsPreview, subscriptionsPreview, waterPreview } from './linkPreview';
 
 const kenya = { roaster: 'The Picky Chemist', coffee_name: 'Kenya AA Inoi Kianderi', origin: 'Kenya', processing: 'Washed', amount_g: 250, roast_date: '2026-10-03' };
 
@@ -152,8 +152,19 @@ describe('recipesPreview', () => {
 });
 
 describe('recipePreview', () => {
-  it('names the recipe, its pours, brew count and average', () => {
-    expect(recipePreview({ name: 'Floral', description: 'Two blooms · ~1:16', n: 311, avgRating: 7.1 })).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n311 brews · avg 7.1' });
-    expect(recipePreview({ name: 'F', description: 'd', n: 1, avgRating: null }).description).toBe('d\n1 brew');
+  const base = { name: 'Floral', description: 'Two blooms · ~1:16', steps: '0:00 - bloom\n0:45 - pour', tempNotes: '93 °C · rinse', n: 311, avgRating: 7.1 };
+  it('lists the one-liner, steps, temperature and notes, then the brew stats', () => {
+    expect(recipePreview(base)).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n93 °C · rinse\n311 brews · avg 7.1' });
+    expect(recipePreview({ ...base, tempNotes: null }).description).toBe('Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n311 brews · avg 7.1');
+    expect(recipePreview({ ...base, steps: '', tempNotes: null, n: 1, avgRating: null }).description).toBe('Two blooms · ~1:16\n1 brew');
+  });
+  it('drops the one-liner first when over the budget, then truncates', () => {
+    const steps = Array.from({ length: 6 }, (_, i) => `${i}:00 - ${'pour '.repeat(9).trim()}`).join('\n');
+    const d = recipePreview({ ...base, steps, description: 'x'.repeat(40) }).description;
+    expect(d).not.toContain('xxx');
+    expect(d.length).toBeLessThanOrEqual(RECIPE_PREVIEW_MAX);
+    const long = recipePreview({ ...base, steps: 'y'.repeat(400) }).description;
+    expect(long).toHaveLength(RECIPE_PREVIEW_MAX);
+    expect(long.endsWith('…')).toBe(true);
   });
 });

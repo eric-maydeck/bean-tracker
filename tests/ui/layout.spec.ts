@@ -2624,6 +2624,20 @@ export const STATES: State[] = [
           // The only small structures are the recipe's 4sy (matched) and the dismissed bbf: neither counts as "other".
           await expect(page.getByText(/other structures? with fewer than/)).toHaveCount(0);
           await expect(page.getByRole('link', { name: 'Hidden (1)' })).toHaveAttribute('href', '?view=hidden');
+          // Card: one-liner, then a steps grid (time | text, one row per pour), then temperature · notes.
+          const card = panel(page, 'Your recipes').locator('li.item').filter({ hasText: 'Seed equal pours' });
+          const steps = card.locator('.steps');
+          const nPours = await steps.locator('li').count();
+          expect(nPours).toBeGreaterThanOrEqual(4);
+          await expect(card.getByText('93 °C · Rinse the filter')).toBeVisible();
+          const low = steps.locator('.step-time.low');
+          await expect(low).toHaveText('Low');
+          const xs = await steps.locator('li > span:first-child').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+          expect(new Set(xs).size).toBe(1); // the time column is aligned
+          await low.click();
+          await expect(page.locator('.cell-tip:popover-open')).toContainText('Water low');
+          await expect(page.locator('.cell-tip:popover-open')).toContainText('Start this pour when the water is low');
+          await page.mouse.click(1, 1);
           await expect(page.getByText('Read from 24 brews with flow data · 0 low confidence · 24 with notes only')).toBeVisible();
         }
       },
@@ -2700,7 +2714,7 @@ export const STATES: State[] = [
         }
       },
       {
-        name: 'recipes-by-name-path', viewports: 'two' as const,
+        name: 'recipes-by-name-path',
         path: () => '/recipes/seed-equal-pours',
         act: async (page: Page, s: Seed) => {
           const item = page.locator(`#recipe-${s.recipes.recipeId}`);
@@ -2709,7 +2723,7 @@ export const STATES: State[] = [
           await expect.poll(async () => (await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
           // The link preview names the recipe; no note text.
           await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Seed equal pours');
-          await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /\d+ brews? · avg/);
+          await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /bloom[\s\S]*\n93 °C · Rinse the filter\n\d+ brews? · avg/);
           await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /\/recipes\/seed-equal-pours$/);
           expect((await page.goto('/recipes/no-such-recipe'))!.status()).toBe(404);
         }

@@ -7,6 +7,7 @@ import {
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
 import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
+import { recipeSteps, tempNotesLine } from '$lib/recipeSteps';
 import { describeReading, type PourReading } from '$lib/pours';
 import { parseNoteWords } from '$lib/agitation';
 import { parseRecipesView } from '$lib/recipesView';
@@ -48,6 +49,8 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
         slug: slugs.get(recipe.id)!,
         brewTime: times.get(recipe.id) ?? null,
         description: describeRecipe(recipe.def),
+        steps: recipeSteps(recipe.def),
+        tempNotes: tempNotesLine(recipe.def),
         timeline: recipeTimeline(recipe.def),
         counts: { logged: s?.logged ?? 0, match: s?.matched ?? 0, modified: s?.modified ?? 0 },
         avgRating: s?.avg ?? null,

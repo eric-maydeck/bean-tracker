@@ -64,10 +64,16 @@ export function onDeckPreview(view: 'open' | 'next', show: 'all' | 'caffeinated'
   return { title, description: lines.length ? fitList(lines, '\n', true) : view === 'open' ? 'Nothing open right now.' : 'Backlog is empty.' };
 }
 
-// One recipe's link preview: its pours and ratio, then how many brews matched and their average rating. No notes.
-export function recipePreview(r: { name: string; description: string; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
+// The budget is the project's documented one (docs/gotchas/url-state.md "Link previews"); adjust if Discord truncates.
+export const RECIPE_PREVIEW_MAX = DESCRIPTION_MAX;
+
+// One recipe's link preview: its one-liner, steps, temperature and notes, then how many brews matched and their average
+// rating. The one-liner goes first when the lot is over the budget; still over, fitList cuts it.
+export function recipePreview(r: { name: string; description: string; steps: string; tempNotes: string | null; n: number; avgRating: number | null; brewTime?: string | null }): Preview {
   const stats = join([plural(r.n, 'brew'), r.avgRating != null && `avg ${f1(r.avgRating)}`, r.brewTime && `most brews took ${r.brewTime}`]);
-  return { title: r.name, description: fitList([r.description, stats].filter(Boolean), '\n', false) };
+  const rest = [r.steps, r.tempNotes, stats].filter(Boolean) as string[];
+  const all = [r.description, ...rest].filter(Boolean).join('\n');
+  return { title: r.name, description: all.length <= RECIPE_PREVIEW_MAX ? all : fitList(rest, '\n', false, RECIPE_PREVIEW_MAX) };
 }
 
 export function recipesPreview(names: string[]): Preview {

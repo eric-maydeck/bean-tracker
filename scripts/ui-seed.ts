@@ -294,6 +294,9 @@ const readingOf = (i: number) => JSON.parse((db.prepare(`SELECT reading FROM bre
 const keyOf = (i: number) => (db.prepare(`SELECT structure_key k FROM brew_pour_readings WHERE bc_uuid = ?`).get(FLOW_UUIDS[i]) as { k: string }).k;
 const equalDef = draftFromReadings([20, 21, 22].map(readingOf), [null, null, null]);
 for (const p of equalDef.pours.slice(1, 3)) p.trigger = { kind: 'after', targetS: 20, maxS: 30 }; // timed steps: the cards draw trigger windows
+equalDef.tempC = 93;
+equalDef.notes = 'Rinse the filter';
+if (equalDef.pours.length > 3) equalDef.pours[3].trigger = { kind: 'low' }; // a low-water step: the cards show Low with its tip
 const recipeId = saveRecipe(db, { name: 'Seed equal pours', tags: [], def: equalDef });
 dismissStructure(db, keyOf(23));
 rematchBrews(db);
