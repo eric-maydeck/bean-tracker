@@ -1905,6 +1905,16 @@ export const STATES: State[] = [
     }
   },
   {
+    // Archived rows offer Unarchive (was Restore, which dropped the opened date); nothing is saved here.
+    name: 'coffees-unarchive-button', viewports: 'two',
+    path: () => '/coffees?status=archive&view=list',
+    act: async (page: Page) => {
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Unarchive' }).first()).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
+    }
+  },
+  {
     name: 'coffee-bq-import-link',
     viewports: 'two',
     path: (s: Seed) => `/coffees/${s.slugs.brew}?bq=import`,
@@ -2492,21 +2502,6 @@ export const STATES: State[] = [
         act: async (page: Page) => {
           await expect(rows(page)).toHaveCount(3);
           for (const r of await rows(page).all()) await expect(r).toContainText('looks like Seed equal pours');
-        }
-      },
-      {
-        name: 'recipes-hidden', viewports: 'two' as const,
-        path: () => '/recipes?view=hidden',
-        act: async (page: Page) => {
-          await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
-          await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
-          await expect(page.locator('li.item').first()).toContainText(/\d+ brews?/); // + " · Now matched by …" when a recipe took them over
-        }
-      },
-      {
-        name: 'recipes-bad-params', viewports: 'two' as const,
-        path: () => '/recipes?brews=zzz&view=nope',
-        act: async (page: Page) => {
           // Open: the button reads Hide brews (expanded) and closes the list.
           const hide = page.getByRole('link', { name: 'Hide brews' });
           await expect(hide).toHaveAttribute('aria-expanded', 'true');
@@ -2523,6 +2518,21 @@ export const STATES: State[] = [
           await expect(item.getByRole('heading', { name: 'Seed equal pours' })).toBeVisible();
           await expect(item.getByRole('link', { name: 'Seed equal pours' })).toHaveAttribute('href', `#recipe-${s.recipes.recipeId}`);
           expect((await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
+        }
+      },
+      {
+        name: 'recipes-hidden', viewports: 'two' as const,
+        path: () => '/recipes?view=hidden',
+        act: async (page: Page) => {
+          await expect(page.getByRole('heading', { name: 'Hidden structures' })).toBeVisible();
+          await expect(page.getByRole('button', { name: 'Show again' })).toHaveCount(1);
+          await expect(page.locator('li.item').first()).toContainText(/\d+ brews?/); // + " · Now matched by …" when a recipe took them over
+        }
+      },
+      {
+        name: 'recipes-bad-params', viewports: 'two' as const,
+        path: () => '/recipes?brews=zzz&view=nope',
+        act: async (page: Page) => {
           await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
           await expect(rows(page)).toHaveCount(0);
           await expect(page.getByRole('heading', { name: 'Hidden structures' })).toHaveCount(0);
@@ -2685,21 +2695,6 @@ export const STATES: State[] = [
     }
   },
   {
-    // The import form moved to Account; /stats keeps a pointer.
-    name: 'stats-bq-import-link', viewports: 'two',
-    path: () => '/stats?tab=bq',
-    act: async (page) => {
-      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account');
-      await expect(page.locator('input[name="file"]')).toHaveCount(0);
-    }
-  },
-  {
-    // Desktop: the nav link; phone: the More panel. Each lands on /account.
-    name: 'account-nav', viewports: 'two',
-    path: () => '/coffees',
-    act: async (page) => {
-      if (isPhone(page)) {
-  {
     // Add then remove a dose (a different one per viewport: both run against one DB): each shows a status toast.
     name: 'account-toasts', viewports: 'two',
     path: () => '/account',
@@ -2714,6 +2709,21 @@ export const STATES: State[] = [
       await expect(page.getByRole('status')).toHaveCount(1);
     }
   },
+  {
+    // The import form moved to Account; /stats keeps a pointer.
+    name: 'stats-bq-import-link', viewports: 'two',
+    path: () => '/stats?tab=bq',
+    act: async (page) => {
+      await expect(page.getByRole('main').getByRole('link', { name: 'Account', exact: true })).toHaveAttribute('href', '/account');
+      await expect(page.locator('input[name="file"]')).toHaveCount(0);
+    }
+  },
+  {
+    // Desktop: the nav link; phone: the More panel. Each lands on /account.
+    name: 'account-nav', viewports: 'two',
+    path: () => '/coffees',
+    act: async (page) => {
+      if (isPhone(page)) {
         await page.getByRole('button', { name: 'More' }).click();
         await page.locator('.bottom-tabs-more-panel').getByRole('link', { name: 'Account' }).click();
       } else {
@@ -7262,6 +7272,14 @@ export const STATES: State[] = [
       await page.keyboard.press('Escape');
       await expect(page.locator('#gear-tip-flow')).toBeHidden();
       await expect(dlg).toBeVisible();
+      // The Brew now evidence tip: a link to /on-deck, bold Yes:/No:, one line each.
+      await dlg.getByRole('button', { name: 'About Learn from similar gear?' }).click();
+      const own = page.locator('#gear-tip-ownData');
+      await expect(own.getByRole('link', { name: 'Brew now' })).toHaveAttribute('href', '/on-deck');
+      await expect(own.locator('li')).toHaveCount(3);
+      await expect(own.locator('li b')).toHaveText(['Yes:', 'No:']);
+      await page.keyboard.press('Escape');
+      await expect(own).toBeHidden();
       // Esc (twice: Chrome only lets `cancel` be prevented once per activation) and the backdrop do not close it.
       await page.keyboard.press('Escape');
       await page.keyboard.press('Escape');
@@ -7277,14 +7295,6 @@ export const STATES: State[] = [
           expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43);
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByRole('button', { name: 'Preview' })));
           expect(await top(b)).toBeGreaterThan(await top(dlg.getByLabel('Size', { exact: true })));
-      // The Brew now evidence tip: a link to /on-deck, bold Yes:/No:, one line each.
-      await dlg.getByRole('button', { name: 'About Learn from similar gear?' }).click();
-      const own = page.locator('#gear-tip-ownData');
-      await expect(own.getByRole('link', { name: 'Brew now' })).toHaveAttribute('href', '/on-deck');
-      await expect(own.locator('li')).toHaveCount(3);
-      await expect(own.locator('li b')).toHaveText(['Yes:', 'No:']);
-      await page.keyboard.press('Escape');
-      await expect(own).toBeHidden();
           const sz = await box(dlg.getByLabel('Size', { exact: true }));
           expect((await box(save)).y - (sz.y + sz.height), 'ui-rules 22: space above the action row').toBeGreaterThanOrEqual(14);
         }

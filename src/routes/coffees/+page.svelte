@@ -1,6 +1,8 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { bqImportHref } from '$lib/bqImportUrl';
+  import { coffeeToast } from '$lib/coffeeToast';
+  import { showToast } from '$lib/toast.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { usd } from '$lib/money';
@@ -273,6 +275,8 @@
     // succeeded by this point, so a failure in invalidateAll() (or
     // anything else here) must not be misattributed to the save as a
     // whole via the generic catch-all error message.
+    const toastText = coffeeToast(changes, (id) => [...data.backlog, ...data.open, ...data.archive].find((c) => c.id === id)?.coffee_name ?? 'this coffee');
+    if (toastText) showToast(toastText);
     if (onlyId != null) {
       saving = false;
       discardRow(onlyId);
@@ -572,12 +576,12 @@
         <button
           class="button button-secondary" class:button-icon={icons}
           type="button"
-          aria-pressed={pending.get(coffee.id)?.statusAction === 'restore'}
+          aria-pressed={pending.get(coffee.id)?.statusAction === 'unarchive'}
           disabled={saving}
-          onclick={() => stageStatusAction(pending, coffee.id, 'restore')}
-          use:labelTip={icons ? 'Restore' : undefined} aria-label={icons ? 'Restore' : undefined}
+          onclick={() => stageStatusAction(pending, coffee.id, 'unarchive')}
+          use:labelTip={icons ? 'Unarchive' : undefined} aria-label={icons ? 'Unarchive' : undefined}
         >
-          {#if icons}<Icon name="restore" />{:else}Restore{/if}
+          {#if icons}<Icon name="restore" />{:else}Unarchive{/if}
         </button>
       {:else}
         {#if coffee.status === 'backlog'}

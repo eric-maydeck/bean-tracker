@@ -8,7 +8,7 @@ import {
   freezeCoffee,
   thawCoffee,
   archiveCoffee,
-  restoreCoffee,
+  unarchiveCoffee,
   deleteCoffee,
   type NewCoffeeInput
 } from './coffees';
@@ -17,7 +17,7 @@ import { setRoasterImage } from './roasterImages';
 import { setRoasterWebsite } from './roasterWebsites';
 import { slugify, slugExists, generateBaseSlug, uniqueSlug, isAutoSlug } from './slug';
 
-export type CoffeeStatusAction = 'open' | 'unopen' | 'freeze' | 'thaw' | 'archive' | 'restore' | 'delete';
+export type CoffeeStatusAction = 'open' | 'unopen' | 'freeze' | 'thaw' | 'archive' | 'unarchive' | 'delete';
 
 export interface CoffeeBatchChange {
   id: number;
@@ -181,8 +181,8 @@ function applyStatusAction(db: DatabaseSync, id: number, action: CoffeeStatusAct
     case 'archive':
       archiveCoffee(db, id);
       break;
-    case 'restore':
-      restoreCoffee(db, id);
+    case 'unarchive':
+      unarchiveCoffee(db, id);
       break;
     case 'delete':
       deleteCoffee(db, id);

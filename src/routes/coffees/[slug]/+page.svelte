@@ -6,6 +6,8 @@
   import { untrack, onMount } from 'svelte';
   import { page } from '$app/state';
   import { bqImportRequested } from '$lib/bqImportUrl';
+  import { coffeeToast } from '$lib/coffeeToast';
+  import { showToast } from '$lib/toast.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
   import { browser } from '$app/environment';
@@ -206,6 +208,8 @@
     // succeeded by this point, so a failure in goto()/invalidateAll() must
     // not be misattributed to the save as a whole via the generic
     // catch-all error message.
+    const toastText = coffeeToast(changes, () => data.coffee.coffee_name);
+    if (toastText) showToast(toastText);
     pending = new SvelteMap();
     editMode = false;
     saving = false;

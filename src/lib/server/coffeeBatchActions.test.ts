@@ -126,6 +126,14 @@ describe('commitCoffeeBatch', () => {
     expect(getCoffeeById(db, id)?.status).toBe('archive');
   });
 
+  it('unarchives an opened coffee back to open', () => {
+    const { id } = createCoffee(db, sampleInput());
+    commitCoffeeBatch(db, [{ id, statusAction: 'open' }]);
+    commitCoffeeBatch(db, [{ id, statusAction: 'archive' }]);
+    commitCoffeeBatch(db, [{ id, statusAction: 'unarchive' }]);
+    expect(getCoffeeById(db, id)).toMatchObject({ status: 'open', moved_date: null });
+  });
+
   it('applies both a field edit and a status action on the same entry, fields first', () => {
     const { id, slug } = createCoffee(db, sampleInput());
     commitCoffeeBatch(db, [{ id, fields: fieldsFor(id, slug, { roaster: 'Renamed' }), statusAction: 'archive' }]);

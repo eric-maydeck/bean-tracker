@@ -342,11 +342,14 @@ export function archiveCoffee(db: DatabaseSync, id: number): void {
   ).run(now, now, id);
 }
 
-export function restoreCoffee(db: DatabaseSync, id: number): void {
+// Undo an archive: an opened coffee goes back to open (archive had forced drank = 1; it stays 1 only for a
+// coffee that was opened), an unopened one back to the backlog.
+export function unarchiveCoffee(db: DatabaseSync, id: number): void {
   const now = new Date().toISOString();
   db.prepare(
-    `UPDATE coffees SET drank = 0, status = 'backlog', moved_date = NULL, opened_date = NULL, updated_at = ?
-     WHERE id = ?`
+    `UPDATE coffees SET status = CASE WHEN opened_date IS NOT NULL THEN 'open' ELSE 'backlog' END,
+       drank = CASE WHEN opened_date IS NOT NULL THEN 1 ELSE 0 END, moved_date = NULL, updated_at = ?
+     WHERE id = ? AND status = 'archive'`
   ).run(now, id);
 }
 

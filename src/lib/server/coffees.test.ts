@@ -16,7 +16,7 @@ import {
   freezeCoffee,
   thawCoffee,
   archiveCoffee,
-  restoreCoffee,
+  unarchiveCoffee,
   deleteCoffee,
   getDistinctFieldValues,
   applyCoffeeFixes,
@@ -254,18 +254,35 @@ describe("open/freeze/thaw record the local date, not UTC's", () => {
   });
 });
 
-describe('archiveCoffee / restoreCoffee', () => {
-  it('moves a coffee to archive and back to backlog', () => {
+describe('archiveCoffee / unarchiveCoffee', () => {
+  it('moves an unopened coffee to archive and back to backlog', () => {
     const { id } = createCoffee(db, sampleInput());
     archiveCoffee(db, id);
     expect(getArchivedCoffees(db)).toHaveLength(1);
     expect(getCoffeeById(db, id)?.moved_date).not.toBeNull();
     expect(getCoffeeById(db, id)?.drank).toBe(1);
 
-    restoreCoffee(db, id);
+    unarchiveCoffee(db, id);
     expect(getBacklogCoffees(db)).toHaveLength(1);
     expect(getCoffeeById(db, id)?.moved_date).toBeNull();
     expect(getCoffeeById(db, id)?.drank).toBe(0);
+  });
+
+  it('puts an opened coffee back to open, keeping its opened date and drank = 1', () => {
+    const { id } = createCoffee(db, sampleInput());
+    openCoffee(db, id);
+    const opened = getCoffeeById(db, id)?.opened_date;
+    archiveCoffee(db, id);
+    unarchiveCoffee(db, id);
+    const c = getCoffeeById(db, id);
+    expect(getOpenCoffees(db).map((x) => x.id)).toContain(id);
+    expect(c).toMatchObject({ status: 'open', opened_date: opened, moved_date: null, drank: 1 });
+  });
+
+  it('does nothing to a coffee that is not archived', () => {
+    const { id } = createCoffee(db, sampleInput());
+    unarchiveCoffee(db, id);
+    expect(getCoffeeById(db, id)?.status).toBe('backlog');
   });
 
   it('archives an open coffee directly', () => {
