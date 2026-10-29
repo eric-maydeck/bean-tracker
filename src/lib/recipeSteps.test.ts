@@ -51,6 +51,11 @@ describe('recipeSteps', () => {
     expect(t({ speed: 'slow', agitation: 'low', tool: 'melodrip' })).toBe('pour (slow pour, low agitation, melodrip)');
     expect(t({ agitation: 'high' }, { anySpeed: true })).toBe('pour (high agitation)');
     expect(t({}, { anySpeed: true })).toBe('pour');
+    expect(t({ rateGps: [3, 8] }, { anySpeed: true })).toBe('pour');
+  });
+  it('legacy startS right after a low step resets the low anchor', () => {
+    const d = mk([rp(), rp({ trigger: { kind: 'low' } }), rp({ startS: 90 }), rp({ trigger: after(20) })]);
+    expect(recipeSteps(d).map((s) => s.time)).toEqual(['0:00', 'Low', '1:30', '1:50']);
   });
 });
 
