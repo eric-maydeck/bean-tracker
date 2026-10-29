@@ -1767,15 +1767,15 @@ export const STATES: State[] = [
       await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'This coffee', exact: true })).toBeVisible();
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
-      await expect(page.locator('.gt svg')).toBeVisible();
+      await expect(page.locator('.gt figure > svg')).toBeVisible();
     } },
   { name: 'brew-now-why-open', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?why=temp`,
     act: async (page) => {
-      await expect(page.locator('.evidence .syn li').first()).toBeVisible();
-      const rows = page.locator('.evidence tbody tr');
-      await expect(rows.first()).toBeVisible();
-      // Aligned columns: every rating cell ends at the same x, and a row without a saved recipe says so.
-      const ends = await page.locator('.evidence td.r').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().right)));
+      await expect(page.locator('.evidence p.syn')).toBeVisible();
+      await expect(page.locator('.evidence .ev-label')).toHaveText('Evidence:');
+      await expect(page.locator('.evidence .ev li').first()).toBeVisible();
+      // Ratings end every bullet at the same right edge.
+      const ends = await page.locator('.evidence .ev-r').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().right)));
       expect(new Set(ends).size).toBe(1);
       await page.locator('.why[aria-expanded="true"]').click();
       await expect(page).not.toHaveURL(/why=/);
@@ -1798,7 +1798,7 @@ export const STATES: State[] = [
       await expect(items.nth(1)).toContainText('Grind: 1.4.0 → 1.3.0');
       await expect(items.nth(1).locator('a')).toHaveAttribute('href', /#brew-\d+/);
     } },
-  { name: 'brew-now-mark-submit', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
+  { name: 'brew-now-mark-submit', viewports: 'two', path: (s) => `/coffees/${s.slugs.linked}/brew`, // another open coffee: the unopened one asks first (brew-now-open-confirm)
     act: async (page) => {
       const before = await page.locator('.marks > li').count(); // the other viewport may be marking at the same time
       await page.getByRole('button', { name: 'Brew this' }).click();
@@ -1820,16 +1820,46 @@ export const STATES: State[] = [
     } },
   { name: 'brew-now-basis-popover', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
-      await page.locator('.basis').click();
+      await page.locator('.foot .basis').click();
       const tip = page.locator('.bn-tip');
       await expect(tip).toBeVisible();
       await expect(tip.getByRole('link', { name: 'See coffees' })).toHaveAttribute('href', '#similar');
       await page.keyboard.press('Escape');
       await expect(tip).toHaveCount(0);
     } },
-  ...['card=b&pickers=b', 'card=c&pickers=a'].map((q) => ({ name: `brew-now-options-${q.replace(/[=&]/g, '-')}`, viewports: 'two' as const, // PREVIEW-TEMP
-    path: (s: Seed) => `/coffees/${s.slugs.brew}/brew?${q}`, // PREVIEW-TEMP
-    act: async (page: Page) => { await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible(); } })), // PREVIEW-TEMP
+  { name: 'brew-now-chart-tip', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const dot = page.locator('.gt-dot').first();
+      await dot.focus();
+      await page.keyboard.press('Tab');
+      await page.keyboard.press('Shift+Tab');
+      await expect(page.locator('[popover]:popover-open')).toContainText('Rating');
+      await dot.click();
+      await expect(page.locator('.brew-flash')).toHaveCount(1);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    } },
+  { name: 'brew-now-dose-ratio-chips', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const dose = page.getByRole('group', { name: 'Dose' }).getByRole('button');
+      await expect(dose.first()).toBeVisible();
+      await dose.last().click();
+      await expect(page).toHaveURL(/dose=/);
+      await expect(page.getByRole('group', { name: 'Ratio' }).getByRole('button').first()).toBeVisible();
+    } },
+  { name: 'brew-now-other-gear', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      const other = page.getByRole('button', { name: 'Other…' }).first();
+      await other.click();
+      await expect(page.locator('.pk2-other').first()).toBeVisible();
+    } },
+  { name: 'brew-now-open-confirm', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Brew this' }).click(); // no mutation: Cancel leaves the coffee unopened
+      await expect(page.getByRole('heading', { name: "This coffee isn't open yet. Open it now?" })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Open and brew' })).toBeVisible();
+      await page.getByRole('button', { name: 'Cancel' }).click();
+      await expect(page.locator('.modal')).toHaveCount(0);
+    } },
   {
     name: 'on-deck',
     path: () => '/on-deck',

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
-  import { goto } from '$app/navigation';
+  import { enhance, deserialize } from '$app/forms';
+  import { goto, invalidateAll } from '$app/navigation';
   import { page } from '$app/state';
   import { originWithFlag } from '$lib/countryFlags';
   import { formatDate } from '$lib/formatDate';
@@ -9,6 +9,7 @@
   import { brewNowParams } from './brewNowUrl';
   import { CONFIDENCE_LABEL } from '$lib/brewNowConfidence';
   import GrindTrend from './GrindTrend.svelte';
+  import { recipeSteps } from './recipeSteps';
   import FloatTip from '$lib/components/FloatTip.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
 
@@ -20,29 +21,50 @@
   const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', ratio: 'Ratio', recipe: 'Recipe', water: 'Water' };
   const c = $derived(data.coffee);
   const asc = $derived([...data.thisCoffee].sort((a, b) => a.localTime.localeCompare(b.localTime)));
-  const card = $derived(page.url.searchParams.get('card')); // PREVIEW-TEMP
-  const pk = $derived(page.url.searchParams.get('pickers')); // PREVIEW-TEMP
-  let basisEl = $state<Element | null>(null);
-  let basisOpen = $state(false);
+  // One sticky popover at a time: the basis footer's coffees, or the dose reason's plan for the rest of the bag.
+  let pop = $state<{ kind: 'basis' | 'plan'; el: Element } | null>(null);
+  const toggle = (kind: 'basis' | 'plan', el: Element) => (pop = pop?.kind === kind ? null : { kind, el });
   const BADGE = { high: 'badge-fresh', moderate: 'badge-neutral', low: 'badge-warm', guess: 'badge-warm' } as const;
 
-  function go(patch: Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null }>) {
-    const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why, ...patch }, data.defaults);
-    const qq = [q, card ? `card=${card}` : '', pk ? `pickers=${pk}` : ''].filter(Boolean).join('&'); // PREVIEW-TEMP
-    goto(page.url.pathname + (qq ? `?${qq}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
+  type Patch = Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null; dose: number | null; ratio: number | null }>;
+  function go(patch: Patch) {
+    const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why,
+      dose: data.suggestion.dose, ratio: data.suggestion.ratio, ...patch }, data.defaults); // dose / ratio in use ride along; defaults drop out
+    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
   }
-  // The chosen gear is always listed, even if it dropped out of the recent options.
-  const opts = (list: string[], cur: string | null) => (cur && !list.includes(cur) ? [cur, ...list] : list);
-  const pickers = $derived([
-    { key: 'grinder', label: 'Grinder', list: opts(data.options.grinders, data.gear.grinder), cur: data.gear.grinder },
-    { key: 'dripper', label: 'Dripper', list: opts(data.options.drippers, data.gear.dripper), cur: data.gear.dripper },
-    { key: 'filter', label: 'Filter', list: opts(data.options.filters, data.gear.filter), cur: data.gear.filter }
+  const dripperFirst = (key: string): Patch => (key === 'dripper' ? { filter: null } : {});
+  // The chosen gear is always listed, even if it dropped out of the options. Dripper and filter keep a second list
+  // behind "Other…"; it opens by itself when the pick lives there.
+  const picks = $derived([
+    { key: 'grinder', label: 'Grinder', main: data.options.grinders, other: [] as string[], cur: data.gear.grinder },
+    { key: 'dripper', label: 'Dripper', main: data.options.drippers, other: data.options.otherDrippers, cur: data.gear.dripper },
+    { key: 'filter', label: 'Filter', main: data.options.filters, other: data.options.otherFilters, cur: data.gear.filter }
   ] as const);
+  let otherOpen = $state<Record<string, boolean>>({});
+  const inOther = (p: { other: readonly string[]; cur: string | null }) => !!p.cur && p.other.includes(p.cur);
+  const mainOf = (p: { main: readonly string[]; other: readonly string[]; cur: string | null }) => (p.cur && !p.main.includes(p.cur) && !p.other.includes(p.cur) ? [p.cur, ...p.main] : [...p.main]);
+  const fitsChips = (list: string[]) => list.length >= 1 && list.length <= 4 && list.every((o) => o.length <= 16);
+  const fmtRatio = (n: number) => `1:${Math.round(n * 10) / 10}`;
+  // "enough for 3 more brews" opens the plan for the rest of the bag.
+  const planSplit = (reason: string) => reason.match(/^(.*?)(\d+ more brews?)(.*)$/) ?? null;
+  const dedupe = (lines: string[]) => [...new Set(lines)];
+
+  // Brew this on a coffee that isn't open yet asks first, then opens it and records the mark.
+  let confirmOpen = $state(false), brewForm: HTMLFormElement | undefined = $state(), openError = $state('');
+  const notOpen = $derived(c.status !== 'open' && c.status !== 'archive');
+  async function openAndBrew() {
+    openError = '';
+    const res = deserialize(await (await fetch('?/openCoffee', { method: 'POST', body: new FormData(), headers: { 'x-sveltekit-action': 'true' } })).text());
+    if (res.type !== 'success') { openError = "Couldn't open this coffee"; return; }
+    confirmOpen = false;
+    await invalidateAll();
+    brewForm?.requestSubmit();
+  }
 
   const gearText = (b: BrewRow) => [b.dripper, b.filter].filter(Boolean).join(' · ');
 </script>
 
-<svelte:document onclick={(e) => basisOpen && !(e.target as Element).closest('.basis, .bn-tip') && (basisOpen = false)} onkeydown={(e) => e.key === 'Escape' && (basisOpen = false)} />
+<svelte:document onclick={(e) => pop && !(e.target as Element).closest('.bn-trig, .bn-tip') && (pop = null)} onkeydown={(e) => e.key === 'Escape' && ((pop = null), (confirmOpen = false))} />
 <svelte:head><title>Brew now - {c.coffeeName}</title></svelte:head>
 
 {#snippet brewLine(b: BrewRow, withCoffee: boolean)}
@@ -57,26 +79,25 @@
   {#if b.notes}<span class="note">{b.notes}</span>{/if}
 {/snippet}
 
-{#snippet evidenceTable(list: BrewRow[])}
-  <div class="table-scroll">
-    <table class="ev">
-      <thead><tr><th>Date</th><th>Coffee</th><th>Grinder</th><th>Temp</th><th>Dripper / filter</th><th>Recipe</th><th class="r">Rating</th></tr></thead>
-      <tbody>
-        {#each list as b (b.id)}
-          <tr>
-            <td class="date">{formatDate(b.localTime)}</td>
-            <td>{#if b.slug}<a href="/coffees/{b.slug}">{b.coffeeName}</a>{:else}{b.coffeeName}{/if}</td>
-            <td>{[b.grinder, b.grind].filter(Boolean).join(' ') || '–'}</td>
-            <td>{b.tempC ? `${b.tempC}°C` : '–'}</td>
-            <td>{gearText(b) || '–'}</td>
-            <td class:muted={!b.recipeName}>{b.recipeName ?? 'Not using saved recipe'}</td>
-            <td class="r rate">{b.rating ?? '–'}{#if b.best}<span class="star" title="Best brew"> ★</span>{/if}</td>
-          </tr>
-          {#if b.notes}<tr class="nrow"><td colspan="7">{b.notes}</td></tr>{/if}
-        {/each}
-      </tbody>
-    </table>
-  </div>
+{#snippet evidenceList(list: BrewRow[])}
+  <ul class="ev">
+    {#each list as b (b.id)}
+      <li>
+        <div class="ev-line">
+        <span class="ev-main">
+          <span class="date">{formatDate(b.localTime)}</span>
+          <span>{#if b.slug}<a href="/coffees/{b.slug}">{b.coffeeName}</a>{:else}{b.coffeeName}{/if}</span>
+          <span>{[b.grinder, b.grind].filter(Boolean).join(' ') || 'No grinder'}</span>
+          <span>{b.tempC ? `${b.tempC}°C` : 'No temp'}</span>
+          <span>{gearText(b) || 'No dripper'}</span>
+          <span class:muted={!b.recipeName}>{b.recipeName ?? 'Not using saved recipe'}</span>
+        </span>
+        <span class="ev-r">{#if b.best}<span class="badge badge-fresh">Best</span>{/if} <strong>{b.rating ?? '–'}</strong></span>
+        </div>
+        {#if b.notes}<p class="note">{b.notes}</p>{/if}
+      </li>
+    {/each}
+  </ul>
 {/snippet}
 
 {#snippet thisCoffee()}
@@ -106,7 +127,10 @@
           {#if data.recipeHost}<span class="badge" class:badge-fresh={data.recipeOwn} class:badge-warm={!data.recipeOwn}>{data.recipeOwn ? data.recipeHost : `${data.recipeHost}, not ${c.roaster}'s site`}</span>{/if}
           <span>Searched {formatDate(rr.searchedAt)}</span>
         </p>
-        {#if rr.snippet}<blockquote class="snip">{rr.snippet}</blockquote>{/if}
+        {#if rr.snippet}
+          {@const steps = recipeSteps(rr.snippet)}
+          {#if steps}<ol class="snip steps">{#each steps as st, i (i)}<li>{st}</li>{/each}</ol>{:else}<p class="snip">{rr.snippet}</p>{/if}
+        {/if}
       {:else if rr}
         <p class="none">Nothing found {data.roasterHost ? `on ${c.roaster}'s site` : `for ${c.roaster}`}</p>
         <p class="rr-meta"><span>Searched {formatDate(rr.searchedAt)}</span></p>
@@ -125,82 +149,72 @@
   <p><a href="/coffees/{c.slug}">← {c.coffeeName}</a></p>
   <h1>Brew now</h1>
 
-  {#if card === 'b'} <!-- PREVIEW-TEMP: hero card -->
-    <section class="bn-card hero" aria-label="Coffee">
-      {#if data.image}<img class="hero-img" src={data.image.src} alt={data.image.alt} style:background-color={data.image.fill} />{/if}
-      <div class="hero-body">
-        <p class="muted">{c.roaster}</p>
-        <h2 class="hero-name">{c.coffeeName}</h2>
-        <dl class="facts">
-          {#if c.roastDate}<div><dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays} d off roast)` : ''}</dd></div>{/if}
-          {#if c.gramsLeft !== null}<div><dt>Left</dt><dd>{c.gramsLeft} g</dd></div>{/if}
-          {#if c.processing}<div><dt>Process</dt><dd>{c.processing}</dd></div>{/if}
-          {#if c.origin}<div><dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd></div>{/if}
-          {#if c.roastLevel}<div><dt>Roast</dt><dd>{c.roastLevel}</dd></div>{/if}
-        </dl>
-      </div>
-    </section>
-  {:else if card === 'c'} <!-- PREVIEW-TEMP: compact row + chips -->
-    <section class="bn-card slim" aria-label="Coffee">
-      <div class="slim-head">
-        {#if data.image}<img class="slim-img" src={data.image.src} alt={data.image.alt} style:background-color={data.image.fill} />{/if}
-        <div><h2>{c.coffeeName}</h2><p class="muted">{c.roaster}</p></div>
-      </div>
-      <p class="chips">
-        {#if c.origin}<span class="badge badge-neutral">{originWithFlag(c.origin)}</span>{/if}
-        {#if c.processing}<span class="badge badge-neutral">{c.processing}</span>{/if}
-        {#if c.roastLevel}<span class="badge badge-neutral">{c.roastLevel}</span>{/if}
-        {#if c.restDays !== null}<span class="badge badge-fresh">{c.restDays} d off roast</span>{/if}
-        {#if c.gramsLeft !== null}<span class="badge badge-neutral">{c.gramsLeft} g left</span>{/if}
-      </p>
-    </section>
-  {:else}
-  <section class="bn-card" aria-label="Coffee">
-    <h2>{c.roaster}</h2>
-    <p class="name">{c.coffeeName}</p>
-    <dl class="facts">
-      {#if c.roastDate}<div><dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays} d off roast)` : ''}</dd></div>{/if}
-      {#if c.gramsLeft !== null}<div><dt>Left</dt><dd>{c.gramsLeft} g</dd></div>{/if}
-      {#if c.processing}<div><dt>Process</dt><dd>{c.processing}</dd></div>{/if}
-      {#if c.origin}<div><dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd></div>{/if}
-      {#if c.roastLevel}<div><dt>Roast</dt><dd>{c.roastLevel}</dd></div>{/if}
-    </dl>
+  <section class="bn-card hero" aria-label="Coffee">
+    {#if data.image}<img class="hero-img" src={data.image.src} alt={data.image.alt} style:background-color={data.image.fill} />{/if}
+    <div class="hero-body">
+      <p class="muted">{c.roaster}</p>
+      <h2 class="hero-name">{c.coffeeName}</h2>
+      <dl class="facts">
+        {#if c.roastDate}<dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays} d off roast)` : ''}</dd>{/if}
+        {#if c.gramsLeft !== null}<dt>Left</dt><dd>{c.gramsLeft} g</dd>{/if}
+        {#if c.processing}<dt>Process</dt><dd>{c.processing}</dd>{/if}
+        {#if c.origin}<dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd>{/if}
+        {#if c.roastLevel}<dt>Roast</dt><dd>{c.roastLevel}</dd>{/if}
+      </dl>
+    </div>
   </section>
-  {/if}
 
-  {#if pk === 'b'} <!-- PREVIEW-TEMP: chips for short lists, compact select otherwise -->
-    <section class="bn-card pk2" aria-label="Gear">
-      {#each pickers as p (p.key)}
-        <div class="pk2-row">
-          <span class="pk2-label" id="pk-{p.key}">{p.label}</span>
-          {#if p.list.length >= 1 && p.list.length <= 4 && p.list.every((o) => o.length <= 16)}
-            <div class="pk2-chips" role="group" aria-labelledby="pk-{p.key}">
-              {#each p.list as o (o)}
-                <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => go({ [p.key]: o, ...(p.key === 'dripper' ? { filter: null } : {}) })}>{o}</button>
-              {/each}
-            </div>
+  <section class="bn-card pk2" aria-label="Gear, dose and ratio">
+    {#each picks as p (p.key)}
+      {@const main = mainOf(p)}
+      {@const showOther = (otherOpen[p.key] ?? false) || inOther(p)}
+      <div class="pk2-row">
+        <span class="pk2-label" id="pk-{p.key}">{p.label}</span>
+        <div class="pk2-chips" role="group" aria-labelledby="pk-{p.key}">
+          {#if fitsChips(main)}
+            {#each main as o (o)}
+              <button type="button" class="pk2-chip" aria-pressed={o === p.cur} onclick={() => go({ [p.key]: o, ...dripperFirst(p.key) })}>{o}</button>
+            {/each}
           {:else}
-            <select class="pk2-select" aria-labelledby="pk-{p.key}" value={p.cur ?? ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null, ...(p.key === 'dripper' ? { filter: null } : {}) })}>
-              {#if !p.list.length}<option value="">None yet</option>{/if}
-              {#each p.list as o (o)}<option value={o}>{o}</option>{/each}
+            <select class="pk2-select" aria-labelledby="pk-{p.key}" value={inOther(p) ? '' : (p.cur ?? '')} onchange={(e) => go({ [p.key]: e.currentTarget.value || null, ...dripperFirst(p.key) })}>
+              {#if !main.length}<option value="">None yet</option>{/if}
+              {#if inOther(p)}<option value="" disabled>See Other…</option>{/if}
+              {#each main as o (o)}<option value={o}>{o}</option>{/each}
             </select>
           {/if}
+          {#if p.other.length}
+            <button type="button" class="pk2-chip" aria-pressed={showOther} aria-expanded={showOther} onclick={() => (otherOpen[p.key] = !showOther)}>Other…</button>
+          {/if}
         </div>
-      {/each}
-    </section>
-  {:else}
-  <section class="bn-card pickers" aria-label="Gear">
-    {#each pickers as p (p.key)}
-      <label>
-        <span>{p.label}</span>
-        <select value={p.cur ?? ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null, ...(p.key === 'dripper' ? { filter: null } : {}) })}>
-          {#if !p.list.length}<option value="">None yet</option>{/if}
-          {#each p.list as o (o)}<option value={o}>{o}</option>{/each}
-        </select>
-      </label>
+        {#if showOther}
+          <select class="pk2-select pk2-other" aria-label="Other {p.label.toLowerCase()}s" value={inOther(p) ? (p.cur ?? '') : ''} onchange={(e) => go({ [p.key]: e.currentTarget.value || null, ...dripperFirst(p.key) })}>
+            {#if !inOther(p)}<option value="" disabled>Choose…</option>{/if}
+            {#each p.other as o (o)}<option value={o}>{o}</option>{/each}
+          </select>
+        {/if}
+      </div>
     {/each}
+    {#if data.options.doses.length}
+      <div class="pk2-row">
+        <span class="pk2-label" id="pk-dose">Dose</span>
+        <div class="pk2-chips" role="group" aria-labelledby="pk-dose">
+          {#each data.options.doses as d (d)}
+            <button type="button" class="pk2-chip" aria-pressed={d === data.suggestion.dose} onclick={() => go({ dose: d })}>{d} g</button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+    {#if data.options.ratios.length}
+      <div class="pk2-row">
+        <span class="pk2-label" id="pk-ratio">Ratio</span>
+        <div class="pk2-chips" role="group" aria-labelledby="pk-ratio">
+          {#each data.options.ratios as r (r)}
+            <button type="button" class="pk2-chip" aria-pressed={r === data.suggestion.ratio} onclick={() => go({ ratio: r })}>{fmtRatio(r)}</button>
+          {/each}
+        </div>
+      </div>
+    {/if}
   </section>
-  {/if}
 
   {#if data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 
@@ -214,14 +228,17 @@
             <span class="lab">{LABEL[r.setting]}</span>
             {#if r.value !== null}
               <strong class="val">{r.value}</strong>
-              {#if r.link && (r.setting !== 'recipe' || data.isAdmin)}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
+              {#if r.link}<a class="more" href={r.link}>{r.setting === 'recipe' ? 'Recipe' : 'Profile'}</a>{/if}
               <span class="badge rowconf {BADGE[r.confidence]}">{CONFIDENCE_LABEL[r.confidence]}</span>
             {:else}
               <span class="none">{r.reason}</span>
             {/if}
           </div>
           {#if r.value !== null}
-            <p class="why-plain">{r.reason}
+            <p class="why-plain">
+              {#if r.setting === 'dose' && data.suggestion.dosePlan && planSplit(r.reason)}
+                {@const m = planSplit(r.reason)!}{m[1]}<button type="button" class="basis bn-trig" aria-expanded={pop?.kind === 'plan'} onclick={(e) => toggle('plan', e.currentTarget)}>{m[2]}</button>{m[3]}
+              {:else}{r.reason}{/if}
               {#if r.evidence.length}
                 <button type="button" class="why" aria-expanded={open} onclick={() => go({ why: open ? null : r.setting })}>{open ? 'Hide brews' : 'Show brews'}</button>
               {/if}
@@ -239,8 +256,8 @@
           {/if}
           {#if open}
             <div class="evidence">
-              {#if r.synopsis.length}<ul class="syn">{#each r.synopsis as line (line)}<li>{line}</li>{/each}</ul>{/if}
-              {@render evidenceTable(r.evidence)}
+              {#if r.synopsis.length}<p class="syn">{dedupe(r.synopsis).join(' ')}</p>{/if}
+              {#if r.evidence.length}<p class="ev-label">Evidence:</p>{@render evidenceList(r.evidence)}{/if}
             </div>
           {/if}
         </li>
@@ -248,22 +265,29 @@
     </ul>
     <p class="foot">
       {#if data.suggestion.basisCoffees.length}
-        <button type="button" class="basis" bind:this={basisEl} aria-expanded={basisOpen} onclick={() => (basisOpen = !basisOpen)}>{data.suggestion.basis}</button>
+        <button type="button" class="basis bn-trig" aria-expanded={pop?.kind === 'basis'} onclick={(e) => toggle('basis', e.currentTarget)}>{data.suggestion.basis}</button>
       {:else}{data.suggestion.basis}{/if}
       {#if data.suggestion.lastNote}<br />Last note: {data.suggestion.lastNote}{/if}
     </p>
-    {#if basisOpen && basisEl}
-      <FloatTip anchor={basisEl} reveal onclose={() => (basisOpen = false)}>
+    {#if pop}
+      <FloatTip anchor={pop.el} reveal onclose={() => (pop = null)}>
         <div class="bn-tip">
-          <TipBody tip={{ title: 'Based on', rows: data.suggestion.basisCoffees.map((b) => [`${b.name}, ${b.roaster}`, `${b.brews} ${b.brews === 1 ? 'brew' : 'brews'}`]) }} />
-          <a class="tip-link" href="#similar" onclick={() => (basisOpen = false)}>See coffees</a>
+          {#if pop.kind === 'basis'}
+            <TipBody tip={{ title: 'Based on', rows: data.suggestion.basisCoffees.map((b) => [`${b.name}, ${b.roaster}`, `${b.brews} ${b.brews === 1 ? 'brew' : 'brews'}`]) }} />
+            <a class="tip-link" href="#similar" onclick={() => (pop = null)}>See coffees</a>
+          {:else if data.suggestion.dosePlan}
+            {@const plan = data.suggestion.dosePlan}
+            <TipBody tip={{ title: 'Rest of the bag', lines: [`${plan.brews.map((d) => `${d} g`).join(' + ')}`, `${Math.round(plan.leftover * 10) / 10} g left over`] }} />
+          {/if}
         </div>
       </FloatTip>
     {/if}
     {#if data.isAdmin}
-      <form class="mark" method="POST" action="?/brewThis" use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); marked = result.type === 'success'; } finally { submitting = false; } }; }}>
+      <form class="mark" method="POST" action="?/brewThis" bind:this={brewForm} use:enhance={() => { submitting = true; return async ({ result, update }) => { try { await update({ reset: false }); marked = result.type === 'success'; } finally { submitting = false; } }; }}>
         {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
-        <button type="submit" class="button" disabled={submitting}>Brew this</button>
+        {#if data.suggestion.dose !== null}<input type="hidden" name="dose" value={data.suggestion.dose} />{/if}
+        {#if data.suggestion.ratio !== null}<input type="hidden" name="ratio" value={data.suggestion.ratio} />{/if}
+        <button type={notOpen ? 'button' : 'submit'} class="button" disabled={submitting} onclick={notOpen ? () => (confirmOpen = true) : undefined}>Brew this</button>
         {#if marked}<span role="status">Marked — your next BQ brew of this coffee will be compared</span>{/if}
       </form>
     {/if}
@@ -321,19 +345,27 @@
   {#if !data.neverBrewedRoaster}{@render roasterRecipe()}{/if}
 </div>
 
+{#if confirmOpen}
+  <div class="modal-backdrop">
+    <div class="modal bn-confirm" role="dialog" aria-modal="true" aria-labelledby="bn-open-title">
+      <h2 id="bn-open-title">This coffee isn't open yet. Open it now?</h2>
+      {#if openError}<p role="alert" class="badge badge-urgent">{openError}</p>{/if}
+      <div class="action-buttons">
+        <button class="button" type="button" onclick={openAndBrew}>Open and brew</button>
+        <button class="button button-secondary" type="button" onclick={() => (confirmOpen = false)}>Cancel</button>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   .bn { max-width: 56rem; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-4); }
   .bn > p, .bn > h1 { margin: 0; }
   .bn-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); box-shadow: var(--shadow); padding: var(--space-4); }
   .name { margin: 0 0 var(--space-3); font-weight: 600; }
-  .facts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: 0; }
-  .facts div { display: flex; gap: var(--space-2); }
   dt { color: var(--color-text-muted); }
   dd { margin: 0; }
-  .pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-3); }
-  .pickers label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 0.85rem; color: var(--color-text-muted); }
-  .pickers select { min-height: 44px; width: 100%; }
-  .rows, .brews, .evidence, .ref { list-style: none; margin: 0; padding: 0; }
+  .rows, .brews, .ref { list-style: none; margin: 0; padding: 0; }
   .rows > li { padding: var(--space-3) 0; border-top: 1px solid var(--color-border); }
   .rows > li:first-child { border-top: 0; padding-top: 0; }
   .rowhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
@@ -346,8 +378,6 @@
   .why-plain { margin: 0; color: var(--color-text-muted); font-size: 0.9rem; padding: var(--space-1) 0; }
   .ref { color: var(--color-text-muted); font-size: 0.9rem; }
   .evidence { margin-top: var(--space-2); background: var(--color-bg); border-radius: var(--radius); padding: var(--space-2) var(--space-3); }
-  .evidence li, .brews li { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--color-border); font-size: 0.9rem; }
-  .evidence li:first-child, .brews li:first-child { border-top: 0; }
   .brews li.best { font-weight: 600; }
   .date { color: var(--color-text-muted); }
   .rate { font-weight: 600; }
@@ -356,7 +386,6 @@
   .mark .button { min-height: 44px; }
   .rr form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
   .rr .button { min-height: 44px; }
-  .rr .snip { overflow-wrap: anywhere; }
   .bias { margin: 0 0 var(--space-2); }
   .foot { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
   .foot.host { margin-top: 0; }
@@ -366,34 +395,20 @@
   .rowconf { margin-left: auto; }
   .others { margin: var(--space-1) 0 0; font-size: 0.9rem; color: var(--color-text-muted); display: flex; flex-wrap: wrap; gap: 0 var(--space-3); }
   .others strong { color: var(--color-text); font-weight: 600; }
-  .syn { margin: 0 0 var(--space-2); padding-left: 1.1rem; font-size: 0.9rem; }
-  .syn li { margin: var(--space-1) 0; }
-  .ev { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-  .ev th { text-align: left; font-weight: 500; color: var(--color-text-muted); padding: var(--space-1) var(--space-3) var(--space-1) 0; white-space: nowrap; }
-  .ev td { padding: var(--space-2) var(--space-3) var(--space-2) 0; border-top: 1px solid var(--color-border); white-space: nowrap; vertical-align: baseline; }
-  .ev .r { text-align: right; padding-right: 0; }
-  .ev td.muted { color: var(--color-text-muted); }
-  .ev .nrow td { border-top: 0; padding-top: 0; white-space: normal; color: var(--color-text-muted); font-style: italic; }
-  .star { color: var(--color-accent); }
   .basis { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; min-height: 44px; }
   .bn-tip { display: flex; flex-direction: column; gap: var(--space-2); }
   .bn-tip :global(.tip-link) { align-self: flex-start; }
   .marks form { display: contents; }
-  .marks .button { min-height: 44px; }
   .rr-title { font-weight: 600; overflow-wrap: anywhere; }
   .rr-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin: var(--space-1) 0 var(--space-2); font-size: 0.85rem; color: var(--color-text-muted); }
-  .rr .snip { margin: 0 0 var(--space-2); padding-left: var(--space-3); border-left: 3px solid var(--color-border); color: var(--color-text-muted); font-size: 0.9rem; }
-  /* PREVIEW-TEMP card + picker options */
+  .rr .snip { margin: 0 0 var(--space-2); padding: 0 0 0 var(--space-3); border-left: 3px solid var(--color-border); color: var(--color-text-muted); font-size: 0.9rem; overflow-wrap: anywhere; }
+  .rr ol.snip { padding-left: calc(var(--space-3) + 1.2rem); }
+  .rr ol.snip li { margin: var(--space-1) 0; }
   .hero { display: flex; gap: var(--space-4); align-items: flex-start; }
   .hero-img { width: 7rem; height: 7rem; object-fit: contain; border-radius: var(--radius); flex: none; }
   .hero-body { min-width: 0; flex: 1; }
   .hero-body p { margin: 0; }
   .hero-name { font-size: 1.25rem; margin: 0 0 var(--space-3); }
-  .slim-head { display: flex; gap: var(--space-3); align-items: center; }
-  .slim-head h2 { margin: 0; }
-  .slim-head p { margin: 0; }
-  .slim-img { width: 3.5rem; height: 3.5rem; object-fit: contain; border-radius: var(--radius); flex: none; }
-  .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: var(--space-3) 0 0; }
   .pk2 { display: flex; flex-direction: column; gap: var(--space-3); }
   .pk2-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
   .pk2-label { width: 4.5rem; font-size: 0.85rem; color: var(--color-text-muted); }
@@ -401,4 +416,21 @@
   .pk2-chip { min-height: 44px; padding: 0 var(--space-4); border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); color: var(--color-text); font: inherit; white-space: nowrap; cursor: pointer; }
   .pk2-chip[aria-pressed='true'] { background: var(--color-accent); border-color: var(--color-accent); color: var(--color-accent-contrast); }
   .pk2-select { flex: 1; min-width: 10rem; min-height: 44px; border-radius: 999px; }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-4); margin: 0; }
+  .brews li { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--color-border); font-size: 0.9rem; }
+  .brews li:first-child { border-top: 0; }
+  .syn { margin: 0 0 var(--space-2); font-size: 0.9rem; }
+  .ev-label { margin: 0; font-size: 0.85rem; font-weight: 600; }
+  .ev { margin: 0; padding-left: 1.1rem; list-style: disc; font-size: 0.9rem; }
+  .ev li { padding: var(--space-1) 0; }
+  .ev .note { margin: 0; flex-basis: auto; }
+  .ev-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); }
+  .ev-main { display: flex; flex-wrap: wrap; gap: 0 var(--space-2); flex: 1; min-width: 0; }
+  .ev-main > span + span::before { content: '·'; margin-right: var(--space-2); color: var(--color-text-muted); }
+  .ev-main .muted { color: var(--color-text-muted); }
+  .ev-r { margin-left: auto; white-space: nowrap; }
+  .marks li { align-items: center; gap: var(--space-2) var(--space-3); }
+  .marks .badge { white-space: nowrap; }
+  .marks .button { min-height: 44px; margin: 0; }
+  .bn-confirm { max-width: 24rem; }
 </style>

@@ -5,7 +5,7 @@ import { addMark, deleteMark, marksFor, biasLine } from '$lib/server/brewNow/out
 import { getRoasterWebsite } from '$lib/server/roasterWebsites';
 import { getDb } from '$lib/server/db';
 import { getRedirectSlug, getCoffeeBySlug, openCoffee } from '$lib/server/coffees';
-import { coffeeImage } from '$lib/coffeeImage'; // PREVIEW-TEMP
+import { coffeeImage } from '$lib/coffeeImage';
 import { localToday } from '$lib/server/localToday';
 import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
 import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '$lib/server/brewNow/suggest';
@@ -64,7 +64,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   // R9: brew notes are private; strip them server-side for anyone not signed in.
   const strip = <T extends { notes: string | null }>(b: T): T => (locals.isAdmin ? b : { ...b, notes: null });
   return {
-    image: coffeeImage(getCoffeeBySlug(db, params.slug)!, ''), // PREVIEW-TEMP
+    image: coffeeImage(getCoffeeBySlug(db, params.slug)!, ''),
     coffee, gear, defaults, options, why: view.why,
     suggestion: locals.isAdmin ? sug : { ...sug, lastNote: null, rows: sug.rows.map((r) => ({ ...r, evidence: r.evidence.map(strip) })) },
     thisCoffee: [...mine.filter((r) => r.best), ...mine.filter((r) => !r.best)].map(strip), // Best brew pinned
