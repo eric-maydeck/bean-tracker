@@ -32,7 +32,7 @@ interface State {
 }
 
 // The gear edit form's grid (wide dialogs): Save/Cancel fill the cell after the last field, Preview/Discard share their row and
-// Image URL sits on the row above. Measured on the dripper's 10 fields (Size + Brew now evidence fill the last row, the buttons sit on the row below).
+// Image URL sits on the row above. Measured on the dripper's 10 fields (Size + Learn from similar gear? fill the last row, the buttons sit on the row below).
 async function expectEditAligned(page: Page) {
   const dlg = page.locator('dialog.trophy-dialog');
   const bx = async (l: Locator) => (await l.boundingBox())!;
@@ -7163,8 +7163,8 @@ export const STATES: State[] = [
       expect(await page.evaluate(() => document.activeElement?.matches('input') ?? false)).toBe(false);
       await expect(dlg.locator('.detail-body .stat-grid')).toHaveCount(0);
       await expect(page).toHaveURL(/card=dripper-v60$/);
-      // "?" tips on Shape, Material, Flow, Size and Brew now evidence only; one opens in the site's tip look and focuses no input.
-      for (const n of ['Shape', 'Material', 'Flow', 'Size', 'Brew now evidence']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
+      // "?" tips on Shape, Material, Flow, Size and Learn from similar gear? only; one opens in the site's tip look and focuses no input.
+      for (const n of ['Shape', 'Material', 'Flow', 'Size', 'Learn from similar gear?']) await expect(dlg.getByRole('button', { name: `About ${n}` })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       const tipBtn = dlg.getByRole('button', { name: 'About Flow' });
       if (phone) expect((await tipBtn.boundingBox())!.width).toBeGreaterThanOrEqual(43);
@@ -7343,7 +7343,7 @@ export const STATES: State[] = [
       // Filter: 8 fields, a full last row (Size, Flow): Save is below Flow.
       await page.goto('/insights?tab=gear&card=filter-cafec-abaca');
       await dlg.getByRole('button', { name: 'Edit' }).click();
-      for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Brew now evidence']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
+      for (const n of ['Shape', 'Material', 'Size', 'Flow', 'Learn from similar gear?']) await expect(dlg.getByRole('button', { name: `About ${n}`, exact: true })).toBeVisible();
       await expect(dlg.getByRole('button', { name: /^About / })).toHaveCount(5);
       await check('Size', 'Flow', true); // Save/Cancel right-aligned on a row of their own, level with Preview
     } },

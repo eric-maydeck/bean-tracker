@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { createDb, applySchema, getHouseholdSize, setHouseholdSize, InvalidHouseholdSizeError } from './db';
 import { schema } from './schema';
+import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear';
 import { createSubscription, deleteSubscription } from './subscriptions';
 
 describe('createDb', () => {
@@ -357,6 +358,8 @@ describe('ownData gear migration', () => {
     ins.run('dripper', 'Graycano', '{"shape":"Conical"}');
     ins.run('filter', 'Sibarist Fast', '{}');
     ins.run('dripper', 'Other', '{}');
+    ins.run('dripper', 'Old own', '{"ownData":"Own brews only"}');
+    ins.run('filter', 'Old similar', '{"ownData":"Similar gear too"}');
   };
   const fields = (db: ReturnType<typeof createDb>, kind: string, name: string) =>
     JSON.parse((db.prepare(`SELECT fields FROM gear_details WHERE kind = ? AND name = ?`).get(kind, name) as { fields: string }).fields);
@@ -366,12 +369,14 @@ describe('ownData gear migration', () => {
     const path = join(dir, 't.db');
     const db = createDb(path); // no rows yet: marker set, nothing thrown
     seed(db);
-    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10b'`);
+    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10c'`);
     db.close();
     const db2 = createDb(path);
-    expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: 'This gear only' });
-    expect(fields(db2, 'filter', 'Sibarist Fast')).toEqual({ ownData: 'This gear only' });
+    expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: OWN_DATA_ONLY });
+    expect(fields(db2, 'filter', 'Sibarist Fast')).toEqual({ ownData: OWN_DATA_ONLY });
     expect(fields(db2, 'dripper', 'Other')).toEqual({});
+    expect(fields(db2, 'dripper', 'Old own')).toEqual({ ownData: OWN_DATA_ONLY }); // earlier wording carried over
+    expect(fields(db2, 'filter', 'Old similar')).toEqual({ ownData: OWN_DATA_SIMILAR });
     db2.prepare(`UPDATE gear_details SET fields = '{}' WHERE name = 'Graycano'`).run();
     db2.close();
     expect(fields(createDb(path), 'dripper', 'Graycano')).toEqual({});

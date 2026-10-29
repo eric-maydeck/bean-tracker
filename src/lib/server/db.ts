@@ -9,6 +9,7 @@ import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscript
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
 import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER } from './subscriptionLinks.ts';
 import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
+import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear.ts';
 import { generateBaseSlug, uniqueSlug } from './slug.ts';
 import { applyRoasterImageDefaults } from './roasterImages.ts';
 import { ROASTER_IMAGE_DEFAULTS, ROASTER_IMAGE_DEFAULTS_MARKER, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER } from './roasterImageDefaults.ts';
@@ -164,13 +165,17 @@ export function applySchema(db: DatabaseSync): void {
     );
   }
   // Brew now: the user's own dripper/filter suggest from their own brews only. Once; a later edit sticks.
-  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10b')) {
+  if (!db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get('brew_now_own_data_2026_10c')) {
+    // Unshipped wording changes: carry any earlier values over to the current strings.
+    const rename = db.prepare(`UPDATE gear_details SET fields = json_set(fields, '$.ownData', ?) WHERE json_extract(fields, '$.ownData') IN (?, ?)`);
+    rename.run(OWN_DATA_ONLY, 'This gear only', 'Own brews only');
+    rename.run(OWN_DATA_SIMILAR, 'Similar gear too', 'Similar gear');
     const set = db.prepare(
-      `UPDATE gear_details SET fields = json_set(fields, '$.ownData', 'This gear only') WHERE kind = ? AND name = ?`
+      `UPDATE gear_details SET fields = json_set(fields, '$.ownData', '${OWN_DATA_ONLY.replace(/'/g, "''")}') WHERE kind = ? AND name = ?`
     );
     set.run('dripper', 'Graycano');
     set.run('filter', 'Sibarist Fast');
-    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('brew_now_own_data_2026_10b', new Date().toISOString());
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run('brew_now_own_data_2026_10c', new Date().toISOString());
   }
   migrateStatusValues(db);
   dropHandSetRates(db);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GEAR_KINDS, fieldsFor, parseGearValues, shownTrophies, type GearKind } from './gear';
+import { GEAR_KINDS, fieldsFor, parseGearValues, OWN_DATA_ONLY, shownTrophies, type GearKind } from './gear';
 
 const t = (kind: GearKind, name: string, key: string, retired = false) => ({ kind, name, key, retired });
 const list = [t('dripper', 'V60', 'dripper-v60'), t('dripper', 'Old', 'dripper-old', true), t('grinder', 'ZP6', 'grinder-zp6', true), t('filter', 'Abaca', 'filter-abaca')];
@@ -57,8 +57,8 @@ describe('parseGearValues', () => {
 
 describe('ownData', () => {
   it('is a select on dripper and filter only', () => {
-    expect(parseGearValues('dripper', { ownData: 'This gear only' })).toEqual({ values: { ownData: 'This gear only' } });
+    expect(parseGearValues('dripper', { ownData: OWN_DATA_ONLY })).toEqual({ values: { ownData: OWN_DATA_ONLY } });
     expect('error' in parseGearValues('filter', { ownData: 'bogus' })).toBe(true);
-    expect(parseGearValues('grinder', { ownData: 'This gear only' })).toEqual({ values: {} });
+    expect(parseGearValues('grinder', { ownData: OWN_DATA_ONLY })).toEqual({ values: {} });
   });
 });
