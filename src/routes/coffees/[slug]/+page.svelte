@@ -7,7 +7,7 @@
   import { page } from '$app/state';
   import { bqImportRequested, editRequested } from '$lib/bqImportUrl';
   import { writeUrlParams } from '$lib/urlState';
-  import { coffeeToast, reverseChanges, undoChanges } from '$lib/coffeeToast';
+  import { coffeeToast, commitChanges, reverseChanges, undoChanges } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import { enhance } from '$app/forms';
   import { goto, invalidateAll, beforeNavigate, afterNavigate } from '$app/navigation';
@@ -58,9 +58,22 @@
     clonePrefillData = prefill;
   }
 
+  // Undo for the add/clone prompt: delete the new coffee (only when its id came back).
+  let addedId = $state<number | null>(null);
+  const undoAdded = $derived(addedId ? async () => {
+    try {
+      await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
+      await invalidateAll();
+      showToast('Undone.');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not undo that.');
+    }
+  } : undefined);
+
   // Add and Clone both stay here and show the Open/Close popup.
   function cloneCreated() {
     addedSlug = (form && 'slug' in form ? form.slug : null) ?? null;
+    addedId = form && 'id' in form && typeof form.id === 'number' && form.id > 0 ? form.id : null;
     clonePrefillData = null;
   }
 
@@ -551,7 +564,7 @@
   </div>
 {/if}
 
-<AddedToast bind:slug={addedSlug} />
+<AddedToast bind:slug={addedSlug} undo={undoAdded} />
 
 <style>
   /* Timing: children 1-5 are Roast date, Days since roast, Drink after, Recommended rest, Drink before, so two columns

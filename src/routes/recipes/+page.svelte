@@ -56,7 +56,7 @@
 </script>
 
 <svelte:head>
-  <title>Bean Tracker - Recipes</title>
+  <title>Bean Tracker - {focus ? focus.recipe.name : 'Recipes'}</title>
 </svelte:head>
 <PreviewMeta preview={focus ? recipePreview({ name: focus.recipe.name, description: focus.description, n: focus.n, avgRating: focus.avgRating, brewTime: focus.brewTime ? fmtRange(focus.brewTime) : null }) : recipesPreview(data.recipes.map((r: { recipe: { name: string } }) => r.recipe.name))} />
 

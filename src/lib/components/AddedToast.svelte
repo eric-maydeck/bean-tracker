@@ -3,7 +3,8 @@
   // restarts it): 3s fully visible (5s on touch screens, which can't hover),
   // then a 400ms fade, then gone. Pointer or focus inside pauses the countdown
   // (and cancels a fade); leaving resumes it with at least 2s left.
-  let { slug = $bindable(null) }: { slug?: string | null } = $props();
+  // `undo` (a clone/add's reverse: delete it) adds an Undo button; it runs, then the prompt closes.
+  let { slug = $bindable(null), undo }: { slug?: string | null; undo?: () => Promise<unknown> | unknown } = $props();
 
   let fading = $state(false);
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -48,6 +49,7 @@
     <div class="added-toast" class:fading role="status" onmouseenter={pause} onmouseleave={resume} onfocusin={pause} onfocusout={resume}>
       Coffee added!
       <a class="button button-ghost" href="/coffees/{slug}" onclick={() => (slug = null)}>Open</a>
+      {#if undo}<button class="button button-ghost" type="button" onclick={async () => { slug = null; await undo(); }}>Undo</button>{/if}
       <button class="button button-ghost" type="button" onclick={() => (slug = null)}>Close</button>
     </div>
   {/key}

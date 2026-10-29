@@ -5,13 +5,16 @@ import { bcLocalTime, addDays } from '../insights/time';
 import { localToday } from '../localToday';
 import { getGearDetails } from '../gearDetails';
 import { OWN_DATA_ONLY } from '$lib/gear';
+import { recipeSlugs } from '$lib/recipeSlug';
+import { listRecipes } from '../recipes';
 
+// recipeSlug: the /recipes/<slug> path part, from the one server-side slug source (recipeSlugs).
 export interface BrewRow {
   id: number; coffeeId: number; slug: string; roaster: string; coffeeName: string;
   origin: string | null; processGroup: ProcessGroup; roastLevel: string | null; localTime: string; restDays: number | null;
   grinder: string | null; grind: string | null; grindNum: number | null; dripper: string | null; filter: string | null;
   tempC: number | null; dose: number | null; waterG: number | null; water: string | null;
-  recipeId: number | null; recipeName: string | null; rating: number | null; best: boolean; notes: string | null;
+  recipeId: number | null; recipeName: string | null; recipeSlug?: string | null; rating: number | null; best: boolean; notes: string | null;
   decaf: boolean; grinderArchived: boolean; methodArchived: boolean; // archived in BQ: still evidence, never offered
 }
 // Pool key: 'cone' / 'any' or the name itself (own-data gear, or a dripper with no shape on file).
@@ -50,6 +53,7 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
      LEFT JOIN recipes rec ON rec.id = x.recipe_id
      ORDER BY b.bc_created_at, b.id`
   ).all() as unknown as Raw[];
+  const slugs = recipeSlugs(listRecipes(db));
   return rows.map((r) => {
     const localTime = bcLocalTime(r.at);
     const grind = r.grind?.trim() || null;
@@ -59,7 +63,7 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
       restDays: restDays(r.roast_date, r.fs, r.fe, localTime.slice(0, 10)),
       grinder: r.grinder, grind, grindNum: grindValue(grind), ...parseMethod(r.method, r.tools),
       tempC: pos(r.temp), dose: pos(r.dose), waterG: pos(r.water_g), water: r.water,
-      recipeId: r.recipe_id, recipeName: r.recipe_name, rating: pos(r.rating), best: r.best === 1, notes: r.notes?.trim() || null,
+      recipeId: r.recipe_id, recipeName: r.recipe_name, recipeSlug: r.recipe_id === null ? null : slugs.get(r.recipe_id) ?? null, rating: pos(r.rating), best: r.best === 1, notes: r.notes?.trim() || null,
       decaf: r.decaf === 1, grinderArchived: r.grinder_archived === 1, methodArchived: r.method_archived === 1
     };
   });

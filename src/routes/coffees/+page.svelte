@@ -1,7 +1,7 @@
 <script lang="ts">
   import { labelTip } from '$lib/components/labelTip';
   import { bqImportHref } from '$lib/bqImportUrl';
-  import { coffeeToast, reverseChanges, undoChanges } from '$lib/coffeeToast';
+  import { coffeeToast, commitChanges, reverseChanges, undoChanges } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -177,8 +177,20 @@
   }
 
   let addedSlug = $state<string | null>(null);
+  // Undo for the add/clone prompt: delete the new coffee (only when its id came back).
+  let addedId = $state<number | null>(null);
+  const undoAdded = $derived(addedId ? async () => {
+    try {
+      await commitChanges([{ id: addedId!, statusAction: 'delete' }]);
+      await invalidateAll();
+      showToast('Undone.');
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not undo that.');
+    }
+  } : undefined);
   function added() {
     addedSlug = (form && 'slug' in form ? form.slug : null) ?? null;
+    addedId = form && 'id' in form && typeof form.id === 'number' && form.id > 0 ? form.id : null;
     closeExpanded();
   }
 
@@ -709,7 +721,7 @@
   </div>
 {/if}
 
-<AddedToast bind:slug={addedSlug} />
+<AddedToast bind:slug={addedSlug} undo={undoAdded} />
 
 <CollapsibleBar>
 {#snippet children()}

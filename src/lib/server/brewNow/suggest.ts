@@ -2,7 +2,6 @@ import { weightedMedian, spearman } from '../insights/stats';
 import { daysBetween } from '../insights/time';
 import { normalizeRoastLevel } from '../insights/facts';
 import { processGroup } from '$lib/processGroups';
-import { slugify } from '$lib/slugify';
 import { recipeHref } from '$lib/recipeSlug';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
 import type { Confidence } from '$lib/brewNowConfidence';
@@ -318,7 +317,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
 
   const rowsOut = [
     grindRow(), tempRow, doseRow, ratioRow,
-    groupRow('recipe', (r) => r.recipeId, (r) => r.recipeName ?? '', (r) => recipeHref(slugify(r.recipeName ?? ''))),
+    groupRow('recipe', (r) => r.recipeId, (r) => r.recipeName ?? '', (r) => recipeHref(r.recipeSlug ?? '')),
     groupRow('water', (r) => r.water?.trim() || null, (r) => r.water!, (r) => `/insights?tab=water&water=${encodeURIComponent(r.water!)}`)
   ];
 

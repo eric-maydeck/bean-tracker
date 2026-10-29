@@ -47,6 +47,18 @@ describe('loadBrewRows', () => {
       decaf: false, grinderArchived: false, methodArchived: false });
     expect(rows[1]).toMatchObject({ rating: null, best: false, recipeId: null, recipeName: null, water: null });
   });
+  it('resolves the recipe slug server-side, with the id suffix on a clash', () => {
+    expect(rows[0].recipeSlug).toBe('rec-one');
+    // "Rec-One" slugs the same as "Rec One": the later recipe gets its id.
+    db.prepare(`INSERT INTO recipes (id, name, definition, created_at, updated_at) VALUES (7, 'Rec-One', '{}', 'x', 'x')`).run();
+    db.prepare(`INSERT INTO brew_recipe_matches (brew_id, recipe_id, how) VALUES (2, 7, 'match')`).run();
+    const again = loadBrewRows(db);
+    expect(again[0].recipeSlug).toBe('rec-one');
+    expect(again[1].recipeSlug).toBe('rec-one-7');
+    db.prepare(`DELETE FROM brew_recipe_matches WHERE brew_id = 2`).run();
+    db.prepare(`DELETE FROM recipes WHERE id = 7`).run();
+  });
+
   it('grindNum is null for blank or non-numeric grinds; archived flags set', () => {
     expect(rows[1].grindNum).toBeNull();
     expect(rows[2].grindNum).toBeNull();
