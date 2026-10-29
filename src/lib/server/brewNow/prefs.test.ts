@@ -80,3 +80,13 @@ describe('editBrewList', () => {
     expect(getBrewDoses(db)).toEqual([18]);
   });
 });
+
+describe('editBrewList duplicates', () => {
+  it('adding an existing value, or removing a missing one, is an error, not a silent success', () => {
+    const db = createDb(':memory:');
+    expect(editBrewList(db, 'doses', 'add', '18')).toBe('Already in your list.');
+    expect(editBrewList(db, 'ratios', 'add', '16')).toBe('Already in your list.');
+    expect(editBrewList(db, 'doses', 'remove', '19')).toBe('Already removed.');
+    expect(getBrewDoses(db)).toEqual([15, 18, 20]);
+  });
+});

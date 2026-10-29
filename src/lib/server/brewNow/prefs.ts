@@ -71,13 +71,15 @@ export function editBrewList(db: DatabaseSync, name: ListName, op: 'add' | 'remo
   const n = Number(raw.trim());
   const current = name === 'doses' ? getBrewDoses(db) : getBrewRatios(db).ratios;
   if (op === 'remove') {
+    if (!current.includes(n)) return 'Already removed.';
     const next = current.filter((x) => x !== n);
     if (!next.length) return 'Keep at least one';
     store(db, name, next);
     return;
   }
   if (!raw.trim() || !Number.isFinite(n)) return `Enter a ${LISTS[name].noun}`;
-  if (!current.includes(n) && current.length >= MAX_VALUES) return `A list holds at most ${MAX_VALUES}`;
+  if (current.includes(n)) return 'Already in your list.';
+  if (current.length >= MAX_VALUES) return `A list holds at most ${MAX_VALUES}`;
   const next = parseList(name, [...current, n].join(' '));
   if ('error' in next) return next.error;
   store(db, name, next);
