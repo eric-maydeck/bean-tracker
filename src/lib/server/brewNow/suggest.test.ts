@@ -30,7 +30,7 @@ describe('tiers', () => {
   it('tier 1 beats tier 2 when both have data', () => {
     const s = run([brew({ tempC: 92, coffeeId: 2, coffeeName: 'Other' }), brew({ tempC: 95, coffeeId: 3, coffeeName: 'kiambu ' })]);
     expect(get(s, 'temp')).toMatchObject({ tier: 1, value: '95 °C' });
-    expect(s.basis).toBe('this coffee, 1 brews');
+    expect(s.basis).toBe('this coffee, 1 brew');
   });
 });
 
@@ -86,6 +86,15 @@ describe('gear (focus 2)', () => {
     const ev = get(run(mixed), 'temp').evidence;
     expect(ev.map((b) => b.dripper).sort()).toEqual(['CT62', 'V60']);
   });
+  it('gear with brews but none with a temp → temp is null, no other-gear evidence', () => {
+    const rows = [brew({ dripper: 'Gabi Master A', tempC: null }), brew({ tempC: 96 })];
+    const s = run(rows, { ...gear, dripper: 'Gabi Master A' });
+    expect(get(s, 'temp')).toMatchObject({ value: null, evidence: [] });
+    expect(get(s, 'temp').reason).toMatch(/on this gear/);
+  });
+  it('integer-notation grinder with no moves → step 1', () => {
+    expect(grindStep([brew({ grind: '5' }), brew({ grind: '5' })], 'ZP6')).toBe(1);
+  });
   it('no brews on the gear → general suggestion marked guess', () => {
     const t = get(run(mixed, { ...gear, dripper: 'ORB', filter: null }), 'temp');
     expect(t.confidence).toBe('guess');
@@ -109,7 +118,9 @@ describe('dose (focus 4)', () => {
   it('36 g left, 18 g dose → uses the bag exactly', () => {
     const d = dose(36);
     expect(d.value).toBe('18 g');
-    expect(d.reason).toMatch(/18 g uses the bag exactly/);
+    expect(d.reason).toBe('18 g leaves 18 g, one more brew');
+    expect(dose(18).reason).toBe('18 g uses the bag exactly');
+    expect(dose(40).reason).toMatch(/20 g uses the bag exactly/);
   });
 });
 

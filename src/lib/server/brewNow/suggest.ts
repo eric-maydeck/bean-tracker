@@ -65,10 +65,10 @@ export function grindStep(rows: BrewRow[], grinder: string): number {
       if (d > 0) diffs.push(d);
     }
   }
-  return diffs.length ? Math.round(median(diffs)) / unit : 0.1;
+  return diffs.length ? Math.round(median(diffs)) / unit : k === 0 ? 1 : 0.1;
 }
 
-const TIER_LABEL = ['', 'this-coffee', 'same-roaster', 'similar', 'any-coffee'];
+const TIER_LABEL = ['', 'this coffee', 'same roaster', 'similar coffees', 'all brews'];
 const rank = (c: Confidence) => ['guess', 'rough', 'good'].indexOf(c);
 const compat = (r: BrewRow, g: Gear, gc: GearClass) =>
   gc.dripper(r.dripper) === gc.dripper(g.dripper) && gc.filter(r.filter) === gc.filter(g.filter);
@@ -87,9 +87,10 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
       return [r, 0.5 ** (age / 90) * Math.max(r.rating! - med + 1, 0.25) * rest * exact] as const;
     }));
   };
-  // First tier with a rated, gear-compatible brew carrying the setting; none anywhere → the same ignoring gear.
+  // First tier with a rated, gear-compatible brew carrying the setting. Gear is ignored only when the gear has no rated brew at all.
+  const gearHas = rated.some((r) => compat(r, gear, gc));
   const pick = (has: (r: BrewRow) => boolean, useRest: boolean, grinder?: string): Pick | null => {
-    for (const loose of [false, true]) {
+    for (const loose of [!gearHas]) {
       const pool = rated.filter((r) => has(r) && (grinder === undefined || r.grinder === grinder) && (loose || compat(r, gear, gc)));
       for (const t of [1, 2, 3, 4] as Tier[]) {
         const set = pool.filter((r) => tiers.get(r) === t);
@@ -104,7 +105,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     setting, value, reason: p.loose ? `No brews on this gear; ${reason}` : reason, tier: p.tier, confidence: conf(p),
     evidence: byWeight(p).slice(0, 8), link
   });
-  const src = (p: Pick) => `${p.set.length} ${TIER_LABEL[p.tier]} brews`;
+  const src = (p: Pick) => `${p.set.length} ${p.set.length === 1 ? 'brew' : 'brews'}, ${TIER_LABEL[p.tier]}`;
   const num = (n: number) => String(Math.round(n * 10) / 10);
 
   // Grind: only the chosen grinder's brews, in its own scale.
@@ -134,12 +135,13 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
       return row('grind', g.p, g.value, g.reason);
     }
     const reference = [...new Set(rated.flatMap((r) => (r.grinder && r.grinder !== gear.grinder && lin(r.grind) !== null ? r.grinder : [])))]
+      .filter((grinder) => grindPick(grinder))
       .map((grinder) => ({ grinder, grind: grindOn(grinder).value }));
     return { setting: 'grind', value: null, reason: 'No data on this grinder yet', tier: null, confidence: 'guess', evidence: [], link: null, reference };
   };
 
   const none = (setting: Setting, what: string): Row =>
-    ({ setting, value: null, reason: `No rated brews with ${what} yet`, tier: null, confidence: 'guess', evidence: [], link: null });
+    ({ setting, value: null, reason: `No rated brews with ${what} on this gear`, tier: null, confidence: 'guess', evidence: [], link: null });
   const numRow = (setting: 'temp' | 'dose', get: (r: BrewRow) => number | null, show: (v: number) => string, say: (v: number, p: Pick) => string): Row => {
     const p = pick((r) => get(r) !== null, setting === 'temp');
     if (!p) return none(setting, setting);
@@ -163,7 +165,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     if (left === null) return `Median ${num(v)} of ${src(p)}`;
     if (left < d) return left > 0 ? `Only ${num(left)} g left in the bag` : 'No coffee left in the bag';
     const exact = doses.find((x) => left >= x && left % x <= 1);
-    return `${d} g leaves ${num(left - d)} g` + (exact ? `; ${exact} g uses the bag exactly` : '');
+    if (exact === d && left - d <= 1) return `${d} g uses the bag exactly`;
+    return `${d} g leaves ${num(left - d)} g` + (exact === d ? ', one more brew' : exact ? `; ${exact} g uses the bag exactly` : '');
   });
 
   const rowsOut = [
@@ -179,7 +182,7 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   const top = filled.length ? Math.min(...filled.map((r) => r.tier!)) as Tier : null;
   const inTop = rated.filter((r) => tiers.get(r) === top), n = (inTop.filter((r) => compat(r, gear, gc)).length || inTop.length);
   const pg = processGroup(target.processing);
-  const basis = top === null ? 'no brews yet' : `${top === 1 ? 'this coffee' : top === 2 ? `${target.roaster}${pg === OTHER ? '' : ` ${pg.toLowerCase()}`} coffees` : top === 3 ? 'similar coffees' : 'any coffee'}, ${n} brews`;
+  const basis = top === null ? 'no brews yet' : `${top === 1 ? 'this coffee' : top === 2 ? `${target.roaster}${pg === OTHER ? '' : ` ${pg.toLowerCase()}`} coffees` : top === 3 ? 'similar coffees' : 'any coffee'}, ${n} ${n === 1 ? 'brew' : 'brews'}`;
   const lastNote = rows.filter((r) => tiers.get(r) === 1 && r.notes).sort((a, b) => b.localTime.localeCompare(a.localTime) || b.id - a.id)[0]?.notes ?? null;
   return { rows: rowsOut, confidence: filled.length ? confidence : 'guess', basis, lastNote };
 }
