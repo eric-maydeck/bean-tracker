@@ -126,7 +126,7 @@ describe('recipes page', () => {
     await bad({ ...def, pours: [] }, 'Add at least one pour');
     await bad({ ...def, pours: def.pours.map((p, i) => ({ ...p, bloom: i === 1 })) }, 'Blooms come first');
     await bad({ ...def, pourCount: { min: 1, max: 1 } }, 'Pour count range must include the pours listed');
-    await bad({ ...def, ratio: { target: 40, tol: 0.7 } }, 'Ratio must be between 1:5 and 1:30');
+    await bad({ ...def, ratio: { targets: [40], tol: 0.7 } }, 'Ratio must be between 1:5 and 1:30');
     await bad({ ...def, tempC: 120 }, 'Temperature must be 60-100 °C');
     await bad({ v: 2 }, 'Invalid recipe');
     expect(listRecipes(db)).toHaveLength(1);
@@ -142,7 +142,7 @@ describe('recipes page', () => {
     const matched = () => (db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get() as { n: number }).n;
     expect(((await actions.saveRecipe(event(true, '', { name: 'Any one', tags: '', definition: JSON.stringify(other) }))) as { saved: number }).saved).toBeGreaterThan(0);
     expect(matched()).toBe(N);
-    const gabi = (await actions.saveRecipe(event(true, '', { name: 'Gabi one', tags: '', definition: JSON.stringify({ ...def, ratio: { target: 5, tol: 0.1 } }), locks: JSON.stringify({ 'Gabi Master A': true }) }))) as { saved: number };
+    const gabi = (await actions.saveRecipe(event(true, '', { name: 'Gabi one', tags: '', definition: JSON.stringify({ ...def, ratio: { targets: [5], tol: 0.1 } }), locks: JSON.stringify({ 'Gabi Master A': true }) }))) as { saved: number };
     expect((load(event(true)) as Data).locked).toEqual(['Gabi Master A']);
     expect((load(event(true)) as Data).drippers).toEqual(['Gabi Master A']);
     expect(matched()).toBe(0); // locked: the Any recipe no longer matches and the Gabi recipe's ratio misses

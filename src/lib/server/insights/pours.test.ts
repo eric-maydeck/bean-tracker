@@ -233,8 +233,8 @@ describe('loadPourFacts', () => {
   const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
   const pour = (bloom: boolean, gps: number) => ({ startS: 0, durationS: 10, grams: 50, avgGps: gps, peakGps: gps, speed: 'slow', bloom, contactS: 30 });
   const def = (agitations: ('high' | 'low')[], anySpeed = false, drippers: string[] = []) => ({
-    v: 1, pours: agitations.map((agitation) => ({ bloom: false, grams: 50, share: null, speed: 'slow', rateGps: null, agitation, tool: null, swirlAfter: false, startS: null, durationS: null })),
-    pourCount: { min: 1, max: 9 }, bloomHoldS: null, bloomHoldTolS: 5, ratio: { target: 16, tol: 1 }, tempC: null, totalS: null, notes: null, drippers, anySpeed
+    v: 1, pours: agitations.map((agitation) => ({ bloom: false, grams: 50, share: null, speed: 'slow', rateGps: null, agitation, tool: null, swirlAfter: false, startS: null, durationS: null, trigger: null })),
+    pourCount: { min: 1, max: 9 }, bloomHoldS: null, bloomHoldTolS: 5, ratio: { targets: [16], tol: 1 }, tempC: null, totalS: null, notes: null, drippers, anySpeed, equalSplit: false
   });
   const setup = () => {
     const db = createDb(':memory:');

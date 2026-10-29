@@ -1,6 +1,8 @@
 // Recipes as data: definition, parser, wording and brew matching (client-safe, no server imports).
 import { FAST_GPS, capital, type PourReading, type Timeline } from './pours';
 
+/** When a pour starts: null = unspecified (legacy), `after` = seconds after the previous pour, `low` = when the water runs low. */
+export type Trigger = null | { kind: 'after'; targetS: number; maxS: number } | { kind: 'low' };
 export interface RecipePour {
   bloom: boolean;
   grams: number | null;
@@ -13,6 +15,7 @@ export interface RecipePour {
   /** Typical values, for the timeline. */
   startS: number | null;
   durationS: number | null;
+  trigger: Trigger;
 }
 export interface RecipeDef {
   v: 1;
@@ -20,8 +23,8 @@ export interface RecipeDef {
   pourCount: { min: number; max: number };
   bloomHoldS: number | null;
   bloomHoldTolS: number;
-  /** null only in a draft whose brews have no ratio; the parser rejects it on save. */
-  ratio: { target: number | null; tol: number };
+  /** Empty only in a draft whose brews have no ratio; the parser rejects it on save. */
+  ratio: { targets: number[]; tol: number };
   tempC: number | null;
   totalS: number | null;
   notes: string | null;
@@ -29,6 +32,8 @@ export interface RecipeDef {
   drippers: string[];
   /** Pour speed is ignored when matching (a dripper that restricts flow makes it meaningless). */
   anySpeed: boolean;
+  /** Every pour is an equal share of the water. */
+  equalSplit: boolean;
 }
 export interface Recipe {
   id: number;
@@ -56,6 +61,15 @@ const oneOf = <T extends string>(x: unknown, ok: readonly T[]): T => {
   return x as T;
 };
 
+function parseTrigger(t: unknown): Trigger {
+  if (t == null) return null;
+  if (!isObj(t)) throw new Error(INVALID);
+  if (t.kind === 'low') return { kind: 'low' };
+  if (t.kind !== 'after' || !isNum(t.targetS) || !isNum(t.maxS)) throw new Error(INVALID);
+  if (!(t.targetS > 0 && t.maxS >= t.targetS && t.maxS <= 600)) throw new Error('Trigger time must be at least its target');
+  return { kind: 'after', targetS: t.targetS, maxS: t.maxS };
+}
+
 function parsePour(p: unknown): RecipePour {
   if (!isObj(p) || typeof p.bloom !== 'boolean' || typeof p.swirlAfter !== 'boolean') throw new Error(INVALID);
   let rateGps: [number, number] | null = null;
@@ -75,7 +89,8 @@ function parsePour(p: unknown): RecipePour {
     tool: strOrNull(p.tool),
     swirlAfter: p.swirlAfter,
     startS: numOrNull(p.startS),
-    durationS: numOrNull(p.durationS)
+    durationS: numOrNull(p.durationS),
+    trigger: parseTrigger(p.trigger)
   };
 }
 
@@ -85,9 +100,13 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
       throw new Error(INVALID);
     if (!isObj(json.pourCount) || !isObj(json.ratio)) throw new Error(INVALID);
     const pours = json.pours.map(parsePour);
+    if (pours[0]) pours[0].trigger = null;
     const { min, max } = json.pourCount;
-    const { target, tol } = json.ratio;
-    if (!isNum(min) || !isNum(max) || !Number.isInteger(min) || !Number.isInteger(max) || !isNum(target) || !isNum(tol) || !isNum(json.bloomHoldTolS))
+    const { tol } = json.ratio;
+    const raw = json.ratio.targets ?? [json.ratio.target];
+    if (!Array.isArray(raw) || raw.length > 5 || !raw.every(isNum)) throw new Error(INVALID);
+    const targets = [...new Set(raw)].sort((a, b) => a - b);
+    if (!isNum(min) || !isNum(max) || !Number.isInteger(min) || !Number.isInteger(max) || !isNum(tol) || !isNum(json.bloomHoldTolS))
       throw new Error(INVALID);
     const bloomHoldS = numOrNull(json.bloomHoldS);
     const tempC = numOrNull(json.tempC, -Infinity);
@@ -97,6 +116,7 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     if (!Array.isArray(drippers) || drippers.length > 10) throw new Error(INVALID);
     for (const d of drippers) if (typeof d !== 'string' || !d || d.length > 40) throw new Error(INVALID);
     if (json.anySpeed != null && typeof json.anySpeed !== 'boolean') throw new Error(INVALID);
+    if (json.equalSplit != null && typeof json.equalSplit !== 'boolean') throw new Error(INVALID);
     if (json.bloomHoldTolS < 0) throw new Error(INVALID);
     if (!pours.length) throw new Error('Add at least one pour');
     const blooms = pours.filter((p) => p.bloom).length;
@@ -104,7 +124,8 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     if (pours.slice(0, blooms).some((p) => !p.bloom)) throw new Error('Blooms come first');
     if (!(min >= 1 && min <= pours.length && pours.length <= max && max <= 12))
       throw new Error('Pour count range must include the pours listed');
-    if (target < 5 || target > 30 || tol < 0.1 || tol > 3) throw new Error('Ratio must be between 1:5 and 1:30');
+    if (!targets.length) throw new Error('Add a ratio');
+    if (targets.some((t) => t < 5 || t > 30) || tol < 0.1 || tol > 3) throw new Error('Ratio must be between 1:5 and 1:30');
     if (tempC != null && (tempC < 60 || tempC > 100)) throw new Error('Temperature must be 60-100 °C');
     return {
       def: {
@@ -113,17 +134,32 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
         pourCount: { min, max },
         bloomHoldS,
         bloomHoldTolS: json.bloomHoldTolS,
-        ratio: { target, tol },
+        ratio: { targets, tol },
         tempC,
         totalS,
         notes,
         drippers: [...new Set(drippers as string[])],
-        anySpeed: json.anySpeed === true
+        anySpeed: json.anySpeed === true,
+        equalSplit: json.equalSplit === true
       }
     };
   } catch (e) {
     return { error: e instanceof Error ? e.message : INVALID };
   }
+}
+
+/** Fills what older stored defs lack; no validation (they were validated when saved). */
+export function withDefaults(raw: unknown): RecipeDef {
+  const d = raw as Obj & { ratio: { target?: number | null; targets?: number[]; tol: number }; pours: RecipePour[] };
+  const { target, targets, tol } = d.ratio ?? ({} as Partial<typeof d.ratio>); // partial test fixtures have none
+  return {
+    drippers: [],
+    anySpeed: false,
+    equalSplit: false,
+    ...d,
+    pours: (d.pours ?? []).map((p) => ({ ...p, trigger: p.trigger ?? null })),
+    ratio: { targets: targets ?? (target == null ? [] : [target]), tol }
+  } as unknown as RecipeDef;
 }
 
 export function parseRecipeInput(
@@ -165,7 +201,8 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     tool: null,
     swirlAfter: half((r) => r.swirls.some((w) => w.afterPour === i)),
     startS: round(col(i, (r) => r.pours[i].startS)),
-    durationS: round(col(i, (r) => r.pours[i].durationS))
+    durationS: round(col(i, (r) => r.pours[i].durationS)),
+    trigger: null
   }));
   const ratio = median(rs.map((r) => r.ratio).filter(isNum));
   return {
@@ -174,12 +211,13 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     pourCount: { min: n, max: n },
     bloomHoldS: round(median(rs.map((r) => r.bloomHoldS).filter(isNum))),
     bloomHoldTolS: 5,
-    ratio: { target: round(ratio), tol: 0.7 },
+    ratio: { targets: ratio == null ? [] : [round(ratio)!], tol: 0.5 },
     tempC: round(median(tempsC.filter(isNum))),
     totalS: round(median(rs.map((r) => r.totalS)), 0),
     notes: null,
     drippers: [],
-    anySpeed: false
+    anySpeed: false,
+    equalSplit: false
   };
 }
 
@@ -250,7 +288,8 @@ export function describeRecipe(def: RecipeDef): string {
   if (sw.length > 2) out.push(`${sw.length} swirls`);
   else if (sw.length)
     out.push(sw.map((i) => (i < blooms ? 'swirl after bloom' : `swirl after pour ${i + 1}`)).join(', '));
-  out.push(isNum(def.ratio.target) ? `~1:${+def.ratio.target.toFixed(1)}` : 'ratio unknown');
+  const ts = def.ratio.targets.map((t) => +t.toFixed(1));
+  out.push(ts.length ? `~1:${ts.join(', ').replace(/, ([^,]*)$/, ' or $1')}` : 'ratio unknown');
   if (def.anySpeed) out.push('any pour speed');
   if (def.drippers.length) out.push(`on ${def.drippers.join(', ').replace(/, ([^,]*)$/, ' or $1')}`);
   return capital(out.join(' · '));
@@ -348,11 +387,13 @@ export function matchBrew(brew: MatchBrew, recipes: Recipe[], locked: ReadonlySe
       const aligned = r.pours.map((_, i) => speeds[Math.min(i, speeds.length - 1)]);
       if (aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase()) continue;
     }
-    const target = def.ratio.target;
-    if (target == null || Math.abs(r.ratio - target) > def.ratio.tol) continue;
+    // ponytail: temporary nearest-target test; Task 2 replaces matchBrew's gates
+    const ratio = r.ratio;
+    const off = Math.min(...def.ratio.targets.map((t) => Math.abs(ratio - t)));
+    if (off > def.ratio.tol) continue;
     const diffs = diffsOf(def, r, brew.tempC);
     const mods = diffs.filter((d) => d.modified).length;
-    const distance = Math.abs(r.ratio - target) / def.ratio.tol + 0.5 * mods;
+    const distance = off / def.ratio.tol + 0.5 * mods;
     if (!best || distance < best.distance || (distance === best.distance && id < best.recipeId))
       best = { recipeId: id, how: mods ? 'modified' : 'match', diffs, distance };
   }

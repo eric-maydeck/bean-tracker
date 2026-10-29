@@ -64,7 +64,7 @@
   function add() {
     const last = copy.pours.at(-1);
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
-    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20 });
+    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, trigger: null });
     fit();
   }
   function move(i: number, d: -1 | 1) {
@@ -187,7 +187,7 @@
   <div class="grid">
     <div class="form-field"><label for="re-cmin">Pour count min</label><input id="re-cmin" type="number" min="1" step="1" bind:value={copy.pourCount.min} /></div>
     <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="1" bind:value={copy.pourCount.max} /></div>
-    <div class="form-field"><label for="re-ratio">Ratio 1:</label><input id="re-ratio" type="number" step="any" bind:value={copy.ratio.target} /></div>
+    <div class="form-field"><label for="re-ratio">Ratio 1:</label><input id="re-ratio" type="number" step="any" bind:value={copy.ratio.targets[0]} /></div>
     <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
     <div class="form-field"><label for="re-temp">Temperature (°C)</label><input id="re-temp" type="number" step="any" bind:value={copy.tempC} /></div>
   </div>

@@ -3,19 +3,20 @@ import type { Pour, PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline,
+  convertAmounts, describeRecipe, draftFromReadings, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, withDefaults,
   type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
 const rp = (speed: 'fast' | 'slow', bloom = false, extra: Partial<RecipePour> = {}): RecipePour => ({
   bloom, grams: 50, share: null, speed, rateGps: null, agitation: null, tool: null, swirlAfter: false,
-  startS: null, durationS: null, ...extra
+  startS: null, durationS: null, trigger: null, ...extra
 });
 const def = (pat: string, over: Partial<RecipeDef> = {}): RecipeDef => {
   const pours = [...pat].map((c, i) => rp(c === 'F' || c === 'B' ? 'fast' : 'slow', c === 'B' && i < 3));
   return {
     v: 1, pours, pourCount: { min: pours.length, max: pours.length }, bloomHoldS: 30, bloomHoldTolS: 5,
-    ratio: { target: 16.7, tol: 0.7 }, tempC: null, totalS: null, notes: null, drippers: [], anySpeed: false, ...over
+    ratio: { targets: [16.7], tol: 0.7 }, tempC: null, totalS: null, notes: null, drippers: [], anySpeed: false,
+    equalSplit: false, ...over
   };
 };
 const recipe = (id: number, name: string, d: RecipeDef, tags: string[] = []): Recipe => ({ id, name, tags, def: d });
@@ -48,8 +49,15 @@ describe('parseRecipeDef', () => {
     ['Blooms come first', (d: any) => (d.pours = Array.from({ length: 4 }, () => ({ ...d.pours[0] })), d.pourCount = { min: 4, max: 4 })],
     ['Pour count range must include the pours listed', (d: any) => (d.pourCount = { min: 1, max: 3 })],
     ['Pour count range must include the pours listed', (d: any) => (d.pourCount = { min: 0, max: 4 })],
-    ['Ratio must be between 1:5 and 1:30', (d: any) => (d.ratio.target = 31)],
+    ['Ratio must be between 1:5 and 1:30', (d: any) => (d.ratio.targets = [31])],
     ['Ratio must be between 1:5 and 1:30', (d: any) => (d.ratio.tol = 0.05)],
+    ['Trigger time must be at least its target', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 30, maxS: 20 })],
+    ['Trigger time must be at least its target', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 0, maxS: 20 })],
+    ['Trigger time must be at least its target', (d: any) => (d.pours[1].trigger = { kind: 'after', targetS: 20, maxS: 601 })],
+    ['Invalid recipe', (d: any) => (d.pours[1].trigger = { kind: 'soon' })],
+    ['Add a ratio', (d: any) => (d.ratio.targets = [])],
+    ['Invalid recipe', (d: any) => (d.ratio.targets = [10, 11, 12, 13, 14, 15])],
+    ['Invalid recipe', (d: any) => (d.equalSplit = 'yes')],
     ['Temperature must be 60-100 °C', (d: any) => (d.tempC = 101)],
     ['Invalid recipe', (d: any) => (d.pours[0].speed = 'medium')],
     ['Invalid recipe', (d: any) => (d.pours[0].agitation = 'extreme')],
@@ -60,6 +68,28 @@ describe('parseRecipeDef', () => {
     const d = ok();
     mutate(d);
     expect(parseRecipeDef(d)).toEqual({ error });
+  });
+  it('round-trips triggers, equal split and ratio targets', () => {
+    const d = ok();
+    d.pours[1].trigger = { kind: 'after', targetS: 20, maxS: 30 };
+    d.pours[3].trigger = { kind: 'low' };
+    d.equalSplit = true;
+    d.ratio = { targets: [18, 15, 16.7, 15], tol: 0.5 };
+    const r = (parseRecipeDef(d) as { def: RecipeDef }).def;
+    expect(r.pours[1].trigger).toEqual({ kind: 'after', targetS: 20, maxS: 30 });
+    expect(r.pours[3].trigger).toEqual({ kind: 'low' });
+    expect(r.equalSplit).toBe(true);
+    expect(r.ratio).toEqual({ targets: [15, 16.7, 18], tol: 0.5 });
+  });
+  it('accepts the old ratio shape', () => {
+    const d = ok();
+    d.ratio = { target: 16.7, tol: 0.7 };
+    expect((parseRecipeDef(d) as { def: RecipeDef }).def.ratio).toEqual({ targets: [16.7], tol: 0.7 });
+  });
+  it("forces the first pour's trigger to null", () => {
+    const d = ok();
+    d.pours[0].trigger = { kind: 'low' };
+    expect((parseRecipeDef(d) as { def: RecipeDef }).def.pours[0].trigger).toBeNull();
   });
   it('accepts medium agitation', () => {
     const d = ok();
@@ -181,8 +211,8 @@ describe('matchBrew', () => {
     expect(matchBrew(brew(reading('BFFS'), null, 91.5), [r])!.diffs).toEqual([]);
   });
   it('closest ratio wins; ties go to the lower id', () => {
-    const a = recipe(1, 'R1', def('BFFS', { ratio: { target: 17.2, tol: 1 } }));
-    const b = recipe(2, 'R2', def('BFFS', { ratio: { target: 16.8, tol: 1 } }));
+    const a = recipe(1, 'R1', def('BFFS', { ratio: { targets: [17.2], tol: 1 } }));
+    const b = recipe(2, 'R2', def('BFFS', { ratio: { targets: [16.8], tol: 1 } }));
     expect(matchBrew(brew(reading('BFFS')), [a, b])!.recipeId).toBe(2);
     expect(matchBrew(brew(reading('BFFS')), [b, { ...b, id: 0 }])!.recipeId).toBe(0);
   });
@@ -200,9 +230,23 @@ describe('matchBrew', () => {
   });
 });
 
+describe('withDefaults', () => {
+  it('reads a legacy def', () => {
+    const { equalSplit, drippers, anySpeed, ...legacy } = def('BFS') as any;
+    legacy.pours = legacy.pours.map(({ trigger, ...p }: any) => p);
+    legacy.ratio = { target: 16.7, tol: 0.7 };
+    const d = withDefaults(legacy);
+    expect(d).toMatchObject({ equalSplit: false, drippers: [], anySpeed: false, ratio: { targets: [16.7], tol: 0.7 } });
+    expect(d.pours.every((p) => p.trigger === null)).toBe(true);
+  });
+});
+
 describe('describeRecipe', () => {
+  it('lists several ratios', () => {
+    expect(describeRecipe(def('BFS', { ratio: { targets: [15, 16.7, 18], tol: 0.7 } }))).toContain('~1:15, 16.7 or 18');
+  });
   it('bloom + fast pours with a count range', () => {
-    const d = def('BFFF', { pourCount: { min: 4, max: 5 }, ratio: { target: 16.7, tol: 0.7 }, totalS: 150 });
+    const d = def('BFFF', { pourCount: { min: 4, max: 5 }, ratio: { targets: [16.7], tol: 0.7 }, totalS: 150 });
     expect(describeRecipe(d)).toBe('30 s bloom + 3-4 fast pours · ~1:16.7');
   });
   it('fast pours stay fast pours whatever the rate, and a swirl follows the pours', () => {
@@ -220,8 +264,9 @@ describe('draftFromReadings + recipeTimeline', () => {
     expect(d.pours.map((p) => p.speed)).toEqual(['fast', 'fast', 'fast', 'slow']);
     expect(d.pours[0].bloom).toBe(true);
     expect(d).toMatchObject({
-      pourCount: { min: 4, max: 4 }, bloomHoldS: 30, bloomHoldTolS: 5, ratio: { target: 16.8, tol: 0.7 }, tempC: 92
+      pourCount: { min: 4, max: 4 }, bloomHoldS: 30, bloomHoldTolS: 5, ratio: { targets: [16.8], tol: 0.5 }, tempC: 92, equalSplit: false
     });
+    expect(d.pours.every((p) => p.trigger === null)).toBe(true);
     expect(d.pours[0].swirlAfter).toBe(false);
     expect(parseRecipeDef(d)).toEqual({ def: d });
     expect(recipeTimeline(d).pours).toHaveLength(4);
@@ -230,7 +275,7 @@ describe('draftFromReadings + recipeTimeline', () => {
 
 describe('convertAmounts', () => {
   const pour = (grams: number | null, share: number | null = null) =>
-    ({ bloom: false, grams, share, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: null, durationS: null }) as const;
+    ({ bloom: false, grams, share, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: null, durationS: null, trigger: null }) as const;
   it('g to % sums to 100 and % to g restores the grams from the remembered total', () => {
     const a = convertAmounts([pour(60), pour(120), pour(120)], '%', null);
     expect(a.totalG).toBe(300);
@@ -251,8 +296,8 @@ describe('convertAmounts', () => {
 describe('editor-facing recipe edge cases', () => {
   const base = def('BFS');
   it('describes an unknown ratio and three blooms honestly', () => {
-    expect(describeRecipe({ ...base, ratio: { target: null, tol: 0.7 } })).toContain('ratio unknown');
-    expect(describeRecipe({ ...base, ratio: { target: null, tol: 0.7 } })).not.toContain('~1:');
+    expect(describeRecipe({ ...base, ratio: { targets: [], tol: 0.7 } })).toContain('ratio unknown');
+    expect(describeRecipe({ ...base, ratio: { targets: [], tol: 0.7 } })).not.toContain('~1:');
     const three = { ...base, bloomHoldS: 20, pours: [rp('fast', true), rp('fast', true), rp('fast', true), rp('slow')], pourCount: { min: 4, max: 4 } };
     expect(describeRecipe(three)).toMatch(/^Three 20 s blooms/);
   });

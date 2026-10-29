@@ -42,6 +42,16 @@ const reading = (db: DatabaseSync, i: number) =>
 const matches = (db: DatabaseSync) =>
   db.prepare(`SELECT brew_id, recipe_id, how FROM brew_recipe_matches ORDER BY brew_id`).all() as { brew_id: number; recipe_id: number; how: string }[];
 
+it('listRecipes normalizes a legacy row', () => {
+  const db = fresh();
+  const legacy = { v: 1, pours: [{ bloom: false, grams: 50, share: null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: null, durationS: null }], pourCount: { min: 1, max: 1 }, bloomHoldS: null, bloomHoldTolS: 5, ratio: { target: 16.7, tol: 0.7 }, tempC: null, totalS: null, notes: null };
+  db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES ('Old', '[]', ?, 'x', 'x')`).run(JSON.stringify(legacy));
+  const old = listRecipes(db).find((r) => r.name === 'Old')!;
+  expect(old.def.ratio.targets).toEqual([16.7]);
+  expect(old.def.pours[0].trigger).toBeNull();
+  expect(old.def.equalSplit).toBe(false);
+});
+
 describe('recipes', () => {
   it('saveRecipe labels matching brews; rename keeps them; delete cascades; duplicate name throws', () => {
     const db = fresh();

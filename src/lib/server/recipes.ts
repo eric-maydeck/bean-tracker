@@ -6,6 +6,7 @@ import {
   describeRecipe,
   middleHalf,
   matchBrew,
+  withDefaults,
   recipeTimeline,
   type Recipe,
   type RecipeDef
@@ -47,7 +48,7 @@ export function listRecipes(db: DatabaseSync): Recipe[] {
     id: r.id,
     name: r.name,
     tags: JSON.parse(r.tags),
-    def: { drippers: [], anySpeed: false, ...JSON.parse(r.definition) }
+    def: withDefaults(JSON.parse(r.definition))
   }));
 }
 
