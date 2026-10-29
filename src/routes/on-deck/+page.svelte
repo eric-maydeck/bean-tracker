@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { enhance } from '$app/forms';
   import { showToast } from '$lib/toast.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import { editHref } from '$lib/bqImportUrl';
+  import { bqImportHref, cloneHref, editHref } from '$lib/bqImportUrl';
+  import { labelTip } from '$lib/components/labelTip';
   import { coffeeToast, reverseChanges, commitChanges } from '$lib/coffeeToast';
   import type { CoffeeRow } from '$lib/types';
   import { invalidateAll, afterNavigate } from '$app/navigation';
@@ -69,10 +69,8 @@
     await invalidateAll();
   }
 
-  // Admin tile menu (⋯): Edit, Freeze/Unfreeze, Unopen, Archive. Each action toasts with Undo and the tile moves.
-  let menuId = $state<number | null>(null);
+  // A tile's Open: toasts with Undo and the tile moves to Currently open.
   async function tileAction(coffee: CoffeeRow, statusAction: string) {
-    menuId = null;
     const changes = [{ id: coffee.id, statusAction }];
     try {
       await commitChanges(changes as { id: number; statusAction: string }[]);
@@ -116,31 +114,21 @@
   <button class="button button-secondary" type="button" onclick={refresh}>Refresh</button>
 </div>
 
-{#snippet tileMenu(coffee: CoffeeRow)}
-  {#if page.data.isAdmin}
-    <div class="tile-menu">
-      <button class="tile-menu-button" type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menuId === coffee.id}
-        onclick={(e) => { e.stopPropagation(); menuId = menuId === coffee.id ? null : coffee.id; }}><Icon name="dots-three" /></button>
-      {#if menuId === coffee.id}
-        <div class="tile-menu-list" role="menu">
-          <a role="menuitem" href={editHref(coffee.slug)}>Edit</a>
-          {#if coffee.status === 'backlog'}
-            {#if coffee.frozen_start_date && !coffee.frozen_end_date}
-              <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'thaw')}>Unfreeze</button>
-            {:else}
-              <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'freeze')}>Freeze</button>
-            {/if}
-          {:else if coffee.status === 'open'}
-            <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'unopen')}>Unopen</button>
-          {/if}
-          <button role="menuitem" type="button" onclick={() => tileAction(coffee, 'archive')}>Archive</button>
-        </div>
-      {/if}
-    </div>
-  {/if}
+{#snippet tileActions(coffee: CoffeeRow)}
+  <!-- The same icon buttons, order and 2×2 places as /coffees' non-edit rows (Brew now / Open, Import, Edit, Clone). -->
+  <div class="card-actions icons">
+    {#if coffee.status === 'open'}
+      <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}/brew`} use:labelTip={'Brew now'} aria-label="Brew now"><Icon name="coffee" /></a>
+    {:else if page.data.isAdmin}
+      <button class="button button-icon" type="button" onclick={() => tileAction(coffee, 'open')} use:labelTip={'Open'} aria-label="Open"><Icon name="open" /></button>
+    {/if}
+    <a class="button button-secondary button-icon" href={bqImportHref(coffee.slug)} use:labelTip={'Import into Bean Conqueror'} aria-label="Import into Bean Conqueror"><Icon name="share-network" /></a>
+    {#if page.data.isAdmin}
+      <a class="button button-secondary button-icon" href={editHref(coffee.slug)} use:labelTip={'Edit'} aria-label="Edit"><Icon name="edit" /></a>
+      <a class="button button-secondary button-icon" href={cloneHref(coffee.slug)} use:labelTip={'Clone'} aria-label="Clone"><Icon name="clone" /></a>
+    {/if}
+  </div>
 {/snippet}
-
-<svelte:window onclick={() => (menuId = null)} onkeydown={(e) => { if (e.key === 'Escape') menuId = null; }} />
 
 {#if view === 'open'}
   <section>
@@ -180,8 +168,7 @@
               <p class="text-muted">Drink before {coffee.drink_before}</p>
             {/if}
           </a>
-          {@render tileMenu(coffee)}
-          <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
+          {@render tileActions(coffee)}
           </div>
         {/each}
       </section>
@@ -219,16 +206,7 @@
               </p>
             {/if}
           </a>
-          {@render tileMenu(coffee)}
-          <div class="card-actions">
-            <a class="button brew-now-link" href={`/coffees/${coffee.slug}/brew`}>Brew now</a>
-            {#if page.data.isAdmin}
-              <form method="POST" action="?/open" use:enhance={() => async ({ result, update }) => { await update(); if (result.type === 'success') showToast(`Coffee "${coffee.coffee_name}" marked as open.`, { undo: async () => { await commitChanges([{ id: coffee.id, statusAction: 'unopen' }]); await invalidateAll(); } }); }}>
-                <input type="hidden" name="id" value={coffee.id} />
-                <button class="button button-secondary" type="submit">Open</button>
-              </form>
-            {/if}
-          </div>
+          {@render tileActions(coffee)}
           </div>
         {/each}
       </section>

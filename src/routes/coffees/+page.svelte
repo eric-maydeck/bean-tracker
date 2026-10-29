@@ -176,6 +176,20 @@
     addPrefill = null;
   }
 
+  // The backlog row's Open icon: opens now (no Edit mode), toasts with Undo.
+  async function quickOpen(coffee: CoffeeRow) {
+    const changes = [{ id: coffee.id, statusAction: 'open' }];
+    try {
+      await commitChanges(changes);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Something went wrong.');
+      return;
+    }
+    const back = reverseChanges(changes);
+    showToast(coffeeToast(changes, () => coffee.coffee_name) ?? '', back ? { undo: async () => { await undoChanges(back); await invalidateAll(); } } : {});
+    await invalidateAll();
+  }
+
   let addedSlug = $state<string | null>(null);
   // Undo for the add/clone prompt: delete the new coffee (only when its id came back).
   let addedId = $state<number | null>(null);
@@ -521,7 +535,9 @@
 <PreviewMeta preview={coffeesPreview({ count: sortedCoffees.length, grams: visibleTotalGrams, status: lit, query, chips: explicit.filters.map((f) => previewChip(f, data.plans)) })} />
 
 {#snippet brewButton(coffee: CoffeeRow)}
-  {#if coffee.status === 'open'}
+  {#if coffee.status === 'backlog' && data.isAdmin}
+    <button class="button button-icon" type="button" onclick={() => quickOpen(coffee)} use:labelTip={'Open'} aria-label="Open"><Icon name="open" /></button>
+  {:else if coffee.status === 'open'}
     <a class="button button-secondary button-icon" href={`/coffees/${coffee.slug}/brew`} use:labelTip={'Brew now'} aria-label="Brew now"><Icon name="coffee" /></a>
   {/if}
 {/snippet}
@@ -1158,7 +1174,7 @@
             </button>
           </th>
           {#if data.isAdmin}
-            <th>Actions</th>
+            <th class="col-actions">Actions</th>
           {/if}
         </tr>
       </thead>

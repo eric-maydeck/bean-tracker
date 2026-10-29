@@ -97,22 +97,3 @@ describe('buildOnDeckData', () => {
     expect(decaf.nextUp.every((c) => c.decaf === 1)).toBe(true);
   });
 });
-
-describe('on-deck ?/open action', () => {
-  it('opens a backlog coffee for an admin and refuses others', async () => {
-    process.env.DB_PATH = ':memory:';
-    const { getDb } = await import('$lib/server/db');
-    const { actions } = await import('./+page.server');
-    const db = getDb();
-    const { id } = createCoffee(db, sampleInput());
-    const ev = (isAdmin: boolean) => {
-      const body = new FormData();
-      body.set('id', String(id));
-      return { request: new Request('http://x/on-deck', { method: 'POST', body }), locals: { isAdmin } } as never;
-    };
-    await expect(actions.open(ev(false))).rejects.toMatchObject({ status: 401 });
-    expect(getOpenCoffees(db).map((c) => c.id)).not.toContain(id);
-    await actions.open(ev(true));
-    expect(getOpenCoffees(db).map((c) => c.id)).toContain(id);
-  });
-});

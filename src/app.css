@@ -421,82 +421,15 @@ input:focus-visible {
   position: relative;
   display: grid;
 }
-.card-wrap:has(> .brew-now-link, > .card-actions) > .card {
+.card-wrap:has(> .brew-now-link) > .card {
   padding-bottom: calc(44px + var(--space-4));
+}
+.card-wrap:has(> .card-actions.icons) > .card {
+  padding-bottom: calc(2 * 44px + var(--space-2) + var(--space-4));
 }
 .card-wrap:hover > .card {
   box-shadow: var(--shadow-hover);
   transform: translateY(-1px);
-}
-.tile-menu {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  z-index: 2;
-}
-.tile-menu-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-}
-.tile-menu-button .icon {
-  width: 1.2rem;
-  height: 1.2rem;
-}
-.tile-menu-button:hover,
-.tile-menu-button[aria-expanded='true'] {
-  background: var(--color-bg);
-}
-.tile-menu-list {
-  position: absolute;
-  top: calc(100% + var(--space-1));
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  min-width: 9rem;
-  padding: var(--space-1);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-hover);
-}
-.tile-menu-list a,
-.tile-menu-list button {
-  display: block;
-  padding: var(--space-2) var(--space-3);
-  border: 0;
-  border-radius: var(--radius);
-  background: none;
-  color: var(--color-text);
-  font: inherit;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-.tile-menu-list a:hover,
-.tile-menu-list button:hover,
-.tile-menu-list a:focus-visible,
-.tile-menu-list button:focus-visible {
-  background: var(--color-bg);
-}
-@media (max-width: 640px) {
-  .tile-menu-button {
-    width: 44px;
-    height: 44px;
-  }
-  .tile-menu-list a,
-  .tile-menu-list button {
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-  }
 }
 .card-wrap > .card-actions {
   position: absolute;
@@ -504,6 +437,15 @@ input:focus-visible {
   bottom: var(--space-3);
   display: flex;
   gap: var(--space-2);
+}
+.card-actions.icons {
+  display: grid;
+  grid-template-columns: repeat(2, min-content);
+}
+.card-actions .button.button-icon {
+  justify-content: center;
+  min-width: 44px;
+  padding: 0;
 }
 .card-actions .button {
   display: inline-flex;
@@ -3198,4 +3140,17 @@ button .sample-chip {
 .stat-label.has-cap {
   -webkit-box-align: center;
   -webkit-line-clamp: unset;
+}
+
+/* List view: the Actions column is as wide as its widest set (Edit mode's three status icons) in every mode, so
+   toggling Edit never shifts the other columns. */
+.data-table th.col-actions {
+  min-width: 8rem;
+}
+/* The non-edit icon set is a fixed 2×2 at every width (phones used to lay four in a row, a wider column than Edit
+   mode's, so toggling Edit shifted the table). */
+.data-table td > .action-buttons:not(:has(> .action-stack)) {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  flex-wrap: unset;
 }

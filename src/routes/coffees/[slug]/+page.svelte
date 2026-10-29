@@ -5,7 +5,7 @@
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import { untrack, onMount } from 'svelte';
   import { page } from '$app/state';
-  import { bqImportRequested, editRequested } from '$lib/bqImportUrl';
+  import { bqImportRequested, cloneRequested, editRequested } from '$lib/bqImportUrl';
   import { writeUrlParams } from '$lib/urlState';
   import { coffeeToast, commitChanges, reverseChanges, undoChanges } from '$lib/coffeeToast';
   import { showToast } from '$lib/toast.svelte';
@@ -109,10 +109,13 @@
     if (bqImportRequested(page.url.searchParams)) void shareToBeanConqueror();
   });
   afterNavigate(() => {
-    if (!data.isAdmin || !editRequested(new URLSearchParams(location.search))) return;
-    editMode = true;
     const q = new URLSearchParams(location.search);
+    const edit = editRequested(q), clone = cloneRequested(q);
+    if (!data.isAdmin || (!edit && !clone)) return;
+    if (edit) editMode = true;
+    if (clone) openModal(clonePrefill(formCoffee));
     q.delete('edit');
+    q.delete('clone');
     setTimeout(() => writeUrlParams(q), 0); // after afterNavigate returns: replaceState isn't allowed inside it
   });
   let canEdit = $derived(editMode && data.isAdmin);
