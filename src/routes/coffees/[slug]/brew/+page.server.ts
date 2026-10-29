@@ -4,28 +4,32 @@ import { requireAdmin } from '$lib/server/auth';
 import { addMark, deleteMark, marksFor, biasLine } from '$lib/server/brewNow/outcome';
 import { getRoasterWebsite } from '$lib/server/roasterWebsites';
 import { getDb } from '$lib/server/db';
-import { getRedirectSlug, getCoffeeBySlug } from '$lib/server/coffees';
+import { getRedirectSlug, getCoffeeBySlug, openCoffee } from '$lib/server/coffees';
 import { coffeeImage } from '$lib/coffeeImage'; // PREVIEW-TEMP
 import { localToday } from '$lib/server/localToday';
 import { loadBrewRows, loadGearClass, gearOptions, coffeeGearDefaults, coffeeDetails } from '$lib/server/brewNow/load';
 import { suggest, similarCoffees, thisCoffeeSummary, tierOf } from '$lib/server/brewNow/suggest';
 import { findRoasterRecipe, getRoasterRecipe } from '$lib/server/brewNow/roasterRecipe';
-import { getBrewDoses } from '$lib/server/brewNow/prefs';
+import { getBrewDoses, getBrewRatios } from '$lib/server/brewNow/prefs';
 import { parseBrewNowView } from './brewNowUrl';
 
 // The chosen gear and its suggestion, from the view params only: the page and ?/brewThis both derive them here.
 function derive(db: ReturnType<typeof getDb>, coffee: NonNullable<ReturnType<typeof coffeeDetails>>, url: URL, today: string) {
   const rows = loadBrewRows(db);
   const base = gearOptions(rows, today);
-  const picked = parseBrewNowView(url, base);
+  const doses = getBrewDoses(db), ratios = getBrewRatios(db).ratios;
+  // The "other" drippers / filters are valid picks too (E6); dose and ratio must be on the user's lists (R19).
+  const view = parseBrewNowView(url, { grinders: base.grinders, drippers: [...base.drippers, ...base.otherDrippers],
+    filters: [...base.filters, ...base.otherFilters], doses, ratios });
   // E8: this coffee's own most used gear first; the filter is the chosen dripper's own most used.
-  const defaults = coffeeGearDefaults(rows, rows.filter((r) => tierOf(coffee, r) === 1), picked.dripper);
-  // E9: the filters follow the dripper; one that doesn't fit it falls back to that dripper's default.
-  const options = { ...base, filters: gearOptions(rows, today, picked.dripper ?? defaults.dripper).filters };
-  const view = { ...picked, filter: picked.filter && options.filters.includes(picked.filter) ? picked.filter : null };
-  const gear = { grinder: view.grinder ?? defaults.grinder, dripper: view.dripper ?? defaults.dripper, filter: view.filter ?? defaults.filter };
+  const gearDefaults = coffeeGearDefaults(rows, rows.filter((r) => tierOf(coffee, r) === 1), view.dripper);
+  // E9: the filter lists follow the dripper.
+  const { filters, otherFilters } = gearOptions(rows, today, view.dripper ?? gearDefaults.dripper);
+  const options = { ...base, filters, otherFilters, doses, ratios };
+  const gear = { grinder: view.grinder ?? gearDefaults.grinder, dripper: view.dripper ?? gearDefaults.dripper, filter: view.filter ?? gearDefaults.filter };
   const gc = loadGearClass(db);
-  const sug = suggest(coffee, rows, gear, gc, getBrewDoses(db), today);
+  const sug = suggest(coffee, rows, gear, gc, doses, today, ratios, { dose: view.dose ?? null, ratio: view.ratio ?? null });
+  const defaults = { ...gearDefaults, dose: sug.suggestedDose, ratio: sug.suggestedRatio }; // what the URL omits
   return { rows, options, defaults, view, gear, gc, sug };
 }
 
@@ -84,7 +88,7 @@ export const actions: Actions = {
     if (!coffee) error(404, 'Coffee not found');
     const f = await request.formData();
     const url = new URL('http://x/');
-    for (const k of ['grinder', 'dripper', 'filter']) { const v = f.get(k); if (typeof v === 'string' && v) url.searchParams.set(k, v); }
+    for (const k of ['grinder', 'dripper', 'filter', 'dose', 'ratio']) { const v = f.get(k); if (typeof v === 'string' && v) url.searchParams.set(k, v); }
     const { gear, sug } = derive(db, coffee, url, localToday());
     addMark(db, { coffeeId: coffee.id, gear, suggestion: sug, now: new Date() });
     return { marked: true as const };
@@ -95,6 +99,16 @@ export const actions: Actions = {
     const id = Number((await request.formData()).get('id'));
     if (!Number.isInteger(id) || !deleteMark(getDb(), id)) return fail(400, { markError: 'Only a pending mark can be cancelled' });
     return { deleted: true as const };
+  },
+  // Opens a backlog coffee (the same server logic as On Deck / the coffee page); the page asks first, then calls brewThis.
+  openCoffee: async ({ params, locals }) => {
+    requireAdmin(locals);
+    const db = getDb();
+    const coffee = coffeeDetails(db, params.slug, localToday());
+    if (!coffee) error(404, 'Coffee not found');
+    if (coffee.status === 'archive') return fail(400, { openError: 'This coffee is archived' });
+    openCoffee(db, coffee.id);
+    return { opened: true as const };
   },
   findRecipe: async ({ params, locals }) => {
     requireAdmin(locals);

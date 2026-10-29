@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { suggest, thisCoffeeSummary, tierOf, grindStep, similarCoffees, type Gear } from './suggest';
+import { suggest, dosePlan, thisCoffeeSummary, tierOf, grindStep, similarCoffees, type Gear } from './suggest';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
 
 let id = 0;
@@ -10,7 +10,7 @@ const brew = (o: Partial<BrewRow> = {}): BrewRow => ({
   decaf: false, grinderArchived: false, methodArchived: false, ...o
 });
 const target: CoffeeDetails = { id: 1, slug: 's1', roaster: 'Sey', coffeeName: 'Kiambu', roastDate: null, restDays: 10, gramsLeft: 100,
-  processing: 'Washed', origin: 'Kenya', roastLevel: 'Light', decaf: false };
+  processing: 'Washed', origin: 'Kenya', roastLevel: 'Light', decaf: false, status: 'open' };
 const gc: GearClass = {
   dripper: (n) => (n === 'V60' || n === 'CT62' ? 'cone' : (n ?? '')),
   filter: (n) => (n === 'Sibarist Fast' ? n : !n ? '' : 'any')
@@ -36,7 +36,7 @@ describe('tiers', () => {
   it('tier 1 beats tier 2 when it has 3 brews', () => {
     const s = run([brew({ tempC: 92, coffeeId: 2, coffeeName: 'Other' }), ...clones([95, 95, 95])]);
     expect(get(s, 'temp')).toMatchObject({ tier: 1, value: '95 °C', confidence: 'high', reason: 'Median 95 °C of 3 brews, this coffee' });
-    expect(s.basis).toBe('This coffee, 3 brews');
+    expect(s.basis).toBe('Based on 3 brews of this coffee.');
     expect(s.basisCoffees).toEqual([{ slug: 's1', name: 'Kiambu', roaster: 'Sey', brews: 3 }]);
   });
   it('a thin tier pools down at half weight; the reason names the mix; confidence follows the winning tier', () => {
@@ -60,7 +60,7 @@ describe('tiers', () => {
     const rows = [brew({ coffeeName: 'A', coffeeId: 2, tempC: 92, processGroup: 'Natural' }), brew({ coffeeName: 'B', coffeeId: 3, tempC: 95 }), brew({ coffeeName: 'C', coffeeId: 4, tempC: 95 })];
     const t = get(run(rows, gear, { ...target, processing: 'Natural' }), 'temp');
     expect(t.value).toBe('92 °C');
-    expect(t.synopsis.join(' ')).toMatch(/Your natural coffees ran ~3 °C cooler than washed ones/);
+    expect(t.synopsis.join(' ')).toMatch(/Your natural coffees ran about 3 °C cooler than washed ones/);
   });
 });
 
@@ -103,7 +103,7 @@ describe('grind', () => {
   it('a larger suggested dose than the evidence says so, and brews with a near dose count more', () => {
     const rows = [brew({ dose: 15, grind: '5.0' }), brew({ dose: 15, grind: '5.0' }), brew({ dose: 21, grind: '6.0' }), brew({ dose: 21, grind: '6.0' })];
     const big = run(rows.slice(0, 2), gear, target, [20]);
-    expect(get(big, 'dose').value).toBe('20 g');
+    expect(get(big, 'dose').value).toMatch(/^20 g/);
     expect(get(big, 'grind').synopsis.join(' ')).toMatch(/larger doses usually need a coarser grind/);
     expect(get(run(rows, gear, target, [20]), 'grind').value).toBe('6.0');
   });
@@ -122,7 +122,7 @@ describe('thin data (focus 1)', () => {
     const s = run([brew({ roaster: 'X', coffeeName: 'Y', origin: 'Peru', processGroup: 'Natural' })]);
     expect(s.rows.every((r) => r.value !== null && r.tier === 5)).toBe(true);
     expect(s.confidence).toBe('guess');
-    expect(s.basis).toMatch(/^Any coffee/);
+    expect(s.basis).toBe('Based on 1 brew of other coffees.');
   });
 });
 
@@ -171,17 +171,57 @@ describe('dose (focus 4)', () => {
   const dose = (gramsLeft: number | null) => get(run([brew({ dose: 17.6 })], gear, { ...target, gramsLeft }), 'dose');
   it('null grams → no grams in the reason', () => expect(dose(null).reason).not.toMatch(/\d+ ?g\b|left/));
   it('zero grams → no negative number', () => expect(dose(0).reason).not.toMatch(/-\d/));
-  it('36 g left, 18 g dose → uses the bag exactly', () => {
-    const d = dose(36);
-    expect(d.value).toBe('18 g');
-    expect(d.reason).toBe('18 g leaves 18 g, one more brew');
+  it('the value carries the water for the ratio: 18 g · 252 g water', () => expect(dose(null).value).toBe('18 g · 252 g water'));
+  it('36 g left, 18 g dose → enough for one more brew; an exact fit says so', () => {
+    expect(dose(36)).toMatchObject({ value: '18 g · 252 g water', reason: '18 g leaves 18 g, enough for 1 more brew' });
     expect(dose(18).reason).toBe('18 g uses the bag exactly');
-    expect(dose(40).reason).toMatch(/20 g uses the bag exactly/);
+    expect(dose(40).reason).toBe('18 g leaves 22 g, enough for 1 more brew');
   });
   it('a short bag shows what is left, never more; an empty bag keeps the dose', () => {
-    expect(dose(12)).toMatchObject({ value: '12 g', reason: 'Use the rest of the bag' });
-    expect(dose(12.4).value).toBe('12.4 g');
-    expect(dose(0)).toMatchObject({ value: '18 g', reason: 'The bag is empty' });
+    expect(dose(12)).toMatchObject({ value: '12 g · 168 g water', reason: 'Use the rest of the bag' });
+    expect(dose(12.4).value).toMatch(/^12\.4 g/);
+    expect(dose(0)).toMatchObject({ value: '18 g · 252 g water', reason: 'The bag is empty' });
+  });
+  it('dosePlan on the suggestion: the rest of the bag split into the preferred doses', () => {
+    expect(run([brew({ dose: 17.6 })], gear, { ...target, gramsLeft: 67.4 }).dosePlan).toEqual({ leftAfter: 49.4, brews: [15, 15, 18], leftover: 1.4 });
+    expect(run([brew({ dose: 17.6 })], gear, { ...target, gramsLeft: null }).dosePlan).toBeNull();
+    expect(run([brew({ dose: 17.6 })], gear, { ...target, gramsLeft: 12 }).dosePlan).toBeNull();
+  });
+});
+
+describe('dosePlan', () => {
+  it('least grams wasted, then fewest brews', () => {
+    expect(dosePlan(49.4, [15, 18, 20])).toEqual({ leftAfter: 49.4, brews: [15, 15, 18], leftover: 1.4 });
+    expect(dosePlan(40, [15, 18, 20])).toEqual({ leftAfter: 40, brews: [20, 20], leftover: 0 });
+    expect(dosePlan(36, [15, 18, 20])).toEqual({ leftAfter: 36, brews: [18, 18], leftover: 0 });
+  });
+  it('exact fit with one brew, nothing fits, zero and no doses', () => {
+    expect(dosePlan(18, [15, 18, 20])).toMatchObject({ brews: [18], leftover: 0 });
+    expect(dosePlan(10, [15, 18, 20])).toEqual({ leftAfter: 10, brews: [], leftover: 10 });
+    expect(dosePlan(0, [15])).toEqual({ leftAfter: 0, brews: [], leftover: 0 });
+    expect(dosePlan(30, [])).toEqual({ leftAfter: 30, brews: [], leftover: 30 });
+  });
+});
+
+describe('ratio and overrides (E3)', () => {
+  const rb = [brew({ dose: 18, waterG: 288 }), brew({ dose: 18, waterG: 288 }), brew({ dose: 18, waterG: 290 })];
+  const withRatios = (chosen = { dose: null as number | null, ratio: null as number | null }) =>
+    suggest(target, rb, gear, gc, [15, 18, 20], '2026-10-28', [15, 16, 17], chosen);
+  it('suggests the nearest ratio on the user list and shows dose × ratio as water', () => {
+    const s = withRatios();
+    expect(get(s, 'ratio')).toMatchObject({ value: '1:16', reason: expect.stringMatching(/^Median 1:16/) });
+    expect(get(s, 'dose').value).toBe('18 g · 288 g water');
+    expect([s.suggestedDose, s.suggestedRatio]).toEqual([18, 16]);
+  });
+  it('a chosen dose / ratio replaces the pair, the water follows, and the suggestion stays reported', () => {
+    const s = withRatios({ dose: 20, ratio: 17 });
+    expect(get(s, 'dose')).toMatchObject({ value: '20 g · 340 g water', reason: 'Your choice; suggested 18 g' });
+    expect(get(s, 'ratio')).toMatchObject({ value: '1:17', reason: 'Your choice; suggested 1:16' });
+    expect([s.dose, s.ratio, s.suggestedDose, s.suggestedRatio]).toEqual([20, 17, 18, 16]);
+  });
+  it('a choice with no evidence still shows', () => {
+    const s = suggest(target, [brew({ dose: null })], gear, gc, [15, 18], '2026-10-28', [16], { dose: 15, ratio: 16 });
+    expect(get(s, 'dose').value).toBe('15 g · 240 g water');
   });
 });
 

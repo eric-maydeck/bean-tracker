@@ -17,7 +17,7 @@
   let submitting = $state(false); // blocks a double tap on Brew this
   let marked = $state(false); // shown after the mark, until the gear or page changes
   $effect(() => { void [data.gear, data.coffee.id]; marked = false; });
-  const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
+  const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', ratio: 'Ratio', recipe: 'Recipe', water: 'Water' };
   const c = $derived(data.coffee);
   const asc = $derived([...data.thisCoffee].sort((a, b) => a.localTime.localeCompare(b.localTime)));
   const card = $derived(page.url.searchParams.get('card')); // PREVIEW-TEMP

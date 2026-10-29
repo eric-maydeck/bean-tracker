@@ -82,18 +82,45 @@ describe('dripper-aware filter default', () => {
   });
 });
 
-describe('E9 filters follow the dripper', () => {
-  it('lists only the dripper\'s filters and falls back from an incompatible filter param', async () => {
+describe('E9/E6 filters follow the dripper', () => {
+  it('lists the dripper\'s filters, the rest as other; a bogus filter falls back', async () => {
     db.exec(`INSERT INTO beanconqueror_methods (id, name, imported_at) VALUES ('m3', 'Graycano - Sibarist Fast', 'x')`);
     db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, imported_at)
       VALUES (?, ?, 'm3', 'g1', '5.5', 8, 'x')`).run(`${today}T08:00:09.000Z`, `bean${brewed.id}`);
     const gr = await run(brewed.slug, '?dripper=graycano');
     expect(gr.options.filters).toEqual(['Sibarist Fast']);
+    expect(gr.options.otherFilters).toEqual(['Cafec Abaca']);
     const v60 = await run(brewed.slug, '?dripper=v60&filter=sibarist+fast');
     expect(v60.options.filters).toEqual(['Cafec Abaca']);
-    expect(v60.gear).toMatchObject({ dripper: 'V60', filter: 'Cafec Abaca' });
+    expect(v60.gear).toMatchObject({ dripper: 'V60', filter: 'Sibarist Fast' }); // an "other" filter is a valid pick
+    expect((await run(brewed.slug, '?dripper=v60&filter=nope')).gear.filter).toBe('Cafec Abaca');
+    expect(v60.options.drippers).toEqual(expect.arrayContaining(['V60', 'Graycano']));
     db.prepare(`DELETE FROM beanconqueror_brews WHERE preparation_id = 'm3'`).run();
     db.exec(`DELETE FROM beanconqueror_methods WHERE id = 'm3'`);
+  });
+});
+
+describe('dose / ratio overrides (R19)', () => {
+  it('validates against the saved lists, reports the suggestion as the default, and follows into the water', async () => {
+    const base = await run(brewed.slug);
+    expect(base.defaults).toMatchObject({ dose: base.suggestion.suggestedDose, ratio: base.suggestion.suggestedRatio });
+    const { doses, ratios } = base.options, dose = doses[doses.length - 1], ratio = ratios[0];
+    const ok = await run(brewed.slug, `?dose=${dose}&ratio=${ratio}`);
+    expect(ok.suggestion).toMatchObject({ dose, ratio });
+    expect(ok.suggestion.rows.find((r: { setting: string }) => r.setting === 'dose').value).toBe(`${dose} g · ${Math.round(dose * ratio)} g water`);
+    expect((await run(brewed.slug, '?dose=19')).suggestion.dose).toBe(base.suggestion.dose);
+  });
+});
+
+describe('?/openCoffee', () => {
+  const open = (isAdmin: boolean, slug: string) => actions.openCoffee({ params: { slug }, locals: { isAdmin } } as never) as Promise<any>;
+  it('401s without admin; opens a backlog coffee; page data shows its status', async () => {
+    expect((await run(fresh.slug)).coffee.status).toBe('backlog');
+    await expect(open(false, fresh.slug)).rejects.toMatchObject({ status: 401 });
+    expect(await open(true, fresh.slug)).toEqual({ opened: true });
+    expect((await run(fresh.slug)).coffee.status).toBe('open');
+    expect(await open(true, fresh.slug)).toEqual({ opened: true }); // already open: nothing changes
+    try { await open(true, 'nope'); expect.unreachable(); } catch (e) { expect(isHttpError(e, 404)).toBe(true); }
   });
 });
 

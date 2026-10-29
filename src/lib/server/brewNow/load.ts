@@ -4,6 +4,7 @@ import { parseMethod, grindValue, restDays, normalizeRoastLevel } from '../insig
 import { bcLocalTime, addDays } from '../insights/time';
 import { localToday } from '../localToday';
 import { getGearDetails } from '../gearDetails';
+import { OWN_DATA_ONLY } from '$lib/gear';
 
 export interface BrewRow {
   id: number; coffeeId: number; slug: string; roaster: string; coffeeName: string;
@@ -18,6 +19,7 @@ export interface GearClass { dripper: (name: string | null) => string; filter: (
 export interface CoffeeDetails {
   id: number; slug: string; roaster: string; coffeeName: string; roastDate: string | null; restDays: number | null;
   gramsLeft: number | null; processing: string | null; origin: string | null; roastLevel: string | null; decaf: boolean;
+  status: 'backlog' | 'open' | 'archive';
 }
 
 interface Raw {
@@ -68,23 +70,33 @@ export function loadBrewRows(db: DatabaseSync): BrewRow[] {
 export function loadGearClass(db: DatabaseSync): GearClass {
   const d = getGearDetails(db);
   const of = (kind: string, name: string | null) => d.find((x) => x.kind === kind && x.name === name)?.values;
-  const own = (kind: string, name: string | null) => ['This gear only', 'Own brews only'].includes(String(of(kind, name)?.ownData ?? '')); // old value until the gear-field migration lands
+  const own = (kind: string, name: string | null) => of(kind, name)?.ownData === OWN_DATA_ONLY;
   return {
     dripper: (name) => (!name || own('dripper', name) ? (name ?? '') : of('dripper', name)?.shape === 'Conical' ? 'cone' : name),
     filter: (name) => (!name || own('filter', name) ? (name ?? '') : 'any')
   };
 }
 
-// Gear for the pickers, newest first: used in the last 365 days, archived (R1) left out. Rows arrive oldest first.
-export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null): { grinders: string[]; drippers: string[]; filters: string[] } {
+// Gear for the pickers, archived (R1) left out. Rows arrive oldest first. Grinders: used in the last 365 days, newest first.
+// Drippers: the last 365 days by use, the rest of the non-archived ones as `otherDrippers`. Filters: those used with
+// `dripper` (E9), the rest of the non-archived ones as `otherFilters` (E6).
+export interface GearOptions { grinders: string[]; drippers: string[]; otherDrippers: string[]; filters: string[]; otherFilters: string[] }
+export function gearOptions(rows: BrewRow[], today = localToday(), dripper?: string | null): GearOptions {
   const since = addDays(today, -365);
-  const recent = rows.filter((r) => r.localTime.slice(0, 10) >= since).reverse();
-  const list = (pick: (r: BrewRow) => string | null, skip: (r: BrewRow) => boolean) =>
-    [...new Set(recent.filter((r) => !skip(r)).flatMap((r) => pick(r) ?? []))];
+  const all = [...rows].reverse(), recent = all.filter((r) => r.localTime.slice(0, 10) >= since);
+  const list = (src: BrewRow[], pick: (r: BrewRow) => string | null, skip: (r: BrewRow) => boolean) =>
+    [...new Set(src.filter((r) => !skip(r)).flatMap((r) => pick(r) ?? []))];
+  const byUse = (src: BrewRow[], pick: (r: BrewRow) => string | null) => {
+    const n = new Map<string, number>();
+    for (const r of src) if (!r.methodArchived && pick(r)) n.set(pick(r)!, (n.get(pick(r)!) ?? 0) + 1);
+    return [...n].sort((a, b) => b[1] - a[1]).map(([k]) => k); // stable: newest first among ties
+  };
+  const drippers = byUse(recent, (r) => r.dripper);
+  const filters = list(recent, (r) => r.filter, (r) => r.methodArchived || (!!dripper && r.dripper !== dripper));
   return {
-    grinders: list((r) => r.grinder, (r) => r.grinderArchived),
-    drippers: list((r) => r.dripper, (r) => r.methodArchived),
-    filters: list((r) => r.filter, (r) => r.methodArchived || (!!dripper && r.dripper !== dripper)) // E9: the filters used with the chosen dripper
+    grinders: list(recent, (r) => r.grinder, (r) => r.grinderArchived),
+    drippers, otherDrippers: list(all, (r) => r.dripper, (r) => r.methodArchived).filter((d) => !drippers.includes(d)),
+    filters, otherFilters: list(all, (r) => r.filter, (r) => r.methodArchived).filter((f) => !filters.includes(f))
   };
 }
 
@@ -111,16 +123,16 @@ export function coffeeGearDefaults(rows: BrewRow[], mine: BrewRow[], dripper?: s
 export function coffeeDetails(db: DatabaseSync, slug: string, today: string): CoffeeDetails | null {
   const c = db.prepare(
     `SELECT c.id, c.slug, c.roaster, c.coffee_name, c.roast_date, c.frozen_start_date AS fs, c.frozen_end_date AS fe, c.amount_g,
-            c.processing, c.origin, c.roast_level, c.decaf,
+            c.processing, c.origin, c.roast_level, c.decaf, c.status,
             (SELECT COALESCE(SUM(b.ground_coffee_g), 0) FROM beanconqueror_brews b
              JOIN beanconqueror_beans bean ON bean.id = b.bean_id WHERE bean.coffee_id = c.id) AS used
      FROM coffees c WHERE c.slug = ?`
   ).get(slug) as { id: number; slug: string; roaster: string; coffee_name: string; roast_date: string | null; fs: string | null;
-    fe: string | null; amount_g: number | null; processing: string | null; origin: string | null; roast_level: string | null; decaf: number; used: number } | undefined;
+    fe: string | null; amount_g: number | null; processing: string | null; origin: string | null; roast_level: string | null; decaf: number; status: CoffeeDetails['status']; used: number } | undefined;
   if (!c) return null;
   return {
     id: c.id, slug: c.slug, roaster: c.roaster, coffeeName: c.coffee_name, roastDate: c.roast_date,
     restDays: restDays(c.roast_date, c.fs, c.fe, today), gramsLeft: c.amount_g === null ? null : Math.max(0, c.amount_g - c.used),
-    processing: c.processing, origin: c.origin, roastLevel: c.roast_level, decaf: c.decaf === 1
+    processing: c.processing, origin: c.origin, roastLevel: c.roast_level, decaf: c.decaf === 1, status: c.status
   };
 }

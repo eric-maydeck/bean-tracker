@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { OWN_DATA_ONLY } from '$lib/gear';
 import { createDb } from '../db';
 import { createCoffee } from '../coffees';
 import { saveGearDetails } from '../gearDetails';
@@ -28,8 +29,8 @@ const brew = (c: number, at: string, o: { mill?: string; method?: string; grind?
 
 saveGearDetails(db, { kind: 'dripper', name: 'V60', values: { shape: 'Conical' }, imageUrl: null });
 saveGearDetails(db, { kind: 'dripper', name: 'Gabi Master A', values: { shape: 'Flat bottom' }, imageUrl: null });
-saveGearDetails(db, { kind: 'dripper', name: 'Graycano', values: { shape: 'Conical', ownData: 'Own brews only' }, imageUrl: null });
-saveGearDetails(db, { kind: 'filter', name: 'Sibarist Fast', values: { ownData: 'Own brews only' }, imageUrl: null });
+saveGearDetails(db, { kind: 'dripper', name: 'Graycano', values: { shape: 'Conical', ownData: OWN_DATA_ONLY }, imageUrl: null });
+saveGearDetails(db, { kind: 'filter', name: 'Sibarist Fast', values: { ownData: OWN_DATA_ONLY }, imageUrl: null });
 
 describe('loadBrewRows', () => {
   const a = coffee('Sey', 'Kiambu');
@@ -81,7 +82,8 @@ describe('gearOptions / gearDefaults', () => {
     row({ localTime: '2026-10-02T08:00', grinder: 'A', dripper: 'D1', filter: 'F2' })
   ];
   it('lists last-365-day gear, most recent first, skipping archived', () => {
-    expect(gearOptions(rows, '2026-10-28')).toEqual({ grinders: ['A', 'B'], drippers: ['D1'], filters: ['F2', 'F1'] });
+    expect(gearOptions(rows, '2026-10-28')).toMatchObject({ grinders: ['A', 'B'], drippers: ['D1'], filters: ['F2', 'F1'] });
+    expect(gearOptions(rows, '2026-10-28')).toMatchObject({ otherDrippers: ['Ancient'], otherFilters: [] });
   });
   it('defaults to the most used of the last 30, skipping archived', () => {
     expect(gearDefaults(rows)).toEqual({ grinder: 'A', dripper: 'D1', filter: 'F2' });
@@ -118,6 +120,7 @@ describe('coffeeGearDefaults / filters follow the dripper', () => {
   });
   it('options.filters lists only the filters used with the dripper', () => {
     expect(gearOptions(rows, '2026-10-28', 'D2').filters).toEqual(['F3', 'F2']);
+    expect(gearOptions(rows, '2026-10-28', 'D2').otherFilters).toEqual(['F1']);
     expect(gearOptions(rows, '2026-10-28', 'D1').filters).toEqual(['F1']);
     expect(gearOptions(rows, '2026-10-28').filters).toEqual(['F3', 'F2', 'F1']);
   });

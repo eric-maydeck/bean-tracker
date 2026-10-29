@@ -2,9 +2,9 @@ import type { DatabaseSync } from 'node:sqlite';
 import { localDateTime } from '$lib/localDate';
 import { bcLocalTime } from '../insights/time';
 import { loadBrewRows, type BrewRow } from './load';
-import { lin, type Gear, type Setting, type Suggestion } from './suggest';
+import { lin, fmtRatio, type Gear, type Setting, type Suggestion } from './suggest';
 
-const SETTINGS: Setting[] = ['grind', 'temp', 'dose', 'recipe', 'water'];
+const SETTINGS: Setting[] = ['grind', 'temp', 'dose', 'ratio', 'recipe', 'water'];
 type Values = Partial<Record<Setting, string | null>>;
 export interface MarkView {
   id: number; markedLocal: string; status: 'pending' | 'linked' | 'skipped' | 'expired'; gear: Gear;
@@ -14,7 +14,7 @@ export interface MarkView {
 // Only the suggested values are kept (no evidence, no notes: they are private).
 export function addMark(db: DatabaseSync, m: { coffeeId: number; gear: Gear; suggestion: Suggestion; now: Date }): void {
   const iso = m.now.toISOString();
-  const values: Values = Object.fromEntries(m.suggestion.rows.map((r) => [r.setting, r.value]));
+  const values: Values = Object.fromEntries(m.suggestion.rows.map((r) => [r.setting, r.setting === 'dose' ? (r.value?.split(' · ')[0] ?? null) : r.value])); // dose stored without its water
   db.prepare(`INSERT INTO brew_now_marks (coffee_id, marked_at, marked_local, grinder, dripper, filter, suggestion) VALUES (?, ?, ?, ?, ?, ?, ?)`)
     .run(m.coffeeId, iso, localDateTime(iso), m.gear.grinder, m.gear.dripper, m.gear.filter, JSON.stringify(values));
 }
@@ -70,6 +70,7 @@ const num = (n: number | null) => (n === null ? null : String(Math.round(n * 10)
 // The brew's value in the same wording suggest() uses.
 const actualOf = (b: BrewRow): Values => ({
   grind: b.grind, temp: b.tempC === null ? null : `${num(b.tempC)} °C`, dose: b.dose === null ? null : `${num(b.dose)} g`,
+  ratio: b.dose && b.waterG ? fmtRatio(b.waterG / b.dose) : null,
   recipe: b.recipeName, water: b.water?.trim() || null
 });
 
@@ -86,7 +87,7 @@ export function marksFor(db: DatabaseSync, coffeeId: number): MarkView[] {
  gear: { grinder: m.grinder, dripper: m.dripper, filter: m.filter },
       diffs: actual ? SETTINGS.map((s) => ({ setting: s, suggested: suggested[s]?.trim() ?? null, actual: actual[s]?.trim() ?? null }))
         .filter((d) => !same(d.setting, d.suggested, d.actual) && (d.suggested !== null || d.actual !== null)
-          && !(d.setting === 'recipe' && brew!.recipeId === null)) : [], // the recipe match lands after the pour readings
+          && !(d.setting === 'recipe' && brew!.recipeId === null) && !(d.setting === 'ratio' && d.suggested === null)) : [], // the recipe match lands after the pour readings
       rating: brew?.rating ?? null, brewId: m.brew_id
     };
   });

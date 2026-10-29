@@ -5,7 +5,7 @@ import { processGroup } from '$lib/processGroups';
 import type { BrewRow, CoffeeDetails, GearClass } from './load';
 import type { Confidence } from '$lib/brewNowConfidence';
 
-export type Setting = 'grind' | 'temp' | 'dose' | 'recipe' | 'water';
+export type Setting = 'grind' | 'temp' | 'dose' | 'ratio' | 'recipe' | 'water';
 export type { Confidence };
 export interface Row {
   setting: Setting; value: string | null; reason: string; tier: Tier | null; confidence: Confidence;
@@ -15,8 +15,11 @@ export interface Row {
 }
 export interface OtherGrinder { grinder: string; grind: string; tier: Tier; brews: number }
 export interface BasisCoffee { slug: string; name: string; roaster: string; brews: number }
+// Left in the bag after the suggested dose, split into the user's preferred doses (least wasted, then fewest brews).
+export interface DosePlan { leftAfter: number; brews: number[]; leftover: number }
 export interface Suggestion {
-  rows: Row[]; confidence: Confidence; basis: string; basisCoffees: BasisCoffee[]; lastNote: string | null;
+  rows: Row[]; dose: number | null; ratio: number | null; // the pair in use (the user's pick, else the suggestion)
+  suggestedDose: number | null; suggestedRatio: number | null; dosePlan: DosePlan | null; confidence: Confidence; basis: string; basisCoffees: BasisCoffee[]; lastNote: string | null;
   otherGrinders: OtherGrinder[]; // other grinders with tier 1-3 data: their best / typical setting, not converted
 }
 export interface Gear { grinder: string | null; dripper: string | null; filter: string | null }
@@ -85,13 +88,45 @@ const num = (n: number) => String(Math.round(n * 10) / 10);
 const range = (xs: number[]) => (Math.min(...xs) === Math.max(...xs) ? num(xs[0]) : `${num(Math.min(...xs))}–${num(Math.max(...xs))}`);
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
+export const fmtRatio = (r: number) => `1:${num(r)}`;
+
+// Unbounded knapsack in tenths of a gram: the most grams of `doses` that fit in `left`, then the fewest brews.
+export function dosePlan(left: number, doses: number[]): DosePlan {
+  const cap = Math.max(0, Math.floor(left * 10 + 1e-6)), ds = [...new Set(doses.map((d) => Math.round(d * 10)))].filter((d) => d > 0);
+  const best: { sum: number; n: number; last: number }[] = [{ sum: 0, n: 0, last: 0 }]; // best[c]: fill of c tenths or less
+  for (let c = 1; c <= cap; c++) {
+    let b = { ...best[c - 1], last: 0 };
+    for (const d of ds) if (d <= c) {
+      const p = best[c - d], cand = { sum: p.sum + d, n: p.n + 1, last: d };
+      if (cand.sum > b.sum || (cand.sum === b.sum && cand.n < b.n)) b = cand;
+    }
+    best[c] = b;
+  }
+  const plan: number[] = [];
+  for (let c = cap; c > 0 && best[c].sum > 0;) {
+    if (best[c].last === 0) { c--; continue; }
+    plan.push(best[c].last / 10);
+    c -= best[c].last;
+  }
+  const used = plan.reduce((a, b) => a + b, 0);
+  return { leftAfter: Math.round(left * 10) / 10, brews: plan.sort((a, b) => a - b), leftover: Math.round((left - used) * 10) / 10 };
+}
+
 interface Pick { tier: Tier; set: BrewRow[]; w: Map<BrewRow, number>; loose: boolean; counts: Map<Tier, number> }
 interface PickOpts { rest?: boolean; grinder?: string; maxTier?: Tier; factor?: (r: BrewRow) => number }
 
-export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: GearClass, doses: number[], today: string): Suggestion {
+export interface Chosen { dose: number | null; ratio: number | null }
+export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: GearClass, doses: number[], today: string,
+  ratios: number[] = [], chosen: Chosen = { dose: null, ratio: null }): Suggestion {
   const tiers = new Map(rows.map((r) => [r, tierOf(target, r)]));
   const rated = rows.filter((r) => r.rating !== null);
   const tg = processGroup(target.processing);
+  const phrase = (t: Tier) => ['', 'of this coffee', `of similar ${target.roaster} coffees`, `of other ${target.roaster} coffees`, target.decaf ? 'of similar decafs' : 'of similar coffees', 'of other coffees'][t];
+  // "6 brews of this coffee" or, pooled, "3 brews: 1 of this coffee and 2 of similar decafs"
+  const basisText = (p: Pick) => {
+    const parts = [...p.counts].map(([t, n]) => `${n} ${phrase(t)}`);
+    return p.counts.size === 1 ? `${brews(p.set.length)} ${phrase(p.tier)}` : `${brews(p.set.length)}: ${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  };
   const label = (t: Tier) => ['', 'this coffee', 'same roaster, alike', 'same roaster, other', target.decaf ? 'similar decafs' : 'similar coffees', 'other coffees'][t];
   const weights = (set: BrewRow[], first: Tier, o: PickOpts) => {
     const med = median(set.map((r) => r.rating!));
@@ -126,57 +161,75 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   // "3 brews, this coffee" or, pooled, "3 brews, 1 this coffee + 2 similar coffees"
   const src = (p: Pick) => `${brews(p.set.length)}, ${p.counts.size === 1 ? label(p.tier) : [...p.counts].map(([t, n]) => `${n} ${label(t)}`).join(' + ')}`;
 
-  // Sentences that explain the evidence: the extras first (what matters for this setting), then what differs between the brews.
+  // Plain sentences for the expanded row: what matters for this setting first, then what differs between the evidence brews.
+  const WHAT: Record<Setting, string> = { grind: 'grind', temp: 'temperature', dose: 'dose', ratio: 'ratio', recipe: 'recipe', water: 'water choice' };
   const lurk = (p: Pick, setting: Setting): string[] => {
-    const n = p.set.length, out: string[] = [];
+    const n = p.set.length, out: string[] = [], carry = `so their ${WHAT[setting]} may not carry over`;
     const most = (xs: string[]) => { const c = new Map<string, number>(); for (const x of xs) c.set(x, (c.get(x) ?? 0) + 1); return [...c].sort((a, b) => b[1] - a[1])[0]; };
     const otherDrip = p.set.flatMap((r) => (gear.dripper && r.dripper && r.dripper !== gear.dripper ? r.dripper : []));
-    if (otherDrip.length) out.push(`${otherDrip.length} of these ${n} brews used the ${most(otherDrip)[0]}, not the ${gear.dripper}`);
+    if (otherDrip.length) out.push(`${otherDrip.length} of these ${n} brews ${otherDrip.length === 1 ? 'was' : 'were'} on the ${most(otherDrip)[0]} rather than the ${gear.dripper}, ${carry}`);
     const otherGr = p.set.filter((r) => gear.grinder && r.grinder && r.grinder !== gear.grinder).length;
-    if (setting !== 'grind' && otherGr) out.push(`${otherGr} of these ${n} brews used another grinder`);
+    if (setting !== 'grind' && otherGr) out.push(`${otherGr} of these ${n} brews ${otherGr === 1 ? 'was' : 'were'} made on another grinder, ${carry}`);
     const ts = p.set.flatMap((r) => r.tempC ?? []);
-    if (setting !== 'temp' && ts.length > 1 && Math.max(...ts) - Math.min(...ts) >= 2) out.push(`Temps ranged ${range(ts)} °C`);
+    if (setting !== 'temp' && ts.length > 1 && Math.max(...ts) - Math.min(...ts) >= 2) out.push(`Water temperatures in these brews ranged from ${num(Math.min(...ts))} to ${num(Math.max(...ts))} °C`);
     const ds = p.set.flatMap((r) => r.dose ?? []);
-    if (setting !== 'dose' && ds.length > 1 && Math.max(...ds) - Math.min(...ds) >= 3) out.push(`Doses ranged ${range(ds)} g`);
+    if (setting !== 'dose' && ds.length > 1 && Math.max(...ds) - Math.min(...ds) >= 3) out.push(`Doses ranged from ${num(Math.min(...ds))} to ${num(Math.max(...ds))} g`);
     const ws = new Set(p.set.flatMap((r) => r.water?.trim() || []));
-    if (setting !== 'water' && ws.size > 1) out.push(`They used ${ws.size} different waters`);
+    if (setting !== 'water' && ws.size > 1) out.push(`These brews used ${ws.size} different waters`);
     const rs = new Set(p.set.map((r) => r.recipeName ?? ''));
-    if (setting !== 'recipe' && rs.size > 1) out.push(`They used ${rs.size} different recipes`);
+    if (setting !== 'recipe' && rs.size > 1) out.push(`They also used ${rs.size} different recipes`);
     return out.slice(0, 2);
   };
+  const used: Pick[] = []; // the evidence behind every filled row (for the footer)
   const synopsis = (p: Pick, setting: Setting, extras: string[]): string[] => {
     const rs = p.set.map((r) => r.rating!);
-    return [`Evidence: ${src(p)}; ratings ${range(rs)}.`.replace(/\.\.$/, '.'), ...extras.map((x) => x.replace(/\.?$/, '.')), ...lurk(p, setting).map((x) => `${x}.`)].slice(0, 4);
+    const out = [...extras, ...lurk(p, setting)].map((x) => x.replace(/\.?$/, '.')).slice(0, 4);
+    return out.length >= 2 ? out : [`This comes from ${basisText(p)}, rated ${range(rs).replace('–', ' to ')}.`, ...out];
   };
-  const row = (setting: Setting, p: Pick, value: string, reason: string, link: string | null = null, extras: string[] = []): Row => ({
-    setting, value, reason: p.loose ? `No brews on this gear; ${reason}` : reason, tier: p.tier, confidence: conf(p),
-    synopsis: synopsis(p, setting, p.loose ? ['No brews on this exact gear, so this uses other gear', ...extras] : extras),
-    evidence: byWeight(p).slice(0, 8), link
-  });
+  const row = (setting: Setting, p: Pick, value: string, reason: string, link: string | null = null, extras: string[] = []): Row => {
+    used.push(p);
+    return {
+      setting, value, reason: p.loose ? `No brews on this gear; ${reason}` : reason, tier: p.tier, confidence: conf(p),
+      synopsis: synopsis(p, setting, p.loose ? ['You have no brews on this exact gear, so this uses other gear', ...extras] : extras),
+      evidence: byWeight(p).slice(0, 8), link
+    };
+  };
 
   // Dose first: the grind leans on brews made with a similar dose.
   const snap = (v: number) => (doses.length ? doses.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v));
   const noData = (setting: Setting, what: string): Row =>
     ({ setting, value: null, reason: `No rated brews with ${what} on this gear`, tier: null, confidence: 'guess', synopsis: [], evidence: [], link: null });
-  const numRow = (setting: 'temp' | 'dose', get: (r: BrewRow) => number | null, show: (v: number) => string,
-    say: (v: number, p: Pick) => string, extra: (v: number, p: Pick) => string[], factor?: (r: BrewRow) => number): Row => {
-    const p = pick((r) => get(r) !== null, { rest: setting === 'temp', factor });
-    if (!p) return noData(setting, setting);
-    const v = weightedMedian(p.set.map((r) => get(r)!), p.set.map((r) => p.w.get(r)!));
-    return row(setting, p, show(v), say(v, p), null, extra(v, p));
+  const stat = (get: (r: BrewRow) => number | null, o: PickOpts = {}) => {
+    const p = pick((r) => get(r) !== null, o);
+    return p ? { p, v: weightedMedian(p.set.map((r) => get(r)!), p.set.map((r) => p.w.get(r)!)) } : null;
   };
-  const doseRow = numRow('dose', (r) => r.dose, (v) => {
-    const d = snap(v), left = target.gramsLeft;
-    return left !== null && left > 0 && left < d ? `${num(left)} g` : `${d} g`; // never more than the bag holds
-  }, (v, p) => {
-    const d = snap(v), left = target.gramsLeft;
-    if (left === null) return `Median ${num(v)} of ${src(p)}`;
-    if (left < d) return left > 0 ? 'Use the rest of the bag' : 'The bag is empty';
-    const exact = doses.find((x) => left >= x && left % x <= 1);
-    if (exact === d && left - d <= 1) return `${d} g uses the bag exactly`;
-    return `${d} g leaves ${num(left - d)} g` + (exact === d ? ', one more brew' : exact ? `; ${exact} g uses the bag exactly` : '');
-  }, (v) => [`The median dose in these brews is ${num(v)} g, rounded to your nearest saved dose`]);
-  const brewDose = doseRow.value === null ? null : parseFloat(doseRow.value);
+  const left = target.gramsLeft;
+  const dS = stat((r) => r.dose), rS = stat((r) => (r.dose && r.waterG ? r.waterG / r.dose : null));
+  const snapRatio = (v: number) => (ratios.length ? ratios.reduce((a, b) => (Math.abs(b - v) < Math.abs(a - v) ? b : a)) : Math.round(v * 2) / 2);
+  const sugDose = dS ? (() => { const d = snap(dS.v); return left !== null && left > 0 && left < d ? Math.round(left * 10) / 10 : d; })() : null; // never more than the bag holds
+  const sugRatio = rS ? snapRatio(rS.v) : null;
+  const brewDose = chosen.dose ?? sugDose, brewRatio = chosen.ratio ?? sugRatio;
+  const water = brewDose !== null && brewRatio !== null ? Math.round(brewDose * brewRatio) : null;
+  const want = chosen.dose ?? (dS ? snap(dS.v) : null); // the dose before the bag limit
+  const plan = left !== null && brewDose !== null && want !== null && left >= want ? dosePlan(left - brewDose, doses) : null;
+  const picked = (setting: Setting, value: string, suggested: string | null): Row => ({ setting, value, reason: suggested ? `Your choice; suggested ${suggested}` : 'Your choice',
+    tier: null, confidence: 'guess', synopsis: [], evidence: [], link: null });
+  const doseRow = ((): Row => {
+    if (brewDose === null) return noData('dose', 'dose');
+    const value = `${num(brewDose)} g${water !== null ? ` · ${water} g water` : ''}`;
+    if (chosen.dose !== null && chosen.dose !== sugDose) return dS ? { ...row('dose', dS.p, value, `Your choice; suggested ${num(sugDose!)} g`), tier: dS.p.tier } : picked('dose', value, null);
+    const d = brewDose;
+    const say = left === null ? `Median ${num(dS!.v)} of ${src(dS!.p)}` : left < want! ? (left > 0 ? 'Use the rest of the bag' : 'The bag is empty')
+      : left - d <= 1 ? `${num(d)} g uses the bag exactly`
+      : `${num(d)} g leaves ${num(left - d)} g` + (plan?.brews.length ? `, enough for ${plan.brews.length} more ${plan.brews.length === 1 ? 'brew' : 'brews'}` : '');
+    return row('dose', dS!.p, value, say, null, [`The typical dose in these brews is ${num(dS!.v)} g, rounded to your nearest saved dose`]);
+  })();
+  const ratioRow = ((): Row => {
+    if (brewRatio === null) return noData('ratio', 'a water amount');
+    if (chosen.ratio !== null && chosen.ratio !== sugRatio) return rS ? { ...row('ratio', rS.p, fmtRatio(brewRatio), `Your choice; suggested ${fmtRatio(sugRatio!)}`), tier: rS.p.tier } : picked('ratio', fmtRatio(brewRatio), null);
+    return row('ratio', rS!.p, fmtRatio(brewRatio), `Median ${fmtRatio(rS!.v)} of ${src(rS!.p)}`, null,
+      [`These brews ran about ${fmtRatio(rS!.v)}, and ${fmtRatio(brewRatio)} is the nearest ratio on your list`]);
+  })();
   // E4: brews with a dose near the suggested one count more for grind.
   const doseFactor = (r: BrewRow) => (brewDose !== null && r.dose !== null ? 1 / (1 + Math.abs(r.dose - brewDose) / 2) : 1);
 
@@ -190,8 +243,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
       const typical = weightedMedian(p.set.flatMap((x) => x.dose ?? []), p.set.filter((x) => x.dose !== null).map((x) => p.w.get(x)!));
       if (brewDose === null || !p.set.some((x) => x.dose !== null) || Math.abs(typical - brewDose) < 2) return [];
       return [brewDose > typical
-        ? `These brews used ~${num(typical)} g and you'll brew ${num(brewDose)} g: larger doses usually need a coarser grind`
-        : `These brews used ~${num(typical)} g and you'll brew ${num(brewDose)} g: smaller doses usually need a finer grind`];
+        ? `These brews used about ${num(typical)} g and you'll brew ${num(brewDose)} g, and larger doses usually need a coarser grind`
+        : `These brews used about ${num(typical)} g and you'll brew ${num(brewDose)} g, and smaller doses usually need a finer grind`];
     };
     if (p.tier === 1 && own.length >= 4) {
       const start = own.filter((r) => r.best).sort((a, b) => b.localTime.localeCompare(a.localTime))[0] ?? byWeight(p).find((r) => tiers.get(r) === 1)!;
@@ -202,16 +255,18 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
       const dir = r !== null && Math.abs(r) >= 0.4 ? Math.sign(r) : 0; // + : higher settings rate higher (higher = coarser, R15)
       if ((dir > 0 && s >= Math.max(...all)) || (dir < 0 && s <= Math.min(...all))) {
         const far = fmtGrind(s + dir * grindStep(rows, grinder), k), best = start.best ? 'Best' : 'Top rated';
-        const trend = dir > 0
-          ? 'Ratings rose as the grind got coarser: more clarity and a lighter body, but going further risks under-extraction (thin, sour)'
-          : 'Ratings rose as the grind got finer: more sweetness and body, but going further risks over-extraction (bitter, dry)';
+        const cup = `Your ${start.best ? 'best cup' : 'top-rated cup'} of this coffee was at ${start.grind}, and ratings climbed as you went ${dir > 0 ? 'coarser' : 'finer'}`;
+        const trend = [cup, dir > 0
+          ? 'Coarser grinds usually bring more clarity and a lighter body, but going much further risks a thin, sour cup (under-extraction)'
+          : 'Finer grinds usually bring more sweetness and body, but going much further risks a bitter, dry cup (over-extraction)'];
         return { p, value: plain ? start.grind! : dir > 0 ? `${start.grind}–${far}` : `${far}–${start.grind}`,
-          reason: `${best} at ${start.grind}; ${dir > 0 ? `up to ${far} for more clarity` : `down to ${far} for more sweetness`}`, extras: [trend, ...doseNote()] };
+          reason: `${best} at ${start.grind}; ${dir > 0 ? `up to ${far} for more clarity` : `down to ${far} for more sweetness`}`, extras: [...trend, ...doseNote()] };
       }
       return { p, value: start.grind!, reason: start.best ? `Best brew ${start.grind}` : `Top-weighted of ${src(p)}: ${start.grind}`,
-        extras: [dir === 0 ? 'No clear trend in the latest brews, so it starts from the best one' : 'The best brew is inside the range tried, so it stays there', ...doseNote()] };
+        extras: [dir === 0 ? `Your ${start.best ? 'best cup' : 'top-rated cup'} was at ${start.grind}, and the latest brews show no clear pattern, so it starts from there`
+          : `Your ${start.best ? 'best cup' : 'top-rated cup'} was at ${start.grind}, inside the range you have tried, so it stays there`, ...doseNote()] };
     }
-    return { p, value: fmtGrind(med, k), reason: `Median of ${src(p)}`, extras: [`A higher setting is coarser: more clarity, lighter body. Lower is finer: more sweetness and body`, ...doseNote()] };
+    return { p, value: fmtGrind(med, k), reason: `Median of ${src(p)}`, extras: [`Higher settings are coarser, which brings more clarity and a lighter body, and lower ones are finer, with more sweetness and body`, ...doseNote()] };
   };
   const grindRow = (): Row => {
     if (gear.grinder && grindPick(gear.grinder)) {
@@ -235,15 +290,18 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
 
   // E3: temps from the same process group count double, other processes half.
   const procFactor = (r: BrewRow) => (tg === OTHER ? 1 : r.processGroup === tg ? 2 : 0.5);
-  const tempRow = numRow('temp', (r) => r.tempC, (v) => `${num(v)} °C`, (v, p) => `Median ${num(v)} °C of ${src(p)}`, (_v, p) => {
+  const tempRow = ((): Row => {
+    const t = stat((r) => r.tempC, { rest: true, factor: procFactor });
+    if (!t) return noData('temp', 'temp');
+    const p = t.p;
     const by = new Map<string, number[]>();
     for (const r of p.set) if (r.tempC !== null) by.set(r.processGroup, [...(by.get(r.processGroup) ?? []), r.tempC]);
     const mine = by.get(tg);
     const other = [...by].filter(([g]) => g !== tg).sort((a, b) => b[1].length - a[1].length)[0];
-    if (!mine || !other || tg === OTHER) return [];
+    if (!mine || !other || tg === OTHER) return row('temp', p, `${num(t.v)} °C`, `Median ${num(t.v)} °C of ${src(p)}`);
     const d = median(mine) - median(other[1]);
-    return Math.abs(d) < 0.5 ? [] : [`Your ${tg.toLowerCase()} coffees ran ~${num(Math.abs(d))} °C ${d < 0 ? 'cooler' : 'warmer'} than ${other[0].toLowerCase()} ones`];
-  }, procFactor);
+    return row('temp', p, `${num(t.v)} °C`, `Median ${num(t.v)} °C of ${src(p)}`, null, Math.abs(d) < 0.5 ? [] : [`Your ${tg.toLowerCase()} coffees ran about ${num(Math.abs(d))} °C ${d < 0 ? 'cooler' : 'warmer'} than ${other[0].toLowerCase()} ones`]);
+  })();
   const groupRow = (setting: 'recipe' | 'water', key: (r: BrewRow) => string | number | null, name: (r: BrewRow) => string, link: (r: BrewRow) => string): Row => {
     const p = pick((r) => key(r) !== null);
     if (!p) return noData(setting, setting);
@@ -251,11 +309,11 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     for (const r of p.set) { const s = sums.get(key(r)!); sums.set(key(r)!, { w: (s?.w ?? 0) + p.w.get(r)!, n: (s?.n ?? 0) + 1, r: s?.r ?? r }); }
     const [best, next] = [...sums.values()].sort((a, b) => b.w - a.w);
     return row(setting, p, name(best.r), `${best.n} of ${src(p)}`, link(best.r),
-      [`${best.n} of ${p.set.length} brews used ${name(best.r)}`, ...(next ? [`Next most used: ${name(next.r)}, ${next.n} ${plural(next.n, 'brew', 'brews')}`] : [])]);
+      [`${best.n} of these ${p.set.length} brews used ${name(best.r)}`, ...(next ? [`The next most common is ${name(next.r)}, with ${next.n} ${plural(next.n, 'brew', 'brews')}`] : [])]);
   };
 
   const rowsOut = [
-    grindRow(), tempRow, doseRow,
+    grindRow(), tempRow, doseRow, ratioRow,
     groupRow('recipe', (r) => r.recipeId, (r) => r.recipeName ?? '', (r) => `/account/recipes?brews=r${r.recipeId}`),
     groupRow('water', (r) => r.water?.trim() || null, (r) => r.water!, (r) => `/insights?tab=water&water=${encodeURIComponent(r.water!)}`)
   ];
@@ -263,17 +321,14 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
   const filled = rowsOut.filter((r) => r.value !== null);
   const confidence = rowsOut.filter((r) => r.value !== null || r.setting === 'grind') // a missing grind drags it to guess
     .reduce<Confidence>((c, r) => (rank(r.confidence) < rank(c) ? r.confidence : c), 'high');
-  const top = filled.length ? Math.min(...filled.map((r) => r.tier!)) as Tier : null;
-  const inTop = rated.filter((r) => tiers.get(r) === top), used = inTop.filter((r) => compat(r, gear, gc));
-  const basisSet = used.length ? used : inTop;
-  const n = basisSet.length;
-  const basis = top === null ? 'No brews yet' : `${top === 1 ? 'This coffee' : top === 2 ? `${target.roaster}${tg === OTHER ? '' : ` ${tg.toLowerCase()}`} coffees` : top === 3 ? `${target.roaster} coffees`
-    : top === 4 ? (target.decaf ? 'Similar decafs' : 'Similar coffees') : 'Any coffee'}, ${brews(n)}`;
+  const lead = used.length ? [...used].sort((a, b) => a.tier - b.tier || b.set.length - a.set.length)[0] : null; // the lowest tier, then the most brews
+  const basis = lead ? `Based on ${basisText(lead)}.` : 'No brews to base this on yet.';
   const byCoffee = new Map<number, BasisCoffee>();
-  for (const r of basisSet) byCoffee.set(r.coffeeId, { slug: r.slug, name: r.coffeeName, roaster: r.roaster, brews: (byCoffee.get(r.coffeeId)?.brews ?? 0) + 1 });
+  for (const r of lead?.set ?? []) byCoffee.set(r.coffeeId, { slug: r.slug, name: r.coffeeName, roaster: r.roaster, brews: (byCoffee.get(r.coffeeId)?.brews ?? 0) + 1 });
   const lastNote = rows.filter((r) => tiers.get(r) === 1 && r.notes).sort((a, b) => b.localTime.localeCompare(a.localTime) || b.id - a.id)[0]?.notes ?? null;
   return {
     rows: rowsOut, confidence: filled.length ? confidence : 'guess', basis, lastNote, otherGrinders,
+    dose: brewDose, ratio: brewRatio, suggestedDose: sugDose, suggestedRatio: sugRatio, dosePlan: plan,
     basisCoffees: [...byCoffee.values()].sort((a, b) => b.brews - a.brews || a.name.localeCompare(b.name))
   };
 }
