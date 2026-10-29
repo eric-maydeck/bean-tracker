@@ -1812,6 +1812,8 @@ export const STATES: State[] = [
       await expect(page.getByText(/^No .+ brews on this grinder yet$/)).toBeVisible();
       await expect(page.locator('.ref li').first()).toBeVisible();
     } },
+  ...['b', 'c'].map((t) => ({ name: `brew-now-trend-${t}`, path: (s: Seed) => `/coffees/${s.slugs.brew}/brew?trend=${t}`, // PREVIEW-TEMP
+    act: async (page: Page) => { await expect(page.locator('.gt svg, .gt ul')).toBeVisible(); } })), // PREVIEW-TEMP
   {
     name: 'on-deck',
     path: () => '/on-deck',

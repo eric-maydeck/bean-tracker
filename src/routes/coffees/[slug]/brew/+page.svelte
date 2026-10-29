@@ -8,6 +8,8 @@
   import type { Setting } from '$lib/server/brewNow/suggest';
   import { brewNowParams } from './brewNowUrl';
   import GrindTrend from './GrindTrend.svelte';
+  import TrendScatter from './TrendScatter.svelte'; // PREVIEW-TEMP
+  import TrendStrip from './TrendStrip.svelte'; // PREVIEW-TEMP
 
   let { data, form } = $props();
   const recipeError = $derived((form as { recipeError?: string } | null)?.recipeError);
@@ -16,10 +18,13 @@
   $effect(() => { void [data.gear, data.coffee.id]; marked = false; });
   const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
   const c = $derived(data.coffee);
+  const asc = $derived([...data.thisCoffee].sort((a, b) => a.localTime.localeCompare(b.localTime)));
+  const trend = $derived(page.url.searchParams.get('trend')); // PREVIEW-TEMP
 
   function go(patch: Partial<{ grinder: string | null; dripper: string | null; filter: string | null; why: Setting | null }>) {
     const q = brewNowParams({ grinder: data.gear.grinder, dripper: data.gear.dripper, filter: data.gear.filter, why: data.why, ...patch }, data.defaults);
-    goto(page.url.pathname + (q ? `?${q}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
+    const qq = [q, trend ? `trend=${trend}` : ''].filter(Boolean).join('&'); // PREVIEW-TEMP
+    goto(page.url.pathname + (qq ? `?${qq}` : ''), { replaceState: true, noScroll: true, keepFocus: true });
   }
   // The chosen gear is always listed, even if it dropped out of the recent options.
   const opts = (list: string[], cur: string | null) => (cur && !list.includes(cur) ? [cur, ...list] : list);
@@ -51,7 +56,9 @@
     <section class="bn-card" aria-labelledby="bn-this">
       <h2 id="bn-this">This coffee</h2>
       <div class="split">
-        <GrindTrend brews={[...data.thisCoffee].sort((a, b) => a.localTime.localeCompare(b.localTime))} grinder={data.gear.grinder} />
+        {#if trend === 'b'}<TrendScatter brews={asc} grinder={data.gear.grinder} /> <!-- PREVIEW-TEMP -->
+        {:else if trend === 'c'}<TrendStrip brews={asc} grinder={data.gear.grinder} /> <!-- PREVIEW-TEMP -->
+        {:else}<GrindTrend brews={asc} grinder={data.gear.grinder} />{/if} <!-- PREVIEW-TEMP -->
         <ul class="brews">
           {#each data.thisCoffee as b (b.id)}
             <li id="brew-{b.id}" class:best={b.best}>{@render brewLine(b, false)}</li>
