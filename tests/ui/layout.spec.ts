@@ -1765,7 +1765,7 @@ export const STATES: State[] = [
   { name: 'brew-now', path: (s) => `/coffees/${s.slugs.brew}/brew`,
     act: async (page) => {
       await expect(page.getByRole('heading', { name: 'Start here' })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'This coffee' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'This coffee', exact: true })).toBeVisible();
       await expect(page.locator('li[id^="brew-"]').first()).toContainText('Best');
       await expect(page.locator('.gt svg')).toBeVisible();
     } },
