@@ -25,6 +25,7 @@ describe('createDb', () => {
       'beanconqueror_grinders',
       'beanconqueror_methods',
       'beanconqueror_waters',
+      'brew_now_marks',
       'brew_pour_readings',
       'brew_recipe_matches',
       'coffees',
@@ -36,6 +37,7 @@ describe('createDb', () => {
       'recipes',
       'roast_levels',
       'roaster_images',
+      'roaster_recipes',
       'roaster_websites',
       'search_usage',
       'short_links',
@@ -346,5 +348,33 @@ describe('image_copies gear kind', () => {
     applySchema(db);
     db.prepare(`INSERT INTO image_copies VALUES ('g', 'gear', 'g.webp')`).run();
     expect(db.prepare(`SELECT COUNT(*) AS n FROM image_copies`).get()).toEqual({ n: 2 });
+  });
+});
+
+describe('ownData gear migration', () => {
+  const seed = (db: ReturnType<typeof createDb>) => {
+    const ins = db.prepare(`INSERT INTO gear_details (kind, name, fields, created_at, updated_at) VALUES (?, ?, ?, 'x', 'x')`);
+    ins.run('dripper', 'Graycano', '{"shape":"Conical"}');
+    ins.run('filter', 'Sibarist Fast', '{}');
+    ins.run('dripper', 'Other', '{}');
+  };
+  const fields = (db: ReturnType<typeof createDb>, kind: string, name: string) =>
+    JSON.parse((db.prepare(`SELECT fields FROM gear_details WHERE kind = ? AND name = ?`).get(kind, name) as { fields: string }).fields);
+
+  it('sets ownData once, keeping other keys; rerun is a no-op; missing rows do not throw', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ownd-'));
+    const path = join(dir, 't.db');
+    const db = createDb(path); // no rows yet: marker set, nothing thrown
+    seed(db);
+    db.exec(`DELETE FROM app_meta WHERE key = 'brew_now_own_data_2026_10'`);
+    db.close();
+    const db2 = createDb(path);
+    expect(fields(db2, 'dripper', 'Graycano')).toEqual({ shape: 'Conical', ownData: 'Own brews only' });
+    expect(fields(db2, 'filter', 'Sibarist Fast')).toEqual({ ownData: 'Own brews only' });
+    expect(fields(db2, 'dripper', 'Other')).toEqual({});
+    db2.prepare(`UPDATE gear_details SET fields = '{}' WHERE name = 'Graycano'`).run();
+    db2.close();
+    expect(fields(createDb(path), 'dripper', 'Graycano')).toEqual({});
+    rmSync(dir, { recursive: true });
   });
 });

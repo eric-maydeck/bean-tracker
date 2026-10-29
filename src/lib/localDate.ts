@@ -24,6 +24,9 @@ export function localStamp(iso: string, zone: string = APP_TIME_ZONE): string {
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
 }
 
+// An ISO instant as wall time 'YYYY-MM-DDTHH:MM' in the app's zone (same zone as localDate).
+export const localDateTime = (iso: string): string => localStamp(iso).slice(0, 16);
+
 // local wall time ('YYYY-MM-DDTHH:mm[:ss...]', as Bean Conqueror's created dates and brew times are stored) as a real instant (ISO, UTC).
 export function wallToInstant(wall: string): string {
   const t = Date.parse(`${wall.slice(0, 19).padEnd(19, ':00').slice(0, 19)}Z`); // the wall digits read as UTC

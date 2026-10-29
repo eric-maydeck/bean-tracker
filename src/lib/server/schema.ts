@@ -328,4 +328,25 @@ CREATE TABLE IF NOT EXISTS brew_recipe_matches (
   how TEXT NOT NULL CHECK (how IN ('logged', 'match', 'modified')),
   diffs TEXT NOT NULL DEFAULT '[]'   -- JSON { text: string; modified: boolean }[]
 );
+-- "Brew now" marks: the suggestion shown when a brew was started, later linked to the BQ brew it became.
+CREATE TABLE IF NOT EXISTS brew_now_marks (
+  id INTEGER PRIMARY KEY,
+  coffee_id INTEGER NOT NULL REFERENCES coffees(id) ON DELETE CASCADE,
+  marked_at TEXT NOT NULL,
+  marked_local TEXT NOT NULL,
+  grinder TEXT,
+  dripper TEXT,
+  filter TEXT,
+  suggestion TEXT NOT NULL,
+  brew_id INTEGER REFERENCES beanconqueror_brews(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','linked','skipped'))
+);
+-- Cached roaster brew-recipe search; url NULL = none found.
+CREATE TABLE IF NOT EXISTS roaster_recipes (
+  roaster TEXT PRIMARY KEY COLLATE NOCASE,
+  url TEXT,
+  title TEXT,
+  snippet TEXT,
+  searched_at TEXT NOT NULL
+);
 `;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatInstant, formatStamp, localDate, localStamp, wallToInstant } from './localDate';
+import { formatInstant, formatStamp, localDate, localDateTime, localStamp, wallToInstant } from './localDate';
 
 describe('localDate (a stored date as a local calendar date)', () => {
   it.each([
@@ -35,5 +35,15 @@ describe('wallToInstant and formatInstant', () => {
     expect(formatInstant('2026-10-23T02:05:23.000Z')).toBe('2026-10-22 8:05:23 PM');
     expect(formatInstant('2026-10-23T02:05:23.000Z', 'UTC')).toBe('2026-10-23 2:05:23 AM');
     expect(formatInstant('2026-10-23T02:05:23.000Z', 'Asia/Tokyo')).toBe('2026-10-23 11:05:23 AM');
+  });
+});
+
+describe('localDateTime', () => {
+  it('agrees with localDate on the date part across midnight UTC', () => {
+    for (const iso of ['2026-10-28T05:30:00.000Z', '2026-10-28T06:30:00.000Z', '2026-03-08T09:59:00.000Z', '2026-11-01T07:30:00.000Z']) {
+      expect(localDateTime(iso).slice(0, 10)).toBe(localDate(iso));
+      expect(localDateTime(iso)).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d$/);
+    }
+    expect(localDateTime('2026-10-28T06:30:00.000Z')).toBe('2026-10-28T00:30');
   });
 });

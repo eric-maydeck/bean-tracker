@@ -54,3 +54,11 @@ describe('parseGearValues', () => {
     expect(parseGearValues('grinder', { adjustment: 'Clicky' })).toEqual({ error: 'Adjustment must be one of Stepped, Stepless' });
   });
 });
+
+describe('ownData', () => {
+  it('is a select on dripper and filter only', () => {
+    expect(parseGearValues('dripper', { ownData: 'Own brews only' })).toEqual({ values: { ownData: 'Own brews only' } });
+    expect('error' in parseGearValues('filter', { ownData: 'bogus' })).toBe(true);
+    expect(parseGearValues('grinder', { ownData: 'Own brews only' })).toEqual({ values: {} });
+  });
+});

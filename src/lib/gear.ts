@@ -39,6 +39,8 @@ export const COMMON_FIELDS: readonly GearField[] = [
   { key: 'cost', label: 'Cost', type: 'money', min: 0, max: 100000, aliases: ['cost', 'price'] },
   { key: 'website', label: 'Official website', type: 'url', aliases: ['official website', 'website'] }
 ];
+const ownData = { ...text('ownData', 'Suggestions use', ['Similar gear', 'Own brews only'], undefined,
+  "Brew now's suggestions pool brews from similar gear; 'Own brews only' keeps this one's suggestions to brews made with it."), type: 'select' as const };
 export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
   dripper: [
     text('shape', 'Shape', ['Conical', 'Flat bottom', 'Wave', 'Hybrid'], undefined,
@@ -49,7 +51,8 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate'],
       'How fast it drains on its own. Open: grind and pour set the speed (V60). Restricted: small holes slow it (Kalita, Melitta). Valve / immersion: a valve holds the water until released (Hario Switch, Clever).'),
     text('size', 'Size', ['01', '02', '03'], undefined,
-      "The maker's size code: 01 for 1–2 cups (~200–350 mL), 02 for 1–4 cups (~300–600 mL), 03 for larger batches.")
+      "The maker's size code: 01 for 1–2 cups (~200–350 mL), 02 for 1–4 cups (~300–600 mL), 03 for larger batches."),
+    ownData
   ],
   grinder: [
     text('type', 'Type', ['Hand', 'Electric'], undefined,
@@ -73,7 +76,8 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     text('fits', 'Size', ['01', '02', '155', '185'], ['fits', 'fit', 'compatibility', 'size'],
       'The size code it fits: 01 or 02 for cones, 155 or 185 for wave filters.'),
     text('flow', 'Flow', ['Fast', 'Medium', 'Slow'], ['flow', 'flow rate'],
-      'How fast the paper drains, as the maker describes it. Fast (Sibarist Fast, Cafec T-90), medium (Hario tabbed), slow (thicker papers).')
+      'How fast the paper drains, as the maker describes it. Fast (Sibarist Fast, Cafec T-90), medium (Hario tabbed), slow (thicker papers).'),
+    ownData
   ]
 };
 export const fieldsFor = (kind: GearKind): GearField[] => [...COMMON_FIELDS, ...KIND_FIELDS[kind]];
