@@ -1784,6 +1784,22 @@ export const STATES: State[] = [
       for (const li of await page.locator('.rows > li').all()) expect(((await li.locator('.rowhead').innerText()).split(/\s+/).length)).toBeGreaterThan(1);
       await expect(page.locator('.start .badge')).toHaveText('guess');
     } },
+  { name: 'brew-now-marks', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew`,
+    act: async (page) => {
+      await expect(page.getByRole('heading', { name: 'Your last tries' })).toBeVisible();
+      const items = page.locator('.marks > li');
+      await expect(items).toHaveCount(2);
+      await expect(items.nth(0)).toContainText('Waiting for your next BQ brew');
+      await expect(items.nth(1)).toContainText('Grind: 1.4.0 → 1.2.0');
+      await expect(items.nth(1).locator('a')).toHaveAttribute('href', /#brew-\d+/);
+    } },
+  { name: 'brew-now-mark-submit', viewports: 'two', path: (s) => `/coffees/${s.slugs.brewNew}/brew`,
+    act: async (page) => {
+      const before = await page.locator('.marks > li').count(); // the other viewport may be marking at the same time
+      await page.getByRole('button', { name: 'Brew this' }).click();
+      await expect(page.getByRole('status')).toHaveText('Marked — your next BQ brew of this coffee will be compared');
+      await expect(page.locator('.marks > li')).not.toHaveCount(before);
+    } },
   { name: 'brew-now-no-grinder-data', viewports: 'two', path: (s) => `/coffees/${s.slugs.brew}/brew?grinder=Comandante%20C40%20MK4`,
     act: async (page) => {
       await expect(page.getByText('No data on this grinder yet')).toBeVisible();

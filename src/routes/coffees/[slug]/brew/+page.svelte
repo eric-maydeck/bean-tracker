@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { enhance } from '$app/forms';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { originWithFlag } from '$lib/countryFlags';
@@ -9,6 +10,8 @@
   import GrindTrend from './GrindTrend.svelte';
 
   let { data } = $props();
+  let marked = $state(false); // shown after the mark, until the gear or page changes
+  $effect(() => { void [data.gear, data.coffee.id]; marked = false; });
   const LABEL: Record<Setting, string> = { grind: 'Grind', temp: 'Temp', dose: 'Dose', recipe: 'Recipe', water: 'Water' };
   const c = $derived(data.coffee);
 
@@ -127,7 +130,36 @@
       {/each}
     </ul>
     <p class="foot">{data.suggestion.basis}{#if data.suggestion.lastNote}<br />Last note: {data.suggestion.lastNote}{/if}</p>
+    {#if data.isAdmin}
+      <form class="mark" method="POST" action="?/brewThis" use:enhance={() => async ({ result, update }) => { await update({ reset: false }); marked = result.type === 'success'; }}>
+        {#each ['grinder', 'dripper', 'filter'] as const as k (k)}{#if data.gear[k]}<input type="hidden" name={k} value={data.gear[k]} />{/if}{/each}
+        <button type="submit" class="button">Brew this</button>
+        {#if marked}<span role="status">Marked — your next BQ brew of this coffee will be compared</span>{/if}
+      </form>
+    {/if}
   </section>
+
+  {#if data.marks.length}
+    <section class="bn-card" aria-labelledby="bn-marks">
+      <h2 id="bn-marks">Your last tries</h2>
+      <ul class="brews marks">
+        {#each data.marks as m}
+          <li>
+            <span class="date">{formatDate(m.markedLocal)}</span>
+            {#if m.status === 'pending'}<span class="badge badge-neutral">Waiting for your next BQ brew</span>
+            {:else if m.status === 'skipped'}<span class="badge badge-neutral">Skipped</span>
+            {:else}
+              {#if m.brewId !== null}<a href="#brew-{m.brewId}">Brew</a>{/if}
+              {#if m.rating !== null}<span class="rate">{m.rating}</span>{/if}
+              {#each m.diffs as d (d.setting)}
+                <span>{LABEL[d.setting]}: {d.suggested ?? 'none'} → {d.actual ?? 'none'}</span>
+              {:else}<span>Followed the suggestion</span>{/each}
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
 
   {@render thisCoffee()}
 
@@ -183,6 +215,8 @@
   .date { color: var(--color-text-muted); }
   .rate { font-weight: 600; }
   .note { flex-basis: 100%; color: var(--color-text-muted); font-style: italic; }
+  .mark { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
+  .mark .button { min-height: 44px; }
   .foot { margin: var(--space-3) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
   .split { display: grid; gap: var(--space-4); }
   @media (min-width: 700px) { .split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } }

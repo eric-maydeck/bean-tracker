@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { isActionFailure } from '@sveltejs/kit';
 
 // Own in-memory DB for this file (getDb is a DB_PATH-keyed singleton).
@@ -8,7 +8,10 @@ import { getDb } from '$lib/server/db';
 import ExcelJS from 'exceljs';
 import { fixtureZip } from '$lib/server/fixtures/beanconqueror/fixture';
 import { MAX_UPLOAD_BYTES } from '$lib/server/beanConquerorJson';
+import { linkMarks } from '$lib/server/brewNow/outcome';
 import { actions, load } from './+page.server';
+
+vi.mock('$lib/server/brewNow/outcome', () => ({ linkMarks: vi.fn(() => 0) }));
 
 const event = (isAdmin: boolean) =>
   ({ locals: { isAdmin }, url: new URL('https://beans.example/account'), request: new Request('http://localhost/account', { method: 'POST', body: new FormData() }) }) as never;
@@ -67,6 +70,7 @@ describe('?/importBeanConqueror', () => {
     });
     const n = getDb().prepare(`SELECT COUNT(*) n FROM beanconqueror_brews WHERE bc_uuid IS NOT NULL`).get() as { n: number };
     expect(n.n).toBe(68);
+    expect(linkMarks).toHaveBeenCalledTimes(1); // Brew now marks link to the brews just imported
   });
 
   it('400s on a file that is not a zip', async () => {

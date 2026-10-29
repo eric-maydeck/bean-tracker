@@ -333,6 +333,13 @@ for (let j = 0; j < 3; j++) // Gabi brews
   bnBrew.run(atLocal(6 - j, 9, 0), 'bean-bn-1', 'm11', 'g2', '1.2.0', 15, 90, 250, 7.5 - j * 0.5, 0, null, now);
 // A third grinder with a brew on a linked bag but no grind setting: pickable, with no grind data.
 bnBrew.run(atLocal(2, 8, 0), 'bean-bn-1', 'm4', 'g3', null, 15, 93, 250, 7, 0, null, now);
+// Brew now marks on bag 2: one linked to the first Gabi brew (grind and temp changed), one pending after the last brew.
+const bnMark = db.prepare(`INSERT INTO brew_now_marks (coffee_id, marked_at, marked_local, grinder, dripper, filter, suggestion, brew_id, status)
+  VALUES (?, ?, ?, 'A4Z (Femobook)', 'Gabi Master A', NULL, ?, ?, ?)`);
+const gabi = db.prepare(`SELECT id, bc_created_at FROM beanconqueror_brews WHERE preparation_id = 'm11' ORDER BY bc_created_at LIMIT 1`).get() as { id: number; bc_created_at: string };
+const bnSug = (grind: string, temp: string) => JSON.stringify({ grind, temp: `${temp} °C`, dose: '15 g', recipe: null, water: null });
+bnMark.run(bnBags[1].id, now, atLocal(7, 8, 0).slice(0, 16), bnSug('1.4.0', '93'), gabi.id, 'linked');
+bnMark.run(bnBags[1].id, now, atLocal(1, 8, 0).slice(0, 16), bnSug('1.2.0', '92'), null, 'pending');
 const bnNew = coffee({ roaster: 'Nobody Brewed Roasters', coffee_name: 'Brew Seed Fresh Lot', origin: 'Kenya', processing: 'Washed', status: 'backlog' });
 
 writeFileSync('.ui-test/seed.json', JSON.stringify({

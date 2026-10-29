@@ -3,6 +3,7 @@ import type { Actions, PageServerLoad } from './$types';
 import { getDb } from '$lib/server/db';
 import { requireAdmin } from '$lib/server/auth';
 import { importBeanConquerorData } from '$lib/server/beanconqueror';
+import { linkMarks } from '$lib/server/brewNow/outcome';
 import { MAX_UPLOAD_BYTES, parseBeanConquerorJson, readBeanConquerorZip } from '$lib/server/beanConquerorJson';
 import { queueReadings } from '$lib/server/pourReadings';
 import { discoverGroups, listRecipes } from '$lib/server/recipes';
@@ -39,6 +40,7 @@ export const actions: Actions = {
     }
     const db = getDb();
     importBeanConquerorData(db, parsed);
+    linkMarks(db);
     queueReadings(db).catch((e) => console.error('pour readings failed', e));
     return {
       success: true as const,

@@ -5,7 +5,7 @@ process.env.DB_PATH = ':memory:';
 
 import { getDb } from '$lib/server/db';
 import { createCoffee } from '$lib/server/coffees';
-import { load } from './+page.server';
+import { actions, load } from './+page.server';
 
 const db = getDb();
 const mk = (roaster: string, name: string) => {
@@ -37,12 +37,11 @@ describe('brew now load', () => {
     expect(d.why).toBe('grind');
     expect((await run(brewed.slug, '?grinder=a4z')).gear.grinder).toBe('A4Z');
   });
-  it('lists this coffee newest first with the Best brew pinned, roaster recipe and marks stubbed', async () => {
+  it('lists this coffee newest first with the Best brew pinned, roaster recipe stubbed', async () => {
     const d = await run(brewed.slug);
     expect(d.thisCoffee.map((r: { best: boolean }) => r.best)).toEqual([true, false, false]);
     expect(d.neverBrewedRoaster).toBe(false);
     expect(d.roasterRecipe).toBeNull();
-    expect(d.marks).toEqual([]);
   });
   it('keeps notes private: stripped for anonymous, kept for admin', async () => {
     const anon = await run(brewed.slug);
@@ -57,5 +56,22 @@ describe('brew now load', () => {
     const d = await run(fresh.slug);
     expect(d.neverBrewedRoaster).toBe(true);
     expect(d.thisCoffee).toEqual([]);
+  });
+});
+
+describe('?/brewThis', () => {
+  const post = (slug: string, isAdmin: boolean, fields: Record<string, string> = {}) =>
+    actions.brewThis({ params: { slug }, locals: { isAdmin }, request: new Request('http://x', { method: 'POST', body: new URLSearchParams(fields) }) } as never);
+  it('401s without admin and stores nothing', async () => {
+    await expect(post(brewed.slug, false)).rejects.toMatchObject({ status: 401 });
+    expect((await run(brewed.slug)).marks).toEqual([]);
+  });
+  it('re-derives the suggestion from the posted gear, ignoring posted values', async () => {
+    expect(await post(brewed.slug, true, { grinder: 'A4Z', grind: '99', suggestion: 'x' })).toEqual({ marked: true });
+    const d = await run(brewed.slug);
+    expect(d.marks).toHaveLength(1);
+    expect(d.marks[0]).toMatchObject({ status: 'pending', gear: { grinder: 'A4Z' } });
+    expect(JSON.stringify(d.marks)).not.toContain('99');
+    expect(JSON.stringify(d.marks)).not.toContain('try finer');
   });
 });
