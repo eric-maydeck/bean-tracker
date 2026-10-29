@@ -164,9 +164,9 @@ describe('filterFits and Other from the gear details (round 7)', () => {
   d('FOwn', 'Conical', '01'); saveGearDetails(db, { kind: 'dripper', name: 'FOwn', values: { shape: 'Conical', size: '01', ownData: OWN_DATA_ONLY }, imageUrl: null });
   f('Cone1', 'Cone', '01'); f('Cone2', 'Cone', '02'); f('Wave155', 'Wave', '155'); f('Basket155', 'Flat-bottom basket', '155'); f('NoShape');
   const fits = loadGearClass(db).filterFits!;
-  it('conical takes cones, wave and flat bottom take waves, hybrid takes both; baskets fit none', () => {
+  it('conical takes cones, wave takes waves, flat bottom takes waves or baskets, hybrid takes cones or waves', () => {
     expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FCone1', x))).toEqual([true, false, false]);
-    expect(['Cone1', 'Wave155'].map((x) => fits('FFlat', x))).toEqual([false, true]);
+    expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FFlat', x))).toEqual([false, true, true]);
     expect(['Cone1', 'Wave155', 'Basket155'].map((x) => fits('FHybrid', x))).toEqual([true, true, false]);
   });
   it('01 drippers take 01 or 02, 02 drippers take 02; own-data does not matter; a missing shape is unknown', () => {
@@ -182,7 +182,7 @@ describe('filterFits and Other from the gear details (round 7)', () => {
       row({ dripper: 'FNone', filter: 'NoShape', localTime: '2026-10-20T08:00' })];
     expect(gearOptions(rows, '2026-10-28', 'FCone1', gc).otherFilters).toEqual(['Cone2']);
     expect(gearOptions(rows, '2026-10-28', 'FCone2', gc).otherFilters).toEqual([]); // Cone1 is an 01 filter: 02 takes 02 only
-    expect(gearOptions(rows, '2026-10-28', 'FFlat', gc).otherFilters).toEqual([]);
+    expect(gearOptions(rows, '2026-10-28', 'FFlat', gc).otherFilters).toEqual(['Basket155']); // its Wave155 is a chip
     expect(gearOptions(rows, '2026-10-28', 'FNone', gc).otherFilters).toEqual([]);
   });
 });

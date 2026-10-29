@@ -85,7 +85,7 @@ export function loadGearClass(db: DatabaseSync): GearClass {
     filterFits: (dripper, filter) => {
       const ds = of('dripper', dripper), fs = of('filter', filter);
       if (!ds?.shape || !fs?.shape) return null;
-      const shapes: Record<string, string[]> = { Conical: ['Cone'], Wave: ['Wave'], 'Flat bottom': ['Wave'], Hybrid: ['Cone', 'Wave'] };
+      const shapes: Record<string, string[]> = { Conical: ['Cone'], Wave: ['Wave'], 'Flat bottom': ['Wave', 'Flat-bottom basket'], Hybrid: ['Cone', 'Wave'] };
       if (!shapes[String(ds.shape)]) return null;
       if (!shapes[String(ds.shape)].includes(String(fs.shape))) return false;
       // ponytail: sizes are compared only for the 01 / 02 codes; 03 drippers and 155 / 185 filters have no known mapping
