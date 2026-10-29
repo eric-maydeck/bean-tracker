@@ -157,7 +157,9 @@ export const actions: Actions = {
       } catch {
         return fail(400, { error: 'Invalid recipe' });
       }
-      return { saved: saveRecipe(getDb(), { id, name: input.name, tags: input.tags, def: parsed.def, locks }) };
+      const db = getDb();
+      const saved = saveRecipe(db, { id, name: input.name, tags: input.tags, def: parsed.def, locks });
+      return { saved, slug: recipeSlugs(listRecipes(db)).get(saved) };
     } catch (e) {
       if (e instanceof RecipeError) return fail(400, { error: e.message });
       throw e;

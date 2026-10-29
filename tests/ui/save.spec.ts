@@ -367,6 +367,27 @@ test.describe('recipes', { tag: '@account' }, () => {
     await expect(found.locator('li.item')).toHaveCount(before);
   });
 
+  test('recipes-slug-page-rename-delete: renaming goes to the new slug, deleting to /recipes, never a 404', async ({ page }) => {
+    const found = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Found in your brews', level: 2 }) });
+    await gotoReady(page, '/recipes');
+    await found.locator('li.item').first().getByRole('button', { name: 'Name & save' }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Slug walk');
+    await page.locator('form:has(input[name="tags"])').getByRole('button', { name: 'Save', exact: true }).click();
+    await gotoReady(page, '/recipes/slug-walk');
+    const item = page.locator('li.item').filter({ has: page.getByRole('heading', { name: 'Slug walk' }) });
+    await item.getByRole('button', { name: 'Edit', exact: true }).click();
+    await page.getByLabel('Name', { exact: true }).fill('Slug walk two');
+    await page.locator('form.editor').getByRole('button', { name: 'Save', exact: true }).click();
+    await expect(page).toHaveURL(/\/recipes\/slug-walk-two$/);
+    await expect(page.getByRole('heading', { name: 'Slug walk two' })).toBeVisible();
+    await expect(page.getByText('No such recipe')).toHaveCount(0);
+    await page.locator('li.item').filter({ has: page.getByRole('heading', { name: 'Slug walk two' }) }).getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.locator('form.panel').getByRole('button', { name: 'Delete', exact: true }).click();
+    await expect(page).toHaveURL(/\/recipes$/);
+    await expect(page.getByRole('heading', { name: 'Your recipes' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Slug walk two' })).toHaveCount(0);
+  });
+
   test('recipes-note-words-save: add a word, save, see it after a reload; a duplicate is rejected', async ({ page }) => {
     const p = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Words in your notes', level: 2 }) });
     await gotoReady(page, '/recipes');

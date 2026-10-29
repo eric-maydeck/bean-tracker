@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { recipeFollow } from '$lib/recipeNav';
   import { enhance } from '$app/forms';
   import Icon from '$lib/components/Icon.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
@@ -14,8 +16,9 @@
     drippers,
     locked,
     error,
-    ondone
-  }: { name: string; tags: string[]; def: RecipeDef; id?: number; drippers: string[]; locked: string[]; error?: string; ondone: () => void } = $props();
+    ondone,
+    focusId = null
+  }: { focusId?: number | null; name: string; tags: string[]; def: RecipeDef; id?: number; drippers: string[]; locked: string[]; error?: string; ondone: () => void } = $props();
 
   // Editor-local copy; never in the URL. Props only seed it.
   /* svelte-ignore state_referenced_locally */
@@ -84,6 +87,8 @@
     tried = true;
     return async ({ result, update }) => {
     if (result.type === 'success') ondone();
+    const to = recipeFollow(result, focusId);
+    if (to) { await goto(to, { invalidateAll: true }); return; }
     await update({ reset: false });
   };
   }}

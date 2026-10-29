@@ -103,7 +103,7 @@ describe('recipes page', () => {
     const bad = await actions.saveRecipe(event(true, '', { name: 'R', tags: '', definition: '{nope' }));
     expect(bad).toMatchObject({ status: 400, data: { error: 'Invalid recipe' } });
     const ok = await actions.saveRecipe(event(true, '', { name: 'Mine', tags: 'bbs, b', definition: JSON.stringify(def) }));
-    expect(ok).toMatchObject({ saved: expect.any(Number) });
+    expect(ok).toMatchObject({ saved: expect.any(Number), slug: expect.any(String) });
     expect(listRecipes(db)).toMatchObject([{ name: 'Mine', tags: ['bbs', 'b'] }]);
     expect(db.prepare(`SELECT COUNT(*) n FROM brew_recipe_matches`).get()).toMatchObject({ n: N });
     const dup = await actions.saveRecipe(event(true, '', { name: 'mine', tags: '', definition: JSON.stringify(def) }));

@@ -4,6 +4,8 @@
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { recipePreview, recipesPreview } from '$lib/linkPreview';
   import { tick } from 'svelte';
+  import { goto } from '$app/navigation';
+  import { recipeFollow } from '$lib/recipeNav';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import Icon from '$lib/components/Icon.svelte';
@@ -166,10 +168,10 @@
               {/if}
             </div>
             {#if editing === 'r' + r.recipe.id}
-              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} ondone={() => (editing = null)} />
+              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={() => (editing = null)} />
             {/if}
             {#if deleting === r.recipe.id}
-              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ update }) => { deleting = null; await update(); }} class="panel">
+              <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { invalidateAll: true }); else await update(); }} class="panel">
                 <p>Delete {r.recipe.name}? Its brews stay; they just lose the label.</p>
                 <input type="hidden" name="id" value={r.recipe.id} />
                 <div class="row-actions" data-button-row>
@@ -233,6 +235,8 @@
                 class="panel"
                 use:enhance={() => async ({ result, update }) => {
                   if (result.type === 'success') naming = null;
+                  const to = recipeFollow(result, data.focusId);
+                  if (to) { await goto(to, { invalidateAll: true }); return; }
                   await update();
                 }}
               >

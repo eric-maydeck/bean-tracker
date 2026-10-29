@@ -50,6 +50,8 @@
   let showAlerts = $state(false);
 
   const unreadAlertCount = $derived(data.alerts.filter((a: AlertRow) => a.read_at === null).length);
+  // /recipes/<slug> is the Recipes page too.
+  const current = (href: string) => page.url.pathname === href || (href === '/recipes' && page.url.pathname.startsWith('/recipes/'));
   const onAccount = $derived(page.url.pathname === '/account' || page.url.pathname.startsWith('/account/'));
 
   async function markAlertReadClick(id: number) {
@@ -124,7 +126,7 @@
 <nav class="site-nav">
   <div class="nav-links">
     {#each links as link (link.href)}
-      <a href={link.href} aria-current={page.url.pathname === link.href ? 'page' : undefined}>
+      <a href={link.href} aria-current={current(link.href) ? 'page' : undefined}>
         {link.label}
       </a>
     {/each}
@@ -179,7 +181,7 @@
     <a class="nav-link-button" href="/insights" aria-current={page.url.pathname === '/insights' ? 'page' : undefined}
       ><Icon name="chart-line" /> Insights</a
     >
-    <a class="nav-link-button" href="/recipes" aria-current={page.url.pathname === '/recipes' ? 'page' : undefined}
+    <a class="nav-link-button" href="/recipes" aria-current={current('/recipes') ? 'page' : undefined}
       ><Icon name="list-checks" /> Recipes</a
     >
     <a class="nav-link-button" href="/water" aria-current={page.url.pathname === '/water' ? 'page' : undefined}
