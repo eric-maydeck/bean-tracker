@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import type { RecipeDef, RecipePour, Trigger } from './recipes';
+import type { RecipeDef, Length, RecipePour } from './recipes';
 import { recipeSteps, stepsText, tempNotesLine } from './recipeSteps';
 
-const rp = (over: Partial<RecipePour> = {}): RecipePour => ({
+// `trigger` reads as "what starts this pour"; mk() shifts it onto the previous step's length.
+type P = Partial<RecipePour> & { trigger?: Length };
+const rp = (over: P = {}): RecipePour & { trigger?: Length } => ({
   bloom: false, grams: 50, share: null, speed: 'fast', rateGps: null, agitation: null, tool: null,
-  swirlAfter: false, startS: null, durationS: null, trigger: null, ...over
+  swirlAfter: false, startS: null, durationS: null, length: null, ...over
 });
-const after = (t: number, m = t): Trigger => ({ kind: 'after', targetS: t, maxS: m });
-const mk = (pours: RecipePour[], over: Partial<RecipeDef> = {}): RecipeDef => ({
-  v: 1, pours, pourCount: { min: pours.length, max: pours.length }, bloomHoldS: null, bloomHoldTolS: 5,
+const after = (t: number, m = t): Length => ({ kind: 'time', targetS: t, maxS: m });
+const mk = (src: (RecipePour & { trigger?: Length })[], over: Partial<RecipeDef> = {}): RecipeDef => {
+  const pours = src.map(({ trigger, ...p }, i) => ({ ...p, length: src[i + 1]?.trigger ?? p.length }));
+  return mkDef(pours, over);
+};
+const mkDef = (pours: RecipePour[], over: Partial<RecipeDef> = {}): RecipeDef => ({
+  v: 1, pours, pourCount: { min: pours.length, max: pours.length },
   ratio: { targets: [16.7], tol: 0.5 }, tempC: null, totalS: null, notes: null, drippers: [], anySpeed: false,
   equalSplit: false, ...over
 });
@@ -50,7 +56,7 @@ describe('recipeSteps', () => {
     expect(stepsText(mk([rp(), rp()]))).toBe('0:00 - pour (fast pour)\npour (fast pour)');
   });
   it('range, tool, anySpeed', () => {
-    const t = (p: Partial<RecipePour>, o: Partial<RecipeDef> = {}) => recipeSteps(mk([rp(p)], o))[0].text;
+    const t = (p: P, o: Partial<RecipeDef> = {}) => recipeSteps(mk([rp(p)], o))[0].text;
     expect(t({ rateGps: [3, 8] })).toBe('pour (3–8g/s pour)');
     expect(t({ speed: 'slow', agitation: 'low', tool: 'melodrip' })).toBe('pour (slow pour, low agitation, melodrip)');
     expect(t({ agitation: 'high' }, { anySpeed: true })).toBe('pour (high agitation)');

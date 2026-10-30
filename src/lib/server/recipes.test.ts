@@ -48,7 +48,7 @@ it('listRecipes normalizes a legacy row', () => {
   db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES ('Old', '[]', ?, 'x', 'x')`).run(JSON.stringify(legacy));
   const old = listRecipes(db).find((r) => r.name === 'Old')!;
   expect(old.def.ratio.targets).toEqual([16.7]);
-  expect(old.def.pours[0].trigger).toBeNull();
+  expect(old.def.pours[0].length).toBeNull();
   expect(old.def.equalSplit).toBe(false);
 });
 
@@ -155,8 +155,7 @@ describe('brewsFor windows', () => {
     const a = addBrew(db);
     addBrew(db);
     const draft = draftFromReadings([reading(db, a)], [null]);
-    const trigger = { kind: 'after' as const, targetS: 20, maxS: 30 };
-    draft.pours[1].trigger = trigger;
+    draft.pours[0].length = { kind: 'time', targetS: 20, maxS: 30 };
     const id = saveRecipe(db, { name: 'R1', tags: [], def: draft });
     addBrew(db, { flow: BBJ, notes: 'R1' }); // logged, but a different pour count and no equal split
     rematchBrews(db);
@@ -165,7 +164,9 @@ describe('brewsFor windows', () => {
     expect(own.length).toBeGreaterThan(0);
     for (const r of own) {
       const t = r.timeline!;
-      expect(t.windows).toEqual(draft.pours[0].bloom ? [{ startS: t.pours[0].startS, targetS: t.pours[0].startS + 20, bloom: 0, pour: 0 }] : []);
+      // pour 0 runs the set 20s; any other drafted bloom its own length (the readings' hold)
+      expect(t.windows![0]).toEqual({ startS: t.pours[0].startS, targetS: t.pours[0].startS + 20, bloom: 0, pour: 0 });
+      expect(t.windows).toHaveLength(draft.pours.filter((p, i) => p.bloom && p.length && i < draft.pours.length - 1).length);
     }
     for (const r of rows.filter((r) => !own.includes(r))) expect(r.timeline!.windows ?? []).toEqual([]);
     for (const r of brewsFor(db, { key: reading(db, a).structureKey! })) expect(r.timeline!.windows ?? []).toEqual([]);
@@ -178,7 +179,7 @@ describe('brewsFor', () => {
     const a = addBrew(db, { method: 'm1' });
     const b = addBrew(db, { method: 'm1' });
     const draft = draftFromReadings([reading(db, a)], [null]);
-    const id = saveRecipe(db, { name: 'R1', tags: [], def: { ...draft, bloomHoldS: 10 } });
+    const id = saveRecipe(db, { name: 'R1', tags: [], def: { ...draft, pours: draft.pours.map((p, i) => (i ? p : { ...p, length: { kind: 'time' as const, targetS: 10, maxS: 10 } })) } });
     const logged = addBrew(db, { notes: 'R1' });
     const noFlow = addBrew(db, { flow: null, notes: 'R1' });
     rematchBrews(db);
@@ -186,8 +187,8 @@ describe('brewsFor', () => {
     expect(rows.map((r) => r.label)).toEqual([
       'R1',
       'R1',
-      'looks like R1 (modified: 20s blooms)',
-      'looks like R1 (modified: 20s blooms)'
+      'looks like R1 (modified: pour 2 after 20s)',
+      'looks like R1 (modified: pour 2 after 20s)'
     ]);
     expect(rows[0]).toMatchObject({ description: 'No flow data', timeline: null, date: expect.stringMatching(/^2026-02-\d\d$/) });
     expect(rows[1].description).toMatch(/ total/);

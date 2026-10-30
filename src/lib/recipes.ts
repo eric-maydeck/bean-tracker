@@ -2,8 +2,9 @@
 import { recipeLabels } from './recipeSteps';
 import { FAST_GPS, capital, type PourReading, type Timeline } from './pours';
 
-/** When a pour starts: null = unspecified (legacy), `after` = seconds after the previous pour, `low` = when the water runs low. */
-export type Trigger = null | { kind: 'after'; targetS: number; maxS: number } | { kind: 'low' };
+/** How long a step lasts, start to start of the next: null = unspecified (and always the last step: it runs until drained),
+ * `time` = seconds, `low` = until the water runs low. */
+export type Length = null | { kind: 'time'; targetS: number; maxS: number } | { kind: 'low' };
 export interface RecipePour {
   bloom: boolean;
   grams: number | null;
@@ -16,14 +17,12 @@ export interface RecipePour {
   /** Typical values, for the timeline. */
   startS: number | null;
   durationS: number | null;
-  trigger: Trigger;
+  length: Length;
 }
 export interface RecipeDef {
   v: 1;
   pours: RecipePour[];
   pourCount: { min: number; max: number };
-  bloomHoldS: number | null;
-  bloomHoldTolS: number;
   /** Empty only in a draft whose brews have no ratio; the parser rejects it on save. */
   ratio: { targets: number[]; tol: number };
   tempC: number | null;
@@ -62,15 +61,18 @@ const oneOf = <T extends string>(x: unknown, ok: readonly T[]): T => {
   return x as T;
 };
 
-function parseTrigger(t: unknown): Trigger {
+function parseLength(t: unknown): Length {
   if (t == null) return null;
   if (!isObj(t)) throw new Error(INVALID);
   if (t.kind === 'low') return { kind: 'low' };
-  if (t.kind !== 'after') throw new Error(INVALID);
-  if (!isNum(t.targetS) || !isNum(t.maxS)) throw new Error('Enter a trigger time');
-  if (!(t.targetS > 0 && t.maxS >= t.targetS && t.maxS <= 600)) throw new Error('Trigger time must be at least its target');
-  return { kind: 'after', targetS: t.targetS, maxS: t.maxS };
+  if (t.kind !== 'time') throw new Error(INVALID);
+  if (!isNum(t.targetS) || !isNum(t.maxS)) throw new Error('Enter a step length');
+  if (!(t.targetS > 0 && t.maxS >= t.targetS && t.maxS <= 600)) throw new Error('Step length must be at least its target');
+  return { kind: 'time', targetS: t.targetS, maxS: t.maxS };
 }
+
+/** What starts pour `i`: the previous step's length (null for the first pour). */
+export const trigger = (pours: Pick<RecipePour, 'length'>[], i: number): Length => (i > 0 ? pours[i - 1]?.length ?? null : null);
 
 function parsePour(p: unknown): RecipePour {
   if (!isObj(p) || typeof p.bloom !== 'boolean' || typeof p.swirlAfter !== 'boolean') throw new Error(INVALID);
@@ -92,7 +94,7 @@ function parsePour(p: unknown): RecipePour {
     swirlAfter: p.swirlAfter,
     startS: numOrNull(p.startS),
     durationS: numOrNull(p.durationS),
-    trigger: parseTrigger(p.trigger)
+    length: parseLength(p.length)
   };
 }
 
@@ -102,15 +104,14 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
       throw new Error(INVALID);
     if (!isObj(json.pourCount) || !isObj(json.ratio)) throw new Error(INVALID);
     const pours = json.pours.map(parsePour);
-    if (pours[0]) pours[0].trigger = null;
+    if (pours.length) pours[pours.length - 1].length = null; // the last step runs until the water drains
     const { min, max } = json.pourCount;
     const { tol } = json.ratio;
     const raw = json.ratio.targets ?? [json.ratio.target];
     if (!Array.isArray(raw) || raw.length > 5 || !raw.every(isNum)) throw new Error(INVALID);
     const targets = [...new Set(raw)].sort((a, b) => a - b);
-    if (!isNum(min) || !isNum(max) || !Number.isInteger(min) || !Number.isInteger(max) || !isNum(tol) || !isNum(json.bloomHoldTolS))
+    if (!isNum(min) || !isNum(max) || !Number.isInteger(min) || !Number.isInteger(max) || !isNum(tol))
       throw new Error(INVALID);
-    const bloomHoldS = numOrNull(json.bloomHoldS);
     const tempC = numOrNull(json.tempC, -Infinity);
     const totalS = numOrNull(json.totalS);
     const notes = strOrNull(json.notes);
@@ -119,7 +120,6 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
     for (const d of drippers) if (typeof d !== 'string' || !d || d.length > 40) throw new Error(INVALID);
     if (json.anySpeed != null && typeof json.anySpeed !== 'boolean') throw new Error(INVALID);
     if (json.equalSplit != null && typeof json.equalSplit !== 'boolean') throw new Error(INVALID);
-    if (json.bloomHoldTolS < 0) throw new Error(INVALID);
     if (!pours.length) throw new Error('Add at least one pour');
     const blooms = pours.filter((p) => p.bloom).length;
     if (blooms > 3) throw new Error('Blooms come first');
@@ -134,8 +134,6 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
         v: 1,
         pours,
         pourCount: { min, max },
-        bloomHoldS,
-        bloomHoldTolS: json.bloomHoldTolS,
         ratio: { targets, tol },
         tempC,
         totalS,
@@ -159,7 +157,7 @@ export function withDefaults(raw: unknown): RecipeDef {
     anySpeed: false,
     equalSplit: false,
     ...d,
-    pours: (d.pours ?? []).map((p) => ({ ...p, trigger: p.trigger ?? null })),
+    pours: (d.pours ?? []).map((p) => ({ ...p, length: p.length ?? null })),
     ratio: { targets: targets ?? (target == null ? [] : [target]), tol }
   } as unknown as RecipeDef;
 }
@@ -204,15 +202,17 @@ export function draftFromReadings(readings: PourReading[], tempsC: (number | nul
     swirlAfter: half((r) => r.swirls.some((w) => w.afterPour === i)),
     startS: round(col(i, (r) => r.pours[i].startS)),
     durationS: round(col(i, (r) => r.pours[i].durationS)),
-    trigger: null
+    length: null
   }));
+  // Each bloom lasts as long as the readings held them (the detector's bloom hold, start to start).
+  const med = median(rs.map((r) => r.bloomHoldS).filter(isNum));
+  const hold = med == null ? 0 : Math.round(med / 5) * 5; // to 5s, as the hold always read
+  if (hold) pours.forEach((p, i) => i < n - 1 && p.bloom && (p.length = { kind: 'time', targetS: hold, maxS: hold }));
   const ratio = median(rs.map((r) => r.ratio).filter(isNum));
   return {
     v: 1,
     pours,
     pourCount: { min: n, max: n },
-    bloomHoldS: round(median(rs.map((r) => r.bloomHoldS).filter(isNum))),
-    bloomHoldTolS: 5,
     ratio: { targets: ratio == null ? [] : [round(ratio)!], tol: 0.5 },
     tempC: round(median(tempsC.filter(isNum))),
     totalS: round(median(rs.map((r) => r.totalS)), 0),
@@ -260,15 +260,14 @@ export function convertAmounts(
 export const recipeSpeed = (p: RecipePour): 'fast' | 'slow' =>
   p.rateGps ? ((p.rateGps[0] + p.rateGps[1]) / 2 >= FAST_GPS ? 'fast' : 'slow') : p.speed;
 export const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
-const fmtHold = (s: number) => Math.round(s / 5) * 5;
 const fmtHold1 = (s: number) => +s.toFixed(1);
 
 export function describeRecipe(def: RecipeDef): string {
   const blooms = def.pours.filter((p) => p.bloom).length;
-  const wait = def.pours[1]?.trigger; // the bloom lasts until the next pour starts
-  const hold = wait?.kind === 'after' && blooms
+  const wait = def.pours[0]?.length; // the first bloom's length
+  const hold = wait?.kind === 'time' && blooms
     ? `${wait.maxS > wait.targetS ? `${fmtHold1(wait.targetS)}–${fmtHold1(wait.maxS)}` : fmtHold1(wait.targetS)}s `
-    : def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)}s `;
+    : '';
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
   else if (blooms > 1) parts.push(`${['', '', 'two', 'three'][blooms] ?? blooms} ${hold}blooms`);
@@ -301,11 +300,11 @@ export function describeRecipe(def: RecipeDef): string {
   return capital(out.join(' · '));
 }
 
-/** For each bloom followed by an `after` step with a start before it: where the bloom runs from and to (the next pour's target). */
+/** For each timed bloom step: where the bloom runs from and to (its length's target). */
 export function triggerWindows(def: RecipeDef, startsS: number[]): NonNullable<Timeline['windows']> {
   return startsS.flatMap((_, i) => {
-    const t = i > 0 ? def.pours[i]?.trigger : null;
-    return t?.kind === 'after' && def.pours[i - 1].bloom
+    const t = trigger(def.pours, i);
+    return t?.kind === 'time' && def.pours[i - 1].bloom
       ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, bloom: def.pours.slice(0, i - 1).filter((p) => p.bloom).length, pour: i - 1 }]
       : [];
   });
@@ -319,8 +318,8 @@ export function recipeTimeline(def: RecipeDef): Timeline {
   let gap = 40; // flow recipes: the space between pours 2, 3, 4...: pour 3's own gap after pour 2, else the bloom's 40s
   const pours: Timeline['pours'] = [];
   def.pours.forEach((p, i) => {
-    const trig = i > 0 ? p.trigger : null;
-    let startS = trig?.kind === 'after' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
+    const trig = trigger(def.pours, i);
+    let startS = trig?.kind === 'time' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
     if (flow && i >= 2) {
       const prev = def.pours[1]; // the gap as stored: pour 3's start minus pour 2's end
       if (i === 2 && p.startS != null && prev.startS != null && prev.durationS != null) gap = Math.max(0, p.startS - prev.startS - prev.durationS);
@@ -396,9 +395,9 @@ export const FLOW_CONTROL_DRIPPERS: ReadonlySet<string> = new Set(['Gabi Master 
 /** A recipe only for flow-controlling drippers: amounts, count, triggers and speed can't matter; dripper and ratio decide. */
 export const controlsFlow = (def: Pick<RecipeDef, 'drippers'>) =>
   def.drippers.length > 0 && def.drippers.every((d) => FLOW_CONTROL_DRIPPERS.has(d));
-/** The trigger a newly added pour (at `index`) starts with: flow-controlling drippers pour from the 3rd pour on when the water is low. */
-export const defaultTrigger = (def: Pick<RecipeDef, 'drippers'>, index: number): Trigger =>
-  index >= 2 && controlsFlow(def) ? { kind: 'low' } : { kind: 'after', targetS: 20, maxS: 20 };
+/** The length the step before a newly added pour (at `index`) gets: flow-controlling drippers pour from the 3rd pour on when the water is low. */
+export const defaultLength = (def: Pick<RecipeDef, 'drippers'>, index: number): Length =>
+  index >= 2 && controlsFlow(def) ? { kind: 'low' } : { kind: 'time', targetS: 20, maxS: 20 };
 export const flowNote = (drippers: string[]) =>
   controlsFlow({ drippers }) ? `${drippers.join(' and ')} control${drippers.length > 1 ? '' : 's'} the flow: pour amounts, pour count and speed don't matter.` : null;
 
@@ -426,10 +425,6 @@ function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null, sharesApp
       text: r.bloomCount === 2 ? 'two blooms' : r.bloomCount === 0 ? 'no bloom' : `${r.bloomCount} bloom${r.bloomCount === 1 ? '' : 's'}`,
       modified: true
     });
-  // An `after` trigger on the pour following a bloom defines that bloom's timing (the trigger check below): no legacy hold check.
-  const timed = def.pours.some((p, i) => i > 0 && def.pours[i - 1].bloom && p.trigger?.kind === 'after');
-  if (!timed && r.bloomHoldS != null && def.bloomHoldS != null && Math.abs(r.bloomHoldS - def.bloomHoldS) > def.bloomHoldTolS)
-    out.push({ text: `${fmtHold(r.bloomHoldS)}s bloom${r.bloomCount === 1 ? '' : 's'}`, modified: true });
   if (tempC && def.tempC && Math.abs(tempC - def.tempC) > 1)
     out.push({ text: `${+tempC.toFixed(1)}°C vs ${+def.tempC.toFixed(1)}°C`, modified: Math.abs(tempC - def.tempC) > TEMP_TOL_C });
   if (def.totalS != null && Math.abs(r.totalS - def.totalS) > 20)
@@ -462,7 +457,7 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
   const patternBad = !def.anySpeed && !flow && aligned.map((s) => (s === 'fast' ? 'F' : 'S')).join('') !== r.pattern.toUpperCase();
 
   const shares = flow ? null : sharesFor(def, r);
-  const trig = (i: number) => def.pours[i]?.trigger ?? null;
+  const trig = (i: number) => trigger(def.pours, i);
   let devs: number[] = [];
   if (shares) {
     const total = sum(r.pours.map((p) => p.grams));
@@ -484,7 +479,7 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
   if (shares) {
     for (let i = 1; i < n; i++) {
       const t = trig(i);
-      if (t?.kind !== 'after') continue;
+      if (t?.kind !== 'time') continue;
       const gap = r.pours[i].startS - r.pours[i - 1].startS;
       if (gap < t.targetS - TRIGGER_GRACE_S || gap > t.maxS + TRIGGER_GRACE_S)
         diffs.push({ text: `pour ${i + 1} after ${Math.round(gap)}s`, modified: true });
@@ -495,7 +490,7 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
     const lens = new Map<string, Set<boolean>>();
     for (let i = 1; i < n; i++) {
       const t = trig(i);
-      if (t?.kind !== 'after' || t.maxS <= t.targetS) continue;
+      if (t?.kind !== 'time' || t.maxS <= t.targetS) continue;
       const k = `${t.targetS}/${t.maxS}`;
       lens.set(k, (lens.get(k) ?? new Set()).add(r.pours[i].startS - r.pours[i - 1].startS > (t.targetS + t.maxS) / 2));
     }

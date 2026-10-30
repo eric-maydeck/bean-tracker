@@ -1,5 +1,5 @@
 import { pourName, swirlName } from './pours';
-import { mmss, recipeSpeed, type RecipeDef, type RecipePour } from './recipes';
+import { mmss, recipeSpeed, trigger, type RecipeDef, type RecipePour } from './recipes';
 
 /** `alt`: the time if every ranged wait so far ran to its maximum (null for exact steps). */
 export interface StepLine { time: string; low: boolean; text: string; alt: string | null }
@@ -17,7 +17,7 @@ export function recipeSteps(def: RecipeDef): StepLine[] {
   let extra = 0; // seconds the ranged waits since the anchor add at their maximum
   let ranged = 0; // how many of them
   return def.pours.map((p, i) => {
-    const t = p.trigger;
+    const t = trigger(def.pours, i);
     let time = '';
     let alt: string | null = null;
     if (i === 0) time = mmss(0);

@@ -2,7 +2,9 @@
 // the Shoebox washed/natural split and two generic tags removed. Keyed by recipe name; the stored JSON is
 // edited as plain data, so no value imports from $lib (db.ts runs under node without a bundler).
 import type { DatabaseSync } from 'node:sqlite';
-import type { Trigger } from '../recipes.ts';
+
+// The pre-lengths shape this first fix writes: a pour's trigger is its start-to-start gap from the previous pour.
+type Trigger = null | { kind: 'after'; targetS: number; maxS: number } | { kind: 'low' };
 
 export const RECIPE_FIXES_2026_10_MARKER = 'recipe_steps_2026_10';
 
@@ -82,6 +84,51 @@ export function applyRecipeFixes(db: DatabaseSync, marker = RECIPE_FIXES_2026_10
       if (!get.get('Shoebox QC (Washed)'))
         apply('Shoebox QC', { ...SHOEBOX, targets: [16.7, 18], tempC: 91.5, rename: 'Shoebox QC (Washed)' });
     }
+    db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(marker, now);
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
+}
+
+// Second boot fix (backlog "Recipe steps own their length"): stored recipes move from per-pour triggers and
+// recipe-level bloom hold to per-step lengths. A pure shift: old pour i's trigger is pour i-1's length; the last
+// step has none. Then the four recipes that only had the legacy hold get a bloom length: the median start of pour 2
+// over their brews on the prod copy (2026-10-29): Standard 3 Pour 60.7s (137 brews), Standard 5 Pour 60.4s (130),
+// Lume 3 Pour 60.6s (21), Lance Hedrick 2 Pour 32.5s (56). The brews cluster near 30s / 45s / 60s, so a fixed
+// target flags the others as "pour 2 after Ns"; widen "up to" (and the target down) for a looser recipe.
+export const RECIPE_LENGTH_MARKER = 'recipe_lengths_2026_10';
+const time = (targetS: number, maxS: number) => ({ kind: 'time', targetS, maxS });
+const BLOOM_LENGTHS: Record<string, Def> = {
+  'Standard 3 Pour': time(60, 60),
+  'Standard 5 Pour': time(60, 60),
+  'Lume 3 Pour': time(60, 60),
+  'Lance Hedrick 2 Pour': time(30, 30)
+};
+
+export function lengthsOf(def: Def, bloom?: Def): Def {
+  const pours = def.pours as Def[];
+  if (pours.length && pours.every((p) => !('trigger' in p)) && pours.some((p) => 'length' in p)) return def; // already converted
+  const trig = pours.map((p) => (p.trigger ? (p.trigger.kind === 'after' ? { ...p.trigger, kind: 'time' } : p.trigger) : null));
+  pours.forEach((p, i) => {
+    p.length = trig[i + 1] ?? null;
+    delete p.trigger;
+  });
+  if (bloom && pours.length > 1 && !pours[0].length) pours[0].length = bloom;
+  delete def.bloomHoldS;
+  delete def.bloomHoldTolS;
+  return def;
+}
+
+export function applyRecipeLengthFix(db: DatabaseSync, marker = RECIPE_LENGTH_MARKER): void {
+  if (db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(marker)) return;
+  const now = new Date().toISOString();
+  const set = db.prepare(`UPDATE recipes SET definition = ?, updated_at = ? WHERE id = ?`);
+  db.exec('BEGIN');
+  try {
+    for (const r of db.prepare(`SELECT id, name, definition FROM recipes`).all() as { id: number; name: string; definition: string }[])
+      set.run(JSON.stringify(lengthsOf(JSON.parse(r.definition), BLOOM_LENGTHS[r.name])), now, r.id);
     db.prepare(`INSERT INTO app_meta (key, value) VALUES (?, ?)`).run(marker, now);
     db.exec('COMMIT');
   } catch (e) {

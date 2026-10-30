@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { createDb } from './db';
-import { applyRecipeFixes, RECIPE_FIXES_2026_10_MARKER } from './recipeFixes';
+import { applyRecipeFixes, applyRecipeLengthFix, RECIPE_FIXES_2026_10_MARKER, RECIPE_LENGTH_MARKER } from './recipeFixes';
 import { listRecipes } from './recipes';
-import { parseRecipeDef } from '../recipes';
+import { parseRecipeDef, triggerWindows } from '../recipes';
 import { recipeSlugs } from '../recipeSlug';
 
 const M = 'test_marker';
+const M2 = 'test_marker_lengths';
 // name -> [tags, pours (grams), ratio target, tol, tempC]; the old (pre-triggers) shape, as in prod.
 const OLD: Record<string, [string[], number, number, number, number]> = {
   "Bean's Beans Standard": [['BBS'], 4, 16.7, 0.7, 91],
@@ -37,11 +38,12 @@ function setup() {
     db.prepare(`INSERT INTO recipes (id, name, tags, definition, created_at, updated_at) VALUES (?, ?, ?, ?, 'x', 'x')`)
       .run(id++, name, JSON.stringify(tags), JSON.stringify(oldDef(n, target, tol, t)));
   applyRecipeFixes(db, M);
+  applyRecipeLengthFix(db, M2);
   const by = (name: string) => listRecipes(db).find((r) => r.name === name)!;
   return { db, by };
 }
-const trig = (r: { def: { pours: { trigger: unknown }[] } }) => r.def.pours.map((p) => p.trigger);
-const after = (t: number, m: number) => ({ kind: 'after', targetS: t, maxS: m });
+const len = (r: { def: { pours: { length: unknown }[] } }) => r.def.pours.map((p) => p.length);
+const after = (t: number, m: number) => ({ kind: 'time', targetS: t, maxS: m });
 const low = { kind: 'low' };
 
 describe('applyRecipeFixes', () => {
@@ -84,18 +86,38 @@ describe('applyRecipeFixes', () => {
     expect(by('Lume 3 Pour').def.ratio).toEqual({ targets: [16.67], tol: 1 });
   });
 
-  it('sets triggers', () => {
+  it('sets step lengths (each pour\'s trigger moved onto the step before it; the last step has none)', () => {
     const { by } = setup();
     for (const n of ["Bean's Beans Standard", "Bean's Beans Floral"])
-      expect(trig(by(n))).toEqual([null, after(20, 30), after(20, 30), low]);
-    expect(trig(by('Double Yeet Bloom 3 Pour'))).toEqual([null, after(20, 30), after(20, 30)]);
+      expect(len(by(n))).toEqual([after(20, 30), after(20, 30), low, null]);
+    expect(len(by('Double Yeet Bloom 3 Pour'))).toEqual([after(20, 30), after(20, 30), null]);
     expect(by('Double Yeet Bloom 3 Pour').def.pours.map((p) => p.bloom)).toEqual([true, true, false]);
     expect(by('Double Yeet Bloom 3 Pour').def.tempC).toBe(91);
-    for (const n of ['Gabi Standard (bloom)', 'Gabi Gentle (bloom)']) expect(trig(by(n))).toEqual([null, after(40, 40), low]);
-    expect(trig(by("Bean's Beans Joocy"))).toEqual([null, after(20, 30), after(20, 30), low, low]);
+    for (const n of ['Gabi Standard (bloom)', 'Gabi Gentle (bloom)']) expect(len(by(n))).toEqual([after(40, 40), low, null]);
+    expect(len(by("Bean's Beans Joocy"))).toEqual([after(20, 30), after(20, 30), low, low, null]);
     for (const n of ['Shoebox QC (Washed)', 'Shoebox QC (Natural)'])
-      expect(trig(by(n))).toEqual([null, after(30, 30), low, low]);
-    expect(trig(by('Lume 3 Pour'))).toEqual([null, null, null]);
+      expect(len(by(n))).toEqual([after(30, 30), low, low, null]);
+  });
+
+  it('gives the four hold-only recipes a bloom length (the median pour-2 start of their brews) and bands', () => {
+    const { by } = setup();
+    for (const n of ['Standard 3 Pour', 'Standard 5 Pour', 'Lume 3 Pour']) expect(by(n).def.pours[0].length).toEqual(after(60, 60));
+    expect(by('Lance Hedrick 2 Pour').def.pours[0].length).toEqual(after(30, 30));
+    for (const n of ['Standard 3 Pour', 'Standard 5 Pour', 'Lume 3 Pour', 'Lance Hedrick 2 Pour']) {
+      const d = by(n).def;
+      expect(d.pours.slice(1).every((p) => p.length === null), n).toBe(true);
+      expect(triggerWindows(d, d.pours.map((_, i) => i * 70)), n).toHaveLength(1);
+    }
+  });
+
+  it('drops the recipe-level bloom hold everywhere', () => {
+    const { db } = setup();
+    for (const r of db.prepare(`SELECT definition d FROM recipes`).all() as { d: string }[]) {
+      const d = JSON.parse(r.d);
+      expect(d).not.toHaveProperty('bloomHoldS');
+      expect(d).not.toHaveProperty('bloomHoldTolS');
+      expect(d.pours.every((p: object) => !('trigger' in p))).toBe(true);
+    }
   });
 
   it('splits Shoebox into washed (same id) and natural (new id, same tags) with their own slugs', () => {
@@ -123,8 +145,19 @@ describe('applyRecipeFixes', () => {
     const snap = () => JSON.stringify(db.prepare(`SELECT * FROM recipes ORDER BY id`).all());
     const before = snap();
     applyRecipeFixes(db, M);
+    applyRecipeLengthFix(db, M2);
     expect(snap()).toBe(before);
     expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M)).toBeTruthy();
+    expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M2)).toBeTruthy();
+  });
+
+  it('the length fix converts already-converted data to itself (no marker needed)', () => {
+    const { db } = setup();
+    const snap = () => JSON.stringify(db.prepare(`SELECT definition FROM recipes ORDER BY id`).all());
+    const before = snap();
+    db.prepare(`DELETE FROM app_meta WHERE key = ?`).run(M2);
+    applyRecipeLengthFix(db, M2);
+    expect(snap()).toBe(before);
   });
 
   it('is a no-op apart from the marker when none of the recipes exist', () => {
@@ -134,6 +167,7 @@ describe('applyRecipeFixes', () => {
     expect(db.prepare(`SELECT COUNT(*) n FROM recipes`).get()).toEqual({ n: 0 });
     expect(db.prepare(`SELECT 1 FROM app_meta WHERE key = ?`).get(M)).toBeTruthy();
     expect(RECIPE_FIXES_2026_10_MARKER).toBe('recipe_steps_2026_10');
+    expect(RECIPE_LENGTH_MARKER).toBe('recipe_lengths_2026_10');
   });
 
   describe('collisions and shape mismatches', () => {
