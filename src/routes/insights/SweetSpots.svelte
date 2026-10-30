@@ -268,7 +268,7 @@
               </div>
               <div class="ends" aria-hidden="true"><span>{ch.bars[0].label}</span><span>{ch.bars.at(-1)!.label}</span></div>
               {#if tip?.key === c.key}
-                {#if ch.bars[tip.i]}<FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={ch.bars[tip.i].tip} /></FloatTip>{/if}
+                {#if ch.bars[tip.i]}<FloatTip follow anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={ch.bars[tip.i].tip} /></FloatTip>{/if}
               {/if}
             </div>
           {/if}

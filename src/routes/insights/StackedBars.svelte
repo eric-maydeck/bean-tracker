@@ -118,7 +118,7 @@
     {/each}
   </ul>
   {#if tip && m.lines[tip.k]}
-    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={shownTip(tip.k, tip.i)} /></FloatTip>
+    <FloatTip follow anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={shownTip(tip.k, tip.i)} /></FloatTip>
   {/if}
 </div>
 

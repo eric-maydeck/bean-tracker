@@ -615,7 +615,7 @@
   {#if tipAt && tipAnchor}
     <!-- onclose: a tip that another tip dismisses unmounts, so only one .cell-tip is ever in the page (a hidden one
          left mounted broke insights-habits-rating-compare whenever the pointer sat on a chart). -->
-    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip anchor={tipAnchor} beside={tipAt.beside} {reveal} onclose={() => ((tipAt = null), (pinned = false))}>
+    {#key `${tipAt.x},${tipAt.y},${tipAt.tip.title}`}<FloatTip follow={!tipLink} anchor={tipAnchor} beside={tipAt.beside} {reveal} onclose={() => ((tipAt = null), (pinned = false))}>
       {#if tipAt.link}
         <!-- svelte-ignore a11y_no_static_element_interactions (a mouse-only bridge from the mark onto the tip; the link is a real link) -->
         <div class="chart-tip-body" onclick={() => (pinned = true)} onpointerenter={() => ((overTip = true), keep())} onpointerleave={(e) => ((overTip = false), e.pointerType === 'mouse' && !pinned && later())}><TipBody tip={tipAt.tip} /><a class="tip-link" href={tipAt.link.href} onclick={(e) => (e.stopPropagation(), (pinned = false), (tipAt = null))}>{tipAt.link.label}</a></div>

@@ -163,7 +163,7 @@
     </p>
   {/if}
   {#if tip}
-    <FloatTip anchor={tip.el} onclose={() => (tip = null)}>
+    <FloatTip follow anchor={tip.el} onclose={() => (tip = null)}>
       <TipBody tip={tipOf ? tipOf(tip.r, tip.c) : { title: label(tip.r, tip.c), lines: [text(cells[tip.r]?.[tip.c] ?? null, tip.r, tip.c)] }} />
     </FloatTip>
   {/if}

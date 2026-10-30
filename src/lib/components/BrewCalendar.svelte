@@ -92,7 +92,7 @@
   {#if !short && latest.cut}<p class="note">Latest {MAX_MONTHS} months — pick a custom range for earlier.</p>{/if}
   {#if tip}
     {@const date = (tip as HTMLElement).dataset.date!}
-    <FloatTip anchor={tip} onclose={() => (tip = null)}><TipBody tip={{ title: dayLabel(date), rows: [row(valueOf.get(date) ?? null)] }} /></FloatTip>
+    <FloatTip follow anchor={tip} onclose={() => (tip = null)}><TipBody tip={{ title: dayLabel(date), rows: [row(valueOf.get(date) ?? null)] }} /></FloatTip>
   {/if}
 </div>
 

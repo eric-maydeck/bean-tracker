@@ -30,7 +30,7 @@
   onkeydown={(e) => e.key === 'Enter' && follow()}
   onclick={follow}
   ><span class={deltaInk(like.gap)}>{likeGap(like.gap)}</span> vs {like.label}</small
->{#if open && anchor}<FloatTip {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${likeGap(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
+>{#if open && anchor}<FloatTip follow {anchor} onclose={() => (open = false)}><TipBody tip={{ title: `${likeGap(like.gap)} vs ${like.label}` }} /></FloatTip>{/if}
 
 <style>
   .like-line {

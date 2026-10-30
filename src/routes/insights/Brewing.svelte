@@ -125,7 +125,7 @@
           </section>
         {/if}
       {/each}
-      {#if settleOpen}<FloatTip anchor={settleOpen.el} onclose={() => (settleOpen = null)}><TipBody tip={settleTip(settleOpen.g)} /></FloatTip>{/if}
+      {#if settleOpen}<FloatTip follow anchor={settleOpen.el} onclose={() => (settleOpen = null)}><TipBody tip={settleTip(settleOpen.g)} /></FloatTip>{/if}
     </div>
   {/if}
 

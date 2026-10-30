@@ -123,7 +123,7 @@
     </div>
   {/each}
   {#if tip && bars[tip.i]}
-    <FloatTip anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={bars[tip.i].tip} /></FloatTip>
+    <FloatTip follow anchor={tip.el} onclose={() => (tip = null)}><TipBody tip={bars[tip.i].tip} /></FloatTip>
   {/if}
 </div>
 

@@ -1,3 +1,14 @@
+<script module lang="ts">
+  // Where the pointer last was (null after a key press): a `follow` tip opened by a mouse or touch starts there, one opened
+  // from the keyboard stays at its anchor. ponytail: one document listener per page, set up on first import.
+  let pointer: { x: number; y: number } | null = null;
+  if (typeof document !== 'undefined') {
+    for (const t of ['pointerover', 'pointermove', 'pointerdown'])
+      document.addEventListener(t, (e) => (pointer = { x: (e as PointerEvent).clientX, y: (e as PointerEvent).clientY }), true);
+    document.addEventListener('keydown', () => (pointer = null), true);
+  }
+</script>
+
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { onDestroy } from 'svelte';
@@ -15,11 +26,12 @@
   // `beside`: placed to the side of the anchor, not above it (a horizontal bar's end).
   // `at`: a pointer position: the tip sits at that point instead of at its anchor's rect; `follow` keeps it on the pointer
   // while it moves (a chart mark's tip).
+  // `follow` without `at`: a chart's tip starts at the pointer that opened it (a tap: the tap's point); a key-opened one stays anchored.
   // `tip`: the content as a Tip, in place of children (labelTip.ts mounts it with no snippet).
   let { anchor, children, tip, onclose, reveal = false, placeKey, beside = false, at: start = null, follow = false }: { anchor: Element; at?: { x: number; y: number } | null; follow?: boolean; placeKey?: unknown; beside?: boolean; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
 
   let el: HTMLDivElement | undefined = $state();
-  let at = $state(start);
+  let at = $state(start ?? (follow ? pointer : null));
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
   // Escape (document-level) dismisses it until the tip moves to another anchor.
   let away = $state(false), dismissed = $state(false);

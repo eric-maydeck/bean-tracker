@@ -71,7 +71,7 @@
 </div>
 
 {#if tip}
-  <FloatTip anchor={tip.el} reveal={tip.pinned} onclose={() => (tip = null)}>
+  <FloatTip follow anchor={tip.el} reveal={tip.pinned} onclose={() => (tip = null)}>
     <div class="gt-tip"><TipBody tip={tipOf(tip.p)} /></div>
   </FloatTip>
 {/if}
