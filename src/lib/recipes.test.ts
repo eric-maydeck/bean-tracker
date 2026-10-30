@@ -227,6 +227,15 @@ describe('matchBrew', () => {
     const m = matchBrew(brew(reading('BBFS')), [recipe(1, 'R1', def('BBFS', { bloomHoldS: 20 }))])!;
     expect(m.diffs).toEqual([{ text: '30s blooms', modified: true }]);
   });
+  it('an after trigger on the pour following a bloom defines its timing: no legacy hold diff', () => {
+    const d = def('BBFS', { bloomHoldS: 20 });
+    d.pours[1].trigger = { kind: 'after', targetS: 20, maxS: 20 };
+    const m = matchBrew(brew(reading('BBFS')), [recipe(1, 'R1', d)])!;
+    expect(m.diffs.map((x) => x.text)).not.toContain('30s blooms');
+    expect(m.diffs.map((x) => x.text).join()).not.toMatch(/bloom/);
+    // a legacy (null trigger) recipe keeps the hold check
+    expect(matchBrew(brew(reading('BBFS')), [recipe(1, 'R1', def('BBFS', { bloomHoldS: 20 }))])!.diffs).toEqual([{ text: '30s blooms', modified: true }]);
+  });
   it('different fast/slow pattern is null', () => {
     const d = def('FFFS');
     expect(matchBrew(brew(reading('FFSS')), [recipe(1, 'R', { ...d, pours: d.pours.map((p) => ({ ...p, grams: null })) })])).toBeNull();

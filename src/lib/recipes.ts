@@ -426,7 +426,9 @@ function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null, sharesApp
       text: r.bloomCount === 2 ? 'two blooms' : r.bloomCount === 0 ? 'no bloom' : `${r.bloomCount} bloom${r.bloomCount === 1 ? '' : 's'}`,
       modified: true
     });
-  if (r.bloomHoldS != null && def.bloomHoldS != null && Math.abs(r.bloomHoldS - def.bloomHoldS) > def.bloomHoldTolS)
+  // An `after` trigger on the pour following a bloom defines that bloom's timing (the trigger check below): no legacy hold check.
+  const timed = def.pours.some((p, i) => i > 0 && def.pours[i - 1].bloom && p.trigger?.kind === 'after');
+  if (!timed && r.bloomHoldS != null && def.bloomHoldS != null && Math.abs(r.bloomHoldS - def.bloomHoldS) > def.bloomHoldTolS)
     out.push({ text: `${fmtHold(r.bloomHoldS)}s bloom${r.bloomCount === 1 ? '' : 's'}`, modified: true });
   if (tempC && def.tempC && Math.abs(tempC - def.tempC) > 1)
     out.push({ text: `${+tempC.toFixed(1)}°C vs ${+def.tempC.toFixed(1)}°C`, modified: Math.abs(tempC - def.tempC) > TEMP_TOL_C });
