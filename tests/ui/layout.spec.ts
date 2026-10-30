@@ -3008,11 +3008,23 @@ export const STATES: State[] = [
             expect(b.x + b.width, 'inside the step, right').toBeLessThanOrEqual(fieldset.x + fieldset.width + 0.5);
           }
           expect((await box(target)).width).toBeLessThan(100);
-          // The seven buttons are one width, and each of Custom and Range keeps its box on its own row (no spill).
-          const cw = [];
-          for (const l of await group.locator('label.chip').all()) cw.push((await box(l)).width);
-          expect(cw.length).toBe(7);
-          expect(Math.max(...cw) - Math.min(...cw), `button widths ${cw.join(', ')}`).toBeLessThanOrEqual(1);
+          // Button widths: above 640px all seven match; on phones the four presets share one full-width row at a quarter each,
+          // and Water low, Custom and Range match each other.
+          const chipBoxes = [];
+          for (const l of await group.locator('label.chip').all()) chipBoxes.push(await box(l));
+          expect(chipBoxes.length).toBe(7);
+          const spread = (xs: number[]) => Math.max(...xs) - Math.min(...xs);
+          if (page.viewportSize()!.width > 640) {
+            expect(spread(chipBoxes.map((b) => b.width)), 'seven buttons one width').toBeLessThanOrEqual(1);
+          } else {
+            const times = chipBoxes.slice(1, 5);
+            const gb = await box(group);
+            expect(spread(times.map((b) => b.y)), 'presets share a row').toBeLessThanOrEqual(1);
+            expect(spread(times.map((b) => b.width)), 'presets one width').toBeLessThanOrEqual(1);
+            expect(Math.abs(times[0].x - gb.x), 'presets start at the row edge').toBeLessThanOrEqual(1);
+            expect(Math.abs(times[3].x + times[3].width - (gb.x + gb.width)), 'presets end at the row edge').toBeLessThanOrEqual(1);
+            expect(spread([chipBoxes[0].width, chipBoxes[5].width, chipBoxes[6].width]), 'Water low, Custom, Range one width').toBeLessThanOrEqual(1);
+          }
           // One height for the editor's controls: the name, tags and amounts fields, the buttons and the edit boxes.
           const hs = [];
           for (const l of [page.locator('#re-name'), page.locator('#re-tags'), page.locator('#re-unit'), custom, target, upTo, ...(await group.locator('label.chip').all())]) hs.push((await box(l)).height);

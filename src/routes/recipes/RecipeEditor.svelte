@@ -89,7 +89,7 @@
   };
   /* svelte-ignore state_referenced_locally */
   let ui = $state<LenUi[]>(def.pours.map((p) => uiOf(p.length)));
-  const chips: [string, string][] = [['low', 'Water low'], ...LENGTH_CHIP_SECONDS.map((s): [string, string] => [String(s), formatDuration(s)])];
+  const timeChips = LENGTH_CHIP_SECONDS.map((s): [string, string] => [String(s), formatDuration(s)]);
   function apply(i: number) {
     const u = ui[i];
     const time = (a: number, b: number): Length => ({ kind: 'time', targetS: a, maxS: b });
@@ -223,9 +223,12 @@
       {:else}
         <div class="trigger">
           <div class="chips" role="radiogroup" aria-label="Pour {i + 1} length">
-            {#each chips as [v, label] (v)}
-              {@render pickChip(i, v, label)}
-            {/each}
+            {@render pickChip(i, 'low', 'Water low')}
+            <span class="times">
+              {#each timeChips as [v, label] (v)}
+                {@render pickChip(i, v, label)}
+              {/each}
+            </span>
             <span class="pair">
               {@render pickChip(i, 'custom', 'Custom')}
               <span class="form-field box"><input id="re-cu{i}" class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} onblur={() => (ui[i].showC = customBad(i))} /></span>
@@ -369,6 +372,7 @@
   select:disabled { opacity: 0.5; cursor: not-allowed; }
   .editor :global(.form-field input:not([type='checkbox'])), .editor :global(.form-field select) { height: var(--h); min-height: var(--h); box-sizing: border-box; }
   .trigger { display: grid; gap: var(--space-1); }
+  .times { display: contents; } /* phones: the four presets are one full-width row */
   .pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .box { margin: 0; }
   .dur { width: 5.5rem; }
@@ -399,6 +403,8 @@
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor { --h: 44px; }
+    .times { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); flex: 1 1 100%; }
+    .times .chip { width: auto; }
     .check, .form-field-checkbox label { min-height: 44px; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
