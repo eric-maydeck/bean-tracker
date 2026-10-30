@@ -165,7 +165,7 @@ describe('brewsFor windows', () => {
     expect(own.length).toBeGreaterThan(0);
     for (const r of own) {
       const t = r.timeline!;
-      expect(t.windows).toEqual([{ fromS: t.pours[0].startS + 20, toS: t.pours[0].startS + 30 }]);
+      expect(t.windows).toEqual([{ fromS: t.pours[0].startS + 20, toS: t.pours[0].startS + 30, pour: 0 }]);
     }
     for (const r of rows.filter((r) => !own.includes(r))) expect(r.timeline!.windows ?? []).toEqual([]);
     for (const r of brewsFor(db, { key: reading(db, a).structureKey! })) expect(r.timeline!.windows ?? []).toEqual([]);

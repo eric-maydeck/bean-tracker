@@ -260,10 +260,14 @@ export const recipeSpeed = (p: RecipePour): 'fast' | 'slow' =>
   p.rateGps ? ((p.rateGps[0] + p.rateGps[1]) / 2 >= FAST_GPS ? 'fast' : 'slow') : p.speed;
 export const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 const fmtHold = (s: number) => Math.round(s / 5) * 5;
+const fmtHold1 = (s: number) => +s.toFixed(1);
 
 export function describeRecipe(def: RecipeDef): string {
   const blooms = def.pours.filter((p) => p.bloom).length;
-  const hold = def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)} s `;
+  const wait = def.pours[1]?.trigger; // the bloom lasts until the next pour starts
+  const hold = wait?.kind === 'after' && blooms
+    ? `${wait.maxS > wait.targetS ? `${fmtHold1(wait.targetS)}–${fmtHold1(wait.maxS)}` : fmtHold1(wait.targetS)} s `
+    : def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)} s `;
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
   else if (blooms > 1) parts.push(`${['', '', 'two', 'three'][blooms] ?? blooms} ${hold}blooms`);

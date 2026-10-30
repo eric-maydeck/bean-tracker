@@ -442,6 +442,17 @@ describe('withDefaults', () => {
 });
 
 describe('describeRecipe', () => {
+  it('describes a bloom by the wait after it, not the legacy hold', () => {
+    const t = (tr: Trigger | null) => {
+      const d = def('BBF', { bloomHoldS: 50 });
+      d.pours[1].trigger = tr;
+      return describeRecipe(d);
+    };
+    expect(t({ kind: 'after', targetS: 20, maxS: 30 })).toMatch(/^Two 20–30 s blooms/);
+    expect(t({ kind: 'after', targetS: 30, maxS: 30 })).toMatch(/^Two 30 s blooms/);
+    expect(t(null)).toMatch(/^Two 50 s blooms/);
+    expect(t({ kind: 'low' })).toMatch(/^Two 50 s blooms/);
+  });
   it('lists several ratios', () => {
     expect(describeRecipe(def('BFS', { ratio: { targets: [15, 16.7, 18], tol: 0.7 } }))).toContain('~1:15, 16.7 or 18');
   });
