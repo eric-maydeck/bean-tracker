@@ -1,4 +1,5 @@
 // Recipes as data: definition, parser, wording and brew matching (client-safe, no server imports).
+import { recipeLabels } from './recipeSteps';
 import { FAST_GPS, capital, type PourReading, type Timeline } from './pours';
 
 /** When a pour starts: null = unspecified (legacy), `after` = seconds after the previous pour, `low` = when the water runs low. */
@@ -305,7 +306,7 @@ export function triggerWindows(def: RecipeDef, startsS: number[]): NonNullable<T
   return startsS.flatMap((_, i) => {
     const t = i > 0 ? def.pours[i]?.trigger : null;
     return t?.kind === 'after' && def.pours[i - 1].bloom
-      ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, bloom: def.pours.slice(0, i - 1).filter((p) => p.bloom).length }]
+      ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, bloom: def.pours.slice(0, i - 1).filter((p) => p.bloom).length, pour: i - 1 }]
       : [];
   });
 }
@@ -315,10 +316,16 @@ const FLOW_GPS = FAST_GPS / 2;
 export function recipeTimeline(def: RecipeDef): Timeline {
   const flow = controlsFlow(def);
   let t = 0;
+  let gap = 40; // flow recipes: the space between pours 2, 3, 4...: pour 3's own gap after pour 2, else the bloom's 40s
   const pours: Timeline['pours'] = [];
   def.pours.forEach((p, i) => {
     const trig = i > 0 ? p.trigger : null;
-    const startS = trig?.kind === 'after' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
+    let startS = trig?.kind === 'after' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
+    if (flow && i >= 2) {
+      const prev = def.pours[1]; // the gap as stored: pour 3's start minus pour 2's end
+      if (i === 2 && p.startS != null && prev.startS != null && prev.durationS != null) gap = Math.max(0, p.startS - prev.startS - prev.durationS);
+      startS = t + gap;
+    }
     const grams = p.grams ?? (p.share ?? 0) * 100; // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
     const durationS = flow && !p.bloom ? grams / FLOW_GPS : (p.durationS ?? 0);
     t = startS + durationS;
@@ -330,7 +337,7 @@ export function recipeTimeline(def: RecipeDef): Timeline {
     });
   });
   const swirls = def.pours.flatMap((p, i) => (p.swirlAfter ? [pours[i].startS + pours[i].durationS] : []));
-  return { pours, swirls, totalS: def.totalS ?? t, windows: triggerWindows(def, pours.map((p) => p.startS)) };
+  return { pours, swirls, ...recipeLabels(def), totalS: def.totalS ?? t, windows: triggerWindows(def, pours.map((p) => p.startS)) };
 }
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

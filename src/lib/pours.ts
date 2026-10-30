@@ -93,11 +93,25 @@ export interface Timeline {
     kind: 'bloom' | 'fast' | 'slow' | 'medium';
   }[];
   swirls: number[];
+  /** Tooltip text per pour and per swirl (same order as `pours` / `swirls`). */
+  labels?: string[];
+  swirlLabels?: string[];
   totalS: number;
   /** Each timed bloom: from its start to the next pour's target start, drawn behind the pours (`bloom` = 0 for the first, 1 for the second, ...). */
-  windows?: { startS: number; targetS: number; bloom: number }[];
+  windows?: { startS: number; targetS: number; bloom: number; /** index of the bloom's pour, for its tooltip */ pour: number }[];
 }
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+/** "First bloom", "Third pour", "Pour 11": blooms count among blooms, pours by their number in the recipe. */
+export function pourName(bloom: boolean, bloomIdx: number, pourIdx: number): string {
+  const o = ORDINALS[bloom ? bloomIdx : pourIdx];
+  return capital(o ? `${o} ${bloom ? 'bloom' : 'pour'}` : bloom ? `bloom ${bloomIdx + 1}` : `pour ${pourIdx + 1}`);
+}
+/** What a swirl followed: "Swirl after first bloom". */
+export const swirlName = (bloom: boolean, bloomIdx: number, pourIdx: number) => `Swirl after ${pourName(bloom, bloomIdx, pourIdx).toLowerCase()}`;
+
 export function timelineOf(r: PourReading): Timeline {
+  const m = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
+  const bloomIdx = r.pours.map((p, i) => r.pours.slice(0, i).filter((q) => q.bloom).length);
   return {
     pours: r.pours.map((p) => ({
       startS: p.startS,
@@ -105,7 +119,15 @@ export function timelineOf(r: PourReading): Timeline {
       grams: p.grams,
       kind: p.bloom ? 'bloom' : p.speed
     })),
+    labels: r.pours.map((p, i) => {
+      const n = r.pours[i + 1];
+      return `${pourName(p.bloom, bloomIdx[i], i)} (${m(p.startS)}–${m(n ? n.startS : p.startS + p.durationS)})`;
+    }),
     swirls: r.swirls.map((w) => w.atS),
+    swirlLabels: r.swirls.map((w) => {
+      const at = r.pours.reduce((k, p, i) => (p.startS <= w.atS ? i : k), 0);
+      return `${swirlName(!!r.pours[at]?.bloom, bloomIdx[at] ?? 0, at)} (${m(w.atS)})`;
+    }),
     totalS: r.totalS
   };
 }

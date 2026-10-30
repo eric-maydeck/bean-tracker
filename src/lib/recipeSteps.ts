@@ -1,3 +1,4 @@
+import { pourName, swirlName } from './pours';
 import { mmss, recipeSpeed, type RecipeDef, type RecipePour } from './recipes';
 
 /** `alt`: the time if every ranged wait so far ran to its maximum (null for exact steps). */
@@ -55,4 +56,18 @@ export const stepsText = (def: RecipeDef): string =>
 export function tempNotesLine(def: RecipeDef): string | null {
   const parts = [def.tempC != null ? `${def.tempC}°C` : null, def.notes].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
+}
+
+/** Tooltip text for the recipe chart: each pour with its start and end ("Third pour (0:40–1:05)", "(0:40 → low)", "(low → end)"), and each swirl. */
+export function recipeLabels(def: RecipeDef): { labels: string[]; swirlLabels: string[] } {
+  const steps = recipeSteps(def).map((s) => (s.time === 'Low' ? 'low' : s.time.replace(/^Low \+/, 'low +')));
+  const bloomIdx = def.pours.map((_, i) => def.pours.slice(0, i).filter((q) => q.bloom).length);
+  const labels = def.pours.map((p, i) => {
+    const start = steps[i];
+    const next = i + 1 < steps.length ? steps[i + 1] : 'end';
+    const span = !start ? '' : !next ? ` (${start})` : ` (${start}${start.startsWith('low') || next === 'low' || next === 'end' ? ' → ' : '–'}${next})`;
+    return pourName(p.bloom, bloomIdx[i], i) + span;
+  });
+  const swirlLabels = def.pours.flatMap((p, i) => (p.swirlAfter ? [swirlName(p.bloom, bloomIdx[i], i)] : []));
+  return { labels, swirlLabels };
 }

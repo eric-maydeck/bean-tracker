@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Pour, PourReading } from './pours';
+import { timelineOf, type Pour, type PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
@@ -505,10 +505,41 @@ describe('recipeTimeline triggers', () => {
     const d = timed([null, after(20, 30), after(20, 30), { kind: 'low' }], [0, null, null, null]);
     d.pours[0].bloom = d.pours[1].bloom = true;
     expect(triggerWindows(d, [0, 25, 45, 90])).toEqual([
-      { startS: 0, targetS: 20, bloom: 0 }, { startS: 25, targetS: 45, bloom: 1 }
+      { startS: 0, targetS: 20, bloom: 0, pour: 0 }, { startS: 25, targetS: 45, bloom: 1, pour: 1 }
     ]);
     d.pours[1].trigger = { kind: 'low' };
-    expect(triggerWindows(d, [0, 25, 45, 90])).toEqual([{ startS: 25, targetS: 45, bloom: 1 }]); // a low step has no band
+    expect(triggerWindows(d, [0, 25, 45, 90])).toEqual([{ startS: 25, targetS: 45, bloom: 1, pour: 1 }]); // a low step has no band
+  });
+  it('brew tooltip labels use the actual times', () => {
+    const r = reading('BBFS', { swirls: [{ atS: 6 }] as PourReading['swirls'] }, undefined, [0, 23, 41, 62]);
+    r.pours[1].bloom = true;
+    const tl = timelineOf(r);
+    expect(tl.labels).toEqual(['First bloom (0:00–0:23)', 'Second bloom (0:23–0:41)', 'Third pour (0:41–1:02)', 'Fourth pour (1:02–1:12)']);
+    expect(tl.swirlLabels).toEqual(['Swirl after first bloom (0:06)']);
+  });
+  it('tooltip labels: blooms, timed pours, low pours, swirls', () => {
+    const d = timed([null, after(20, 30), after(20, 30), { kind: 'low' }, { kind: 'low' }], [0, null, null, null, null]);
+    d.pours[0].bloom = d.pours[1].bloom = true;
+    d.pours[0].swirlAfter = true;
+    d.pours[3].swirlAfter = true;
+    const tl = recipeTimeline(d);
+    expect(tl.labels).toEqual(['First bloom (0:00–0:20)', 'Second bloom (0:20–0:40)', 'Third pour (0:40 → low)', 'Fourth pour (low → low)', 'Fifth pour (low → end)']);
+    expect(tl.swirlLabels).toEqual(['Swirl after first bloom', 'Swirl after fourth pour']);
+    const t2 = recipeTimeline(timed([null, after(20, 20), after(25, 25)], [0, null, null]));
+    expect(t2.labels).toEqual(['First pour (0:00–0:20)', 'Second pour (0:20–0:45)', 'Third pour (0:45 → end)']);
+  });
+  it('a flow-controlling recipe spaces pours 3 on like pour 3 after pour 2', () => {
+    const d = timed([null, null, null, null], [0, 40, 70, null]);
+    d.drippers = ['Gabi Master A'];
+    d.pours.forEach((p, i) => ((p.grams = 60), (p.durationS = 10)));
+    const p = recipeTimeline(d).pours;
+    const dur = 60 / (13 / 2);
+    const gap = 70 - 50; // stored: pour 3 starts 20s after pour 2 ends
+    expect(p[2].startS).toBeCloseTo(p[1].startS + p[1].durationS + gap);
+    expect(p[3].startS).toBeCloseTo(p[2].startS + dur + gap);
+    d.pours[2].startS = null; // no usable time: the 40s fallback
+    const q = recipeTimeline(d).pours;
+    expect(q[2].startS).toBeCloseTo(q[1].startS + q[1].durationS + 40);
   });
   it('a flow-controlling recipe draws pours 2 on as one steady rate', () => {
     const mk = (drippers: string[]) => {

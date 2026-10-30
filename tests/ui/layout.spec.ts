@@ -2705,7 +2705,21 @@ export const STATES: State[] = [
           await expect(chart.locator('rect.window')).toHaveCount(1); // only pour 1 is a bloom; no striped part any more
           // Hovering a band says how long the bloom before it lasts.
           await chart.locator('rect.window').first().hover();
-          await expect(page.getByText(/^First bloom \d:\d\d–\d:\d\d$/)).toBeVisible();
+          const tip = page.getByText(/^First bloom \(\d:\d\d–\d:\d\d\)$/);
+          await expect(tip).toBeVisible();
+          await page.mouse.move(0, 0);
+          await expect(tip).toHaveCount(0);
+          // The level line inside the band has no tip of its own, so the band's shows through it.
+          const hold = (await chart.locator('line.hold').first().boundingBox())!;
+          await page.mouse.move(hold.x + hold.width / 2, hold.y + hold.height / 2);
+          await expect(tip).toBeVisible();
+          await page.mouse.move(0, 0);
+          // A pour mark and a swirl have their own.
+          await chart.locator('polygon.seg').nth(2).hover();
+          await expect(page.getByText(/^(Third|Second) (pour|bloom) \(/)).toBeVisible();
+          await page.mouse.move(0, 0);
+          await chart.locator('line.swirl').first().hover({ force: true });
+          await expect(page.getByText(/^Swirl after /)).toBeVisible();
           await page.mouse.move(0, 0);
           await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('First bloom');
           // Brew rows align with the recipe (same pour count), so they carry bands too.

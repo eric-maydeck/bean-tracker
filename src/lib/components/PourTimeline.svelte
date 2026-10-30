@@ -17,9 +17,7 @@
   const y = (g: number) => H - 1 - (g / water) * (H - 4);
   const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 
-  // Hover or tap on a band: how long the pour before it lasts. labelTip attaches to any element (SVG ones included).
-  const ORDINALS = ['First', 'Second', 'Third'];
-  const endsLabel = (w: NonNullable<Timeline['windows']>[number]) => `${ORDINALS[w.bloom] ? `${ORDINALS[w.bloom]} bloom` : `Bloom ${w.bloom + 1}`} ${mmss(w.startS)}–${mmss(w.targetS)}`;
+  // Hover or tap on a band, a pour or a swirl: its name and times (the band shares its bloom's text). labelTip attaches to any element, SVG ones included.
   const endTip = (node: SVGElement, label: string) => labelTip(node as unknown as HTMLElement, label);
 
   const shapes = $derived.by(() => {
@@ -44,7 +42,7 @@
   <svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" role="img" aria-label={label} style="height:{H}px">
     {#each timeline.windows ?? [] as w, i (i)}
       {#if w.targetS > w.startS}
-        <rect class="window b{Math.min(w.bloom, 2)}" x={x(w.startS)} y="0" width={x(w.targetS) - x(w.startS)} height={H} use:endTip={endsLabel(w)} />
+        <rect class="window b{Math.min(w.bloom, 2)}" x={x(w.startS)} y="0" width={x(w.targetS) - x(w.startS)} height={H} use:endTip={timeline.labels?.[w.pour] ?? ''} />
       {/if}
     {/each}
     <line class="base" x1="0" x2={W} y1={H - 0.5} y2={H - 0.5} vector-effect="non-scaling-stroke" />
@@ -52,11 +50,11 @@
       {#if sh.hold}
         <line class="hold" x1={sh.hold.x0} x2={sh.hold.x1} y1={sh.hold.y} y2={sh.hold.y} vector-effect="non-scaling-stroke" />
       {/if}
-      <polygon class="seg {sh.kind}" points={sh.points} />
+      <polygon class="seg {sh.kind}" points={sh.points} use:endTip={timeline.labels?.[i] ?? ''} />
     {/each}
     {#each timeline.swirls as s, i (i)}
-      <line class="halo" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" />
-      <line class="swirl" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" />
+      <line class="halo" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" use:endTip={timeline.swirlLabels?.[i] ?? ''} />
+      <line class="swirl" x1={edge(x(s))} x2={edge(x(s))} y1="0" y2={H} vector-effect="non-scaling-stroke" use:endTip={timeline.swirlLabels?.[i] ?? ''} />
     {/each}
   </svg>
   {#if !compact}
@@ -69,6 +67,11 @@
     display: block;
     width: 100%;
     overflow: visible;
+  }
+  /* Marks with no tooltip of their own let the band's (or a pour's) show through. */
+  .base,
+  .hold {
+    pointer-events: none;
   }
   .base {
     stroke: var(--color-border);
