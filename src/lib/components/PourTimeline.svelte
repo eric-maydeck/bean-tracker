@@ -83,9 +83,9 @@
   }
   /* Each timed bloom: a pale full-height band behind the pours, one tint per bloom (tokens no pour fill or line uses). */
   .window { opacity: 0.4; }
-  .window.b0 { fill: var(--series-2); }
-  .window.b1 { fill: var(--series-7); }
-  .window.b2 { fill: var(--series-3); }
+  .window.b0 { fill: var(--band-0, var(--series-2)); }
+  .window.b1 { fill: var(--band-1, var(--series-7)); }
+  .window.b2 { fill: var(--band-2, var(--series-3)); }
   .seg.bloom {
     fill: var(--series-4);
   }
