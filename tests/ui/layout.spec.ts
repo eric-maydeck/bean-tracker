@@ -2840,15 +2840,16 @@ export const STATES: State[] = [
           if ((page.viewportSize()?.width ?? 1000) <= 640) expect((await hint.boundingBox())!.height).toBeGreaterThanOrEqual(43.9);
           // Phone tap targets: icon buttons, selects and number inputs are at least 44 px tall.
           if ((page.viewportSize()?.width ?? 1000) <= 480) {
-            for (const el of [pours.nth(0).getByRole('button', { name: 'Move down' }), pours.nth(0).getByRole('button', { name: 'Remove' }), pours.nth(0).getByLabel('Speed'), pours.nth(0).getByLabel('Grams'), page.getByLabel('Ratio 1:', { exact: true })])
+            for (const el of [pours.nth(0).getByRole('button', { name: 'Move down' }), pours.nth(0).getByRole('button', { name: 'Remove' }), pours.nth(0).getByLabel('Speed'), pours.nth(0).getByLabel('Grams'), page.locator('#re-temp'), page.locator('#re-ratio')])
               expect((await el.boundingBox())!.height).toBeGreaterThanOrEqual(43.9); // min-height 44px; sub-pixel layout can read 43.99997
           }
-          // A number field by keyboard: Ratio 1: becomes 15.5 and the description follows.
-          const ratio = page.getByLabel('Ratio 1:', { exact: true });
+          // The ratio list by keyboard: type 15.5 and Enter adds it, and the description follows (Enter does not submit the form).
+          const ratio = page.locator('#re-ratio');
           await ratio.focus();
-          await page.keyboard.press('ControlOrMeta+a');
           await page.keyboard.type('15.5');
-          await expect(desc).toContainText('~1:15.5');
+          await page.keyboard.press('Enter');
+          await expect(desc).toContainText('15.5');
+          await expect(page.locator('form.editor')).toBeVisible();
           // Speed to Fast on the last pour changes the wording.
           const descBefore = await desc.textContent();
           await pours.nth(3).getByLabel('Speed').selectOption('fast');
@@ -2947,7 +2948,6 @@ export const STATES: State[] = [
             expect(await vgap(toggles.nth(1), page.locator('fieldset.drippers')), 'Equal shares to Drippers').toBeLessThanOrEqual(12);
             const [fs, sw] = [await box(pours.nth(0)), await box(pours.nth(0).getByText('Swirl after'))];
             expect(fs.y + fs.height - (sw.y + sw.height), 'Swirl after to the step edge').toBeLessThanOrEqual(10);
-            expect(await vgap(page.locator('#re-ratiotol'), page.locator('#re-notes')), 'ratio row to Notes').toBeLessThanOrEqual(40);
           }
           // Custom: a valid value selects it; an invalid one shows the error and selects nothing.
           await custom.fill('1m30s');
@@ -3043,16 +3043,64 @@ export const STATES: State[] = [
           await page.getByLabel('Equal shares').uncheck();
           await expect(unitSel).toBeEnabled();
           await expect(pours.getByLabel('Grams')).toHaveCount(4);
-          // Ratio list.
-          await page.getByRole('button', { name: 'Add ratio' }).click();
-          await expect(page.getByLabel('Ratio target 2', { exact: true })).toBeVisible();
-          await expect(page.getByText('or 1:', { exact: true })).toBeVisible();
-          // Add ratio is bottom-aligned with the ratio boxes on its row.
-          const addB = await page.getByRole('button', { name: 'Add ratio' }).boundingBox();
-          const lastR = await page.getByLabel('Ratio target 2', { exact: true }).boundingBox();
-          if (Math.abs(addB!.y - lastR!.y) < lastR!.height) expect(Math.abs(addB!.y + addB!.height - (lastR!.y + lastR!.height)), 'Add ratio bottom-aligned').toBeLessThanOrEqual(1);
-          await page.getByRole('button', { name: 'Remove ratio 2' }).click();
-          await expect(page.getByLabel('Ratio target 2', { exact: true })).toHaveCount(0);
+          // Ratio list: staged rows with an x, an input with a 1: prefix and Add.
+          const rlist = page.locator('.ratios .bn-list li');
+          const n0 = await rlist.count();
+          expect(n0).toBeGreaterThanOrEqual(1);
+          const rin = page.locator('#re-ratio');
+          await rin.fill('17.5');
+          await page.getByRole('button', { name: 'Add', exact: true }).click();
+          await expect(rlist).toHaveCount(n0 + 1);
+          await expect(page.locator('.ratios .bn-list')).toContainText('1:17.5');
+          await rin.fill('17.5'); // a duplicate is ignored
+          await rin.press('Enter');
+          await expect(rlist).toHaveCount(n0 + 1);
+          await expect(rin).toHaveValue('');
+          // A bad value shows its message only after the box loses focus, and clears once valid.
+          const rerr = page.getByText('Ratio must be between 1:5 and 1:30', { exact: true });
+          await rin.pressSequentially('40');
+          await expect(rerr).toHaveCount(0);
+          await rin.blur();
+          await expect(rerr).toBeVisible();
+          await rin.fill('');
+          await expect(rerr).toHaveCount(0);
+          await rin.fill('3');
+          await rin.press('Enter');
+          await expect(rlist).toHaveCount(n0 + 1);
+          await expect(rerr).toBeVisible();
+          await rin.fill('');
+          // Remove, down to the last one, whose x is disabled.
+          await page.getByRole('button', { name: 'Remove 1:17.5' }).click();
+          await expect(rlist).toHaveCount(n0);
+          while ((await rlist.count()) > 1) await rlist.first().getByRole('button').click();
+          await expect(rlist.first().getByRole('button')).toBeDisabled();
+          await expect(rlist).toHaveCount(1);
+          // The settings block sits on one grid: the first row's four fields share the row's top and a height; Ratios and Notes
+          // start at the first and third column edges, and nothing runs past the editor.
+          const edit = await box(page.locator('form.editor'));
+          const cols = [page.locator('#re-cmin'), page.locator('#re-cmax'), page.locator('#re-ratiotol'), page.locator('#re-temp')];
+          const cb = [];
+          for (const c of cols) cb.push(await box(c));
+          expect(Math.max(...cb.map((b) => b.height)) - Math.min(...cb.map((b) => b.height))).toBeLessThanOrEqual(1);
+          const sameRow = Math.abs(cb[0].y - cb[3].y) < 4;
+          if (sameRow) {
+            for (const b of cb) expect(Math.abs(b.y - cb[0].y)).toBeLessThanOrEqual(1);
+            expect(Math.abs(cb[1].width - cb[0].width), 'equal column widths').toBeLessThanOrEqual(1);
+          } else expect(Math.abs(cb[0].x - cb[2].x), 'two columns share edges').toBeLessThanOrEqual(1);
+          const ratiosB = await box(page.locator('.ratios'));
+          const notesB = await box(page.locator('.notes'));
+          // Notes and Ratios start at the first column's edge, Notes runs the full width of the four fields.
+          expect(Math.abs(ratiosB.x - cb[0].x), 'Ratios left edge = first column').toBeLessThanOrEqual(1);
+          expect(Math.abs(notesB.x - cb[0].x), 'Notes left edge = first column').toBeLessThanOrEqual(1);
+          expect(Math.abs(notesB.x + notesB.width - Math.max(...cb.map((b) => b.x + b.width))), 'Notes right edge = last column').toBeLessThanOrEqual(1);
+          expect(ratiosB.y, 'Ratios below Notes').toBeGreaterThan(notesB.y + notesB.height - 1);
+          for (const b of [...cb, ratiosB, notesB, await box(rin), await box(page.getByRole('button', { name: 'Add', exact: true }))]) {
+            expect(b.x + b.width, 'inside the editor').toBeLessThanOrEqual(edit.x + edit.width + 0.5);
+            expect(b.x, 'inside the editor').toBeGreaterThanOrEqual(edit.x - 0.5);
+          }
+          const addBox = await box(rin);
+          const addBtn = await box(page.getByRole('button', { name: 'Add', exact: true }));
+          expect(Math.abs(addBox.height - addBtn.height), 'input and Add the same height').toBeLessThanOrEqual(1);
           // Temperature help.
           await page.getByRole('button', { name: 'About temperature' }).click();
           await expect(page.locator('#re-temp-help')).toContainText('±2°C');
@@ -3083,18 +3131,18 @@ export const STATES: State[] = [
         }
       },
       {
-        // A ratio outside 1:5-1:30 is rejected with the exact message; the editor stays open and nothing is saved.
+        // A save the server rejects shows its exact message; the editor stays open and nothing is saved.
         name: 'recipes-edit-error', viewports: 'two' as const,
         path: () => '/recipes',
         act: async (page: Page) => {
           await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
-          const ratio = page.getByLabel('Ratio 1:', { exact: true });
-          await ratio.focus();
-          await page.keyboard.press('ControlOrMeta+a');
-          await page.keyboard.type('40');
+          const group = page.getByRole('radiogroup', { name: 'Pour 1 length' });
+          await group.getByText('Range', { exact: true }).click();
+          await group.getByLabel('Pour 1 range from').fill('30');
+          await group.getByLabel('Pour 1 range up to').fill('20');
           await page.getByLabel('Name', { exact: true }).fill('Should not save');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(page.getByRole('alert')).toHaveText('Ratio must be between 1:5 and 1:30');
+          await expect(page.getByRole('alert')).toHaveText('Step length must be at least its target');
           await expect(page.locator('fieldset.pour')).toHaveCount(4);
           await expect(panel(page, 'Your recipes').locator('li.item')).toHaveCount(3);
           await expect(panel(page, 'Your recipes')).not.toContainText('Should not save');

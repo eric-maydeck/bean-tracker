@@ -183,18 +183,9 @@
 {/if}
 
 <style>
-  .bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); width: fit-content; max-width: 100%; }
   #brew-now { scroll-margin-top: var(--space-4); }
-  .bn-list li { border-bottom: 1px solid var(--color-border); }
-  .bn-list form { display: flex; align-items: center; gap: var(--space-3); }
-  .bn-dose { flex: none; min-width: 3.5rem; }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }
   .bn-cell .text-muted { font-size: 0.8rem; }
-  .bn-add { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .bn-add input { width: 4.5rem; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font: inherit; }
-  .bn-add .button { margin: 0; }
-  .bn-list .button-icon { flex: none; margin: 0; min-width: 44px; min-height: 44px; }
-  @media (max-width: 640px) { .bn-add input { font-size: 16px; min-height: 44px; } }
   .bn-confirm { max-width: 24rem; }
 </style>

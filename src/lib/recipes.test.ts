@@ -3,7 +3,7 @@ import { timelineOf, type Pour, type PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, parseRatioTarget, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Length, type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
@@ -648,4 +648,9 @@ describe('parseDuration / formatDuration', () => {
   it('round-trips', () => {
     for (const n of [1, 59, 60, 61, 125, 600]) expect(parseDuration(formatDuration(n))).toBe(n);
   });
+});
+
+describe('parseRatioTarget', () => {
+  it.each([['16', 16], ['16.7', 16.7], [' 18,5 ', 18.5], ['5', 5], ['30', 30], ['16.666', 16.67]])('accepts %s', (x, n) => expect(parseRatioTarget(x)).toBe(n));
+  it.each(['', ' ', 'abc', '4.9', '31', '1:16', '-16', '1e1x'])('rejects "%s"', (x) => expect(parseRatioTarget(x)).toBeNull());
 });

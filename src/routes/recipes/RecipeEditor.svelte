@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
+  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, parseRatioTarget, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -62,6 +62,20 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
+  // Ratio targets: a staged list (saving the recipe saves it). Enter or Add takes the typed value; a bad one explains itself on blur.
+  const fmtRatio = (t: number) => String(Math.round(t * 10) / 10);
+  let ratioText = $state('');
+  let ratioShow = $state(false);
+  const ratioBad = () => ratioText.trim() !== '' && parseRatioTarget(ratioText) == null;
+  function addRatio() {
+    const v = parseRatioTarget(ratioText);
+    if (v == null) return void (ratioShow = ratioText.trim() !== '');
+    if (!copy.ratio.targets.includes(v) && copy.ratio.targets.length < 5) copy.ratio.targets = [...copy.ratio.targets, v].sort((a, b) => a - b);
+    ratioText = '';
+    ratioShow = false;
+  }
+  const removeRatio = (t: number) => copy.ratio.targets.length > 1 && (copy.ratio.targets = copy.ratio.targets.filter((x) => x !== t));
+
   // The length row, one state per pour: the selected button ('low', a chip's seconds, 'custom', 'range') and the three boxes.
   // A box that holds a valid value selects its button; the length follows the selection.
   type LenUi = { sel: string; text: string; tt: string; tm: string; showC: boolean; showR: boolean };
@@ -267,21 +281,9 @@
     <button class="button button-secondary" type="button" onclick={add} disabled={copy.pours.length >= 12}>Add pour</button>
   </div>
 
-  <div class="grid">
+  <div class="grid settings">
     <div class="form-field"><label for="re-cmin">Pour count min</label><input id="re-cmin" type="number" min="1" step="1" bind:value={copy.pourCount.min} /></div>
     <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="1" bind:value={copy.pourCount.max} /></div>
-    {#each copy.ratio.targets as _, i (i)}
-      <div class="form-field">
-        <label for="re-ratio{i ? i : ''}">{i ? 'or 1:' : 'Ratio 1:'}</label>
-        <div class="with-button">
-          <input id="re-ratio{i ? i : ''}" type="number" step="any" aria-label={i ? `Ratio target ${i + 1}` : undefined} bind:value={copy.ratio.targets[i]} />
-          {#if copy.ratio.targets.length > 1}
-            <button class="icon-button" type="button" aria-label="Remove ratio {i + 1}" onclick={() => copy.ratio.targets.splice(i, 1)}><Icon name="x" /></button>
-          {/if}
-        </div>
-      </div>
-    {/each}
-    <div class="add-ratio"><button class="button button-secondary" type="button" disabled={copy.ratio.targets.length >= 5} onclick={() => copy.ratio.targets.push(16)}>Add ratio</button></div>
     <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
     <div class="form-field">
       <div class="label-row">
@@ -291,10 +293,31 @@
       <div class="mode-tip" id="re-temp-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Temperature', lines: ['A brew within ±2°C of this matches.', 'The ±2°C is fixed.'] }} /></div>
       <input id="re-temp" type="number" step="any" bind:value={copy.tempC} />
     </div>
-  </div>
-  <div class="form-field tight">
-    <label for="re-notes">Notes</label>
-    <input id="re-notes" maxlength="40" value={copy.notes ?? ''} oninput={(e) => (copy.notes = e.currentTarget.value || null)} />
+    <div class="form-field notes">
+      <label for="re-notes">Notes</label>
+      <input id="re-notes" maxlength="40" value={copy.notes ?? ''} oninput={(e) => (copy.notes = e.currentTarget.value || null)} />
+    </div>
+    <div class="form-field ratios">
+      <span class="label" id="re-ratios-label">Ratios</span>
+      <ul class="bn-list" aria-labelledby="re-ratios-label">
+        {#each copy.ratio.targets as t (t)}
+          <li>
+            <div class="bn-row">
+              <strong class="bn-dose">1:{fmtRatio(t)}</strong>
+              <button class="button button-ghost button-icon" type="button" aria-label="Remove 1:{fmtRatio(t)}" disabled={copy.ratio.targets.length <= 1} onclick={() => removeRatio(t)}><Icon name="x" /></button>
+            </div>
+          </li>
+        {/each}
+      </ul>
+      <div class="bn-add">
+        <span aria-hidden="true">1:</span>
+        <input id="re-ratio" type="text" inputmode="decimal" autocomplete="off" aria-label="New ratio, water per 1 of coffee" placeholder="16" bind:value={ratioText}
+          onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRatio(); } }}
+          oninput={() => (ratioShow &&= ratioBad())} onblur={() => (ratioShow = ratioBad())} />
+        <button class="button button-secondary" type="button" onclick={addRatio} disabled={copy.ratio.targets.length >= 5}>Add</button>
+      </div>
+      {#if ratioShow && ratioBad()}<small class="fld-err">Ratio must be between 1:5 and 1:30</small>{/if}
+    </div>
   </div>
 
   <div class="preview">
@@ -321,10 +344,17 @@
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 2rem; }
   .starts { margin: 0; color: var(--color-text-muted); }
   .editor { --h: 2.5rem; gap: var(--space-2); }
-  .grid > :global(.form-field), .tight { margin-bottom: 0; }
+  .grid > :global(.form-field) { margin-bottom: 0; }
+  .settings { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
+  .notes { grid-column: 1 / -1; }
+  .ratios { grid-column: 1 / -1; }
+  .label { font-weight: 600; font-size: 0.9rem; }
+  .ratios :global(.bn-list) { margin: 0; }
+  .ratios :global(.bn-add) { margin: var(--space-1) 0 0; }
+  .ratios :global(.bn-add input) { height: var(--h); box-sizing: border-box; }
+  .ratios :global(.bn-add .button) { height: var(--h); padding-block: 0; }
+  .fld-err { color: var(--color-urgent); font-size: 0.75rem; }
   .toggles { display: grid; gap: 0; }
-  .add-ratio { align-self: end; }
-  .add-ratio :global(.button) { height: var(--h); padding-block: 0; }
   select:disabled { opacity: 0.5; cursor: not-allowed; }
   .editor :global(.form-field input:not([type='checkbox'])), .editor :global(.form-field select) { height: var(--h); min-height: var(--h); box-sizing: border-box; }
   .trigger { display: grid; gap: var(--space-1); }
@@ -339,8 +369,6 @@
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }
   .chip:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .with-button { display: flex; align-items: center; gap: var(--space-1); }
-  .with-button input { flex: 1; }
   .steps { white-space: pre-line; color: var(--color-text-muted); }
   .tools { display: flex; gap: var(--space-2); }
   .form-field-checkbox { align-self: end; }
@@ -356,6 +384,7 @@
   }
   @media (max-width: 640px) {
     .top { grid-template-areas: 'name name' 'unit unit' 'tags tags'; }
+    .settings { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor { --h: 44px; }

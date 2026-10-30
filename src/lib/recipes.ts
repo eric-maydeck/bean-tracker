@@ -408,6 +408,13 @@ export function parseDuration(text: string): number | null {
   const s = (m[1] ? +m[1] * 60 : 0) + (m[2] ? +m[2] : 0);
   return s >= 1 && s <= 600 && (m[2] == null || +m[2] < 60 || m[1] == null) ? s : null;
 }
+/** A ratio target typed as "16", "16.7" or "18,5" (water per 1 of coffee), 1:5 to 1:30, to 2 decimals; null for anything else. */
+export function parseRatioTarget(text: string): number | null {
+  const t = text.trim().replace(',', '.');
+  if (!/^\d+(\.\d+)?$/.test(t)) return null;
+  const n = Math.round(+t * 100) / 100;
+  return n >= 5 && n <= 30 ? n : null;
+}
 /** Seconds as "50s", "1m", "1m15s". */
 export const formatDuration = (s: number): string => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${s % 60 ? `${s % 60}s` : ''}`);
 

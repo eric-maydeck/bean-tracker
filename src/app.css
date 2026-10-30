@@ -3193,3 +3193,17 @@ button .sample-chip {
   flex-direction: column;
   align-items: flex-start;
 }
+
+/* A short list you add to and remove from (Account's Brew now doses and ratios, the recipe editor's ratios): rows with an x, then an input and Add. */
+.bn-list { list-style: none; padding: 0; margin: 0 0 var(--space-3); width: fit-content; max-width: 100%; }
+.bn-list li { border-bottom: 1px solid var(--color-border); }
+.bn-list form,
+.bn-list .bn-row { display: flex; align-items: center; gap: var(--space-3); }
+.bn-dose { flex: none; min-width: 3.5rem; }
+.bn-add { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.bn-add input { width: 4.5rem; padding: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); color: var(--color-text); font: inherit; }
+.bn-add .button { margin: 0; }
+.bn-list .button-icon { flex: none; margin: 0; min-width: 44px; min-height: 44px; }
+@media (max-width: 640px) {
+  .bn-add input { font-size: 16px; min-height: 44px; }
+}
