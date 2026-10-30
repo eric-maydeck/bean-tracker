@@ -220,7 +220,7 @@ test('trophy card: Edit the grinder burr size, Save, the card shows it after rel
     await expect(dlg.locator('form.gear-form')).toHaveCount(0);
     await expect(page).toHaveURL(/card=grinder-zp6-special$/);
     await page.reload();
-    await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('54 mm');
+    await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('54mm');
   } finally { restore(); }
 });
 
