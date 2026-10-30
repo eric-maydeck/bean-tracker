@@ -62,7 +62,7 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
-  // Trigger chips: +20 s / +30 s are {after, n, n}; anything else after is Custom, which also stays picked once chosen.
+  // Trigger chips: +20 s / +30 s are {after, n, n}; anything else after is Range, which also stays picked once chosen.
   let custom = $state<boolean[]>([]);
   const lastCustom: ({ kind: 'after'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
   const chip = (i: number) => {
@@ -78,7 +78,7 @@
     custom[i] = c === 'custom';
     copy.pours[i].trigger = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'after' ? t : (lastCustom[i] ?? { kind: 'after', targetS: 20, maxS: 20 })) : { kind: 'after', targetS: +c, maxS: +c };
   }
-  const chips = [['20', '+20 s'], ['30', '+30 s'], ['custom', 'Custom'], ['low', 'Water low']];
+  const chips = [['20', '+20 s'], ['30', '+30 s'], ['custom', 'Range'], ['low', 'Water low']];
   const after = (i: number) => copy.pours[i].trigger as Extract<Trigger, { kind: 'after' }>;
 
   function add() {
@@ -173,17 +173,21 @@
       {#if i === 0}
         <p class="starts">Starts at 0:00</p>
       {:else}
-        <div class="trigger" role="radiogroup" aria-label="Pour {i + 1} starts">
-          {#each chips as [v, label] (v)}
-            <label class="chip"><input type="radio" name="re-trig{i}" value={v} checked={chip(i) === v} onchange={() => setChip(i, v)} />{label}</label>
-          {/each}
-        </div>
-        {#if chip(i) === 'custom'}
-          <div class="grid">
-            <div class="form-field"><label for="re-ta{i}">Target (s)</label><input id="re-ta{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).targetS, (v) => (after(i).targetS = v as number)} /></div>
-            <div class="form-field"><label for="re-tm{i}">Up to (s)</label><input id="re-tm{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).maxS, (v) => (after(i).maxS = v as number)} /></div>
+        <div class="trigger">
+          <div class="chips" role="radiogroup" aria-label="Pour {i + 1} starts">
+            {#each chips as [v, label] (v)}
+              <label class="chip"><input type="radio" name="re-trig{i}" value={v} checked={chip(i) === v} onchange={() => setChip(i, v)} />{label}</label>
+            {/each}
           </div>
-        {/if}
+          {#if chip(i) === 'custom'}
+            <span class="range">
+              <input class="secs" aria-label="Target (s)" type="number" min="1" max="600" step="any" bind:value={() => after(i).targetS, (v) => (after(i).targetS = v as number)} />
+              to
+              <input class="secs" aria-label="Up to (s)" type="number" min="1" max="600" step="any" bind:value={() => after(i).maxS, (v) => (after(i).maxS = v as number)} />
+              s
+            </span>
+          {/if}
+        </div>
       {/if}
       <div class="grid">
         {#if !copy.equalSplit}<div class="form-field">
@@ -280,7 +284,9 @@
   .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .starts { margin: 0; color: var(--color-text-muted); }
-  .trigger { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .trigger, .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .range { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .range .secs { width: 4.5rem; }
   .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }

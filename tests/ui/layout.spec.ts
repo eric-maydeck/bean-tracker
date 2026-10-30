@@ -2873,9 +2873,9 @@ export const STATES: State[] = [
           await expect(pours.nth(0)).toContainText('Starts at 0:00');
           await expect(pours.nth(0).getByRole('radiogroup')).toHaveCount(0);
           const group = page.getByRole('radiogroup', { name: 'Pour 2 starts' });
-          for (const n of ['+20 s', '+30 s', 'Custom', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
+          for (const n of ['+20 s', '+30 s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
           const steps = page.getByTestId('editor-steps');
-          await group.getByText('Custom', { exact: true }).click();
+          await group.getByText('Range', { exact: true }).click();
           const target = pours.nth(1).getByLabel('Target (s)');
           const upTo = pours.nth(1).getByLabel('Up to (s)');
           await target.focus();
@@ -2884,7 +2884,13 @@ export const STATES: State[] = [
           await upTo.focus();
           await page.keyboard.press('ControlOrMeta+a');
           await page.keyboard.type('30');
-          await expect(steps).toContainText('0:20 (–0:30)');
+          await expect(steps).toContainText('0:20');
+          await expect(steps).not.toContainText('(–');
+          // The two numbers are narrow and sit in the chips' row (wrapping below only when the row is full).
+          expect((await target.boundingBox())!.width).toBeLessThan(100);
+          const rowY = async (l: import('@playwright/test').Locator) => Math.round((await l.boundingBox())!.y);
+          const lastChip = group.locator('label.chip').last();
+          expect(Math.abs((await rowY(target)) - (await rowY(lastChip)))).toBeLessThan(60);
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
           await expect(pours.nth(1).getByLabel('Target (s)')).toHaveCount(0);
@@ -2909,7 +2915,7 @@ export const STATES: State[] = [
           await page.keyboard.press('Escape');
           expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
           // An Up to below its Target is rejected on Save.
-          await group.getByText('Custom', { exact: true }).click();
+          await group.getByText('Range', { exact: true }).click();
           await target.fill('20');
           await upTo.fill('10');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
