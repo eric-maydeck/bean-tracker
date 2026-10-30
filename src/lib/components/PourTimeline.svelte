@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Timeline } from '$lib/pours';
-  import { labelTip } from '$lib/components/labelTip';
+  import { followTip } from '$lib/components/labelTip';
   let { timeline, label, compact = false }: { timeline: Timeline; label: string; compact?: boolean } = $props();
 
   // Cumulative water: x = time, y = water poured so far (0 to the timeline's total grams). Each pour is a filled
@@ -18,7 +18,7 @@
   const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 
   // Hover or tap on a band, a pour or a swirl: its name and times (the band shares its bloom's text). labelTip attaches to any element, SVG ones included.
-  const endTip = (node: SVGElement, label: string) => labelTip(node as unknown as HTMLElement, label);
+  const endTip = (node: SVGElement, label: string) => followTip(node as unknown as HTMLElement, label);
 
   const shapes = $derived.by(() => {
     let level = 0;

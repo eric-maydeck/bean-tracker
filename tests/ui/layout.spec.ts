@@ -2707,6 +2707,17 @@ export const STATES: State[] = [
           await chart.locator('rect.window').first().hover();
           const tip = page.getByText(/^First bloom \(\d:\d\d–\d:\d\d\)$/);
           await expect(tip).toBeVisible();
+          // The tip follows the pointer across the band (further right, further right) and stays inside the viewport.
+          const band = (await chart.locator('rect.window').first().boundingBox())!;
+          const vw = page.viewportSize()!.width;
+          const tipX = async () => (await tip.boundingBox())!.x;
+          await page.mouse.move(band.x + band.width * 0.05, band.y + band.height / 2);
+          await expect.poll(tipX).toBeGreaterThanOrEqual(0);
+          const left = await tipX();
+          await page.mouse.move(band.x + band.width * 0.95, band.y + band.height / 2);
+          await expect.poll(tipX).toBeGreaterThan(left + 2);
+          const t = (await tip.boundingBox())!;
+          expect(t.x + t.width).toBeLessThanOrEqual(vw);
           await page.mouse.move(0, 0);
           await expect(tip).toHaveCount(0);
           // The level line inside the band has no tip of its own, so the band's shows through it.

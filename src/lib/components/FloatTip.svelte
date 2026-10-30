@@ -13,10 +13,13 @@
   // past the bottom of the visible band scrolls the page just enough to show it whole (ui-rules 39; the See all tip
   // under the sticky bar at 1003×333). ponytail: only the below-overflow case; a tip clamped over its anchor stays.
   // `beside`: placed to the side of the anchor, not above it (a horizontal bar's end).
+  // `at`: a pointer position: the tip sits at that point instead of at its anchor's rect; `follow` keeps it on the pointer
+  // while it moves (a chart mark's tip).
   // `tip`: the content as a Tip, in place of children (labelTip.ts mounts it with no snippet).
-  let { anchor, children, tip, onclose, reveal = false, placeKey, beside = false }: { anchor: Element; placeKey?: unknown; beside?: boolean; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
+  let { anchor, children, tip, onclose, reveal = false, placeKey, beside = false, at: start = null, follow = false }: { anchor: Element; at?: { x: number; y: number } | null; follow?: boolean; placeKey?: unknown; beside?: boolean; children?: Snippet; tip?: Tip; onclose?: () => void; reveal?: boolean } = $props();
 
   let el: HTMLDivElement | undefined = $state();
+  let at = $state(start);
   // Hidden while its anchor is scrolled out of view or under the sticky bar (shows again when it scrolls back);
   // Escape (document-level) dismisses it until the tip moves to another anchor.
   let away = $state(false), dismissed = $state(false);
@@ -26,7 +29,7 @@
     if (!el || !anchor.isConnected) return;
     const t = el.getBoundingClientRect();
     // A control in the sticky bar itself (a switch's help tip) is never "under" it: its band starts at the top.
-    const a = anchor.getBoundingClientRect(), band = viewBand(), view = anchor.closest('.filter-bar, .cbar.overlay') ? { ...band, top: 0 } : band;
+    const a = at ? { left: at.x, right: at.x, top: at.y, bottom: at.y } : anchor.getBoundingClientRect(), band = viewBand(), view = anchor.closest('.filter-bar, .cbar.overlay') ? { ...band, top: 0 } : band;
     away = a.bottom <= view.top || a.top >= view.bottom;
     const { x, y } = tipPlace(a, { w: t.width, h: t.height }, view, 6, beside);
     el.style.left = `${x}px`;
@@ -35,6 +38,8 @@
   // `placeKey`: changes when the anchor moves in place (a map zoom/pan): re-place without re-opening.
   $effect(() => {
     void placeKey;
+    void at?.x;
+    void at?.y;
     place();
   });
   $effect(() => {
@@ -56,12 +61,15 @@
       if (under > 0 && !anchor.closest('.cbar.overlay')) scrollBy({ top: -under, behavior: 'instant' });
       place(); // now, not on the scroll event a frame later: the tip is never seen (or measured) at the old spot
     }
+    const move = (e: PointerEvent) => (at = { x: e.clientX, y: e.clientY });
+    if (follow) document.addEventListener('pointermove', move);
     addEventListener('scroll', place, true);
     addEventListener('resize', place);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && (dismissed = true);
     document.addEventListener('keydown', esc);
     return () => {
       document.removeEventListener('keydown', esc);
+      document.removeEventListener('pointermove', move);
       removeEventListener('scroll', place, true);
       removeEventListener('resize', place);
     };

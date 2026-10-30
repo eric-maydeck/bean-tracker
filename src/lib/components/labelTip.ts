@@ -10,8 +10,17 @@ type Tip = NonNullable<ComponentProps<typeof FloatTip>['tip']>;
 // On text that does nothing on a click (not a link or a working button) the tip is the point: the help cursor, and a
 // tap or click opens it too and keeps it open until a tap elsewhere (ui-rules 49, 50).
 type Label = string | Tip | null | undefined;
-export function labelTip(node: HTMLElement, label: Label) {
+export const labelTip = (node: HTMLElement, label: Label) => makeTip(node, label, false);
+// A chart mark's tip: it follows the pointer (and sits at a tap's point) instead of staying at the mark.
+export const followTip = (node: HTMLElement, label: Label) => makeTip(node, label, true);
+function makeTip(node: HTMLElement, label: Label, follow: boolean) {
   let tip: ReturnType<typeof mount> | null = null;
+  let at: { x: number; y: number } | null = null;
+  const track = (e: Event) => {
+    const p = e as PointerEvent;
+    if (!follow || p.clientX == null) return;
+    at = { x: p.clientX, y: p.clientY };
+  };
   let pinned = false;
   const passive = !node.matches('a[href], button:not([aria-disabled="true"]), input, select, [role="button"]');
   if (passive && label) node.style.cursor = 'help';
@@ -25,7 +34,9 @@ export function labelTip(node: HTMLElement, label: Label) {
   // Another tip dismissing this one calls onclose from inside its own effect: unmount after it.
   const closed = () => queueMicrotask(close);
   const open = () => {
-    if (!tip && label) tip = mount(FloatTip, { target: document.body, props: { anchor: node, tip: typeof label === 'string' ? { title: label } : label, onclose: closed } });
+    if (!tip && label) {
+      tip = mount(FloatTip, { target: document.body, props: { anchor: node, tip: typeof label === 'string' ? { title: label } : label, onclose: closed, at, follow } });
+    }
   };
   const pin = () => {
     open();
@@ -33,11 +44,12 @@ export function labelTip(node: HTMLElement, label: Label) {
     document.addEventListener('click', away, true);
   };
   const on: [string, (e: Event) => void][] = [
-    ['pointerenter', (e) => (e as PointerEvent).pointerType === 'mouse' && open()],
+    ['pointerenter', (e) => (track(e), (e as PointerEvent).pointerType === 'mouse' && open())],
+    ['pointermove', track],
     ['pointerleave', (e) => (e as PointerEvent).pointerType === 'mouse' && !pinned && close()],
     ['focus', () => node.matches(':focus-visible') && open()],
     ['blur', () => !pinned && close()],
-    passive ? ['click', pin] : ['pointerdown', close],
+    passive ? ['click', (e) => (track(e), pin())] : ['pointerdown', close],
     ['keydown', (e) => (e as KeyboardEvent).key === 'Escape' && close()]
   ];
   for (const [e, f] of on) node.addEventListener(e, f);
