@@ -395,6 +395,11 @@ export const FLOW_CONTROL_DRIPPERS: ReadonlySet<string> = new Set(['Gabi Master 
 /** A recipe only for flow-controlling drippers: amounts, count, triggers and speed can't matter; dripper and ratio decide. */
 export const controlsFlow = (def: Pick<RecipeDef, 'drippers'>) =>
   def.drippers.length > 0 && def.drippers.every((d) => FLOW_CONTROL_DRIPPERS.has(d));
+/** The fixed-length chips the editor offers (seconds); any other time is "Range". */
+export const LENGTH_CHIP_SECONDS = [20, 30, 45, 60];
+/** Which editor chip a length shows: a chip's seconds, 'custom' (Range), 'low' or '' (unset). `range`: Range was chosen. */
+export const lengthChip = (t: Length, range: boolean): string =>
+  t?.kind === 'low' ? 'low' : range ? 'custom' : t?.kind === 'time' ? (t.targetS === t.maxS && LENGTH_CHIP_SECONDS.includes(t.targetS) ? String(t.targetS) : 'custom') : '';
 /** The length the step before a newly added pour (at `index`) gets: flow-controlling drippers pour from the 3rd pour on when the water is low. */
 export const defaultLength = (def: Pick<RecipeDef, 'drippers'>, index: number): Length =>
   index >= 2 && controlsFlow(def) ? { kind: 'low' } : { kind: 'time', targetS: 20, maxS: 20 };

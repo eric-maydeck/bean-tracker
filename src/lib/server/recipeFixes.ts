@@ -96,15 +96,16 @@ export function applyRecipeFixes(db: DatabaseSync, marker = RECIPE_FIXES_2026_10
 // recipe-level bloom hold to per-step lengths. A pure shift: old pour i's trigger is pour i-1's length; the last
 // step has none. Then the four recipes that only had the legacy hold get a bloom length: the median start of pour 2
 // over their brews on the prod copy (2026-10-29): Standard 3 Pour 60.7s (137 brews), Standard 5 Pour 60.4s (130),
-// Lume 3 Pour 60.6s (21), Lance Hedrick 2 Pour 32.5s (56). The brews cluster near 30s / 45s / 60s, so a fixed
-// target flags the others as "pour 2 after Ns"; widen "up to" (and the target down) for a looser recipe.
+// Lume 3 Pour 60.6s (21), Lance Hedrick 2 Pour 32.5s (56), in clusters near 30s / 45s / 60s. User call (preview
+// round 1): most recipes bloom anywhere from 30-60s, so Standard 3/5 Pour and Lance Hedrick get a 30-60 range
+// (no clean match turns "modified"); Lume keeps 60s.
 export const RECIPE_LENGTH_MARKER = 'recipe_lengths_2026_10';
 const time = (targetS: number, maxS: number) => ({ kind: 'time', targetS, maxS });
 const BLOOM_LENGTHS: Record<string, Def> = {
-  'Standard 3 Pour': time(60, 60),
-  'Standard 5 Pour': time(60, 60),
+  'Standard 3 Pour': time(30, 60),
+  'Standard 5 Pour': time(30, 60),
   'Lume 3 Pour': time(60, 60),
-  'Lance Hedrick 2 Pour': time(30, 30)
+  'Lance Hedrick 2 Pour': time(30, 60)
 };
 
 export function lengthsOf(def: Def, bloom?: Def): Def {

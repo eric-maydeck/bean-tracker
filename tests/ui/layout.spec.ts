@@ -2908,7 +2908,7 @@ export const STATES: State[] = [
           await expect(pours.nth(3)).toContainText('Until drained');
           await expect(page.getByLabel('Bloom hold (s)')).toHaveCount(0);
           const group = page.getByRole('radiogroup', { name: 'Pour 1 length' });
-          for (const n of ['+20s', '+30s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
+          for (const n of ['20s', '30s', '45s', '1m', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
           const steps = page.getByTestId('editor-steps');
           await group.getByText('Range', { exact: true }).click();
           const target = pours.nth(0).getByLabel('Target', { exact: true });

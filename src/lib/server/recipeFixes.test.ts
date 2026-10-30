@@ -99,10 +99,10 @@ describe('applyRecipeFixes', () => {
       expect(len(by(n))).toEqual([after(30, 30), low, low, null]);
   });
 
-  it('gives the four hold-only recipes a bloom length (the median pour-2 start of their brews) and bands', () => {
+  it('gives the four hold-only recipes a bloom length (30-60s; Lume 60s) and bands', () => {
     const { by } = setup();
-    for (const n of ['Standard 3 Pour', 'Standard 5 Pour', 'Lume 3 Pour']) expect(by(n).def.pours[0].length).toEqual(after(60, 60));
-    expect(by('Lance Hedrick 2 Pour').def.pours[0].length).toEqual(after(30, 30));
+    for (const n of ['Standard 3 Pour', 'Standard 5 Pour', 'Lance Hedrick 2 Pour']) expect(by(n).def.pours[0].length).toEqual(after(30, 60));
+    expect(by('Lume 3 Pour').def.pours[0].length).toEqual(after(60, 60));
     for (const n of ['Standard 3 Pour', 'Standard 5 Pour', 'Lume 3 Pour', 'Lance Hedrick 2 Pour']) {
       const d = by(n).def;
       expect(d.pours.slice(1).every((p) => p.length === null), n).toBe(true);

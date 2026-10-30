@@ -3,7 +3,7 @@ import { timelineOf, type Pour, type PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, LENGTH_CHIP_SECONDS, lengthChip, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Length, type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
@@ -617,5 +617,22 @@ describe('middleHalf', () => {
     expect(middleHalf([100, 160, 170, 180, 190, 400])).toEqual({ lo: 163, hi: 188, n: 6 });
     expect(middleHalf([0, 150, 160, 170])).toBeNull();
     expect(fmtRange({ lo: 155, hi: 185 })).toBe('2:35–3:05');
+  });
+});
+
+describe('lengthChip', () => {
+  const t = (a: number, b = a): Length => ({ kind: 'time', targetS: a, maxS: b });
+  it('offers 20s, 30s, 45s and 1m', () => expect(LENGTH_CHIP_SECONDS).toEqual([20, 30, 45, 60]));
+  it('a fixed length matching a chip selects it', () => {
+    for (const s of LENGTH_CHIP_SECONDS) expect(lengthChip(t(s), false)).toBe(String(s));
+  });
+  it('anything else is Range, as is a chosen Range', () => {
+    expect(lengthChip(t(30, 60), false)).toBe('custom');
+    expect(lengthChip(t(25), false)).toBe('custom');
+    expect(lengthChip(t(30), true)).toBe('custom');
+  });
+  it('low and unset', () => {
+    expect(lengthChip({ kind: 'low' }, false)).toBe('low');
+    expect(lengthChip(null, false)).toBe('');
   });
 });

@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, defaultLength, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
+  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -62,23 +62,17 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
-  // Length chips: +20s / +30s are {time, n, n}; any other time is Range, which also stays picked once chosen.
+  // Length chips: 20s / 30s / 45s / 1m are {time, n, n}; any other time is Range, which also stays picked once chosen.
   let custom = $state<boolean[]>([]);
   const lastCustom: ({ kind: 'time'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
-  const chip = (i: number) => {
-    const t = copy.pours[i].length;
-    if (t?.kind === 'low') return 'low';
-    if (custom[i]) return 'custom';
-    if (t?.kind === 'time') return t.targetS === t.maxS && (t.targetS === 20 || t.targetS === 30) ? String(t.targetS) : 'custom';
-    return '';
-  };
+  const chip = (i: number) => lengthChip(copy.pours[i].length, !!custom[i]);
   function setChip(i: number, c: string) {
     const t = copy.pours[i].length;
     if (custom[i] && t?.kind === 'time') lastCustom[i] = { ...t };
     custom[i] = c === 'custom';
     copy.pours[i].length = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'time' ? t : (lastCustom[i] ?? { kind: 'time', targetS: 20, maxS: 20 })) : { kind: 'time', targetS: +c, maxS: +c };
   }
-  const chips = [['20', '+20s'], ['30', '+30s'], ['custom', 'Range'], ['low', 'Water low']];
+  const chips = [...LENGTH_CHIP_SECONDS.map((s) => [String(s), s === 60 ? '1m' : `${s}s`]), ['custom', 'Range'], ['low', 'Water low']];
   const timed = (i: number) => copy.pours[i].length as Extract<Length, { kind: 'time' }>;
 
   function add() {
