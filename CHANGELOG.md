@@ -1,3 +1,50 @@
+# [1.100.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.99.0...v1.100.0) (2026-10-30)
+
+
+### Bug Fixes
+
+* **charts:** tips stay dismissed on pointer moves, hide with their mark, anchor on keyboard open
+* **recipes:** align the target and up-to boxes with the chips
+* **recipes:** an after trigger on the pour following a bloom replaces the legacy hold check
+* **recipes:** clear message for an empty trigger time and keep the last custom pair
+* **recipes:** describe a bloom by the wait after it, not the legacy hold
+* **recipes:** dyb boot fix sets 91°C
+* **recipes:** hide the g/s range in steps text for any-speed recipes
+* **recipes:** keep diffs for tagged brews without a usable ratio
+* **recipes:** no space between a number and its unit; step tips always say blooms
+* **recipes:** ratio target updates in the boot fix; report notes voided tags
+* **recipes:** shoebox boot fix uses a 30 s second pour and low-water pours three and four
+* **recipes:** skip colliding shoebox names and mismatched pour counts in the boot fix
+* **units:** litres unspaced (12L)
+
+
+### Features
+
+* **charts:** every chart tooltip follows the pointer and sits at a tap's point
+* **recipes:** bands cover the whole bloom, solid to the target and striped up to the latest start
+* **recipes:** boot fix rewriting the recipes with shares, triggers and ratios
+* **recipes:** chart band and pour-fill colours as theme tokens (option 12, fills d)
+* **recipes:** chart bands read as the bloom's length, tinted and with a tip
+* **recipes:** chart mark tooltips follow the pointer and sit at a tap's point
+* **recipes:** chart tooltips write time ranges with arrows
+* **recipes:** count speed diffs double and relax matching for flow-controlling drippers
+* **recipes:** draw trigger windows on recipe and brew charts
+* **recipes:** editor note for flow-controlling drippers
+* **recipes:** flow recipes default to water low from pour 3; gabi and dyb boot fixes
+* **recipes:** ignore advice sentences in notes and allow shared tags
+* **recipes:** match brews by pour shares, trigger gaps, ratio list and temperature
+* **recipes:** mixed linked bloom times make a modified variant
+* **recipes:** one solid band per bloom in its own tint; flow recipes draw a steady rate
+* **recipes:** range chip with narrow target and up-to inputs in the chips row
+* **recipes:** steps show targets only, with the longer time in a tip
+* **recipes:** steps text for a recipe
+* **recipes:** steps, temperature and notes on recipe cards and link previews
+* **recipes:** target and up-to inputs use the site's form fields with labels above
+* **recipes:** tooltips on every chart mark, actual times on brews; flow pours spaced like pour 3
+* **recipes:** trigger, equal shares and ratio list controls in the editor
+* **recipes:** triggers, equal split and ratio targets in the recipe model
+* **units:** no space between a number and its unit site-wide
+
 # [1.99.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.98.0...v1.99.0) (2026-10-29)
 
 
