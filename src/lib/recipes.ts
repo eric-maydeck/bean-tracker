@@ -468,6 +468,17 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
         diffs.push({ text: `pour ${i + 1} after ${Math.round(gap)} s`, modified: true });
     }
   }
+  // Ranged waits with the same window are linked (both blooms 20 s or both 30 s); a mix is a variant.
+  if (shares) {
+    const lens = new Map<string, Set<boolean>>();
+    for (let i = 1; i < n; i++) {
+      const t = trig(i);
+      if (t?.kind !== 'after' || t.maxS <= t.targetS) continue;
+      const k = `${t.targetS}/${t.maxS}`;
+      lens.set(k, (lens.get(k) ?? new Set()).add(r.pours[i].startS - r.pours[i - 1].startS > (t.targetS + t.maxS) / 2));
+    }
+    if ([...lens.values()].some((v) => v.size > 1)) diffs.push({ text: 'mixed bloom times', modified: true });
+  }
   const speedException = patternBad && !!shares && !sharesBad && !ratioBad && !countBad;
   if (speedException) {
     const wrong = [...r.pattern.toUpperCase()].filter((c, i) => c !== (aligned[i] === 'fast' ? 'F' : 'S'));

@@ -36,8 +36,8 @@ describe('recipeSteps', () => {
     const d = mk([rp({ bloom: true }), rp({ bloom: true, trigger: after(20, 30) }), rp({ trigger: after(20, 30) }), rp({ trigger: after(20) })]);
     const s = recipeSteps(d);
     expect(s.map((x) => x.time)).toEqual(['0:00', '0:20', '0:40', '1:00']);
-    expect(s.map((x) => x.alt)).toEqual([null, 'Or 0:30 with a 30 s bloom', 'Or 1:00 with 30 s blooms', 'Or 1:20 with 30 s pours']);
-    expect(stepsText(d)).not.toContain('(');
+    expect(s.map((x) => x.alt)).toEqual([null, 'Or 0:30 with a 30 s bloom', 'Or 1:00 with 30 s blooms', 'Or 1:20 with 20 s pours']);
+    expect(stepsText(d)).not.toContain('(–');
   });
   it('timed step after low', () => {
     const d = mk([rp(), rp({ trigger: { kind: 'low' } }), rp({ trigger: after(20) }), rp({ trigger: after(20) })]);

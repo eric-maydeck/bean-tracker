@@ -392,6 +392,23 @@ describe('matchBrew shares and triggers', () => {
       expect(flowNote(['Gabi Master A', 'Orea'])).toBeNull();
     });
   });
+  describe('linked waits', () => {
+    const A: Trigger = { kind: 'after', targetS: 20, maxS: 30 };
+    const bbs = shared('BBFS', [0.2, 0.2, 0.3, 0.3], {}, [null, A, A, { kind: 'low' }]);
+    const at = (starts: number[]) => fit(bbs, reading('BBFS', {}, g([0.2, 0.2, 0.3, 0.3]), starts));
+    it('20/20 and 30/30 match', () => {
+      expect(at([0, 20, 40, 90])).toMatchObject({ how: 'match', diffs: [] });
+      expect(at([0, 30, 60, 90])).toMatchObject({ how: 'match', diffs: [] });
+    });
+    it('20/30 and 30/20 are one modified variant', () => {
+      for (const st of [[0, 20, 50, 90], [0, 30, 50, 90]])
+        expect(at(st)).toMatchObject({ pass: true, how: 'modified', diffs: [{ text: 'mixed bloom times', modified: true }] });
+    });
+    it('a single ranged wait is unaffected', () => {
+      const one = shared('BFS', [0.3, 0.3, 0.4], {}, [null, A, { kind: 'low' }]);
+      expect(fit(one, reading('BFS', {}, g([0.3, 0.3, 0.4]), [0, 30, 90]))).toMatchObject({ how: 'match', diffs: [] });
+    });
+  });
   it('temperature', () => {
     const d = def('FF', { tempC: 91.5 });
     const t = (c: number | null) => fit(d, reading('FF'), c);
