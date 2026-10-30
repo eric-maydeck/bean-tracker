@@ -35,7 +35,7 @@ export const RECIPE_FIXES: Fix[] = [
   { name: 'Gabi Standard (bloom)', targets: [18], tol: 0.5 },
   { name: 'Gabi Gentle (bloom)', targets: [16.7], tol: 0.5, dropTags: ['Gentle'] }
 ];
-const SHOEBOX = { equalSplit: true, tol: 0.5, triggers: [null, after(30, 60)] as Trigger[] };
+const SHOEBOX = { equalSplit: true, tol: 0.5, triggers: [null, after(30, 30), LOW, LOW] as Trigger[] };
 
 type Def = Record<string, any>;
 function fixDef(def: Def, f: Omit<Fix, 'name' | 'dropTags'>): Def {

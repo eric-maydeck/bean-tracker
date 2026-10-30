@@ -91,7 +91,7 @@ describe('applyRecipeFixes', () => {
     expect(trig(by('Double Yeet Bloom 3 Pour'))).toEqual([null, after(20, 30), low]);
     expect(trig(by("Bean's Beans Joocy"))).toEqual([null, after(20, 30), after(20, 30), low, low]);
     for (const n of ['Shoebox QC (Washed)', 'Shoebox QC (Natural)'])
-      expect(trig(by(n))).toEqual([null, after(30, 60), null, null]);
+      expect(trig(by(n))).toEqual([null, after(30, 30), low, low]);
     expect(trig(by('Lume 3 Pour'))).toEqual([null, null, null]);
   });
 
