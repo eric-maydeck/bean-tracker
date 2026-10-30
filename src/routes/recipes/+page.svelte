@@ -342,14 +342,14 @@
     border-radius: 2px;
     background: currentColor;
   }
-  .swatch.bloom { background: var(--series-4); }
-  .swatch.fast { background: var(--series-1-ink); }
+  .swatch.bloom { background: var(--fill-bloom); }
+  .swatch.fast { background: var(--fill-fast); }
   .swatch.slow { background: var(--series-6); }
   .swatch.medium { background: var(--series-5); }
-  .swatch.band { opacity: 0.6; }
-  .swatch.b0 { background: var(--series-2); }
-  .swatch.b1 { background: var(--series-7); }
-  .swatch.b2 { background: var(--series-3); }
+  .swatch.band { opacity: var(--band-opacity); }
+  .swatch.b0 { background: var(--band-0); }
+  .swatch.b1 { background: var(--band-1); }
+  .swatch.b2 { background: var(--band-2); }
   .swatch.swirl {
     width: 0;
     height: 14px;

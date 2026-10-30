@@ -82,15 +82,15 @@
     stroke-width: 1.5;
   }
   /* Each timed bloom: a pale full-height band behind the pours, one tint per bloom (tokens no pour fill or line uses). */
-  .window { opacity: var(--band-opacity, 0.4); }
-  .window.b0 { fill: var(--band-0, var(--series-2)); }
-  .window.b1 { fill: var(--band-1, var(--series-7)); }
-  .window.b2 { fill: var(--band-2, var(--series-3)); }
+  .window { opacity: var(--band-opacity); }
+  .window.b0 { fill: var(--band-0); }
+  .window.b1 { fill: var(--band-1); }
+  .window.b2 { fill: var(--band-2); }
   .seg.bloom {
-    fill: var(--fill-bloom, var(--series-4));
+    fill: var(--fill-bloom);
   }
   .seg.fast {
-    fill: var(--fill-fast, var(--series-1-ink));
+    fill: var(--fill-fast);
   }
   .seg.medium {
     fill: var(--series-5);
