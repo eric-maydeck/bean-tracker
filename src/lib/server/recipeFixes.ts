@@ -29,7 +29,7 @@ export const RECIPE_FIXES: Fix[] = [
   { name: "Bean's Beans Standard", shares: [0.205, 0.181, 0.302, 0.311], targets: [16.7], tol: 0.5, triggers: [null, A, A, LOW] },
   { name: "Bean's Beans Floral", shares: [0.189, 0.167, 0.287, 0.358], targets: [18], tol: 0.5, triggers: [null, A, A, LOW] },
   { name: "Bean's Beans Joocy", shares: [0.209, 0.178, 0.192, 0.15, 0.278], targets: [15.5], tol: 0.5, triggers: [null, A, A, LOW, LOW] },
-  { name: 'Double Yeet Bloom 3 Pour', shares: [0.205, 0.185, 0.607], targets: [16.7, 18], tol: 0.5, blooms: [true, true, false], triggers: [null, A, A] },
+  { name: 'Double Yeet Bloom 3 Pour', shares: [0.205, 0.185, 0.607], targets: [16.7, 18], tol: 0.5, blooms: [true, true, false], tempC: 91, triggers: [null, A, A] },
   { name: 'Standard 3 Pour', shares: [0.205, 0.386, 0.399], targets: [15, 16.7, 18], tol: 0.5, dropTags: ['3 pours'] },
   { name: 'Lance Hedrick 2 Pour', shares: [0.207, 0.793] },
   { name: 'Standard 5 Pour', equalSplit: true, targets: [15, 16.7, 18], tol: 0.5 },

@@ -90,6 +90,7 @@ describe('applyRecipeFixes', () => {
       expect(trig(by(n))).toEqual([null, after(20, 30), after(20, 30), low]);
     expect(trig(by('Double Yeet Bloom 3 Pour'))).toEqual([null, after(20, 30), after(20, 30)]);
     expect(by('Double Yeet Bloom 3 Pour').def.pours.map((p) => p.bloom)).toEqual([true, true, false]);
+    expect(by('Double Yeet Bloom 3 Pour').def.tempC).toBe(91);
     for (const n of ['Gabi Standard (bloom)', 'Gabi Gentle (bloom)']) expect(trig(by(n))).toEqual([null, after(40, 40), low]);
     expect(trig(by("Bean's Beans Joocy"))).toEqual([null, after(20, 30), after(20, 30), low, low]);
     for (const n of ['Shoebox QC (Washed)', 'Shoebox QC (Natural)'])
