@@ -158,7 +158,7 @@
     return async ({ result, update }) => {
     if (result.type === 'success') ondone();
     const to = recipeFollow(result, focusId);
-    if (to) { await goto(to, { invalidateAll: true }); return; }
+    if (to) { await goto(to, { invalidateAll: true, noScroll: true }); return; } // noScroll: a goto resets to the page top; the closed editor already put its card there
     await update({ reset: false });
   };
   }}
@@ -358,6 +358,8 @@
   .radd { display: inline-flex; align-items: center; gap: var(--space-2); }
   .radd.full > :global(*) { pointer-events: none; } /* the wrapper takes the hover and tap, so its tip opens over the disabled pair */
   .radd :global(input:disabled) { opacity: 0.5; }
+  /* Inert at 5: Firefox lets a disabled input's text (and the 1: beside it) be selected, and a long press offers its menu; the tip is the only thing here. */
+  .radd.full, .radd.full :global(*) { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; caret-color: transparent; }
   .pref { position: relative; width: 6rem; }
   .pre { position: absolute; left: var(--space-2); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
   .editor :global(.form-field.pref input:not([type='checkbox'])) { padding-left: 1.75rem; width: 100%; }
@@ -369,12 +371,12 @@
   .trigger { display: grid; gap: var(--space-1); }
   .pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .box { margin: 0; }
-  .dur { width: 6rem; }
+  .dur { width: 5.5rem; }
   .len-err { color: var(--color-urgent); font-size: 0.75rem; line-height: 1.15; max-width: 9rem; flex: 1 1 8rem; max-height: var(--h); overflow: hidden; }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .with-unit { display: flex; align-items: center; gap: var(--space-1); }
-  .with-unit input { width: 4.5rem; }
-  .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; height: var(--h); padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
+  .with-unit input { width: 3.75rem; }
+  .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 4.75rem; box-sizing: border-box; height: var(--h); padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }
   .chip:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }

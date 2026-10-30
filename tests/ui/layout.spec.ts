@@ -3008,6 +3008,11 @@ export const STATES: State[] = [
             expect(b.x + b.width, 'inside the step, right').toBeLessThanOrEqual(fieldset.x + fieldset.width + 0.5);
           }
           expect((await box(target)).width).toBeLessThan(100);
+          // The seven buttons are one width, and each of Custom and Range keeps its box on its own row (no spill).
+          const cw = [];
+          for (const l of await group.locator('label.chip').all()) cw.push((await box(l)).width);
+          expect(cw.length).toBe(7);
+          expect(Math.max(...cw) - Math.min(...cw), `button widths ${cw.join(', ')}`).toBeLessThanOrEqual(1);
           // One height for the editor's controls: the name, tags and amounts fields, the buttons and the edit boxes.
           const hs = [];
           for (const l of [page.locator('#re-name'), page.locator('#re-tags'), page.locator('#re-unit'), custom, target, upTo, ...(await group.locator('label.chip').all())]) hs.push((await box(l)).height);
@@ -3087,6 +3092,15 @@ export const STATES: State[] = [
           await expect(rlist).toHaveCount(5);
           await expect(rin).toBeDisabled();
           await expect(addButton).toBeDisabled();
+          // Fully inert at 5: nothing in the pair can be selected (a long press or drag on a phone, a double or triple click here).
+          for (const el of ['.radd', '.radd input', '.radd .pre', '.radd button'])
+            expect(await page.locator(el).first().evaluate((e) => getComputedStyle(e).userSelect), `${el} user-select`).toBe('none');
+          const pairBox = await box(page.locator('.radd'));
+          await page.mouse.dblclick(pairBox.x + 8, pairBox.y + pairBox.height / 2);
+          await page.mouse.click(pairBox.x + 8, pairBox.y + pairBox.height / 2, { clickCount: 3 });
+          expect(await page.evaluate(() => getSelection()!.toString()), 'nothing selected').toBe('');
+          await page.mouse.move(2, 2);
+          await page.mouse.click(2, 2);
           const fullTipText = page.getByText('Remove one to add another.', { exact: true });
           await page.mouse.move(2, 2);
           await expect(fullTipText).toHaveCount(0);
@@ -3169,6 +3183,28 @@ export const STATES: State[] = [
           await expect(form).toHaveCount(0);
           await expect.poll(async () => Math.round((await card.boundingBox())!.y), 'card top near the viewport top').toBeLessThanOrEqual(160);
           expect((await card.boundingBox())!.y).toBeGreaterThanOrEqual(-1);
+        }
+      },
+      {
+        // Saving from /recipes/<slug> (the save response is mocked: nothing is written) lands the edited card at the top again: the
+        // save follows to its slug with a goto, which must not reset the scroll to the page top.
+        name: 'recipes-edit-save-scroll',
+        path: () => '/recipes/seed-equal-pours',
+        act: async (page: Page, s: Seed) => {
+          const id = s.recipes.recipeId;
+          const body = JSON.stringify({ type: 'success', status: 200, data: JSON.stringify([{ saved: 1, slug: 2 }, id, 'seed-equal-pours']) });
+          await page.route('**/recipes/seed-equal-pours?/saveRecipe', (route) => route.fulfill({ status: 200, contentType: 'application/json', body }));
+          const card = page.locator(`#recipe-${id}`);
+          await card.getByRole('button', { name: 'Edit', exact: true }).click();
+          const form = card.locator('form.editor');
+          await form.getByRole('button', { name: 'Save', exact: true }).scrollIntoViewIfNeeded();
+          expect(await page.evaluate(() => scrollY), 'scrolled down the form').toBeGreaterThan(300);
+          await form.getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(form).toHaveCount(0);
+          await page.waitForTimeout(600); // the follow-up navigation settles
+          await expect.poll(async () => Math.round((await card.boundingBox())!.y), 'card top near the viewport top after Save').toBeLessThanOrEqual(160);
+          expect((await card.boundingBox())!.y).toBeGreaterThanOrEqual(-1);
+          await page.unroute('**/recipes/seed-equal-pours?/saveRecipe');
         }
       },
       {
