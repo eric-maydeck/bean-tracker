@@ -32,8 +32,12 @@ describe('recipeSteps', () => {
     );
     expect(recipeSteps(d)[3].low).toBe(true);
   });
-  it('window shows latitude', () => {
-    expect(recipeSteps(mk([rp(), rp({ trigger: after(20, 30) })]))[1].time).toBe('0:20 (–0:30)');
+  it('a ranged wait shows only its target, with the longer time in alt', () => {
+    const d = mk([rp({ bloom: true }), rp({ bloom: true, trigger: after(20, 30) }), rp({ trigger: after(20, 30) }), rp({ trigger: after(20) })]);
+    const s = recipeSteps(d);
+    expect(s.map((x) => x.time)).toEqual(['0:00', '0:20', '0:40', '1:00']);
+    expect(s.map((x) => x.alt)).toEqual([null, 'Or 0:30 with a 30 s bloom', 'Or 1:00 with 30 s blooms', 'Or 1:20 with 30 s pours']);
+    expect(stepsText(d)).not.toContain('(');
   });
   it('timed step after low', () => {
     const d = mk([rp(), rp({ trigger: { kind: 'low' } }), rp({ trigger: after(20) }), rp({ trigger: after(20) })]);

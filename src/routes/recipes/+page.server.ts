@@ -6,7 +6,7 @@ import {
   MIN_GROUP, RecipeError, recipeBrewTimes, brewCount, brewsFor, deleteRecipe, discoverGroups, dismissStructure, getNoteWords, setNoteWords, listDrippers, listRecipes, lockedDrippers, matchedBy, saveRecipe,
   smallGroupCount, undismissStructure
 } from '$lib/server/recipes';
-import { describeRecipe, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
+import { describeRecipe, flowNote, parseRecipeInput, parseRecipeDef, recipeTimeline } from '$lib/recipes';
 import { recipeSteps, tempNotesLine } from '$lib/recipeSteps';
 import { describeReading, type PourReading } from '$lib/pours';
 import { parseNoteWords } from '$lib/agitation';
@@ -51,6 +51,7 @@ export function _loadRecipes({ locals, url }: { locals: App.Locals; url: URL }, 
         description: describeRecipe(recipe.def),
         steps: recipeSteps(recipe.def),
         tempNotes: tempNotesLine(recipe.def),
+        flowNote: flowNote(recipe.def.drippers),
         timeline: recipeTimeline(recipe.def),
         counts: { logged: s?.logged ?? 0, match: s?.matched ?? 0, modified: s?.modified ?? 0 },
         avgRating: s?.avg ?? null,

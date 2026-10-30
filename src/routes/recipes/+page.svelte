@@ -79,7 +79,7 @@
   <li><span class="swatch fast"></span>Fast pour (likely high agitation)</li>
   <li><span class="swatch slow"></span>Slow pour (likely low agitation)</li>
   <li><span class="swatch swirl"></span>Swirl or shake</li>
-  <li><span class="swatch window"></span>Bloom target</li>
+  <li><span class="swatch window"></span>Bloom length</li>
 </ul>
 
 {#snippet brewList()}
@@ -162,12 +162,13 @@
             <ol class="steps" aria-label="Steps">
               {#each r.steps as st}
                 <li>
-                  {#if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}
+                  {#if st.alt}<span class="step-time low" tabindex="0" use:labelTip={st.alt}>{st.time}</span>{:else if st.low}<span class="step-time low" tabindex="0" use:labelTip={lowTip}>{st.time}</span>{:else}<span class="step-time">{st.time}</span>{/if}
                   <span>{st.text}</span>
                 </li>
               {/each}
             </ol>
             {#if r.tempNotes}<div>{r.tempNotes}</div>{/if}
+            {#if r.flowNote}<div class="text-muted" data-testid="flow-note">{r.flowNote}</div>{/if}
             {#if r.brewTime}<div class="text-muted"><span class="brew-time" tabindex="0" use:labelTip={`Middle 50% of ${r.brewTime.n} timed brews.`}>Most brews took {fmtRange(r.brewTime)}</span></div>{/if}
             <div class="text-muted">
               {r.counts.logged} from notes · {r.counts.match} look like it · {r.counts.modified} modified · {avg(r.avgRating)}
