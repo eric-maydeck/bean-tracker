@@ -109,14 +109,17 @@ const BLOOM_LENGTHS: Record<string, Def> = {
 };
 
 export function lengthsOf(def: Def, bloom?: Def): Def {
-  const pours = def.pours as Def[];
+  const pours = (def.pours ?? []) as Def[];
   if (pours.length && pours.every((p) => !('trigger' in p)) && pours.some((p) => 'length' in p)) return def; // already converted
   const trig = pours.map((p) => (p.trigger ? (p.trigger.kind === 'after' ? { ...p.trigger, kind: 'time' } : p.trigger) : null));
   pours.forEach((p, i) => {
     p.length = trig[i + 1] ?? null;
     delete p.trigger;
   });
-  if (bloom && pours.length > 1 && !pours[0].length) pours[0].length = bloom;
+  // A bloom with no length of its own keeps the legacy recipe-level hold (to 5s) as its length; the named recipes' values win.
+  const hold = typeof def.bloomHoldS === 'number' ? Math.round(def.bloomHoldS / 5) * 5 : 0;
+  const fallback = pours[0]?.bloom && hold > 0 ? time(hold, hold) : undefined;
+  if (pours.length > 1 && !pours[0].length) pours[0].length = bloom ?? fallback ?? null;
   delete def.bloomHoldS;
   delete def.bloomHoldTolS;
   return def;

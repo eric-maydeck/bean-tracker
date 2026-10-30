@@ -110,6 +110,24 @@ describe('applyRecipeFixes', () => {
     }
   });
 
+  it('an unnamed recipe with only a bloom hold keeps it as the bloom length; no pours is left alone', () => {
+    const db = createDb(':memory:');
+    db.exec('DELETE FROM recipes');
+    const ins = (name: string, def: object) =>
+      db.prepare(`INSERT INTO recipes (name, tags, definition, created_at, updated_at) VALUES (?, '[]', ?, 'x', 'x')`).run(name, JSON.stringify(def));
+    ins('Mine', oldDef(3, 16.7, 0.7, 91)); // hold 30, bloom first pour, no triggers
+    ins('No pours', { v: 1, bloomHoldS: 20 });
+    ins('Odd hold', { ...oldDef(3, 16.7, 0.7, 91), bloomHoldS: 47 });
+    ins('No bloom', { ...oldDef(3, 16.7, 0.7, 91), pours: oldDef(3, 16.7, 0.7, 91).pours.map((p) => ({ ...p, bloom: false })) });
+    applyRecipeLengthFix(db, M2);
+    const get = (n: string) => JSON.parse((db.prepare(`SELECT definition d FROM recipes WHERE name = ?`).get(n) as { d: string }).d);
+    expect(get('Mine').pours[0].length).toEqual(after(30, 30));
+    expect(get('Mine').pours.slice(1).every((p: { length: unknown }) => p.length === null)).toBe(true);
+    expect(get('Odd hold').pours[0].length).toEqual(after(45, 45));
+    expect(get('No bloom').pours[0].length).toBeNull();
+    expect(get('No pours')).not.toHaveProperty('bloomHoldS');
+  });
+
   it('drops the recipe-level bloom hold everywhere', () => {
     const { db } = setup();
     for (const r of db.prepare(`SELECT definition d FROM recipes`).all() as { d: string }[]) {

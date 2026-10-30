@@ -420,6 +420,13 @@ describe('matchBrew shares and triggers', () => {
       expect(fit(one, reading('BFS', {}, g([0.3, 0.3, 0.4]), [0, 30, 90]))).toMatchObject({ how: 'match', diffs: [] });
     });
   });
+  it('an equal-split recipe checks its bloom length too', () => {
+    const eq = shared('BFFF', [null, null, null, null], { equalSplit: true });
+    eq.pours[0].length = { kind: 'time', targetS: 30, maxS: 60 };
+    const at = (second: number) => fit(eq, reading('BFFF', {}, g([0.25, 0.25, 0.25, 0.25]), [0, second, 100, 130]));
+    expect(at(45)).toMatchObject({ how: 'match', diffs: [] });
+    expect(at(90)).toMatchObject({ how: 'modified', diffs: [{ text: 'pour 2 after 90s', modified: true }] });
+  });
   it('temperature', () => {
     const d = def('FF', { tempC: 91.5 });
     const t = (c: number | null) => fit(d, reading('FF'), c);
