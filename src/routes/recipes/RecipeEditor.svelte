@@ -85,6 +85,8 @@
     } else if (u.sel === 'range' && u.tt !== '' && u.tm !== '' && +u.tt > 0 && +u.tm > 0) l = time(+u.tt, +u.tm); // max below target: the parser says so on Save
     copy.pours[i].length = l;
   }
+  // Choosing Custom or Range puts the cursor in its (first) box.
+  const focusBox = (i: number, v: string) => (v === 'custom' || v === 'range') && document.getElementById(v === 'custom' ? `re-cu${i}` : `re-rf${i}`)?.focus();
   const pick = (i: number, v: string) => ((ui[i].sel = v), apply(i));
   function typeCustom(i: number, text: string) {
     ui[i].text = text;
@@ -157,19 +159,19 @@
       <div class="mode-tip" id="re-tags-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Note tags', lines: ['Comma-separated words or phrases.', 'A brew whose note contains one is logged as this recipe.'] }} /></div>
       <input id="re-tags" name="tags" bind:value={tagText} />
     </div>
-    {#if !copy.equalSplit}
-      <div class="form-field a-unit">
-        <label for="re-unit">Pour amounts in</label>
-        <select id="re-unit" value={unit} onchange={(e) => setUnit(e.currentTarget.value as 'g' | '%')}>
-          <option value="g">Grams</option>
-          <option value="%">% of water</option>
-        </select>
-      </div>
-    {/if}
+    <div class="form-field a-unit">
+      <label for="re-unit">Pour amounts in</label>
+      <select id="re-unit" value={unit} disabled={copy.equalSplit} onchange={(e) => setUnit(e.currentTarget.value as 'g' | '%')}>
+        <option value="g">Grams</option>
+        <option value="%">% of water</option>
+      </select>
+    </div>
   </div>
 
-  <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
-  <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.equalSplit} /> Equal shares</label></div>
+  <div class="toggles">
+    <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
+    <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.equalSplit} /> Equal shares</label></div>
+  </div>
   <fieldset class="drippers">
     <legend>Drippers</legend>
     <div class="choices">
@@ -185,7 +187,7 @@
   </fieldset>
 
   {#snippet pickChip(i: number, v: string, label: string)}
-    <label class="chip"><input type="radio" name="re-len{i}" value={v} checked={ui[i].sel === v} onchange={() => pick(i, v)} />{label}</label>
+    <label class="chip"><input type="radio" name="re-len{i}" value={v} checked={ui[i].sel === v} onchange={() => pick(i, v)} onclick={() => focusBox(i, v)} />{label}</label>
   {/snippet}
   {#each copy.pours as p, i (i)}
     <fieldset class="pour">
@@ -209,14 +211,14 @@
             {/each}
             <span class="pair">
               {@render pickChip(i, 'custom', 'Custom')}
-              <span class="form-field box"><input class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} onblur={() => (ui[i].showC = customBad(i))} /></span>
+              <span class="form-field box"><input id="re-cu{i}" class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} onblur={() => (ui[i].showC = customBad(i))} /></span>
               <button type="button" class="mode-tip-button" popovertarget="re-ct-help{i}" aria-label="About custom length" aria-describedby="re-ct-help{i}"><Icon name="question" /></button>
               <div class="mode-tip" id="re-ct-help{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Custom length', lines: ['A number + s or m; both as 1m30s.'] }} /></div>
               {#if ui[i].showC && customBad(i)}<small class="len-err">A number + s or m; both as 1m30s</small>{/if}
             </span>
             <span class="pair">
               {@render pickChip(i, 'range', 'Range')}
-              <span class="with-unit"><span class="form-field box"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
+              <span class="with-unit"><span class="form-field box"><input id="re-rf{i}" type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
               <span class="with-unit"><span class="form-field box"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
             </span>
           </div>
@@ -270,16 +272,16 @@
     <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="1" bind:value={copy.pourCount.max} /></div>
     {#each copy.ratio.targets as _, i (i)}
       <div class="form-field">
-        <label for="re-ratio{i ? i : ''}">Ratio 1:{i ? ` (${i + 1})` : ''}</label>
+        <label for="re-ratio{i ? i : ''}">{i ? 'or 1:' : 'Ratio 1:'}</label>
         <div class="with-button">
-          <input id="re-ratio{i ? i : ''}" type="number" step="any" bind:value={copy.ratio.targets[i]} />
+          <input id="re-ratio{i ? i : ''}" type="number" step="any" aria-label={i ? `Ratio target ${i + 1}` : undefined} bind:value={copy.ratio.targets[i]} />
           {#if copy.ratio.targets.length > 1}
             <button class="icon-button" type="button" aria-label="Remove ratio {i + 1}" onclick={() => copy.ratio.targets.splice(i, 1)}><Icon name="x" /></button>
           {/if}
         </div>
       </div>
     {/each}
-    <div class="form-field-checkbox"><button class="button button-secondary" type="button" disabled={copy.ratio.targets.length >= 5} onclick={() => copy.ratio.targets.push(16)}>Add ratio</button></div>
+    <div class="add-ratio"><button class="button button-secondary" type="button" disabled={copy.ratio.targets.length >= 5} onclick={() => copy.ratio.targets.push(16)}>Add ratio</button></div>
     <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
     <div class="form-field">
       <div class="label-row">
@@ -290,7 +292,7 @@
       <input id="re-temp" type="number" step="any" bind:value={copy.tempC} />
     </div>
   </div>
-  <div class="form-field">
+  <div class="form-field tight">
     <label for="re-notes">Notes</label>
     <input id="re-notes" maxlength="40" value={copy.notes ?? ''} oninput={(e) => (copy.notes = e.currentTarget.value || null)} />
   </div>
@@ -314,11 +316,16 @@
   .drippers .form-field-checkbox label { min-height: 32px; font-weight: 400; }
   .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); column-gap: var(--space-2); }
   .drippers small { margin: var(--space-1) 0; }
-  .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-2); display: grid; gap: var(--space-2); min-width: 0; margin: 0; }
+  .pour { border: 1px solid var(--color-border); border-radius: var(--radius); padding: var(--space-1) var(--space-2); display: grid; gap: var(--space-1); min-width: 0; margin: 0; }
   .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
-  .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
+  .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 2rem; }
   .starts { margin: 0; color: var(--color-text-muted); }
-  .editor { --h: 2.5rem; }
+  .editor { --h: 2.5rem; gap: var(--space-2); }
+  .grid > :global(.form-field), .tight { margin-bottom: 0; }
+  .toggles { display: grid; gap: 0; }
+  .add-ratio { align-self: end; }
+  .add-ratio :global(.button) { height: var(--h); padding-block: 0; }
+  select:disabled { opacity: 0.5; cursor: not-allowed; }
   .editor :global(.form-field input:not([type='checkbox'])), .editor :global(.form-field select) { height: var(--h); min-height: var(--h); box-sizing: border-box; }
   .trigger { display: grid; gap: var(--space-1); }
   .pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
@@ -340,7 +347,7 @@
   .form-field input, .form-field select { min-width: 0; max-width: 100%; }
   .form-field { min-width: 0; }
   .label-row { display: flex; align-items: center; gap: var(--space-2); }
-  .editor :global(.form-actions) { margin-top: 0; }
+  .editor :global(.form-actions) { margin-top: var(--space-2); }
   .editor :global(.button) { margin: 0; }
   @media (max-width: 1100px) {
     /* Phones (either way up): Name over Pour amounts beside the taller Note tags. */
@@ -352,6 +359,7 @@
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor { --h: 44px; }
+    .check, .form-field-checkbox label { min-height: 44px; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
 </style>

@@ -2929,6 +2929,26 @@ export const STATES: State[] = [
           await expect(steps).toContainText('0:45');
           await group.getByText('45s', { exact: true }).click();
           await expect(group.getByRole('radio', { name: '45s', exact: true })).toBeChecked();
+          // Choosing Custom or Range puts the cursor in its box.
+          await group.getByText('Custom', { exact: true }).click();
+          await expect(custom).toBeFocused();
+          await group.getByText('Range', { exact: true }).click();
+          await expect(target).toBeFocused();
+          await group.getByText('45s', { exact: true }).click();
+          // Tight rows (desktop; phones keep 44px tap targets): the toggles sit close to the fields above and to each other.
+          if (page.viewportSize()!.width > 1100) {
+            const vgap = async (a: import('@playwright/test').Locator, b: import('@playwright/test').Locator) => {
+              const [x, y] = [await box(a), await box(b)];
+              return y.y - (x.y + x.height);
+            };
+            const toggles = page.locator('.toggles label');
+            expect(await vgap(page.locator('#re-name'), toggles.nth(0)), 'fields to Pour speed').toBeLessThanOrEqual(12);
+            expect(await vgap(toggles.nth(0), toggles.nth(1)), 'Pour speed to Equal shares').toBeLessThanOrEqual(2);
+            expect(await vgap(toggles.nth(1), page.locator('fieldset.drippers')), 'Equal shares to Drippers').toBeLessThanOrEqual(12);
+            const [fs, sw] = [await box(pours.nth(0)), await box(pours.nth(0).getByText('Swirl after'))];
+            expect(fs.y + fs.height - (sw.y + sw.height), 'Swirl after to the step edge').toBeLessThanOrEqual(10);
+            expect(await vgap(page.locator('#re-ratiotol'), page.locator('#re-notes')), 'ratio row to Notes').toBeLessThanOrEqual(40);
+          }
           // Custom: a valid value selects it; an invalid one shows the error and selects nothing.
           await custom.fill('1m30s');
           await expect(group.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
@@ -3015,14 +3035,24 @@ export const STATES: State[] = [
           await page.getByLabel('Equal shares').check();
           await expect(pours.getByLabel('Grams')).toHaveCount(0);
           await expect(pours.getByLabel('% of water')).toHaveCount(0);
-          await expect(page.getByLabel('Pour amounts in')).toHaveCount(0);
+          // The unit select stays, disabled and visibly so (not hidden).
+          const unitSel = page.getByLabel('Pour amounts in');
+          await expect(unitSel).toBeVisible();
+          await expect(unitSel).toBeDisabled();
+          expect(Number(await unitSel.evaluate((e) => getComputedStyle(e).opacity))).toBeLessThan(0.9);
           await page.getByLabel('Equal shares').uncheck();
+          await expect(unitSel).toBeEnabled();
           await expect(pours.getByLabel('Grams')).toHaveCount(4);
           // Ratio list.
           await page.getByRole('button', { name: 'Add ratio' }).click();
-          await expect(page.getByLabel('Ratio 1: (2)')).toBeVisible();
+          await expect(page.getByLabel('Ratio target 2', { exact: true })).toBeVisible();
+          await expect(page.getByText('or 1:', { exact: true })).toBeVisible();
+          // Add ratio is bottom-aligned with the ratio boxes on its row.
+          const addB = await page.getByRole('button', { name: 'Add ratio' }).boundingBox();
+          const lastR = await page.getByLabel('Ratio target 2', { exact: true }).boundingBox();
+          if (Math.abs(addB!.y - lastR!.y) < lastR!.height) expect(Math.abs(addB!.y + addB!.height - (lastR!.y + lastR!.height)), 'Add ratio bottom-aligned').toBeLessThanOrEqual(1);
           await page.getByRole('button', { name: 'Remove ratio 2' }).click();
-          await expect(page.getByLabel('Ratio 1: (2)')).toHaveCount(0);
+          await expect(page.getByLabel('Ratio target 2', { exact: true })).toHaveCount(0);
           // Temperature help.
           await page.getByRole('button', { name: 'About temperature' }).click();
           await expect(page.locator('#re-temp-help')).toContainText('±2°C');
