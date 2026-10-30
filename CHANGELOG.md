@@ -1,3 +1,27 @@
+# [1.101.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.100.0...v1.101.0) (2026-10-30)
+
+
+### Bug Fixes
+
+* **recipes:** editor control heights, length row spacing and styling, scroll to card on close
+* **recipes:** equal-width length buttons, inert full ratio pair, Save keeps its card on top
+* **recipes:** length fix keeps an unnamed recipe's bloom hold and tolerates a def without pours
+* **tips:** a click with no tip to pin, or on a control inside the trigger, no longer pins it
+
+
+### Features
+
+* **recipes:** at 5 ratios the input and Add are disabled with a tip saying why
+* **recipes:** bloom lengths 30-60s; length chips 20s, 30s, 45s, 1m
+* **recipes:** editor focuses custom boxes, disables unit on equal shares, tighter spacing
+* **recipes:** editor sets each step's length; last step reads until drained
+* **recipes:** length row with custom time box, range boxes and parsed durations
+* **recipes:** phone length row on one line, three buttons one width
+* **recipes:** phone length row puts the four preset times on one full-width row
+* **recipes:** ratios as an add/remove list; settings block on one grid
+* **recipes:** ratios as one wrapping row of cells; settings order and inset 1: prefix
+* **recipes:** steps own their length; boot fix converts stored recipes
+
 # [1.100.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.99.0...v1.100.0) (2026-10-30)
 
 
