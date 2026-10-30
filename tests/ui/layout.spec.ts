@@ -2705,7 +2705,7 @@ export const STATES: State[] = [
           await expect(chart.locator('rect.window')).toHaveCount(1); // only pour 1 is a bloom; no striped part any more
           // Hovering a band says how long the bloom before it lasts.
           await chart.locator('rect.window').first().hover();
-          const tip = page.getByText(/^First bloom \(\d:\d\d–\d:\d\d\)$/);
+          const tip = page.getByText(/^First bloom \(\d:\d\d → \d:\d\d\)$/);
           await expect(tip).toBeVisible();
           // The tip follows the pointer across the band (further right, further right) and stays inside the viewport.
           const band = (await chart.locator('rect.window').first().boundingBox())!;

@@ -514,7 +514,7 @@ describe('recipeTimeline triggers', () => {
     const r = reading('BBFS', { swirls: [{ atS: 6 }] as PourReading['swirls'] }, undefined, [0, 23, 41, 62]);
     r.pours[1].bloom = true;
     const tl = timelineOf(r);
-    expect(tl.labels).toEqual(['First bloom (0:00–0:23)', 'Second bloom (0:23–0:41)', 'Third pour (0:41–1:02)', 'Fourth pour (1:02–1:12)']);
+    expect(tl.labels).toEqual(['First bloom (0:00 → 0:23)', 'Second bloom (0:23 → 0:41)', 'Third pour (0:41 → 1:02)', 'Fourth pour (1:02 → 1:12)']);
     expect(tl.swirlLabels).toEqual(['Swirl after first bloom (0:06)']);
   });
   it('tooltip labels: blooms, timed pours, low pours, swirls', () => {
@@ -523,10 +523,10 @@ describe('recipeTimeline triggers', () => {
     d.pours[0].swirlAfter = true;
     d.pours[3].swirlAfter = true;
     const tl = recipeTimeline(d);
-    expect(tl.labels).toEqual(['First bloom (0:00–0:20)', 'Second bloom (0:20–0:40)', 'Third pour (0:40 → low)', 'Fourth pour (low → low)', 'Fifth pour (low → end)']);
+    expect(tl.labels).toEqual(['First bloom (0:00 → 0:20)', 'Second bloom (0:20 → 0:40)', 'Third pour (0:40 → low)', 'Fourth pour (low → low)', 'Fifth pour (low → end)']);
     expect(tl.swirlLabels).toEqual(['Swirl after first bloom', 'Swirl after fourth pour']);
     const t2 = recipeTimeline(timed([null, after(20, 20), after(25, 25)], [0, null, null]));
-    expect(t2.labels).toEqual(['First pour (0:00–0:20)', 'Second pour (0:20–0:45)', 'Third pour (0:45 → end)']);
+    expect(t2.labels).toEqual(['First pour (0:00 → 0:20)', 'Second pour (0:20 → 0:45)', 'Third pour (0:45 → end)']);
   });
   it('a flow-controlling recipe spaces pours 3 on like pour 3 after pour 2', () => {
     const d = timed([null, null, null, null], [0, 40, 70, null]);

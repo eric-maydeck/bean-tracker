@@ -121,7 +121,7 @@ export function timelineOf(r: PourReading): Timeline {
     })),
     labels: r.pours.map((p, i) => {
       const n = r.pours[i + 1];
-      return `${pourName(p.bloom, bloomIdx[i], i)} (${m(p.startS)}–${m(n ? n.startS : p.startS + p.durationS)})`;
+      return `${pourName(p.bloom, bloomIdx[i], i)} (${m(p.startS)} → ${m(n ? n.startS : p.startS + p.durationS)})`;
     }),
     swirls: r.swirls.map((w) => w.atS),
     swirlLabels: r.swirls.map((w) => {

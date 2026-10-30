@@ -65,7 +65,7 @@ export function recipeLabels(def: RecipeDef): { labels: string[]; swirlLabels: s
   const labels = def.pours.map((p, i) => {
     const start = steps[i];
     const next = i + 1 < steps.length ? steps[i + 1] : 'end';
-    const span = !start ? '' : !next ? ` (${start})` : ` (${start}${start.startsWith('low') || next === 'low' || next === 'end' ? ' → ' : '–'}${next})`;
+    const span = !start ? '' : !next ? ` (${start})` : ` (${start} → ${next})`;
     return pourName(p.bloom, bloomIdx[i], i) + span;
   });
   const swirlLabels = def.pours.flatMap((p, i) => (p.swirlAfter ? [swirlName(p.bloom, bloomIdx[i], i)] : []));
