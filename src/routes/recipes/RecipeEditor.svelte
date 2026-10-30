@@ -180,12 +180,16 @@
             {/each}
           </div>
           {#if chip(i) === 'custom'}
-            <span class="range">
-              <input class="secs" aria-label="Target (s)" type="number" min="1" max="600" step="any" bind:value={() => after(i).targetS, (v) => (after(i).targetS = v as number)} />
-              to
-              <input class="secs" aria-label="Up to (s)" type="number" min="1" max="600" step="any" bind:value={() => after(i).maxS, (v) => (after(i).maxS = v as number)} />
-              s
-            </span>
+            <div class="range">
+              <div class="form-field">
+                <label for="re-ta{i}">Target</label>
+                <div class="with-unit"><input id="re-ta{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).targetS, (v) => (after(i).targetS = v as number)} />s</div>
+              </div>
+              <div class="form-field">
+                <label for="re-tm{i}">Up to</label>
+                <div class="with-unit"><input id="re-tm{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).maxS, (v) => (after(i).maxS = v as number)} />s</div>
+              </div>
+            </div>
           {/if}
         </div>
       {/if}
@@ -285,8 +289,9 @@
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .starts { margin: 0; color: var(--color-text-muted); }
   .trigger, .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-  .range { display: inline-flex; align-items: center; gap: var(--space-1); }
-  .range .secs { width: 4.5rem; }
+  .range { display: inline-flex; gap: var(--space-2); }
+  .with-unit { display: flex; align-items: center; gap: var(--space-1); }
+  .with-unit input { width: 4.5rem; }
   .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }

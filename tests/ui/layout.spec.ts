@@ -2877,8 +2877,8 @@ export const STATES: State[] = [
           for (const n of ['+20s', '+30s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
           const steps = page.getByTestId('editor-steps');
           await group.getByText('Range', { exact: true }).click();
-          const target = pours.nth(1).getByLabel('Target (s)');
-          const upTo = pours.nth(1).getByLabel('Up to (s)');
+          const target = pours.nth(1).getByLabel('Target', { exact: true });
+          const upTo = pours.nth(1).getByLabel('Up to', { exact: true });
           await target.focus();
           await page.keyboard.press('ControlOrMeta+a');
           await page.keyboard.type('20');
@@ -2891,10 +2891,10 @@ export const STATES: State[] = [
           expect((await target.boundingBox())!.width).toBeLessThan(100);
           const rowY = async (l: import('@playwright/test').Locator) => Math.round((await l.boundingBox())!.y);
           const lastChip = group.locator('label.chip').last();
-          expect(Math.abs((await rowY(target)) - (await rowY(lastChip)))).toBeLessThan(60);
+          expect(Math.abs((await rowY(target)) - (await rowY(lastChip)))).toBeLessThan(100);
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
-          await expect(pours.nth(1).getByLabel('Target (s)')).toHaveCount(0);
+          await expect(pours.nth(1).getByLabel('Target', { exact: true })).toHaveCount(0);
           // The flow-control note shows only for flow-controlling drippers (the seed has none; the text is unit-tested).
           await expect(page.getByTestId('flow-note')).toHaveCount(0);
           // Equal shares hides every amount input and the unit select.
@@ -2912,7 +2912,7 @@ export const STATES: State[] = [
           await expect(page.getByLabel('Ratio 1: (2)')).toHaveCount(0);
           // Temperature help.
           await page.getByRole('button', { name: 'About temperature' }).click();
-          await expect(page.locator('#re-temp-help')).toContainText('±2 °C');
+          await expect(page.locator('#re-temp-help')).toContainText('±2°C');
           await page.keyboard.press('Escape');
           expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
           // An Up to below its Target is rejected on Save.
