@@ -127,7 +127,7 @@ describe('recipes page', () => {
     await bad({ ...def, pours: def.pours.map((p, i) => ({ ...p, bloom: i === 1 })) }, 'Blooms come first');
     await bad({ ...def, pourCount: { min: 1, max: 1 } }, 'Pour count range must include the pours listed');
     await bad({ ...def, ratio: { targets: [40], tol: 0.7 } }, 'Ratio must be between 1:5 and 1:30');
-    await bad({ ...def, tempC: 120 }, 'Temperature must be 60-100 °C');
+    await bad({ ...def, tempC: 120 }, 'Temperature must be 60-100°C');
     await bad({ v: 2 }, 'Invalid recipe');
     expect(listRecipes(db)).toHaveLength(1);
     await actions.deleteRecipe(event(true, '', { id: String(id.saved) }));

@@ -36,7 +36,7 @@ describe('recipeSteps', () => {
     const d = mk([rp({ bloom: true }), rp({ bloom: true, trigger: after(20, 30) }), rp({ trigger: after(20, 30) }), rp({ trigger: after(20) })]);
     const s = recipeSteps(d);
     expect(s.map((x) => x.time)).toEqual(['0:00', '0:20', '0:40', '1:00']);
-    expect(s.map((x) => x.alt)).toEqual([null, 'Or 0:30 with a 30 s bloom', 'Or 1:00 with 30 s blooms', 'Or 1:20 with 20 s pours']);
+    expect(s.map((x) => x.alt)).toEqual([null, 'Or 0:30 with 30s blooms', 'Or 1:00 with 30s blooms', 'Or 1:20 with 20s pours']);
     expect(stepsText(d)).not.toContain('(–');
   });
   it('timed step after low', () => {
@@ -65,10 +65,10 @@ describe('recipeSteps', () => {
 
 describe('tempNotesLine', () => {
   it('joins temperature and notes', () => {
-    expect(tempNotesLine(mk([rp()], { tempC: 93, notes: '2 yeet blooms' }))).toBe('93 °C · 2 yeet blooms');
-    expect(tempNotesLine(mk([rp()], { tempC: 93 }))).toBe('93 °C');
+    expect(tempNotesLine(mk([rp()], { tempC: 93, notes: '2 yeet blooms' }))).toBe('93°C · 2 yeet blooms');
+    expect(tempNotesLine(mk([rp()], { tempC: 93 }))).toBe('93°C');
     expect(tempNotesLine(mk([rp()], { notes: 'hi' }))).toBe('hi');
     expect(tempNotesLine(mk([rp()]))).toBeNull();
-    expect(tempNotesLine(mk([rp()], { tempC: 91.5 }))).toBe('91.5 °C');
+    expect(tempNotesLine(mk([rp()], { tempC: 91.5 }))).toBe('91.5°C');
   });
 });

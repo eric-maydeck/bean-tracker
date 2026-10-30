@@ -108,7 +108,7 @@ describe('discoverGroups', () => {
     expect(g[0].count).toBe(MIN_GROUP + 1);
     expect(g[0]).toMatchObject({ tagged: 0, suggestedPhrase: '2 yeets, 1 MD', common: ['V60', 'Abaca'] });
     expect(g[1]).toMatchObject({ count: MIN_GROUP, tagged: MIN_GROUP, suggestedName: 'BBS', avgRating: 8 });
-    expect(g[1].description).toMatch(/^Two 20 s blooms/);
+    expect(g[1].description).toMatch(/^Two 20s blooms/);
     expect(g[1].timeline.pours.length).toBeGreaterThan(0);
     expect(MIN_GROUP).toBe(10);
     expect(smallGroupCount(db)).toBe(1);
@@ -186,8 +186,8 @@ describe('brewsFor', () => {
     expect(rows.map((r) => r.label)).toEqual([
       'R1',
       'R1',
-      'looks like R1 (modified: 20 s blooms)',
-      'looks like R1 (modified: 20 s blooms)'
+      'looks like R1 (modified: 20s blooms)',
+      'looks like R1 (modified: 20s blooms)'
     ]);
     expect(rows[0]).toMatchObject({ description: 'No flow data', timeline: null, date: expect.stringMatching(/^2026-02-\d\d$/) });
     expect(rows[1].description).toMatch(/ total/);

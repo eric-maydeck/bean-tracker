@@ -152,9 +152,9 @@ describe('recipesPreview', () => {
 });
 
 describe('recipePreview', () => {
-  const base = { name: 'Floral', description: 'Two blooms · ~1:16', steps: '0:00 - bloom\n0:45 - pour', tempNotes: '93 °C · rinse', n: 311, avgRating: 7.1 };
+  const base = { name: 'Floral', description: 'Two blooms · ~1:16', steps: '0:00 - bloom\n0:45 - pour', tempNotes: '93°C · rinse', n: 311, avgRating: 7.1 };
   it('lists the one-liner, steps, temperature and notes, then the brew stats', () => {
-    expect(recipePreview(base)).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n93 °C · rinse\n311 brews · avg 7.1' });
+    expect(recipePreview(base)).toEqual({ title: 'Floral', description: 'Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n93°C · rinse\n311 brews · avg 7.1' });
     expect(recipePreview({ ...base, tempNotes: null }).description).toBe('Two blooms · ~1:16\n0:00 - bloom\n0:45 - pour\n311 brews · avg 7.1');
     expect(recipePreview({ ...base, steps: '', tempNotes: null, n: 1, avgRating: null }).description).toBe('Two blooms · ~1:16\n1 brew');
   });

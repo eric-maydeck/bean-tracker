@@ -2727,7 +2727,7 @@ export const STATES: State[] = [
           await expect.poll(async () => (await item.boundingBox())!.y).toBeLessThan(140); // scrolled to the top (or already there)
           // The link preview names the recipe; no note text.
           await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Seed equal pours');
-          await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /bloom[\s\S]*\n93 °C · Rinse the filter\n\d+ brews? · avg/);
+          await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /bloom[\s\S]*\n93°C · Rinse the filter\n\d+ brews? · avg/);
           await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', /\/recipes\/seed-equal-pours$/);
           expect((await page.goto('/recipes/no-such-recipe'))!.status()).toBe(404);
         }
@@ -2873,7 +2873,7 @@ export const STATES: State[] = [
           await expect(pours.nth(0)).toContainText('Starts at 0:00');
           await expect(pours.nth(0).getByRole('radiogroup')).toHaveCount(0);
           const group = page.getByRole('radiogroup', { name: 'Pour 2 starts' });
-          for (const n of ['+20 s', '+30 s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
+          for (const n of ['+20s', '+30s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
           const steps = page.getByTestId('editor-steps');
           await group.getByText('Range', { exact: true }).click();
           const target = pours.nth(1).getByLabel('Target (s)');

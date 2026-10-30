@@ -62,7 +62,7 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
-  // Trigger chips: +20 s / +30 s are {after, n, n}; anything else after is Range, which also stays picked once chosen.
+  // Trigger chips: +20s / +30s are {after, n, n}; anything else after is Range, which also stays picked once chosen.
   let custom = $state<boolean[]>([]);
   const lastCustom: ({ kind: 'after'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
   const chip = (i: number) => {
@@ -78,7 +78,7 @@
     custom[i] = c === 'custom';
     copy.pours[i].trigger = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'after' ? t : (lastCustom[i] ?? { kind: 'after', targetS: 20, maxS: 20 })) : { kind: 'after', targetS: +c, maxS: +c };
   }
-  const chips = [['20', '+20 s'], ['30', '+30 s'], ['custom', 'Range'], ['low', 'Water low']];
+  const chips = [['20', '+20s'], ['30', '+30s'], ['custom', 'Range'], ['low', 'Water low']];
   const after = (i: number) => copy.pours[i].trigger as Extract<Trigger, { kind: 'after' }>;
 
   function add() {
@@ -252,7 +252,7 @@
         <label for="re-temp">Temperature (°C)</label>
         <button type="button" class="mode-tip-button" popovertarget="re-temp-help" aria-label="About temperature" aria-describedby="re-temp-help"><Icon name="question" /></button>
       </div>
-      <div class="mode-tip" id="re-temp-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Temperature', lines: ['A brew within ±2 °C of this matches.', 'The ±2 °C is fixed.'] }} /></div>
+      <div class="mode-tip" id="re-temp-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Temperature', lines: ['A brew within ±2°C of this matches.', 'The ±2°C is fixed.'] }} /></div>
       <input id="re-temp" type="number" step="any" bind:value={copy.tempC} />
     </div>
   </div>

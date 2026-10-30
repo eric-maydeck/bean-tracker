@@ -127,7 +127,7 @@ export function parseRecipeDef(json: unknown): { def: RecipeDef } | { error: str
       throw new Error('Pour count range must include the pours listed');
     if (!targets.length) throw new Error('Add a ratio');
     if (targets.some((t) => t < 5 || t > 30) || tol < 0.1 || tol > 3) throw new Error('Ratio must be between 1:5 and 1:30');
-    if (tempC != null && (tempC < 60 || tempC > 100)) throw new Error('Temperature must be 60-100 °C');
+    if (tempC != null && (tempC < 60 || tempC > 100)) throw new Error('Temperature must be 60-100°C');
     return {
       def: {
         v: 1,
@@ -266,8 +266,8 @@ export function describeRecipe(def: RecipeDef): string {
   const blooms = def.pours.filter((p) => p.bloom).length;
   const wait = def.pours[1]?.trigger; // the bloom lasts until the next pour starts
   const hold = wait?.kind === 'after' && blooms
-    ? `${wait.maxS > wait.targetS ? `${fmtHold1(wait.targetS)}–${fmtHold1(wait.maxS)}` : fmtHold1(wait.targetS)} s `
-    : def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)} s `;
+    ? `${wait.maxS > wait.targetS ? `${fmtHold1(wait.targetS)}–${fmtHold1(wait.maxS)}` : fmtHold1(wait.targetS)}s `
+    : def.bloomHoldS == null ? '' : `${fmtHold(def.bloomHoldS)}s `;
   const parts: string[] = [];
   if (blooms === 1) parts.push(`${hold}bloom`);
   else if (blooms > 1) parts.push(`${['', '', 'two', 'three'][blooms] ?? blooms} ${hold}blooms`);
@@ -411,9 +411,9 @@ function diffsOf(def: RecipeDef, r: PourReading, tempC: number | null, sharesApp
       modified: true
     });
   if (r.bloomHoldS != null && def.bloomHoldS != null && Math.abs(r.bloomHoldS - def.bloomHoldS) > def.bloomHoldTolS)
-    out.push({ text: `${fmtHold(r.bloomHoldS)} s bloom${r.bloomCount === 1 ? '' : 's'}`, modified: true });
+    out.push({ text: `${fmtHold(r.bloomHoldS)}s bloom${r.bloomCount === 1 ? '' : 's'}`, modified: true });
   if (tempC && def.tempC && Math.abs(tempC - def.tempC) > 1)
-    out.push({ text: `${+tempC.toFixed(1)} °C vs ${+def.tempC.toFixed(1)} °C`, modified: Math.abs(tempC - def.tempC) > TEMP_TOL_C });
+    out.push({ text: `${+tempC.toFixed(1)}°C vs ${+def.tempC.toFixed(1)}°C`, modified: Math.abs(tempC - def.tempC) > TEMP_TOL_C });
   if (def.totalS != null && Math.abs(r.totalS - def.totalS) > 20)
     out.push({ text: `${mmss(r.totalS)} total vs ${mmss(def.totalS)}`, modified: false });
   return out;
@@ -469,7 +469,7 @@ export function fitRecipe(def: RecipeDef, brew: MatchBrew, ctx: { recipes: Recip
       if (t?.kind !== 'after') continue;
       const gap = r.pours[i].startS - r.pours[i - 1].startS;
       if (gap < t.targetS - TRIGGER_GRACE_S || gap > t.maxS + TRIGGER_GRACE_S)
-        diffs.push({ text: `pour ${i + 1} after ${Math.round(gap)} s`, modified: true });
+        diffs.push({ text: `pour ${i + 1} after ${Math.round(gap)}s`, modified: true });
     }
   }
   // Ranged waits with the same window are linked (both blooms 20 s or both 30 s); a mix is a variant.

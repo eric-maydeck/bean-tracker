@@ -37,7 +37,7 @@ export function recipeSteps(def: RecipeDef): StepLine[] {
       time = pre + at;
       if (extra) {
         const noun = def.pours[i - 1].bloom ? 'bloom' : 'pour';
-        alt = `Or ${pre}${mmss(base + t.targetS + extra)} with ${ranged === 1 ? `a ${t.maxS} s ${noun}` : `${t.maxS} s ${noun}s`}`;
+        alt = `Or ${pre}${mmss(base + t.targetS + extra)} with ${t.maxS}s ${noun}s`;
       }
     } else if (p.startS != null) {
       anchor = Math.round(p.startS);
@@ -53,6 +53,6 @@ export const stepsText = (def: RecipeDef): string =>
   recipeSteps(def).map((s) => (s.time ? `${s.time} - ${s.text}` : s.text)).join('\n');
 
 export function tempNotesLine(def: RecipeDef): string | null {
-  const parts = [def.tempC != null ? `${def.tempC} °C` : null, def.notes].filter(Boolean);
+  const parts = [def.tempC != null ? `${def.tempC}°C` : null, def.notes].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;
 }
