@@ -36,6 +36,12 @@
     return () => clearTimeout(t);
   });
 
+  // Closing the editor (Save or Cancel) shifts the page up: put the edited card back at the top, below the sticky bars (scroll-padding).
+  function closeEditor() {
+    const card = document.querySelector('li.item:has(form.editor)');
+    editing = null;
+    void tick().then(() => card?.scrollIntoView({ block: 'start' }));
+  }
   // Inline editor state: never in the URL.
   let naming = $state<string | null>(null);
   let deleting = $state<number | null>(null);
@@ -189,7 +195,7 @@
               {/if}
             </div>
             {#if editing === 'r' + r.recipe.id}
-              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={() => (editing = null)} />
+              <RecipeEditor name={r.recipe.name} tags={r.recipe.tags} def={r.recipe.def} id={r.recipe.id} drippers={data.drippers} locked={data.locked} error={formError} focusId={data.focusId} ondone={closeEditor} />
             {/if}
             {#if deleting === r.recipe.id}
               <form method="POST" action="?/deleteRecipe" use:enhance={() => async ({ result, update }) => { deleting = null; const to = recipeFollow(result, data.focusId); if (to) await goto(to, { invalidateAll: true }); else await update(); }} class="panel">
@@ -247,7 +253,7 @@
               </form>
             </div>
             {#if editing === 's' + g.key}
-              <RecipeEditor name={g.suggestedName ?? ''} tags={g.suggestedPhrase ? [g.suggestedPhrase] : []} def={g.draft} drippers={data.drippers} locked={data.locked} error={formError} ondone={() => (editing = null)} />
+              <RecipeEditor name={g.suggestedName ?? ''} tags={g.suggestedPhrase ? [g.suggestedPhrase] : []} def={g.draft} drippers={data.drippers} locked={data.locked} error={formError} ondone={closeEditor} />
             {/if}
             {#if naming === g.key}
               <form

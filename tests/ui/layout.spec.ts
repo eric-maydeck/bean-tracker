@@ -2913,6 +2913,7 @@ export const STATES: State[] = [
           const labels = await group.locator('label.chip').allTextContents();
           expect(labels).toEqual(names); // the order of the sketch
           const steps = page.getByTestId('editor-steps');
+          const box = async (l: import('@playwright/test').Locator) => (await l.boundingBox())!;
           const custom = group.getByLabel('Pour 1 custom length');
           const target = group.getByLabel('Pour 1 range from');
           const upTo = group.getByLabel('Pour 1 range up to');
@@ -2933,12 +2934,27 @@ export const STATES: State[] = [
           await expect(group.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
           await expect(steps).toContainText('1:30');
           await group.getByText('30s', { exact: true }).click();
-          await custom.fill('abc');
-          await expect(pours.nth(0).getByText('Use 90s, 2m or 1m30s')).toBeVisible();
+          // The message waits for the box to lose focus; typing never shows it. It clears as soon as the value is valid.
+          const fmtMsg = pours.nth(0).getByText('A number + s or m; both as 1m30s', { exact: true });
+          await custom.fill('');
+          await custom.pressSequentially('abc');
+          await expect(fmtMsg).toHaveCount(0);
+          await custom.blur();
+          await expect(fmtMsg).toBeVisible();
           await expect(group.getByRole('radio', { name: '30s', exact: true })).toBeChecked();
+          // It reads small, in at most two lines, and (on the box's own row) inside the box's vertical span.
+          const [mb, cb0] = [await box(fmtMsg), await box(custom)];
+          const lh = await fmtMsg.evaluate((e) => parseFloat(getComputedStyle(e).lineHeight));
+          expect(mb.height, 'at most two lines').toBeLessThanOrEqual(2 * lh + 1);
+          if (Math.abs(mb.y - cb0.y) < cb0.height) {
+            expect(mb.y, 'message top inside the box span').toBeGreaterThanOrEqual(cb0.y - 1);
+            expect(mb.y + mb.height, 'message bottom inside the box span').toBeLessThanOrEqual(cb0.y + cb0.height + 1);
+          }
+          expect(mb.x + mb.width, 'message inside the step').toBeLessThanOrEqual((await box(pours.nth(0))).x + (await box(pours.nth(0))).width + 0.5);
+          await custom.focus();
           await custom.fill('2M');
           await expect(group.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
-          await expect(pours.nth(0).getByText('Use 90s, 2m or 1m30s')).toHaveCount(0);
+          await expect(fmtMsg).toHaveCount(0);
           await expect(steps).toContainText('2:00');
           // The Custom box has its tip (a popover, not a bare title).
           await pours.nth(0).getByRole('button', { name: 'About custom length' }).click();
@@ -2947,7 +2963,10 @@ export const STATES: State[] = [
           // Range: both boxes valid select it; a max below the target shows the error and does not.
           await group.getByText('Water low', { exact: true }).click();
           await target.fill('20');
-          await upTo.fill('10');
+          await upTo.fill('');
+          await upTo.pressSequentially('10');
+          await expect(pours.nth(0).getByText('Step length must be at least its target')).toHaveCount(0); // not while typing
+          await upTo.blur();
           await expect(pours.nth(0).getByText('Step length must be at least its target')).toBeVisible();
           await expect(group.getByRole('radio', { name: 'Water low', exact: true })).toBeChecked();
           await upTo.fill('30');
@@ -2955,7 +2974,6 @@ export const STATES: State[] = [
           await expect(steps).toContainText('0:20');
           await expect(steps).not.toContainText('(–');
           // Layout: each box sits level with its own button, whatever the row's wrapping, and nothing overflows the step.
-          const box = async (l: import('@playwright/test').Locator) => (await l.boundingBox())!;
           const level = async (a: import('@playwright/test').Locator, b: import('@playwright/test').Locator) => {
             const [x, y] = [await box(a), await box(b)];
             expect(Math.abs(x.y + x.height / 2 - (y.y + y.height / 2)), 'box level with its button').toBeLessThanOrEqual(1);
@@ -2970,6 +2988,19 @@ export const STATES: State[] = [
             expect(b.x + b.width, 'inside the step, right').toBeLessThanOrEqual(fieldset.x + fieldset.width + 0.5);
           }
           expect((await box(target)).width).toBeLessThan(100);
+          // One height for the editor's controls: the name, tags and amounts fields, the buttons and the edit boxes.
+          const hs = [];
+          for (const l of [page.locator('#re-name'), page.locator('#re-tags'), page.locator('#re-unit'), custom, target, upTo, ...(await group.locator('label.chip').all())]) hs.push((await box(l)).height);
+          expect(Math.max(...hs) - Math.min(...hs), `control heights ${hs.join(', ')}`).toBeLessThanOrEqual(1);
+          // One gap: button to button equals button to its edit box, wherever they share a row.
+          const gap = async (a: import('@playwright/test').Locator, b: import('@playwright/test').Locator) => {
+            const [x, y] = [await box(a), await box(b)];
+            return Math.abs(x.y - y.y) < 4 ? y.x - (x.x + x.width) : null;
+          };
+          const chip = (n: string) => group.locator('label.chip', { hasText: n }).first();
+          const gaps = [await gap(chip('20s'), chip('30s')), await gap(chip('Custom'), custom), await gap(chip('Range'), target)].filter((g) => g != null) as number[];
+          expect(gaps.length).toBeGreaterThanOrEqual(2);
+          expect(Math.max(...gaps) - Math.min(...gaps), `gaps ${gaps.join(', ')}`).toBeLessThanOrEqual(1);
           // A cleared box of the selected Range leaves no length: Save says so.
           await upTo.fill('');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
@@ -3002,6 +3033,23 @@ export const STATES: State[] = [
           await upTo.fill('10');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
           await expect(page.getByRole('alert')).toHaveText('Step length must be at least its target');
+        }
+      },
+      {
+        // Closing the editor (Cancel here; Save shares the handler but would write to the shared DB) puts the edited card back at the top,
+        // below the sticky bars, however far down the form was scrolled.
+        name: 'recipes-edit-close-scroll',
+        path: () => '/recipes',
+        act: async (page: Page) => {
+          const card = panel(page, 'Found in your brews').locator('li.item').first();
+          await card.getByRole('button', { name: 'Edit', exact: true }).click();
+          const form = card.locator('form.editor');
+          await form.getByRole('button', { name: 'Save', exact: true }).scrollIntoViewIfNeeded();
+          await page.waitForTimeout(100);
+          await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+          await expect(form).toHaveCount(0);
+          await expect.poll(async () => Math.round((await card.boundingBox())!.y), 'card top near the viewport top').toBeLessThanOrEqual(160);
+          expect((await card.boundingBox())!.y).toBeGreaterThanOrEqual(-1);
         }
       },
       {

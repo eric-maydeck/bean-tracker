@@ -64,11 +64,11 @@
   };
   // The length row, one state per pour: the selected button ('low', a chip's seconds, 'custom', 'range') and the three boxes.
   // A box that holds a valid value selects its button; the length follows the selection.
-  type LenUi = { sel: string; text: string; tt: string; tm: string };
+  type LenUi = { sel: string; text: string; tt: string; tm: string; showC: boolean; showR: boolean };
   const uiOf = (l: Length): LenUi => {
     const sel = lengthChip(l);
     const t = l?.kind === 'time' ? l : null;
-    return { sel, text: sel === 'custom' && t ? formatDuration(t.targetS) : '', tt: sel === 'range' && t ? String(t.targetS) : '', tm: sel === 'range' && t ? String(t.maxS) : '' };
+    return { sel, text: sel === 'custom' && t ? formatDuration(t.targetS) : '', tt: sel === 'range' && t ? String(t.targetS) : '', tm: sel === 'range' && t ? String(t.maxS) : '', showC: false, showR: false };
   };
   /* svelte-ignore state_referenced_locally */
   let ui = $state<LenUi[]>(def.pours.map((p) => uiOf(p.length)));
@@ -89,12 +89,14 @@
   function typeCustom(i: number, text: string) {
     ui[i].text = text;
     if (parseDuration(text)) ui[i].sel = 'custom';
+    if (!customBad(i)) ui[i].showC = false; // a message clears as soon as the value is fine; it shows only after the box loses focus
     apply(i);
   }
   function typeRange(i: number, which: 'tt' | 'tm', v: string) {
     ui[i][which] = v;
     const [a, b] = [+ui[i].tt, +ui[i].tm];
     if (ui[i].tt !== '' && ui[i].tm !== '' && a > 0 && b >= a) ui[i].sel = 'range';
+    if (!rangeBad(i)) ui[i].showR = false;
     apply(i);
   }
   const customBad = (i: number) => ui[i].text.trim() !== '' && parseDuration(ui[i].text) == null;
@@ -207,18 +209,18 @@
             {/each}
             <span class="pair">
               {@render pickChip(i, 'custom', 'Custom')}
-              <input class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} />
+              <span class="form-field box"><input class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} onblur={() => (ui[i].showC = customBad(i))} /></span>
               <button type="button" class="mode-tip-button" popovertarget="re-ct-help{i}" aria-label="About custom length" aria-describedby="re-ct-help{i}"><Icon name="question" /></button>
-              <div class="mode-tip" id="re-ct-help{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Custom length', lines: ['Seconds or minutes: 90s, 2m, 1m30s.'] }} /></div>
+              <div class="mode-tip" id="re-ct-help{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Custom length', lines: ['A number + s or m; both as 1m30s.'] }} /></div>
+              {#if ui[i].showC && customBad(i)}<small class="len-err">A number + s or m; both as 1m30s</small>{/if}
             </span>
             <span class="pair">
               {@render pickChip(i, 'range', 'Range')}
-              <span class="with-unit"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} />s</span>
-              <span class="with-unit"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} />s</span>
+              <span class="with-unit"><span class="form-field box"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
+              <span class="with-unit"><span class="form-field box"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
             </span>
           </div>
-          {#if customBad(i)}<small class="len-err">Use 90s, 2m or 1m30s</small>{/if}
-          {#if rangeBad(i)}<small class="len-err">Step length must be at least its target</small>{/if}
+          {#if ui[i].showR && rangeBad(i)}<small class="len-err">Step length must be at least its target</small>{/if}
         </div>
       {/if}
       <div class="grid">
@@ -316,13 +318,16 @@
   .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .starts { margin: 0; color: var(--color-text-muted); }
-  .trigger { --h: 36px; display: grid; gap: var(--space-1); }
-  .pair { display: inline-flex; align-items: center; gap: var(--space-1); }
-  .dur { width: 6rem; height: var(--h); min-height: var(--h); box-sizing: border-box; }
-  .len-err { color: var(--color-urgent); }
+  .editor { --h: 2.5rem; }
+  .editor :global(.form-field input:not([type='checkbox'])), .editor :global(.form-field select) { height: var(--h); min-height: var(--h); box-sizing: border-box; }
+  .trigger { display: grid; gap: var(--space-1); }
+  .pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .box { margin: 0; }
+  .dur { width: 6rem; }
+  .len-err { color: var(--color-urgent); font-size: 0.75rem; line-height: 1.15; max-width: 9rem; flex: 1 1 8rem; max-height: var(--h); overflow: hidden; }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .with-unit { display: flex; align-items: center; gap: var(--space-1); }
-  .with-unit input { width: 4.5rem; height: var(--h); min-height: var(--h); box-sizing: border-box; }
+  .with-unit input { width: 4.5rem; }
   .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; height: var(--h); padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }
@@ -346,7 +351,7 @@
     .top { grid-template-areas: 'name name' 'unit unit' 'tags tags'; }
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
-    .trigger { --h: 44px; }
+    .editor { --h: 44px; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
 </style>
