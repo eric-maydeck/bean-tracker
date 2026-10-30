@@ -204,7 +204,7 @@
   </fieldset>
 
   {#snippet pickChip(i: number, v: string, label: string)}
-    <label class="chip"><input type="radio" name="re-len{i}" value={v} checked={ui[i].sel === v} onchange={() => pick(i, v)} onclick={() => focusBox(i, v)} />{label}</label>
+    <label class="chip" class:low={v === 'low'}><input type="radio" name="re-len{i}" value={v} checked={ui[i].sel === v} onchange={() => pick(i, v)} onclick={() => focusBox(i, v)} />{label}</label>
   {/snippet}
   {#each copy.pours as p, i (i)}
     <fieldset class="pour">
@@ -231,15 +231,19 @@
             </span>
             <span class="pair">
               {@render pickChip(i, 'custom', 'Custom')}
+              <span class="rest">
               <span class="form-field box"><input id="re-cu{i}" class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} onblur={() => (ui[i].showC = customBad(i))} /></span>
               <button type="button" class="mode-tip-button" popovertarget="re-ct-help{i}" aria-label="About custom length" aria-describedby="re-ct-help{i}"><Icon name="question" /></button>
               <div class="mode-tip" id="re-ct-help{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Custom length', lines: ['A number + s or m; both as 1m30s.'] }} /></div>
               {#if ui[i].showC && customBad(i)}<small class="len-err">A number + s or m; both as 1m30s</small>{/if}
+              </span>
             </span>
             <span class="pair">
               {@render pickChip(i, 'range', 'Range')}
-              <span class="with-unit"><span class="form-field box"><input id="re-rf{i}" type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
-              <span class="with-unit"><span class="form-field box"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /></span>s</span>
+              <span class="rest">
+              <span class="form-field box sfx"><input id="re-rf{i}" type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /><span class="suf" aria-hidden="true">s</span></span>
+              <span class="form-field box sfx"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} onblur={() => (ui[i].showR = rangeBad(i))} /><span class="suf" aria-hidden="true">s</span></span>
+              </span>
             </span>
           </div>
           {#if ui[i].showR && rangeBad(i)}<small class="len-err">Step length must be at least its target</small>{/if}
@@ -372,14 +376,17 @@
   select:disabled { opacity: 0.5; cursor: not-allowed; }
   .editor :global(.form-field input:not([type='checkbox'])), .editor :global(.form-field select) { height: var(--h); min-height: var(--h); box-sizing: border-box; }
   .trigger { display: grid; gap: var(--space-1); }
+  .rest { display: contents; }
   .times { display: contents; } /* phones: the four presets are one full-width row */
   .pair { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .box { margin: 0; }
-  .dur { width: 5.5rem; }
+  .dur { width: 100%; }
+  .pair .box:not(.pref) { width: 4.75rem; }
+  .sfx { position: relative; }
+  .suf { position: absolute; right: var(--space-2); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+  .editor :global(.form-field.sfx input:not([type='checkbox'])) { width: 100%; padding-right: 1.4rem; appearance: textfield; -moz-appearance: textfield; }
   .len-err { color: var(--color-urgent); font-size: 0.75rem; line-height: 1.15; max-width: 9rem; flex: 1 1 8rem; max-height: var(--h); overflow: hidden; }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-  .with-unit { display: flex; align-items: center; gap: var(--space-1); }
-  .with-unit input { width: 3.75rem; }
   .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 4.75rem; box-sizing: border-box; height: var(--h); padding: 0; border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }
@@ -403,8 +410,14 @@
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .editor { --h: 44px; }
-    .times { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); flex: 1 1 100%; }
-    .times .chip { width: auto; }
+    /* Phones: two columns. The first is as wide as Water low's text, so Water low, Custom and Range are one width; the second
+       holds the four presets, the Custom box and the Range boxes. */
+    .chips { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-2); align-items: center; }
+    .pair { display: contents; }
+    .rest { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
+    .chips > .chip, .pair > .chip { width: auto; padding: 0 var(--space-2); }
+    .times { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); min-width: 0; }
+    .times .chip { width: auto; min-width: 0; padding: 0; }
     .check, .form-field-checkbox label { min-height: 44px; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
