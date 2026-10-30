@@ -2886,9 +2886,12 @@ export const STATES: State[] = [
           await expect(steps).not.toContainText('(–');
           // The two numbers are narrow and sit in the chips' row (wrapping below only when the row is full).
           expect((await target.boundingBox())!.width).toBeLessThan(100);
-          const rowY = async (l: import('@playwright/test').Locator) => Math.round((await l.boundingBox())!.y);
+          // Boxes and chips line up: where they share a row, their vertical centres match.
+          const box = async (l: import('@playwright/test').Locator) => (await l.boundingBox())!;
           const lastChip = group.locator('label.chip').last();
-          expect(Math.abs((await rowY(target)) - (await rowY(lastChip)))).toBeLessThan(100);
+          const [tb, cb] = [await box(target), await box(lastChip)];
+          if (tb.y < cb.y + cb.height && tb.y + tb.height > cb.y)
+            expect(Math.abs(tb.y + tb.height / 2 - (cb.y + cb.height / 2))).toBeLessThanOrEqual(1);
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
           await expect(pours.nth(1).getByLabel('Target', { exact: true })).toHaveCount(0);

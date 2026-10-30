@@ -288,11 +288,13 @@
   .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .starts { margin: 0; color: var(--color-text-muted); }
-  .trigger, .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .trigger { --h: 36px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+  .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .range { display: inline-flex; gap: var(--space-2); }
+  .range .form-field { margin-bottom: 0; }
   .with-unit { display: flex; align-items: center; gap: var(--space-1); }
-  .with-unit input { width: 4.5rem; }
-  .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
+  .with-unit input { width: 4.5rem; height: var(--h); min-height: var(--h); box-sizing: border-box; }
+  .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; height: var(--h); padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }
   .chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
   .chip:has(input:checked) { background: var(--color-accent); color: var(--color-accent-contrast); border-color: var(--color-accent); }
   .chip:has(input:focus-visible) { outline: 2px solid var(--color-accent); outline-offset: 2px; }
@@ -315,7 +317,7 @@
     .top { grid-template-areas: 'name name' 'unit unit' 'tags tags' 'hold tol'; }
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
-    .chip { min-height: 44px; }
+    .trigger { --h: 44px; }
     .editor :global(.form-actions .button) { flex: 1 1 auto; text-align: center; }
   }
 </style>
