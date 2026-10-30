@@ -2718,6 +2718,12 @@ export const STATES: State[] = [
           await expect.poll(tipX).toBeGreaterThan(left + 2);
           const t = (await tip.boundingBox())!;
           expect(t.x + t.width).toBeLessThanOrEqual(vw);
+          // Escape closes it and further pointer moves over the band don't bring it back.
+          await page.keyboard.press('Escape');
+          await expect(tip).toBeHidden();
+          await page.mouse.move(band.x + band.width * 0.5, band.y + band.height / 2);
+          await page.mouse.move(band.x + band.width * 0.6, band.y + band.height / 2);
+          await expect(tip).toBeHidden();
           await page.mouse.move(0, 0);
           await expect(tip).toHaveCount(0);
           // The level line inside the band has no tip of its own, so the band's shows through it.

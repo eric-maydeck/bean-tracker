@@ -11,7 +11,7 @@
 
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import { openTip, tipPlace, viewBand } from './floatTip';
   import TipBody, { type Tip } from './TipBody.svelte';
 
@@ -41,8 +41,9 @@
     if (!el || !anchor.isConnected) return;
     const t = el.getBoundingClientRect();
     // A control in the sticky bar itself (a switch's help tip) is never "under" it: its band starts at the top.
-    const a = at ? { left: at.x, right: at.x, top: at.y, bottom: at.y } : anchor.getBoundingClientRect(), band = viewBand(), view = anchor.closest('.filter-bar, .cbar.overlay') ? { ...band, top: 0 } : band;
-    away = a.bottom <= view.top || a.top >= view.bottom;
+    const r = anchor.getBoundingClientRect(), a = at ? { left: at.x, right: at.x, top: at.y, bottom: at.y } : r, band = viewBand(), view = anchor.closest('.filter-bar, .cbar.overlay') ? { ...band, top: 0 } : band;
+    // Hidden by where the mark is, not the pointer point: a tap-pinned tip goes with its mark when it scrolls away.
+    away = r.bottom <= view.top || r.top >= view.bottom;
     const { x, y } = tipPlace(a, { w: t.width, h: t.height }, view, 6, beside);
     el.style.left = `${x}px`;
     el.style.top = `${y}px`;
@@ -63,7 +64,7 @@
     dismissed = false;
     if (!el) return;
     if (!el.matches(':popover-open')) el.showPopover();
-    place();
+    untrack(place); // (reads `at`: a pointer move re-places in the effect above, it must not re-run this one)
     const over = reveal ? el.getBoundingClientRect().bottom + 8 - viewBand().bottom : 0;
     if (over > 0) {
       scrollBy({ top: over, behavior: 'instant' });
@@ -71,7 +72,7 @@
       const under = viewBand().top + 4 - anchor.getBoundingClientRect().top;
       // (not for an anchor in the open bar overlay: it is over the page, not under it, and scrolling could fold the bar)
       if (under > 0 && !anchor.closest('.cbar.overlay')) scrollBy({ top: -under, behavior: 'instant' });
-      place(); // now, not on the scroll event a frame later: the tip is never seen (or measured) at the old spot
+      untrack(place); // now, not on the scroll event a frame later: the tip is never seen (or measured) at the old spot
     }
     const move = (e: PointerEvent) => (at = { x: e.clientX, y: e.clientY });
     if (follow) document.addEventListener('pointermove', move);

@@ -46,8 +46,8 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
   const on: [string, (e: Event) => void][] = [
     ['pointerenter', (e) => (track(e), (e as PointerEvent).pointerType === 'mouse' && open())],
     ['pointermove', track],
-    ['pointerleave', (e) => (e as PointerEvent).pointerType === 'mouse' && !pinned && close()],
-    ['focus', () => node.matches(':focus-visible') && open()],
+    ['pointerleave', (e) => ((at = null), (e as PointerEvent).pointerType === 'mouse' && !pinned && close())],
+    ['focus', () => node.matches(':focus-visible') && ((at = null), open())],
     ['blur', () => !pinned && close()],
     passive ? ['click', (e) => (track(e), pin())] : ['pointerdown', close],
     ['keydown', (e) => (e as KeyboardEvent).key === 'Escape' && close()]
