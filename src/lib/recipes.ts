@@ -383,6 +383,9 @@ export const FLOW_CONTROL_DRIPPERS: ReadonlySet<string> = new Set(['Gabi Master 
 /** A recipe only for flow-controlling drippers: amounts, count, triggers and speed can't matter; dripper and ratio decide. */
 export const controlsFlow = (def: Pick<RecipeDef, 'drippers'>) =>
   def.drippers.length > 0 && def.drippers.every((d) => FLOW_CONTROL_DRIPPERS.has(d));
+/** The trigger a newly added pour (at `index`) starts with: flow-controlling drippers pour from the 3rd pour on when the water is low. */
+export const defaultTrigger = (def: Pick<RecipeDef, 'drippers'>, index: number): Trigger =>
+  index >= 2 && controlsFlow(def) ? { kind: 'low' } : { kind: 'after', targetS: 20, maxS: 20 };
 export const flowNote = (drippers: string[]) =>
   controlsFlow({ drippers }) ? `${drippers.join(' and ')} control${drippers.length > 1 ? '' : 's'} the flow: pour amounts, pour count and speed don't matter.` : null;
 

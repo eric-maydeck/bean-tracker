@@ -3,7 +3,7 @@ import type { Pour, PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, fitRecipe, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultTrigger, fitRecipe, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Recipe, type RecipeDef, type RecipePour, type Trigger
 } from './recipes';
 
@@ -389,6 +389,9 @@ describe('matchBrew shares and triggers', () => {
       expect(controlsFlow(mk(['Gabi Master A']))).toBe(true);
       expect(controlsFlow(mk([]))).toBe(false);
       expect(flowNote(['Gabi Master A'])).toBe("Gabi Master A controls the flow: pour amounts, pour count and speed don't matter.");
+      expect(defaultTrigger(any, 2)).toEqual({ kind: 'low' });
+      expect(defaultTrigger(any, 1)).toEqual({ kind: 'after', targetS: 20, maxS: 20 });
+      expect(defaultTrigger(mk(['Gabi Master A', 'Orea']), 3)).toEqual({ kind: 'after', targetS: 20, maxS: 20 });
       expect(flowNote(['Gabi Master A', 'Orea'])).toBeNull();
     });
   });

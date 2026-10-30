@@ -9,6 +9,7 @@ export const RECIPE_FIXES_2026_10_MARKER = 'recipe_steps_2026_10';
 const after = (targetS: number, maxS: number): Trigger => ({ kind: 'after', targetS, maxS });
 const LOW: Trigger = { kind: 'low' };
 const A = after(20, 30);
+const GABI = [null, after(40, 40), LOW, LOW, LOW, LOW, LOW, LOW];
 
 interface Fix {
   name: string;
@@ -18,6 +19,7 @@ interface Fix {
   tol?: number;
   tempC?: number;
   triggers?: Trigger[]; // per pour; the first is always null
+  blooms?: boolean[]; // per pour
   dropTags?: string[];
 }
 
@@ -27,13 +29,13 @@ export const RECIPE_FIXES: Fix[] = [
   { name: "Bean's Beans Standard", shares: [0.205, 0.181, 0.302, 0.311], targets: [16.7], tol: 0.5, triggers: [null, A, A, LOW] },
   { name: "Bean's Beans Floral", shares: [0.189, 0.167, 0.287, 0.358], targets: [18], tol: 0.5, triggers: [null, A, A, LOW] },
   { name: "Bean's Beans Joocy", shares: [0.209, 0.178, 0.192, 0.15, 0.278], targets: [15.5], tol: 0.5, triggers: [null, A, A, LOW, LOW] },
-  { name: 'Double Yeet Bloom 3 Pour', shares: [0.205, 0.185, 0.607], targets: [16.7, 18], tol: 0.5, triggers: [null, A, LOW] },
+  { name: 'Double Yeet Bloom 3 Pour', shares: [0.205, 0.185, 0.607], targets: [16.7, 18], tol: 0.5, blooms: [true, true, false], triggers: [null, A, A] },
   { name: 'Standard 3 Pour', shares: [0.205, 0.386, 0.399], targets: [15, 16.7, 18], tol: 0.5, dropTags: ['3 pours'] },
   { name: 'Lance Hedrick 2 Pour', shares: [0.207, 0.793] },
   { name: 'Standard 5 Pour', equalSplit: true, targets: [15, 16.7, 18], tol: 0.5 },
-  // Gabi Master A controls the flow (controlsFlow), so only its ratio is set.
-  { name: 'Gabi Standard (bloom)', targets: [18], tol: 0.5 },
-  { name: 'Gabi Gentle (bloom)', targets: [16.7], tol: 0.5, dropTags: ['Gentle'] }
+  // Gabi Master A controls the flow (controlsFlow): matching ignores triggers, so they only shape the steps (spare entries cover more pours).
+  { name: 'Gabi Standard (bloom)', targets: [18], tol: 0.5, triggers: GABI },
+  { name: 'Gabi Gentle (bloom)', targets: [16.7], tol: 0.5, triggers: GABI, dropTags: ['Gentle'] }
 ];
 const SHOEBOX = { equalSplit: true, tol: 0.5, triggers: [null, after(30, 30), LOW, LOW] as Trigger[] };
 
@@ -42,6 +44,7 @@ function fixDef(def: Def, f: Omit<Fix, 'name' | 'dropTags'>): Def {
   def.pours.forEach((p: Def, i: number) => {
     if (f.shares && f.shares.length === def.pours.length) Object.assign(p, { share: f.shares[i], grams: null });
     if (f.triggers) p.trigger = f.triggers[i] ?? null;
+    if (f.blooms) p.bloom = f.blooms[i] ?? false;
   });
   if (f.equalSplit) def.equalSplit = true;
   if (f.tempC != null) def.tempC = f.tempC;

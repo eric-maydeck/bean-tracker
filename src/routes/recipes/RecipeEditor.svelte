@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Trigger } from '$lib/recipes';
+  import { convertAmounts, defaultTrigger, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Trigger } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -84,7 +84,7 @@
   function add() {
     const last = copy.pours.at(-1);
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
-    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, trigger: { kind: 'after', targetS: 20, maxS: 20 } });
+    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, trigger: defaultTrigger(copy, copy.pours.length) });
     custom.length = copy.pours.length - 1;
     fit();
   }
