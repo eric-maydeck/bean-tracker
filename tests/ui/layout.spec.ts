@@ -2894,9 +2894,9 @@ export const STATES: State[] = [
         }
       },
       {
-        // Trigger chips per pour (pour 1 has none), Custom's two number inputs, Water low, Equal shares hiding amounts,
+        // Length chips per step (the last reads Until drained), Custom's two number inputs, Water low, Equal shares hiding amounts,
         // the ratio list, the temperature help, nothing focused, and a too-small Up to rejected on Save.
-        name: 'recipes-edit-triggers',
+        name: 'recipes-edit-lengths',
         path: () => '/recipes',
         act: async (page: Page) => {
           await panel(page, 'Found in your brews').locator('li.item').first().getByRole('button', { name: 'Edit', exact: true }).click();
@@ -2904,13 +2904,15 @@ export const STATES: State[] = [
           await expect(pours).toHaveCount(4);
           expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
           await expect(pours.nth(0)).toContainText('Starts at 0:00');
-          await expect(pours.nth(0).getByRole('radiogroup')).toHaveCount(0);
-          const group = page.getByRole('radiogroup', { name: 'Pour 2 starts' });
+          await expect(pours.nth(3).getByRole('radiogroup')).toHaveCount(0);
+          await expect(pours.nth(3)).toContainText('Until drained');
+          await expect(page.getByLabel('Bloom hold (s)')).toHaveCount(0);
+          const group = page.getByRole('radiogroup', { name: 'Pour 1 length' });
           for (const n of ['+20s', '+30s', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
           const steps = page.getByTestId('editor-steps');
           await group.getByText('Range', { exact: true }).click();
-          const target = pours.nth(1).getByLabel('Target', { exact: true });
-          const upTo = pours.nth(1).getByLabel('Up to', { exact: true });
+          const target = pours.nth(0).getByLabel('Target', { exact: true });
+          const upTo = pours.nth(0).getByLabel('Up to', { exact: true });
           await target.focus();
           await page.keyboard.press('ControlOrMeta+a');
           await page.keyboard.type('20');
@@ -2929,7 +2931,7 @@ export const STATES: State[] = [
             expect(Math.abs(tb.y + tb.height / 2 - (cb.y + cb.height / 2))).toBeLessThanOrEqual(1);
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
-          await expect(pours.nth(1).getByLabel('Target', { exact: true })).toHaveCount(0);
+          await expect(pours.nth(0).getByLabel('Target', { exact: true })).toHaveCount(0);
           // The flow-control note shows only for flow-controlling drippers (the seed has none; the text is unit-tested).
           await expect(page.getByTestId('flow-note')).toHaveCount(0);
           // Equal shares hides every amount input and the unit select.
@@ -2955,10 +2957,10 @@ export const STATES: State[] = [
           await target.fill('20');
           await upTo.fill('10');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(page.getByRole('alert')).toHaveText('Trigger time must be at least its target');
+          await expect(page.getByRole('alert')).toHaveText('Step length must be at least its target');
           await upTo.fill('');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(page.getByRole('alert')).toHaveText('Enter a trigger time');
+          await expect(page.getByRole('alert')).toHaveText('Enter a step length');
         }
       },
       {

@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, defaultTrigger, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Trigger } from '$lib/recipes';
+  import { convertAmounts, defaultLength, describeRecipe, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -62,35 +62,36 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
-  // Trigger chips: +20s / +30s are {after, n, n}; anything else after is Range, which also stays picked once chosen.
+  // Length chips: +20s / +30s are {time, n, n}; any other time is Range, which also stays picked once chosen.
   let custom = $state<boolean[]>([]);
-  const lastCustom: ({ kind: 'after'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
+  const lastCustom: ({ kind: 'time'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
   const chip = (i: number) => {
-    const t = copy.pours[i].trigger;
+    const t = copy.pours[i].length;
     if (t?.kind === 'low') return 'low';
     if (custom[i]) return 'custom';
-    if (t?.kind === 'after') return t.targetS === t.maxS && (t.targetS === 20 || t.targetS === 30) ? String(t.targetS) : 'custom';
+    if (t?.kind === 'time') return t.targetS === t.maxS && (t.targetS === 20 || t.targetS === 30) ? String(t.targetS) : 'custom';
     return '';
   };
   function setChip(i: number, c: string) {
-    const t = copy.pours[i].trigger;
-    if (custom[i] && t?.kind === 'after') lastCustom[i] = { ...t };
+    const t = copy.pours[i].length;
+    if (custom[i] && t?.kind === 'time') lastCustom[i] = { ...t };
     custom[i] = c === 'custom';
-    copy.pours[i].trigger = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'after' ? t : (lastCustom[i] ?? { kind: 'after', targetS: 20, maxS: 20 })) : { kind: 'after', targetS: +c, maxS: +c };
+    copy.pours[i].length = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'time' ? t : (lastCustom[i] ?? { kind: 'time', targetS: 20, maxS: 20 })) : { kind: 'time', targetS: +c, maxS: +c };
   }
   const chips = [['20', '+20s'], ['30', '+30s'], ['custom', 'Range'], ['low', 'Water low']];
-  const after = (i: number) => copy.pours[i].trigger as Extract<Trigger, { kind: 'after' }>;
+  const timed = (i: number) => copy.pours[i].length as Extract<Length, { kind: 'time' }>;
 
   function add() {
     const last = copy.pours.at(-1);
+    if (last && !last.length) last.length = defaultLength(copy, copy.pours.length); // the old last step now has a next one
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
-    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, trigger: defaultTrigger(copy, copy.pours.length) });
+    copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, length: null });
     custom.length = copy.pours.length - 1;
     fit();
   }
   function move(i: number, d: -1 | 1) {
     const [a, b] = [copy.pours[i], copy.pours[i + d]];
-    [a.startS, b.startS, a.durationS, b.durationS, a.trigger, b.trigger] = [b.startS, a.startS, b.durationS, a.durationS, b.trigger, a.trigger]; // timing and triggers stay by position
+    [a.startS, b.startS, a.durationS, b.durationS, a.length, b.length] = [b.startS, a.startS, b.durationS, a.durationS, b.length, a.length]; // timing and lengths stay by position
     [custom[i], custom[i + d]] = [custom[i + d], custom[i]];
     copy.pours[i] = b;
     copy.pours[i + d] = a;
@@ -139,8 +140,6 @@
         </select>
       </div>
     {/if}
-    <div class="form-field a-hold"><label for="re-hold">Bloom hold (s)</label><input id="re-hold" type="number" min="0" step="any" bind:value={copy.bloomHoldS} /></div>
-    <div class="form-field a-tol"><label for="re-holdtol">± (s)</label><input id="re-holdtol" type="number" min="0" step="any" bind:value={copy.bloomHoldTolS} /></div>
   </div>
 
   <div class="form-field-checkbox"><label><input type="checkbox" bind:checked={copy.anySpeed} /> Pour speed doesn't matter</label></div>
@@ -170,11 +169,12 @@
           <button class="icon-button" type="button" aria-label="Remove" onclick={() => { copy.pours.splice(i, 1); custom.splice(i, 1); fit(); }}><Icon name="x" /></button>
         </span>
       </div>
-      {#if i === 0}
-        <p class="starts">Starts at 0:00</p>
+      {#if i === 0}<p class="starts">Starts at 0:00</p>{/if}
+      {#if i === copy.pours.length - 1}
+        <p class="starts">Until drained</p>
       {:else}
         <div class="trigger">
-          <div class="chips" role="radiogroup" aria-label="Pour {i + 1} starts">
+          <div class="chips" role="radiogroup" aria-label="Pour {i + 1} length">
             {#each chips as [v, label] (v)}
               <label class="chip"><input type="radio" name="re-trig{i}" value={v} checked={chip(i) === v} onchange={() => setChip(i, v)} />{label}</label>
             {/each}
@@ -183,11 +183,11 @@
             <div class="range">
               <div class="form-field">
                 <label for="re-ta{i}">Target</label>
-                <div class="with-unit"><input id="re-ta{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).targetS, (v) => (after(i).targetS = v as number)} />s</div>
+                <div class="with-unit"><input id="re-ta{i}" type="number" min="1" max="600" step="any" bind:value={() => timed(i).targetS, (v) => (timed(i).targetS = v as number)} />s</div>
               </div>
               <div class="form-field">
                 <label for="re-tm{i}">Up to</label>
-                <div class="with-unit"><input id="re-tm{i}" type="number" min="1" max="600" step="any" bind:value={() => after(i).maxS, (v) => (after(i).maxS = v as number)} />s</div>
+                <div class="with-unit"><input id="re-tm{i}" type="number" min="1" max="600" step="any" bind:value={() => timed(i).maxS, (v) => (timed(i).maxS = v as number)} />s</div>
               </div>
             </div>
           {/if}
@@ -309,12 +309,12 @@
   .editor :global(.form-actions) { margin-top: 0; }
   .editor :global(.button) { margin: 0; }
   @media (max-width: 1100px) {
-    /* Phones (either way up): Name over Pour amounts beside the taller Note tags, then Bloom hold and its ± on one row. */
-    .top { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'name tags' 'unit tags' 'hold tol'; }
-    .a-name { grid-area: name; } .a-tags { grid-area: tags; } .a-unit { grid-area: unit; } .a-hold { grid-area: hold; } .a-tol { grid-area: tol; }
+    /* Phones (either way up): Name over Pour amounts beside the taller Note tags. */
+    .top { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: 'name tags' 'unit tags'; }
+    .a-name { grid-area: name; } .a-tags { grid-area: tags; } .a-unit { grid-area: unit; }
   }
   @media (max-width: 640px) {
-    .top { grid-template-areas: 'name name' 'unit unit' 'tags tags' 'hold tol'; }
+    .top { grid-template-areas: 'name name' 'unit unit' 'tags tags'; }
     .form-field input:not([type='checkbox']),
     .form-field select { min-height: 44px; box-sizing: border-box; }
     .trigger { --h: 44px; }
