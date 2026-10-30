@@ -284,39 +284,39 @@
   <div class="grid settings">
     <div class="form-field"><label for="re-cmin">Pour count min</label><input id="re-cmin" type="number" min="1" step="1" bind:value={copy.pourCount.min} /></div>
     <div class="form-field"><label for="re-cmax">Pour count max</label><input id="re-cmax" type="number" min="1" step="1" bind:value={copy.pourCount.max} /></div>
-    <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
     <div class="form-field">
       <div class="label-row">
-        <label for="re-temp">Temperature (°C)</label>
+        <label for="re-temp">Temp (°C)</label>
         <button type="button" class="mode-tip-button" popovertarget="re-temp-help" aria-label="About temperature" aria-describedby="re-temp-help"><Icon name="question" /></button>
       </div>
       <div class="mode-tip" id="re-temp-help" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Temperature', lines: ['A brew within ±2°C of this matches.', 'The ±2°C is fixed.'] }} /></div>
       <input id="re-temp" type="number" step="any" bind:value={copy.tempC} />
     </div>
+    <div class="form-field"><label for="re-ratiotol">Ratio ±</label><input id="re-ratiotol" type="number" step="any" bind:value={copy.ratio.tol} /></div>
+    <div class="form-field ratios">
+      <span class="label" id="re-ratios-label">Ratios</span>
+      <div class="rrow" role="group" aria-labelledby="re-ratios-label">
+        {#each copy.ratio.targets as t (t)}
+          <span class="rcell">
+            <strong>1:{fmtRatio(t)}</strong>
+            <button class="icon-button" type="button" aria-label="Remove 1:{fmtRatio(t)}" disabled={copy.ratio.targets.length <= 1} onclick={() => removeRatio(t)}><Icon name="x" /></button>
+          </span>
+        {/each}
+        <span class="radd">
+        <span class="form-field box pref">
+          <span class="pre" aria-hidden="true">1:</span>
+          <input id="re-ratio" type="text" inputmode="decimal" autocomplete="off" aria-label="New ratio, water per 1 of coffee" placeholder="16" bind:value={ratioText}
+            onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRatio(); } }}
+            oninput={() => (ratioShow &&= ratioBad())} onblur={() => (ratioShow = ratioBad())} />
+        </span>
+        <button class="button button-secondary" type="button" onclick={addRatio} disabled={copy.ratio.targets.length >= 5}>Add</button>
+        </span>
+      </div>
+      {#if ratioShow && ratioBad()}<small class="fld-err">Ratio must be between 1:5 and 1:30</small>{/if}
+    </div>
     <div class="form-field notes">
       <label for="re-notes">Notes</label>
       <input id="re-notes" maxlength="40" value={copy.notes ?? ''} oninput={(e) => (copy.notes = e.currentTarget.value || null)} />
-    </div>
-    <div class="form-field ratios">
-      <span class="label" id="re-ratios-label">Ratios</span>
-      <ul class="bn-list" aria-labelledby="re-ratios-label">
-        {#each copy.ratio.targets as t (t)}
-          <li>
-            <div class="bn-row">
-              <strong class="bn-dose">1:{fmtRatio(t)}</strong>
-              <button class="button button-ghost button-icon" type="button" aria-label="Remove 1:{fmtRatio(t)}" disabled={copy.ratio.targets.length <= 1} onclick={() => removeRatio(t)}><Icon name="x" /></button>
-            </div>
-          </li>
-        {/each}
-      </ul>
-      <div class="bn-add">
-        <span aria-hidden="true">1:</span>
-        <input id="re-ratio" type="text" inputmode="decimal" autocomplete="off" aria-label="New ratio, water per 1 of coffee" placeholder="16" bind:value={ratioText}
-          onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRatio(); } }}
-          oninput={() => (ratioShow &&= ratioBad())} onblur={() => (ratioShow = ratioBad())} />
-        <button class="button button-secondary" type="button" onclick={addRatio} disabled={copy.ratio.targets.length >= 5}>Add</button>
-      </div>
-      {#if ratioShow && ratioBad()}<small class="fld-err">Ratio must be between 1:5 and 1:30</small>{/if}
     </div>
   </div>
 
@@ -346,13 +346,17 @@
   .editor { --h: 2.5rem; gap: var(--space-2); }
   .grid > :global(.form-field) { margin-bottom: 0; }
   .settings { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
-  .notes { grid-column: 1 / -1; }
-  .ratios { grid-column: 1 / -1; }
+  .notes, .ratios { grid-column: 1 / -1; }
   .label { font-weight: 600; font-size: 0.9rem; }
-  .ratios :global(.bn-list) { margin: 0; }
-  .ratios :global(.bn-add) { margin: var(--space-1) 0 0; }
-  .ratios :global(.bn-add input) { height: var(--h); box-sizing: border-box; }
-  .ratios :global(.bn-add .button) { height: var(--h); padding-block: 0; }
+  .rrow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .rcell { display: inline-flex; align-items: center; gap: var(--space-1); height: var(--h); box-sizing: border-box; padding-left: var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); }
+  .rcell .icon-button { border: 0; background: none; width: var(--h); height: var(--h); }
+  .rcell .icon-button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .radd { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .pref { position: relative; width: 6rem; }
+  .pre { position: absolute; left: var(--space-2); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
+  .editor :global(.form-field.pref input:not([type='checkbox'])) { padding-left: 1.75rem; width: 100%; }
+  .radd :global(.button) { height: var(--h); padding-block: 0; }
   .fld-err { color: var(--color-urgent); font-size: 0.75rem; }
   .toggles { display: grid; gap: 0; }
   select:disabled { opacity: 0.5; cursor: not-allowed; }

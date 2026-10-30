@@ -3044,14 +3044,14 @@ export const STATES: State[] = [
           await expect(unitSel).toBeEnabled();
           await expect(pours.getByLabel('Grams')).toHaveCount(4);
           // Ratio list: staged rows with an x, an input with a 1: prefix and Add.
-          const rlist = page.locator('.ratios .bn-list li');
+          const rlist = page.locator('.ratios .rcell');
           const n0 = await rlist.count();
           expect(n0).toBeGreaterThanOrEqual(1);
           const rin = page.locator('#re-ratio');
           await rin.fill('17.5');
           await page.getByRole('button', { name: 'Add', exact: true }).click();
           await expect(rlist).toHaveCount(n0 + 1);
-          await expect(page.locator('.ratios .bn-list')).toContainText('1:17.5');
+          await expect(page.locator('.ratios .rrow')).toContainText('1:17.5');
           await rin.fill('17.5'); // a duplicate is ignored
           await rin.press('Enter');
           await expect(rlist).toHaveCount(n0 + 1);
@@ -3075,32 +3075,45 @@ export const STATES: State[] = [
           while ((await rlist.count()) > 1) await rlist.first().getByRole('button').click();
           await expect(rlist.first().getByRole('button')).toBeDisabled();
           await expect(rlist).toHaveCount(1);
-          // The settings block sits on one grid: the first row's four fields share the row's top and a height; Ratios and Notes
-          // start at the first and third column edges, and nothing runs past the editor.
+          // The settings block sits on one grid: row 1 is min, max, Temperature, Ratio ± (equal widths and heights, one row top, or
+          // two columns when wrapped); Ratios, then Notes, start at the first column's edge and run to the last column's; nothing
+          // runs past the editor.
           const edit = await box(page.locator('form.editor'));
-          const cols = [page.locator('#re-cmin'), page.locator('#re-cmax'), page.locator('#re-ratiotol'), page.locator('#re-temp')];
+          const cols = [page.locator('#re-cmin'), page.locator('#re-cmax'), page.locator('#re-temp'), page.locator('#re-ratiotol')];
           const cb = [];
           for (const c of cols) cb.push(await box(c));
           expect(Math.max(...cb.map((b) => b.height)) - Math.min(...cb.map((b) => b.height))).toBeLessThanOrEqual(1);
-          const sameRow = Math.abs(cb[0].y - cb[3].y) < 4;
-          if (sameRow) {
-            for (const b of cb) expect(Math.abs(b.y - cb[0].y)).toBeLessThanOrEqual(1);
-            expect(Math.abs(cb[1].width - cb[0].width), 'equal column widths').toBeLessThanOrEqual(1);
-          } else expect(Math.abs(cb[0].x - cb[2].x), 'two columns share edges').toBeLessThanOrEqual(1);
+          expect(Math.abs(cb[1].width - cb[0].width), 'equal column widths').toBeLessThanOrEqual(1);
+          if (Math.abs(cb[0].y - cb[3].y) < 4) for (const b of cb) expect(Math.abs(b.y - cb[0].y)).toBeLessThanOrEqual(1);
+          else expect(Math.abs(cb[0].x - cb[2].x), 'two columns share edges').toBeLessThanOrEqual(1);
+          // Labels of fields sharing a row sit on one line (no wrapped label pushing its box down).
+          const lab = async (id: string) => (await box(page.locator(`label[for=${id}]`))).y;
+          expect(Math.abs((await lab('re-cmin')) - (await lab('re-cmax'))), 'min/max labels level').toBeLessThanOrEqual(1);
+          expect(Math.abs((await lab('re-temp')) - (await lab('re-ratiotol'))), 'Temp/± labels level').toBeLessThanOrEqual(1);
+          expect(Math.abs(cb[2].y - cb[3].y), 'Temp/± boxes level').toBeLessThanOrEqual(1);
           const ratiosB = await box(page.locator('.ratios'));
           const notesB = await box(page.locator('.notes'));
-          // Notes and Ratios start at the first column's edge, Notes runs the full width of the four fields.
-          expect(Math.abs(ratiosB.x - cb[0].x), 'Ratios left edge = first column').toBeLessThanOrEqual(1);
-          expect(Math.abs(notesB.x - cb[0].x), 'Notes left edge = first column').toBeLessThanOrEqual(1);
-          expect(Math.abs(notesB.x + notesB.width - Math.max(...cb.map((b) => b.x + b.width))), 'Notes right edge = last column').toBeLessThanOrEqual(1);
-          expect(ratiosB.y, 'Ratios below Notes').toBeGreaterThan(notesB.y + notesB.height - 1);
-          for (const b of [...cb, ratiosB, notesB, await box(rin), await box(page.getByRole('button', { name: 'Add', exact: true }))]) {
+          const right = Math.max(...cb.map((b) => b.x + b.width));
+          for (const [n, b] of [['Ratios', ratiosB], ['Notes', notesB]] as const) {
+            expect(Math.abs(b.x - cb[0].x), `${n} left edge = first column`).toBeLessThanOrEqual(1);
+            expect(Math.abs(b.x + b.width - right), `${n} right edge = last column`).toBeLessThanOrEqual(1);
+          }
+          expect(ratiosB.y, 'Ratios below the settings row').toBeGreaterThan(cb[3].y + cb[3].height - 1);
+          expect(notesB.y, 'Notes below Ratios').toBeGreaterThan(ratiosB.y + ratiosB.height - 1);
+          // The ratio cells, the 1: input and Add share one wrapping row (here a single cell: all on one line), at the control height.
+          const cellB = await box(rlist.first());
+          const addBtn = await box(page.getByRole('button', { name: 'Add', exact: true }));
+          const addBox = await box(rin);
+          for (const b of [addBox, addBtn]) expect(Math.abs(b.y + b.height / 2 - (cellB.y + cellB.height / 2)), 'cell, input and Add level').toBeLessThanOrEqual(1);
+          expect(Math.max(cellB.height, addBox.height, addBtn.height) - Math.min(cellB.height, addBox.height, addBtn.height), 'one control height').toBeLessThanOrEqual(1);
+          // The 1: prefix lives inside the input's box.
+          const pre = await box(page.locator('.ratios .pre'));
+          expect(pre.x).toBeGreaterThanOrEqual(addBox.x);
+          expect(pre.x + pre.width).toBeLessThan(addBox.x + addBox.width);
+          for (const b of [...cb, ratiosB, notesB, addBox, addBtn, cellB]) {
             expect(b.x + b.width, 'inside the editor').toBeLessThanOrEqual(edit.x + edit.width + 0.5);
             expect(b.x, 'inside the editor').toBeGreaterThanOrEqual(edit.x - 0.5);
           }
-          const addBox = await box(rin);
-          const addBtn = await box(page.getByRole('button', { name: 'Add', exact: true }));
-          expect(Math.abs(addBox.height - addBtn.height), 'input and Add the same height').toBeLessThanOrEqual(1);
           // Temperature help.
           await page.getByRole('button', { name: 'About temperature' }).click();
           await expect(page.locator('#re-temp-help')).toContainText('±2°C');
