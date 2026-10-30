@@ -480,7 +480,7 @@ describe('recipeTimeline triggers', () => {
   it('places timed pours from the previous start and draws their windows', () => {
     const tl = recipeTimeline(timed([null, after(20, 30), after(20, 30), { kind: 'low' }], [0.3, null, null, 90]));
     expect(tl.pours.map((p) => p.startS)).toEqual([0.3, 20.3, 40.3, 90]);
-    expect(tl.windows).toEqual([{ fromS: 20.3, toS: 30.3 }, { fromS: 40.3, toS: 50.3 }]);
+    expect(tl.windows).toEqual([{ fromS: 20.3, toS: 30.3, pour: 0 }, { fromS: 40.3, toS: 50.3, pour: 1 }]);
   });
   it('legacy triggers leave the chain unchanged and draw no windows', () => {
     const tl = recipeTimeline(timed([null, null, null, null], [null, null, 12, null]));
@@ -489,8 +489,8 @@ describe('recipeTimeline triggers', () => {
   });
   it('triggerWindows skips low/legacy steps and steps past the starts given', () => {
     const d = timed([null, after(20, 30), { kind: 'low' }, after(10, 10)], [0, null, null, null]);
-    expect(triggerWindows(d, [0, 25, 60])).toEqual([{ fromS: 20, toS: 30 }]);
-    expect(triggerWindows(d, [0, 25, 60, 70])).toEqual([{ fromS: 20, toS: 30 }, { fromS: 70, toS: 70 }]);
+    expect(triggerWindows(d, [0, 25, 60])).toEqual([{ fromS: 20, toS: 30, pour: 0 }]);
+    expect(triggerWindows(d, [0, 25, 60, 70])).toEqual([{ fromS: 20, toS: 30, pour: 0 }, { fromS: 70, toS: 70, pour: 2 }]);
   });
 });
 

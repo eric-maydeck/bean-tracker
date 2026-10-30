@@ -338,8 +338,8 @@
   .swatch.fast { background: var(--series-1-ink); }
   .swatch.slow { background: var(--series-6); }
   .swatch.window {
-    background: color-mix(in srgb, var(--series-7) 35%, transparent);
-    border-left: 2px solid var(--series-7-ink);
+    background: color-mix(in srgb, var(--series-4) 30%, transparent);
+    border-left: 2px solid var(--series-4);
     border-radius: 0;
   }
   .swatch.swirl {

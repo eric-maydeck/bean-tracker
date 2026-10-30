@@ -2704,7 +2704,11 @@ export const STATES: State[] = [
           const chart = page.locator(`#recipe-${s.recipes.recipeId} .pour-timeline`).first();
           await expect(chart.locator('rect.window')).toHaveCount(2);
           await expect(chart.locator('line.target')).toHaveCount(2);
-          await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('Bloom target');
+          // Hovering a band says how long the bloom before it lasts.
+          await chart.locator('rect.window').first().hover();
+          await expect(page.getByText(/^Bloom ends \d:\d\d–\d:\d\d$/)).toBeVisible();
+          await page.mouse.move(0, 0);
+          await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('Bloom length');
           // Brew rows align with the recipe (same pour count), so they carry bands too.
           await expect(rows(page)).toHaveCount(3);
           for (const r of await rows(page).all()) {

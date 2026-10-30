@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Timeline } from '$lib/pours';
+  import { labelTip } from '$lib/components/labelTip';
   let { timeline, label, compact = false }: { timeline: Timeline; label: string; compact?: boolean } = $props();
 
   // Cumulative water: x = time, y = water poured so far (0 to the timeline's total grams). Each pour is a filled
@@ -15,6 +16,11 @@
   const edge = (px: number) => Math.min(W - 6, Math.max(6, px)); // keep a swirl at either end inside the box
   const y = (g: number) => H - 1 - (g / water) * (H - 4);
   const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
+
+  // Hover or tap on a band: how long the pour before it lasts. labelTip attaches to any element (SVG ones included).
+  const endsLabel = (w: NonNullable<Timeline['windows']>[number]) =>
+    `${timeline.pours[w.pour]?.kind === 'bloom' ? 'Bloom' : `Pour ${w.pour + 1}`} ends ${mmss(w.fromS)}–${mmss(w.toS)}`;
+  const endTip = (node: SVGElement, label: string) => labelTip(node as unknown as HTMLElement, label);
 
   const shapes = $derived.by(() => {
     let level = 0;
@@ -38,7 +44,7 @@
   <svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" role="img" aria-label={label} style="height:{H}px">
     {#each timeline.windows ?? [] as w, i (i)}
       {#if w.toS > w.fromS}
-        <rect class="window" x={x(w.fromS)} y="0" width={Math.min(W, x(w.toS)) - x(w.fromS)} height={H} />
+        <rect class="window" x={x(w.fromS)} y="0" width={Math.min(W, x(w.toS)) - x(w.fromS)} height={H} use:endTip={endsLabel(w)} />
       {/if}
       <line class="target" x1={x(w.fromS)} x2={x(w.fromS)} y1="0" y2={H} vector-effect="non-scaling-stroke" />
     {/each}
@@ -73,13 +79,13 @@
     stroke: var(--color-text-muted);
     stroke-width: 1.5;
   }
-  /* Trigger window: a pale full-height band behind the pours, with a solid thin tick where the target begins. */
+  /* Bloom length: a pale full-height band in the bloom's color behind the pours, with a thin tick where the target ends. */
   .window {
-    fill: var(--series-7);
-    opacity: 0.35;
+    fill: var(--series-4);
+    opacity: 0.3;
   }
   .target {
-    stroke: var(--series-7-ink);
+    stroke: var(--series-4);
     stroke-width: 2;
   }
   .seg.bloom {
