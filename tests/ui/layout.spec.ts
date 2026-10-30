@@ -3075,6 +3075,20 @@ export const STATES: State[] = [
           while ((await rlist.count()) > 1) await rlist.first().getByRole('button').click();
           await expect(rlist.first().getByRole('button')).toBeDisabled();
           await expect(rlist).toHaveCount(1);
+          // At 5 ratios the input and Add are disabled (and unfocusable); hovering the pair says why; removing one re-enables both.
+          const addButton = page.getByRole('button', { name: 'Add', exact: true });
+          for (const v of ['7', '8', '9', '10']) { await rin.fill(v); await rin.press('Enter'); }
+          await expect(rlist).toHaveCount(5);
+          await expect(rin).toBeDisabled();
+          await expect(addButton).toBeDisabled();
+          await page.locator('.radd').hover();
+          await expect(page.getByText('Remove one to add another.', { exact: true })).toBeVisible();
+          await page.keyboard.press('Escape');
+          await page.getByRole('button', { name: 'Remove 1:10' }).click();
+          await expect(rlist).toHaveCount(4);
+          await expect(rin).toBeEnabled();
+          await expect(addButton).toBeEnabled();
+          while ((await rlist.count()) > 1) await rlist.last().getByRole('button').click();
           // The settings block sits on one grid: row 1 is min, max, Temperature, Ratio ± (equal widths and heights, one row top, or
           // two columns when wrapped); Ratios, then Notes, start at the first column's edge and run to the last column's; nothing
           // runs past the editor.

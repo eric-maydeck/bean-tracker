@@ -5,6 +5,7 @@
   import Icon from '$lib/components/Icon.svelte';
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
+  import { labelTip } from '$lib/components/labelTip';
   import { placeTip } from '$lib/components/modeTip';
   import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, parseRatioTarget, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
@@ -74,6 +75,8 @@
     ratioText = '';
     ratioShow = false;
   }
+  const maxed = $derived(copy.ratio.targets.length >= 5);
+  const fullTip = { title: 'Up to 5 ratios', lines: ['Remove one to add another.'] };
   const removeRatio = (t: number) => copy.ratio.targets.length > 1 && (copy.ratio.targets = copy.ratio.targets.filter((x) => x !== t));
 
   // The length row, one state per pour: the selected button ('low', a chip's seconds, 'custom', 'range') and the three boxes.
@@ -302,14 +305,14 @@
             <button class="icon-button" type="button" aria-label="Remove 1:{fmtRatio(t)}" disabled={copy.ratio.targets.length <= 1} onclick={() => removeRatio(t)}><Icon name="x" /></button>
           </span>
         {/each}
-        <span class="radd">
+        <span class="radd" class:full={maxed} use:labelTip={maxed ? fullTip : null}>
         <span class="form-field box pref">
           <span class="pre" aria-hidden="true">1:</span>
-          <input id="re-ratio" type="text" inputmode="decimal" autocomplete="off" aria-label="New ratio, water per 1 of coffee" placeholder="16" bind:value={ratioText}
+          <input id="re-ratio" type="text" inputmode="decimal" autocomplete="off" aria-label="New ratio, water per 1 of coffee" placeholder="16" disabled={maxed} bind:value={ratioText}
             onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRatio(); } }}
             oninput={() => (ratioShow &&= ratioBad())} onblur={() => (ratioShow = ratioBad())} />
         </span>
-        <button class="button button-secondary" type="button" onclick={addRatio} disabled={copy.ratio.targets.length >= 5}>Add</button>
+        <button class="button button-secondary" type="button" onclick={addRatio} disabled={maxed}>Add</button>
         </span>
       </div>
       {#if ratioShow && ratioBad()}<small class="fld-err">Ratio must be between 1:5 and 1:30</small>{/if}
@@ -353,6 +356,8 @@
   .rcell .icon-button { border: 0; background: none; width: var(--h); height: var(--h); }
   .rcell .icon-button:disabled { opacity: 0.4; cursor: not-allowed; }
   .radd { display: inline-flex; align-items: center; gap: var(--space-2); }
+  .radd.full > :global(*) { pointer-events: none; } /* the wrapper takes the hover and tap, so its tip opens over the disabled pair */
+  .radd :global(input:disabled) { opacity: 0.5; }
   .pref { position: relative; width: 6rem; }
   .pre { position: absolute; left: var(--space-2); top: 50%; transform: translateY(-50%); color: var(--color-text-muted); pointer-events: none; }
   .editor :global(.form-field.pref input:not([type='checkbox'])) { padding-left: 1.75rem; width: 100%; }
