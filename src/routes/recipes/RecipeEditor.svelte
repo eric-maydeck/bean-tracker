@@ -6,7 +6,7 @@
   import PourTimeline from '$lib/components/PourTimeline.svelte';
   import TipBody from '$lib/components/TipBody.svelte';
   import { placeTip } from '$lib/components/modeTip';
-  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
+  import { convertAmounts, defaultLength, describeRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, flowNote, recipeTimeline, type RecipeDef, type Length } from '$lib/recipes';
   import { stepsText } from '$lib/recipeSteps';
 
   let {
@@ -62,31 +62,58 @@
     copy.pourCount.min = Math.min(copy.pourCount.min, copy.pours.length);
     copy.pourCount.max = Math.max(copy.pourCount.max, copy.pours.length);
   };
-  // Length chips: 20s / 30s / 45s / 1m are {time, n, n}; any other time is Range, which also stays picked once chosen.
-  let custom = $state<boolean[]>([]);
-  const lastCustom: ({ kind: 'time'; targetS: number; maxS: number } | undefined)[] = []; // the pair typed before leaving Custom
-  const chip = (i: number) => lengthChip(copy.pours[i].length, !!custom[i]);
-  function setChip(i: number, c: string) {
-    const t = copy.pours[i].length;
-    if (custom[i] && t?.kind === 'time') lastCustom[i] = { ...t };
-    custom[i] = c === 'custom';
-    copy.pours[i].length = c === 'low' ? { kind: 'low' } : c === 'custom' ? (t?.kind === 'time' ? t : (lastCustom[i] ?? { kind: 'time', targetS: 20, maxS: 20 })) : { kind: 'time', targetS: +c, maxS: +c };
+  // The length row, one state per pour: the selected button ('low', a chip's seconds, 'custom', 'range') and the three boxes.
+  // A box that holds a valid value selects its button; the length follows the selection.
+  type LenUi = { sel: string; text: string; tt: string; tm: string };
+  const uiOf = (l: Length): LenUi => {
+    const sel = lengthChip(l);
+    const t = l?.kind === 'time' ? l : null;
+    return { sel, text: sel === 'custom' && t ? formatDuration(t.targetS) : '', tt: sel === 'range' && t ? String(t.targetS) : '', tm: sel === 'range' && t ? String(t.maxS) : '' };
+  };
+  /* svelte-ignore state_referenced_locally */
+  let ui = $state<LenUi[]>(def.pours.map((p) => uiOf(p.length)));
+  const chips: [string, string][] = [['low', 'Water low'], ...LENGTH_CHIP_SECONDS.map((s): [string, string] => [String(s), formatDuration(s)])];
+  function apply(i: number) {
+    const u = ui[i];
+    const time = (a: number, b: number): Length => ({ kind: 'time', targetS: a, maxS: b });
+    let l: Length = null;
+    if (u.sel === 'low') l = { kind: 'low' };
+    else if (/^\d+$/.test(u.sel)) l = time(+u.sel, +u.sel);
+    else if (u.sel === 'custom') {
+      const d = parseDuration(u.text);
+      if (d) l = time(d, d);
+    } else if (u.sel === 'range' && u.tt !== '' && u.tm !== '' && +u.tt > 0 && +u.tm > 0) l = time(+u.tt, +u.tm); // max below target: the parser says so on Save
+    copy.pours[i].length = l;
   }
-  const chips = [...LENGTH_CHIP_SECONDS.map((s) => [String(s), s === 60 ? '1m' : `${s}s`]), ['custom', 'Range'], ['low', 'Water low']];
-  const timed = (i: number) => copy.pours[i].length as Extract<Length, { kind: 'time' }>;
+  const pick = (i: number, v: string) => ((ui[i].sel = v), apply(i));
+  function typeCustom(i: number, text: string) {
+    ui[i].text = text;
+    if (parseDuration(text)) ui[i].sel = 'custom';
+    apply(i);
+  }
+  function typeRange(i: number, which: 'tt' | 'tm', v: string) {
+    ui[i][which] = v;
+    const [a, b] = [+ui[i].tt, +ui[i].tm];
+    if (ui[i].tt !== '' && ui[i].tm !== '' && a > 0 && b >= a) ui[i].sel = 'range';
+    apply(i);
+  }
+  const customBad = (i: number) => ui[i].text.trim() !== '' && parseDuration(ui[i].text) == null;
+  const rangeBad = (i: number) => ui[i].tt !== '' && ui[i].tm !== '' && +ui[i].tm < +ui[i].tt;
+  // A selected Custom or Range with no valid value leaves the step without a length: Save then says so.
+  const noLength = (i: number) => (ui[i].sel === 'custom' || ui[i].sel === 'range') && copy.pours[i].length == null;
 
   function add() {
     const last = copy.pours.at(-1);
     if (last && !last.length) last.length = defaultLength(copy, copy.pours.length); // the old last step now has a next one
     const start = last ? (last.startS ?? 0) + (last.durationS ?? 0) + 15 : 0;
     copy.pours.push({ bloom: false, grams: unit === 'g' ? 50 : null, share: unit === '%' ? 0.1 : null, speed: 'slow', rateGps: null, agitation: null, tool: null, swirlAfter: false, startS: start, durationS: 20, length: null });
-    custom.length = copy.pours.length - 1;
+    if (last && ui[copy.pours.length - 2]) ui[copy.pours.length - 2] = uiOf(last.length);
+    ui.push(uiOf(null));
     fit();
   }
   function move(i: number, d: -1 | 1) {
     const [a, b] = [copy.pours[i], copy.pours[i + d]];
     [a.startS, b.startS, a.durationS, b.durationS, a.length, b.length] = [b.startS, a.startS, b.durationS, a.durationS, b.length, a.length]; // timing and lengths stay by position
-    [custom[i], custom[i + d]] = [custom[i + d], custom[i]];
     copy.pours[i] = b;
     copy.pours[i + d] = a;
   }
@@ -95,7 +122,10 @@
   // What is saved: only the fields of the chosen unit, so a stale value never lingers.
   // A cleared ratio box is dropped so the parser answers "Add a ratio", not "Invalid recipe".
   const clean = $derived({ ...copy, ratio: { ...copy.ratio, targets: copy.ratio.targets.filter((t) => t != null) } });
-  const payload = $derived({ ...clean, pours: clean.pours.map((p) => (unit === 'g' ? { ...p, share: p.grams == null ? p.share : null } : { ...p, grams: p.share == null ? p.grams : null })) });
+  const payload = $derived({ ...clean, pours: clean.pours.map((q, i) => {
+    const p = i < clean.pours.length - 1 && noLength(i) ? { ...q, length: { kind: 'time', targetS: null, maxS: null } } : q; // the parser answers "Enter a step length"
+    return (unit === 'g' ? { ...p, share: p.grams == null ? p.share : null } : { ...p, grams: p.share == null ? p.grams : null });
+  }) });
 </script>
 
 <form
@@ -152,6 +182,9 @@
     {/each}
   </fieldset>
 
+  {#snippet pickChip(i: number, v: string, label: string)}
+    <label class="chip"><input type="radio" name="re-len{i}" value={v} checked={ui[i].sel === v} onchange={() => pick(i, v)} />{label}</label>
+  {/snippet}
   {#each copy.pours as p, i (i)}
     <fieldset class="pour">
       <legend>Pour {i + 1}</legend>
@@ -160,7 +193,7 @@
         <span class="tools">
           <button class="icon-button" type="button" aria-label="Move up" disabled={i === 0} onclick={() => move(i, -1)}><Icon name="arrow-up" /></button>
           <button class="icon-button" type="button" aria-label="Move down" disabled={i === copy.pours.length - 1} onclick={() => move(i, 1)}><Icon name="arrow-down" /></button>
-          <button class="icon-button" type="button" aria-label="Remove" onclick={() => { copy.pours.splice(i, 1); custom.splice(i, 1); fit(); }}><Icon name="x" /></button>
+          <button class="icon-button" type="button" aria-label="Remove" onclick={() => { copy.pours.splice(i, 1); ui.splice(i, 1); fit(); }}><Icon name="x" /></button>
         </span>
       </div>
       {#if i === 0}<p class="starts">Starts at 0:00</p>{/if}
@@ -170,21 +203,22 @@
         <div class="trigger">
           <div class="chips" role="radiogroup" aria-label="Pour {i + 1} length">
             {#each chips as [v, label] (v)}
-              <label class="chip"><input type="radio" name="re-trig{i}" value={v} checked={chip(i) === v} onchange={() => setChip(i, v)} />{label}</label>
+              {@render pickChip(i, v, label)}
             {/each}
+            <span class="pair">
+              {@render pickChip(i, 'custom', 'Custom')}
+              <input class="dur" aria-label="Pour {i + 1} custom length" placeholder="90s" autocomplete="off" value={ui[i].text} oninput={(e) => typeCustom(i, e.currentTarget.value)} />
+              <button type="button" class="mode-tip-button" popovertarget="re-ct-help{i}" aria-label="About custom length" aria-describedby="re-ct-help{i}"><Icon name="question" /></button>
+              <div class="mode-tip" id="re-ct-help{i}" popover onbeforetoggle={placeTip}><TipBody tip={{ title: 'Custom length', lines: ['Seconds or minutes: 90s, 2m, 1m30s.'] }} /></div>
+            </span>
+            <span class="pair">
+              {@render pickChip(i, 'range', 'Range')}
+              <span class="with-unit"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range from" value={ui[i].tt} oninput={(e) => typeRange(i, 'tt', e.currentTarget.value)} />s</span>
+              <span class="with-unit"><input type="number" min="1" max="600" step="any" aria-label="Pour {i + 1} range up to" value={ui[i].tm} oninput={(e) => typeRange(i, 'tm', e.currentTarget.value)} />s</span>
+            </span>
           </div>
-          {#if chip(i) === 'custom'}
-            <div class="range">
-              <div class="form-field">
-                <label for="re-ta{i}">Target</label>
-                <div class="with-unit"><input id="re-ta{i}" type="number" min="1" max="600" step="any" bind:value={() => timed(i).targetS, (v) => (timed(i).targetS = v as number)} />s</div>
-              </div>
-              <div class="form-field">
-                <label for="re-tm{i}">Up to</label>
-                <div class="with-unit"><input id="re-tm{i}" type="number" min="1" max="600" step="any" bind:value={() => timed(i).maxS, (v) => (timed(i).maxS = v as number)} />s</div>
-              </div>
-            </div>
-          {/if}
+          {#if customBad(i)}<small class="len-err">Use 90s, 2m or 1m30s</small>{/if}
+          {#if rangeBad(i)}<small class="len-err">Step length must be at least its target</small>{/if}
         </div>
       {/if}
       <div class="grid">
@@ -282,10 +316,11 @@
   .pour-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .check, .form-field-checkbox label { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; min-height: 44px; }
   .starts { margin: 0; color: var(--color-text-muted); }
-  .trigger { --h: 36px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-2); }
+  .trigger { --h: 36px; display: grid; gap: var(--space-1); }
+  .pair { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .dur { width: 6rem; height: var(--h); min-height: var(--h); box-sizing: border-box; }
+  .len-err { color: var(--color-urgent); }
   .chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-  .range { display: inline-flex; gap: var(--space-2); }
-  .range .form-field { margin-bottom: 0; }
   .with-unit { display: flex; align-items: center; gap: var(--space-1); }
   .with-unit input { width: 4.5rem; height: var(--h); min-height: var(--h); box-sizing: border-box; }
   .chip { position: relative; display: inline-flex; align-items: center; justify-content: center; height: var(--h); padding: 0 var(--space-2); border: 1px solid var(--color-border); border-radius: var(--radius); background: var(--color-surface); font-weight: 400; white-space: nowrap; cursor: pointer; }

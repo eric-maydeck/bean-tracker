@@ -3,7 +3,7 @@ import { timelineOf, type Pour, type PourReading } from './pours';
 import {
   middleHalf,
   fmtRange,
-  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, LENGTH_CHIP_SECONDS, lengthChip, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
+  convertAmounts, describeRecipe, draftFromReadings, controlsFlow, defaultLength, fitRecipe, LENGTH_CHIP_SECONDS, lengthChip, parseDuration, formatDuration, flowNote, matchBrew, hasWord, noteTag, parseRecipeDef, parseRecipeInput, recipeTimeline, triggerWindows, withDefaults,
   type Length, type Recipe, type RecipeDef, type RecipePour
 } from './recipes';
 
@@ -624,15 +624,28 @@ describe('lengthChip', () => {
   const t = (a: number, b = a): Length => ({ kind: 'time', targetS: a, maxS: b });
   it('offers 20s, 30s, 45s and 1m', () => expect(LENGTH_CHIP_SECONDS).toEqual([20, 30, 45, 60]));
   it('a fixed length matching a chip selects it', () => {
-    for (const s of LENGTH_CHIP_SECONDS) expect(lengthChip(t(s), false)).toBe(String(s));
+    for (const s of LENGTH_CHIP_SECONDS) expect(lengthChip(t(s))).toBe(String(s));
   });
-  it('anything else is Range, as is a chosen Range', () => {
-    expect(lengthChip(t(30, 60), false)).toBe('custom');
-    expect(lengthChip(t(25), false)).toBe('custom');
-    expect(lengthChip(t(30), true)).toBe('custom');
+  it('another fixed length is Custom, a span is Range', () => {
+    expect(lengthChip(t(75))).toBe('custom');
+    expect(lengthChip(t(25))).toBe('custom');
+    expect(lengthChip(t(30, 60))).toBe('range');
   });
   it('low and unset', () => {
-    expect(lengthChip({ kind: 'low' }, false)).toBe('low');
-    expect(lengthChip(null, false)).toBe('');
+    expect(lengthChip({ kind: 'low' })).toBe('low');
+    expect(lengthChip(null)).toBe('');
+  });
+});
+
+describe('parseDuration / formatDuration', () => {
+  it.each([['90s', 90], ['2m', 120], ['1m30s', 90], ['45S', 45], [' 1M30S ', 90], ['1m 30s', 90], ['0m45s', 45], ['10m', 600]])('parses %s', (x, n) =>
+    expect(parseDuration(x)).toBe(n));
+  it.each(['', '  ', '90', 's', '1.5m', '1m30', '30s1m', '-5s', '0s', '0m', '1m60s', '601s', '11m', 'abc', '1h'])('rejects "%s"', (x) =>
+    expect(parseDuration(x)).toBeNull());
+  it('formats under a minute as Ns, else NmNs or Nm', () => {
+    expect([50, 75, 90, 60, 120, 45].map(formatDuration)).toEqual(['50s', '1m15s', '1m30s', '1m', '2m', '45s']);
+  });
+  it('round-trips', () => {
+    for (const n of [1, 59, 60, 61, 125, 600]) expect(parseDuration(formatDuration(n))).toBe(n);
   });
 });

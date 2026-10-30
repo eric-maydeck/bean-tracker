@@ -397,9 +397,20 @@ export const controlsFlow = (def: Pick<RecipeDef, 'drippers'>) =>
   def.drippers.length > 0 && def.drippers.every((d) => FLOW_CONTROL_DRIPPERS.has(d));
 /** The fixed-length chips the editor offers (seconds); any other time is "Range". */
 export const LENGTH_CHIP_SECONDS = [20, 30, 45, 60];
-/** Which editor chip a length shows: a chip's seconds, 'custom' (Range), 'low' or '' (unset). `range`: Range was chosen. */
-export const lengthChip = (t: Length, range: boolean): string =>
-  t?.kind === 'low' ? 'low' : range ? 'custom' : t?.kind === 'time' ? (t.targetS === t.maxS && LENGTH_CHIP_SECONDS.includes(t.targetS) ? String(t.targetS) : 'custom') : '';
+/** Which editor button a length shows: a chip's seconds, 'custom' (one other time), 'range' (target below max), 'low' or '' (unset). */
+export const lengthChip = (t: Length): string =>
+  t?.kind === 'low' ? 'low' : t?.kind === 'time' ? (t.targetS !== t.maxS ? 'range' : LENGTH_CHIP_SECONDS.includes(t.targetS) ? String(t.targetS) : 'custom') : '';
+
+/** "90s", "2m" or "1m30s" (whole numbers, any case, spaces ignored) as seconds; null for anything else or outside 1s-10m. */
+export function parseDuration(text: string): number | null {
+  const m = /^(?:(\d+)m)?(?:(\d+)s)?$/.exec(text.replace(/\s+/g, '').toLowerCase());
+  if (!m || (m[1] == null && m[2] == null)) return null;
+  const s = (m[1] ? +m[1] * 60 : 0) + (m[2] ? +m[2] : 0);
+  return s >= 1 && s <= 600 && (m[2] == null || +m[2] < 60 || m[1] == null) ? s : null;
+}
+/** Seconds as "50s", "1m", "1m15s". */
+export const formatDuration = (s: number): string => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m${s % 60 ? `${s % 60}s` : ''}`);
+
 /** The length the step before a newly added pour (at `index`) gets: flow-controlling drippers pour from the 3rd pour on when the water is low. */
 export const defaultLength = (def: Pick<RecipeDef, 'drippers'>, index: number): Length =>
   index >= 2 && controlsFlow(def) ? { kind: 'low' } : { kind: 'time', targetS: 20, maxS: 20 };

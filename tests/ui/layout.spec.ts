@@ -2908,30 +2908,75 @@ export const STATES: State[] = [
           await expect(pours.nth(3)).toContainText('Until drained');
           await expect(page.getByLabel('Bloom hold (s)')).toHaveCount(0);
           const group = page.getByRole('radiogroup', { name: 'Pour 1 length' });
-          for (const n of ['20s', '30s', '45s', '1m', 'Range', 'Water low']) await expect(group.getByRole('radio', { name: n })).toBeAttached();
+          const names = ['Water low', '20s', '30s', '45s', '1m', 'Custom', 'Range'];
+          for (const n of names) await expect(group.getByRole('radio', { name: n, exact: true })).toBeAttached();
+          const labels = await group.locator('label.chip').allTextContents();
+          expect(labels).toEqual(names); // the order of the sketch
           const steps = page.getByTestId('editor-steps');
-          await group.getByText('Range', { exact: true }).click();
-          const target = pours.nth(0).getByLabel('Target', { exact: true });
-          const upTo = pours.nth(0).getByLabel('Up to', { exact: true });
-          await target.focus();
-          await page.keyboard.press('ControlOrMeta+a');
-          await page.keyboard.type('20');
-          await upTo.focus();
-          await page.keyboard.press('ControlOrMeta+a');
-          await page.keyboard.type('30');
+          const custom = group.getByLabel('Pour 1 custom length');
+          const target = group.getByLabel('Pour 1 range from');
+          const upTo = group.getByLabel('Pour 1 range up to');
+          // The drafted 20s step loads as the 20s chip, with all three boxes empty.
+          await expect(group.getByRole('radio', { name: '20s', exact: true })).toBeChecked();
+          await expect(target).toHaveValue('');
+          await expect(upTo).toHaveValue('');
+          await expect(custom).toHaveValue('');
+          // A chip selects alone; clicking it again keeps it selected (a step needs a length).
+          await group.getByText('45s', { exact: true }).click();
+          await expect(group.getByRole('radio', { name: '45s', exact: true })).toBeChecked();
+          await expect(group.getByRole('radio', { name: 'Range', exact: true })).not.toBeChecked();
+          await expect(steps).toContainText('0:45');
+          await group.getByText('45s', { exact: true }).click();
+          await expect(group.getByRole('radio', { name: '45s', exact: true })).toBeChecked();
+          // Custom: a valid value selects it; an invalid one shows the error and selects nothing.
+          await custom.fill('1m30s');
+          await expect(group.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+          await expect(steps).toContainText('1:30');
+          await group.getByText('30s', { exact: true }).click();
+          await custom.fill('abc');
+          await expect(pours.nth(0).getByText('Use 90s, 2m or 1m30s')).toBeVisible();
+          await expect(group.getByRole('radio', { name: '30s', exact: true })).toBeChecked();
+          await custom.fill('2M');
+          await expect(group.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+          await expect(pours.nth(0).getByText('Use 90s, 2m or 1m30s')).toHaveCount(0);
+          await expect(steps).toContainText('2:00');
+          // The Custom box has its tip (a popover, not a bare title).
+          await pours.nth(0).getByRole('button', { name: 'About custom length' }).click();
+          await expect(page.locator('#re-ct-help0')).toContainText('1m30s');
+          await page.keyboard.press('Escape');
+          // Range: both boxes valid select it; a max below the target shows the error and does not.
+          await group.getByText('Water low', { exact: true }).click();
+          await target.fill('20');
+          await upTo.fill('10');
+          await expect(pours.nth(0).getByText('Step length must be at least its target')).toBeVisible();
+          await expect(group.getByRole('radio', { name: 'Water low', exact: true })).toBeChecked();
+          await upTo.fill('30');
+          await expect(group.getByRole('radio', { name: 'Range', exact: true })).toBeChecked();
           await expect(steps).toContainText('0:20');
           await expect(steps).not.toContainText('(–');
-          // The two numbers are narrow and sit in the chips' row (wrapping below only when the row is full).
-          expect((await target.boundingBox())!.width).toBeLessThan(100);
-          // Boxes and chips line up: where they share a row, their vertical centres match.
+          // Layout: each box sits level with its own button, whatever the row's wrapping, and nothing overflows the step.
           const box = async (l: import('@playwright/test').Locator) => (await l.boundingBox())!;
-          const lastChip = group.locator('label.chip').last();
-          const [tb, cb] = [await box(target), await box(lastChip)];
-          if (tb.y < cb.y + cb.height && tb.y + tb.height > cb.y)
-            expect(Math.abs(tb.y + tb.height / 2 - (cb.y + cb.height / 2))).toBeLessThanOrEqual(1);
+          const level = async (a: import('@playwright/test').Locator, b: import('@playwright/test').Locator) => {
+            const [x, y] = [await box(a), await box(b)];
+            expect(Math.abs(x.y + x.height / 2 - (y.y + y.height / 2)), 'box level with its button').toBeLessThanOrEqual(1);
+          };
+          await level(custom, group.locator('label.chip', { hasText: 'Custom' }));
+          await level(target, group.locator('label.chip', { hasText: 'Range' }));
+          await level(upTo, group.locator('label.chip', { hasText: 'Range' }));
+          const fieldset = await box(pours.nth(0));
+          for (const l of [custom, target, upTo, ...(await group.locator('label.chip').all())]) {
+            const b = await box(l);
+            expect(b.x, 'inside the step, left').toBeGreaterThanOrEqual(fieldset.x - 0.5);
+            expect(b.x + b.width, 'inside the step, right').toBeLessThanOrEqual(fieldset.x + fieldset.width + 0.5);
+          }
+          expect((await box(target)).width).toBeLessThan(100);
+          // A cleared box of the selected Range leaves no length: Save says so.
+          await upTo.fill('');
+          await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
+          await expect(page.getByRole('alert')).toHaveText('Enter a step length');
+          await upTo.fill('30');
           await group.getByText('Water low', { exact: true }).click();
           await expect(steps).toContainText('Low');
-          await expect(pours.nth(0).getByLabel('Target', { exact: true })).toHaveCount(0);
           // The flow-control note shows only for flow-controlling drippers (the seed has none; the text is unit-tested).
           await expect(page.getByTestId('flow-note')).toHaveCount(0);
           // Equal shares hides every amount input and the unit select.
@@ -2952,15 +2997,11 @@ export const STATES: State[] = [
           await expect(page.locator('#re-temp-help')).toContainText('±2°C');
           await page.keyboard.press('Escape');
           expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe('INPUT');
-          // An Up to below its Target is rejected on Save.
+          // A max below the target is rejected on Save.
           await group.getByText('Range', { exact: true }).click();
-          await target.fill('20');
           await upTo.fill('10');
           await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
           await expect(page.getByRole('alert')).toHaveText('Step length must be at least its target');
-          await upTo.fill('');
-          await page.locator('form:has(#re-ratio)').getByRole('button', { name: 'Save', exact: true }).click();
-          await expect(page.getByRole('alert')).toHaveText('Enter a step length');
         }
       },
       {
