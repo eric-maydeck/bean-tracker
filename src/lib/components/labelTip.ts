@@ -24,6 +24,10 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
   let pinned = false;
   const passive = !node.matches('a[href], button:not([aria-disabled="true"]), input, select, [role="button"]');
   if (passive && label) node.style.cursor = 'help';
+  const acts = (e: Event) => {
+    const hit = (e.target as Element | null)?.closest('a[href], button, input, select, textarea, [role="button"]');
+    return !!hit && hit !== node && node.contains(hit);
+  };
   const away = (e: Event) => !node.contains(e.target as Node) && close();
   const close = () => {
     if (tip) void unmount(tip);
@@ -49,7 +53,9 @@ function makeTip(node: HTMLElement, label: Label, follow: boolean) {
     ['pointerleave', (e) => ((at = null), (e as PointerEvent).pointerType === 'mouse' && !pinned && close())],
     ['focus', () => node.matches(':focus-visible') && ((at = null), open())],
     ['blur', () => !pinned && close()],
-    passive ? ['click', (e) => (track(e), pin())] : ['pointerdown', close],
+    // A tap on passive text pins its tip. Only when there is a tip to pin (a click made while the label was empty used to leave it
+    // pinned, so the tip that came later stayed open after the pointer left), and not for a click that a control inside it handles.
+    passive ? ['click', (e) => label && !acts(e) && (track(e), pin())] : ['pointerdown', close],
     ['keydown', (e) => (e as KeyboardEvent).key === 'Escape' && close()]
   ];
   for (const [e, f] of on) node.addEventListener(e, f);

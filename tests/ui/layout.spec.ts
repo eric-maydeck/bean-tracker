@@ -3077,13 +3077,27 @@ export const STATES: State[] = [
           await expect(rlist).toHaveCount(1);
           // At 5 ratios the input and Add are disabled (and unfocusable); hovering the pair says why; removing one re-enables both.
           const addButton = page.getByRole('button', { name: 'Add', exact: true });
-          for (const v of ['7', '8', '9', '10']) { await rin.fill(v); await rin.press('Enter'); }
+          // Reached the way a user does (clicking in the box and on Add, the mouse left over the pair): the tip then follows the
+          // hover in and out (clicks made before it had a tip must not pin it open).
+          for (const v of ['7', '8', '9']) { await rin.click(); await rin.fill(v); await addButton.click(); }
+          await expect(rlist).toHaveCount(4);
+          await rin.click();
+          await rin.fill('10');
+          await addButton.click();
           await expect(rlist).toHaveCount(5);
           await expect(rin).toBeDisabled();
           await expect(addButton).toBeDisabled();
+          const fullTipText = page.getByText('Remove one to add another.', { exact: true });
+          await page.mouse.move(2, 2);
+          await expect(fullTipText).toHaveCount(0);
           await page.locator('.radd').hover();
-          await expect(page.getByText('Remove one to add another.', { exact: true })).toBeVisible();
-          await page.keyboard.press('Escape');
+          await expect(fullTipText).toBeVisible();
+          await page.mouse.move(2, 2);
+          await expect(fullTipText, 'hover out closes it').toHaveCount(0);
+          await page.locator('.radd').hover();
+          await expect(fullTipText).toBeVisible();
+          await page.mouse.move(2, 2);
+          await expect(fullTipText).toHaveCount(0);
           await page.getByRole('button', { name: 'Remove 1:10' }).click();
           await expect(rlist).toHaveCount(4);
           await expect(rin).toBeEnabled();
