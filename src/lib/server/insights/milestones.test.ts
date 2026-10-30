@@ -54,7 +54,7 @@ describe('count and streak events', () => {
   });
   it('water poured in liters', () => {
     const ev = countEvents(daily(40, { waterG: 250 }), [], 'all').filter((e) => e.key.startsWith('waterL'));
-    expect(ev.map((e) => [e.key, e.title, e.date])).toEqual([['waterL:10', '10 L of water poured', day(39)]]);
+    expect(ev.map((e) => [e.key, e.title, e.date])).toEqual([['waterL:10', '10L of water poured', day(39)]]);
   });
   it('streak thresholds fire on the day reached; a broken run restarts', () => {
     // 8 days, a gap, then 7 days

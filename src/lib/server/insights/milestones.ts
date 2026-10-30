@@ -119,7 +119,7 @@ export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   return [
     ...walk('brews', sorted.map((b) => brewStep(b, 1)), L('brews'), (t) => `${ordinal(t)} brew`),
     ...walk('kgBrewed', sorted.map((b) => brewStep(b, b.dose ?? 0)), L('kgBrewed'), (t) => `${t}kg brewed`, 1000),
-    ...walk('waterL', sorted.map((b) => brewStep(b, b.waterG ?? 0)), L('waterL'), (t) => `${t} L of water poured`, 1000),
+    ...walk('waterL', sorted.map((b) => brewStep(b, b.waterG ?? 0)), L('waterL'), (t) => `${t}L of water poured`, 1000),
     ...walk('bagsBought', bought.map((b) => ({ date: b.purchaseDate!, v: 1, ...bagLink(b) })), L('bagsBought'), (t) => `${ordinal(t)} bag`),
     ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0, ...bagLink(b) })), L('kgBought'), (t) => `${t}kg bought`, 1000),
     ...walk('bagsFinished', bags.filter(isFinished).map((b) => ({ date: b.lastBrew!, v: 1, ...bagLink(b) })), L('bagsFinished'), (t) => `${t} bags finished`),

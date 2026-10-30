@@ -42,7 +42,7 @@
   // A tip value carries its unit (ui-rules 36): "1.2kg", "3 bags", "4 brews", "1.2 L".
   const fmt = (k: number) => (v: number) => (g ? formatGrams(v * k) : `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} bag${v === 1 ? '' : 's'}`);
   const fmtBrews = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(avg ? 2 : 1)} brew${v === 1 ? '' : 's'}`;
-  const fmtWater = (v: number) => `${+v.toFixed(v >= 10 ? 0 : v >= 1 ? 1 : 2)} L`;
+  const fmtWater = (v: number) => `${+v.toFixed(v >= 10 ? 0 : v >= 1 ? 1 : 2)}L`;
   const fmtRating = (v: number) => `${v.toFixed(1)} avg rating`;
   // Brewed over time: the Unit's measure (grams / bags), or the toggle's Brews / Water / Rating.
   const TRENDS: [Trend | undefined, string][] = [[undefined, ''], ['brews', 'Brews'], ['water', 'Water'], ['rating', 'Rating']];
@@ -141,7 +141,7 @@
         {@render nwNote(`Mean rating per ${t.by}${from ? ` from ${t.labels[from]}` : ''}`, `${note}${ratingValues.some((v) => v === null) ? ' · Dashed: no rated brews' : ''}`)}
       {:else}
         <Chart type="bar" vertical labels={t.labels} values={div(t.brewed, k1)} datasetLabel={periodLabel} series={series1} legend integer={(!g || !!trend) && !avg && trend !== 'water'}
-          format={trend === 'brews' ? fmtBrews : trend === 'water' ? fmtWater : fmt(k1)} unit={trend === 'water' ? ' L' : trend ? '' : axis(k1)} height={260} />
+          format={trend === 'brews' ? fmtBrews : trend === 'water' ? fmtWater : fmt(k1)} unit={trend === 'water' ? 'L' : trend ? '' : axis(k1)} height={260} />
         {@render nwNote(`${trend ? NOUN[trend] : g ? 'Grams brewed' : 'Bags finished'} ${unitNote}`, note)}
         {#if !g && !trend}{@render whole()}{/if}
       {/if}
