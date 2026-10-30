@@ -300,11 +300,11 @@ export function describeRecipe(def: RecipeDef): string {
   return capital(out.join(' · '));
 }
 
-/** For each `after` step i >= 1 that has a start before it: the span in which its pour should begin. */
-export function triggerWindows(def: RecipeDef, startsS: number[]): { fromS: number; toS: number; pour: number }[] {
+/** For each `after` step i >= 1 that has a start before it: the pour before it, its start, and when the next pour should begin (target to latest). */
+export function triggerWindows(def: RecipeDef, startsS: number[]): NonNullable<Timeline['windows']> {
   return startsS.flatMap((_, i) => {
     const t = i > 0 ? def.pours[i]?.trigger : null;
-    return t?.kind === 'after' ? [{ fromS: startsS[i - 1] + t.targetS, toS: startsS[i - 1] + t.maxS, pour: i - 1 }] : [];
+    return t?.kind === 'after' ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, toS: startsS[i - 1] + t.maxS, pour: i - 1, bloom: def.pours[i - 1].bloom }] : [];
   });
 }
 

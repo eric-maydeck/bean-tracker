@@ -94,8 +94,8 @@ export interface Timeline {
   }[];
   swirls: number[];
   totalS: number;
-  /** How long the pour before a timed step lasts (when the next begins), drawn as bands behind the pours. */
-  windows?: { fromS: number; toS: number; /** index of the pour whose length this wait is */ pour: number }[];
+  /** Each timed step: the pour before it from its start to the next pour's target start (solid, blooms only) and on to the latest start (striped), drawn behind the pours. */
+  windows?: { startS: number; targetS: number; toS: number; /** index of the pour before the wait */ pour: number; bloom: boolean }[];
 }
 export function timelineOf(r: PourReading): Timeline {
   return {
