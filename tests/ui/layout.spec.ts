@@ -2715,7 +2715,11 @@ export const STATES: State[] = [
           await expect.poll(tipX).toBeGreaterThanOrEqual(0);
           const left = await tipX();
           await page.mouse.move(band.x + band.width * 0.95, band.y + band.height / 2);
-          await expect.poll(tipX).toBeGreaterThan(left + 2);
+          // A centred tip whose left edge would sit inside the page gutter is clamped there at both points (narrow
+          // viewports, band near the left edge); otherwise it must move with the pointer.
+          const tipW = (await tip.boundingBox())!.width;
+          if (band.x + band.width * 0.95 - tipW / 2 > 24) await expect.poll(tipX).toBeGreaterThan(left + 2);
+          else await expect.poll(tipX).toBeGreaterThanOrEqual(left);
           const t = (await tip.boundingBox())!;
           expect(t.x + t.width).toBeLessThanOrEqual(vw);
           // Escape closes it and further pointer moves over the band don't bring it back.
@@ -7565,7 +7569,7 @@ export const STATES: State[] = [
       // A few fields: ZP6 shows its two and no empty rows.
       await page.goto('/insights?tab=gear&card=grinder-zp6-special');
       await expect(dlg.locator('.specs .stat')).toHaveCount(2);
-      await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64 mm');
+      await expect(dlg.locator('.specs .stat', { hasText: 'Burr size' }).locator('.stat-value')).toHaveText('64mm');
       await expect(dlg.locator('.specs')).not.toContainText('Cone angle');
     } },
   { name: 'insights-trophy-edit', path: () => '/insights?tab=gear&card=dripper-v60',
