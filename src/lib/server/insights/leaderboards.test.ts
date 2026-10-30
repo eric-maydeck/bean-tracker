@@ -70,7 +70,7 @@ describe('leaderboard', () => {
     expect(vals(leaderboard(BREWS, BAGS, SEPT, 'roasters', 'spend', 'all', 'raw'))).toEqual([['Moonwake', 40 + 0 + 25], ['Sey', 25]]));
   it('ppg skips bags without cost or amount; a free bag counts', () => {
     const rows = leaderboard(BREWS, BAGS, SEPT, 'roasters', 'ppg', 'all', 'raw');
-    expect(vals(rows)).toEqual([['Moonwake', 0.2], ['Sey', 0.1]]); // Moonwake: (40 + 0) / 200 g
+    expect(vals(rows)).toEqual([['Moonwake', 0.2], ['Sey', 0.1]]); // Moonwake: (40 + 0) / 200g
     expect(rows.every((r) => Number.isFinite(r.value))).toBe(true);
     expect([rows[0].cost, rows[0].grams]).toEqual([40, 200]);
     expect(leaderboard(BREWS, BAGS, SEPT, 'coffees', 'ppg', 'all', 'raw')[0].cost).toBeGreaterThan(0);

@@ -53,9 +53,9 @@ export function describeReading(r: PourReading): string {
   if (!r.pours.length) return 'no pours found';
   const parts: string[] = [];
   const hold = r.bloomHoldS == null ? null : Math.round(r.bloomHoldS / 5) * 5;
-  const bloom = hold == null ? 'bloom' : `${hold} s bloom`;
+  const bloom = hold == null ? 'bloom' : `${hold}s bloom`;
   if (r.bloomCount === 1) parts.push(bloom);
-  else if (r.bloomCount === 2) parts.push(`two ${hold == null ? '' : `${hold} s `}blooms`);
+  else if (r.bloomCount === 2) parts.push(`two ${hold == null ? '' : `${hold}s `}blooms`);
   const kinds: { kind: 'fast' | 'slow'; n: number }[] = [];
   for (const p of r.pours.slice(r.bloomCount)) {
     const l = kinds[kinds.length - 1];

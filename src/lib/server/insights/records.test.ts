@@ -109,7 +109,7 @@ const tileOf = (t: ReturnType<typeof recordsTab>, k: string) => tilesOf(t).find(
 
 describe('freshness and money', () => {
   it('fastest drinking rate = grams / inclusive days; thin bags are skipped', () => {
-    const thin = [brew({ coffeeId: 1, dose: 90, localDate: '2026-03-01' })]; // 90 g/day but 1 day and < 100 g
+    const thin = [brew({ coffeeId: 1, dose: 90, localDate: '2026-03-01' })]; // 90 g/day but 1 day and < 100g
     const big = [10, 11, 12].flatMap((d) => [1, 2, 3, 4, 5].map(() => brew({ coffeeId: 2, dose: 16.6, localDate: `2026-03-${d}` })));
     const p = run('drinkRate', [...thin, ...big]);
     expect(p).toMatchObject({ holder: { label: 'Bag 2' }, detail: '249g over 3 days' });
@@ -142,10 +142,10 @@ describe('freshness and money', () => {
       bag({ id: 3, name: 'Bag 3', cost: 20, amountG: 250, purchaseDate: '2026-03-01' })];
     expect(run('priciestBag', [], bags)).toMatchObject({ holder: { label: 'Bag 3' }, value: 8, detail: '$20.00 for 250g' });
   });
-  it('best value = mean / $ per 100 g, detail names both', () => {
+  it('best value = mean / $ per 100g, detail names both', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 20, amountG: 200 }), bag({ id: 2, name: 'Bag 2', cost: 10, amountG: 100 })];
     const brews = [...rated(1, [8, 8, 8, 8]), ...rated(2, [9, 9, 9, 9])];
-    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, per100: 10, detail: '9.00 at $10.00/100\u00a0g' });
+    expect(run('bestValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 2' }, value: 0.9, mean: 9, per100: 10, detail: '9.00 at $10.00/100g' });
     expect(run('toughValue', brews, bags)).toMatchObject({ holder: { label: 'Bag 1' }, value: 0.8 });
   });
   it('biggest buying month is all-time, by bags', () => {
@@ -162,13 +162,13 @@ describe('freshness and money', () => {
   it('cups: priciest and cheapest, detail = dose at the bag price', () => {
     const bags = [bag({ id: 1, name: 'Bag 1', cost: 25, amountG: 250 })];
     const b = [brew({ costPerBrew: 1.5, dose: 15 }), brew({ costPerBrew: 0.4 })];
-    expect(run('priciestCup', b, bags)).toMatchObject({ value: 1.5, detail: '15g at $10.00/100\u00a0g' });
+    expect(run('priciestCup', b, bags)).toMatchObject({ value: 1.5, detail: '15g at $10.00/100g' });
     expect(run('cheapestCup', b, bags)?.value).toBe(0.4);
   });
 });
 
 describe('floors and junk', () => {
-  it('pour-over ratio floor 1:12 and brew-time floor 60 s', () => {
+  it('pour-over ratio floor 1:12 and brew-time floor 60s', () => {
     const b = [brew({ ratio: 6.7 }), brew({ ratio: 15 }), brew({ brewTimeSeconds: 30 }), brew({ brewTimeSeconds: 200 })];
     expect(run('ratioShort', b)?.value).toBe(15);
     expect(run('ratioLong', [brew({ ratio: 16, dose: 15, waterG: 240 })])?.detail).toBe('15g to 240g');

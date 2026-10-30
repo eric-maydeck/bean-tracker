@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { unitGap } from '$lib/unitGap';
   import { labelTip } from '$lib/components/labelTip';
   import { pinnedBar } from '$lib/components/pinnedBar.svelte';
   import { useEmptyLine } from './coffeeNote';
@@ -180,7 +181,7 @@
   <div class="hl-grid milestone-totals">
     {#each m.totals as t, i (t.key)}
       <div class="hl-card" id={tileId('total', t.key)} style={totalVars[i]}>
-        <span class="hl-value">{n(t.value)}{#if t.unit}<small>{`\u00a0${t.unit}`}</small>{/if}</span>
+        <span class="hl-value">{n(t.value)}{#if t.unit}<small>{`${unitGap(t.unit) && '\u00a0'}${t.unit}`}</small>{/if}</span>
         {@render caption(tileId('total', t.key), t.label)}
       </div>
     {/each}

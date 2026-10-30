@@ -48,12 +48,12 @@ export function waterPreview(w: { mode: Mode; recipe: string; ml: number; drops:
   const drops = (n: number) => `${n} drop${n === 1 ? '' : 's'}`;
   // What each value is aiming for, after it: the recipe's (its ideal mL, `idealMl`) or the typed-in target.
   const word = w.mode === 'recipe' ? 'recipe' : 'target';
-  const aim = (n: number | undefined, unit: string) => (w.mode !== 'drops' && n != null ? ` (${word} ${f1(n)} ${unit})` : '');
+  const aim = (n: number | undefined, unit: string) => (w.mode !== 'drops' && n != null ? ` (${word} ${f1(n)}${unit})` : '');
   const lines = [
     'Lotus drop calculator',
-    `Water: ${w.ml} mL${w.mode === 'recipe' ? aim(w.idealMl, 'mL') : ''}`,
+    `Water: ${w.ml}mL${w.mode === 'recipe' ? aim(w.idealMl, 'mL') : ''}`,
     `Ca: ${drops(d.ca)}`, `Mg: ${drops(d.mg)}`, `Na: ${drops(d.na)}`, `K: ${drops(d.k)}`,
-    `GH: ${f1(w.gh)} ppm${aim(w.target?.gh, 'ppm')}`, `KH: ${f1(w.kh)} ppm${aim(w.target?.kh, 'ppm')}`
+    `GH: ${f1(w.gh)}ppm${aim(w.target?.gh, 'ppm')}`, `KH: ${f1(w.kh)}ppm${aim(w.target?.kh, 'ppm')}`
   ];
   return { title, description: lines.join('\n') };
 }

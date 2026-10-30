@@ -69,7 +69,7 @@ const same = (s: Setting, a: string | null, b: string | null) => {
 const num = (n: number | null) => (n === null ? null : String(Math.round(n * 10) / 10));
 // The brew's value in the same wording suggest() uses.
 const actualOf = (b: BrewRow): Values => ({
-  grind: b.grind, temp: b.tempC === null ? null : `${num(b.tempC)} °C`, dose: b.dose === null ? null : `${num(b.dose)} g`,
+  grind: b.grind, temp: b.tempC === null ? null : `${num(b.tempC)}°C`, dose: b.dose === null ? null : `${num(b.dose)}g`,
   ratio: b.dose && b.waterG ? fmtRatio(b.waterG / b.dose) : null,
   recipe: b.recipeName, water: b.water?.trim() || null
 });

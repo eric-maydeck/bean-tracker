@@ -41,7 +41,7 @@ describe('compactFlow', () => {
     expect(s.g).toEqual([1, 2, 3]);
     expect(s.t).toEqual([0, 1 / 3, 2 / 3]);
   });
-  it('expandFlow(compactFlow) is exact to 0.1 g, with negative deltas', () => {
+  it('expandFlow(compactFlow) is exact to 0.1g, with negative deltas', () => {
     const vals = [0, 1.26, 1.24, -3.55, -3.5, 10.04, 0.01];
     const w = entries(vals.map((v, i) => [`${i}.0`, v]));
     const c = expandFlow(compactFlow({ weight: w })!);
@@ -53,7 +53,7 @@ describe('compactFlow', () => {
     expect(compactFlow({})).toBeNull();
     expect(compactFlow({ weight: entries([['0.0', 'x']]) })).toBeNull();
   });
-  it('keeps a one-sample 0.1 s spike (bucket 29 is interpolated, not repeated)', () => {
+  it('keeps a one-sample 0.1s spike (bucket 29 is interpolated, not repeated)', () => {
     const w = entries(
       Array.from({ length: 30 }, (_, i) => [
         `${Math.floor(i / 10)}.${i % 10}`,
@@ -78,7 +78,7 @@ describe('compactFlow', () => {
     expect(c.w.length).toBe(MAX_FLOW_POINTS);
   });
   for (const name of ['bbs', 'swirl', 'tare']) {
-    it(`${name}: a raw sample is never more than the 20 g override bound from its bucket`, () => {
+    it(`${name}: a raw sample is never more than the 20g override bound from its bucket`, () => {
       const raw = flowSamples(fixture(name).weight);
       const c = expandFlow(compactFlow(fixture(name))!);
       let close = 0;

@@ -107,7 +107,7 @@ describe('dose / ratio overrides (R19)', () => {
     const { doses, ratios } = base.options, dose = doses[doses.length - 1], ratio = ratios[0];
     const ok = await run(brewed.slug, `?dose=${dose}&ratio=${ratio}`);
     expect(ok.suggestion).toMatchObject({ dose, ratio });
-    expect(ok.suggestion.rows.find((r: { setting: string }) => r.setting === 'dose').value).toBe(`${dose} g · ${Math.round(dose * ratio)} g water`);
+    expect(ok.suggestion.rows.find((r: { setting: string }) => r.setting === 'dose').value).toBe(`${dose}g · ${Math.round(dose * ratio)}g water`);
     expect((await run(brewed.slug, '?dose=19')).suggestion.dose).toBe(base.suggestion.dose);
   });
 });

@@ -17,7 +17,7 @@ describe('generalHardness / carbonateHardness', () => {
   for (const p of PROFILES) {
     it(`${p.name} → ${p.gh}/${p.kh}`, () => {
       const w = { calcium: p.ca, magnesium: p.mg, sodium: p.na, potassium: p.k };
-      expect(generalHardness(w)).toBeCloseTo(p.gh, 0); // within 0.5 ppm
+      expect(generalHardness(w)).toBeCloseTo(p.gh, 0); // within 0.5ppm
       expect(carbonateHardness(w)).toBeCloseTo(p.kh, 0);
     });
   }
@@ -37,12 +37,12 @@ describe('generalHardness / carbonateHardness', () => {
 
 describe('hardnessMismatch', () => {
   const reddit = { calcium: 12, magnesium: 9.7, sodium: 4.6, potassium: 3.9 };
-  it('flags stored GH/KH more than 2 ppm off the derived values', () => {
+  it('flags stored GH/KH more than 2ppm off the derived values', () => {
     expect(hardnessMismatch({ ...reddit, storedGh: 63, storedKh: 14 })).toBe(true);
     // Ultralight (Mg + K) stores KH 20; derived is 10.
     expect(hardnessMismatch({ calcium: 0, magnesium: 9.7, sodium: 0, potassium: 7.8, storedGh: 41, storedKh: 20 })).toBe(true);
   });
-  it('accepts values within 2 ppm', () => {
+  it('accepts values within 2ppm', () => {
     expect(hardnessMismatch({ calcium: 0, magnesium: 14.6, sodium: 0, potassium: 7.8, storedGh: 60, storedKh: 10 })).toBe(false);
     expect(hardnessMismatch({ ...reddit, storedGh: 71.9, storedKh: 13.1 })).toBe(false);
   });

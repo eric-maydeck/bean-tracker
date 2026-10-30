@@ -20,6 +20,7 @@
 </script>
 
 <script lang="ts">
+  import { unitGap } from '$lib/unitGap';
   import WholeNote from './WholeNote.svelte';
   import { setting } from '$lib/settingName';
   import Usd from '$lib/components/Usd.svelte';
@@ -133,14 +134,14 @@
   <!-- Lines come in groups (holder + its sub; inputs + date; All-time + Was), tight inside, a little
        apart between. -->
   <div class="hl-card" id={anchor(r.key)} {style}>
-    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'per100'}<Usd n={r.value} tipSuffix={r.fmt === 'per100' ? '/100\u00a0g' : ''} />{:else}<CoffeeName text={v} />{/if}{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+    <span class="hl-value">{#if r.fmt === 'money' || r.fmt === 'per100'}<Usd n={r.value} tipSuffix={r.fmt === 'per100' ? '/100g' : ''} />{:else}<CoffeeName text={v} />{/if}{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
     <div class="grp">
       <span class="hl-holder" use:full>{@render link(r.holder)}</span>
       {#if r.holder.sub}<span class="hl-line" use:full>{r.holder.sub}</span>{/if}
     </div>
     {#if why || !isDate(r.holder)}
       <div class="grp">
-        {#if r.fmt === 'value' && r.per100 != null}<span class="hl-line" use:full>At <Usd n={r.per100} suffix={'/100\u00a0g'} /></span>
+        {#if r.fmt === 'value' && r.per100 != null}<span class="hl-line" use:full>At <Usd n={r.per100} suffix={'/100g'} /></span>
         {:else if why}<span class="hl-line" use:full><CoffeeName text={why} /></span>{/if}
         {#if !isDate(r.holder)}<span class="hl-line">{date(r.holder.date)}</span>{/if}
       </div>

@@ -180,7 +180,7 @@
       <h2 class="hero-name">{c.coffeeName}</h2>
       <dl class="facts">
         {#if c.roastDate}<dt>Roasted</dt><dd>{c.roastDate}{c.restDays !== null ? ` (${c.restDays}d ago)` : ''}</dd>{/if}
-        {#if c.gramsLeft !== null}<dt>Left</dt><dd>{c.gramsLeft} g</dd>{/if}
+        {#if c.gramsLeft !== null}<dt>Left</dt><dd>{c.gramsLeft}g</dd>{/if}
         {#if c.processing}<dt>Process</dt><dd>{c.processing}</dd>{/if}
         {#if c.origin}<dt>Origin</dt><dd>{originWithFlag(c.origin)}</dd>{/if}
         {#if c.roastLevel}<dt>Roast</dt><dd>{c.roastLevel}</dd>{/if}
@@ -219,7 +219,7 @@
         <button type="button" class="pk2-label tiplabel bn-trig" id="pk-dose" aria-expanded={pop?.kind === 'prefs'} onclick={(e) => toggle('prefs', e.currentTarget)}>Dose</button>
         <div class="pk2-chips" role="group" aria-labelledby="pk-dose">
           {#each data.options.doses as d (d)}
-            <button type="button" class="pk2-chip" aria-pressed={d === data.suggestion.dose} onclick={() => go({ dose: d })}>{d} g</button>
+            <button type="button" class="pk2-chip" aria-pressed={d === data.suggestion.dose} onclick={() => go({ dose: d })}>{d}g</button>
           {/each}
         </div>
       </div>
@@ -307,7 +307,7 @@
             <a class="tip-link" href="/account#brew-now" onclick={() => (pop = null)}>Open Account</a>
           {:else if data.suggestion.dosePlan}
             {@const plan = data.suggestion.dosePlan}
-            <TipBody tip={{ title: 'Rest of the bag', lines: [`${plan.brews.map((d) => `${d} g`).join(' + ')}`, `${Math.round(plan.leftover * 10) / 10} g left over`] }} />
+            <TipBody tip={{ title: 'Rest of the bag', lines: [`${plan.brews.map((d) => `${d}g`).join(' + ')}`, `${Math.round(plan.leftover * 10) / 10}g left over`] }} />
           {/if}
         </div>
       </FloatTip>

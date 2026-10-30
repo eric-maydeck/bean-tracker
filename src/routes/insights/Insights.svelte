@@ -23,6 +23,7 @@
 </script>
 
 <script lang="ts">
+  import { unitGap } from '$lib/unitGap';
   import WholeNote from './WholeNote.svelte';
   import Usd from '$lib/components/Usd.svelte';
   import CoffeeName from '$lib/components/CoffeeName.svelte';
@@ -48,12 +49,12 @@
     link: (href: string) => string; // finding links keep the page's Period, Ratings, Caffeine and Coffees filter (withPageWide)
   } = $props();
 
-  const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/100 g', loyalty: 'Top roasters' };
+  const WHOLE_NAME: Record<string, string> = { backlogRunway: 'On hand', pricePerMonth: '$/100g', loyalty: 'Top roasters' };
   const THEME_LABEL: Record<Theme, string> = { taste: 'Taste', dialin: 'Dial-in', habits: 'Habits', gear: 'Gear', money: 'Money' };
   const anchor = (key: string) => `insight-${key.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-$/, '')}`;
   const date = (d: string) => `${MON[+d.slice(5, 7) - 1]} ${+d.slice(8)}, ${d.slice(0, 4)}`;
   // "115 days" → 115 + a small "days"; "r = 0.04" and "8:20 → 8:52" stay whole.
-  const split = (v: string) => /^(\S*\d\S*) ([a-z].*)$/i.exec(v)?.slice(1) ?? [v];
+  const split = (v: string) => /^(\S*\d\S*) ([a-z].*)$/i.exec(v)?.slice(1) ?? /^(\S*\d)(g|kg|mL|L|s|°[CF]|ppm|g\/s|g\/day)$/.exec(v)?.slice(1) ?? [v];
 
   // Top stories come bucketed from the server (insightsTab): the deck and the grid never share a finding.
   let deck = $derived(t.stories);
@@ -276,14 +277,14 @@
         {@const [v, unit] = split(s.value)}
         {#if i}<span class="vs-x" aria-hidden="true">vs</span>{/if}
         <div class="vs-side">
-          <span class="hl-value"><CoffeeName text={v} />{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+          <span class="hl-value"><CoffeeName text={v} />{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
           <span class="vs-label"><CoffeeName text={s.label} /></span>
         </div>
       {/each}
     </div>
   {:else if f.value}
     {@const [v, unit] = split(f.value)}
-    <span class="hl-value" class:long={v.length > 9}><CoffeeName text={v} />{#if unit}<small>{` ${unit}`}</small>{/if}</span>
+    <span class="hl-value" class:long={v.length > 9}><CoffeeName text={v} />{#if unit}<small>{`${unitGap(unit)}${unit}`}</small>{/if}</span>
   {/if}
   {#if f.multi && f.multi.x.length > 1 && f.multi.lines.length}
     {@const ls = lines(f.multi)}
@@ -501,7 +502,7 @@
           {:else}
             <span class="hl-line wrap result">Not enough brews to measure your spend yet</span>
           {/if}
-          <span class="hl-line wrap">At <Usd n={t.whatIf.avgPricePerG! * 100} /> / 100&nbsp;g, your last 12 months' average</span>
+          <span class="hl-line wrap">At <Usd n={t.whatIf.avgPricePerG! * 100} /> / 100g, your last 12 months' average</span>
           {#if w.bpd * w.dose > 0}<span class="hl-line"><Usd n={perMonth * 12} /> a year</span>{/if}
           <TileCaption href="#insights-spend" label="Monthly spend" />
         </div>

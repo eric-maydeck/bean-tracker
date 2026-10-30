@@ -14,7 +14,7 @@ export function product(overrides: Partial<ProductData> = {}): ProductData {
 
 describe('parseGrams', () => {
   it.each([
-    ['250g', 250], ['125g (4.4oz)', 125], ['1kg (2.2lb)', 1000], ['0.5 kg', 500], ['12oz', 340],
+    ['250g', 250], ['125g (4.4oz)', 125], ['1kg (2.2lb)', 1000], ['0.5kg', 500], ['12oz', 340],
     ['200g / 7.05oz', 200], ['7.05oz', 200], ['250 gram', 250], ['1,000g', 1000], ['2 lb', 907]
   ])('%s -> %i', (text, grams) => {
     expect(parseGrams(text)).toBe(grams);

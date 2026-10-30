@@ -30,8 +30,8 @@ describe('parseGearValues', () => {
   });
   it('money rounds to cents; numbers respect their range', () => {
     expect(parseGearValues('grinder', { cost: '199.999', burrSize: '48' })).toEqual({ values: { cost: 200, burrSize: 48 } });
-    expect(parseGearValues('grinder', { burrSize: '500' })).toEqual({ error: 'Burr size must be 10–150 mm' });
-    expect(parseGearValues('grinder', { burrSize: 'abc' })).toEqual({ error: 'Burr size must be 10–150 mm' });
+    expect(parseGearValues('grinder', { burrSize: '500' })).toEqual({ error: 'Burr size must be 10–150mm' });
+    expect(parseGearValues('grinder', { burrSize: 'abc' })).toEqual({ error: 'Burr size must be 10–150mm' });
   });
   it('website must be http(s)', () => {
     expect(parseGearValues('filter', { website: 'javascript:alert(1)' })).toEqual({ error: "Official website isn't a web address" });

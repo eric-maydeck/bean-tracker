@@ -152,7 +152,7 @@ describe('spendTab valueMap', () => {
     expect(m.points[0].sample.brews).toBe(4);
     expect([m.medianPpg, m.medianRating]).toEqual([null, null]);
   });
-  it('best skips a 3-brew coffee and orders by rating ÷ $ per 100 g', () => {
+  it('best skips a 3-brew coffee and orders by rating ÷ $ per 100g', () => {
     const bs = [bag({ id: 1, name: 'Cheap', cost: 10, amountG: 100 }), bag({ id: 2, name: 'Dear', cost: 20, amountG: 100 }), bag({ id: 3, name: 'Few', cost: 5, amountG: 100 })];
     const br = [...brewsOf(1, 4, 8), ...brewsOf(2, 4, 9), ...brewsOf(3, 3, 10)];
     const m = spendTab(br, br, bs, ctx).valueMap;

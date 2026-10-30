@@ -94,7 +94,7 @@ describe('onHandTab', () => {
     const one = onHandTab(brews, bags, ctx).runway;
     const two = onHandTab(brews, bags, { ...ctx, size: 2 }).runway;
     expect(one.days).not.toBeNull();
-    expect([one.days, two.days]).toEqual([14, 27]); // 500 g at 37.5 g/day, then at 18.75 g/day (the Consumption rule)
+    expect([one.days, two.days]).toEqual([14, 27]); // 500g at 37.5 g/day, then at 18.75 g/day (the Consumption rule)
     expect(two.perDay).toBe(one.perDay! / 2);
   });
   it('has zeros and nulls without bags', () => {

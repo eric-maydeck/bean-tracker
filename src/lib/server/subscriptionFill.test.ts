@@ -78,7 +78,7 @@ describe('buildSubscriptionFill (real pages)', () => {
     expect(f.variants[0]).toMatchObject({ bags: 1, gramsPerBag: 125, price: 16 });
   });
 
-  it('Shoebox: count from the variant, 125 g from the description, renewal 5', () => {
+  it('Shoebox: count from the variant, 125g from the description, renewal 5', () => {
     const f = buildSubscriptionFill(page('shoebox'), ctx('https://shoebox.coffee/products/shoebox-monthly-subscription'));
     expect(f.fields).toMatchObject({ subscription_name: 'Shoebox Monthly Subscription', renewal_day: 5 });
     expect(f.variants).toEqual([
@@ -87,7 +87,7 @@ describe('buildSubscriptionFill (real pages)', () => {
     ]);
   });
 
-  it('norml: single variant applied, 2 × 60 g from the description (not the title total), renewal 14', () => {
+  it('norml: single variant applied, 2 × 60g from the description (not the title total), renewal 14', () => {
     const f = buildSubscriptionFill(page('norml'), ctx('https://normlppl.coffee/products/norml-subscription'));
     expect(f.fields).toEqual({
       roaster_service: 'norml coffee ppl',
@@ -108,7 +108,7 @@ describe('buildSubscriptionFill (real pages)', () => {
     expect(f.notes).toContain('prices converted from GBP (rate 2026-10-08)');
   });
 
-  it('Ceto: 8 × 20 g from the title, $32, title bag text dropped from the name', () => {
+  it('Ceto: 8 × 20g from the title, $32, title bag text dropped from the name', () => {
     const f = buildSubscriptionFill(
       page('ceto'),
       ctx('https://ceto.coffee/products/lil-bit-of-everything-subscription-x1-20gx4-copy')

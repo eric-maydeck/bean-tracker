@@ -5,7 +5,7 @@ import { mmss, recipeSpeed, type RecipeDef, type RecipePour } from './recipes';
 export interface StepLine { time: string; low: boolean; text: string; alt: string | null }
 
 function words(p: RecipePour, anySpeed: boolean): string {
-  const speed = anySpeed ? null : p.rateGps ? `${p.rateGps[0]}–${p.rateGps[1]} g/s pour` : `${recipeSpeed(p)} pour`;
+  const speed = anySpeed ? null : p.rateGps ? `${p.rateGps[0]}–${p.rateGps[1]}g/s pour` : `${recipeSpeed(p)} pour`;
   const inner = [speed, p.agitation && `${p.agitation} agitation`, p.tool].filter(Boolean).join(', ');
   return `${p.bloom ? 'bloom' : 'pour'}${inner ? ` (${inner})` : ''}${p.swirlAfter ? ', swirl' : ''}`;
 }

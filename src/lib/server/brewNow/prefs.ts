@@ -2,7 +2,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
 const MAX_VALUES = 6;
 const LISTS = {
-  doses: { key: 'brew_now_doses', min: 5, max: 40, noun: 'dose', unit: ' g' },
+  doses: { key: 'brew_now_doses', min: 5, max: 40, noun: 'dose', unit: 'g' },
   ratios: { key: 'brew_now_ratios', min: 10, max: 20, noun: 'ratio', unit: '' }
 } as const;
 type ListName = keyof typeof LISTS;

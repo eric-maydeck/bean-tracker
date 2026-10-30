@@ -152,7 +152,7 @@
   // The tip's value with its unit and the other measure in parentheses: "1,750 g (14 bags)" / "14 bags (1,750 g)".
   const bags = (n: number) => `${n} bag${n === 1 ? '' : 's'}`;
   const breakdownTip = (e: { grams: number; count: number }) =>
-    metric === 'grams' ? `${e.grams.toLocaleString('en-US')} g (${bags(e.count)})` : `${bags(e.count)} (${e.grams.toLocaleString('en-US')} g)`;
+    metric === 'grams' ? `${e.grams.toLocaleString('en-US')}g (${bags(e.count)})` : `${bags(e.count)} (${e.grams.toLocaleString('en-US')}g)`;
   let breakdownValues = $derived(visibleBreakdownEntries.map((e) => (metric === 'grams' ? e.grams : e.count)));
   // A fixed per-bar thickness (rather than a fixed chart height) keeps bars
   // a consistent size across dimensions/tabs instead of stretching thin
@@ -382,7 +382,7 @@
 {#snippet ppInline(label: string, id: string)}{label}{#if people === 'person'}{' · '}{@render ppButton(id)}{@render ppTip(id)}{/if}{/snippet}
 
 <!-- A weight; where formatGrams drops the decimal (100 kg and up), the exact grams in the shared text tip (like Usd). -->
-{#snippet grams(g: number)}{#if g >= 100000}<TextTip value label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')} g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
+{#snippet grams(g: number)}{#if g >= 100000}<TextTip value label={formatGrams(g)} tip={{ title: 'Exact', rows: [['To the gram', `${Math.round(g).toLocaleString('en-US')}g`]] }} />{:else}{formatGrams(g)}{/if}{/snippet}
 
 {#snippet bcAverageToggle()}
   <div class="form-field group-field">
@@ -715,7 +715,7 @@
         labels={['Open', 'Unopened backlog']}
         values={[data.stats.openedGrams, data.stats.unopenedBacklogGrams]}
         datasetLabel="Grams"
-        tipFormat={(v) => `${v.toLocaleString('en-US')} g`}
+        tipFormat={(v) => `${v.toLocaleString('en-US')}g`}
       />
     {/if}
   </section>
@@ -730,7 +730,7 @@
         labels={['Finished', 'Still have']}
         values={[data.stats.finishedGrams, data.stats.totalBacklogGrams]}
         datasetLabel="Grams"
-        tipFormat={(v) => `${v.toLocaleString('en-US')} g`}
+        tipFormat={(v) => `${v.toLocaleString('en-US')}g`}
       />
     {/if}
   </section>

@@ -173,9 +173,9 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     const otherGr = p.set.filter((r) => gear.grinder && r.grinder && r.grinder !== gear.grinder).length;
     if (setting !== 'grind' && !gearFree && otherGr) out.push(`${otherGr} of these ${n} brews ${otherGr === 1 ? 'was' : 'were'} made on another grinder, ${carry}`);
     const ts = p.set.flatMap((r) => r.tempC ?? []);
-    if (setting !== 'temp' && ts.length > 1 && Math.max(...ts) - Math.min(...ts) >= 2) out.push(`Water temperatures in these brews ranged from ${num(Math.min(...ts))} to ${num(Math.max(...ts))} °C`);
+    if (setting !== 'temp' && ts.length > 1 && Math.max(...ts) - Math.min(...ts) >= 2) out.push(`Water temperatures in these brews ranged from ${num(Math.min(...ts))} to ${num(Math.max(...ts))}°C`);
     const ds = p.set.flatMap((r) => r.dose ?? []);
-    if (setting !== 'dose' && ds.length > 1 && Math.max(...ds) - Math.min(...ds) >= 3) out.push(`Doses ranged from ${num(Math.min(...ds))} to ${num(Math.max(...ds))} g`);
+    if (setting !== 'dose' && ds.length > 1 && Math.max(...ds) - Math.min(...ds) >= 3) out.push(`Doses ranged from ${num(Math.min(...ds))} to ${num(Math.max(...ds))}g`);
     const ws = new Set(p.set.flatMap((r) => r.water?.trim() || []));
     if (setting !== 'water' && ws.size > 1) out.push(`These brews used ${ws.size} different waters`);
     const rs = new Set(p.set.map((r) => r.recipeName ?? ''));
@@ -219,13 +219,13 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     tier: null, confidence: 'guess', synopsis: [], evidence: [], link: null });
   const doseRow = ((): Row => {
     if (brewDose === null) return noData('dose', 'dose');
-    const value = `${num(brewDose)} g${water !== null ? ` · ${water} g water` : ''}`;
-    if (chosen.dose !== null && chosen.dose !== sugDose) return dS ? { ...row('dose', dS.p, value, `Your choice; suggested ${num(sugDose!)} g`), tier: dS.p.tier } : picked('dose', value, null);
+    const value = `${num(brewDose)}g${water !== null ? ` · ${water}g water` : ''}`;
+    if (chosen.dose !== null && chosen.dose !== sugDose) return dS ? { ...row('dose', dS.p, value, `Your choice; suggested ${num(sugDose!)}g`), tier: dS.p.tier } : picked('dose', value, null);
     const d = brewDose;
     const say = left === null ? `Median ${num(dS!.v)} of ${src(dS!.p)}` : left < want! ? (left > 0 ? 'Use the rest of the bag' : 'The bag is empty')
-      : left - d <= 1 ? `${num(d)} g uses the bag exactly`
-      : `${num(d)} g leaves ${num(left - d)} g` + (plan?.brews.length ? `, enough for ${plan.brews.length} more ${plan.brews.length === 1 ? 'brew' : 'brews'}` : '');
-    return row('dose', dS!.p, value, say, null, [`The typical dose in these brews is ${num(dS!.v)} g, rounded to your nearest saved dose`]);
+      : left - d <= 1 ? `${num(d)}g uses the bag exactly`
+      : `${num(d)}g leaves ${num(left - d)}g` + (plan?.brews.length ? `, enough for ${plan.brews.length} more ${plan.brews.length === 1 ? 'brew' : 'brews'}` : '');
+    return row('dose', dS!.p, value, say, null, [`The typical dose in these brews is ${num(dS!.v)}g, rounded to your nearest saved dose`]);
   })();
   const ratioRow = ((): Row => {
     if (brewRatio === null) return noData('ratio', 'a water amount');
@@ -246,8 +246,8 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
       const typical = weightedMedian(p.set.flatMap((x) => x.dose ?? []), p.set.filter((x) => x.dose !== null).map((x) => p.w.get(x)!));
       if (brewDose === null || !p.set.some((x) => x.dose !== null) || Math.abs(typical - brewDose) < 2) return [];
       return [brewDose > typical
-        ? `These brews used about ${num(typical)} g and you'll brew ${num(brewDose)} g, and larger doses usually need a coarser grind`
-        : `These brews used about ${num(typical)} g and you'll brew ${num(brewDose)} g, and smaller doses usually need a finer grind`];
+        ? `These brews used about ${num(typical)}g and you'll brew ${num(brewDose)}g, and larger doses usually need a coarser grind`
+        : `These brews used about ${num(typical)}g and you'll brew ${num(brewDose)}g, and smaller doses usually need a finer grind`];
     };
     if (p.tier === 1 && own.length >= 4) {
       const start = own.filter((r) => r.best).sort((a, b) => b.localTime.localeCompare(a.localTime))[0] ?? byWeight(p).find((r) => tiers.get(r) === 1)!;
@@ -301,9 +301,9 @@ export function suggest(target: CoffeeDetails, rows: BrewRow[], gear: Gear, gc: 
     for (const r of p.set) if (r.tempC !== null) by.set(r.processGroup, [...(by.get(r.processGroup) ?? []), r.tempC]);
     const mine = by.get(tg);
     const other = [...by].filter(([g]) => g !== tg).sort((a, b) => b[1].length - a[1].length)[0];
-    if (!mine || !other || tg === OTHER) return row('temp', p, `${num(t.v)} °C`, `Median ${num(t.v)} °C of ${src(p)}`);
+    if (!mine || !other || tg === OTHER) return row('temp', p, `${num(t.v)}°C`, `Median ${num(t.v)}°C of ${src(p)}`);
     const d = median(mine) - median(other[1]);
-    return row('temp', p, `${num(t.v)} °C`, `Median ${num(t.v)} °C of ${src(p)}`, null, Math.abs(d) < 0.5 ? [] : [`Your ${tg.toLowerCase()} coffees ran about ${num(Math.abs(d))} °C ${d < 0 ? 'cooler' : 'warmer'} than ${other[0].toLowerCase()} ones`]);
+    return row('temp', p, `${num(t.v)}°C`, `Median ${num(t.v)}°C of ${src(p)}`, null, Math.abs(d) < 0.5 ? [] : [`Your ${tg.toLowerCase()} coffees ran about ${num(Math.abs(d))}°C ${d < 0 ? 'cooler' : 'warmer'} than ${other[0].toLowerCase()} ones`]);
   })();
   const groupRow = (setting: 'recipe' | 'water', key: (r: BrewRow) => string | number | null, name: (r: BrewRow) => string, link: (r: BrewRow) => string): Row => {
     const p = pick((r) => key(r) !== null);
@@ -346,7 +346,7 @@ export function thisCoffeeSummary(target: CoffeeDetails, rows: BrewRow[], gear: 
   const on = rated.filter((r) => r.grinder === gear.grinder && lin(r.grind) !== null);
   const best = [...(on.length ? on : rated)].sort((a, b) => Number(b.best) - Number(a.best) || b.rating! - a.rating! || latest(a, b))[0];
   out.push(`${brews(rated.length)} rated, ${range(rated.map((r) => r.rating!))}`);
-  out.push(`Best brew: ${[best.grinder, best.grind].filter(Boolean).join(' ') || 'no grind logged'}${best.tempC ? `, ${num(best.tempC)} °C` : ''}, rated ${best.rating}`);
+  out.push(`Best brew: ${[best.grinder, best.grind].filter(Boolean).join(' ') || 'no grind logged'}${best.tempC ? `, ${num(best.tempC)}°C` : ''}, rated ${best.rating}`);
   if (on.length >= 4 && best.grinder === gear.grinder) {
     const r = spearman(on.map((x) => lin(x.grind)!), on.map((x) => x.rating!));
     if (r !== null && Math.abs(r) >= 0.4) out.push(`On the ${gear.grinder}, ratings rise with ${r > 0 ? 'coarser' : 'finer'} settings`);

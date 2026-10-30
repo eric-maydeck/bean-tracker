@@ -297,7 +297,7 @@ describe('backlog runway', () => {
   it('days of cover over tracked days, bought vs brewed', () =>
     expect(gen('backlogRunway', brews, bs, o)).toMatchObject({
       theme: 'money', z: null, strength: null, headline: '10.4kg on hand, about 143 days', sample: '41 days',
-      body: 'At 73 g/day. Bought 3.8kg vs brewed 3kg in this period.'
+      body: 'At 73g/day. Bought 3.8kg vs brewed 3kg in this period.'
     }));
   it('a period starting before dataStart counts only tracked days', () =>
     expect(gen('backlogRunway', brews, bs, { ...o, period: { from: '2026-01-01', to: '2026-09-30' } })!.sample).toBe('30 days'));
@@ -486,7 +486,7 @@ describe('price vs rating', () => {
   };
   it('no link: a myth', () => {
     const { bs, brews } = mk((i) => 7 + Math.abs(i - 14.5) / 10); // V shape: r = 0
-    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: 'No clear link between price and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags', body: 'Across 30 bags, $/100 g and your bag rating barely move together (by rank).' });
+    expect(gen('priceVsRating', brews, bs)).toMatchObject({ theme: 'money', kind: 'myth', z: null, headline: 'No clear link between price and rating yet', value: 'r = 0.00 ± 0.38', sample: '30 bags', body: 'Across 30 bags, $/100g and your bag rating barely move together (by rank).' });
   });
   it('a real link says so', () => {
     const { bs, brews } = mk((i) => 7 + i / 20);
@@ -508,12 +508,12 @@ describe('cost per cup', () => {
   });
 });
 
-describe('$/100 g by quarter', () => {
+describe('$/100g by quarter', () => {
   const bs = bags(6, (i) => ({ cost: i < 3 ? 10 : 20, amountG: 100, purchaseDate: i < 3 ? '2026-02-01' : '2026-05-01' }));
   const o = { period: { from: '2026-01-01', to: '2026-09-30' } };
   it('per quarter series', () => {
     const f = gen('pricePerMonth', [], bs, o)!;
-    expect(f).toMatchObject({ theme: 'money', kind: 'pattern', headline: '$/100 g went from $10.00 to $20.00', sample: '6 bags' });
+    expect(f).toMatchObject({ theme: 'money', kind: 'pattern', headline: '$/100g went from $10.00 to $20.00', sample: '6 bags' });
     expect(f.series).toEqual([{ label: '2026 Q1', value: 10 }, { label: '2026 Q2', value: 20 }]);
     expect(f.money).toBe(true); // its chart's aria-label reads the values as usd
   });
@@ -1033,7 +1033,7 @@ describe('pour findings', () => {
     const rows: BrewFact[] = [], facts = new Map<number, PourFact>();
     for (let i = 0; i < bagCount; i++) {
       const g = gap + (i % 3 - 1) * 0.4;
-      for (const [rec, ag, r] of [[1, 'high', 7 + g / 2], [2, 'low', 7 - g / 2]] as const)
+      for (const [rec, ag, r] of [[1, 'high', 7 +g / 2], [2, 'low', 7 - g / 2]] as const)
         for (let k = 0; k < 2; k++) {
           const b = brew({ id: nextId++, coffeeId: i + 1, rating: r, localDate: '2026-09-15', ...o });
           rows.push(b);

@@ -55,7 +55,7 @@ const EXPECT = {
 for (const [name, pattern] of Object.entries(EXPECT))
   it(`reads ${name} as ${pattern}`, () => expect(read(name).pattern).toBe(pattern));
 
-it('bbs has two ~20 s blooms; 4sy one bloom', () => {
+it('bbs has two ~20s blooms; 4sy one bloom', () => {
   const b = read('bbs');
   expect(b.bloomCount).toBe(2);
   expect(Math.abs(b.bloomHoldS! - 20)).toBeLessThanOrEqual(5);
@@ -63,7 +63,7 @@ it('bbs has two ~20 s blooms; 4sy one bloom', () => {
   expect(s.bloomCount).toBe(1);
   expect(s.bloomHoldS).not.toBeNull();
 });
-it('bbs-30s has two ~30 s blooms; long-pour keeps its fast/slow pattern', () => {
+it('bbs-30s has two ~30s blooms; long-pour keeps its fast/slow pattern', () => {
   const b = read('bbs-30s');
   expect(b.bloomCount).toBe(2);
   expect(Math.abs(b.bloomHoldS! - 30)).toBeLessThanOrEqual(5);
@@ -76,7 +76,7 @@ it('bbs: a lifted dripper is a swirl, excluded from water, and not a tare', () =
   expect(Math.abs(r.scaleWaterG - 295.3)).toBeLessThanOrEqual(15);
   expect(r.lowConfidence).toBe(false);
 });
-it('swirl fixture: swirl found; its log (272 g, 52 g on the scale) cannot reconcile', () => {
+it('swirl fixture: swirl found; its log (272g, 52g on the scale) cannot reconcile', () => {
   const r = read('swirl');
   expect(r.swirls.length).toBeGreaterThanOrEqual(1);
   expect(r.lowConfidence).toBe(true);
@@ -248,7 +248,7 @@ it('describeReading matches the spec example', () => {
     pours: [pour('fast', 10, true), pour('fast', 10, true), pour('fast', 8), pour('slow', 4)]
   };
   expect(describeReading(r)).toBe(
-    'Two 30 s blooms + 1 fast pour + 1 slow pour · ~1:17.3 · 2:30 total'
+    'Two 30s blooms + 1 fast pour + 1 slow pour · ~1:17.3 · 2:30 total'
   );
   const y = {
     ...base,
@@ -263,7 +263,7 @@ it('describeReading matches the spec example', () => {
     pours: [pour('fast', 15, true), pour('fast', 16), pour('fast', 15), pour('slow', 4)]
   };
   expect(describeReading(y)).toBe(
-    '30 s bloom + 2 fast pours + 1 slow pour · swirl after bloom, swirl after pour 3 · ratio unknown · 2:30 total · immersion · low confidence'
+    '30s bloom + 2 fast pours + 1 slow pour · swirl after bloom, swirl after pour 3 · ratio unknown · 2:30 total · immersion · low confidence'
   );
   expect(
     describeReading({

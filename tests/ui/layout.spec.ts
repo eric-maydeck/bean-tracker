@@ -1328,11 +1328,11 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, string | RegExp][] = [
-        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800 mL (recipe 800 mL)\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4 ppm (recipe 80 ppm)\nKH: 20.1 ppm (recipe 20 ppm)'],
-        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900 mL (recipe 800 mL)\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5 ppm (recipe 60 ppm)\nKH: 17.9 ppm (recipe 20 ppm)'],
-        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880 mL \(recipe 800 mL\)\n[\s\S]*\nGH: 18\.3 ppm \(recipe 20 ppm\)\nKH: 4\.6 ppm \(recipe 5 ppm\)$/],
-        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900 mL \(recipe 800 mL\)\n/],
-        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800 mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4 ppm\nKH: 0 ppm/]
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800mL (recipe 800mL)\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4ppm (recipe 80ppm)\nKH: 20.1ppm (recipe 20ppm)'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'],
+        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880mL \(recipe 800mL\)\n[\s\S]*\nGH: 18\.3ppm \(recipe 20ppm\)\nKH: 4\.6ppm \(recipe 5ppm\)$/],
+        ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900mL \(recipe 800mL\)\n/],
+        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4ppm\nKH: 0ppm/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -1434,7 +1434,7 @@ export const STATES: State[] = [
       await expect(page.getByLabel('Recipe')).toHaveValue('bright-and-juicy');
       await expect(page.getByLabel('Water (mL)')).toHaveValue('800');
       await expect(page.getByLabel('Kettle')).toHaveValue('');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 800 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 800mL' })).toBeVisible();
       await page.getByLabel('Recipe').selectOption('mg-k-60-10');
       await page.getByLabel('Water (mL)').fill('800');
       await expect(page.getByRole('listitem', { name: '0 Calcium' })).toBeVisible();
@@ -1447,25 +1447,25 @@ export const STATES: State[] = [
       await expect(page).toHaveURL(/ml=900/);
       await expect(page.getByRole('listitem', { name: '9 Potassium' })).toBeVisible();
       await page.getByLabel('Water (mL)').fill('5');
-      await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
+      await expect(page.getByText('Enter 100-2000mL.')).toBeVisible();
     }
   },
   {
     name: 'water-ideal-hint', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&ml=800',
     act: async (page) => {
-      await expect(page.locator('.water-ideal')).toContainText('The Lume High Clarity recipe is best used with 1000 mL of distilled water.');
-      await expect(page.getByRole('button', { name: 'Switch to 1000 mL' })).toBeVisible();
+      await expect(page.locator('.water-ideal')).toContainText('The Lume High Clarity recipe is best used with 1000mL of distilled water.');
+      await expect(page.getByRole('button', { name: 'Switch to 1000mL' })).toBeVisible();
     }
   },
   {
     name: 'water-ideal-switch', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&ml=800',
     act: async (page) => {
-      await page.getByRole('button', { name: 'Switch to 1000 mL' }).click();
+      await page.getByRole('button', { name: 'Switch to 1000mL' }).click();
       await expect(page).toHaveURL(/ml=1000/);
       await expect(page.getByLabel('Water (mL)')).toHaveValue('1000');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1000mL' })).toBeVisible();
       await expect(page.locator('.water-ideal')).toHaveCount(0);
     }
   },
@@ -1492,7 +1492,7 @@ export const STATES: State[] = [
       await box.fill('725');
       await expect(kettle).toHaveValue('');
       await expect(page).not.toHaveURL(/kettle/);
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 725 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 725mL' })).toBeVisible();
       expect(await slider.inputValue()).toBe('725'); // typed mL sits exactly, not at a step
       await box.fill('825');
       expect(await slider.inputValue()).toBe('825');
@@ -1508,7 +1508,7 @@ export const STATES: State[] = [
       await box.fill('725');
       await slider.fill('1200');
       await expect(box).toHaveValue('1200');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200mL' })).toBeVisible();
       await expectGroupsLabelled(page);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     }
@@ -1578,7 +1578,7 @@ export const STATES: State[] = [
     name: 'water-result',
     path: () => '/water?recipe=substance&ml=880',
     act: async (page) => {
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880mL' })).toBeVisible();
       expect(await page.locator('.wr-drop').evaluateAll((els) => els.map((e) => e.textContent))).toEqual(['3Mg', '7Ca', '0Na', '9K']);
       const rows = await page.locator('.wr-meters li .wr-meter-label').allTextContents();
       expect(rows).toEqual(['Magnesium', 'Calcium', 'Sodium', 'Potassium', 'Chloride', 'Bicarbonate']);
@@ -1628,7 +1628,7 @@ export const STATES: State[] = [
         const sel = page.getByLabel('Recipe');
         if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
       }
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880mL of water' })).toBeVisible();
     }
   },
   {
@@ -1658,7 +1658,7 @@ export const STATES: State[] = [
         const sel = page.getByLabel('Recipe');
         if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
       }
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880mL of water' })).toBeVisible();
     }
   },
   {
@@ -1688,7 +1688,7 @@ export const STATES: State[] = [
         const sel = page.getByLabel('Recipe');
         if (await sel.count()) expect(Math.abs((await sel.boundingBox())!.width - slider.width), 'recipe select as wide as the kettle/slider group').toBeLessThan(2);
       }
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 880 mL of water' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 880mL of water' })).toBeVisible();
     }
   },
   {
@@ -1741,8 +1741,8 @@ export const STATES: State[] = [
       const results = page.locator('main section.wr');
       const before = (await results.boundingBox())!.height;
       await box.fill('8');
-      await expect(page.getByText('Enter 100-2000 mL.')).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 900 mL' })).toBeVisible();
+      await expect(page.getByText('Enter 100-2000mL.')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 900mL' })).toBeVisible();
       expect((await results.boundingBox())!.height).toBe(before);
       await page.evaluate(() => (document.querySelector('nav.site-nav a[href="/water"]') as HTMLElement | null)?.click());
       await expect(page).toHaveURL(/recipe=substance&ml=900/); // a bare visit restores the remembered state
@@ -1755,7 +1755,7 @@ export const STATES: State[] = [
     path: () => '/water?recipe=HOLY-water&ml=1200',
     act: async (page) => {
       await expect(page.getByLabel('Recipe')).toHaveValue('holy-water');
-      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200 mL' })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1200mL' })).toBeVisible();
       await expect(page.getByRole('listitem', { name: '9 Magnesium' })).toBeVisible();
       await expect(page.locator('.wr-head')).toBeVisible();
       await gotoReady(page, '/water?kettle=FELLOW-stagg-ekg-pro');
@@ -2204,9 +2204,9 @@ export const STATES: State[] = [
       await expect(ceto.locator('.pending-chip')).toBeHidden();
       await row.locator('input[name="price"]').fill('45');
       await expect(chip).toHaveAttribute('aria-label', 'Pending: Pending changes · Edited');
-      await expect(row.locator('.total-note')).toHaveText('500 g total');
+      await expect(row.locator('.total-note')).toHaveText('500g total');
       await row.locator('input[name="bag_count"]').fill('3');
-      await expect(row.locator('.total-note')).toHaveText('750 g total');
+      await expect(row.locator('.total-note')).toHaveText('750g total');
       // Pausing disables the inputs (keeping the staged values); the label
       // flips to what a click would do now; nothing moves or grows.
       await pause.click();
@@ -2497,7 +2497,7 @@ export const STATES: State[] = [
       const panel = page.locator('section.chart-panel').filter({ has: page.getByRole('heading', { name: 'Top Coffees by Category' }) });
       const tip = await hoverChart(page, panel.locator('canvas'));
       await expectDataTip(tip);
-      await expect(tip.locator('dd')).toHaveText(/^[\d,]+ g \(\d+ bags?\)$/);
+      await expect(tip.locator('dd')).toHaveText(/^[\d,]+g \(\d+ bags?\)$/);
     }
   },
   {
@@ -2534,7 +2534,7 @@ export const STATES: State[] = [
       await expectDataTip(tip);
       await expectTipInView(page, tip);
       await expect(tip.locator('.tip-title')).toHaveText('Exact');
-      await expect(tip.locator('dd')).toHaveText('123,456 g');
+      await expect(tip.locator('dd')).toHaveText('123,456g');
     }
   },
   {
@@ -2570,12 +2570,12 @@ export const STATES: State[] = [
       await expect(page.getByRole('link', { name: 'Open recipes' })).toHaveAttribute('href', '/recipes');
       // Brew now lists: no mutation here (every viewport shares one DB); add/remove are covered in page.server.test.ts.
       const rows = page.locator('.bn-list').first().locator('li');
-      await expect(rows.first().locator('.bn-cell').first()).toContainText(/1:\d+(\.\d)?\s*\d+ g/);
+      await expect(rows.first().locator('.bn-cell').first()).toContainText(/1:\d+(\.\d)?\s*\d+g/);
       const cellXs = await page.locator('.bn-list').first().locator('li').evaluateAll((lis) => lis.map((li) => li.querySelector('.bn-cell')!.getBoundingClientRect().x));
       expect(Math.max(...cellXs) - Math.min(...cellXs)).toBeLessThan(2); // water columns line up row to row
       await page.getByLabel('New dose in grams').fill('3');
       await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-      await expect(page.getByText('Each dose must be 5–40 g')).toBeVisible();
+      await expect(page.getByText('Each dose must be 5–40g')).toBeVisible();
       // An existing value is an error with no toast (so no Undo that would remove it).
       await page.getByLabel('New dose in grams').fill('18');
       await page.getByRole('button', { name: 'Add', exact: true }).first().click();
@@ -2629,7 +2629,7 @@ export const STATES: State[] = [
           const steps = card.locator('.steps');
           const nPours = await steps.locator('li').count();
           expect(nPours).toBeGreaterThanOrEqual(4);
-          await expect(card.getByText('93 °C · Rinse the filter')).toBeVisible();
+          await expect(card.getByText('93°C · Rinse the filter')).toBeVisible();
           const low = steps.locator('.step-time.low');
           await expect(low).toHaveText('Low');
           const xs = await steps.locator('li > span:first-child').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
@@ -3020,21 +3020,21 @@ export const STATES: State[] = [
       const add = async () => {
         await page.getByLabel('New dose in grams').fill(dose);
         await page.getByRole('button', { name: 'Add', exact: true }).first().click();
-        await expect(page.getByRole('status').filter({ hasText: `Added ${dose} g.` })).toBeVisible();
+        await expect(page.getByRole('status').filter({ hasText: `Added ${dose}g.` })).toBeVisible();
       };
       // Undo reverses the add and says so.
       await add();
-      const undo = page.getByRole('status').filter({ hasText: `Added ${dose} g.` }).getByRole('button', { name: 'Undo' });
+      const undo = page.getByRole('status').filter({ hasText: `Added ${dose}g.` }).getByRole('button', { name: 'Undo' });
       const ub = (await undo.boundingBox())!;
       if (isPhone(page)) expect(Math.min(ub.width, ub.height)).toBeGreaterThanOrEqual(44);
       await undo.click();
       await expect(page.getByRole('status').filter({ hasText: 'Undone.' })).toBeVisible();
-      await expect(page.getByRole('button', { name: `Remove ${dose} g` })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: `Remove ${dose}g` })).toHaveCount(0);
       // Toasts stack: newer below older, none replaced.
       await add();
-      await page.getByRole('button', { name: `Remove ${dose} g` }).click();
+      await page.getByRole('button', { name: `Remove ${dose}g` }).click();
       await page.getByRole('dialog').getByRole('button', { name: 'Remove' }).click();
-      const [added, removed] = [page.getByRole('status').filter({ hasText: `Added ${dose} g.` }), page.getByRole('status').filter({ hasText: `Removed ${dose} g.` })];
+      const [added, removed] = [page.getByRole('status').filter({ hasText: `Added ${dose}g.` }), page.getByRole('status').filter({ hasText: `Removed ${dose}g.` })];
       await expect(removed).toBeVisible();
       await expect(added).toBeVisible();
       expect((await removed.boundingBox())!.y).toBeGreaterThan((await added.boundingBox())!.y);
@@ -6729,7 +6729,7 @@ export const STATES: State[] = [
       await expect(page.getByRole('group', { name: 'Temp bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('group', { name: 'Grind bands' }).getByRole('button', { name: 'Exact' })).toHaveAttribute('aria-pressed', 'false');
       const bold = page.locator('[data-section="brewing-temp"] .bar-label.bold');
-      await expect(bold).toHaveText(['88 °C', '91 °C', '92 °C', '94 °C']);
+      await expect(bold).toHaveText(['88°C', '91°C', '92°C', '94°C']);
     } },
   { name: 'insights-brewing-zp6', viewports: 'two', path: () => '/insights?tab=brewing&grinder=zp6-special',
     act: async (page) => {
@@ -8216,7 +8216,7 @@ export const STATES: State[] = [
       await expect(rows.first().locator('.early-head')).toBeVisible();
       await expect(rows.first().locator('.early-theme')).toHaveText(/^(Taste|Dial-in|Habits|Gear|Money)$/i);
       // A money finding's mini chart reads its values as usd for screen readers ("2026 Q1 $10.00"), as its headline shows them.
-      const money = page.locator('.finding-grid .hl-card', { hasText: '$/100 g went from' }).locator(':is(.spark, .bars)');
+      const money = page.locator('.finding-grid .hl-card', { hasText: '$/100g went from' }).locator(':is(.spark, .bars)');
       await expect(money).toHaveCount(1);
       expect(await money.getAttribute('aria-label')).toMatch(/^[^,]+ \$\d[\d,]*\.\d{2}(, [^,]+ \$\d[\d,]*\.\d{2})+$/);
       // Every row has its progress bar and "N% there", dial-in-by-group ones too (user, 2026-10-17); only a finding whose

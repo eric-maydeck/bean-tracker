@@ -194,7 +194,7 @@
     <span>Kettle</span>
     <select class="ctl-select" aria-label="Kettle" value={valid ? kettle : ''} onchange={(e) => pickKettle(e.currentTarget.value)}>
       <option value="" disabled>Custom</option>
-      {#each KETTLES as k (k.slug)}<option value={k.slug}>{k.name} ({k.ml} mL)</option>{/each}
+      {#each KETTLES as k (k.slug)}<option value={k.slug}>{k.name} ({k.ml}mL)</option>{/each}
     </select>
   </label>
   <label class="form-field group-field water-field">
@@ -203,7 +203,7 @@
   </label>
 </div>
 <div class="form-field group-field water-slider">
-  <input type="range" min={MIN_ML} max={SLIDER_MAX} step="any" aria-label="Water slider (mL)" aria-valuetext="{volume} mL" value={Math.min(volume, SLIDER_MAX)} oninput={snapSlider} onkeydown={stepSlider} />
+  <input type="range" min={MIN_ML} max={SLIDER_MAX} step="any" aria-label="Water slider (mL)" aria-valuetext="{volume}mL" value={Math.min(volume, SLIDER_MAX)} oninput={snapSlider} onkeydown={stepSlider} />
   <div class="water-ticks" aria-hidden="true">
     {#each TICKS as t (t)}
       <span class="water-tick" class:water-tick-major={t % 100 === 0} style:left="{((t - MIN_ML) / (SLIDER_MAX - MIN_ML)) * 100}%">
@@ -223,8 +223,8 @@
     </label>
     {#if volume !== ideal}
       <p class="text-muted water-ideal"><strong>
-        The {recipe.name} recipe is best used with {ideal}&nbsp;mL of distilled water.</strong>
-        <button class="button button-secondary" type="button" onclick={() => setMl(String(ideal))}>Switch to {ideal}&nbsp;mL</button>
+        The {recipe.name} recipe is best used with {ideal}mL of distilled water.</strong>
+        <button class="button button-secondary" type="button" onclick={() => setMl(String(ideal))}>Switch to {ideal}mL</button>
       </p>
     {/if}
   {:else}
@@ -251,10 +251,10 @@
 </div></div>
 
 <!-- Results stay on the last valid mL while the box holds a partial number; the hint only shows then, in reserved space. -->
-<p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML} mL.</p>
+<p class="text-muted water-hint" class:water-hint-off={valid}>Enter {MIN_ML}-{MAX_ML}mL.</p>
 <section class="wr water-results">
   <div class="card wr-head">
-    <h2>Lotus drops for {volume} mL of water</h2>
+    <h2>Lotus drops for {volume}mL of water</h2>
     <ul class="wr-drops" aria-label="Drops to add">
       {#each CONCENTRATES as [key, label] (key)}
         <li class="wr-drop" style:--el="var(--el-{key})" class:wr-zero={drops[key] === 0} aria-label="{drops[key]} {label}"><b>{drops[key]}</b><span>{SYMBOL[key]}</span></li>

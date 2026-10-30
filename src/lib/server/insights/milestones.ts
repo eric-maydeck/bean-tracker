@@ -118,10 +118,10 @@ export function countEvents(brews: readonly BrewFact[], bags: readonly BagFact[]
   const bought = bags.filter((b) => b.purchaseDate);
   return [
     ...walk('brews', sorted.map((b) => brewStep(b, 1)), L('brews'), (t) => `${ordinal(t)} brew`),
-    ...walk('kgBrewed', sorted.map((b) => brewStep(b, b.dose ?? 0)), L('kgBrewed'), (t) => `${t} kg brewed`, 1000),
+    ...walk('kgBrewed', sorted.map((b) => brewStep(b, b.dose ?? 0)), L('kgBrewed'), (t) => `${t}kg brewed`, 1000),
     ...walk('waterL', sorted.map((b) => brewStep(b, b.waterG ?? 0)), L('waterL'), (t) => `${t} L of water poured`, 1000),
     ...walk('bagsBought', bought.map((b) => ({ date: b.purchaseDate!, v: 1, ...bagLink(b) })), L('bagsBought'), (t) => `${ordinal(t)} bag`),
-    ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0, ...bagLink(b) })), L('kgBought'), (t) => `${t} kg bought`, 1000),
+    ...walk('kgBought', bought.map((b) => ({ date: b.purchaseDate!, v: b.amountG ?? 0, ...bagLink(b) })), L('kgBought'), (t) => `${t}kg bought`, 1000),
     ...walk('bagsFinished', bags.filter(isFinished).map((b) => ({ date: b.lastBrew!, v: 1, ...bagLink(b) })), L('bagsFinished'), (t) => `${t} bags finished`),
     ...walk('coffees', firstOfCoffee.map((b) => brewStep(b, 1)), L('coffees'), (t) => `${t} different coffee${t === 1 ? '' : 's'}`),
     ...walk('nines', sorted.filter((b) => nine(b, ratings)).map((b) => brewStep(b, 1)), L('nines'), (t) => `${ordinal(t)} brew rated 9+`)

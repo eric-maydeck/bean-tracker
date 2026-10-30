@@ -210,7 +210,7 @@ const bagPer100 = (c: RecCtx): Candidate[] =>
 const cups = (c: RecCtx): Candidate[] =>
   held(c).filter((b) => b.costPerBrew !== null).map((b) => {
     const bag = c.bags.find((x) => x.id === b.coffeeId);
-    const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100\u00a0g` : null;
+    const per100 = bag?.cost && bag.amountG ? `${usd((bag.cost / bag.amountG) * 100)}/100g` : null;
     return { value: b.costPerBrew!, ...(per100 && b.dose ? { detail: `${g(b.dose)} at ${per100}` } : {}), holder: brewHolder(c, b) };
   });
 // Value score: mean rating ÷ $ per 100 g (the Records pick and the Spend tab's Best value share it).
@@ -221,7 +221,7 @@ const value = (c: RecCtx): Candidate[] =>
     const bag = c.bags.find((x) => x.id === id);
     if (!bag?.cost || bag.cost <= 0 || !bag.amountG || bag.amountG <= 0) return null;
     const p = (bag.cost / bag.amountG) * 100;
-    return { value: valueScore(s.mean!, bag.cost / bag.amountG), mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100\u00a0g` };
+    return { value: valueScore(s.mean!, bag.cost / bag.amountG), mean: s.mean!, per100: p, detail: `${s.mean!.toFixed(2)} at ${usd(p)}/100g` };
   });
 const spent = (bs: BagFact[]) => bs.reduce((s, b) => s + (b.cost ?? 0), 0);
 const roasters = (c: RecCtx, f: (bs: BagFact[]) => number, detail: (bs: BagFact[]) => string): Candidate[] =>
@@ -331,8 +331,8 @@ export const RECORDS: RecordDef[] = [
       return d === null ? [] : [{ value: d, detail: 'Unopened since bought', holder: bagHolder(c.bags, b.id, b.purchaseDate!) }];
     }), { scope: 'now' }),
 
-  money('priciestBag', 'Priciest bag per 100\u00a0g', 'max', 'per100', (c) => bagPer100(c), { bought: true }),
-  money('cheapestBag', 'Cheapest bag per 100\u00a0g', 'min', 'per100', (c) => bagPer100(c), { bought: true }),
+  money('priciestBag', 'Priciest bag per 100g', 'max', 'per100', (c) => bagPer100(c), { bought: true }),
+  money('cheapestBag', 'Cheapest bag per 100g', 'min', 'per100', (c) => bagPer100(c), { bought: true }),
   money('priciestCup', 'Priciest cup', 'max', 'money', (c) => cups(c)),
   money('cheapestCup', 'Cheapest cup', 'min', 'money', (c) => cups(c)),
   money('bestValue', 'Best value for money', 'max', 'value', (c) => value(c), { rating: true }),

@@ -561,7 +561,7 @@
         <td colspan="2"><strong>Totals</strong></td>
         <td><strong>{#if totals.price != null}<Usd n={totals.price} whole={priceWhole} />{:else}—{/if}</strong></td>
         {#if canEdit}
-          <td colspan="2"><strong>{totals.grams != null ? `${totals.grams} g` : '—'}</strong></td>
+          <td colspan="2"><strong>{totals.grams != null ? `${totals.grams}g` : '—'}</strong></td>
           <td></td>
           <td></td>
           <td></td>

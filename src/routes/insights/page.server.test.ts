@@ -257,7 +257,7 @@ describe('/insights load', () => {
     try {
       vi.setSystemTime(new Date('2026-10-10T18:00:00Z'));
       setHouseholdSize(getDb(), 2);
-      seed([['2026-10-04', 140], ['2026-10-10', 70]]); // 1w = Oct 4–10: 210 g / 7 days; 250 g bag less the 210 logged = 40 g on hand
+      seed([['2026-10-04', 140], ['2026-10-10', 70]]); // 1w = Oct 4–10: 210g / 7 days; 250g bag less the 210 logged = 40g on hand
       expect(run('?range=1w&people=household').consumption).toEqual({
         perDay: 30, perWeek: 210, perMonth: 30 * 30.44, daysToClear: 2, clearBy: '2026-10-12'
       });
@@ -411,9 +411,9 @@ describe('brewing lab tabs', () => {
   it('each Band/Exact toggle reaches its own Brewing chart (dosing=exact → dose exact)', () => {
     seed([[today, 15], [today, 15], [today, 17], [today, 17]]);
     const dose = (q: string) => run(`?tab=brewing&dial=all${q}`).brewing.vars.find((v: { key: string }) => v.key === 'dose').bands.map((b: { label: string }) => b.label);
-    expect(dose('')).toEqual(['< 16 g', '16–18 g']);
-    expect(dose('&dosing=exact')).toEqual(['15 g', '17 g']);
-    expect(dose('&temp=exact&ratio=exact')).toEqual(['< 16 g', '16–18 g']);
+    expect(dose('')).toEqual(['< 16g', '16–18g']);
+    expect(dose('&dosing=exact')).toEqual(['15g', '17g']);
+    expect(dose('&temp=exact&ratio=exact')).toEqual(['< 16g', '16–18g']);
   });
   it('lab values come from the data: a real bag slug stays, junk drops', () => {
     seed([[today, 15]]);

@@ -1,3 +1,4 @@
+import { unitGap } from './unitGap.ts';
 // An http(s) address of sane length.
 export function isWebUrl(s: string): boolean {
   try { return /^https?:$/.test(new URL(s).protocol) && s.length <= 2000; } catch { return false; }
@@ -53,7 +54,7 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     text('flow', 'Flow', ['Open', 'Restricted', 'Valve / immersion'], ['flow', 'flow rate'],
       'How fast it drains on its own. Open: grind and pour set the speed (V60). Restricted: small holes slow it (Kalita, Melitta). Valve / immersion: a valve holds the water until released (Hario Switch, Clever).'),
     text('size', 'Size', ['01', '02', '03'], undefined,
-      "The maker's size code: 01 for 1–2 cups (~200–350 mL), 02 for 1–4 cups (~300–600 mL), 03 for larger batches."),
+      "The maker's size code: 01 for 1–2 cups (~200–350mL), 02 for 1–4 cups (~300–600mL), 03 for larger batches."),
     ownData
   ],
   grinder: [
@@ -68,7 +69,7 @@ export const KIND_FIELDS: Record<GearKind, readonly GearField[]> = {
     { ...text('adjustment', 'Adjustment', ['Stepped', 'Stepless'], ['adjustment', 'adjustment type'],
       'Stepped grinders click between fixed settings; stepless ones turn smoothly to any setting.'), type: 'select' },
     num('stepSize', 'Step size', 'µm', 0.1, 1000, ['step size', 'step', 'micron per step'],
-      'How far one click moves the burrs, in microns (µm): ~12–25 µm on most hand grinders, smaller is finer control.')
+      'How far one click moves the burrs, in microns (µm): ~12–25µm on most hand grinders, smaller is finer control.')
   ],
   filter: [
     text('material', 'Material', ['Paper', 'Cloth', 'Metal'], ['material', 'materials'],
@@ -98,7 +99,7 @@ export function parseGearValues(kind: GearKind, raw: unknown): { values: GearVal
     if (f.type === 'number' || f.type === 'money') {
       const n = Number(s);
       if (!Number.isFinite(n) || n < (f.min ?? -Infinity) || n > (f.max ?? Infinity))
-        return { error: `${f.label} must be ${f.min}–${f.max}${f.unit ? ` ${f.unit}` : ''}` };
+        return { error: `${f.label} must be ${f.min}–${f.max}${f.unit ? `${unitGap(f.unit)}${f.unit}` : ''}` };
       values[f.key] = f.type === 'money' ? Math.round(n * 100) / 100 : n;
     } else if (f.type === 'url') {
       if (!isWebUrl(s)) return { error: `${f.label} isn't a web address` };

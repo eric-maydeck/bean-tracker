@@ -13,30 +13,30 @@ const label = (v: LabVar, o: Partial<BrewFact>, grinder?: string | null) => band
 describe('bandOf', () => {
   it('temp bands: every edge', () => {
     expect([89.9, 90, 92.9, 93, 94.9, 95, 99].map((t) => label('temp', { tempC: t }))).toEqual(
-      ['< 90 °C', '90–92 °C', '90–92 °C', '93–94 °C', '93–94 °C', '95+ °C', '95+ °C']);
+      ['< 90°C', '90–92°C', '90–92°C', '93–94°C', '93–94°C', '95+°C', '95+°C']);
   });
   it('exact temps: whole °C, half degrees round', () => {
-    expect([91, 93.5, 85].map((t) => label('tempExact', { tempC: t }))).toEqual(['91 °C', '94 °C', '85 °C']);
+    expect([91, 93.5, 85].map((t) => label('tempExact', { tempC: t }))).toEqual(['91°C', '94°C', '85°C']);
     expect(bandOf('tempExact', brew({ tempC: 88 }))!.order).toBe(88);
   });
   it('ratio, dose: every edge', () => {
     expect([15.4, 15.5, 16.5, 17.5].map((r) => label('ratio', { ratio: r }))).toEqual(['< 1:15.5', '1:15.5–16.5', '1:16.5–17.5', '1:17.5+']);
-    expect([15.9, 16, 18, 20].map((d) => label('dose', { dose: d }))).toEqual(['< 16 g', '16–18 g', '18–20 g', '20+ g']);
+    expect([15.9, 16, 18, 20].map((d) => label('dose', { dose: d }))).toEqual(['< 16g', '16–18g', '18–20g', '20+g']);
   });
   it('GH: one band per exact value (whole ppm)', () => {
     const gh = (g: number) => bandOf('gh', brew({ waterProfile: { calcium: 1, magnesium: null, sodium: null, potassium: null, chloride: null, sulfate: null, gh: g, kh: 0 } }));
-    expect([40, 59.6, 90].map((g) => gh(g)!.label)).toEqual(['40 ppm', '60 ppm', '90 ppm']);
+    expect([40, 59.6, 90].map((g) => gh(g)!.label)).toEqual(['40ppm', '60ppm', '90ppm']);
     expect(gh(70)!.order).toBe(70);
   });
-  it('exact ratio and dose: nearest 0.5; exact time: nearest 5 s', () => {
+  it('exact ratio and dose: nearest 0.5; exact time: nearest 5s', () => {
     expect([15.2, 15.3, 16, 16.74].map((r) => label('ratioExact', { ratio: r }))).toEqual(['1:15', '1:15.5', '1:16', '1:16.5']);
     expect(bandOf('ratioExact', brew({ ratio: 15.3 }))!.order).toBe(15.5);
-    expect([15.2, 15.3, 18].map((d) => label('doseExact', { dose: d }))).toEqual(['15 g', '15.5 g', '18 g']);
+    expect([15.2, 15.3, 18].map((d) => label('doseExact', { dose: d }))).toEqual(['15g', '15.5g', '18g']);
     expect(label('doseExact', { dose: 0 })).toBeNull();
     expect([92, 93, 125, 182].map((t) => label('timeExact', { brewTimeSeconds: t }))).toEqual(['1:30', '1:35', '2:05', '3:00']);
     expect(bandOf('timeExact', brew({ brewTimeSeconds: 93 }))!.order).toBe(95);
   });
-  it('brew time: 15 s bands, open ends', () => {
+  it('brew time: 15s bands, open ends', () => {
     expect([89, 90, 104, 105, 284, 285, 400].map((s) => label('time', { brewTimeSeconds: s }))).toEqual(
       ['< 1:30', '1:30–1:44', '1:30–1:44', '1:45–1:59', '4:30–4:44', '4:45+', '4:45+']);
   });
@@ -46,13 +46,13 @@ describe('bandOf', () => {
     expect(label('rest', { restDays: -2 })).toBeNull();
     expect(REST_LABELS).toHaveLength(6);
   });
-  it('bloom rounding: within 2 s of a multiple of 5 counts as it', () => {
+  it('bloom rounding: within 2s of a multiple of 5 counts as it', () => {
     expect([30, 31, 32, 43, 44, 46, 59, 61, 40].map(bloomRound)).toEqual([30, 30, 30, 45, 45, 45, 60, 60, 40]);
   });
   it('bloom bands (on the rounded value) and exact', () => {
     expect([27, 28, 30, 42, 43, 45, 57, 58, 60, 90].map((s) => label('bloom', { bloomSeconds: s }))).toEqual(
-      ['0–29 s', '30–44 s', '30–44 s', '30–44 s', '45–59 s', '45–59 s', '45–59 s', '60 s+', '60 s+', '60 s+']);
-    expect([31, 44, 61, 50].map((s) => label('bloomExact', { bloomSeconds: s }))).toEqual(['30 s', '45 s', '60 s', '50 s']);
+      ['0–29s', '30–44s', '30–44s', '30–44s', '45–59s', '45–59s', '45–59s', '60s+', '60s+', '60s+']);
+    expect([31, 44, 61, 50].map((s) => label('bloomExact', { bloomSeconds: s }))).toEqual(['30s', '45s', '60s', '50s']);
     expect(bandOf('bloomExact', brew({ bloomSeconds: 44 }))!.order).toBe(45);
   });
   it('brew number 1…9, 10+', () => {

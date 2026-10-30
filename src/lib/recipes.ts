@@ -326,7 +326,7 @@ export function recipeTimeline(def: RecipeDef): Timeline {
       if (i === 2 && p.startS != null && prev.startS != null && prev.durationS != null) gap = Math.max(0, p.startS - prev.startS - prev.durationS);
       startS = t + gap;
     }
-    const grams = p.grams ?? (p.share ?? 0) * 100; // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
+    const grams = p.grams ?? (p.share ?? 0) * 100; // a % recipe: shares at 100g per 100 %, the chart only needs proportions
     const durationS = flow && !p.bloom ? grams / FLOW_GPS : (p.durationS ?? 0);
     t = startS + durationS;
     pours.push({

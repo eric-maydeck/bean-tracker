@@ -60,7 +60,7 @@ export function recordParts(p: RecordPick, fmt: Fmt): [string, string?, string?]
     case 'days': return [num(n), n === 1 ? 'day' : 'days'];
     case 'gpd': return [num(n), 'g/day'];
     case 'money': return [usd(n)];
-    case 'per100': return [usd(n), '/ 100 g'];
+    case 'per100': return [usd(n), '/ 100g'];
     case 'clock': { const [hm, ap] = clock12(n).split(' '); return [hm, ap]; }
     case 'seconds': return [mss(n)];
     case 'ratio': return [`1:${n.toFixed(1)}`];
@@ -70,7 +70,7 @@ export function recordParts(p: RecordPick, fmt: Fmt): [string, string?, string?]
     // An encoded setting: the text is the value.
     case 'grind': return [p.detail ?? ''];
     // Rating ÷ $/100 g isn't readable: the mean rating, "at $9.30/100 g" under it.
-    case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.per100!)}/100 g`];
+    case 'value': return [p.mean!.toFixed(1), undefined, `At ${usd(p.per100!)}/100g`];
   }
 }
 export const recordValue = (p: RecordPick, fmt: Fmt): string => recordParts(p, fmt).filter(Boolean).join(' ');

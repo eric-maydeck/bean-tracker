@@ -108,7 +108,7 @@ describe('brew now dose and ratio lists', () => {
     expect(data().ratios.ratios).toEqual([16, 16.5, 17]);
   });
   it('rejects bad input with listError', async () => {
-    expect(failure(await actions.addDose(post('3')))).toEqual({ status: 400, data: { listError: 'Each dose must be 5–40 g', list: 'doses' } });
+    expect(failure(await actions.addDose(post('3')))).toEqual({ status: 400, data: { listError: 'Each dose must be 5–40g', list: 'doses' } });
     expect(failure(await actions.addRatio(post('25')))).toEqual({ status: 400, data: { listError: 'Each ratio must be 10–20', list: 'ratios' } });
   });
   it('rejects a non-admin with 401', async () => {

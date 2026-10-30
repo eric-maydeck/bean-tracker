@@ -72,23 +72,23 @@ export function grindSteps(labels: string[]): Band[] | null {
 
 export function bandOf(v: LabVar, b: BrewFact, grinder: string | null = null): Band | null {
   switch (v) {
-    case 'temp': return cut(b.tempC, [90, 93, 95], ['< 90 °C', '90–92 °C', '93–94 °C', '95+ °C']);
-    case 'tempExact': return b.tempC === null ? null : { label: `${Math.round(b.tempC)} °C`, order: Math.round(b.tempC) };
+    case 'temp': return cut(b.tempC, [90, 93, 95], ['< 90°C', '90–92°C', '93–94°C', '95+°C']);
+    case 'tempExact': return b.tempC === null ? null : { label: `${Math.round(b.tempC)}°C`, order: Math.round(b.tempC) };
     case 'ratio': return cut(b.ratio, [15.5, 16.5, 17.5], ['< 1:15.5', '1:15.5–16.5', '1:16.5–17.5', '1:17.5+']);
     case 'ratioExact': return exact(b.ratio, 0.5, (v) => `1:${v}`);
-    case 'dose': return cut(b.dose && b.dose > 0 ? b.dose : null, [16, 18, 20], ['< 16 g', '16–18 g', '18–20 g', '20+ g']);
-    case 'doseExact': return exact(b.dose && b.dose > 0 ? b.dose : null, 0.5, (v) => `${v} g`);
+    case 'dose': return cut(b.dose && b.dose > 0 ? b.dose : null, [16, 18, 20], ['< 16g', '16–18g', '18–20g', '20+g']);
+    case 'doseExact': return exact(b.dose && b.dose > 0 ? b.dose : null, 0.5, (v) => `${v}g`);
     case 'time': return cut(b.brewTimeSeconds, TIME_EDGES, TIME_LABELS);
     case 'timeExact': return exact(b.brewTimeSeconds, 5, mmss);
-    case 'bloom': return b.bloomSeconds === null ? null : cut(bloomRound(b.bloomSeconds), [30, 45, 60], ['0–29 s', '30–44 s', '45–59 s', '60 s+']);
-    case 'bloomExact': return b.bloomSeconds === null ? null : exact(bloomRound(b.bloomSeconds), 1, (v) => `${v} s`);
+    case 'bloom': return b.bloomSeconds === null ? null : cut(bloomRound(b.bloomSeconds), [30, 45, 60], ['0–29s', '30–44s', '45–59s', '60s+']);
+    case 'bloomExact': return b.bloomSeconds === null ? null : exact(bloomRound(b.bloomSeconds), 1, (v) => `${v}s`);
     case 'grind': case 'grindExact':
       return grinder && b.grinder === grinder && b.grind ? grindBand(b.grind, v === 'grind') : null;
     case 'rest': return b.restDays === null || b.restDays < 0 ? null : cut(b.restDays, [22, 31, 46, 61, 91], REST_LABELS);
     case 'water': return cat(b.water);
     case 'dripper': return cat(b.dripper);
     case 'filter': return b.filter === MIXED_FILTER ? null : cat(b.filter);
-    case 'gh': return exact(profileOf(b)?.gh || null, 1, (v) => `${v} ppm`); // W5: one band per GH value used
+    case 'gh': return exact(profileOf(b)?.gh || null, 1, (v) => `${v}ppm`); // W5: one band per GH value used
     case 'brewNo': return b.brewIndex < 1 ? null : { label: BREW_NO_LABELS[Math.min(b.brewIndex, 10) - 1], order: Math.min(b.brewIndex, 10) };
   }
 }

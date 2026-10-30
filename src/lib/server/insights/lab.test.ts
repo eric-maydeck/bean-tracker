@@ -15,7 +15,7 @@ const brew = (o: Partial<BrewFact>): BrewFact => ({
 const many = (k: number, coffeeId: number, tempC: number, r: number, o: Partial<BrewFact> = {}) =>
   Array.from({ length: k }, (_, i) => brew({ coffeeId, tempC, rating: +(r + ((i % 3) - 1) * 0.1).toFixed(2), ...o }));
 // Bag i: k brews at 91 °C and k at 94 °C, `gaps[i]` apart (the brew noise cancels in the difference).
-const bagGaps = (gaps: number[], k = 10) => gaps.flatMap((g, i) => [...many(k, i + 1, 91, 7 + g / 2), ...many(k, i + 1, 94, 7 - g / 2)]);
+const bagGaps = (gaps: number[], k = 10) => gaps.flatMap((g, i) => [...many(k, i + 1, 91, 7 +g / 2), ...many(k, i + 1, 94, 7 - g / 2)]);
 const temp = labFn('temp'), exact = labFn('tempExact');
 const P = { start: '2026-09-01', end: '2026-09-30' };
 
@@ -32,9 +32,9 @@ describe('pairedDeltas', () => {
   it('paired-bag rule: ≥ 2 bands with ≥ 2 brews each', () => {
     const rows = [...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(3, 2, 91, 6)];
     const [a, b] = pairedDeltas(rows, temp);
-    expect(a).toMatchObject({ label: '90–92 °C', bags: 1, brews: 2, plainBrews: 5, plainBags: 2 });
+    expect(a).toMatchObject({ label: '90–92°C', bags: 1, brews: 2, plainBrews: 5, plainBags: 2 });
     expect(a.delta).toBeCloseTo(0.5);
-    expect(b).toMatchObject({ label: '93–94 °C', bags: 1, brews: 2 });
+    expect(b).toMatchObject({ label: '93–94°C', bags: 1, brews: 2 });
     expect(b.delta).toBeCloseTo(-0.5);
   });
   it('z is the per-bag test: mean gap over its SE, matching se; cellOf carries it', () => {
@@ -70,31 +70,31 @@ describe('pairedDeltas', () => {
   const six = [0.5, 0.2, 0.8, -0.1, 0.6, 0.3];
   it('strength: a paired t test with the bag as the unit (stats review I-2), Bonferroni over the band count', () => {
     const rows = bagGaps(six), z = zOf(rows);
-    const got = pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength;
+    const got = pairedDeltas(rows, temp).find((s) => s.label === '90–92°C')!.strength;
     expect(got).toBe(strengthOf(z, true, 2, 6));
     expect(got).toBe('hint');
     expect(got).not.toBe(strengthOf(z, true, 1, 6)); // would be solid without the correction
     // Brews are not units: three times the brews per bag, same bags, same verdict.
-    expect(pairedDeltas(bagGaps(six, 30), temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
+    expect(pairedDeltas(bagGaps(six, 30), temp).find((s) => s.label === '90–92°C')!.strength).toBe('hint');
   });
   it('few bags, many brews per bag: 3 bags × 30 brews is a t(2) test, never solid (brew-level z would be huge)', () => {
-    const got = pairedDeltas(bagGaps([0.25, 0.1, 0.2], 30), temp).find((s) => s.label === '90–92 °C')!;
+    const got = pairedDeltas(bagGaps([0.25, 0.1, 0.2], 30), temp).find((s) => s.label === '90–92°C')!;
     expect(got.strength).toBe('hint');
   });
   it('a bar and its badge never disagree in sign: the per-bag gap against the bar is Too early (stats re-review B)', () => {
     // Every bag: 94 °C 0.5 under 91 °C, plus one 1-rated 88 °C brew (unpaired) that pulls the bag mean down, so the
     // 94 °C brews still sit above it: the bar reads +, the per-bag test says − with a large |t|.
     const rows = [0.5, 0.4, 0.6, 0.45, 0.55, 0.5].flatMap((g, i) => [...bagGaps([g]).map((r) => ({ ...r, coffeeId: i + 1 })), ...many(1, i + 1, 88, 1)]);
-    const b94 = pairedDeltas(rows, temp).find((s) => s.label === '93–94 °C')!;
+    const b94 = pairedDeltas(rows, temp).find((s) => s.label === '93–94°C')!;
     expect(b94.delta!).toBeGreaterThan(0);
     expect(b94.strength).toBe('early');
-    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength).toBe('solid'); // same sign: badged
+    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92°C')!.strength).toBe('solid'); // same sign: badged
   });
   it('Bonferroni counts every band in the data, also bands with no pairs', () => {
     // 3 bags at t(2) 4.16: Possible over 2 bands; an unpaired 88 °C bag makes it 3 tests: Too early.
     const rows = bagGaps([0.25, 0.1, 0.2]);
-    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92 °C')!.strength).toBe('hint');
-    expect(pairedDeltas([...rows, ...many(3, 9, 88, 7)], temp).find((s) => s.label === '90–92 °C')!.strength).toBe('early');
+    expect(pairedDeltas(rows, temp).find((s) => s.label === '90–92°C')!.strength).toBe('hint');
+    expect(pairedDeltas([...rows, ...many(3, 9, 88, 7)], temp).find((s) => s.label === '90–92°C')!.strength).toBe('early');
   });
   it('in-period bag means (ratedIn drops the old brews before demeaning)', () => {
     const rows = [...many(2, 1, 91, 8), ...many(2, 1, 94, 7), ...many(5, 1, 91, 2, { localDate: '2026-01-01' })];
@@ -118,7 +118,7 @@ describe('pairedDeltas', () => {
   it('sd: sample SD of the band\'s rated brews\' ratings (every brew, paired or not); null under 2', () => {
     const st = pairedDeltas([...many(3, 1, 91, 8), ...many(3, 1, 94, 7), brew({ coffeeId: 2, tempC: 96, rating: 5 })], temp);
     expect(st[0].sd).toBeCloseTo(0.1);
-    expect(st[2]).toMatchObject({ label: '95+ °C', sd: null });
+    expect(st[2]).toMatchObject({ label: '95+°C', sd: null });
   });
   it('spread ignores unpaired bags', () => {
     const wide = [4, 6, 8].map((rating) => brew({ coffeeId: 2, tempC: 91, rating })); // bag 2 never leaves 90–92: unpaired
@@ -129,11 +129,11 @@ describe('pairedDeltas', () => {
 
 describe('ladder', () => {
   // 3 bags, 91 °C about 1 above 94 °C in each (1.2, 0.8, 1.0: t(2) 8.7).
-  const sameBag = [1.2, 0.8, 1.0].flatMap((g, i) => [...many(10, i + 1, 91, 7.5 + g / 2), ...many(10, i + 1, 94, 7.5 - g / 2)]);
+  const sameBag = [1.2, 0.8, 1.0].flatMap((g, i) => [...many(10, i + 1, 91, 7.5 +g / 2), ...many(10, i + 1, 94, 7.5 - g / 2)]);
   it('tier 1: same bag, ≥ 2 solid bands; exact temps first', () => {
     const s = ladder(sameBag, [], [exact, temp])!;
     expect(s).toMatchObject({ tier: 1, verdict: 'win', group: null, bags: 3 });
-    expect(s.best).toMatchObject({ label: '91 °C', strength: 'solid' });
+    expect(s.best).toMatchObject({ label: '91°C', strength: 'solid' });
     expect(s.best!.value).toBeCloseTo(0.5);
   });
   it('grind bands carry their range into the card bands (tiers 1 and 2)', () => {
@@ -174,23 +174,23 @@ describe('ladder', () => {
   });
   it('falls back to bands when no exact temp is solid', () => {
     const rows = [1, 2, 3].flatMap((id) => [...many(5, id, 91, 8), ...many(5, id, 92, 8), ...many(10, id, 94, 7)]);
-    expect(ladder(rows, [], [exact, temp])!.best!.label).toBe('90–92 °C');
+    expect(ladder(rows, [], [exact, temp])!.best!.label).toBe('90–92°C');
   });
   it('tier 2: bag means within the narrowest group that has ≥ 2 solid bands', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(10, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(10, id, 94, 7))];
     const s = ladder(cross, [{ name: 'too narrow', brews: cross.slice(0, 20) }, { name: 'Natural Ultralight coffees', brews: cross }], [temp])!;
-    expect(s).toMatchObject({ tier: 2, group: 'Natural Ultralight coffees', bags: 3, next: { label: '93–94 °C' } });
+    expect(s).toMatchObject({ tier: 2, group: 'Natural Ultralight coffees', bags: 3, next: { label: '93–94°C' } });
     expect(s.best!.value).toBeCloseTo(8, 1);
   });
   it('tier 2: the winner vs the other solid bands (t test on their 9 bags), Bonferroni over every band of the group', () => {
     const a = [1, 2, 3].flatMap((id) => many(12, id, 91, 8));
     const bm = [6.8, 7.2, 6.9, 7.1, 6.8, 7.2];
     const b = bm.flatMap((r, i) => many(6, 10 + i, 94, r));
-    const cross = [...a, ...b, ...many(3, 20, 96, 7)]; // 95+ °C: a third band, one bag, not solid
+    const cross = [...a, ...b, ...many(3, 20, 96, 7)]; // 95+°C: a third band, one bag, not solid
     const z = restZ([8, 8, 8], bm);
     const s = ladder(cross, [{ name: 'g', brews: cross }], [temp])!;
     expect(s.best!.strength).toBe(strengthOf(z, true, 3, 9));
-    expect(s).toMatchObject({ tier: 2, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
+    expect(s).toMatchObject({ tier: 2, verdict: 'leaning', best: { label: '90–92°C', strength: 'hint' } });
     expect(strengthOf(z, true, 2, 9)).toBe('solid'); // solid.length as the test count would say win
   });
   it('tier 2 counts a bag brewed in two compared bands once (stats re-review C)', () => {
@@ -199,23 +199,23 @@ describe('ladder', () => {
     const slice = cross.filter((b) => b.tempC === 91);
     const s = ladder(slice, [{ name: 'g', brews: cross }], [temp])!;
     const z = restZ([8, 8.2, 7.9], [7, 7.2, 7.1]);
-    expect(s).toMatchObject({ tier: 2, best: { label: '90–92 °C' } });
+    expect(s).toMatchObject({ tier: 2, best: { label: '90–92°C' } });
     expect(s.best!.strength).toBe(strengthOf(z, true, 2, 3));
     expect(strengthOf(z, true, 2, 3)).not.toBe(strengthOf(z, true, 2, 6)); // 6 bag-band means would overstate it
   });
   it('tier 2: bag means identical to float noise are not a finding', () => {
     const cross = [...[1, 2, 3].flatMap((id) => many(12, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(12, id, 94, 8))];
-    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92 °C', '93–94 °C'], within: expect.closeTo(0), proven: false } });
+    expect(ladder(cross, [{ name: 'g', brews: cross }], [temp])).toMatchObject({ tier: 2, verdict: 'tie', best: { strength: 'early' }, tie: { labels: ['90–92°C', '93–94°C'], within: expect.closeTo(0), proven: false } });
   });
   it('tier 1: a hint leans, a weak gap is no clear winner', () => {
     // 3 bags: t(2) 4.16 is Possible over 2 bands; t(2) 1.89 is no clear winner.
-    expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92 °C', strength: 'hint' } });
+    expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'leaning', best: { label: '90–92°C', strength: 'hint' } });
     expect(ladder(bagGaps([0.3, 0, 0.2]), [], [temp])).toMatchObject({ tier: 1, verdict: 'tie', best: { strength: 'early' }, tie: { proven: false } });
   });
   describe('ties (equivalence within TIE_MARGIN) and early leads', () => {
     it('enough bags, small gaps: a tie of both bands, no badge strength', () => {
       const s = ladder(bagGaps([0.08, -0.08, 0.06, -0.06, 0.04, -0.04, 0.02, -0.02, 0.05, -0.05, 0.03, -0.03]), [], [temp])!;
-      expect(s).toMatchObject({ tier: 1, verdict: 'tie', tie: { labels: expect.arrayContaining(['90–92 °C', '93–94 °C']), head: expect.stringMatching(/ or /), list: null } });
+      expect(s).toMatchObject({ tier: 1, verdict: 'tie', tie: { labels: expect.arrayContaining(['90–92°C', '93–94°C']), head: expect.stringMatching(/ or /), list: null } });
       expect(s.tie!.within).toBeLessThan(TIE_MARGIN);
     });
     it('who is in the running is the gap between the bars (+0.1 / −0.1 → within 0.2, not doubled); the proof is the paired gap', () => {
@@ -233,7 +233,7 @@ describe('ladder', () => {
       const n1 = [0.5, -0.3, 0.2, -0.4, 0.6, -0.2], n2 = [-0.4, 0.3, -0.2, 0.5, -0.5, 0.1], n3 = [0.2, -0.5, 0.5, -0.3, -0.4, 0.6];
       const rows = n1.flatMap((_, i) => [...many(10, i + 1, 91, 8 + n1[i]), ...many(10, i + 1, 94, 8 + n2[i]), ...many(10, i + 1, 96, 8 + n3[i])]);
       const s = ladder(rows, [], [exact])!;
-      expect(s.tie!.labels).toEqual(['91 °C', '94 °C', '96 °C']);
+      expect(s.tie!.labels).toEqual(['91°C', '94°C', '96°C']);
       const v = s.bands.map((b) => b.value!);
       expect(s.tie!.within).toBeCloseTo(Math.max(v[0] - v[1], v[0] - v[2]));
     });
@@ -256,13 +256,13 @@ describe('ladder', () => {
     });
   });
   it('an Early single leader is hedged "Maybe X" when that stays on the bare setting\'s line, else the bare setting', () => {
-    expect(mightBe('60 s+')).toBe('Maybe 60 s+');
+    expect(mightBe('60s+')).toBe('Maybe 60s+');
     expect(mightBe('Cafec T90')).toBeNull(); // 15 characters: over MAYBE_FIT
     expect(mightBe('x'.repeat(MAYBE_FIT - 6))).toHaveLength(MAYBE_FIT);
     expect(mightBe('x'.repeat(MAYBE_FIT - 5))).toBeNull();
     // through the ladder: a clear Early leader carries it; wins, leans and ties do not
     const early = ladder(bagGaps([1.4, -0.3, 1.0]), [], [exact, temp])!; // a gap past the margin, three bags with a wide spread
-    expect(early).toMatchObject({ verdict: 'early', tie: null, might: 'Maybe 91 °C' });
+    expect(early).toMatchObject({ verdict: 'early', tie: null, might: 'Maybe 91°C' });
     expect(ladder(sameBag, [], [exact, temp])!.might).toBeNull();
     expect(ladder(bagGaps([0.25, 0.1, 0.2]), [], [temp])!.might).toBeNull();
   });
@@ -293,30 +293,30 @@ describe('ladder', () => {
   });
   it('tier 3: not varied → always; varied but thin → varied', () => {
     expect(ladder(many(6, 1, 92, 8), [{ name: 'g', brews: many(6, 1, 92, 8) }], [temp])).toMatchObject(
-      { tier: 3, verdict: 'none', best: null, varied: false, usual: { label: '90–92 °C' } });
+      { tier: 3, verdict: 'none', best: null, varied: false, usual: { label: '90–92°C' } });
     const thin = [...many(3, 1, 91, 8), ...many(3, 2, 94, 7)];
     expect(ladder(thin, [{ name: 'g', brews: thin }], [temp])).toMatchObject({ tier: 3, varied: true });
   });
   it('usual: most-brewed coarse band and its plain mean; null when nothing has the variable', () => {
-    expect(ladder(sameBag, [], [exact, temp])!.usual.label).toBe('90–92 °C');
+    expect(ladder(sameBag, [], [exact, temp])!.usual.label).toBe('90–92°C');
     expect(ladder([brew({ rating: 8 })], [], [temp])).toBeNull();
   });
   it('bands: every band of the tier used, in band order, solid as that tier counts it', () => {
     // Tier 1: same-bag deltas of the band set that won (exact temps), thin bands pale.
     const t1 = ladder([...sameBag, ...many(2, 1, 96, 7), ...many(2, 1, 91, 8)], [], [exact, temp])!;
     expect(t1.tier).toBe(1);
-    expect(t1.bands.map((b) => [b.label, b.solid])).toEqual([['91 °C', true], ['94 °C', true], ['96 °C', false]]);
+    expect(t1.bands.map((b) => [b.label, b.solid])).toEqual([['91°C', true], ['94°C', true], ['96°C', false]]);
     expect(t1.bands[0].value).toBeCloseTo(t1.best!.value);
     // Tier 2: the group's bands as means of bag means.
     const cross = [...[1, 2, 3].flatMap((id) => many(10, id, 91, 8)), ...[4, 5, 6].flatMap((id) => many(10, id, 94, 7)), ...many(3, 7, 96, 6)];
     const t2 = ladder(cross, [{ name: 'g', brews: cross }], [temp])!;
     expect(t2.bands).toMatchObject([
-      { label: '90–92 °C', bags: 3, brews: 30, solid: true }, { label: '93–94 °C', bags: 3, brews: 30, solid: true },
-      { label: '95+ °C', bags: 1, brews: 3, solid: false }]);
+      { label: '90–92°C', bags: 3, brews: 30, solid: true }, { label: '93–94°C', bags: 3, brews: 30, solid: true },
+      { label: '95+°C', bags: 1, brews: 3, solid: false }]);
     expect(t2.bands[1].value).toBeCloseTo(7, 1); // 10 brews cycle r ± 0.1 unevenly
     // Tier 3: the widest group's coarse bands, all pale.
     const thin = [...many(3, 1, 91, 8), ...many(3, 2, 94, 7)];
-    expect(ladder(thin, [{ name: 'g', brews: thin }], [temp])!.bands.map((b) => [b.label, b.solid])).toEqual([['90–92 °C', false], ['93–94 °C', false]]);
+    expect(ladder(thin, [{ name: 'g', brews: thin }], [temp])!.bands.map((b) => [b.label, b.solid])).toEqual([['90–92°C', false], ['93–94°C', false]]);
   });
   it('verdicts: solid wins, hint leans, anything else is an early lead', () =>
     expect([verdictOf('solid'), verdictOf('hint'), verdictOf('early'), verdictOf(null)]).toEqual(['win', 'leaning', 'early', 'early']));
@@ -327,9 +327,9 @@ describe('breakdown', () => {
     const light = [1, 2, 3].flatMap((id) => [...many(10, id, 91, 8, { roastLevel: 'Light' }), ...many(10, id, 94, 7, { roastLevel: 'Light' })]);
     const rare = [7, 8].flatMap((id) => [...many(10, id, 91, 8, { roastLevel: 'Medium' }), ...many(10, id, 94, 7, { roastLevel: 'Medium' })]);
     const thin = [4, 5, 6].flatMap((id) => [...many(2, id, 91, 8, { roastLevel: 'Nordic' }), ...many(2, id, 94, 7, { roastLevel: 'Nordic' })]);
-    const b = breakdown([...light, ...rare, ...thin], temp, SLICE_OF.roast, ['< 90 °C', '90–92 °C', '93–94 °C'])!;
+    const b = breakdown([...light, ...rare, ...thin], temp, SLICE_OF.roast, ['< 90°C', '90–92°C', '93–94°C'])!;
     expect(b.rows).toEqual(['Light', 'Nordic']);
-    expect(b.cols).toEqual(['90–92 °C', '93–94 °C']); // '< 90 °C' had no cell anywhere
+    expect(b.cols).toEqual(['90–92°C', '93–94°C']); // '< 90°C' had no cell anywhere
     expect(b.cells[0][0]!.delta).toBeCloseTo(0.5);
     // Thin: keeps its delta (drawn faded), not solid.
     expect(b.cells[1][0]).toMatchObject({ solid: false, brews: 6, bags: 3 });
@@ -358,7 +358,7 @@ describe('breakdown', () => {
       .toEqual({ rows: ['a'], cols: ['x', 'y', 'z'], cells: [[c(1), null, c(2)]] });
     expect(trimBlank({ rows: ['a'], cols: ['x'], cells: [[c(null)]] }, true)).toBeNull();
   });
-  it('nothing qualifies → null', () => expect(breakdown(many(4, 1, 91, 8), temp, SLICE_OF.roast, ['90–92 °C'])).toBeNull());
+  it('nothing qualifies → null', () => expect(breakdown(many(4, 1, 91, 8), temp, SLICE_OF.roast, ['90–92°C'])).toBeNull());
 });
 
 const bag = (o: Partial<BagFact>): BagFact => ({
@@ -402,7 +402,7 @@ describe('sweetSpotsTab', () => {
     const t = tab().topBags;
     expect(t.length).toBeLessThanOrEqual(5);
     expect(t[0]).toMatchObject({ label: 'Bag 1', sub: 'R', href: '/coffees/s1', brews: 20 });
-    expect(t[0].usual).toBe('91 °C · A · V60');
+    expect(t[0].usual).toBe('91°C · A · V60');
   });
   it('top bags tie order: by score, then label', () => expect(tab().topBags.map((b) => b.label)).toEqual(['Bag 1', 'Bag 2', 'Bag 3']));
   it('top bags: shrinkage ranks 10 brews at 8.5 above one 10-rated brew', () => {
@@ -507,8 +507,8 @@ describe('brewingTab', () => {
   it('variable charts drop bands with no paired brews; exact temps keep every °C used', () => {
     const extra = [...rows, ...[7, 8].flatMap((id) => Array.from({ length: 4 }, () => brew({ coffeeId: id, tempC: 88, rating: 7 })))];
     const t = (temp: boolean) => brewingTab(extra, { all: extra, period: P, ratings: 'all', grinder: 'A4Z', by: {}, exact: { temp } }).vars[0].bands.map((b) => b.label);
-    expect(t(false)).toEqual(['90–92 °C', '93–94 °C']);
-    expect(t(true)).toEqual(['88 °C', '91 °C', '94 °C']);
+    expect(t(false)).toEqual(['90–92°C', '93–94°C']);
+    expect(t(true)).toEqual(['88°C', '91°C', '94°C']);
   });
   it('dial-in pairs single brews per brew number', () => {
     const d = tab().dialIn;
@@ -528,16 +528,16 @@ describe('brewingTab', () => {
   });
   it('variable charts; exact temps; breakdown rows', () => {
     expect(tab().vars.map((v) => v.key)).toEqual(['temp', 'ratio', 'dose', 'time', 'bloom', 'grind']);
-    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:15.5–16.5', '< 16 g', '1:30–1:44', '30–44 s', '1.4.0']);
+    expect(tab().vars.map((v) => v.bands[0].label)).toEqual(['90–92°C', '1:15.5–16.5', '< 16g', '1:30–1:44', '30–44s', '1.4.0']);
     expect(tab().vars[5].bands[0].range).toBe('1.4.0 – 1.4.9');
     expect(tab({ grinder: 'ZP6' }).vars.map((v) => v.key)).not.toContain('grind');
-    expect(tab({ exact: { temp: true } }).vars[0].bands.map((b) => b.label)).toEqual(['91 °C', '94 °C']);
+    expect(tab({ exact: { temp: true } }).vars[0].bands.map((b) => b.label)).toEqual(['91°C', '94°C']);
     // Each chart's mode is its own: exact grind leaves temp in bands.
     const x = tab({ exact: { ratio: true, dose: true, time: true, bloom: true, grind: true } }).vars;
-    expect(x.map((v) => v.bands[0].label)).toEqual(['90–92 °C', '1:16', '15 g', '1:40', '30 s', '1.4.0']);
+    expect(x.map((v) => v.bands[0].label)).toEqual(['90–92°C', '1:16', '15g', '1:40', '30s', '1.4.0']);
     const by = tab({ by: { temp: 'roast' } }).vars[0].by!;
     expect(by.rows).toEqual(['Light', 'Nordic']);
-    expect(by.cols).toEqual(['90–92 °C', '93–94 °C']);
+    expect(by.cols).toEqual(['90–92°C', '93–94°C']);
     expect(tab().vars[0].by).toBeNull();
   });
   it('grind: a band with brews but no same-bag pair shows as no match (delta null), not dropped', () => {
@@ -553,7 +553,7 @@ describe('brewingTab', () => {
     const scored = all.map((b) => (b.brewIndex <= 2 ? { ...b, rating: null } : b));
     const t = brewingTab(scored, { period: P, ratings: 'all', grinder: null, by: {}, exact: {}, all });
     expect(t.dialIn.map((s) => s.label)).toContain('#1');
-    expect(t.vars.find((v) => v.key === 'temp')?.bands.some((s) => s.label === '< 90 °C' && s.delta !== null) ?? false).toBe(false);
+    expect(t.vars.find((v) => v.key === 'temp')?.bands.some((s) => s.label === '< 90°C' && s.delta !== null) ?? false).toBe(false);
   });
   it('empty period: nothing, no NaN', () => {
     const e = brewingTab(rows, { all: rows, period: { start: '2000-01-01', end: '2000-01-31' }, ratings: 'all', grinder: 'A4Z', by: {}, exact: {} });
@@ -622,7 +622,7 @@ describe('waterTab', () => {
       ...many(4, 7, 92, 7, { water: 'D', localDate: '2026-09-10' }),
       ...many(4, 8, 92, 7, { water: 'E', waterProfile: prof(30, 2), localDate: '2026-09-10' })], bags, { period: P, ratings: 'all' });
     expect(x.map!.rows.map((r) => [r.label, r.delta === null])).toEqual([['A', false], ['B', false], ['E', true]]);
-    expect(x.gh.map((s) => [s.label, s.delta === null])).toEqual([['71 ppm', false], ['83 ppm', true], ['87 ppm', false]]); // E's GH: no match
+    expect(x.gh.map((s) => [s.label, s.delta === null])).toEqual([['71ppm', false], ['83ppm', true], ['87ppm', false]]); // E's GH: no match
     expect(waterTab(rows.map((r) => ({ ...r, waterProfile: null })), bags, { period: P, ratings: 'all' }).map).toBeNull();
   });
   it('pairs: a repurchase (same roaster and name) carries its roast date', () => {
@@ -631,7 +631,7 @@ describe('waterTab', () => {
     expect(w.pairs[0].bags.every((p) => p.tag === null)).toBe(true);
   });
   it('GH by exact value, heatmaps', () => {
-    expect(w.gh.map((s) => s.label)).toEqual(['71 ppm', '87 ppm']);
+    expect(w.gh.map((s) => s.label)).toEqual(['71ppm', '87ppm']);
     expect(w.byRoast!.rows).toEqual(['Light']);
     expect(w.byProcess!.cols).toEqual(['A', 'B']);
   });

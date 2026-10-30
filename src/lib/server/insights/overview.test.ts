@@ -173,7 +173,7 @@ describe('consumption', () => {
 
   it('grams ÷ tracked days; ×7 and ×30.44; time to clear rounds up, with its date', () => {
     const c = consumption([b('2026-09-01', 150), b('2026-09-30', 150), b('2026-10-01', 99)], SEPT, '2026-01-01', TODAY, 1001);
-    expect(c.perDay).toBe(10); // 300 g / 30 days
+    expect(c.perDay).toBe(10); // 300g / 30 days
     expect(c.perWeek).toBe(70);
     expect(c.perMonth).toBeCloseTo(304.4);
     expect(c.daysToClear).toBe(101); // 100.1 → 101

@@ -127,20 +127,20 @@
   <ul class="bn-list">
     {#each data.doses as d (d)}
       <li>
-        <form method="POST" action="?/removeDose" use:enhance={toasting((v) => `Removed ${v} g.`, 'addDose')}>
+        <form method="POST" action="?/removeDose" use:enhance={toasting((v) => `Removed ${v}g.`, 'addDose')}>
           <input type="hidden" name="value" value={d} />
-          <strong class="bn-dose">{d} g</strong>
+          <strong class="bn-dose">{d}g</strong>
           <span class="bn-cells">
             {#each data.ratios.ratios as r (r)}
-              <span class="bn-cell"><span class="text-muted">1:{fmt(r)}</span><span>{Math.round(d * r)} g</span></span>
+              <span class="bn-cell"><span class="text-muted">1:{fmt(r)}</span><span>{Math.round(d * r)}g</span></span>
             {/each}
           </span>
-          <button class="button button-ghost button-icon" type="submit" aria-label="Remove {d} g" onclick={(e) => ask(e, `${d} g`)}><Icon name="x" /></button>
+          <button class="button button-ghost button-icon" type="submit" aria-label="Remove {d}g" onclick={(e) => ask(e, `${d}g`)}><Icon name="x" /></button>
         </form>
       </li>
     {/each}
   </ul>
-  <form class="bn-add" method="POST" action="?/addDose" use:enhance={toasting((v) => `Added ${v} g.`, 'removeDose')}>
+  <form class="bn-add" method="POST" action="?/addDose" use:enhance={toasting((v) => `Added ${v}g.`, 'removeDose')}>
     <input name="value" type="text" inputmode="decimal" aria-label="New dose in grams" placeholder="18" /><span>g</span>
     <button class="button button-secondary" type="submit">Add</button>
   </form>

@@ -42,7 +42,7 @@
   const value = (p: Spot) =>
     p.tie ? p.tie.head : p.might ? p.might : p.best && p.verdict !== 'none' ? p.best.label : p.tier === 3 && !p.varied ? p.usual.label : 'Not enough data';
   const leaning = (p: Spot) => !!p.best && p.verdict === 'leaning';
-  const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91 °C" never breaks before its unit
+  const nb = (l: string) => l.replace(/(\d) /g, '$1\u00a0'); // "91°C" never breaks before its unit
   // A tie's gap, rounded up so "within 0.2" is never short of the widest gap.
   const within = (p: Spot) => `${(Math.ceil(p.tie!.within * 10 - 1e-9) / 10).toFixed(1)}`;
   const tied = (p: Spot) => p.bands.filter((b) => p.tie!.labels.includes(b.label)).sort((a, b) => p.tie!.labels.indexOf(a.label) - p.tie!.labels.indexOf(b.label));
@@ -233,7 +233,7 @@
         {@const p = c.spot}
         {@const id = `spot-${c.key}`}
         {@const v = value(p)}
-        {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+ g": one phrase, one size (gate P4) -->
+        {@const say = `${leaning(p) ? 'Leaning ' : ''}${v}`}<!-- "Leaning 20+g": one phrase, one size (gate P4) -->
         {@const b = badge(p)}
         {@const r = result(p)}
         {@const full = v === 'Not enough data' ? whyNot(p, c.key) : { title: `${c.name}: ${leaning(p) ? 'Leaning ' : ''}${v}`, lines: [evidence(p), thin(p), usually(p)].filter((x): x is string => !!x) }}

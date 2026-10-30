@@ -53,7 +53,7 @@
   // Brews until dialed's window (lab.ts BEST_WINDOW, server-only): one bar per brew number in it.
   let win = $derived(t.bestAt.length);
 
-  const NOTABLE = ['85 °C', '88 °C', '91 °C', '92 °C', '94 °C']; // the user's notable temps, bold in Exact (spec)
+  const NOTABLE = ['85°C', '88°C', '91°C', '92°C', '94°C']; // the user's notable temps, bold in Exact (spec)
   const TITLE: Record<BrewVar, string> = { temp: 'Temp', ratio: 'Ratio', dose: 'Dose', time: 'Brew time', bloom: 'Bloom', grind: 'Grind' };
   const BY: [Slice | '', string][] = [['', 'None'], ['roast', 'Roast level'], ['process', 'Process'], ['origin', 'Origin'], ['roaster', 'Roaster']];
   const emptyLine = useEmptyLine();

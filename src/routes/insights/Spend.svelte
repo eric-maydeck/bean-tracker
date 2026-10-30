@@ -151,7 +151,7 @@
       </section>
       <section class="chart-panel" data-section="spend-best-value">
         <LabHead id="spend-best-value" title="Best value" {placeTip}
-          help={['Rating divided by price per 100 g, the Records formula.', 'Coffees with 4+ rated brews this period, best first.']} />
+          help={['Rating divided by price per 100g, the Records formula.', 'Coffees with 4+ rated brews this period, best first.']} />
         <div class="fit-body">
           {#if vm.best.length}
             <ol class="board-rows best-rows" style:--rows={vm.best.length} style:--row-h="3rem">

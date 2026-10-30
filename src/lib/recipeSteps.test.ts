@@ -51,7 +51,7 @@ describe('recipeSteps', () => {
   });
   it('range, tool, anySpeed', () => {
     const t = (p: Partial<RecipePour>, o: Partial<RecipeDef> = {}) => recipeSteps(mk([rp(p)], o))[0].text;
-    expect(t({ rateGps: [3, 8] })).toBe('pour (3–8 g/s pour)');
+    expect(t({ rateGps: [3, 8] })).toBe('pour (3–8g/s pour)');
     expect(t({ speed: 'slow', agitation: 'low', tool: 'melodrip' })).toBe('pour (slow pour, low agitation, melodrip)');
     expect(t({ agitation: 'high' }, { anySpeed: true })).toBe('pour (high agitation)');
     expect(t({}, { anySpeed: true })).toBe('pour');

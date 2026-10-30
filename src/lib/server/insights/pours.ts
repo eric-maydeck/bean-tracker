@@ -101,7 +101,7 @@ export const swirlAfterBand = (facts: Facts): BandFn => withReading(facts, (r) =
 export const bloomHoldBand = (facts: Facts): BandFn => withReading(facts, (r) => {
   if (r.bloomHoldS == null) return null;
   const h = Math.round(r.bloomHoldS / 10) * 10;
-  return h <= 10 ? { label: '≤ 10 s', order: 10 } : h >= 60 ? { label: '60 s+', order: 60 } : { label: `${h} s`, order: h };
+  return h <= 10 ? { label: '≤ 10s', order: 10 } : h >= 60 ? { label: '60s+', order: 60 } : { label: `${h}s`, order: h };
 });
 export const contactBand = (facts: Facts): BandFn => withReading(facts, (r) => timeBand(r.totalS, 90, 270));
 export const drawdownBand = (facts: Facts): BandFn => withReading(facts, (r) => (r.drawdownS == null ? null : timeBand(r.drawdownS, 30, 120)));

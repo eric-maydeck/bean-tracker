@@ -63,7 +63,7 @@ describe('count and streak events', () => {
     expect(ev.map((e) => [e.title, e.date, e.kind])).toEqual([['7-day streak', day(6), 'streaks'], ['7-day streak', day(16), 'streaks']]);
     expect(new Set(ev.map((e) => e.key)).size).toBe(2);
   });
-  it('kg totals sum in grams: 50 x 20 g hits 1 kg on the 50th brew', () => {
+  it('kg totals sum in grams: 50 x 20g hits 1kg on the 50th brew', () => {
     const ev = countEvents(daily(50, { dose: 20 }), [], 'all').find((e) => e.key === 'kgBrewed:1')!;
     expect(ev.date).toBe(day(49));
     const big = countEvents(daily(5000, { dose: 20 }), [], 'all').find((e) => e.key === 'kgBrewed:100')!;

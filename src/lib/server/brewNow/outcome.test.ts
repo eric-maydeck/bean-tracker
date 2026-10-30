@@ -22,7 +22,7 @@ const brew = (c: { id: number }, at: string, grind = '5.5', temp = 94) =>
   Number(db.prepare(`INSERT INTO beanconqueror_brews (bc_created_at, bean_id, preparation_id, mill_id, grind_setting, rating, ground_coffee_g,
     brew_temperature, water_amount_g, imported_at) VALUES (?, ?, 'm1', 'g1', ?, 8, 15, ?, 250, 'x')`).run(at, `bean${c.id}`, grind, temp).lastInsertRowid);
 const row = (setting: string, value: string | null) => ({ setting, value, reason: '', tier: 1, confidence: 'good', evidence: [], link: null });
-const sug = { rows: [row('grind', '5.5'), row('temp', '94 °C'), row('dose', '15 g'), row('recipe', null), row('water', null)],
+const sug = { rows: [row('grind', '5.5'), row('temp', '94°C'), row('dose', '15g'), row('recipe', null), row('water', null)],
   confidence: 'good', basis: '', lastNote: 'secret note' } as unknown as Suggestion;
 const gear = { grinder: 'ZP6', dripper: 'V60', filter: 'Cafec Abaca' };
 const mark = (c: { id: number }, now: string) => addMark(db, { coffeeId: c.id, gear, suggestion: sug, now: new Date(now) });
@@ -41,7 +41,7 @@ describe('outcome', () => {
     expect(m).toMatchObject({ markedLocal: '2026-10-20T08:00', status: 'linked', rating: 8, gear });
     expect(m.diffs).toEqual([
       { setting: 'grind', suggested: '5.5', actual: '6.0' },
-      { setting: 'dose', suggested: '15 g', actual: '15 g' }
+      { setting: 'dose', suggested: '15g', actual: '15g' }
     ].filter((d) => d.suggested !== d.actual));
     expect(JSON.stringify(m)).not.toContain('secret');
   });
@@ -91,7 +91,7 @@ describe('outcome', () => {
   });
   it('compares grind numerically, trims water, and holds the recipe diff until a recipe matches', () => {
     addMark(db, { coffeeId: a.id, gear, now: new Date('2026-10-20T14:00:00Z'),
-      suggestion: { ...sug, rows: [row('grind', '5'), row('temp', '94 °C'), row('dose', '15 g'), row('recipe', 'Rec'), row('water', 'Soft')] } as unknown as Suggestion });
+      suggestion: { ...sug, rows: [row('grind', '5'), row('temp', '94°C'), row('dose', '15g'), row('recipe', 'Rec'), row('water', 'Soft')] } as unknown as Suggestion });
     db.exec(`INSERT INTO beanconqueror_waters (id, name, imported_at) VALUES ('w1', 'Soft ', 'x')`);
     const id = brew(a, '2026-10-20T10:30:00.000Z', '5.0', 94);
     db.prepare(`UPDATE beanconqueror_brews SET water_id = 'w1' WHERE id = ?`).run(id);
@@ -126,7 +126,7 @@ describe('marks expire after 24 h (E10)', () => {
   });
   it('a followed grind range counts as no difference', () => {
     addMark(db, { coffeeId: a.id, gear, now: new Date('2026-10-20T14:00:00Z'),
-      suggestion: { ...sug, rows: [row('grind', '5.5–5.7'), row('temp', '94 °C'), row('dose', '15 g'), row('recipe', null), row('water', null)] } as unknown as Suggestion });
+      suggestion: { ...sug, rows: [row('grind', '5.5–5.7'), row('temp', '94°C'), row('dose', '15g'), row('recipe', null), row('water', null)] } as unknown as Suggestion });
     brew(a, '2026-10-20T10:30:00.000Z', '5.6', 94);
     link();
     expect(marksFor(db, a.id)[0].diffs).toEqual([]);
@@ -145,7 +145,7 @@ describe('biasLine', () => {
     expect(biasLine([m(['5.5', '5.0'], null), m(['5.5', '6.0'], null)])).toBeNull(); // mixed
   });
   it('says which way grind and temp lean', () => {
-    const t = ['94 °C', '95 °C'] as [string, string];
+    const t = ['94°C', '95°C'] as [string, string];
     expect(biasLine([m(['5.5', '5.0'], t), m(['5.5', '4.5'], t), m(null, null), m(['5.5', '5.1'], t)]))
       .toBe('Last 4 tries: lower grind setting than suggested 3\u00d7, temp +0.8 \u00b0C on average');
   });

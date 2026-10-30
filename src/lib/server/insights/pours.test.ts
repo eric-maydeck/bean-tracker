@@ -82,7 +82,7 @@ describe('poursTab report card', () => {
     expect(tab.split.map((s) => [s.label, +s.pourS.toFixed(2), +s.drawdownS.toFixed(2)])).toEqual([['2:00–2:29', 103.33, 36.67], ['2:30–2:59', 110, 50]]);
     expect(t('swirlAfter').bands.map((s) => s.label)).toEqual(['No swirl', 'After bloom + After pour 3']);
     expect(t('swirls').bands.map((s) => s.label)).toEqual(['0', '2']);
-    expect(t('bloom').bands.map((s) => s.label)).toEqual(['30 s', '40 s']);
+    expect(t('bloom').bands.map((s) => s.label)).toEqual(['30s', '40s']);
     expect(tab.technique.find((x) => x.key === 'ratio')).toBeUndefined();
   });
   it('mixed split defaults on here; split:false forces one Mixed band with inferred counts', () => {
@@ -268,7 +268,7 @@ describe('loadPourFacts', () => {
     addBrew(2, { pours: 2, dripper: 'V60' });
     const { facts } = loadPourFacts(db, brews);
     expect(facts.get(1)).toMatchObject({ agitation: 'unknown', agitationSet: false });
-    expect(facts.get(2)).toMatchObject({ agitation: 'high', agitationSet: false }); // 12 g/s > 10
+    expect(facts.get(2)).toMatchObject({ agitation: 'high', agitationSet: false }); // 12g/s > 10
   });
   it('honors the stored note words, finds flavor words, and a Mixed brew carries its sequence', () => {
     const { db, brews, addBrew, addRecipe } = setup();

@@ -223,7 +223,7 @@ describe('matchBrew', () => {
     expect(matchBrew(brew(reading('BFF', { bloomHoldS: 30 })), [recipe(1, 'R', skip)])!.diffs)
       .toContainEqual({ text: '1 bloom', modified: true });
   });
-  it('two blooms of 30 s vs a 20 s recipe', () => {
+  it('two blooms of 30s vs a 20s recipe', () => {
     const m = matchBrew(brew(reading('BBFS')), [recipe(1, 'R1', def('BBFS', { bloomHoldS: 20 }))])!;
     expect(m.diffs).toEqual([{ text: '30s blooms', modified: true }]);
   });
@@ -350,7 +350,7 @@ describe('matchBrew shares and triggers', () => {
   });
   it('trigger grace', () => {
     const d = shared('FF', [0.5, 0.5], {}, [null, { kind: 'after', targetS: 20, maxS: 30 }]);
-    const gap = (s: number) => fit(d, reading('FF', {}, g([0.5, 0.5]), [3, 3 + s]));
+    const gap = (s: number) => fit(d, reading('FF', {}, g([0.5, 0.5]), [3, 3 +s]));
     expect(gap(15)).toMatchObject({ how: 'match', diffs: [] });
     expect(gap(35)).toMatchObject({ how: 'match', diffs: [] });
     expect(gap(14)).toMatchObject({ how: 'modified', diffs: [{ text: 'pour 2 after 14s', modified: true }] });

@@ -60,7 +60,7 @@ export const DOSE_BANDS: readonly { slug: string; label: string }[] = [
 ];
 export const BREW_FILTER_LABEL: Record<BrewFilterKey, string> = { dripper: 'Dripper', filter: 'Filter', water: 'Water', brewDose: 'Dose', brewTemp: 'Temp' };
 export const brewFilterText = (k: BrewFilterKey, v: string): string =>
-  k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v} °C` : v;
+  k === 'brewDose' ? (DOSE_BANDS.find((d) => d.slug === v)?.label ?? v) : k === 'brewTemp' ? `${v}°C` : v;
 
 // Brewing lab tabs (spec 2026-10-12): Compare is hidden on them.
 export const LAB_TABS = ['sweetspots', 'brewing', 'pours', 'water', 'gear'] as const;

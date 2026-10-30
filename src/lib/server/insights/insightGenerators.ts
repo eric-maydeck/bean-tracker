@@ -352,7 +352,7 @@ const backlogRunway: Generator = (c) => {
   return {
     key: 'backlogRunway', whole: true, theme: 'money', kind: 'number', headline: `${formatGrams(c.onHandG)} on hand, about ${daysToClear} days`,
     value: `${daysToClear} days`,
-    body: `At ${Math.round(perDay)} g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
+    body: `At ${Math.round(perDay)}g/day. Bought ${formatGrams(bought)} vs brewed ${formatGrams(brewed)} in this period.`,
     sample: `${days} days`, href: '/insights?tab=consumption', z: null, strength: null,
     ...details(
       ['Most on hand', [...held].sort((x, y) => y.g - x.g || x.b.name.localeCompare(y.b.name)).map((x) => detail(x.b.name, formatGrams(x.g), coffeeHref(x.b)))],
@@ -656,7 +656,7 @@ const priceVsRating: Generator = (c) => {
   return myth({
     key: 'priceVsRating', theme: 'money',
     headline: { none: "Price doesn't buy rating", unclear: 'No clear link between price and rating yet', up: 'Pricier bags rate higher', down: 'Cheaper bags rate higher' }[rVerdict(r, pts.length)],
-    value: rValue(r, pts.length), body: `Across ${pts.length} bags, $/100 g and your bag rating ${moves(r)} (by rank).`,
+    value: rValue(r, pts.length), body: `Across ${pts.length} bags, $/100g and your bag rating ${moves(r)} (by rank).`,
     sample: `${pts.length} bags`, href: `${LB}&open=coffees&rank=ppg`
   });
 };
@@ -688,7 +688,7 @@ const pricePerMonth: Generator = (c) => {
   if (qs.length < 2) return null;
   const [a, b] = [qs[0].value, qs.at(-1)!.value];
   return {
-    key: 'pricePerMonth', whole: true, theme: 'money', kind: 'pattern', headline: `$/100 g went from ${money(a)} to ${money(b)}`, value: money(b),
+    key: 'pricePerMonth', whole: true, theme: 'money', kind: 'pattern', headline: `$/100g went from ${money(a)} to ${money(b)}`, value: money(b),
     series: qs, money: true, sample: plural(bs.length, 'bag'), href: `${LB}&open=coffees&rank=ppg`, z: null, strength: null
   };
 };

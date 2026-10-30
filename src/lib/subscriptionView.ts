@@ -93,7 +93,7 @@ export function deleteButtonLabel(change: PendingChange | undefined): 'Delete' |
 export function totalGramsText(bags: string, gramsPerBag: string): string {
   const b = parseFloat(bags);
   const g = parseFloat(gramsPerBag);
-  return Number.isFinite(b) && Number.isFinite(g) ? `${b * g} g total` : '— g total';
+  return Number.isFinite(b) && Number.isFinite(g) ? `${b * g}g total` : '— g total';
 }
 
 // One option of a subscription page (POST /api/subscriptions/fill-from-url).

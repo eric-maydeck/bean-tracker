@@ -117,7 +117,7 @@ describe('deleteButtonLabel', () => {
 
 describe('totalGramsText', () => {
   it('multiplies bags by grams per bag', () => {
-    expect(totalGramsText('2', '150')).toBe('300 g total');
+    expect(totalGramsText('2', '150')).toBe('300g total');
     expect(totalGramsText('', '150')).toBe('— g total');
     expect(totalGramsText('2', 'x')).toBe('— g total');
   });
