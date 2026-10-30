@@ -2697,24 +2697,21 @@ export const STATES: State[] = [
         }
       },
       {
-        // Trigger windows: each timed step draws a band and a target tick on the card chart, and on the brew rows.
+        // Bloom bands: each timed bloom draws a band on the card chart, and on the brew rows.
         name: 'recipes-trigger-windows',
         path: (s: Seed) => `/recipes?brews=r${s.recipes.recipeId}`,
         act: async (page: Page, s: Seed) => {
           const chart = page.locator(`#recipe-${s.recipes.recipeId} .pour-timeline`).first();
-          await expect(chart.locator('rect.window.stripe')).toHaveCount(2); // both timed steps are ranged
-          await expect(chart.locator('rect.window.solid')).toHaveCount(1); // only pour 1 is a bloom
-          await expect(chart.locator('line.target')).toHaveCount(2);
+          await expect(chart.locator('rect.window')).toHaveCount(1); // only pour 1 is a bloom; no striped part any more
           // Hovering a band says how long the bloom before it lasts.
-          await chart.locator('rect.window.solid').first().hover();
-          await expect(page.getByText(/^Bloom \d:\d\d–\d:\d\d, up to \d:\d\d$/)).toBeVisible();
+          await chart.locator('rect.window').first().hover();
+          await expect(page.getByText(/^First bloom \d:\d\d–\d:\d\d$/)).toBeVisible();
           await page.mouse.move(0, 0);
-          await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('Bloom length');
+          await expect(page.getByRole('list', { name: 'Timeline legend' })).toContainText('First bloom');
           // Brew rows align with the recipe (same pour count), so they carry bands too.
           await expect(rows(page)).toHaveCount(3);
           for (const r of await rows(page).all()) {
-            await expect(r.locator('.pour-timeline rect.window.stripe')).toHaveCount(2);
-            await expect(r.locator('.pour-timeline line.target')).toHaveCount(2);
+            await expect(r.locator('.pour-timeline rect.window')).toHaveCount(1);
           }
         }
       },

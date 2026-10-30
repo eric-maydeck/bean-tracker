@@ -494,22 +494,35 @@ describe('recipeTimeline triggers', () => {
   it('places timed pours from the previous start and draws their windows', () => {
     const tl = recipeTimeline(timed([null, after(20, 30), after(20, 30), { kind: 'low' }], [0.3, null, null, 90]));
     expect(tl.pours.map((p) => p.startS)).toEqual([0.3, 20.3, 40.3, 90]);
-    expect(tl.windows).toEqual([{ startS: 0.3, targetS: 20.3, toS: 30.3, pour: 0, bloom: false }, { startS: 20.3, targetS: 40.3, toS: 50.3, pour: 1, bloom: false }]);
-  });
-  it('a window knows whether the pour before it is a bloom', () => {
-    const d = timed([null, after(20, 30)], [0, null]);
-    d.pours[0].bloom = true;
-    expect(triggerWindows(d, [0, 25])).toEqual([{ startS: 0, targetS: 20, toS: 30, pour: 0, bloom: true }]);
+    expect(tl.windows).toEqual([]); // no blooms
   });
   it('legacy triggers leave the chain unchanged and draw no windows', () => {
     const tl = recipeTimeline(timed([null, null, null, null], [null, null, 12, null]));
     expect(tl.pours.map((p) => p.startS)).toEqual([0, 5, 12, 17]);
     expect(tl.windows).toEqual([]);
   });
-  it('triggerWindows skips low/legacy steps and steps past the starts given', () => {
-    const d = timed([null, after(20, 30), { kind: 'low' }, after(10, 10)], [0, null, null, null]);
-    expect(triggerWindows(d, [0, 25, 60])).toEqual([{ startS: 0, targetS: 20, toS: 30, pour: 0, bloom: false }]);
-    expect(triggerWindows(d, [0, 25, 60, 70])).toEqual([{ startS: 0, targetS: 20, toS: 30, pour: 0, bloom: false }, { startS: 60, targetS: 70, toS: 70, pour: 2, bloom: false }]);
+  it('triggerWindows: one band per bloom with a timed step after it, numbered', () => {
+    const d = timed([null, after(20, 30), after(20, 30), { kind: 'low' }], [0, null, null, null]);
+    d.pours[0].bloom = d.pours[1].bloom = true;
+    expect(triggerWindows(d, [0, 25, 45, 90])).toEqual([
+      { startS: 0, targetS: 20, bloom: 0 }, { startS: 25, targetS: 45, bloom: 1 }
+    ]);
+    d.pours[1].trigger = { kind: 'low' };
+    expect(triggerWindows(d, [0, 25, 45, 90])).toEqual([{ startS: 25, targetS: 45, bloom: 1 }]); // a low step has no band
+  });
+  it('a flow-controlling recipe draws pours 2 on as one steady rate', () => {
+    const mk = (drippers: string[]) => {
+      const d = timed([null, null, null], [0, 30, 60]);
+      d.drippers = drippers;
+      d.pours[0].bloom = true;
+      d.pours[1].grams = 60; d.pours[2].grams = 120; d.pours[2].speed = 'slow';
+      return recipeTimeline(d).pours;
+    };
+    const f = mk(['Gabi Master A']);
+    expect(f.map((p) => p.kind)).toEqual(['bloom', 'medium', 'medium']);
+    expect(f[2].durationS).toBeCloseTo(2 * f[1].durationS);
+    expect(f[0].durationS).toBe(5);
+    expect(mk([]).map((p) => p.kind)).toEqual(['bloom', 'fast', 'slow']);
   });
 });
 

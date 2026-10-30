@@ -300,27 +300,33 @@ export function describeRecipe(def: RecipeDef): string {
   return capital(out.join(' · '));
 }
 
-/** For each `after` step i >= 1 that has a start before it: the pour before it, its start, and when the next pour should begin (target to latest). */
+/** For each bloom followed by an `after` step with a start before it: where the bloom runs from and to (the next pour's target). */
 export function triggerWindows(def: RecipeDef, startsS: number[]): NonNullable<Timeline['windows']> {
   return startsS.flatMap((_, i) => {
     const t = i > 0 ? def.pours[i]?.trigger : null;
-    return t?.kind === 'after' ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, toS: startsS[i - 1] + t.maxS, pour: i - 1, bloom: def.pours[i - 1].bloom }] : [];
+    return t?.kind === 'after' && def.pours[i - 1].bloom
+      ? [{ startS: startsS[i - 1], targetS: startsS[i - 1] + t.targetS, bloom: def.pours.slice(0, i - 1).filter((p) => p.bloom).length }]
+      : [];
   });
 }
 
+// A flow-controlling dripper's pours all run at one moderate rate (speed doesn't matter there).
+const FLOW_GPS = FAST_GPS / 2;
 export function recipeTimeline(def: RecipeDef): Timeline {
+  const flow = controlsFlow(def);
   let t = 0;
   const pours: Timeline['pours'] = [];
   def.pours.forEach((p, i) => {
     const trig = i > 0 ? p.trigger : null;
     const startS = trig?.kind === 'after' ? pours[i - 1].startS + trig.targetS : (p.startS ?? t);
-    const durationS = p.durationS ?? 0;
+    const grams = p.grams ?? (p.share ?? 0) * 100; // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
+    const durationS = flow && !p.bloom ? grams / FLOW_GPS : (p.durationS ?? 0);
     t = startS + durationS;
     pours.push({
       startS,
       durationS,
-      grams: p.grams ?? (p.share ?? 0) * 100, // a % recipe: shares at 100 g per 100 %, the chart only needs proportions
-      kind: p.bloom ? 'bloom' : recipeSpeed(p)
+      grams,
+      kind: p.bloom ? 'bloom' : flow ? 'medium' : recipeSpeed(p)
     });
   });
   const swirls = def.pours.flatMap((p, i) => (p.swirlAfter ? [pours[i].startS + pours[i].durationS] : []));

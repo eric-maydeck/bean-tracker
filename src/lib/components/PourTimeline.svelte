@@ -9,7 +9,7 @@
   const W = 1000;
   const H = $derived(compact ? 32 : 64);
   const total = $derived(
-    Math.max(timeline.totalS, ...timeline.pours.map((p) => p.startS + p.durationS), ...(timeline.windows ?? []).map((w) => w.toS), 1)
+    Math.max(timeline.totalS, ...timeline.pours.map((p) => p.startS + p.durationS), ...(timeline.windows ?? []).map((w) => w.targetS), 1)
   );
   const water = $derived(Math.max(timeline.pours.reduce((s, p) => s + p.grams, 0), 1));
   const x = (s: number) => (s / total) * W;
@@ -18,11 +18,8 @@
   const mmss = (s: number) => `${Math.floor(Math.round(s) / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`;
 
   // Hover or tap on a band: how long the pour before it lasts. labelTip attaches to any element (SVG ones included).
-  const uid = $props.id();
-  const endsLabel = (w: NonNullable<Timeline['windows']>[number]) => {
-    const upTo = w.toS > w.targetS ? `, up to ${mmss(w.toS)}` : '';
-    return w.bloom ? `Bloom ${mmss(w.startS)}–${mmss(w.targetS)}${upTo}` : `Pour ${w.pour + 1} ends ${mmss(w.targetS)}${upTo}`;
-  };
+  const ORDINALS = ['First', 'Second', 'Third'];
+  const endsLabel = (w: NonNullable<Timeline['windows']>[number]) => `${ORDINALS[w.bloom] ? `${ORDINALS[w.bloom]} bloom` : `Bloom ${w.bloom + 1}`} ${mmss(w.startS)}–${mmss(w.targetS)}`;
   const endTip = (node: SVGElement, label: string) => labelTip(node as unknown as HTMLElement, label);
 
   const shapes = $derived.by(() => {
@@ -45,19 +42,10 @@
 
 <div class="pour-timeline" class:compact>
   <svg viewBox="0 0 {W} {H}" preserveAspectRatio="none" role="img" aria-label={label} style="height:{H}px">
-    <defs>
-      <pattern id="stripe-{uid}" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-        <rect width="3" height="8" class="stripe-mark" />
-      </pattern>
-    </defs>
     {#each timeline.windows ?? [] as w, i (i)}
-      {#if w.bloom && w.targetS > w.startS}
-        <rect class="window solid" x={x(w.startS)} y="0" width={x(w.targetS) - x(w.startS)} height={H} use:endTip={endsLabel(w)} />
+      {#if w.targetS > w.startS}
+        <rect class="window b{Math.min(w.bloom, 2)}" x={x(w.startS)} y="0" width={x(w.targetS) - x(w.startS)} height={H} use:endTip={endsLabel(w)} />
       {/if}
-      {#if w.toS > w.targetS}
-        <rect class="window stripe" x={x(w.targetS)} y="0" width={Math.min(W, x(w.toS)) - x(w.targetS)} height={H} fill="url(#stripe-{uid})" use:endTip={endsLabel(w)} />
-      {/if}
-      <line class="target" x1={x(w.targetS)} x2={x(w.targetS)} y1="0" y2={H} vector-effect="non-scaling-stroke" />
     {/each}
     <line class="base" x1="0" x2={W} y1={H - 0.5} y2={H - 0.5} vector-effect="non-scaling-stroke" />
     {#each shapes as sh, i (i)}
@@ -90,25 +78,19 @@
     stroke: var(--color-text-muted);
     stroke-width: 1.5;
   }
-  /* Bloom length: a pale full-height band in the bloom's color behind the pours (solid to the target, striped up to the latest start), with a thin tick where the target ends. */
-  .window.solid {
-    fill: var(--series-4);
-    opacity: 0.3;
-  }
-  /* The up-to part: the same tint as hatching, the stripe color from the bloom token so it reads in both themes. */
-  .stripe-mark {
-    fill: var(--series-4-ink);
-    opacity: 0.4;
-  }
-  .target {
-    stroke: var(--series-4);
-    stroke-width: 2;
-  }
+  /* Each timed bloom: a pale full-height band behind the pours, one tint per bloom (tokens no pour fill or line uses). */
+  .window { opacity: 0.4; }
+  .window.b0 { fill: var(--series-2); }
+  .window.b1 { fill: var(--series-7); }
+  .window.b2 { fill: var(--series-3); }
   .seg.bloom {
     fill: var(--series-4);
   }
   .seg.fast {
     fill: var(--series-1-ink);
+  }
+  .seg.medium {
+    fill: var(--series-5);
   }
   .seg.slow {
     fill: var(--series-6);

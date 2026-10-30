@@ -90,12 +90,12 @@ export interface Timeline {
     startS: number;
     durationS: number;
     grams: number;
-    kind: 'bloom' | 'fast' | 'slow';
+    kind: 'bloom' | 'fast' | 'slow' | 'medium';
   }[];
   swirls: number[];
   totalS: number;
-  /** Each timed step: the pour before it from its start to the next pour's target start (solid, blooms only) and on to the latest start (striped), drawn behind the pours. */
-  windows?: { startS: number; targetS: number; toS: number; /** index of the pour before the wait */ pour: number; bloom: boolean }[];
+  /** Each timed bloom: from its start to the next pour's target start, drawn behind the pours (`bloom` = 0 for the first, 1 for the second, ...). */
+  windows?: { startS: number; targetS: number; bloom: number }[];
 }
 export function timelineOf(r: PourReading): Timeline {
   return {

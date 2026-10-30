@@ -14,8 +14,13 @@
   import { stepsText } from '$lib/recipeSteps';
   import { labelTip } from '$lib/components/labelTip';
   import { recipesParams, type RecipesItem } from '$lib/recipesView';
+  import type { Timeline } from '$lib/pours';
   let { data, form } = $props();
   const isAdmin = $derived(!!page.data.isAdmin);
+  // The legend lists the bloom colors and the steady-rate fill only when a chart on the page draws them.
+  const timelines = $derived([...data.recipes.map((r: { timeline: Timeline }) => r.timeline), ...(data.brews ?? []).map((b: { timeline: Timeline | null }) => b.timeline)].filter((t): t is Timeline => !!t));
+  const bloomBands = $derived([0, 1, 2].filter((n) => timelines.some((t) => t.windows?.some((w) => Math.min(w.bloom, 2) === n))));
+  const anyMedium = $derived(timelines.some((t) => t.pours.some((p) => p.kind === 'medium')));
   // /recipes/<slug>: that recipe scrolls into view (below the sticky bars) and flashes once.
   const focus = $derived(data.focusId == null ? null : data.recipes.find((r: { recipe: { id: number } }) => r.recipe.id === data.focusId) ?? null);
   let flashId = $state<number | null>(null);
@@ -79,7 +84,10 @@
   <li><span class="swatch fast"></span>Fast pour (likely high agitation)</li>
   <li><span class="swatch slow"></span>Slow pour (likely low agitation)</li>
   <li><span class="swatch swirl"></span>Swirl or shake</li>
-  <li><span class="swatch window"></span>Bloom length</li>
+  {#each bloomBands as n (n)}
+    <li><span class="swatch band b{n}"></span>{['First', 'Second', 'Third'][n]} bloom</li>
+  {/each}
+  {#if anyMedium}<li><span class="swatch medium"></span>Pour at a steady rate (flow-controlling dripper)</li>{/if}
 </ul>
 
 {#snippet brewList()}
@@ -337,11 +345,11 @@
   .swatch.bloom { background: var(--series-4); }
   .swatch.fast { background: var(--series-1-ink); }
   .swatch.slow { background: var(--series-6); }
-  .swatch.window {
-    background: color-mix(in srgb, var(--series-4) 30%, transparent);
-    border-left: 2px solid var(--series-4);
-    border-radius: 0;
-  }
+  .swatch.medium { background: var(--series-5); }
+  .swatch.band { opacity: 0.6; }
+  .swatch.b0 { background: var(--series-2); }
+  .swatch.b1 { background: var(--series-7); }
+  .swatch.b2 { background: var(--series-3); }
   .swatch.swirl {
     width: 0;
     height: 14px;
