@@ -2630,7 +2630,7 @@ export const STATES: State[] = [
           const nPours = await steps.locator('li').count();
           expect(nPours).toBeGreaterThanOrEqual(4);
           await expect(card.getByText('93°C · Rinse the filter')).toBeVisible();
-          const low = steps.locator('.step-time.low');
+          const low = steps.locator('.step-time.low', { hasText: /^Low$/ });
           await expect(low).toHaveText('Low');
           const xs = await steps.locator('li > span:first-child').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
           expect(new Set(xs).size).toBe(1); // the time column is aligned
