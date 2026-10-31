@@ -1311,9 +1311,9 @@ nav.site-nav a[aria-current='page'] {
 
 .site-footer {
   margin-top: calc(var(--space-6) * 1.5);
-  padding: var(--space-6) 0 var(--space-4);
+  padding: var(--space-3) 0 var(--space-4);
   /* A hairline that fades out toward both ends. */
-  background: linear-gradient(to right, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent) top / 100% 1px no-repeat;
+  background: linear-gradient(to right, transparent, var(--color-border) 15%, var(--color-border) 85%, transparent) top / 100% 1px no-repeat;
   color: var(--color-text-muted);
   font-size: 0.8rem;
 }
