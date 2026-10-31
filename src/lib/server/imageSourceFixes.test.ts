@@ -50,6 +50,7 @@ describe('applyImageSources', () => {
 
 describe('IMAGE_SOURCES_2026_10', () => {
   it('has http(s) sources and unique ids', () => {
+    expect(IMAGE_SOURCES_2026_10).toHaveLength(235); // 232 product pages + 2 Mugaya + 1 Tavily (Scenery Don Senel)
     expect(new Set(IMAGE_SOURCES_2026_10.map((r) => r[0])).size).toBe(IMAGE_SOURCES_2026_10.length);
     for (const [, , image, src] of IMAGE_SOURCES_2026_10) {
       expect(src).toMatch(/^https?:\/\//);
