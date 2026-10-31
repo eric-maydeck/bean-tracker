@@ -49,6 +49,7 @@
       <h3>What I do</h3>
       <ul>
         <li>Set the direction: which features get built, and in what order</li>
+        <li>Drive the technical decisions, drawing on my experience as a Staff SRE, DevOps engineer, and software engineer: architecture, hosting, testing, and releases</li>
         <li>Bring nearly all of the coffee knowledge, from recipes, gear, and pour structure to extraction, rest, and water</li>
         <li>Shape every design: I review each spec and push back on layout, wording, and behavior until it's right</li>
         <li>Test every change in a live preview, on desktop and on my phone</li>
