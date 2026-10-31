@@ -3295,6 +3295,116 @@ export const STATES: State[] = [
     }
   },
   {
+    // Footer line: one muted centered line that wraps cleanly (checkLayout covers overflow), links on one row.
+    name: 'ai-footer',
+    path: () => '/water',
+    act: async (page) => {
+      const foot = page.locator('.site-footer');
+      await expect(foot).toContainText('Built with help from Claude Code, an AI coding assistant');
+      await expect(foot.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', /^mailto:(eric@maydeck\.net|contact@fuhnoo\.coffee)$/);
+      // One run of items: left-aligned, fixed order, joined by " · ".
+      expect(await foot.evaluate((el) => getComputedStyle(el).textAlign)).not.toBe('center');
+      const lines = (await foot.locator(':scope > div').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+      expect(lines).toHaveLength(2);
+      const stacked = page.viewportSize()!.width <= 640;
+      // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
+      expect(lines[0]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
+      expect(lines[1]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
+      const spans = foot.locator(':scope > div > span');
+      const sizes = await foot.locator(':scope > div').evaluateAll((ds) => ds.map((d) => getComputedStyle(d).fontSize + getComputedStyle(d).color));
+      expect(sizes[0], 'same size and colour on both lines').toBe(sizes[1]);
+      const fb = (await foot.boundingBox())!;
+      const firstX = await spans.first().evaluate((e) => e.getBoundingClientRect().x);
+      expect(Math.abs(firstX - fb.x), 'first item at the content edge').toBeLessThan(1.5);
+      // The dot trails its item, so no line starts with a separator.
+      const lineStarts = await spans.evaluateAll((els) => {
+        const out: string[] = [];
+        let top = -1;
+        for (const e of els) {
+          const t = Math.round(e.getBoundingClientRect().top);
+          if (Math.abs(t - top) > 2) out.push((e.textContent ?? '').trim()[0]);
+          top = t;
+        }
+        return out;
+      });
+      for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
+      if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(2);
+      if (stacked) {
+        expect(lineStarts, 'sentence, links, version, updated, deployed').toHaveLength(5);
+        const shown = await foot.locator('.d').evaluateAll((ds) => ds.filter((d) => getComputedStyle(d).display !== 'none').length);
+        expect(shown, 'only the dot between the two links shows').toBe(1);
+        const xs = await spans.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().x)));
+        expect(new Set(xs).size, 'one left edge (the links share a line)').toBeLessThanOrEqual(2);
+        expect(xs[0], 'at the content edge').toBe(Math.round(fb.x));
+      }
+    }
+  },
+  {
+    // The dialog opens from the link and from ?about=ai; X top right, Close centered at the bottom, Esc closes, focus returns.
+    name: 'ai-dialog',
+    path: () => '/water',
+    act: async (page) => {
+      const dlg = page.locator('dialog.ai-dialog');
+      const link = page.getByRole('link', { name: 'How AI was used' });
+      await link.click();
+      await expect(dlg).toBeVisible();
+      expect(new URL(page.url()).searchParams.get('about')).toBe('ai');
+      await expect(dlg.getByRole('heading', { name: 'How this site was built' })).toBeVisible();
+      const box = async (l: Locator) => (await l.boundingBox())!;
+      const [d, x, close] = [await box(dlg), await box(dlg.getByRole('button', { name: 'Close' }).first()), await box(dlg.locator('.ai-footer .button'))];
+      expect(d.x + d.width - (x.x + x.width), 'X at the top right').toBeLessThan(20);
+      expect(x.y - d.y, 'X at the top').toBeLessThan(20);
+      expect(Math.abs(close.x + close.width / 2 - (d.x + d.width / 2)), 'Close centered').toBeLessThan(2);
+      expect(d.y + d.height - (close.y + close.height), 'Close at the bottom').toBeLessThan(20);
+      const vh = page.viewportSize()!.height;
+      expect(d.y).toBeGreaterThanOrEqual(-1);
+      expect(d.y + d.height, 'dialog inside the screen').toBeLessThanOrEqual(vh + 1);
+      // Long copy scrolls inside the body, not the page.
+      await expect(dlg.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/);
+      await page.keyboard.press('Escape');
+      await expect(dlg).toBeHidden();
+      expect(new URL(page.url()).searchParams.has('about')).toBe(false);
+      await expect(link).toBeFocused();
+      // X closes too.
+      await link.click();
+      await dlg.getByRole('button', { name: 'Close' }).first().click();
+      await expect(dlg).toBeHidden();
+    }
+  },
+  {
+    name: 'ai-dialog-url',
+    path: () => '/water?about=ai',
+    act: async (page) => {
+      await expect(page.locator('dialog.ai-dialog')).toBeVisible();
+      await page.locator('.ai-footer .button').click();
+      await expect(page.locator('dialog.ai-dialog')).toBeHidden();
+      expect(page.url()).not.toContain('about=');
+    }
+  },
+  {
+    // The link keeps the page's params, and the dialog follows Back/Forward onto and off ?about=ai.
+    name: 'ai-dialog-history',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const link = page.getByRole('link', { name: 'How AI was used' });
+      await expect(link).toHaveAttribute('href', /(^|[?&])status=all(&|$)/);
+      await expect(link).toHaveAttribute('href', /[?&]about=ai$/);
+      const dlg = page.locator('dialog.ai-dialog');
+      await link.click();
+      await expect(dlg).toBeVisible();
+      // Leave through an in-app link (the open modal blocks real clicks).
+      await page.evaluate(() => (document.querySelector('a[href="/stats"]') as HTMLElement).click());
+      await expect(page).toHaveURL(/\/stats/);
+      await expect(dlg).toBeHidden();
+      await page.goBack();
+      await expect(page).toHaveURL(/about=ai/);
+      await expect(dlg).toBeVisible();
+      await page.goForward();
+      await expect(page).toHaveURL(/\/stats/);
+      await expect(dlg).toBeHidden();
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'account-zip-too-big', viewports: 'two',
     path: () => '/account',

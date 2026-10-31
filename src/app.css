@@ -1310,11 +1310,44 @@ nav.site-nav a[aria-current='page'] {
 }
 
 .site-footer {
-  margin-top: var(--space-6);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  margin-top: calc(var(--space-6) * 1.5);
+  padding: var(--space-3) 0 var(--space-4);
+  /* A hairline that fades out toward both ends. */
+  background: linear-gradient(to right, transparent, var(--color-border) 15%, var(--color-border) 85%, transparent) top / 100% 1px no-repeat;
   color: var(--color-text-muted);
   font-size: 0.8rem;
+}
+/* Footer lines are runs of items separated by " · " (the dot trails its item, so a line never starts with one); an item stays whole. */
+.site-footer > div + div {
+  margin-top: var(--space-2);
+}
+.site-footer .fi {
+  white-space: nowrap;
+}
+/* Phones: one item per line, no separators; the two links stay together on one line. */
+@media (max-width: 640px) {
+  .site-footer > div > span {
+    display: block;
+    line-height: 1.7;
+  }
+  .site-footer .d {
+    display: none;
+  }
+  .site-footer > div > .lk {
+    display: inline-block;
+  }
+  .site-footer .d.keep {
+    display: inline;
+  }
+  /* ~44px tap area for the two links without changing the stacked layout. */
+  .site-footer .lk a {
+    position: relative;
+  }
+  .site-footer .lk a::after {
+    content: '';
+    position: absolute;
+    inset: -11px -4px;
+  }
 }
 
 /* Coffee detail page: Back/Import/Clone/Edit/Share as a flex-wrap row

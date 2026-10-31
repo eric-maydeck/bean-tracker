@@ -2,9 +2,10 @@ import type { LayoutServerLoad } from './$types';
 import { getDb, getLastDeployed } from '$lib/server/db';
 import { getActiveAlerts } from '$lib/server/alerts';
 import { nameColor } from '$lib/nameColor';
+import { contactEmailFor } from '$lib/aboutAi';
 import { version } from '../../package.json';
 
-export const load: LayoutServerLoad = ({ locals }) => {
+export const load: LayoutServerLoad = ({ locals, url }) => {
   const db = getDb();
   const row = db
     .prepare(
@@ -22,5 +23,5 @@ export const load: LayoutServerLoad = ({ locals }) => {
   // ponytail: scans every name per request (a few hundred rows); filter in SQL if that ever shows up in timings.
   const names = db.prepare('SELECT coffee_name AS n FROM coffees UNION SELECT name FROM beanconqueror_beans').all() as { n: string }[];
   const coloredNames = names.map((r) => r.n).filter((n) => nameColor(n));
-  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames };
+  return { lastUpdated, lastDeployed, isAdmin: locals.isAdmin, version, alerts, coloredNames, contactEmail: contactEmailFor(url.host) };
 };
