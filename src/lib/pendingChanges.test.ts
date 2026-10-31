@@ -145,6 +145,15 @@ describe('mergeStagedCoffee', () => {
     expect(mergeStagedCoffee(baseCoffee, undefined)).toEqual(baseCoffee);
   });
 
+  // The form always sends image_source_url (empty = cleared): typing a new image clears it, and a
+  // staged merge must not bring the stored coffee's old source back.
+  it('a staged empty image_source_url overrides the stored one', () => {
+    const stored = { ...baseCoffee, image_url: 'https://x/old.jpg', image_source_url: 'https://shop.com/p' };
+    const merged = mergeStagedCoffee(stored, { image_url: 'https://x/new.jpg', image_source_url: '' });
+    expect(merged.image_source_url).toBe('');
+    expect(clonePrefill(merged).image_source_url).toBe('');
+  });
+
   it('merges a staged non-checkbox field over the original', () => {
     const result = mergeStagedCoffee(baseCoffee, { roaster: 'Scenery' });
     expect(result.roaster).toBe('Scenery');

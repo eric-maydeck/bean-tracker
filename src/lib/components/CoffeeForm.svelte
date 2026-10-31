@@ -621,9 +621,8 @@
       {#if setRoasterDefault && canSetDefault}
         <input type="hidden" name="set_roaster_default" value="1" />
       {/if}
-      {#if imageSource}
-        <input type="hidden" name="image_source_url" value={imageSource} />
-      {/if}
+      <!-- Always sent: empty means cleared, so a staged merge never brings back the stored source. -->
+      <input type="hidden" name="image_source_url" value={imageSource} />
       {#if roasterWebsite}
         <input type="hidden" name="roaster_website" value={roasterWebsite} />
       {/if}

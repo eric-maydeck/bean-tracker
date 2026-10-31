@@ -9,6 +9,15 @@ describe('creditFor', () => {
     const c = creditFor({ ...base, image_source_url: 'https://shop.com/p/1', product_url: 'https://x.com/p' }, site, null);
     expect(c).toEqual({ href: 'https://shop.com/p/1', label: 'shop.com', kind: 'source' });
   });
+  it('ignores a stale source when the coffee shows the roaster default image', () => {
+    const c = creditFor({ image_url: null, product_url: null, image_source_url: 'https://shop.com/p/1' }, site, 'https://r.com/logo.png');
+    expect(c).toEqual({ href: site, label: 'roaster.coffee', kind: 'roaster' });
+  });
+  it('a non-web own image (data:) still uses its source and never the roaster default', () => {
+    const c = { image_url: 'data:image/svg+xml,x', product_url: null, image_source_url: 'https://shop.com/p/1' };
+    expect(creditFor(c, site, 'https://r.com/logo.png')?.kind).toBe('source');
+    expect(creditFor({ ...c, image_source_url: null }, site, 'https://r.com/logo.png')).toBeNull();
+  });
   it('falls back to the product page (legacy coffees)', () => {
     expect(creditFor({ ...base, product_url: 'https://www.shop.com/p' }, site, null)).toEqual({
       href: 'https://www.shop.com/p', label: 'shop.com', kind: 'product'
