@@ -956,10 +956,9 @@
 
 <style>
   /* Desktop side rail (docs/backlog/insights-side-bar.md), from 1000px wide and 500px tall (never a
-     phone: landscape is 333px tall). The container grows by rail + gap (10rem + 1rem = 176px), so the
-     content column at viewport W is today's column at W - 176px, and from 1416px (= --container-max
-     1240px + 176px) the full 1208px. The content's width breakpoints are container queries on
-     `insights` (viewport width - 2rem main padding), so it lays out exactly as the page did at W - 176. */
+     phone: landscape is 333px tall). --container-max (1416px = 1240px + the 176px rail + gap) is
+     site-wide, so the content column at viewport W is W - 176px, and from 1416px the full 1208px.
+     The content's width breakpoints are container queries on `insights` (viewport width - 2rem main padding), so it lays out exactly as the page did at W - 176. */
   .rail-main {
     container: insights / inline-size;
   }
@@ -967,13 +966,9 @@
     display: none;
   }
   @media (min-width: 1000px) and (min-height: 500px) {
-    :global(main.container:has(> .rail-layout)) {
+    .rail-layout {
       --rail-w: 10rem;
       --rail-gap: 1rem;
-      max-width: calc(var(--container-max) + var(--rail-w) + var(--rail-gap));
-    }
-    :global(body:has(main.container > .rail-layout)) {
-      --nav-max: calc(var(--container-max) + 10rem + 1rem);
     }
     .rail-layout {
       display: grid;

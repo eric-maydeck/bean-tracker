@@ -1982,6 +1982,45 @@ export const STATES: State[] = [
       await expect(card.getByRole('button', { name: 'More actions' })).toHaveCount(0);
     }
   },
+  {
+    // List rows stay short (one row of icons, names/processing clamp at two lines), and Edit mode keeps the Actions column's width.
+    name: 'coffees-list-row-height', path: () => '/coffees?status=all&view=list',
+    act: async (page) => {
+      const heights = () => page.locator('table.data-table tbody tr').evaluateAll((trs) => trs.slice(0, 40).map((tr) => tr.getBoundingClientRect().height));
+      const w = page.viewportSize()!.width;
+      // (The seed's stress roaster wraps to seven lines; a long roaster name may stretch its own row, so allow two.)
+      if (w >= 1280) expect((await heights()).filter((h) => h > 62).length).toBeLessThanOrEqual(2);
+      if (w <= 480) expect(Math.max(...(await heights()))).toBeLessThanOrEqual(56); // 44px tap targets in one row
+      // Every action button of every row sits fully inside the Actions cell once the table is scrolled right (phones scroll it).
+      const buttonsInCell = async () => {
+        await page.locator('.table-scroll').evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+        const bad = await page.locator('table.data-table tbody tr').evaluateAll((trs) => trs.slice(0, 10).flatMap((tr) => {
+          const cell = tr.lastElementChild!.getBoundingClientRect();
+          const scroller = tr.closest('.table-scroll')!.getBoundingClientRect();
+          const btns = [...tr.lastElementChild!.querySelectorAll<HTMLElement>('button, a.button')];
+          const out: string[] = [];
+          for (const b of btns) {
+            const r = b.getBoundingClientRect();
+            if (r.left < cell.left - 1 || r.right > cell.right + 1 || r.left < scroller.left - 1 || r.right > scroller.right + 1 || r.height < 28) out.push(`${b.getAttribute('aria-label')} ${Math.round(r.left)}-${Math.round(r.right)} vs cell ${Math.round(cell.left)}-${Math.round(cell.right)}`);
+          }
+          return out;
+        }));
+        expect(bad).toEqual([]);
+        // Rows without an Actions cell of buttons are skipped above; the table still has rows that carry them.
+        expect(await page.locator('table.data-table tbody tr td:last-child').locator('button, a.button').count()).toBeGreaterThanOrEqual(4);
+      };
+      await buttonsInCell();
+      const actionsW = () => page.locator('table.data-table thead th.col-actions').evaluate((th) => Math.round(th.getBoundingClientRect().width));
+      const before = await actionsW();
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
+      expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
+      await buttonsInCell(); // Edit mode too (three-icon rows plus the first row's four)
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      await checkLayout(page);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+    }
+  },
   ...['open', 'backlog'].map((st) => ({
     // The List view's column positions hold still when top Edit is toggled.
     name: `coffees-edit-stable-columns-${st}`,
@@ -1995,9 +2034,11 @@ export const STATES: State[] = [
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       const after = await cols();
-      // The icons that were there keep their x; Edit mode's extra icon lands to their right.
+      // Both modes share one icon grid: every icon column Edit mode uses is a column the non-edit row has (its extra
+      // icon lands to the right of them), and the non-edit row's first two columns stay (the 2x2 it used to be).
       const iconsAfter = await icons();
-      for (const x of iconsBefore) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
+      for (const y of iconsAfter) expect(iconsBefore.some((x) => Math.abs(y - x) <= 1), `edit icon at x=${y}`).toBe(true);
+      for (const x of [...iconsBefore].sort((p, q) => p - q).slice(0, 2)) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
       expect(after).toHaveLength(before.length);
       after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
     }
@@ -3405,6 +3446,27 @@ export const STATES: State[] = [
     }
   },
   {
+    // Wide screens: Bean Conqueror left, Recipes + Brew now stacked right; one column below 1100px. Checked in dark too.
+    name: 'account-columns', path: () => '/account',
+    act: async (page) => {
+      const secs = await page.locator('.acct > section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
+      expect(secs).toHaveLength(3);
+      const [a, b, c] = secs;
+      if (page.viewportSize()!.width >= 1100) {
+        expect(b.x).toBeGreaterThan(a.right); // right column
+        expect(Math.abs(c.x - b.x)).toBeLessThan(2);
+        expect(c.y).toBeGreaterThan(b.bottom);
+        expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+      } else {
+        expect(Math.abs(b.x - a.x)).toBeLessThan(2); // single column
+        expect(b.y).toBeGreaterThanOrEqual(a.bottom);
+      }
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      await checkLayout(page);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'account-zip-too-big', viewports: 'two',
     path: () => '/account',
@@ -3497,6 +3559,26 @@ export const STATES: State[] = [
       const drawn = await page.evaluate(() => (window as unknown as { drawn: string[] }).drawn);
       expect(drawn.filter((t) => /^\d*\.\d+$/.test(t))).toEqual([]); // no raw "0.047" labels or "0.02" ticks
       for (const t of drawn.filter((t) => /\/g$/.test(t))) expect(t).toMatch(/^\$[\d,]+(\.\d{2})?\/g$/);
+    }
+  },
+  {
+    // One page width site-wide: the nav links and main share left/right edges on every page, at 1280 and 1920.
+    name: 'page-width-consistent', path: () => '/coffees',
+    act: async (page) => {
+      const edges = () => page.evaluate(() => {
+        const r = (e: Element | null) => { const b = e!.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
+        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
+      });
+      const size = page.viewportSize()!;
+      for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
+        await page.setViewportSize({ width, height: size.height });
+        const seen = [];
+        for (const path of ['/coffees', '/insights', '/recipes']) { await gotoReady(page, path); seen.push(await edges()); }
+        expect(seen[1], `insights at ${width}`).toEqual(seen[0]);
+        expect(seen[2], `recipes at ${width}`).toEqual(seen[0]);
+      }
+      await page.setViewportSize(size);
+      await gotoReady(page, '/coffees');
     }
   },
   { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
@@ -6315,10 +6397,11 @@ export const STATES: State[] = [
       for (const w of [1100, 1280, 1436])
         for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
           const url = `/insights?range=all${q}`;
-          await at(w - 176, 499, url);
+          const bare = Math.min(w, 1416) - 176; // --container-max (1416px) caps the page, rail included
+          await at(bare, 499, url);
           const today = await settled();
           await at(w, 900, url);
-          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${w - 176}px`).toEqual(today);
+          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${bare}px`).toEqual(today);
         }
       // Full width from 1416px: every tab's content column is 1240 - 2rem.
       await at(1436, 900, '/insights?range=all');
@@ -10458,6 +10541,14 @@ test.describe('signed out', () => {
     await page.goto('/account');
     await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);
     await expect(page.getByRole('link', { name: 'Account', exact: true })).toHaveCount(0);
+  });
+  test('coffees-list-brew-button-signed-out', async ({ page }) => {
+    await gotoReady(page, '/coffees?status=open&view=list');
+    const row = page.locator('table.data-table tbody tr').filter({ has: page.getByRole('link', { name: 'Brew now' }) }).first();
+    const [name, brew] = [(await row.locator('td:nth-child(2) a').first().boundingBox())!, (await row.getByRole('link', { name: 'Brew now' }).boundingBox())!];
+    expect(brew.x - (name.x + name.width)).toBeLessThan(24); // right after the coffee name, as before the row change
+    expect(Math.abs(brew.y + brew.height / 2 - (name.y + name.height / 2))).toBeLessThan(name.height);
+    await checkLayout(page);
   });
   test('insights-pours-signed-out', async ({ page }) => {
     await gotoReady(page, '/insights?tab=pours&pourThin=open');
