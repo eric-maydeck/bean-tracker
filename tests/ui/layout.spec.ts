@@ -3299,12 +3299,34 @@ export const STATES: State[] = [
     name: 'ai-footer',
     path: () => '/water',
     act: async (page) => {
-      const note = page.locator('.site-footer .ai-note');
-      await expect(note).toContainText('Built with help from Claude Code, an AI coding assistant.');
-      await expect(note.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', /^mailto:(eric@maydeck\.net|contact@fuhnoo\.coffee)$/);
-      expect(await note.evaluate((el) => getComputedStyle(el).textAlign)).toBe('center');
-      const links = await note.locator('.ai-links').evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
-      expect(links, 'How AI was used + Contact share one line').toBe(1);
+      const foot = page.locator('.site-footer');
+      await expect(foot).toContainText('Built with help from Claude Code, an AI coding assistant');
+      await expect(foot.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', /^mailto:(eric@maydeck\.net|contact@fuhnoo\.coffee)$/);
+      // One run of items: left-aligned, fixed order, joined by " · ".
+      expect(await foot.evaluate((el) => getComputedStyle(el).textAlign)).not.toBe('center');
+      const lines = (await foot.locator(':scope > div').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toBe('Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
+      expect(lines[1]).toMatch(/^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
+      const spans = foot.locator(':scope > div > span');
+      const sizes = await foot.locator(':scope > div').evaluateAll((ds) => ds.map((d) => getComputedStyle(d).fontSize + getComputedStyle(d).color));
+      expect(sizes[0], 'same size and colour on both lines').toBe(sizes[1]);
+      const fb = (await foot.boundingBox())!;
+      const firstX = await spans.first().evaluate((e) => e.getBoundingClientRect().x);
+      expect(Math.abs(firstX - fb.x), 'first item at the content edge').toBeLessThan(1.5);
+      // The dot trails its item, so no line starts with a separator.
+      const lineStarts = await spans.evaluateAll((els) => {
+        const out: string[] = [];
+        let top = -1;
+        for (const e of els) {
+          const t = Math.round(e.getBoundingClientRect().top);
+          if (Math.abs(t - top) > 2) out.push((e.textContent ?? '').trim()[0]);
+          top = t;
+        }
+        return out;
+      });
+      for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
+      if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(2);
     }
   },
   {

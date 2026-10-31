@@ -33,10 +33,11 @@
   });
 </script>
 
-<p class="ai-note">
-  Built with help from Claude Code, an AI coding assistant.
-  <span class="ai-links"><a href="?about=ai" bind:this={link} onclick={open}>How AI was used</a> · <a href="mailto:{email}">Contact</a></span>
-</p>
+<div>
+  <span>Built with help from Claude Code, an AI coding assistant&nbsp;·</span>
+<span class="fi"><a href="?about=ai" bind:this={link} onclick={open}>How AI was used</a>&nbsp;·</span>
+<span class="fi"><a href="mailto:{email}">Contact</a></span>
+</div>
 
 <dialog class="ai-dialog" aria-labelledby="ai-title" bind:this={dlg} onclose={closed} onclick={(e) => e.target === dlg && dlg.close()}>
   <div class="ai-sheet">
@@ -78,14 +79,6 @@
 </dialog>
 
 <style>
-  .ai-note {
-    margin: var(--space-2) 0 0;
-    text-align: center;
-    overflow-wrap: anywhere;
-  }
-  .ai-links {
-    white-space: nowrap;
-  }
   .ai-dialog {
     width: min(40rem, 100% - 2rem);
     max-height: 85dvh;

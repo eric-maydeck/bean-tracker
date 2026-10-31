@@ -213,10 +213,12 @@
   {@render children()}
   <Toast />
   <footer class="site-footer">
-    v{data.version} · Last updated: {formatUpdated(data.lastUpdated)} · Last deployed: {formatUpdated(
-      data.lastDeployed
-    )}
     <AiNote email={data.contactEmail} />
+    <div>
+      <span class="fi">v{data.version} ·</span>
+      <span class="fi">Last updated: {formatUpdated(data.lastUpdated)} ·</span>
+      <span class="fi">Last deployed: {formatUpdated(data.lastDeployed)}</span>
+    </div>
   </footer>
 </main>
 
