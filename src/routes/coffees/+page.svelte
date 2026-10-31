@@ -1049,7 +1049,7 @@
   </div>
 {:else}
   <div class="table-scroll">
-    <table class="data-table compact">
+    <table class="data-table compact coffees-list">
       <colgroup>
         <col style="width: 7%" />
         <col style="width: 11%" />

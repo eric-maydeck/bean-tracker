@@ -1998,7 +1998,7 @@ export const STATES: State[] = [
           const cell = tr.lastElementChild!.getBoundingClientRect();
           const scroller = tr.closest('.table-scroll')!.getBoundingClientRect();
           const btns = [...tr.lastElementChild!.querySelectorAll<HTMLElement>('button, a.button')];
-          const out = btns.length >= 4 ? [] : [`only ${btns.length} buttons`];
+          const out: string[] = [];
           for (const b of btns) {
             const r = b.getBoundingClientRect();
             if (r.left < cell.left - 1 || r.right > cell.right + 1 || r.left < scroller.left - 1 || r.right > scroller.right + 1 || r.height < 28) out.push(`${b.getAttribute('aria-label')} ${Math.round(r.left)}-${Math.round(r.right)} vs cell ${Math.round(cell.left)}-${Math.round(cell.right)}`);
@@ -2006,6 +2006,8 @@ export const STATES: State[] = [
           return out;
         }));
         expect(bad).toEqual([]);
+        // Rows without an Actions cell of buttons are skipped above; the table still has rows that carry them.
+        expect(await page.locator('table.data-table tbody tr td:last-child').locator('button, a.button').count()).toBeGreaterThanOrEqual(4);
       };
       await buttonsInCell();
       const actionsW = () => page.locator('table.data-table thead th.col-actions').evaluate((th) => Math.round(th.getBoundingClientRect().width));
@@ -2032,8 +2034,10 @@ export const STATES: State[] = [
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       const after = await cols();
-      // The first two icon columns keep their x (Edit mode lays its icons out in the same columns).
+      // Both modes share one icon grid: every icon column Edit mode uses is a column the non-edit row has (its extra
+      // icon lands to the right of them), and the non-edit row's first two columns stay (the 2x2 it used to be).
       const iconsAfter = await icons();
+      for (const y of iconsAfter) expect(iconsBefore.some((x) => Math.abs(y - x) <= 1), `edit icon at x=${y}`).toBe(true);
       for (const x of [...iconsBefore].sort((p, q) => p - q).slice(0, 2)) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
       expect(after).toHaveLength(before.length);
       after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
@@ -3563,7 +3567,7 @@ export const STATES: State[] = [
     act: async (page) => {
       const edges = () => page.evaluate(() => {
         const r = (e: Element | null) => { const b = e!.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
-        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')) };
+        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')), footer: r(document.querySelector('.site-footer')) };
       });
       const size = page.viewportSize()!;
       for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
