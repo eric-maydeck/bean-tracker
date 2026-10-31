@@ -1,3 +1,23 @@
+# [1.103.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.102.0...v1.103.0) (2026-10-31)
+
+
+### Bug Fixes
+
+* **coffees:** list tap targets and tips; tests for buttons in the actions cell
+* **coffees:** scope list row styles to the coffees list; stricter list tests
+* **layout:** one page width on desktop, matching insights
+* **ui:** ai dialog follows history, keeps page params, bigger link taps, review fixes
+* **ui:** fading footer divider, smaller dialog text, restore app.css
+
+
+### Features
+
+* **account:** two-column cards on wide screens
+* **coffees:** shorter list rows, one-row actions, two-line clamp
+* **ui:** ai disclaimer footer line, how-it-was-built dialog and contact link
+* **ui:** footer as two flowing lines of dot-separated items
+* **ui:** stack the footer one item per line on phones
+
 # [1.102.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.101.0...v1.102.0) (2026-10-31)
 
 
