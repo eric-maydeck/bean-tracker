@@ -3295,6 +3295,61 @@ export const STATES: State[] = [
     }
   },
   {
+    // Footer line: one muted centered line that wraps cleanly (checkLayout covers overflow), links on one row.
+    name: 'ai-footer',
+    path: () => '/water',
+    act: async (page) => {
+      const note = page.locator('.site-footer .ai-note');
+      await expect(note).toContainText('Built with help from Claude Code, an AI coding assistant.');
+      await expect(note.getByRole('link', { name: 'Contact' })).toHaveAttribute('href', /^mailto:(eric@maydeck\.net|contact@fuhnoo\.coffee)$/);
+      expect(await note.evaluate((el) => getComputedStyle(el).textAlign)).toBe('center');
+      const links = await note.locator('.ai-links').evaluate((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+      expect(links, 'How AI was used + Contact share one line').toBe(1);
+    }
+  },
+  {
+    // The dialog opens from the link and from ?about=ai; X top right, Close centered at the bottom, Esc closes, focus returns.
+    name: 'ai-dialog',
+    path: () => '/water',
+    act: async (page) => {
+      const dlg = page.locator('dialog.ai-dialog');
+      const link = page.getByRole('link', { name: 'How AI was used' });
+      await link.click();
+      await expect(dlg).toBeVisible();
+      expect(new URL(page.url()).searchParams.get('about')).toBe('ai');
+      await expect(dlg.getByRole('heading', { name: 'How this site was built' })).toBeVisible();
+      const box = async (l: Locator) => (await l.boundingBox())!;
+      const [d, x, close] = [await box(dlg), await box(dlg.getByRole('button', { name: 'Close' }).first()), await box(dlg.locator('.ai-footer .button'))];
+      expect(d.x + d.width - (x.x + x.width), 'X at the top right').toBeLessThan(20);
+      expect(x.y - d.y, 'X at the top').toBeLessThan(20);
+      expect(Math.abs(close.x + close.width / 2 - (d.x + d.width / 2)), 'Close centered').toBeLessThan(2);
+      expect(d.y + d.height - (close.y + close.height), 'Close at the bottom').toBeLessThan(20);
+      const vh = page.viewportSize()!.height;
+      expect(d.y).toBeGreaterThanOrEqual(-1);
+      expect(d.y + d.height, 'dialog inside the screen').toBeLessThanOrEqual(vh + 1);
+      // Long copy scrolls inside the body, not the page.
+      await expect(dlg.getByRole('link', { name: /@/ })).toHaveAttribute('href', /^mailto:/);
+      await page.keyboard.press('Escape');
+      await expect(dlg).toBeHidden();
+      expect(new URL(page.url()).searchParams.has('about')).toBe(false);
+      await expect(link).toBeFocused();
+      // X closes too.
+      await link.click();
+      await dlg.getByRole('button', { name: 'Close' }).first().click();
+      await expect(dlg).toBeHidden();
+    }
+  },
+  {
+    name: 'ai-dialog-url',
+    path: () => '/water?about=ai',
+    act: async (page) => {
+      await expect(page.locator('dialog.ai-dialog')).toBeVisible();
+      await page.locator('.ai-footer .button').click();
+      await expect(page.locator('dialog.ai-dialog')).toBeHidden();
+      expect(page.url()).not.toContain('about=');
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'account-zip-too-big', viewports: 'two',
     path: () => '/account',
