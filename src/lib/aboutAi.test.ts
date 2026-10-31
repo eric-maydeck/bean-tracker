@@ -3,7 +3,7 @@ import { contactEmailFor, aboutAiOpen } from './aboutAi';
 
 describe('contactEmailFor', () => {
   it('uses the fuhnoo.coffee address for the domain and its subdomains', () => {
-    for (const h of ['fuhnoo.coffee', 'www.fuhnoo.coffee', 'a.b.FUHNOO.coffee', 'fuhnoo.coffee:443']) {
+    for (const h of ['fuhnoo.coffee', 'www.fuhnoo.coffee', 'a.b.FUHNOO.coffee', 'fuhnoo.coffee:443', 'fuhnoo.coffee.', 'www.fuhnoo.coffee.:443']) {
       expect(contactEmailFor(h)).toBe('contact@example.com');
     }
   });

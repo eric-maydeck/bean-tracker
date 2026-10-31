@@ -1336,8 +1336,17 @@ nav.site-nav a[aria-current='page'] {
   .site-footer > div > .lk {
     display: inline-block;
   }
-  .site-footer .lk:nth-of-type(2) .d {
+  .site-footer .d.keep {
     display: inline;
+  }
+  /* ~44px tap area for the two links without changing the stacked layout. */
+  .site-footer .lk a {
+    position: relative;
+  }
+  .site-footer .lk a::after {
+    content: '';
+    position: absolute;
+    inset: -11px -4px;
   }
 }
 

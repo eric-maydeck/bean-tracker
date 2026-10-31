@@ -1,6 +1,5 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import { aboutAiOpen } from '$lib/aboutAi';
@@ -11,11 +10,21 @@
   let dlg: HTMLDialogElement;
   let link: HTMLAnchorElement;
 
+  // The link keeps the page's current params (a new tab lands on the same view with the dialog open).
+  const aboutHref = (q: URLSearchParams) => {
+    const p = new URLSearchParams(q);
+    p.set('about', 'ai');
+    return `?${p}`;
+  };
+  const href = $derived(aboutHref(page.url.searchParams));
+  // `replaceState` leaves page.url stale, so refresh from `location` just before a click or focus.
+  const syncHref = () => (link.href = aboutHref(currentParams(page.url)));
+
   function setParam(on: boolean) {
     const p = new URLSearchParams(currentParams(page.url));
     if (on) p.set('about', 'ai');
     else p.delete('about');
-    writeUrlParams(p);
+    writeUrlParams(p, false);
   }
   function open(e: MouseEvent) {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return; // new tab/window: follow the href
@@ -28,18 +37,25 @@
     setParam(false);
     link.focus();
   }
-  onMount(() => {
-    if (aboutAiOpen(currentParams(page.url))) dlg.showModal();
+  // Follows real navigations (first load, Back/Forward onto or off ?about=ai). Our own replaceState doesn't re-run it.
+  $effect(() => {
+    // page.url re-runs this on each navigation; `location` is what it reads, because after a replaceState Back lands on an
+    // entry whose page.url is the pre-replace one (no about).
+    const want = aboutAiOpen(currentParams(page.url));
+    if (want && !dlg.open) dlg.showModal();
+    else if (!want && dlg.open) dlg.close();
   });
+  // A backdrop click closes only when the press also began on the backdrop (not after a drag-select overshoot).
+  let pressedBackdrop = false;
 </script>
 
 <div>
-  <span>Built with help from Claude Code, an AI coding assistant<span class="d">&nbsp;·</span></span>
-<span class="fi lk"><a href="?about=ai" bind:this={link} onclick={open}>How AI was used</a><span class="d">&nbsp;·</span></span>
+  <span>Built with help from Claude Code, an AI coding assistant<span class="d" aria-hidden="true">&nbsp;·</span></span>
+<span class="fi lk"><a {href} bind:this={link} onclick={open} onpointerenter={syncHref} onfocus={syncHref}>How AI was used</a><span class="d keep" aria-hidden="true">&nbsp;·</span></span>
 <span class="fi lk"><a href="mailto:{email}">Contact</a></span>
 </div>
 
-<dialog class="ai-dialog" aria-labelledby="ai-title" bind:this={dlg} onclose={closed} onclick={(e) => e.target === dlg && dlg.close()}>
+<dialog class="ai-dialog" aria-labelledby="ai-title" bind:this={dlg} onclose={closed} onpointerdown={(e) => (pressedBackdrop = e.target === dlg)} onclick={(e) => e.target === dlg && pressedBackdrop && dlg.close()}>
   <div class="ai-sheet">
     <header class="ai-header">
       <h2 id="ai-title">How this site was built</h2>

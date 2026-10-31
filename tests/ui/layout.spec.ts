@@ -3382,6 +3382,29 @@ export const STATES: State[] = [
     }
   },
   {
+    // The link keeps the page's params, and the dialog follows Back/Forward onto and off ?about=ai.
+    name: 'ai-dialog-history',
+    path: () => '/coffees?status=all&view=cards',
+    act: async (page) => {
+      const link = page.getByRole('link', { name: 'How AI was used' });
+      await expect(link).toHaveAttribute('href', /(^|[?&])status=all(&|$)/);
+      await expect(link).toHaveAttribute('href', /[?&]about=ai$/);
+      const dlg = page.locator('dialog.ai-dialog');
+      await link.click();
+      await expect(dlg).toBeVisible();
+      // Leave through an in-app link (the open modal blocks real clicks).
+      await page.evaluate(() => (document.querySelector('a[href="/stats"]') as HTMLElement).click());
+      await expect(page).toHaveURL(/\/stats/);
+      await expect(dlg).toBeHidden();
+      await page.goBack();
+      await expect(page).toHaveURL(/about=ai/);
+      await expect(dlg).toBeVisible();
+      await page.goForward();
+      await expect(page).toHaveURL(/\/stats/);
+      await expect(dlg).toBeHidden();
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'account-zip-too-big', viewports: 'two',
     path: () => '/account',
