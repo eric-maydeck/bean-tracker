@@ -41,6 +41,11 @@ describe('applyImageSources', () => {
     const img = (id: number) => (db.prepare(`SELECT image_url i FROM coffees WHERE id = ?`).get(id) as { i: string }).i;
     expect([img(a), source(db, a).s]).toEqual(['https://x/new.png', 'https://r/p']);
     expect([img(b), source(db, b).s]).toEqual(['https://x/changed.jpg', null]);
+    const pu = (id: number) => (db.prepare(`SELECT product_url p FROM coffees WHERE id = ?`).get(id) as { p: string | null }).p;
+    expect(pu(a)).toBe('https://r/p'); // empty product_url filled with the page
+    const c = createCoffee(db, input({ image_url: 'https://x/o.jpg', product_url: 'https://keep/me' })).id;
+    applyImageSources(db, [[c, 'R', 'https://x/o.jpg', 'https://r/p', 'https://x/n.png']], 'm2');
+    expect(pu(c)).toBe('https://keep/me');
   });
   it('does nothing on an empty DB and leaves no marker', () => {
     const db = createDb(':memory:');
@@ -50,7 +55,7 @@ describe('applyImageSources', () => {
 
 describe('IMAGE_SOURCES_2026_10', () => {
   it('has http(s) sources and unique ids', () => {
-    expect(IMAGE_SOURCES_2026_10).toHaveLength(235); // 232 product pages + 2 Mugaya + 1 Tavily (Scenery Don Senel)
+    expect(IMAGE_SOURCES_2026_10).toHaveLength(237); // 232 product pages + 2 Mugaya + 1 Tavily + 2 Scenery live-page replacements
     expect(new Set(IMAGE_SOURCES_2026_10.map((r) => r[0])).size).toBe(IMAGE_SOURCES_2026_10.length);
     for (const [, , image, src] of IMAGE_SOURCES_2026_10) {
       expect(src).toMatch(/^https?:\/\//);

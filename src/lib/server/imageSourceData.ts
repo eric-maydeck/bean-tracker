@@ -237,4 +237,6 @@ export const IMAGE_SOURCES_2026_10: [number, string, string, string, string?][] 
   [322, "Ceto", "https://cdn.shopify.com/s/files/1/0929/6694/5082/files/jorge-pikudo-andrade-rosado-ceto.png?v=1792433360", "https://ceto.coffee/products/jorge-pikudo-andrade-rosado"],
   [323, "Ceto", "https://cdn.shopify.com/s/files/1/0929/6694/5082/files/jorge-pikudo-andrade-rosado-ceto.png?v=1792433360", "https://ceto.coffee/products/jorge-pikudo-andrade-rosado"],
   [272, "Scenery", "https://cdn.shopify.com/s/files/1/0779/1961/7334/files/costa_rica_don_senel_milenio_shopify_707a054b-b96b-456c-9d77-c3223274d8dd.png?v=1791037118", "https://beanhoard.com/roaster/scenery-coffee/costa-rica-don-senel-milenio"],
+  [312, "Scenery", "https://cdn.shopify.com/s/files/1/0779/1961/7334/files/ethiopia_weessi_tima_anoxic_honey_shopify_9ca2cee6-c6a7-4250-86ff-38a8dc1ed4bf.png?v=1791034621", "https://scenery.coffee/products/ethiopia-weessi-tima-anoxic-honey", "https://cdn.shopify.com/s/files/1/0779/1961/7334/files/ethiopia_weessi_tima_anoxic_honey_shopify_161d17b4-d7ba-4a83-8a1e-3779ae9361cd.png?v=1793196964"],
+  [276, "Scenery", "https://scenery.coffee/cdn/shop/collections/coffee_collection_banner_image.png", "https://scenery.coffee/blogs/coffee-archive/191-ethiopia-adamo-crop-25-26-archive", "https://scenery.coffee/cdn/shop/articles/ethiopia_adamo_shopify.png?v=1792758636"],
 ];
