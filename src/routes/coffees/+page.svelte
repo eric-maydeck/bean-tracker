@@ -1183,13 +1183,13 @@
         {#each sortedCoffees as coffee (coffee.id)}
           <tr>
             <td>{coffee.roaster}</td>
-            <td><div class="name-line"><a class="clamp2" title={coffee.coffee_name} href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if !data.isAdmin}{@render brewButton(coffee)}{/if}</div></td>
+            <td><div class="name-line"><a class="clamp2" use:labelTip={coffee.coffee_name} href={`/coffees/${coffee.slug}`}><CoffeeName name={coffee.coffee_name} /></a>{#if !data.isAdmin}{@render brewButton(coffee)}{/if}</div></td>
             <td class="origin-cell">{coffee.origin ? originWithFlag(coffee.origin) : '—'}</td>
             <td>
               <RoastBeans degrees={degreesFor(coffee.roast_level)} label={coffee.roast_level} />
             </td>
             <td>{coffee.decaf ? 'Yes' : 'No'}</td>
-            <td><span class="clamp2" title={coffee.processing ?? undefined}>{coffee.processing ?? '—'}</span></td>
+            <td><span class="clamp2" use:labelTip={coffee.processing}>{coffee.processing ?? '—'}</span></td>
             <td>{#if coffee.cost_per_gram != null}<Usd n={coffee.cost_per_gram} />{:else}—{/if}</td>
             <td class="nowrap">{coffee.amount_g != null ? formatBag(coffee.amount_g, coffee.grams_left) : '—'}</td>
             <td>

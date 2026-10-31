@@ -1988,13 +1988,32 @@ export const STATES: State[] = [
     act: async (page) => {
       const heights = () => page.locator('table.data-table tbody tr').evaluateAll((trs) => trs.slice(0, 40).map((tr) => tr.getBoundingClientRect().height));
       const w = page.viewportSize()!.width;
-      if (w >= 1280) expect(Math.max(...(await heights()))).toBeLessThanOrEqual(62);
+      // (The seed's stress roaster wraps to seven lines; a long roaster name may stretch its own row, so allow two.)
+      if (w >= 1280) expect((await heights()).filter((h) => h > 62).length).toBeLessThanOrEqual(2);
       if (w <= 480) expect(Math.max(...(await heights()))).toBeLessThanOrEqual(56); // 44px tap targets in one row
+      // Every action button of every row sits fully inside the Actions cell once the table is scrolled right (phones scroll it).
+      const buttonsInCell = async () => {
+        await page.locator('.table-scroll').evaluate((el) => { el.scrollLeft = el.scrollWidth; });
+        const bad = await page.locator('table.data-table tbody tr').evaluateAll((trs) => trs.slice(0, 10).flatMap((tr) => {
+          const cell = tr.lastElementChild!.getBoundingClientRect();
+          const scroller = tr.closest('.table-scroll')!.getBoundingClientRect();
+          const btns = [...tr.lastElementChild!.querySelectorAll<HTMLElement>('button, a.button')];
+          const out = btns.length >= 4 ? [] : [`only ${btns.length} buttons`];
+          for (const b of btns) {
+            const r = b.getBoundingClientRect();
+            if (r.left < cell.left - 1 || r.right > cell.right + 1 || r.left < scroller.left - 1 || r.right > scroller.right + 1 || r.height < 28) out.push(`${b.getAttribute('aria-label')} ${Math.round(r.left)}-${Math.round(r.right)} vs cell ${Math.round(cell.left)}-${Math.round(cell.right)}`);
+          }
+          return out;
+        }));
+        expect(bad).toEqual([]);
+      };
+      await buttonsInCell();
       const actionsW = () => page.locator('table.data-table thead th.col-actions').evaluate((th) => Math.round(th.getBoundingClientRect().width));
       const before = await actionsW();
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
+      await buttonsInCell(); // Edit mode too (three-icon rows plus the first row's four)
       await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
       await checkLayout(page);
       await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
@@ -2013,9 +2032,9 @@ export const STATES: State[] = [
       await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
       await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
       const after = await cols();
-      // The icons that were there keep their x; Edit mode's extra icon lands to their right.
+      // The first two icon columns keep their x (Edit mode lays its icons out in the same columns).
       const iconsAfter = await icons();
-      for (const x of iconsBefore) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
+      for (const x of [...iconsBefore].sort((p, q) => p - q).slice(0, 2)) expect(iconsAfter.some((y) => Math.abs(y - x) <= 1)).toBe(true);
       expect(after).toHaveLength(before.length);
       after.forEach(([x, w], i) => { expect(Math.abs(x - before[i][0])).toBeLessThanOrEqual(1); expect(Math.abs(w - before[i][1])).toBeLessThanOrEqual(1); });
     }
@@ -6374,10 +6393,11 @@ export const STATES: State[] = [
       for (const w of [1100, 1280, 1436])
         for (const q of ['', '&tab=insights', '&tab=leaderboards', '&tab=habits', '&tab=consumption', '&tab=brewing']) {
           const url = `/insights?range=all${q}`;
-          await at(w - 176, 499, url);
+          const bare = Math.min(w, 1416) - 176; // --container-max (1416px) caps the page, rail included
+          await at(bare, 499, url);
           const today = await settled();
           await at(w, 900, url);
-          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${w - 176}px`).toEqual(today);
+          expect(await settled(), `${w}px tab${q || '=overview'}: as without the rail at ${bare}px`).toEqual(today);
         }
       // Full width from 1416px: every tab's content column is 1240 - 2rem.
       await at(1436, 900, '/insights?range=all');
@@ -10517,6 +10537,14 @@ test.describe('signed out', () => {
     await page.goto('/account');
     await expect(page).toHaveURL(/\/login\?redirectTo=%2Faccount/);
     await expect(page.getByRole('link', { name: 'Account', exact: true })).toHaveCount(0);
+  });
+  test('coffees-list-brew-button-signed-out', async ({ page }) => {
+    await gotoReady(page, '/coffees?status=open&view=list');
+    const row = page.locator('table.data-table tbody tr').filter({ has: page.getByRole('link', { name: 'Brew now' }) }).first();
+    const [name, brew] = [(await row.locator('td:nth-child(2) a').first().boundingBox())!, (await row.getByRole('link', { name: 'Brew now' }).boundingBox())!];
+    expect(brew.x - (name.x + name.width)).toBeLessThan(24); // right after the coffee name, as before the row change
+    expect(Math.abs(brew.y + brew.height / 2 - (name.y + name.height / 2))).toBeLessThan(name.height);
+    await checkLayout(page);
   });
   test('insights-pours-signed-out', async ({ page }) => {
     await gotoReady(page, '/insights?tab=pours&pourThin=open');

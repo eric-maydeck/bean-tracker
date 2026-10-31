@@ -1304,8 +1304,9 @@ nav.site-nav a[aria-current='page'] {
   /* Keep a full-size tap target, and keep the row's icons on one line — the
      list table already scrolls horizontally at this width, so the Actions
      column can grow instead of stacking icons and doubling row height. */
-  .action-buttons .button.button-icon {
-    min-width: 44px;
+  .action-buttons .button.button-icon,
+  .data-table .name-line .button.button-icon {
+    min-width: 44px; /* the signed-out list's Brew now sits in the name cell, not an .action-buttons row */
   }
 
   .data-table .action-buttons {
@@ -3240,7 +3241,7 @@ button .sample-chip {
   grid-template-columns: repeat(4, max-content);
   flex-wrap: unset;
 }
-@media (min-width: 641px) {
+@media (min-width: 641px) and (pointer: fine) {
   .data-table .button.button-icon {
     padding: 0.3rem 0.5rem;
   }
