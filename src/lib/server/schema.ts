@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS coffees (
   rest_days_high INTEGER,
   image_url TEXT,
   product_url TEXT,
+  image_source_url TEXT,
   -- Nullable here (unlike types.ts's non-optional 'slug: string') because SQLite
   -- can't ALTER TABLE ADD COLUMN NOT NULL without a default; the unique index plus
   -- the startup backfill migration are what actually guarantee every row has one.

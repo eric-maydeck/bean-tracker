@@ -43,6 +43,7 @@ export function pickCandidate(c: Candidate, productUrl: string, storedSite: stri
   return {
     image_url: c.image,
     product_url: productUrl.trim() ? null : c.pageUrl,
+    image_source_url: c.pageUrl,
     roaster_website: !storedSite && hostMatchesRoaster(c.pageUrl, roaster) ? new URL(c.pageUrl).origin : null
   };
 }

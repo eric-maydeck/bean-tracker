@@ -21,6 +21,7 @@ export interface NewCoffeeInput {
   rest_days_high: number | null;
   image_url: string | null;
   product_url?: string | null;
+  image_source_url?: string | null;
   status?: 'backlog' | 'open' | 'archive';
   moved_date?: string | null;
   decaf?: boolean;
@@ -114,6 +115,11 @@ function ownImageUrl(db: DatabaseSync, roaster: string, imageUrl: string | null)
   return url != null && url === getRoasterImage(db, roaster) ? null : url;
 }
 
+// Credit page for the image: only with an own image (none, or the roaster default, has no source page).
+function sourceFor(db: DatabaseSync, input: NewCoffeeInput): string | null {
+  return ownImageUrl(db, input.roaster, input.image_url) ? (input.image_source_url?.trim() || null) : null;
+}
+
 export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: number; slug: string } {
   const now = new Date().toISOString();
   const status = input.status ?? 'backlog';
@@ -135,8 +141,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, image_url, product_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       input.roaster,
@@ -153,6 +159,7 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       input.rest_days_high,
       ownImageUrl(db, input.roaster, input.image_url),
       input.product_url ?? null,
+      sourceFor(db, input),
       slug,
       drank,
       status,
@@ -174,7 +181,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     `UPDATE coffees SET
       roaster = ?, coffee_name = ?, origin = ?, roast_level = ?, processing = ?,
       amount_g = ?, cost = ?, roast_date = ?, frozen_start_date = ?, frozen_end_date = ?,
-      rest_days_low = ?, rest_days_high = ?, image_url = ?, product_url = ?, slug = ?, decaf = ?, updated_at = ?
+      rest_days_low = ?, rest_days_high = ?, image_url = ?, product_url = ?, image_source_url = ?, slug = ?, decaf = ?, updated_at = ?
     WHERE id = ?`
   ).run(
     input.roaster,
@@ -191,6 +198,7 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
     input.rest_days_high,
     ownImageUrl(db, input.roaster, input.image_url),
     input.product_url ?? null,
+    sourceFor(db, input),
     slug,
     decaf,
     now,

@@ -117,6 +117,23 @@ describe('updateCoffee subscription_id', () => {
   });
 });
 
+describe('image_source_url', () => {
+  it('is stored with an own image, replaced on update, and dropped with the image', () => {
+    const img = 'https://cdn.example/a.jpg';
+    const { id, slug } = createCoffee(db, sampleInput({ image_url: img, image_source_url: 'https://shop.com/p' }));
+    expect(getCoffeeById(db, id)?.image_source_url).toBe('https://shop.com/p');
+    updateCoffee(db, id, sampleInput({ image_url: img, image_source_url: 'https://other.com/p' }), slug);
+    expect(getCoffeeById(db, id)?.image_source_url).toBe('https://other.com/p');
+    updateCoffee(db, id, sampleInput({ image_url: null, image_source_url: 'https://other.com/p' }), slug);
+    expect(getCoffeeById(db, id)?.image_source_url).toBeNull();
+  });
+  it('is dropped when the image is the roaster default', () => {
+    setRoasterImage(db, 'Test Roasters', 'https://cdn.example/logo.png');
+    const { id } = createCoffee(db, sampleInput({ image_url: 'https://cdn.example/logo.png', image_source_url: 'https://shop.com/p' }));
+    expect(getCoffeeById(db, id)?.image_source_url).toBeNull();
+  });
+});
+
 describe('updateCoffee', () => {
   it('overwrites the editable fields and the slug', () => {
     const { id } = createCoffee(db, sampleInput());

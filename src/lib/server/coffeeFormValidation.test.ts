@@ -146,6 +146,18 @@ describe('parseCoffeeForm: roaster_website', () => {
   });
 });
 
+describe('parseCoffeeForm: image_source_url', () => {
+  const base = { roaster: 'Lume', coffee_name: 'Kiambu', image_url: 'https://cdn.example/a.jpg' };
+  it('carries a web address', () => {
+    expect(parseCoffeeForm(formData({ ...base, image_source_url: 'https://shop.com/p' })).image_source_url).toBe('https://shop.com/p');
+  });
+  it('is null when absent, unusable, or the image is empty', () => {
+    expect(parseCoffeeForm(formData(base)).image_source_url).toBeNull();
+    expect(parseCoffeeForm(formData({ ...base, image_source_url: 'javascript:x' })).image_source_url).toBeNull();
+    expect(parseCoffeeForm(formData({ ...base, image_url: '', image_source_url: 'https://shop.com/p' })).image_source_url).toBeNull();
+  });
+});
+
 describe('parseCoffeeForm subscription_id', () => {
   const base = { roaster: 'R', coffee_name: 'C' };
   it('is absent when the field is not sent', () => {

@@ -13,11 +13,13 @@ describe('pickCandidate', () => {
     expect(pickCandidate(c, '  ', null, 'Lume')).toEqual({
       image_url: 'https://cdn.example/bag.png',
       product_url: 'https://www.lume.coffee/products/kiambu',
+      image_source_url: 'https://www.lume.coffee/products/kiambu',
       roaster_website: 'https://www.lume.coffee'
     });
   });
-  it('keeps an existing product URL', () => {
+  it('keeps an existing product URL but still records the source page', () => {
     expect(pickCandidate(c, 'https://lume.coffee/old', null, 'Lume').product_url).toBeNull();
+    expect(pickCandidate(c, 'https://lume.coffee/old', null, 'Lume').image_source_url).toBe(c.pageUrl);
   });
   it('never replaces a stored site', () => {
     expect(pickCandidate(c, '', 'https://www.lume.coffee', 'Lume').roaster_website).toBeNull();
