@@ -45,25 +45,28 @@
       <button type="button" class="ai-x" aria-label="Close" onclick={() => dlg.close()}>✕</button>
     </header>
     <div class="ai-body">
-      <p>I built Bean Tracker with Claude Code, Anthropic's AI coding assistant. I want to be upfront about what that means and who did what.</p>
+      <p>I built Bean Tracker with Claude Code, Anthropic's AI coding assistant. Here's who does what.</p>
       <h3>What I do</h3>
       <ul>
-        <li>Set the direction for the site and decide which features get built, and in what order</li>
-        <li>Bring the coffee knowledge: nearly all of the guidance on how brewing works, from recipes, gear, and pour structure to extraction, rest, and water</li>
-        <li>Design and correct the content, and write the rules the code has to follow</li>
-        <li>Review the AI's work in long feedback sessions, round after round, until it's right</li>
-        <li>Test the UI myself, on desktop and on my phone</li>
-        <li>Hold the project to software engineering best practices: tests, code review, and careful releases</li>
-        <li>Act as project manager and technical lead: I prioritize the backlog, make the calls, and approve what ships</li>
+        <li>Set the direction: which features get built, and in what order</li>
+        <li>Bring nearly all of the coffee knowledge, from recipes, gear, and pour structure to extraction, rest, and water</li>
+        <li>Shape every design: I review each spec and push back on layout, wording, and behavior until it's right</li>
+        <li>Test every change in a live preview, on desktop and on my phone</li>
+        <li>Set the engineering standards: tests at every screen size, shareable links for every view, signed commits, and staged releases</li>
+        <li>Own the data: every coffee, rating, and note, plus the judgment calls on it</li>
+        <li>Run the server the site lives on, the domains, and the backups</li>
+        <li>Act as project manager and technical lead, and decide what gets published, including this note</li>
       </ul>
       <h3>What Claude Code does</h3>
       <ul>
-        <li>Writes most of the code and the automated tests, following my direction</li>
+        <li>Writes nearly all of the code and automated tests, following my direction</li>
+        <li>Drafts the designs, specs, plans, and docs for me to review</li>
         <li>Researches options and explains the tradeoffs so I can decide</li>
-        <li>Drafts designs and mockups for me to review</li>
-        <li>Checks its own work with tests and code review before I see it</li>
+        <li>Analyzes my brewing data to suggest values, which I confirm or change</li>
+        <li>Releases and deploys changes once I give the go-ahead</li>
+        <li>Often runs several AI agents at once: one builds while another reviews</li>
       </ul>
-      <p>Nothing ships without my review. The coffee data, ratings, and notes are mine, entered by hand or imported from Bean Conqueror.</p>
+      <p>Nothing ships without my sign-off. I review every change in a live preview, and automated tests plus a separate AI code review check the code itself.</p>
       <h3>Questions or concerns?</h3>
       <p>If you have a question, spot a mistake, or want something removed (for instance, a photo of your coffee's label), email me at <a href="mailto:{email}">{email}</a>.</p>
     </div>
