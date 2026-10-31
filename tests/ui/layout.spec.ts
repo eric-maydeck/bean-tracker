@@ -3306,8 +3306,10 @@ export const STATES: State[] = [
       expect(await foot.evaluate((el) => getComputedStyle(el).textAlign)).not.toBe('center');
       const lines = (await foot.locator(':scope > div').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
       expect(lines).toHaveLength(2);
-      expect(lines[0]).toBe('Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
-      expect(lines[1]).toMatch(/^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
+      const stacked = page.viewportSize()!.width <= 640;
+      // Phones stack one item per line with no separators (the links share a line, joined by one dot); wider screens run the items together.
+      expect(lines[0]).toBe(stacked ? 'Built with help from Claude Code, an AI coding assistant How AI was used · Contact' : 'Built with help from Claude Code, an AI coding assistant · How AI was used · Contact');
+      expect(lines[1]).toMatch(stacked ? /^v[\d.]+ Last updated: [^·]+ Last deployed: [^·]+$/ : /^v[\d.]+ · Last updated: .+ · Last deployed: [^·]+$/);
       const spans = foot.locator(':scope > div > span');
       const sizes = await foot.locator(':scope > div').evaluateAll((ds) => ds.map((d) => getComputedStyle(d).fontSize + getComputedStyle(d).color));
       expect(sizes[0], 'same size and colour on both lines').toBe(sizes[1]);
@@ -3327,6 +3329,14 @@ export const STATES: State[] = [
       });
       for (const c of lineStarts) expect(c, 'a line never starts with a separator').not.toBe('·');
       if (page.viewportSize()!.width >= 1200) expect(lineStarts.length, 'one line each on a wide screen').toBe(2);
+      if (stacked) {
+        expect(lineStarts, 'sentence, links, version, updated, deployed').toHaveLength(5);
+        const shown = await foot.locator('.d').evaluateAll((ds) => ds.filter((d) => getComputedStyle(d).display !== 'none').length);
+        expect(shown, 'only the dot between the two links shows').toBe(1);
+        const xs = await spans.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().x)));
+        expect(new Set(xs).size, 'one left edge (the links share a line)').toBeLessThanOrEqual(2);
+        expect(xs[0], 'at the content edge').toBe(Math.round(fb.x));
+      }
     }
   },
   {

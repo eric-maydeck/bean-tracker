@@ -215,8 +215,8 @@
   <footer class="site-footer">
     <AiNote email={data.contactEmail} />
     <div>
-      <span class="fi">v{data.version} ·</span>
-      <span class="fi">Last updated: {formatUpdated(data.lastUpdated)} ·</span>
+      <span class="fi">v{data.version}<span class="d">&nbsp;·</span></span>
+      <span class="fi">Last updated: {formatUpdated(data.lastUpdated)}<span class="d">&nbsp;·</span></span>
       <span class="fi">Last deployed: {formatUpdated(data.lastDeployed)}</span>
     </div>
   </footer>

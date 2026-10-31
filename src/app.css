@@ -1324,6 +1324,22 @@ nav.site-nav a[aria-current='page'] {
 .site-footer .fi {
   white-space: nowrap;
 }
+/* Phones: one item per line, no separators; the two links stay together on one line. */
+@media (max-width: 640px) {
+  .site-footer > div > span {
+    display: block;
+    line-height: 1.7;
+  }
+  .site-footer .d {
+    display: none;
+  }
+  .site-footer > div > .lk {
+    display: inline-block;
+  }
+  .site-footer .lk:nth-of-type(2) .d {
+    display: inline;
+  }
+}
 
 /* Coffee detail page: Back/Import/Clone/Edit/Share as a flex-wrap row
    spaced by gap (button margins zeroed), and its stacked blocks (this row,

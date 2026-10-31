@@ -34,9 +34,9 @@
 </script>
 
 <div>
-  <span>Built with help from Claude Code, an AI coding assistant&nbsp;·</span>
-<span class="fi"><a href="?about=ai" bind:this={link} onclick={open}>How AI was used</a>&nbsp;·</span>
-<span class="fi"><a href="mailto:{email}">Contact</a></span>
+  <span>Built with help from Claude Code, an AI coding assistant<span class="d">&nbsp;·</span></span>
+<span class="fi lk"><a href="?about=ai" bind:this={link} onclick={open}>How AI was used</a><span class="d">&nbsp;·</span></span>
+<span class="fi lk"><a href="mailto:{email}">Contact</a></span>
 </div>
 
 <dialog class="ai-dialog" aria-labelledby="ai-title" bind:this={dlg} onclose={closed} onclick={(e) => e.target === dlg && dlg.close()}>
