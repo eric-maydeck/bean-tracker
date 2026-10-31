@@ -3499,6 +3499,26 @@ export const STATES: State[] = [
       for (const t of drawn.filter((t) => /\/g$/.test(t))) expect(t).toMatch(/^\$[\d,]+(\.\d{2})?\/g$/);
     }
   },
+  {
+    // One page width site-wide: the nav links and main share left/right edges on every page, at 1280 and 1920.
+    name: 'page-width-consistent', path: () => '/coffees',
+    act: async (page) => {
+      const edges = () => page.evaluate(() => {
+        const r = (e: Element | null) => { const b = e!.getBoundingClientRect(); return [Math.round(b.left), Math.round(b.right)]; };
+        return { nav: r(document.querySelector('nav.site-nav .nav-links')), main: r(document.querySelector('main.container')) };
+      });
+      const size = page.viewportSize()!;
+      for (const width of size.width >= 1280 ? [size.width, 1920] : [size.width]) {
+        await page.setViewportSize({ width, height: size.height });
+        const seen = [];
+        for (const path of ['/coffees', '/insights', '/recipes']) { await gotoReady(page, path); seen.push(await edges()); }
+        expect(seen[1], `insights at ${width}`).toEqual(seen[0]);
+        expect(seen[2], `recipes at ${width}`).toEqual(seen[0]);
+      }
+      await page.setViewportSize(size);
+      await gotoReady(page, '/coffees');
+    }
+  },
   { name: 'insights-sticky', path: () => '/insights?range=1w&compare=1', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-sticky', path: () => '/stats', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },
   { name: 'stats-bq-sticky', path: () => '/stats?tab=bq', act: (page) => expectStickyBar(page, page.locator('.filter-bar')) },

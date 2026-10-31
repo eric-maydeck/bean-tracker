@@ -1,5 +1,5 @@
 :root {
-  --container-max: 1240px; /* main.container; /insights' side rail adds its own width to it */
+  --container-max: 1416px; /* every page + the nav: 1240px content + /insights' 176px rail and gap, so widths match */
   --color-bg: #faf7f2;
   --color-surface: #ffffff;
   --color-text: #2b211b;
@@ -959,8 +959,8 @@ nav.site-nav {
   display: flex;
   align-items: center;
   gap: var(--space-4);
-  /* Aligned with main.container's content box (--nav-max: the insights rail widens it). */
-  padding: var(--space-4) max(var(--space-4), calc((100% - var(--nav-max, var(--container-max))) / 2 + var(--space-4)));
+  /* Aligned with main.container's content box . */
+  padding: var(--space-4) max(var(--space-4), calc((100% - var(--container-max)) / 2 + var(--space-4)));
   border-bottom: 1px solid var(--color-border);
   font-weight: 600;
   font-size: 0.85rem;
