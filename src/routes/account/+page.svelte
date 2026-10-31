@@ -54,7 +54,8 @@
 
 <h1>Account</h1>
 
-<section class="chart-panel">
+<div class="acct">
+<section data-row-scope class="chart-panel">
   <h2>Bean Conqueror</h2>
 
   <h3>Brew data (zip)</h3>
@@ -113,13 +114,13 @@
   <p class="text-muted">If you change your sign-in password, update it in Bean Conqueror too.</p>
 </section>
 
-<section class="chart-panel">
+<section data-row-scope class="chart-panel">
   <h2>Recipes</h2>
   <p>{data.recipes.saved} saved · {data.recipes.groups} found in your brews.</p>
   <p><a class="button button-secondary" href="/recipes">Open recipes</a></p>
 </section>
 
-<section class="chart-panel" id="brew-now">
+<section data-row-scope class="chart-panel" id="brew-now">
   <h2>Brew now</h2>
   <p class="text-muted">The dose and ratio choices on each coffee's Brew now page, up to 6 of each.</p>
 
@@ -166,6 +167,7 @@
   {#if form && 'listError' in form && form.list === 'ratios'}<p class="badge badge-urgent" role="alert">{form.listError}</p>{/if}
   {#if data.ratios.derived}<p class="text-muted">From your brews: your most common ratios over the last year. Editing the list makes it yours.</p>{/if}
 </section>
+</div>
 
 {#if pending}
   <div class="modal-backdrop">
@@ -183,6 +185,11 @@
 {/if}
 
 <style>
+  /* Wide screens: Bean Conqueror left (spanning), Recipes and Brew now stacked right. */
+  @media (min-width: 1100px) {
+    .acct { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-4); align-items: start; }
+    .acct > :global(section:first-child) { grid-row: span 2; }
+  }
   #brew-now { scroll-margin-top: var(--space-4); }
   .bn-cells { display: flex; flex-wrap: wrap; flex: 0 1 auto; gap: var(--space-1) var(--space-4); padding: var(--space-2) 0; min-width: 0; }
   .bn-cell { display: flex; flex-direction: column; min-width: 3.75rem; line-height: 1.3; }

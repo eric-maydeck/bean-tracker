@@ -3405,6 +3405,27 @@ export const STATES: State[] = [
     }
   },
   {
+    // Wide screens: Bean Conqueror left, Recipes + Brew now stacked right; one column below 1100px. Checked in dark too.
+    name: 'account-columns', path: () => '/account',
+    act: async (page) => {
+      const secs = await page.locator('.acct > section').evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return { x: b.x, right: b.right, y: b.y, bottom: b.bottom }; }));
+      expect(secs).toHaveLength(3);
+      const [a, b, c] = secs;
+      if (page.viewportSize()!.width >= 1100) {
+        expect(b.x).toBeGreaterThan(a.right); // right column
+        expect(Math.abs(c.x - b.x)).toBeLessThan(2);
+        expect(c.y).toBeGreaterThan(b.bottom);
+        expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+      } else {
+        expect(Math.abs(b.x - a.x)).toBeLessThan(2); // single column
+        expect(b.y).toBeGreaterThanOrEqual(a.bottom);
+      }
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      await checkLayout(page);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+    }
+  },
+  {
     // Over the 20 MB body limit: stopped in the browser, with the reason.
     name: 'account-zip-too-big', viewports: 'two',
     path: () => '/account',
