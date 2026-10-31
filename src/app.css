@@ -1427,6 +1427,16 @@ nav.site-nav a[aria-current='page'] {
   box-shadow: var(--shadow);
 }
 
+.detail-media {
+  min-width: 0;
+}
+
+/* Under the image, left edge aligned with it; a long host wraps rather than widening the column. */
+.image-credit {
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+}
+
 .detail-media-placeholder {
   width: 100%;
   aspect-ratio: 1;
