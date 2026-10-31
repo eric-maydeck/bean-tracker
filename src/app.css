@@ -1004,8 +1004,320 @@ nav.site-nav a[aria-current='page'] {
 }
 
 .toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
-/* One run of items separated by " · " (the dot trails its item, so a line never starts with one); an item stays whole. */
+
+/* h1's own bottom margin would double up with .toolbar's when a page
+   title shares this row with an action (e.g. Share). */
+.toolbar h1 {
+  margin: 0;
+}
+
+/* /coffees Sort by: a labeled dropdown plus an icon-only asc/desc toggle, in the toolbar beside View
+   (desktop: View + Sort sit together at the right; phone: Sort wraps right-aligned if it doesn't fit). */
+.sort-controls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.sort-dir {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.toolbar .view-field {
+  margin-left: auto;
+}
+
+.toolbar .sort-field {
+  margin-left: var(--space-4);
+}
+
+/* Desktop: the label sits left of the dropdown, on one line with it and the toggle. On phones it stays above so
+   Sort by still fits right of View at 480 (inline needs ~240px; View leaves 212). */
+@media (min-width: 641px) {
+  .sort-field {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .sort-field > label {
+    white-space: nowrap;
+  }
+}
+
+/* Desktop: Sort by lives in the Add Coffee row; phones show the toolbar copy (right of View). */
+@media (min-width: 641px) {
+  .sort-in-toolbar {
+    display: none;
+  }
+}
+
+/* The /coffees control bar: every vertical gap between its rows is the gap between the Filter and Refresh buttons
+   (the search row's own `gap`, --space-2), at every width. */
+.tight-h1 {
+  margin-bottom: var(--space-2);
+}
+
+.coffees-toolbar,
+.cbar .search-row {
+  margin-bottom: var(--space-2);
+  row-gap: var(--space-2);
+}
+
+.show-field {
+  flex: 1 1 auto; /* the row is full width */
+}
+
+.add-sort-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* results far left, Add centered, Sort by far right */
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.add-sort-row .results {
+  grid-column: 1;
+  white-space: nowrap; /* one line: the row keeps its height, so the Add button keeps its place */
+}
+
+.add-sort-row .add-coffee-button {
+  grid-column: 2;
+}
+
+.add-sort-row .sort-in-row {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+@media (max-width: 640px) {
+  .toolbar .view-field {
+    margin-left: 0;
+  }
+
+  .toolbar .sort-field {
+    margin-left: auto;
+  }
+
+  .sort-in-row {
+    display: none;
+  }
+
+  .add-sort-row {
+    min-height: 44px; /* signed out has no Add Coffee button: the row keeps the same height */
+  }
+
+  .show-field {
+    flex-basis: 100%; /* Backlog, Open, Archive and All share one line where they fit; View + Sort follow */
+  }
+
+  /* Show and View fill their rows: the buttons grow into the slack (labels never shrink), so at the page top Show
+     runs edge to edge and View takes the space left of Sort by. Wrapping is decided by content widths, unchanged. */
+  .show-field .tab-group button,
+  .view-field .tab-group button {
+    flex: 1 1 auto;
+  }
+
+  .view-field {
+    flex: 1 1 auto;
+  }
+
+  /* Slack in the Show/View buttons' side padding keeps them (and Sort by) on fewer lines; tap height stays 44px. */
+  .coffees-toolbar .tab-group button {
+    padding-inline: 0.5rem;
+    min-width: 44px; /* "All" stays a 44px target */
+  }
+
+
+  /* The button row under the search box spans the box exactly: each button grows from zero so a
+     line's buttons are equal width and the line fills the row; labels stay on one line, so the row
+     wraps (never squeezes) when they don't fit, each line still spanning the box; widths are equal when the row
+     fits one line. Share is last in the DOM. */
+  .coffees-search-row > .filter-anchor,
+  .coffees-search-row > .button {
+    flex: 1 1 3rem; /* a basis above a button's own padding, so the padding-less anchor grows from the same base */
+    box-sizing: border-box;
+    white-space: nowrap;
+  }
+
+  .coffees-search-row > .filter-anchor {
+    display: flex;
+  }
+
+  .coffees-search-row > .filter-anchor > .button {
+    flex: 1;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  /* Tighter side padding so the whole row (4-5 buttons) fits one line at 390-480. */
+  .coffees-search-row > .button,
+  .coffees-search-row > .filter-anchor > .button {
+    padding-inline: 0.375rem;
+  }
+
+  /* Editing: six buttons, three and three (grid, so both lines are equal); labels shortened. */
+  .coffees-search-row.editing {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .coffees-search-row.editing > .search-input,
+  .coffees-search-row.editing > .filter-chips,
+  .coffees-search-row.editing > p {
+    grid-column: 1 / -1;
+  }
+
+  /* Three equal columns are too narrow for "Discard changes": phones show "Save" / "Discard" (aria-label keeps the full name). */
+  .coffees-search-row.editing .more {
+    display: none;
+  }
+
+  .coffees-search-row > .button.share-button {
+    gap: var(--space-1);
+  }
+
+  /* Share is a ghost button everywhere else; here it fills like its row mates so the row's right edge is visible. */
+  .coffees-search-row > .button.share-button:not(:hover, :focus-visible) {
+    background: color-mix(in srgb, var(--button-color) 16%, var(--color-surface));
+  }
+}
+
+.tab-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tab-group button {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-group button[aria-pressed='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
+
+/* Not actionable but still focusable, so its title (the reason) is reachable. */
+.tab-group button[aria-disabled='true'] {
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+@media (hover: hover) {
+  .tab-group button:not([aria-pressed='true'], [aria-disabled='true']):hover {
+    background: color-mix(in srgb, var(--color-accent) 12%, var(--color-surface));
+    border-color: var(--color-accent);
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.action-row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.action-buttons .button {
+  min-width: 4.5rem;
+  text-align: center;
+}
+
+/* In table rows, buttons size to their label and drop .button's own margin
+   (the flex gap already spaces them) — with the 4.5rem floor plus margin,
+   Edit + Clone overflow the Actions column by a few px and stack, doubling
+   every row's height. */
+.data-table .action-buttons .button {
+  min-width: 0;
+  margin: 0;
+}
+
+/* Icon-only action buttons (the list view's Actions column): tight padding
+   around a single Icon.svelte glyph; the full word is in title/aria-label. */
+.button.button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0.4rem 0.55rem;
+  line-height: 1;
+}
+
+/* A slightly tighter gap for icon rows, so a card's full edit-mode set
+   (6 icons) fits on one line instead of wrapping its last icon. */
+.action-buttons:has(> .button-icon) {
+  gap: 0.375rem;
+}
+
+.button-icon .icon {
+  display: block;
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+@media (max-width: 640px) {
+  /* Keep a full-size tap target, and keep the row's icons on one line — the
+     list table already scrolls horizontally at this width, so the Actions
+     column can grow instead of stacking icons and doubling row height. */
+  .action-buttons .button.button-icon {
+    min-width: 44px;
+  }
+
+  .data-table .action-buttons {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Cards with action buttons stretch to their grid row's height and pin the
+   buttons to the bottom (margin-top: auto), keeping at least space-3 above
+   them (padding-top). The card's text sits in one .card-body block so its
+   paragraphs keep normal block margin-collapsing instead of becoming flex
+   items (whose margins don't collapse). */
+.card:has(> .action-buttons) {
+  display: flex;
+  flex-direction: column;
+}
+
+.card > .action-buttons {
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+.site-footer {
+  margin-top: calc(var(--space-6) * 1.5);
+  padding: var(--space-6) 0 var(--space-4);
+  /* A hairline that fades out toward both ends. */
+  background: linear-gradient(to right, transparent, var(--color-border) 20%, var(--color-border) 80%, transparent) top / 100% 1px no-repeat;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+/* Footer lines are runs of items separated by " · " (the dot trails its item, so a line never starts with one); an item stays whole. */
 .site-footer .fi {
   white-space: nowrap;
 }

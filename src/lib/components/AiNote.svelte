@@ -87,7 +87,7 @@
     border-radius: var(--radius);
     background: var(--color-surface);
     color: inherit;
-    font-size: 1rem;
+    font-size: 0.875rem;
   }
   .ai-dialog[open] {
     display: flex;
@@ -117,7 +117,7 @@
   }
   .ai-header h2 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
   }
   .ai-x {
     min-width: 44px;
@@ -139,7 +139,7 @@
   }
   .ai-body h3 {
     margin: var(--space-4) 0 var(--space-1);
-    font-size: 1rem;
+    font-size: 0.95rem;
   }
   .ai-body p {
     margin: var(--space-2) 0;
