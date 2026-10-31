@@ -55,7 +55,7 @@
         <li>Test every change in a live preview, on desktop and on my phone</li>
         <li>Set the engineering standards: tests at every screen size, shareable links for every view, signed commits, and staged releases</li>
         <li>Own the data: every coffee, rating, and note, plus the judgment calls on it</li>
-        <li>Run the server the site lives on, the domains, and the backups</li>
+        <li>Run the infrastructure the site lives on: hosting, domains, and backups</li>
         <li>Act as project manager and technical lead, and decide what gets published, including this note</li>
       </ul>
       <h3>What Claude Code does</h3>
