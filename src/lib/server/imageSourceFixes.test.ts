@@ -20,7 +20,7 @@ describe('applyImageSources', () => {
     const c = createCoffee(db, input({ image_url: 'https://x/c.jpg', image_source_url: 'https://own/pick' })).id;
     const d = createCoffee(db, input({ roaster: 'Other', image_url: 'https://x/d.jpg' })).id; // other DB's coffee
     const before = source(db, a).u;
-    const rows: [number, string, string, string][] = [
+    const rows: [number, string, string, string, string?][] = [
       [a, 'R', 'https://x/a.jpg', 'https://r/p/a'],
       [b, 'R', 'https://x/b.jpg', 'https://r/p/b'],
       [c, 'R', 'https://x/c.jpg', 'https://r/p/c'],
@@ -32,6 +32,15 @@ describe('applyImageSources', () => {
     expect(source(db, c).s).toBe('https://own/pick');
     expect(source(db, d).s).toBeNull();
     expect(applyImageSources(db, rows, 'm')).toBeNull();
+  });
+  it('replaces the image too when a new one is given, only while the old one is current', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, input({ image_url: 'https://x/old.jpg' })).id;
+    const b = createCoffee(db, input({ image_url: 'https://x/changed.jpg' })).id;
+    applyImageSources(db, [[a, 'R', 'https://x/old.jpg', 'https://r/p', 'https://x/new.png'], [b, 'R', 'https://x/old.jpg', 'https://r/p', 'https://x/new.png']], 'm');
+    const img = (id: number) => (db.prepare(`SELECT image_url i FROM coffees WHERE id = ?`).get(id) as { i: string }).i;
+    expect([img(a), source(db, a).s]).toEqual(['https://x/new.png', 'https://r/p']);
+    expect([img(b), source(db, b).s]).toEqual(['https://x/changed.jpg', null]);
   });
   it('does nothing on an empty DB and leaves no marker', () => {
     const db = createDb(':memory:');
