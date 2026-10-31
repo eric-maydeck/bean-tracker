@@ -928,6 +928,25 @@ table.data-table.compact td {
   padding: 0.3rem 0.4rem;
 }
 
+/* Rows stay short: tight cell padding, and a long Coffee name or Processing stops at two lines (title has the rest). */
+table.data-table.compact td {
+  padding-block: 0.2rem;
+}
+
+.data-table .name-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.data-table .clamp2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
 .sort-button {
   display: inline-flex;
   align-items: center;
@@ -3204,22 +3223,27 @@ button .sample-chip {
 /* List view: the Actions column is as wide as its widest set (Edit mode's three status icons) in every mode, so
    toggling Edit never shifts the other columns. */
 .data-table th.col-actions {
-  min-width: calc(3 * 2.25rem + 2 * 0.375rem + 1.2rem); /* three icons (Edit mode's widest row) plus the cell padding */
+  min-width: calc(4 * 2.25rem + 3 * 0.375rem + 1.2rem); /* four icons (the non-edit row; Edit mode's widest is three) plus the cell padding */
 }
 .data-table .action-row {
   gap: 0.375rem; /* the same gap as the non-edit grid, so icons keep their x when Edit toggles */
 }
 @media (max-width: 640px) {
   .data-table th.col-actions {
-    min-width: calc(3 * 2.75rem + 2 * 0.375rem + 1.2rem);
+    min-width: calc(4 * 2.75rem + 3 * 0.375rem + 1.2rem);
   }
 }
-/* The non-edit icon set is a fixed 2×2 at every width (phones used to lay four in a row, a wider column than Edit
-   mode's, so toggling Edit shifted the table). */
+/* The non-edit icon set is one row of four at every width (list rows were 80px tall as a 2×2). The Actions column's
+   min-width above is four icons wide, so it is as wide as Edit mode's three-icon rows and toggling Edit never shifts the table. */
 .data-table td > .action-buttons:not(:has(> .action-stack)) {
   display: grid;
-  grid-template-columns: repeat(2, max-content);
+  grid-template-columns: repeat(4, max-content);
   flex-wrap: unset;
+}
+@media (min-width: 641px) {
+  .data-table .button.button-icon {
+    padding: 0.3rem 0.5rem;
+  }
 }
 
 /* A staged status action (Edit mode: Open, Freeze, Archive, …) reads as pressed: filled in the accent with a ring.

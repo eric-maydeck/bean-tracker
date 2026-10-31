@@ -1982,6 +1982,24 @@ export const STATES: State[] = [
       await expect(card.getByRole('button', { name: 'More actions' })).toHaveCount(0);
     }
   },
+  {
+    // List rows stay short (one row of icons, names/processing clamp at two lines), and Edit mode keeps the Actions column's width.
+    name: 'coffees-list-row-height', path: () => '/coffees?status=all&view=list',
+    act: async (page) => {
+      const heights = () => page.locator('table.data-table tbody tr').evaluateAll((trs) => trs.slice(0, 40).map((tr) => tr.getBoundingClientRect().height));
+      const w = page.viewportSize()!.width;
+      if (w >= 1280) expect(Math.max(...(await heights()))).toBeLessThanOrEqual(62);
+      if (w <= 480) expect(Math.max(...(await heights()))).toBeLessThanOrEqual(56); // 44px tap targets in one row
+      const actionsW = () => page.locator('table.data-table thead th.col-actions').evaluate((th) => Math.round(th.getBoundingClientRect().width));
+      const before = await actionsW();
+      await page.locator('.coffees-search-row').getByRole('button', { name: 'Edit', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Save changes' }).first()).toBeVisible();
+      expect(Math.abs((await actionsW()) - before)).toBeLessThanOrEqual(1);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'dark'));
+      await checkLayout(page);
+      await page.evaluate(() => (document.documentElement.dataset.theme = 'light'));
+    }
+  },
   ...['open', 'backlog'].map((st) => ({
     // The List view's column positions hold still when top Edit is toggled.
     name: `coffees-edit-stable-columns-${st}`,
