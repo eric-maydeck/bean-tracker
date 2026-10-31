@@ -113,6 +113,9 @@
 
   // Image Suggest (shared ImageSuggest.svelte). roasterWebsite is a staged form field (hidden input).
   let roasterWebsite = $state(stagedRoasterWebsite(coffee));
+  // The page the image came from (credit under the image): set by a Suggest pick or Fill from URL,
+  // cleared when the image is typed over or discarded. A hidden field, staged like the rest.
+  let imageSource = $state((coffee?.image_source_url ?? prefill?.image_source_url) ?? '');
   const canSuggest = $derived(roasterValue.trim() !== '' && nameValue.trim() !== '');
 
   // The coffee being matched, as typed at the moment Suggest is pressed.
@@ -131,6 +134,7 @@
     // A site staged by "change" counts as stored: only "change" replaces a site.
     const p = pickCandidate(c, fieldValue('product_url'), r.storedSite ?? (roasterWebsite || null), fieldValue('roaster'));
     setField('image_url', p.image_url);
+    imageSource = p.image_source_url;
     if (p.product_url) setField('product_url', p.product_url);
     // A pick never clears a site already staged (e.g. by "change").
     roasterWebsite = p.roaster_website ?? roasterWebsite;
@@ -246,7 +250,10 @@
         offerRest(null);
       }
       lastFilledUrl = url;
-      if (data.fields.image_url) showPreview(data.fields.image_url);
+      if (data.fields.image_url) {
+        imageSource = url;
+        showPreview(data.fields.image_url);
+      }
       fillNotes = data.notes;
       fillVariants = data.variants;
       selectedVariant = data.selected;
@@ -567,7 +574,10 @@
           type="url"
           placeholder="Bag label or roaster logo"
           value={(coffee?.image_url ?? prefill?.image_url) ?? ''}
-          oninput={syncImageFields}
+          oninput={() => {
+            imageSource = '';
+            syncImageFields();
+          }}
         />
         <div class="inline-row-actions" data-button-row>
           <button class="button button-secondary" type="button" onclick={() => showPreview(fieldValue('image_url'))}>Preview</button>
@@ -591,6 +601,7 @@
             type="button"
             onclick={() => {
               setField('image_url', '');
+              imageSource = '';
               previewSrc = null;
               setRoasterDefault = false;
             }}>Discard image</button
@@ -610,6 +621,8 @@
       {#if setRoasterDefault && canSetDefault}
         <input type="hidden" name="set_roaster_default" value="1" />
       {/if}
+      <!-- Always sent: empty means cleared, so a staged merge never brings back the stored source. -->
+      <input type="hidden" name="image_source_url" value={imageSource} />
       {#if roasterWebsite}
         <input type="hidden" name="roaster_website" value={roasterWebsite} />
       {/if}

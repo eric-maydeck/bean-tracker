@@ -1427,6 +1427,27 @@ export const STATES: State[] = [
     act: (page) => expectContained(page.locator('.detail-media img'), WIDE_FILL)
   },
   {
+    // Credit under the image: host (no www) linking through the go route in a new tab, left edge on the image's.
+    name: 'coffee-image-credit',
+    viewports: 'two',
+    path: (s) => `/coffees/${s.slugs.wide}`,
+    act: async (page, s) => {
+      const link = page.locator('.image-credit a');
+      await expect(page.locator('.image-credit')).toHaveText('Image: shop.flowerchildcoffee.com');
+      await expect(link).toHaveAttribute('href', `/coffees/${s.slugs.wide}/go?to=credit`);
+      await expect(link).toHaveAttribute('target', '_blank');
+      await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      const img = (await page.locator('.detail-media img').boundingBox())!;
+      const cap = (await page.locator('.image-credit').boundingBox())!;
+      expect(Math.abs(cap.x - img.x)).toBeLessThan(1);
+      expect(cap.y).toBeGreaterThanOrEqual(img.y + img.height);
+      expect(cap.width).toBeLessThanOrEqual(img.width + 1);
+      expect(cap.height).toBeLessThan(60);
+    }
+  },
+  { name: 'coffee-image-credit-none', viewports: 'two', path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page) => expect(page.locator('.image-credit')).toHaveCount(0) },
+  {
     // Defaults on a bare URL; the picker and mL input write explicit params; a bad ml shows the hint, no results.
     name: 'water',
     path: () => '/water',

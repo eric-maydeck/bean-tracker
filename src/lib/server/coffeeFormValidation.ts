@@ -15,6 +15,8 @@ export interface ValidatedCoffeeInput {
   rest_days_high: number | null;
   image_url: string | null;
   product_url: string | null;
+  // Machine-set hidden field (Suggest pick / Fill from URL); blank when the image was typed or cleared.
+  image_source_url: string | null;
   decaf: boolean;
   // "Set as roaster default" (CoffeeForm): write image_url as the roaster's default on save.
   set_roaster_default: boolean;
@@ -58,6 +60,15 @@ function dateField(formData: FormData, key: string): string | null {
 
 // Rendered as an <a href> on the detail page, so anything but http(s) —
 // javascript:, data: — is refused here rather than trusted at render time.
+// Machine-set hidden field: an unusable value is dropped, not an error.
+function sourceUrlField(formData: FormData): string | null {
+  try {
+    return httpUrlField(formData, 'image_source_url');
+  } catch {
+    return null;
+  }
+}
+
 function httpUrlField(formData: FormData, key: string): string | null {
   const value = textField(formData, key);
   if (value == null) return null;
@@ -109,6 +120,7 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     rest_days_high: numberField(formData, 'rest_days_high'),
     image_url: imageUrl,
     product_url: httpUrlField(formData, 'product_url'),
+    image_source_url: imageUrl ? sourceUrlField(formData) : null,
     // Unchecked checkboxes aren't submitted at all — presence means checked.
     decaf: formData.get('decaf') != null,
     // Meaningless without an image; the roaster is already required above.

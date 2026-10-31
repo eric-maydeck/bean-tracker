@@ -74,7 +74,8 @@ const linked = coffee({ roaster: 'The Picky Chemist', coffee_name: 'El Dorado Do
 // worker never fetches data: URIs, so its fill is seeded below.
 const WIDE = 'data:image/svg+xml,' + encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="40"><rect width="160" height="40" fill="#f2c14e"/></svg>');
-const wide = coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Gitega Natural', roast_date: daysAgo(9), image_url: WIDE });
+const wide = coffee({ roaster: 'Flower Child', coffee_name: 'Rwanda Gitega Natural', roast_date: daysAgo(9), image_url: WIDE,
+  image_source_url: 'https://www.shop.flowerchildcoffee.com/products/rwanda-gitega-natural' });
 db.prepare(`INSERT INTO image_fills (url, fill) VALUES (?, ?)`).run(WIDE, '#f2c14e');
 // Open + linked, so "grams left" shows: "2kg (2kg left)", "999g (999g left)", "1.5kg (1.2kg left)".
 const GRAMS_NAMES = {

@@ -4,6 +4,8 @@ import { getDb } from '$lib/server/db';
 import { localTodayDate } from '$lib/server/localToday';
 import { getCoffeeBySlug, getDistinctFieldValues, getFillHistory, getRedirectSlug } from '$lib/server/coffees';
 import { getSubscriptionOptions, subscriptionOf } from '$lib/server/subscriptions';
+import { getRoasterWebsite } from '$lib/server/roasterWebsites';
+import { creditFor } from '$lib/imageCredit';
 import { getRoasterImages } from '$lib/server/roasterImages';
 import { getRoastLevels } from '$lib/server/roastLevels';
 import { withComputedFields } from '$lib/server/urgency';
@@ -34,6 +36,7 @@ export const load: PageServerLoad = ({ params, url, setHeaders, locals }) => {
   const like = r && 'like' in r ? r.like : null;
   return {
     coffee: withComputedFields(coffee, localTodayDate()),
+    credit: creditFor(coffee, getRoasterWebsite(db, coffee.roaster), coffee.roaster_image_url ?? null),
     roastLevels: getRoastLevels(db),
     roasters: getDistinctFieldValues(db, 'roaster'),
     origins: getDistinctFieldValues(db, 'origin'),

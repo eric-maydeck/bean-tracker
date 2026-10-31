@@ -14,6 +14,8 @@ export interface CoffeeRow {
   rest_days_high: number | null;
   image_url: string | null;
   product_url: string | null;
+  // The page the image was found on (Suggest pick / Fill from URL), else null. See lib/imageCredit.ts.
+  image_source_url?: string | null;
   slug: string;
   opened_date: string | null;
   drank: number;

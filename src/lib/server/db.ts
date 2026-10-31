@@ -8,6 +8,8 @@ import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
 import { applySubscriptionUrls, SUBSCRIPTION_URLS_2026_10_08 } from './subscriptions.ts';
 import { backfillBeanConquerorLinks, applyBeanConquerorPairs } from './beanConquerorLinks.ts';
 import { applySubscriptionLinks, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER } from './subscriptionLinks.ts';
+import { applyImageSources } from './imageSourceFixes.ts';
+import { IMAGE_SOURCES_2026_10 } from './imageSourceData.ts';
 import { applyRecipeFixes, applyRecipeLengthFix } from './recipeFixes.ts';
 import { BEAN_CONQUEROR_PAIRS, PAIRS_2026_10B, PAIRS_2026_10B_MARKER, FIXES_2026_10B } from './beanConquerorPairs.ts';
 import { OWN_DATA_ONLY, OWN_DATA_SIMILAR } from '../gear.ts';
@@ -74,6 +76,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'slug', 'TEXT');
   ensureColumn(db, 'coffees', 'opened_date', 'TEXT');
   ensureColumn(db, 'coffees', 'product_url', 'TEXT');
+  ensureColumn(db, 'coffees', 'image_source_url', 'TEXT');
   ensureColumn(db, 'coffees', 'subscription_id', 'INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
@@ -118,6 +121,7 @@ export function applySchema(db: DatabaseSync): void {
   applyRoasterImageDefaults(db, ROASTER_IMAGE_DEFAULTS_2026_10B, ROASTER_IMAGE_DEFAULTS_2026_10B_MARKER);
   for (const b of PRODUCT_PAGE_BACKFILLS) applyCoffeeFixes(db, b); // own transaction each, after roaster defaults
   for (const b of COFFEE_CORRECTIONS) applyCoffeeFixes(db, b);
+  applyImageSources(db, IMAGE_SOURCES_2026_10);
   applySubscriptionUrls(db, SUBSCRIPTION_URLS_2026_10_08, 'subscription_urls_2026_10_08');
   applySubscriptionLinks(db, SUBSCRIPTION_LINKS_2026_10, SUBSCRIPTION_LINKS_2026_10_MARKER);
   applyRecipeFixes(db);

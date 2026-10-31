@@ -87,8 +87,8 @@ export function mergeStagedCoffee(coffee: CoffeeRow, pendingFields: Record<strin
 // lifecycle dates, slug and id are per-bag, so the clone starts fresh
 // (a new backlog coffee; createCoffee de-duplicates the slug).
 export function clonePrefill(coffee: CoffeeRow): Partial<CoffeeRow> {
-  const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, decaf } = coffee;
-  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, decaf };
+  const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf } = coffee;
+  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf };
 }
 
 // "Set as roaster default" is staged like any field (CoffeeForm's hidden

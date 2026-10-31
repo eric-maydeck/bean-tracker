@@ -376,6 +376,11 @@
       {:else}
         <div class="detail-media-placeholder" aria-hidden="true">☕</div>
       {/if}
+      {#if data.credit}
+        <p class="text-muted image-credit">
+          Image: <a href="/coffees/{data.coffee.slug}/go?to=credit" target="_blank" rel="noopener noreferrer">{data.credit.label}</a>
+        </p>
+      {/if}
     </div>
 
     <div class="detail-body">
@@ -400,7 +405,7 @@
           <p class="text-muted">
             {data.coffee.roaster}
             {#if data.coffee.product_url}
-              · <a href={data.coffee.product_url} target="_blank" rel="noopener noreferrer">Product page ↗</a>
+              · <a href="/coffees/{data.coffee.slug}/go?to=product" target="_blank" rel="noopener noreferrer">Product page ↗</a>
             {/if}
           </p>
           <p class="text-muted">
