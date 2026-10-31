@@ -1,3 +1,20 @@
+# [1.102.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.101.0...v1.102.0) (2026-10-31)
+
+
+### Bug Fixes
+
+* **coffees:** staged edits keep a cleared image source; go route only treats 404 and 410 as dead
+
+
+### Features
+
+* **coffees:** add the Tavily-found source for Scenery Don Senel Milenio
+* **coffees:** backfill image_source_url from the pages the images are on
+* **coffees:** image credit under the photo, with a dead-link check route
+* **coffees:** store the page an image came from (image_source_url)
+* **coffees:** switch the Ceto Mugaya photo to its live product page; tavily pass script
+* **coffees:** weessi tima and adamo take their live scenery page photos
+
 # [1.101.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.100.0...v1.101.0) (2026-10-30)
 
 
