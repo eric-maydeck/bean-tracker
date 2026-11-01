@@ -69,7 +69,7 @@ for (const c of all('SELECT * FROM coffees ORDER BY id')) {
       certification: t(o.certification)
     };
     if (!same(c.coffee_name, bq.coffee_name)) diff.push(`coffee_name: site "${c.coffee_name}" vs bq "${bq.coffee_name}"`);
-    else if (c.coffee_name !== bq.coffee_name) keep[id] = ['name'];
+    else if (c.coffee_name !== bq.coffee_name) keep[id] = ['coffee_name'];
     if (site.roast_degree !== bq.roast_degree) diff.push(`roast_level: site ${c.roast_level ?? 'blank'} (${site.roast_degree ?? '?'}) vs bq ${bq.roast_degree ?? 'blank'}`);
     if (Math.abs(((c.cost as number) ?? 0) - ((bq.cost as number) ?? 0)) > 0.005 || (c.cost == null) !== (bq.cost == null)) diff.push(`cost: site ${c.cost ?? 'blank'} vs bq ${bq.cost ?? 'blank'}`);
     if ((c.amount_g ?? null) !== bq.amount_g) diff.push(`amount_g: site ${c.amount_g ?? 'blank'} vs bq ${bq.amount_g ?? 'blank'}`);

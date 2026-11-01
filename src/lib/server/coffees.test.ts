@@ -616,16 +616,21 @@ describe('applyCoffeeFixes (product page backfill)', () => {
     expect(getCoffeeById(db, id)).toBeUndefined();
   });
 
-  it('delete skips a linked coffee, and one with a slug redirect', () => {
+  it('delete skips a linked coffee', () => {
     const a = add();
-    const b = add();
     db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'A', 'x', ?)`).run(a.id);
-    db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES ('old', ?)`).run(b.id);
-    const r = applyCoffeeFixes(db, batch({ deletes: [del(a.id), del(b.id)] }));
+    const r = applyCoffeeFixes(db, batch({ deletes: [del(a.id)] }));
     expect(r?.fixed).toBe(0);
     expect(r?.skipped[0]).toContain('beanconqueror_beans.coffee_id');
-    expect(r?.skipped[1]).toContain('slug_redirects');
     expect(getCoffeeById(db, a.id)).toBeTruthy();
+  });
+
+  it('delete skips a coffee with a slug redirect', () => {
+    const b = add();
+    db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES ('old', ?)`).run(b.id);
+    const r = applyCoffeeFixes(db, batch({ deletes: [del(b.id)] }));
+    expect(r?.skipped[0]).toContain('slug_redirects');
+    expect(getCoffeeById(db, b.id)).toBeTruthy();
   });
 
   it('delete skips on name mismatch', () => {

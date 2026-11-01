@@ -266,7 +266,7 @@ export function applyCoffeeDelete(
   }
   const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[];
   for (const { name } of tables) {
-    const fks = db.prepare(`SELECT "from" AS col FROM pragma_foreign_key_list(?) WHERE "table" = 'coffees'`).all(name) as {
+    const fks = db.prepare(`SELECT "from" AS col FROM pragma_foreign_key_list(?) WHERE "table" = 'coffees' COLLATE NOCASE`).all(name) as {
       col: string;
     }[];
     for (const { col } of fks) {
