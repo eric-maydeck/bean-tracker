@@ -1,0 +1,152 @@
+{
+ "BEANS": [
+  {
+   "name": "Alpha",
+   "buyDate": "",
+   "roastingDate": "",
+   "note": "",
+   "roaster": "r1",
+   "config": {
+    "uuid": "bean-a",
+    "unix_timestamp": 1700000000
+   },
+   "roast": "MEDIUM",
+   "roast_range": 0,
+   "weight": 250,
+   "finished": false,
+   "cost": 0,
+   "attachments": [],
+   "decaffeinated": false,
+   "rating": 0,
+   "favourite": false,
+   "url": "",
+   "frozenDate": "",
+   "unfrozenDate": "",
+   "bean_information": []
+  },
+  {
+   "name": "Bravo",
+   "buyDate": "",
+   "roastingDate": "",
+   "note": "",
+   "roaster": "r1",
+   "config": {
+    "uuid": "bean-b",
+    "unix_timestamp": 1700000000
+   },
+   "roast": "MEDIUM",
+   "roast_range": 0,
+   "weight": 250,
+   "finished": false,
+   "cost": 0,
+   "attachments": [],
+   "decaffeinated": false,
+   "rating": 0,
+   "favourite": false,
+   "url": "https://example.com/b",
+   "frozenDate": "",
+   "unfrozenDate": "",
+   "bean_information": [
+    {
+     "country": "Kenya",
+     "farm": "Old Farm"
+    },
+    {
+     "country": "Peru"
+    }
+   ]
+  },
+  {
+   "name": "Charlie",
+   "buyDate": "",
+   "roastingDate": "",
+   "note": "fruity",
+   "roaster": "r1",
+   "config": {
+    "uuid": "bean-c",
+    "unix_timestamp": 1700000000
+   },
+   "roast": "MEDIUM",
+   "roast_range": 0,
+   "weight": 250,
+   "finished": false,
+   "cost": 0,
+   "attachments": [
+    "photo_x.jpg"
+   ],
+   "decaffeinated": false,
+   "rating": 4,
+   "favourite": true,
+   "url": "",
+   "frozenDate": "",
+   "unfrozenDate": "",
+   "bean_information": [
+    {
+     "country": "Brazil"
+    }
+   ]
+  }
+ ],
+ "BREWS": [
+  {
+   "config": {
+    "uuid": "brew-1",
+    "unix_timestamp": 1700000100
+   },
+   "bean": "bean-a",
+   "grind_weight": 18,
+   "brew_temperature": 93.5
+  },
+  {
+   "config": {
+    "uuid": "brew-2",
+    "unix_timestamp": 1700000200
+   },
+   "bean": "bean-c",
+   "grind_weight": 17.5
+  }
+ ],
+ "MILL": [
+  {
+   "config": {
+    "uuid": "mill-1",
+    "unix_timestamp": 1
+   },
+   "name": "Grinder"
+  }
+ ],
+ "PREPARATION": [
+  {
+   "config": {
+    "uuid": "prep-1",
+    "unix_timestamp": 1
+   },
+   "name": "V60"
+  }
+ ],
+ "SETTINGS": [
+  {
+   "config": {
+    "uuid": "set-1",
+    "unix_timestamp": 1
+   },
+   "brew_temperature_step": 1.5,
+   "grind_step": 0.1,
+   "weight_step": 1
+  }
+ ],
+ "VERSION": [
+  {
+   "version": "7.5.0"
+  }
+ ],
+ "WATER": [
+  {
+   "config": {
+    "uuid": "water-1",
+    "unix_timestamp": 1
+   },
+   "name": "Tap"
+  }
+ ]
+}
