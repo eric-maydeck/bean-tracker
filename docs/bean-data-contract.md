@@ -27,8 +27,11 @@ you, note it in `note` and propose nothing from it.
 
 ## Value rules
 
-- Normalized spelling, one form per producer and variety (Gesha, not Geisha). Look up and extend `<pass>/aliases.json`
-  (`{ "Gesha": ["Geisha"] }`); the checker accepts either spelling on the page.
+- Normalized spelling, one form per producer and variety (Gesha, not Geisha). Read `<pass>/aliases.json`
+  (`{ "Gesha": ["Geisha"] }`) but never edit it: the checker accepts either spelling on the page, and only the controller
+  merges aliases. To suggest one, add `"alias_of": "Gesha"` to that proposal row; it always goes to review and the checker
+  never trusts it.
+- Short numbers (up to 4 digits, such as a harvest year) are never verified automatically; they go to review.
 - A lot with several values is one comma-separated text value ("Caturra, Catuai").
 - A washing station, cooperative, group or exporter is not a producer unless the page names it as the producer.
 - Short values only: no sentences or paragraphs in any field. Elevation, harvest and certification are the page's short
@@ -51,5 +54,7 @@ For every entry in a row's `differences`, check the sources and propose the righ
 - Archive status differences are probably forgotten in BQ; the site wins and you need not propose anything.
 - A long `processing_long` entry asks for a concise label (see above), cited to the page or the existing value.
 
-Differences always reach the user's review; proposals that fill a blank site field with a verified `high` value and no
-conflict with BQ go through automatically.
+Most differences reach the user's review; cost differences under 1 and archive status differences take the site value
+without review. Proposals that fill a blank site field with a verified `high` value and no conflict with BQ go through
+automatically. Each (coffee, field) gets one outcome: a site-wins difference beats a proposal for that field, and two
+proposals with different values for one field both go to review.

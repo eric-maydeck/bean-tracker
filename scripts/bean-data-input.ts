@@ -3,21 +3,39 @@
 // each) and keep.json. Real data: <out> must stay outside git (data/backfill-review/<pass>/ is ignored).
 //   npx vite-node --config scripts/vite-node.config.mjs scripts/bean-data-input.ts \
 //     --db <copy.db> --export <dir with Beanconqueror.zip> --out <pass dir>
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { conciseProcess } from '../src/lib/processGroups';
 import { bcRoastDate, readBeanConquerorZip } from '../src/lib/server/beanConquerorJson';
 
 const { values } = parseArgs({ args: process.argv.slice(2), options: { db: { type: 'string' }, export: { type: 'string' }, out: { type: 'string' } } });
-if (!values.db || !values.export || !values.out || resolve(values.db) === resolve('data/bean-tracker.db')) {
-  console.error('usage: bean-data-input.ts --db <db COPY, never data/bean-tracker.db> --export <dir> --out <pass dir>');
+const fail = (msg: string): never => {
+  console.error(msg);
   process.exit(1);
+};
+if (!values.db || !values.export || !values.out) {
+  fail('usage: bean-data-input.ts --db <db COPY, never data/bean-tracker.db> --export <dir> --out <pass dir>');
+}
+const real = (p: string) => {
+  try {
+    return realpathSync(p);
+  } catch {
+    return resolve(p);
+  }
+};
+if (real(values.db!) === real('data/bean-tracker.db')) fail('refusing to read data/bean-tracker.db: pass a copy');
+if (!existsSync(values.db!)) fail(`--db ${values.db} does not exist`);
+try {
+  execFileSync('git', ['check-ignore', '-q', join(values.out!, 'coffees.json')]);
+} catch {
+  fail(`--out ${values.out} is not git-ignored: real data must stay out of git`);
 }
 const { createDb } = await import('../src/lib/server/db');
 
 type Row = Record<string, unknown>;
-const db = createDb(values.db);
+const db = createDb(values.db!);
 const all = (sql: string) => db.prepare(sql).all() as Row[];
 const degrees = new Map(all('SELECT roast_level, degrees_of_roast d FROM roast_levels').map((r) => [r.roast_level as string, r.d as number]));
 const links = new Map(all('SELECT id, coffee_id FROM beanconqueror_beans WHERE coffee_id IS NOT NULL').map((r) => [r.coffee_id as number, r.id as string]));
