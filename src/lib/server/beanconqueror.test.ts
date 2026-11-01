@@ -515,6 +515,29 @@ describe('derived bean uuid and blank filling', () => {
     expect(slug).toBe(row.slug);
   });
 
+  it('fills only the coffee the bean links to when origin id differs from coffee id', () => {
+    const db = createDb(':memory:');
+    const first = createCoffee(db, { ...input, coffee_name: 'First' }).id;
+    const second = createCoffee(db, { ...input, coffee_name: 'Second' }).id;
+    importBeanConquerorData(db, {
+      ...empty,
+      beans: [bean({ id: coffeeBeanUuid(second) })],
+      beanOrigins: [origin({ beanId: coffeeBeanUuid(second), farm: 'Theirs' })]
+    });
+    const farm = (id: number) => (db.prepare('SELECT farm FROM coffees WHERE id = ?').get(id) as { farm: string | null }).farm;
+    expect(db.prepare('SELECT id FROM beanconqueror_bean_origins').get()).toEqual({ id: 1 });
+    expect(farm(first)).toBeNull();
+    expect(farm(second)).toBe('Theirs');
+  });
+
+  it('fills product_url for a linked bean that has no origin rows', () => {
+    const db = createDb(':memory:');
+    createCoffee(db, { ...input, coffee_name: 'First' });
+    const b = createCoffee(db, { ...input, coffee_name: 'Second' }).id;
+    importBeanConquerorData(db, { ...empty, beans: [bean({ id: coffeeBeanUuid(b), url: 'https://r.example/p' })], beanOrigins: [] });
+    expect((db.prepare('SELECT product_url FROM coffees WHERE id = ?').get(b) as { product_url: string }).product_url).toBe('https://r.example/p');
+  });
+
   it('linked coffee no longer offers Import into BQ', () => {
     const db = createDb(':memory:');
     const a = createCoffee(db, input).id;

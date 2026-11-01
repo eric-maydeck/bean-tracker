@@ -280,7 +280,7 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
 export function fillBlankCoffeeFields(db: DatabaseSync): number {
   const rows = db
     .prepare(
-      `SELECT c.id, b.url AS b_url, o.*
+      `SELECT o.*, c.id AS coffee_id, b.url AS b_url
        FROM coffees c JOIN beanconqueror_beans b ON b.coffee_id = c.id
        LEFT JOIN beanconqueror_bean_origins o ON o.bean_id = b.id AND o.component_number = (
          SELECT MIN(component_number) FROM beanconqueror_bean_origins WHERE bean_id = b.id)`
@@ -296,10 +296,10 @@ export function fillBlankCoffeeFields(db: DatabaseSync): number {
   });
   let filled = 0;
   for (const r of rows) {
-    const current = db.prepare(`SELECT * FROM coffees WHERE id = ?`).get(r.id as number) as Record<string, unknown>;
+    const current = db.prepare(`SELECT * FROM coffees WHERE id = ?`).get(r.coffee_id as number) as Record<string, unknown>;
     for (const [col, val] of Object.entries(cols(r))) {
       if (val === null || !blank(current[col])) continue;
-      db.prepare(`UPDATE coffees SET ${col} = ? WHERE id = ?`).run(val, r.id as number);
+      db.prepare(`UPDATE coffees SET ${col} = ? WHERE id = ?`).run(val, r.coffee_id as number);
       filled++;
     }
   }
