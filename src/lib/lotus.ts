@@ -82,16 +82,27 @@ export function minerals(d: Drops, ml: number, tip: Tip = 'round') {
 
 // The mL (100-1200, 50 mL steps like the slider, so always a round measurable volume) where whole drops land closest to the recipe: smallest worst relative error of the
 // result's ppm vs its target over the nonzero minerals; near-ties (400/800/1200) go to the median kettle capacity.
+const mlErr = (r: Recipe, ml: number, tip: Tip): number => {
+  const d = dropsFor(r, ml, tip), perDrop = 4.5 / (TIP_FACTOR[tip] * (ml / 1000));
+  const keys = (['mg', 'ca', 'na', 'k'] as const).filter((m) => r.ppm[m] > 0);
+  return Math.max(...keys.map((m) => Math.abs((d[m] * perDrop * (m === 'na' || m === 'k' ? 0.5 : 1)) / r.ppm[m] - 1)));
+};
 export function idealMl(r: Recipe, tip: Tip = 'round'): number {
   const typical = KETTLES.map((k) => k.ml).sort((a, b) => a - b)[KETTLES.length >> 1];
-  const keys = (['mg', 'ca', 'na', 'k'] as const).filter((m) => r.ppm[m] > 0);
   let best = 0, bestErr = Infinity;
   for (let ml = MIN_ML; ml <= 1200; ml += 50) {
-    const d = dropsFor(r, ml, tip), perDrop = 4.5 / (TIP_FACTOR[tip] * (ml / 1000));
-    const err = Math.max(...keys.map((m) => Math.abs((d[m] * perDrop * (m === 'na' || m === 'k' ? 0.5 : 1)) / r.ppm[m] - 1)));
+    const err = mlErr(r, ml, tip);
     if (err < bestErr - 1e-9 || (err < bestErr + 1e-9 && Math.abs(ml - typical) < Math.abs(best - typical))) [best, bestErr] = [ml, err];
   }
   return best;
+}
+// What to suggest, ascending: the best mL, plus any equally accurate mL a 1000mL kettle can hold when the best is above that.
+export function idealMls(r: Recipe, tip: Tip = 'round'): number[] {
+  const best = idealMl(r, tip);
+  if (best <= 1000) return [best];
+  const fits: number[] = [];
+  for (let ml = MIN_ML; ml <= 1000; ml += 50) if (mlErr(r, ml, tip) < mlErr(r, best, tip) + 1e-9) fits.push(ml);
+  return [...fits, best];
 }
 
 export type Mode = 'recipe' | 'drops' | 'target';

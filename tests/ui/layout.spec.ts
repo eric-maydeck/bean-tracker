@@ -1475,6 +1475,22 @@ export const STATES: State[] = [
     }
   },
   {
+    // Best volume above 1000mL: also offers the equally accurate one a 1000mL kettle holds, each with its own button.
+    name: 'water-ideal-two', viewports: 'two',
+    path: () => '/water?recipe=lume-high-clarity&tip=precision',
+    act: async (page) => {
+      await expect(page.locator('.water-ideal')).toContainText('best used with 550mL or 1100mL of distilled water');
+      await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /Water: 900mL \(recipe 550mL or 1100mL\)/);
+      await page.getByRole('button', { name: 'Switch to 550mL' }).click();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 550mL' })).toBeVisible();
+      await expect(page.locator('.water-ideal')).toHaveCount(0);
+      await page.getByRole('spinbutton', { name: 'Water (mL)' }).fill('900');
+      await page.getByRole('button', { name: 'Switch to 1100mL' }).click();
+      await expect(page.getByRole('heading', { name: 'Lotus drops for 1100mL' })).toBeVisible();
+      await expect(page.locator('.water-ideal')).toHaveCount(0);
+    }
+  },
+  {
     name: 'water-ideal-hint', viewports: 'two',
     path: () => '/water?recipe=lume-high-clarity&ml=800',
     act: async (page) => {

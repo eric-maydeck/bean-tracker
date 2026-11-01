@@ -7,7 +7,7 @@
   import { currentParams } from '$lib/pageUrlState';
   import { writeUrlParams } from '$lib/urlState';
   import {
-    RECIPES, idealMl, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
+    RECIPES, idealMls, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
     minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, dropAnchor, dropsFromAnchor, type Drops, type Mode, type Unit, type Tip
   } from '$lib/lotus';
 
@@ -60,7 +60,7 @@
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let tip = $derived<Tip>(tipPick ?? 'round');
   let volume = $derived(ml ?? DEFAULT_ML[tip]);
-  let ideal = $derived(idealMl(recipe, tip));
+  let ideals = $derived(idealMls(recipe, tip));
   let kettle = $derived(kettleFor(volume, picked));
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
@@ -191,7 +191,7 @@
 <svelte:head>
   <title>Bean Tracker - Water</title>
 </svelte:head>
-<PreviewMeta preview={waterPreview({ mode, tip, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideal })} />
+<PreviewMeta preview={waterPreview({ mode, tip, recipe: recipe.name, ml: volume, drops, gh: result.gh, kh: result.kh, target: mode === 'target' ? target : mode === 'recipe' ? { gh: recipe.ppm.mg + recipe.ppm.ca, kh: recipe.ppm.na + recipe.ppm.k } : undefined, idealMl: ideals })} />
 
 <div class="water-page">
 <div class="toolbar water-title">
@@ -253,10 +253,10 @@
         {#each RECIPES as r (r.slug)}<option value={r.slug}>{r.name}</option>{/each}
       </select>
     </label>
-    {#if volume !== ideal}
+    {#if !ideals.includes(volume)}
       <p class="text-muted water-ideal"><strong>
-        The {recipe.name} recipe is best used with {ideal}mL of distilled water.</strong>
-        <button class="button button-secondary" type="button" onclick={() => setMl(String(ideal))}>Switch to {ideal}mL</button>
+        The {recipe.name} recipe is best used with {ideals.join('mL or ')}mL of distilled water.</strong>
+        {#each ideals as m (m)}<button class="button button-secondary" type="button" onclick={() => setMl(String(m))}>Switch to {m}mL</button>{/each}
       </p>
     {/if}
   {:else}

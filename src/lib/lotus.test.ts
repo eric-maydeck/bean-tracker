@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, dropAnchor, dropsFromAnchor, type Drops } from './lotus';
+import { RECIPES, idealMl, idealMls, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, dropAnchor, dropsFromAnchor, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -143,6 +143,11 @@ describe('dropper tip', () => {
   it('minerals follow the tip: one precision drop is 0.56 of a round drop', () => {
     const one = d(1, 1, 1, 1);
     expect(minerals(one, 800, 'precision').gh).toBeCloseTo(minerals(one, 800).gh * 0.56, 6);
+  });
+  it('idealMls adds an equally accurate volume a 1000mL kettle holds, only when the best is above 1000mL', () => {
+    expect(idealMls(r('lume-high-clarity'), 'precision')).toEqual([550, 1100]);
+    expect(idealMls(r('lume-high-clarity'))).toEqual([1000]);
+    expect(idealMls(r('bright-and-juicy'), 'precision')).toEqual([900]);
   });
   it('idealMl follows the tip', () => {
     for (const x of RECIPES) {

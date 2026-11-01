@@ -61,7 +61,7 @@ describe('coffeePreview', () => {
 
 describe('waterPreview', () => {
   it('recipe mode', () => {
-    expect(waterPreview({ tip: 'round', mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857, target: { gh: 60, kh: 20 }, idealMl: 800 })).toEqual({
+    expect(waterPreview({ tip: 'round', mode: 'recipe', recipe: 'Holy Water', ml: 900, drops: { mg: 7, ca: 0, na: 1, k: 4 }, gh: 62.5, kh: 17.857, target: { gh: 60, kh: 20 }, idealMl: [800] })).toEqual({
       title: 'Water: Holy Water',
       description: 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nDropper: Round tip\nCa: 0 drops\nMg: 7 drops\nNa: 1 drop\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'
     });
