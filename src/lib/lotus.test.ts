@@ -144,8 +144,10 @@ describe('dropper tip', () => {
     const one = d(1, 1, 1, 1);
     expect(minerals(one, 800, 'precision').gh).toBeCloseTo(minerals(one, 800).gh * 0.56, 6);
   });
-  it('idealMl takes the tip and stays on 50 mL steps', () => {
-    expect(idealMl(r('bright-and-juicy'), 'precision') % 50).toBe(0);
+  it('idealMl follows the tip', () => {
+    for (const x of RECIPES) {
+      expect(idealMl(x, 'precision'), x.name).toBe(x.name === 'Lume High Clarity' ? 1100 : 900);
+    }
   });
   it('parses tip=, ignores bad values, case-insensitive', () => {
     expect(parseLotus(p('tip=precision'))).toEqual({ tip: 'precision' });
