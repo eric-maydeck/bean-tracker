@@ -206,3 +206,35 @@ describe('buildShareUrl', () => {
     expect(decoded.roast_range).toBe(2);
   });
 });
+
+describe('buildShareUrl origin details', () => {
+  const decode = async (coffee: CoffeeRow) => {
+    const root = await protobuf.load(path.join(__dirname, 'beanconquerorBean.proto'));
+    const url = await buildShareUrl(coffee, roastLevels);
+    const q = new URL(url).searchParams;
+    let b64 = '';
+    for (let i = 0; q.get(`shareUserBean${i}`) != null; i++) b64 += q.get(`shareUserBean${i}`);
+    return root.lookupType('beanconqueror.BeanProto').decode(shareBytes(b64)) as unknown as {
+      url?: string; bean_information: Record<string, string | undefined>[];
+    };
+  };
+
+  it('share carries the new fields', async () => {
+    const d = await decode(sampleCoffee({
+      product_url: 'https://r.example/p', producer: 'Ana', farm: 'La Palma', variety: 'Gesha',
+      region: 'Huila', elevation: '1800m', harvest_time: '2026', certification: 'Organic'
+    }));
+    expect(d.url).toBe('https://r.example/p');
+    expect(d.bean_information[0]).toMatchObject({
+      farmer: 'Ana', farm: 'La Palma', variety: 'Gesha', region: 'Huila',
+      elevation: '1800m', harvest_time: '2026', certification: 'Organic'
+    });
+  });
+
+  it('share omits blanks', async () => {
+    const d = await decode(sampleCoffee({ producer: '', farm: null }));
+    expect(d.url ?? '').toBe('');
+    expect(d.bean_information[0].farmer ?? '').toBe('');
+    expect(d.bean_information[0].farm ?? '').toBe('');
+  });
+});

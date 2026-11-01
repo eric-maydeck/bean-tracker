@@ -92,6 +92,7 @@ export async function buildShareUrl(coffee: CoffeeRow, roastLevels: RoastLevelRo
     weight: coffee.amount_g != null ? Math.round(coffee.amount_g) : undefined,
     cost: coffee.cost != null ? Math.round(coffee.cost) : undefined,
     decaffeinated: coffee.decaf === 1,
+    url: coffee.product_url || undefined,
     // BeanMix: BLEND (2) when the name says so, else SINGLE_ORIGIN (1).
     beanMix: /blend/i.test(coffee.coffee_name) ? 2 : 1,
     roast_range: degreeOfRoastFor(coffee.roast_level, roastLevels),
@@ -100,7 +101,14 @@ export async function buildShareUrl(coffee: CoffeeRow, roastLevels: RoastLevelRo
     bean_information: [
       {
         country: coffee.origin ?? undefined,
-        processing: coffee.processing ?? undefined
+        processing: coffee.processing ?? undefined,
+        farm: coffee.farm || undefined,
+        farmer: coffee.producer || undefined,
+        variety: coffee.variety || undefined,
+        region: coffee.region || undefined,
+        elevation: coffee.elevation || undefined,
+        harvest_time: coffee.harvest_time || undefined,
+        certification: coffee.certification || undefined
       }
     ]
   });

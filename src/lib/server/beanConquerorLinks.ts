@@ -3,6 +3,7 @@
 // imports here must use explicit .ts extensions (node scripts load db.ts).
 import type { DatabaseSync } from 'node:sqlite';
 import type { LinkableCoffee } from '../linkPicker';
+import { coffeeBeanUuid } from './bqBeanUuid.ts';
 import { applyCoffeeFix, type CoffeeFix } from './coffees.ts';
 
 // The old "tracked" test. Now it only drives the backfill, auto-link and suggestions.
@@ -19,6 +20,20 @@ export function backfillBeanConquerorLinks(db: DatabaseSync): void {
     WHERE (SELECT COUNT(*) FROM coffees c WHERE ${EXACT_MATCH}) = 1
       AND (SELECT COUNT(*) FROM beanconqueror_beans b2
            WHERE b2.roaster = b.roaster AND b2.name = b.name AND b2.roast_date = b.roast_date) = 1`);
+}
+
+// Beans the patch created carry coffeeBeanUuid(coffee id): link a new one to
+// that coffee when the coffee has no bean yet. Runs before the match-by-key
+// auto-link, which then skips what's linked.
+export function linkDerivedBeans(db: DatabaseSync, newBeanIds: readonly string[]): number {
+  const ids = new Set(newBeanIds);
+  const link = db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = ? AND coffee_id IS NULL`);
+  let linked = 0;
+  for (const { id } of db.prepare(`SELECT c.id FROM coffees c WHERE NOT ${COFFEE_HAS_BEAN}`).all() as { id: number }[]) {
+    const uuid = coffeeBeanUuid(id);
+    if (ids.has(uuid)) linked += Number(link.run(id, uuid).changes);
+  }
+  return linked;
 }
 
 // After each import, for the beans that are new in it only (existing beans are

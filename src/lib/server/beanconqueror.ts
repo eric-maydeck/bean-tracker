@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
-import { autoLinkBeanConquerorBeans, getLinkableCoffees } from './beanConquerorLinks';
+import { conciseProcess } from '../processGroups';
+import { autoLinkBeanConquerorBeans, getLinkableCoffees, linkDerivedBeans } from './beanConquerorLinks';
 
 export interface ParsedBean {
   id: string;
@@ -257,7 +258,10 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
     }
 
     // The bean upsert above never writes coffee_id, so existing links survive.
-    autoLinkBeanConquerorBeans(db, parsed.beans.map((b) => b.id).filter((id) => !existingBeanIds.has(id)));
+    const newBeanIds = parsed.beans.map((b) => b.id).filter((id) => !existingBeanIds.has(id));
+    linkDerivedBeans(db, newBeanIds);
+    autoLinkBeanConquerorBeans(db, newBeanIds);
+    fillBlankCoffeeFields(db);
 
     db.prepare(
       `INSERT INTO app_meta (key, value) VALUES ('beanconqueror_last_imported_at', ?)
@@ -269,6 +273,37 @@ export function importBeanConquerorData(db: DatabaseSync, parsed: ParsedBeanConq
     db.exec('ROLLBACK');
     throw err;
   }
+}
+
+// Fill empty coffee fields from the linked bean (component 0 for origin
+// details); never replaces or blanks a value the site already has.
+export function fillBlankCoffeeFields(db: DatabaseSync): number {
+  const rows = db
+    .prepare(
+      `SELECT c.id, b.url AS b_url, o.*
+       FROM coffees c JOIN beanconqueror_beans b ON b.coffee_id = c.id
+       LEFT JOIN beanconqueror_bean_origins o ON o.bean_id = b.id AND o.component_number = (
+         SELECT MIN(component_number) FROM beanconqueror_bean_origins WHERE bean_id = b.id)`
+    )
+    .all() as Record<string, string | number | null>[];
+  const blank = (v: unknown) => v == null || v === '';
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  const cols = (r: Record<string, unknown>): Record<string, string | null> => ({
+    producer: text(r.farmer), farm: text(r.farm), variety: text(r.variety), region: text(r.region),
+    elevation: text(r.elevation), harvest_time: text(r.harvested), certification: text(r.certification),
+    origin: text(r.country), processing: conciseProcess(text(r.processing)),
+    product_url: /^https?:\/\//i.test(text(r.b_url) ?? '') ? text(r.b_url) : null
+  });
+  let filled = 0;
+  for (const r of rows) {
+    const current = db.prepare(`SELECT * FROM coffees WHERE id = ?`).get(r.id as number) as Record<string, unknown>;
+    for (const [col, val] of Object.entries(cols(r))) {
+      if (val === null || !blank(current[col])) continue;
+      db.prepare(`UPDATE coffees SET ${col} = ? WHERE id = ?`).run(val, r.id as number);
+      filled++;
+    }
+  }
+  return filled;
 }
 
 export interface LikelyMatch {

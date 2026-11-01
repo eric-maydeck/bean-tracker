@@ -12,8 +12,9 @@
 //
 // When re-syncing this file from upstream, copy from the newest RELEASED
 // tag, not from `develop`, and re-check every varint field below against
-// it — this app currently only encodes BeanProto.weight/cost/rating/
-// roast_range and BeanInformation.country/processing, but the whole file
+// it — this app currently encodes BeanProto.url/weight/cost/roast_range
+// and BeanInformation.country/processing/region/farm/farmer/elevation/
+// harvest_time/variety/certification, but the whole file
 // is kept in sync (not just the fields in use) so a future feature that
 // reads BeanRoastInformation/ICupping doesn't inherit a stale wire type.
 syntax = "proto3";

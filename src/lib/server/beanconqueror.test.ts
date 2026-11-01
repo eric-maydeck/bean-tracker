@@ -5,7 +5,8 @@ import {
   countUnmatchedBeanConquerorBeans,
   dismissBeanConquerorBean
 } from './beanconqueror';
-import { createCoffee } from './coffees';
+import { createCoffee, getBacklogCoffees } from './coffees';
+import { coffeeBeanUuid } from './bqBeanUuid';
 import { createDb } from './db';
 
 const BASE_BREW = { bcCreatedAt: '2026-06-01T12:00:00.000Z', beanId: null, preparationId: null, millId: null, grindSetting: null, groundCoffeeG: 20, brewTemperature: null, beanType: null, grindSpeedRpm: null, grindTime: null, profile: null, preparationTools: null, temperatureTime: null, brewTime: null, bloomTime: null, firstDripTime: null, waterAmountG: null, coffeeType: null, coffeeConcentration: null, rating: 7, notes: null, beverageQuantity: null, tdsPercent: null, extractionYieldPercent: null, brewRatio: null, beanAgeDays: null, bcArchived: false, water: null };
@@ -465,5 +466,59 @@ describe('importBeanConquerorData: waters and new brew fields', () => {
     expect(brewRows(db)).toMatchObject([
       { bc_uuid: 'u1', water_id: 'w1', water: 'Renamed', best_brew: 1, favourite: 1, vessel_name: 'Carafe', has_flow_profile: 1, first_drip_time: '12' }
     ]);
+  });
+});
+
+describe('derived bean uuid and blank filling', () => {
+  const bean = (o: Record<string, unknown>) => ({ id: 'x', name: 'Bean', roaster: 'R', roastDate: '2026-06-01', roastType: null, degreeOfRoast: null, customDegreeOfRoast: null, blend: null, weightG: null, cost: null, aromatics: null, cuppingPoints: null, decaffeinated: false, url: null, eanArticleNumber: null, notes: null, rating: null, bcCreatedAt: null, bcArchived: false, ...o });
+  const origin = (o: Record<string, unknown>) => ({ beanId: 'x', componentNumber: 0, country: null, region: null, farm: null, farmer: null, elevation: null, variety: null, processing: null, certification: null, harvested: null, percentage: null, ...o });
+  const input = { roaster: 'R', coffee_name: 'Same', origin: null, roast_level: null, processing: null, amount_g: null, cost: null, roast_date: '2026-06-01', frozen_start_date: null, frozen_end_date: null, rest_days_low: null, rest_days_high: null, image_url: null };
+  const empty = { methods: [], grinders: [], brews: [] };
+  const linked = (db: ReturnType<typeof createDb>, id: string) => (db.prepare('SELECT coffee_id FROM beanconqueror_beans WHERE id = ?').get(id) as { coffee_id: number | null }).coffee_id;
+
+  it('derived uuid links the right bag', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, input).id;
+    const b = createCoffee(db, input).id;
+    importBeanConquerorData(db, { ...empty, beanOrigins: [], beans: [bean({ id: coffeeBeanUuid(b) }), bean({ id: coffeeBeanUuid(a) })] });
+    expect(linked(db, coffeeBeanUuid(a))).toBe(a);
+    expect(linked(db, coffeeBeanUuid(b))).toBe(b);
+  });
+
+  it('derived link skips a coffee already linked', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, input).id;
+    importBeanConquerorData(db, { ...empty, beanOrigins: [], beans: [bean({ id: 'other', name: 'Other' })] });
+    db.prepare(`UPDATE beanconqueror_beans SET coffee_id = ? WHERE id = 'other'`).run(a);
+    importBeanConquerorData(db, { ...empty, beanOrigins: [], beans: [bean({ id: coffeeBeanUuid(a) })] });
+    expect(linked(db, coffeeBeanUuid(a))).toBeNull();
+    expect(linked(db, 'other')).toBe(a);
+  });
+
+  it('import fills a blank and never replaces or blanks', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, { ...input, origin: 'Kenya', farm: 'Mine' }).id;
+    const data = {
+      ...empty,
+      beans: [bean({ id: coffeeBeanUuid(a), url: 'https://r.example/p' })],
+      beanOrigins: [origin({ beanId: coffeeBeanUuid(a), country: 'Peru', farm: 'Theirs', farmer: 'Ana', variety: '', processing: 'Washed, Anaerobic' })]
+    };
+    importBeanConquerorData(db, data);
+    const row = db.prepare('SELECT * FROM coffees WHERE id = ?').get(a) as Record<string, unknown>;
+    expect(row).toMatchObject({ origin: 'Kenya', farm: 'Mine', producer: 'Ana', product_url: 'https://r.example/p' });
+    expect(row.processing).toBeTruthy();
+    expect(row.variety ?? null).toBeNull();
+    // second import changes nothing
+    const slug = row.slug;
+    importBeanConquerorData(db, data);
+    expect(db.prepare('SELECT * FROM coffees WHERE id = ?').get(a)).toEqual(row);
+    expect(slug).toBe(row.slug);
+  });
+
+  it('linked coffee no longer offers Import into BQ', () => {
+    const db = createDb(':memory:');
+    const a = createCoffee(db, input).id;
+    importBeanConquerorData(db, { ...empty, beanOrigins: [], beans: [bean({ id: coffeeBeanUuid(a) })] });
+    expect(getBacklogCoffees(db)[0].in_bean_conqueror).toBe(1);
   });
 });
