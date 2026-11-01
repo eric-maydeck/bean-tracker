@@ -1620,6 +1620,11 @@ export const STATES: State[] = [
       await page.getByRole('button', { name: 'Round tip', exact: true }).click();
       await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('1');
       await expect(page.getByRole('spinbutton', { name: 'Ca' })).toHaveValue('2');
+      // A tip switch while another mode is showing still converts the Drops boxes.
+      await page.getByRole('button', { name: 'Recipe', exact: true }).click();
+      await page.getByRole('button', { name: 'Precision', exact: true }).click();
+      await page.getByRole('button', { name: 'Drops', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('2');
     }
   },
   {

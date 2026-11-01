@@ -101,13 +101,10 @@
     else el.value = dropsIn[key];
   }
 
-  // A user's tip change (never a URL or saved-state load): Drops mode carries its boxes over to the closest drops.
+  // A user's tip change (never a URL or saved-state load) carries the Drops boxes over to the closest drops,
+  // from any mode: they stay filled while another mode is showing.
   function setTip(t: Tip) {
-    if (t === tip) {
-      tipPick = t;
-      return;
-    }
-    if (mode === 'drops') {
+    if (t !== tip) {
       for (const k of Object.keys(anchors) as (keyof Drops)[]) if (INT.test(dropsIn[k])) dropsIn[k] = String(dropsFromAnchor(anchors[k]!, t));
     }
     tipPick = t;
