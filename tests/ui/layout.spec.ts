@@ -1570,6 +1570,63 @@ export const STATES: State[] = [
     }
   },
   {
+    // Dropper tip: Round tip default; Precision rides the URL as tip=precision and changes drops in Recipe and Target modes.
+    name: 'water-tip', viewports: 'two',
+    path: () => '/water',
+    act: async (page) => {
+      const round = page.getByRole('button', { name: 'Round tip', exact: true });
+      const precision = page.getByRole('button', { name: 'Precision', exact: true });
+      await expect(round).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('listitem', { name: '4 Calcium' })).toBeVisible();
+      await expect(page.locator('.wr-note').first()).toContainText('round-tip dropper');
+      await precision.click();
+      await expect(page).toHaveURL(/tip=precision/);
+      await expect(precision).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('listitem', { name: '7 Calcium' })).toBeVisible();
+      await expect(page.getByRole('listitem', { name: '4 Sodium' })).toBeVisible();
+      await expect(page.locator('.wr-note').first()).toContainText('precision dropper');
+      await page.getByRole('button', { name: 'Target', exact: true }).click();
+      await page.getByRole('spinbutton', { name: 'Ca' }).fill('40');
+      await expect(page.getByRole('listitem', { name: '7 Calcium' })).toBeVisible();
+      await round.click();
+      await expect(page.getByRole('listitem', { name: '4 Calcium' })).toBeVisible();
+      await expect(page).toHaveURL(/tip=round/);
+      await expectGroupsLabelled(page);
+    }
+  },
+  {
+    // A shared tip= link wins and does not convert Drops values; a user switch converts them (round 4 <-> precision 7).
+    name: 'water-tip-drops', viewports: 'two',
+    path: () => '/water?mode=drops&tip=precision&ml=800&mg=4&ca=4&na=2&k=2',
+    act: async (page) => {
+      await expect(page.getByRole('button', { name: 'Precision', exact: true })).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('4');
+      await page.getByRole('button', { name: 'Round tip', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('2');
+      await page.getByRole('button', { name: 'Precision', exact: true }).click();
+      await expect(page.getByRole('spinbutton', { name: 'Mg' })).toHaveValue('4');
+      await expect(page.getByRole('spinbutton', { name: 'Na' })).toHaveValue('2');
+      await expect(page).toHaveURL(/tip=precision/);
+      await expect(page).toHaveURL(/mg=4/);
+    }
+  },
+  {
+    // The tip control sits in the tabs row with Mode: no sideways scroll, nothing clipped, all three modes.
+    name: 'water-tip-layout',
+    path: () => '/water?tip=precision',
+    act: async (page) => {
+      for (const m of ['Drops', 'Target', 'Recipe']) {
+        await page.getByRole('button', { name: m, exact: true }).click();
+        const g = (await page.getByRole('group', { name: 'Dropper tip' }).boundingBox())!;
+        expect(g.x + g.width, `${m}: tip group inside the viewport`).toBeLessThanOrEqual(page.viewportSize()!.width);
+        for (const b of await page.getByRole('group', { name: 'Dropper tip' }).getByRole('button').all()) {
+          expect((await b.boundingBox())!.height, 'tap target').toBeGreaterThanOrEqual(30);
+        }
+        await expectGroupsLabelled(page);
+      }
+    }
+  },
+  {
     // Slider scale: a labelled tick every 100 mL, none overlapping, all inside the slider's box.
     name: 'water-slider-ticks',
     path: () => '/water',

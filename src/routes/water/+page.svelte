@@ -8,7 +8,7 @@
   import { writeUrlParams } from '$lib/urlState';
   import {
     RECIPES, idealMl, CONCENTRATES, DEFAULT_ML, MIN_ML, MAX_ML, MODES, MODE_LABEL, KETTLES, kettleFor, dropsFromPpm, ppmFromMgl,
-    minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, type Drops, type Mode, type Unit
+    minerals, lotusParams, parseLotus, loadWater, serializeWater, WATER_STORAGE_KEY, TIPS, TIP_LABEL, convertDrops, type Drops, type Mode, type Unit, type Tip
   } from '$lib/lotus';
 
   const SLIDER_MAX = 1200;
@@ -21,6 +21,7 @@
   // Untouched = undefined -> defaults; only what the visitor picked rides the URL.
   let mode = $state<Mode>('recipe');
   let unit = $state<Unit | undefined>();
+  let tipPick = $state<Tip | undefined>();
   let recipeSlug = $state<string | undefined>();
   let picked = $state('');
   let ml = $state<number | undefined>();
@@ -42,6 +43,7 @@
     }
     mode = s.mode ?? 'recipe';
     unit = s.unit;
+    tipPick = s.tip;
     recipeSlug = s.recipe;
     picked = s.kettle ?? '';
     ml = s.ml ?? KETTLES.find((k) => k.slug === s.kettle)?.ml;
@@ -53,7 +55,8 @@
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
   let volume = $derived(ml ?? DEFAULT_ML);
-  let ideal = $derived(idealMl(recipe));
+  let tip = $derived<Tip>(tipPick ?? 'round');
+  let ideal = $derived(idealMl(recipe, tip));
   let kettle = $derived(kettleFor(volume, picked));
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
 
@@ -71,8 +74,8 @@
   let targetPpm = $derived(
     mode === 'recipe' ? recipe.ppm : (unit ?? 'ppm') === 'mgl' ? ppmFromMgl(nums(targetIn, DEC)) : nums(targetIn, DEC)
   );
-  let drops = $derived(mode === 'drops' ? nums(dropsIn, INT) : dropsFromPpm(targetPpm, volume));
-  let result = $derived(minerals(drops, volume));
+  let drops = $derived(mode === 'drops' ? nums(dropsIn, INT) : dropsFromPpm(targetPpm, volume, tip));
+  let result = $derived(minerals(drops, volume, tip));
   let target = $derived({ gh: targetPpm.ca + targetPpm.mg, kh: targetPpm.na + targetPpm.k });
   const IONS = CONCENTRATES;
   const ANIONS = [['cl', 'Chloride'], ['hco3', 'Bicarbonate']] as const;
@@ -88,6 +91,19 @@
   function setDrops(key: keyof Drops, el: HTMLInputElement) {
     if (el.value === '' || INT.test(el.value)) dropsIn[key] = el.value;
     else el.value = dropsIn[key];
+  }
+
+  // A user's tip change (never a URL or saved-state load): Drops mode carries its boxes over to the closest drops.
+  function setTip(t: Tip) {
+    if (t === tip) {
+      tipPick = t;
+      return;
+    }
+    if (mode === 'drops') {
+      const c = convertDrops(nums(dropsIn, INT), tip, t);
+      for (const k of Object.keys(dropsIn) as (keyof Drops)[]) if (INT.test(dropsIn[k])) dropsIn[k] = String(c[k]);
+    }
+    tipPick = t;
   }
 
   function pickKettle(name: string) {
@@ -127,6 +143,7 @@
         ml,
         kettle,
         unit: mode === 'target' ? unit : undefined,
+        tip: tipPick,
         vals: mode === 'drops' ? urlVals(dropsIn, INT) : mode === 'target' ? urlVals(targetIn, DEC) : undefined
       });
     writeUrlParams(p);
@@ -142,6 +159,7 @@
   function reset() {
     mode = 'recipe';
     unit = undefined;
+    tipPick = undefined;
     recipeSlug = undefined;
     picked = '';
     ml = undefined;
@@ -184,6 +202,14 @@
     <div class="tab-group" role="group" aria-label="Mode">
       {#each MODES as m (m)}
         <button type="button" aria-pressed={mode === m} onclick={() => (mode = m)}>{MODE_LABEL[m]}</button>
+      {/each}
+    </div>
+  </div>
+  <div class="form-field group-field">
+    <span>Dropper tip</span>
+    <div class="tab-group" role="group" aria-label="Dropper tip">
+      {#each TIPS as t (t)}
+        <button type="button" aria-pressed={tip === t} onclick={() => setTip(t)}>{TIP_LABEL[t]}</button>
       {/each}
     </div>
   </div>
@@ -284,7 +310,7 @@
     </div>
 </section>
 <div class="water-notes">
-  <p class="text-muted wr-note">Whole drops from a round-tip dropper; GH and KH in ppm as CaCO₃.</p>
+  <p class="text-muted wr-note">Whole drops from a {tip === 'round' ? 'round-tip' : 'precision'} dropper; GH and KH in ppm as CaCO₃.</p>
   <p class="text-muted wr-note">
     Drop math follows Lotus's own calculator. For official Lotus recipes and instructions, see
     <a href="https://lotuscoffeeproducts.com/pages/product-instructions" rel="noopener">Lotus Coffee Products</a>.

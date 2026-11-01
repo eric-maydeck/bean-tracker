@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, type Drops } from './lotus';
+import { RECIPES, idealMl, dropsFor, dropsFromPpm, minerals, ppmFromMgl, lotusParams, parseLotus, DEFAULT_ML, KETTLES, kettleFor, loadWater, serializeWater, convertDrops, type Drops } from './lotus';
 
 const p = (q: string) => new URLSearchParams(q);
 const r = (slug: string) => RECIPES.find((x) => x.slug === slug)!;
@@ -131,5 +131,39 @@ describe('remembered state', () => {
     expect(loadWater('nope')).toEqual({});
     expect(loadWater(JSON.stringify({ version: 99, params: 'ml=900' }))).toEqual({});
     expect(loadWater(JSON.stringify({ version: 1, params: 'recipe=bogus&ml=5' }))).toEqual({});
+  });
+});
+
+describe('dropper tip', () => {
+  it('precision: Bright and Juicy at 800 and 900 mL', () => {
+    expect(dropsFor(r('bright-and-juicy'), 800, 'precision')).toEqual(d(7, 7, 4, 4));
+    expect(dropsFor(r('bright-and-juicy'), 900, 'precision')).toEqual(d(8, 8, 4, 4));
+    expect(dropsFor(r('bright-and-juicy'), 800, 'round')).toEqual(dropsFor(r('bright-and-juicy'), 800));
+  });
+  it('minerals follow the tip: one precision drop is 0.56 of a round drop', () => {
+    const one = d(1, 1, 1, 1);
+    expect(minerals(one, 800, 'precision').gh).toBeCloseTo(minerals(one, 800).gh * 0.56, 6);
+  });
+  it('idealMl takes the tip and stays on 50 mL steps', () => {
+    expect(idealMl(r('bright-and-juicy'), 'precision') % 50).toBe(0);
+  });
+  it('parses tip=, ignores bad values, case-insensitive', () => {
+    expect(parseLotus(p('tip=precision'))).toEqual({ tip: 'precision' });
+    expect(parseLotus(p('tip=PRECISION&ml=900'))).toEqual({ tip: 'precision', ml: 900 });
+    expect(parseLotus(p('tip=round'))).toEqual({ tip: 'round' }); // explicit default stays explicit
+    expect(parseLotus(p('tip=bogus'))).toEqual({});
+    expect(parseLotus(p('mode=drops&tip=precision&mg=3'))).toEqual({ mode: 'drops', tip: 'precision', vals: { mg: 3 } });
+    expect(lotusParams({ ml: 900, tip: 'precision' }).toString()).toBe('ml=900&tip=precision');
+  });
+  it('is remembered through the saved query; old saves without tip mean round', () => {
+    expect(loadWater(serializeWater(p('tip=precision&ml=900')))).toEqual({ tip: 'precision', ml: 900 });
+    expect(loadWater(JSON.stringify({ version: 1, params: 'ml=900' }))).toEqual({ ml: 900 });
+  });
+  it('convertDrops: closest equivalent for the new tip', () => {
+    expect(convertDrops(d(4, 4, 2, 2), 'round', 'precision')).toEqual(d(7, 7, 4, 4));
+    expect(convertDrops(d(7, 7, 4, 4), 'precision', 'round')).toEqual(d(4, 4, 2, 2));
+    expect(convertDrops(d(0, 0, 0, 0), 'round', 'precision')).toEqual(d(0, 0, 0, 0));
+    expect(convertDrops(d(999, 600, 1, 0), 'round', 'precision')).toEqual(d(999, 999, 2, 0));
+    expect(convertDrops(d(3, 3, 3, 3), 'round', 'round')).toEqual(d(3, 3, 3, 3));
   });
 });
