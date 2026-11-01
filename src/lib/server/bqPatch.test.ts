@@ -92,4 +92,15 @@ describe('comparePatched', () => {
     bad.BREWS[0].grind_weight = 99;
     expect(comparePatched(m, bad)).toEqual(['BREWS brew-1: differs']);
   });
+
+  it('reports duplicate uuids and count mismatches', () => {
+    const dup = structuredClone(m) as { BREWS: unknown[] };
+    dup.BREWS.push(structuredClone(dup.BREWS[0]));
+    const n = (m.BREWS as unknown[]).length;
+    expect(comparePatched(m, dup)).toEqual([
+      'BREWS brew-1: duplicate in actual',
+      `BREWS: count ${n} expected, ${n + 1} actual`
+    ]);
+    expect(comparePatched(dup, m)).toContain('BREWS brew-1: duplicate in expected');
+  });
 });

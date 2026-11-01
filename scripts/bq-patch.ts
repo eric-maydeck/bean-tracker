@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import JSZip from 'jszip';
 import sharp from 'sharp';
@@ -29,7 +29,7 @@ const need = (v: string | undefined, name: string) => v ?? fail(`--${name} is re
 
 async function apply() {
   const src = need(a.export, 'export');
-  const out = need(a.out, 'out');
+  const out = resolve(need(a.out, 'out'));
   const zipPath = join(src, 'Beanconqueror.zip');
   const ageH = (Date.now() - statSync(zipPath).mtimeMs) / 3.6e6;
   if (ageH > Number(a['max-age-hours'])) fail(`Export is ${ageH.toFixed(1)}h old; re-export first`);

@@ -86,10 +86,19 @@ const canon = (v: unknown): string =>
 export function comparePatched(expected: Rec, actual: Rec): string[] {
   const out: string[] = [];
   for (const key of ['BEANS', 'BREWS', 'MILL', 'PREPARATION', 'WATER']) {
-    const index = (arr: unknown) =>
-      new Map(((arr as unknown[]) ?? []).map((e, i) => [uuidOf(e) ?? `#${i}`, e]));
-    const exp = index(expected[key]);
-    const act = index(actual[key]);
+    const entries = (arr: unknown) =>
+      ((arr as unknown[]) ?? []).map((e, i): [string, unknown] => [uuidOf(e) ?? `#${i}`, e]);
+    const exp = new Map(entries(expected[key]));
+    const act = new Map(entries(actual[key]));
+    for (const [side, arr] of [['expected', expected], ['actual', actual]] as const) {
+      const seen = new Set<string>();
+      for (const [u] of entries(arr[key])) {
+        if (seen.has(u)) out.push(`${key} ${u}: duplicate in ${side}`);
+        seen.add(u);
+      }
+    }
+    const [n, na] = [expected[key], actual[key]].map((x) => ((x as unknown[]) ?? []).length);
+    if (n !== na) out.push(`${key}: count ${n} expected, ${na} actual`);
     for (const [u, e] of exp) {
       if (!act.has(u)) out.push(`${key} ${u}: missing in actual`);
       else if (canon(e) !== canon(act.get(u))) out.push(`${key} ${u}: differs`);
