@@ -1480,6 +1480,12 @@ export const STATES: State[] = [
     path: () => '/water?recipe=lume-high-clarity&tip=precision',
     act: async (page) => {
       await expect(page.locator('.water-ideal')).toContainText('best used with 550mL or 1100mL of distilled water');
+      const width = async (name: string) => (await page.getByRole('button', { name }).boundingBox())!.width;
+      const w550 = await width('Switch to 550mL');
+      expect(await width('Switch to 1100mL'), 'same button size').toBeCloseTo(w550, 1);
+      await page.getByRole('button', { name: 'Round tip', exact: true }).click();
+      expect(await width('Switch to 1000mL'), 'same button size across tips').toBeCloseTo(w550, 1);
+      await page.getByRole('button', { name: 'Precision', exact: true }).click();
       await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', /Water: 900mL \(recipe 550mL or 1100mL\)/);
       await page.getByRole('button', { name: 'Switch to 550mL' }).click();
       await expect(page.getByRole('heading', { name: 'Lotus drops for 550mL' })).toBeVisible();

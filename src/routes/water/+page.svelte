@@ -498,6 +498,8 @@
   @container (min-width: 26rem) { .water-inputs { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .water-inputs .water-unit, .water-inputs .water-field, .water-ideal { grid-column: 1 / -1; }
   .water-ideal { margin: 0; font-size: 0.85rem; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  /* One size whatever the volume: fits the widest label, "Switch to 1000mL". */
+  .water-ideal button { min-width: 10.75em; }
   .water-inputs .water-mineral { flex: none; }
   .wr-card { margin-bottom: var(--space-4); }
 </style>
