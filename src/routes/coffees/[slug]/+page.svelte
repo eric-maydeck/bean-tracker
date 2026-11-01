@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS } from '$lib/types';
+  import { COFFEE_ORIGIN_LABELS, type CoffeeOriginField } from '$lib/types';
   import Usd from '$lib/components/Usd.svelte';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { coffeePreview } from '$lib/linkPreview';
@@ -441,52 +441,69 @@
         </div>
       </div>
 
-      <div class="stat-grid">
-        <div class="stat">
-          <span class="stat-label">Origin</span>
-          <span class="stat-value">{data.coffee.origin ? originWithFlag(data.coffee.origin) : '—'}</span>
+      <!-- A detail row, hidden when blank (Origin and Processing, with a dash, are written out below). -->
+      {#snippet detail(name: CoffeeOriginField)}
+        {#if data.coffee[name]}
+          <div class="stat">
+            <span class="stat-label">{COFFEE_ORIGIN_LABELS[name]}</span>
+            <span class="stat-value">{data.coffee[name]}</span>
+          </div>
+        {/if}
+      {/snippet}
+
+      <section class="detail-section first-section" data-section="origin">
+        <h2>Origin</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-label">Origin</span>
+            <span class="stat-value">{data.coffee.origin ? originWithFlag(data.coffee.origin) : '—'}</span>
+          </div>
+          {#each ['region', 'producer', 'farm', 'variety'] as const as name (name)}
+            {@render detail(name)}
+          {/each}
+          <div class="stat">
+            <span class="stat-label">Processing</span>
+            <span class="stat-value">{data.coffee.processing ?? '—'}</span>
+          </div>
+          {#each ['elevation', 'harvest_time', 'certification'] as const as name (name)}
+            {@render detail(name)}
+          {/each}
         </div>
-        <div class="stat">
-          <span class="stat-label">Roast level</span>
-          <span class="stat-value">{data.coffee.roast_level ?? '—'}</span>
+      </section>
+
+      <section class="detail-section" data-section="bag">
+        <h2>Bag</h2>
+        <div class="stat-grid">
+          <div class="stat">
+            <span class="stat-label">Roast level</span>
+            <span class="stat-value">{data.coffee.roast_level ?? '—'}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Amount</span>
+            <span class="stat-value">{data.coffee.amount_g != null ? formatBag(data.coffee.amount_g, data.coffee.grams_left) : '—'}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Cost</span>
+            <span class="stat-value">{#if data.coffee.cost != null}<Usd n={data.coffee.cost} />{:else}—{/if}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Cost/gram</span>
+            <span class="stat-value">
+              {#if data.coffee.cost_per_gram != null}<Usd n={data.coffee.cost_per_gram} />{:else}—{/if}
+            </span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Subscription</span>
+            <span class="stat-value">{#if data.subscription}<a href="/subscriptions">{data.subscription}</a>{:else}—{/if}</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">Urgency</span>
+            <span class="stat-value" style={urgencyColorStyle(data.coffee.urgency_rating)}>
+              {data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}
+            </span>
+          </div>
         </div>
-        <div class="stat">
-          <span class="stat-label">Processing</span>
-          <span class="stat-value">{data.coffee.processing ?? '—'}</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Amount</span>
-          <span class="stat-value">{data.coffee.amount_g != null ? formatBag(data.coffee.amount_g, data.coffee.grams_left) : '—'}</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Cost</span>
-          <span class="stat-value">{#if data.coffee.cost != null}<Usd n={data.coffee.cost} />{:else}—{/if}</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Cost/gram</span>
-          <span class="stat-value">
-            {#if data.coffee.cost_per_gram != null}<Usd n={data.coffee.cost_per_gram} />{:else}—{/if}
-          </span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Subscription</span>
-          <span class="stat-value">{#if data.subscription}<a href="/subscriptions">{data.subscription}</a>{:else}—{/if}</span>
-        </div>
-        <div class="stat">
-          <span class="stat-label">Urgency</span>
-          <span class="stat-value" style={urgencyColorStyle(data.coffee.urgency_rating)}>
-            {data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}
-          </span>
-        </div>
-        {#each COFFEE_ORIGIN_FIELDS as name (name)}
-          {#if data.coffee[name]}
-            <div class="stat">
-              <span class="stat-label">{COFFEE_ORIGIN_LABELS[name]}</span>
-              <span class="stat-value">{data.coffee[name]}</span>
-            </div>
-          {/if}
-        {/each}
-      </div>
+      </section>
 
       <section class="detail-section timing" data-section="timing">
         <h2>Timing</h2>
@@ -598,6 +615,10 @@
 <AddedToast bind:slug={addedSlug} undo={undoAdded} />
 
 <style>
+  /* Directly below the header, which already ends in its own margin. */
+  .first-section {
+    margin-top: 0;
+  }
   /* Timing: children 1-5 are Roast date, Days since roast, Drink after, Recommended rest, Drink before, so two columns
      read Roast | Days / After | Rest / Before. From 30rem, three columns with Recommended rest under Days since roast and
      Drink before under Drink after (the cell under Roast date takes the first Frozen/Opened/Archived extra). From 48rem
