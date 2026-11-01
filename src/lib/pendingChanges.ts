@@ -11,6 +11,7 @@
 // at call sites either way.
 
 import type { CoffeeRow } from './types';
+import { COFFEE_ORIGIN_FIELDS } from './types';
 
 export interface PendingChange {
   fields?: Record<string, string>;
@@ -88,7 +89,7 @@ export function mergeStagedCoffee(coffee: CoffeeRow, pendingFields: Record<strin
 // (a new backlog coffee; createCoffee de-duplicates the slug).
 export function clonePrefill(coffee: CoffeeRow): Partial<CoffeeRow> {
   const { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf } = coffee;
-  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf };
+  return { roaster, coffee_name, origin, roast_level, processing, amount_g, cost, roast_date, rest_days_low, rest_days_high, image_url, product_url, image_source_url, decaf, ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.map((f) => [f, coffee[f]])) };
 }
 
 // "Set as roaster default" is staged like any field (CoffeeForm's hidden

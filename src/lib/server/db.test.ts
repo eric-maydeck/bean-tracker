@@ -383,3 +383,15 @@ describe('ownData gear migration', () => {
     rmSync(dir, { recursive: true });
   });
 });
+
+describe('createDb origin columns', () => {
+  it('createDb adds the columns to an existing DB', () => {
+    const raw = new DatabaseSync(':memory:');
+    raw.exec(`CREATE TABLE coffees (id INTEGER PRIMARY KEY, roaster TEXT NOT NULL, coffee_name TEXT NOT NULL,
+      processing TEXT, roast_date TEXT, slug TEXT, status TEXT NOT NULL DEFAULT 'backlog', drank INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`);
+    applySchema(raw);
+    const cols = (raw.prepare(`PRAGMA table_info(coffees)`).all() as { name: string }[]).map((c) => c.name);
+    expect(cols).toEqual(expect.arrayContaining(['producer', 'farm', 'variety', 'region', 'elevation', 'harvest_time', 'certification']));
+  });
+});

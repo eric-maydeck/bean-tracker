@@ -1,6 +1,7 @@
 import { toOrigin } from './roasterWebsites';
+import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginFields } from '../types.ts';
 
-export interface ValidatedCoffeeInput {
+export interface ValidatedCoffeeInput extends CoffeeOriginFields {
   roaster: string;
   coffee_name: string;
   origin: string | null;
@@ -127,6 +128,8 @@ export function parseCoffeeForm(formData: FormData): ValidatedCoffeeInput {
     set_roaster_default: formData.get('set_roaster_default') === '1' && imageUrl != null,
     // Machine-set hidden field: an unusable value is dropped, not an error.
     roaster_website: toOrigin(textField(formData, 'roaster_website')),
-    ...(subscriptionId !== undefined && { subscription_id: subscriptionId })
+    ...(subscriptionId !== undefined && { subscription_id: subscriptionId }),
+    // Only the fields the form sent; absent ones stay untouched on update.
+    ...Object.fromEntries(COFFEE_ORIGIN_FIELDS.filter((f) => formData.has(f)).map((f) => [f, textField(formData, f)]))
   };
 }

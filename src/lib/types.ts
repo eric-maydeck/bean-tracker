@@ -1,4 +1,13 @@
-export interface CoffeeRow {
+// Free-text origin details, as Bean Conqueror's origin rows hold them. Optional: absent = not sent.
+export const COFFEE_ORIGIN_FIELDS = ['producer', 'farm', 'variety', 'region', 'elevation', 'harvest_time', 'certification'] as const;
+export type CoffeeOriginField = (typeof COFFEE_ORIGIN_FIELDS)[number];
+export const COFFEE_ORIGIN_LABELS: Record<CoffeeOriginField, string> = {
+  producer: 'Producer', farm: 'Farm', variety: 'Variety', region: 'Region',
+  elevation: 'Elevation', harvest_time: 'Harvest', certification: 'Certification'
+};
+export type CoffeeOriginFields = { [K in CoffeeOriginField]?: string | null };
+
+export interface CoffeeRow extends CoffeeOriginFields {
   id: number;
   roaster: string;
   coffee_name: string;

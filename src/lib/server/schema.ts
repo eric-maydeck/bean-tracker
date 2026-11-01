@@ -26,6 +26,13 @@ CREATE TABLE IF NOT EXISTS coffees (
   moved_date TEXT,
   decaf INTEGER NOT NULL DEFAULT 0,
   subscription_id INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL,
+  producer TEXT,
+  farm TEXT,
+  variety TEXT,
+  region TEXT,
+  elevation TEXT,
+  harvest_time TEXT,
+  certification TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { schema } from './schema.ts';
+import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { applyCoffeeFixes } from './coffees.ts';
 import { PRODUCT_PAGE_BACKFILLS } from './productPageBackfill.ts';
 import { COFFEE_CORRECTIONS } from './coffeeCorrections.ts';
@@ -78,6 +79,7 @@ export function applySchema(db: DatabaseSync): void {
   ensureColumn(db, 'coffees', 'product_url', 'TEXT');
   ensureColumn(db, 'coffees', 'image_source_url', 'TEXT');
   ensureColumn(db, 'coffees', 'subscription_id', 'INTEGER REFERENCES subscriptions(id) ON DELETE SET NULL');
+  for (const f of COFFEE_ORIGIN_FIELDS) ensureColumn(db, 'coffees', f, 'TEXT');
   ensureColumn(db, 'subscriptions', 'updated_at', 'TEXT');
   ensureColumn(db, 'subscriptions', 'renewal_day', 'INTEGER');
   ensureColumn(db, 'subscriptions', 'subscription_url', 'TEXT');

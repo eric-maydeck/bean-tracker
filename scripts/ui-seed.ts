@@ -348,6 +348,9 @@ const bnSug = (grind: string, temp: string) => JSON.stringify({ grind, temp: `${
 bnMark.run(bnBags[1].id, now, atLocal(7, 8, 0).slice(0, 16), bnSug('1.4.0', '93'), gabi.id, 'linked');
 bnMark.run(bnBags[1].id, now, atLocal(1, 8, 0).slice(0, 16), bnSug('1.2.0', '92'), null, 'pending');
 const bnNew = coffee({ roaster: 'Nobody Brewed Roasters', coffee_name: 'Brew Seed Fresh Lot', origin: 'Kenya', processing: 'Washed', status: 'backlog' });
+// Origin details on this one bag (others have none); one long value must wrap inside its stat and field.
+db.prepare(`UPDATE coffees SET producer = ?, farm = ?, variety = ?, region = ?, elevation = ?, harvest_time = ?, certification = ? WHERE id = ?`).run(
+  'Ana Maria Gutierrez', 'Finca La Esperanza de los Altos de Huila, Cooperativa Norte', 'SL28, SL34', 'Nyeri', '1900-2100m', 'Nov 2025', 'Organic', bnNew.id);
 // A stored roaster recipe (long unbroken title and snippet) for the never-brewed roaster.
 db.prepare(`INSERT INTO roaster_recipes (roaster, url, title, snippet, searched_at) VALUES (?, ?, ?, ?, ?)`).run(
   'Nobody Brewed Roasters', 'https://example.com/brew-guide', 'Brew guide: ' + 'Pour-over-recipe-with-a-very-long-title-'.repeat(3),

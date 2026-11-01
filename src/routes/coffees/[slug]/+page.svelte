@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS } from '$lib/types';
   import Usd from '$lib/components/Usd.svelte';
   import PreviewMeta from '$lib/components/PreviewMeta.svelte';
   import { coffeePreview } from '$lib/linkPreview';
@@ -466,6 +467,14 @@
             {data.coffee.urgency_rating === 'Done' ? 'Done' : Math.round(Number(data.coffee.urgency_rating))}
           </span>
         </div>
+        {#each COFFEE_ORIGIN_FIELDS as name (name)}
+          {#if data.coffee[name]}
+            <div class="stat">
+              <span class="stat-label">{COFFEE_ORIGIN_LABELS[name]}</span>
+              <span class="stat-value">{data.coffee[name]}</span>
+            </div>
+          {/if}
+        {/each}
       </div>
 
       <section class="detail-section timing" data-section="timing">

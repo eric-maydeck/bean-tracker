@@ -22,6 +22,7 @@ import {
   deleteCoffee,
   getDistinctFieldValues,
   applyCoffeeFixes,
+  applyCoffeeFix,
   type CoffeeFixBatch,
   type NewCoffeeInput
 } from './coffees';
@@ -668,5 +669,31 @@ describe('undo by state snapshot', () => {
     expect(() => restoreCoffeeStates(db, a.before, a.after)).toThrow(/changed since/);
     expect(getCoffeeById(db, id)?.status).toBe('archive');
     expect(() => restoreCoffeeStates(db, [], [])).toThrow(/Nothing to undo/);
+  });
+});
+
+describe('origin detail fields', () => {
+  const all = { producer: 'P', farm: 'F', variety: 'V', region: 'R', elevation: '1800m', harvest_time: 'Nov 2025', certification: 'Organic' };
+  const slugOf = (id: number) => getCoffeeById(db, id)!.slug;
+  it('round trip', () => {
+    const { id } = createCoffee(db, sampleInput(all));
+    expect(getCoffeeById(db, id)).toMatchObject(all);
+    expect(getCoffeeById(db, createCoffee(db, sampleInput()).id)).toMatchObject({ producer: null, farm: null });
+  });
+  it('absent fields keep their values', () => {
+    const { id } = createCoffee(db, sampleInput(all));
+    updateCoffee(db, id, sampleInput({ coffee_name: 'Renamed' }), slugOf(id));
+    expect(getCoffeeById(db, id)).toMatchObject(all);
+  });
+  it('sent blank clears', () => {
+    const { id } = createCoffee(db, sampleInput(all));
+    updateCoffee(db, id, sampleInput({ producer: '', farm: null }), slugOf(id));
+    expect(getCoffeeById(db, id)).toMatchObject({ producer: null, farm: null, variety: 'V' });
+  });
+  it('applyCoffeeFix keeps new fields', () => {
+    const { id } = createCoffee(db, sampleInput(all));
+    const c = getCoffeeById(db, id)!;
+    expect(applyCoffeeFix(db, { coffee_id: id, field: 'coffee_name', from: c.coffee_name, to: 'Fixed' })).toBeNull();
+    expect(getCoffeeById(db, id)).toMatchObject({ coffee_name: 'Fixed', ...all });
   });
 });

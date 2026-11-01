@@ -1103,6 +1103,39 @@ export const STATES: State[] = [
       await expect(panel).toContainText(/\d+(st|nd|rd|th) of \d+/);
       await expectGridRowsFull(page, '[data-section="like"] .stat-grid');
     } },
+  // Origin details (Producer ... Certification): a form group between Processing and Cost; the coffee page adds one
+  // stat per filled field, after the existing ones. The seed fills them on brewNew only (Brew Seed Fresh Lot).
+  { name: 'form origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
+    act: async (page) => {
+      await page.getByRole('button', { name: 'Edit', exact: true }).click();
+      const box = (sel: string) => page.locator(sel).first().boundingBox().then((b) => b!);
+      const group = page.locator('fieldset.field-details');
+      await expect(group.locator('legend')).toHaveText('Origin details');
+      await expect(group.locator('label')).toHaveText(['Producer', 'Farm', 'Variety', 'Region', 'Elevation', 'Harvest', 'Certification']);
+      await expect(page.locator('#producer')).toHaveValue('Ana Maria Gutierrez');
+      await expect(page.locator('#certification')).toHaveValue('Organic');
+      const [proc, det, cost, grid] = [await box('.field-processing'), await box('fieldset.field-details'), await box('.field-cost'), await box('.form-grid')];
+      expect(det.y, 'below Processing').toBeGreaterThan(proc.y + proc.height - 1);
+      expect(cost.y, 'above Cost').toBeGreaterThan(det.y + det.height - 1);
+      expect(Math.abs(det.width - grid.width), 'full-width row').toBeLessThan(2);
+      expect(await page.evaluate(() => !!document.activeElement?.closest('fieldset.field-details')), 'no autofocus').toBe(false);
+    } },
+  { name: 'coffee page with origin details', path: (s) => `/coffees/${s.slugs.brewNew}`,
+    act: async (page) => {
+      const stats = page.locator('.stat-grid').first().locator('.stat');
+      await expect(stats.locator('.stat-label')).toHaveText(['Origin', 'Roast level', 'Processing', 'Amount', 'Cost', 'Cost/gram', 'Subscription', 'Urgency',
+        'Producer', 'Farm', 'Variety', 'Region', 'Elevation', 'Harvest', 'Certification']);
+      await expect(stats.filter({ hasText: 'Elevation' }).locator('.stat-value')).toHaveText('1900-2100m');
+    } },
+  { name: 'stats stay put with no details', path: (s) => `/coffees/${s.slugs.long}`,
+    act: async (page, s) => {
+      const cols = () => page.locator('.stat-grid').first().locator('.stat').evaluateAll((els) =>
+        els.map((e) => { const r = e.getBoundingClientRect(); return [e.querySelector('.stat-label')!.textContent, Math.round(r.x), Math.round(r.width)]; }));
+      const none = await cols();
+      expect(none.length, 'no extra stats on a coffee without details').toBe(8);
+      await page.goto(`/coffees/${s.slugs.brewNew}`);
+      expect((await cols()).slice(0, 8), 'the same stats, same columns').toEqual(none);
+    } },
   // Favorite grind (Timing): one line per grinder, A to Z; wide it fills the last column over both stat rows, narrow it
   // sits below the grid at full width. Lab Bag 8 has two grinders, El Dorado one, the long-named Lab Bag none rated.
   { name: 'coffee-favorite-grind', path: (s) => `/coffees/${s.slugs.labTwo}`,

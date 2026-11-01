@@ -1,11 +1,12 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { CoffeeRow } from '../types';
+import type { CoffeeOriginFields, CoffeeRow } from '../types';
+import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
 import { getRoasterImage } from './roasterImages.ts';
 import { hostMatchesRoaster } from '../imageSuggest.ts';
 import { localToday } from './localToday.ts';
 
-export interface NewCoffeeInput {
+export interface NewCoffeeInput extends CoffeeOriginFields {
   subscription_id?: number | null;
   roaster: string;
   coffee_name: string;
@@ -141,8 +142,9 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       `INSERT INTO coffees (
         roaster, coffee_name, origin, roast_level, processing,
         amount_g, cost, roast_date, frozen_start_date, frozen_end_date,
-        rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        rest_days_low, rest_days_high, image_url, product_url, image_source_url, slug, drank, status, moved_date, decaf, subscription_id, created_at, updated_at,
+        ${COFFEE_ORIGIN_FIELDS.join(', ')}
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?${', ?'.repeat(COFFEE_ORIGIN_FIELDS.length)})`
     )
     .run(
       input.roaster,
@@ -167,7 +169,8 @@ export function createCoffee(db: DatabaseSync, input: NewCoffeeInput): { id: num
       decaf,
       input.subscription_id ?? null,
       now,
-      now
+      now,
+      ...COFFEE_ORIGIN_FIELDS.map((f) => input[f] ?? null)
     );
 
   return { id: Number(result.lastInsertRowid), slug };
@@ -207,6 +210,10 @@ export function updateCoffee(db: DatabaseSync, id: number, input: NewCoffeeInput
   // undefined = not sent: keep the link. The FK rejects a plan that doesn't exist.
   if (input.subscription_id !== undefined) {
     db.prepare(`UPDATE coffees SET subscription_id = ? WHERE id = ?`).run(input.subscription_id, id);
+  }
+  // Same rule for the origin details: undefined = not sent, '' / null clears.
+  for (const f of COFFEE_ORIGIN_FIELDS) {
+    if (input[f] !== undefined) db.prepare(`UPDATE coffees SET ${f} = ? WHERE id = ?`).run(input[f] || null, id);
   }
   if (oldSlug && oldSlug !== slug) {
     // Renaming back to one of this coffee's own old slugs reclaims it.

@@ -171,3 +171,17 @@ describe('parseCoffeeForm subscription_id', () => {
     expect(() => parseCoffeeForm(formData({ ...base, subscription_id: v }))).toThrow('Pick a subscription from the list');
   });
 });
+
+describe('parseCoffeeForm origin details', () => {
+  const base = { roaster: 'R', coffee_name: 'C' };
+  it('absent fields yield undefined', () => {
+    const v = parseCoffeeForm(formData(base));
+    expect(v.producer).toBeUndefined();
+    expect('farm' in v).toBe(false);
+  });
+  it('sent fields are trimmed, blank is null', () => {
+    const v = parseCoffeeForm(formData({ ...base, producer: ' Ana ', farm: '  ' }));
+    expect(v.producer).toBe('Ana');
+    expect(v.farm).toBeNull();
+  });
+});

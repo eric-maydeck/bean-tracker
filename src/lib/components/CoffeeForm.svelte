@@ -5,6 +5,7 @@
   import ImageSuggest from './ImageSuggest.svelte';
   import { enhance } from '$app/forms';
   import type { CoffeeRow } from '$lib/types';
+  import { COFFEE_ORIGIN_FIELDS, COFFEE_ORIGIN_LABELS } from '$lib/types';
   import type { RoastLevelRow } from '$lib/types';
   import { clonePrefill, mergeStagedCoffee, stagedRoasterDefault, stagedRoasterWebsite } from '$lib/pendingChanges';
   import { pickCandidate, type Candidate, type SuggestResponse } from '$lib/imageSuggest';
@@ -484,6 +485,16 @@
     <input id="amount_g" name="amount_g" type="number" step="1" value={(coffee?.amount_g ?? prefill?.amount_g) ?? ''} />
   </div>
 
+  <fieldset class="field-details">
+    <legend>Origin details</legend>
+    {#each COFFEE_ORIGIN_FIELDS as name (name)}
+      <div class="form-field">
+        <label for={name}>{COFFEE_ORIGIN_LABELS[name]}</label>
+        <input id={name} {name} value={(coffee?.[name] ?? prefill?.[name]) ?? ''} autocomplete="off" />
+      </div>
+    {/each}
+  </fieldset>
+
   <div class="form-field field-cost">
     <label for="cost">Cost</label>
     <input id="cost" name="cost" type="number" step="0.01" value={(coffee?.cost ?? prefill?.cost) ?? ''} />
@@ -722,6 +733,7 @@
       'producturl producturl producturl'
       'roaster coffee origin'
       'roastlevel processing amount'
+      'details details details'
       'cost roastdate frozenstart'
       var(--sub-row, )
       'image rest frozenend';
@@ -765,6 +777,7 @@
         'roaster coffee'
         'origin roastlevel'
         'processing amount'
+        'details details'
         'cost roastdate'
         var(--sub-row, )
         'frozenstart frozenend'
@@ -790,6 +803,7 @@
         'roastlevel'
         'processing'
         'amount'
+        'details'
         'cost'
         var(--sub-row, )
         'roastdate'
@@ -813,6 +827,7 @@
         'roastlevel'
         'processing'
         'amount'
+        'details'
         'cost'
         var(--sub-row, )
         'roastdate'
@@ -852,6 +867,24 @@
   }
   .field-processing {
     grid-area: processing;
+  }
+  .field-details {
+    grid-area: details;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: var(--space-2) var(--space-5);
+  }
+  .field-details legend {
+    padding: 0;
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+  }
+  .field-details legend {
+    grid-column: 1 / -1;
   }
   .field-amount {
     grid-area: amount;
