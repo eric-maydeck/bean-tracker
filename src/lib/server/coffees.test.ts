@@ -588,6 +588,53 @@ describe('applyCoffeeFixes (product page backfill)', () => {
     expect(getCoffeeById(db, id)).toMatchObject({ product_url: null, image_url: bag });
   });
 
+  it('fix fills a new field', () => {
+    const { id } = add();
+    const r = applyCoffeeFixes(db, batch({ fixes: [
+      { coffee_id: id, field: 'producer', from: null, to: 'Jhon' },
+      { coffee_id: id, field: 'amount_g', from: 200, to: 340 }
+    ] }));
+    expect(r?.fixed).toBe(2);
+    expect(getCoffeeById(db, id)).toMatchObject({ producer: 'Jhon', amount_g: 340 });
+  });
+
+  it('decaf fix applies both ways', () => {
+    const { id } = add();
+    applyCoffeeFixes(db, batch({ fixes: [{ coffee_id: id, field: 'decaf', from: 0, to: 1 }] }));
+    expect(getCoffeeById(db, id)?.decaf).toBe(1);
+    db.prepare(`DELETE FROM app_meta WHERE key = ?`).run(M);
+    applyCoffeeFixes(db, batch({ fixes: [{ coffee_id: id, field: 'decaf', from: 1, to: 0 }] }));
+    expect(getCoffeeById(db, id)?.decaf).toBe(0);
+  });
+
+  const del = (id: number, over = {}) => ({ coffee_id: id, roaster: 'Sey', coffee_name: 'Kiambu', ...over });
+
+  it('delete removes an unlinked coffee', () => {
+    const { id } = add();
+    const r = applyCoffeeFixes(db, batch({ deletes: [del(id)] }));
+    expect(r?.fixed).toBe(1);
+    expect(getCoffeeById(db, id)).toBeUndefined();
+  });
+
+  it('delete skips a linked coffee, and one with a slug redirect', () => {
+    const a = add();
+    const b = add();
+    db.prepare(`INSERT INTO beanconqueror_beans (id, name, imported_at, coffee_id) VALUES ('b', 'A', 'x', ?)`).run(a.id);
+    db.prepare(`INSERT INTO slug_redirects (old_slug, coffee_id) VALUES ('old', ?)`).run(b.id);
+    const r = applyCoffeeFixes(db, batch({ deletes: [del(a.id), del(b.id)] }));
+    expect(r?.fixed).toBe(0);
+    expect(r?.skipped[0]).toContain('beanconqueror_beans.coffee_id');
+    expect(r?.skipped[1]).toContain('slug_redirects');
+    expect(getCoffeeById(db, a.id)).toBeTruthy();
+  });
+
+  it('delete skips on name mismatch', () => {
+    const { id } = add();
+    const r = applyCoffeeFixes(db, batch({ deletes: [del(id, { coffee_name: 'Other' })] }));
+    expect(r?.skipped).toHaveLength(1);
+    expect(getCoffeeById(db, id)).toBeTruthy();
+  });
+
   it("matches '' and NULL exactly: from must be the stored empty value", () => {
     const a = add();
     const b = add();

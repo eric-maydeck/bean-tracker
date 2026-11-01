@@ -1,5 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
-import type { CoffeeOriginFields, CoffeeRow } from '../types';
+import type { CoffeeOriginField, CoffeeOriginFields, CoffeeRow } from '../types';
 import { COFFEE_ORIGIN_FIELDS } from '../types.ts';
 import { generateBaseSlug, isAutoSlug, uniqueSlug } from './slug.ts';
 import { getRoasterImage } from './roasterImages.ts';
@@ -230,7 +230,8 @@ export type CoffeeFix = {
   coffee_id: number;
   roaster?: string;
   field: 'roast_date' | 'coffee_name' | 'origin' | 'processing' | 'product_url' | 'image_url' | 'roast_level'
-    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high';
+    | 'frozen_end_date' | 'rest_days_low' | 'rest_days_high' | CoffeeOriginField
+    | 'amount_g' | 'cost' | 'decaf';
   from: string | number | null;
   to: string | number;
 };
@@ -243,11 +244,38 @@ export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
   if (!c) return 'coffee not found';
   if (f.roaster !== undefined && c.roaster !== f.roaster) return `roaster is '${c.roaster}', expected '${f.roaster}'`;
   if (c[f.field] !== f.from) return `${f.field} is '${c[f.field]}', expected '${f.from}'`;
-  const next = { ...c, [f.field]: f.to, decaf: c.decaf === 1 };
+  const next = { ...c, [f.field]: f.to, decaf: f.field === 'decaf' ? f.to === 1 : c.decaf === 1 };
   const base = (x: { roaster: string; coffee_name: string; roast_date: string | null }) =>
     generateBaseSlug({ roaster: x.roaster, coffeeName: x.coffee_name, roastDate: x.roast_date, createdAt: c.created_at });
   const regen = base(next) !== base(c) && isAutoSlug(c.slug, base(c));
   updateCoffee(db, c.id, next, regen ? uniqueSlug(db, base(next), c.id) : c.slug);
+  return null;
+}
+
+// Deletes a coffee only when roaster and name match and nothing references it:
+// every table with a foreign key to coffees is checked (slug redirects included).
+// Returns why it was skipped, or null when deleted.
+export function applyCoffeeDelete(
+  db: DatabaseSync,
+  d: { coffee_id: number; roaster: string; coffee_name: string }
+): string | null {
+  const c = getCoffeeById(db, d.coffee_id);
+  if (!c) return 'coffee not found';
+  if (c.roaster !== d.roaster || c.coffee_name !== d.coffee_name) {
+    return `is '${c.roaster}' / '${c.coffee_name}', expected '${d.roaster}' / '${d.coffee_name}'`;
+  }
+  const tables = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[];
+  for (const { name } of tables) {
+    const fks = db.prepare(`SELECT "from" AS col FROM pragma_foreign_key_list(?) WHERE "table" = 'coffees'`).all(name) as {
+      col: string;
+    }[];
+    for (const { col } of fks) {
+      if (db.prepare(`SELECT 1 FROM "${name}" WHERE "${col}" = ? LIMIT 1`).get(d.coffee_id)) {
+        return `still referenced by ${name}.${col}`;
+      }
+    }
+  }
+  db.prepare(`DELETE FROM coffees WHERE id = ?`).run(d.coffee_id);
   return null;
 }
 
@@ -258,6 +286,7 @@ export function applyCoffeeFix(db: DatabaseSync, f: CoffeeFix): string | null {
 export type CoffeeFixBatch = {
   marker: string;
   fixes: CoffeeFix[];
+  deletes?: { coffee_id: number; roaster: string; coffee_name: string }[];
   websites: { roaster: string; url: string }[];
   tavilyCalls: string[];
 };
@@ -283,6 +312,11 @@ export function applyCoffeeFixes(
     for (const f of batch.fixes) {
       const why = applyCoffeeFix(db, f);
       if (why) skipped.push(`coffee ${f.coffee_id} ${f.field}: ${why}`);
+      else fixed++;
+    }
+    for (const d of batch.deletes ?? []) {
+      const why = applyCoffeeDelete(db, d);
+      if (why) skipped.push(`coffee ${d.coffee_id} delete: ${why}`);
       else fixed++;
     }
     for (const w of batch.websites) {

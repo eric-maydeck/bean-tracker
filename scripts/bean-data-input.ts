@@ -88,6 +88,7 @@ for (const c of all('SELECT * FROM coffees ORDER BY id')) {
 
 mkdirSync(join(values.out, 'batches'), { recursive: true });
 writeFileSync(join(values.out, 'coffees.json'), JSON.stringify(coffees, null, 2));
+writeFileSync(join(values.out, 'roast_levels.json'), JSON.stringify(Object.fromEntries(degrees), null, 2));
 writeFileSync(join(values.out, 'keep.json'), JSON.stringify(keep, null, 2));
 for (let i = 0; i * 10 < coffees.length; i++) {
   writeFileSync(join(values.out, 'batches', `batch-${String(i + 1).padStart(2, '0')}.json`), JSON.stringify(coffees.slice(i * 10, i * 10 + 10), null, 2));
