@@ -25,7 +25,8 @@ export const RECIPES: Recipe[] = [
   recipe('Ultralight (Mg + K)', 40, 0, 0, 10)
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-export const DEFAULT_ML = 800;
+// Water when none is picked: the volume each tip's drops land on best (user, 2026-11-01). An explicit mL always wins.
+export const DEFAULT_ML: Record<'round' | 'precision', number> = { round: 800, precision: 900 };
 export const MIN_ML = 100;
 export const MAX_ML = 2000;
 

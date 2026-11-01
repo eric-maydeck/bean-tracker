@@ -52,7 +52,7 @@ export function waterPreview(w: { mode: Mode; tip: Tip; recipe: string; ml: numb
   const lines = [
     'Lotus drop calculator',
     `Water: ${w.ml}mL${w.mode === 'recipe' ? aim(w.idealMl, 'mL') : ''}`,
-    TIP_LABEL[w.tip],
+    `Dropper: ${TIP_LABEL[w.tip]}`,
     `Ca: ${drops(d.ca)}`, `Mg: ${drops(d.mg)}`, `Na: ${drops(d.na)}`, `K: ${drops(d.k)}`,
     `GH: ${f1(w.gh)}ppm${aim(w.target?.gh, 'ppm')}`, `KH: ${f1(w.kh)}ppm${aim(w.target?.kh, 'ppm')}`
   ];

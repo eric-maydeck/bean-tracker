@@ -1328,14 +1328,14 @@ export const STATES: State[] = [
     act: async (page) => {
       const origin = new URL(page.url()).origin;
       const cases: [string, string, string | RegExp][] = [
-        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800mL (recipe 800mL)\nRound tip\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4ppm (recipe 80ppm)\nKH: 20.1ppm (recipe 20ppm)'],
-        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nRound tip\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'],
-        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880mL \(recipe 800mL\)\nRound tip\n[\s\S]*\nGH: 18\.3ppm \(recipe 20ppm\)\nKH: 4\.6ppm \(recipe 5ppm\)$/],
+        ['/water', 'Water: Bright and Juicy', 'Lotus drop calculator\nWater: 800mL (recipe 800mL)\nDropper: Round tip\nCa: 4 drops\nMg: 4 drops\nNa: 2 drops\nK: 2 drops\nGH: 80.4ppm (recipe 80ppm)\nKH: 20.1ppm (recipe 20ppm)'],
+        ['/water?recipe=holy-water&ml=900', 'Water: Holy Water', 'Lotus drop calculator\nWater: 900mL (recipe 800mL)\nDropper: Round tip\nCa: 0 drops\nMg: 7 drops\nNa: 0 drops\nK: 4 drops\nGH: 62.5ppm (recipe 60ppm)\nKH: 17.9ppm (recipe 20ppm)'],
+        ['/water?recipe=lume-ultra-soft&ml=880', 'Water: Lume Ultra Soft', /\nWater: 880mL \(recipe 800mL\)\nDropper: Round tip\n[\s\S]*\nGH: 18\.3ppm \(recipe 20ppm\)\nKH: 4\.6ppm \(recipe 5ppm\)$/],
         ['/water?kettle=fellow-stagg-ekg', 'Water: Bright and Juicy', /\nWater: 900mL \(recipe 800mL\)\n/],
-        ['/water?tip=precision', 'Water: Bright and Juicy', /\nWater: 800mL \(recipe 900mL\)\nPrecision\nCa: 7 drops\nMg: 7 drops\nNa: 4 drops\nK: 4 drops\n/],
-        ['/water?mode=target&tip=precision&mg=40&ca=40&na=10&k=10', 'Water: Custom target', /\nPrecision\nCa: 7 drops\nMg: 7 drops\nNa: 4 drops\nK: 4 drops\n/],
-        ['/water?mode=drops&tip=precision&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nPrecision\nCa: 3 drops\nMg: 5 drops/],
-        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nRound tip\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4ppm\nKH: 0ppm/]
+        ['/water?tip=precision', 'Water: Bright and Juicy', /\nWater: 900mL \(recipe 900mL\)\nDropper: Precision\nCa: 8 drops\nMg: 8 drops\nNa: 4 drops\nK: 4 drops\n/],
+        ['/water?mode=target&tip=precision&mg=40&ca=40&na=10&k=10', 'Water: Custom target', /\nDropper: Precision\nCa: 8 drops\nMg: 8 drops\nNa: 4 drops\nK: 4 drops\n/],
+        ['/water?mode=drops&tip=precision&ca=3&mg=5', 'Water: Custom drops', /Water: 900mL\nDropper: Precision\nCa: 3 drops\nMg: 5 drops/],
+        ['/water?mode=drops&ca=3&mg=5', 'Water: Custom drops', /Water: 800mL\nDropper: Round tip\nCa: 3 drops\nMg: 5 drops\nNa: 0 drops\nK: 0 drops\nGH: 80\.4ppm\nKH: 0ppm/]
       ];
       for (const [path, title, desc] of cases) {
         const t = await previewTags(page, path);
@@ -1585,12 +1585,12 @@ export const STATES: State[] = [
       await precision.click();
       await expect(page).toHaveURL(/tip=precision/);
       await expect(precision).toHaveAttribute('aria-pressed', 'true');
-      await expect(page.getByRole('listitem', { name: '7 Calcium' })).toBeVisible();
+      await expect(page.getByRole('listitem', { name: '8 Calcium' })).toBeVisible();
       await expect(page.getByRole('listitem', { name: '4 Sodium' })).toBeVisible();
       await expect(page.locator('.wr-note').first()).toContainText('precision dropper');
       await page.getByRole('button', { name: 'Target', exact: true }).click();
       await page.getByRole('spinbutton', { name: 'Ca' }).fill('40');
-      await expect(page.getByRole('listitem', { name: '7 Calcium' })).toBeVisible();
+      await expect(page.getByRole('listitem', { name: '8 Calcium' })).toBeVisible();
       await round.click();
       await expect(page.getByRole('listitem', { name: '4 Calcium' })).toBeVisible();
       await expect(page).toHaveURL(/tip=round/);

@@ -25,7 +25,7 @@
   let recipeSlug = $state<string | undefined>();
   let picked = $state('');
   let ml = $state<number | undefined>();
-  let raw = $state(String(DEFAULT_ML));
+  let raw = $state(String(DEFAULT_ML.round));
   let dropsIn = $state<Fields>(blank());
   let targetIn = $state<Fields>(blank());
   // Drops mode: each box's tip-independent anchor (see dropAnchor). In memory only: a reload re-anchors from the visible
@@ -50,7 +50,7 @@
     recipeSlug = s.recipe;
     picked = s.kettle ?? '';
     ml = s.ml ?? KETTLES.find((k) => k.slug === s.kettle)?.ml;
-    raw = String(ml ?? DEFAULT_ML);
+    raw = String(ml ?? DEFAULT_ML[s.tip ?? 'round']);
     dropsIn = s.mode === 'drops' ? fromVals(s.vals) : blank();
     anchors = Object.fromEntries(Object.entries(s.mode === 'drops' ? (s.vals ?? {}) : {}).map(([k, v]) => [k, dropAnchor(v, s.tip ?? 'round')]));
     targetIn = s.mode === 'target' ? fromVals(s.vals) : blank();
@@ -58,8 +58,8 @@
   applyUrl();
 
   let recipe = $derived(RECIPES.find((r) => r.slug === recipeSlug) ?? RECIPES[0]);
-  let volume = $derived(ml ?? DEFAULT_ML);
   let tip = $derived<Tip>(tipPick ?? 'round');
+  let volume = $derived(ml ?? DEFAULT_ML[tip]);
   let ideal = $derived(idealMl(recipe, tip));
   let kettle = $derived(kettleFor(volume, picked));
   let valid = $derived(/^\d+$/.test(raw) && +raw >= MIN_ML && +raw <= MAX_ML);
@@ -107,6 +107,7 @@
     if (t !== tip) {
       for (const k of Object.keys(anchors) as (keyof Drops)[]) if (INT.test(dropsIn[k])) dropsIn[k] = String(dropsFromAnchor(anchors[k]!, t));
     }
+    if (ml === undefined) raw = String(DEFAULT_ML[t]);
     tipPick = t;
   }
 
@@ -167,7 +168,7 @@
     recipeSlug = undefined;
     picked = '';
     ml = undefined;
-    raw = String(DEFAULT_ML);
+    raw = String(DEFAULT_ML.round);
     dropsIn = blank();
     anchors = {};
     targetIn = blank();
