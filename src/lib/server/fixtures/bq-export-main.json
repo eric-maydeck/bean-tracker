@@ -85,6 +85,49 @@
      "country": "Brazil"
     }
    ]
+  },
+  {
+   "aromatics": "",
+   "attachments": [],
+   "beanMix": "SINGLE_ORIGIN",
+   "bean_information": [],
+   "bean_roast_information": {},
+   "bean_roasting_type": "FILTER",
+   "bestDate": "",
+   "buyDate": "",
+   "co2e_kg": 0,
+   "config": {
+    "uuid": "bean-full",
+    "unix_timestamp": 1700000000
+   },
+   "cost": 0,
+   "cupped_flavor": {},
+   "cupping": {},
+   "cupping_points": "",
+   "decaffeinated": false,
+   "ean_article_number": "",
+   "favourite": false,
+   "finished": false,
+   "frozenDate": "",
+   "frozenGroupId": "",
+   "frozenId": "",
+   "frozenNote": "",
+   "frozenStorageType": "UNKNOWN",
+   "internal_share_code": "",
+   "name": "Full",
+   "note": "",
+   "openDate": "",
+   "qr_code": "",
+   "rating": 0,
+   "roast": "UNKNOWN",
+   "roast_custom": "",
+   "roast_range": 0,
+   "roaster": "r1",
+   "roastingDate": "",
+   "shared": false,
+   "unfrozenDate": "",
+   "url": "",
+   "weight": 0
   }
  ],
  "BREWS": [

@@ -9,6 +9,7 @@ import {
   existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync
 } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import JSZip from 'jszip';
 import sharp from 'sharp';
@@ -83,13 +84,15 @@ async function apply() {
     changes: changes.length, perField: counts, newBeans: plan.newBeans.length, newBeanPhotos: newPhotos.size
   };
   const photoed = new Set(changes.filter((c) => c.field === 'attachments').map((c) => c.uuid));
-  if (a.db) {
+  if (a.db || a['dry-run']) {
     writeFileSync(join(out, 'report.json'), JSON.stringify({ summary, ...extra, changes }, null, 2));
     console.log(JSON.stringify(summary, null, 1));
     const bad = (extra.unexpected as string[]) ?? [];
-    for (const w of (extra.warnings as string[]) ?? []) console.warn(`warning: ${w}`);
+    const warnings = (extra.warnings as string[]) ?? [];
+    for (const w of warnings) console.warn(`${a['dry-run'] ? 'warning' : 'missing'}: ${w}`);
     if (bad.length) fail(`Unexpected, refusing:\n${bad.join('\n')}`);
     if (a['dry-run']) return console.log(`dry run: report at ${join(out, 'report.json')}, nothing copied`);
+    if (warnings.length) fail(`${warnings.length} own image file(s) missing (listed above); rsync the images first`);
   }
 
   execFileSync('cp', ['-c', '-R', `${src}/.`, out]); // APFS clone; copies flow files and photos too
@@ -122,7 +125,7 @@ async function apply() {
 async function planFromSite(main: Record<string, unknown>) {
   const dbPath = need(a.db, 'db');
   const real = (p: string) => (existsSync(p) ? realpathSync(p) : resolve(p));
-  if (real(dbPath) === real('data/bean-tracker.db')) fail('refusing data/bean-tracker.db: pass a copy');
+  if (real(dbPath) === real(fileURLToPath(new URL('../data/bean-tracker.db', import.meta.url)))) fail('refusing data/bean-tracker.db: pass a copy');
   if (!existsSync(dbPath)) fail(`--db ${dbPath} does not exist`);
   const images = resolve(need(a.images, 'images'));
   const keep = JSON.parse(readFileSync(need(a.keep, 'keep'), 'utf8'));

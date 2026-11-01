@@ -180,7 +180,7 @@ const FIELDS: { keep: string; key: string; kind: Kind; get: (c: PatchCoffee) => 
   { keep: 'roast_level', key: 'roast_range', kind: 'num', get: (c) => c.degrees_of_roast },
   { keep: 'amount_g', key: 'weight', kind: 'num', get: (c) => c.amount_g },
   { keep: 'cost', key: 'cost', kind: 'num', get: (c) => c.cost },
-  { keep: 'decaf', key: 'decaffeinated', kind: 'bool', get: (c) => c.decaf === 1 },
+  { keep: 'decaf', key: 'decaffeinated', kind: 'bool', get: (c) => (c.decaf == null ? null : c.decaf === 1) },
   { keep: 'status', key: 'finished', kind: 'bool', get: (c) => c.status === 'archive' },
   { keep: 'frozen_start_date', key: 'frozenDate', kind: 'date', get: (c) => c.frozen_start_date },
   { keep: 'frozen_end_date', key: 'unfrozenDate', kind: 'date', get: (c) => c.frozen_end_date }

@@ -81,7 +81,7 @@ describe('applyPatchPlan', () => {
     const n = [{ name: 'N1', config: { uuid: 'n1' } }, { name: 'N2', config: { uuid: 'n2' } }];
     const r = applyPatchPlan(m, { beans: [], newBeans: n });
     expect((r.main.BEANS as { name: string }[]).map((b) => b.name)).toEqual([
-      'Alpha', 'Bravo', 'Charlie', 'N1', 'N2'
+      'Alpha', 'Bravo', 'Charlie', 'Full', 'N1', 'N2'
     ]);
   });
 });
@@ -110,15 +110,9 @@ describe('comparePatched', () => {
   });
 });
 
-// Key list of a bean as BQ v8.7.0 exports it (keys only; no real data).
-const EXPORTED_BEAN_KEYS = [
-  'name', 'buyDate', 'roastingDate', 'note', 'roaster', 'config', 'roast', 'roast_range',
-  'roast_custom', 'beanMix', 'aromatics', 'weight', 'finished', 'cost', 'attachments',
-  'decaffeinated', 'cupping_points', 'bean_roasting_type', 'bean_information', 'url',
-  'ean_article_number', 'bean_roast_information', 'rating', 'qr_code', 'internal_share_code',
-  'favourite', 'shared', 'cupping', 'cupped_flavor', 'frozenDate', 'unfrozenDate', 'frozenId',
-  'frozenGroupId', 'frozenStorageType', 'frozenNote', 'bestDate', 'openDate', 'co2e_kg'
-];
+// The fixture's 'bean-full' carries every key a real v8.7.0 export has (key names checked
+// against the real export once); the template must have exactly the union of the fixture's keys.
+const EXPORTED_BEAN_KEYS = [...new Set(beans.flatMap((b) => Object.keys(b)))];
 
 const bean = (uuid: string, extra: Record<string, unknown> = {}) => ({
   ...structuredClone(NEW_BEAN_TEMPLATE), name: 'Alpha', config: { uuid, unix_timestamp: 1 }, ...extra
@@ -180,6 +174,13 @@ describe('buildPatchPlan', () => {
     expect(Object.keys(nb).sort()).toEqual([...EXPORTED_BEAN_KEYS].sort());
     expect((nb.config as { uuid: string }).uuid).toBe(coffeeBeanUuid(7));
     expect(nb).toMatchObject({ bean_roasting_type: 'FILTER', beanMix: 'BLEND', weight: 250, roaster: 'r1' });
+  });
+
+  it('NULL site decaf writes nothing; 0 writes false; keep stops it', () => {
+    const b = bean('u1', { decaffeinated: true });
+    expect(plan({ decaf: null }, b).plan.beans).toEqual([]);
+    expect(plan({ decaf: 0 }, b).plan.beans[0].set).toEqual({ decaffeinated: false });
+    expect(plan({ decaf: 0 }, b, { 1: ['decaf'] }).plan.beans).toEqual([]);
   });
 
   it('two bags stay two beans', () => {
