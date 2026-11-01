@@ -2300,6 +2300,30 @@ export const STATES: State[] = [
     }
   },
   {
+    // A coffee with every origin field makes the biggest payload: the QR stays square, inside the
+    // panel, and shows at >= 3 CSS px per square unless the panel is narrower than that needs.
+    name: 'coffee-bq-qr-filled',
+    viewports: 'all',
+    path: (s: Seed) => `/coffees/${s.slugs.brewNew}?bq=import`,
+    act: async (page: Page) => {
+      const qr = page.locator('img.share-qr');
+      await expect(qr).toBeVisible();
+      const m = await qr.evaluate((img: HTMLImageElement) => {
+        const r = img.getBoundingClientRect();
+        const panel = img.closest('.chart-panel')!.getBoundingClientRect();
+        return { w: r.width, h: r.height, left: r.left, right: r.right, panelLeft: panel.left, panelRight: panel.right,
+          squares: Number(img.dataset.squares), scrollOk: document.documentElement.scrollWidth <= innerWidth };
+      });
+      expect(Math.abs(m.w - m.h), 'square').toBeLessThan(1);
+      expect(m.left, 'inside panel').toBeGreaterThanOrEqual(m.panelLeft - 0.5);
+      expect(m.right, 'inside panel').toBeLessThanOrEqual(m.panelRight + 0.5);
+      expect(m.scrollOk, 'no horizontal scroll').toBe(true);
+      expect(m.squares).toBeGreaterThan(60);
+      const need = m.squares * 3;
+      expect(m.w, '3px per square unless the panel is narrower').toBeGreaterThanOrEqual(Math.min(need, m.panelRight - m.panelLeft - 40) - 1);
+    }
+  },
+  {
     name: 'coffee-brew-now-button',
     viewports: 'two',
     path: (s: Seed) => `/coffees/${s.slugs.brew}`,

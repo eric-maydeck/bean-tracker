@@ -2234,8 +2234,17 @@ html {
   flex-wrap: wrap;
 }
 
+/* Width comes inline: 280px or 3 CSS px per square, whichever is larger, never wider than the
+   panel. Pixelated so scaling keeps square edges sharp for the scanner. */
+.share-qr {
+  aspect-ratio: 1;
+  height: auto;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
 /* A nested row, not just two more flex children of .share-panel: centering
-   the hint and button against the 140px-tall QR image would vertically
+   the hint and button against the tall QR image would vertically
    center the hint's own 2-line box, putting its FIRST line above the
    button's text rather than level with it. Isolating this pair into their
    own row lets align-items apply only between them. */

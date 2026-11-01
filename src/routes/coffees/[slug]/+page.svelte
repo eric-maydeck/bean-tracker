@@ -80,6 +80,9 @@
 
   let shareUrl = $state<string | null>(null);
   let shareQrDataUrl = $state<string | null>(null);
+  // Squares across the code plus its quiet zone: the QR is shown at >= 3 CSS px per square.
+  let shareQrSquares = $state(0);
+  let shareQrBox = $derived(Math.max(280, shareQrSquares * 3));
 
   // Bean Conqueror's share/QR format can't carry a half-step roast degree
   // or fractional cents (both are whole-number-only in their wire format —
@@ -100,7 +103,9 @@
     ]);
     const url = await buildShareUrl(data.coffee, data.roastLevels);
     shareUrl = url;
-    shareQrDataUrl = await QRCode.toDataURL(url);
+    const margin = 4;
+    shareQrSquares = QRCode.create(url).modules.size + 2 * margin;
+    shareQrDataUrl = await QRCode.toDataURL(url, { margin, scale: 6 });
   }
 
   // A /coffees row's import icon links here with ?bq=import.
@@ -320,7 +325,13 @@
 {#if shareUrl && shareQrDataUrl}
   <div class="chart-panel">
     <div class="share-panel">
-      <img src={shareQrDataUrl} alt="QR code to import this coffee into Bean Conqueror" width="140" height="140" />
+      <img
+        class="share-qr"
+        src={shareQrDataUrl}
+        alt="QR code to import this coffee into Bean Conqueror"
+        data-squares={shareQrSquares}
+        style:width="min(100%, {shareQrBox}px)"
+      />
       <div class="share-panel-text-and-button">
         <p class="text-muted share-panel-hint">Scan the QR code or click the button.</p>
         <a class="button button-secondary" href={shareUrl} target="_blank" rel="noopener noreferrer">Open in Bean Conqueror</a>
