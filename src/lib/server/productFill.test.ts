@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import type { ProductData } from './productParse';
 import { parseShopifyProduct, parseHtmlProduct } from './productParse';
 import type { FillHistoryRow } from './coffees';
-import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, type UsdRates, type FillContext } from './productFill';
+import { parseGrams, cleanName, stripSiteSuffix, findOrigin, findProcessing, findRoaster, findRoastLevel, pickVariant, toUsd, formatMoney, buildFill, findOriginDetail, type UsdRates, type FillContext } from './productFill';
 
 export function product(overrides: Partial<ProductData> = {}): ProductData {
   return {
@@ -348,5 +348,47 @@ describe('buildFill', () => {
     expect(r.fields).toMatchObject({ processing: 'Washed', amount_g: 250, cost: 30.37 }); // 800000 / 26345
     expect(r.fields.roaster).toBe('XLIII Coffee'); // no history → raw site name
     expect(r.notes.join(' · ')).toMatch(/VND → \$30\.37 USD \(rate 2026-09-25\)/);
+  });
+});
+
+describe('origin details and concise processing in fill', () => {
+  const forms: [Parameters<typeof findOriginDetail>[1], string[]][] = [
+    ['producer', ['producer', 'producers', 'farmer', 'grower']],
+    ['farm', ['farm', 'farm name', 'estate', 'finca']],
+    ['variety', ['variety', 'varieties', 'varietal', 'varietals', 'cultivar']],
+    ['region', ['region', 'growing region']],
+    ['elevation', ['elevation', 'altitude']],
+    ['harvest_time', ['harvest', 'harvest time', 'harvest date', 'harvested']],
+    ['certification', ['certification', 'certifications']]
+  ];
+  for (const [field, labels] of forms)
+    for (const label of labels)
+      it(`${field} from "${label}"`, () => {
+        expect(findOriginDetail(product({ attributes: { [label]: 'Value X' } }), field)).toBe('Value X');
+      });
+
+  it('rejects paragraphs and long values', () => {
+    const para = 'Grown by many smallholders. They pick by hand.';
+    expect(findOriginDetail(product({ attributes: { variety: para } }), 'variety')).toBeNull();
+    expect(findOriginDetail(product({ attributes: { variety: 'Bourbon.' } }), 'variety')).toBeNull();
+    expect(findOriginDetail(product({ attributes: { variety: 'x'.repeat(61) } }), 'variety')).toBeNull();
+  });
+
+  it('fills through buildFill and counts them', () => {
+    const r = buildFill(product({ attributes: { producer: 'Ana', variety: 'Gesha' } }), ctx());
+    expect(r.fields).toMatchObject({ producer: 'Ana', variety: 'Gesha' });
+    expect(r.notes[0]).toBe(`Filled ${Object.keys(r.fields).length} fields`);
+  });
+
+  it('adds no keys when the page has none', () => {
+    const r = buildFill(product(), ctx());
+    expect(Object.keys(r.fields)).toEqual([]);
+    expect(r.notes).not.toContain('producer not found');
+  });
+
+  it('keeps a known long processing value concise', () => {
+    const long = 'WASHED - 60 HOUR CHERRY FERMENTATION + 48 HOUR DRY FERMENTATION';
+    const r = buildFill(product({ attributes: { process: long } }), ctx({ processing: [long] }));
+    expect(r.fields.processing).toBe('Washed');
   });
 });

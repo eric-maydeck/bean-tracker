@@ -2,6 +2,8 @@ import type { ProductData } from './productParse';
 import { COUNTRY_NAMES } from '../countryFlags';
 import type { FillHistoryRow } from './coffees';
 import type { CoffeeRow } from '../types';
+import { COFFEE_ORIGIN_FIELDS, type CoffeeOriginField } from '../types';
+import { conciseProcess } from '../processGroups';
 import { suggestRest } from '../coffeeFormFill';
 
 export interface UsdRates {
@@ -101,6 +103,25 @@ export function findProcessing(p: ProductData, knownProcessing: string[]): strin
   for (const text of [p.tags.join(' , '), p.title ?? '', p.description]) {
     const hit = terms.find((t) => new RegExp(`\\b${escapeRe(t)}\\b`, 'i').test(text));
     if (hit) return canonical(hit, knownProcessing);
+  }
+  return null;
+}
+
+const ORIGIN_LABELS: Record<CoffeeOriginField, string[]> = {
+  producer: ['producer', 'producers', 'farmer', 'grower'],
+  farm: ['farm', 'farm name', 'estate', 'finca'],
+  variety: ['variety', 'varieties', 'varietal', 'varietals', 'cultivar'],
+  region: ['region', 'growing region'],
+  elevation: ['elevation', 'altitude'],
+  harvest_time: ['harvest', 'harvest time', 'harvest date', 'harvested'],
+  certification: ['certification', 'certifications']
+};
+
+// Labeled values only; a paragraph under the label (long, or with a sentence) is not a detail.
+export function findOriginDetail(p: ProductData, field: CoffeeOriginField): string | null {
+  for (const label of ORIGIN_LABELS[field]) {
+    const v = p.attributes[label]?.trim();
+    if (v && v.length <= 60 && !/\.\s|\.$/.test(v)) return v;
   }
   return null;
 }
@@ -225,6 +246,7 @@ export type FillFields = Partial<
     | 'image_url'
     | 'rest_days_low'
     | 'rest_days_high'
+    | CoffeeOriginField
   >
 >;
 export interface FillVariant {
@@ -289,7 +311,8 @@ export function buildFill(p: ProductData, ctx: FillContext): FillSuccess {
   const bareTitle = p.title ? stripSiteSuffix(p.title, [roaster, p.vendor, p.siteName, p.brand]) : null;
   put('coffee_name', bareTitle ? cleanName(bareTitle) : null);
   put('origin', findOrigin(p, ctx.origins));
-  put('processing', findProcessing(p, ctx.processing));
+  put('processing', conciseProcess(findProcessing(p, ctx.processing)));
+  for (const f of COFFEE_ORIGIN_FIELDS) put(f, findOriginDetail(p, f));
   put('roast_level', roast?.level);
   put('rest_days_low', rest?.low);
   put('rest_days_high', rest?.high);

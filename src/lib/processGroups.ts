@@ -20,3 +20,15 @@ export function processGroup(processing: string | null): ProcessGroup {
   const s = (processing ?? '').toLowerCase();
   return RULES.find(([, test]) => test(s))?.[0] ?? 'Other / Unknown';
 }
+
+// A short processing label is kept as written (title-cased when all caps);
+// long or sentence-like text collapses to its group, or null when none fits.
+export function conciseProcess(value: string | null): string | null {
+  const v = (value ?? '').trim();
+  if (!v) return null;
+  if (v.length <= 30 && v.split(/\s+/).length <= 4 && !/[.,;]/.test(v)) {
+    return v === v.toUpperCase() ? v.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : v;
+  }
+  const g = processGroup(v);
+  return g === 'Other / Unknown' ? null : g;
+}

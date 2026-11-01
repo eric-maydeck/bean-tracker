@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { processGroup, PROCESS_GROUPS } from './processGroups';
+import { processGroup, conciseProcess, PROCESS_GROUPS } from './processGroups';
 
 // Every prod processing label on 2026-10-09 → its group.
 const PROD: [string, string][] = [
@@ -62,5 +62,18 @@ describe('processGroup', () => {
   it('lists every group once, Other last', () => {
     expect(new Set(PROCESS_GROUPS).size).toBe(9);
     expect(PROCESS_GROUPS.at(-1)).toBe('Other / Unknown');
+  });
+});
+
+describe('conciseProcess', () => {
+  it.each([
+    ['Double Ferment Washed', 'Double Ferment Washed'],
+    ['WASHED', 'Washed'],
+    ['WASHED - 60 HOUR CHERRY FERMENTATION + 48 HOUR DRY FERMENTATION', 'Washed'],
+    ['The cherries were dried on raised beds for 30 days until they were ready.', null],
+    ['Sun dried natural, slowly over three long weeks on raised beds', 'Natural'],
+    [null, null]
+  ])('%s', (input, out) => {
+    expect(conciseProcess(input)).toBe(out);
   });
 });
