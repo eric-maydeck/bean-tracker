@@ -7,6 +7,7 @@
 #   reset <snapshot>   stop, then start from that snapshot
 #   import <dir>       push <dir> (holds Beanconqueror.zip + photos) and run BQ's
 #                      "Full import from directory" with scripted taps; prints seconds
+#   dump-json <file>   write BEANS/BREWS/MILL/PREPARATION/WATER as JSON to a local file (real data!)
 #   dump [rows]        read-only counts/linkage from BQ's IndexedDB (rows: per-bean table)
 # Needs: JDK-free; Android SDK at ~/Library/Android/sdk, AVD bq-test, BQ APK installed.
 set -euo pipefail
@@ -55,11 +56,18 @@ import)
   a shell rm -rf /sdcard/Download/bq-import; a push "$dir" /sdcard/Download/bq-import >/dev/null
   a shell am start -n $PKG/com.beanconqueror.MainActivity >/dev/null; sleep 4
   # fixed coords for the 1080x2400 AVD: hamburger, Settings, "Full import from directory"
-  a shell input tap 72 220; sleep 2; a shell input tap 400 1093; sleep 3; a shell input tap 360 816; sleep 3
+  # (menu is longer once data exists: Settings is at y=1472 there, set BQ_SETTINGS_Y; start from Home)
+  a shell input tap 72 220; sleep 2; a shell input tap 400 ${BQ_SETTINGS_Y:-1093}; sleep 3; a shell input tap 360 816; sleep 3
   tap_text '^Download$'; sleep 1; tap_text '^bq-import$'; sleep 1; tap_text 'use this folder'; sleep 2
   a shell input tap 878 1388   # "Allow" in the SAF permission dialog
   until [ "$(cdp "document.body.innerText.includes('Import successful')")" = true ]; do sleep 5; done
   echo "import done in $(( $(date +%s) - t0 ))s (incl. push + navigation)" ;;
+dump-json)
+  need; out=${2:?output file}
+  cdp "(async()=>{const db=await new Promise((o,e)=>{const r=indexedDB.open('__baristaDB');r.onsuccess=()=>o(r.result);r.onerror=()=>e(r.error)});
+  const g=k=>new Promise(o=>{const r=db.transaction('_ionickv').objectStore('_ionickv').get(k);r.onsuccess=()=>o(r.result)});
+  const o={};for(const k of ['BEANS','BREWS','MILL','PREPARATION','WATER'])o[k]=(await g(k))||[];return o})()" >"$out"
+  echo "wrote $out" ;;
 dump)
   need; mode=${2:-}
   cdp "(async()=>{const db=await new Promise((o,e)=>{const r=indexedDB.open('__baristaDB');r.onsuccess=()=>o(r.result);r.onerror=()=>e(r.error)});
