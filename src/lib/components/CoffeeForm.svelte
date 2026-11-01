@@ -882,8 +882,6 @@
     padding: 0;
     margin-bottom: var(--space-2);
     font-weight: 600;
-  }
-  .field-details legend {
     grid-column: 1 / -1;
   }
   .field-amount {
