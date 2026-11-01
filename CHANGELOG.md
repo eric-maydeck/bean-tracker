@@ -1,3 +1,19 @@
+# [1.104.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.103.0...v1.104.0) (2026-11-01)
+
+
+### Bug Fixes
+
+* **water:** convert drops boxes when the tip changes in another mode
+* **water:** same size for every switch-volume button
+
+
+### Features
+
+* **water:** anchor drops across tip switches, name the tip in link previews
+* **water:** choose round-tip or precision dropper
+* **water:** default water follows the tip, label the tip line in link previews
+* **water:** suggest two volumes when the best one exceeds a 1000mL kettle
+
 # [1.103.0](https://github.com/eric-maydeck/bean-tracker/compare/v1.102.0...v1.103.0) (2026-10-31)
 
 
